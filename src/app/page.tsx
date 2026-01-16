@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { EventFeed } from "@/components/EventFeed";
@@ -10,7 +10,15 @@ import { AIChat } from "@/components/AIChat";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
+import { TradeModal } from "@/components/TradeModal";
 import { useWorldState } from "@/hooks/useWorldState";
+
+interface BuildingClickData {
+  mint: string;
+  symbol: string;
+  name: string;
+  tokenUrl?: string;
+}
 
 const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
   ssr: false,
@@ -28,6 +36,19 @@ const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
 
 export default function Home() {
   const { worldState, isLoading, refreshAfterLaunch, tokenCount } = useWorldState();
+  const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
+
+  // Listen for building click events from Phaser
+  useEffect(() => {
+    const handleBuildingClick = (event: CustomEvent<BuildingClickData>) => {
+      setTradeToken(event.detail);
+    };
+
+    window.addEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
+    return () => {
+      window.removeEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
+    };
+  }, []);
 
   return (
     <main className="h-screen w-screen overflow-hidden flex flex-col">
@@ -119,6 +140,16 @@ export default function Home() {
           </a>
         </div>
       </footer>
+
+      {/* Trade Modal - triggered by clicking buildings */}
+      {tradeToken && (
+        <TradeModal
+          tokenMint={tradeToken.mint}
+          tokenSymbol={tradeToken.symbol}
+          tokenName={tradeToken.name}
+          onClose={() => setTradeToken(null)}
+        />
+      )}
     </main>
   );
 }
