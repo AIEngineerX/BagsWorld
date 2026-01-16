@@ -69,20 +69,27 @@ async function generateChatResponse(
   userMessage: string,
   chatHistory: Array<{ role: string; content: string }>
 ): Promise<AIAction> {
-  const systemPrompt = `You are ${personality.name}, an AI character living in BagsWorld - a pixel art game world that evolves based on real cryptocurrency trading activity on Bags.fm.
+  const systemPrompt = `You are ${personality.name}, a degen AI companion living in BagsWorld - a pixel art game world that evolves based on real Solana trading activity on Bags.fm.
 
 Your personality trait is: ${personality.trait}
 Your catchphrase is: "${personality.catchphrase}"
 
-You are having a conversation with a player. Stay in character and be engaging!
+You speak like a crypto native/degen. Use lowercase often, crypto slang, and stay fun!
+
+Common crypto slang you use:
+- "ser" instead of "sir", "fren" for friend, "anon" for anonymous user
+- "gm" (good morning), "wagmi" (we're all gonna make it), "ngmi" (not gonna make it)
+- "lfg" (let's fucking go), "wen" instead of "when", "rekt" (wrecked/lost money)
+- "ape" (to buy impulsively), "bags" (holdings), "moon" (price going up a lot)
+- "based" (cool/good), "bearish/bullish", "alpha" (insider info), "degen" (degenerate trader)
 
 Personality guidelines:
-- optimistic: Always see the bright side, hype everything, use rocket emojis 🚀, be enthusiastic
-- cautious: Warn about risks, be wise and measured, give thoughtful advice
-- chaotic: Embrace chaos, make jokes, be unpredictable and fun, use lots of emojis
-- strategic: Analyze patterns, give analytical insights, be thoughtful and data-driven
+- optimistic (Based Chad): Always bullish, hype everything, 🚀 emojis, "we're all gonna make it" energy
+- cautious (Wojak): Warns about risks, has been rugged before, careful but supportive
+- chaotic (Pepe the Degen): Chaotic energy, 🐸 emojis, unpredictable, memes everything
+- strategic (Galaxy Brain): Analytical, talks about charts/TA, uses 📊, finds alpha
 
-Keep responses SHORT (1-3 sentences) and entertaining. Use emojis that fit your personality.
+Keep responses SHORT (1-2 sentences max) and degen-flavored. Never sound corporate or robotic.
 ${worldState ? `
 Current world state:
 - World Health: ${worldState.health}%
@@ -142,64 +149,93 @@ function generateChatFallback(
   const lowerMsg = userMessage.toLowerCase();
 
   // Greetings
-  if (lowerMsg.includes("hello") || lowerMsg.includes("hi") || lowerMsg.includes("hey")) {
+  if (lowerMsg.includes("hello") || lowerMsg.includes("hi") || lowerMsg.includes("hey") || lowerMsg.includes("gm") || lowerMsg.includes("sup")) {
     const greetings: Record<string, string> = {
-      optimistic: "Hey there, friend! Ready for some gains? Let's gooo! 🚀",
-      cautious: "Hello there. The markets are always watching... stay vigilant.",
-      chaotic: "HELLOOO! Welcome to the chaos! Things are about to get WILD! 😈",
-      strategic: "Greetings. I've been analyzing patterns all day. What's on your mind?",
+      optimistic: "gm gm fren!! ready to stack some bags today? 🚀",
+      cautious: "hey anon. markets looking spicy today... stay sharp",
+      chaotic: "YOOO WHATS GOOD!! welcome to the degen zone 🐸",
+      strategic: "gm ser. been watching charts all night. whats the play?",
     };
     return { type: "speak", message: greetings[personality.trait] };
   }
 
   // Questions about the AI
   if (lowerMsg.includes("who are you") || lowerMsg.includes("what are you")) {
-    return {
-      type: "speak",
-      message: `I'm ${personality.name}! I live in BagsWorld and watch over all the trading action. ${personality.catchphrase}`,
+    const intros: Record<string, string> = {
+      optimistic: `im ${personality.name}, your favorite degen companion in BagsWorld! ${personality.catchphrase}`,
+      cautious: `names ${personality.name}. i watch these charts so u dont have to get rekt. ${personality.catchphrase}`,
+      chaotic: `${personality.name} at ur service!! resident chaos agent of BagsWorld 🐸 ${personality.catchphrase}`,
+      strategic: `${personality.name} here. alpha hunter and chart wizard. ${personality.catchphrase}`,
     };
+    return { type: "speak", message: intros[personality.trait] };
   }
 
-  // Market talk
-  if (lowerMsg.includes("market") || lowerMsg.includes("price") || lowerMsg.includes("token") || lowerMsg.includes("bags")) {
+  // Market/trading talk
+  if (lowerMsg.includes("market") || lowerMsg.includes("price") || lowerMsg.includes("token") || lowerMsg.includes("bags") || lowerMsg.includes("pump") || lowerMsg.includes("dump")) {
     const marketTalk: Record<string, string> = {
-      optimistic: "Markets are looking BULLISH! Time to stack those bags! 📈🚀",
-      cautious: "The market shows uncertainty. Remember: protect your capital first.",
-      chaotic: "Prices go up, prices go down - either way, it's EXCITING! 🎢",
-      strategic: "Current market structure suggests we're in an accumulation phase. Watching key levels.",
+      optimistic: "charts looking bullish af ser!! time to load bags 📈🚀",
+      cautious: "market kinda sketchy rn ngl. maybe wait for confirmation?",
+      chaotic: "who cares about prices lmaooo IM APING ANYWAY 🐸",
+      strategic: "structure looks healthy. watching for breakout above resistance",
     };
     return { type: "speak", message: marketTalk[personality.trait] };
+  }
+
+  // Wen questions
+  if (lowerMsg.includes("wen") || lowerMsg.includes("when")) {
+    const wenResponses: Record<string, string> = {
+      optimistic: "soon ser, very soon!! trust the process 🚀",
+      cautious: "patience anon... timing the market is risky",
+      chaotic: "wen?? WEN?! NOW IS WEN!! LFGGG 🐸",
+      strategic: "based on my analysis... when liquidity returns",
+    };
+    return { type: "speak", message: wenResponses[personality.trait] };
   }
 
   // Help
   if (lowerMsg.includes("help") || lowerMsg.includes("how")) {
     return {
       type: "encourage",
-      message: `I'm here to chat and comment on BagsWorld! Ask me about markets, tokens, or just say hi. ${personality.catchphrase}`,
+      message: `im here to vibe and talk bags fren! ask me about the market, tokens, or just hang out. ${personality.catchphrase}`,
     };
   }
 
-  // Default responses
+  // WAGMI/NGMI
+  if (lowerMsg.includes("wagmi") || lowerMsg.includes("ngmi") || lowerMsg.includes("gmi")) {
+    const gmiResponses: Record<string, string> = {
+      optimistic: "WAGMI ALWAYS SER!! we're all gonna make it together 🤝",
+      cautious: "wagmi... but only if u manage risk properly anon",
+      chaotic: "WAGMI?! NGMI?! IDK BUT IM HAVING FUN 🐸🔥",
+      strategic: "wagmi for those who stay patient and stick to the plan",
+    };
+    return { type: "speak", message: gmiResponses[personality.trait] };
+  }
+
+  // Default responses - more degen flavored
   const defaults: Record<string, string[]> = {
     optimistic: [
-      "Love the energy! Keep it up! 🔥",
-      "That's the spirit! We're all gonna make it!",
-      "You get it! This is what BagsWorld is all about! 🚀",
+      "love the energy fren!! lets gooo 🔥",
+      "thats the spirit ser! bullish on u",
+      "u get it!! this is what BagsWorld is about 🚀",
+      "based take ngl",
     ],
     cautious: [
-      "Interesting perspective. Let me think about that...",
-      "Noted. I'll factor that into my analysis.",
-      "Hmm, the market has seen similar situations before.",
+      "hmm interesting point anon... let me think",
+      "noted. adding that to my watchlist",
+      "ive seen this before... proceed carefully",
+      "solid observation ser",
     ],
     chaotic: [
-      "Haha YES! Now you're speaking my language! 😂",
-      "CHAOS APPROVED! Keep it weird!",
-      "I love where this is going! Let's shake things up! 🎭",
+      "LMAOO YES!! now ur speaking my language 🐸",
+      "chaos approved!! keep it weird fren",
+      "based and degen-pilled response tbh",
+      "this is the content i come here for 🔥",
     ],
     strategic: [
-      "That aligns with my models. Interesting.",
-      "Processing... your input has been noted for analysis.",
-      "A data point worth considering. Thank you.",
+      "that aligns with my thesis. bullish",
+      "interesting data point. processing...",
+      "this confirms my bias ngl",
+      "adding this to my alpha notes 📊",
     ],
   };
 
@@ -216,20 +252,22 @@ async function generateClaudeResponse(
   observation: string,
   memory: AIMemory[]
 ): Promise<AIAction> {
-  const systemPrompt = `You are ${personality.name}, an AI character living in BagsWorld - a pixel art game world that evolves based on real cryptocurrency trading activity on Bags.fm.
+  const systemPrompt = `You are ${personality.name}, a degen AI companion living in BagsWorld - a pixel art game world that evolves based on real Solana trading on Bags.fm.
 
 Your personality trait is: ${personality.trait}
 Your catchphrase is: "${personality.catchphrase}"
 
-You observe the world and make short, witty comments (1-2 sentences max). Stay in character!
+You observe the world and make short, witty degen comments (1 sentence max). Use crypto slang!
+
+Crypto slang: "ser", "fren", "anon", "gm", "wagmi", "ngmi", "lfg", "wen", "rekt", "ape", "bags", "moon", "based", "alpha", "degen"
 
 Personality guidelines:
-- optimistic: Always see the bright side, hype everything, use rocket emojis 🚀
-- cautious: Warn about risks, remind people of market cycles, be wise
-- chaotic: Embrace the chaos, make jokes, be unpredictable
-- strategic: Analyze patterns, speak about technical indicators, be analytical
+- optimistic (Based Chad): Always bullish, hype everything, 🚀 emojis
+- cautious (Wojak): Warns about risks, been rugged before, careful
+- chaotic (Pepe the Degen): Chaotic 🐸 energy, memes everything
+- strategic (Galaxy Brain): Charts/TA focused, finds alpha 📊
 
-Keep responses SHORT and entertaining. Use emojis sparingly but effectively.`;
+Keep responses SHORT (1 sentence) and fun. Sound like a crypto native, never corporate.`;
 
   const worldStateInfo = worldState
     ? `Current world state:
@@ -304,40 +342,90 @@ function generateFallbackResponse(
   if (!worldState) {
     return { type: "speak", message: personality.catchphrase };
   }
-  const responses: Record<AIPersonality["trait"], string[]> = {
+
+  // Health-based responses
+  if (worldState.health > 80) {
+    const bullishResponses: Record<AIPersonality["trait"], string[]> = {
+      optimistic: [
+        "vibes are immaculate rn!! BagsWorld is THRIVING 🚀",
+        "world health at ATH, we're all gonna make it ser",
+        "green everywhere!! this is what we built for 💚",
+      ],
+      cautious: [
+        "world looking healthy... but dont get complacent anon",
+        "things going well but remember to take profits",
+        "euphoria detected. staying cautious but optimistic",
+      ],
+      chaotic: [
+        "BAGSWORLD IS PUMPING!! LETS GOOOO 🐸🔥",
+        "everyone vibing, charts going up, life is good!!",
+        "*happy degen noises* THIS IS THE WAY",
+      ],
+      strategic: [
+        "world health metrics looking strong. bullish continuation expected",
+        "all systems green. optimal conditions for growth",
+        "high health correlates with volume. watching closely",
+      ],
+    };
+    const options = bullishResponses[personality.trait];
+    return { type: "celebrate", message: options[Math.floor(Math.random() * options.length)] };
+  }
+
+  if (worldState.health < 30) {
+    const bearishResponses: Record<AIPersonality["trait"], string[]> = {
+      optimistic: [
+        "tough times but diamonds form under pressure ser 💎",
+        "world health low but weve been here before. we survive",
+        "generational buying opportunity tbh... just saying 👀",
+      ],
+      cautious: [
+        "world health critical. maybe touch grass today anon",
+        "things looking rough... protect ur capital",
+        "this is why we always keep some stables ready",
+      ],
+      chaotic: [
+        "EVERYTHING IS ON FIRE AND IM VIBING 🔥🐸",
+        "apocalypse mode?? more like ACCUMULATION MODE",
+        "*watches portfolio burn* lmaooo its fine its fine",
+      ],
+      strategic: [
+        "world health at extreme lows. contrarian signal detected",
+        "max pain often precedes recovery. watching for reversal",
+        "low health = high opportunity for patient capital",
+      ],
+    };
+    const options = bearishResponses[personality.trait];
+    return { type: "warn", message: options[Math.floor(Math.random() * options.length)] };
+  }
+
+  // Neutral responses
+  const neutralResponses: Record<AIPersonality["trait"], string[]> = {
     optimistic: [
-      "Everything's coming up roses! 🌹",
-      "Great vibes in BagsWorld today!",
-      "The future is bright! ☀️",
+      "another day in BagsWorld, another day to build 🏗️",
+      "vibes are good ser, keep stacking",
+      "slow and steady wins the race fren",
       personality.catchphrase,
     ],
     cautious: [
-      "Watching the markets carefully...",
-      "Stay safe out there, everyone.",
-      "Remember your risk management.",
+      "markets consolidating... watching for the next move",
+      "neither euphoric nor panicking. just observing",
+      "patience is a traders best friend anon",
       personality.catchphrase,
     ],
     chaotic: [
-      "CHAOS REIGNS SUPREME! 😈",
-      "What's the worst that could happen?",
-      "Let's shake things up!",
+      "kinda quiet today... CHAOS LOADING... 🐸",
+      "waiting for something exciting to happen tbh",
+      "boring chart hours, wen volatility??",
       personality.catchphrase,
     ],
     strategic: [
-      "Analyzing current market conditions...",
-      "The data suggests interesting patterns.",
-      "Position sizing is key.",
+      "range-bound conditions. waiting for breakout",
+      "accumulating knowledge while market decides direction",
+      "consolidation phase. perfect time to research",
       personality.catchphrase,
     ],
   };
 
-  const options = responses[personality.trait];
-  const message = options[Math.floor(Math.random() * options.length)];
-
-  let type: AIAction["type"] = "speak";
-  if (worldState.health > 80) type = "celebrate";
-  if (worldState.health < 30) type = "warn";
-  if (worldState.weather === "apocalypse") type = "warn";
-
-  return { type, message };
+  const options = neutralResponses[personality.trait];
+  return { type: "speak", message: options[Math.floor(Math.random() * options.length)] };
 }

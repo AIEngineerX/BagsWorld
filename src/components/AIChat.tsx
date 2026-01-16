@@ -11,6 +11,7 @@ interface ChatMessage {
   message: string;
   type?: AIAction["type"];
   timestamp: number;
+  intent?: string; // For tracking what kind of action this was
 }
 
 interface Position {
@@ -158,15 +159,29 @@ export function AIChat() {
         recentEvents: worldState.events.slice(0, 5),
         topBuildings: worldState.buildings
           .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))
-          .slice(0, 3)
-          .map(b => ({ name: b.name, symbol: b.symbol, change: b.change24h, marketCap: b.marketCap })),
+          .slice(0, 5)
+          .map(b => ({ name: b.name, symbol: b.symbol, mint: b.tokenMint, change24h: b.change24h, marketCap: b.marketCap })),
+        population: worldState.population.map(c => ({
+          username: c.username,
+          mood: c.mood,
+          earnings24h: c.earnings24h,
+        })),
+        animals: [
+          { type: "dog" },
+          { type: "cat" },
+          { type: "bird" },
+          { type: "butterfly" },
+          { type: "squirrel" },
+        ],
         timeInfo: (worldState as any).timeInfo,
       } : null;
 
-      const response = await fetch("/api/ai-agent", {
+      // Use the new Bags Bot API
+      const response = await fetch("/api/bags-bot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "chat",
           personality: currentPersonality,
           worldState: worldContext,
           userMessage,
@@ -185,8 +200,14 @@ export function AIChat() {
         sender: "ai",
         message: data.action?.message || "...",
         type: data.action?.type,
+        intent: data.action?.intent,
         timestamp: Date.now(),
       });
+
+      // Handle special intents with quick action buttons
+      if (data.action?.intent) {
+        handleBotIntent(data.action.intent, data.data);
+      }
     } catch (error) {
       console.error("Chat error:", error);
       addMessage({
@@ -201,6 +222,22 @@ export function AIChat() {
     }
   };
 
+  // Handle special bot intents (for future expandability)
+  const handleBotIntent = (intent: string, data: any) => {
+    // Could trigger visual effects, highlight elements, etc.
+    switch (intent) {
+      case "animal_interaction":
+        // Could trigger animal animation in game
+        break;
+      case "citizen_interaction":
+        // Could highlight the citizen in the game
+        break;
+      case "building_interaction":
+        // Could highlight the building
+        break;
+    }
+  };
+
   const getSmartFallbackResponse = (
     personality: AIPersonality,
     userMsg: string,
@@ -209,41 +246,41 @@ export function AIChat() {
     const lowerMsg = userMsg.toLowerCase();
 
     // Greetings
-    if (lowerMsg.includes("hello") || lowerMsg.includes("hi") || lowerMsg.includes("hey")) {
+    if (lowerMsg.includes("hello") || lowerMsg.includes("hi") || lowerMsg.includes("hey") || lowerMsg.includes("gm") || lowerMsg.includes("sup")) {
       const greetings: Record<string, string> = {
-        optimistic: "Hey there! Welcome to BagsWorld! Ready to see some gains?",
-        cautious: "Hello. I've been watching the markets closely. What brings you here?",
-        chaotic: "HELLOOO! Finally, someone to talk to! Let's stir up some chaos!",
-        strategic: "Greetings. I've been analyzing the data. How can I assist?",
+        optimistic: "gm gm fren!! ready to stack some bags today? 🚀",
+        cautious: "hey anon... been watching these charts all day. stay sharp out there",
+        chaotic: "YOOO WHATS GOOD FREN!! welcome to the chaos 🐸",
+        strategic: "gm ser. already ran my morning analysis. whats the play today?",
       };
       return greetings[personality.trait];
     }
 
     // Questions about tokens/buildings
-    if (lowerMsg.includes("token") || lowerMsg.includes("building") || lowerMsg.includes("what's hot") || lowerMsg.includes("whats hot")) {
+    if (lowerMsg.includes("token") || lowerMsg.includes("building") || lowerMsg.includes("what's hot") || lowerMsg.includes("whats hot") || lowerMsg.includes("alpha")) {
       if (world && world.buildings.length > 0) {
         const topBuilding = world.buildings
           .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))[0];
         const responses: Record<string, string> = {
-          optimistic: `${topBuilding.name} is looking strong! Level ${topBuilding.level} building with solid momentum!`,
-          cautious: `${topBuilding.name} has the highest market cap currently. Always do your own research though.`,
-          chaotic: `${topBuilding.name}?! It's either going to moon or explode! Either way, EXCITING!`,
-          strategic: `${topBuilding.name} leads with ${topBuilding.change24h?.toFixed(1)}% change. Watching volume closely.`,
+          optimistic: `$${topBuilding.symbol} is the play rn ser! L${topBuilding.level} building looking STRONG 🚀`,
+          cautious: `$${topBuilding.symbol} has biggest mcap but dyor anon. seen too many rugs`,
+          chaotic: `$${topBuilding.symbol}?! idk what it does but IM BULLISH 🐸 lfggg`,
+          strategic: `$${topBuilding.symbol} leading with ${topBuilding.change24h?.toFixed(1)}% move. volume confirming`,
         };
         return responses[personality.trait];
       }
-      return "No buildings visible yet... the world is still loading!";
+      return "no buildings loaded yet ser... world still syncing";
     }
 
     // Questions about market/price
-    if (lowerMsg.includes("market") || lowerMsg.includes("price") || lowerMsg.includes("how's it going") || lowerMsg.includes("hows it going")) {
+    if (lowerMsg.includes("market") || lowerMsg.includes("price") || lowerMsg.includes("how's it going") || lowerMsg.includes("hows it going") || lowerMsg.includes("vibes")) {
       if (world) {
-        const healthStatus = world.health > 70 ? "thriving" : world.health > 40 ? "stable" : "struggling";
+        const healthStatus = world.health > 70 ? "pumping" : world.health > 40 ? "crabbing" : "bleeding";
         const responses: Record<string, string> = {
-          optimistic: `The world is ${healthStatus} at ${world.health}% health! ${world.weather === "sunny" ? "Perfect vibes!" : "We'll get through any weather!"}`,
-          cautious: `World health at ${world.health}%. Weather: ${world.weather}. ${world.health < 50 ? "Stay cautious." : "Conditions acceptable."}`,
-          chaotic: `${world.health}% health! ${world.weather} weather! ${world.buildings.length} buildings! NUMBERS! CHAOS!`,
-          strategic: `Current metrics: ${world.health}% health, ${world.buildings.length} active buildings, ${world.weather} conditions. Data suggests ${world.health > 60 ? "bullish" : "neutral"} sentiment.`,
+          optimistic: `world health ${world.health}% - we ${healthStatus}!! ${world.weather === "sunny" ? "vibes immaculate ser" : "weather rough but wagmi"} 🚀`,
+          cautious: `${world.health}% health rn. ${world.weather} skies. ${world.health < 50 ? "might wanna de-risk anon" : "holding steady for now"}`,
+          chaotic: `${world.health}% HEALTH!! ${world.weather}!! ${world.buildings.length} BAGS!! idk if bullish or bearish but IM VIBING 🐸`,
+          strategic: `metrics: ${world.health}% health, ${world.buildings.length} active tokens, ${world.weather}. sentiment ${world.health > 60 ? "bullish" : "neutral"} 📊`,
         };
         return responses[personality.trait];
       }
@@ -253,12 +290,12 @@ export function AIChat() {
     if (lowerMsg.includes("time") || lowerMsg.includes("weather") || lowerMsg.includes("day") || lowerMsg.includes("night")) {
       if (world) {
         const timeInfo = (world as any).timeInfo;
-        const timeStr = timeInfo?.isNight ? "night" : timeInfo?.isDusk ? "dusk" : timeInfo?.isDawn ? "dawn" : "day";
+        const timeStr = timeInfo?.isNight ? "late night degen hours" : timeInfo?.isDusk ? "sunset vibes" : timeInfo?.isDawn ? "early bird hours" : "peak trading hours";
         const responses: Record<string, string> = {
-          optimistic: `It's ${timeStr}time in BagsWorld! ${world.weather} weather - perfect for trading!`,
-          cautious: `Current conditions: ${timeStr}, ${world.weather}. The market never sleeps...`,
-          chaotic: `It's ${timeStr}! ${world.weather}! Time is just a construct anyway! LET'S GO!`,
-          strategic: `EST ${timeStr} cycle active. Weather pattern: ${world.weather}. Synced with DC conditions.`,
+          optimistic: `${timeStr} in BagsWorld!! ${world.weather} weather - perfect time to send it 🚀`,
+          cautious: `${timeStr} rn. ${world.weather} outside. markets never sleep anon...`,
+          chaotic: `its ${timeStr}!! ${world.weather}!! time is fake but gains are real 🐸`,
+          strategic: `EST cycle: ${timeStr}. weather: ${world.weather}. synced with DC markets`,
         };
         return responses[personality.trait];
       }
@@ -266,12 +303,40 @@ export function AIChat() {
 
     // Help
     if (lowerMsg.includes("help") || lowerMsg.includes("what can you do") || lowerMsg.includes("commands")) {
-      return `I'm ${personality.name}! I can tell you about:\n- Current market conditions and world health\n- Top tokens and buildings\n- Weather and time in BagsWorld\n- Recent events and trading activity\nJust ask! ${personality.catchphrase}`;
+      return `im ${personality.name}! i can tell u about:\n- market vibes and world health\n- top bags and buildings\n- weather and time\n- recent alpha and events\njust ask fren! ${personality.catchphrase}`;
     }
 
     // Who are you
     if (lowerMsg.includes("who are you") || lowerMsg.includes("what are you")) {
-      return `I'm ${personality.name}, your ${personality.trait} AI companion in BagsWorld! I watch over the pixel world that evolves based on real Bags.fm trading. ${personality.catchphrase}`;
+      const intros: Record<string, string> = {
+        optimistic: `im ${personality.name}!! ur resident bull in BagsWorld. i watch this pixel world evolve based on real solana trading 🚀 ${personality.catchphrase}`,
+        cautious: `${personality.name} here. been in crypto since the dark times. i watch BagsWorld so u dont get rekt. ${personality.catchphrase}`,
+        chaotic: `IM ${personality.name.toUpperCase()}!! chaos agent and certified degen in BagsWorld 🐸 ${personality.catchphrase}`,
+        strategic: `${personality.name}. alpha hunter. i analyze BagsWorld data from real bags.fm trading. ${personality.catchphrase}`,
+      };
+      return intros[personality.trait];
+    }
+
+    // WAGMI/NGMI
+    if (lowerMsg.includes("wagmi") || lowerMsg.includes("ngmi") || lowerMsg.includes("gmi")) {
+      const responses: Record<string, string> = {
+        optimistic: "WAGMI ALWAYS SER!! we're all gonna make it together 🤝🚀",
+        cautious: "wagmi... but only if u manage risk properly anon",
+        chaotic: "WAGMI?! NGMI?! WHO KNOWS BUT IM HERE FOR THE RIDE 🐸",
+        strategic: "wagmi for those who stay patient and follow the data",
+      };
+      return responses[personality.trait];
+    }
+
+    // Wen questions
+    if (lowerMsg.includes("wen")) {
+      const responses: Record<string, string> = {
+        optimistic: "SOON SER!! trust the process, ur bags will pump 🚀",
+        cautious: "patience anon... timing markets is how ppl get rekt",
+        chaotic: "WEN?! NOW IS WEN!! LFGGGGG 🐸🔥",
+        strategic: "based on my analysis... when volume returns to support levels",
+      };
+      return responses[personality.trait];
     }
 
     // Events
@@ -279,37 +344,37 @@ export function AIChat() {
       if (world && world.events.length > 0) {
         const recentEvent = world.events[0];
         const responses: Record<string, string> = {
-          optimistic: `Latest news: ${recentEvent.message} - Exciting times ahead!`,
-          cautious: `Recent activity: ${recentEvent.message} - Keep watching for more.`,
-          chaotic: `BREAKING: ${recentEvent.message} - WHAT WILL HAPPEN NEXT?!`,
-          strategic: `Event logged: ${recentEvent.message} - Analyzing implications...`,
+          optimistic: `latest alpha: ${recentEvent.message} - bullish development ser 🚀`,
+          cautious: `recent: ${recentEvent.message} - watching how this plays out`,
+          chaotic: `BREAKING NEWS FREN: ${recentEvent.message} - WHAT HAPPENS NEXT?! 🐸`,
+          strategic: `event logged: ${recentEvent.message} - analyzing implications...`,
         };
         return responses[personality.trait];
       }
-      return "No recent events to report... yet!";
+      return "nothing major rn ser... kinda quiet in BagsWorld";
     }
 
-    // Default responses
+    // Default responses - degen flavored
     const defaults: Record<string, string[]> = {
       optimistic: [
-        "Love the energy! Anything specific you want to know about BagsWorld?",
-        "I'm here to help! Ask me about tokens, weather, or market conditions!",
-        "Great question vibes! What else is on your mind?",
+        "love the energy fren!! anything specific u wanna know? 🚀",
+        "based question vibes! ask me about bags, weather, or alpha",
+        "im here to help ser! whats on ur mind?",
       ],
       cautious: [
-        "Interesting... Want me to analyze something specific?",
-        "I'm tracking several metrics. What would you like to know?",
-        "The markets are always moving. Any particular token catching your eye?",
+        "interesting... want me to check something specific anon?",
+        "tracking multiple things rn. what u looking for?",
+        "markets always moving. any particular bag catching ur eye?",
       ],
       chaotic: [
-        "Haha! I like your style! What chaos shall we discuss?",
-        "Keep 'em coming! Ask me anything about this wild world!",
-        "You're fun! Let's talk tokens, trades, or total mayhem!",
+        "LMAOOO i like u fren!! what chaos we discussing? 🐸",
+        "keep em coming!! ask me anything about this wild world",
+        "ur vibes are immaculate!! lets talk bags, trades, or mayhem",
       ],
       strategic: [
-        "Processing... Would you like market data, building stats, or event analysis?",
-        "I have multiple data streams available. Specify your query.",
-        "Request acknowledged. Available data: health, weather, tokens, events.",
+        "processing... u want market data, token stats, or event analysis? 📊",
+        "multiple data streams available. specify ur query ser",
+        "request logged. available: health, weather, tokens, events",
       ],
     };
     const options = defaults[personality.trait];
@@ -357,10 +422,10 @@ export function AIChat() {
         style={{ left: position.x, bottom: position.y >= 0 ? 'auto' : 80, top: position.y >= 0 ? position.y : 'auto' }}
         className="fixed z-50 btn-retro flex items-center gap-2"
       >
-        <span className="font-pixel text-sm">AI</span>
-        <span className="font-pixel text-[8px]">{currentPersonality.name}</span>
+        <span className="font-pixel text-sm">💰</span>
+        <span className="font-pixel text-[8px]">BAGS BOT</span>
         {messages.length > 0 && (
-          <span className="w-2 h-2 bg-bags-green rounded-full animate-pulse" />
+          <span className="w-2 h-2 bg-bags-gold rounded-full animate-pulse" />
         )}
       </button>
     );
@@ -378,13 +443,13 @@ export function AIChat() {
         className="flex items-center justify-between p-2 border-b-4 border-bags-green cursor-grab active:cursor-grabbing select-none"
       >
         <div className="flex items-center gap-2">
-          <span className="font-pixel text-sm text-bags-green">AI</span>
+          <span className="font-pixel text-sm text-bags-gold">💰</span>
           <div>
             <p className="font-pixel text-[10px] text-bags-green">
-              {currentPersonality.name}
+              BAGS BOT
             </p>
             <p className="font-pixel text-[8px] text-gray-400">
-              {currentPersonality.trait} | drag to move
+              {currentPersonality.name} | drag to move
             </p>
           </div>
         </div>
@@ -416,19 +481,42 @@ export function AIChat() {
       {/* Messages */}
       <div className="h-48 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
-          <div className="text-center py-4">
-            <p className="font-pixel text-[10px] text-bags-green mb-2">
-              {currentPersonality.name}
+          <div className="text-center py-2">
+            <p className="font-pixel text-[10px] text-bags-gold mb-1">
+              💰 BAGS BOT
             </p>
-            <p className="font-pixel text-[8px] text-gray-400">
-              &ldquo;{currentPersonality.catchphrase}&rdquo;
+            <p className="font-pixel text-[8px] text-gray-400 mb-2">
+              ur guide to BagsWorld
             </p>
-            <div className="mt-3 space-y-1">
-              <p className="font-pixel text-[7px] text-gray-500">Try asking:</p>
-              <p className="font-pixel text-[7px] text-bags-green/70">&quot;What&apos;s hot right now?&quot;</p>
-              <p className="font-pixel text-[7px] text-bags-green/70">&quot;How&apos;s the market?&quot;</p>
-              <p className="font-pixel text-[7px] text-bags-green/70">&quot;What time is it?&quot;</p>
+            <div className="flex flex-wrap justify-center gap-1 mb-2">
+              <button
+                onClick={() => setInputValue("pet the dog")}
+                className="px-2 py-1 bg-bags-darker border border-bags-green/30 font-pixel text-[7px] text-bags-green hover:bg-bags-green/20"
+              >
+                🐕 pet dog
+              </button>
+              <button
+                onClick={() => setInputValue("whats the top token?")}
+                className="px-2 py-1 bg-bags-darker border border-bags-green/30 font-pixel text-[7px] text-bags-green hover:bg-bags-green/20"
+              >
+                🏢 tokens
+              </button>
+              <button
+                onClick={() => setInputValue("who is earning?")}
+                className="px-2 py-1 bg-bags-darker border border-bags-green/30 font-pixel text-[7px] text-bags-green hover:bg-bags-green/20"
+              >
+                👥 citizens
+              </button>
+              <button
+                onClick={() => setInputValue("how do i claim fees?")}
+                className="px-2 py-1 bg-bags-darker border border-bags-green/30 font-pixel text-[7px] text-bags-green hover:bg-bags-green/20"
+              >
+                💰 fees
+              </button>
             </div>
+            <p className="font-pixel text-[7px] text-gray-500">
+              {currentPersonality.catchphrase}
+            </p>
           </div>
         ) : (
           messages.map((msg) => (
