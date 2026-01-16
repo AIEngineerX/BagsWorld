@@ -22,9 +22,9 @@ import {
 export function Leaderboard() {
   const { worldState, selectCharacter, selectedCharacter } = useGameStore();
 
-  // Filter out AI characters (Satoshi and Ash) from the leaderboard
+  // Filter out AI characters (Toly and Ash) from the leaderboard
   const population = (worldState?.population ?? []).filter(
-    (c) => !c.isSatoshi && !c.isAsh
+    (c) => !c.isToly && !c.isAsh
   );
 
   const formatEarnings = (amount: number): string => {

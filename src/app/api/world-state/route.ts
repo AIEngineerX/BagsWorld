@@ -441,22 +441,22 @@ export async function POST(request: NextRequest) {
       .slice(0, 13) // Leave room for Satoshi and Ash
       .map((e, i) => ({ ...e, rank: i + 1 }));
 
-    // ALWAYS add Satoshi as a permanent AI character
-    // Satoshi is the guide and soul of BagsWorld
-    const satoshi: FeeEarner = {
+    // ALWAYS add Toly as a permanent Solana guide character
+    // Toly (Anatoly Yakovenko) is the co-founder of Solana
+    const toly: FeeEarner = {
       rank: 0, // Special rank
-      username: "Satoshi",
-      providerUsername: "satoshi",
-      provider: "bitcoin" as FeeEarner["provider"],
-      wallet: "satoshi-nakamoto-permanent",
-      avatarUrl: undefined, // Will use special Satoshi sprite
-      lifetimeEarnings: 21000000, // 21 million BTC ;)
+      username: "toly",
+      providerUsername: "aeyakovenko",
+      provider: "solana" as FeeEarner["provider"],
+      wallet: "toly-solana-permanent",
+      avatarUrl: undefined, // Will use special Toly sprite
+      lifetimeEarnings: 65000, // ~65k TPS on Solana ;)
       earnings24h: 0,
       change24h: 0,
       tokenCount: 0,
       topToken: undefined,
-      isSatoshi: true, // Special flag for the game to recognize
-    } as FeeEarner & { isSatoshi: boolean };
+      isToly: true, // Special flag for the game to recognize
+    } as FeeEarner & { isToly: boolean };
 
     // ALWAYS add Ash as a permanent ecosystem guide character
     // Ash explains how BagsWorld works with Pokemon-themed analogies
@@ -476,7 +476,7 @@ export async function POST(request: NextRequest) {
     } as FeeEarner & { isAsh: boolean };
 
     earners.unshift(ash); // Ash second
-    earners.unshift(satoshi); // Satoshi always first
+    earners.unshift(toly); // Toly always first
 
     // Fetch weather and time
     const [realWeather, timeInfo] = await Promise.all([
