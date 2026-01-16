@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { useGameStore } from "@/lib/store";
 
 interface BagsMessage {
   id: string;
-  type: "finn" | "info" | "tip";
+  type: "finn" | "user" | "info" | "tip";
   message: string;
   timestamp: number;
 }
@@ -53,11 +54,15 @@ const BAGS_TOPICS = [
 export function FinnbagsChat() {
   const [messages, setMessages] = useState<BagsMessage[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [position, setPosition] = useState<Position>({ x: -1, y: -1 }); // -1 means use default positioning
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { worldState } = useGameStore();
 
   // Listen for Finn click events
   useEffect(() => {
@@ -158,6 +163,65 @@ export function FinnbagsChat() {
     }, 500);
   };
 
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return;
+    const userMsg = inputValue.trim();
+    setInputValue("");
+    setIsLoading(true);
+
+    addMessage({
+      id: `${Date.now()}-user`,
+      type: "user",
+      message: userMsg,
+      timestamp: Date.now(),
+    });
+
+    try {
+      const response = await fetch("/api/character-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          character: "finn",
+          userMessage: userMsg,
+          chatHistory: messages.slice(-6).map((m) => ({
+            role: m.type === "user" ? "user" : "assistant",
+            content: m.message,
+          })),
+          worldState: worldState ? {
+            health: worldState.health,
+            weather: worldState.weather,
+            buildingCount: worldState.buildings.length,
+            populationCount: worldState.population.length,
+          } : undefined,
+        }),
+      });
+
+      const data = await response.json();
+      addMessage({
+        id: `${Date.now()}-finn`,
+        type: "finn",
+        message: data.message || "This is why we built Bags. What else you want to know?",
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      addMessage({
+        id: `${Date.now()}-finn`,
+        type: "finn",
+        message: "Connection issue ser. Try again?",
+        timestamp: Date.now(),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   const chatStyle: React.CSSProperties = position.x >= 0 && position.y >= 0
     ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
     : { right: 350, bottom: 80 };
@@ -213,7 +277,7 @@ export function FinnbagsChat() {
       </div>
 
       {/* Messages */}
-      <div className="h-48 overflow-y-auto p-2 space-y-2">
+      <div className="h-36 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-emerald-400 mb-1">
@@ -223,7 +287,7 @@ export function FinnbagsChat() {
               Founder of Bags.fm. Let me show you around.
             </p>
             <p className="font-pixel text-[7px] text-gray-500 mt-2">
-              Click a topic to learn more
+              Click a topic or type a question below
             </p>
           </div>
         ) : (
@@ -233,6 +297,8 @@ export function FinnbagsChat() {
               className={`p-2 border-l-2 ${
                 msg.type === "finn"
                   ? "bg-emerald-500/10 border-emerald-500"
+                  : msg.type === "user"
+                  ? "bg-bags-green/10 border-bags-green ml-4"
                   : msg.type === "info"
                   ? "bg-blue-500/10 border-blue-500"
                   : "bg-yellow-500/10 border-yellow-500"
@@ -241,19 +307,47 @@ export function FinnbagsChat() {
               {msg.type === "finn" && (
                 <p className="font-pixel text-[6px] text-emerald-400 mb-1">Finn:</p>
               )}
+              {msg.type === "user" && (
+                <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>
+              )}
               {msg.type === "info" && (
                 <p className="font-pixel text-[6px] text-blue-400 mb-1">📖 Info:</p>
               )}
               <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">
                 {msg.message}
               </p>
-              <p className="font-pixel text-[6px] text-gray-600 mt-1">
-                {new Date(msg.timestamp).toLocaleTimeString()}
-              </p>
             </div>
           ))
         )}
+        {isLoading && (
+          <div className="p-2 border-l-2 bg-emerald-500/10 border-emerald-500">
+            <p className="font-pixel text-[8px] text-emerald-300 animate-pulse">thinking...</p>
+          </div>
+        )}
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* Chat Input */}
+      <div className="p-2 border-t border-emerald-500/30">
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Ask Finn..."
+            disabled={isLoading}
+            className="flex-1 bg-bags-darker border border-emerald-500/30 px-2 py-1 font-pixel text-[8px] text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={isLoading || !inputValue.trim()}
+            className="px-2 py-1 bg-emerald-500 text-white font-pixel text-[8px] hover:bg-emerald-400 disabled:opacity-50 transition-colors"
+          >
+            Send
+          </button>
+        </div>
       </div>
 
       {/* Footer with Bags stats */}
