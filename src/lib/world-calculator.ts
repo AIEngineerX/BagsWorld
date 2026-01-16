@@ -175,6 +175,10 @@ export function transformTokenToBuilding(
     ? { x: existingBuilding.x, y: existingBuilding.y }
     : generateBuildingPosition(index, MAX_BUILDINGS);
 
+  // Check if this is a real token (not a starter/placeholder)
+  const isStarterToken = token.mint.startsWith("Starter");
+  const tokenUrl = isStarterToken ? undefined : `https://bags.fm/token/${token.mint}`;
+
   return {
     id: token.mint,
     tokenMint: token.mint,
@@ -189,7 +193,7 @@ export function transformTokenToBuilding(
     marketCap: token.marketCap,
     volume24h: token.volume24h,
     change24h: token.change24h,
-    tokenUrl: `https://bags.fm/token/${token.mint}`,
+    tokenUrl,
   };
 }
 

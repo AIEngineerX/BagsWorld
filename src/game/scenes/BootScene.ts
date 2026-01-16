@@ -184,18 +184,18 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generateBuildings(): void {
-    // Building styles by level - each level has a distinct look
-    // Level 1: Small shop/startup (<$10K market cap)
-    // Level 2: Growing business ($10K-$100K)
-    // Level 3: Established company ($100K-$1M)
-    // Level 4: Corporate tower ($1M-$10M)
-    // Level 5: Skyscraper empire ($10M+)
+    // Building styles by level - each level has a distinct architectural style
+    // Level 1: Small shop/startup (<$100K market cap) - Cozy shop
+    // Level 2: Growing business ($100K-$500K) - Office building
+    // Level 3: Established company ($500K-$2M) - Corporate HQ
+    // Level 4: Major token ($2M-$10M) - Modern tower
+    // Level 5: Top tier empire ($10M+) - BagsWorld Skyscraper
     const buildingConfigs = [
-      { base: 0x6b7280, roof: 0x9ca3af, accent: 0xfbbf24, height: 35, width: 28 }, // Level 1: Small gray shop
-      { base: 0x3b82f6, roof: 0x60a5fa, accent: 0xfbbf24, height: 50, width: 32 }, // Level 2: Blue office
-      { base: 0x8b5cf6, roof: 0xa78bfa, accent: 0x22d3d8, height: 68, width: 36 }, // Level 3: Purple corp
-      { base: 0x1e3a8a, roof: 0x3b82f6, accent: 0xfbbf24, height: 90, width: 40 }, // Level 4: Blue tower
-      { base: 0x0f172a, roof: 0x4ade80, accent: 0x4ade80, height: 120, width: 44 }, // Level 5: Bags green HQ
+      { base: 0x8b5cf6, roof: 0xfbbf24, accent: 0xfbbf24, height: 40, width: 30, style: "shop" },      // Level 1: Purple shop with gold roof
+      { base: 0x3b82f6, roof: 0x1e40af, accent: 0x60a5fa, height: 55, width: 34, style: "office" },    // Level 2: Blue office building
+      { base: 0x374151, roof: 0x4ade80, accent: 0x4ade80, height: 75, width: 38, style: "corporate" }, // Level 3: Gray corp with green accents
+      { base: 0x1e3a8a, roof: 0x60a5fa, accent: 0xfbbf24, height: 100, width: 42, style: "tower" },    // Level 4: Modern blue tower
+      { base: 0x0f172a, roof: 0x4ade80, accent: 0x4ade80, height: 130, width: 48, style: "skyscraper" }, // Level 5: BagsWorld HQ
     ];
 
     for (let level = 1; level <= 5; level++) {
@@ -203,7 +203,7 @@ export class BootScene extends Phaser.Scene {
       const buildingGraphics = this.make.graphics({ x: 0, y: 0 });
       const bHeight = config.height;
       const bWidth = config.width;
-      const canvasHeight = 130;
+      const canvasHeight = 140;
 
       // Shadow
       buildingGraphics.fillStyle(0x000000, 0.4);
@@ -214,48 +214,96 @@ export class BootScene extends Phaser.Scene {
       buildingGraphics.fillRect(4, canvasHeight - bHeight, bWidth - 4, bHeight);
 
       // Lighter left side for 3D effect
-      buildingGraphics.fillStyle(config.base + 0x222222);
-      buildingGraphics.fillRect(4, canvasHeight - bHeight, 5, bHeight);
+      buildingGraphics.fillStyle(config.base + 0x181818);
+      buildingGraphics.fillRect(4, canvasHeight - bHeight, 6, bHeight);
 
       // Darker right side
-      buildingGraphics.fillStyle(config.base - 0x111111);
+      buildingGraphics.fillStyle(config.base - 0x0a0a0a);
       buildingGraphics.fillRect(bWidth - 6, canvasHeight - bHeight, 6, bHeight);
 
-      // Roof based on level
-      if (level === 5) {
-        // Skyscraper spire
+      // Style-specific roof and decorations
+      if (level === 1) {
+        // Shop - awning style roof
         buildingGraphics.fillStyle(config.roof);
-        buildingGraphics.fillTriangle(bWidth / 2 + 2, canvasHeight - bHeight - 20, 6, canvasHeight - bHeight, bWidth - 2, canvasHeight - bHeight);
+        buildingGraphics.fillRect(0, canvasHeight - bHeight - 6, bWidth + 4, 8);
+        // Stripes on awning
+        buildingGraphics.fillStyle(0xef4444);
+        for (let i = 0; i < bWidth; i += 8) {
+          buildingGraphics.fillRect(i, canvasHeight - bHeight - 5, 4, 6);
+        }
+        // Shop sign
+        buildingGraphics.fillStyle(0x1f2937);
+        buildingGraphics.fillRect(6, canvasHeight - bHeight + 4, bWidth - 12, 8);
+        buildingGraphics.fillStyle(config.accent);
+        buildingGraphics.fillRect(8, canvasHeight - bHeight + 5, bWidth - 16, 6);
+      } else if (level === 2) {
+        // Office - flat roof with AC unit
+        buildingGraphics.fillStyle(config.roof);
+        buildingGraphics.fillRect(2, canvasHeight - bHeight - 4, bWidth, 6);
+        // AC unit
+        buildingGraphics.fillStyle(0x6b7280);
+        buildingGraphics.fillRect(bWidth - 12, canvasHeight - bHeight - 10, 8, 8);
+        buildingGraphics.fillStyle(0x9ca3af);
+        buildingGraphics.fillRect(bWidth - 10, canvasHeight - bHeight - 8, 4, 4);
+      } else if (level === 3) {
+        // Corporate HQ - glass dome style top
+        buildingGraphics.fillStyle(config.roof);
+        buildingGraphics.fillRect(2, canvasHeight - bHeight - 8, bWidth, 10);
+        // Dome accent
+        buildingGraphics.fillStyle(config.accent);
+        buildingGraphics.fillRect(bWidth / 2 - 6, canvasHeight - bHeight - 14, 16, 8);
+        // Helipad marker
+        buildingGraphics.fillStyle(0xffffff);
+        buildingGraphics.fillCircle(bWidth / 2 + 2, canvasHeight - bHeight - 4, 6);
+        buildingGraphics.fillStyle(config.roof);
+        buildingGraphics.fillCircle(bWidth / 2 + 2, canvasHeight - bHeight - 4, 4);
+      } else if (level === 4) {
+        // Modern tower - stepped top
+        buildingGraphics.fillStyle(config.roof);
+        buildingGraphics.fillRect(6, canvasHeight - bHeight - 10, bWidth - 8, 12);
+        buildingGraphics.fillRect(10, canvasHeight - bHeight - 18, bWidth - 16, 10);
+        buildingGraphics.fillRect(14, canvasHeight - bHeight - 24, bWidth - 24, 8);
         // Antenna
         buildingGraphics.fillStyle(0x9ca3af);
-        buildingGraphics.fillRect(bWidth / 2, canvasHeight - bHeight - 30, 3, 15);
-        // Blinking light
+        buildingGraphics.fillRect(bWidth / 2, canvasHeight - bHeight - 32, 2, 12);
         buildingGraphics.fillStyle(0xef4444);
-        buildingGraphics.fillCircle(bWidth / 2 + 1, canvasHeight - bHeight - 32, 2);
-      } else if (level >= 3) {
-        // Flat corporate roof with detail
+        buildingGraphics.fillCircle(bWidth / 2 + 1, canvasHeight - bHeight - 34, 2);
+      } else if (level === 5) {
+        // BagsWorld Skyscraper - grand spire
         buildingGraphics.fillStyle(config.roof);
-        buildingGraphics.fillRect(2, canvasHeight - bHeight - 6, bWidth, 8);
-        buildingGraphics.fillStyle(config.roof - 0x111111);
-        buildingGraphics.fillRect(2, canvasHeight - bHeight - 2, bWidth, 4);
-      } else {
-        // Simple angled roof for smaller buildings
+        buildingGraphics.fillTriangle(bWidth / 2 + 2, canvasHeight - bHeight - 30, 8, canvasHeight - bHeight, bWidth - 4, canvasHeight - bHeight);
+        // Multiple spires
+        buildingGraphics.fillStyle(config.accent);
+        buildingGraphics.fillRect(bWidth / 2 - 1, canvasHeight - bHeight - 45, 6, 20);
+        // Crown jewel
+        buildingGraphics.fillStyle(0xfbbf24);
+        buildingGraphics.fillCircle(bWidth / 2 + 2, canvasHeight - bHeight - 48, 4);
+        // Beacon light
+        buildingGraphics.fillStyle(0xef4444);
+        buildingGraphics.fillCircle(bWidth / 2 + 2, canvasHeight - bHeight - 50, 2);
+        // Side spires
         buildingGraphics.fillStyle(config.roof);
-        buildingGraphics.fillRect(0, canvasHeight - bHeight - 4, bWidth + 2, 6);
+        buildingGraphics.fillRect(8, canvasHeight - bHeight - 15, 4, 18);
+        buildingGraphics.fillRect(bWidth - 8, canvasHeight - bHeight - 15, 4, 18);
       }
 
-      // Windows - number based on building size
-      const windowRows = Math.min(level + 1, 6);
-      const windowCols = level >= 4 ? 3 : 2;
-      const windowWidth = 6;
-      const windowHeight = 5;
-      const windowSpacingY = 12;
-      const windowSpacingX = (bWidth - 8 - windowCols * windowWidth) / (windowCols - 1) + windowWidth;
+      // Windows - style varies by building type
+      const windowRows = level === 1 ? 2 : level === 2 ? 3 : level === 3 ? 4 : level === 4 ? 6 : 8;
+      const windowCols = level >= 4 ? 4 : level >= 2 ? 3 : 2;
+      const windowWidth = level >= 4 ? 5 : 6;
+      const windowHeight = level >= 4 ? 6 : 5;
+      const startY = canvasHeight - bHeight + (level === 1 ? 18 : 12);
+      const windowSpacingY = level >= 4 ? 11 : 12;
 
       for (let row = 0; row < windowRows; row++) {
         for (let col = 0; col < windowCols; col++) {
-          const wx = 8 + col * windowSpacingX;
-          const wy = canvasHeight - bHeight + 10 + row * windowSpacingY;
+          const totalWindowWidth = windowCols * windowWidth + (windowCols - 1) * 4;
+          const startX = (bWidth - totalWindowWidth) / 2 + 2;
+          const wx = startX + col * (windowWidth + 4);
+          const wy = startY + row * windowSpacingY;
+
+          // Skip windows where door is for level 1-2
+          if (level <= 2 && row === windowRows - 1 && col === Math.floor(windowCols / 2)) continue;
 
           // Window glow
           buildingGraphics.fillStyle(config.accent, 0.3);
@@ -265,38 +313,57 @@ export class BootScene extends Phaser.Scene {
           buildingGraphics.fillStyle(config.accent);
           buildingGraphics.fillRect(wx, wy, windowWidth, windowHeight);
 
-          // Window cross frame
-          buildingGraphics.fillStyle(config.base - 0x222222);
-          buildingGraphics.fillRect(wx + windowWidth / 2 - 1, wy, 1, windowHeight);
+          // Window frame for higher levels
+          if (level >= 3) {
+            buildingGraphics.fillStyle(config.base - 0x151515);
+            buildingGraphics.fillRect(wx + windowWidth / 2 - 1, wy, 1, windowHeight);
+            buildingGraphics.fillRect(wx, wy + windowHeight / 2, windowWidth, 1);
+          }
         }
       }
 
-      // Door
-      const doorWidth = Math.min(10, bWidth / 4);
-      const doorHeight = 12;
+      // Door - style varies by level
+      const doorWidth = level === 1 ? 12 : level >= 4 ? 14 : 10;
+      const doorHeight = level >= 4 ? 16 : 12;
       const doorX = (bWidth - doorWidth) / 2 + 2;
+
+      if (level === 5) {
+        // Grand entrance with columns
+        buildingGraphics.fillStyle(0x374151);
+        buildingGraphics.fillRect(doorX - 6, canvasHeight - doorHeight - 4, 4, doorHeight + 4);
+        buildingGraphics.fillRect(doorX + doorWidth + 2, canvasHeight - doorHeight - 4, 4, doorHeight + 4);
+        // Entrance overhang
+        buildingGraphics.fillStyle(config.accent);
+        buildingGraphics.fillRect(doorX - 8, canvasHeight - doorHeight - 8, doorWidth + 16, 6);
+      }
+
+      // Door frame
       buildingGraphics.fillStyle(0x1f2937);
       buildingGraphics.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
+      // Door
+      buildingGraphics.fillStyle(level >= 3 ? 0x374151 : 0x78350f);
+      buildingGraphics.fillRect(doorX + 1, canvasHeight - doorHeight + 1, doorWidth - 2, doorHeight - 1);
+      // Door handle
       buildingGraphics.fillStyle(config.accent);
-      buildingGraphics.fillRect(doorX + doorWidth - 3, canvasHeight - doorHeight / 2, 2, 2);
+      buildingGraphics.fillRect(doorX + doorWidth - 4, canvasHeight - doorHeight / 2 - 1, 2, 3);
 
-      // Level indicator sign for level 3+
+      // Building sign for level 3+
       if (level >= 3) {
         buildingGraphics.fillStyle(0x1f2937);
-        buildingGraphics.fillRect(doorX - 4, canvasHeight - doorHeight - 8, doorWidth + 8, 6);
+        buildingGraphics.fillRect(doorX - 6, canvasHeight - doorHeight - 12, doorWidth + 12, 8);
         buildingGraphics.fillStyle(config.accent);
-        buildingGraphics.fillRect(doorX - 2, canvasHeight - doorHeight - 7, doorWidth + 4, 4);
+        buildingGraphics.fillRect(doorX - 4, canvasHeight - doorHeight - 11, doorWidth + 8, 6);
       }
 
-      // Special decorations for level 5
-      if (level === 5) {
-        // Side pillars
-        buildingGraphics.fillStyle(0x374151);
-        buildingGraphics.fillRect(2, canvasHeight - bHeight + 10, 3, bHeight - 10);
-        buildingGraphics.fillRect(bWidth - 1, canvasHeight - bHeight + 10, 3, bHeight - 10);
+      // Side decorations for level 4-5
+      if (level >= 4) {
+        // Vertical accent lines
+        buildingGraphics.fillStyle(config.accent, 0.3);
+        buildingGraphics.fillRect(6, canvasHeight - bHeight + 5, 2, bHeight - 20);
+        buildingGraphics.fillRect(bWidth - 4, canvasHeight - bHeight + 5, 2, bHeight - 20);
       }
 
-      buildingGraphics.generateTexture(`building_${level}`, 50, canvasHeight);
+      buildingGraphics.generateTexture(`building_${level}`, 55, canvasHeight);
       buildingGraphics.destroy();
     }
   }
