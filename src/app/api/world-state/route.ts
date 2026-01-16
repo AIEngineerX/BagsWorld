@@ -475,6 +475,24 @@ export async function POST(request: NextRequest) {
       isAsh: true, // Special flag for the game to recognize
     } as FeeEarner & { isAsh: boolean };
 
+    // ALWAYS add Finn as the Bags.fm founder guide
+    // Finn (@finnbags) is the CEO of Bags.fm
+    const finn: FeeEarner = {
+      rank: 0, // Special rank
+      username: "Finn",
+      providerUsername: "finnbags",
+      provider: "twitter" as FeeEarner["provider"],
+      wallet: "finnbags-ceo-permanent",
+      avatarUrl: undefined, // Will use special Finn sprite
+      lifetimeEarnings: 1000000000, // $1B+ volume on Bags.fm!
+      earnings24h: 0,
+      change24h: 0,
+      tokenCount: 0,
+      topToken: undefined,
+      isFinn: true, // Special flag for the game to recognize
+    } as FeeEarner & { isFinn: boolean };
+
+    earners.unshift(finn); // Finn third
     earners.unshift(ash); // Ash second
     earners.unshift(toly); // Toly always first
 

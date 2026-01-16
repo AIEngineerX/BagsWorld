@@ -1,25 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+interface TrackChangeEvent extends CustomEvent {
+  detail: {
+    trackName: string;
+    trackIndex: number;
+  };
+}
 
 export function MusicButton() {
   const [isPlaying, setIsPlaying] = useState(true);
+  const [trackName, setTrackName] = useState("Adventure");
+
+  useEffect(() => {
+    const handleTrackChange = (event: TrackChangeEvent) => {
+      setTrackName(event.detail.trackName);
+    };
+
+    window.addEventListener("bagsworld-track-changed", handleTrackChange as EventListener);
+    return () => {
+      window.removeEventListener("bagsworld-track-changed", handleTrackChange as EventListener);
+    };
+  }, []);
 
   const toggleMusic = () => {
     setIsPlaying(!isPlaying);
     window.dispatchEvent(new CustomEvent("bagsworld-toggle-music"));
   };
 
+  const skipTrack = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("bagsworld-skip-track"));
+  };
+
   return (
-    <button
-      onClick={toggleMusic}
-      className="px-3 py-1 bg-bags-darker border-2 border-bags-green font-pixel text-[10px] hover:bg-bags-green/20 transition-colors flex items-center gap-1"
-      title={isPlaying ? "Mute music" : "Play music"}
-    >
-      <span className="text-sm">{isPlaying ? "🎵" : "🔇"}</span>
-      <span className="hidden sm:inline text-bags-green">
-        {isPlaying ? "MUSIC" : "MUTED"}
-      </span>
-    </button>
+    <div className="flex items-center gap-1">
+      <button
+        onClick={toggleMusic}
+        className="px-2 py-1 bg-bags-darker border-2 border-bags-green font-pixel text-[10px] hover:bg-bags-green/20 transition-colors flex items-center gap-1"
+        title={isPlaying ? "Mute music" : "Play music"}
+      >
+        <span className="text-sm">{isPlaying ? "🎵" : "🔇"}</span>
+        <span className="hidden sm:inline text-bags-green max-w-20 truncate">
+          {isPlaying ? trackName : "MUTED"}
+        </span>
+      </button>
+      {isPlaying && (
+        <button
+          onClick={skipTrack}
+          className="px-2 py-1 bg-bags-darker border-2 border-bags-green font-pixel text-[10px] hover:bg-bags-green/20 transition-colors"
+          title="Skip to next track"
+        >
+          <span className="text-sm">⏭️</span>
+        </button>
+      )}
+    </div>
   );
 }

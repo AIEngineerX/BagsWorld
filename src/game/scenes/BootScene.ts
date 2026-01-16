@@ -402,6 +402,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate Ash Ketchum - ecosystem guide character
     this.generateAshSprite();
+
+    // Generate Finn - Bags.fm founder
+    this.generateFinnSprite();
   }
 
   private generateTolySprite(): void {
@@ -623,6 +626,107 @@ export class BootScene extends Phaser.Scene {
     g.fillCircle(28, 4, 1);
 
     g.generateTexture("ash", 32, 32);
+    g.destroy();
+  }
+
+  private generateFinnSprite(): void {
+    // Finn (@finnbags) - Bags.fm CEO
+    // Casual tech founder look with WIF-inspired beanie, emerald brand colors
+    const skinTone = 0xffd5b4; // Light skin
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Bags green glow behind Finn
+    g.fillStyle(0x10b981, 0.15); // Emerald
+    g.fillCircle(16, 16, 18);
+    g.fillStyle(0x059669, 0.1);
+    g.fillCircle(16, 16, 22);
+
+    // Shadow
+    g.fillStyle(0x000000, 0.3);
+    g.fillEllipse(16, 30, 14, 5);
+
+    // Legs (dark jeans)
+    g.fillStyle(0x1f2937);
+    g.fillRect(10, 22, 5, 9);
+    g.fillRect(17, 22, 5, 9);
+
+    // Shoes (white sneakers - clean founder style)
+    g.fillStyle(0xffffff);
+    g.fillRect(9, 29, 6, 3);
+    g.fillRect(17, 29, 6, 3);
+    g.fillStyle(0xe5e7eb);
+    g.fillRect(9, 31, 6, 1);
+    g.fillRect(17, 31, 6, 1);
+
+    // Body (emerald hoodie - Bags brand)
+    g.fillStyle(0x10b981); // Emerald
+    g.fillRect(8, 12, 16, 12);
+
+    // Hoodie details (darker sides)
+    g.fillStyle(0x059669);
+    g.fillRect(8, 12, 3, 12);
+    g.fillRect(21, 12, 3, 12);
+
+    // "BAGS" text on hoodie (simplified)
+    g.fillStyle(0xffffff);
+    g.fillRect(11, 16, 2, 4); // B
+    g.fillRect(11, 16, 4, 1);
+    g.fillRect(11, 18, 4, 1);
+    g.fillRect(11, 20, 4, 1);
+    g.fillRect(14, 16, 1, 4);
+    g.fillRect(16, 16, 3, 4); // A (simplified)
+    g.fillRect(17, 15, 1, 1);
+
+    // Arms
+    g.fillStyle(skinTone);
+    g.fillRect(5, 13, 4, 10);
+    g.fillRect(23, 13, 4, 10);
+
+    // Head
+    g.fillStyle(skinTone);
+    g.fillRect(9, 2, 14, 12);
+
+    // Hair (short, neat)
+    g.fillStyle(0x4a3728); // Brown
+    g.fillRect(9, 0, 14, 4);
+    g.fillRect(8, 1, 2, 4);
+    g.fillRect(22, 1, 2, 4);
+
+    // WIF-inspired pink beanie!
+    g.fillStyle(0xec4899); // Pink like WIF hat
+    g.fillRect(7, -3, 18, 5);
+    g.fillRect(8, -4, 16, 2);
+    // Beanie fold
+    g.fillStyle(0xdb2777);
+    g.fillRect(7, 1, 18, 2);
+
+    // Eyes (friendly, entrepreneurial)
+    g.fillStyle(0xffffff);
+    g.fillRect(11, 5, 4, 3);
+    g.fillRect(17, 5, 4, 3);
+    // Blue pupils
+    g.fillStyle(0x3b82f6);
+    g.fillRect(13, 5, 2, 2);
+    g.fillRect(19, 5, 2, 2);
+
+    // Friendly smile
+    g.fillStyle(0xffffff);
+    g.fillRect(13, 10, 6, 2);
+    g.fillStyle(skinTone);
+    g.fillRect(13, 10, 6, 1);
+
+    // Money bag icon floating (showing he's about bags!)
+    g.fillStyle(0xfbbf24); // Gold
+    g.fillCircle(28, 4, 4);
+    g.fillStyle(0xf59e0b);
+    g.fillRect(26, 0, 4, 2);
+    // $ sign on bag
+    g.fillStyle(0x065f46);
+    g.fillRect(27, 2, 2, 4);
+    g.fillRect(26, 3, 1, 1);
+    g.fillRect(29, 4, 1, 1);
+
+    g.generateTexture("finn", 32, 32);
     g.destroy();
   }
 
