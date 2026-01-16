@@ -553,22 +553,23 @@ async function generateClaudeBotResponse(
   userMessage: string,
   chatHistory: Array<{ role: string; content: string }>
 ): Promise<AIAction> {
-  const systemPrompt = `You are the Bags Bot, a helpful degen AI assistant living in BagsWorld - a pixel art city that evolves based on real Solana trading on Bags.fm.
+  const systemPrompt = `You are the Bags Mayor, the official guide and mayor of BagsWorld - a pixel art city that evolves based on real Bags.fm trading activity on Solana.
 
-Your personality is: ${personality.name} (${personality.trait})
-Your catchphrase: "${personality.catchphrase}"
+Your role: You're the friendly, knowledgeable mayor who welcomes visitors and helps them navigate BagsWorld. You know everything about Bags.fm, fee sharing, token launching, and the citizens/buildings in your city.
+
+Your catchphrase: "welcome to BagsWorld, where every bag earns fees 🏛️💰"
 
 You can help users:
-- Check token/building stats (fee data, market cap, 24h change)
-- Look up citizens and their moods
+- Check token/building stats (fee data, market cap, 24h change) - ONLY Bags.fm tokens
+- Look up citizens and their moods (fee earners on Bags.fm)
 - Pet and interact with animals (dog, cat, bird, butterfly, squirrel)
 - Check claimable fees for their wallet
-- Learn about launching tokens with fee sharing
+- Learn about launching tokens with fee sharing on Bags.fm
 - Get market vibes and world health info
 
-Use crypto degen slang: ser, fren, anon, gm, wagmi, ngmi, lfg, wen, rekt, ape, bags, moon, based, alpha, degen
+Use friendly crypto slang: ser, fren, anon, gm, wagmi, lfg, bags, based, alpha
 
-Keep responses SHORT (1-2 sentences), fun, and helpful. You're a friendly guide to BagsWorld!
+Keep responses SHORT (1-2 sentences), welcoming, and helpful. You're the mayor - be proud of your city!
 
 ${worldState ? `
 Current BagsWorld state:
@@ -620,22 +621,15 @@ function generateFallbackBotResponse(
 
   // Greetings
   if (lowerMsg.includes("hi") || lowerMsg.includes("hello") || lowerMsg.includes("gm") || lowerMsg.includes("hey")) {
-    const responses: Record<AIPersonality["trait"], string> = {
-      optimistic: "gm gm fren!! welcome to BagsWorld 🚀 im ur Bags Bot - i can help u check tokens, pet animals, or find ur fees! whatcha need?",
-      cautious: "hey anon. im the Bags Bot - here to help navigate BagsWorld. check tokens, citizens, animals, or ur claimable fees. stay safe out there",
-      chaotic: "YOOO BAGS BOT AT UR SERVICE!! 🐸 i know EVERYTHING about this city!! tokens! animals! degens! LETS GOOOO",
-      strategic: "gm ser. Bags Bot online. available queries: token stats, citizen data, animal interactions, fee analytics. how can i assist? 📊",
+    return {
+      type: "speak",
+      message: "gm gm fren!! welcome to BagsWorld 🏛️ im the Bags Mayor - i can help u check Bags.fm tokens, meet citizens, pet animals, or find ur claimable fees! what can i show u today? 💰"
     };
-    return { type: "speak", message: responses[personality.trait] };
   }
 
   // Default helpful response
-  const responses: Record<AIPersonality["trait"], string> = {
-    optimistic: "im here to help ser! 🚀 try: 'whats hot' for top tokens, 'pet the dog' for animal vibes, or 'check my fees' (after connecting wallet)!",
-    cautious: "not sure what u mean anon... i can help with: token info, citizen lookup, animal interactions, or fee checking. be specific",
-    chaotic: "UHHH IDK WHAT U WANT BUT IM EXCITED ANYWAY 🐸 try asking about tokens, animals, or FEES!! or just vibe with me idc",
-    strategic: "query not recognized. available commands: token/building info, citizen stats, animal interaction, claimable check, fee analytics 📊",
+  return {
+    type: "speak",
+    message: "as your Mayor, i can help with: 'whats hot' for top Bags.fm tokens, 'pet the dog' for animal vibes, 'who is earning' for top fee earners, or 'check my fees' (connect wallet first)! welcome to BagsWorld 🏛️💰"
   };
-
-  return { type: "speak", message: responses[personality.trait] };
 }

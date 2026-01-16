@@ -58,7 +58,7 @@ export function EventFeed({ events }: EventFeedProps) {
   return (
     <div className="h-full flex flex-col p-2">
       <h2 className="font-pixel text-xs text-bags-green mb-2 px-2 flex items-center gap-2">
-        <span className="animate-pulse"><SignalIcon size={14} /></span> LIVE FEED
+        <span className="animate-pulse"><SignalIcon size={14} /></span> BAGS.FM LIVE
       </h2>
 
       <div className="flex-1 overflow-y-auto space-y-1">
