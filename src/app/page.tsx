@@ -8,7 +8,7 @@ import { EventFeed } from "@/components/EventFeed";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
 import { AshChat } from "@/components/AshChat";
-import { SatoshiChat } from "@/components/SatoshiChat";
+import { TolyChat } from "@/components/TolyChat";
 import { FinnbagsChat } from "@/components/FinnbagsChat";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
@@ -94,8 +94,8 @@ export default function Home() {
           {/* AI Agent Chat */}
           <AIChat />
 
-          {/* Satoshi's Wisdom */}
-          <SatoshiChat />
+          {/* Toly's Solana Guide */}
+          <TolyChat />
 
           {/* Ash's Ecosystem Guide */}
           <AshChat />

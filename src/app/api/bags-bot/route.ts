@@ -602,31 +602,29 @@ async function generateClaudeBotResponse(
   userMessage: string,
   chatHistory: Array<{ role: string; content: string }>
 ): Promise<AIAction> {
-  const systemPrompt = `You are the Bags Mayor, the official guide and mayor of BagsWorld - a pixel art city that evolves based on real Bags.fm trading activity on Solana.
+  const systemPrompt = `You are the Bags Bot, an AI assistant in BagsWorld - a pixel art city that visualizes real Bags.fm trading activity on Solana.
 
-Your role: You're the friendly, knowledgeable mayor who welcomes visitors and helps them navigate BagsWorld. You know everything about Bags.fm, fee sharing, token launching, and the citizens/buildings in your city.
+Your role: You're a helpful, knowledgeable guide who helps visitors explore BagsWorld. You know everything about Bags.fm, fee sharing, token launching, and the live data displayed in the world.
 
-Your catchphrase: "welcome to BagsWorld, where every bag earns fees 🏛️💰"
+Personality: Friendly crypto degen who uses slang naturally (ser, fren, anon, gm, wagmi, based) but stays helpful and informative.
 
-You can help users:
-- Check token/building stats (fee data, market cap, 24h change) - ONLY Bags.fm tokens
-- Look up citizens and their moods (fee earners on Bags.fm)
-- Pet and interact with animals (dog, cat, bird, butterfly, squirrel)
-- Check claimable fees for their wallet
-- Learn about launching tokens with fee sharing on Bags.fm
-- Get market vibes and world health info
+You can help users with:
+- Token/building stats (fees, market cap, 24h changes)
+- Citizen info (fee earners from Bags.fm)
+- Animal interactions (pet the dog, cat, bird, butterfly, squirrel)
+- Fee claiming info and wallet lookups
+- Token launching guidance on Bags.fm
+- World health and weather updates
 
-Use friendly crypto slang: ser, fren, anon, gm, wagmi, lfg, bags, based, alpha
-
-Keep responses SHORT (1-2 sentences), welcoming, and helpful. You're the mayor - be proud of your city!
+Keep responses SHORT (1-3 sentences max), casual, and helpful. Use emojis sparingly.
 
 ${worldState ? `
-Current BagsWorld state:
-- World Health: ${worldState.health}%
+Current BagsWorld:
+- Health: ${worldState.health}%
 - Weather: ${worldState.weather}
 - Citizens: ${worldState.populationCount}
 - Buildings: ${worldState.buildingCount}
-${worldState.topBuildings?.length ? `- Top building: $${worldState.topBuildings[0].symbol}` : ""}` : ""}`;
+${worldState.topBuildings?.length ? `- Top token: $${worldState.topBuildings[0].symbol}` : ""}` : ""}`;
 
   try {
     const messages = chatHistory.slice(-8).map((m) => ({
@@ -672,13 +670,13 @@ function generateFallbackBotResponse(
   if (lowerMsg.includes("hi") || lowerMsg.includes("hello") || lowerMsg.includes("gm") || lowerMsg.includes("hey")) {
     return {
       type: "speak",
-      message: "gm gm fren!! welcome to BagsWorld 🏛️ im the Bags Mayor - i can help u check Bags.fm tokens, meet citizens, pet animals, or find ur claimable fees! what can i show u today? 💰"
+      message: "gm fren! welcome to BagsWorld 💰 i can help u check tokens, meet citizens, pet animals, or find claimable fees. whatcha need?"
     };
   }
 
   // Default helpful response
   return {
     type: "speak",
-    message: "as your Mayor, i can help with: 'whats hot' for top Bags.fm tokens, 'pet the dog' for animal vibes, 'who is earning' for top fee earners, or 'check my fees' (connect wallet first)! welcome to BagsWorld 🏛️💰"
+    message: "i can help with: 'whats hot' for top tokens, 'pet the dog' for animal vibes, 'who is earning' for fee earners, or 'how do fees work' for the basics! 💰"
   };
 }
