@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bags-dark: #0a0a0f;
+  --bags-darker: #050508;
+  --bags-green: #4ade80;
+  --bags-red: #f87171;
+  --bags-gold: #fbbf24;
+}
+
+* {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+body {
+  background: var(--bags-darker);
+  color: white;
+  font-family: 'Press Start 2P', monospace;
+}
+
+/* Pixel art scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bags-darker);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bags-green);
+  border-radius: 0;
+}
+
+/* Game canvas container */
+.game-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+}
+
+/* Retro button style */
+.btn-retro {
+  @apply px-4 py-2 bg-bags-green text-bags-dark font-pixel text-xs;
+  box-shadow:
+    4px 4px 0 #166534,
+    inset -2px -2px 0 rgba(0,0,0,0.2),
+    inset 2px 2px 0 rgba(255,255,255,0.2);
+  transition: all 0.1s;
+}
+
+.btn-retro:hover {
+  transform: translate(2px, 2px);
+  box-shadow:
+    2px 2px 0 #166534,
+    inset -2px -2px 0 rgba(0,0,0,0.2),
+    inset 2px 2px 0 rgba(255,255,255,0.2);
+}
+
+.btn-retro:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+/* Pixel border */
+.pixel-border {
+  border: 4px solid;
+  border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='2' height='2' fill='%234ade80'/%3E%3Crect x='2' width='2' height='2' fill='%234ade80'/%3E%3Crect x='4' width='2' height='2' fill='%234ade80'/%3E%3Crect y='2' width='2' height='2' fill='%234ade80'/%3E%3Crect x='4' y='2' width='2' height='2' fill='%234ade80'/%3E%3Crect y='4' width='2' height='2' fill='%234ade80'/%3E%3Crect x='2' y='4' width='2' height='2' fill='%234ade80'/%3E%3Crect x='4' y='4' width='2' height='2' fill='%234ade80'/%3E%3C/svg%3E") 2 stretch;
+}
+
+/* Health bar styles */
+.health-bar {
+  height: 16px;
+  background: #1a1a2e;
+  border: 2px solid #4ade80;
+  position: relative;
+  overflow: hidden;
+}
+
+.health-bar-fill {
+  height: 100%;
+  transition: width 0.5s ease-out;
+  background: linear-gradient(90deg, #4ade80 0%, #22c55e 100%);
+}
+
+.health-bar-fill.warning {
+  background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.health-bar-fill.danger {
+  background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
+}
+
+/* Scanline effect */
+.scanlines {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1),
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+}
+
+/* Glow effects */
+.glow-green {
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+.glow-gold {
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+.glow-red {
+  box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
+}
