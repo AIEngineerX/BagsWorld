@@ -220,6 +220,48 @@ class BagsApiClient {
       }),
     });
   }
+
+  // Fee Share Configuration
+  async createFeeShareConfig(
+    mint: string,
+    feeClaimers: Array<{
+      provider: string;
+      providerUsername: string;
+      bps: number; // basis points (100 = 1%)
+    }>
+  ): Promise<{
+    configId: string;
+    totalBps: number;
+  }> {
+    return this.fetch("/fee-share/config", {
+      method: "POST",
+      body: JSON.stringify({ mint, feeClaimers }),
+    });
+  }
+
+  // Partner Fee Claiming
+  async generatePartnerClaimTx(
+    partnerKey: string,
+    wallet: string
+  ): Promise<{
+    transaction: string;
+    lastValidBlockHeight: number;
+  }> {
+    return this.fetch("/fee-share/partner-config/claim-tx", {
+      method: "POST",
+      body: JSON.stringify({ partnerKey, wallet }),
+    });
+  }
+
+  async getPartnerStats(partnerKey: string): Promise<{
+    totalFees: number;
+    claimedFees: number;
+    unclaimedFees: number;
+    claimerCount: number;
+  }> {
+    const params = new URLSearchParams({ partnerKey });
+    return this.fetch(`/fee-share/partner-config/stats?${params}`);
+  }
 }
 
 // Singleton instance - will be initialized with API key

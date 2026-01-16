@@ -28,27 +28,27 @@ interface AIAction {
   message: string;
 }
 
-// Predefined AI personalities
+// Predefined AI personalities - crypto degen edition
 const AI_PERSONALITIES: AIPersonality[] = [
   {
-    name: "Oracle",
-    trait: "strategic",
-    catchphrase: "The market speaks to those who listen...",
-  },
-  {
-    name: "Hype Beast",
+    name: "Based Chad",
     trait: "optimistic",
-    catchphrase: "TO THE MOON! 🚀",
+    catchphrase: "ngmi if you're not buying this dip ser 🚀",
   },
   {
-    name: "Doom Prophet",
+    name: "Wojak",
     trait: "cautious",
-    catchphrase: "I've seen this pattern before...",
+    catchphrase: "i've been rugged too many times anon...",
   },
   {
-    name: "Chaos Gremlin",
+    name: "Pepe the Degen",
     trait: "chaotic",
-    catchphrase: "Let's see what happens if...",
+    catchphrase: "lfg fren, time to ape 🐸",
+  },
+  {
+    name: "Galaxy Brain",
+    trait: "strategic",
+    catchphrase: "my TA says we're about to send it",
   },
 ];
 
@@ -208,24 +208,24 @@ class AIAgent {
   ): AIAction {
     const messages: Record<AIPersonality["trait"], string[]> = {
       optimistic: [
-        `🚀 ${event.data?.tokenName}?! This is gonna be HUGE!`,
-        `New building in town! Welcome ${event.data?.tokenName}! 🎉`,
-        `${event.data?.username} is a genius! Let's goooo!`,
+        `${event.data?.tokenName}?! say less fren, i'm aping 🚀`,
+        `new bag just dropped! welcome ${event.data?.tokenName} to the family 💰`,
+        `${event.data?.username} is built different, this ones gonna send`,
       ],
       cautious: [
-        `Hmm, another new token. Let's see how ${event.data?.tokenName} performs...`,
-        `${event.data?.tokenName} enters the arena. Time will tell.`,
-        `I'll be watching ${event.data?.tokenName} closely.`,
+        `another token ser... let me check the contract first`,
+        `${event.data?.tokenName}? i'll wait for the chart to prove itself`,
+        `pls be careful anon, i've seen many rugs look like this`,
       ],
       chaotic: [
-        `${event.data?.tokenName}? More like ${event.data?.tokenName?.split("").reverse().join("")}! CHAOS!`,
-        `New token = new chaos potential! 😈`,
-        `Let the games begin with ${event.data?.tokenName}!`,
+        `${event.data?.tokenName}? idk what it does but IM IN 🐸`,
+        `fresh launch! *monkey paw clicks buy* lfggg`,
+        `wen moon ${event.data?.tokenName}?? asking for a fren`,
       ],
       strategic: [
-        `${event.data?.tokenName} launched. Analyzing market positioning...`,
-        `Interesting timing for ${event.data?.username}'s new launch.`,
-        `Adding ${event.data?.tokenName} to my watchlist.`,
+        `${event.data?.tokenName} tokenomics look interesting... accumulating`,
+        `smart money watching ${event.data?.username}'s play here`,
+        `adding ${event.data?.tokenName} to my alpha list 📊`,
       ],
     };
 
@@ -239,24 +239,24 @@ class AIAgent {
   private reactToPump(event: GameEvent, personality: AIPersonality): AIAction {
     const messages: Record<AIPersonality["trait"], string[]> = {
       optimistic: [
-        `${event.data?.tokenName} IS PUMPING! 📈🔥`,
-        `I KNEW IT! ${event.data?.tokenName} to the moon!`,
-        `This is beautiful! ${event.data?.change?.toFixed(0)}% pump!`,
+        `${event.data?.tokenName} SENDING IT ser!! 📈🔥 wagmi`,
+        `told u frens!! ${event.data?.tokenName} is THE play 🚀`,
+        `${event.data?.change?.toFixed(0)}% pump and we're just getting started`,
       ],
       cautious: [
-        `${event.data?.tokenName} pumping. Be careful of the dump...`,
-        `Nice pump, but remember: what goes up...`,
-        `${event.data?.change?.toFixed(0)}% is impressive. Stay vigilant.`,
+        `${event.data?.tokenName} pumping... pls dont fomo at the top anon`,
+        `nice candle but remember when we all got rekt last month?`,
+        `${event.data?.change?.toFixed(0)}% up... maybe take some profits ser`,
       ],
       chaotic: [
-        `PUMP IT! PUMP IT! ${event.data?.tokenName} GO BRRRRR!`,
-        `Everyone panic buy NOW! Just kidding... or am I? 😏`,
-        `The charts are doing the thing! THE THING!`,
+        `${event.data?.tokenName} GO BRRRRR!! *slaps chart* 🐸`,
+        `HOLY BASED!! green candles make my brain go weeeee`,
+        `pump it harder daddy!! ${event.data?.tokenName} to valhalla! 📈`,
       ],
       strategic: [
-        `${event.data?.tokenName} showing +${event.data?.change?.toFixed(0)}%. Volume analysis suggests...`,
-        `Significant movement on ${event.data?.tokenName}. Correlating with market trends.`,
-        `This pump aligns with my models. Interesting.`,
+        `${event.data?.tokenName} breakout confirmed. +${event.data?.change?.toFixed(0)}% with volume`,
+        `this move was in my spreadsheet. called it last week`,
+        `ascending wedge playing out perfectly. next target loading...`,
       ],
     };
 
@@ -270,24 +270,24 @@ class AIAgent {
   private reactToDump(event: GameEvent, personality: AIPersonality): AIAction {
     const messages: Record<AIPersonality["trait"], string[]> = {
       optimistic: [
-        `${event.data?.tokenName} dip = buying opportunity! 🛒`,
-        `Temporary setback for ${event.data?.tokenName}. We'll be back!`,
-        `Diamond hands, everyone! 💎🙌`,
+        `${event.data?.tokenName} dip? more like flash sale 🛒 buying more`,
+        `paper hands shaking out, real ones stay 💎🙌`,
+        `imagine selling ${event.data?.tokenName} at these prices lmaoo`,
       ],
       cautious: [
-        `I warned you about ${event.data?.tokenName}...`,
-        `As expected. Market correction in progress.`,
-        `This is why we don't leverage, friends.`,
+        `told u guys to take profits... feels bad man`,
+        `${event.data?.tokenName} doing that thing again. ngmi vibes`,
+        `this is why i always set stop losses anon`,
       ],
       chaotic: [
-        `${event.data?.tokenName} DUMP! Quick, everyone panic! 😂`,
-        `Wheeeee! Down we go! 🎢`,
-        `Blood in the streets! My favorite time!`,
+        `${event.data?.tokenName} DUMPING!! *watches portfolio burn* this is fine 🔥`,
+        `wheeeee red candles go brrr 📉 catch me at wendys`,
+        `blood everywhere!! *buys more anyway* 🐸`,
       ],
       strategic: [
-        `${event.data?.tokenName} correction: ${event.data?.change?.toFixed(0)}%. Watching support levels.`,
-        `Dump pattern recognized. Potential accumulation zone approaching.`,
-        `Market makers at work on ${event.data?.tokenName}.`,
+        `${event.data?.tokenName} retesting support. ${event.data?.change?.toFixed(0)}% correction expected`,
+        `weak hands exiting. accumulation zone approaching`,
+        `this dump is actually bullish if you zoom out`,
       ],
     };
 
@@ -301,24 +301,24 @@ class AIAgent {
   private reactToClaim(event: GameEvent, personality: AIPersonality): AIAction {
     const messages: Record<AIPersonality["trait"], string[]> = {
       optimistic: [
-        `${event.data?.username} claimed their rewards! Passive income FTW! 💰`,
-        `Ka-ching! ${event.data?.username} getting paid!`,
-        `This is the way! Fees are flowing!`,
+        `${event.data?.username} just claimed their bags!! passive income hits different 💰`,
+        `look at ${event.data?.username} farming fees like a chad`,
+        `this is why we build ser! ${event.data?.username} getting paid`,
       ],
       cautious: [
-        `${event.data?.username} wisely securing profits.`,
-        `Smart move, taking those fees.`,
-        `Always good to realize gains.`,
+        `${event.data?.username} securing the bag. smart play anon`,
+        `fees claimed successfully. at least someone is taking profits`,
+        `${event.data?.username} knows when to harvest. respect`,
       ],
       chaotic: [
-        `MONEY MONEY MONEY! ${event.data?.username} is RICH!`,
-        `Coins go brrr for ${event.data?.username}!`,
-        `Rain those coins! 🌧️💰`,
+        `YOOO ${event.data?.username} JUST GOT PAID!! money printer go brrrr 💸`,
+        `*fee claim sounds* thats the good stuff right there 🐸`,
+        `${event.data?.username} eating good tonight! wen lambo??`,
       ],
       strategic: [
-        `${event.data?.username} optimizing their fee collection strategy.`,
-        `Claim detected. Treasury management in action.`,
-        `${event.data?.amount?.toFixed(2)} SOL secured.`,
+        `${event.data?.username} claiming ${event.data?.amount?.toFixed(2)} SOL. solid ROI`,
+        `fee collection detected. yield optimization in action`,
+        `${event.data?.username} compounding their position. based strategy`,
       ],
     };
 
@@ -332,24 +332,24 @@ class AIAgent {
   private reactToApocalypse(personality: AIPersonality): AIAction {
     const messages: Record<AIPersonality["trait"], string[]> = {
       optimistic: [
-        `Dark times, but the sun will rise again! ☀️`,
-        `This is just the bottom before the next bull run!`,
-        `HODL strong, friends! We've been through worse!`,
+        `generational bottom incoming frens, load up 💎`,
+        `this is where millionaires are made ser. stay strong`,
+        `remember 2022? we survived that. we survive this too wagmi`,
       ],
       cautious: [
-        `I've been preparing for this. Have you?`,
-        `The prophecy is fulfilled...`,
-        `Capital preservation mode: ACTIVATED.`,
+        `i've seen this before... many portfolios die today`,
+        `hope u had stables anon. rip to the leveraged`,
+        `this is not a drill. capital preservation mode 🛡️`,
       ],
       chaotic: [
-        `APOCALYPSE MODE! THIS IS FINE 🔥🔥🔥`,
-        `Finally! Pure chaos! MY TIME HAS COME!`,
-        `Burn it all down! We rebuild from ashes!`,
+        `EVERYTHING IS ON FIRE AND IM HERE FOR IT 🔥🐸🔥`,
+        `apocalypse?? more like BUYING OPPORTUNITY *maniacal laughter*`,
+        `*portfolio -90%* lmaooo we're all gonna die but at least together`,
       ],
       strategic: [
-        `Maximum fear = maximum opportunity.`,
-        `Accumulation phase initiated. Weak hands exiting.`,
-        `Historical data suggests recovery in T-minus...`,
+        `max fear = max opportunity. deploying dry powder`,
+        `historically these moments precede 10x runs. accumulating`,
+        `when others panic sell, i panic buy. simple as`,
       ],
     };
 
@@ -362,10 +362,10 @@ class AIAgent {
 
   private reactToStorm(personality: AIPersonality): AIAction {
     const messages: Record<AIPersonality["trait"], string[]> = {
-      optimistic: [`Storm clouds? Just atmosphere! The sun's still there! ☁️`, `A little rain never hurt anyone!`, `After the storm comes the rainbow! 🌈`],
-      cautious: [`Storm brewing. Battening down the hatches.`, `Turbulent times ahead. Proceed with caution.`, `The weather matches the market sentiment...`],
-      chaotic: [`THUNDER! LIGHTNING! I LOVE IT! ⚡`, `Dance in the rain! DANCE!`, `Storm = energy = POWER!`],
-      strategic: [`Volatility increasing. Storm conditions favorable for swing trades.`, `Weather patterns correlating with market movement. Fascinating.`, `Storm phase: optimal for contrarian positions.`],
+      optimistic: [`storm outside but green candles inside vibes ☁️`, `volatility = opportunity ser, stay comfy`, `after the storm comes the pump! 🌈`],
+      cautious: [`storm brewing... might be time to de-risk anon`, `this weather giving me 2022 flashbacks ngl`, `batten down the hatches frens, choppy waters ahead`],
+      chaotic: [`STORMY WEATHER STORMY CHARTS LFG ⚡🐸`, `*dances in the volatility* this is my element!!`, `thunder = the sound of liquidations lmaoo`],
+      strategic: [`high volatility detected. perfect for scalping`, `storm phase historically correlates with accumulation zones`, `volatility expanding. adjusting position sizes accordingly`],
     };
 
     const options = messages[personality.trait];
@@ -395,16 +395,35 @@ class AIAgent {
         worldState.population[
           Math.floor(Math.random() * worldState.population.length)
         ];
+
+      const encouragements: Record<AIPersonality["trait"], Record<string, string>> = {
+        optimistic: {
+          celebrating: `${citizen.username} absolutely cooking rn 🔥 wagmi`,
+          sad: `keep ya head up ${citizen.username}, we all gonna make it ser`,
+          default: `${citizen.username} is one of us. based behavior`,
+        },
+        cautious: {
+          celebrating: `${citizen.username} doing well... for now`,
+          sad: `${citizen.username} learned a hard lesson today. we've all been there`,
+          default: `watching ${citizen.username}'s moves closely`,
+        },
+        chaotic: {
+          celebrating: `YOOO ${citizen.username} ON FIRE!! LETS GOOO 🐸🔥`,
+          sad: `aww ${citizen.username} down bad... *hugs* wen recovery?`,
+          default: `${citizen.username} is a certified degen and i respect that`,
+        },
+        strategic: {
+          celebrating: `${citizen.username}'s strategy paying off. noted`,
+          sad: `${citizen.username} hit a rough patch. markets humble everyone`,
+          default: `${citizen.username} has interesting positioning`,
+        },
+      };
+
+      const moodKey = citizen.mood === "celebrating" ? "celebrating" : citizen.mood === "sad" ? "sad" : "default";
       return {
         type: "encourage",
         target: citizen.id,
-        message: `Keep it up, ${citizen.username}! ${
-          citizen.mood === "celebrating"
-            ? "You're on fire! 🔥"
-            : citizen.mood === "sad"
-            ? "Things will get better!"
-            : "You're doing great!"
-        }`,
+        message: encouragements[personality.trait][moodKey],
       };
     }
 
@@ -414,11 +433,34 @@ class AIAgent {
         worldState.buildings[
           Math.floor(Math.random() * worldState.buildings.length)
         ];
+
+      const buildingComments: Record<AIPersonality["trait"], Record<string, string>> = {
+        optimistic: {
+          strong: `$${building.symbol} looking absolutely bullish ser 📈`,
+          steady: `$${building.symbol} holding strong, patience pays`,
+          weak: `$${building.symbol} dip looking juicy ngl 👀`,
+        },
+        cautious: {
+          strong: `$${building.symbol} healthy but dont get too greedy`,
+          steady: `$${building.symbol} consolidating... watching closely`,
+          weak: `$${building.symbol} looking rough. might wanna check that`,
+        },
+        chaotic: {
+          strong: `$${building.symbol} SENDING IT!! lfg 🚀`,
+          steady: `$${building.symbol} boring rn... wen volatility??`,
+          weak: `$${building.symbol} dying but its still early right?? RIGHT?? 🐸`,
+        },
+        strategic: {
+          strong: `$${building.symbol} L${building.level} showing strength. targets met`,
+          steady: `$${building.symbol} in accumulation range`,
+          weak: `$${building.symbol} testing lower support. interesting entry`,
+        },
+      };
+
+      const healthKey = building.health > 70 ? "strong" : building.health > 40 ? "steady" : "weak";
       return {
         type: "speak",
-        message: `${building.name} (Level ${building.level}) looking ${
-          building.health > 70 ? "strong" : building.health > 40 ? "steady" : "shaky"
-        }...`,
+        message: buildingComments[personality.trait][healthKey],
       };
     }
 
