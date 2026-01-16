@@ -449,7 +449,7 @@ export function AIChat() {
               BAGS BOT
             </p>
             <p className="font-pixel text-[8px] text-gray-400">
-              {currentPersonality.name} | drag to move
+              drag to move
             </p>
           </div>
         </div>
@@ -461,22 +461,6 @@ export function AIChat() {
         </button>
       </div>
 
-      {/* Personality Selector */}
-      <div className="flex gap-1 p-2 border-b border-bags-green/30 overflow-x-auto">
-        {AI_PERSONALITIES.map((p) => (
-          <button
-            key={p.name}
-            onClick={() => handlePersonalityChange(p)}
-            className={`px-2 py-1 font-pixel text-[8px] whitespace-nowrap transition-colors ${
-              currentPersonality.name === p.name
-                ? "bg-bags-green text-bags-dark"
-                : "bg-bags-darker text-gray-400 hover:text-white"
-            }`}
-          >
-            {p.name}
-          </button>
-        ))}
-      </div>
 
       {/* Messages */}
       <div className="h-48 overflow-y-auto p-2 space-y-2">

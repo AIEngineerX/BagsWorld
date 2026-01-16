@@ -162,9 +162,27 @@ export function LaunchModal({ onClose }: LaunchModalProps) {
     }
   };
 
+  // Prevent clicks from going through to the game
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-bags-dark border-4 border-bags-green w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4"
+      onClick={handleBackdropClick}
+      onMouseDown={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <div
+        className="bg-bags-dark border-4 border-bags-green w-full max-w-md max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b-4 border-bags-green sticky top-0 bg-bags-dark">
           <div>

@@ -28,27 +28,12 @@ interface AIAction {
   message: string;
 }
 
-// Predefined AI personalities - crypto degen edition
+// Single Bags Mayor personality
 const AI_PERSONALITIES: AIPersonality[] = [
   {
-    name: "Based Chad",
+    name: "Bags Mayor",
     trait: "optimistic",
-    catchphrase: "ngmi if you're not buying this dip ser 🚀",
-  },
-  {
-    name: "Wojak",
-    trait: "cautious",
-    catchphrase: "i've been rugged too many times anon...",
-  },
-  {
-    name: "Pepe the Degen",
-    trait: "chaotic",
-    catchphrase: "lfg fren, time to ape 🐸",
-  },
-  {
-    name: "Galaxy Brain",
-    trait: "strategic",
-    catchphrase: "my TA says we're about to send it",
+    catchphrase: "welcome to BagsWorld, where every bag earns fees 🏛️💰",
   },
 ];
 
