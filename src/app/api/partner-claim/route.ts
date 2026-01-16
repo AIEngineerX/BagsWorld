@@ -1,6 +1,10 @@
 // Partner Fee Claim API
 // Generates transactions to claim accumulated partner fees from Bags.fm
 // SECURITY: Only the configured partner wallet can claim fees
+//
+// Actions:
+// - "create-config": One-time setup to register as a partner (creates on-chain config)
+// - "claim": Generate transactions to claim accumulated fees
 
 import { NextRequest, NextResponse } from "next/server";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
@@ -22,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { walletAddress } = body;
+    const { walletAddress, action = "claim" } = body;
 
     // SECURITY: Verify the requesting wallet matches the partner wallet
     if (!walletAddress) {
@@ -39,57 +43,114 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Generating partner claim transactions for wallet: ${walletAddress}`);
-
-    // Call Bags.fm API to generate claim transactions
-    const response = await fetch(`${BAGS_API_URL}/fee-share/partner-config/claim-tx`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": BAGS_API_KEY,
-      },
-      body: JSON.stringify({
-        partnerWallet: walletAddress,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Bags API error:", response.status, errorText);
-
-      // Parse error if JSON
-      let errorMessage = "Failed to generate claim transactions";
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.message || errorJson.error || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: response.status }
-      );
+    // Handle different actions
+    if (action === "create-config") {
+      return handleCreateConfig(walletAddress);
+    } else {
+      return handleClaimFees(walletAddress);
     }
-
-    const data = await response.json();
-
-    // Return the transactions to be signed by the client
-    return NextResponse.json({
-      success: true,
-      transactions: data.response?.transactions || [],
-      message: data.response?.transactions?.length
-        ? `Generated ${data.response.transactions.length} claim transaction(s)`
-        : "No fees available to claim",
-    });
 
   } catch (error) {
     console.error("Partner claim error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to process claim request" },
+      { error: error instanceof Error ? error.message : "Failed to process request" },
       { status: 500 }
     );
   }
+}
+
+// Create partner config (one-time setup)
+async function handleCreateConfig(walletAddress: string) {
+  console.log(`Creating partner config for wallet: ${walletAddress}`);
+
+  const response = await fetch(`${BAGS_API_URL}/fee-share/partner-config/creation-tx`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": BAGS_API_KEY!,
+    },
+    body: JSON.stringify({
+      partnerWallet: walletAddress,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Bags API error (create-config):", response.status, errorText);
+
+    let errorMessage = "Failed to create partner config";
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.message || errorJson.error || errorMessage;
+    } catch {
+      errorMessage = errorText || errorMessage;
+    }
+
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: response.status }
+    );
+  }
+
+  const data = await response.json();
+
+  return NextResponse.json({
+    success: true,
+    action: "create-config",
+    transaction: data.response?.transaction,
+    blockhash: data.response?.blockhash,
+    message: "Partner config creation transaction generated. Sign to complete setup.",
+  });
+}
+
+// Claim accumulated fees
+async function handleClaimFees(walletAddress: string) {
+  console.log(`Generating partner claim transactions for wallet: ${walletAddress}`);
+
+  const response = await fetch(`${BAGS_API_URL}/fee-share/partner-config/claim-tx`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": BAGS_API_KEY!,
+    },
+    body: JSON.stringify({
+      partnerWallet: walletAddress,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Bags API error (claim):", response.status, errorText);
+
+    let errorMessage = "Failed to generate claim transactions";
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.message || errorJson.error || errorMessage;
+
+      // Check if partner config doesn't exist yet
+      if (errorMessage.includes("not found") || errorMessage.includes("does not exist")) {
+        errorMessage = "Partner config not found. Click 'Setup Partner' first to register.";
+      }
+    } catch {
+      errorMessage = errorText || errorMessage;
+    }
+
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: response.status }
+    );
+  }
+
+  const data = await response.json();
+
+  return NextResponse.json({
+    success: true,
+    action: "claim",
+    transactions: data.response?.transactions || [],
+    message: data.response?.transactions?.length
+      ? `Generated ${data.response.transactions.length} claim transaction(s)`
+      : "No fees available to claim",
+  });
 }
 
 // GET - Check partner status (for UI)
