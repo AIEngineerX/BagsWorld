@@ -1,248 +1,53 @@
 import { NextResponse } from "next/server";
-import type { WorldState, FeeEarner, TokenInfo, GameEvent } from "@/lib/types";
+import type {
+  WorldState,
+  FeeEarner,
+  TokenInfo,
+  GameEvent,
+  ClaimEvent,
+} from "@/lib/types";
 import { buildWorldState } from "@/lib/world-calculator";
+import { fetchTrendingTokens, DexToken } from "@/lib/dexscreener-api";
+import { BagsApiClient } from "@/lib/bags-api";
 
-// Representative data based on real Bags.fm top earners and tokens
-// Note: The Bags.fm public API doesn't expose leaderboard endpoints,
-// so this data simulates realistic values based on known top performers
-const BASE_FEE_EARNERS: FeeEarner[] = [
-  {
-    rank: 1,
-    username: "yishan",
-    providerUsername: "yishan",
-    provider: "twitter",
-    wallet: "yishan123abc",
-    lifetimeEarnings: 59184.21,
-    earnings24h: 3240,
-    change24h: 15.5,
-    tokenCount: 3,
-    avatarUrl: undefined,
-  },
-  {
-    rank: 2,
-    username: "steve_yegge",
-    providerUsername: "steve_yegge",
-    provider: "twitter",
-    wallet: "stevey456def",
-    lifetimeEarnings: 209813.78,
-    earnings24h: 40250,
-    change24h: 8.2,
-    tokenCount: 5,
-    avatarUrl: undefined,
-  },
-  {
-    rank: 3,
-    username: "jasonkneen",
-    providerUsername: "jasonkneen",
-    provider: "twitter",
-    wallet: "jason789ghi",
-    lifetimeEarnings: 43326.41,
-    earnings24h: 1530,
-    change24h: 22.1,
-    tokenCount: 2,
-    avatarUrl: undefined,
-  },
-  {
-    rank: 4,
-    username: "dom_scholz",
-    providerUsername: "dom_scholz",
-    provider: "twitter",
-    wallet: "dom012jkl",
-    lifetimeEarnings: 46102.25,
-    earnings24h: 3170,
-    change24h: 5.8,
-    tokenCount: 4,
-    avatarUrl: undefined,
-  },
-  {
-    rank: 5,
-    username: "thekitze",
-    providerUsername: "thekitze",
-    provider: "twitter",
-    wallet: "kitze345mno",
-    lifetimeEarnings: 22533.95,
-    earnings24h: 946.7,
-    change24h: -3.2,
-    tokenCount: 2,
-    avatarUrl: undefined,
-  },
-  {
-    rank: 6,
-    username: "dividendsbot",
-    providerUsername: "dividendsbot",
-    provider: "twitter",
-    wallet: "dividendspqr",
-    lifetimeEarnings: 40798.86,
-    earnings24h: 136.87,
-    change24h: 12.4,
-    tokenCount: 1,
-    avatarUrl: undefined,
-  },
-  {
-    rank: 7,
-    username: "sherryyanjiang",
-    providerUsername: "sherryyanjiang",
-    provider: "twitter",
-    wallet: "sherrystu",
-    lifetimeEarnings: 27273.65,
-    earnings24h: 171.0,
-    change24h: -8.7,
-    tokenCount: 2,
-    avatarUrl: undefined,
-  },
-  {
-    rank: 8,
-    username: "thekaranchawla",
-    providerUsername: "thekaranchawla",
-    provider: "twitter",
-    wallet: "karanvwx",
-    lifetimeEarnings: 58771.63,
-    earnings24h: 2430,
-    change24h: 31.2,
-    tokenCount: 3,
-    avatarUrl: undefined,
-  },
-  {
-    rank: 9,
-    username: "ClaudeAI",
-    providerUsername: "ClaudeAI",
-    provider: "twitter",
-    wallet: "claudeyz",
-    lifetimeEarnings: 68025.9,
-    earnings24h: 5810,
-    change24h: 18.9,
-    tokenCount: 4,
-    avatarUrl: undefined,
-  },
-];
+// Initialize Bags API client (lazy initialization)
+let bagsApi: BagsApiClient | null = null;
 
-const BASE_TOKENS: TokenInfo[] = [
-  {
-    mint: "terra123abcdef",
-    name: "TERRA",
-    symbol: "TERRA",
-    price: 0.0032,
-    marketCap: 3240000,
-    volume24h: 894000,
-    change24h: 15.5,
-    holders: 3400,
-    lifetimeFees: 59184.21,
-    creator: "yishan123abc",
-  },
-  {
-    mint: "gas456ghijkl",
-    name: "GAS",
-    symbol: "GAS",
-    price: 0.04,
-    marketCap: 40250000,
-    volume24h: 3946000,
-    change24h: 8.2,
-    holders: 7470,
-    lifetimeFees: 209813.78,
-    creator: "stevey456def",
-  },
-  {
-    mint: "huggi789mnopq",
-    name: "HUGGI",
-    symbol: "HUGGI",
-    price: 0.0015,
-    marketCap: 1530000,
-    volume24h: 674000,
-    change24h: 22.1,
-    holders: 2030,
-    lifetimeFees: 43326.41,
-    creator: "jason789ghi",
-  },
-  {
-    mint: "starcraft012rs",
-    name: "STARCRAFT",
-    symbol: "STARCRAFT",
-    price: 0.0032,
-    marketCap: 3170000,
-    volume24h: 497000,
-    change24h: 5.8,
-    holders: 1760,
-    lifetimeFees: 46102.25,
-    creator: "dom012jkl",
-  },
-  {
-    mint: "slopcraft345tu",
-    name: "SLOPCRAFT",
-    symbol: "SLOPCRAFT",
-    price: 0.00095,
-    marketCap: 946700,
-    volume24h: 130000,
-    change24h: -3.2,
-    holders: 1110,
-    lifetimeFees: 22533.95,
-    creator: "kitze345mno",
-  },
-  {
-    mint: "company678vwx",
-    name: "COMPANY",
-    symbol: "COMPANY",
-    price: 0.00014,
-    marketCap: 136870,
-    volume24h: 15785,
-    change24h: 12.4,
-    holders: 865,
-    lifetimeFees: 40798.86,
-    creator: "dividendspqr",
-  },
-  {
-    mint: "peekmoney901yz",
-    name: "PEEKMONEY",
-    symbol: "PEEKMONEY",
-    price: 0.00017,
-    marketCap: 171000,
-    volume24h: 47780,
-    change24h: -8.7,
-    holders: 567,
-    lifetimeFees: 27273.65,
-    creator: "sherrystu",
-  },
-  {
-    mint: "vvm234abcxyz",
-    name: "VVM",
-    symbol: "VVM",
-    price: 0.0024,
-    marketCap: 2430000,
-    volume24h: 254000,
-    change24h: 31.2,
-    holders: 1320,
-    lifetimeFees: 58771.63,
-    creator: "karanvwx",
-  },
-  {
-    mint: "cmem567defghi",
-    name: "CMEM",
-    symbol: "CMEM",
-    price: 0.0058,
-    marketCap: 5810000,
-    volume24h: 705000,
-    change24h: 18.9,
-    holders: 2470,
-    lifetimeFees: 68025.9,
-    creator: "claudeyz",
-  },
-];
+function getBagsApi(): BagsApiClient | null {
+  if (!bagsApi && process.env.BAGS_API_KEY) {
+    bagsApi = new BagsApiClient(process.env.BAGS_API_KEY);
+  }
+  return bagsApi;
+}
 
-// Track state across requests for consistent evolution
-let lastUpdateTime = Date.now();
-let accumulatedChanges: Map<string, number> = new Map();
+// Cache for various data
+interface DataCache<T> {
+  data: T;
+  timestamp: number;
+}
+
+let tokenCache: DataCache<TokenInfo[]> | null = null;
+let earnerCache: DataCache<FeeEarner[]> | null = null;
+let claimEventsCache: DataCache<ClaimEvent[]> | null = null;
+let cachedWeather: { weather: WorldState["weather"]; fetchedAt: number } | null =
+  null;
+
+const TOKEN_CACHE_DURATION = 60 * 1000; // 60 seconds
+const EARNER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CLAIM_EVENTS_CACHE_DURATION = 30 * 1000; // 30 seconds
 
 // Store previous state for event generation
 let previousState: WorldState | null = null;
-
-// Cache weather data
-let cachedWeather: { weather: WorldState["weather"]; fetchedAt: number } | null = null;
-const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Fetch real Washington DC weather
 async function fetchDCWeather(): Promise<WorldState["weather"]> {
   try {
     // Check cache first
-    if (cachedWeather && Date.now() - cachedWeather.fetchedAt < WEATHER_CACHE_DURATION) {
+    if (
+      cachedWeather &&
+      Date.now() - cachedWeather.fetchedAt < WEATHER_CACHE_DURATION
+    ) {
       return cachedWeather.weather;
     }
 
@@ -250,8 +55,8 @@ async function fetchDCWeather(): Promise<WorldState["weather"]> {
     const baseUrl = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : process.env.NETLIFY
-      ? process.env.URL
-      : "http://localhost:3000";
+        ? process.env.URL
+        : "http://localhost:3000";
 
     const response = await fetch(`${baseUrl}/api/weather`, {
       cache: "no-store",
@@ -276,7 +81,12 @@ async function fetchDCWeather(): Promise<WorldState["weather"]> {
 }
 
 // Get current EST time info
-function getESTTimeInfo(): { hour: number; isNight: boolean; isDusk: boolean; isDawn: boolean } {
+function getESTTimeInfo(): {
+  hour: number;
+  isNight: boolean;
+  isDusk: boolean;
+  isDawn: boolean;
+} {
   const now = new Date();
   // Convert to EST (UTC-5) or EDT (UTC-4) depending on DST
   const estOffset = -5; // Standard EST offset
@@ -291,136 +101,304 @@ function getESTTimeInfo(): { hour: number; isNight: boolean; isDusk: boolean; is
   };
 }
 
-// Simulate realistic market movements
-function simulateMarketChange(baseChange: number, timeDelta: number): number {
-  // Small random walk based on time elapsed
-  const volatility = 0.02; // 2% volatility per update
-  const randomWalk = (Math.random() - 0.5) * 2 * volatility * 100;
+// Convert DexScreener token to our TokenInfo format
+function dexTokenToTokenInfo(
+  dexToken: DexToken,
+  lifetimeFees?: number,
+  creatorWallet?: string
+): TokenInfo {
+  return {
+    mint: dexToken.mint,
+    name: dexToken.name,
+    symbol: dexToken.symbol,
+    imageUrl: dexToken.imageUrl,
+    price: dexToken.price,
+    marketCap: dexToken.marketCap,
+    volume24h: dexToken.volume24h,
+    change24h: dexToken.priceChange24h,
+    holders: 0, // Not available from DexScreener
+    lifetimeFees: lifetimeFees || 0,
+    creator: creatorWallet || "",
+  };
+}
 
-  // Mean reversion tendency - extreme values tend to revert
-  const meanReversion = -baseChange * 0.01;
+// Build FeeEarner from creator data
+function buildFeeEarner(
+  creator: {
+    wallet: string;
+    provider: string;
+    providerUsername: string;
+    username?: string;
+    pfp?: string;
+    isCreator?: boolean;
+  },
+  token: TokenInfo,
+  rank: number
+): FeeEarner {
+  return {
+    rank,
+    username: creator.username || creator.providerUsername,
+    providerUsername: creator.providerUsername,
+    provider: creator.provider as FeeEarner["provider"],
+    wallet: creator.wallet,
+    avatarUrl: creator.pfp,
+    lifetimeEarnings: token.lifetimeFees,
+    earnings24h: token.volume24h * 0.01, // Estimate: ~1% of volume as fees
+    change24h: token.change24h,
+    tokenCount: 1,
+    topToken: token,
+  };
+}
 
-  return baseChange + randomWalk + meanReversion;
+// Fetch live token data from DexScreener + Bags.fm
+async function fetchLiveTokenData(): Promise<{
+  tokens: TokenInfo[];
+  earners: FeeEarner[];
+  claimEvents: ClaimEvent[];
+}> {
+  const now = Date.now();
+  const api = getBagsApi();
+
+  // Check token cache
+  if (tokenCache && now - tokenCache.timestamp < TOKEN_CACHE_DURATION) {
+    // Return cached data with possibly fresh earners
+    if (earnerCache && now - earnerCache.timestamp < EARNER_CACHE_DURATION) {
+      return {
+        tokens: tokenCache.data,
+        earners: earnerCache.data,
+        claimEvents: claimEventsCache?.data || [],
+      };
+    }
+  }
+
+  try {
+    // Fetch trending tokens from DexScreener
+    const dexTokens = await fetchTrendingTokens();
+    console.log(`Fetched ${dexTokens.length} tokens from DexScreener`);
+
+    if (dexTokens.length === 0) {
+      // Return cached data if no new data
+      return {
+        tokens: tokenCache?.data || [],
+        earners: earnerCache?.data || [],
+        claimEvents: claimEventsCache?.data || [],
+      };
+    }
+
+    // Process tokens and fetch Bags.fm data in parallel
+    const enrichedData = await Promise.all(
+      dexTokens.map(async (dexToken) => {
+        let creators: Array<{
+          wallet: string;
+          provider: string;
+          providerUsername: string;
+          username?: string;
+          pfp?: string;
+          isCreator?: boolean;
+        }> = [];
+        let lifetimeFees = 0;
+
+        // Try to get Bags.fm data if API is configured
+        if (api) {
+          try {
+            const [creatorsResult, feesResult] = await Promise.allSettled([
+              api.getTokenCreators(dexToken.mint),
+              api.getTokenLifetimeFees(dexToken.mint),
+            ]);
+
+            if (creatorsResult.status === "fulfilled") {
+              creators = creatorsResult.value;
+            }
+            if (feesResult.status === "fulfilled") {
+              lifetimeFees = feesResult.value.lifetimeFees;
+            }
+          } catch (err) {
+            // Token might not be on Bags.fm, continue without enrichment
+          }
+        }
+
+        return {
+          dexToken,
+          creators,
+          lifetimeFees,
+        };
+      })
+    );
+
+    // Build TokenInfo array
+    const tokens: TokenInfo[] = enrichedData.map((data) =>
+      dexTokenToTokenInfo(
+        data.dexToken,
+        data.lifetimeFees,
+        data.creators[0]?.wallet
+      )
+    );
+
+    // Build FeeEarner array from creators
+    const earnerMap = new Map<string, FeeEarner>();
+    let rank = 1;
+
+    enrichedData.forEach((data) => {
+      const token = dexTokenToTokenInfo(
+        data.dexToken,
+        data.lifetimeFees,
+        data.creators[0]?.wallet
+      );
+
+      data.creators.forEach((creator) => {
+        if (creator.isCreator !== false) {
+          // Include if creator or unknown
+          const existing = earnerMap.get(creator.wallet);
+          if (existing) {
+            // Update existing earner with higher earnings token
+            if (token.lifetimeFees > (existing.topToken?.lifetimeFees || 0)) {
+              existing.topToken = token;
+              existing.lifetimeEarnings += token.lifetimeFees;
+            }
+            existing.tokenCount++;
+          } else {
+            earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++));
+          }
+        }
+      });
+    });
+
+    // Convert map to array and sort by earnings
+    const earners = Array.from(earnerMap.values())
+      .sort((a, b) => b.lifetimeEarnings - a.lifetimeEarnings)
+      .slice(0, 15)
+      .map((e, i) => ({ ...e, rank: i + 1 }));
+
+    // Fetch claim events if API is available
+    let claimEvents: ClaimEvent[] = [];
+    if (
+      api &&
+      (!claimEventsCache ||
+        now - claimEventsCache.timestamp > CLAIM_EVENTS_CACHE_DURATION)
+    ) {
+      try {
+        // Get claim events from a few active tokens
+        const activeTokens = tokens.slice(0, 5);
+        const eventPromises = activeTokens.map((t) =>
+          api.getTokenClaimEvents(t.mint, 5).catch(() => [])
+        );
+        const eventResults = await Promise.all(eventPromises);
+        claimEvents = eventResults
+          .flat()
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 20);
+
+        claimEventsCache = { data: claimEvents, timestamp: now };
+      } catch (err) {
+        claimEvents = claimEventsCache?.data || [];
+      }
+    } else {
+      claimEvents = claimEventsCache?.data || [];
+    }
+
+    // Update caches
+    tokenCache = { data: tokens, timestamp: now };
+    earnerCache = { data: earners, timestamp: now };
+
+    return { tokens, earners, claimEvents };
+  } catch (error) {
+    console.error("Error fetching live token data:", error);
+    // Return cached data on error
+    return {
+      tokens: tokenCache?.data || [],
+      earners: earnerCache?.data || [],
+      claimEvents: claimEventsCache?.data || [],
+    };
+  }
+}
+
+// Generate game events from claim events
+function generateEventsFromClaims(
+  claimEvents: ClaimEvent[],
+  tokens: TokenInfo[],
+  existingEvents: GameEvent[]
+): GameEvent[] {
+  const events: GameEvent[] = [...existingEvents];
+  const existingIds = new Set(existingEvents.map((e) => e.id));
+
+  // Convert claim events to game events
+  claimEvents.forEach((claim) => {
+    const eventId = `claim-${claim.signature}`;
+    if (!existingIds.has(eventId)) {
+      const token = tokens.find((t) => t.mint === claim.tokenMint);
+      events.unshift({
+        id: eventId,
+        type: "fee_claim",
+        message: `${claim.claimerUsername || claim.claimer.slice(0, 8)} claimed ${(claim.amount / 1e9).toFixed(2)} SOL from ${token?.symbol || "token"}`,
+        timestamp: claim.timestamp * 1000,
+        data: {
+          username: claim.claimerUsername || claim.claimer.slice(0, 8),
+          tokenName: token?.name,
+          amount: claim.amount / 1e9,
+        },
+      });
+    }
+  });
+
+  // Add price movement events for significant changes
+  tokens.forEach((token) => {
+    if (Math.abs(token.change24h) > 10) {
+      const eventId = `price-${token.mint}-${Math.floor(Date.now() / 60000)}`;
+      if (!existingIds.has(eventId)) {
+        const type = token.change24h > 0 ? "price_pump" : "price_dump";
+        events.unshift({
+          id: eventId,
+          type,
+          message:
+            token.change24h > 0
+              ? `${token.symbol} pumped ${token.change24h.toFixed(0)}%!`
+              : `${token.symbol} dropped ${Math.abs(token.change24h).toFixed(0)}%`,
+          timestamp: Date.now(),
+          data: {
+            tokenName: token.name,
+            change: token.change24h,
+          },
+        });
+      }
+    }
+  });
+
+  // Keep only recent events and limit count
+  return events
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 20);
 }
 
 export async function GET() {
   try {
-    const now = Date.now();
-    const timeDelta = now - lastUpdateTime;
-    lastUpdateTime = now;
+    // Fetch live data in parallel with weather
+    const [liveData, realWeather, timeInfo] = await Promise.all([
+      fetchLiveTokenData(),
+      fetchDCWeather(),
+      Promise.resolve(getESTTimeInfo()),
+    ]);
 
-    // Fetch real DC weather
-    const realWeather = await fetchDCWeather();
+    const { tokens, earners, claimEvents } = liveData;
 
-    // Get EST time info
-    const timeInfo = getESTTimeInfo();
-
-    // Apply realistic market simulation to earners
-    const earners = BASE_FEE_EARNERS.map((e) => {
-      // Get or initialize accumulated change for this earner
-      const key = `earner-${e.wallet}`;
-      let currentChange = accumulatedChanges.get(key) ?? e.change24h;
-      currentChange = simulateMarketChange(currentChange, timeDelta);
-      accumulatedChanges.set(key, currentChange);
-
-      // Small variation in earnings (they accumulate over time)
-      const earningsMultiplier = 1 + (Math.random() * 0.02 - 0.005);
-
-      return {
-        ...e,
-        earnings24h: e.earnings24h * earningsMultiplier,
-        change24h: currentChange,
-      };
-    });
-
-    // Apply realistic market simulation to tokens
-    const tokens = BASE_TOKENS.map((t) => {
-      // Get or initialize accumulated change for this token
-      const key = `token-${t.mint}`;
-      let currentChange = accumulatedChanges.get(key) ?? t.change24h;
-      currentChange = simulateMarketChange(currentChange, timeDelta);
-      accumulatedChanges.set(key, currentChange);
-
-      // Volume fluctuates more than price
-      const volumeMultiplier = 0.9 + Math.random() * 0.2;
-
-      // Market cap changes based on price change
-      const priceMultiplier = 1 + (currentChange / 100) * 0.001;
-
-      return {
-        ...t,
-        volume24h: t.volume24h * volumeMultiplier,
-        change24h: currentChange,
-        marketCap: t.marketCap * priceMultiplier,
-        price: t.price * priceMultiplier,
-      };
-    });
-
-    // Build world state
-    const worldState = buildWorldState(earners, tokens, previousState ?? undefined);
+    // Build world state from live data
+    const worldState = buildWorldState(
+      earners,
+      tokens,
+      previousState ?? undefined
+    );
 
     // Override weather with real DC weather
     worldState.weather = realWeather;
 
     // Add time info to world state for day/night cycle
-    (worldState as any).timeInfo = timeInfo;
+    (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;
 
-    // Generate events based on significant changes (more realistic)
-    const shouldGenerateEvent = Math.random() > 0.6; // 40% chance per request
-
-    if (shouldGenerateEvent) {
-      const eventTypes: GameEvent["type"][] = [
-        "fee_claim",
-        "price_pump",
-        "price_dump",
-        "whale_alert",
-        "milestone",
-      ];
-
-      // Weight events based on market conditions
-      const avgChange = tokens.reduce((sum, t) => sum + t.change24h, 0) / tokens.length;
-      let selectedType: GameEvent["type"];
-
-      if (avgChange > 10) {
-        selectedType = Math.random() > 0.3 ? "price_pump" : "fee_claim";
-      } else if (avgChange < -5) {
-        selectedType = Math.random() > 0.3 ? "price_dump" : "whale_alert";
-      } else {
-        selectedType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-      }
-
-      const randomEarner = earners[Math.floor(Math.random() * earners.length)];
-      const randomToken = tokens[Math.floor(Math.random() * tokens.length)];
-      const claimAmount = (Math.random() * 5 + 0.5).toFixed(2);
-      const pumpPercent = (Math.random() * 30 + 5).toFixed(0);
-      const dumpPercent = (Math.random() * 20 + 3).toFixed(0);
-
-      const messages: Record<GameEvent["type"], string> = {
-        fee_claim: `${randomEarner.providerUsername} claimed ${claimAmount} SOL`,
-        price_pump: `${randomToken.name} pumped ${pumpPercent}%!`,
-        price_dump: `${randomToken.name} dropped ${dumpPercent}%`,
-        whale_alert: `Whale activity detected on ${randomToken.name}`,
-        milestone: `${randomEarner.providerUsername} reached a new milestone!`,
-        token_launch: `New token launched by ${randomEarner.providerUsername}`,
-      };
-
-      const newEvent: GameEvent = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        type: selectedType,
-        message: messages[selectedType],
-        timestamp: Date.now(),
-        data: {
-          username: randomEarner.providerUsername,
-          tokenName: randomToken.name,
-          amount: parseFloat(claimAmount),
-          change: parseFloat(pumpPercent),
-        },
-      };
-
-      worldState.events.unshift(newEvent);
-      // Keep only last 20 events
-      worldState.events = worldState.events.slice(0, 20);
-    }
+    // Generate events from real claim events
+    worldState.events = generateEventsFromClaims(
+      claimEvents,
+      tokens,
+      previousState?.events || []
+    );
 
     previousState = worldState;
 

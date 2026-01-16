@@ -45,6 +45,18 @@ export interface ClaimStats {
   lastClaimTime: number;
 }
 
+export interface ClaimEvent {
+  signature: string;
+  claimer: string;
+  claimerUsername?: string;
+  claimerProvider?: string;
+  amount: number;
+  timestamp: number;
+  tokenMint: string;
+  tokenName?: string;
+  tokenSymbol?: string;
+}
+
 export interface TradeQuote {
   requestId: string;
   inputMint: string;

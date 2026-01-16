@@ -3,6 +3,7 @@ import type {
   TokenInfo,
   ClaimablePosition,
   ClaimStats,
+  ClaimEvent,
   TradeQuote,
 } from "./types";
 
@@ -115,6 +116,17 @@ class BagsApiClient {
   async getClaimStats(tokenMint: string): Promise<ClaimStats[]> {
     const params = new URLSearchParams({ mint: tokenMint });
     return this.fetch(`/token-launch/claim-stats?${params}`);
+  }
+
+  async getTokenClaimEvents(
+    tokenMint: string,
+    limit?: number
+  ): Promise<ClaimEvent[]> {
+    const params = new URLSearchParams({ mint: tokenMint });
+    if (limit) {
+      params.set("limit", limit.toString());
+    }
+    return this.fetch(`/fee-share/token/claim-events?${params}`);
   }
 
   // Fee Claiming Endpoints
