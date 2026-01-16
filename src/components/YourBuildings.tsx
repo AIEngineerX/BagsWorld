@@ -8,9 +8,7 @@ import {
   type LaunchedToken,
 } from "@/lib/token-registry";
 import { TradeModal } from "./TradeModal";
-
-// Admin wallet - only this wallet can delete buildings
-const ADMIN_WALLET = "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3";
+import { isAdmin } from "@/lib/config";
 
 interface YourBuildingsProps {
   onRefresh?: () => void;
@@ -23,7 +21,7 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
   const [tradeToken, setTradeToken] = useState<LaunchedToken | null>(null);
 
   // Check if connected wallet is admin
-  const isAdmin = publicKey?.toBase58() === ADMIN_WALLET;
+  const isUserAdmin = isAdmin(publicKey?.toBase58());
 
   useEffect(() => {
     const loadTokens = () => {
@@ -159,7 +157,7 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
                     TRADE
                   </button>
                   {/* Only admin can delete buildings */}
-                  {isAdmin && (
+                  {isUserAdmin && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

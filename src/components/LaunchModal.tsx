@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { saveLaunchedToken, type LaunchedToken } from "@/lib/token-registry";
+import { ECOSYSTEM_CONFIG, getEcosystemFeeShare } from "@/lib/config";
 
 interface FeeShareEntry {
   provider: string;
@@ -11,10 +12,8 @@ interface FeeShareEntry {
   bps: number; // basis points (100 = 1%)
 }
 
-// Ecosystem configuration - 10% of all fees support BagsWorld
-const ECOSYSTEM_FEE_BPS = 1000; // 10%
-const ECOSYSTEM_WALLET = "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3";
-const ECOSYSTEM_PROVIDER = "solana"; // Direct wallet
+// Get ecosystem config
+const ecosystemFee = getEcosystemFeeShare();
 
 interface LaunchModalProps {
   onClose: () => void;
@@ -43,7 +42,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   ]);
 
   const userTotalBps = feeShares.reduce((sum, f) => sum + (f.username ? f.bps : 0), 0);
-  const totalBps = userTotalBps + ECOSYSTEM_FEE_BPS; // Include ecosystem fee
+  const totalBps = userTotalBps + ecosystemFee.bps; // Include ecosystem fee
   const isValidBps = totalBps <= 10000; // Max 100%
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,11 +142,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
       // Build fee claimers array - always include ecosystem fee
       const allFeeClaimers = [
-        // Ecosystem fee - 10% to support BagsWorld
+        // Ecosystem fee - supports BagsWorld development & community
         {
-          provider: ECOSYSTEM_PROVIDER,
-          providerUsername: ECOSYSTEM_WALLET,
-          bps: ECOSYSTEM_FEE_BPS,
+          provider: ecosystemFee.provider,
+          providerUsername: ecosystemFee.providerUsername,
+          bps: ecosystemFee.bps,
         },
         // User-defined fee shares
         ...validFeeShares.map(f => ({
@@ -215,8 +214,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           // Include ecosystem fee in saved data
           {
             provider: "ecosystem",
-            username: "BagsWorld",
-            bps: ECOSYSTEM_FEE_BPS,
+            username: ecosystemFee.displayName,
+            bps: ecosystemFee.bps,
           },
           ...validFeeShares.map((f) => ({
             provider: f.provider,
@@ -292,6 +291,19 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         {/* Step 1: Token Info */}
         {step === "info" && (
           <div className="p-4 space-y-4">
+            {/* Why Launch Here */}
+            <div className="bg-gradient-to-r from-bags-green/10 to-bags-gold/10 border border-bags-green/30 p-3 space-y-2">
+              <p className="font-pixel text-[10px] text-bags-gold">✨ WHY LAUNCH ON BAGSWORLD?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {ECOSYSTEM_CONFIG.benefits.forCreators.slice(0, 4).map((benefit, i) => (
+                  <div key={i} className="flex items-start gap-1">
+                    <span className="text-xs">{benefit.icon}</span>
+                    <span className="font-pixel text-[7px] text-gray-300">{benefit.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Image Upload */}
             <div className="flex justify-center">
               <label className="cursor-pointer">
@@ -412,16 +424,30 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             </div>
 
             {/* Ecosystem Fee - Always included */}
-            <div className="bg-bags-gold/10 border border-bags-gold/30 p-3">
+            <div className="bg-bags-gold/10 border border-bags-gold/30 p-3 space-y-2">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">🏙️</span>
                   <div>
-                    <p className="font-pixel text-[10px] text-bags-gold">BagsWorld Ecosystem</p>
-                    <p className="font-pixel text-[7px] text-gray-400">Auto-included to build the city</p>
+                    <p className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.displayName}</p>
+                    <p className="font-pixel text-[7px] text-gray-400">Auto-included • Benefits everyone</p>
                   </div>
                 </div>
-                <span className="font-pixel text-[10px] text-bags-gold">10%</span>
+                <span className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.bps / 100}%</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1 pt-1 border-t border-bags-gold/20">
+                <div className="font-pixel text-[6px] text-gray-400">
+                  <span className="text-bags-green">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.development}% Development
+                </div>
+                <div className="font-pixel text-[6px] text-gray-400">
+                  <span className="text-bags-gold">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.community}% Community
+                </div>
+                <div className="font-pixel text-[6px] text-gray-400">
+                  <span className="text-blue-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.liquidity}% Liquidity
+                </div>
+                <div className="font-pixel text-[6px] text-gray-400">
+                  <span className="text-purple-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.marketing}% Marketing
+                </div>
               </div>
             </div>
 

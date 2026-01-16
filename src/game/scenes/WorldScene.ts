@@ -756,12 +756,22 @@ export class WorldScene extends Phaser.Scene {
           this.input.setDefaultCursor("default");
         });
         container.on("pointerdown", () => {
-          // Open token page in new tab (only for real tokens, not starters)
-          if (building.tokenUrl) {
-            window.open(building.tokenUrl, "_blank");
-          } else {
-            // For starter buildings, show a message instead of breaking
+          // Emit event for React to handle building click
+          const isStarterBuilding = building.id.startsWith("Starter");
+
+          if (isStarterBuilding) {
+            // For starter buildings, show a message
             console.log(`${building.name} - Launch a token to create a real building!`);
+          } else {
+            // Emit custom event for React to open trade modal
+            window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
+              detail: {
+                mint: building.tokenMint || building.id,
+                symbol: building.symbol || building.name,
+                name: building.name,
+                tokenUrl: building.tokenUrl,
+              }
+            }));
           }
         });
 
@@ -894,7 +904,7 @@ export class WorldScene extends Phaser.Scene {
     });
     changeText.setOrigin(0.5, 0.5);
 
-    const clickText = this.add.text(0, 32, "Click to view on Bags.fm", {
+    const clickText = this.add.text(0, 32, "Click to trade", {
       fontFamily: "monospace",
       fontSize: "7px",
       color: "#6b7280",
