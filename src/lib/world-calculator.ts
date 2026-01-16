@@ -11,7 +11,7 @@ import type {
 // Constants for world calculations
 const WORLD_WIDTH = 800;
 const WORLD_HEIGHT = 600;
-const BUILDING_SPACING = 100;
+const BUILDING_SPACING = 120; // Increased spacing to prevent overlap
 const MAX_BUILDINGS = 20;
 const MAX_CHARACTERS = 15;
 
@@ -77,22 +77,43 @@ export function calculateCharacterMood(
   return "neutral";
 }
 
+// Seeded random for consistent positions based on index
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 9999) * 10000;
+  return x - Math.floor(x);
+}
+
 export function generateBuildingPosition(
   index: number,
   total: number
 ): { x: number; y: number } {
-  const rows = Math.ceil(Math.sqrt(total));
-  const cols = Math.ceil(total / rows);
+  // Use a fixed grid layout with deterministic small offsets
+  const maxCols = 5; // Maximum 5 buildings per row
+  const actualTotal = Math.min(total, MAX_BUILDINGS);
+  const rows = Math.ceil(actualTotal / maxCols);
+  const cols = Math.min(actualTotal, maxCols);
 
-  const row = Math.floor(index / cols);
-  const col = index % cols;
+  const row = Math.floor(index / maxCols);
+  const col = index % maxCols;
 
-  const startX = (WORLD_WIDTH - cols * BUILDING_SPACING) / 2 + 50;
-  const startY = (WORLD_HEIGHT - rows * BUILDING_SPACING) / 2 + 100;
+  // Calculate how many buildings in this row
+  const buildingsInThisRow = row < rows - 1 ? maxCols : actualTotal - (rows - 1) * maxCols;
+
+  // Center the buildings horizontally
+  const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
+  const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
+
+  // Center vertically with some padding from top
+  const totalHeight = rows * BUILDING_SPACING;
+  const startY = Math.max(150, (WORLD_HEIGHT - totalHeight) / 2 + 80);
+
+  // Use seeded random for consistent small offsets based on index
+  const offsetX = (seededRandom(index * 7 + 1) * 16 - 8);
+  const offsetY = (seededRandom(index * 13 + 2) * 16 - 8);
 
   return {
-    x: startX + col * BUILDING_SPACING + (Math.random() * 20 - 10),
-    y: startY + row * BUILDING_SPACING + (Math.random() * 20 - 10),
+    x: rowStartX + col * BUILDING_SPACING + offsetX,
+    y: startY + row * BUILDING_SPACING + offsetY,
   };
 }
 
