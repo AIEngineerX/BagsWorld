@@ -8,6 +8,7 @@ import { EventFeed } from "@/components/EventFeed";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
 import { YourBuildings } from "@/components/YourBuildings";
+import { WalletButton } from "@/components/WalletButton";
 import { useWorldState } from "@/hooks/useWorldState";
 
 const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
@@ -42,6 +43,7 @@ export default function Home() {
               {worldState?.weather?.toUpperCase() ?? "LOADING"}
             </span>
           </div>
+          <WalletButton />
           <LaunchButton />
         </div>
       </header>
