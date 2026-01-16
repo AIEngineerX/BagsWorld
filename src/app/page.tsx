@@ -8,6 +8,7 @@ import { EventFeed } from "@/components/EventFeed";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
 import { AshChat } from "@/components/AshChat";
+import { SatoshiChat } from "@/components/SatoshiChat";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
@@ -89,6 +90,9 @@ export default function Home() {
 
           {/* AI Agent Chat */}
           <AIChat />
+
+          {/* Satoshi's Wisdom */}
+          <SatoshiChat />
 
           {/* Ash's Ecosystem Guide */}
           <AshChat />
