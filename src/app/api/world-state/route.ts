@@ -1,4 +1,8 @@
-import { NextResponse } from "next/server";
+// World State API - Token Launch Centric
+// The world is built from user-launched tokens, not external discovery
+// Each launched token becomes a building in BagsWorld
+
+import { NextRequest, NextResponse } from "next/server";
 import type {
   WorldState,
   FeeEarner,
@@ -7,10 +11,9 @@ import type {
   ClaimEvent,
 } from "@/lib/types";
 import { buildWorldState } from "@/lib/world-calculator";
-import { fetchTrendingTokens, DexToken } from "@/lib/dexscreener-api";
 import { Connection, PublicKey } from "@solana/web3.js";
 
-// Bags SDK types (from @bagsfm/bags-sdk)
+// Bags SDK types
 interface TokenLaunchCreator {
   username: string;
   pfp: string;
@@ -49,9 +52,15 @@ async function getBagsSDK(): Promise<any | null> {
   sdkInitPromise = (async () => {
     try {
       const { BagsSDK } = await import("@bagsfm/bags-sdk");
-      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+      const rpcUrl =
+        process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
+        "https://api.mainnet-beta.solana.com";
       const connection = new Connection(rpcUrl, "confirmed");
-      sdkInstance = new BagsSDK(process.env.BAGS_API_KEY!, connection, "processed");
+      sdkInstance = new BagsSDK(
+        process.env.BAGS_API_KEY!,
+        connection,
+        "processed"
+      );
       console.log("Bags SDK initialized successfully");
       return sdkInstance;
     } catch (error) {
@@ -64,16 +73,7 @@ async function getBagsSDK(): Promise<any | null> {
   return sdkInitPromise;
 }
 
-// Known Bags.fm token mints - add real Bags.fm token addresses here
-// These get priority display in the game
-const BAGS_FM_TOKEN_MINTS: string[] = [
-  // Example: "CyXBDcVQuHyEDbG661Jf3iHqxyd9wNHhE2SiQdNrBAGS"
-  // Real Bags.fm tokens will be added here as they're discovered
-  // The system will also discover Bags.fm tokens by checking DexScreener tokens
-  // against the Bags.fm SDK for creator data
-];
-
-// Cache for various data
+// Cache
 interface DataCache<T> {
   data: T;
   timestamp: number;
@@ -85,18 +85,16 @@ let claimEventsCache: DataCache<ClaimEvent[]> | null = null;
 let cachedWeather: { weather: WorldState["weather"]; fetchedAt: number } | null =
   null;
 
-const TOKEN_CACHE_DURATION = 60 * 1000; // 60 seconds
-const EARNER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const TOKEN_CACHE_DURATION = 30 * 1000; // 30 seconds (faster refresh for launches)
+const EARNER_CACHE_DURATION = 60 * 1000; // 1 minute
 const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const CLAIM_EVENTS_CACHE_DURATION = 30 * 1000; // 30 seconds
+const CLAIM_EVENTS_CACHE_DURATION = 15 * 1000; // 15 seconds
 
-// Store previous state for event generation
 let previousState: WorldState | null = null;
 
 // Fetch real Washington DC weather
 async function fetchDCWeather(): Promise<WorldState["weather"]> {
   try {
-    // Check cache first
     if (
       cachedWeather &&
       Date.now() - cachedWeather.fetchedAt < WEATHER_CACHE_DURATION
@@ -104,7 +102,6 @@ async function fetchDCWeather(): Promise<WorldState["weather"]> {
       return cachedWeather.weather;
     }
 
-    // Fetch from our weather API
     const baseUrl = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : process.env.NETLIFY
@@ -122,25 +119,22 @@ async function fetchDCWeather(): Promise<WorldState["weather"]> {
     const data = await response.json();
     const weather = data.gameWeather as WorldState["weather"];
 
-    // Update cache
     cachedWeather = { weather, fetchedAt: Date.now() };
 
     return weather;
   } catch (error) {
     console.error("Error fetching DC weather:", error);
-    // Return cached or default
     return cachedWeather?.weather ?? "cloudy";
   }
 }
 
-// Get current EST/EDT time info (handles Daylight Saving Time automatically)
+// Get current EST time info
 function getESTTimeInfo(): {
   hour: number;
   isNight: boolean;
   isDusk: boolean;
   isDawn: boolean;
 } {
-  // Use Intl API to get accurate Eastern Time with DST handling
   const now = new Date();
   const options: Intl.DateTimeFormatOptions = {
     timeZone: "America/New_York",
@@ -152,60 +146,34 @@ function getESTTimeInfo(): {
 
   return {
     hour: estHour,
-    isNight: estHour >= 20 || estHour < 6, // 8 PM to 6 AM
-    isDusk: estHour >= 18 && estHour < 20, // 6 PM to 8 PM
-    isDawn: estHour >= 6 && estHour < 8, // 6 AM to 8 AM
+    isNight: estHour >= 20 || estHour < 6,
+    isDusk: estHour >= 18 && estHour < 20,
+    isDawn: estHour >= 6 && estHour < 8,
   };
 }
 
-// Sample Bags.fm tokens - these represent the community/ecosystem
-// In production, this would be populated from a database or admin panel
-const SAMPLE_BAGS_TOKENS: Array<{
+// Registered token format (from client localStorage via POST)
+interface RegisteredToken {
   mint: string;
   name: string;
   symbol: string;
+  description?: string;
   imageUrl?: string;
-}> = [
-  {
-    mint: "BagsXYZ111111111111111111111111111111111111",
-    name: "BagsWorld",
-    symbol: "BAGS",
-    imageUrl: "/assets/buildings/level-5.png",
-  },
-  {
-    mint: "MayorABC222222222222222222222222222222222222",
-    name: "Mayor Coin",
-    symbol: "MAYOR",
-    imageUrl: "/assets/buildings/level-4.png",
-  },
-  {
-    mint: "CityDEF333333333333333333333333333333333333",
-    name: "City Token",
-    symbol: "CITY",
-    imageUrl: "/assets/buildings/level-3.png",
-  },
-  {
-    mint: "FeesGHI444444444444444444444444444444444444",
-    name: "Fee Sharer",
-    symbol: "FEES",
-    imageUrl: "/assets/buildings/level-2.png",
-  },
-  {
-    mint: "TownJKL555555555555555555555555555555555555",
-    name: "Town Hall",
-    symbol: "TOWN",
-    imageUrl: "/assets/buildings/level-1.png",
-  },
-];
+  creator: string;
+  createdAt: number;
+  feeShares?: Array<{
+    provider: string;
+    username: string;
+    bps: number;
+  }>;
+}
 
 // Build FeeEarner from SDK creator data
-// SDK returns: username, pfp, royaltyBps, isCreator, wallet, provider, providerUsername
 function buildFeeEarner(
   creator: TokenLaunchCreator,
   token: TokenInfo,
   rank: number
 ): FeeEarner {
-  // Prefer providerUsername for display (as per SDK docs), fallback to username
   const displayName = creator.providerUsername || creator.username || "Unknown";
 
   return {
@@ -216,265 +184,103 @@ function buildFeeEarner(
     wallet: creator.wallet,
     avatarUrl: creator.pfp || undefined,
     lifetimeEarnings: token.lifetimeFees,
-    earnings24h: token.volume24h * 0.01, // Estimate: ~1% of volume as fees
-    change24h: token.change24h,
+    earnings24h: token.lifetimeFees * 0.1, // Estimate
+    change24h: 0,
     tokenCount: 1,
     topToken: token,
   };
 }
 
-// Convert DexScreener token to our TokenInfo format
-function dexTokenToTokenInfo(
-  dexToken: DexToken,
-  lifetimeFees?: number,
-  creatorWallet?: string,
-  isBagsFm?: boolean
-): TokenInfo {
-  return {
-    mint: dexToken.mint,
-    name: dexToken.name,
-    symbol: dexToken.symbol,
-    imageUrl: dexToken.imageUrl,
-    price: dexToken.price,
-    marketCap: dexToken.marketCap,
-    volume24h: dexToken.volume24h,
-    change24h: dexToken.priceChange24h,
-    holders: 0,
-    lifetimeFees: lifetimeFees || 0,
-    creator: creatorWallet || "",
-  };
-}
-
-// Fetch live token data - discovers tokens via DexScreener, enriches with Bags.fm SDK data
-async function fetchLiveTokenData(): Promise<{
-  tokens: TokenInfo[];
-  earners: FeeEarner[];
+// Convert registered token to TokenInfo with SDK enrichment
+async function enrichTokenWithSDK(
+  token: RegisteredToken,
+  sdk: any | null
+): Promise<{
+  tokenInfo: TokenInfo;
+  creators: TokenLaunchCreator[];
   claimEvents: ClaimEvent[];
 }> {
-  const now = Date.now();
+  let lifetimeFees = 0;
+  let creators: TokenLaunchCreator[] = [];
+  let claimEvents: ClaimEvent[] = [];
 
-  // Check token cache
-  if (tokenCache && now - tokenCache.timestamp < TOKEN_CACHE_DURATION) {
-    if (earnerCache && now - earnerCache.timestamp < EARNER_CACHE_DURATION) {
-      return {
-        tokens: tokenCache.data,
-        earners: earnerCache.data,
-        claimEvents: claimEventsCache?.data || [],
-      };
-    }
-  }
+  if (sdk) {
+    try {
+      const mintPubkey = new PublicKey(token.mint);
 
-  // Initialize SDK (lazy load)
-  const sdk = await getBagsSDK();
+      const [creatorsResult, feesResult, eventsResult] =
+        await Promise.allSettled([
+          sdk.state.getTokenCreators(mintPubkey),
+          sdk.state.getTokenLifetimeFees(mintPubkey),
+          sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 }),
+        ]);
 
-  try {
-    // Step 1: Discover tokens from DexScreener
-    const dexTokens = await fetchTrendingTokens();
-    console.log(`Discovered ${dexTokens.length} tokens from DexScreener`);
-
-    if (dexTokens.length === 0) {
-      // Fallback to sample data if DexScreener fails
-      console.log("No tokens from DexScreener, using sample data");
-      const sampleTokens: TokenInfo[] = SAMPLE_BAGS_TOKENS.map((t, i) => ({
-        mint: t.mint,
-        name: t.name,
-        symbol: t.symbol,
-        imageUrl: t.imageUrl,
-        price: Math.random() * 0.01,
-        marketCap: (5 - i) * 100000 + Math.random() * 50000,
-        volume24h: (5 - i) * 10000 + Math.random() * 5000,
-        change24h: (Math.random() - 0.5) * 40,
-        holders: Math.floor(Math.random() * 1000) + 100,
-        lifetimeFees: (5 - i) * 50 + Math.random() * 25,
-        creator: `BagsCreator${i}111111111111111111111111111111`,
-      }));
-
-      const sampleEarners: FeeEarner[] = sampleTokens.map((t, i) => ({
-        rank: i + 1,
-        username: `bags_earner_${i + 1}`,
-        providerUsername: `bags_earner_${i + 1}`,
-        provider: "twitter" as const,
-        wallet: t.creator,
-        lifetimeEarnings: t.lifetimeFees,
-        earnings24h: t.lifetimeFees * 0.1,
-        change24h: t.change24h,
-        tokenCount: 1,
-        topToken: t,
-      }));
-
-      tokenCache = { data: sampleTokens, timestamp: now };
-      earnerCache = { data: sampleEarners, timestamp: now };
-      return { tokens: sampleTokens, earners: sampleEarners, claimEvents: [] };
-    }
-
-    // Step 2: For each token, try to get Bags.fm creator data using the SDK
-    // Tokens with Bags.fm creators are Bags.fm-launched tokens
-    const enrichedData = await Promise.all(
-      dexTokens.map(async (dexToken) => {
-        let creators: TokenLaunchCreator[] = [];
-        let lifetimeFees = 0;
-        let isBagsFmToken = false;
-
-        // Try to get Bags.fm data using the SDK
-        if (sdk) {
-          try {
-            const mintPubkey = new PublicKey(dexToken.mint);
-
-            // Use SDK methods as documented
-            const [creatorsResult, feesResult] = await Promise.allSettled([
-              sdk.state.getTokenCreators(mintPubkey),
-              sdk.state.getTokenLifetimeFees(mintPubkey),
-            ]);
-
-            if (creatorsResult.status === "fulfilled" && creatorsResult.value.length > 0) {
-              creators = creatorsResult.value;
-              isBagsFmToken = true; // Has Bags.fm creators = Bags.fm token!
-              console.log(`Found Bags.fm token: ${dexToken.symbol} with ${creators.length} creator(s)`);
-            }
-            if (feesResult.status === "fulfilled") {
-              lifetimeFees = feesResult.value || 0;
-            }
-          } catch {
-            // Token might not be on Bags.fm - that's ok
-          }
-        }
-
-        return {
-          dexToken,
-          creators,
-          lifetimeFees,
-          isBagsFmToken,
-        };
-      })
-    );
-
-    // Step 3: Build TokenInfo array - prioritize Bags.fm tokens
-    const bagsFmTokens = enrichedData.filter((d) => d.isBagsFmToken);
-    const otherTokens = enrichedData.filter((d) => !d.isBagsFmToken);
-
-    // Show Bags.fm tokens first, then fill with other popular tokens
-    const orderedData = [...bagsFmTokens, ...otherTokens].slice(0, 15);
-
-    console.log(`Found ${bagsFmTokens.length} Bags.fm tokens out of ${enrichedData.length} total`);
-
-    const tokens: TokenInfo[] = orderedData.map((data) =>
-      dexTokenToTokenInfo(
-        data.dexToken,
-        data.lifetimeFees,
-        data.creators[0]?.wallet,
-        data.isBagsFmToken
-      )
-    );
-
-    // Step 4: Build FeeEarner array from Bags.fm creators
-    const earnerMap = new Map<string, FeeEarner>();
-    let rank = 1;
-
-    orderedData.forEach((data) => {
-      if (!data.isBagsFmToken) return; // Only count Bags.fm creators
-
-      const token = dexTokenToTokenInfo(
-        data.dexToken,
-        data.lifetimeFees,
-        data.creators[0]?.wallet,
-        true
-      );
-
-      data.creators.forEach((creator) => {
-        // isCreator=true means primary creator, but we include all participants
-        const existing = earnerMap.get(creator.wallet);
-        if (existing) {
-          if (token.lifetimeFees > (existing.topToken?.lifetimeFees || 0)) {
-            existing.topToken = token;
-            existing.lifetimeEarnings += token.lifetimeFees;
-          }
-          existing.tokenCount++;
-        } else {
-          earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++));
-        }
-      });
-    });
-
-    // Convert earners map to sorted array
-    let earners = Array.from(earnerMap.values())
-      .sort((a, b) => b.lifetimeEarnings - a.lifetimeEarnings)
-      .slice(0, 15)
-      .map((e, i) => ({ ...e, rank: i + 1 }));
-
-    // If no Bags.fm earners, create sample earners from top tokens
-    if (earners.length === 0) {
-      earners = tokens.slice(0, 5).map((t, i) => ({
-        rank: i + 1,
-        username: `trader_${t.symbol.toLowerCase()}`,
-        providerUsername: `trader_${t.symbol.toLowerCase()}`,
-        provider: "twitter" as const,
-        wallet: t.creator || `Trader${i}11111111111111111111111111111111`,
-        avatarUrl: t.imageUrl,
-        lifetimeEarnings: t.volume24h * 0.01, // Estimate from volume
-        earnings24h: t.volume24h * 0.001,
-        change24h: t.change24h,
-        tokenCount: 1,
-        topToken: t,
-      }));
-    }
-
-    // Step 5: Fetch claim events from Bags.fm tokens using SDK
-    let claimEvents: ClaimEvent[] = [];
-    if (
-      sdk &&
-      bagsFmTokens.length > 0 &&
-      (!claimEventsCache || now - claimEventsCache.timestamp > CLAIM_EVENTS_CACHE_DURATION)
-    ) {
-      try {
-        const bagsFmMints = bagsFmTokens.slice(0, 5).map((t) => t.dexToken.mint);
-        const eventPromises = bagsFmMints.map(async (mint) => {
-          try {
-            const mintPubkey = new PublicKey(mint);
-            const events: TokenClaimEventSDK[] = await sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 });
-            // Convert SDK format to our ClaimEvent format
-            return events.map((e) => ({
-              signature: e.signature,
-              claimer: e.wallet,
-              claimerUsername: undefined,
-              amount: parseFloat(e.amount),
-              timestamp: e.timestamp,
-              tokenMint: mint,
-            }));
-          } catch {
-            return [];
-          }
-        });
-        const eventResults = await Promise.all(eventPromises);
-        claimEvents = eventResults
-          .flat()
-          .sort((a, b) => b.timestamp - a.timestamp)
-          .slice(0, 20);
-
-        claimEventsCache = { data: claimEvents, timestamp: now };
-      } catch {
-        claimEvents = claimEventsCache?.data || [];
+      if (creatorsResult.status === "fulfilled") {
+        creators = creatorsResult.value || [];
       }
-    } else {
-      claimEvents = claimEventsCache?.data || [];
+
+      if (feesResult.status === "fulfilled") {
+        lifetimeFees = feesResult.value || 0;
+      }
+
+      if (eventsResult.status === "fulfilled") {
+        const rawEvents: TokenClaimEventSDK[] = eventsResult.value || [];
+        claimEvents = rawEvents.map((e) => ({
+          signature: e.signature,
+          claimer: e.wallet,
+          claimerUsername: undefined,
+          amount: parseFloat(e.amount),
+          timestamp: e.timestamp,
+          tokenMint: token.mint,
+        }));
+      }
+    } catch (error) {
+      console.log(`Could not enrich token ${token.symbol}:`, error);
     }
-
-    // Update caches
-    tokenCache = { data: tokens, timestamp: now };
-    earnerCache = { data: earners, timestamp: now };
-
-    return { tokens, earners, claimEvents };
-  } catch (error) {
-    console.error("Error fetching token data:", error);
-    return {
-      tokens: tokenCache?.data || [],
-      earners: earnerCache?.data || [],
-      claimEvents: claimEventsCache?.data || [],
-    };
   }
+
+  // Build TokenInfo
+  const tokenInfo: TokenInfo = {
+    mint: token.mint,
+    name: token.name,
+    symbol: token.symbol,
+    imageUrl: token.imageUrl,
+    price: 0, // Would need price feed
+    marketCap: lifetimeFees > 0 ? lifetimeFees * 1000 : 10000, // Estimate from fees
+    volume24h: lifetimeFees > 0 ? lifetimeFees * 100 : 1000,
+    change24h: 0,
+    holders: 0,
+    lifetimeFees,
+    creator: token.creator,
+  };
+
+  return { tokenInfo, creators, claimEvents };
 }
 
-// Generate game events from Bags.fm claim events only
-function generateEventsFromClaims(
+// Starter buildings when no tokens are registered
+const STARTER_BUILDINGS: RegisteredToken[] = [
+  {
+    mint: "StarterTownHall11111111111111111111111111111",
+    name: "Town Hall",
+    symbol: "HALL",
+    description: "The heart of BagsWorld - launch your first token!",
+    imageUrl: "/assets/buildings/level-5.png",
+    creator: "BagsWorld",
+    createdAt: Date.now() - 86400000 * 30, // 30 days ago
+  },
+  {
+    mint: "StarterWelcome111111111111111111111111111111",
+    name: "Welcome Center",
+    symbol: "WELCOME",
+    description: "New to BagsWorld? Start here!",
+    imageUrl: "/assets/buildings/level-3.png",
+    creator: "BagsWorld",
+    createdAt: Date.now() - 86400000 * 7, // 7 days ago
+  },
+];
+
+// Generate events from claim data and launches
+function generateEvents(
   claimEvents: ClaimEvent[],
   tokens: TokenInfo[],
   existingEvents: GameEvent[]
@@ -482,108 +288,252 @@ function generateEventsFromClaims(
   const events: GameEvent[] = [...existingEvents];
   const existingIds = new Set(existingEvents.map((e) => e.id));
 
-  // Convert Bags.fm claim events to game events
+  // Add claim events
   claimEvents.forEach((claim) => {
-    const eventId = `bags-claim-${claim.signature}`;
+    const eventId = `claim-${claim.signature}`;
     if (!existingIds.has(eventId)) {
       const token = tokens.find((t) => t.mint === claim.tokenMint);
       events.unshift({
         id: eventId,
         type: "fee_claim",
-        message: `${claim.claimerUsername || claim.claimer.slice(0, 8)} claimed ${(claim.amount / 1e9).toFixed(2)} SOL from ${token?.symbol || "Bags token"}`,
+        message: `${claim.claimerUsername || claim.claimer.slice(0, 8)} claimed ${(claim.amount / 1e9).toFixed(2)} SOL from ${token?.symbol || "token"}`,
         timestamp: claim.timestamp * 1000,
         data: {
           username: claim.claimerUsername || claim.claimer.slice(0, 8),
-          tokenName: token?.name || "Bags.fm Token",
+          tokenName: token?.name,
           amount: claim.amount / 1e9,
         },
       });
     }
   });
 
-  // Add Bags.fm token activity events
+  // Add fee milestone events
   tokens.forEach((token) => {
-    // Only show significant movements for Bags.fm tokens
-    if (Math.abs(token.change24h) > 10) {
-      const eventId = `bags-price-${token.mint}-${Math.floor(Date.now() / 60000)}`;
-      if (!existingIds.has(eventId)) {
-        const type = token.change24h > 0 ? "price_pump" : "price_dump";
-        events.unshift({
-          id: eventId,
-          type,
-          message:
-            token.change24h > 0
-              ? `${token.symbol} pumped ${token.change24h.toFixed(0)}% on Bags.fm!`
-              : `${token.symbol} dropped ${Math.abs(token.change24h).toFixed(0)}% on Bags.fm`,
-          timestamp: Date.now(),
-          data: {
-            tokenName: token.name,
-            change: token.change24h,
-          },
-        });
-      }
-    }
-
-    // Add fee milestone events for Bags.fm tokens
     if (token.lifetimeFees > 0) {
-      const feeThresholds = [10, 50, 100, 500, 1000];
+      const feeThresholds = [1, 5, 10, 50, 100, 500, 1000];
       for (const threshold of feeThresholds) {
         if (token.lifetimeFees >= threshold) {
-          const eventId = `bags-milestone-${token.mint}-${threshold}`;
+          const eventId = `milestone-${token.mint}-${threshold}`;
           if (!existingIds.has(eventId)) {
             events.unshift({
               id: eventId,
               type: "milestone",
               message: `${token.symbol} reached ${threshold} SOL in lifetime fees!`,
-              timestamp: Date.now() - Math.random() * 86400000, // Random time in last 24h
+              timestamp: Date.now() - Math.random() * 3600000,
               data: {
                 tokenName: token.name,
                 amount: threshold,
               },
             });
-            break; // Only show highest reached milestone
+            break;
           }
         }
       }
     }
   });
 
-  // Keep only recent events and limit count
-  return events
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 20);
+  return events.sort((a, b) => b.timestamp - a.timestamp).slice(0, 25);
 }
 
-export async function GET() {
+// POST - Get world state for specific tokens (token launch-centric)
+export async function POST(request: NextRequest) {
   try {
-    // Fetch live data in parallel with weather
-    const [liveData, realWeather, timeInfo] = await Promise.all([
-      fetchLiveTokenData(),
+    const body = await request.json();
+    const registeredTokens: RegisteredToken[] = body.tokens || [];
+
+    const now = Date.now();
+    const sdk = await getBagsSDK();
+
+    // If no tokens registered, use starter buildings
+    const tokensToProcess =
+      registeredTokens.length > 0 ? registeredTokens : STARTER_BUILDINGS;
+
+    console.log(`Processing ${tokensToProcess.length} registered tokens`);
+
+    // Enrich all tokens with SDK data
+    const enrichedResults = await Promise.all(
+      tokensToProcess.map((token) => enrichTokenWithSDK(token, sdk))
+    );
+
+    // Build arrays
+    const tokens: TokenInfo[] = enrichedResults.map((r) => r.tokenInfo);
+    const allClaimEvents: ClaimEvent[] = enrichedResults
+      .flatMap((r) => r.claimEvents)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 20);
+
+    // Build fee earners from creators
+    const earnerMap = new Map<string, FeeEarner>();
+    let rank = 1;
+
+    enrichedResults.forEach((result, index) => {
+      const token = tokens[index];
+      result.creators.forEach((creator) => {
+        const existing = earnerMap.get(creator.wallet);
+        if (existing) {
+          existing.lifetimeEarnings += token.lifetimeFees;
+          existing.tokenCount++;
+          if (token.lifetimeFees > (existing.topToken?.lifetimeFees || 0)) {
+            existing.topToken = token;
+          }
+        } else {
+          earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++));
+        }
+      });
+    });
+
+    let earners = Array.from(earnerMap.values())
+      .sort((a, b) => b.lifetimeEarnings - a.lifetimeEarnings)
+      .slice(0, 15)
+      .map((e, i) => ({ ...e, rank: i + 1 }));
+
+    // If no earners, create placeholder from token creators
+    if (earners.length === 0) {
+      earners = tokens.slice(0, 5).map((t, i) => ({
+        rank: i + 1,
+        username: `creator_${i + 1}`,
+        providerUsername: `creator_${i + 1}`,
+        provider: "twitter" as const,
+        wallet: t.creator || `Creator${i}`,
+        lifetimeEarnings: t.lifetimeFees || 0,
+        earnings24h: (t.lifetimeFees || 0) * 0.1,
+        change24h: 0,
+        tokenCount: 1,
+        topToken: t,
+      }));
+    }
+
+    // Fetch weather and time
+    const [realWeather, timeInfo] = await Promise.all([
       fetchDCWeather(),
       Promise.resolve(getESTTimeInfo()),
     ]);
 
-    const { tokens, earners, claimEvents } = liveData;
+    // Build world state
+    const worldState = buildWorldState(earners, tokens, previousState ?? undefined);
 
-    // Build world state from live data
-    const worldState = buildWorldState(
-      earners,
-      tokens,
-      previousState ?? undefined
-    );
-
-    // Override weather with real DC weather
     worldState.weather = realWeather;
-
-    // Add time info to world state for day/night cycle
     (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;
 
-    // Generate events from real claim events
-    worldState.events = generateEventsFromClaims(
-      claimEvents,
+    // Generate events
+    worldState.events = generateEvents(
+      allClaimEvents,
       tokens,
       previousState?.events || []
     );
+
+    // Add token launch events for new tokens
+    tokens.forEach((token) => {
+      const launchEventId = `launch-${token.mint}`;
+      if (!worldState.events.some((e) => e.id === launchEventId)) {
+        // Check if this is a "new" token (less than 24 hours old based on createdAt)
+        const registeredToken = tokensToProcess.find((t) => t.mint === token.mint);
+        if (registeredToken && Date.now() - registeredToken.createdAt < 86400000) {
+          worldState.events.unshift({
+            id: launchEventId,
+            type: "token_launch",
+            message: `${token.symbol} building constructed in BagsWorld!`,
+            timestamp: registeredToken.createdAt,
+            data: {
+              tokenName: token.name,
+              username: "Builder",
+            },
+          });
+        }
+      }
+    });
+
+    // Track building count for city growth
+    (worldState as any).tokenCount = tokens.length;
+    (worldState as any).sdkAvailable = !!sdk;
+
+    previousState = worldState;
+
+    return NextResponse.json(worldState);
+  } catch (error) {
+    console.error("Error building world state:", error);
+    return NextResponse.json(
+      { error: "Failed to build world state" },
+      { status: 500 }
+    );
+  }
+}
+
+// GET - Basic world state (for initial load without tokens)
+export async function GET() {
+  try {
+    // Use cached data if available
+    const now = Date.now();
+    if (
+      tokenCache &&
+      now - tokenCache.timestamp < TOKEN_CACHE_DURATION &&
+      earnerCache
+    ) {
+      const [realWeather, timeInfo] = await Promise.all([
+        fetchDCWeather(),
+        Promise.resolve(getESTTimeInfo()),
+      ]);
+
+      const worldState = buildWorldState(
+        earnerCache.data,
+        tokenCache.data,
+        previousState ?? undefined
+      );
+
+      worldState.weather = realWeather;
+      (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;
+
+      if (previousState) {
+        worldState.events = previousState.events;
+      }
+
+      return NextResponse.json(worldState);
+    }
+
+    // Build from starter buildings
+    const sdk = await getBagsSDK();
+    const enrichedResults = await Promise.all(
+      STARTER_BUILDINGS.map((token) => enrichTokenWithSDK(token, sdk))
+    );
+
+    const tokens: TokenInfo[] = enrichedResults.map((r) => r.tokenInfo);
+    const earners: FeeEarner[] = tokens.slice(0, 5).map((t, i) => ({
+      rank: i + 1,
+      username: `citizen_${i + 1}`,
+      providerUsername: `citizen_${i + 1}`,
+      provider: "twitter" as const,
+      wallet: t.creator || `Citizen${i}`,
+      lifetimeEarnings: t.lifetimeFees || 0,
+      earnings24h: (t.lifetimeFees || 0) * 0.1,
+      change24h: 0,
+      tokenCount: 1,
+      topToken: t,
+    }));
+
+    const [realWeather, timeInfo] = await Promise.all([
+      fetchDCWeather(),
+      Promise.resolve(getESTTimeInfo()),
+    ]);
+
+    const worldState = buildWorldState(earners, tokens, previousState ?? undefined);
+
+    worldState.weather = realWeather;
+    (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;
+
+    // Add welcome message for empty world
+    worldState.events = [
+      {
+        id: "welcome-message",
+        type: "milestone",
+        message: "Welcome to BagsWorld! Launch a token to build your first building!",
+        timestamp: Date.now(),
+        data: {},
+      },
+    ];
+
+    // Update cache
+    tokenCache = { data: tokens, timestamp: now };
+    earnerCache = { data: earners, timestamp: now };
 
     previousState = worldState;
 

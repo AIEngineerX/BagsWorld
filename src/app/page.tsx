@@ -7,6 +7,7 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { EventFeed } from "@/components/EventFeed";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
+import { YourBuildings } from "@/components/YourBuildings";
 import { useWorldState } from "@/hooks/useWorldState";
 
 const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
@@ -24,7 +25,7 @@ const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
 });
 
 export default function Home() {
-  const { worldState, isLoading } = useWorldState();
+  const { worldState, isLoading, refreshAfterLaunch, tokenCount } = useWorldState();
 
   return (
     <main className="h-screen w-screen overflow-hidden flex flex-col">
@@ -64,6 +65,11 @@ export default function Home() {
 
         {/* Sidebar */}
         <aside className="w-80 bg-bags-dark border-l-4 border-bags-green flex flex-col">
+          {/* Your Buildings */}
+          <div className="max-h-48 overflow-hidden border-b-2 border-bags-green/50">
+            <YourBuildings onRefresh={refreshAfterLaunch} />
+          </div>
+
           {/* Leaderboard */}
           <div className="flex-1 overflow-hidden">
             <Leaderboard />
@@ -89,6 +95,12 @@ export default function Home() {
             BUILDINGS:{" "}
             <span className="text-white">
               {worldState?.buildings?.length ?? 0}
+            </span>
+          </span>
+          <span className="text-gray-400">
+            YOUR TOKENS:{" "}
+            <span className="text-bags-gold">
+              {tokenCount ?? 0}
             </span>
           </span>
         </div>

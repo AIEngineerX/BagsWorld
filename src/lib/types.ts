@@ -133,6 +133,7 @@ export interface GameBuilding {
 
 export type GameEventType =
   | "token_launch"
+  | "building_constructed"
   | "fee_claim"
   | "price_pump"
   | "price_dump"

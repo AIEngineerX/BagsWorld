@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { saveLaunchedToken, type LaunchedToken } from "@/lib/token-registry";
 
 interface FeeShareEntry {
   provider: string;
@@ -10,9 +11,10 @@ interface FeeShareEntry {
 
 interface LaunchModalProps {
   onClose: () => void;
+  onLaunchSuccess?: () => void;
 }
 
-export function LaunchModal({ onClose }: LaunchModalProps) {
+export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     symbol: "",
@@ -150,10 +152,41 @@ export function LaunchModal({ onClose }: LaunchModalProps) {
       }
 
       // 3. Create launch transaction (would need wallet signing)
-      setSuccess(`Token ${formData.symbol} created! Mint: ${mint.slice(0, 8)}...`);
-
       // In full implementation, would sign and submit transaction
       // const launchTxResponse = await fetch("/api/launch-token", { ... });
+
+      // 4. Save token to registry for the world to display
+      const launchedToken: LaunchedToken = {
+        mint,
+        name: formData.name,
+        symbol: formData.symbol,
+        description: formData.description,
+        imageUrl: imagePreview || undefined,
+        creator: (window as any).solana?.publicKey?.toString() || "Unknown",
+        createdAt: Date.now(),
+        feeShares: validFeeShares.map((f) => ({
+          provider: f.provider,
+          username: f.username.replace("@", ""),
+          bps: f.bps,
+        })),
+      };
+
+      saveLaunchedToken(launchedToken);
+
+      // Dispatch custom event to notify useWorldState hook
+      window.dispatchEvent(new CustomEvent("bagsworld-token-update"));
+
+      setSuccess(`Token ${formData.symbol} created! Your building is being constructed...`);
+
+      // Call the success callback to refresh the world state
+      if (onLaunchSuccess) {
+        onLaunchSuccess();
+      }
+
+      // Auto-close after a short delay
+      setTimeout(() => {
+        onClose();
+      }, 2000);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to launch token");

@@ -9,6 +9,7 @@ import {
   TargetIcon,
   WhaleIcon,
   SignalIcon,
+  HammerIcon,
 } from "./icons";
 
 interface EventFeedProps {
@@ -31,6 +32,8 @@ export function EventFeed({ events }: EventFeedProps) {
     switch (type) {
       case "token_launch":
         return { color: "text-purple-400", icon: <RocketIcon size={14} />, bg: "bg-purple-500/10" };
+      case "building_constructed":
+        return { color: "text-orange-400", icon: <HammerIcon size={14} />, bg: "bg-orange-500/10" };
       case "fee_claim":
         return { color: "text-bags-gold", icon: <DiamondIcon size={14} />, bg: "bg-yellow-500/10" };
       case "price_pump":

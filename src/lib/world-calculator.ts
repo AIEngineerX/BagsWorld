@@ -199,6 +199,7 @@ export function generateGameEvent(
 ): GameEvent {
   const messages: Record<GameEvent["type"], (data: GameEvent["data"]) => string> = {
     token_launch: (d) => `🏗️ ${d?.username} launched ${d?.tokenName}!`,
+    building_constructed: (d) => `🏢 New building: ${d?.tokenName} constructed!`,
     fee_claim: (d) =>
       `💰 ${d?.username} claimed ${d?.amount?.toFixed(2)} SOL`,
     price_pump: (d) =>
