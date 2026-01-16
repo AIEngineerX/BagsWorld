@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { saveLaunchedToken, type LaunchedToken } from "@/lib/token-registry";
 
 interface FeeShareEntry {
@@ -15,6 +17,9 @@ interface LaunchModalProps {
 }
 
 export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
+  const { publicKey, connected } = useWallet();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
+
   const [formData, setFormData] = useState({
     name: "",
     symbol: "",
@@ -95,9 +100,10 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
     setIsLoading(true);
 
     try {
-      // Check for wallet (would need wallet adapter in real implementation)
-      if (typeof window !== "undefined" && !(window as any).solana?.isConnected) {
-        setError("Connect your Solana wallet to launch a token! (Phantom, Solflare, etc.)");
+      // Check for wallet connection
+      if (!connected || !publicKey) {
+        setError("Connect your Solana wallet first!");
+        setWalletModalVisible(true);
         setIsLoading(false);
         return;
       }
@@ -162,7 +168,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         symbol: formData.symbol,
         description: formData.description,
         imageUrl: imagePreview || undefined,
-        creator: (window as any).solana?.publicKey?.toString() || "Unknown",
+        creator: publicKey?.toBase58() || "Unknown",
         createdAt: Date.now(),
         feeShares: validFeeShares.map((f) => ({
           provider: f.provider,
