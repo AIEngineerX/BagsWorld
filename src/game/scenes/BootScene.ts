@@ -126,6 +126,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate trees and decorations
     this.generateDecorations();
+
+    // Generate animals
+    this.generateAnimals();
   }
 
   private generateGrass(): void {
@@ -598,5 +601,156 @@ export class BootScene extends Phaser.Scene {
     bench.fillRect(0, 4, 32, 4);
     bench.generateTexture("bench", 32, 20);
     bench.destroy();
+  }
+
+  private generateAnimals(): void {
+    // Dog - pixel art style
+    const dog = this.make.graphics({ x: 0, y: 0 });
+    // Body
+    dog.fillStyle(0xc68642); // Brown
+    dog.fillRect(4, 8, 16, 10);
+    // Head
+    dog.fillRect(18, 4, 10, 10);
+    // Ears
+    dog.fillStyle(0x8d5524);
+    dog.fillRect(18, 2, 4, 4);
+    dog.fillRect(24, 2, 4, 4);
+    // Snout
+    dog.fillStyle(0xffdbac);
+    dog.fillRect(26, 8, 4, 4);
+    // Nose
+    dog.fillStyle(0x1f2937);
+    dog.fillRect(28, 9, 2, 2);
+    // Eye
+    dog.fillStyle(0x000000);
+    dog.fillRect(22, 6, 2, 2);
+    // Legs
+    dog.fillStyle(0xc68642);
+    dog.fillRect(6, 16, 3, 6);
+    dog.fillRect(14, 16, 3, 6);
+    // Tail
+    dog.fillRect(2, 6, 3, 4);
+    dog.generateTexture("dog", 32, 24);
+    dog.destroy();
+
+    // Cat - pixel art style
+    const cat = this.make.graphics({ x: 0, y: 0 });
+    // Body
+    cat.fillStyle(0x6b7280); // Gray
+    cat.fillRect(6, 10, 14, 8);
+    // Head
+    cat.fillRect(16, 4, 10, 10);
+    // Ears (triangular)
+    cat.fillStyle(0x4b5563);
+    cat.fillTriangle(16, 6, 18, 0, 20, 6);
+    cat.fillTriangle(24, 6, 26, 0, 28, 6);
+    // Inner ears
+    cat.fillStyle(0xfca5a5);
+    cat.fillTriangle(17, 5, 18, 2, 19, 5);
+    cat.fillTriangle(25, 5, 26, 2, 27, 5);
+    // Eyes
+    cat.fillStyle(0x22c55e); // Green eyes
+    cat.fillRect(18, 7, 2, 3);
+    cat.fillRect(23, 7, 2, 3);
+    // Pupils
+    cat.fillStyle(0x000000);
+    cat.fillRect(18, 8, 1, 2);
+    cat.fillRect(23, 8, 1, 2);
+    // Nose
+    cat.fillStyle(0xfca5a5);
+    cat.fillRect(21, 10, 2, 1);
+    // Whiskers
+    cat.fillStyle(0x9ca3af);
+    cat.fillRect(14, 9, 4, 1);
+    cat.fillRect(26, 9, 4, 1);
+    cat.fillRect(14, 11, 4, 1);
+    cat.fillRect(26, 11, 4, 1);
+    // Legs
+    cat.fillStyle(0x6b7280);
+    cat.fillRect(8, 16, 3, 5);
+    cat.fillRect(15, 16, 3, 5);
+    // Tail (curved up)
+    cat.fillRect(4, 8, 3, 2);
+    cat.fillRect(2, 4, 3, 5);
+    cat.generateTexture("cat", 32, 24);
+    cat.destroy();
+
+    // Bird - small sparrow
+    const bird = this.make.graphics({ x: 0, y: 0 });
+    // Body
+    bird.fillStyle(0x8b4513); // Brown
+    bird.fillEllipse(8, 8, 8, 6);
+    // Head
+    bird.fillCircle(14, 6, 4);
+    // Beak
+    bird.fillStyle(0xfbbf24);
+    bird.fillTriangle(18, 6, 22, 6, 18, 8);
+    // Eye
+    bird.fillStyle(0x000000);
+    bird.fillCircle(15, 5, 1);
+    // Wing
+    bird.fillStyle(0x6b4423);
+    bird.fillEllipse(6, 8, 5, 4);
+    // Tail
+    bird.fillStyle(0x5c3317);
+    bird.fillTriangle(0, 6, 4, 8, 4, 10);
+    // Legs
+    bird.fillStyle(0xfbbf24);
+    bird.fillRect(7, 12, 1, 4);
+    bird.fillRect(10, 12, 1, 4);
+    bird.generateTexture("bird", 24, 18);
+    bird.destroy();
+
+    // Butterfly
+    const butterfly = this.make.graphics({ x: 0, y: 0 });
+    // Wings
+    butterfly.fillStyle(0xec4899); // Pink
+    butterfly.fillEllipse(4, 6, 4, 5);
+    butterfly.fillEllipse(12, 6, 4, 5);
+    butterfly.fillStyle(0xf472b6);
+    butterfly.fillEllipse(4, 10, 3, 4);
+    butterfly.fillEllipse(12, 10, 3, 4);
+    // Body
+    butterfly.fillStyle(0x1f2937);
+    butterfly.fillRect(7, 4, 2, 10);
+    // Antennae
+    butterfly.fillRect(6, 2, 1, 3);
+    butterfly.fillRect(9, 2, 1, 3);
+    // Wing patterns
+    butterfly.fillStyle(0xfbbf24);
+    butterfly.fillCircle(4, 6, 1);
+    butterfly.fillCircle(12, 6, 1);
+    butterfly.generateTexture("butterfly", 16, 16);
+    butterfly.destroy();
+
+    // Squirrel
+    const squirrel = this.make.graphics({ x: 0, y: 0 });
+    // Body
+    squirrel.fillStyle(0xb45309); // Orange-brown
+    squirrel.fillRect(8, 10, 10, 8);
+    // Head
+    squirrel.fillCircle(20, 10, 5);
+    // Ear
+    squirrel.fillStyle(0x92400e);
+    squirrel.fillTriangle(18, 4, 20, 2, 22, 6);
+    // Eye
+    squirrel.fillStyle(0x000000);
+    squirrel.fillCircle(21, 9, 1);
+    // Nose
+    squirrel.fillStyle(0x1f2937);
+    squirrel.fillCircle(24, 11, 1);
+    // Fluffy tail
+    squirrel.fillStyle(0xb45309);
+    squirrel.fillEllipse(4, 6, 5, 8);
+    squirrel.fillStyle(0xd97706);
+    squirrel.fillEllipse(4, 4, 3, 5);
+    // Legs
+    squirrel.fillStyle(0xb45309);
+    squirrel.fillRect(10, 16, 2, 4);
+    squirrel.fillRect(15, 16, 2, 4);
+    // Front paws
+    squirrel.fillRect(18, 14, 2, 3);
+    squirrel.generateTexture("squirrel", 28, 22);
+    squirrel.destroy();
   }
 }

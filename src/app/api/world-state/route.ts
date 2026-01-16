@@ -234,6 +234,63 @@ let accumulatedChanges: Map<string, number> = new Map();
 // Store previous state for event generation
 let previousState: WorldState | null = null;
 
+// Cache weather data
+let cachedWeather: { weather: WorldState["weather"]; fetchedAt: number } | null = null;
+const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Fetch real Washington DC weather
+async function fetchDCWeather(): Promise<WorldState["weather"]> {
+  try {
+    // Check cache first
+    if (cachedWeather && Date.now() - cachedWeather.fetchedAt < WEATHER_CACHE_DURATION) {
+      return cachedWeather.weather;
+    }
+
+    // Fetch from our weather API
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NETLIFY
+      ? process.env.URL
+      : "http://localhost:3000";
+
+    const response = await fetch(`${baseUrl}/api/weather`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error("Weather API error");
+    }
+
+    const data = await response.json();
+    const weather = data.gameWeather as WorldState["weather"];
+
+    // Update cache
+    cachedWeather = { weather, fetchedAt: Date.now() };
+
+    return weather;
+  } catch (error) {
+    console.error("Error fetching DC weather:", error);
+    // Return cached or default
+    return cachedWeather?.weather ?? "cloudy";
+  }
+}
+
+// Get current EST time info
+function getESTTimeInfo(): { hour: number; isNight: boolean; isDusk: boolean; isDawn: boolean } {
+  const now = new Date();
+  // Convert to EST (UTC-5) or EDT (UTC-4) depending on DST
+  const estOffset = -5; // Standard EST offset
+  const utcHour = now.getUTCHours();
+  const estHour = (utcHour + estOffset + 24) % 24;
+
+  return {
+    hour: estHour,
+    isNight: estHour >= 20 || estHour < 6, // 8 PM to 6 AM
+    isDusk: estHour >= 18 && estHour < 20, // 6 PM to 8 PM
+    isDawn: estHour >= 6 && estHour < 8, // 6 AM to 8 AM
+  };
+}
+
 // Simulate realistic market movements
 function simulateMarketChange(baseChange: number, timeDelta: number): number {
   // Small random walk based on time elapsed
@@ -251,6 +308,12 @@ export async function GET() {
     const now = Date.now();
     const timeDelta = now - lastUpdateTime;
     lastUpdateTime = now;
+
+    // Fetch real DC weather
+    const realWeather = await fetchDCWeather();
+
+    // Get EST time info
+    const timeInfo = getESTTimeInfo();
 
     // Apply realistic market simulation to earners
     const earners = BASE_FEE_EARNERS.map((e) => {
@@ -295,6 +358,12 @@ export async function GET() {
 
     // Build world state
     const worldState = buildWorldState(earners, tokens, previousState ?? undefined);
+
+    // Override weather with real DC weather
+    worldState.weather = realWeather;
+
+    // Add time info to world state for day/night cycle
+    (worldState as any).timeInfo = timeInfo;
 
     // Generate events based on significant changes (more realistic)
     const shouldGenerateEvent = Math.random() > 0.6; // 40% chance per request

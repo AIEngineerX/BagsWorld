@@ -1,6 +1,16 @@
 import * as Phaser from "phaser";
 import type { WorldState, GameCharacter, GameBuilding } from "@/lib/types";
 
+interface Animal {
+  sprite: Phaser.GameObjects.Sprite;
+  type: "dog" | "cat" | "bird" | "butterfly" | "squirrel";
+  targetX: number;
+  speed: number;
+  direction: "left" | "right";
+  idleTimer: number;
+  isIdle: boolean;
+}
+
 export class WorldScene extends Phaser.Scene {
   private worldState: WorldState | null = null;
   private characterSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
@@ -9,6 +19,7 @@ export class WorldScene extends Phaser.Scene {
   private weatherEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private clouds: Phaser.GameObjects.Sprite[] = [];
   private decorations: Phaser.GameObjects.Sprite[] = [];
+  private animals: Animal[] = [];
   private ground!: Phaser.GameObjects.TileSprite;
   private timeOfDay = 0;
   private overlay!: Phaser.GameObjects.Rectangle;
@@ -34,6 +45,9 @@ export class WorldScene extends Phaser.Scene {
 
     // Initialize clouds
     this.createClouds();
+
+    // Add animals to the world
+    this.createAnimals();
 
     // Start day/night cycle
     this.startDayNightCycle();
@@ -193,6 +207,80 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  private createAnimals(): void {
+    const animalTypes: Animal["type"][] = ["dog", "cat", "bird", "butterfly", "squirrel"];
+
+    // Create a variety of animals
+    const animalConfigs = [
+      { type: "dog" as const, x: 150, y: 555, scale: 1.2 },
+      { type: "cat" as const, x: 650, y: 555, scale: 1.1 },
+      { type: "bird" as const, x: 100, y: 480, scale: 0.8 },
+      { type: "bird" as const, x: 700, y: 490, scale: 0.7 },
+      { type: "butterfly" as const, x: 300, y: 470, scale: 0.6 },
+      { type: "butterfly" as const, x: 500, y: 460, scale: 0.5 },
+      { type: "squirrel" as const, x: 80, y: 475, scale: 1.0 },
+    ];
+
+    animalConfigs.forEach((config) => {
+      const sprite = this.add.sprite(config.x, config.y, config.type);
+      sprite.setScale(config.scale);
+      sprite.setDepth(4);
+
+      // Flying animals have higher depth
+      if (config.type === "bird" || config.type === "butterfly") {
+        sprite.setDepth(15);
+      }
+
+      const animal: Animal = {
+        sprite,
+        type: config.type,
+        targetX: config.x + (Math.random() * 200 - 100),
+        speed: config.type === "butterfly" ? 0.3 : config.type === "bird" ? 0.5 : 0.2,
+        direction: Math.random() > 0.5 ? "left" : "right",
+        idleTimer: 0,
+        isIdle: Math.random() > 0.5,
+      };
+
+      this.animals.push(animal);
+
+      // Add idle animation for ground animals
+      if (config.type !== "bird" && config.type !== "butterfly") {
+        this.tweens.add({
+          targets: sprite,
+          y: config.y - 2,
+          duration: 500 + Math.random() * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      }
+
+      // Flying animation for birds and butterflies
+      if (config.type === "bird") {
+        this.tweens.add({
+          targets: sprite,
+          y: config.y - 15,
+          duration: 800 + Math.random() * 400,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      }
+
+      if (config.type === "butterfly") {
+        this.tweens.add({
+          targets: sprite,
+          y: config.y - 20,
+          angle: 5,
+          duration: 600 + Math.random() * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      }
+    });
+  }
+
   update(): void {
     // Update character movements with smoother motion
     this.characterSprites.forEach((sprite, id) => {
@@ -223,6 +311,40 @@ export class WorldScene extends Phaser.Scene {
         cloud.y = 30 + Math.random() * 120;
       }
     });
+
+    // Animate animals
+    this.animals.forEach((animal) => {
+      if (animal.isIdle) {
+        animal.idleTimer += 1;
+        // After idle period, start moving again
+        if (animal.idleTimer > 100 + Math.random() * 200) {
+          animal.isIdle = false;
+          animal.idleTimer = 0;
+          animal.targetX = 50 + Math.random() * 700;
+          animal.direction = animal.targetX > animal.sprite.x ? "right" : "left";
+        }
+      } else {
+        // Move toward target
+        const dx = animal.targetX - animal.sprite.x;
+        if (Math.abs(dx) < 5) {
+          // Reached target, become idle
+          animal.isIdle = true;
+        } else {
+          animal.sprite.x += animal.speed * (dx > 0 ? 1 : -1);
+          animal.sprite.setFlipX(dx < 0);
+        }
+
+        // Keep within bounds
+        if (animal.sprite.x < 30) {
+          animal.sprite.x = 30;
+          animal.targetX = 50 + Math.random() * 300;
+        }
+        if (animal.sprite.x > 770) {
+          animal.sprite.x = 770;
+          animal.targetX = 500 + Math.random() * 250;
+        }
+      }
+    });
   }
 
   updateWorldState(state: WorldState): void {
@@ -232,6 +354,11 @@ export class WorldScene extends Phaser.Scene {
     // Update weather
     if (previousState?.weather !== state.weather) {
       this.updateWeather(state.weather);
+    }
+
+    // Update day/night based on EST time from server
+    if (state.timeInfo) {
+      this.updateDayNightFromEST(state.timeInfo);
     }
 
     // Update characters
@@ -249,36 +376,43 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  private updateDayNightFromEST(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
+    let alpha = 0;
+    let tint = 0x000000;
+
+    if (timeInfo.isNight) {
+      // Night (8 PM to 6 AM EST)
+      alpha = 0.4;
+      tint = 0x1a1a4e;
+    } else if (timeInfo.isDusk) {
+      // Dusk (6 PM to 8 PM EST)
+      alpha = 0.2;
+      tint = 0x4a2a4e;
+    } else if (timeInfo.isDawn) {
+      // Dawn (6 AM to 8 AM EST)
+      alpha = 0.15;
+      tint = 0x4a3a2e;
+    }
+
+    this.tweens.add({
+      targets: this.overlay,
+      alpha,
+      duration: 2000,
+      ease: "Linear",
+    });
+
+    if (alpha > 0) {
+      this.overlay.setFillStyle(tint, alpha);
+    }
+  }
+
   private startDayNightCycle(): void {
+    // This now serves as a fallback for smooth transitions
+    // The actual day/night state comes from EST time via API
     this.time.addEvent({
-      delay: 1000,
+      delay: 5000,
       callback: () => {
-        this.timeOfDay = (this.timeOfDay + 1) % 300;
-        const progress = this.timeOfDay / 300;
-
-        let alpha = 0;
-        let tint = 0x000000;
-
-        if (progress > 0.75 || progress < 0.15) {
-          // Night
-          alpha = 0.35;
-          tint = 0x1a1a4e;
-        } else if (progress > 0.65 || progress < 0.25) {
-          // Dusk/Dawn
-          alpha = 0.15;
-          tint = 0x4a2a4e;
-        }
-
-        this.tweens.add({
-          targets: this.overlay,
-          alpha,
-          duration: 2000,
-          ease: "Linear",
-        });
-
-        if (alpha > 0) {
-          this.overlay.setFillStyle(tint, alpha);
-        }
+        // Smooth overlay transitions are handled by updateDayNightFromEST
       },
       loop: true,
     });
