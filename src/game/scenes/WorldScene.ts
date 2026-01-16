@@ -1359,10 +1359,10 @@ export class WorldScene extends Phaser.Scene {
     });
     quoteText.setOrigin(0.5, 0.5);
 
-    const clickText = this.add.text(0, 26, "💜 Click for Solana wisdom", {
+    const clickText = this.add.text(0, 26, "₿ Click for crypto wisdom", {
       fontFamily: "monospace",
       fontSize: "7px",
-      color: "#9945ff",
+      color: "#f7931a",
     });
     clickText.setOrigin(0.5, 0.5);
 

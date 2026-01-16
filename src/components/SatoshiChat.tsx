@@ -31,7 +31,7 @@ const CRYPTO_TOPICS = [
   {
     title: "21 Million Cap",
     icon: "🔢",
-    content: "There will only ever be 21 million Bitcoin. This fixed supply makes it deflationary by design. Lost coins only make everyone else&apos;s coins worth slightly more. Think of it as a donation to everyone."
+    content: "There will only ever be 21 million Bitcoin. This fixed supply makes it deflationary by design. Lost coins only make everyone else's coins worth slightly more. Think of it as a donation to everyone."
   },
   {
     title: "Proof of Work",
@@ -41,12 +41,12 @@ const CRYPTO_TOPICS = [
   {
     title: "The Genesis Block",
     icon: "📜",
-    content: "On January 3, 2009, the genesis block was mined with the message: &apos;The Times 03/Jan/2009 Chancellor on brink of second bailout for banks.&apos; This marked the birth of Bitcoin."
+    content: "On January 3, 2009, the genesis block was mined with the message: 'The Times 03/Jan/2009 Chancellor on brink of second bailout for banks.' This marked the birth of Bitcoin."
   },
   {
-    title: "Satoshi&apos;s Disappearance",
+    title: "Satoshi's Disappearance",
     icon: "👻",
-    content: "In 2011, Satoshi Nakamoto sent a final message: &apos;I&apos;ve moved on to other things.&apos; The identity remains unknown. Some say it&apos;s better this way - Bitcoin belongs to everyone now."
+    content: "In 2011, Satoshi Nakamoto sent a final message: 'I've moved on to other things.' The identity remains unknown. Some say it's better this way - Bitcoin belongs to everyone now."
   },
 ];
 
@@ -59,11 +59,11 @@ export function SatoshiChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
-  // Listen for Satoshi click events
+  // Listen for Satoshi click events (from Toly character or header button)
   useEffect(() => {
     const handleSatoshiClick = () => {
       setIsOpen(true);
-      // Add Satoshi&apos;s greeting
+      // Add Satoshi's greeting
       const randomQuote = SATOSHI_QUOTES[Math.floor(Math.random() * SATOSHI_QUOTES.length)];
       addMessage({
         id: `${Date.now()}-satoshi`,
@@ -73,9 +73,12 @@ export function SatoshiChat() {
       });
     };
 
+    // Listen for both events - toly click opens satoshi wisdom
     window.addEventListener("bagsworld-satoshi-click", handleSatoshiClick);
+    window.addEventListener("bagsworld-toly-click", handleSatoshiClick);
     return () => {
       window.removeEventListener("bagsworld-satoshi-click", handleSatoshiClick);
+      window.removeEventListener("bagsworld-toly-click", handleSatoshiClick);
     };
   }, []);
 
@@ -147,7 +150,7 @@ export function SatoshiChat() {
         "It might make sense just to get some in case it catches on.",
         "I am not Dorian Nakamoto.",
         "Writing a description for this thing for general audiences is bloody hard.",
-        "If you don&apos;t believe it or don&apos;t get it, I don&apos;t have the time to try to convince you, sorry.",
+        "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.",
       ];
       addMessage({
         id: `${Date.now()}-satoshi-comment`,
