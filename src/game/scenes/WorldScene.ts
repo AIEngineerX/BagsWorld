@@ -643,14 +643,15 @@ export class WorldScene extends Phaser.Scene {
     const previousState = this.worldState;
     this.worldState = state;
 
-    // Update weather
-    if (previousState?.weather !== state.weather) {
-      this.updateWeather(state.weather);
-    }
-
-    // Update day/night based on EST time from server
+    // IMPORTANT: Update day/night FIRST so weather effects know the time
+    // Always update time info to ensure correct celestial bodies
     if (state.timeInfo) {
       this.updateDayNightFromEST(state.timeInfo);
+    }
+
+    // Update weather AFTER time is set (check if weather changed OR if this is first load)
+    if (!previousState || previousState.weather !== state.weather) {
+      this.updateWeather(state.weather);
     }
 
     // Update characters
@@ -870,9 +871,16 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createSunnyEffect(): void {
-    // Only show sun during daytime
-    if (this.currentTimeInfo?.isNight) {
-      return; // Don't show sun at night
+    // Only show sun during daytime - check multiple conditions
+    if (this.currentTimeInfo?.isNight || this.currentTimeInfo?.isDusk) {
+      // At night or dusk, don't show sun - moon will be shown instead
+      return;
+    }
+
+    // Also destroy any existing sun to prevent duplicates
+    if (this.sunSprite) {
+      this.sunSprite.destroy();
+      this.sunSprite = null;
     }
 
     this.sunSprite = this.add.sprite(700, 70, "sun");
