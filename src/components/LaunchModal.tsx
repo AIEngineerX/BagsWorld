@@ -11,6 +11,11 @@ interface FeeShareEntry {
   bps: number; // basis points (100 = 1%)
 }
 
+// Ecosystem configuration - 10% of all fees support BagsWorld
+const ECOSYSTEM_FEE_BPS = 1000; // 10%
+const ECOSYSTEM_WALLET = "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3";
+const ECOSYSTEM_PROVIDER = "solana"; // Direct wallet
+
 interface LaunchModalProps {
   onClose: () => void;
   onLaunchSuccess?: () => void;
@@ -37,7 +42,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
     { provider: "twitter", username: "", bps: 500 }, // Default 5% to creator
   ]);
 
-  const totalBps = feeShares.reduce((sum, f) => sum + (f.username ? f.bps : 0), 0);
+  const userTotalBps = feeShares.reduce((sum, f) => sum + (f.username ? f.bps : 0), 0);
+  const totalBps = userTotalBps + ECOSYSTEM_FEE_BPS; // Include ecosystem fee
   const isValidBps = totalBps <= 10000; // Max 100%
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,33 +138,44 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
       const { tokenMint, tokenMetadata } = await tokenInfoResponse.json();
 
-      // 2. Configure fee sharing
+      // 2. Configure fee sharing (always includes ecosystem fee)
       const validFeeShares = feeShares.filter(f => f.username.trim());
-      let configKey: string | undefined;
-      if (validFeeShares.length > 0) {
-        const feeConfigResponse = await fetch("/api/launch-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "configure-fees",
-            data: {
-              mint: tokenMint,
-              feeClaimers: validFeeShares.map(f => ({
-                provider: f.provider,
-                providerUsername: f.username.replace("@", ""),
-                bps: f.bps,
-              })),
-            },
-          }),
-        });
 
-        if (feeConfigResponse.ok) {
-          const feeResult = await feeConfigResponse.json();
-          configKey = feeResult.configId;
-        } else {
-          console.warn("Fee config warning:", await feeConfigResponse.text());
-          // Continue anyway, fee config is optional
-        }
+      // Build fee claimers array - always include ecosystem fee
+      const allFeeClaimers = [
+        // Ecosystem fee - 10% to support BagsWorld
+        {
+          provider: ECOSYSTEM_PROVIDER,
+          providerUsername: ECOSYSTEM_WALLET,
+          bps: ECOSYSTEM_FEE_BPS,
+        },
+        // User-defined fee shares
+        ...validFeeShares.map(f => ({
+          provider: f.provider,
+          providerUsername: f.username.replace("@", ""),
+          bps: f.bps,
+        })),
+      ];
+
+      let configKey: string | undefined;
+      const feeConfigResponse = await fetch("/api/launch-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "configure-fees",
+          data: {
+            mint: tokenMint,
+            feeClaimers: allFeeClaimers,
+          },
+        }),
+      });
+
+      if (feeConfigResponse.ok) {
+        const feeResult = await feeConfigResponse.json();
+        configKey = feeResult.configId;
+      } else {
+        console.warn("Fee config warning:", await feeConfigResponse.text());
+        // Continue anyway, fee config is optional
       }
 
       // 3. Create launch transaction and sign it
@@ -194,11 +211,19 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         imageUrl: imagePreview || undefined,
         creator: publicKey?.toBase58() || "Unknown",
         createdAt: Date.now(),
-        feeShares: validFeeShares.map((f) => ({
-          provider: f.provider,
-          username: f.username.replace("@", ""),
-          bps: f.bps,
-        })),
+        feeShares: [
+          // Include ecosystem fee in saved data
+          {
+            provider: "ecosystem",
+            username: "BagsWorld",
+            bps: ECOSYSTEM_FEE_BPS,
+          },
+          ...validFeeShares.map((f) => ({
+            provider: f.provider,
+            username: f.username.replace("@", ""),
+            bps: f.bps,
+          })),
+        ],
       };
 
       saveLaunchedToken(launchedToken);
@@ -384,6 +409,20 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <p className="font-pixel text-[8px] text-gray-400">
                 Add social accounts to share fees with. Each trade generates fees that get split among claimers.
               </p>
+            </div>
+
+            {/* Ecosystem Fee - Always included */}
+            <div className="bg-bags-gold/10 border border-bags-gold/30 p-3">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">🏙️</span>
+                  <div>
+                    <p className="font-pixel text-[10px] text-bags-gold">BagsWorld Ecosystem</p>
+                    <p className="font-pixel text-[7px] text-gray-400">Auto-included to build the city</p>
+                  </div>
+                </div>
+                <span className="font-pixel text-[10px] text-bags-gold">10%</span>
+              </div>
             </div>
 
             <div className="space-y-3">
