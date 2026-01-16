@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import {
   getLaunchedTokens,
   removeLaunchedToken,
@@ -8,14 +9,21 @@ import {
 } from "@/lib/token-registry";
 import { TradeModal } from "./TradeModal";
 
+// Admin wallet - only this wallet can delete buildings
+const ADMIN_WALLET = "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3";
+
 interface YourBuildingsProps {
   onRefresh?: () => void;
 }
 
 export function YourBuildings({ onRefresh }: YourBuildingsProps) {
+  const { publicKey } = useWallet();
   const [tokens, setTokens] = useState<LaunchedToken[]>([]);
   const [isExpanded, setIsExpanded] = useState(true);
   const [tradeToken, setTradeToken] = useState<LaunchedToken | null>(null);
+
+  // Check if connected wallet is admin
+  const isAdmin = publicKey?.toBase58() === ADMIN_WALLET;
 
   useEffect(() => {
     const loadTokens = () => {
@@ -150,16 +158,19 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
                   >
                     TRADE
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemove(token.mint);
-                    }}
-                    className="font-pixel text-[7px] px-2 py-1 text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                    title="Remove building"
-                  >
-                    ✕
-                  </button>
+                  {/* Only admin can delete buildings */}
+                  {isAdmin && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemove(token.mint);
+                      }}
+                      className="font-pixel text-[7px] px-2 py-1 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                      title="Remove building (Admin only)"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               </div>
 

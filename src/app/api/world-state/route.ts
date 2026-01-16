@@ -367,10 +367,11 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 20);
 
-    // Build fee earners from creators
+    // Build fee earners from SDK creators AND registered fee shares
     const earnerMap = new Map<string, FeeEarner>();
     let rank = 1;
 
+    // First, add creators from SDK data
     enrichedResults.forEach((result, index) => {
       const token = tokens[index];
       result.creators.forEach((creator) => {
@@ -385,6 +386,47 @@ export async function POST(request: NextRequest) {
           earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++));
         }
       });
+    });
+
+    // Then, add citizens from registered token fee shares (Twitter/X linked)
+    tokensToProcess.forEach((registeredToken, index) => {
+      const token = tokens[index];
+      if (registeredToken.feeShares && registeredToken.feeShares.length > 0) {
+        registeredToken.feeShares.forEach((share) => {
+          // Skip ecosystem fee share - it's for the treasury, not a citizen
+          if (share.provider === "ecosystem" || share.provider === "solana") {
+            return;
+          }
+
+          // Create a unique ID from provider + username
+          const uniqueId = `${share.provider}-${share.username}`;
+          const existing = earnerMap.get(uniqueId);
+
+          if (existing) {
+            // Update existing earner
+            existing.tokenCount++;
+            if (token.lifetimeFees > (existing.topToken?.lifetimeFees || 0)) {
+              existing.topToken = token;
+            }
+          } else {
+            // Create new citizen from fee share
+            const feeShareEarner: FeeEarner = {
+              rank: rank++,
+              username: share.username,
+              providerUsername: share.username,
+              provider: share.provider as FeeEarner["provider"],
+              wallet: uniqueId, // Use unique ID as wallet placeholder
+              avatarUrl: undefined, // Will be fetched by game if needed
+              lifetimeEarnings: (token.lifetimeFees * share.bps) / 10000, // Proportional share
+              earnings24h: 0,
+              change24h: 0,
+              tokenCount: 1,
+              topToken: token,
+            };
+            earnerMap.set(uniqueId, feeShareEarner);
+          }
+        });
+      }
     });
 
     let earners = Array.from(earnerMap.values())
