@@ -11,11 +11,11 @@ interface ClaimTransaction {
     blockhash: string;
     lastValidBlockHeight: number;
   };
-  transaction: string; // Base58 encoded
+  transaction: string; // Base64 encoded
 }
 
 export function PartnerClaimButton() {
-  const { publicKey, connected, signAllTransactions } = useWallet();
+  const { publicKey, connected, signAllTransactions, signTransaction } = useWallet();
   const { connection } = useConnection();
 
   const [isPartner, setIsPartner] = useState(false);
@@ -24,6 +24,7 @@ export function PartnerClaimButton() {
   const [status, setStatus] = useState<"idle" | "generating" | "signing" | "sending" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [txSignatures, setTxSignatures] = useState<string[]>([]);
+  const [needsSetup, setNeedsSetup] = useState(false);
 
   // Check if connected wallet is the partner wallet
   useEffect(() => {
@@ -39,6 +40,75 @@ export function PartnerClaimButton() {
   if (!isPartner) {
     return null;
   }
+
+  // Setup partner config (one-time)
+  const handleSetup = async () => {
+    if (!publicKey || !signTransaction) {
+      setMessage("Please connect your wallet");
+      return;
+    }
+
+    setIsLoading(true);
+    setStatus("generating");
+    setMessage("Creating partner config...");
+    setTxSignatures([]);
+
+    try {
+      const response = await fetch("/api/partner-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: publicKey.toBase58(),
+          action: "create-config",
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create partner config");
+      }
+
+      const data = await response.json();
+
+      if (!data.transaction) {
+        throw new Error("No transaction returned");
+      }
+
+      setStatus("signing");
+      setMessage("Please sign the transaction...");
+
+      // Decode and sign
+      const txBytes = Buffer.from(data.transaction, "base64");
+      const tx = VersionedTransaction.deserialize(txBytes);
+      const signedTx = await signTransaction(tx);
+
+      setStatus("sending");
+      setMessage("Sending to network...");
+
+      const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 3,
+      });
+
+      await connection.confirmTransaction({
+        signature,
+        blockhash: data.blockhash.blockhash,
+        lastValidBlockHeight: data.blockhash.lastValidBlockHeight,
+      });
+
+      setTxSignatures([signature]);
+      setStatus("success");
+      setMessage("Partner config created! You can now claim fees.");
+      setNeedsSetup(false);
+
+    } catch (error) {
+      console.error("Setup error:", error);
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Failed to setup partner config");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleClaim = async () => {
     if (!publicKey || !signAllTransactions) {
@@ -58,11 +128,17 @@ export function PartnerClaimButton() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           walletAddress: publicKey.toBase58(),
+          action: "claim",
         }),
       });
 
       if (!response.ok) {
         const error = await response.json();
+        // Check if needs setup
+        if (error.error?.includes("not found") || error.error?.includes("Setup Partner")) {
+          setNeedsSetup(true);
+          throw new Error("Partner config not found. Please click 'Setup Partner' first.");
+        }
         throw new Error(error.error || "Failed to generate claim transactions");
       }
 
@@ -83,7 +159,7 @@ export function PartnerClaimButton() {
       const txsToSign: VersionedTransaction[] = [];
 
       for (const txData of transactions) {
-        // Decode base58 transaction
+        // Decode base64 transaction
         const txBytes = Buffer.from(txData.transaction, "base64");
         const tx = VersionedTransaction.deserialize(txBytes);
         txsToSign.push(tx);
@@ -262,7 +338,7 @@ export function PartnerClaimButton() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-bags-gold/30">
+            <div className="p-4 border-t border-bags-gold/30 space-y-2">
               {status === "success" || status === "error" ? (
                 <button
                   onClick={resetModal}
@@ -271,13 +347,24 @@ export function PartnerClaimButton() {
                   CLOSE
                 </button>
               ) : (
-                <button
-                  onClick={handleClaim}
-                  disabled={isLoading}
-                  className="w-full py-3 font-pixel text-[10px] border-2 border-bags-gold bg-bags-gold/20 text-bags-gold hover:bg-bags-gold/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? "PROCESSING..." : "🚀 CLAIM PARTNER FEES"}
-                </button>
+                <>
+                  {needsSetup && (
+                    <button
+                      onClick={handleSetup}
+                      disabled={isLoading}
+                      className="w-full py-3 font-pixel text-[10px] border-2 border-bags-green bg-bags-green/20 text-bags-green hover:bg-bags-green/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? "PROCESSING..." : "⚙️ SETUP PARTNER (ONE-TIME)"}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleClaim}
+                    disabled={isLoading}
+                    className="w-full py-3 font-pixel text-[10px] border-2 border-bags-gold bg-bags-gold/20 text-bags-gold hover:bg-bags-gold/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? "PROCESSING..." : "🚀 CLAIM PARTNER FEES"}
+                  </button>
+                </>
               )}
             </div>
           </div>
