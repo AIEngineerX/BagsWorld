@@ -1,6 +1,23 @@
 "use client";
 
 import { useGameStore } from "@/lib/store";
+import {
+  XIcon,
+  TikTokIcon,
+  GitHubIcon,
+  InstagramIcon,
+  GlobeIcon,
+  GamepadIcon,
+  TrophyIcon,
+  CoinIcon,
+  GoldMedalIcon,
+  SilverMedalIcon,
+  BronzeMedalIcon,
+  HappyFaceIcon,
+  CelebrateFaceIcon,
+  NeutralFaceIcon,
+  SadFaceIcon,
+} from "./icons";
 
 export function Leaderboard() {
   const { worldState, selectCharacter, selectedCharacter } = useGameStore();
@@ -13,53 +30,55 @@ export function Leaderboard() {
     return amount.toFixed(2);
   };
 
-  const getMoodEmoji = (mood: string): string => {
+  const getMoodIcon = (mood: string) => {
+    const iconClass = "w-4 h-4";
     switch (mood) {
       case "celebrating":
-        return "🥳";
+        return <CelebrateFaceIcon className={`${iconClass} text-yellow-400`} size={16} />;
       case "happy":
-        return "😎";
+        return <HappyFaceIcon className={`${iconClass} text-green-400`} size={16} />;
       case "sad":
-        return "😔";
+        return <SadFaceIcon className={`${iconClass} text-red-400`} size={16} />;
       default:
-        return "🧑‍💻";
+        return <NeutralFaceIcon className={`${iconClass} text-gray-400`} size={16} />;
     }
   };
 
-  const getProviderIcon = (provider: string): string => {
+  const getProviderIcon = (provider: string) => {
+    const iconClass = "w-3 h-3";
     switch (provider) {
       case "twitter":
-        return "𝕏";
+        return <XIcon className={iconClass} size={12} />;
       case "tiktok":
-        return "🎵";
+        return <TikTokIcon className={iconClass} size={12} />;
       case "instagram":
-        return "📸";
+        return <InstagramIcon className={iconClass} size={12} />;
       case "github":
-        return "⌨️";
+        return <GitHubIcon className={iconClass} size={12} />;
       case "kick":
-        return "🎮";
+        return <GamepadIcon className={iconClass} size={12} />;
       default:
-        return "🌐";
+        return <GlobeIcon className={iconClass} size={12} />;
     }
   };
 
-  const getRankBadge = (rank: number): string => {
+  const getRankBadge = (rank: number) => {
     switch (rank) {
       case 1:
-        return "🥇";
+        return <GoldMedalIcon size={16} />;
       case 2:
-        return "🥈";
+        return <SilverMedalIcon size={16} />;
       case 3:
-        return "🥉";
+        return <BronzeMedalIcon size={16} />;
       default:
-        return "";
+        return null;
     }
   };
 
   return (
     <div className="h-full flex flex-col p-2">
       <h2 className="font-pixel text-xs text-bags-green mb-2 px-2 flex items-center gap-2">
-        <span>🏆</span> TOP EARNERS
+        <TrophyIcon className="text-bags-gold" size={14} /> TOP EARNERS
       </h2>
 
       <div className="flex-1 overflow-y-auto space-y-1">
@@ -68,7 +87,11 @@ export function Leaderboard() {
             <p className="font-pixel text-[10px] text-gray-500">
               Loading citizens...
             </p>
-            <span className="text-2xl animate-bounce inline-block mt-2">🔄</span>
+            <div className="mt-2 animate-spin inline-block">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-bags-green">
+                <path d="M21 12a9 9 0 11-6.219-8.56" />
+              </svg>
+            </div>
           </div>
         ) : (
           population.map((character, index) => (
@@ -81,7 +104,7 @@ export function Leaderboard() {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="font-pixel text-[10px] text-gray-500 w-5">
+                <span className="font-pixel text-[10px] text-gray-500 w-5 flex items-center justify-center">
                   {getRankBadge(index + 1) || `#${index + 1}`}
                 </span>
 
@@ -100,9 +123,7 @@ export function Leaderboard() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-lg">
-                      {getMoodEmoji(character.mood)}
-                    </span>
+                    getMoodIcon(character.mood)
                   )}
                 </div>
 
@@ -123,7 +144,7 @@ export function Leaderboard() {
                         href={character.profileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-pixel text-[10px] text-gray-400 hover:text-bags-green transition-colors"
+                        className="text-gray-400 hover:text-bags-green transition-colors"
                         title={`View on ${character.provider}`}
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -140,13 +161,13 @@ export function Leaderboard() {
 
                 <div className="text-right">
                   <p className="font-pixel text-[10px] text-bags-gold flex items-center justify-end gap-1">
-                    <span>💰</span>${formatEarnings(character.earnings24h)}
+                    <CoinIcon className="text-bags-gold" size={12} />${formatEarnings(character.earnings24h)}
                   </p>
                   <p className="font-pixel text-[8px] text-gray-500">24h</p>
                 </div>
 
-                <span className="text-lg" title={character.mood}>
-                  {getMoodEmoji(character.mood)}
+                <span title={character.mood}>
+                  {getMoodIcon(character.mood)}
                 </span>
               </div>
             </div>

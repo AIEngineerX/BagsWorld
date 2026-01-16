@@ -69,6 +69,13 @@ export interface RouteLeg {
 
 export type WeatherType = "sunny" | "cloudy" | "rain" | "storm" | "apocalypse";
 
+export interface TimeInfo {
+  hour: number;
+  isNight: boolean;
+  isDusk: boolean;
+  isDawn: boolean;
+}
+
 export interface WorldState {
   health: number;
   weather: WeatherType;
@@ -76,6 +83,7 @@ export interface WorldState {
   buildings: GameBuilding[];
   events: GameEvent[];
   lastUpdated: number;
+  timeInfo?: TimeInfo;
 }
 
 export interface GameCharacter {
