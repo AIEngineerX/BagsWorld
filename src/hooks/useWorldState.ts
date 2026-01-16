@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useGameStore } from "@/lib/store";
 import type { WorldState } from "@/lib/types";
 import { useEffect, useCallback, useState } from "react";
-import { getAllWorldTokens, type LaunchedToken } from "@/lib/token-registry";
+import { getAllWorldTokens, getAllWorldTokensAsync, type LaunchedToken } from "@/lib/token-registry";
 
 // Fetch world state by POSTing registered tokens
 async function fetchWorldState(tokens: LaunchedToken[]): Promise<WorldState> {
@@ -43,11 +43,21 @@ export function useWorldState() {
   // Track registered tokens from localStorage
   const [registeredTokens, setRegisteredTokens] = useState<LaunchedToken[]>([]);
 
-  // Load tokens from localStorage on mount and when storage changes
+  // Load tokens from localStorage AND global database on mount and when storage changes
   useEffect(() => {
-    const loadTokens = () => {
-      const tokens = getAllWorldTokens();
-      setRegisteredTokens(tokens);
+    const loadTokens = async () => {
+      // First load local tokens immediately for fast initial render
+      const localTokens = getAllWorldTokens();
+      setRegisteredTokens(localTokens);
+
+      // Then fetch global tokens (async) for complete world state
+      try {
+        const allTokens = await getAllWorldTokensAsync();
+        setRegisteredTokens(allTokens);
+      } catch (error) {
+        console.error("Error loading global tokens:", error);
+        // Keep using local tokens if global fetch fails
+      }
     };
 
     // Initial load

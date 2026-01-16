@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { saveLaunchedToken, type LaunchedToken } from "@/lib/token-registry";
+import { saveLaunchedToken, saveTokenGlobally, type LaunchedToken } from "@/lib/token-registry";
 import { ECOSYSTEM_CONFIG, getEcosystemFeeShare } from "@/lib/config";
 
 interface FeeShareEntry {
@@ -225,7 +225,17 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         ],
       };
 
+      // Save to local storage (fast, offline-capable)
       saveLaunchedToken(launchedToken);
+
+      // Save to global database (so everyone sees it)
+      saveTokenGlobally(launchedToken).then((success) => {
+        if (success) {
+          console.log("Token saved to global database - everyone can see it now!");
+        } else {
+          console.log("Token saved locally only - configure Supabase for global visibility");
+        }
+      });
 
       // Dispatch custom event to notify useWorldState hook
       window.dispatchEvent(new CustomEvent("bagsworld-token-update"));

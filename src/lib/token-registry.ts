@@ -1,5 +1,6 @@
-// Token Registry - stores launched tokens in localStorage
+// Token Registry - stores launched tokens in localStorage + global Supabase database
 // This is the core of the BagsWorld experience - tokens users launch become buildings
+// Now supports GLOBAL state so everyone sees the same buildings!
 
 export interface LaunchedToken {
   mint: string;
@@ -16,24 +17,24 @@ export interface LaunchedToken {
   }>;
   // Live data (updated from SDK)
   lifetimeFees?: number;
+  marketCap?: number;
+  volume24h?: number;
   lastUpdated?: number;
+  // Source tracking
+  isGlobal?: boolean; // From Supabase
+  isFeatured?: boolean;
 }
 
 const STORAGE_KEY = "bagsworld_tokens";
-const FEATURED_TOKENS_KEY = "bagsworld_featured";
+const GLOBAL_CACHE_KEY = "bagsworld_global_cache";
+const GLOBAL_CACHE_DURATION = 60 * 1000; // 1 minute cache
 
-// Featured Bags.fm tokens - curated list that shows for all users
-// These are example/popular tokens from the Bags.fm ecosystem
+// Cache for global tokens (to avoid excessive API calls)
+let globalTokensCache: { tokens: LaunchedToken[]; timestamp: number } | null = null;
+
+// Featured Bags.fm tokens - hardcoded fallback if database is down
 export const FEATURED_BAGS_TOKENS: LaunchedToken[] = [
-  // Add real Bags.fm tokens here as they're discovered
-  // Example format:
-  // {
-  //   mint: "CyXBDcVQuHyEDbG661Jf3iHqxyd9wNHhE2SiQdNrBAGS",
-  //   name: "Example Token",
-  //   symbol: "EX",
-  //   creator: "...",
-  //   createdAt: Date.now(),
-  // }
+  // These are backup featured tokens - the main list comes from Supabase
 ];
 
 // Get all launched tokens from localStorage
@@ -107,17 +108,132 @@ export function removeLaunchedToken(mint: string): void {
   }
 }
 
-// Get all tokens for the world (user's + featured)
+// Fetch global tokens from API (with caching)
+export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
+  // Check cache first
+  const now = Date.now();
+  if (globalTokensCache && now - globalTokensCache.timestamp < GLOBAL_CACHE_DURATION) {
+    return globalTokensCache.tokens;
+  }
+
+  try {
+    const response = await fetch("/api/global-tokens");
+    if (!response.ok) {
+      console.error("Failed to fetch global tokens");
+      return globalTokensCache?.tokens || [];
+    }
+
+    const data = await response.json();
+    if (!data.configured || !data.tokens) {
+      return [];
+    }
+
+    // Convert to LaunchedToken format
+    const tokens: LaunchedToken[] = data.tokens.map((t: any) => ({
+      mint: t.mint,
+      name: t.name,
+      symbol: t.symbol,
+      description: t.description,
+      imageUrl: t.image_url,
+      creator: t.creator_wallet,
+      createdAt: new Date(t.created_at).getTime(),
+      feeShares: t.fee_shares,
+      lifetimeFees: t.lifetime_fees,
+      marketCap: t.market_cap,
+      volume24h: t.volume_24h,
+      lastUpdated: t.last_updated ? new Date(t.last_updated).getTime() : undefined,
+      isGlobal: true,
+      isFeatured: t.is_featured,
+    }));
+
+    // Update cache
+    globalTokensCache = { tokens, timestamp: now };
+
+    return tokens;
+  } catch (error) {
+    console.error("Error fetching global tokens:", error);
+    return globalTokensCache?.tokens || [];
+  }
+}
+
+// Save token to global database
+export async function saveTokenGlobally(token: LaunchedToken): Promise<boolean> {
+  try {
+    const response = await fetch("/api/global-tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mint: token.mint,
+        name: token.name,
+        symbol: token.symbol,
+        description: token.description,
+        image_url: token.imageUrl,
+        creator_wallet: token.creator,
+        fee_shares: token.feeShares,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to save token globally");
+      return false;
+    }
+
+    // Invalidate cache
+    globalTokensCache = null;
+
+    return true;
+  } catch (error) {
+    console.error("Error saving token globally:", error);
+    return false;
+  }
+}
+
+// Get all tokens for the world (user's local + global from database)
 export function getAllWorldTokens(): LaunchedToken[] {
   const userTokens = getLaunchedTokens();
 
-  // Combine user tokens with featured tokens
-  // User tokens appear first, then featured
+  // Combine user tokens with cached global tokens
+  // User tokens appear first, then global
   const allTokens = [...userTokens];
 
-  // Add featured tokens that aren't already in user's list
+  // Add cached global tokens that aren't already in user's list
+  if (globalTokensCache?.tokens) {
+    globalTokensCache.tokens.forEach((global) => {
+      if (!allTokens.some((t) => t.mint === global.mint)) {
+        allTokens.push(global);
+      }
+    });
+  }
+
+  // Add featured tokens as fallback
   FEATURED_BAGS_TOKENS.forEach((featured) => {
     if (!allTokens.some((t) => t.mint === featured.mint)) {
+      allTokens.push(featured);
+    }
+  });
+
+  return allTokens;
+}
+
+// Async version that fetches fresh global tokens
+export async function getAllWorldTokensAsync(): Promise<LaunchedToken[]> {
+  const userTokens = getLaunchedTokens();
+  const globalTokens = await fetchGlobalTokens();
+
+  // Combine: user tokens first, then global (deduped by mint)
+  const allTokens = [...userTokens];
+  const seenMints = new Set(userTokens.map(t => t.mint));
+
+  globalTokens.forEach((global) => {
+    if (!seenMints.has(global.mint)) {
+      allTokens.push(global);
+      seenMints.add(global.mint);
+    }
+  });
+
+  // Add featured tokens as fallback
+  FEATURED_BAGS_TOKENS.forEach((featured) => {
+    if (!seenMints.has(featured.mint)) {
       allTokens.push(featured);
     }
   });
