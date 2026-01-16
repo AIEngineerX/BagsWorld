@@ -11,6 +11,7 @@ import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
 import { TradeModal } from "@/components/TradeModal";
+import { PartnerClaimButton } from "@/components/PartnerClaimButton";
 import { useWorldState } from "@/hooks/useWorldState";
 
 interface BuildingClickData {
@@ -66,6 +67,7 @@ export default function Home() {
             </span>
           </div>
           <WalletButton />
+          <PartnerClaimButton />
           <ClaimButton />
           <LaunchButton />
         </div>
