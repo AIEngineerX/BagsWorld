@@ -189,7 +189,8 @@ class BagsApiClient {
     name: string;
     symbol: string;
     description: string;
-    image?: File;
+    imageBlob?: Blob;
+    imageName?: string;
     imageUrl?: string;
     twitter?: string;
     telegram?: string;
@@ -203,8 +204,9 @@ class BagsApiClient {
     formData.append("symbol", data.symbol);
     formData.append("description", data.description);
 
-    if (data.image) {
-      formData.append("image", data.image);
+    if (data.imageBlob) {
+      // FormData.append with 3 args: (name, blob, filename)
+      formData.append("image", data.imageBlob, data.imageName || "token-image.png");
     } else if (data.imageUrl) {
       formData.append("imageUrl", data.imageUrl);
     }

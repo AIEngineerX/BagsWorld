@@ -93,22 +93,24 @@ async function handleCreateTokenInfo(
   }
 
   try {
-    // Convert base64 image to File if provided
-    let imageFile: File | undefined;
+    // Convert base64 image to Blob if provided
+    let imageBlob: Blob | undefined;
+    let imageName = "token-image.png";
+
     if (data.image && data.image.startsWith("data:")) {
-      // It's a data URL, convert to File
+      // It's a data URL, convert to Blob
       const [header, base64Data] = data.image.split(",");
       const mimeMatch = header.match(/data:([^;]+)/);
       const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
       const extension = mimeType.split("/")[1] || "png";
+      imageName = `token-image.${extension}`;
 
       const binaryString = atob(base64Data);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      const blob = new Blob([bytes], { type: mimeType });
-      imageFile = new File([blob], `token-image.${extension}`, { type: mimeType });
+      imageBlob = new Blob([bytes], { type: mimeType });
     } else if (data.image) {
       // It's just base64, assume PNG
       const binaryString = atob(data.image);
@@ -116,15 +118,15 @@ async function handleCreateTokenInfo(
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      const blob = new Blob([bytes], { type: "image/png" });
-      imageFile = new File([blob], "token-image.png", { type: "image/png" });
+      imageBlob = new Blob([bytes], { type: "image/png" });
     }
 
     const result = await api.createTokenInfo({
       name: data.name,
       symbol: data.symbol,
       description: data.description,
-      image: imageFile,
+      imageBlob,
+      imageName,
       twitter: data.twitter,
       telegram: data.telegram,
       website: data.website,
