@@ -41,35 +41,6 @@ export function AIChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Listen for Satoshi click to open chat with special greeting
-  useEffect(() => {
-    const handleSatoshiClick = () => {
-      setIsMinimized(false);
-      // Add a Satoshi-themed greeting
-      const satoshiQuotes = [
-        "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.",
-        "The root problem with conventional currency is all the trust that's required to make it work.",
-        "Lost coins only make everyone else's coins worth slightly more.",
-        "It might make sense just to get some in case it catches on.",
-        "I've been working on a new electronic cash system that's fully peer-to-peer.",
-        "The nature of Bitcoin is such that once version 0.1 was released, the core design was set in stone.",
-      ];
-      const randomQuote = satoshiQuotes[Math.floor(Math.random() * satoshiQuotes.length)];
-
-      addMessage({
-        id: `${Date.now()}-satoshi`,
-        sender: "system",
-        message: `₿ Satoshi Nakamoto appeared...\n"${randomQuote}"`,
-        timestamp: Date.now(),
-      });
-    };
-
-    window.addEventListener("bagsworld-satoshi-click", handleSatoshiClick);
-    return () => {
-      window.removeEventListener("bagsworld-satoshi-click", handleSatoshiClick);
-    };
-  }, []);
-
   // Handle dragging
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button, input')) return;

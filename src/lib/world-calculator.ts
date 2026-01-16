@@ -61,10 +61,33 @@ export function calculateBuildingLevel(marketCap: number): number {
   return 1;
 }
 
-export function calculateBuildingHealth(change24h: number): number {
-  // change24h is percentage, e.g., 50 means +50%
+export function calculateBuildingHealth(
+  change24h: number,
+  volume24h: number = 0,
+  previousHealth: number = 50
+): number {
+  // Base health from price change
   const normalized = Math.max(-100, Math.min(100, change24h));
-  return Math.round(50 + normalized * 0.5);
+  const changeBasedHealth = 50 + normalized * 0.5;
+
+  // Activity-based decay/recovery
+  const MIN_VOLUME = 100; // Minimum volume to be considered "active"
+  const DECAY_RATE = 5;
+  const RECOVER_RATE = 10;
+
+  let activityAdjustment = 0;
+  if (volume24h < MIN_VOLUME) {
+    // No activity - decay
+    activityAdjustment = -DECAY_RATE;
+  } else {
+    // Active - recover toward base health
+    activityAdjustment = RECOVER_RATE;
+  }
+
+  // Blend previous health with new calculation (smooth transitions)
+  const blendedHealth = previousHealth * 0.7 + changeBasedHealth * 0.3 + activityAdjustment;
+
+  return Math.round(Math.max(0, Math.min(100, blendedHealth)));
 }
 
 export function calculateCharacterMood(
@@ -205,6 +228,10 @@ export function transformTokenToBuilding(
     tokenUrl = `https://bags.fm/token/${token.mint}`;
   }
 
+  // Calculate health with decay system (uses previous health for smooth transitions)
+  const previousHealth = existingBuilding?.health ?? 50;
+  const newHealth = calculateBuildingHealth(token.change24h, token.volume24h, previousHealth);
+
   return {
     id: token.mint,
     tokenMint: token.mint,
@@ -213,7 +240,7 @@ export function transformTokenToBuilding(
     x: position.x,
     y: position.y,
     level: calculateBuildingLevel(token.marketCap),
-    health: calculateBuildingHealth(token.change24h),
+    health: isTreasuryBuilding || isStarterToken ? 100 : newHealth, // Permanent buildings always healthy
     glowing: token.change24h > 50,
     ownerId: token.creator,
     marketCap: token.marketCap,
@@ -273,9 +300,40 @@ export function buildWorldState(
   const previousBuildings = new Map(
     previousState?.buildings.map((b) => [b.id, b])
   );
-  const buildings = tokens.slice(0, MAX_BUILDINGS).map((token, index) =>
+
+  // Transform all tokens to buildings first
+  const allBuildings = tokens.map((token, index) =>
     transformTokenToBuilding(token, index, previousBuildings.get(token.mint))
   );
+
+  // Decay system: Filter and sort buildings
+  const DECAY_THRESHOLD = 10; // Buildings below this health are removed
+  const buildings = allBuildings
+    // Keep permanent buildings (Treasury, Starter) and buildings above decay threshold
+    .filter((b) => {
+      const isPermanent = b.id.startsWith("Treasury") || b.id.startsWith("Starter");
+      return isPermanent || b.health > DECAY_THRESHOLD;
+    })
+    // Sort by: permanent first, then by volume/activity, then by health
+    .sort((a, b) => {
+      const aIsPermanent = a.id.startsWith("Treasury") || a.id.startsWith("Starter");
+      const bIsPermanent = b.id.startsWith("Treasury") || b.id.startsWith("Starter");
+      if (aIsPermanent && !bIsPermanent) return -1;
+      if (!aIsPermanent && bIsPermanent) return 1;
+      // Sort by volume (most active first)
+      const aVolume = a.volume24h ?? 0;
+      const bVolume = b.volume24h ?? 0;
+      if (aVolume !== bVolume) return bVolume - aVolume;
+      // Then by health
+      return b.health - a.health;
+    })
+    // Limit to max buildings
+    .slice(0, MAX_BUILDINGS)
+    // Reassign positions based on new order
+    .map((building, index) => ({
+      ...building,
+      ...generateBuildingPosition(index, MAX_BUILDINGS),
+    }));
 
   // Generate events for significant changes
   const events: GameEvent[] = previousState?.events.slice(0, 10) ?? [];

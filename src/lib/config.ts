@@ -59,7 +59,17 @@ export const ECOSYSTEM_CONFIG = {
       { level: 4, name: "Tower", minMarketCap: 2_000_000, icon: "🗼" },
       { level: 5, name: "Skyscraper", minMarketCap: 10_000_000, icon: "🏙️" },
     ],
-    maxBuildings: 20,
+    maxBuildings: 12, // Reduced to prevent overcrowding
+
+    // Decay system - buildings fade without activity
+    decay: {
+      enabled: true,
+      minVolume24h: 100, // Minimum 24h volume to stay healthy (in USD)
+      healthyThreshold: 50, // Buildings with health > 50 are displayed prominently
+      removeThreshold: 10, // Buildings with health < 10 are removed
+      decayRate: 5, // Health points lost per check when inactive
+      recoverRate: 10, // Health points gained when active
+    },
   },
 
   // -------------------------------------------------------------------------
