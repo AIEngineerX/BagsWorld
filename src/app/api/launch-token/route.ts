@@ -93,11 +93,38 @@ async function handleCreateTokenInfo(
   }
 
   try {
+    // Convert base64 image to File if provided
+    let imageFile: File | undefined;
+    if (data.image && data.image.startsWith("data:")) {
+      // It's a data URL, convert to File
+      const [header, base64Data] = data.image.split(",");
+      const mimeMatch = header.match(/data:([^;]+)/);
+      const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+      const extension = mimeType.split("/")[1] || "png";
+
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: mimeType });
+      imageFile = new File([blob], `token-image.${extension}`, { type: mimeType });
+    } else if (data.image) {
+      // It's just base64, assume PNG
+      const binaryString = atob(data.image);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: "image/png" });
+      imageFile = new File([blob], "token-image.png", { type: "image/png" });
+    }
+
     const result = await api.createTokenInfo({
       name: data.name,
       symbol: data.symbol,
       description: data.description,
-      image: data.image || "",
+      image: imageFile,
       twitter: data.twitter,
       telegram: data.telegram,
       website: data.website,
@@ -105,8 +132,8 @@ async function handleCreateTokenInfo(
 
     return NextResponse.json({
       success: true,
-      mint: result.mint,
-      metadataUri: result.metadataUri,
+      tokenMint: result.tokenMint,
+      tokenMetadata: result.tokenMetadata,
     });
   } catch (error) {
     console.error("Create token info error:", error);

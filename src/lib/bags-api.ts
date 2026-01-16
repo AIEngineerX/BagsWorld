@@ -189,18 +189,52 @@ class BagsApiClient {
     name: string;
     symbol: string;
     description: string;
-    image: string; // base64
+    image?: File;
+    imageUrl?: string;
     twitter?: string;
     telegram?: string;
     website?: string;
   }): Promise<{
-    mint: string;
-    metadataUri: string;
+    tokenMint: string;
+    tokenMetadata: string;
   }> {
-    return this.fetch("/token-launch/create-token-info", {
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("symbol", data.symbol);
+    formData.append("description", data.description);
+
+    if (data.image) {
+      formData.append("image", data.image);
+    } else if (data.imageUrl) {
+      formData.append("imageUrl", data.imageUrl);
+    }
+
+    if (data.twitter) formData.append("twitter", data.twitter);
+    if (data.telegram) formData.append("telegram", data.telegram);
+    if (data.website) formData.append("website", data.website);
+
+    const url = `${this.baseUrl}/token-launch/create-token-info`;
+    const response = await fetch(url, {
       method: "POST",
-      body: JSON.stringify(data),
+      headers: {
+        "x-api-key": this.apiKey,
+        // Note: Don't set Content-Type for FormData - browser sets it with boundary
+      },
+      body: formData,
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API error: ${response.status} - ${errorText}`);
+    }
+
+    const result: ApiResponse<{ tokenMint: string; tokenMetadata: string }> = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || "Unknown API error");
+    }
+
+    return result.response as { tokenMint: string; tokenMetadata: string };
   }
 
   async createLaunchTransaction(data: {

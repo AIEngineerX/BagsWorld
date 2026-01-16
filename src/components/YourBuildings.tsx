@@ -6,6 +6,7 @@ import {
   removeLaunchedToken,
   type LaunchedToken,
 } from "@/lib/token-registry";
+import { TradeModal } from "./TradeModal";
 
 interface YourBuildingsProps {
   onRefresh?: () => void;
@@ -14,6 +15,7 @@ interface YourBuildingsProps {
 export function YourBuildings({ onRefresh }: YourBuildingsProps) {
   const [tokens, setTokens] = useState<LaunchedToken[]>([]);
   const [isExpanded, setIsExpanded] = useState(true);
+  const [tradeToken, setTradeToken] = useState<LaunchedToken | null>(null);
 
   useEffect(() => {
     const loadTokens = () => {
@@ -136,17 +138,29 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
                   ) : null}
                 </div>
 
-                {/* Remove Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemove(token.mint);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity font-pixel text-[8px] text-red-400 hover:text-red-300"
-                  title="Remove building"
-                >
-                  ✕
-                </button>
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTradeToken(token);
+                    }}
+                    className="font-pixel text-[7px] px-2 py-1 bg-bags-green/20 text-bags-green hover:bg-bags-green/30 border border-bags-green/30"
+                    title="Trade token"
+                  >
+                    TRADE
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemove(token.mint);
+                    }}
+                    className="font-pixel text-[7px] px-2 py-1 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                    title="Remove building"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               {/* Fee Shares */}
@@ -165,6 +179,16 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Trade Modal */}
+      {tradeToken && (
+        <TradeModal
+          tokenMint={tradeToken.mint}
+          tokenSymbol={tradeToken.symbol}
+          tokenName={tradeToken.name}
+          onClose={() => setTradeToken(null)}
+        />
       )}
     </div>
   );

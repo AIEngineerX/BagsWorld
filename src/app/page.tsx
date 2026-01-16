@@ -9,6 +9,7 @@ import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
+import { ClaimButton } from "@/components/ClaimButton";
 import { useWorldState } from "@/hooks/useWorldState";
 
 const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
@@ -44,6 +45,7 @@ export default function Home() {
             </span>
           </div>
           <WalletButton />
+          <ClaimButton />
           <LaunchButton />
         </div>
       </header>
