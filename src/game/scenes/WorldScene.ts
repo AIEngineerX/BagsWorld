@@ -24,6 +24,12 @@ export class WorldScene extends Phaser.Scene {
   private timeOfDay = 0;
   private overlay!: Phaser.GameObjects.Rectangle;
   private sunSprite: Phaser.GameObjects.Sprite | null = null;
+  private fireflies: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  private ambientParticles: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  private musicPlaying = false;
+  private audioContext: AudioContext | null = null;
+  private gainNode: GainNode | null = null;
+  private musicInterval: number | null = null;
 
   constructor() {
     super({ key: "WorldScene" });
@@ -43,11 +49,17 @@ export class WorldScene extends Phaser.Scene {
     // Add decorations (trees, bushes, benches, lamps)
     this.createDecorations();
 
+    // Add extra decorations (flowers, rocks, fountain)
+    this.createExtraDecorations();
+
     // Initialize clouds
     this.createClouds();
 
     // Add animals to the world
     this.createAnimals();
+
+    // Create ambient particles (pollen/leaves)
+    this.createAmbientParticles();
 
     // Start day/night cycle
     this.startDayNightCycle();
@@ -59,6 +71,14 @@ export class WorldScene extends Phaser.Scene {
       duration: 20000,
       repeat: -1,
       ease: "Linear",
+    });
+
+    // Start background music
+    this.startPokemonMusic();
+
+    // Listen for music toggle
+    window.addEventListener("bagsworld-toggle-music", () => {
+      this.toggleMusic();
     });
   }
 
@@ -281,6 +301,278 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
+  private createExtraDecorations(): void {
+    // Add flower patches
+    const flowerPositions = [
+      { x: 130, y: 490 },
+      { x: 280, y: 485 },
+      { x: 420, y: 488 },
+      { x: 560, y: 482 },
+      { x: 680, y: 486 },
+    ];
+
+    flowerPositions.forEach((pos) => {
+      const flower = this.add.sprite(pos.x, pos.y, "flower");
+      flower.setOrigin(0.5, 1);
+      flower.setDepth(2);
+      flower.setScale(0.8 + Math.random() * 0.4);
+      this.decorations.push(flower);
+
+      // Gentle sway
+      this.tweens.add({
+        targets: flower,
+        angle: 3,
+        duration: 1500 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // Add rocks
+    const rockPositions = [
+      { x: 70, y: 555 },
+      { x: 730, y: 552 },
+      { x: 380, y: 558 },
+    ];
+
+    rockPositions.forEach((pos) => {
+      const rock = this.add.sprite(pos.x, pos.y, "rock");
+      rock.setOrigin(0.5, 1);
+      rock.setDepth(2);
+      rock.setScale(0.6 + Math.random() * 0.3);
+      this.decorations.push(rock);
+    });
+
+    // Add fountain in center background
+    const fountain = this.add.sprite(400, 420, "fountain");
+    fountain.setOrigin(0.5, 1);
+    fountain.setDepth(1);
+    fountain.setScale(1.2);
+    this.decorations.push(fountain);
+
+    // Water spray particles
+    const waterSpray = this.add.particles(400, 385, "rain", {
+      speed: { min: 20, max: 50 },
+      angle: { min: 250, max: 290 },
+      lifespan: 600,
+      quantity: 2,
+      frequency: 100,
+      scale: { start: 0.5, end: 0 },
+      alpha: { start: 0.6, end: 0 },
+      gravityY: 50,
+    });
+    waterSpray.setDepth(1);
+
+    // Add flag poles
+    const flagPositions = [{ x: 50, y: 430 }, { x: 750, y: 430 }];
+    flagPositions.forEach((pos) => {
+      const flag = this.add.sprite(pos.x, pos.y, "flag");
+      flag.setOrigin(0.5, 1);
+      flag.setDepth(1);
+      this.decorations.push(flag);
+
+      // Flag waving
+      this.tweens.add({
+        targets: flag,
+        scaleX: 0.9,
+        duration: 800,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // Add pond in corner
+    const pond = this.add.sprite(100, 500, "pond");
+    pond.setOrigin(0.5, 0.5);
+    pond.setDepth(0);
+    pond.setScale(1.5);
+    pond.setAlpha(0.8);
+    this.decorations.push(pond);
+
+    // Ripple effect on pond
+    this.tweens.add({
+      targets: pond,
+      scale: 1.55,
+      alpha: 0.6,
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  private createAmbientParticles(): void {
+    // Floating pollen/dust particles during day
+    this.ambientParticles = this.add.particles(400, 200, "pollen", {
+      x: { min: 0, max: 800 },
+      y: { min: 100, max: 400 },
+      lifespan: 8000,
+      speedX: { min: 5, max: 20 },
+      speedY: { min: -5, max: 5 },
+      scale: { start: 0.3, end: 0 },
+      alpha: { start: 0.4, end: 0 },
+      quantity: 1,
+      frequency: 500,
+    });
+    this.ambientParticles.setDepth(15);
+  }
+
+  private createFireflies(): void {
+    if (this.fireflies) return;
+
+    this.fireflies = this.add.particles(400, 400, "firefly", {
+      x: { min: 50, max: 750 },
+      y: { min: 350, max: 500 },
+      lifespan: 4000,
+      speedX: { min: -20, max: 20 },
+      speedY: { min: -20, max: 20 },
+      scale: { start: 0.8, end: 0 },
+      alpha: { start: 0, end: 1, ease: "Sine.easeInOut" },
+      quantity: 1,
+      frequency: 300,
+      tint: 0xffff00,
+      blendMode: Phaser.BlendModes.ADD,
+    });
+    this.fireflies.setDepth(20);
+  }
+
+  private destroyFireflies(): void {
+    if (this.fireflies) {
+      this.fireflies.destroy();
+      this.fireflies = null;
+    }
+  }
+
+  private startPokemonMusic(): void {
+    try {
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.gainNode = this.audioContext.createGain();
+      this.gainNode.connect(this.audioContext.destination);
+      this.gainNode.gain.value = 0.15; // Low volume
+
+      this.playPokemonMelody();
+      this.musicPlaying = true;
+    } catch (e) {
+      console.log("Audio not supported");
+    }
+  }
+
+  private playPokemonMelody(): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    // Pokemon-style pentatonic melody (cheerful, adventurous)
+    // Notes: C4, D4, E4, G4, A4, C5 (pentatonic scale)
+    const notes = [
+      { freq: 523.25, duration: 0.2 },  // C5
+      { freq: 440.00, duration: 0.2 },  // A4
+      { freq: 392.00, duration: 0.2 },  // G4
+      { freq: 329.63, duration: 0.4 },  // E4
+      { freq: 392.00, duration: 0.2 },  // G4
+      { freq: 440.00, duration: 0.2 },  // A4
+      { freq: 523.25, duration: 0.4 },  // C5
+      { freq: 0, duration: 0.2 },       // Rest
+      { freq: 392.00, duration: 0.2 },  // G4
+      { freq: 329.63, duration: 0.2 },  // E4
+      { freq: 293.66, duration: 0.2 },  // D4
+      { freq: 261.63, duration: 0.4 },  // C4
+      { freq: 293.66, duration: 0.2 },  // D4
+      { freq: 329.63, duration: 0.2 },  // E4
+      { freq: 392.00, duration: 0.4 },  // G4
+      { freq: 0, duration: 0.4 },       // Rest
+    ];
+
+    // Secondary harmony notes
+    const harmony = [
+      { freq: 261.63, duration: 0.2 },  // C4
+      { freq: 220.00, duration: 0.2 },  // A3
+      { freq: 196.00, duration: 0.2 },  // G3
+      { freq: 164.81, duration: 0.4 },  // E3
+      { freq: 196.00, duration: 0.2 },  // G3
+      { freq: 220.00, duration: 0.2 },  // A3
+      { freq: 261.63, duration: 0.4 },  // C4
+      { freq: 0, duration: 0.2 },       // Rest
+      { freq: 196.00, duration: 0.2 },  // G3
+      { freq: 164.81, duration: 0.2 },  // E3
+      { freq: 146.83, duration: 0.2 },  // D3
+      { freq: 130.81, duration: 0.4 },  // C3
+      { freq: 146.83, duration: 0.2 },  // D3
+      { freq: 164.81, duration: 0.2 },  // E3
+      { freq: 196.00, duration: 0.4 },  // G3
+      { freq: 0, duration: 0.4 },       // Rest
+    ];
+
+    let time = this.audioContext.currentTime;
+    const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
+
+    // Play melody
+    notes.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, time, note.duration * 0.9, 0.12);
+      }
+      time += note.duration;
+    });
+
+    // Play harmony (slightly quieter)
+    let harmonyTime = this.audioContext.currentTime;
+    harmony.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, harmonyTime, note.duration * 0.9, 0.06);
+      }
+      harmonyTime += note.duration;
+    });
+
+    // Loop the melody
+    this.musicInterval = window.setTimeout(() => {
+      if (this.musicPlaying) {
+        this.playPokemonMelody();
+      }
+    }, totalDuration * 1000);
+  }
+
+  private playNote(frequency: number, startTime: number, duration: number, volume: number): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    const oscillator = this.audioContext.createOscillator();
+    const noteGain = this.audioContext.createGain();
+
+    oscillator.connect(noteGain);
+    noteGain.connect(this.gainNode);
+
+    // Square wave for retro chiptune sound
+    oscillator.type = "square";
+    oscillator.frequency.value = frequency;
+
+    // Envelope for smooth attack/release
+    noteGain.gain.setValueAtTime(0, startTime);
+    noteGain.gain.linearRampToValueAtTime(volume, startTime + 0.02);
+    noteGain.gain.setValueAtTime(volume, startTime + duration - 0.05);
+    noteGain.gain.linearRampToValueAtTime(0, startTime + duration);
+
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration);
+  }
+
+  private toggleMusic(): void {
+    if (this.musicPlaying) {
+      this.musicPlaying = false;
+      if (this.musicInterval) {
+        clearTimeout(this.musicInterval);
+        this.musicInterval = null;
+      }
+      if (this.gainNode) {
+        this.gainNode.gain.value = 0;
+      }
+    } else {
+      this.musicPlaying = true;
+      if (this.gainNode) {
+        this.gainNode.gain.value = 0.15;
+      }
+      this.playPokemonMelody();
+    }
+  }
+
   update(): void {
     // Update character movements with smoother motion
     this.characterSprites.forEach((sprite, id) => {
@@ -379,6 +671,7 @@ export class WorldScene extends Phaser.Scene {
   private currentTimeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean } | null = null;
 
   private updateDayNightFromEST(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
+    const wasNight = this.currentTimeInfo?.isNight;
     this.currentTimeInfo = timeInfo;
     let alpha = 0;
     let tint = 0x000000;
@@ -387,16 +680,36 @@ export class WorldScene extends Phaser.Scene {
       // Night (8 PM to 6 AM EST) - deep blue overlay
       alpha = 0.45;
       tint = 0x0a0a2e;
+      // Create fireflies at night
+      this.createFireflies();
+      // Hide ambient particles at night
+      if (this.ambientParticles) {
+        this.ambientParticles.setVisible(false);
+      }
     } else if (timeInfo.isDusk) {
       // Dusk (6 PM to 8 PM EST) - warm orange/purple
       alpha = 0.25;
       tint = 0x4a2a3e;
+      // Start showing some fireflies at dusk
+      this.createFireflies();
     } else if (timeInfo.isDawn) {
       // Dawn (6 AM to 8 AM EST) - soft golden
       alpha = 0.2;
       tint = 0x3a2a1e;
+      // Remove fireflies at dawn
+      this.destroyFireflies();
+      if (this.ambientParticles) {
+        this.ambientParticles.setVisible(true);
+      }
+    } else {
+      // Daytime - remove fireflies, show ambient particles
+      if (wasNight || this.currentTimeInfo === null) {
+        this.destroyFireflies();
+        if (this.ambientParticles) {
+          this.ambientParticles.setVisible(true);
+        }
+      }
     }
-    // Daytime (8 AM to 6 PM) - alpha stays 0, no overlay
 
     // Set the fill style first, then animate alpha
     if (alpha > 0) {
@@ -411,8 +724,14 @@ export class WorldScene extends Phaser.Scene {
       ease: "Sine.easeInOut",
     });
 
-    // Update sun/moon based on time
+    // Update sun/moon based on time - IMPORTANT: do this AFTER setting currentTimeInfo
     this.updateCelestialBody(timeInfo);
+
+    // If it's night and we have a sun, remove it immediately
+    if (timeInfo.isNight && this.sunSprite) {
+      this.sunSprite.destroy();
+      this.sunSprite = null;
+    }
   }
 
   private moonSprite: Phaser.GameObjects.Sprite | null = null;
