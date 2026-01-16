@@ -262,16 +262,16 @@ async function enrichTokenWithSDK(
   return { tokenInfo, creators, claimEvents };
 }
 
-// Treasury wallet - always visible for transparency
+// Community Rewards wallet - always visible for transparency
 const TREASURY_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC";
 
-// Treasury building - ALWAYS appears in the world (permanent landmark)
-// Links to Solscan so users can verify ecosystem funds transparently
+// Community Rewards Hub - ALWAYS appears in the world (permanent landmark)
+// Links to Solscan so users can verify where community rewards come from
 const TREASURY_BUILDING: RegisteredToken = {
   mint: "TreasuryBagsWorld1111111111111111111111111111",
-  name: "BagsWorld Treasury",
-  symbol: "TREASURY",
-  description: "The heart of BagsWorld - 10% of all fees flow here. Click to verify on Solscan!",
+  name: "Community Rewards Hub",
+  symbol: "REWARDS",
+  description: "Where fees become rewards - distributed to the strongest communities. Click to verify on Solscan!",
   imageUrl: "/assets/buildings/treasury.png",
   creator: TREASURY_WALLET,
   createdAt: Date.now() - 86400000 * 365, // 1 year ago (always been here)
@@ -438,10 +438,45 @@ export async function POST(request: NextRequest) {
 
     let earners = Array.from(earnerMap.values())
       .sort((a, b) => b.lifetimeEarnings - a.lifetimeEarnings)
-      .slice(0, 15)
+      .slice(0, 13) // Leave room for Satoshi and Ash
       .map((e, i) => ({ ...e, rank: i + 1 }));
 
-    // No placeholder earners - only show real data from SDK
+    // ALWAYS add Satoshi as a permanent AI character
+    // Satoshi is the guide and soul of BagsWorld
+    const satoshi: FeeEarner = {
+      rank: 0, // Special rank
+      username: "Satoshi",
+      providerUsername: "satoshi",
+      provider: "bitcoin" as FeeEarner["provider"],
+      wallet: "satoshi-nakamoto-permanent",
+      avatarUrl: undefined, // Will use special Satoshi sprite
+      lifetimeEarnings: 21000000, // 21 million BTC ;)
+      earnings24h: 0,
+      change24h: 0,
+      tokenCount: 0,
+      topToken: undefined,
+      isSatoshi: true, // Special flag for the game to recognize
+    } as FeeEarner & { isSatoshi: boolean };
+
+    // ALWAYS add Ash as a permanent ecosystem guide character
+    // Ash explains how BagsWorld works with Pokemon-themed analogies
+    const ash: FeeEarner = {
+      rank: 0, // Special rank
+      username: "Ash",
+      providerUsername: "ash_ketchum",
+      provider: "pokemon" as FeeEarner["provider"],
+      wallet: "ash-ketchum-permanent",
+      avatarUrl: undefined, // Will use special Ash sprite
+      lifetimeEarnings: 151, // Original 151 Pokemon ;)
+      earnings24h: 0,
+      change24h: 0,
+      tokenCount: 0,
+      topToken: undefined,
+      isAsh: true, // Special flag for the game to recognize
+    } as FeeEarner & { isAsh: boolean };
+
+    earners.unshift(ash); // Ash second
+    earners.unshift(satoshi); // Satoshi always first
 
     // Fetch weather and time
     const [realWeather, timeInfo] = await Promise.all([

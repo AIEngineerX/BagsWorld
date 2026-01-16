@@ -376,7 +376,10 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  private currentTimeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean } | null = null;
+
   private updateDayNightFromEST(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
+    this.currentTimeInfo = timeInfo;
     let alpha = 0;
     let tint = 0x000000;
 
@@ -407,6 +410,65 @@ export class WorldScene extends Phaser.Scene {
       duration: 3000,
       ease: "Sine.easeInOut",
     });
+
+    // Update sun/moon based on time
+    this.updateCelestialBody(timeInfo);
+  }
+
+  private moonSprite: Phaser.GameObjects.Sprite | null = null;
+  private starsContainer: Phaser.GameObjects.Container | null = null;
+
+  private updateCelestialBody(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
+    // Remove existing sun if it's nighttime
+    if (timeInfo.isNight && this.sunSprite) {
+      this.tweens.add({
+        targets: this.sunSprite,
+        alpha: 0,
+        y: 150,
+        duration: 2000,
+        onComplete: () => {
+          this.sunSprite?.destroy();
+          this.sunSprite = null;
+        }
+      });
+    }
+
+    // Show moon at night
+    if (timeInfo.isNight && !this.moonSprite) {
+      this.moonSprite = this.add.sprite(650, 80, "moon");
+      this.moonSprite.setScale(1.5);
+      this.moonSprite.setAlpha(0);
+      this.moonSprite.setDepth(0);
+
+      this.tweens.add({
+        targets: this.moonSprite,
+        alpha: 0.9,
+        duration: 2000,
+      });
+
+      // Gentle moon glow
+      this.tweens.add({
+        targets: this.moonSprite,
+        scale: 1.6,
+        duration: 4000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Hide moon during day
+    if (!timeInfo.isNight && this.moonSprite) {
+      this.tweens.add({
+        targets: this.moonSprite,
+        alpha: 0,
+        duration: 2000,
+        onComplete: () => {
+          this.moonSprite?.destroy();
+          this.moonSprite = null;
+        }
+      });
+    }
   }
 
   private startDayNightCycle(): void {
@@ -489,6 +551,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createSunnyEffect(): void {
+    // Only show sun during daytime
+    if (this.currentTimeInfo?.isNight) {
+      return; // Don't show sun at night
+    }
+
     this.sunSprite = this.add.sprite(700, 70, "sun");
     this.sunSprite.setScale(2.5);
     this.sunSprite.setAlpha(0.9);
@@ -620,52 +687,127 @@ export class WorldScene extends Phaser.Scene {
       let sprite = this.characterSprites.get(character.id);
 
       if (!sprite) {
-        // Assign a random variant to this character for diversity
+        // Special characters use unique textures, others get random variants
+        const isSatoshi = character.isSatoshi === true;
+        const isAsh = character.isAsh === true;
+        const isSpecial = isSatoshi || isAsh;
         const variant = index % 9;
         this.characterVariants.set(character.id, variant);
 
-        const textureKey = this.getCharacterTexture(character.mood, variant);
+        const textureKey = isSatoshi ? "satoshi" : isAsh ? "ash" : this.getCharacterTexture(character.mood, variant);
         sprite = this.add.sprite(character.x, character.y, textureKey);
-        sprite.setDepth(10);
+        sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
         sprite.setInteractive();
-        sprite.setScale(1.2);
+        sprite.setScale(isSpecial ? 1.3 : 1.2); // Special characters slightly larger
 
         // Hover effects
         sprite.on("pointerover", () => {
-          sprite?.setScale(1.4);
-          this.showCharacterTooltip(character, sprite!);
+          sprite?.setScale(isSpecial ? 1.5 : 1.4);
+          if (isSatoshi) {
+            this.showSatoshiTooltip(sprite!);
+          } else if (isAsh) {
+            this.showAshTooltip(sprite!);
+          } else {
+            this.showCharacterTooltip(character, sprite!);
+          }
           this.input.setDefaultCursor("pointer");
         });
         sprite.on("pointerout", () => {
-          sprite?.setScale(1.2);
+          sprite?.setScale(isSpecial ? 1.3 : 1.2);
           this.hideTooltip();
           this.input.setDefaultCursor("default");
         });
         sprite.on("pointerdown", () => {
-          // Open profile page in new tab
-          if (character.profileUrl) {
+          if (isSatoshi) {
+            // Satoshi opens the AI chat
+            window.dispatchEvent(new CustomEvent("bagsworld-satoshi-click"));
+          } else if (isAsh) {
+            // Ash opens the ecosystem guide chat
+            window.dispatchEvent(new CustomEvent("bagsworld-ash-click"));
+          } else if (character.profileUrl) {
+            // Open profile page in new tab
             window.open(character.profileUrl, "_blank");
           }
         });
 
-        // Idle bounce animation
+        // Idle bounce animation - Special characters have slower, more deliberate movement
         this.tweens.add({
           targets: sprite,
-          y: character.y - 3,
-          duration: 800 + Math.random() * 400,
+          y: character.y - (isSpecial ? 2 : 3),
+          duration: isSpecial ? 1200 : 800 + Math.random() * 400,
           yoyo: true,
           repeat: -1,
           ease: "Sine.easeInOut",
         });
 
+        // Add golden aura glow effect for Satoshi
+        if (isSatoshi) {
+          const glow = this.add.sprite(character.x, character.y, "glow");
+          glow.setScale(1.0);
+          glow.setAlpha(0.3);
+          glow.setTint(0xf7931a); // Bitcoin orange
+          glow.setDepth(10);
+
+          // Store reference to glow for cleanup
+          (sprite as any).satoshiGlow = glow;
+
+          this.tweens.add({
+            targets: glow,
+            alpha: 0.5,
+            scale: 1.2,
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+
+        // Add red/blue aura glow effect for Ash
+        if (isAsh) {
+          const glow = this.add.sprite(character.x, character.y, "glow");
+          glow.setScale(1.0);
+          glow.setAlpha(0.3);
+          glow.setTint(0xdc2626); // Pokemon red
+          glow.setDepth(10);
+
+          // Store reference to glow for cleanup
+          (sprite as any).ashGlow = glow;
+
+          this.tweens.add({
+            targets: glow,
+            alpha: 0.5,
+            scale: 1.2,
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+
         this.characterSprites.set(character.id, sprite);
+      } else {
+        // Update special character glow positions if they exist
+        const satoshiGlow = (sprite as any).satoshiGlow;
+        if (satoshiGlow) {
+          satoshiGlow.x = sprite.x;
+          satoshiGlow.y = sprite.y;
+        }
+        const ashGlow = (sprite as any).ashGlow;
+        if (ashGlow) {
+          ashGlow.x = sprite.x;
+          ashGlow.y = sprite.y;
+        }
       }
 
-      // Update texture based on mood
-      const variant = this.characterVariants.get(character.id) ?? 0;
-      const expectedTexture = this.getCharacterTexture(character.mood, variant);
-      if (sprite.texture.key !== expectedTexture) {
-        sprite.setTexture(expectedTexture);
+      // Update texture based on mood (skip for special characters)
+      const isSatoshi = character.isSatoshi === true;
+      const isAsh = character.isAsh === true;
+      if (!isSatoshi && !isAsh) {
+        const variant = this.characterVariants.get(character.id) ?? 0;
+        const expectedTexture = this.getCharacterTexture(character.mood, variant);
+        if (sprite.texture.key !== expectedTexture) {
+          sprite.setTexture(expectedTexture);
+        }
       }
     });
   }
@@ -861,6 +1003,88 @@ export class WorldScene extends Phaser.Scene {
     this.tooltip = container;
   }
 
+  private showSatoshiTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 160, 68, 0x0a0a0f, 0.95);
+    bg.setStrokeStyle(2, 0xf7931a); // Bitcoin orange border
+
+    const nameText = this.add.text(0, -22, "₿ Satoshi Nakamoto", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#f7931a",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Creator of Bitcoin", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const mysteryText = this.add.text(0, 10, "Identity unknown since 2011", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ca3af",
+    });
+    mysteryText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "🤖 Click to chat with AI", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#60a5fa",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, mysteryText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showAshTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 165, 68, 0x0a0a0f, 0.95);
+    bg.setStrokeStyle(2, 0xdc2626); // Pokemon red border
+
+    const nameText = this.add.text(0, -22, "⚡ Ash Ketchum", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#dc2626",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Ecosystem Guide", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const descText = this.add.text(0, 10, "Gotta catch 'em all... tokens!", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ca3af",
+    });
+    descText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "📖 Click to learn about BagsWorld", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#fbbf24",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, descText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
   private showBuildingTooltip(
     building: GameBuilding,
     container: Phaser.GameObjects.Container
@@ -882,15 +1106,15 @@ export class WorldScene extends Phaser.Scene {
     nameText.setOrigin(0.5, 0.5);
 
     if (isTreasury) {
-      // Treasury-specific tooltip
-      const descText = this.add.text(0, -10, "Ecosystem Treasury", {
+      // Community Rewards Hub tooltip
+      const descText = this.add.text(0, -10, "Community Rewards Hub", {
         fontFamily: "monospace",
         fontSize: "8px",
         color: "#4ade80",
       });
       descText.setOrigin(0.5, 0.5);
 
-      const infoText = this.add.text(0, 6, "10% of all fees flow here", {
+      const infoText = this.add.text(0, 6, "10% goes to strongest communities", {
         fontFamily: "monospace",
         fontSize: "7px",
         color: "#9ca3af",

@@ -12,29 +12,29 @@
 
 export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
-  // ECOSYSTEM FEE STRUCTURE
+  // ECOSYSTEM FEE STRUCTURE - COMMUNITY REWARDS
   // -------------------------------------------------------------------------
-  // Every token launched through BagsWorld contributes to the ecosystem
+  // Every token launched through BagsWorld contributes to community rewards
   // Fees are SET PERMANENTLY at launch - they cannot be changed later
-  // This is why launching through BagsWorld locks in ecosystem support forever
+  // This is why launching through BagsWorld ensures your community grows
   ecosystem: {
-    // Wallet that receives ecosystem fees (treasury) - viewable on Solscan
+    // Wallet that receives ecosystem fees - viewable on Solscan
     wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
     // Fee percentage in basis points (1000 = 10%)
     feeBps: 1000,
 
-    // How the ecosystem fees are allocated (for transparency/display)
+    // How the ecosystem fees are allocated - COMMUNITY FIRST
     allocation: {
-      development: 40,    // 40% - Platform improvements, new features
-      community: 30,      // 30% - Rewards, airdrops, competitions
-      liquidity: 20,      // 20% - Future $BAGS token liquidity
-      marketing: 10,      // 10% - Growth, partnerships
+      communityRewards: 50, // 50% - Rewards for top earners & active communities
+      weeklyAirdrops: 25,   // 25% - Weekly airdrops to engaged holders
+      creatorBonus: 15,     // 15% - Bonus rewards for top performing tokens
+      development: 10,      // 10% - Platform improvements
     },
 
     // Provider name shown in fee shares
     provider: "bagsworld" as const,
-    providerUsername: "BagsWorld Ecosystem",
+    providerUsername: "BagsWorld Community Rewards",
   },
 
   // -------------------------------------------------------------------------
@@ -134,35 +134,81 @@ export const ECOSYSTEM_CONFIG = {
     ],
     forEcosystem: [
       {
-        title: "10% Ecosystem Fee",
-        description: "Funds development, rewards, and future token",
-        icon: "🌱",
+        title: "10% Community Rewards",
+        description: "Fees go back to the strongest communities",
+        icon: "🏆",
+      },
+      {
+        title: "Weekly Airdrops",
+        description: "Top earners and active holders get rewarded",
+        icon: "🎁",
       },
       {
         title: "Growing World",
-        description: "More tokens = bigger city = more engagement",
+        description: "More tokens = bigger city = stronger network",
         icon: "🌆",
-      },
-      {
-        title: "Community Events",
-        description: "Competitions, airdrops, and featured spots",
-        icon: "🎯",
       },
     ],
   },
 
   // -------------------------------------------------------------------------
-  // TREASURY BUILDING (Permanent landmark)
+  // SATOSHI - Permanent AI Character
+  // -------------------------------------------------------------------------
+  // Satoshi is always present in the world as a guide and AI companion
+  satoshi: {
+    id: "satoshi-nakamoto",
+    username: "Satoshi",
+    provider: "bitcoin" as const,
+    providerUsername: "satoshi",
+    mood: "neutral" as const,
+    // Satoshi walks around giving wisdom about crypto
+    quotes: [
+      "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.",
+      "The root problem with conventional currency is all the trust that's required to make it work.",
+      "Lost coins only make everyone else's coins worth slightly more.",
+      "I've been working on a new electronic cash system that's fully peer-to-peer, with no trusted third party.",
+      "The nature of Bitcoin is such that once version 0.1 was released, the core design was set in stone for the rest of its lifetime.",
+      "It might make sense just to get some in case it catches on.",
+    ],
+    // Special interaction - clicking Satoshi opens AI chat
+    interactionType: "ai-chat",
+  },
+
+  // -------------------------------------------------------------------------
+  // REWARDS HUB BUILDING (Permanent landmark)
   // -------------------------------------------------------------------------
   // This building always appears in the world and links to Solscan
-  // so users can verify and monitor ecosystem funds transparently
+  // so users can verify and monitor community rewards transparently
   treasury: {
-    id: "BagsWorldTreasury",
-    name: "BagsWorld Treasury",
-    symbol: "TREASURY",
-    description: "The heart of BagsWorld - all ecosystem fees flow here. Click to verify on Solscan.",
+    id: "BagsWorldRewardsHub",
+    name: "Community Rewards Hub",
+    symbol: "REWARDS",
+    description: "Where fees become rewards - distributed weekly to the strongest communities. Click to verify on Solscan.",
     level: 5, // Always max level - it's the centerpiece
     getSolscanUrl: () => `https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`,
+  },
+
+  // -------------------------------------------------------------------------
+  // ASH KETCHUM - Ecosystem Guide Character
+  // -------------------------------------------------------------------------
+  // Ash helps explain how BagsWorld works to new users
+  ash: {
+    id: "ash-ketchum",
+    username: "Ash",
+    provider: "pokemon" as const,
+    providerUsername: "ash_ketchum",
+    mood: "happy" as const,
+    // Ash explains the ecosystem with Pokemon-themed analogies
+    quotes: [
+      "Gotta catch 'em all... tokens that is! Each one becomes a building in BagsWorld!",
+      "A good trainer takes care of their team. Here, 10% of fees go back to the strongest communities!",
+      "Just like Pokemon evolve, your building grows as market cap increases!",
+      "Every citizen here earns fees from trading. It's like getting badges for battling!",
+      "I wanna be the very best! And in BagsWorld, the best communities get weekly airdrops!",
+      "Remember: the ecosystem rewards those who believe in their tokens!",
+    ],
+    // Clicking Ash opens ecosystem explainer
+    interactionType: "ecosystem-guide",
   },
 
   // -------------------------------------------------------------------------

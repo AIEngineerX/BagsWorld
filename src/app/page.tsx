@@ -7,6 +7,7 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { EventFeed } from "@/components/EventFeed";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
+import { AshChat } from "@/components/AshChat";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
@@ -88,6 +89,9 @@ export default function Home() {
 
           {/* AI Agent Chat */}
           <AIChat />
+
+          {/* Ash's Ecosystem Guide */}
+          <AshChat />
         </div>
 
         {/* Sidebar */}

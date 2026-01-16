@@ -4,7 +4,7 @@ export interface FeeEarner {
   rank: number;
   username: string;
   providerUsername: string;
-  provider: "twitter" | "tiktok" | "instagram" | "github" | "kick";
+  provider: "twitter" | "tiktok" | "instagram" | "github" | "kick" | "bitcoin" | "pokemon";
   wallet: string;
   avatarUrl?: string;
   lifetimeEarnings: number;
@@ -12,6 +12,8 @@ export interface FeeEarner {
   change24h: number;
   tokenCount: number;
   topToken?: TokenInfo;
+  isSatoshi?: boolean; // Special flag for Satoshi character
+  isAsh?: boolean; // Special flag for Ash character
 }
 
 export interface TokenInfo {
@@ -112,6 +114,8 @@ export interface GameCharacter {
   isMoving: boolean;
   buildingId?: string;
   profileUrl?: string;
+  isSatoshi?: boolean; // Special flag for Satoshi character
+  isAsh?: boolean; // Special flag for Ash character
 }
 
 export interface GameBuilding {
