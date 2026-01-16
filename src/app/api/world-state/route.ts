@@ -80,18 +80,22 @@ async function fetchDCWeather(): Promise<WorldState["weather"]> {
   }
 }
 
-// Get current EST time info
+// Get current EST/EDT time info (handles Daylight Saving Time automatically)
 function getESTTimeInfo(): {
   hour: number;
   isNight: boolean;
   isDusk: boolean;
   isDawn: boolean;
 } {
+  // Use Intl API to get accurate Eastern Time with DST handling
   const now = new Date();
-  // Convert to EST (UTC-5) or EDT (UTC-4) depending on DST
-  const estOffset = -5; // Standard EST offset
-  const utcHour = now.getUTCHours();
-  const estHour = (utcHour + estOffset + 24) % 24;
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    hour12: false,
+  };
+  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const estHour = parseInt(formatter.format(now), 10);
 
   return {
     hour: estHour,

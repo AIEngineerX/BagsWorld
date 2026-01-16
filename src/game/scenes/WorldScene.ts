@@ -381,29 +381,32 @@ export class WorldScene extends Phaser.Scene {
     let tint = 0x000000;
 
     if (timeInfo.isNight) {
-      // Night (8 PM to 6 AM EST)
-      alpha = 0.4;
-      tint = 0x1a1a4e;
+      // Night (8 PM to 6 AM EST) - deep blue overlay
+      alpha = 0.45;
+      tint = 0x0a0a2e;
     } else if (timeInfo.isDusk) {
-      // Dusk (6 PM to 8 PM EST)
-      alpha = 0.2;
-      tint = 0x4a2a4e;
+      // Dusk (6 PM to 8 PM EST) - warm orange/purple
+      alpha = 0.25;
+      tint = 0x4a2a3e;
     } else if (timeInfo.isDawn) {
-      // Dawn (6 AM to 8 AM EST)
-      alpha = 0.15;
-      tint = 0x4a3a2e;
+      // Dawn (6 AM to 8 AM EST) - soft golden
+      alpha = 0.2;
+      tint = 0x3a2a1e;
+    }
+    // Daytime (8 AM to 6 PM) - alpha stays 0, no overlay
+
+    // Set the fill style first, then animate alpha
+    if (alpha > 0) {
+      this.overlay.setFillStyle(tint, 1); // Set full color, alpha controlled by tween
     }
 
+    // Smoothly transition the overlay alpha
     this.tweens.add({
       targets: this.overlay,
       alpha,
-      duration: 2000,
-      ease: "Linear",
+      duration: 3000,
+      ease: "Sine.easeInOut",
     });
-
-    if (alpha > 0) {
-      this.overlay.setFillStyle(tint, alpha);
-    }
   }
 
   private startDayNightCycle(): void {
