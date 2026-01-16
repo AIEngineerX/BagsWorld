@@ -4,14 +4,21 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  # Your ecosystem wallet - receives 10% partner fees
+  NEXT_PUBLIC_ECOSYSTEM_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC"
+  NEXT_PUBLIC_ADMIN_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC"
+  NEXT_PUBLIC_SOLANA_NETWORK = "mainnet-beta"
 
 # Next.js requires the Next.js runtime
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Environment variables will be set in Netlify dashboard:
-# - BAGS_API_KEY
-# - BAGS_API_URL
-# - NEXT_PUBLIC_SOLANA_RPC_URL
-# - NEXT_PUBLIC_SOLANA_NETWORK
-# - ANTHROPIC_API_KEY (optional, for AI chat)
+# ============================================================================
+# REQUIRED: Set these in Netlify Dashboard > Site Settings > Environment Variables
+# ============================================================================
+# BAGS_API_KEY          - Your Bags.fm API key (get from Bags.fm)
+# NEXT_PUBLIC_SOLANA_RPC_URL - Solana RPC (e.g., https://api.mainnet-beta.solana.com)
+#
+# OPTIONAL:
+# ANTHROPIC_API_KEY     - Enables AI-powered chat (Claude)
+# BAGS_API_URL          - Override API URL (default: https://public-api-v2.bags.fm/api/v1)
