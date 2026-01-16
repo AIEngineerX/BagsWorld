@@ -245,12 +245,38 @@ export const ECOSYSTEM_CONFIG = {
   },
 
   // -------------------------------------------------------------------------
+  // FINN - Bags.fm Founder & CEO (Main Guide Character)
+  // -------------------------------------------------------------------------
+  // Finn (@finnbags) is the founder of Bags.fm and guides users through the platform
+  finn: {
+    id: "finnbags",
+    username: "Finn",
+    provider: "twitter" as const,
+    providerUsername: "finnbags",
+    twitterHandle: "finnbags",
+    mood: "happy" as const,
+    // Finn's quotes about Bags.fm and memecoins
+    quotes: [
+      "Welcome to BagsWorld! This is where memecoins come to life. Every token you launch becomes a building here.",
+      "We built Bags.fm so creators can earn forever. 1% of all trading volume, for life. No rugs, just bags.",
+      "The fastest growing launchpad in the world isn't just hype - it's because we actually ship.",
+      "I bought the WIF hat because memes matter. Culture is the new currency.",
+      "$250K reward for the first token to hit $10M and hold it for 24 hours. Let's see what you've got.",
+      "Over $1B in trading volume in less than 30 days. That's the power of community.",
+      "Launch your token, earn your fees, build your empire. It's that simple.",
+      "The best memecoins aren't just tokens - they're movements. What's yours?",
+    ],
+    // Clicking Finn opens Bags.fm guide
+    interactionType: "bags-guide",
+  },
+
+  // -------------------------------------------------------------------------
   // EXTERNAL LINKS
   // -------------------------------------------------------------------------
   links: {
     bags: "https://bags.fm",
-    twitter: "https://x.com/BagsWorld", // Update with real handle
-    docs: "https://docs.bagsworld.xyz", // Update with real docs
+    twitter: "https://x.com/finnbags",
+    docs: "https://docs.bags.fm",
     solscan: (address: string) => `https://solscan.io/account/${address}`,
   },
 };

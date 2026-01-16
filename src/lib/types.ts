@@ -14,6 +14,7 @@ export interface FeeEarner {
   topToken?: TokenInfo;
   isToly?: boolean; // Special flag for Toly (Solana co-founder) character
   isAsh?: boolean; // Special flag for Ash character
+  isFinn?: boolean; // Special flag for Finn (Bags.fm CEO) character
 }
 
 export interface TokenInfo {
@@ -116,6 +117,7 @@ export interface GameCharacter {
   profileUrl?: string;
   isToly?: boolean; // Special flag for Toly (Solana co-founder) character
   isAsh?: boolean; // Special flag for Ash character
+  isFinn?: boolean; // Special flag for Finn (Bags.fm CEO) character
 }
 
 export interface GameBuilding {

@@ -178,6 +178,8 @@ export function transformFeeEarnerToCharacter(
   const isToly = earner.isToly || earner.wallet === "toly-solana-permanent";
   // Ash gets a position on the right side of the world
   const isAsh = (earner as any).isAsh || earner.wallet === "ash-ketchum-permanent";
+  // Finn gets a position on the left side of the world
+  const isFinn = (earner as any).isFinn || earner.wallet === "finnbags-ceo-permanent";
 
   const position = existingCharacter
     ? { x: existingCharacter.x, y: existingCharacter.y }
@@ -185,7 +187,11 @@ export function transformFeeEarnerToCharacter(
     ? { x: WORLD_WIDTH / 2, y: 555 } // Center X, on the ground
     : isAsh
     ? { x: WORLD_WIDTH - 120, y: 555 } // Right side of world
+    : isFinn
+    ? { x: 120, y: 555 } // Left side of world
     : generateCharacterPosition();
+
+  const isSpecialCharacter = isToly || isAsh || isFinn;
 
   return {
     id: earner.wallet,
@@ -195,14 +201,15 @@ export function transformFeeEarnerToCharacter(
     avatarUrl: earner.avatarUrl,
     x: position.x,
     y: position.y,
-    mood: isToly ? "happy" : isAsh ? "happy" : calculateCharacterMood(earner.earnings24h, earner.change24h),
+    mood: isSpecialCharacter ? "happy" : calculateCharacterMood(earner.earnings24h, earner.change24h),
     earnings24h: earner.earnings24h,
     direction: Math.random() > 0.5 ? "left" : "right",
-    isMoving: !isToly && !isAsh && Math.random() > 0.7, // Special characters don't wander randomly
+    isMoving: !isSpecialCharacter && Math.random() > 0.7, // Special characters don't wander randomly
     buildingId: earner.topToken?.mint,
-    profileUrl: isToly ? "https://x.com/toly" : isAsh ? undefined : getProfileUrl(earner.provider, earner.username),
+    profileUrl: isToly ? "https://x.com/toly" : isFinn ? "https://x.com/finnbags" : isAsh ? undefined : getProfileUrl(earner.provider, earner.username),
     isToly, // Pass through the Toly flag
     isAsh, // Pass through the Ash flag
+    isFinn, // Pass through the Finn flag
   };
 }
 

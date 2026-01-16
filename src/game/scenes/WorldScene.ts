@@ -30,6 +30,8 @@ export class WorldScene extends Phaser.Scene {
   private audioContext: AudioContext | null = null;
   private gainNode: GainNode | null = null;
   private musicInterval: number | null = null;
+  private currentTrack = 0;
+  private trackNames = ["Adventure", "Bags Anthem", "Night Market", "Victory March"];
 
   constructor() {
     super({ key: "WorldScene" });
@@ -79,6 +81,11 @@ export class WorldScene extends Phaser.Scene {
     // Listen for music toggle
     window.addEventListener("bagsworld-toggle-music", () => {
       this.toggleMusic();
+    });
+
+    // Listen for track skip
+    window.addEventListener("bagsworld-skip-track", () => {
+      this.skipTrack();
     });
   }
 
@@ -452,10 +459,53 @@ export class WorldScene extends Phaser.Scene {
       this.gainNode.connect(this.audioContext.destination);
       this.gainNode.gain.value = 0.15; // Low volume
 
-      this.playPokemonMelody();
+      this.playCurrentTrack();
       this.musicPlaying = true;
+      this.emitTrackChange();
     } catch (e) {
       console.log("Audio not supported");
+    }
+  }
+
+  private emitTrackChange(): void {
+    window.dispatchEvent(new CustomEvent("bagsworld-track-changed", {
+      detail: { trackName: this.trackNames[this.currentTrack], trackIndex: this.currentTrack }
+    }));
+  }
+
+  private playCurrentTrack(): void {
+    switch (this.currentTrack) {
+      case 0:
+        this.playPokemonMelody();
+        break;
+      case 1:
+        this.playBagsAnthem();
+        break;
+      case 2:
+        this.playNightMarket();
+        break;
+      case 3:
+        this.playVictoryMarch();
+        break;
+      default:
+        this.playPokemonMelody();
+    }
+  }
+
+  private skipTrack(): void {
+    // Stop current melody
+    if (this.musicInterval) {
+      clearTimeout(this.musicInterval);
+      this.musicInterval = null;
+    }
+
+    // Move to next track
+    this.currentTrack = (this.currentTrack + 1) % this.trackNames.length;
+    this.emitTrackChange();
+
+    // Play new track if music is on
+    if (this.musicPlaying && this.audioContext && this.gainNode) {
+      this.playCurrentTrack();
     }
   }
 
@@ -526,7 +576,200 @@ export class WorldScene extends Phaser.Scene {
     // Loop the melody
     this.musicInterval = window.setTimeout(() => {
       if (this.musicPlaying) {
-        this.playPokemonMelody();
+        this.playCurrentTrack();
+      }
+    }, totalDuration * 1000);
+  }
+
+  // Track 2: Bags Anthem - Upbeat, energetic
+  private playBagsAnthem(): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    // Energetic synth melody in E major
+    const notes = [
+      { freq: 659.25, duration: 0.15 },  // E5
+      { freq: 659.25, duration: 0.15 },  // E5
+      { freq: 783.99, duration: 0.3 },   // G5
+      { freq: 659.25, duration: 0.15 },  // E5
+      { freq: 587.33, duration: 0.15 },  // D5
+      { freq: 523.25, duration: 0.3 },   // C5
+      { freq: 587.33, duration: 0.15 },  // D5
+      { freq: 659.25, duration: 0.3 },   // E5
+      { freq: 0, duration: 0.15 },       // Rest
+      { freq: 783.99, duration: 0.15 },  // G5
+      { freq: 880.00, duration: 0.15 },  // A5
+      { freq: 783.99, duration: 0.3 },   // G5
+      { freq: 659.25, duration: 0.15 },  // E5
+      { freq: 523.25, duration: 0.15 },  // C5
+      { freq: 587.33, duration: 0.15 },  // D5
+      { freq: 659.25, duration: 0.45 },  // E5
+      { freq: 0, duration: 0.3 },        // Rest
+    ];
+
+    const bass = [
+      { freq: 164.81, duration: 0.3 },   // E3
+      { freq: 0, duration: 0.3 },
+      { freq: 130.81, duration: 0.3 },   // C3
+      { freq: 0, duration: 0.3 },
+      { freq: 146.83, duration: 0.3 },   // D3
+      { freq: 0, duration: 0.15 },
+      { freq: 164.81, duration: 0.45 },  // E3
+      { freq: 0, duration: 0.15 },
+      { freq: 196.00, duration: 0.3 },   // G3
+      { freq: 0, duration: 0.3 },
+      { freq: 130.81, duration: 0.3 },   // C3
+      { freq: 146.83, duration: 0.3 },   // D3
+      { freq: 164.81, duration: 0.6 },   // E3
+    ];
+
+    let time = this.audioContext.currentTime;
+    const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
+
+    notes.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, time, note.duration * 0.85, 0.10);
+      }
+      time += note.duration;
+    });
+
+    let bassTime = this.audioContext.currentTime;
+    bass.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, bassTime, note.duration * 0.9, 0.08);
+      }
+      bassTime += note.duration;
+    });
+
+    this.musicInterval = window.setTimeout(() => {
+      if (this.musicPlaying) {
+        this.playCurrentTrack();
+      }
+    }, totalDuration * 1000);
+  }
+
+  // Track 3: Night Market - Chill, mysterious
+  private playNightMarket(): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    // Mysterious minor key melody
+    const notes = [
+      { freq: 329.63, duration: 0.4 },   // E4
+      { freq: 311.13, duration: 0.4 },   // Eb4 (D#4)
+      { freq: 293.66, duration: 0.4 },   // D4
+      { freq: 261.63, duration: 0.6 },   // C4
+      { freq: 0, duration: 0.2 },        // Rest
+      { freq: 293.66, duration: 0.3 },   // D4
+      { freq: 329.63, duration: 0.3 },   // E4
+      { freq: 392.00, duration: 0.5 },   // G4
+      { freq: 329.63, duration: 0.4 },   // E4
+      { freq: 0, duration: 0.3 },        // Rest
+      { freq: 440.00, duration: 0.3 },   // A4
+      { freq: 392.00, duration: 0.3 },   // G4
+      { freq: 329.63, duration: 0.4 },   // E4
+      { freq: 293.66, duration: 0.6 },   // D4
+      { freq: 0, duration: 0.4 },        // Rest
+    ];
+
+    const pad = [
+      { freq: 130.81, duration: 1.0 },   // C3
+      { freq: 0, duration: 0.2 },
+      { freq: 146.83, duration: 0.8 },   // D3
+      { freq: 0, duration: 0.2 },
+      { freq: 164.81, duration: 1.0 },   // E3
+      { freq: 0, duration: 0.2 },
+      { freq: 196.00, duration: 0.8 },   // G3
+      { freq: 0, duration: 0.2 },
+      { freq: 146.83, duration: 1.2 },   // D3
+      { freq: 0, duration: 0.4 },
+    ];
+
+    let time = this.audioContext.currentTime;
+    const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
+
+    notes.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, time, note.duration * 0.9, 0.10);
+      }
+      time += note.duration;
+    });
+
+    let padTime = this.audioContext.currentTime;
+    pad.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, padTime, note.duration * 0.95, 0.05);
+      }
+      padTime += note.duration;
+    });
+
+    this.musicInterval = window.setTimeout(() => {
+      if (this.musicPlaying) {
+        this.playCurrentTrack();
+      }
+    }, totalDuration * 1000);
+  }
+
+  // Track 4: Victory March - Triumphant, heroic
+  private playVictoryMarch(): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    // Heroic fanfare in G major
+    const notes = [
+      { freq: 392.00, duration: 0.2 },   // G4
+      { freq: 392.00, duration: 0.2 },   // G4
+      { freq: 392.00, duration: 0.2 },   // G4
+      { freq: 523.25, duration: 0.6 },   // C5
+      { freq: 0, duration: 0.1 },        // Rest
+      { freq: 493.88, duration: 0.2 },   // B4
+      { freq: 440.00, duration: 0.2 },   // A4
+      { freq: 392.00, duration: 0.4 },   // G4
+      { freq: 523.25, duration: 0.6 },   // C5
+      { freq: 0, duration: 0.1 },        // Rest
+      { freq: 587.33, duration: 0.2 },   // D5
+      { freq: 523.25, duration: 0.2 },   // C5
+      { freq: 493.88, duration: 0.2 },   // B4
+      { freq: 440.00, duration: 0.2 },   // A4
+      { freq: 493.88, duration: 0.2 },   // B4
+      { freq: 523.25, duration: 0.6 },   // C5
+      { freq: 0, duration: 0.3 },        // Rest
+    ];
+
+    const fanfare = [
+      { freq: 196.00, duration: 0.8 },   // G3
+      { freq: 0, duration: 0.1 },
+      { freq: 261.63, duration: 0.4 },   // C4
+      { freq: 196.00, duration: 0.4 },   // G3
+      { freq: 261.63, duration: 0.6 },   // C4
+      { freq: 0, duration: 0.1 },
+      { freq: 293.66, duration: 0.3 },   // D4
+      { freq: 261.63, duration: 0.3 },   // C4
+      { freq: 246.94, duration: 0.3 },   // B3
+      { freq: 220.00, duration: 0.3 },   // A3
+      { freq: 246.94, duration: 0.3 },   // B3
+      { freq: 261.63, duration: 0.6 },   // C4
+      { freq: 0, duration: 0.3 },
+    ];
+
+    let time = this.audioContext.currentTime;
+    const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
+
+    notes.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, time, note.duration * 0.85, 0.12);
+      }
+      time += note.duration;
+    });
+
+    let fanfareTime = this.audioContext.currentTime;
+    fanfare.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, fanfareTime, note.duration * 0.9, 0.07);
+      }
+      fanfareTime += note.duration;
+    });
+
+    this.musicInterval = window.setTimeout(() => {
+      if (this.musicPlaying) {
+        this.playCurrentTrack();
       }
     }, totalDuration * 1000);
   }
@@ -569,7 +812,7 @@ export class WorldScene extends Phaser.Scene {
       if (this.gainNode) {
         this.gainNode.gain.value = 0.15;
       }
-      this.playPokemonMelody();
+      this.playCurrentTrack();
     }
   }
 
@@ -1017,11 +1260,12 @@ export class WorldScene extends Phaser.Scene {
         // Special characters use unique textures, others get random variants
         const isToly = character.isToly === true;
         const isAsh = character.isAsh === true;
-        const isSpecial = isToly || isAsh;
+        const isFinn = character.isFinn === true;
+        const isSpecial = isToly || isAsh || isFinn;
         const variant = index % 9;
         this.characterVariants.set(character.id, variant);
 
-        const textureKey = isToly ? "toly" : isAsh ? "ash" : this.getCharacterTexture(character.mood, variant);
+        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : this.getCharacterTexture(character.mood, variant);
         sprite = this.add.sprite(character.x, character.y, textureKey);
         sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
         sprite.setInteractive();
@@ -1034,6 +1278,8 @@ export class WorldScene extends Phaser.Scene {
             this.showTolyTooltip(sprite!);
           } else if (isAsh) {
             this.showAshTooltip(sprite!);
+          } else if (isFinn) {
+            this.showFinnTooltip(sprite!);
           } else {
             this.showCharacterTooltip(character, sprite!);
           }
@@ -1051,6 +1297,9 @@ export class WorldScene extends Phaser.Scene {
           } else if (isAsh) {
             // Ash opens the ecosystem guide chat
             window.dispatchEvent(new CustomEvent("bagsworld-ash-click"));
+          } else if (isFinn) {
+            // Finn opens the Bags.fm guide chat
+            window.dispatchEvent(new CustomEvent("bagsworld-finn-click"));
           } else if (character.profileUrl) {
             // Open profile page in new tab
             window.open(character.profileUrl, "_blank");
@@ -1111,6 +1360,28 @@ export class WorldScene extends Phaser.Scene {
           });
         }
 
+        // Add emerald glow effect for Finn
+        if (isFinn) {
+          const glow = this.add.sprite(character.x, character.y, "glow");
+          glow.setScale(1.0);
+          glow.setAlpha(0.3);
+          glow.setTint(0x10b981); // Emerald/Bags green
+          glow.setDepth(10);
+
+          // Store reference to glow for cleanup
+          (sprite as any).finnGlow = glow;
+
+          this.tweens.add({
+            targets: glow,
+            alpha: 0.5,
+            scale: 1.2,
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+
         this.characterSprites.set(character.id, sprite);
       } else {
         // Update special character glow positions if they exist
@@ -1124,12 +1395,18 @@ export class WorldScene extends Phaser.Scene {
           ashGlow.x = sprite.x;
           ashGlow.y = sprite.y;
         }
+        const finnGlow = (sprite as any).finnGlow;
+        if (finnGlow) {
+          finnGlow.x = sprite.x;
+          finnGlow.y = sprite.y;
+        }
       }
 
       // Update texture based on mood (skip for special characters)
       const isToly = character.isToly === true;
       const isAsh = character.isAsh === true;
-      if (!isToly && !isAsh) {
+      const isFinn = character.isFinn === true;
+      if (!isToly && !isAsh && !isFinn) {
         const variant = this.characterVariants.get(character.id) ?? 0;
         const expectedTexture = this.getCharacterTexture(character.mood, variant);
         if (sprite.texture.key !== expectedTexture) {
@@ -1408,6 +1685,47 @@ export class WorldScene extends Phaser.Scene {
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, descText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showFinnTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 165, 68, 0x0a0a0f, 0.95);
+    bg.setStrokeStyle(2, 0x10b981); // Emerald/Bags green border
+
+    const nameText = this.add.text(0, -22, "💼 Finn", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#10b981",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Bags.fm Founder & CEO", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "Launch. Earn. Build your empire.", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "🚀 Click to learn about Bags.fm", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#fbbf24",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
     container.setDepth(200);
     this.tooltip = container;
   }

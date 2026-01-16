@@ -9,6 +9,7 @@ import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
 import { AshChat } from "@/components/AshChat";
 import { SatoshiChat } from "@/components/SatoshiChat";
+import { FinnbagsChat } from "@/components/FinnbagsChat";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
@@ -98,6 +99,9 @@ export default function Home() {
 
           {/* Ash's Ecosystem Guide */}
           <AshChat />
+
+          {/* Finn's Bags.fm Guide */}
+          <FinnbagsChat />
         </div>
 
         {/* Sidebar */}
