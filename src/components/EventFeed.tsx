@@ -39,7 +39,11 @@ export function EventFeed({ events }: EventFeedProps) {
 
   // Strip emojis from message since we're adding our own icons
   const cleanMessage = (message: string): string => {
-    return message.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, "").trim();
+    // Remove common emoji ranges
+    return message
+      .replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, "")
+      .replace(/[\u2600-\u27BF]/g, "")
+      .trim();
   };
 
   return (
