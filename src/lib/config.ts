@@ -15,9 +15,11 @@ export const ECOSYSTEM_CONFIG = {
   // ECOSYSTEM FEE STRUCTURE
   // -------------------------------------------------------------------------
   // Every token launched through BagsWorld contributes to the ecosystem
+  // Fees are SET PERMANENTLY at launch - they cannot be changed later
+  // This is why launching through BagsWorld locks in ecosystem support forever
   ecosystem: {
-    // Wallet that receives ecosystem fees (treasury)
-    wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3",
+    // Wallet that receives ecosystem fees (treasury) - viewable on Solscan
+    wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
     // Fee percentage in basis points (1000 = 10%)
     feeBps: 1000,
@@ -41,7 +43,7 @@ export const ECOSYSTEM_CONFIG = {
   admin: {
     // Wallets with admin privileges (can delete buildings, moderate)
     wallets: [
-      process.env.NEXT_PUBLIC_ADMIN_WALLET || "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3",
+      process.env.NEXT_PUBLIC_ADMIN_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
     ],
   },
 
@@ -150,12 +152,27 @@ export const ECOSYSTEM_CONFIG = {
   },
 
   // -------------------------------------------------------------------------
+  // TREASURY BUILDING (Permanent landmark)
+  // -------------------------------------------------------------------------
+  // This building always appears in the world and links to Solscan
+  // so users can verify and monitor ecosystem funds transparently
+  treasury: {
+    id: "BagsWorldTreasury",
+    name: "BagsWorld Treasury",
+    symbol: "TREASURY",
+    description: "The heart of BagsWorld - all ecosystem fees flow here. Click to verify on Solscan.",
+    level: 5, // Always max level - it's the centerpiece
+    getSolscanUrl: () => `https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`,
+  },
+
+  // -------------------------------------------------------------------------
   // EXTERNAL LINKS
   // -------------------------------------------------------------------------
   links: {
     bags: "https://bags.fm",
     twitter: "https://x.com/BagsWorld", // Update with real handle
     docs: "https://docs.bagsworld.xyz", // Update with real docs
+    solscan: (address: string) => `https://solscan.io/account/${address}`,
   },
 };
 

@@ -756,14 +756,17 @@ export class WorldScene extends Phaser.Scene {
           this.input.setDefaultCursor("default");
         });
         container.on("pointerdown", () => {
-          // Emit event for React to handle building click
           const isStarterBuilding = building.id.startsWith("Starter");
+          const isTreasuryBuilding = building.id.startsWith("Treasury");
 
           if (isStarterBuilding) {
             // For starter buildings, show a message
             console.log(`${building.name} - Launch a token to create a real building!`);
+          } else if (isTreasuryBuilding && building.tokenUrl) {
+            // Treasury building opens Solscan directly for transparency
+            window.open(building.tokenUrl, "_blank");
           } else {
-            // Emit custom event for React to open trade modal
+            // Regular tokens emit event for React to open trade modal
             window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
               detail: {
                 mint: building.tokenMint || building.id,
@@ -864,54 +867,81 @@ export class WorldScene extends Phaser.Scene {
   ): void {
     this.hideTooltip();
 
+    const isTreasury = building.id.startsWith("Treasury");
     const tooltipContainer = this.add.container(container.x, container.y - 110);
 
-    const bg = this.add.rectangle(0, 0, 130, 80, 0x0a0a0f, 0.95);
-    bg.setStrokeStyle(2, building.health > 50 ? 0x4ade80 : 0xf87171);
+    // Treasury gets a special gold border
+    const bg = this.add.rectangle(0, 0, 140, 80, 0x0a0a0f, 0.95);
+    bg.setStrokeStyle(2, isTreasury ? 0xfbbf24 : (building.health > 50 ? 0x4ade80 : 0xf87171));
 
     const nameText = this.add.text(0, -28, `${building.name}`, {
       fontFamily: "monospace",
       fontSize: "10px",
-      color: "#ffffff",
+      color: isTreasury ? "#fbbf24" : "#ffffff",
     });
     nameText.setOrigin(0.5, 0.5);
 
-    // Market cap
-    const mcapText = this.add.text(0, -12, building.marketCap ? this.formatMarketCap(building.marketCap) : "N/A", {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#4ade80",
-    });
-    mcapText.setOrigin(0.5, 0.5);
+    if (isTreasury) {
+      // Treasury-specific tooltip
+      const descText = this.add.text(0, -10, "Ecosystem Treasury", {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: "#4ade80",
+      });
+      descText.setOrigin(0.5, 0.5);
 
-    // Level label based on market cap tier
-    const levelLabels = ["Startup", "Growing", "Established", "Major", "Top Tier"];
-    const levelLabel = levelLabels[building.level - 1] || `Level ${building.level}`;
-    const levelText = this.add.text(0, 2, `⭐ ${levelLabel}`, {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: "#fbbf24",
-    });
-    levelText.setOrigin(0.5, 0.5);
+      const infoText = this.add.text(0, 6, "10% of all fees flow here", {
+        fontFamily: "monospace",
+        fontSize: "7px",
+        color: "#9ca3af",
+      });
+      infoText.setOrigin(0.5, 0.5);
 
-    // 24h change
-    const changeColor = (building.change24h ?? 0) >= 0 ? "#4ade80" : "#f87171";
-    const changePrefix = (building.change24h ?? 0) >= 0 ? "+" : "";
-    const changeText = this.add.text(0, 16, `${changePrefix}${(building.change24h ?? 0).toFixed(0)}% (24h)`, {
-      fontFamily: "monospace",
-      fontSize: "8px",
-      color: changeColor,
-    });
-    changeText.setOrigin(0.5, 0.5);
+      const clickText = this.add.text(0, 22, "🔍 Click to verify on Solscan", {
+        fontFamily: "monospace",
+        fontSize: "7px",
+        color: "#60a5fa",
+      });
+      clickText.setOrigin(0.5, 0.5);
 
-    const clickText = this.add.text(0, 32, "Click to trade", {
-      fontFamily: "monospace",
-      fontSize: "7px",
-      color: "#6b7280",
-    });
-    clickText.setOrigin(0.5, 0.5);
+      tooltipContainer.add([bg, nameText, descText, infoText, clickText]);
+    } else {
+      // Regular building tooltip
+      const mcapText = this.add.text(0, -12, building.marketCap ? this.formatMarketCap(building.marketCap) : "N/A", {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#4ade80",
+      });
+      mcapText.setOrigin(0.5, 0.5);
 
-    tooltipContainer.add([bg, nameText, mcapText, levelText, changeText, clickText]);
+      const levelLabels = ["Startup", "Growing", "Established", "Major", "Top Tier"];
+      const levelLabel = levelLabels[building.level - 1] || `Level ${building.level}`;
+      const levelText = this.add.text(0, 2, `⭐ ${levelLabel}`, {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: "#fbbf24",
+      });
+      levelText.setOrigin(0.5, 0.5);
+
+      const changeColor = (building.change24h ?? 0) >= 0 ? "#4ade80" : "#f87171";
+      const changePrefix = (building.change24h ?? 0) >= 0 ? "+" : "";
+      const changeText = this.add.text(0, 16, `${changePrefix}${(building.change24h ?? 0).toFixed(0)}% (24h)`, {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: changeColor,
+      });
+      changeText.setOrigin(0.5, 0.5);
+
+      const clickText = this.add.text(0, 32, "Click to trade", {
+        fontFamily: "monospace",
+        fontSize: "7px",
+        color: "#6b7280",
+      });
+      clickText.setOrigin(0.5, 0.5);
+
+      tooltipContainer.add([bg, nameText, mcapText, levelText, changeText, clickText]);
+    }
+
     tooltipContainer.setDepth(200);
     this.tooltip = tooltipContainer;
   }
