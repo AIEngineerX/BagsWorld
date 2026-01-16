@@ -14,6 +14,7 @@ import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
 import { TradeModal } from "@/components/TradeModal";
 import { PartnerClaimButton } from "@/components/PartnerClaimButton";
+import { MusicButton } from "@/components/MusicButton";
 import { useWorldState } from "@/hooks/useWorldState";
 
 interface BuildingClickData {
@@ -68,6 +69,7 @@ export default function Home() {
               {worldState?.weather?.toUpperCase() ?? "LOADING"}
             </span>
           </div>
+          <MusicButton />
           <WalletButton />
           <PartnerClaimButton />
           <ClaimButton />

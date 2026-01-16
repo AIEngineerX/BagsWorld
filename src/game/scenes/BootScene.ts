@@ -129,6 +129,12 @@ export class BootScene extends Phaser.Scene {
 
     // Generate animals
     this.generateAnimals();
+
+    // Generate extra decorations (flowers, rocks, fountain, etc.)
+    this.generateExtraDecorations();
+
+    // Generate ambient particles
+    this.generateAmbientParticles();
   }
 
   private generateGrass(): void {
@@ -1064,5 +1070,195 @@ export class BootScene extends Phaser.Scene {
     squirrel.fillRect(18, 14, 2, 3);
     squirrel.generateTexture("squirrel", 28, 22);
     squirrel.destroy();
+  }
+
+  private generateExtraDecorations(): void {
+    // Flower - colorful pixel flower
+    const flower = this.make.graphics({ x: 0, y: 0 });
+    // Stem
+    flower.fillStyle(0x22c55e);
+    flower.fillRect(6, 8, 2, 12);
+    // Leaves
+    flower.fillStyle(0x16a34a);
+    flower.fillRect(3, 12, 4, 3);
+    flower.fillRect(7, 14, 4, 3);
+    // Petals - random color per instance will be set in scene
+    const petalColors = [0xef4444, 0xfbbf24, 0xec4899, 0x8b5cf6, 0x3b82f6];
+    const petalColor = petalColors[Math.floor(Math.random() * petalColors.length)];
+    flower.fillStyle(petalColor);
+    flower.fillCircle(4, 4, 3);
+    flower.fillCircle(10, 4, 3);
+    flower.fillCircle(4, 8, 3);
+    flower.fillCircle(10, 8, 3);
+    // Center
+    flower.fillStyle(0xfbbf24);
+    flower.fillCircle(7, 6, 3);
+    flower.generateTexture("flower", 14, 20);
+    flower.destroy();
+
+    // Rock - gray stone
+    const rock = this.make.graphics({ x: 0, y: 0 });
+    rock.fillStyle(0x6b7280);
+    rock.fillEllipse(10, 8, 12, 8);
+    rock.fillStyle(0x9ca3af);
+    rock.fillEllipse(8, 6, 8, 5);
+    rock.fillStyle(0x4b5563);
+    rock.fillEllipse(12, 10, 6, 4);
+    rock.generateTexture("rock", 20, 16);
+    rock.destroy();
+
+    // Fountain - decorative water fountain
+    const fountain = this.make.graphics({ x: 0, y: 0 });
+    // Base
+    fountain.fillStyle(0x6b7280);
+    fountain.fillRect(8, 28, 24, 8);
+    fountain.fillStyle(0x9ca3af);
+    fountain.fillRect(10, 26, 20, 4);
+    // Middle tier
+    fountain.fillStyle(0x78716c);
+    fountain.fillRect(14, 18, 12, 10);
+    fountain.fillStyle(0xa8a29e);
+    fountain.fillRect(16, 16, 8, 4);
+    // Top bowl
+    fountain.fillStyle(0x6b7280);
+    fountain.fillRect(12, 10, 16, 8);
+    fountain.fillStyle(0x60a5fa, 0.7);
+    fountain.fillRect(14, 12, 12, 4);
+    // Spout
+    fountain.fillStyle(0x9ca3af);
+    fountain.fillRect(18, 4, 4, 8);
+    // Water drops at top
+    fountain.fillStyle(0x93c5fd);
+    fountain.fillCircle(20, 2, 2);
+    fountain.generateTexture("fountain", 40, 36);
+    fountain.destroy();
+
+    // Flag - waving flag on pole
+    const flag = this.make.graphics({ x: 0, y: 0 });
+    // Pole
+    flag.fillStyle(0x78716c);
+    flag.fillRect(2, 0, 3, 40);
+    flag.fillStyle(0x9ca3af);
+    flag.fillRect(3, 0, 1, 40);
+    // Flag top ball
+    flag.fillStyle(0xfbbf24);
+    flag.fillCircle(3, 2, 3);
+    // Flag fabric - BagsWorld green
+    flag.fillStyle(0x4ade80);
+    flag.fillRect(5, 4, 18, 12);
+    flag.fillStyle(0x22c55e);
+    flag.fillRect(5, 10, 18, 6);
+    // B for Bags
+    flag.fillStyle(0xffffff);
+    flag.fillRect(10, 6, 6, 8);
+    flag.fillRect(10, 6, 2, 8);
+    flag.fillRect(10, 6, 6, 2);
+    flag.fillRect(10, 9, 5, 2);
+    flag.fillRect(10, 12, 6, 2);
+    flag.generateTexture("flag", 24, 40);
+    flag.destroy();
+
+    // Pond - small water area
+    const pond = this.make.graphics({ x: 0, y: 0 });
+    // Water base
+    pond.fillStyle(0x1e3a8a, 0.6);
+    pond.fillEllipse(16, 10, 16, 10);
+    pond.fillStyle(0x3b82f6, 0.5);
+    pond.fillEllipse(16, 10, 12, 7);
+    // Highlight/reflection
+    pond.fillStyle(0x93c5fd, 0.4);
+    pond.fillEllipse(12, 8, 6, 3);
+    // Lily pad
+    pond.fillStyle(0x22c55e);
+    pond.fillCircle(20, 12, 3);
+    pond.fillStyle(0x16a34a);
+    pond.fillRect(20, 11, 3, 2);
+    // Lily flower
+    pond.fillStyle(0xfda4af);
+    pond.fillCircle(21, 11, 2);
+    pond.generateTexture("pond", 32, 20);
+    pond.destroy();
+
+    // Mushroom - cute pixel mushroom
+    const mushroom = this.make.graphics({ x: 0, y: 0 });
+    // Stem
+    mushroom.fillStyle(0xfef3c7);
+    mushroom.fillRect(4, 8, 6, 8);
+    mushroom.fillStyle(0xfde68a);
+    mushroom.fillRect(5, 8, 4, 8);
+    // Cap
+    mushroom.fillStyle(0xef4444);
+    mushroom.fillEllipse(7, 6, 8, 6);
+    // Spots
+    mushroom.fillStyle(0xffffff);
+    mushroom.fillCircle(5, 4, 2);
+    mushroom.fillCircle(9, 5, 1.5);
+    mushroom.fillCircle(7, 7, 1);
+    mushroom.generateTexture("mushroom", 14, 16);
+    mushroom.destroy();
+
+    // Signpost
+    const signpost = this.make.graphics({ x: 0, y: 0 });
+    // Post
+    signpost.fillStyle(0x78350f);
+    signpost.fillRect(8, 10, 4, 20);
+    signpost.fillStyle(0x92400e);
+    signpost.fillRect(9, 10, 2, 20);
+    // Sign board
+    signpost.fillStyle(0xa16207);
+    signpost.fillRect(0, 4, 20, 10);
+    signpost.fillStyle(0xca8a04);
+    signpost.fillRect(1, 5, 18, 8);
+    // Arrow or text hint
+    signpost.fillStyle(0x422006);
+    signpost.fillRect(4, 8, 8, 2);
+    signpost.fillTriangle(12, 6, 16, 9, 12, 12);
+    signpost.generateTexture("signpost", 20, 30);
+    signpost.destroy();
+  }
+
+  private generateAmbientParticles(): void {
+    // Pollen/dust particle
+    const pollen = this.make.graphics({ x: 0, y: 0 });
+    pollen.fillStyle(0xfef3c7);
+    pollen.fillCircle(2, 2, 2);
+    pollen.fillStyle(0xffffff, 0.5);
+    pollen.fillCircle(1.5, 1.5, 1);
+    pollen.generateTexture("pollen", 4, 4);
+    pollen.destroy();
+
+    // Firefly - glowing particle for night
+    const firefly = this.make.graphics({ x: 0, y: 0 });
+    // Outer glow
+    firefly.fillStyle(0xfde047, 0.3);
+    firefly.fillCircle(6, 6, 6);
+    firefly.fillStyle(0xfef08a, 0.5);
+    firefly.fillCircle(6, 6, 4);
+    // Core
+    firefly.fillStyle(0xfef9c3);
+    firefly.fillCircle(6, 6, 2);
+    firefly.fillStyle(0xffffff);
+    firefly.fillCircle(6, 6, 1);
+    firefly.generateTexture("firefly", 12, 12);
+    firefly.destroy();
+
+    // Leaf particle
+    const leaf = this.make.graphics({ x: 0, y: 0 });
+    leaf.fillStyle(0x22c55e);
+    leaf.fillEllipse(4, 3, 4, 3);
+    leaf.fillStyle(0x16a34a);
+    leaf.fillRect(3, 2, 1, 4);
+    leaf.generateTexture("leaf", 8, 8);
+    leaf.destroy();
+
+    // Sparkle particle
+    const sparkle = this.make.graphics({ x: 0, y: 0 });
+    sparkle.fillStyle(0xffffff);
+    sparkle.fillRect(3, 0, 2, 8);
+    sparkle.fillRect(0, 3, 8, 2);
+    sparkle.fillStyle(0xfef3c7);
+    sparkle.fillRect(3, 3, 2, 2);
+    sparkle.generateTexture("sparkle", 8, 8);
+    sparkle.destroy();
   }
 }
