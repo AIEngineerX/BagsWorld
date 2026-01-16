@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Next.js requires the Next.js runtime
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Environment variables will be set in Netlify dashboard:
+# - BAGS_API_KEY
+# - BAGS_API_URL
+# - NEXT_PUBLIC_SOLANA_RPC_URL
+# - NEXT_PUBLIC_SOLANA_NETWORK
+# - ANTHROPIC_API_KEY (optional, for AI chat)
