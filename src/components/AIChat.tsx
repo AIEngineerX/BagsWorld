@@ -222,12 +222,22 @@ export function AIChat() {
     }
   };
 
-  // Handle special bot intents (for future expandability)
+  // Handle special bot intents - trigger game events
   const handleBotIntent = (intent: string, data: any) => {
-    // Could trigger visual effects, highlight elements, etc.
     switch (intent) {
       case "animal_interaction":
-        // Could trigger animal animation in game
+        // Trigger animal animation in game
+        if (data?.animalType && data?.action) {
+          window.dispatchEvent(
+            new CustomEvent("bagsworld-animal-control", {
+              detail: {
+                action: data.action,
+                animalType: data.animalType,
+                targetX: data.targetX,
+              },
+            })
+          );
+        }
         break;
       case "citizen_interaction":
         // Could highlight the citizen in the game

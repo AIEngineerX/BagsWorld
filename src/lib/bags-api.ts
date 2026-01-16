@@ -203,21 +203,18 @@ class BagsApiClient {
     });
   }
 
-  async createLaunchTransaction(
-    mint: string,
-    creatorWallet: string,
-    initialBuyLamports?: number
-  ): Promise<{
-    transaction: string;
-    lastValidBlockHeight: number;
-  }> {
+  async createLaunchTransaction(data: {
+    ipfs: string;
+    tokenMint: string;
+    wallet: string;
+    initialBuyLamports: number;
+    configKey: string;
+    tipWallet?: string;
+    tipLamports?: number;
+  }): Promise<string> {
     return this.fetch("/token-launch/create-launch-transaction", {
       method: "POST",
-      body: JSON.stringify({
-        mint,
-        creatorWallet,
-        initialBuyLamports,
-      }),
+      body: JSON.stringify(data),
     });
   }
 

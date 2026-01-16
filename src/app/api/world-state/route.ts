@@ -92,7 +92,7 @@ const CLAIM_EVENTS_CACHE_DURATION = 15 * 1000; // 15 seconds
 
 let previousState: WorldState | null = null;
 
-// Fetch real Washington DC weather
+// Fetch real Washington DC weather directly from Open-Meteo
 async function fetchDCWeather(): Promise<WorldState["weather"]> {
   try {
     if (
@@ -102,22 +102,27 @@ async function fetchDCWeather(): Promise<WorldState["weather"]> {
       return cachedWeather.weather;
     }
 
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NETLIFY
-        ? process.env.URL
-        : "http://localhost:3000";
+    // Fetch directly from Open-Meteo to avoid internal API call issues
+    const DC_LAT = 38.9072;
+    const DC_LON = -77.0369;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${DC_LAT}&longitude=${DC_LON}&current=weather_code,cloud_cover&timezone=America/New_York`;
 
-    const response = await fetch(`${baseUrl}/api/weather`, {
-      cache: "no-store",
-    });
+    const response = await fetch(url, { cache: "no-store" });
 
     if (!response.ok) {
       throw new Error("Weather API error");
     }
 
     const data = await response.json();
-    const weather = data.gameWeather as WorldState["weather"];
+    const code = data.current.weather_code;
+    const cloudCover = data.current.cloud_cover;
+
+    // Convert to game weather
+    let weather: WorldState["weather"] = "cloudy";
+    if (code >= 95) weather = "storm";
+    else if (code >= 51 || code >= 61 || code >= 71 || code >= 80) weather = "rain";
+    else if (code === 3 || cloudCover > 70) weather = "cloudy";
+    else if (code <= 2 && cloudCover < 30) weather = "sunny";
 
     cachedWeather = { weather, fetchedAt: Date.now() };
 
@@ -387,21 +392,7 @@ export async function POST(request: NextRequest) {
       .slice(0, 15)
       .map((e, i) => ({ ...e, rank: i + 1 }));
 
-    // If no earners, create placeholder from token creators
-    if (earners.length === 0) {
-      earners = tokens.slice(0, 5).map((t, i) => ({
-        rank: i + 1,
-        username: `creator_${i + 1}`,
-        providerUsername: `creator_${i + 1}`,
-        provider: "twitter" as const,
-        wallet: t.creator || `Creator${i}`,
-        lifetimeEarnings: t.lifetimeFees || 0,
-        earnings24h: (t.lifetimeFees || 0) * 0.1,
-        change24h: 0,
-        tokenCount: 1,
-        topToken: t,
-      }));
-    }
+    // No placeholder earners - only show real data from SDK
 
     // Fetch weather and time
     const [realWeather, timeInfo] = await Promise.all([
@@ -497,18 +488,8 @@ export async function GET() {
     );
 
     const tokens: TokenInfo[] = enrichedResults.map((r) => r.tokenInfo);
-    const earners: FeeEarner[] = tokens.slice(0, 5).map((t, i) => ({
-      rank: i + 1,
-      username: `citizen_${i + 1}`,
-      providerUsername: `citizen_${i + 1}`,
-      provider: "twitter" as const,
-      wallet: t.creator || `Citizen${i}`,
-      lifetimeEarnings: t.lifetimeFees || 0,
-      earnings24h: (t.lifetimeFees || 0) * 0.1,
-      change24h: 0,
-      tokenCount: 1,
-      topToken: t,
-    }));
+    // No placeholder earners - only show real data from SDK
+    const earners: FeeEarner[] = [];
 
     const [realWeather, timeInfo] = await Promise.all([
       fetchDCWeather(),

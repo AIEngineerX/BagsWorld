@@ -990,4 +990,106 @@ export class WorldScene extends Phaser.Scene {
       particles.destroy();
     });
   }
+
+  // Animal control methods for Bags Bot
+  moveAnimalTo(animalType: Animal["type"], targetX: number): void {
+    const animal = this.animals.find((a) => a.type === animalType);
+    if (animal) {
+      animal.targetX = Math.max(50, Math.min(750, targetX));
+      animal.isIdle = false;
+      animal.direction = animal.targetX > animal.sprite.x ? "right" : "left";
+    }
+  }
+
+  petAnimal(animalType: Animal["type"]): void {
+    const animal = this.animals.find((a) => a.type === animalType);
+    if (animal) {
+      // Stop the animal
+      animal.isIdle = true;
+      animal.idleTimer = 0;
+
+      // Happy bounce animation
+      this.tweens.add({
+        targets: animal.sprite,
+        y: animal.sprite.y - 15,
+        duration: 200,
+        yoyo: true,
+        repeat: 2,
+        ease: "Bounce.easeOut",
+      });
+
+      // Hearts effect
+      const hearts = this.add.particles(animal.sprite.x, animal.sprite.y - 20, "star", {
+        speed: { min: 30, max: 60 },
+        angle: { min: 220, max: 320 },
+        lifespan: 1000,
+        quantity: 5,
+        scale: { start: 0.5, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: 0xff69b4,
+      });
+
+      hearts.explode(5);
+
+      this.time.delayedCall(1000, () => {
+        hearts.destroy();
+      });
+    }
+  }
+
+  scareAnimal(animalType: Animal["type"]): void {
+    const animal = this.animals.find((a) => a.type === animalType);
+    if (animal) {
+      // Run away to random side
+      animal.isIdle = false;
+      animal.targetX = animal.sprite.x > 400 ? 50 : 750;
+      animal.speed = animal.speed * 3; // Temporarily faster
+
+      // Shake animation
+      this.tweens.add({
+        targets: animal.sprite,
+        x: animal.sprite.x + 5,
+        duration: 50,
+        yoyo: true,
+        repeat: 4,
+      });
+
+      // Reset speed after 2 seconds
+      this.time.delayedCall(2000, () => {
+        animal.speed = animal.type === "butterfly" ? 0.3 : animal.type === "bird" ? 0.5 : 0.2;
+      });
+    }
+  }
+
+  callAnimal(animalType: Animal["type"], targetX: number): void {
+    const animal = this.animals.find((a) => a.type === animalType);
+    if (animal) {
+      animal.targetX = Math.max(50, Math.min(750, targetX));
+      animal.isIdle = false;
+      animal.direction = animal.targetX > animal.sprite.x ? "right" : "left";
+      animal.speed = animal.speed * 1.5; // Move a bit faster when called
+
+      // Reset speed after reaching target
+      this.time.delayedCall(3000, () => {
+        animal.speed = animal.type === "butterfly" ? 0.3 : animal.type === "bird" ? 0.5 : 0.2;
+      });
+    }
+  }
+
+  getAnimalPosition(animalType: Animal["type"]): { x: number; y: number } | null {
+    const animal = this.animals.find((a) => a.type === animalType);
+    if (animal) {
+      return { x: animal.sprite.x, y: animal.sprite.y };
+    }
+    return null;
+  }
+
+  getAllAnimals(): Array<{ type: Animal["type"]; x: number; y: number; isIdle: boolean }> {
+    return this.animals.map((a) => ({
+      type: a.type,
+      x: a.sprite.x,
+      y: a.sprite.y,
+      isIdle: a.isIdle,
+    }));
+  }
 }

@@ -29,9 +29,14 @@ interface LaunchRequestBody {
       providerUsername: string;
       bps: number;
     }>;
-    // For create-launch-tx
-    creatorWallet?: string;
+    // For create-launch-tx (new format)
+    ipfs?: string; // IPFS URL of token metadata
+    tokenMint?: string; // Public key of token mint
+    wallet?: string; // User's wallet public key
     initialBuyLamports?: number;
+    configKey?: string; // From configure-fees step
+    tipWallet?: string;
+    tipLamports?: number;
     // For lookup-wallet
     provider?: string;
     username?: string;
@@ -153,24 +158,28 @@ async function handleCreateLaunchTx(
   api: BagsApiClient,
   data: LaunchRequestBody["data"]
 ): Promise<NextResponse> {
-  if (!data.mint || !data.creatorWallet) {
+  // Validate required fields for new API format
+  if (!data.ipfs || !data.tokenMint || !data.wallet || !data.configKey) {
     return NextResponse.json(
-      { error: "Missing required fields: mint, creatorWallet" },
+      { error: "Missing required fields: ipfs, tokenMint, wallet, configKey" },
       { status: 400 }
     );
   }
 
   try {
-    const result = await api.createLaunchTransaction(
-      data.mint,
-      data.creatorWallet,
-      data.initialBuyLamports
-    );
+    const result = await api.createLaunchTransaction({
+      ipfs: data.ipfs,
+      tokenMint: data.tokenMint,
+      wallet: data.wallet,
+      initialBuyLamports: data.initialBuyLamports || 0,
+      configKey: data.configKey,
+      tipWallet: data.tipWallet,
+      tipLamports: data.tipLamports,
+    });
 
     return NextResponse.json({
       success: true,
-      transaction: result.transaction,
-      lastValidBlockHeight: result.lastValidBlockHeight,
+      transaction: result,
     });
   } catch (error) {
     console.error("Create launch tx error:", error);
