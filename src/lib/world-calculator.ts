@@ -175,9 +175,18 @@ export function transformTokenToBuilding(
     ? { x: existingBuilding.x, y: existingBuilding.y }
     : generateBuildingPosition(index, MAX_BUILDINGS);
 
-  // Check if this is a real token (not a starter/placeholder)
+  // Check if this is a real token (not a starter/placeholder/treasury)
   const isStarterToken = token.mint.startsWith("Starter");
-  const tokenUrl = isStarterToken ? undefined : `https://bags.fm/token/${token.mint}`;
+  const isTreasuryBuilding = token.mint.startsWith("Treasury");
+
+  // Treasury links to Solscan, real tokens link to Bags.fm, starters have no link
+  let tokenUrl: string | undefined;
+  if (isTreasuryBuilding) {
+    // Link to Solscan so users can verify the treasury wallet
+    tokenUrl = `https://solscan.io/account/${token.creator}`;
+  } else if (!isStarterToken) {
+    tokenUrl = `https://bags.fm/token/${token.mint}`;
+  }
 
   return {
     id: token.mint,

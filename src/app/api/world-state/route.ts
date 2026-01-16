@@ -262,22 +262,28 @@ async function enrichTokenWithSDK(
   return { tokenInfo, creators, claimEvents };
 }
 
-// Starter buildings when no tokens are registered
+// Treasury wallet - always visible for transparency
+const TREASURY_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC";
+
+// Treasury building - ALWAYS appears in the world (permanent landmark)
+// Links to Solscan so users can verify ecosystem funds transparently
+const TREASURY_BUILDING: RegisteredToken = {
+  mint: "TreasuryBagsWorld1111111111111111111111111111",
+  name: "BagsWorld Treasury",
+  symbol: "TREASURY",
+  description: "The heart of BagsWorld - 10% of all fees flow here. Click to verify on Solscan!",
+  imageUrl: "/assets/buildings/treasury.png",
+  creator: TREASURY_WALLET,
+  createdAt: Date.now() - 86400000 * 365, // 1 year ago (always been here)
+};
+
+// Starter buildings when no user tokens are registered
 const STARTER_BUILDINGS: RegisteredToken[] = [
-  {
-    mint: "StarterTownHall11111111111111111111111111111",
-    name: "Town Hall",
-    symbol: "HALL",
-    description: "The heart of BagsWorld - launch your first token!",
-    imageUrl: "/assets/buildings/level-5.png",
-    creator: "BagsWorld",
-    createdAt: Date.now() - 86400000 * 30, // 30 days ago
-  },
   {
     mint: "StarterWelcome111111111111111111111111111111",
     name: "Welcome Center",
     symbol: "WELCOME",
-    description: "New to BagsWorld? Start here!",
+    description: "New to BagsWorld? Launch a token to build here!",
     imageUrl: "/assets/buildings/level-3.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
@@ -349,11 +355,12 @@ export async function POST(request: NextRequest) {
     const now = Date.now();
     const sdk = await getBagsSDK();
 
-    // If no tokens registered, use starter buildings
-    const tokensToProcess =
-      registeredTokens.length > 0 ? registeredTokens : STARTER_BUILDINGS;
+    // ALWAYS include Treasury building first (permanent landmark)
+    // Then add user tokens, or starter buildings if no user tokens
+    const userTokens = registeredTokens.length > 0 ? registeredTokens : STARTER_BUILDINGS;
+    const tokensToProcess = [TREASURY_BUILDING, ...userTokens];
 
-    console.log(`Processing ${tokensToProcess.length} registered tokens`);
+    console.log(`Processing ${tokensToProcess.length} buildings (1 treasury + ${userTokens.length} tokens)`);
 
     // Enrich all tokens with SDK data
     const enrichedResults = await Promise.all(

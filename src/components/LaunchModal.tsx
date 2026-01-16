@@ -294,13 +294,31 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             {/* Why Launch Here */}
             <div className="bg-gradient-to-r from-bags-green/10 to-bags-gold/10 border border-bags-green/30 p-3 space-y-2">
               <p className="font-pixel text-[10px] text-bags-gold">✨ WHY LAUNCH ON BAGSWORLD?</p>
-              <div className="grid grid-cols-2 gap-2">
-                {ECOSYSTEM_CONFIG.benefits.forCreators.slice(0, 4).map((benefit, i) => (
-                  <div key={i} className="flex items-start gap-1">
-                    <span className="text-xs">{benefit.icon}</span>
-                    <span className="font-pixel text-[7px] text-gray-300">{benefit.title}</span>
-                  </div>
-                ))}
+              <div className="space-y-1">
+                <div className="flex items-start gap-2">
+                  <span className="text-xs">🔒</span>
+                  <span className="font-pixel text-[7px] text-gray-300">
+                    <span className="text-bags-green">Permanent fee lock</span> - Your token always supports the ecosystem
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs">🏗️</span>
+                  <span className="font-pixel text-[7px] text-gray-300">
+                    <span className="text-bags-green">Living building</span> - Your token appears in the game world
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs">👥</span>
+                  <span className="font-pixel text-[7px] text-gray-300">
+                    <span className="text-bags-green">Auto citizens</span> - Fee claimers become walking characters
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs">💱</span>
+                  <span className="font-pixel text-[7px] text-gray-300">
+                    <span className="text-bags-green">Built-in trading</span> - Users trade directly in the game
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -416,10 +434,20 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         {/* Step 2: Fee Sharing */}
         {step === "fees" && (
           <div className="p-4 space-y-4">
+            {/* Important notice about permanent fees */}
+            <div className="bg-bags-green/10 border-2 border-bags-green p-3">
+              <p className="font-pixel text-[10px] text-bags-green mb-1">🔒 FEES ARE SET PERMANENTLY</p>
+              <p className="font-pixel text-[8px] text-gray-300">
+                On Bags.fm, fee shares are <span className="text-bags-gold">locked at launch</span> and cannot be changed.
+                This is why launching through BagsWorld ensures the ecosystem is supported forever.
+              </p>
+            </div>
+
             <div className="bg-bags-darker p-3 border border-bags-green/30">
-              <p className="font-pixel text-[10px] text-bags-gold mb-1">💰 FEE SHARING</p>
+              <p className="font-pixel text-[10px] text-bags-gold mb-1">💰 HOW FEES WORK</p>
               <p className="font-pixel text-[8px] text-gray-400">
-                Add social accounts to share fees with. Each trade generates fees that get split among claimers.
+                Every trade on your token generates fees. These fees are automatically split among all fee claimers you add here.
+                They can claim their share anytime on Bags.fm.
               </p>
             </div>
 
@@ -430,7 +458,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   <span className="text-sm">🏙️</span>
                   <div>
                     <p className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.displayName}</p>
-                    <p className="font-pixel text-[7px] text-gray-400">Auto-included • Benefits everyone</p>
+                    <p className="font-pixel text-[7px] text-gray-400">Permanently locked • Powers the ecosystem</p>
                   </div>
                 </div>
                 <span className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.bps / 100}%</span>
@@ -449,6 +477,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   <span className="text-purple-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.marketing}% Marketing
                 </div>
               </div>
+              <a
+                href={`https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 pt-1"
+              >
+                🔍 View Treasury on Solscan →
+              </a>
             </div>
 
             <div className="space-y-3">
@@ -537,7 +573,16 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             </div>
 
             <div className="bg-bags-darker p-3 space-y-2">
-              <p className="font-pixel text-[10px] text-bags-gold">💰 Fee Distribution</p>
+              <div className="flex justify-between items-center mb-2">
+                <p className="font-pixel text-[10px] text-bags-gold">💰 Fee Distribution</p>
+                <span className="font-pixel text-[7px] text-gray-500 bg-bags-green/10 px-2 py-0.5 rounded">🔒 PERMANENT</span>
+              </div>
+              {/* Ecosystem fee */}
+              <div className="flex justify-between font-pixel text-[8px] pb-1 border-b border-bags-green/20">
+                <span className="text-bags-gold">🏙️ {ecosystemFee.displayName}</span>
+                <span className="text-bags-gold">{ecosystemFee.bps / 100}%</span>
+              </div>
+              {/* User fee shares */}
               {feeShares.filter(f => f.username).map((share, i) => (
                 <div key={i} className="flex justify-between font-pixel text-[8px]">
                   <span className="text-gray-400">{share.provider}/@{share.username}</span>
@@ -545,8 +590,12 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 </div>
               ))}
               {feeShares.filter(f => f.username).length === 0 && (
-                <p className="font-pixel text-[8px] text-gray-500">No fee claimers configured</p>
+                <p className="font-pixel text-[8px] text-gray-500">No additional fee claimers</p>
               )}
+              <div className="flex justify-between font-pixel text-[8px] pt-1 border-t border-bags-green/20">
+                <span className="text-white">Total</span>
+                <span className="text-white">{(totalBps / 100).toFixed(1)}%</span>
+              </div>
             </div>
 
             <div className="bg-bags-gold/10 border border-bags-gold/30 p-3">
