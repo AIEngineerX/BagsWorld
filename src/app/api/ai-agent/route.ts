@@ -231,14 +231,18 @@ Personality guidelines:
 
 Keep responses SHORT and entertaining. Use emojis sparingly but effectively.`;
 
-  const userPrompt = `Current world state:
+  const worldStateInfo = worldState
+    ? `Current world state:
 - World Health: ${worldState.health}%
 - Weather: ${worldState.weather}
 - Population: ${worldState.populationCount} characters
 - Buildings: ${worldState.buildingCount} token buildings
 
 Recent events:
-${worldState.recentEvents.map((e) => `- ${e.message}`).join("\n")}
+${worldState.recentEvents.map((e) => `- ${e.message}`).join("\n")}`
+    : "World state is currently unavailable.";
+
+  const userPrompt = `${worldStateInfo}
 
 Your observation: ${observation}
 
