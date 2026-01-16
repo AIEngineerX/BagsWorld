@@ -95,13 +95,15 @@ async function handleChat(
   const lowerMsg = userMessage.toLowerCase();
 
   // Check for specific intents
-  if (lowerMsg.includes("pet") || lowerMsg.includes("animal") || lowerMsg.includes("dog") || lowerMsg.includes("cat")) {
+  if (lowerMsg.includes("pet") || lowerMsg.includes("animal") || lowerMsg.includes("dog") || lowerMsg.includes("cat") || lowerMsg.includes("bird") || lowerMsg.includes("butterfly") || lowerMsg.includes("squirrel")) {
+    const animalResponse = getAnimalInteractionResponse(personality, lowerMsg);
     return NextResponse.json({
       action: {
         type: "speak",
-        message: getAnimalInteractionResponse(personality, lowerMsg),
+        message: animalResponse.message,
         intent: "animal_interaction",
       },
+      data: animalResponse.data,
     });
   }
 
@@ -487,21 +489,68 @@ function formatNumber(num: number): string {
 }
 
 // Response generators
-function getAnimalInteractionResponse(personality: AIPersonality, message: string): string {
+function getAnimalInteractionResponse(personality: AIPersonality, message: string): { message: string; data: any } {
   const animal = message.includes("dog") ? "dog"
     : message.includes("cat") ? "cat"
     : message.includes("bird") ? "bird"
     : message.includes("butterfly") ? "butterfly"
     : message.includes("squirrel") ? "squirrel"
-    : "animals";
+    : "dog"; // default to dog
 
-  const responses: Record<AIPersonality["trait"], string> = {
-    optimistic: `love the ${animal} in BagsWorld!! theyre all vibing with us 🐾 wanna interact with one? just say which! `,
-    cautious: `the ${animal} here are pretty chill... they seem to react to market sentiment. interesting creatures`,
-    chaotic: `OMG THE ${animal.toUpperCase()}!! I LOVE THEM!! *runs around chaotically* LETS PET ALL OF THEM 🐸🐾`,
-    strategic: `${animal} behavior analysis available. they seem to correlate with world health metrics 📊`,
+  // Determine the action based on message
+  const action = message.includes("pet") || message.includes("love") || message.includes("pat")
+    ? "pet"
+    : message.includes("scare") || message.includes("chase")
+    ? "scare"
+    : message.includes("call") || message.includes("come") || message.includes("here")
+    ? "call"
+    : message.includes("move") || message.includes("go")
+    ? "move"
+    : "pet"; // default to pet
+
+  const petResponses: Record<string, Record<AIPersonality["trait"], string>> = {
+    dog: {
+      optimistic: "*pets the good boy* WHOS A GOOD DOGE?! 🐕 tail wagging intensifies!! wagmi together fren!",
+      cautious: "*carefully pets dog* hey buddy... youre a good one. woof woof",
+      chaotic: "PUPPY!! 🐕 *aggressive pets* GOOD BOY!! WHO WANTS BELLY RUBS?! 🐸",
+      strategic: "*pets dog methodically* excellent... positive canine engagement metrics",
+    },
+    cat: {
+      optimistic: "*scritches cat* such a good kitty!! purring = bullish! 🐱",
+      cautious: "*gently pets cat* there there... youve seen many markets, wise one",
+      chaotic: "KITTYYYY!! 🐱 *pets aggressively* PURR FOR ME!! PURRRR!! 🐸",
+      strategic: "*pets cat* cat contentment levels rising. good data",
+    },
+    bird: {
+      optimistic: "*waves at bird* fly high little fren!! 🐦 to the moon!",
+      cautious: "hello birb... keep flying safe up there",
+      chaotic: "BIRB!! 🐦 *flaps arms* IM A BIRD TOO!! CAWCAW!! 🐸",
+      strategic: "*observes bird* flight patterns noted. interesting data point",
+    },
+    butterfly: {
+      optimistic: "*butterfly lands on hand* so beautiful!! just like our gains 🦋",
+      cautious: "gentle butterfly... flutter safely, little one",
+      chaotic: "BUTTERFLY!! 🦋 *runs after it* WAIT!! BE MY FREN!! 🐸",
+      strategic: "*studies butterfly* metamorphosis complete. elegant specimen",
+    },
+    squirrel: {
+      optimistic: "*offers nut* here you go little guy!! stacking bags like us! 🐿️",
+      cautious: "hello squirrel... smart to accumulate. wise creature",
+      chaotic: "SQUIRREL!! 🐿️ *throws nuts everywhere* CATCH!! ACCUMULATE!! 🐸",
+      strategic: "*observes squirrel* DCA behavior confirmed. based rodent",
+    },
   };
-  return responses[personality.trait];
+
+  const responses = petResponses[animal] || petResponses.dog;
+
+  return {
+    message: responses[personality.trait],
+    data: {
+      animalType: animal,
+      action: action,
+      targetX: 400, // center of screen for calls
+    },
+  };
 }
 
 function getCitizenInteractionResponse(personality: AIPersonality, worldState: BotRequestBody["worldState"]): string {

@@ -7,6 +7,13 @@ import { WorldScene } from "@/game/scenes/WorldScene";
 import { UIScene } from "@/game/scenes/UIScene";
 import type { WorldState } from "@/lib/types";
 
+// Animal control event types
+interface AnimalControlEvent {
+  action: "move" | "pet" | "scare" | "call";
+  animalType: "dog" | "cat" | "bird" | "butterfly" | "squirrel";
+  targetX?: number;
+}
+
 interface GameCanvasProps {
   worldState: WorldState | null;
 }
@@ -60,6 +67,39 @@ export default function GameCanvas({ worldState }: GameCanvasProps) {
       }
     }
   }, [worldState]);
+
+  // Listen for animal control events from Bags Bot
+  useEffect(() => {
+    const handleAnimalControl = (event: CustomEvent<AnimalControlEvent>) => {
+      if (!gameRef.current) return;
+
+      const worldScene = gameRef.current.scene.getScene("WorldScene") as WorldScene;
+      if (!worldScene || !worldScene.scene.isActive()) return;
+
+      const { action, animalType, targetX } = event.detail;
+
+      switch (action) {
+        case "move":
+          worldScene.moveAnimalTo(animalType, targetX ?? 400);
+          break;
+        case "pet":
+          worldScene.petAnimal(animalType);
+          break;
+        case "scare":
+          worldScene.scareAnimal(animalType);
+          break;
+        case "call":
+          worldScene.callAnimal(animalType, targetX ?? 400);
+          break;
+      }
+    };
+
+    window.addEventListener("bagsworld-animal-control", handleAnimalControl as EventListener);
+
+    return () => {
+      window.removeEventListener("bagsworld-animal-control", handleAnimalControl as EventListener);
+    };
+  }, []);
 
   return (
     <div
