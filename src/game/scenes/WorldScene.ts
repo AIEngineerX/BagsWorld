@@ -693,12 +693,19 @@ export class WorldScene extends Phaser.Scene {
       if (!container) {
         container = this.add.container(building.x, building.y);
 
-        // Shadow
-        const shadow = this.add.ellipse(2, 2, 30, 8, 0x000000, 0.3);
+        // Scale building based on level (market cap)
+        // Level 1: 0.8x, Level 2: 0.9x, Level 3: 1.0x, Level 4: 1.15x, Level 5: 1.3x
+        const buildingScales = [0.8, 0.9, 1.0, 1.15, 1.3];
+        const buildingScale = buildingScales[building.level - 1] || 1.0;
+
+        // Shadow scales with building
+        const shadowWidth = 20 + building.level * 6;
+        const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
         container.add(shadow);
 
         const sprite = this.add.sprite(0, 0, `building_${building.level}`);
         sprite.setOrigin(0.5, 1);
+        sprite.setScale(buildingScale);
         container.add(sprite);
 
         // Glow effect for pumping buildings
@@ -749,9 +756,12 @@ export class WorldScene extends Phaser.Scene {
           this.input.setDefaultCursor("default");
         });
         container.on("pointerdown", () => {
-          // Open token page in new tab
+          // Open token page in new tab (only for real tokens, not starters)
           if (building.tokenUrl) {
             window.open(building.tokenUrl, "_blank");
+          } else {
+            // For starter buildings, show a message instead of breaking
+            console.log(`${building.name} - Launch a token to create a real building!`);
           }
         });
 
