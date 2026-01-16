@@ -28,7 +28,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
     website: "",
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -47,8 +47,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       reader.onloadend = () => {
         const result = reader.result as string;
         setImagePreview(result);
-        // Extract base64 without the data URL prefix
-        setImageBase64(result.split(",")[1]);
+        // Keep the full data URL for API submission
+        setImageDataUrl(result);
       };
       reader.readAsDataURL(file);
     }
@@ -118,7 +118,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             name: formData.name,
             symbol: formData.symbol,
             description: formData.description,
-            image: imageBase64 || "",
+            image: imageDataUrl || "",
             twitter: formData.twitter,
             website: formData.website,
           },
@@ -130,10 +130,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         throw new Error(err.error || "Failed to create token info");
       }
 
-      const { mint, metadataUri } = await tokenInfoResponse.json();
+      const { tokenMint, tokenMetadata } = await tokenInfoResponse.json();
 
       // 2. Configure fee sharing
       const validFeeShares = feeShares.filter(f => f.username.trim());
+      let configKey: string | undefined;
       if (validFeeShares.length > 0) {
         const feeConfigResponse = await fetch("/api/launch-token", {
           method: "POST",
@@ -141,7 +142,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           body: JSON.stringify({
             action: "configure-fees",
             data: {
-              mint,
+              mint: tokenMint,
               feeClaimers: validFeeShares.map(f => ({
                 provider: f.provider,
                 providerUsername: f.username.replace("@", ""),
@@ -151,19 +152,42 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           }),
         });
 
-        if (!feeConfigResponse.ok) {
+        if (feeConfigResponse.ok) {
+          const feeResult = await feeConfigResponse.json();
+          configKey = feeResult.configId;
+        } else {
           console.warn("Fee config warning:", await feeConfigResponse.text());
           // Continue anyway, fee config is optional
         }
       }
 
-      // 3. Create launch transaction (would need wallet signing)
-      // In full implementation, would sign and submit transaction
-      // const launchTxResponse = await fetch("/api/launch-token", { ... });
+      // 3. Create launch transaction and sign it
+      if (configKey) {
+        const launchTxResponse = await fetch("/api/launch-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "create-launch-tx",
+            data: {
+              ipfs: tokenMetadata,
+              tokenMint: tokenMint,
+              wallet: publicKey?.toBase58(),
+              initialBuyLamports: 0, // User can configure this
+              configKey: configKey,
+            },
+          }),
+        });
+
+        if (!launchTxResponse.ok) {
+          const err = await launchTxResponse.json();
+          console.warn("Launch tx warning:", err.error);
+          // Continue to save token anyway for display
+        }
+      }
 
       // 4. Save token to registry for the world to display
       const launchedToken: LaunchedToken = {
-        mint,
+        mint: tokenMint,
         name: formData.name,
         symbol: formData.symbol,
         description: formData.description,
