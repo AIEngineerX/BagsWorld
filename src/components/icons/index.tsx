@@ -537,3 +537,33 @@ export function TargetIcon({ className = "", size = 16 }: IconProps) {
     </svg>
   );
 }
+
+// Building/construction icon
+export function BuildingIcon({ className = "", size = 16 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+    >
+      <path d="M3 21h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18V7H3v2zm0-6v2h18V3H3z" />
+    </svg>
+  );
+}
+
+// Hammer/construction icon
+export function HammerIcon({ className = "", size = 16 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+    >
+      <path d="M2 19.63L13.43 8.2l-1.42-1.42 1.42-1.41L16 8l1.41-1.41-2.83-2.83 1.42-1.42L18.83 5 20 3.83l1.41 1.41L20 6.66l2.83 2.83-1.41 1.41L20 9.48l-1.41 1.41L17.17 12l1.41 1.41-1.41 1.42L4.83 19.63 2 19.63z" />
+    </svg>
+  );
+}
