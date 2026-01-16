@@ -91,7 +91,6 @@ export function generateBuildingPosition(
   const maxCols = 5; // Maximum 5 buildings per row
   const actualTotal = Math.min(total, MAX_BUILDINGS);
   const rows = Math.ceil(actualTotal / maxCols);
-  const cols = Math.min(actualTotal, maxCols);
 
   const row = Math.floor(index / maxCols);
   const col = index % maxCols;
@@ -103,24 +102,31 @@ export function generateBuildingPosition(
   const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
   const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
 
-  // Center vertically with some padding from top
-  const totalHeight = rows * BUILDING_SPACING;
-  const startY = Math.max(150, (WORLD_HEIGHT - totalHeight) / 2 + 80);
+  // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area)
+  // Buildings use origin(0.5, 1), so y position is their bottom edge
+  // Stack rows upward from ground level with spacing
+  const GROUND_Y = 540; // Where buildings sit on the ground
+  const ROW_SPACING = 100; // Vertical spacing between rows (slightly less than horizontal)
+
+  // Front row (row 0) is at ground level, subsequent rows stack upward (behind)
+  const baseY = GROUND_Y - row * ROW_SPACING;
 
   // Use seeded random for consistent small offsets based on index
   const offsetX = (seededRandom(index * 7 + 1) * 16 - 8);
-  const offsetY = (seededRandom(index * 13 + 2) * 16 - 8);
+  const offsetY = (seededRandom(index * 13 + 2) * 12 - 6); // Smaller Y offset
 
   return {
     x: rowStartX + col * BUILDING_SPACING + offsetX,
-    y: startY + row * BUILDING_SPACING + offsetY,
+    y: baseY + offsetY,
   };
 }
 
 export function generateCharacterPosition(): { x: number; y: number } {
+  // Characters walk on the ground/path area (around y=555)
+  // Small Y variation so they're not all in a perfect line
   return {
     x: 50 + Math.random() * (WORLD_WIDTH - 100),
-    y: 200 + Math.random() * (WORLD_HEIGHT - 300),
+    y: 550 + Math.random() * 15, // Ground level with slight variation
   };
 }
 
@@ -145,8 +151,17 @@ export function transformFeeEarnerToCharacter(
   earner: FeeEarner,
   existingCharacter?: GameCharacter
 ): GameCharacter {
+  // Satoshi gets a fixed central position near the Treasury
+  const isSatoshi = earner.isSatoshi || earner.wallet === "satoshi-nakamoto-permanent";
+  // Ash gets a position on the right side of the world
+  const isAsh = (earner as any).isAsh || earner.wallet === "ash-ketchum-permanent";
+
   const position = existingCharacter
     ? { x: existingCharacter.x, y: existingCharacter.y }
+    : isSatoshi
+    ? { x: WORLD_WIDTH / 2, y: 555 } // Center X, on the ground
+    : isAsh
+    ? { x: WORLD_WIDTH - 120, y: 555 } // Right side of world
     : generateCharacterPosition();
 
   return {
@@ -157,12 +172,14 @@ export function transformFeeEarnerToCharacter(
     avatarUrl: earner.avatarUrl,
     x: position.x,
     y: position.y,
-    mood: calculateCharacterMood(earner.earnings24h, earner.change24h),
+    mood: isSatoshi ? "neutral" : isAsh ? "happy" : calculateCharacterMood(earner.earnings24h, earner.change24h),
     earnings24h: earner.earnings24h,
     direction: Math.random() > 0.5 ? "left" : "right",
-    isMoving: Math.random() > 0.7,
+    isMoving: !isSatoshi && !isAsh && Math.random() > 0.7, // Special characters don't wander randomly
     buildingId: earner.topToken?.mint,
-    profileUrl: getProfileUrl(earner.provider, earner.username),
+    profileUrl: isSatoshi || isAsh ? undefined : getProfileUrl(earner.provider, earner.username),
+    isSatoshi, // Pass through the Satoshi flag
+    isAsh, // Pass through the Ash flag
   };
 }
 

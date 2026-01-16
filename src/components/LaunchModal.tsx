@@ -296,9 +296,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <p className="font-pixel text-[10px] text-bags-gold">✨ WHY LAUNCH ON BAGSWORLD?</p>
               <div className="space-y-1">
                 <div className="flex items-start gap-2">
-                  <span className="text-xs">🔒</span>
+                  <span className="text-xs">🏆</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Permanent fee lock</span> - Your token always supports the ecosystem
+                    <span className="text-bags-green">Community rewards</span> - 10% goes back to strongest communities
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
@@ -314,9 +314,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-xs">💱</span>
+                  <span className="text-xs">🎁</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Built-in trading</span> - Users trade directly in the game
+                    <span className="text-bags-green">Weekly airdrops</span> - Active holders earn bonus rewards
                   </span>
                 </div>
               </div>
@@ -451,30 +451,30 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               </p>
             </div>
 
-            {/* Ecosystem Fee - Always included */}
+            {/* Ecosystem Fee - Community Rewards */}
             <div className="bg-bags-gold/10 border border-bags-gold/30 p-3 space-y-2">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">🏙️</span>
+                  <span className="text-sm">🏆</span>
                   <div>
                     <p className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.displayName}</p>
-                    <p className="font-pixel text-[7px] text-gray-400">Permanently locked • Powers the ecosystem</p>
+                    <p className="font-pixel text-[7px] text-gray-400">Goes back to strongest communities</p>
                   </div>
                 </div>
                 <span className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.bps / 100}%</span>
               </div>
               <div className="grid grid-cols-2 gap-1 pt-1 border-t border-bags-gold/20">
                 <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-bags-green">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.development}% Development
+                  <span className="text-bags-gold">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.communityRewards}% Community Rewards
                 </div>
                 <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-bags-gold">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.community}% Community
+                  <span className="text-bags-green">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.weeklyAirdrops}% Weekly Airdrops
                 </div>
                 <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-blue-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.liquidity}% Liquidity
+                  <span className="text-purple-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.creatorBonus}% Creator Bonus
                 </div>
                 <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-purple-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.marketing}% Marketing
+                  <span className="text-blue-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.development}% Development
                 </div>
               </div>
               <a
@@ -483,7 +483,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 rel="noopener noreferrer"
                 className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 pt-1"
               >
-                🔍 View Treasury on Solscan →
+                🔍 View Rewards Wallet on Solscan →
               </a>
             </div>
 

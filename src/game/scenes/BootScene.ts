@@ -390,6 +390,220 @@ export class BootScene extends Phaser.Scene {
     this.createCharacterSprite("character_happy", SKIN_TONES[0], HAIR_COLORS[0], SHIRT_COLORS[0], "happy");
     this.createCharacterSprite("character_sad", SKIN_TONES[0], HAIR_COLORS[0], SHIRT_COLORS[0], "sad");
     this.createCharacterSprite("character_celebrating", SKIN_TONES[0], HAIR_COLORS[0], SHIRT_COLORS[0], "celebrating");
+
+    // Generate Satoshi - special character with unique appearance
+    this.generateSatoshiSprite();
+
+    // Generate Ash Ketchum - ecosystem guide character
+    this.generateAshSprite();
+  }
+
+  private generateSatoshiSprite(): void {
+    // Satoshi has a mysterious, iconic look
+    // Dark hair, neutral expression, simple dark clothing
+    const skinTone = 0xf1c27d; // Light tan
+    const hairColor = 0x1a1a1a; // Black hair
+    const shirtColor = 0xf7931a; // Bitcoin orange!
+
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Golden aura/glow behind Satoshi
+    g.fillStyle(0xf7931a, 0.15);
+    g.fillCircle(16, 16, 18);
+    g.fillStyle(0xf7931a, 0.1);
+    g.fillCircle(16, 16, 22);
+
+    // Shadow
+    g.fillStyle(0x000000, 0.3);
+    g.fillEllipse(16, 30, 14, 5);
+
+    // Legs (dark pants)
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(10, 22, 5, 9);
+    g.fillRect(17, 22, 5, 9);
+
+    // Shoes
+    g.fillStyle(0x0a0a0a);
+    g.fillRect(9, 29, 6, 3);
+    g.fillRect(17, 29, 6, 3);
+
+    // Body/Shirt (Bitcoin orange)
+    g.fillStyle(shirtColor);
+    g.fillRect(8, 12, 16, 12);
+
+    // Bitcoin logo on shirt (simplified B)
+    g.fillStyle(0xffffff);
+    g.fillRect(14, 15, 4, 6);
+    g.fillRect(13, 15, 1, 1);
+    g.fillRect(13, 17, 1, 1);
+    g.fillRect(13, 20, 1, 1);
+
+    // Arms
+    g.fillStyle(skinTone);
+    g.fillRect(5, 13, 4, 10);
+    g.fillRect(23, 13, 4, 10);
+
+    // Head
+    g.fillStyle(skinTone);
+    g.fillRect(9, 2, 14, 12);
+
+    // Hair (mysterious, slightly longer)
+    g.fillStyle(hairColor);
+    g.fillRect(8, 0, 16, 6);
+    g.fillRect(7, 2, 3, 6);
+    g.fillRect(22, 2, 3, 6);
+    // Side burns
+    g.fillRect(8, 6, 2, 3);
+    g.fillRect(22, 6, 2, 3);
+
+    // Sunglasses (mysterious!)
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(10, 5, 5, 4);
+    g.fillRect(17, 5, 5, 4);
+    g.fillRect(15, 6, 2, 2); // Bridge
+    // Reflection on glasses
+    g.fillStyle(0x4a4a4a);
+    g.fillRect(11, 6, 2, 1);
+    g.fillRect(18, 6, 2, 1);
+
+    // Slight smile
+    g.fillStyle(0x000000);
+    g.fillRect(14, 10, 4, 1);
+
+    // Question mark above head (the mystery!)
+    g.fillStyle(0xf7931a);
+    g.fillRect(15, -6, 2, 1);
+    g.fillRect(14, -8, 4, 1);
+    g.fillRect(17, -7, 1, 1);
+    g.fillRect(15, -4, 2, 1);
+    g.fillRect(15, -2, 2, 1);
+
+    g.generateTexture("satoshi", 32, 32);
+    g.destroy();
+  }
+
+  private generateAshSprite(): void {
+    // Ash Ketchum - Pokemon trainer style with iconic cap
+    const skinTone = 0xffdbac; // Light skin
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Shadow
+    g.fillStyle(0x000000, 0.3);
+    g.fillEllipse(16, 30, 14, 5);
+
+    // Legs (blue jeans)
+    g.fillStyle(0x1e40af);
+    g.fillRect(10, 22, 5, 9);
+    g.fillRect(17, 22, 5, 9);
+
+    // Shoes (red/black sneakers)
+    g.fillStyle(0xdc2626);
+    g.fillRect(9, 29, 6, 3);
+    g.fillRect(17, 29, 6, 3);
+    g.fillStyle(0xffffff);
+    g.fillRect(10, 30, 2, 1);
+    g.fillRect(18, 30, 2, 1);
+
+    // Body (blue vest over black shirt)
+    g.fillStyle(0x1f2937); // Black undershirt
+    g.fillRect(8, 12, 16, 12);
+    g.fillStyle(0x2563eb); // Blue vest
+    g.fillRect(8, 12, 5, 12);
+    g.fillRect(19, 12, 5, 12);
+    // Yellow trim on vest
+    g.fillStyle(0xfbbf24);
+    g.fillRect(8, 12, 1, 12);
+    g.fillRect(23, 12, 1, 12);
+
+    // Arms
+    g.fillStyle(skinTone);
+    g.fillRect(5, 13, 4, 10);
+    g.fillRect(23, 13, 4, 10);
+
+    // Gloves (green fingerless)
+    g.fillStyle(0x22c55e);
+    g.fillRect(5, 19, 4, 4);
+    g.fillRect(23, 19, 4, 4);
+    g.fillStyle(skinTone);
+    g.fillRect(6, 21, 2, 2);
+    g.fillRect(24, 21, 2, 2);
+
+    // Head
+    g.fillStyle(skinTone);
+    g.fillRect(9, 2, 14, 12);
+
+    // Hair (black, spiky)
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(9, 0, 14, 5);
+    g.fillRect(7, 2, 3, 5);
+    g.fillRect(22, 2, 3, 5);
+    // Spiky hair bits sticking out
+    g.fillRect(6, 3, 2, 3);
+    g.fillRect(24, 3, 2, 3);
+    g.fillRect(12, -1, 2, 2);
+    g.fillRect(18, -1, 2, 2);
+
+    // Iconic Pokemon cap (red with white front and green symbol area)
+    g.fillStyle(0xdc2626); // Red
+    g.fillRect(7, -2, 18, 5);
+    g.fillStyle(0xffffff); // White front panel
+    g.fillRect(11, -2, 10, 4);
+    // Green Pokemon League symbol
+    g.fillStyle(0x22c55e);
+    g.fillRect(14, -1, 4, 2);
+    // Cap bill
+    g.fillStyle(0xdc2626);
+    g.fillRect(7, 2, 10, 2);
+
+    // Face marks (Z marks on cheeks - like Ash)
+    g.fillStyle(0x8b4513);
+    g.fillRect(9, 8, 2, 1);
+    g.fillRect(9, 9, 1, 1);
+    g.fillRect(21, 8, 2, 1);
+    g.fillRect(22, 9, 1, 1);
+
+    // Eyes (big anime style)
+    g.fillStyle(0xffffff);
+    g.fillRect(11, 5, 4, 4);
+    g.fillRect(17, 5, 4, 4);
+    // Brown irises
+    g.fillStyle(0x92400e);
+    g.fillRect(12, 6, 3, 3);
+    g.fillRect(18, 6, 3, 3);
+    // Black pupils
+    g.fillStyle(0x000000);
+    g.fillRect(13, 6, 2, 2);
+    g.fillRect(19, 6, 2, 2);
+    // Eye shine
+    g.fillStyle(0xffffff);
+    g.fillRect(13, 6, 1, 1);
+    g.fillRect(19, 6, 1, 1);
+
+    // Determined smile
+    g.fillStyle(0x000000);
+    g.fillRect(13, 11, 6, 1);
+    g.fillRect(12, 10, 1, 1);
+    g.fillRect(19, 10, 1, 1);
+
+    // Pokeball icon floating (showing he's a trainer)
+    g.fillStyle(0xdc2626);
+    g.fillCircle(28, 4, 4);
+    g.fillStyle(0xffffff);
+    g.fillRect(24, 3, 8, 2);
+    g.fillCircle(28, 4, 4);
+    g.fillStyle(0xdc2626);
+    g.fillRect(24, 0, 8, 4);
+    g.fillStyle(0xffffff);
+    g.fillRect(24, 4, 8, 4);
+    g.fillStyle(0x1f2937);
+    g.fillRect(24, 3, 8, 2);
+    g.fillStyle(0xffffff);
+    g.fillCircle(28, 4, 2);
+    g.fillStyle(0x1f2937);
+    g.fillCircle(28, 4, 1);
+
+    g.generateTexture("ash", 32, 32);
+    g.destroy();
   }
 
   private createCharacterSprite(
@@ -495,27 +709,58 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generateWeatherAssets(): void {
-    // Rain drop
+    // Rain drop - enhanced
     const rainGraphics = this.make.graphics({ x: 0, y: 0 });
     rainGraphics.fillStyle(0x60a5fa);
-    rainGraphics.fillRect(1, 0, 2, 6);
+    rainGraphics.fillRect(1, 0, 2, 8);
     rainGraphics.fillStyle(0x93c5fd);
-    rainGraphics.fillRect(1, 0, 1, 2);
-    rainGraphics.generateTexture("rain", 4, 8);
+    rainGraphics.fillRect(1, 0, 1, 3);
+    rainGraphics.fillStyle(0x3b82f6);
+    rainGraphics.fillRect(2, 5, 1, 3);
+    rainGraphics.generateTexture("rain", 4, 10);
     rainGraphics.destroy();
 
-    // Sun with rays
+    // Sun with rays - enhanced with more detail
     const sunGraphics = this.make.graphics({ x: 0, y: 0 });
+    // Outer glow
+    sunGraphics.fillStyle(0xfbbf24, 0.15);
+    sunGraphics.fillCircle(20, 20, 20);
     sunGraphics.fillStyle(0xfbbf24, 0.3);
-    sunGraphics.fillCircle(16, 16, 16);
-    sunGraphics.fillStyle(0xfbbf24, 0.6);
-    sunGraphics.fillCircle(16, 16, 12);
+    sunGraphics.fillCircle(20, 20, 16);
+    sunGraphics.fillStyle(0xfbbf24, 0.5);
+    sunGraphics.fillCircle(20, 20, 12);
+    // Core
     sunGraphics.fillStyle(0xfbbf24);
-    sunGraphics.fillCircle(16, 16, 8);
+    sunGraphics.fillCircle(20, 20, 8);
+    // Bright center
     sunGraphics.fillStyle(0xfef3c7);
-    sunGraphics.fillCircle(14, 14, 3);
-    sunGraphics.generateTexture("sun", 32, 32);
+    sunGraphics.fillCircle(18, 18, 4);
+    // Hot spot
+    sunGraphics.fillStyle(0xffffff);
+    sunGraphics.fillCircle(17, 17, 2);
+    sunGraphics.generateTexture("sun", 40, 40);
     sunGraphics.destroy();
+
+    // Moon - crescent with crater details
+    const moonGraphics = this.make.graphics({ x: 0, y: 0 });
+    // Outer glow
+    moonGraphics.fillStyle(0xc4b5fd, 0.2);
+    moonGraphics.fillCircle(16, 16, 16);
+    moonGraphics.fillStyle(0xe0e7ff, 0.3);
+    moonGraphics.fillCircle(16, 16, 12);
+    // Moon body
+    moonGraphics.fillStyle(0xf1f5f9);
+    moonGraphics.fillCircle(16, 16, 10);
+    // Crescent shadow
+    moonGraphics.fillStyle(0x1e293b, 0.7);
+    moonGraphics.fillCircle(20, 14, 8);
+    // Craters
+    moonGraphics.fillStyle(0xcbd5e1);
+    moonGraphics.fillCircle(12, 14, 2);
+    moonGraphics.fillCircle(14, 20, 1.5);
+    moonGraphics.fillCircle(10, 18, 1);
+    moonGraphics.generateTexture("moon", 32, 32);
+    moonGraphics.destroy();
 
     // Fluffy cloud
     const cloudGraphics = this.make.graphics({ x: 0, y: 0 });
