@@ -8,12 +8,14 @@ import type {
 } from "@/lib/types";
 import { buildWorldState } from "@/lib/world-calculator";
 import { BagsApiClient } from "@/lib/bags-api";
+import { fetchTrendingTokens, DexToken } from "@/lib/dexscreener-api";
 
-// Known Bags.fm token mints - these are tokens launched via Bags.fm platform
-// This list can be expanded as more tokens are discovered
+// Known Bags.fm token mints - add real Bags.fm token addresses here
+// These get priority display in the game
 const BAGS_FM_TOKEN_MINTS: string[] = [
-  // Add known Bags.fm token mints here
-  // These will be fetched from the Bags.fm API for live data
+  // Real Bags.fm tokens will be added here as they're discovered
+  // The system will also discover Bags.fm tokens by checking DexScreener tokens
+  // against the Bags.fm API for creator data
 ];
 
 // Initialize Bags API client (lazy initialization)
@@ -179,7 +181,29 @@ function buildFeeEarner(
   };
 }
 
-// Fetch live token data from Bags.fm API only (no PumpFun/DexScreener)
+// Convert DexScreener token to our TokenInfo format
+function dexTokenToTokenInfo(
+  dexToken: DexToken,
+  lifetimeFees?: number,
+  creatorWallet?: string,
+  isBagsFm?: boolean
+): TokenInfo {
+  return {
+    mint: dexToken.mint,
+    name: dexToken.name,
+    symbol: dexToken.symbol,
+    imageUrl: dexToken.imageUrl,
+    price: dexToken.price,
+    marketCap: dexToken.marketCap,
+    volume24h: dexToken.volume24h,
+    change24h: dexToken.priceChange24h,
+    holders: 0,
+    lifetimeFees: lifetimeFees || 0,
+    creator: creatorWallet || "",
+  };
+}
+
+// Fetch live token data - discovers tokens via DexScreener, enriches with Bags.fm data
 async function fetchLiveTokenData(): Promise<{
   tokens: TokenInfo[];
   earners: FeeEarner[];
@@ -190,7 +214,6 @@ async function fetchLiveTokenData(): Promise<{
 
   // Check token cache
   if (tokenCache && now - tokenCache.timestamp < TOKEN_CACHE_DURATION) {
-    // Return cached data with possibly fresh earners
     if (earnerCache && now - earnerCache.timestamp < EARNER_CACHE_DURATION) {
       return {
         tokens: tokenCache.data,
@@ -200,59 +223,50 @@ async function fetchLiveTokenData(): Promise<{
     }
   }
 
-  // If no API key, use sample Bags.fm data
-  if (!api) {
-    console.log("No BAGS_API_KEY configured, using sample Bags.fm tokens");
-    const sampleTokens: TokenInfo[] = SAMPLE_BAGS_TOKENS.map((t, i) => ({
-      mint: t.mint,
-      name: t.name,
-      symbol: t.symbol,
-      imageUrl: t.imageUrl,
-      price: Math.random() * 0.01,
-      marketCap: (5 - i) * 100000 + Math.random() * 50000,
-      volume24h: (5 - i) * 10000 + Math.random() * 5000,
-      change24h: (Math.random() - 0.5) * 40,
-      holders: Math.floor(Math.random() * 1000) + 100,
-      lifetimeFees: (5 - i) * 50 + Math.random() * 25,
-      creator: `BagsCreator${i}111111111111111111111111111111`,
-    }));
-
-    const sampleEarners: FeeEarner[] = sampleTokens.map((t, i) => ({
-      rank: i + 1,
-      username: `bags_earner_${i + 1}`,
-      providerUsername: `bags_earner_${i + 1}`,
-      provider: "twitter" as const,
-      wallet: t.creator,
-      lifetimeEarnings: t.lifetimeFees,
-      earnings24h: t.lifetimeFees * 0.1,
-      change24h: t.change24h,
-      tokenCount: 1,
-      topToken: t,
-    }));
-
-    tokenCache = { data: sampleTokens, timestamp: now };
-    earnerCache = { data: sampleEarners, timestamp: now };
-
-    return { tokens: sampleTokens, earners: sampleEarners, claimEvents: [] };
-  }
-
   try {
-    // Fetch data for known Bags.fm tokens
-    const tokenMints = BAGS_FM_TOKEN_MINTS.length > 0
-      ? BAGS_FM_TOKEN_MINTS
-      : SAMPLE_BAGS_TOKENS.map(t => t.mint);
+    // Step 1: Discover tokens from DexScreener
+    const dexTokens = await fetchTrendingTokens();
+    console.log(`Discovered ${dexTokens.length} tokens from DexScreener`);
 
-    console.log(`Fetching data for ${tokenMints.length} Bags.fm tokens`);
+    if (dexTokens.length === 0) {
+      // Fallback to sample data if DexScreener fails
+      console.log("No tokens from DexScreener, using sample data");
+      const sampleTokens: TokenInfo[] = SAMPLE_BAGS_TOKENS.map((t, i) => ({
+        mint: t.mint,
+        name: t.name,
+        symbol: t.symbol,
+        imageUrl: t.imageUrl,
+        price: Math.random() * 0.01,
+        marketCap: (5 - i) * 100000 + Math.random() * 50000,
+        volume24h: (5 - i) * 10000 + Math.random() * 5000,
+        change24h: (Math.random() - 0.5) * 40,
+        holders: Math.floor(Math.random() * 1000) + 100,
+        lifetimeFees: (5 - i) * 50 + Math.random() * 25,
+        creator: `BagsCreator${i}111111111111111111111111111111`,
+      }));
 
-    // Process tokens and fetch Bags.fm data in parallel
+      const sampleEarners: FeeEarner[] = sampleTokens.map((t, i) => ({
+        rank: i + 1,
+        username: `bags_earner_${i + 1}`,
+        providerUsername: `bags_earner_${i + 1}`,
+        provider: "twitter" as const,
+        wallet: t.creator,
+        lifetimeEarnings: t.lifetimeFees,
+        earnings24h: t.lifetimeFees * 0.1,
+        change24h: t.change24h,
+        tokenCount: 1,
+        topToken: t,
+      }));
+
+      tokenCache = { data: sampleTokens, timestamp: now };
+      earnerCache = { data: sampleEarners, timestamp: now };
+      return { tokens: sampleTokens, earners: sampleEarners, claimEvents: [] };
+    }
+
+    // Step 2: For each token, try to get Bags.fm creator data
+    // Tokens with Bags.fm creators are Bags.fm-launched tokens
     const enrichedData = await Promise.all(
-      tokenMints.map(async (mint, index) => {
-        const sampleToken = SAMPLE_BAGS_TOKENS[index] || {
-          mint,
-          name: `Token ${index + 1}`,
-          symbol: `TKN${index + 1}`,
-        };
-
+      dexTokens.map(async (dexToken) => {
         let creators: Array<{
           wallet: string;
           provider: string;
@@ -262,59 +276,68 @@ async function fetchLiveTokenData(): Promise<{
           isCreator?: boolean;
         }> = [];
         let lifetimeFees = 0;
-        let totalClaimed = 0;
-        let totalUnclaimed = 0;
+        let isBagsFmToken = false;
 
-        try {
-          const [creatorsResult, feesResult] = await Promise.allSettled([
-            api.getTokenCreators(mint),
-            api.getTokenLifetimeFees(mint),
-          ]);
+        // Try to get Bags.fm data if API is configured
+        if (api) {
+          try {
+            const [creatorsResult, feesResult] = await Promise.allSettled([
+              api.getTokenCreators(dexToken.mint),
+              api.getTokenLifetimeFees(dexToken.mint),
+            ]);
 
-          if (creatorsResult.status === "fulfilled") {
-            creators = creatorsResult.value;
+            if (creatorsResult.status === "fulfilled" && creatorsResult.value.length > 0) {
+              creators = creatorsResult.value;
+              isBagsFmToken = true; // Has Bags.fm creators = Bags.fm token!
+            }
+            if (feesResult.status === "fulfilled") {
+              lifetimeFees = feesResult.value.lifetimeFees || 0;
+            }
+          } catch {
+            // Token might not be on Bags.fm - that's ok
           }
-          if (feesResult.status === "fulfilled") {
-            lifetimeFees = feesResult.value.lifetimeFees;
-            totalClaimed = feesResult.value.totalClaimed;
-            totalUnclaimed = feesResult.value.totalUnclaimed;
-          }
-        } catch (err) {
-          console.log(`Could not fetch Bags.fm data for ${mint}:`, err);
         }
 
         return {
-          mint,
-          sampleToken,
+          dexToken,
           creators,
           lifetimeFees,
-          totalClaimed,
-          totalUnclaimed,
+          isBagsFmToken,
         };
       })
     );
 
-    // Build TokenInfo array from Bags.fm data
-    const tokens: TokenInfo[] = enrichedData.map((data, i) => ({
-      mint: data.mint,
-      name: data.sampleToken.name,
-      symbol: data.sampleToken.symbol,
-      imageUrl: data.sampleToken.imageUrl,
-      price: 0, // Would need price feed for this
-      marketCap: data.lifetimeFees * 1000, // Estimate based on fees
-      volume24h: data.totalUnclaimed > 0 ? data.totalUnclaimed * 10 : (5 - i) * 10000,
-      change24h: (Math.random() - 0.5) * 20,
-      holders: 0,
-      lifetimeFees: data.lifetimeFees,
-      creator: data.creators[0]?.wallet || "",
-    }));
+    // Step 3: Build TokenInfo array - prioritize Bags.fm tokens
+    const bagsFmTokens = enrichedData.filter((d) => d.isBagsFmToken);
+    const otherTokens = enrichedData.filter((d) => !d.isBagsFmToken);
 
-    // Build FeeEarner array from creators
+    // Show Bags.fm tokens first, then fill with other popular tokens
+    const orderedData = [...bagsFmTokens, ...otherTokens].slice(0, 15);
+
+    console.log(`Found ${bagsFmTokens.length} Bags.fm tokens out of ${enrichedData.length} total`);
+
+    const tokens: TokenInfo[] = orderedData.map((data) =>
+      dexTokenToTokenInfo(
+        data.dexToken,
+        data.lifetimeFees,
+        data.creators[0]?.wallet,
+        data.isBagsFmToken
+      )
+    );
+
+    // Step 4: Build FeeEarner array from Bags.fm creators
     const earnerMap = new Map<string, FeeEarner>();
     let rank = 1;
 
-    enrichedData.forEach((data, dataIndex) => {
-      const token = tokens[dataIndex];
+    orderedData.forEach((data) => {
+      if (!data.isBagsFmToken) return; // Only count Bags.fm creators
+
+      const token = dexTokenToTokenInfo(
+        data.dexToken,
+        data.lifetimeFees,
+        data.creators[0]?.wallet,
+        true
+      );
 
       data.creators.forEach((creator) => {
         if (creator.isCreator !== false) {
@@ -332,39 +355,40 @@ async function fetchLiveTokenData(): Promise<{
       });
     });
 
-    // Convert map to array and sort by earnings
+    // Convert earners map to sorted array
     let earners = Array.from(earnerMap.values())
       .sort((a, b) => b.lifetimeEarnings - a.lifetimeEarnings)
       .slice(0, 15)
       .map((e, i) => ({ ...e, rank: i + 1 }));
 
-    // If no earners from API, use sample earners
+    // If no Bags.fm earners, create sample earners from top tokens
     if (earners.length === 0) {
-      earners = tokens.map((t, i) => ({
+      earners = tokens.slice(0, 5).map((t, i) => ({
         rank: i + 1,
-        username: `bags_creator_${i + 1}`,
-        providerUsername: `bags_creator_${i + 1}`,
+        username: `trader_${t.symbol.toLowerCase()}`,
+        providerUsername: `trader_${t.symbol.toLowerCase()}`,
         provider: "twitter" as const,
-        wallet: t.creator || `BagsCreator${i}111111111111111111111111111111`,
-        lifetimeEarnings: t.lifetimeFees,
-        earnings24h: t.lifetimeFees * 0.1,
+        wallet: t.creator || `Trader${i}11111111111111111111111111111111`,
+        avatarUrl: t.imageUrl,
+        lifetimeEarnings: t.volume24h * 0.01, // Estimate from volume
+        earnings24h: t.volume24h * 0.001,
         change24h: t.change24h,
         tokenCount: 1,
         topToken: t,
       }));
     }
 
-    // Fetch claim events from Bags.fm API
+    // Step 5: Fetch claim events from Bags.fm tokens
     let claimEvents: ClaimEvent[] = [];
     if (
-      !claimEventsCache ||
-      now - claimEventsCache.timestamp > CLAIM_EVENTS_CACHE_DURATION
+      api &&
+      bagsFmTokens.length > 0 &&
+      (!claimEventsCache || now - claimEventsCache.timestamp > CLAIM_EVENTS_CACHE_DURATION)
     ) {
       try {
-        // Get claim events from active Bags.fm tokens
-        const activeTokens = tokens.slice(0, 5);
-        const eventPromises = activeTokens.map((t) =>
-          api.getTokenClaimEvents(t.mint, 5).catch(() => [])
+        const bagsFmMints = bagsFmTokens.slice(0, 5).map((t) => t.dexToken.mint);
+        const eventPromises = bagsFmMints.map((mint) =>
+          api.getTokenClaimEvents(mint, 5).catch(() => [])
         );
         const eventResults = await Promise.all(eventPromises);
         claimEvents = eventResults
@@ -373,7 +397,7 @@ async function fetchLiveTokenData(): Promise<{
           .slice(0, 20);
 
         claimEventsCache = { data: claimEvents, timestamp: now };
-      } catch (err) {
+      } catch {
         claimEvents = claimEventsCache?.data || [];
       }
     } else {
@@ -386,8 +410,7 @@ async function fetchLiveTokenData(): Promise<{
 
     return { tokens, earners, claimEvents };
   } catch (error) {
-    console.error("Error fetching Bags.fm token data:", error);
-    // Return cached data on error
+    console.error("Error fetching token data:", error);
     return {
       tokens: tokenCache?.data || [],
       earners: earnerCache?.data || [],
