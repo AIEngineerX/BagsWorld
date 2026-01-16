@@ -7,26 +7,71 @@ import type {
   ClaimEvent,
 } from "@/lib/types";
 import { buildWorldState } from "@/lib/world-calculator";
-import { BagsApiClient } from "@/lib/bags-api";
 import { fetchTrendingTokens, DexToken } from "@/lib/dexscreener-api";
+import { Connection, PublicKey } from "@solana/web3.js";
+
+// Bags SDK types (from @bagsfm/bags-sdk)
+interface TokenLaunchCreator {
+  username: string;
+  pfp: string;
+  royaltyBps: number;
+  isCreator: boolean;
+  wallet: string;
+  provider: string | null;
+  providerUsername: string | null;
+}
+
+interface TokenClaimEventSDK {
+  wallet: string;
+  isCreator: boolean;
+  amount: string;
+  signature: string;
+  timestamp: number;
+}
+
+// Lazy-loaded SDK instance
+let sdkInstance: any = null;
+let sdkInitPromise: Promise<any> | null = null;
+
+async function getBagsSDK(): Promise<any | null> {
+  if (!process.env.BAGS_API_KEY) {
+    return null;
+  }
+
+  if (sdkInstance) {
+    return sdkInstance;
+  }
+
+  if (sdkInitPromise) {
+    return sdkInitPromise;
+  }
+
+  sdkInitPromise = (async () => {
+    try {
+      const { BagsSDK } = await import("@bagsfm/bags-sdk");
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+      const connection = new Connection(rpcUrl, "confirmed");
+      sdkInstance = new BagsSDK(process.env.BAGS_API_KEY!, connection, "processed");
+      console.log("Bags SDK initialized successfully");
+      return sdkInstance;
+    } catch (error) {
+      console.error("Failed to initialize Bags SDK:", error);
+      sdkInitPromise = null;
+      return null;
+    }
+  })();
+
+  return sdkInitPromise;
+}
 
 // Known Bags.fm token mints - add real Bags.fm token addresses here
 // These get priority display in the game
 const BAGS_FM_TOKEN_MINTS: string[] = [
+  // Example: "CyXBDcVQuHyEDbG661Jf3iHqxyd9wNHhE2SiQdNrBAGS"
   // Real Bags.fm tokens will be added here as they're discovered
   // The system will also discover Bags.fm tokens by checking DexScreener tokens
-  // against the Bags.fm API for creator data
+  // against the Bags.fm SDK for creator data
 ];
-
-// Initialize Bags API client (lazy initialization)
-let bagsApi: BagsApiClient | null = null;
-
-function getBagsApi(): BagsApiClient | null {
-  if (!bagsApi && process.env.BAGS_API_KEY) {
-    bagsApi = new BagsApiClient(process.env.BAGS_API_KEY);
-  }
-  return bagsApi;
-}
 
 // Cache for various data
 interface DataCache<T> {
@@ -153,26 +198,23 @@ const SAMPLE_BAGS_TOKENS: Array<{
   },
 ];
 
-// Build FeeEarner from creator data
+// Build FeeEarner from SDK creator data
+// SDK returns: username, pfp, royaltyBps, isCreator, wallet, provider, providerUsername
 function buildFeeEarner(
-  creator: {
-    wallet: string;
-    provider: string;
-    providerUsername: string;
-    username?: string;
-    pfp?: string;
-    isCreator?: boolean;
-  },
+  creator: TokenLaunchCreator,
   token: TokenInfo,
   rank: number
 ): FeeEarner {
+  // Prefer providerUsername for display (as per SDK docs), fallback to username
+  const displayName = creator.providerUsername || creator.username || "Unknown";
+
   return {
     rank,
-    username: creator.username || creator.providerUsername,
-    providerUsername: creator.providerUsername,
-    provider: creator.provider as FeeEarner["provider"],
+    username: displayName,
+    providerUsername: creator.providerUsername || displayName,
+    provider: (creator.provider || "twitter") as FeeEarner["provider"],
     wallet: creator.wallet,
-    avatarUrl: creator.pfp,
+    avatarUrl: creator.pfp || undefined,
     lifetimeEarnings: token.lifetimeFees,
     earnings24h: token.volume24h * 0.01, // Estimate: ~1% of volume as fees
     change24h: token.change24h,
@@ -203,14 +245,13 @@ function dexTokenToTokenInfo(
   };
 }
 
-// Fetch live token data - discovers tokens via DexScreener, enriches with Bags.fm data
+// Fetch live token data - discovers tokens via DexScreener, enriches with Bags.fm SDK data
 async function fetchLiveTokenData(): Promise<{
   tokens: TokenInfo[];
   earners: FeeEarner[];
   claimEvents: ClaimEvent[];
 }> {
   const now = Date.now();
-  const api = getBagsApi();
 
   // Check token cache
   if (tokenCache && now - tokenCache.timestamp < TOKEN_CACHE_DURATION) {
@@ -222,6 +263,9 @@ async function fetchLiveTokenData(): Promise<{
       };
     }
   }
+
+  // Initialize SDK (lazy load)
+  const sdk = await getBagsSDK();
 
   try {
     // Step 1: Discover tokens from DexScreener
@@ -263,35 +307,32 @@ async function fetchLiveTokenData(): Promise<{
       return { tokens: sampleTokens, earners: sampleEarners, claimEvents: [] };
     }
 
-    // Step 2: For each token, try to get Bags.fm creator data
+    // Step 2: For each token, try to get Bags.fm creator data using the SDK
     // Tokens with Bags.fm creators are Bags.fm-launched tokens
     const enrichedData = await Promise.all(
       dexTokens.map(async (dexToken) => {
-        let creators: Array<{
-          wallet: string;
-          provider: string;
-          providerUsername: string;
-          username?: string;
-          pfp?: string;
-          isCreator?: boolean;
-        }> = [];
+        let creators: TokenLaunchCreator[] = [];
         let lifetimeFees = 0;
         let isBagsFmToken = false;
 
-        // Try to get Bags.fm data if API is configured
-        if (api) {
+        // Try to get Bags.fm data using the SDK
+        if (sdk) {
           try {
+            const mintPubkey = new PublicKey(dexToken.mint);
+
+            // Use SDK methods as documented
             const [creatorsResult, feesResult] = await Promise.allSettled([
-              api.getTokenCreators(dexToken.mint),
-              api.getTokenLifetimeFees(dexToken.mint),
+              sdk.state.getTokenCreators(mintPubkey),
+              sdk.state.getTokenLifetimeFees(mintPubkey),
             ]);
 
             if (creatorsResult.status === "fulfilled" && creatorsResult.value.length > 0) {
               creators = creatorsResult.value;
               isBagsFmToken = true; // Has Bags.fm creators = Bags.fm token!
+              console.log(`Found Bags.fm token: ${dexToken.symbol} with ${creators.length} creator(s)`);
             }
             if (feesResult.status === "fulfilled") {
-              lifetimeFees = feesResult.value.lifetimeFees || 0;
+              lifetimeFees = feesResult.value || 0;
             }
           } catch {
             // Token might not be on Bags.fm - that's ok
@@ -340,17 +381,16 @@ async function fetchLiveTokenData(): Promise<{
       );
 
       data.creators.forEach((creator) => {
-        if (creator.isCreator !== false) {
-          const existing = earnerMap.get(creator.wallet);
-          if (existing) {
-            if (token.lifetimeFees > (existing.topToken?.lifetimeFees || 0)) {
-              existing.topToken = token;
-              existing.lifetimeEarnings += token.lifetimeFees;
-            }
-            existing.tokenCount++;
-          } else {
-            earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++));
+        // isCreator=true means primary creator, but we include all participants
+        const existing = earnerMap.get(creator.wallet);
+        if (existing) {
+          if (token.lifetimeFees > (existing.topToken?.lifetimeFees || 0)) {
+            existing.topToken = token;
+            existing.lifetimeEarnings += token.lifetimeFees;
           }
+          existing.tokenCount++;
+        } else {
+          earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++));
         }
       });
     });
@@ -378,18 +418,32 @@ async function fetchLiveTokenData(): Promise<{
       }));
     }
 
-    // Step 5: Fetch claim events from Bags.fm tokens
+    // Step 5: Fetch claim events from Bags.fm tokens using SDK
     let claimEvents: ClaimEvent[] = [];
     if (
-      api &&
+      sdk &&
       bagsFmTokens.length > 0 &&
       (!claimEventsCache || now - claimEventsCache.timestamp > CLAIM_EVENTS_CACHE_DURATION)
     ) {
       try {
         const bagsFmMints = bagsFmTokens.slice(0, 5).map((t) => t.dexToken.mint);
-        const eventPromises = bagsFmMints.map((mint) =>
-          api.getTokenClaimEvents(mint, 5).catch(() => [])
-        );
+        const eventPromises = bagsFmMints.map(async (mint) => {
+          try {
+            const mintPubkey = new PublicKey(mint);
+            const events: TokenClaimEventSDK[] = await sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 });
+            // Convert SDK format to our ClaimEvent format
+            return events.map((e) => ({
+              signature: e.signature,
+              claimer: e.wallet,
+              claimerUsername: undefined,
+              amount: parseFloat(e.amount),
+              timestamp: e.timestamp,
+              tokenMint: mint,
+            }));
+          } catch {
+            return [];
+          }
+        });
         const eventResults = await Promise.all(eventPromises);
         claimEvents = eventResults
           .flat()
