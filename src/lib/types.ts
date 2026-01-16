@@ -4,7 +4,7 @@ export interface FeeEarner {
   rank: number;
   username: string;
   providerUsername: string;
-  provider: "twitter" | "tiktok" | "instagram" | "github" | "kick" | "bitcoin" | "pokemon";
+  provider: "twitter" | "tiktok" | "instagram" | "github" | "kick" | "solana" | "pokemon";
   wallet: string;
   avatarUrl?: string;
   lifetimeEarnings: number;
@@ -12,7 +12,7 @@ export interface FeeEarner {
   change24h: number;
   tokenCount: number;
   topToken?: TokenInfo;
-  isSatoshi?: boolean; // Special flag for Satoshi character
+  isToly?: boolean; // Special flag for Toly (Solana co-founder) character
   isAsh?: boolean; // Special flag for Ash character
 }
 
@@ -114,7 +114,7 @@ export interface GameCharacter {
   isMoving: boolean;
   buildingId?: string;
   profileUrl?: string;
-  isSatoshi?: boolean; // Special flag for Satoshi character
+  isToly?: boolean; // Special flag for Toly (Solana co-founder) character
   isAsh?: boolean; // Special flag for Ash character
 }
 

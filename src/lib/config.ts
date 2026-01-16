@@ -162,26 +162,49 @@ export const ECOSYSTEM_CONFIG = {
   },
 
   // -------------------------------------------------------------------------
-  // SATOSHI - Permanent AI Character
+  // SATOSHI NAKAMOTO - Bitcoin Creator (Wisdom Chat Character)
   // -------------------------------------------------------------------------
-  // Satoshi is always present in the world as a guide and AI companion
+  // Satoshi provides Bitcoin wisdom and crypto education
   satoshi: {
     id: "satoshi-nakamoto",
     username: "Satoshi",
-    provider: "bitcoin" as const,
-    providerUsername: "satoshi",
-    mood: "neutral" as const,
-    // Satoshi walks around giving wisdom about crypto
+    // Satoshi's actual quotes from Bitcoin whitepaper and early forum posts
     quotes: [
       "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.",
       "The root problem with conventional currency is all the trust that's required to make it work.",
-      "Lost coins only make everyone else's coins worth slightly more.",
+      "Lost coins only make everyone else's coins worth slightly more. Think of it as a donation to everyone.",
       "I've been working on a new electronic cash system that's fully peer-to-peer, with no trusted third party.",
       "The nature of Bitcoin is such that once version 0.1 was released, the core design was set in stone for the rest of its lifetime.",
       "It might make sense just to get some in case it catches on.",
+      "Writing a description for this thing for general audiences is bloody hard. There's nothing to relate it to.",
     ],
-    // Special interaction - clicking Satoshi opens AI chat
-    interactionType: "ai-chat",
+    interactionType: "bitcoin-wisdom",
+  },
+
+  // -------------------------------------------------------------------------
+  // TOLY - Solana Co-Founder (Permanent AI Character)
+  // -------------------------------------------------------------------------
+  // Toly (Anatoly Yakovenko) is always present as the Solana guide
+  toly: {
+    id: "toly-solana",
+    username: "toly",
+    provider: "solana" as const,
+    providerUsername: "aeyakovenko",
+    twitterHandle: "toly",
+    mood: "happy" as const,
+    // Toly's actual quotes and philosophy
+    quotes: [
+      "Keep executing. Execution is the only moat.",
+      "I just wake up, do my routine to get my coffee. And then I'm like, okay, how do we get to the next level?",
+      "I like competing. I care about all those things, but I like competing.",
+      "We can shrink block time to 120 milliseconds and everything becomes faster and tighter.",
+      "Shipping early and fast enough and having those stress tests helped us iterate and get better.",
+      "Blessed are the memecoin traders, for those who can overcome their spam will inherit the metaverse.",
+      "AI has been a great force multiplier for somebody who's an expert.",
+      "If people are in a meeting with me and I'm not paying attention, it's because I'm watching Claude.",
+    ],
+    // Special interaction - clicking Toly opens Solana wisdom chat
+    interactionType: "solana-guide",
   },
 
   // -------------------------------------------------------------------------

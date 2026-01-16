@@ -1015,13 +1015,13 @@ export class WorldScene extends Phaser.Scene {
 
       if (!sprite) {
         // Special characters use unique textures, others get random variants
-        const isSatoshi = character.isSatoshi === true;
+        const isToly = character.isToly === true;
         const isAsh = character.isAsh === true;
-        const isSpecial = isSatoshi || isAsh;
+        const isSpecial = isToly || isAsh;
         const variant = index % 9;
         this.characterVariants.set(character.id, variant);
 
-        const textureKey = isSatoshi ? "satoshi" : isAsh ? "ash" : this.getCharacterTexture(character.mood, variant);
+        const textureKey = isToly ? "toly" : isAsh ? "ash" : this.getCharacterTexture(character.mood, variant);
         sprite = this.add.sprite(character.x, character.y, textureKey);
         sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
         sprite.setInteractive();
@@ -1030,8 +1030,8 @@ export class WorldScene extends Phaser.Scene {
         // Hover effects
         sprite.on("pointerover", () => {
           sprite?.setScale(isSpecial ? 1.5 : 1.4);
-          if (isSatoshi) {
-            this.showSatoshiTooltip(sprite!);
+          if (isToly) {
+            this.showTolyTooltip(sprite!);
           } else if (isAsh) {
             this.showAshTooltip(sprite!);
           } else {
@@ -1045,9 +1045,9 @@ export class WorldScene extends Phaser.Scene {
           this.input.setDefaultCursor("default");
         });
         sprite.on("pointerdown", () => {
-          if (isSatoshi) {
-            // Satoshi opens the AI chat
-            window.dispatchEvent(new CustomEvent("bagsworld-satoshi-click"));
+          if (isToly) {
+            // Toly opens the Solana wisdom chat
+            window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
           } else if (isAsh) {
             // Ash opens the ecosystem guide chat
             window.dispatchEvent(new CustomEvent("bagsworld-ash-click"));
@@ -1067,16 +1067,16 @@ export class WorldScene extends Phaser.Scene {
           ease: "Sine.easeInOut",
         });
 
-        // Add golden aura glow effect for Satoshi
-        if (isSatoshi) {
+        // Add Solana gradient aura glow effect for Toly
+        if (isToly) {
           const glow = this.add.sprite(character.x, character.y, "glow");
           glow.setScale(1.0);
           glow.setAlpha(0.3);
-          glow.setTint(0xf7931a); // Bitcoin orange
+          glow.setTint(0x9945ff); // Solana purple
           glow.setDepth(10);
 
           // Store reference to glow for cleanup
-          (sprite as any).satoshiGlow = glow;
+          (sprite as any).tolyGlow = glow;
 
           this.tweens.add({
             targets: glow,
@@ -1114,10 +1114,10 @@ export class WorldScene extends Phaser.Scene {
         this.characterSprites.set(character.id, sprite);
       } else {
         // Update special character glow positions if they exist
-        const satoshiGlow = (sprite as any).satoshiGlow;
-        if (satoshiGlow) {
-          satoshiGlow.x = sprite.x;
-          satoshiGlow.y = sprite.y;
+        const tolyGlow = (sprite as any).tolyGlow;
+        if (tolyGlow) {
+          tolyGlow.x = sprite.x;
+          tolyGlow.y = sprite.y;
         }
         const ashGlow = (sprite as any).ashGlow;
         if (ashGlow) {
@@ -1127,9 +1127,9 @@ export class WorldScene extends Phaser.Scene {
       }
 
       // Update texture based on mood (skip for special characters)
-      const isSatoshi = character.isSatoshi === true;
+      const isToly = character.isToly === true;
       const isAsh = character.isAsh === true;
-      if (!isSatoshi && !isAsh) {
+      if (!isToly && !isAsh) {
         const variant = this.characterVariants.get(character.id) ?? 0;
         const expectedTexture = this.getCharacterTexture(character.mood, variant);
         if (sprite.texture.key !== expectedTexture) {
@@ -1330,43 +1330,43 @@ export class WorldScene extends Phaser.Scene {
     this.tooltip = container;
   }
 
-  private showSatoshiTooltip(sprite: Phaser.GameObjects.Sprite): void {
+  private showTolyTooltip(sprite: Phaser.GameObjects.Sprite): void {
     this.hideTooltip();
 
     const container = this.add.container(sprite.x, sprite.y - 70);
 
-    const bg = this.add.rectangle(0, 0, 160, 68, 0x0a0a0f, 0.95);
-    bg.setStrokeStyle(2, 0xf7931a); // Bitcoin orange border
+    const bg = this.add.rectangle(0, 0, 165, 68, 0x0a0a0f, 0.95);
+    bg.setStrokeStyle(2, 0x9945ff); // Solana purple border
 
-    const nameText = this.add.text(0, -22, "₿ Satoshi Nakamoto", {
+    const nameText = this.add.text(0, -22, "◎ toly", {
       fontFamily: "monospace",
       fontSize: "10px",
-      color: "#f7931a",
+      color: "#14f195", // Solana green
     });
     nameText.setOrigin(0.5, 0.5);
 
-    const titleText = this.add.text(0, -6, "Creator of Bitcoin", {
+    const titleText = this.add.text(0, -6, "Solana Co-Founder", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#ffffff",
     });
     titleText.setOrigin(0.5, 0.5);
 
-    const mysteryText = this.add.text(0, 10, "Identity unknown since 2011", {
+    const quoteText = this.add.text(0, 10, "Keep executing.", {
       fontFamily: "monospace",
       fontSize: "7px",
       color: "#9ca3af",
     });
-    mysteryText.setOrigin(0.5, 0.5);
+    quoteText.setOrigin(0.5, 0.5);
 
-    const clickText = this.add.text(0, 26, "🤖 Click to chat with AI", {
+    const clickText = this.add.text(0, 26, "💜 Click for Solana wisdom", {
       fontFamily: "monospace",
       fontSize: "7px",
-      color: "#60a5fa",
+      color: "#9945ff",
     });
     clickText.setOrigin(0.5, 0.5);
 
-    container.add([bg, nameText, titleText, mysteryText, clickText]);
+    container.add([bg, nameText, titleText, quoteText, clickText]);
     container.setDepth(200);
     this.tooltip = container;
   }

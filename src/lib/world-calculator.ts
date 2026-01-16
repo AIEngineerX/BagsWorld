@@ -174,14 +174,14 @@ export function transformFeeEarnerToCharacter(
   earner: FeeEarner,
   existingCharacter?: GameCharacter
 ): GameCharacter {
-  // Satoshi gets a fixed central position near the Treasury
-  const isSatoshi = earner.isSatoshi || earner.wallet === "satoshi-nakamoto-permanent";
+  // Toly gets a fixed central position near the Treasury
+  const isToly = earner.isToly || earner.wallet === "toly-solana-permanent";
   // Ash gets a position on the right side of the world
   const isAsh = (earner as any).isAsh || earner.wallet === "ash-ketchum-permanent";
 
   const position = existingCharacter
     ? { x: existingCharacter.x, y: existingCharacter.y }
-    : isSatoshi
+    : isToly
     ? { x: WORLD_WIDTH / 2, y: 555 } // Center X, on the ground
     : isAsh
     ? { x: WORLD_WIDTH - 120, y: 555 } // Right side of world
@@ -195,13 +195,13 @@ export function transformFeeEarnerToCharacter(
     avatarUrl: earner.avatarUrl,
     x: position.x,
     y: position.y,
-    mood: isSatoshi ? "neutral" : isAsh ? "happy" : calculateCharacterMood(earner.earnings24h, earner.change24h),
+    mood: isToly ? "happy" : isAsh ? "happy" : calculateCharacterMood(earner.earnings24h, earner.change24h),
     earnings24h: earner.earnings24h,
     direction: Math.random() > 0.5 ? "left" : "right",
-    isMoving: !isSatoshi && !isAsh && Math.random() > 0.7, // Special characters don't wander randomly
+    isMoving: !isToly && !isAsh && Math.random() > 0.7, // Special characters don't wander randomly
     buildingId: earner.topToken?.mint,
-    profileUrl: isSatoshi || isAsh ? undefined : getProfileUrl(earner.provider, earner.username),
-    isSatoshi, // Pass through the Satoshi flag
+    profileUrl: isToly ? "https://x.com/toly" : isAsh ? undefined : getProfileUrl(earner.provider, earner.username),
+    isToly, // Pass through the Toly flag
     isAsh, // Pass through the Ash flag
   };
 }

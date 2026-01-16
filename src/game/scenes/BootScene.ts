@@ -397,52 +397,63 @@ export class BootScene extends Phaser.Scene {
     this.createCharacterSprite("character_sad", SKIN_TONES[0], HAIR_COLORS[0], SHIRT_COLORS[0], "sad");
     this.createCharacterSprite("character_celebrating", SKIN_TONES[0], HAIR_COLORS[0], SHIRT_COLORS[0], "celebrating");
 
-    // Generate Satoshi - special character with unique appearance
-    this.generateSatoshiSprite();
+    // Generate Toly - Solana co-founder special character
+    this.generateTolySprite();
 
     // Generate Ash Ketchum - ecosystem guide character
     this.generateAshSprite();
   }
 
-  private generateSatoshiSprite(): void {
-    // Satoshi has a mysterious, iconic look
-    // Dark hair, neutral expression, simple dark clothing
+  private generateTolySprite(): void {
+    // Toly (Anatoly Yakovenko) - Solana co-founder
+    // Casual tech look, beard, Solana purple/green colors
     const skinTone = 0xf1c27d; // Light tan
-    const hairColor = 0x1a1a1a; // Black hair
-    const shirtColor = 0xf7931a; // Bitcoin orange!
+    const hairColor = 0x4a3728; // Brown hair
+    const beardColor = 0x5c4033; // Brown beard
+    const shirtColor = 0x9945ff; // Solana purple!
 
     const g = this.make.graphics({ x: 0, y: 0 });
 
-    // Golden aura/glow behind Satoshi
-    g.fillStyle(0xf7931a, 0.15);
+    // Solana gradient aura/glow behind Toly
+    g.fillStyle(0x14f195, 0.15); // Solana green
     g.fillCircle(16, 16, 18);
-    g.fillStyle(0xf7931a, 0.1);
+    g.fillStyle(0x9945ff, 0.1); // Solana purple
     g.fillCircle(16, 16, 22);
 
     // Shadow
     g.fillStyle(0x000000, 0.3);
     g.fillEllipse(16, 30, 14, 5);
 
-    // Legs (dark pants)
-    g.fillStyle(0x1a1a1a);
+    // Legs (dark jeans)
+    g.fillStyle(0x1e3a5f);
     g.fillRect(10, 22, 5, 9);
     g.fillRect(17, 22, 5, 9);
 
-    // Shoes
-    g.fillStyle(0x0a0a0a);
+    // Shoes (casual sneakers)
+    g.fillStyle(0x374151);
     g.fillRect(9, 29, 6, 3);
     g.fillRect(17, 29, 6, 3);
+    // White sole
+    g.fillStyle(0xffffff);
+    g.fillRect(9, 31, 6, 1);
+    g.fillRect(17, 31, 6, 1);
 
-    // Body/Shirt (Bitcoin orange)
+    // Body/Shirt (Solana purple hoodie)
     g.fillStyle(shirtColor);
     g.fillRect(8, 12, 16, 12);
 
-    // Bitcoin logo on shirt (simplified B)
-    g.fillStyle(0xffffff);
-    g.fillRect(14, 15, 4, 6);
-    g.fillRect(13, 15, 1, 1);
-    g.fillRect(13, 17, 1, 1);
-    g.fillRect(13, 20, 1, 1);
+    // Hoodie details
+    g.fillStyle(0x7c3aed);
+    g.fillRect(8, 12, 3, 12);
+    g.fillRect(21, 12, 3, 12);
+
+    // Solana logo on shirt (simplified S shape)
+    g.fillStyle(0x14f195); // Solana green
+    g.fillRect(13, 15, 6, 2);
+    g.fillRect(13, 15, 2, 4);
+    g.fillRect(13, 17, 6, 2);
+    g.fillRect(17, 17, 2, 4);
+    g.fillRect(13, 19, 6, 2);
 
     // Arms
     g.fillStyle(skinTone);
@@ -453,38 +464,41 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(skinTone);
     g.fillRect(9, 2, 14, 12);
 
-    // Hair (mysterious, slightly longer)
+    // Hair (short, casual)
     g.fillStyle(hairColor);
-    g.fillRect(8, 0, 16, 6);
-    g.fillRect(7, 2, 3, 6);
-    g.fillRect(22, 2, 3, 6);
-    // Side burns
-    g.fillRect(8, 6, 2, 3);
-    g.fillRect(22, 6, 2, 3);
+    g.fillRect(9, 0, 14, 5);
+    g.fillRect(8, 2, 2, 4);
+    g.fillRect(22, 2, 2, 4);
 
-    // Sunglasses (mysterious!)
-    g.fillStyle(0x1a1a1a);
-    g.fillRect(10, 5, 5, 4);
-    g.fillRect(17, 5, 5, 4);
-    g.fillRect(15, 6, 2, 2); // Bridge
-    // Reflection on glasses
-    g.fillStyle(0x4a4a4a);
-    g.fillRect(11, 6, 2, 1);
-    g.fillRect(18, 6, 2, 1);
+    // Beard (short, well-groomed)
+    g.fillStyle(beardColor);
+    g.fillRect(10, 10, 12, 4);
+    g.fillRect(11, 9, 10, 2);
+    // Chin
+    g.fillRect(12, 13, 8, 1);
 
-    // Slight smile
-    g.fillStyle(0x000000);
-    g.fillRect(14, 10, 4, 1);
+    // Eyes (friendly, focused)
+    g.fillStyle(0xffffff);
+    g.fillRect(11, 5, 4, 3);
+    g.fillRect(17, 5, 4, 3);
+    // Pupils
+    g.fillStyle(0x1e3a5f); // Blue-ish
+    g.fillRect(13, 5, 2, 2);
+    g.fillRect(19, 5, 2, 2);
 
-    // Question mark above head (the mystery!)
-    g.fillStyle(0xf7931a);
-    g.fillRect(15, -6, 2, 1);
-    g.fillRect(14, -8, 4, 1);
-    g.fillRect(17, -7, 1, 1);
-    g.fillRect(15, -4, 2, 1);
-    g.fillRect(15, -2, 2, 1);
+    // Friendly smile under beard
+    g.fillStyle(0xffffff);
+    g.fillRect(14, 11, 4, 1);
 
-    g.generateTexture("satoshi", 32, 32);
+    // Solana symbol above head (instead of question mark)
+    g.fillStyle(0x14f195);
+    g.fillRect(12, -4, 8, 2);
+    g.fillStyle(0x9945ff);
+    g.fillRect(14, -6, 4, 2);
+    g.fillStyle(0x14f195);
+    g.fillRect(13, -2, 6, 2);
+
+    g.generateTexture("toly", 32, 32);
     g.destroy();
   }
 
