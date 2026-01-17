@@ -179,7 +179,8 @@ interface RegisteredToken {
 function buildFeeEarner(
   creator: TokenLaunchCreator,
   token: TokenInfo,
-  rank: number
+  rank: number,
+  earnings24h: number = 0
 ): FeeEarner {
   const displayName = creator.providerUsername || creator.username || "Unknown";
 
@@ -191,11 +192,28 @@ function buildFeeEarner(
     wallet: creator.wallet,
     avatarUrl: creator.pfp || undefined,
     lifetimeEarnings: token.lifetimeFees,
-    earnings24h: token.lifetimeFees * 0.1, // Estimate
+    earnings24h, // Real 24h earnings from claim events
     change24h: 0,
     tokenCount: 1,
     topToken: token,
   };
+}
+
+// Calculate 24h earnings per wallet from claim events
+function calculate24hEarningsPerWallet(
+  claimEvents24h: ClaimEvent[]
+): Map<string, number> {
+  const earningsMap = new Map<string, number>();
+
+  for (const event of claimEvents24h) {
+    const wallet = event.claimer;
+    const currentEarnings = earningsMap.get(wallet) || 0;
+    // Amount is in lamports, convert to SOL
+    const amountInSol = event.amount / 1e9;
+    earningsMap.set(wallet, currentEarnings + amountInSol);
+  }
+
+  return earningsMap;
 }
 
 // Convert registered token to TokenInfo with SDK enrichment
@@ -206,20 +224,32 @@ async function enrichTokenWithSDK(
   tokenInfo: TokenInfo;
   creators: TokenLaunchCreator[];
   claimEvents: ClaimEvent[];
+  claimEvents24h: ClaimEvent[];
 }> {
   let lifetimeFees = 0;
   let creators: TokenLaunchCreator[] = [];
   let claimEvents: ClaimEvent[] = [];
+  let claimEvents24h: ClaimEvent[] = [];
 
   if (sdk) {
     try {
       const mintPubkey = new PublicKey(token.mint);
 
-      const [creatorsResult, feesResult, eventsResult] =
+      // Calculate 24h time range for claim events
+      const now = Math.floor(Date.now() / 1000);
+      const twentyFourHoursAgo = now - 24 * 60 * 60;
+
+      const [creatorsResult, feesResult, eventsResult, events24hResult] =
         await Promise.allSettled([
           sdk.state.getTokenCreators(mintPubkey),
           sdk.state.getTokenLifetimeFees(mintPubkey),
           sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 }),
+          // Fetch 24h claim events using time-based filtering (Bags API v1.2.0+)
+          sdk.state.getTokenClaimEvents(mintPubkey, {
+            mode: "time",
+            from: twentyFourHoursAgo,
+            to: now,
+          }),
         ]);
 
       if (creatorsResult.status === "fulfilled") {
@@ -233,6 +263,18 @@ async function enrichTokenWithSDK(
       if (eventsResult.status === "fulfilled") {
         const rawEvents: TokenClaimEventSDK[] = eventsResult.value || [];
         claimEvents = rawEvents.map((e) => ({
+          signature: e.signature,
+          claimer: e.wallet,
+          claimerUsername: undefined,
+          amount: parseFloat(e.amount),
+          timestamp: e.timestamp,
+          tokenMint: token.mint,
+        }));
+      }
+
+      if (events24hResult.status === "fulfilled") {
+        const rawEvents24h: TokenClaimEventSDK[] = events24hResult.value || [];
+        claimEvents24h = rawEvents24h.map((e) => ({
           signature: e.signature,
           claimer: e.wallet,
           claimerUsername: undefined,
@@ -265,7 +307,7 @@ async function enrichTokenWithSDK(
     creator: token.creator,
   };
 
-  return { tokenInfo, creators, claimEvents };
+  return { tokenInfo, creators, claimEvents, claimEvents24h };
 }
 
 // Community Rewards wallet - always visible for transparency
@@ -380,6 +422,12 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 20);
 
+    // Aggregate all 24h claim events and calculate earnings per wallet
+    const allClaimEvents24h: ClaimEvent[] = enrichedResults.flatMap((r) => r.claimEvents24h);
+    const earnings24hPerWallet = calculate24hEarningsPerWallet(allClaimEvents24h);
+
+    console.log(`Found ${allClaimEvents24h.length} claim events in last 24h across ${tokens.length} tokens`);
+
     // Build fee earners from SDK creators AND registered fee shares
     const earnerMap = new Map<string, FeeEarner>();
     let rank = 1;
@@ -389,14 +437,18 @@ export async function POST(request: NextRequest) {
       const token = tokens[index];
       result.creators.forEach((creator) => {
         const existing = earnerMap.get(creator.wallet);
+        // Get real 24h earnings for this wallet from claim events
+        const walletEarnings24h = earnings24hPerWallet.get(creator.wallet) || 0;
+
         if (existing) {
           existing.lifetimeEarnings += token.lifetimeFees;
+          existing.earnings24h += walletEarnings24h; // Add real 24h earnings
           existing.tokenCount++;
           if (token.lifetimeFees > (existing.topToken?.lifetimeFees || 0)) {
             existing.topToken = token;
           }
         } else {
-          earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++));
+          earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++, walletEarnings24h));
         }
       });
     });

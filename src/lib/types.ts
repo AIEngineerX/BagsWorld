@@ -4,7 +4,7 @@ export interface FeeEarner {
   rank: number;
   username: string;
   providerUsername: string;
-  provider: "twitter" | "tiktok" | "instagram" | "github" | "kick" | "solana" | "pokemon";
+  provider: "twitter" | "github" | "kick" | "solana" | "pokemon";
   wallet: string;
   avatarUrl?: string;
   lifetimeEarnings: number;
