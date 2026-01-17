@@ -18,6 +18,7 @@ import { TradeModal } from "@/components/TradeModal";
 import { PartnerClaimButton } from "@/components/PartnerClaimButton";
 import { MusicButton } from "@/components/MusicButton";
 import { useWorldState } from "@/hooks/useWorldState";
+import { DatabaseStatus } from "@/components/DatabaseStatus";
 
 interface BuildingClickData {
   mint: string;
@@ -148,6 +149,7 @@ export default function Home() {
               {tokenCount ?? 0}
             </span>
           </span>
+          <DatabaseStatus />
         </div>
         <div className="text-gray-400">
           POWERED BY{" "}

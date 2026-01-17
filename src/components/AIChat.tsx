@@ -272,14 +272,14 @@ export function AIChat() {
         const topBuilding = world.buildings
           .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))[0];
         const responses: Record<string, string> = {
-          optimistic: `$${topBuilding.symbol} is leading - Level ${topBuilding.level} building`,
-          cautious: `$${topBuilding.symbol} has biggest mcap. always dyor`,
+          optimistic: `$${topBuilding.symbol} is leading right now - Level ${topBuilding.level} building`,
+          cautious: `$${topBuilding.symbol} has the biggest mcap. always dyor though`,
           chaotic: `$${topBuilding.symbol} looking interesting`,
-          strategic: `$${topBuilding.symbol} up ${topBuilding.change24h?.toFixed(1)}%. largest by mcap`,
+          strategic: `$${topBuilding.symbol} up ${topBuilding.change24h?.toFixed(1)}%. largest by market cap`,
         };
         return responses[personality.trait];
       }
-      return "no buildings loaded yet - still syncing";
+      return "no buildings loaded yet - world still syncing";
     }
 
     // Questions about market/price
@@ -288,9 +288,9 @@ export function AIChat() {
         const healthStatus = world.health > 70 ? "strong" : world.health > 40 ? "steady" : "weak";
         const responses: Record<string, string> = {
           optimistic: `world health ${world.health}% - looking ${healthStatus}. weather: ${world.weather}`,
-          cautious: `${world.health}% health. ${world.weather} conditions. ${world.health < 50 ? "be careful" : "holding steady"}`,
-          chaotic: `${world.health}% health, ${world.weather}, ${world.buildings.length} tokens`,
-          strategic: `${world.health}% health, ${world.buildings.length} tokens, ${world.weather}`,
+          cautious: `${world.health}% health. ${world.weather} conditions. ${world.health < 50 ? "be careful out there" : "holding steady"}`,
+          chaotic: `${world.health}% health, ${world.weather}, ${world.buildings.length} tokens active`,
+          strategic: `metrics: ${world.health}% health, ${world.buildings.length} tokens, ${world.weather}. sentiment ${world.health > 60 ? "positive" : "neutral"}`,
         };
         return responses[personality.trait];
       }
@@ -303,8 +303,8 @@ export function AIChat() {
         const timeStr = timeInfo?.isNight ? "night" : timeInfo?.isDusk ? "evening" : timeInfo?.isDawn ? "morning" : "daytime";
         const responses: Record<string, string> = {
           optimistic: `it's ${timeStr} in BagsWorld. weather: ${world.weather}`,
-          cautious: `${timeStr}. ${world.weather} conditions`,
-          chaotic: `${timeStr}, ${world.weather}`,
+          cautious: `${timeStr} right now. ${world.weather} conditions`,
+          chaotic: `${timeStr}, ${world.weather} weather`,
           strategic: `time: ${timeStr} (EST). weather: ${world.weather}`,
         };
         return responses[personality.trait];

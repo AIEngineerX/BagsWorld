@@ -278,19 +278,18 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       saveLaunchedToken(launchedToken);
 
       // Save to global database (so everyone sees it)
-      saveTokenGlobally(launchedToken).then((success) => {
-        if (success) {
-          console.log("Token saved to global database - everyone can see it now!");
-        } else {
-          console.log("Token saved locally only - configure Supabase for global visibility");
-        }
-      });
+      setLaunchStatus("Saving to global database...");
+      const globalSaveSuccess = await saveTokenGlobally(launchedToken);
 
       // Dispatch custom event to notify useWorldState hook
       window.dispatchEvent(new CustomEvent("bagsworld-token-update"));
 
       setLaunchStatus("");
-      setSuccess(`🎉 Token ${formData.symbol} launched on Bags.fm! Your building is appearing in BagsWorld...`);
+      if (globalSaveSuccess) {
+        setSuccess(`🎉 Token ${formData.symbol} launched on Bags.fm! Your building is now visible to ALL BagsWorld players!`);
+      } else {
+        setSuccess(`🎉 Token ${formData.symbol} launched on Bags.fm! Building visible locally. (Global database not configured)`);
+      }
 
       // Call the success callback to refresh the world state
       if (onLaunchSuccess) {

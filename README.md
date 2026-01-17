@@ -155,6 +155,39 @@ Open [http://localhost:3000](http://localhost:3000) to explore the world!
 3. Publish directory: `.next`
 4. Add environment variables in dashboard
 
+## Global State Setup (Supabase)
+
+For tokens launched by one user to be visible to ALL users, you need to set up Supabase:
+
+### 1. Create a Supabase Project
+
+1. Go to [supabase.com](https://supabase.com) and create a free project
+2. Note your Project URL and anon key from Settings > API
+
+### 2. Run the Schema Migration
+
+1. Go to the SQL Editor in your Supabase dashboard
+2. Copy the contents of `supabase/schema.sql`
+3. Run the SQL to create the `tokens` table
+
+### 3. Configure Environment Variables
+
+Add these to your `.env.local` (and Netlify dashboard):
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_KEY=your-anon-key
+```
+
+### 4. Verify Connection
+
+Look at the footer in BagsWorld - you should see:
+- `● GLOBAL: ON` - Database connected, tokens shared globally
+- `○ GLOBAL: LOCAL` - Not configured, tokens only saved locally
+- `✕ GLOBAL: ERR` - Database error
+
+Without Supabase, buildings are **session-only** - each user sees only their own launched tokens.
+
 ## License
 
 MIT
