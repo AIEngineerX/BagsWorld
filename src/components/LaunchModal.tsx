@@ -609,8 +609,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                     className="bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white"
                   >
                     <option value="twitter">Twitter</option>
-                    <option value="tiktok">TikTok</option>
-                    <option value="instagram">Instagram</option>
                     <option value="github">GitHub</option>
                     <option value="kick">Kick</option>
                   </select>
