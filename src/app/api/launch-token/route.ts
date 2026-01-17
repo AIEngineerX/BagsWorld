@@ -166,6 +166,12 @@ async function handleConfigureFees(
     );
   }
 
+  // Debug log
+  console.log("Configure fees request:", {
+    mint: data.mint,
+    feeClaimers: JSON.stringify(data.feeClaimers, null, 2),
+  });
+
   try {
     const result = await api.createFeeShareConfig(data.mint, data.feeClaimers);
 

@@ -40,7 +40,16 @@ class BagsApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
+      // Try to get error details from response body
+      let errorDetail = "";
+      try {
+        const errorBody = await response.text();
+        errorDetail = errorBody ? ` - ${errorBody}` : "";
+        console.error(`Bags API error response (${endpoint}):`, errorBody);
+      } catch {
+        // Ignore if we can't read the body
+      }
+      throw new Error(`API error: ${response.status} ${response.statusText}${errorDetail}`);
     }
 
     const data: ApiResponse<T> = await response.json();
@@ -274,10 +283,19 @@ class BagsApiClient {
     configId: string;
     totalBps: number;
   }> {
-    return this.fetch("/fee-share/config", {
-      method: "POST",
-      body: JSON.stringify({ mint, feeClaimers }),
-    });
+    const requestBody = { mint, feeClaimers };
+    console.log("Bags API createFeeShareConfig request:", JSON.stringify(requestBody, null, 2));
+    try {
+      const result = await this.fetch<{ configId: string; totalBps: number }>("/fee-share/config", {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+      });
+      console.log("Bags API createFeeShareConfig response:", result);
+      return result;
+    } catch (error) {
+      console.error("Bags API createFeeShareConfig error:", error);
+      throw error;
+    }
   }
 
   // Partner Fee Claiming
