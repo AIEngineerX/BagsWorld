@@ -176,12 +176,20 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         const feeResult = await feeConfigResponse.json();
         configKey = feeResult.configId;
       } else {
-        console.warn("Fee config warning:", await feeConfigResponse.text());
-        // Continue anyway, fee config is optional
+        const feeError = await feeConfigResponse.json();
+        throw new Error(feeError.error || "Failed to configure fee sharing");
+      }
+
+      if (!configKey) {
+        throw new Error("Fee configuration failed - no config key received");
       }
 
       // 3. Create launch transaction, sign it, and send to blockchain
-      if (configKey && signTransaction) {
+      if (!signTransaction) {
+        throw new Error("Wallet does not support transaction signing. Please use Phantom or another compatible wallet.");
+      }
+
+      {
         setLaunchStatus("Creating launch transaction...");
 
         // Convert SOL to lamports (1 SOL = 1,000,000,000 lamports)
@@ -209,37 +217,37 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         const { transaction: txBase64 } = await launchTxResponse.json();
 
-        if (txBase64) {
-          setLaunchStatus("Please sign the transaction in your wallet...");
-
-          // Decode transaction
-          const txBuffer = Buffer.from(txBase64, "base64");
-          const transaction = VersionedTransaction.deserialize(txBuffer);
-
-          // Sign transaction
-          const signedTx = await signTransaction(transaction);
-
-          setLaunchStatus("Broadcasting to Solana...");
-
-          // Send to blockchain
-          const connection = new Connection(
-            process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
-          );
-
-          const txid = await connection.sendRawTransaction(signedTx.serialize(), {
-            skipPreflight: false,
-            maxRetries: 3,
-          });
-
-          setLaunchStatus("Confirming transaction...");
-
-          // Wait for confirmation
-          await connection.confirmTransaction(txid, "confirmed");
-
-          console.log("Token launched on-chain! TX:", txid);
+        if (!txBase64) {
+          throw new Error("No transaction received from API. The token may already exist or there was a server error.");
         }
-      } else if (!signTransaction) {
-        console.warn("Wallet does not support signing - token saved locally only");
+
+        setLaunchStatus("Please sign the transaction in your wallet...");
+
+        // Decode transaction
+        const txBuffer = Buffer.from(txBase64, "base64");
+        const transaction = VersionedTransaction.deserialize(txBuffer);
+
+        // Sign transaction
+        const signedTx = await signTransaction(transaction);
+
+        setLaunchStatus("Broadcasting to Solana...");
+
+        // Send to blockchain
+        const connection = new Connection(
+          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+        );
+
+        const txid = await connection.sendRawTransaction(signedTx.serialize(), {
+          skipPreflight: false,
+          maxRetries: 3,
+        });
+
+        setLaunchStatus("Confirming transaction...");
+
+        // Wait for confirmation
+        await connection.confirmTransaction(txid, "confirmed");
+
+        console.log("Token launched on-chain! TX:", txid);
       }
 
       // 4. Save token to registry for the world to display

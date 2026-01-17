@@ -245,14 +245,18 @@ async function enrichTokenWithSDK(
   }
 
   // Build TokenInfo
+  // Note: Market cap requires price feed integration - showing 0 for now
+  // For permanent buildings (Treasury, PokeCenter), show max level
+  const isPermanentBuilding = token.mint.startsWith("Treasury") || token.mint.startsWith("Starter");
+
   const tokenInfo: TokenInfo = {
     mint: token.mint,
     name: token.name,
     symbol: token.symbol,
     imageUrl: token.imageUrl,
-    price: 0, // Would need price feed
-    marketCap: lifetimeFees > 0 ? lifetimeFees * 1000 : 10000, // Estimate from fees
-    volume24h: lifetimeFees > 0 ? lifetimeFees * 100 : 1000,
+    price: 0,
+    marketCap: isPermanentBuilding ? 50_000_000 : (lifetimeFees > 0 ? lifetimeFees * 100 : 0), // Permanent buildings = L5, others based on fees or 0
+    volume24h: lifetimeFees > 0 ? lifetimeFees * 10 : 0,
     change24h: 0,
     holders: 0,
     lifetimeFees,
@@ -410,8 +414,9 @@ export async function POST(request: NextRequest) {
           const existing = earnerMap.get(uniqueId);
 
           if (existing) {
-            // Update existing earner
+            // Update existing earner - aggregate earnings from multiple tokens
             existing.tokenCount++;
+            existing.lifetimeEarnings += (token.lifetimeFees * share.bps) / 10000; // Add proportional share
             if (token.lifetimeFees > (existing.topToken?.lifetimeFees || 0)) {
               existing.topToken = token;
             }
