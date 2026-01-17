@@ -422,129 +422,145 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
 
               {/* Trade */}
               {activeTab === "trade" && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Left: Token */}
-                  <div className="space-y-3">
-                    {!selectedToken ? (
-                      <p className="font-pixel text-gray-500 text-xs text-center py-8">Select a token</p>
-                    ) : (
-                      <>
-                        <div className="bg-bags-dark border-2 border-bags-green p-3">
-                          <div className="font-pixel text-bags-green text-lg">${selectedToken.symbol}</div>
-                          <div className="font-pixel text-gray-400 text-[10px] truncate">{selectedToken.mint.slice(0, 20)}...</div>
+                <div className="space-y-3">
+                  {!selectedToken ? (
+                    <p className="font-pixel text-gray-500 text-xs text-center py-8">Select a token from BAGS, HOT, NEW, or SEARCH tabs</p>
+                  ) : (
+                    <>
+                      {/* Token Header - Like Axiom */}
+                      <div className="flex items-center justify-between bg-bags-dark border-2 border-gray-700 p-2">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <div className="font-pixel text-bags-green text-sm">{selectedToken.symbol}</div>
+                            <div className="font-pixel text-gray-500 text-[8px]">{selectedToken.name}</div>
+                          </div>
                         </div>
-                        <div className="flex border-2 border-gray-600">
+                        <div className="flex items-center gap-4">
+                          {"price" in selectedToken && selectedToken.price > 0 && (
+                            <div className="text-right">
+                              <div className="font-pixel text-[8px] text-gray-500">PRICE</div>
+                              <div className="font-pixel text-xs text-white">${selectedToken.price.toFixed(6)}</div>
+                            </div>
+                          )}
+                          {"volume24h" in selectedToken && (
+                            <div className="text-right">
+                              <div className="font-pixel text-[8px] text-gray-500">VOL 24H</div>
+                              <div className="font-pixel text-xs text-bags-green">{formatVolume(selectedToken.volume24h)}</div>
+                            </div>
+                          )}
+                          <div className="text-right">
+                            <div className="font-pixel text-[8px] text-gray-500">CA</div>
+                            <div className="font-pixel text-[10px] text-gray-400">{selectedToken.mint.slice(0, 6)}...</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Chart - DexScreener TradingView Embed */}
+                      <div className="relative bg-black border-2 border-gray-700 overflow-hidden" style={{ height: "300px" }}>
+                        <iframe
+                          src={`https://dexscreener.com/solana/${selectedToken.mint}?embed=1&theme=dark&trades=0&info=0`}
+                          className="absolute inset-0 w-full h-full"
+                          style={{ border: "none" }}
+                          title="Price Chart"
+                          allow="clipboard-write"
+                          loading="lazy"
+                        />
+                        {/* TradingView badge overlay */}
+                        <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded">
+                          <span className="font-pixel text-[8px] text-blue-400">TV</span>
+                        </div>
+                      </div>
+
+                      {/* Trade Controls - Bottom Panel */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-bags-dark border-2 border-gray-700 p-3">
+                        {/* Buy/Sell Toggle */}
+                        <div className="flex border-2 border-gray-600 h-fit">
                           <button
                             onClick={() => setTradeDirection("buy")}
-                            className={`flex-1 font-pixel text-xs py-2 ${tradeDirection === "buy" ? "bg-bags-green text-black" : "text-gray-400"}`}
+                            className={`flex-1 font-pixel text-xs py-2 transition-all ${tradeDirection === "buy" ? "bg-bags-green text-black" : "text-gray-400 hover:text-white"}`}
                           >
                             BUY
                           </button>
                           <button
                             onClick={() => setTradeDirection("sell")}
-                            className={`flex-1 font-pixel text-xs py-2 ${tradeDirection === "sell" ? "bg-red-500 text-white" : "text-gray-400"}`}
+                            className={`flex-1 font-pixel text-xs py-2 transition-all ${tradeDirection === "sell" ? "bg-red-500 text-white" : "text-gray-400 hover:text-white"}`}
                           >
                             SELL
                           </button>
                         </div>
-                      </>
-                    )}
-                  </div>
 
-                  {/* Middle: Settings */}
-                  <div className="space-y-3">
-                    <div>
-                      <div className="font-pixel text-[10px] text-gray-400 mb-1">AMOUNT (SOL)</div>
-                      <div className="grid grid-cols-5 gap-1">
-                        {AMOUNT_PRESETS.map((amt) => (
-                          <button
-                            key={amt}
-                            onClick={() => setTradeAmount(amt)}
-                            className={`font-pixel text-[10px] py-2 border-2 ${tradeAmount === amt ? "bg-bags-green text-black border-bags-green" : "text-gray-400 border-gray-600"}`}
-                          >
-                            {amt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-pixel text-[10px] text-gray-400 mb-1">SLIPPAGE</div>
-                      <div className="grid grid-cols-4 gap-1">
-                        {SLIPPAGE_PRESETS.map((s) => (
-                          <button
-                            key={s.value}
-                            onClick={() => setSlippage(s.value)}
-                            className={`font-pixel text-[10px] py-1 border-2 ${slippage === s.value ? "bg-bags-gold text-black border-bags-gold" : "text-gray-400 border-gray-600"}`}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {ultraOrder?.gasless && (
-                      <div className="bg-green-900/30 border border-green-500 p-2">
-                        <p className="font-pixel text-[10px] text-green-400">GASLESS SWAP AVAILABLE</p>
-                      </div>
-                    )}
-                  </div>
+                        {/* Amount Presets */}
+                        <div>
+                          <div className="font-pixel text-[8px] text-gray-500 mb-1">AMOUNT (SOL)</div>
+                          <div className="grid grid-cols-5 gap-1">
+                            {AMOUNT_PRESETS.map((amt) => (
+                              <button
+                                key={amt}
+                                onClick={() => setTradeAmount(amt)}
+                                className={`font-pixel text-[10px] py-1.5 border-2 transition-all ${tradeAmount === amt ? "bg-bags-green text-black border-bags-green" : "text-gray-400 border-gray-600 hover:border-gray-500"}`}
+                              >
+                                {amt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
 
-                  {/* Right: Quote & Execute */}
-                  <div className="space-y-3">
-                    <div className="bg-bags-dark border-2 border-gray-600 p-3 space-y-2">
-                      <div className="font-pixel text-[10px] text-gray-400">QUOTE (Jupiter Ultra)</div>
-                      {isQuoting ? (
-                        <p className="font-pixel text-xs text-bags-green animate-pulse">Getting order...</p>
-                      ) : ultraOrder ? (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="font-pixel text-[10px] text-gray-400">You receive:</span>
-                            <span className="font-pixel text-xs text-white">
-                              {(parseFloat(ultraOrder.outAmount) / (tradeDirection === "buy" ? 1e6 : 1e9)).toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                            </span>
+                        {/* Slippage */}
+                        <div>
+                          <div className="font-pixel text-[8px] text-gray-500 mb-1">SLIPPAGE</div>
+                          <div className="grid grid-cols-4 gap-1">
+                            {SLIPPAGE_PRESETS.map((s) => (
+                              <button
+                                key={s.value}
+                                onClick={() => setSlippage(s.value)}
+                                className={`font-pixel text-[10px] py-1.5 border-2 transition-all ${slippage === s.value ? "bg-bags-gold text-black border-bags-gold" : "text-gray-400 border-gray-600 hover:border-gray-500"}`}
+                              >
+                                {s.label}
+                              </button>
+                            ))}
                           </div>
-                          <div className="flex justify-between">
-                            <span className="font-pixel text-[10px] text-gray-400">Min received:</span>
-                            <span className="font-pixel text-[10px] text-gray-500">
-                              {(parseFloat(ultraOrder.otherAmountThreshold) / (tradeDirection === "buy" ? 1e6 : 1e9)).toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="font-pixel text-[10px] text-gray-400">Impact:</span>
-                            <span className={`font-pixel text-[10px] ${parseFloat(ultraOrder.priceImpactPct) > 5 ? "text-red-400" : "text-gray-400"}`}>
-                              {parseFloat(ultraOrder.priceImpactPct).toFixed(2)}%
-                            </span>
-                          </div>
-                        </>
-                      ) : !connected ? (
-                        <p className="font-pixel text-[10px] text-gray-500">Connect wallet for quote</p>
-                      ) : (
-                        <p className="font-pixel text-[10px] text-gray-500">Select token</p>
+                        </div>
+
+                        {/* Execute Button & Quote */}
+                        <div className="space-y-2">
+                          {isQuoting ? (
+                            <div className="font-pixel text-[10px] text-bags-green animate-pulse text-center py-1">Getting quote...</div>
+                          ) : ultraOrder ? (
+                            <div className="flex justify-between text-[10px] font-pixel">
+                              <span className="text-gray-500">Receive:</span>
+                              <span className="text-white">{(parseFloat(ultraOrder.outAmount) / (tradeDirection === "buy" ? 1e6 : 1e9)).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                            </div>
+                          ) : null}
+                          <button
+                            onClick={executeSwap}
+                            disabled={isSwapping || isQuoting || !ultraOrder}
+                            className={`w-full font-pixel text-sm py-2.5 border-2 transition-all disabled:opacity-50 ${
+                              tradeDirection === "buy"
+                                ? "bg-bags-green text-black border-bags-green hover:brightness-110"
+                                : "bg-red-500 text-white border-red-500 hover:brightness-110"
+                            }`}
+                          >
+                            {isSwapping ? "EXECUTING..." : !connected ? "CONNECT WALLET" : `${tradeDirection.toUpperCase()}`}
+                          </button>
+                          {ultraOrder?.gasless && (
+                            <div className="font-pixel text-[8px] text-green-400 text-center">GASLESS</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Error/Success Messages */}
+                      {error && (
+                        <div className="bg-red-900/30 border border-red-500 p-2">
+                          <p className="font-pixel text-[10px] text-red-400">{error}</p>
+                        </div>
                       )}
-                    </div>
-
-                    {error && (
-                      <div className="bg-red-900/30 border border-red-500 p-2">
-                        <p className="font-pixel text-[10px] text-red-400">{error}</p>
-                      </div>
-                    )}
-                    {swapSuccess && (
-                      <div className="bg-green-900/30 border border-green-500 p-2">
-                        <p className="font-pixel text-[10px] text-green-400">Success! {swapSuccess.slice(0, 12)}...</p>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={executeSwap}
-                      disabled={isSwapping || isQuoting || !ultraOrder || !selectedToken}
-                      className={`w-full font-pixel text-sm py-3 border-2 transition-all disabled:opacity-50 ${
-                        tradeDirection === "buy"
-                          ? "bg-bags-green text-black border-bags-green"
-                          : "bg-red-500 text-white border-red-500"
-                      }`}
-                    >
-                      {isSwapping ? "EXECUTING..." : !connected ? "CONNECT WALLET" : `${tradeDirection.toUpperCase()} ${selectedToken?.symbol || ""}`}
-                    </button>
-                  </div>
+                      {swapSuccess && (
+                        <div className="bg-green-900/30 border border-green-500 p-2">
+                          <p className="font-pixel text-[10px] text-green-400">Success! TX: {swapSuccess.slice(0, 16)}...</p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </>
