@@ -117,10 +117,12 @@ async function fetchDCWeather(): Promise<WorldState["weather"]> {
     const code = data.current.weather_code;
     const cloudCover = data.current.cloud_cover;
 
-    // Convert to game weather
+    // Convert to game weather based on Open-Meteo weather codes
+    // https://open-meteo.com/en/docs - WMO Weather interpretation codes
+    // 0-3: Clear/Cloudy, 51-57: Drizzle, 61-67: Rain, 71-77: Snow, 80-82: Showers, 95-99: Thunderstorm
     let weather: WorldState["weather"] = "cloudy";
     if (code >= 95) weather = "storm";
-    else if (code >= 51 || code >= 61 || code >= 71 || code >= 80) weather = "rain";
+    else if (code >= 51) weather = "rain"; // All precipitation codes (drizzle, rain, snow, showers)
     else if (code === 3 || cloudCover > 70) weather = "cloudy";
     else if (code <= 2 && cloudCover < 30) weather = "sunny";
 

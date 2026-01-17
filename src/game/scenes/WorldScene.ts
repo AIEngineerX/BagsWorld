@@ -33,6 +33,10 @@ export class WorldScene extends Phaser.Scene {
   private currentTrack = 0;
   private trackNames = ["Adventure", "Bags Anthem", "Night Market", "Victory March"];
 
+  // Store bound event handlers for cleanup
+  private boundToggleMusic: (() => void) | null = null;
+  private boundSkipTrack: (() => void) | null = null;
+
   constructor() {
     super({ key: "WorldScene" });
   }
@@ -78,15 +82,39 @@ export class WorldScene extends Phaser.Scene {
     // Start background music
     this.startPokemonMusic();
 
-    // Listen for music toggle
-    window.addEventListener("bagsworld-toggle-music", () => {
-      this.toggleMusic();
-    });
+    // Listen for music toggle (store bound handler for cleanup)
+    this.boundToggleMusic = () => this.toggleMusic();
+    window.addEventListener("bagsworld-toggle-music", this.boundToggleMusic);
 
-    // Listen for track skip
-    window.addEventListener("bagsworld-skip-track", () => {
-      this.skipTrack();
-    });
+    // Listen for track skip (store bound handler for cleanup)
+    this.boundSkipTrack = () => this.skipTrack();
+    window.addEventListener("bagsworld-skip-track", this.boundSkipTrack);
+
+    // Register cleanup on scene shutdown
+    this.events.on("shutdown", this.cleanup, this);
+  }
+
+  // Cleanup method to prevent memory leaks
+  private cleanup(): void {
+    // Remove window event listeners
+    if (this.boundToggleMusic) {
+      window.removeEventListener("bagsworld-toggle-music", this.boundToggleMusic);
+      this.boundToggleMusic = null;
+    }
+    if (this.boundSkipTrack) {
+      window.removeEventListener("bagsworld-skip-track", this.boundSkipTrack);
+      this.boundSkipTrack = null;
+    }
+
+    // Stop music and clean up audio context
+    if (this.musicInterval) {
+      clearTimeout(this.musicInterval);
+      this.musicInterval = null;
+    }
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
   }
 
   private createGround(): void {

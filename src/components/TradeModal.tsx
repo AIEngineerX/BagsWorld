@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { VersionedTransaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import type { TradeQuote } from "@/lib/types";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
@@ -45,10 +45,13 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
     setError(null);
 
     try {
-      // Convert amount to lamports for SOL or smallest unit for token
+      // Convert amount to smallest unit
+      // SOL uses 9 decimals (LAMPORTS_PER_SOL = 1e9)
+      // Most Bags.fm tokens use 6 decimals (standard SPL token default)
+      // TODO: For full accuracy, fetch token decimals from chain metadata
       const amountInSmallestUnit = direction === "buy"
         ? Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL)
-        : Math.floor(parseFloat(amount) * 1e6); // Assuming 6 decimals for token
+        : Math.floor(parseFloat(amount) * 1e6);
 
       const response = await fetch("/api/trade", {
         method: "POST",
@@ -123,9 +126,9 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
 
       const { transaction: txBase64 } = await response.json();
 
-      // Decode and sign transaction
+      // Decode and sign transaction (using VersionedTransaction for modern DEX compatibility)
       const txBuffer = Buffer.from(txBase64, "base64");
-      const transaction = Transaction.from(txBuffer);
+      const transaction = VersionedTransaction.deserialize(txBuffer);
 
       const signedTx = await signTransaction(transaction);
 
