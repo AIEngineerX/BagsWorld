@@ -572,7 +572,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   <input
                     type="number"
                     value={share.bps / 100}
-                    onChange={(e) => updateFeeShare(index, "bps", Math.min(10000, Math.max(0, parseFloat(e.target.value) * 100)))}
+                    onChange={(e) => updateFeeShare(index, "bps", Math.min(10000, Math.max(0, (parseFloat(e.target.value) || 0) * 100)))}
                     className="w-16 bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white text-center"
                     min="0"
                     max="100"
