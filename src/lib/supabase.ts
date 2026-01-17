@@ -34,7 +34,7 @@ function getSupabaseClient(): ReturnType<typeof createClient<any>> | null {
   if (supabaseClient) return supabaseClient;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_TOKEN;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
@@ -46,7 +46,7 @@ function getSupabaseClient(): ReturnType<typeof createClient<any>> | null {
 
 // Check if Supabase is configured
 export function isSupabaseConfigured(): boolean {
-  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_TOKEN);
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_KEY);
 }
 
 // Export a getter for the client (may be null if not configured)
