@@ -141,7 +141,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       const { tokenMint, tokenMetadata } = await tokenInfoResponse.json();
 
       // 2. Configure fee sharing (always includes ecosystem fee)
+      // IMPORTANT: Bags.fm API requires BPS to sum to exactly 10000 (100%)
       const validFeeShares = feeShares.filter(f => f.username.trim());
+
+      // Calculate total user-defined BPS
+      const userDefinedBps = validFeeShares.reduce((sum, f) => sum + f.bps, 0);
+      const allocatedBps = ecosystemFee.bps + userDefinedBps;
+      const remainingBps = 10000 - allocatedBps;
 
       // Build fee claimers array - always include ecosystem fee
       const allFeeClaimers = [
@@ -158,6 +164,16 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           bps: f.bps,
         })),
       ];
+
+      // Auto-allocate remaining BPS to the launcher's wallet to reach 10000 total
+      if (remainingBps > 0 && publicKey) {
+        allFeeClaimers.push({
+          provider: "solana",
+          providerUsername: publicKey.toBase58(),
+          bps: remainingBps,
+        });
+        console.log(`Auto-allocated ${remainingBps} bps (${remainingBps / 100}%) to launcher wallet`);
+      }
 
       setLaunchStatus("Configuring fee sharing...");
 
