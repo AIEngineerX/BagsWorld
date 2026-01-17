@@ -181,6 +181,8 @@ async function handleConfigureFees(
       success: true,
       configId: result.configId,
       totalBps: result.totalBps,
+      needsCreation: result.needsCreation,
+      transactions: result.transactions,
     });
   } catch (error) {
     console.error("Configure fees error:", error);
