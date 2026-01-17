@@ -6,7 +6,7 @@
 // =============================================================================
 // 1. VISIBILITY: Your token becomes a building in a living world
 // 2. COMMUNITY: Citizens (X/Twitter accounts) earn fees across multiple tokens
-// 3. ECOSYSTEM GROWTH: 10% of all fees fuel the ecosystem, benefiting everyone
+// 3. ECOSYSTEM GROWTH: 5% of all fees fuel the ecosystem, benefiting everyone
 // 4. SOCIAL PROOF: Leaderboards, events, and activity feed showcase success
 // =============================================================================
 
@@ -21,8 +21,8 @@ export const ECOSYSTEM_CONFIG = {
     // Wallet that receives ecosystem fees - viewable on Solscan
     wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
-    // Fee percentage in basis points (1000 = 10%)
-    feeBps: 1000,
+    // Fee percentage in basis points (500 = 5%)
+    feeBps: 500,
 
     // How the ecosystem fees are allocated - COMMUNITY FIRST
     allocation: {
@@ -144,7 +144,7 @@ export const ECOSYSTEM_CONFIG = {
     ],
     forEcosystem: [
       {
-        title: "10% Community Rewards",
+        title: "5% Community Rewards",
         description: "Fees go back to the strongest communities",
         icon: "🏆",
       },
@@ -234,7 +234,7 @@ export const ECOSYSTEM_CONFIG = {
     // Ash explains the ecosystem with Pokemon-themed analogies
     quotes: [
       "Gotta catch 'em all... tokens that is! Each one becomes a building in BagsWorld!",
-      "A good trainer takes care of their team. Here, 10% of fees go back to the strongest communities!",
+      "A good trainer takes care of their team. Here, 5% of fees go back to the strongest communities!",
       "Just like Pokemon evolve, your building grows as market cap increases!",
       "Every citizen here earns fees from trading. It's like getting badges for battling!",
       "I wanna be the very best! And in BagsWorld, the best communities get weekly airdrops!",
@@ -261,7 +261,6 @@ export const ECOSYSTEM_CONFIG = {
       "We built Bags.fm so creators can earn forever. 1% of all trading volume, for life. No rugs, just bags.",
       "The fastest growing launchpad in the world isn't just hype - it's because we actually ship.",
       "I bought the WIF hat because memes matter. Culture is the new currency.",
-      "$250K reward for the first token to hit $10M and hold it for 24 hours. Let's see what you've got.",
       "Over $1B in trading volume in less than 30 days. That's the power of community.",
       "Launch your token, earn your fees, build your empire. It's that simple.",
       "The best memecoins aren't just tokens - they're movements. What's yours?",

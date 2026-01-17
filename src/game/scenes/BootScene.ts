@@ -115,6 +115,9 @@ export class BootScene extends Phaser.Scene {
     // Generate diverse buildings (levels 1-5)
     this.generateBuildings();
 
+    // Generate special buildings
+    this.generatePokeCenter();
+
     // Generate diverse character variants
     this.generateDiverseCharacters();
 
@@ -372,6 +375,118 @@ export class BootScene extends Phaser.Scene {
       buildingGraphics.generateTexture(`building_${level}`, 55, canvasHeight);
       buildingGraphics.destroy();
     }
+  }
+
+  private generatePokeCenter(): void {
+    // PokeCenter - Pokemon Center style building (red roof, white base)
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasHeight = 140;
+    const bHeight = 85;
+    const bWidth = 50;
+
+    // Shadow
+    g.fillStyle(0x000000, 0.4);
+    g.fillRect(6, canvasHeight - bHeight + 6, bWidth - 2, bHeight);
+
+    // Building base (white/cream)
+    g.fillStyle(0xfef3c7);
+    g.fillRect(4, canvasHeight - bHeight, bWidth - 4, bHeight);
+
+    // Lighter left side for 3D effect
+    g.fillStyle(0xfefce8);
+    g.fillRect(4, canvasHeight - bHeight, 6, bHeight);
+
+    // Red roof - iconic PokeCenter style
+    g.fillStyle(0xdc2626);
+    g.fillRect(0, canvasHeight - bHeight - 8, bWidth + 4, 12);
+    g.fillStyle(0xef4444);
+    g.fillRect(2, canvasHeight - bHeight - 6, bWidth, 8);
+
+    // Roof peak/overhang
+    g.fillStyle(0xb91c1c);
+    g.fillRect(bWidth / 2 - 8, canvasHeight - bHeight - 16, 20, 10);
+    g.fillStyle(0xdc2626);
+    g.fillRect(bWidth / 2 - 6, canvasHeight - bHeight - 14, 16, 6);
+
+    // Pokeball logo on roof peak
+    g.fillStyle(0xffffff);
+    g.fillCircle(bWidth / 2 + 2, canvasHeight - bHeight - 10, 6);
+    g.fillStyle(0xdc2626);
+    g.fillRect(bWidth / 2 - 4, canvasHeight - bHeight - 16, 12, 6);
+    g.fillStyle(0x1f2937);
+    g.fillRect(bWidth / 2 - 4, canvasHeight - bHeight - 11, 12, 2);
+    g.fillStyle(0xffffff);
+    g.fillCircle(bWidth / 2 + 2, canvasHeight - bHeight - 10, 3);
+    g.fillStyle(0x1f2937);
+    g.fillCircle(bWidth / 2 + 2, canvasHeight - bHeight - 10, 1.5);
+
+    // Windows (2 rows, 3 columns)
+    const windowColor = 0x60a5fa;
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 3; col++) {
+        const wx = 10 + col * 12;
+        const wy = canvasHeight - bHeight + 15 + row * 18;
+
+        // Window glow
+        g.fillStyle(windowColor, 0.3);
+        g.fillRect(wx - 1, wy - 1, 9, 11);
+
+        // Window
+        g.fillStyle(windowColor);
+        g.fillRect(wx, wy, 8, 10);
+
+        // Window frame
+        g.fillStyle(0xfef3c7);
+        g.fillRect(wx + 3, wy, 2, 10);
+        g.fillRect(wx, wy + 4, 8, 2);
+      }
+    }
+
+    // Red cross/plus sign (healing center)
+    g.fillStyle(0xdc2626);
+    g.fillRect(bWidth / 2 - 1, canvasHeight - bHeight + 8, 6, 2);
+    g.fillRect(bWidth / 2 + 1, canvasHeight - bHeight + 6, 2, 6);
+
+    // Door - automatic sliding doors
+    const doorWidth = 16;
+    const doorHeight = 20;
+    const doorX = (bWidth - doorWidth) / 2 + 2;
+
+    // Door frame
+    g.fillStyle(0xdc2626);
+    g.fillRect(doorX - 2, canvasHeight - doorHeight - 4, doorWidth + 4, doorHeight + 4);
+
+    // Glass doors
+    g.fillStyle(0x93c5fd);
+    g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
+
+    // Door divider
+    g.fillStyle(0x1f2937);
+    g.fillRect(doorX + doorWidth / 2 - 1, canvasHeight - doorHeight, 2, doorHeight);
+
+    // Welcome mat
+    g.fillStyle(0xdc2626);
+    g.fillRect(doorX - 4, canvasHeight - 2, doorWidth + 8, 2);
+
+    // "P" sign above door
+    g.fillStyle(0x1f2937);
+    g.fillRect(doorX + 2, canvasHeight - doorHeight - 10, doorWidth - 4, 8);
+    g.fillStyle(0xffffff);
+    g.fillRect(doorX + 5, canvasHeight - doorHeight - 9, 2, 6);
+    g.fillRect(doorX + 5, canvasHeight - doorHeight - 9, 5, 2);
+    g.fillRect(doorX + 8, canvasHeight - doorHeight - 9, 2, 4);
+    g.fillRect(doorX + 5, canvasHeight - doorHeight - 6, 5, 2);
+
+    // Side decorations - pokeball symbols
+    g.fillStyle(0xdc2626);
+    g.fillCircle(10, canvasHeight - 25, 4);
+    g.fillCircle(bWidth - 6, canvasHeight - 25, 4);
+    g.fillStyle(0xffffff);
+    g.fillRect(6, canvasHeight - 26, 8, 2);
+    g.fillRect(bWidth - 10, canvasHeight - 26, 8, 2);
+
+    g.generateTexture("pokecenter", 55, canvasHeight);
+    g.destroy();
   }
 
   private generateDiverseCharacters(): void {

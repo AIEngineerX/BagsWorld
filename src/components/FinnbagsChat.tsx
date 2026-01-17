@@ -40,11 +40,6 @@ const BAGS_TOPICS = [
     content: "Your building evolves based on market cap:\n• Level 1: Under $100K (Shop)\n• Level 2: $100K-$500K (Office)\n• Level 3: $500K-$2M (HQ)\n• Level 4: $2M-$10M (Tower)\n• Level 5: $10M+ (Skyscraper)"
   },
   {
-    title: "$250K Challenge",
-    icon: "🏆",
-    content: "Be the first memecoin on Bags to hit $10M market cap and HOLD it for 24 hours - win $250,000! The clock starts when you cross $10M. Can your community diamond hand it?"
-  },
-  {
     title: "Why Bags.fm?",
     icon: "💎",
     content: "Over $1B in volume in under 30 days. Fastest growing launchpad in crypto. Fair launches, permanent fees, and a community that actually builds. This is where culture meets capital."
@@ -362,8 +357,8 @@ export function FinnbagsChat() {
             <p className="font-pixel text-[9px] text-bags-gold">1%</p>
           </div>
           <div className="bg-purple-500/10 p-1 rounded">
-            <p className="font-pixel text-[6px] text-gray-400">Challenge</p>
-            <p className="font-pixel text-[9px] text-purple-400">$250K</p>
+            <p className="font-pixel text-[6px] text-gray-400">Ecosystem</p>
+            <p className="font-pixel text-[9px] text-purple-400">5%</p>
           </div>
         </div>
         <a
