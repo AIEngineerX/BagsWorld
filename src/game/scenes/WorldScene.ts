@@ -1172,6 +1172,43 @@ export class WorldScene extends Phaser.Scene {
         }
       });
     }
+
+    // Show sun during daytime (not night, not dusk)
+    if (!timeInfo.isNight && !timeInfo.isDusk && !this.sunSprite) {
+      this.sunSprite = this.add.sprite(150, 80, "sun");
+      this.sunSprite.setScale(2);
+      this.sunSprite.setAlpha(0);
+      this.sunSprite.setDepth(0);
+      this.sunSprite.setTint(0xffdd44);
+
+      // Fade in the sun
+      this.tweens.add({
+        targets: this.sunSprite,
+        alpha: 0.9,
+        y: 60,
+        duration: 2000,
+      });
+
+      // Gentle sun pulse
+      this.tweens.add({
+        targets: this.sunSprite,
+        scale: 2.1,
+        duration: 3000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Hide sun at dusk (transition period)
+    if (timeInfo.isDusk && this.sunSprite) {
+      this.tweens.add({
+        targets: this.sunSprite,
+        alpha: 0.4,
+        y: 120,
+        duration: 2000,
+      });
+    }
   }
 
   private startDayNightCycle(): void {
