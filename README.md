@@ -1,36 +1,88 @@
 # BagsWorld 🌍
 
-A self-evolving pixel art game world that lives and dies based on real [Bags.fm](https://bags.fm) on-chain activity. Think Tamagotchi meets SimCity meets crypto!
+A self-evolving pixel art game world that lives and dies based on real [Bags.fm](https://bags.fm) on-chain activity on Solana. Think SimCity meets crypto - where every token is a building and every trader is a citizen!
 
-![BagsWorld](https://img.shields.io/badge/Powered%20by-Bags.fm-green)
+![BagsWorld](https://img.shields.io/badge/Powered%20by-Bags.fm-green) ![Solana](https://img.shields.io/badge/Built%20on-Solana-purple)
+
+## What is BagsWorld?
+
+**BagsWorld is a living, gamified visualization of real-time Solana trading activity from Bags.fm.**
+
+It transforms abstract DeFi data into something **visual, engaging, and fun** - making crypto more accessible to everyone.
+
+### Core Concept
+
+| Real World | BagsWorld |
+|------------|-----------|
+| Token launched | Building appears |
+| Market cap grows | Building levels up (1-5) |
+| Fee share recipient | Citizen walking around |
+| High trading volume | Sunny weather |
+| Low activity | Storms and rain |
+
+### Why It Matters
+
+- **Gamifies DeFi** - Makes crypto trading visual and engaging
+- **Drives discovery** - Users explore the world and find new tokens
+- **Builds community** - Shared world creates shared experience
+- **Transparent** - All data comes from real on-chain activity
+
+## Revenue Model
+
+**BagsWorld takes a 5% ecosystem fee on all tokens launched through the platform.**
+
+When someone launches a token through BagsWorld:
+1. They set their creator fee (typically 1% of all trading volume)
+2. BagsWorld automatically adds a 5% fee share to the ecosystem wallet
+3. This fee is **permanent and locked** - earning from every trade, forever
+
+### Fee Allocation
+
+| Category | % | Purpose |
+|----------|---|---------|
+| Community Rewards | 50% | Rewards for top-performing communities |
+| Weekly Airdrops | 25% | Distributed to active holders |
+| Creator Bonuses | 15% | Incentives for top tokens |
+| Development | 10% | Platform improvements |
+
+### Why It Works
+
+- **Aligned incentives** - BagsWorld only earns if launched tokens succeed
+- **Recurring revenue** - Fees are permanent, creating sustainable income
+- **Network effects** - More tokens = bigger world = more users = more launches
+- **Fully transparent** - All fees verifiable on [Solscan](https://solscan.io)
 
 ## Features
 
-- **Living World**: The world health and weather change based on 24h Bags trading volume
-- **Token Buildings**: Each token becomes a building that grows/shrinks based on market cap
-- **Diverse Characters**: Fee earners become pixel art characters with different moods
-- **Real-time Events**: Watch token launches, fee claims, and price movements
-- **AI Chat**: Interactive AI personalities that comment on world events
-- **Click to Explore**: Click characters to view their social profiles, click buildings to view tokens on Bags.fm
+- **Living World**: Weather and health change based on real trading volume
+- **Token Buildings**: Each token becomes a building that evolves with market cap
+- **Diverse Citizens**: Fee earners become pixel art characters with moods based on earnings
+- **AI Guides**: Toly (Solana), Ash (ecosystem), and Finn (Bags.fm) help onboard users
+- **Real-time Events**: Watch token launches, fee claims, and milestones
+- **Direct Trading**: Click buildings to trade tokens without leaving the game
+- **PokeCenter**: Starter building with Pokemon-inspired design
 
 ## Building Levels
 
-| Level | Market Cap | Style |
-|-------|------------|-------|
-| 1 | < $100K | Small gray startup shop |
-| 2 | $100K - $500K | Blue growing office |
-| 3 | $500K - $2M | Purple corporate building |
-| 4 | $2M - $10M | Blue tower |
-| 5 | $10M+ | Green Bags skyscraper |
+| Level | Market Cap | Building Style |
+|-------|------------|----------------|
+| 1 | < $100K | Small startup shop |
+| 2 | $100K - $500K | Growing office |
+| 3 | $500K - $2M | Corporate HQ |
+| 4 | $2M - $10M | Modern tower |
+| 5 | $10M+ | BagsWorld skyscraper |
 
 ## Tech Stack
 
 - **Next.js 14** - React framework with App Router
-- **Phaser 3** - 2D game engine
+- **Phaser 3** - 2D game engine for pixel art world
+- **Solana Web3.js** - Blockchain interaction
+- **Bags.fm SDK** - Trading and token data
+- **Claude AI** - Intelligent NPC conversations
+- **Supabase** - Shared global state
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
 - **Zustand** - State management
-- **TanStack Query** - Data fetching
 
 ## Getting Started
 
@@ -60,10 +112,11 @@ cp .env.example .env.local
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `BAGS_API_KEY` | Yes | Your Bags.fm API key |
-| `BAGS_API_URL` | Yes | Bags.fm API URL (default: https://public-api-v2.bags.fm/api/v1) |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | Yes | Solana RPC endpoint |
-| `NEXT_PUBLIC_SOLANA_NETWORK` | Yes | Solana network (mainnet-beta) |
-| `ANTHROPIC_API_KEY` | No | Claude API key for AI chat (optional) |
+| `NEXT_PUBLIC_ECOSYSTEM_WALLET` | Yes | Treasury wallet for ecosystem fees |
+| `ANTHROPIC_API_KEY` | No | Claude API for AI characters |
+| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase for shared state |
+| `NEXT_PUBLIC_SUPABASE_TOKEN` | No | Supabase anon key |
 
 ### Development
 
@@ -71,41 +124,36 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the world!
-
-### Production Build
-
-```bash
-npm run build
-npm start
-```
-
-## Deploying to Netlify
-
-1. Connect your GitHub repo to Netlify
-2. Set build command: `npm run build`
-3. Set publish directory: `.next`
-4. Add environment variables in Netlify dashboard:
-   - `BAGS_API_KEY`
-   - `BAGS_API_URL`
-   - `NEXT_PUBLIC_SOLANA_RPC_URL`
-   - `NEXT_PUBLIC_SOLANA_NETWORK`
-   - `ANTHROPIC_API_KEY` (optional)
+Open [http://localhost:3000](http://localhost:3000) to explore the world!
 
 ## World Mechanics
 
 ### Weather System
-- ☀️ **Sunny** (Health 80%+): High trading volume
-- ⛅ **Cloudy** (Health 60-80%): Normal activity
-- 🌧️ **Rain** (Health 40-60%): Below average volume
-- ⛈️ **Storm** (Health 20-40%): Low activity
-- 💀 **Apocalypse** (Health <20%): Very low activity
+- ☀️ **Sunny** (80%+ health): High trading volume
+- ⛅ **Cloudy** (60-80%): Normal activity
+- 🌧️ **Rain** (40-60%): Below average
+- ⛈️ **Storm** (20-40%): Low activity
+- 💀 **Apocalypse** (<20%): Critical
 
 ### Character Moods
-- 🥳 **Celebrating**: Major gains (100%+ change)
-- 😎 **Happy**: Good performance (20%+ change or $1K+ earnings)
-- 🧑‍💻 **Neutral**: Normal activity
-- 😔 **Sad**: Losses (-20% or worse)
+- 🥳 **Celebrating**: Major gains
+- 😎 **Happy**: Good performance
+- 😐 **Neutral**: Normal activity
+- 😔 **Sad**: Losses
+
+### AI Characters
+- **Toly** - Solana co-founder, explains blockchain tech
+- **Ash** - Pokemon-themed guide, explains ecosystem mechanics
+- **Finn** - Bags.fm CEO, explains the platform
+
+## Deployment
+
+### Netlify (Recommended)
+
+1. Connect GitHub repo to Netlify
+2. Build command: `npm run build`
+3. Publish directory: `.next`
+4. Add environment variables in dashboard
 
 ## License
 
@@ -113,4 +161,6 @@ MIT
 
 ## Credits
 
-Built with ❤️ using [Bags.fm](https://bags.fm) API
+Built with ❤️ for the Bags.fm ecosystem on Solana
+
+Co-created with [Claude Code](https://claude.ai/code)
