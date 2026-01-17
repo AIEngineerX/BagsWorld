@@ -1,0 +1,61 @@
+name: Daily Report
+
+on:
+  # Run daily at 6 PM EST (11 PM UTC)
+  schedule:
+    - cron: '0 23 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'post'
+        type: choice
+        options:
+          - preview
+          - post
+
+jobs:
+  daily-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Preview Report
+        if: ${{ github.event.inputs.action == 'preview' }}
+        run: |
+          echo "Generating report preview..."
+
+          RESPONSE=$(curl -s "${{ secrets.BAGSWORLD_URL }}/api/report" \
+            -H "Authorization: Bearer ${{ secrets.AGENT_SECRET }}")
+
+          echo "Preview:"
+          echo "$RESPONSE" | jq -r '.preview // .error'
+
+      - name: Post Daily Report
+        if: ${{ github.event.inputs.action != 'preview' }}
+        run: |
+          echo "Posting daily report to X..."
+
+          RESPONSE=$(curl -s -X POST "${{ secrets.BAGSWORLD_URL }}/api/report" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.AGENT_SECRET }}" \
+            -d '{"action":"post"}')
+
+          echo "Response: $RESPONSE"
+
+          SUCCESS=$(echo $RESPONSE | jq -r '.success // false')
+          if [ "$SUCCESS" = "true" ]; then
+            TWEET_COUNT=$(echo $RESPONSE | jq -r '.tweetIds | length')
+            echo "Posted $TWEET_COUNT tweet(s) successfully"
+            echo "Tweet IDs:"
+            echo $RESPONSE | jq -r '.tweetIds[]'
+          else
+            ERROR=$(echo $RESPONSE | jq -r '.error // "Unknown error"')
+            echo "Failed to post: $ERROR"
+
+            # Show what would have been posted
+            echo "Report content:"
+            echo $RESPONSE | jq -r '.tweets[]'
+          fi

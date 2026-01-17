@@ -6,6 +6,7 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { Transaction } from "@solana/web3.js";
 import type { ClaimablePosition } from "@/lib/types";
+import { useXAuth } from "@/hooks/useXAuth";
 
 interface FeeClaimModalProps {
   onClose: () => void;
@@ -15,18 +16,78 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
+  const { user: xUser, isLoading: xAuthLoading, error: xAuthError, signIn: xSignIn, signOut: xSignOut, clearError: clearXError } = useXAuth();
 
   const [positions, setPositions] = useState<ClaimablePosition[]>([]);
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set());
   const [totalClaimable, setTotalClaimable] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const fetchPositions = useCallback(async () => {
-    if (!publicKey) return;
+  // X-linked wallet state
+  const [linkedWallet, setLinkedWallet] = useState<string | null>(null);
+  const [walletLookupError, setWalletLookupError] = useState<string | null>(null);
+  const [isLookingUpWallet, setIsLookingUpWallet] = useState(false);
 
+  // Look up X-linked wallet when user signs in
+  useEffect(() => {
+    if (xUser?.username) {
+      lookupLinkedWallet(xUser.username);
+    } else {
+      setLinkedWallet(null);
+      setWalletLookupError(null);
+    }
+  }, [xUser?.username]);
+
+  // Fetch positions when we have a wallet to query
+  const walletToQuery = linkedWallet || (connected && publicKey ? publicKey.toBase58() : null);
+
+  useEffect(() => {
+    if (walletToQuery) {
+      fetchPositions(walletToQuery);
+    } else {
+      setPositions([]);
+      setTotalClaimable(0);
+    }
+  }, [walletToQuery]);
+
+  const lookupLinkedWallet = async (username: string) => {
+    setIsLookingUpWallet(true);
+    setWalletLookupError(null);
+
+    try {
+      const response = await fetch("/api/claim-fees", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "lookup-by-x",
+          xUsername: username,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to look up wallet");
+      }
+
+      if (data.wallet) {
+        setLinkedWallet(data.wallet);
+      } else {
+        throw new Error("No wallet linked to this X account");
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to look up wallet";
+      setWalletLookupError(errorMessage);
+      setLinkedWallet(null);
+    } finally {
+      setIsLookingUpWallet(false);
+    }
+  };
+
+  const fetchPositions = async (wallet: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -36,7 +97,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "get-positions",
-          wallet: publicKey.toBase58(),
+          wallet,
         }),
       });
 
@@ -56,13 +117,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey]);
-
-  useEffect(() => {
-    if (connected && publicKey) {
-      fetchPositions();
-    }
-  }, [connected, publicKey, fetchPositions]);
+  };
 
   const togglePosition = (virtualPool: string) => {
     const newSelected = new Set(selectedPositions);
@@ -86,9 +141,21 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
     .filter(p => selectedPositions.has(p.virtualPool))
     .reduce((sum, p) => sum + p.claimableDisplayAmount, 0);
 
+  // Check if connected wallet matches the X-linked wallet
+  const walletMatches = !linkedWallet || (publicKey && publicKey.toBase58() === linkedWallet);
+
   const handleClaim = async () => {
     if (!connected || !publicKey || !signTransaction) {
       setWalletModalVisible(true);
+      return;
+    }
+
+    // Must use the wallet that owns the positions
+    const claimWallet = linkedWallet || publicKey.toBase58();
+
+    // Verify connected wallet matches
+    if (linkedWallet && publicKey.toBase58() !== linkedWallet) {
+      setError("Connect the wallet linked to your X account to claim");
       return;
     }
 
@@ -107,7 +174,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "generate-claim-tx",
-          wallet: publicKey.toBase58(),
+          wallet: claimWallet,
           positions: Array.from(selectedPositions),
         }),
       });
@@ -149,7 +216,9 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
         setSuccess(`Successfully claimed from ${successCount} position${successCount > 1 ? "s" : ""}!`);
         // Refresh positions after successful claim
         setTimeout(() => {
-          fetchPositions();
+          if (walletToQuery) {
+            fetchPositions(walletToQuery);
+          }
           setSuccess(null);
         }, 3000);
       } else {
@@ -170,6 +239,10 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
     if (e.target === e.currentTarget) {
       onClose();
     }
+  };
+
+  const shortenAddress = (address: string) => {
+    return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
   return (
@@ -201,10 +274,109 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
 
         {/* Content */}
         <div className="p-4 space-y-4">
-          {!connected ? (
-            <div className="text-center py-8">
-              <p className="font-pixel text-[10px] text-gray-400 mb-4">
-                Connect your wallet to see claimable fees
+          {/* X Authentication Section */}
+          <div className="bg-bags-darker border border-bags-gold/30 p-3">
+            {xUser ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {xUser.profileImage && (
+                    <img
+                      src={xUser.profileImage}
+                      alt={xUser.name || xUser.username}
+                      className="w-6 h-6 rounded-sm"
+                    />
+                  )}
+                  <div>
+                    <p className="font-pixel text-[10px] text-white">
+                      @{xUser.username}
+                    </p>
+                    {linkedWallet && (
+                      <p className="font-pixel text-[8px] text-gray-400">
+                        Wallet: {shortenAddress(linkedWallet)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={xSignOut}
+                  className="font-pixel text-[8px] text-gray-400 hover:text-white"
+                >
+                  [Sign Out]
+                </button>
+              </div>
+            ) : (
+              <div className="text-center">
+                <p className="font-pixel text-[8px] text-gray-400 mb-2">
+                  Sign in with X to claim fees for your linked wallet
+                </p>
+                <button
+                  onClick={xSignIn}
+                  disabled={xAuthLoading}
+                  className="btn-retro text-[10px] px-4 py-2"
+                >
+                  {xAuthLoading ? "CONNECTING..." : "SIGN IN WITH X"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* X Auth Error */}
+          {xAuthError && (
+            <div className="bg-bags-red/20 border-2 border-bags-red p-2 flex justify-between items-center">
+              <p className="font-pixel text-[8px] text-bags-red">{xAuthError}</p>
+              <button
+                onClick={clearXError}
+                className="font-pixel text-[8px] text-bags-red hover:text-white"
+              >
+                [X]
+              </button>
+            </div>
+          )}
+
+          {/* Wallet Lookup Status */}
+          {xUser && isLookingUpWallet && (
+            <div className="text-center py-2">
+              <p className="font-pixel text-[10px] text-bags-green animate-pulse">
+                Looking up linked wallet...
+              </p>
+            </div>
+          )}
+
+          {/* Wallet Lookup Error */}
+          {walletLookupError && (
+            <div className="bg-bags-red/20 border-2 border-bags-red p-2">
+              <p className="font-pixel text-[8px] text-bags-red">{walletLookupError}</p>
+              <p className="font-pixel text-[8px] text-gray-400 mt-1">
+                Link your wallet at{" "}
+                <a
+                  href="https://bags.fm/settings"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-bags-gold hover:underline"
+                >
+                  bags.fm/settings
+                </a>
+              </p>
+            </div>
+          )}
+
+          {/* Wallet Mismatch Warning */}
+          {linkedWallet && connected && publicKey && !walletMatches && (
+            <div className="bg-yellow-500/20 border-2 border-yellow-500 p-2">
+              <p className="font-pixel text-[8px] text-yellow-400">
+                Connected wallet does not match your X-linked wallet.
+              </p>
+              <p className="font-pixel text-[8px] text-gray-400 mt-1">
+                Connect {shortenAddress(linkedWallet)} to claim.
+              </p>
+            </div>
+          )}
+
+          {/* Not signed in with X and no wallet connected */}
+          {!xUser && !connected ? (
+            <div className="text-center py-4">
+              <p className="font-pixel text-[10px] text-gray-400 mb-2">
+                Or connect your wallet directly
               </p>
               <button
                 onClick={() => setWalletModalVisible(true)}
@@ -217,6 +389,12 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
             <div className="text-center py-8">
               <p className="font-pixel text-[10px] text-bags-green animate-pulse">
                 Loading positions...
+              </p>
+            </div>
+          ) : !walletToQuery ? (
+            <div className="text-center py-4">
+              <p className="font-pixel text-[10px] text-gray-400">
+                Sign in with X or connect a wallet to view fees
               </p>
             </div>
           ) : positions.length === 0 ? (
@@ -337,15 +515,31 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
         </div>
 
         {/* Footer */}
-        {connected && positions.length > 0 && (
+        {positions.length > 0 && (
           <div className="p-4 border-t border-bags-gold/30">
-            <button
-              onClick={handleClaim}
-              disabled={isClaiming || selectedPositions.size === 0}
-              className="w-full btn-retro disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isClaiming ? "CLAIMING..." : `CLAIM ${selectedTotal.toFixed(4)} SOL`}
-            </button>
+            {!connected ? (
+              <button
+                onClick={() => setWalletModalVisible(true)}
+                className="w-full btn-retro"
+              >
+                CONNECT WALLET TO CLAIM
+              </button>
+            ) : linkedWallet && !walletMatches ? (
+              <button
+                onClick={() => setWalletModalVisible(true)}
+                className="w-full btn-retro bg-yellow-600 hover:bg-yellow-500"
+              >
+                SWITCH WALLET
+              </button>
+            ) : (
+              <button
+                onClick={handleClaim}
+                disabled={isClaiming || selectedPositions.size === 0}
+                className="w-full btn-retro disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isClaiming ? "CLAIMING..." : `CLAIM ${selectedTotal.toFixed(4)} SOL`}
+              </button>
+            )}
           </div>
         )}
       </div>
