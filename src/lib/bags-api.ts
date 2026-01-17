@@ -341,12 +341,17 @@ class BagsApiClient {
     };
     console.log("Bags API createFeeShareConfig request:", JSON.stringify(requestBody, null, 2));
     try {
-      const result = await this.fetch<{ configId: string; totalBps: number }>("/fee-share/config", {
+      const result = await this.fetch<Record<string, unknown>>("/fee-share/config", {
         method: "POST",
         body: JSON.stringify(requestBody),
       });
-      console.log("Bags API createFeeShareConfig response:", result);
-      return result;
+      console.log("Bags API createFeeShareConfig raw response:", JSON.stringify(result, null, 2));
+
+      // Handle different possible response field names
+      const configId = (result.configId || result.configKey || result.config_id || result.config_key) as string;
+      const totalBps = (result.totalBps || result.total_bps || 0) as number;
+
+      return { configId, totalBps };
     } catch (error) {
       console.error("Bags API createFeeShareConfig error:", error);
       throw error;
