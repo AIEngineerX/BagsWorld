@@ -8,7 +8,11 @@ export const metadata: Metadata = {
     "A self-evolving pixel art game world that lives and dies based on real Bags.fm on-chain activity. Launch tokens, watch buildings grow, and earn fees from trading.",
   keywords: ["Solana", "crypto", "game", "Bags.fm", "DeFi", "pixel art", "token launch", "fee share"],
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
+    apple: "/favicon.svg",
   },
   openGraph: {
     title: "BagsWorld - Living Pixel Art Crypto World",
