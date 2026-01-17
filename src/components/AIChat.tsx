@@ -432,7 +432,7 @@ export function AIChat() {
         style={{ left: position.x, bottom: position.y >= 0 ? 'auto' : 80, top: position.y >= 0 ? position.y : 'auto' }}
         className="fixed z-50 btn-retro flex items-center gap-2"
       >
-        <span className="font-pixel text-sm">🌆</span>
+        <img src="/favicon.png" alt="BagsWorld" className="w-4 h-4 pixelated" />
         <span className="font-pixel text-[8px]">BagsWorld</span>
         {messages.length > 0 && (
           <span className="w-2 h-2 bg-bags-gold rounded-full animate-pulse" />
@@ -462,7 +462,7 @@ export function AIChat() {
               &lt;
             </button>
           )}
-          <span className="font-pixel text-sm text-bags-gold">🌆</span>
+          <img src="/favicon.png" alt="BagsWorld" className="w-4 h-4 pixelated" />
           <p className="font-pixel text-[10px] text-bags-green">
             BagsWorld Bot
           </p>
@@ -480,9 +480,10 @@ export function AIChat() {
       <div className="h-48 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-2">
-            <p className="font-pixel text-[10px] text-bags-gold mb-1">
-              🌆 BagsWorld Bot
-            </p>
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <img src="/favicon.png" alt="BagsWorld" className="w-4 h-4 pixelated" />
+              <p className="font-pixel text-[10px] text-bags-gold">BagsWorld Bot</p>
+            </div>
             <p className="font-pixel text-[8px] text-gray-400 mb-2">
               your guide to BagsWorld
             </p>
