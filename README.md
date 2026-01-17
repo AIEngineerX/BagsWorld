@@ -116,7 +116,7 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_ECOSYSTEM_WALLET` | Yes | Treasury wallet for ecosystem fees |
 | `ANTHROPIC_API_KEY` | No | Claude API for AI characters |
 | `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase for shared state |
-| `NEXT_PUBLIC_SUPABASE_TOKEN` | No | Supabase anon key |
+| `NEXT_PUBLIC_SUPABASE_KEY` | No | Supabase anon key |
 
 ### Development
 
