@@ -18,12 +18,13 @@ import {
   addBuybackToken,
   removeBuybackToken,
   getBuybackStats,
+  getPendingBuybacks,
   type BuybackBurnConfig,
   type TokenBuybackConfig,
 } from "@/lib/buyback-burn";
 
 interface AgentRequestBody {
-  action: "status" | "start" | "stop" | "trigger" | "config" | "buyback-config" | "add-buyback-token" | "remove-buyback-token";
+  action: "status" | "start" | "stop" | "trigger" | "config" | "buyback-config" | "add-buyback-token" | "remove-buyback-token" | "pending-buybacks";
   config?: {
     enabled?: boolean;
     minClaimThresholdSol?: number;
@@ -93,6 +94,9 @@ export async function POST(request: Request) {
 
       case "remove-buyback-token":
         return handleRemoveBuybackToken(tokenMint);
+
+      case "pending-buybacks":
+        return handlePendingBuybacks();
 
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
@@ -260,12 +264,49 @@ function handleRemoveBuybackToken(mint?: string): NextResponse {
   });
 }
 
+function handlePendingBuybacks(): NextResponse {
+  const pendingBuybacks = getPendingBuybacks();
+  const now = Date.now();
+
+  return NextResponse.json({
+    success: true,
+    pendingBuybacks: pendingBuybacks.map(pb => ({
+      id: pb.id,
+      claimedSol: pb.claimedSol,
+      claimedAt: pb.claimedAt,
+      claimedAtFormatted: new Date(pb.claimedAt).toISOString(),
+      executeAt: pb.executeAt,
+      executeAtFormatted: new Date(pb.executeAt).toISOString(),
+      timeUntilExecution: pb.executeAt - now,
+      timeUntilExecutionFormatted: formatDuration(pb.executeAt - now),
+      executed: pb.executed,
+      result: pb.result,
+    })),
+    total: pendingBuybacks.length,
+    pending: pendingBuybacks.filter(pb => !pb.executed).length,
+    executed: pendingBuybacks.filter(pb => pb.executed).length,
+  });
+}
+
+// Format duration in human readable format
+function formatDuration(ms: number): string {
+  if (ms <= 0) return "Ready";
+  const hours = Math.floor(ms / (60 * 60 * 1000));
+  const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
+}
+
 // GET endpoint for simple status check
 export async function GET() {
   const walletStatus = await getAgentWalletStatus();
   const agentState = getAutoClaimState();
   const buybackConfig = getBuybackConfig();
   const buybackStats = getBuybackStats();
+  const pendingBuybacks = getPendingBuybacks();
+  const now = Date.now();
 
   return NextResponse.json({
     wallet: {
@@ -282,12 +323,29 @@ export async function GET() {
     },
     buyback: {
       enabled: buybackConfig.enabled,
+      autoSelectMode: buybackConfig.autoSelectMode,
+      topN: buybackConfig.topN,
+      buybackPercentage: buybackConfig.buybackPercentage,
+      allocationPerToken: buybackConfig.allocationPerToken,
+      delayHours: buybackConfig.delayMs / (60 * 60 * 1000),
       targetTokens: buybackConfig.targetTokens.map(t => ({
         symbol: t.symbol,
         allocation: t.allocationPercent,
         burnAfterBuy: t.burnAfterBuy,
       })),
       stats: buybackStats,
+      pendingBuybacks: {
+        total: pendingBuybacks.length,
+        pending: pendingBuybacks.filter(pb => !pb.executed).length,
+        nextExecution: pendingBuybacks
+          .filter(pb => !pb.executed)
+          .sort((a, b) => a.executeAt - b.executeAt)[0]?.executeAt,
+        nextExecutionIn: formatDuration(
+          (pendingBuybacks
+            .filter(pb => !pb.executed)
+            .sort((a, b) => a.executeAt - b.executeAt)[0]?.executeAt || now) - now
+        ),
+      },
     },
   });
 }
