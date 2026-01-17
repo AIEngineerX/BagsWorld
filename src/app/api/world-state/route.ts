@@ -355,12 +355,12 @@ export async function POST(request: NextRequest) {
     const now = Date.now();
     const sdk = await getBagsSDK();
 
-    // ALWAYS include Treasury building first (permanent landmark)
-    // Then add user tokens, or starter buildings if no user tokens
-    const userTokens = registeredTokens.length > 0 ? registeredTokens : STARTER_BUILDINGS;
-    const tokensToProcess = [TREASURY_BUILDING, ...userTokens];
+    // ALWAYS include Treasury building and PokeCenter (permanent landmarks)
+    // Then add any user tokens
+    const permanentBuildings = [TREASURY_BUILDING, ...STARTER_BUILDINGS];
+    const tokensToProcess = [...permanentBuildings, ...registeredTokens];
 
-    console.log(`Processing ${tokensToProcess.length} buildings (1 treasury + ${userTokens.length} tokens)`);
+    console.log(`Processing ${tokensToProcess.length} buildings (${permanentBuildings.length} permanent + ${registeredTokens.length} user tokens)`);
 
     // Enrich all tokens with SDK data
     const enrichedResults = await Promise.all(

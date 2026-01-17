@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { Connection, VersionedTransaction } from "@solana/web3.js";
 import { saveLaunchedToken, saveTokenGlobally, type LaunchedToken } from "@/lib/token-registry";
 import { ECOSYSTEM_CONFIG, getEcosystemFeeShare } from "@/lib/config";
 
@@ -21,7 +22,7 @@ interface LaunchModalProps {
 }
 
 export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signTransaction } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
 
   const [formData, setFormData] = useState({
@@ -34,9 +35,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [launchStatus, setLaunchStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [step, setStep] = useState<"info" | "fees" | "confirm">("info");
+  const [initialBuySOL, setInitialBuySOL] = useState<string>("0"); // SOL amount to buy at launch
   const [feeShares, setFeeShares] = useState<FeeShareEntry[]>([
     { provider: "twitter", username: "", bps: 500 }, // Default 5% to creator
   ]);
@@ -177,8 +180,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         // Continue anyway, fee config is optional
       }
 
-      // 3. Create launch transaction and sign it
-      if (configKey) {
+      // 3. Create launch transaction, sign it, and send to blockchain
+      if (configKey && signTransaction) {
+        setLaunchStatus("Creating launch transaction...");
+
+        // Convert SOL to lamports (1 SOL = 1,000,000,000 lamports)
+        const initialBuyLamports = Math.floor(parseFloat(initialBuySOL || "0") * 1_000_000_000);
+
         const launchTxResponse = await fetch("/api/launch-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -188,7 +196,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               ipfs: tokenMetadata,
               tokenMint: tokenMint,
               wallet: publicKey?.toBase58(),
-              initialBuyLamports: 0, // User can configure this
+              initialBuyLamports,
               configKey: configKey,
             },
           }),
@@ -196,9 +204,42 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         if (!launchTxResponse.ok) {
           const err = await launchTxResponse.json();
-          console.warn("Launch tx warning:", err.error);
-          // Continue to save token anyway for display
+          throw new Error(err.error || "Failed to create launch transaction");
         }
+
+        const { transaction: txBase64 } = await launchTxResponse.json();
+
+        if (txBase64) {
+          setLaunchStatus("Please sign the transaction in your wallet...");
+
+          // Decode transaction
+          const txBuffer = Buffer.from(txBase64, "base64");
+          const transaction = VersionedTransaction.deserialize(txBuffer);
+
+          // Sign transaction
+          const signedTx = await signTransaction(transaction);
+
+          setLaunchStatus("Broadcasting to Solana...");
+
+          // Send to blockchain
+          const connection = new Connection(
+            process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+          );
+
+          const txid = await connection.sendRawTransaction(signedTx.serialize(), {
+            skipPreflight: false,
+            maxRetries: 3,
+          });
+
+          setLaunchStatus("Confirming transaction...");
+
+          // Wait for confirmation
+          await connection.confirmTransaction(txid, "confirmed");
+
+          console.log("Token launched on-chain! TX:", txid);
+        }
+      } else if (!signTransaction) {
+        console.warn("Wallet does not support signing - token saved locally only");
       }
 
       // 4. Save token to registry for the world to display
@@ -240,7 +281,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       // Dispatch custom event to notify useWorldState hook
       window.dispatchEvent(new CustomEvent("bagsworld-token-update"));
 
-      setSuccess(`Token ${formData.symbol} created! Your building is being constructed...`);
+      setLaunchStatus("");
+      setSuccess(`🎉 Token ${formData.symbol} launched on Bags.fm! Your building is appearing in BagsWorld...`);
 
       // Call the success callback to refresh the world state
       if (onLaunchSuccess) {
@@ -250,9 +292,10 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       // Auto-close after a short delay
       setTimeout(() => {
         onClose();
-      }, 2000);
+      }, 3000);
 
     } catch (err) {
+      setLaunchStatus("");
       setError(err instanceof Error ? err.message : "Failed to launch token");
     } finally {
       setIsLoading(false);
@@ -608,6 +651,31 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               </div>
             </div>
 
+            {/* Initial Buy Amount */}
+            <div className="bg-purple-500/10 border border-purple-500/30 p-3 space-y-2">
+              <div className="flex justify-between items-center">
+                <p className="font-pixel text-[10px] text-purple-400">🛒 Initial Buy (Optional)</p>
+                <span className="font-pixel text-[7px] text-gray-500">Be your first buyer!</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={initialBuySOL}
+                  onChange={(e) => setInitialBuySOL(e.target.value)}
+                  placeholder="0"
+                  min="0"
+                  step="0.1"
+                  className="flex-1 bg-bags-darker border border-purple-500/30 p-2 font-pixel text-[10px] text-white text-center focus:outline-none focus:border-purple-500"
+                />
+                <span className="font-pixel text-[10px] text-purple-400">SOL</span>
+              </div>
+              <p className="font-pixel text-[7px] text-gray-500 text-center">
+                {parseFloat(initialBuySOL || "0") > 0
+                  ? `You'll buy ${initialBuySOL} SOL worth of your token at launch`
+                  : "Set to 0 to launch without buying"}
+              </p>
+            </div>
+
             <div className="bg-bags-gold/10 border border-bags-gold/30 p-3">
               <p className="font-pixel text-[8px] text-bags-gold text-center">
                 🏢 Your token will appear as a building in BagsWorld!
@@ -618,6 +686,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         {/* Footer */}
         <div className="p-4 border-t border-bags-green/30 space-y-3">
+          {/* Launch Status */}
+          {launchStatus && (
+            <div className="bg-purple-500/20 border-2 border-purple-500 p-2">
+              <p className="font-pixel text-[8px] text-purple-400 animate-pulse">{launchStatus}</p>
+            </div>
+          )}
+
           {/* Error/Success Message */}
           {error && (
             <div className="bg-bags-red/20 border-2 border-bags-red p-2">
@@ -632,7 +707,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
           {/* Navigation Buttons */}
           <div className="flex gap-2">
-            {step !== "info" && (
+            {step !== "info" && !isLoading && (
               <button
                 onClick={handleBack}
                 className="flex-1 py-2 border-2 border-bags-green font-pixel text-[10px] text-bags-green hover:bg-bags-green/10"
@@ -653,7 +728,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 disabled={isLoading || !!success}
                 className="flex-1 btn-retro disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? "BUILDING..." : success ? "✓ DONE" : "🚀 LAUNCH TOKEN"}
+                {isLoading ? "🔄 LAUNCHING..." : success ? "✓ DONE" : `🚀 LAUNCH${parseFloat(initialBuySOL || "0") > 0 ? ` + BUY ${initialBuySOL} SOL` : ""}`}
               </button>
             )}
           </div>
