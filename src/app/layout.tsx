@@ -16,14 +16,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "BagsWorld",
-    description: "A gamified world powered by real Bags.fm trading on Solana.",
+    description: "A gamified world powered by real Bags.fm trading on Solana. Launch tokens, watch buildings grow, and earn fees.",
     type: "website",
     siteName: "BagsWorld",
   },
   twitter: {
     card: "summary_large_image",
     title: "BagsWorld",
-    description: "A gamified world powered by real Bags.fm trading on Solana.",
+    description: "A gamified world powered by real Bags.fm trading on Solana. Built on Bags.fm.",
   },
 };
 
