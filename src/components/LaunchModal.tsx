@@ -154,7 +154,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         // User-defined fee shares
         ...validFeeShares.map(f => ({
           provider: f.provider,
-          providerUsername: f.username.replace("@", ""),
+          providerUsername: f.username.replace("@", "").toLowerCase(),
           bps: f.bps,
         })),
       ];
@@ -268,7 +268,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           },
           ...validFeeShares.map((f) => ({
             provider: f.provider,
-            username: f.username.replace("@", ""),
+            username: f.username.replace("@", "").toLowerCase(),
             bps: f.bps,
           })),
         ],

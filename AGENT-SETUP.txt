@@ -1,0 +1,158 @@
+================================================================================
+BAGSWORLD AUTO FEE CLAIM AGENT - SETUP INSTRUCTIONS
+================================================================================
+
+STEP 1: GENERATE AGENT WALLET
+--------------------------------------------------------------------------------
+Run these commands to create a dedicated wallet (NOT your main wallet!):
+
+  solana-keygen new --no-bip39-passphrase -o agent-wallet.json
+
+Convert to base58:
+
+  cat agent-wallet.json | node -e "console.log(require('bs58').encode(Buffer.from(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')))))"
+
+Save the output - this is your AGENT_WALLET_PRIVATE_KEY
+
+
+STEP 2: GENERATE AGENT SECRET
+--------------------------------------------------------------------------------
+Run this command to generate a random secret:
+
+  openssl rand -hex 32
+
+Save the output - this is your AGENT_SECRET
+
+
+STEP 3: ADD GITHUB SECRETS
+--------------------------------------------------------------------------------
+Go to: https://github.com/AIEngineerX/BagsWorld/settings/secrets/actions
+
+Click "New repository secret" and add:
+
+  Name: BAGSWORLD_URL
+  Value: https://your-site.netlify.app  (your actual Netlify URL)
+
+  Name: AGENT_SECRET
+  Value: (the secret you generated in Step 2)
+
+
+STEP 4: ADD NETLIFY ENVIRONMENT VARIABLES
+--------------------------------------------------------------------------------
+Go to: Netlify Dashboard > Your Site > Site configuration > Environment variables
+
+Add these variables:
+
+  AGENT_WALLET_PRIVATE_KEY = (the base58 key from Step 1)
+  AGENT_SECRET = (the secret from Step 2)
+
+Click "Save" and trigger a redeploy.
+
+
+STEP 5: FUND THE AGENT WALLET
+--------------------------------------------------------------------------------
+Send approximately 0.05 SOL to the agent wallet address for transaction fees.
+
+The wallet address is the PUBLIC KEY that was shown when you ran solana-keygen.
+You can also derive it from the private key if needed.
+
+
+STEP 6: VERIFY IT'S WORKING
+--------------------------------------------------------------------------------
+1. Go to GitHub repo > Actions tab
+2. You should see "Auto Fee Claim Agent" workflow
+3. Click "Run workflow" to manually test
+4. Or wait 5 minutes for automatic run
+
+Dashboard:
+- Connect with your admin wallet on BagsWorld
+- Click the "AGENT" button in bottom-left corner
+- You should see wallet status and claim history
+
+
+================================================================================
+HOW IT WORKS
+================================================================================
+
+Every 5 minutes, GitHub Actions:
+  1. Calls POST /api/agent with {"action":"trigger"}
+  2. Agent checks claimable positions for the agent wallet
+  3. If total > 0.01 SOL, it generates claim transactions
+  4. Signs with server wallet and sends to Solana
+  5. Logs results
+
+Safety controls:
+  - Minimum threshold: 0.01 SOL
+  - Wallet balance check: needs 0.005+ SOL for fees
+  - Cooldown: 1 minute between claims
+  - Max 10 positions per run
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+"Unauthorized" error:
+  - Check AGENT_SECRET matches in both GitHub and Netlify
+
+"Agent wallet not configured":
+  - Check AGENT_WALLET_PRIVATE_KEY is set in Netlify
+
+"Wallet balance too low":
+  - Send more SOL to the agent wallet for tx fees
+
+Workflow not running:
+  - Check GitHub Actions is enabled for your repo
+  - Verify secrets are set correctly
+
+
+================================================================================
+FILES CREATED
+================================================================================
+
+AUTO-CLAIM AGENT:
+src/lib/agent-wallet.ts        - Server wallet management
+src/lib/auto-claim-agent.ts    - Autonomous claiming logic
+src/app/api/agent/route.ts     - API endpoint with auth
+src/components/AgentDashboard.tsx - Admin-only dashboard UI
+.github/workflows/auto-claim.yml  - GitHub Actions cron job (every 5 min)
+
+DAILY REPORT (X/TWITTER):
+src/lib/x-client.ts            - X API client for posting
+src/lib/daily-report.ts        - Report generator
+src/app/api/report/route.ts    - Report API endpoint
+.github/workflows/daily-report.yml - Daily posting (6 PM EST)
+
+
+================================================================================
+DAILY REPORT SETUP (OPTIONAL)
+================================================================================
+
+Posts a daily performance report to X at 6 PM EST:
+
+  BAGSWORLD DAILY REPORT | Jan 16, 2026
+
+  TOP RUNNERS:
+  1. @username1
+  2. @username2
+  3. @username3
+  4. @username4
+  5. @username5
+
+  bagsworld.netlify.app
+
+REQUIREMENTS:
+- X API Basic or Pro plan ($100/month) - Free tier cannot post tweets
+- Add X_CLIENT_ID and X_CLIENT_SECRET to Netlify env vars
+- Add NEXT_PUBLIC_SITE_URL to Netlify env vars
+
+TEST PREVIEW (no posting):
+  curl https://your-site.netlify.app/api/report
+
+MANUAL POST:
+  curl -X POST https://your-site.netlify.app/api/report \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer YOUR_AGENT_SECRET" \
+    -d '{"action":"post"}'
+
+================================================================================

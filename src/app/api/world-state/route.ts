@@ -411,8 +411,8 @@ export async function POST(request: NextRequest) {
             return;
           }
 
-          // Create a unique ID from provider + username
-          const uniqueId = `${share.provider}-${share.username}`;
+          // Create a unique ID from provider + username (normalized to lowercase)
+          const uniqueId = `${share.provider}-${share.username.toLowerCase()}`;
           const existing = earnerMap.get(uniqueId);
 
           if (existing) {
