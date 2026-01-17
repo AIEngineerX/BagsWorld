@@ -195,6 +195,15 @@ async function handleCreateLaunchTx(
     );
   }
 
+  // Debug log the request data
+  console.log("Create launch tx request:", {
+    ipfs: data.ipfs,
+    tokenMint: data.tokenMint,
+    wallet: data.wallet,
+    initialBuyLamports: data.initialBuyLamports || 0,
+    configKey: data.configKey,
+  });
+
   try {
     const result = await api.createLaunchTransaction({
       ipfs: data.ipfs,

@@ -248,10 +248,18 @@ class BagsApiClient {
     tipWallet?: string;
     tipLamports?: number;
   }): Promise<string> {
-    return this.fetch("/token-launch/create-launch-transaction", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    console.log("Bags API createLaunchTransaction request:", JSON.stringify(data, null, 2));
+    try {
+      const result = await this.fetch<string>("/token-launch/create-launch-transaction", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      console.log("Bags API createLaunchTransaction response:", result);
+      return result;
+    } catch (error) {
+      console.error("Bags API createLaunchTransaction error:", error);
+      throw error;
+    }
   }
 
   // Fee Share Configuration
