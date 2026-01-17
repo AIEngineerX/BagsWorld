@@ -284,10 +284,30 @@ class BagsApiClient {
     configId: string;
     totalBps: number;
   }> {
-    // Transform to Bags API expected format
-    // claimersArray is strings in format "provider:username"
-    const claimersArray = feeClaimers.map(fc => `${fc.provider}:${fc.providerUsername}`);
-    const basisPointsArray = feeClaimers.map(fc => fc.bps);
+    // Resolve all claimers to wallet addresses
+    const claimersArray: string[] = [];
+    const basisPointsArray: number[] = [];
+
+    for (const fc of feeClaimers) {
+      let walletAddress: string;
+
+      if (fc.provider === "solana") {
+        // Already a wallet address
+        walletAddress = fc.providerUsername;
+      } else {
+        // Look up wallet by provider/username
+        try {
+          const result = await this.getWalletByUsername(fc.provider, fc.providerUsername);
+          walletAddress = result.wallet;
+        } catch (error) {
+          console.error(`Failed to lookup wallet for ${fc.provider}:${fc.providerUsername}`, error);
+          throw new Error(`Could not find wallet for ${fc.provider} user: ${fc.providerUsername}`);
+        }
+      }
+
+      claimersArray.push(walletAddress);
+      basisPointsArray.push(fc.bps);
+    }
 
     const requestBody = {
       baseMint: mint,
