@@ -1,0 +1,57 @@
+name: Auto Fee Claim Agent
+
+on:
+  # Run every 5 minutes
+  schedule:
+    - cron: '*/5 * * * *'
+
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'trigger'
+        type: choice
+        options:
+          - trigger
+          - status
+
+jobs:
+  claim-fees:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Auto-Claim
+        if: ${{ github.event.inputs.action != 'status' }}
+        run: |
+          echo "Triggering auto-claim agent..."
+
+          RESPONSE=$(curl -s -X POST "${{ secrets.BAGSWORLD_URL }}/api/agent" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.AGENT_SECRET }}" \
+            -d '{"action":"trigger"}')
+
+          echo "Response: $RESPONSE"
+
+          # Check if successful
+          SUCCESS=$(echo $RESPONSE | jq -r '.success // false')
+          if [ "$SUCCESS" = "true" ]; then
+            CLAIMED=$(echo $RESPONSE | jq -r '.result.totalSolClaimed // 0')
+            POSITIONS=$(echo $RESPONSE | jq -r '.result.positionsClaimed // 0')
+            echo "✅ Claimed $CLAIMED SOL from $POSITIONS positions"
+          else
+            ERROR=$(echo $RESPONSE | jq -r '.error // "Unknown error"')
+            echo "⚠️ No claims made: $ERROR"
+          fi
+
+      - name: Check Status
+        if: ${{ github.event.inputs.action == 'status' }}
+        run: |
+          echo "Checking agent status..."
+
+          RESPONSE=$(curl -s "${{ secrets.BAGSWORLD_URL }}/api/agent" \
+            -H "Authorization: Bearer ${{ secrets.AGENT_SECRET }}")
+
+          echo "Agent Status:"
+          echo $RESPONSE | jq '.'

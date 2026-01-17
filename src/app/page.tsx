@@ -11,6 +11,7 @@ import { AshChat } from "@/components/AshChat";
 import { TolyChat } from "@/components/TolyChat";
 import { FinnbagsChat } from "@/components/FinnbagsChat";
 import { DevChat } from "@/components/DevChat";
+import { AgentDashboard } from "@/components/AgentDashboard";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
@@ -107,6 +108,9 @@ export default function Home() {
 
           {/* The Dev's Trading Desk */}
           <DevChat />
+
+          {/* Agent Dashboard (Admin Only) */}
+          <AgentDashboard />
         </div>
 
         {/* Sidebar */}
