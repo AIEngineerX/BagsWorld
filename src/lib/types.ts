@@ -161,6 +161,44 @@ export interface GameEvent {
   };
 }
 
+// Terminal Types (Trading Terminal API)
+
+export interface TrendingToken {
+  mint: string;
+  name: string;
+  symbol: string;
+  imageUrl?: string;
+  price: number;
+  marketCap: number;
+  volume24h: number;
+  change24h: number;
+  lifetimeFees: number;
+  rank: number;
+}
+
+export interface NewPair {
+  mint: string;
+  name: string;
+  symbol: string;
+  imageUrl?: string;
+  createdAt: number;
+  ageSeconds: number;
+  marketCap: number;
+  volume24h: number;
+  safety: TokenSafety;
+}
+
+export interface TokenSafety {
+  score: number; // 0-100 safety score
+  mintAuthorityDisabled: boolean;
+  freezeAuthorityDisabled: boolean;
+  lpBurned: boolean;
+  lpBurnedPercent: number;
+  top10HolderPercent: number;
+  isRugRisk: boolean;
+  warnings: string[];
+}
+
 // Store types
 export interface GameStore {
   worldState: WorldState | null;
