@@ -22,6 +22,7 @@ import { useWorldState } from "@/hooks/useWorldState";
 import { DatabaseStatus } from "@/components/DatabaseStatus";
 import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
+import { TradingTerminal } from "@/components/TradingTerminal";
 
 interface BuildingClickData {
   mint: string;
@@ -49,6 +50,7 @@ export default function Home() {
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
   const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
   const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(false);
 
   // Listen for building click events from Phaser
   useEffect(() => {
@@ -77,6 +79,18 @@ export default function Home() {
           <WorldHealthBar health={worldState?.health ?? 50} />
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowTerminal(!showTerminal)}
+            className={`font-pixel text-[10px] px-3 py-1.5 border-2 rounded transition-all flex items-center gap-1 ${
+              showTerminal
+                ? "bg-red-600 border-red-400 text-white"
+                : "bg-bags-darker border-gray-600 text-gray-300 hover:border-bags-green hover:text-bags-green"
+            }`}
+          >
+            <span>🎮</span>
+            <span>TERMINAL</span>
+            <span className="text-[8px]">{showTerminal ? "▲" : "▼"}</span>
+          </button>
           <div className="font-pixel text-xs">
             <span className="text-gray-400">WEATHER: </span>
             <span className="text-bags-gold">
@@ -90,6 +104,12 @@ export default function Home() {
           <LaunchButton />
         </div>
       </header>
+
+      {/* Trading Terminal - expandable from header */}
+      <TradingTerminal
+        isOpen={showTerminal}
+        onClose={() => setShowTerminal(false)}
+      />
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
