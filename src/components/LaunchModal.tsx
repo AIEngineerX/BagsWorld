@@ -159,6 +159,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         })),
       ];
 
+      setLaunchStatus("Configuring fee sharing...");
+
       let configKey: string | undefined;
       const feeConfigResponse = await fetch("/api/launch-token", {
         method: "POST",
@@ -176,6 +178,40 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       if (feeConfigResponse.ok) {
         const feeResult = await feeConfigResponse.json();
         configKey = feeResult.configId;
+
+        // If the fee share config needs to be created on-chain, sign and submit the transactions
+        if (feeResult.needsCreation && feeResult.transactions?.length > 0) {
+          setLaunchStatus("Creating fee share config on-chain...");
+
+          if (!signTransaction) {
+            throw new Error("Wallet does not support transaction signing");
+          }
+
+          const connection = new Connection(
+            process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+          );
+
+          for (let i = 0; i < feeResult.transactions.length; i++) {
+            const txData = feeResult.transactions[i];
+            setLaunchStatus(`Signing fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
+
+            // Decode and sign the transaction
+            const txBuffer = Buffer.from(txData.transaction, "base64");
+            const transaction = VersionedTransaction.deserialize(txBuffer);
+            const signedTx = await signTransaction(transaction);
+
+            setLaunchStatus(`Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
+
+            // Send and confirm
+            const txid = await connection.sendRawTransaction(signedTx.serialize(), {
+              skipPreflight: false,
+              maxRetries: 3,
+            });
+
+            await connection.confirmTransaction(txid, "confirmed");
+            console.log(`Fee config transaction ${i + 1} confirmed:`, txid);
+          }
+        }
       } else {
         const feeError = await feeConfigResponse.json();
         throw new Error(feeError.error || "Failed to configure fee sharing");

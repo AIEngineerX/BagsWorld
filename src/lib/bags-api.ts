@@ -284,6 +284,8 @@ class BagsApiClient {
   ): Promise<{
     configId: string;
     totalBps: number;
+    needsCreation?: boolean;
+    transactions?: Array<{ transaction: string; blockhash: { blockhash: string; lastValidBlockHeight: number } }>;
   }> {
     // Separate solana wallets from social usernames
     const solanaClaimers = feeClaimers.filter(fc => fc.provider === "solana");
@@ -350,7 +352,9 @@ class BagsApiClient {
       console.log("Response keys:", Object.keys(result));
 
       // Handle different possible response field names - check all variations
+      // The API returns "meteoraConfigKey" as the config key to use for launch
       const configId = (
+        result.meteoraConfigKey ||
         result.configId ||
         result.configKey ||
         result.config_id ||
@@ -363,14 +367,21 @@ class BagsApiClient {
       ) as string;
 
       const totalBps = (result.totalBps || result.total_bps || result.bps || 0) as number;
+      const needsCreation = result.needsCreation as boolean | undefined;
+      const transactions = result.transactions as Array<{ transaction: string; blockhash: { blockhash: string; lastValidBlockHeight: number } }> | undefined;
 
-      console.log("Extracted configId:", configId, "totalBps:", totalBps);
+      console.log("Extracted configId:", configId, "totalBps:", totalBps, "needsCreation:", needsCreation);
 
       if (!configId) {
         console.error("Could not find configId in response. Full response:", result);
       }
 
-      return { configId, totalBps };
+      return {
+        configId,
+        totalBps,
+        needsCreation,
+        transactions,
+      };
     } catch (error) {
       console.error("Bags API createFeeShareConfig error:", error);
       throw error;
