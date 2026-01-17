@@ -80,7 +80,7 @@ class BagsApiClient {
   }
 
   async bulkWalletLookup(
-    lookups: Array<{ provider: string; username: string }>
+    items: Array<{ provider: string; username: string }>
   ): Promise<
     Array<{
       wallet: string;
@@ -94,7 +94,7 @@ class BagsApiClient {
   > {
     return this.fetch("/token-launch/fee-share/wallet/v2/bulk", {
       method: "POST",
-      body: JSON.stringify({ lookups }),
+      body: JSON.stringify({ items }),
     });
   }
 
@@ -284,28 +284,52 @@ class BagsApiClient {
     configId: string;
     totalBps: number;
   }> {
-    // Resolve all claimers to wallet addresses
+    // Separate solana wallets from social usernames
+    const solanaClaimers = feeClaimers.filter(fc => fc.provider === "solana");
+    const socialClaimers = feeClaimers.filter(fc => fc.provider !== "solana");
+
+    // Build wallet map
+    const walletMap = new Map<string, string>();
+
+    // Solana addresses are already wallets
+    for (const fc of solanaClaimers) {
+      const key = `${fc.provider}:${fc.providerUsername}`;
+      walletMap.set(key, fc.providerUsername);
+    }
+
+    // Bulk lookup social usernames
+    if (socialClaimers.length > 0) {
+      try {
+        const lookupItems = socialClaimers.map(fc => ({
+          provider: fc.provider,
+          username: fc.providerUsername,
+        }));
+        console.log("Bulk wallet lookup items:", lookupItems);
+
+        const results = await this.bulkWalletLookup(lookupItems);
+        console.log("Bulk wallet lookup results:", results);
+
+        for (const result of results) {
+          const key = `${result.provider}:${result.username}`;
+          walletMap.set(key, result.wallet);
+        }
+      } catch (error) {
+        console.error("Bulk wallet lookup failed:", error);
+        throw new Error("Failed to lookup wallets for fee claimers. Make sure all users have linked their wallets at bags.fm/settings");
+      }
+    }
+
+    // Build arrays in original order
     const claimersArray: string[] = [];
     const basisPointsArray: number[] = [];
 
     for (const fc of feeClaimers) {
-      let walletAddress: string;
-
-      if (fc.provider === "solana") {
-        // Already a wallet address
-        walletAddress = fc.providerUsername;
-      } else {
-        // Look up wallet by provider/username
-        try {
-          const result = await this.getWalletByUsername(fc.provider, fc.providerUsername);
-          walletAddress = result.wallet;
-        } catch (error) {
-          console.error(`Failed to lookup wallet for ${fc.provider}:${fc.providerUsername}`, error);
-          throw new Error(`Could not find wallet for ${fc.provider} user: ${fc.providerUsername}`);
-        }
+      const key = `${fc.provider}:${fc.providerUsername}`;
+      const wallet = walletMap.get(key);
+      if (!wallet) {
+        throw new Error(`Could not find wallet for ${fc.provider} user: ${fc.providerUsername}`);
       }
-
-      claimersArray.push(walletAddress);
+      claimersArray.push(wallet);
       basisPointsArray.push(fc.bps);
     }
 
