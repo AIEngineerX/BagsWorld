@@ -26,6 +26,8 @@ export class WorldScene extends Phaser.Scene {
   private sunSprite: Phaser.GameObjects.Sprite | null = null;
   private fireflies: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ambientParticles: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  private skyGradient: Phaser.GameObjects.Graphics | null = null;
+  private stars: Phaser.GameObjects.Arc[] = [];
   private musicPlaying = false;
   private audioContext: AudioContext | null = null;
   private gainNode: GainNode | null = null;
@@ -132,23 +134,17 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createSky(): void {
-    const skyGradient = this.add.graphics();
+    this.skyGradient = this.add.graphics();
+    this.skyGradient.setDepth(-2);
 
-    // Beautiful gradient sky
-    skyGradient.fillGradientStyle(
-      0x0f172a, // Dark blue top
-      0x0f172a,
-      0x1e293b, // Lighter blue bottom
-      0x1e293b,
-      1
-    );
-    skyGradient.fillRect(0, 0, 800, 430);
-    skyGradient.setDepth(-2);
+    // Start with night sky (will be updated by timeInfo)
+    this.drawSkyGradient(true);
 
     // Add distant city skyline silhouette
     this.createDistantSkyline();
 
-    // Add stars
+    // Add stars (store references for day/night toggle)
+    this.stars = [];
     for (let i = 0; i < 50; i++) {
       const star = this.add.circle(
         Math.random() * 800,
@@ -158,6 +154,7 @@ export class WorldScene extends Phaser.Scene {
         Math.random() * 0.5 + 0.3
       );
       star.setDepth(-1);
+      this.stars.push(star);
 
       // Twinkle animation
       this.tweens.add({
@@ -169,6 +166,51 @@ export class WorldScene extends Phaser.Scene {
         ease: "Sine.easeInOut",
       });
     }
+  }
+
+  private drawSkyGradient(isNight: boolean): void {
+    if (!this.skyGradient) return;
+
+    this.skyGradient.clear();
+
+    if (isNight) {
+      // Night sky - dark blue
+      this.skyGradient.fillGradientStyle(
+        0x0f172a, // Dark blue top
+        0x0f172a,
+        0x1e293b, // Lighter blue bottom
+        0x1e293b,
+        1
+      );
+    } else {
+      // Day sky - bright blue
+      this.skyGradient.fillGradientStyle(
+        0x1e90ff, // Bright blue top (dodger blue)
+        0x1e90ff,
+        0x87ceeb, // Sky blue bottom
+        0x87ceeb,
+        1
+      );
+    }
+    this.skyGradient.fillRect(0, 0, 800, 430);
+  }
+
+  private updateSkyForTime(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
+    const isNightOrDusk = timeInfo.isNight || timeInfo.isDusk;
+
+    // Update sky gradient
+    this.drawSkyGradient(isNightOrDusk);
+
+    // Show/hide stars
+    const targetAlpha = isNightOrDusk ? 0.5 : 0;
+    this.stars.forEach(star => {
+      this.tweens.add({
+        targets: star,
+        alpha: targetAlpha,
+        duration: 2000,
+        ease: "Sine.easeInOut",
+      });
+    });
   }
 
   private createDistantSkyline(): void {
@@ -1030,6 +1072,8 @@ export class WorldScene extends Phaser.Scene {
     // Always update time info to ensure correct celestial bodies
     if (state.timeInfo) {
       this.updateDayNightFromEST(state.timeInfo);
+    } else {
+      console.warn("[BagsWorld] No timeInfo in state!");
     }
 
     // Update weather AFTER time is set (check if weather changed OR if this is first load)
@@ -1055,6 +1099,7 @@ export class WorldScene extends Phaser.Scene {
   private currentTimeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean } | null = null;
 
   private updateDayNightFromEST(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
+    console.log("[BagsWorld] Time update:", timeInfo);
     const wasNight = this.currentTimeInfo?.isNight;
     this.currentTimeInfo = timeInfo;
     let alpha = 0;
@@ -1110,6 +1155,9 @@ export class WorldScene extends Phaser.Scene {
 
     // Update sun/moon based on time - IMPORTANT: do this AFTER setting currentTimeInfo
     this.updateCelestialBody(timeInfo);
+
+    // Update sky color and stars based on time
+    this.updateSkyForTime(timeInfo);
 
     // If it's night and we have a sun, remove it immediately
     if (timeInfo.isNight && this.sunSprite) {
