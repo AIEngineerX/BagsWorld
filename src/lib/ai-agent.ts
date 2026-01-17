@@ -28,10 +28,10 @@ interface AIAction {
   message: string;
 }
 
-// Single Bags Mayor personality
+// Single Bags Bot personality
 const AI_PERSONALITIES: AIPersonality[] = [
   {
-    name: "Bags Mayor",
+    name: "Bags Bot",
     trait: "optimistic",
     catchphrase: "welcome to BagsWorld, where every bag earns fees 🏛️💰",
   },
