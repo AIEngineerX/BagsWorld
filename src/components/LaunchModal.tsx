@@ -154,7 +154,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         // User-defined fee shares
         ...validFeeShares.map(f => ({
           provider: f.provider,
-          providerUsername: f.username.replace("@", "").toLowerCase(),
+          providerUsername: f.username.replace(/@/g, "").toLowerCase().trim(),
           bps: f.bps,
         })),
       ];
@@ -268,7 +268,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           },
           ...validFeeShares.map((f) => ({
             provider: f.provider,
-            username: f.username.replace("@", "").toLowerCase(),
+            username: f.username.replace(/@/g, "").toLowerCase().trim(),
             bps: f.bps,
           })),
         ],
@@ -434,7 +434,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 type="text"
                 value={formData.symbol}
                 onChange={(e) =>
-                  setFormData({ ...formData, symbol: e.target.value.toUpperCase() })
+                  setFormData({ ...formData, symbol: e.target.value.toUpperCase().trim() })
                 }
                 className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-xs text-white focus:outline-none focus:border-bags-gold"
                 placeholder="TOKEN"
