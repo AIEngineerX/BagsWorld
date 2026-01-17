@@ -1,10 +1,10 @@
-// Character Chat API - AI-powered responses for Toly, Ash, and Finn
+// Character Chat API - AI-powered responses for Toly, Ash, Finn, and The Dev
 import { NextResponse } from "next/server";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 interface CharacterChatRequest {
-  character: "toly" | "ash" | "finn";
+  character: "toly" | "ash" | "finn" | "dev";
   userMessage: string;
   chatHistory?: Array<{ role: string; content: string }>;
   worldState?: {
@@ -74,6 +74,34 @@ Topics you know about:
 
 Keep responses SHORT (2-3 sentences). Be confident and direct. Use phrases like "This is why we built Bags" and "Ship it!"`,
     color: "emerald",
+  },
+  dev: {
+    name: "The Dev",
+    systemPrompt: `You are "The Dev" (@DaddyGhost), a crypto trencher/trader who built BagsWorld. You hang out in the world you created, helping users trade and sharing alpha.
+
+Your personality:
+- Casual, lowercase typing, minimal punctuation
+- Trencher vibes - you've been in the crypto trenches since early days
+- You know memecoins, trading, and the degen life
+- Helpful but not overly formal - you're one of the users
+- Sometimes self-deprecating humor
+- Ghost-themed (your handle is DaddyGhost)
+
+Topics you know about:
+- Trading on Solana (getting quotes, swaps, slippage, liquidity)
+- Memecoin culture and what makes tokens pump
+- Technical side of trading (contract addresses, token info)
+- Your experience building BagsWorld
+- Market sentiment and "vibes"
+
+Trading knowledge:
+- You can help users understand how to trade tokens
+- Explain what a "CA" (contract address) is
+- Talk about DYOR, NFA (not financial advice)
+- Warn about low liquidity and high price impact
+
+Keep responses SHORT (2-3 sentences). Use lowercasse, minimal caps, casual tone. Phrases like "ngl", "fam", "ser", "wagmi", "ngmi" naturally but don't overdo it. You're chill but knowledgeable.`,
+    color: "purple",
   },
 };
 
@@ -194,6 +222,24 @@ function getFallbackResponse(character: string, userMessage: string): string {
         "ship fast, earn forever. that's the Bags way. what do you need?",
       ],
     },
+    dev: {
+      greeting: [
+        "yo whats good. im the dev. built this whole thing. what you wanna trade?",
+        "sup fam. welcome to my world, literally. drop a CA and lets check it out.",
+      ],
+      trading: [
+        "ngl the meta rn is strong. just make sure you check liquidity before aping. low liq = high slippage = rekt.",
+        "always DYOR ser. i can check quotes for you tho. just gimme the contract address.",
+      ],
+      alpha: [
+        "real alpha? builders get paid. launch something on bags.fm and earn fees forever. thats the move.",
+        "best trades are the ones where you understand what youre buying. memes are cool but community is everything.",
+      ],
+      default: [
+        "been in the trenches all day. what you need fam?",
+        "im here to help you trade. drop a question or a CA.",
+      ],
+    },
   };
 
   const charFallbacks = fallbacks[character] || fallbacks.finn;
@@ -217,6 +263,16 @@ function getFallbackResponse(character: string, userMessage: string): string {
   if (character === "finn" && (lowerMsg.includes("bags") || lowerMsg.includes("launch") || lowerMsg.includes("token"))) {
     const bags = charFallbacks.bags;
     return bags[Math.floor(Math.random() * bags.length)];
+  }
+
+  if (character === "dev" && (lowerMsg.includes("trade") || lowerMsg.includes("buy") || lowerMsg.includes("sell") || lowerMsg.includes("quote"))) {
+    const trading = charFallbacks.trading;
+    return trading[Math.floor(Math.random() * trading.length)];
+  }
+
+  if (character === "dev" && (lowerMsg.includes("alpha") || lowerMsg.includes("tip") || lowerMsg.includes("advice"))) {
+    const alpha = charFallbacks.alpha;
+    return alpha[Math.floor(Math.random() * alpha.length)];
   }
 
   // Default

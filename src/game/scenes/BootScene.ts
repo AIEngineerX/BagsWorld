@@ -520,6 +520,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate Finn - Bags.fm founder
     this.generateFinnSprite();
+
+    // Generate The Dev (DaddyGhost) - trading agent character
+    this.generateDevSprite();
   }
 
   private generateTolySprite(): void {
@@ -842,6 +845,118 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(29, 4, 1, 1);
 
     g.generateTexture("finn", 32, 32);
+    g.destroy();
+  }
+
+  private generateDevSprite(): void {
+    // DaddyGhost (@DaddyGhost) - The Dev / Trencher
+    // Hacker/dev aesthetic with hoodie, glasses, ghost theme
+    const skinTone = 0xe0ac69; // Medium skin
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Ghost/ethereal glow behind The Dev (purple/cyan hacker vibes)
+    g.fillStyle(0x8b5cf6, 0.15); // Purple
+    g.fillCircle(16, 16, 18);
+    g.fillStyle(0x06b6d4, 0.1); // Cyan
+    g.fillCircle(16, 16, 22);
+
+    // Shadow
+    g.fillStyle(0x000000, 0.3);
+    g.fillEllipse(16, 30, 14, 5);
+
+    // Legs (black joggers - dev uniform)
+    g.fillStyle(0x1f2937);
+    g.fillRect(10, 22, 5, 9);
+    g.fillRect(17, 22, 5, 9);
+
+    // Shoes (dark sneakers)
+    g.fillStyle(0x374151);
+    g.fillRect(9, 29, 6, 3);
+    g.fillRect(17, 29, 6, 3);
+    g.fillStyle(0x4b5563);
+    g.fillRect(10, 30, 4, 1);
+    g.fillRect(18, 30, 4, 1);
+
+    // Body (dark hoodie with hood up - mysterious dev)
+    g.fillStyle(0x1f2937); // Dark gray hoodie
+    g.fillRect(8, 12, 16, 12);
+
+    // Hoodie details (darker sides)
+    g.fillStyle(0x111827);
+    g.fillRect(8, 12, 3, 12);
+    g.fillRect(21, 12, 3, 12);
+
+    // Hood shadow around face
+    g.fillStyle(0x111827);
+    g.fillRect(8, 2, 16, 6);
+    g.fillRect(7, 4, 2, 8);
+    g.fillRect(23, 4, 2, 8);
+
+    // Ghost icon on hoodie (the brand!)
+    g.fillStyle(0x8b5cf6); // Purple ghost
+    g.fillRect(13, 15, 6, 6);
+    g.fillRect(12, 16, 2, 4);
+    g.fillRect(18, 16, 2, 4);
+    // Ghost eyes
+    g.fillStyle(0xffffff);
+    g.fillRect(14, 16, 2, 2);
+    g.fillRect(17, 16, 2, 2);
+
+    // Arms
+    g.fillStyle(skinTone);
+    g.fillRect(5, 13, 4, 10);
+    g.fillRect(23, 13, 4, 10);
+
+    // Head
+    g.fillStyle(skinTone);
+    g.fillRect(10, 4, 12, 10);
+
+    // Hair (dark, messy - been coding all night)
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(10, 2, 12, 4);
+    g.fillRect(9, 3, 2, 3);
+    g.fillRect(21, 3, 2, 3);
+    // Messy bits sticking out
+    g.fillRect(8, 4, 2, 2);
+    g.fillRect(22, 4, 2, 2);
+    g.fillRect(12, 1, 2, 2);
+    g.fillRect(18, 1, 2, 2);
+
+    // Glasses (dev essential)
+    g.fillStyle(0x374151); // Frame
+    g.fillRect(10, 6, 12, 1);
+    g.fillRect(10, 6, 5, 4);
+    g.fillRect(17, 6, 5, 4);
+    // Lens
+    g.fillStyle(0x60a5fa, 0.6); // Blue tinted
+    g.fillRect(11, 7, 3, 2);
+    g.fillRect(18, 7, 3, 2);
+    // Lens shine
+    g.fillStyle(0xffffff, 0.4);
+    g.fillRect(11, 7, 1, 1);
+    g.fillRect(18, 7, 1, 1);
+
+    // Eyes behind glasses
+    g.fillStyle(0x000000);
+    g.fillRect(12, 7, 2, 2);
+    g.fillRect(19, 7, 2, 2);
+
+    // Slight smirk (knows something you don't)
+    g.fillStyle(0x000000);
+    g.fillRect(14, 11, 4, 1);
+    g.fillRect(18, 10, 1, 1);
+
+    // Terminal/code icon floating (showing he's a dev)
+    g.fillStyle(0x1f2937);
+    g.fillRect(24, 0, 8, 8);
+    g.fillStyle(0x4ade80); // Green terminal text
+    g.fillRect(25, 2, 1, 1);
+    g.fillRect(26, 2, 3, 1);
+    g.fillRect(25, 4, 1, 1);
+    g.fillRect(26, 4, 4, 1);
+    g.fillRect(25, 6, 2, 1);
+
+    g.generateTexture("dev", 32, 32);
     g.destroy();
   }
 

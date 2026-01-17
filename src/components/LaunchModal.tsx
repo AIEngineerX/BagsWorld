@@ -308,7 +308,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="flex items-start gap-2">
                   <span className="text-xs">🏆</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Community rewards</span> - 10% goes back to strongest communities
+                    <span className="text-bags-green">Community rewards</span> - 5% goes back to strongest communities
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
@@ -411,7 +411,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block font-pixel text-[8px] text-gray-400 mb-1">
-                  TWITTER
+                  X (TWITTER)
                 </label>
                 <input
                   type="text"
@@ -420,7 +420,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                     setFormData({ ...formData, twitter: e.target.value })
                   }
                   className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-[10px] text-white focus:outline-none focus:border-bags-gold"
-                  placeholder="@handle"
+                  placeholder="@handle or x.com/..."
                 />
               </div>
               <div>

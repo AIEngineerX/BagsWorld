@@ -64,7 +64,7 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
   if (tokens.length === 0) {
     return (
       <div className="p-4 text-center">
-        <div className="text-2xl mb-2">🏗️</div>
+        <div className="text-2xl mb-2">📋</div>
         <p className="font-pixel text-[10px] text-gray-400 mb-2">
           No buildings yet!
         </p>
