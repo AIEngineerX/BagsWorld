@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({
         tokens: [],
         configured: false,
-        message: "Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY"
+        message: "Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_TOKEN"
       });
     }
 
