@@ -145,6 +145,9 @@ export class WorldScene extends Phaser.Scene {
     skyGradient.fillRect(0, 0, 800, 430);
     skyGradient.setDepth(-2);
 
+    // Add distant city skyline silhouette
+    this.createDistantSkyline();
+
     // Add stars
     for (let i = 0; i < 50; i++) {
       const star = this.add.circle(
@@ -165,6 +168,71 @@ export class WorldScene extends Phaser.Scene {
         repeat: -1,
         ease: "Sine.easeInOut",
       });
+    }
+  }
+
+  private createDistantSkyline(): void {
+    const skyline = this.add.graphics();
+    skyline.setDepth(-1.5);
+
+    // Subtle dark silhouette color
+    const silhouetteColor = 0x0a1020;
+
+    // Draw distant buildings as simple rectangles
+    skyline.fillStyle(silhouetteColor, 0.6);
+
+    // Left cluster
+    skyline.fillRect(20, 340, 15, 60);
+    skyline.fillRect(40, 320, 20, 80);
+    skyline.fillRect(65, 350, 12, 50);
+    skyline.fillRect(82, 330, 18, 70);
+    skyline.fillRect(105, 355, 14, 45);
+
+    // Center-left cluster
+    skyline.fillRect(160, 335, 16, 65);
+    skyline.fillRect(180, 310, 25, 90);
+    skyline.fillRect(210, 345, 14, 55);
+    skyline.fillRect(230, 325, 20, 75);
+
+    // Center cluster (taller - focal point)
+    skyline.fillRect(320, 300, 22, 100);
+    skyline.fillRect(348, 280, 30, 120);
+    skyline.fillRect(385, 295, 24, 105);
+    skyline.fillRect(415, 315, 18, 85);
+    skyline.fillRect(438, 330, 16, 70);
+
+    // Center-right cluster
+    skyline.fillRect(520, 340, 18, 60);
+    skyline.fillRect(545, 320, 22, 80);
+    skyline.fillRect(572, 350, 14, 50);
+
+    // Right cluster
+    skyline.fillRect(640, 335, 16, 65);
+    skyline.fillRect(662, 315, 24, 85);
+    skyline.fillRect(692, 345, 18, 55);
+    skyline.fillRect(715, 325, 20, 75);
+    skyline.fillRect(740, 355, 15, 45);
+    skyline.fillRect(760, 338, 22, 62);
+
+    // Add subtle window lights (very sparse and dim)
+    const windowColor = 0xffd700;
+    skyline.fillStyle(windowColor, 0.15);
+
+    // A few random lit windows
+    const windowPositions = [
+      { x: 185, y: 330, w: 3, h: 4 },
+      { x: 185, y: 345, w: 3, h: 4 },
+      { x: 352, y: 300, w: 4, h: 5 },
+      { x: 360, y: 320, w: 4, h: 5 },
+      { x: 360, y: 350, w: 4, h: 5 },
+      { x: 390, y: 315, w: 3, h: 4 },
+      { x: 550, y: 340, w: 3, h: 4 },
+      { x: 668, y: 335, w: 3, h: 4 },
+      { x: 668, y: 360, w: 3, h: 4 },
+    ];
+
+    for (const win of windowPositions) {
+      skyline.fillRect(win.x, win.y, win.w, win.h);
     }
   }
 
