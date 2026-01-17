@@ -139,6 +139,24 @@ class BagsApiClient {
     return this.fetch(`/fee-share/token/claim-events?${params}`);
   }
 
+  /**
+   * Get claim events for a token within a time range (for 24h earnings)
+   * Uses time-based filtering mode from Bags API v1.2.0+
+   */
+  async getTokenClaimEvents24h(tokenMint: string): Promise<ClaimEvent[]> {
+    const now = Math.floor(Date.now() / 1000);
+    const twentyFourHoursAgo = now - 24 * 60 * 60;
+
+    const params = new URLSearchParams({
+      mint: tokenMint,
+      mode: "time",
+      from: twentyFourHoursAgo.toString(),
+      to: now.toString(),
+    });
+
+    return this.fetch(`/fee-share/token/claim-events?${params}`);
+  }
+
   // Fee Claiming Endpoints
 
   async getClaimablePositions(wallet: string): Promise<ClaimablePosition[]> {

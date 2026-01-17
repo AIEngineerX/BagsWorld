@@ -89,6 +89,30 @@ export async function getTokenClaimEvents(
   }
 }
 
+/**
+ * Get claim events for the last 24 hours using time-based filtering
+ * Uses Bags API v1.2.0+ time mode for accurate 24h earnings calculation
+ */
+export async function getTokenClaimEvents24h(
+  tokenMint: string
+): Promise<TokenClaimEvent[]> {
+  try {
+    const sdk = await getSDK();
+    const mintPubkey = new PublicKey(tokenMint);
+    const now = Math.floor(Date.now() / 1000);
+    const twentyFourHoursAgo = now - 24 * 60 * 60;
+
+    return await sdk.state.getTokenClaimEvents(mintPubkey, {
+      mode: "time",
+      from: twentyFourHoursAgo,
+      to: now,
+    });
+  } catch (error) {
+    console.error(`Error fetching 24h claim events for ${tokenMint}:`, error);
+    return [];
+  }
+}
+
 export async function getTokenClaimStats(tokenMint: string): Promise<any[]> {
   try {
     const sdk = await getSDK();
