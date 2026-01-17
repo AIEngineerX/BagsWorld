@@ -53,6 +53,7 @@ class BagsApiClient {
     }
 
     const data: ApiResponse<T> = await response.json();
+    console.log("Bags API raw json response:", JSON.stringify(data, null, 2));
 
     if (!data.success) {
       throw new Error(data.error || "Unknown API error");
@@ -346,10 +347,28 @@ class BagsApiClient {
         body: JSON.stringify(requestBody),
       });
       console.log("Bags API createFeeShareConfig raw response:", JSON.stringify(result, null, 2));
+      console.log("Response keys:", Object.keys(result));
 
-      // Handle different possible response field names
-      const configId = (result.configId || result.configKey || result.config_id || result.config_key) as string;
-      const totalBps = (result.totalBps || result.total_bps || 0) as number;
+      // Handle different possible response field names - check all variations
+      const configId = (
+        result.configId ||
+        result.configKey ||
+        result.config_id ||
+        result.config_key ||
+        result.key ||
+        result.id ||
+        result.config ||
+        // Sometimes the response is just the string directly
+        (typeof result === "string" ? result : null)
+      ) as string;
+
+      const totalBps = (result.totalBps || result.total_bps || result.bps || 0) as number;
+
+      console.log("Extracted configId:", configId, "totalBps:", totalBps);
+
+      if (!configId) {
+        console.error("Could not find configId in response. Full response:", result);
+      }
 
       return { configId, totalBps };
     } catch (error) {
