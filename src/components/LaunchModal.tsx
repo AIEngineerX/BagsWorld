@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Connection, VersionedTransaction } from "@solana/web3.js";
-import { saveLaunchedToken, saveTokenGlobally, type LaunchedToken } from "@/lib/token-registry";
+import { saveLaunchedToken, saveTokenGlobally, getAllWorldTokens, type LaunchedToken } from "@/lib/token-registry";
 import { ECOSYSTEM_CONFIG, getEcosystemFeeShare } from "@/lib/config";
 
 interface FeeShareEntry {
@@ -43,6 +43,39 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   const [feeShares, setFeeShares] = useState<FeeShareEntry[]>([
     { provider: "twitter", username: "", bps: 500 }, // Default 5% to creator
   ]);
+
+  // Duplicate name/symbol warnings
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    name: string | null;
+    symbol: string | null;
+  }>({ name: null, symbol: null });
+
+  // Check for duplicate names/symbols when form data changes
+  useEffect(() => {
+    const existingTokens = getAllWorldTokens();
+    const warnings = { name: null as string | null, symbol: null as string | null };
+
+    if (formData.name.trim()) {
+      const duplicateName = existingTokens.find(
+        (t) => t.name.toLowerCase() === formData.name.trim().toLowerCase()
+      );
+      if (duplicateName) {
+        warnings.name = `A token named "${duplicateName.name}" already exists`;
+      }
+    }
+
+    if (formData.symbol.trim()) {
+      const symbolToCheck = formData.symbol.trim().toUpperCase().replace(/^\$/, "");
+      const duplicateSymbol = existingTokens.find(
+        (t) => t.symbol.toUpperCase() === symbolToCheck
+      );
+      if (duplicateSymbol) {
+        warnings.symbol = `Symbol $${duplicateSymbol.symbol} is already in use`;
+      }
+    }
+
+    setDuplicateWarning(warnings);
+  }, [formData.name, formData.symbol]);
 
   const userTotalBps = feeShares.reduce((sum, f) => sum + (f.username ? f.bps : 0), 0);
   const totalBps = userTotalBps + ecosystemFee.bps; // Include ecosystem fee
@@ -473,9 +506,18 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-xs text-white focus:outline-none focus:border-bags-gold"
+                className={`w-full bg-bags-darker border-2 p-2 font-pixel text-xs text-white focus:outline-none ${
+                  duplicateWarning.name
+                    ? "border-yellow-500 focus:border-yellow-400"
+                    : "border-bags-green focus:border-bags-gold"
+                }`}
                 placeholder="My Awesome Token"
               />
+              {duplicateWarning.name && (
+                <p className="font-pixel text-[8px] text-yellow-400 mt-1 flex items-center gap-1">
+                  <span>⚠️</span> {duplicateWarning.name}
+                </p>
+              )}
             </div>
 
             {/* Symbol */}
@@ -489,10 +531,19 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 onChange={(e) =>
                   setFormData({ ...formData, symbol: e.target.value.toUpperCase().trim() })
                 }
-                className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-xs text-white focus:outline-none focus:border-bags-gold"
+                className={`w-full bg-bags-darker border-2 p-2 font-pixel text-xs text-white focus:outline-none ${
+                  duplicateWarning.symbol
+                    ? "border-yellow-500 focus:border-yellow-400"
+                    : "border-bags-green focus:border-bags-gold"
+                }`}
                 placeholder="TOKEN"
                 maxLength={10}
               />
+              {duplicateWarning.symbol && (
+                <p className="font-pixel text-[8px] text-yellow-400 mt-1 flex items-center gap-1">
+                  <span>⚠️</span> {duplicateWarning.symbol}
+                </p>
+              )}
             </div>
 
             {/* Description */}

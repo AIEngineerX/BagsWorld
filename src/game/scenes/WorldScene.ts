@@ -1679,11 +1679,17 @@ export class WorldScene extends Phaser.Scene {
           this.input.setDefaultCursor("default");
         });
         container.on("pointerdown", () => {
+          const isPokeCenter = building.id.includes("PokeCenter");
           const isStarterBuilding = building.id.startsWith("Starter");
           const isTreasuryBuilding = building.id.startsWith("Treasury");
 
-          if (isStarterBuilding) {
-            // For starter buildings, show a message
+          if (isPokeCenter) {
+            // PokeCenter opens the auto-claim hub modal
+            window.dispatchEvent(new CustomEvent("bagsworld-pokecenter-click", {
+              detail: { buildingId: building.id, name: building.name }
+            }));
+          } else if (isStarterBuilding) {
+            // Other starter buildings show a message
             console.log(`${building.name} - Launch a token to create a real building!`);
           } else if (isTreasuryBuilding && building.tokenUrl) {
             // Treasury building opens Solscan directly for transparency

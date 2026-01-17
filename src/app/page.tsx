@@ -20,6 +20,8 @@ import { PartnerClaimButton } from "@/components/PartnerClaimButton";
 import { MusicButton } from "@/components/MusicButton";
 import { useWorldState } from "@/hooks/useWorldState";
 import { DatabaseStatus } from "@/components/DatabaseStatus";
+import { PokeCenterModal } from "@/components/PokeCenterModal";
+import { FeeClaimModal } from "@/components/FeeClaimModal";
 
 interface BuildingClickData {
   mint: string;
@@ -45,6 +47,8 @@ const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
 export default function Home() {
   const { worldState, isLoading, refreshAfterLaunch, tokenCount } = useWorldState();
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
+  const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
+  const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
 
   // Listen for building click events from Phaser
   useEffect(() => {
@@ -52,9 +56,15 @@ export default function Home() {
       setTradeToken(event.detail);
     };
 
+    const handlePokeCenterClick = () => {
+      setShowPokeCenterModal(true);
+    };
+
     window.addEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
+    window.addEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
     return () => {
       window.removeEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
+      window.removeEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
     };
   }, []);
 
@@ -175,6 +185,19 @@ export default function Home() {
           tokenName={tradeToken.name}
           onClose={() => setTradeToken(null)}
         />
+      )}
+
+      {/* PokeCenter Modal - triggered by clicking PokeCenter building */}
+      {showPokeCenterModal && (
+        <PokeCenterModal
+          onClose={() => setShowPokeCenterModal(false)}
+          onOpenFeeClaimModal={() => setShowFeeClaimModal(true)}
+        />
+      )}
+
+      {/* Fee Claim Modal - can be opened from PokeCenter */}
+      {showFeeClaimModal && (
+        <FeeClaimModal onClose={() => setShowFeeClaimModal(false)} />
       )}
     </main>
   );
