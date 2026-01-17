@@ -3,33 +3,42 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
-import type { TrendingToken, NewPair, TokenSafety, TradeQuote } from "@/lib/types";
+import type { TrendingToken, NewPair, TokenSafety } from "@/lib/types";
 
-type TerminalTab = "trending" | "new-pairs" | "trade";
+type TerminalTab = "trending" | "new-pairs" | "search" | "trade";
 type TradeDirection = "buy" | "sell";
-type MevMode = "fast" | "secure";
 
 interface TradingTerminalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Slippage presets in basis points
+interface SearchResult {
+  mint: string;
+  name: string;
+  symbol: string;
+  imageUrl?: string;
+  tags?: string[];
+  decimals: number;
+}
+
+interface UltraOrder {
+  requestId: string;
+  inAmount: string;
+  outAmount: string;
+  otherAmountThreshold: string;
+  priceImpactPct: string;
+  transaction: string;
+  gasless: boolean;
+}
+
+// Slippage presets
 const SLIPPAGE_PRESETS = [
   { label: "1%", value: 100 },
   { label: "5%", value: 500 },
   { label: "10%", value: 1000 },
   { label: "20%", value: 2000 },
-];
-
-// Priority fee presets in SOL
-const PRIORITY_PRESETS = [
-  { label: "LOW", value: 0.0001, desc: "Slow" },
-  { label: "MED", value: 0.001, desc: "Normal" },
-  { label: "HIGH", value: 0.005, desc: "Fast" },
-  { label: "TURBO", value: 0.01, desc: "Instant" },
 ];
 
 // SOL amount presets
@@ -38,27 +47,26 @@ const AMOUNT_PRESETS = [0.1, 0.5, 1, 2, 5];
 export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
-  const { connection } = useConnection();
 
   const [activeTab, setActiveTab] = useState<TerminalTab>("trending");
   const [trending, setTrending] = useState<TrendingToken[]>([]);
   const [newPairs, setNewPairs] = useState<NewPair[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Trade state
-  const [selectedToken, setSelectedToken] = useState<TrendingToken | NewPair | null>(null);
+  const [selectedToken, setSelectedToken] = useState<TrendingToken | NewPair | SearchResult | null>(null);
   const [tradeDirection, setTradeDirection] = useState<TradeDirection>("buy");
   const [tradeAmount, setTradeAmount] = useState<number>(0.1);
-  const [slippage, setSlippage] = useState<number>(500); // 5% default for memecoins
-  const [priorityFee, setPriorityFee] = useState<number>(0.001);
-  const [mevMode, setMevMode] = useState<MevMode>("secure");
-  const [quote, setQuote] = useState<TradeQuote | null>(null);
+  const [slippage, setSlippage] = useState<number>(500);
+  const [ultraOrder, setUltraOrder] = useState<UltraOrder | null>(null);
   const [isQuoting, setIsQuoting] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [swapSuccess, setSwapSuccess] = useState<string | null>(null);
 
-  // Fetch data on mount and tab change
+  // Fetch data on tab change
   useEffect(() => {
     if (!isOpen) return;
     if (activeTab === "trending") fetchTrending();
@@ -95,41 +103,80 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
     }
   };
 
-  const fetchQuote = useCallback(async (mint: string, amount: number) => {
-    setIsQuoting(true);
+  const handleSearch = async (query: string) => {
+    if (!query || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setIsLoading(true);
     setError(null);
     try {
+      const res = await fetch(`/api/terminal?action=search&query=${encodeURIComponent(query)}&limit=10`);
+      const data = await res.json();
+      if (data.success) setSearchResults(data.results || []);
+      else setError(data.error || "Search failed");
+    } catch {
+      setError("Search failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Debounced search
+  useEffect(() => {
+    if (activeTab !== "search") return;
+    const timer = setTimeout(() => handleSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeTab]);
+
+  // Fetch Ultra order when token/amount changes
+  const fetchUltraOrder = useCallback(async () => {
+    if (!selectedToken || !publicKey) return;
+
+    setIsQuoting(true);
+    setError(null);
+    setUltraOrder(null);
+
+    try {
+      const SOL_MINT = "So11111111111111111111111111111111111111112";
       const res = await fetch("/api/terminal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "quick-quote",
+          action: "ultra-order",
           data: {
-            outputMint: tradeDirection === "buy" ? mint : "So11111111111111111111111111111111111111112",
-            inputMint: tradeDirection === "buy" ? "So11111111111111111111111111111111111111112" : mint,
-            amountSol: amount,
+            inputMint: tradeDirection === "buy" ? SOL_MINT : selectedToken.mint,
+            outputMint: tradeDirection === "buy" ? selectedToken.mint : SOL_MINT,
+            amount: tradeAmount,
             slippageBps: slippage,
+            taker: publicKey.toBase58(),
           },
         }),
       });
       const data = await res.json();
-      if (data.success) setQuote(data.quote);
-      else {
-        setError(data.error || "Failed to get quote");
-        setQuote(null);
+      if (data.success && data.order) {
+        setUltraOrder(data.order);
+      } else {
+        setError(data.error || "Failed to get order");
       }
     } catch {
-      setError("Failed to get quote");
-      setQuote(null);
+      setError("Failed to get order");
     } finally {
       setIsQuoting(false);
     }
-  }, [slippage, tradeDirection]);
+  }, [selectedToken, tradeAmount, slippage, tradeDirection, publicKey]);
 
-  const handleSelectToken = async (token: TrendingToken | NewPair) => {
+  useEffect(() => {
+    if (selectedToken && activeTab === "trade" && connected) {
+      const timer = setTimeout(fetchUltraOrder, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedToken, tradeAmount, slippage, tradeDirection, activeTab, connected, fetchUltraOrder]);
+
+  const handleSelectToken = (token: TrendingToken | NewPair | SearchResult) => {
     setSelectedToken(token);
     setActiveTab("trade");
-    await fetchQuote(token.mint, tradeAmount);
+    setUltraOrder(null);
   };
 
   const executeSwap = async () => {
@@ -137,8 +184,8 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
       setWalletModalVisible(true);
       return;
     }
-    if (!quote || !selectedToken) {
-      setError("No quote available");
+    if (!ultraOrder || !selectedToken) {
+      setError("No order available");
       return;
     }
 
@@ -146,39 +193,33 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
     setError(null);
 
     try {
-      const response = await fetch("/api/trade", {
+      // Decode and sign the transaction from Ultra order
+      const txBuffer = Buffer.from(ultraOrder.transaction, "base64");
+      const transaction = VersionedTransaction.deserialize(txBuffer);
+      const signedTx = await signTransaction(transaction);
+      const signedTxBase64 = Buffer.from(signedTx.serialize()).toString("base64");
+
+      // Execute via Jupiter Ultra
+      const res = await fetch("/api/terminal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "swap",
+          action: "ultra-execute",
           data: {
-            quoteResponse: quote,
-            userPublicKey: publicKey.toBase58(),
-            priorityFee,
-            mevProtection: mevMode === "secure",
+            requestId: ultraOrder.requestId,
+            signedTransaction: signedTxBase64,
           },
         }),
       });
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Swap failed");
+      const data = await res.json();
+      if (data.success && data.status === "Success") {
+        setSwapSuccess(data.signature);
+        setUltraOrder(null);
+        setTimeout(() => setSwapSuccess(null), 5000);
+      } else {
+        throw new Error(data.error || "Swap failed");
       }
-
-      const { transaction: txBase64 } = await response.json();
-      const txBuffer = Buffer.from(txBase64, "base64");
-      const transaction = VersionedTransaction.deserialize(txBuffer);
-      const signedTx = await signTransaction(transaction);
-
-      const signature = await connection.sendRawTransaction(signedTx.serialize(), {
-        skipPreflight: mevMode === "fast",
-        maxRetries: 3,
-      });
-      await connection.confirmTransaction(signature, "confirmed");
-
-      setSwapSuccess(signature.slice(0, 8) + "...");
-      setQuote(null);
-      setTimeout(() => setSwapSuccess(null), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Swap failed");
     } finally {
@@ -186,16 +227,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
     }
   };
 
-  // Debounced quote fetch
-  useEffect(() => {
-    if (selectedToken && activeTab === "trade") {
-      const timer = setTimeout(() => fetchQuote(selectedToken.mint, tradeAmount), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [tradeAmount, selectedToken, activeTab, fetchQuote, tradeDirection]);
-
-  const formatChange = (change: number) => `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
-  const formatMcap = (mc: number) => mc >= 1e6 ? `$${(mc / 1e6).toFixed(1)}M` : `$${(mc / 1e3).toFixed(0)}K`;
+  const formatVolume = (v: number) => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`;
   const formatAge = (s: number) => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m` : `${Math.floor(s / 3600)}h`;
 
   const getSafetyBadge = (safety: TokenSafety) => {
@@ -213,8 +245,9 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <span className="font-pixel text-bags-green text-sm">TERMINAL</span>
+            <span className="font-pixel text-[8px] text-blue-400 bg-blue-900/30 px-1">JUPITER</span>
             <div className="flex gap-1">
-              {(["trending", "new-pairs", "trade"] as TerminalTab[]).map((tab) => (
+              {(["trending", "new-pairs", "search", "trade"] as TerminalTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -224,7 +257,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
                       : "bg-transparent text-gray-400 border-gray-600 hover:border-bags-green hover:text-bags-green"
                   }`}
                 >
-                  {tab === "trending" ? "HOT" : tab === "new-pairs" ? "NEW" : "TRADE"}
+                  {tab === "trending" ? "HOT" : tab === "new-pairs" ? "NEW" : tab === "search" ? "SEARCH" : "TRADE"}
                 </button>
               ))}
             </div>
@@ -233,119 +266,117 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
             onClick={onClose}
             className="font-pixel text-[10px] text-gray-400 hover:text-white px-2 py-1 border border-gray-600 hover:border-red-500"
           >
-            [X] CLOSE
+            [X]
           </button>
         </div>
 
         {/* Content */}
         <div className="bg-bags-darker border-2 border-gray-700 p-3 min-h-[200px]">
-          {isLoading ? (
+          {isLoading && activeTab !== "trade" ? (
             <div className="flex items-center justify-center h-40">
               <span className="font-pixel text-bags-green animate-pulse">LOADING...</span>
             </div>
-          ) : error && activeTab !== "trade" ? (
-            <div className="flex items-center justify-center h-40">
-              <span className="font-pixel text-red-400 text-xs">{error}</span>
-            </div>
           ) : (
             <>
-              {/* Trending Tab */}
+              {/* Trending */}
               {activeTab === "trending" && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {trending.length === 0 ? (
-                    <p className="font-pixel text-gray-500 text-xs col-span-3 text-center py-8">No tokens found</p>
-                  ) : (
-                    trending.map((token, i) => (
+                    <p className="font-pixel text-gray-500 text-xs col-span-3 text-center py-8">No tokens</p>
+                  ) : trending.map((token, i) => (
+                    <button
+                      key={token.mint}
+                      onClick={() => handleSelectToken(token)}
+                      className="bg-bags-dark border-2 border-gray-600 hover:border-bags-green p-2 text-left transition-all group"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-pixel text-xs text-bags-green">#{i + 1}</span>
+                        <span className="font-pixel text-[8px] text-gray-400">VOL: {formatVolume(token.volume24h)}</span>
+                      </div>
+                      <div className="font-pixel text-white text-sm group-hover:text-bags-green truncate">${token.symbol}</div>
+                      <div className="font-pixel text-gray-500 text-[10px] truncate">{token.name}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* New Pairs */}
+              {activeTab === "new-pairs" && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {newPairs.length === 0 ? (
+                    <p className="font-pixel text-gray-500 text-xs col-span-3 text-center py-8">No new pairs</p>
+                  ) : newPairs.map((pair) => {
+                    const badge = getSafetyBadge(pair.safety);
+                    return (
+                      <button
+                        key={pair.mint}
+                        onClick={() => handleSelectToken(pair)}
+                        className="bg-bags-dark border-2 border-gray-600 hover:border-bags-green p-2 text-left transition-all group"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-pixel text-[10px] text-gray-400">{formatAge(pair.ageSeconds)}</span>
+                          <span className={`font-pixel text-[8px] px-1 ${badge.color}`}>{badge.label}</span>
+                        </div>
+                        <div className="font-pixel text-white text-sm group-hover:text-bags-green truncate">${pair.symbol}</div>
+                        <div className="font-pixel text-gray-500 text-[10px] truncate">{pair.name}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Search */}
+              {activeTab === "search" && (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by symbol, name, or address..."
+                    className="w-full bg-bags-dark border-2 border-gray-600 focus:border-bags-green p-2 font-pixel text-xs text-white placeholder-gray-500 outline-none"
+                  />
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {searchResults.map((token) => (
                       <button
                         key={token.mint}
                         onClick={() => handleSelectToken(token)}
                         className="bg-bags-dark border-2 border-gray-600 hover:border-bags-green p-2 text-left transition-all group"
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-pixel text-xs text-bags-green">#{i + 1}</span>
-                          <span className={`font-pixel text-[10px] ${token.change24h >= 0 ? "text-bags-green" : "text-red-400"}`}>
-                            {formatChange(token.change24h)}
-                          </span>
-                        </div>
-                        <div className="font-pixel text-white text-sm group-hover:text-bags-green truncate">
-                          ${token.symbol}
-                        </div>
-                        <div className="font-pixel text-gray-500 text-[10px]">
-                          MC: {formatMcap(token.marketCap)}
-                        </div>
+                        <div className="font-pixel text-white text-sm group-hover:text-bags-green truncate">${token.symbol}</div>
+                        <div className="font-pixel text-gray-500 text-[10px] truncate">{token.name}</div>
+                        <div className="font-pixel text-gray-600 text-[8px] truncate">{token.mint.slice(0, 8)}...</div>
                       </button>
-                    ))
+                    ))}
+                  </div>
+                  {searchQuery.length >= 2 && searchResults.length === 0 && !isLoading && (
+                    <p className="font-pixel text-gray-500 text-xs text-center py-4">No results</p>
                   )}
                 </div>
               )}
 
-              {/* New Pairs Tab */}
-              {activeTab === "new-pairs" && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {newPairs.length === 0 ? (
-                    <p className="font-pixel text-gray-500 text-xs col-span-3 text-center py-8">No new pairs</p>
-                  ) : (
-                    newPairs.map((pair) => {
-                      const badge = getSafetyBadge(pair.safety);
-                      return (
-                        <button
-                          key={pair.mint}
-                          onClick={() => handleSelectToken(pair)}
-                          className="bg-bags-dark border-2 border-gray-600 hover:border-bags-green p-2 text-left transition-all group"
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-pixel text-[10px] text-gray-400">{formatAge(pair.ageSeconds)}</span>
-                            <span className={`font-pixel text-[8px] px-1 ${badge.color}`}>{badge.label}</span>
-                          </div>
-                          <div className="font-pixel text-white text-sm group-hover:text-bags-green truncate">
-                            ${pair.symbol}
-                          </div>
-                          <div className="font-pixel text-gray-500 text-[10px]">
-                            MC: {formatMcap(pair.marketCap)}
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-
-              {/* Trade Tab */}
+              {/* Trade */}
               {activeTab === "trade" && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Left: Token Info */}
+                  {/* Left: Token */}
                   <div className="space-y-3">
                     {!selectedToken ? (
-                      <div className="text-center py-8">
-                        <p className="font-pixel text-gray-500 text-xs">Select a token from HOT or NEW</p>
-                      </div>
+                      <p className="font-pixel text-gray-500 text-xs text-center py-8">Select a token</p>
                     ) : (
                       <>
                         <div className="bg-bags-dark border-2 border-bags-green p-3">
                           <div className="font-pixel text-bags-green text-lg">${selectedToken.symbol}</div>
-                          <div className="font-pixel text-gray-400 text-[10px] truncate">{selectedToken.mint.slice(0, 16)}...</div>
-                          <div className="font-pixel text-white text-xs mt-1">MC: {formatMcap(selectedToken.marketCap)}</div>
+                          <div className="font-pixel text-gray-400 text-[10px] truncate">{selectedToken.mint.slice(0, 20)}...</div>
                         </div>
-
-                        {/* Buy/Sell Toggle */}
                         <div className="flex border-2 border-gray-600">
                           <button
                             onClick={() => setTradeDirection("buy")}
-                            className={`flex-1 font-pixel text-xs py-2 transition-all ${
-                              tradeDirection === "buy"
-                                ? "bg-bags-green text-black"
-                                : "bg-transparent text-gray-400 hover:text-bags-green"
-                            }`}
+                            className={`flex-1 font-pixel text-xs py-2 ${tradeDirection === "buy" ? "bg-bags-green text-black" : "text-gray-400"}`}
                           >
                             BUY
                           </button>
                           <button
                             onClick={() => setTradeDirection("sell")}
-                            className={`flex-1 font-pixel text-xs py-2 transition-all ${
-                              tradeDirection === "sell"
-                                ? "bg-red-500 text-white"
-                                : "bg-transparent text-gray-400 hover:text-red-400"
-                            }`}
+                            className={`flex-1 font-pixel text-xs py-2 ${tradeDirection === "sell" ? "bg-red-500 text-white" : "text-gray-400"}`}
                           >
                             SELL
                           </button>
@@ -354,31 +385,22 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
                     )}
                   </div>
 
-                  {/* Middle: Amount & Settings */}
+                  {/* Middle: Settings */}
                   <div className="space-y-3">
-                    {/* Amount */}
                     <div>
-                      <div className="font-pixel text-[10px] text-gray-400 mb-1">
-                        AMOUNT ({tradeDirection === "buy" ? "SOL" : selectedToken?.symbol || "TOKEN"})
-                      </div>
+                      <div className="font-pixel text-[10px] text-gray-400 mb-1">AMOUNT (SOL)</div>
                       <div className="grid grid-cols-5 gap-1">
                         {AMOUNT_PRESETS.map((amt) => (
                           <button
                             key={amt}
                             onClick={() => setTradeAmount(amt)}
-                            className={`font-pixel text-[10px] py-2 border-2 transition-all ${
-                              tradeAmount === amt
-                                ? "bg-bags-green text-black border-bags-green"
-                                : "bg-transparent text-gray-400 border-gray-600 hover:border-bags-green"
-                            }`}
+                            className={`font-pixel text-[10px] py-2 border-2 ${tradeAmount === amt ? "bg-bags-green text-black border-bags-green" : "text-gray-400 border-gray-600"}`}
                           >
                             {amt}
                           </button>
                         ))}
                       </div>
                     </div>
-
-                    {/* Slippage */}
                     <div>
                       <div className="font-pixel text-[10px] text-gray-400 mb-1">SLIPPAGE</div>
                       <div className="grid grid-cols-4 gap-1">
@@ -386,135 +408,75 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
                           <button
                             key={s.value}
                             onClick={() => setSlippage(s.value)}
-                            className={`font-pixel text-[10px] py-1 border-2 transition-all ${
-                              slippage === s.value
-                                ? "bg-bags-gold text-black border-bags-gold"
-                                : "bg-transparent text-gray-400 border-gray-600 hover:border-bags-gold"
-                            }`}
+                            className={`font-pixel text-[10px] py-1 border-2 ${slippage === s.value ? "bg-bags-gold text-black border-bags-gold" : "text-gray-400 border-gray-600"}`}
                           >
                             {s.label}
                           </button>
                         ))}
                       </div>
                     </div>
-
-                    {/* Priority Fee */}
-                    <div>
-                      <div className="font-pixel text-[10px] text-gray-400 mb-1">PRIORITY FEE</div>
-                      <div className="grid grid-cols-4 gap-1">
-                        {PRIORITY_PRESETS.map((p) => (
-                          <button
-                            key={p.value}
-                            onClick={() => setPriorityFee(p.value)}
-                            className={`font-pixel text-[8px] py-1 border-2 transition-all ${
-                              priorityFee === p.value
-                                ? "bg-blue-500 text-white border-blue-500"
-                                : "bg-transparent text-gray-400 border-gray-600 hover:border-blue-500"
-                            }`}
-                          >
-                            {p.label}
-                          </button>
-                        ))}
+                    {ultraOrder?.gasless && (
+                      <div className="bg-green-900/30 border border-green-500 p-2">
+                        <p className="font-pixel text-[10px] text-green-400">GASLESS SWAP AVAILABLE</p>
                       </div>
-                    </div>
-
-                    {/* MEV Mode */}
-                    <div>
-                      <div className="font-pixel text-[10px] text-gray-400 mb-1">MEV PROTECTION</div>
-                      <div className="grid grid-cols-2 gap-1">
-                        <button
-                          onClick={() => setMevMode("secure")}
-                          className={`font-pixel text-[10px] py-1 border-2 transition-all ${
-                            mevMode === "secure"
-                              ? "bg-green-600 text-white border-green-600"
-                              : "bg-transparent text-gray-400 border-gray-600 hover:border-green-600"
-                          }`}
-                        >
-                          SECURE
-                        </button>
-                        <button
-                          onClick={() => setMevMode("fast")}
-                          className={`font-pixel text-[10px] py-1 border-2 transition-all ${
-                            mevMode === "fast"
-                              ? "bg-orange-500 text-white border-orange-500"
-                              : "bg-transparent text-gray-400 border-gray-600 hover:border-orange-500"
-                          }`}
-                        >
-                          FAST
-                        </button>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Right: Quote & Execute */}
                   <div className="space-y-3">
-                    {/* Quote Display */}
                     <div className="bg-bags-dark border-2 border-gray-600 p-3 space-y-2">
-                      <div className="font-pixel text-[10px] text-gray-400">QUOTE</div>
+                      <div className="font-pixel text-[10px] text-gray-400">QUOTE (Jupiter Ultra)</div>
                       {isQuoting ? (
-                        <div className="font-pixel text-xs text-bags-green animate-pulse">Getting quote...</div>
-                      ) : quote ? (
+                        <p className="font-pixel text-xs text-bags-green animate-pulse">Getting order...</p>
+                      ) : ultraOrder ? (
                         <>
                           <div className="flex justify-between">
                             <span className="font-pixel text-[10px] text-gray-400">You receive:</span>
                             <span className="font-pixel text-xs text-white">
-                              {(parseFloat(quote.outAmount) / (tradeDirection === "buy" ? 1e6 : 1e9)).toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                              {" "}{tradeDirection === "buy" ? selectedToken?.symbol : "SOL"}
+                              {(parseFloat(ultraOrder.outAmount) / (tradeDirection === "buy" ? 1e6 : 1e9)).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="font-pixel text-[10px] text-gray-400">Min received:</span>
                             <span className="font-pixel text-[10px] text-gray-500">
-                              {(parseFloat(quote.minOutAmount) / (tradeDirection === "buy" ? 1e6 : 1e9)).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                              {(parseFloat(ultraOrder.otherAmountThreshold) / (tradeDirection === "buy" ? 1e6 : 1e9)).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="font-pixel text-[10px] text-gray-400">Price impact:</span>
-                            <span className={`font-pixel text-[10px] ${
-                              parseFloat(quote.priceImpactPct) > 5 ? "text-red-400" : "text-gray-400"
-                            }`}>
-                              {parseFloat(quote.priceImpactPct).toFixed(2)}%
+                            <span className="font-pixel text-[10px] text-gray-400">Impact:</span>
+                            <span className={`font-pixel text-[10px] ${parseFloat(ultraOrder.priceImpactPct) > 5 ? "text-red-400" : "text-gray-400"}`}>
+                              {parseFloat(ultraOrder.priceImpactPct).toFixed(2)}%
                             </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="font-pixel text-[10px] text-gray-400">Est. fee:</span>
-                            <span className="font-pixel text-[10px] text-gray-500">{priorityFee} SOL</span>
                           </div>
                         </>
+                      ) : !connected ? (
+                        <p className="font-pixel text-[10px] text-gray-500">Connect wallet for quote</p>
                       ) : (
-                        <div className="font-pixel text-[10px] text-gray-500">Select token and amount</div>
+                        <p className="font-pixel text-[10px] text-gray-500">Select token</p>
                       )}
                     </div>
 
-                    {/* Error/Success */}
-                    {error && activeTab === "trade" && (
+                    {error && (
                       <div className="bg-red-900/30 border border-red-500 p-2">
                         <p className="font-pixel text-[10px] text-red-400">{error}</p>
                       </div>
                     )}
                     {swapSuccess && (
                       <div className="bg-green-900/30 border border-green-500 p-2">
-                        <p className="font-pixel text-[10px] text-green-400">Success! {swapSuccess}</p>
+                        <p className="font-pixel text-[10px] text-green-400">Success! {swapSuccess.slice(0, 12)}...</p>
                       </div>
                     )}
 
-                    {/* Execute Button */}
                     <button
                       onClick={executeSwap}
-                      disabled={isSwapping || isQuoting || !quote || !selectedToken}
-                      className={`w-full font-pixel text-sm py-3 border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                      disabled={isSwapping || isQuoting || !ultraOrder || !selectedToken}
+                      className={`w-full font-pixel text-sm py-3 border-2 transition-all disabled:opacity-50 ${
                         tradeDirection === "buy"
-                          ? "bg-bags-green text-black border-bags-green hover:bg-bags-green/80"
-                          : "bg-red-500 text-white border-red-500 hover:bg-red-600"
+                          ? "bg-bags-green text-black border-bags-green"
+                          : "bg-red-500 text-white border-red-500"
                       }`}
                     >
-                      {isSwapping
-                        ? "EXECUTING..."
-                        : !connected
-                        ? "CONNECT WALLET"
-                        : tradeDirection === "buy"
-                        ? `BUY ${selectedToken?.symbol || ""}`
-                        : `SELL ${selectedToken?.symbol || ""}`}
+                      {isSwapping ? "EXECUTING..." : !connected ? "CONNECT WALLET" : `${tradeDirection.toUpperCase()} ${selectedToken?.symbol || ""}`}
                     </button>
                   </div>
                 </div>
@@ -526,10 +488,10 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
         {/* Footer */}
         <div className="flex items-center justify-between mt-2 px-1">
           <div className="font-pixel text-[8px] text-gray-500">
-            MEV: {mevMode.toUpperCase()} | SLIP: {slippage / 100}% | FEE: {priorityFee} SOL
+            SLIP: {slippage / 100}% | {ultraOrder?.gasless ? "GASLESS" : "STANDARD"}
           </div>
-          <div className="font-pixel text-[8px] text-gray-500">
-            POWERED BY BAGS.FM
+          <div className="font-pixel text-[8px] text-blue-400">
+            POWERED BY JUPITER ULTRA
           </div>
         </div>
       </div>

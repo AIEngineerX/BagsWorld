@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import { BagsApiClient } from "@/lib/bags-api";
+import { getJupiterClient } from "@/lib/jupiter-api";
 import { Connection, PublicKey } from "@solana/web3.js";
 
-let bagsApi: BagsApiClient | null = null;
-
-function getBagsApi(): BagsApiClient | null {
-  if (!bagsApi && process.env.BAGS_API_KEY) {
-    bagsApi = new BagsApiClient(process.env.BAGS_API_KEY);
-  }
-  return bagsApi;
-}
+const jupiter = getJupiterClient();
+const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 // Types for terminal responses
 export interface TrendingToken {
@@ -21,8 +15,8 @@ export interface TrendingToken {
   marketCap: number;
   volume24h: number;
   change24h: number;
-  lifetimeFees: number;
   rank: number;
+  tags?: string[];
 }
 
 export interface NewPair {
@@ -30,7 +24,7 @@ export interface NewPair {
   name: string;
   symbol: string;
   imageUrl?: string;
-  createdAt: number; // timestamp
+  createdAt: number;
   ageSeconds: number;
   marketCap: number;
   volume24h: number;
@@ -38,7 +32,7 @@ export interface NewPair {
 }
 
 export interface TokenSafety {
-  score: number; // 0-100
+  score: number;
   mintAuthorityDisabled: boolean;
   freezeAuthorityDisabled: boolean;
   lpBurned: boolean;
@@ -49,16 +43,29 @@ export interface TokenSafety {
 }
 
 interface TerminalRequestBody {
-  action: "trending" | "new-pairs" | "token-safety" | "quick-quote";
+  action:
+    | "trending"
+    | "new-pairs"
+    | "search"
+    | "token-safety"
+    | "quote"
+    | "ultra-order"
+    | "ultra-execute";
   data?: {
+    // For search
+    query?: string;
     // For token-safety
     mint?: string;
-    // For quick-quote
+    // For quote / ultra-order
     inputMint?: string;
     outputMint?: string;
-    amountSol?: number;
+    amount?: number;
     slippageBps?: number;
-    // For pagination
+    taker?: string;
+    // For ultra-execute
+    requestId?: string;
+    signedTransaction?: string;
+    // Pagination
     limit?: number;
     offset?: number;
   };
@@ -71,22 +78,31 @@ export async function POST(request: Request) {
 
     switch (action) {
       case "trending":
-        return handleTrending(data?.limit, data?.offset);
+        return handleTrending(data?.limit);
 
       case "new-pairs":
         return handleNewPairs(data?.limit);
 
+      case "search":
+        if (!data?.query) {
+          return NextResponse.json({ error: "Missing query" }, { status: 400 });
+        }
+        return handleSearch(data.query, data.limit);
+
       case "token-safety":
         if (!data?.mint) {
-          return NextResponse.json(
-            { error: "Missing required field: mint" },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: "Missing mint" }, { status: 400 });
         }
         return handleTokenSafety(data.mint);
 
-      case "quick-quote":
-        return handleQuickQuote(data);
+      case "quote":
+        return handleQuote(data);
+
+      case "ultra-order":
+        return handleUltraOrder(data);
+
+      case "ultra-execute":
+        return handleUltraExecute(data);
 
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
@@ -94,84 +110,57 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Terminal API error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to process request" },
+      { error: error instanceof Error ? error.message : "Request failed" },
       { status: 500 }
     );
   }
 }
 
-// GET endpoint for quick access to trending
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action") || "trending";
   const limit = parseInt(searchParams.get("limit") || "10");
+  const query = searchParams.get("query");
   const mint = searchParams.get("mint");
 
   switch (action) {
     case "trending":
-      return handleTrending(limit, 0);
+      return handleTrending(limit);
     case "new-pairs":
       return handleNewPairs(limit);
+    case "search":
+      return handleSearch(query || "", limit);
     case "token-safety":
-      if (!mint) {
-        return NextResponse.json(
-          { error: "Missing required param: mint" },
-          { status: 400 }
-        );
-      }
+      if (!mint) return NextResponse.json({ error: "Missing mint" }, { status: 400 });
       return handleTokenSafety(mint);
     default:
-      return handleTrending(limit, 0);
+      return handleTrending(limit);
   }
 }
 
-async function handleTrending(
-  limit: number = 10,
-  offset: number = 0
-): Promise<NextResponse> {
+/**
+ * Get trending tokens from Jupiter (by volume)
+ */
+async function handleTrending(limit: number = 10): Promise<NextResponse> {
   try {
-    // Fetch from global tokens API to get world buildings data
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/api/world-state`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tokens: [] }), // Empty to get all global tokens
-      }
-    );
+    const tokens = await jupiter.getTrendingTokens(limit);
+    const mints = tokens.map(t => t.address);
+    const prices = await jupiter.getTokenPrices(mints);
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch world state");
-    }
+    const trending: TrendingToken[] = tokens.map((token, index) => ({
+      mint: token.address,
+      name: token.name,
+      symbol: token.symbol,
+      imageUrl: token.logoURI,
+      price: prices[token.address] ? parseFloat(prices[token.address].price) : 0,
+      marketCap: 0, // Jupiter doesn't provide this directly
+      volume24h: token.daily_volume || 0,
+      change24h: 0, // Would need historical data
+      rank: index + 1,
+      tags: token.tags,
+    }));
 
-    const worldState = await response.json();
-    const buildings = worldState.buildings || [];
-
-    // Sort by volume24h (most active) and map to trending format
-    const trending: TrendingToken[] = buildings
-      .filter((b: any) => b.tokenMint && b.volume24h > 0)
-      .sort((a: any, b: any) => (b.volume24h || 0) - (a.volume24h || 0))
-      .slice(offset, offset + limit)
-      .map((b: any, index: number) => ({
-        mint: b.tokenMint,
-        name: b.name,
-        symbol: b.symbol,
-        imageUrl: b.imageUrl,
-        price: b.price || 0,
-        marketCap: b.marketCap || 0,
-        volume24h: b.volume24h || 0,
-        change24h: b.change24h || 0,
-        lifetimeFees: b.lifetimeFees || 0,
-        rank: offset + index + 1,
-      }));
-
-    return NextResponse.json({
-      success: true,
-      trending,
-      total: buildings.length,
-      limit,
-      offset,
-    });
+    return NextResponse.json({ success: true, trending, source: "jupiter" });
   } catch (error) {
     console.error("Trending error:", error);
     return NextResponse.json(
@@ -181,66 +170,60 @@ async function handleTrending(
   }
 }
 
+/**
+ * Get newly listed tokens
+ */
 async function handleNewPairs(limit: number = 10): Promise<NextResponse> {
   try {
-    // Fetch global tokens and sort by creation time
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/api/global-tokens`
-    );
-
-    if (!response.ok) {
-      // Return empty if global tokens not configured
-      return NextResponse.json({
-        success: true,
-        pairs: [],
-        message: "Global tokens database not configured",
-      });
-    }
-
-    const data = await response.json();
-    if (!data.configured || !data.tokens) {
-      return NextResponse.json({
-        success: true,
-        pairs: [],
-        message: "No tokens in database",
-      });
-    }
-
+    const tokens = await jupiter.getNewPairs(limit);
     const now = Date.now();
 
-    // Sort by creation time (newest first) and add safety scores
     const pairs: NewPair[] = await Promise.all(
-      data.tokens
-        .sort((a: any, b: any) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-        .slice(0, limit)
-        .map(async (token: any) => {
-          const createdAt = new Date(token.created_at).getTime();
-          const ageSeconds = Math.floor((now - createdAt) / 1000);
+      tokens.map(async (token) => {
+        const createdAt = token.created_at ? new Date(token.created_at).getTime() : 0;
+        const ageSeconds = createdAt ? Math.floor((now - createdAt) / 1000) : 0;
 
-          // Get basic safety check (simplified for performance)
-          const safety = await getQuickSafetyCheck(token.mint);
+        // Quick safety check from Jupiter token data
+        const safety: TokenSafety = {
+          score: 50,
+          mintAuthorityDisabled: token.mint_authority === null,
+          freezeAuthorityDisabled: token.freeze_authority === null,
+          lpBurned: false,
+          lpBurnedPercent: 0,
+          top10HolderPercent: 0,
+          isRugRisk: token.mint_authority !== null || token.freeze_authority !== null,
+          warnings: [],
+        };
 
-          return {
-            mint: token.mint,
-            name: token.name,
-            symbol: token.symbol,
-            imageUrl: token.image_url,
-            createdAt,
-            ageSeconds,
-            marketCap: token.market_cap || 0,
-            volume24h: token.volume_24h || 0,
-            safety,
-          };
-        })
+        if (token.mint_authority !== null) {
+          safety.warnings.push("Mint authority enabled");
+          safety.score -= 20;
+        } else {
+          safety.score += 20;
+        }
+
+        if (token.freeze_authority !== null) {
+          safety.warnings.push("Freeze authority enabled");
+          safety.score -= 15;
+        } else {
+          safety.score += 15;
+        }
+
+        return {
+          mint: token.address,
+          name: token.name,
+          symbol: token.symbol,
+          imageUrl: token.logoURI,
+          createdAt,
+          ageSeconds,
+          marketCap: 0,
+          volume24h: token.daily_volume || 0,
+          safety,
+        };
+      })
     );
 
-    return NextResponse.json({
-      success: true,
-      pairs,
-      total: data.tokens.length,
-    });
+    return NextResponse.json({ success: true, pairs, source: "jupiter" });
   } catch (error) {
     console.error("New pairs error:", error);
     return NextResponse.json(
@@ -250,75 +233,37 @@ async function handleNewPairs(limit: number = 10): Promise<NextResponse> {
   }
 }
 
+/**
+ * Search tokens by symbol/name/address
+ */
+async function handleSearch(query: string, limit: number = 10): Promise<NextResponse> {
+  try {
+    const tokens = await jupiter.searchTokens(query, limit);
+
+    const results = tokens.map(token => ({
+      mint: token.address,
+      name: token.name,
+      symbol: token.symbol,
+      imageUrl: token.logoURI,
+      tags: token.tags,
+      decimals: token.decimals,
+    }));
+
+    return NextResponse.json({ success: true, results, query, source: "jupiter" });
+  } catch (error) {
+    console.error("Search error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Search failed" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Get detailed token safety check from on-chain data
+ */
 async function handleTokenSafety(mint: string): Promise<NextResponse> {
   try {
-    const safety = await getDetailedSafetyCheck(mint);
-
-    return NextResponse.json({
-      success: true,
-      mint,
-      safety,
-    });
-  } catch (error) {
-    console.error("Token safety error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to check token safety" },
-      { status: 500 }
-    );
-  }
-}
-
-async function handleQuickQuote(
-  data?: TerminalRequestBody["data"]
-): Promise<NextResponse> {
-  if (!data?.outputMint || !data?.amountSol) {
-    return NextResponse.json(
-      { error: "Missing required fields: outputMint, amountSol" },
-      { status: 400 }
-    );
-  }
-
-  const api = getBagsApi();
-  if (!api) {
-    return NextResponse.json(
-      { error: "Bags API not configured" },
-      { status: 500 }
-    );
-  }
-
-  try {
-    const SOL_MINT = "So11111111111111111111111111111111111111112";
-    const inputMint = data.inputMint || SOL_MINT;
-    const amountLamports = Math.floor(data.amountSol * 1e9);
-
-    const quote = await api.getTradeQuote(
-      inputMint,
-      data.outputMint,
-      amountLamports,
-      data.slippageBps || 100 // Default 1% for quick trades
-    );
-
-    return NextResponse.json({
-      success: true,
-      quote,
-      inputAmount: data.amountSol,
-      inputSymbol: inputMint === SOL_MINT ? "SOL" : "TOKEN",
-    });
-  } catch (error) {
-    console.error("Quick quote error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to get quote" },
-      { status: 500 }
-    );
-  }
-}
-
-// Quick safety check for list views (faster, less detailed)
-async function getQuickSafetyCheck(mint: string): Promise<TokenSafety> {
-  const warnings: string[] = [];
-  let score = 50; // Start neutral
-
-  try {
     const connection = new Connection(
       process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
     );
@@ -326,97 +271,24 @@ async function getQuickSafetyCheck(mint: string): Promise<TokenSafety> {
     const mintPubkey = new PublicKey(mint);
     const mintInfo = await connection.getParsedAccountInfo(mintPubkey);
 
-    if (!mintInfo.value) {
-      warnings.push("Token not found on-chain");
-      return {
-        score: 0,
-        mintAuthorityDisabled: false,
-        freezeAuthorityDisabled: false,
-        lpBurned: false,
-        lpBurnedPercent: 0,
-        top10HolderPercent: 100,
-        isRugRisk: true,
-        warnings,
-      };
-    }
-
-    const parsed = mintInfo.value.data as any;
-    if (parsed?.parsed?.info) {
-      const info = parsed.parsed.info;
-
-      // Check mint authority
-      const mintAuthorityDisabled = info.mintAuthority === null;
-      if (mintAuthorityDisabled) {
-        score += 20;
-      } else {
-        warnings.push("Mint authority enabled - can mint more tokens");
-        score -= 10;
-      }
-
-      // Check freeze authority
-      const freezeAuthorityDisabled = info.freezeAuthority === null;
-      if (freezeAuthorityDisabled) {
-        score += 15;
-      } else {
-        warnings.push("Freeze authority enabled - can freeze accounts");
-        score -= 10;
-      }
-
-      return {
-        score: Math.max(0, Math.min(100, score)),
-        mintAuthorityDisabled,
-        freezeAuthorityDisabled,
-        lpBurned: false, // Would need LP account check
-        lpBurnedPercent: 0,
-        top10HolderPercent: 0, // Would need token accounts query
-        isRugRisk: !mintAuthorityDisabled || !freezeAuthorityDisabled,
-        warnings,
-      };
-    }
-  } catch (error) {
-    console.error("Quick safety check error:", error);
-    warnings.push("Could not verify on-chain data");
-  }
-
-  return {
-    score: 50,
-    mintAuthorityDisabled: false,
-    freezeAuthorityDisabled: false,
-    lpBurned: false,
-    lpBurnedPercent: 0,
-    top10HolderPercent: 0,
-    isRugRisk: true,
-    warnings: ["Unable to verify token safety"],
-  };
-}
-
-// Detailed safety check for individual token view
-async function getDetailedSafetyCheck(mint: string): Promise<TokenSafety> {
-  const warnings: string[] = [];
-  let score = 50;
-
-  try {
-    const connection = new Connection(
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
-    );
-
-    const mintPubkey = new PublicKey(mint);
-
-    // Get mint info
-    const mintInfo = await connection.getParsedAccountInfo(mintPubkey);
+    const warnings: string[] = [];
+    let score = 50;
 
     if (!mintInfo.value) {
-      warnings.push("Token not found on-chain");
-      return {
-        score: 0,
-        mintAuthorityDisabled: false,
-        freezeAuthorityDisabled: false,
-        lpBurned: false,
-        lpBurnedPercent: 0,
-        top10HolderPercent: 100,
-        isRugRisk: true,
-        warnings,
-      };
+      return NextResponse.json({
+        success: true,
+        mint,
+        safety: {
+          score: 0,
+          mintAuthorityDisabled: false,
+          freezeAuthorityDisabled: false,
+          lpBurned: false,
+          lpBurnedPercent: 0,
+          top10HolderPercent: 100,
+          isRugRisk: true,
+          warnings: ["Token not found on-chain"],
+        },
+      });
     }
 
     const parsed = mintInfo.value.data as any;
@@ -426,26 +298,22 @@ async function getDetailedSafetyCheck(mint: string): Promise<TokenSafety> {
     if (parsed?.parsed?.info) {
       const info = parsed.parsed.info;
 
-      // Check mint authority
       mintAuthorityDisabled = info.mintAuthority === null;
-      if (mintAuthorityDisabled) {
-        score += 20;
-      } else {
-        warnings.push("Mint authority enabled - can mint more tokens");
+      if (mintAuthorityDisabled) score += 20;
+      else {
+        warnings.push("Mint authority enabled - can mint more");
         score -= 10;
       }
 
-      // Check freeze authority
       freezeAuthorityDisabled = info.freezeAuthority === null;
-      if (freezeAuthorityDisabled) {
-        score += 15;
-      } else {
-        warnings.push("Freeze authority enabled - can freeze accounts");
+      if (freezeAuthorityDisabled) score += 15;
+      else {
+        warnings.push("Freeze authority enabled");
         score -= 10;
       }
     }
 
-    // Get largest token holders
+    // Get top holders
     let top10HolderPercent = 0;
     try {
       const largestAccounts = await connection.getTokenLargestAccounts(mintPubkey);
@@ -461,49 +329,153 @@ async function getDetailedSafetyCheck(mint: string): Promise<TokenSafety> {
         top10HolderPercent = Number((top10Sum * BigInt(10000)) / totalSupply) / 100;
 
         if (top10HolderPercent > 80) {
-          warnings.push(`Top 10 holders own ${top10HolderPercent.toFixed(1)}% - high concentration`);
+          warnings.push(`Top 10 hold ${top10HolderPercent.toFixed(1)}%`);
           score -= 20;
         } else if (top10HolderPercent > 50) {
-          warnings.push(`Top 10 holders own ${top10HolderPercent.toFixed(1)}%`);
+          warnings.push(`Top 10 hold ${top10HolderPercent.toFixed(1)}%`);
           score -= 10;
         } else {
-          score += 15; // Good distribution
+          score += 15;
         }
       }
     } catch (e) {
-      console.error("Error fetching token holders:", e);
+      console.error("Holder check error:", e);
     }
 
-    // Determine if rug risk
     const isRugRisk = !mintAuthorityDisabled || !freezeAuthorityDisabled || top10HolderPercent > 80;
 
-    // Bonus for clean tokens
-    if (mintAuthorityDisabled && freezeAuthorityDisabled && top10HolderPercent < 50) {
-      score += 10;
-    }
-
-    return {
-      score: Math.max(0, Math.min(100, score)),
-      mintAuthorityDisabled,
-      freezeAuthorityDisabled,
-      lpBurned: false, // TODO: Check LP token burn
-      lpBurnedPercent: 0,
-      top10HolderPercent,
-      isRugRisk,
-      warnings,
-    };
+    return NextResponse.json({
+      success: true,
+      mint,
+      safety: {
+        score: Math.max(0, Math.min(100, score)),
+        mintAuthorityDisabled,
+        freezeAuthorityDisabled,
+        lpBurned: false,
+        lpBurnedPercent: 0,
+        top10HolderPercent,
+        isRugRisk,
+        warnings,
+      },
+    });
   } catch (error) {
-    console.error("Detailed safety check error:", error);
-    warnings.push("Error checking token safety");
-    return {
-      score: 0,
-      mintAuthorityDisabled: false,
-      freezeAuthorityDisabled: false,
-      lpBurned: false,
-      lpBurnedPercent: 0,
-      top10HolderPercent: 0,
-      isRugRisk: true,
-      warnings,
-    };
+    console.error("Safety check error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Safety check failed" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Get swap quote from Jupiter
+ */
+async function handleQuote(data?: TerminalRequestBody["data"]): Promise<NextResponse> {
+  if (!data?.outputMint || !data?.amount) {
+    return NextResponse.json(
+      { error: "Missing outputMint or amount" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const inputMint = data.inputMint || SOL_MINT;
+    const amountInSmallest = data.inputMint === SOL_MINT || !data.inputMint
+      ? Math.floor(data.amount * 1e9) // SOL to lamports
+      : Math.floor(data.amount * 1e6); // Assume 6 decimals for tokens
+
+    const quote = await jupiter.getQuote(
+      inputMint,
+      data.outputMint,
+      amountInSmallest,
+      data.slippageBps || 100
+    );
+
+    return NextResponse.json({
+      success: true,
+      quote,
+      source: "jupiter",
+    });
+  } catch (error) {
+    console.error("Quote error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Quote failed" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Create Ultra Swap order
+ * Jupiter handles: MEV protection, fees, transaction landing
+ */
+async function handleUltraOrder(data?: TerminalRequestBody["data"]): Promise<NextResponse> {
+  if (!data?.outputMint || !data?.amount || !data?.taker) {
+    return NextResponse.json(
+      { error: "Missing outputMint, amount, or taker" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const inputMint = data.inputMint || SOL_MINT;
+    const amountInSmallest = inputMint === SOL_MINT
+      ? Math.floor(data.amount * 1e9)
+      : Math.floor(data.amount * 1e6);
+
+    const order = await jupiter.createUltraOrder(
+      inputMint,
+      data.outputMint,
+      amountInSmallest,
+      data.taker,
+      data.slippageBps || 100
+    );
+
+    return NextResponse.json({
+      success: true,
+      order,
+      gasless: order.gasless,
+      source: "jupiter-ultra",
+    });
+  } catch (error) {
+    console.error("Ultra order error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Ultra order failed" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Execute Ultra Swap with signed transaction
+ * Jupiter Beam lands the transaction with optimal timing
+ */
+async function handleUltraExecute(data?: TerminalRequestBody["data"]): Promise<NextResponse> {
+  if (!data?.requestId || !data?.signedTransaction) {
+    return NextResponse.json(
+      { error: "Missing requestId or signedTransaction" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const result = await jupiter.executeUltraSwap(
+      data.requestId,
+      data.signedTransaction
+    );
+
+    return NextResponse.json({
+      success: true,
+      signature: result.signature,
+      status: result.status,
+      slot: result.slot,
+      source: "jupiter-ultra",
+    });
+  } catch (error) {
+    console.error("Ultra execute error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Execute failed" },
+      { status: 500 }
+    );
   }
 }
