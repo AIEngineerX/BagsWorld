@@ -1449,9 +1449,12 @@ export class WorldScene extends Phaser.Scene {
         const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
         container.add(shadow);
 
-        const sprite = this.add.sprite(0, 0, `building_${building.level}`);
+        // Use special texture for PokeCenter, otherwise use level-based building
+        const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
+        const buildingTexture = isPokeCenter ? "pokecenter" : `building_${building.level}`;
+        const sprite = this.add.sprite(0, 0, buildingTexture);
         sprite.setOrigin(0.5, 1);
-        sprite.setScale(buildingScale);
+        sprite.setScale(isPokeCenter ? 1.0 : buildingScale);
         container.add(sprite);
 
         // Glow effect for pumping buildings
@@ -1539,7 +1542,8 @@ export class WorldScene extends Phaser.Scene {
       } else {
         // Update existing building
         const sprite = container.getAt(1) as Phaser.GameObjects.Sprite;
-        const newTexture = `building_${building.level}`;
+        const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
+        const newTexture = isPokeCenter ? "pokecenter" : `building_${building.level}`;
         if (sprite.texture.key !== newTexture) {
           this.tweens.add({
             targets: container,

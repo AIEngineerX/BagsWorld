@@ -280,11 +280,11 @@ const TREASURY_BUILDING: RegisteredToken = {
 // Starter buildings when no user tokens are registered
 const STARTER_BUILDINGS: RegisteredToken[] = [
   {
-    mint: "StarterWelcome111111111111111111111111111111",
-    name: "Welcome Center",
-    symbol: "WELCOME",
-    description: "New to BagsWorld? Launch a token to build here!",
-    imageUrl: "/assets/buildings/level-3.png",
+    mint: "StarterPokeCenter11111111111111111111111111",
+    name: "PokeCenter",
+    symbol: "HEAL",
+    description: "Welcome trainer! This is where citizens rest and recover. Launch a token to build your own building in BagsWorld!",
+    imageUrl: "/assets/buildings/pokecenter.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
