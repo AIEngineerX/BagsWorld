@@ -67,35 +67,35 @@
 
 ### BagsWorld Trading Terminal Proposal
 
-**Location Options:**
-1. **Sidebar Tab** - Replace or add tab alongside Leaderboard (recommended)
-2. **Dedicated Page** - /terminal route with full-screen trading
-3. **Expandable Panel** - Slide-out from right side
+**Location:** Top header bar (expandable panel below header)
+**Style:** Pokemon/Game Boy aesthetic - pixel buttons, retro UI
 
-**Proposed Features (MVP):**
+**UI Concept (Pokemon-style):**
 
 ```
-┌─────────────────────────────────────┐
-│ 📊 TERMINAL │ 🏆 LEADERBOARD │ 📰  │  ← Tab switcher
-├─────────────────────────────────────┤
-│ 🔥 TRENDING TOKENS                  │
-│ ┌─────┬────────┬────────┬────────┐  │
-│ │ #1  │ $BAGS  │ +125%  │ [BUY]  │  │
-│ │ #2  │ $WORLD │ +85%   │ [BUY]  │  │
-│ │ #3  │ $PIXEL │ +42%   │ [BUY]  │  │
-│ └─────┴────────┴────────┴────────┘  │
-├─────────────────────────────────────┤
-│ 🆕 NEW PAIRS (Live)                 │
-│ ┌─────────────────────────────────┐ │
-│ │ $NEW │ 2s ago │ ✓Safe │ [SNIPE]│ │
-│ │ $HOT │ 15s ago│ ⚠Dev  │ [VIEW] │ │
-│ └─────────────────────────────────┘ │
-├─────────────────────────────────────┤
-│ ⚡ QUICK TRADE                      │
-│ [0.1] [0.5] [1] [5] SOL            │
-│ Slippage: [1%] [5%] [10%]          │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│ BAGSWORLD                    [TERMINAL ▼]              🎮 WALLET  LAUNCH │
+├──────────────────────────────────────────────────────────────────────────┤
+│ ╔════════════════════════════════════════════════════════════════════╗   │
+│ ║  🔴 TRENDING        🟢 NEW PAIRS        🔵 QUICK TRADE             ║   │
+│ ╠════════════════════════════════════════════════════════════════════╣   │
+│ ║  ┌─────────────────────────────────────────────────────────────┐   ║   │
+│ ║  │ $BAGS    ▲125%   MC:$2.1M   VOL:$500K   [A] BUY  [B] INFO │   ║   │
+│ ║  │ $WORLD   ▲85%    MC:$890K   VOL:$120K   [A] BUY  [B] INFO │   ║   │
+│ ║  │ $PIXEL   ▲42%    MC:$450K   VOL:$80K    [A] BUY  [B] INFO │   ║   │
+│ ║  └─────────────────────────────────────────────────────────────┘   ║   │
+│ ╠════════════════════════════════════════════════════════════════════╣   │
+│ ║  QUICK BUY: [0.1�Pokemon Ball] [0.5] [1.0] [5.0] SOL               ║   │
+│ ║  SLIPPAGE:  [1%] [5%] [10%] [AUTO]                                 ║   │
+│ ╚════════════════════════════════════════════════════════════════════╝   │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Button Style Guide:**
+- [A] BUY = Green pixel button (like Game Boy A button)
+- [B] INFO = Red pixel button (like Game Boy B button)
+- Tab buttons = Pokemon menu style (red/green/blue pokeballs)
+- Amount buttons = Pixel art pokeball icons
 
 **Key Features to Implement:**
 
@@ -125,13 +125,67 @@
 ```typescript
 // New component: src/components/TradingTerminal.tsx
 // Reuses: /api/trade endpoint, TradeModal logic
-// New API: /api/live-pairs (WebSocket or polling)
+// New API: /api/terminal (created!)
 // State: Add to Zustand store for selected pair
 ```
 
-**Packages to Consider:**
-- `@jup-ag/api` - Jupiter aggregator for best routes
-- `socket.io-client` - Real-time pair updates
-- Existing Bags API for token data
+---
 
-**Estimated Scope:** Medium (1-2 weeks for MVP)
+### Backend API (COMPLETED)
+
+**Endpoint:** `/api/terminal`
+
+**Actions:**
+
+1. **trending** - Get trending tokens by volume
+   ```bash
+   # GET
+   curl /api/terminal?action=trending&limit=10
+
+   # POST
+   curl -X POST /api/terminal -d '{"action":"trending","data":{"limit":10}}'
+   ```
+   Returns: `{ trending: TrendingToken[], total, limit, offset }`
+
+2. **new-pairs** - Get newly launched tokens with safety scores
+   ```bash
+   curl /api/terminal?action=new-pairs&limit=10
+   ```
+   Returns: `{ pairs: NewPair[], total }`
+
+3. **token-safety** - Get detailed safety check for a token
+   ```bash
+   curl /api/terminal?action=token-safety&mint=<TOKEN_MINT>
+   ```
+   Returns: `{ mint, safety: TokenSafety }`
+
+4. **quick-quote** - Get quick trade quote
+   ```bash
+   curl -X POST /api/terminal -d '{
+     "action":"quick-quote",
+     "data":{"outputMint":"<TOKEN>","amountSol":1.0}
+   }'
+   ```
+   Returns: `{ quote, inputAmount, inputSymbol }`
+
+**Safety Check Features:**
+- Mint authority status (can mint more tokens?)
+- Freeze authority status (can freeze accounts?)
+- Top 10 holder concentration %
+- Rug risk assessment
+- Warning messages array
+
+**Types Added:** `src/lib/types.ts`
+- `TrendingToken`
+- `NewPair`
+- `TokenSafety`
+
+---
+
+### Next Steps (Frontend)
+
+1. Create `TradingTerminal.tsx` component
+2. Add terminal toggle button to header
+3. Implement Pokemon-style pixel buttons
+4. Connect to `/api/terminal` endpoints
+5. Add quick trade execution flow
