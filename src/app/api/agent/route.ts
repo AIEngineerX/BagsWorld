@@ -11,15 +11,30 @@ import {
   getAgentWalletStatus,
   isAgentWalletConfigured,
 } from "@/lib/agent-wallet";
+import {
+  initBuybackBurn,
+  getBuybackConfig,
+  updateBuybackConfig,
+  addBuybackToken,
+  removeBuybackToken,
+  getBuybackStats,
+  type BuybackBurnConfig,
+  type TokenBuybackConfig,
+} from "@/lib/buyback-burn";
 
 interface AgentRequestBody {
-  action: "status" | "start" | "stop" | "trigger" | "config";
+  action: "status" | "start" | "stop" | "trigger" | "config" | "buyback-config" | "add-buyback-token" | "remove-buyback-token";
   config?: {
     enabled?: boolean;
     minClaimThresholdSol?: number;
     checkIntervalMs?: number;
     maxClaimsPerRun?: number;
   };
+  // Buyback configuration
+  buybackConfig?: Partial<BuybackBurnConfig>;
+  // Token to add/remove for buyback
+  token?: TokenBuybackConfig;
+  tokenMint?: string;
 }
 
 // Verify authorization for agent control
@@ -52,7 +67,7 @@ export async function POST(request: Request) {
     }
 
     const body: AgentRequestBody = await request.json();
-    const { action, config } = body;
+    const { action, config, buybackConfig, token, tokenMint } = body;
 
     switch (action) {
       case "status":
@@ -69,6 +84,15 @@ export async function POST(request: Request) {
 
       case "config":
         return handleConfig(config);
+
+      case "buyback-config":
+        return handleBuybackConfig(buybackConfig);
+
+      case "add-buyback-token":
+        return handleAddBuybackToken(token);
+
+      case "remove-buyback-token":
+        return handleRemoveBuybackToken(tokenMint);
 
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
@@ -171,10 +195,77 @@ function handleConfig(
   });
 }
 
+// Buyback & Burn handlers
+function handleBuybackConfig(
+  config?: Partial<BuybackBurnConfig>
+): NextResponse {
+  if (!config) {
+    // Return current buyback config and stats
+    return NextResponse.json({
+      success: true,
+      buybackConfig: getBuybackConfig(),
+      buybackStats: getBuybackStats(),
+    });
+  }
+
+  // Initialize or update buyback config
+  const newConfig = config ? updateBuybackConfig(config) : initBuybackBurn(config);
+
+  return NextResponse.json({
+    success: true,
+    buybackConfig: newConfig,
+    buybackStats: getBuybackStats(),
+  });
+}
+
+function handleAddBuybackToken(token?: TokenBuybackConfig): NextResponse {
+  if (!token) {
+    return NextResponse.json(
+      { error: "Token configuration required" },
+      { status: 400 }
+    );
+  }
+
+  // Validate token config
+  if (!token.mint || !token.symbol || token.allocationPercent === undefined) {
+    return NextResponse.json(
+      { error: "Token must have mint, symbol, and allocationPercent" },
+      { status: 400 }
+    );
+  }
+
+  addBuybackToken(token);
+
+  return NextResponse.json({
+    success: true,
+    message: `Added ${token.symbol} to buyback list`,
+    buybackConfig: getBuybackConfig(),
+  });
+}
+
+function handleRemoveBuybackToken(mint?: string): NextResponse {
+  if (!mint) {
+    return NextResponse.json(
+      { error: "Token mint address required" },
+      { status: 400 }
+    );
+  }
+
+  removeBuybackToken(mint);
+
+  return NextResponse.json({
+    success: true,
+    message: `Removed token from buyback list`,
+    buybackConfig: getBuybackConfig(),
+  });
+}
+
 // GET endpoint for simple status check
 export async function GET() {
   const walletStatus = await getAgentWalletStatus();
   const agentState = getAutoClaimState();
+  const buybackConfig = getBuybackConfig();
+  const buybackStats = getBuybackStats();
 
   return NextResponse.json({
     wallet: {
@@ -188,6 +279,15 @@ export async function GET() {
       lastClaim: agentState.lastClaim,
       totalClaimed: agentState.totalClaimed,
       claimCount: agentState.claimCount,
+    },
+    buyback: {
+      enabled: buybackConfig.enabled,
+      targetTokens: buybackConfig.targetTokens.map(t => ({
+        symbol: t.symbol,
+        allocation: t.allocationPercent,
+        burnAfterBuy: t.burnAfterBuy,
+      })),
+      stats: buybackStats,
     },
   });
 }

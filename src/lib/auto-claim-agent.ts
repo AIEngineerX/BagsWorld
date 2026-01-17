@@ -7,6 +7,12 @@ import {
   signAndSendBase64Transaction,
   isAgentWalletConfigured,
 } from "./agent-wallet";
+import {
+  executeBuybackBurn,
+  getBuybackConfig,
+  updateStats,
+  type BuybackResult,
+} from "./buyback-burn";
 import type { ClaimablePosition } from "./types";
 
 // Agent configuration
@@ -37,6 +43,8 @@ export interface ClaimResult {
   totalSolClaimed: number;
   signatures: string[];
   errors: string[];
+  // Buyback & burn results
+  buyback?: BuybackResult;
 }
 
 // Default configuration
@@ -242,6 +250,28 @@ export async function runAutoClaimCheck(): Promise<ClaimResult> {
       agentState.claimCount += result.positionsClaimed;
 
       console.log(`Successfully claimed ${claimedAmount.toFixed(4)} SOL from ${result.positionsClaimed} positions`);
+
+      // Execute buyback & burn if enabled
+      const buybackConfig = getBuybackConfig();
+      if (buybackConfig.enabled && claimedAmount > 0) {
+        console.log("Executing buyback & burn...");
+        try {
+          const buybackResult = await executeBuybackBurn(claimedAmount);
+          result.buyback = buybackResult;
+          updateStats(buybackResult);
+
+          if (buybackResult.success) {
+            console.log(`Buyback complete: ${buybackResult.totalSolSpent.toFixed(4)} SOL spent`);
+            console.log(`Tokens bought: ${buybackResult.tokensBought.length}`);
+            console.log(`Tokens burned: ${buybackResult.tokensBurned.length}`);
+          } else if (buybackResult.errors.length > 0) {
+            console.warn("Buyback errors:", buybackResult.errors);
+          }
+        } catch (buybackError: any) {
+          console.error("Buyback failed:", buybackError.message);
+          result.errors.push(`Buyback failed: ${buybackError.message}`);
+        }
+      }
     }
 
     return result;
