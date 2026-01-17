@@ -4,7 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  # Your ecosystem wallet - receives 10% partner fees
+  # Your ecosystem wallet - receives 5% ecosystem fees
   NEXT_PUBLIC_ECOSYSTEM_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC"
   NEXT_PUBLIC_ADMIN_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC"
   NEXT_PUBLIC_SOLANA_NETWORK = "mainnet-beta"
