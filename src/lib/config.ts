@@ -33,7 +33,8 @@ export const ECOSYSTEM_CONFIG = {
     },
 
     // Provider name shown in fee shares
-    provider: "bagsworld" as const,
+    // Use "solana" provider with wallet address for direct wallet fee shares
+    provider: "solana" as const,
     providerUsername: "BagsWorld Community Rewards",
   },
 
