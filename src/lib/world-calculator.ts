@@ -280,7 +280,7 @@ export function generateGameEvent(
   };
 
   return {
-    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     type,
     message: messages[type](data),
     timestamp: Date.now(),
