@@ -24,6 +24,11 @@ const VOLUME_THRESHOLDS = {
   dying: 100,
 };
 
+// Position cache to prevent buildings from shifting when rankings change
+// Key: token mint, Value: { x, y, assignedIndex }
+const buildingPositionCache = new Map<string, { x: number; y: number; assignedIndex: number }>();
+let nextAvailableIndex = 0;
+
 export function calculateWorldHealth(
   totalVolume24h: number,
   avgVolume: number
@@ -142,6 +147,59 @@ export function generateBuildingPosition(
     x: rowStartX + col * BUILDING_SPACING + offsetX,
     y: baseY + offsetY,
   };
+}
+
+/**
+ * Get or create a cached position for a building by its mint address.
+ * This prevents buildings from shifting when rankings change.
+ */
+export function getCachedBuildingPosition(
+  mint: string,
+  existingBuildings: Set<string>
+): { x: number; y: number } {
+  // Check if we already have a cached position for this mint
+  const cached = buildingPositionCache.get(mint);
+  if (cached) {
+    return { x: cached.x, y: cached.y };
+  }
+
+  // Find the next available index that's not in use
+  // First, collect all used indices
+  const usedIndices = new Set<number>();
+  buildingPositionCache.forEach((pos) => {
+    usedIndices.add(pos.assignedIndex);
+  });
+
+  // Find the lowest available index
+  let assignedIndex = 0;
+  while (usedIndices.has(assignedIndex) && assignedIndex < MAX_BUILDINGS) {
+    assignedIndex++;
+  }
+
+  // Generate position based on assigned index
+  const position = generateBuildingPosition(assignedIndex, MAX_BUILDINGS);
+
+  // Cache it
+  buildingPositionCache.set(mint, {
+    x: position.x,
+    y: position.y,
+    assignedIndex,
+  });
+
+  return position;
+}
+
+/**
+ * Clean up position cache for buildings that no longer exist.
+ */
+export function cleanupBuildingPositionCache(activeMints: Set<string>): void {
+  const toDelete: string[] = [];
+  buildingPositionCache.forEach((_, mint) => {
+    if (!activeMints.has(mint)) {
+      toDelete.push(mint);
+    }
+  });
+  toDelete.forEach((mint) => buildingPositionCache.delete(mint));
 }
 
 export function generateCharacterPosition(): { x: number; y: number } {
@@ -320,7 +378,7 @@ export function buildWorldState(
 
   // Decay system: Filter and sort buildings
   const DECAY_THRESHOLD = 10; // Buildings below this health are removed
-  const buildings = allBuildings
+  const filteredBuildings = allBuildings
     // Keep permanent buildings (Treasury, Starter) and buildings above decay threshold
     .filter((b) => {
       const isPermanent = b.id.startsWith("Treasury") || b.id.startsWith("Starter");
@@ -340,12 +398,19 @@ export function buildWorldState(
       return b.health - a.health;
     })
     // Limit to max buildings
-    .slice(0, MAX_BUILDINGS)
-    // Reassign positions based on new order
-    .map((building, index) => ({
-      ...building,
-      ...generateBuildingPosition(index, MAX_BUILDINGS),
-    }));
+    .slice(0, MAX_BUILDINGS);
+
+  // Get the set of active building mints for cache cleanup
+  const activeMints = new Set(filteredBuildings.map((b) => b.id));
+
+  // Clean up position cache for removed buildings
+  cleanupBuildingPositionCache(activeMints);
+
+  // Assign cached positions (buildings keep their position even when rankings change)
+  const buildings = filteredBuildings.map((building) => ({
+    ...building,
+    ...getCachedBuildingPosition(building.id, activeMints),
+  }));
 
   // Generate events for significant changes
   const events: GameEvent[] = previousState?.events.slice(0, 10) ?? [];
