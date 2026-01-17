@@ -485,7 +485,7 @@ export class WorldScene extends Phaser.Scene {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       this.gainNode = this.audioContext.createGain();
       this.gainNode.connect(this.audioContext.destination);
-      this.gainNode.gain.value = 0.15; // Low volume
+      this.gainNode.gain.value = 0.08; // Very low volume for ambient background
 
       this.playCurrentTrack();
       this.musicPlaying = true;
@@ -546,130 +546,150 @@ export class WorldScene extends Phaser.Scene {
   private playPokemonMelody(): void {
     if (!this.audioContext || !this.gainNode) return;
 
-    // Pokemon-style pentatonic melody (cheerful, adventurous)
-    // Notes: C4, D4, E4, G4, A4, C5 (pentatonic scale)
+    // Ambient, relaxed pentatonic melody - much longer and less repetitive
+    // Slower tempo, longer notes, more space between phrases
     const notes = [
-      { freq: 523.25, duration: 0.2 },  // C5
-      { freq: 440.00, duration: 0.2 },  // A4
-      { freq: 392.00, duration: 0.2 },  // G4
-      { freq: 329.63, duration: 0.4 },  // E4
-      { freq: 392.00, duration: 0.2 },  // G4
-      { freq: 440.00, duration: 0.2 },  // A4
-      { freq: 523.25, duration: 0.4 },  // C5
-      { freq: 0, duration: 0.2 },       // Rest
-      { freq: 392.00, duration: 0.2 },  // G4
-      { freq: 329.63, duration: 0.2 },  // E4
-      { freq: 293.66, duration: 0.2 },  // D4
-      { freq: 261.63, duration: 0.4 },  // C4
-      { freq: 293.66, duration: 0.2 },  // D4
-      { freq: 329.63, duration: 0.2 },  // E4
-      { freq: 392.00, duration: 0.4 },  // G4
-      { freq: 0, duration: 0.4 },       // Rest
+      // Phrase 1 - gentle opening
+      { freq: 392.00, duration: 0.8 },   // G4
+      { freq: 440.00, duration: 0.6 },   // A4
+      { freq: 523.25, duration: 1.0 },   // C5
+      { freq: 0, duration: 0.8 },        // Rest
+      { freq: 440.00, duration: 0.6 },   // A4
+      { freq: 392.00, duration: 0.8 },   // G4
+      { freq: 329.63, duration: 1.2 },   // E4
+      { freq: 0, duration: 1.0 },        // Long rest
+
+      // Phrase 2 - variation
+      { freq: 329.63, duration: 0.6 },   // E4
+      { freq: 392.00, duration: 0.8 },   // G4
+      { freq: 440.00, duration: 1.0 },   // A4
+      { freq: 0, duration: 0.6 },        // Rest
+      { freq: 523.25, duration: 0.8 },   // C5
+      { freq: 440.00, duration: 0.6 },   // A4
+      { freq: 392.00, duration: 1.2 },   // G4
+      { freq: 0, duration: 1.2 },        // Long rest
+
+      // Phrase 3 - descending
+      { freq: 523.25, duration: 0.8 },   // C5
+      { freq: 440.00, duration: 0.8 },   // A4
+      { freq: 392.00, duration: 0.8 },   // G4
+      { freq: 329.63, duration: 1.0 },   // E4
+      { freq: 0, duration: 0.8 },        // Rest
+      { freq: 293.66, duration: 0.6 },   // D4
+      { freq: 261.63, duration: 1.4 },   // C4
+      { freq: 0, duration: 1.5 },        // Long rest
+
+      // Phrase 4 - resolution
+      { freq: 261.63, duration: 0.8 },   // C4
+      { freq: 329.63, duration: 0.6 },   // E4
+      { freq: 392.00, duration: 1.0 },   // G4
+      { freq: 0, duration: 0.5 },        // Rest
+      { freq: 440.00, duration: 0.8 },   // A4
+      { freq: 392.00, duration: 1.2 },   // G4
+      { freq: 0, duration: 2.0 },        // Very long rest before loop
     ];
 
-    // Secondary harmony notes
-    const harmony = [
-      { freq: 261.63, duration: 0.2 },  // C4
-      { freq: 220.00, duration: 0.2 },  // A3
-      { freq: 196.00, duration: 0.2 },  // G3
-      { freq: 164.81, duration: 0.4 },  // E3
-      { freq: 196.00, duration: 0.2 },  // G3
-      { freq: 220.00, duration: 0.2 },  // A3
-      { freq: 261.63, duration: 0.4 },  // C4
-      { freq: 0, duration: 0.2 },       // Rest
-      { freq: 196.00, duration: 0.2 },  // G3
-      { freq: 164.81, duration: 0.2 },  // E3
-      { freq: 146.83, duration: 0.2 },  // D3
-      { freq: 130.81, duration: 0.4 },  // C3
-      { freq: 146.83, duration: 0.2 },  // D3
-      { freq: 164.81, duration: 0.2 },  // E3
-      { freq: 196.00, duration: 0.4 },  // G3
-      { freq: 0, duration: 0.4 },       // Rest
+    // Soft, sustained bass notes (much quieter)
+    const bass = [
+      { freq: 130.81, duration: 3.0 },   // C3
+      { freq: 0, duration: 1.0 },
+      { freq: 110.00, duration: 3.0 },   // A2
+      { freq: 0, duration: 1.0 },
+      { freq: 98.00, duration: 3.0 },    // G2
+      { freq: 0, duration: 1.0 },
+      { freq: 130.81, duration: 4.0 },   // C3
+      { freq: 0, duration: 2.0 },
+      { freq: 110.00, duration: 3.0 },   // A2
+      { freq: 0, duration: 1.5 },
+      { freq: 98.00, duration: 3.0 },    // G2
+      { freq: 0, duration: 2.5 },
     ];
 
-    let time = this.audioContext.currentTime;
+    let time = this.audioContext.currentTime + 0.1;
     const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
 
-    // Play melody
+    // Play melody with sine waves
     notes.forEach((note) => {
       if (note.freq > 0) {
-        this.playNote(note.freq, time, note.duration * 0.9, 0.12);
+        this.playNote(note.freq, time, note.duration * 0.85, 0.08, "sine");
       }
       time += note.duration;
     });
 
-    // Play harmony (slightly quieter)
-    let harmonyTime = this.audioContext.currentTime;
-    harmony.forEach((note) => {
+    // Play bass with triangle waves (very quiet)
+    let bassTime = this.audioContext.currentTime + 0.1;
+    bass.forEach((note) => {
       if (note.freq > 0) {
-        this.playNote(note.freq, harmonyTime, note.duration * 0.9, 0.06);
+        this.playNote(note.freq, bassTime, note.duration * 0.9, 0.04, "triangle");
       }
-      harmonyTime += note.duration;
+      bassTime += note.duration;
     });
 
-    // Loop the melody
+    // Loop with extra pause
     this.musicInterval = window.setTimeout(() => {
       if (this.musicPlaying) {
         this.playCurrentTrack();
       }
-    }, totalDuration * 1000);
+    }, (totalDuration + 2) * 1000);
   }
 
-  // Track 2: Bags Anthem - Upbeat, energetic
+  // Track 2: Bags Anthem - Gentle, uplifting
   private playBagsAnthem(): void {
     if (!this.audioContext || !this.gainNode) return;
 
-    // Energetic synth melody in E major
+    // Gentle uplifting melody - longer phrases, more space
     const notes = [
-      { freq: 659.25, duration: 0.15 },  // E5
-      { freq: 659.25, duration: 0.15 },  // E5
-      { freq: 783.99, duration: 0.3 },   // G5
-      { freq: 659.25, duration: 0.15 },  // E5
-      { freq: 587.33, duration: 0.15 },  // D5
-      { freq: 523.25, duration: 0.3 },   // C5
-      { freq: 587.33, duration: 0.15 },  // D5
-      { freq: 659.25, duration: 0.3 },   // E5
-      { freq: 0, duration: 0.15 },       // Rest
-      { freq: 783.99, duration: 0.15 },  // G5
-      { freq: 880.00, duration: 0.15 },  // A5
-      { freq: 783.99, duration: 0.3 },   // G5
-      { freq: 659.25, duration: 0.15 },  // E5
-      { freq: 523.25, duration: 0.15 },  // C5
-      { freq: 587.33, duration: 0.15 },  // D5
-      { freq: 659.25, duration: 0.45 },  // E5
-      { freq: 0, duration: 0.3 },        // Rest
+      { freq: 329.63, duration: 0.8 },   // E4
+      { freq: 392.00, duration: 0.6 },   // G4
+      { freq: 493.88, duration: 1.0 },   // B4
+      { freq: 0, duration: 0.6 },        // Rest
+      { freq: 440.00, duration: 0.8 },   // A4
+      { freq: 392.00, duration: 0.6 },   // G4
+      { freq: 329.63, duration: 1.2 },   // E4
+      { freq: 0, duration: 1.0 },        // Long rest
+
+      { freq: 392.00, duration: 0.6 },   // G4
+      { freq: 440.00, duration: 0.8 },   // A4
+      { freq: 493.88, duration: 0.8 },   // B4
+      { freq: 523.25, duration: 1.0 },   // C5
+      { freq: 0, duration: 0.8 },        // Rest
+      { freq: 493.88, duration: 0.6 },   // B4
+      { freq: 440.00, duration: 0.8 },   // A4
+      { freq: 392.00, duration: 1.2 },   // G4
+      { freq: 0, duration: 1.2 },        // Long rest
+
+      { freq: 329.63, duration: 0.8 },   // E4
+      { freq: 293.66, duration: 0.6 },   // D4
+      { freq: 329.63, duration: 1.0 },   // E4
+      { freq: 392.00, duration: 1.2 },   // G4
+      { freq: 0, duration: 2.0 },        // Very long rest
     ];
 
     const bass = [
-      { freq: 164.81, duration: 0.3 },   // E3
-      { freq: 0, duration: 0.3 },
-      { freq: 130.81, duration: 0.3 },   // C3
-      { freq: 0, duration: 0.3 },
-      { freq: 146.83, duration: 0.3 },   // D3
-      { freq: 0, duration: 0.15 },
-      { freq: 164.81, duration: 0.45 },  // E3
-      { freq: 0, duration: 0.15 },
-      { freq: 196.00, duration: 0.3 },   // G3
-      { freq: 0, duration: 0.3 },
-      { freq: 130.81, duration: 0.3 },   // C3
-      { freq: 146.83, duration: 0.3 },   // D3
-      { freq: 164.81, duration: 0.6 },   // E3
+      { freq: 164.81, duration: 3.5 },   // E3
+      { freq: 0, duration: 1.0 },
+      { freq: 130.81, duration: 3.5 },   // C3
+      { freq: 0, duration: 1.0 },
+      { freq: 146.83, duration: 3.0 },   // D3
+      { freq: 0, duration: 1.0 },
+      { freq: 164.81, duration: 3.5 },   // E3
+      { freq: 0, duration: 2.0 },
     ];
 
-    let time = this.audioContext.currentTime;
+    let time = this.audioContext.currentTime + 0.1;
     const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
 
     notes.forEach((note) => {
       if (note.freq > 0) {
-        this.playNote(note.freq, time, note.duration * 0.85, 0.10);
+        this.playNote(note.freq, time, note.duration * 0.85, 0.07, "sine");
       }
       time += note.duration;
     });
 
-    let bassTime = this.audioContext.currentTime;
+    let bassTime = this.audioContext.currentTime + 0.1;
     bass.forEach((note) => {
       if (note.freq > 0) {
-        this.playNote(note.freq, bassTime, note.duration * 0.9, 0.08);
+        this.playNote(note.freq, bassTime, note.duration * 0.9, 0.03, "triangle");
       }
       bassTime += note.duration;
     });
@@ -678,59 +698,66 @@ export class WorldScene extends Phaser.Scene {
       if (this.musicPlaying) {
         this.playCurrentTrack();
       }
-    }, totalDuration * 1000);
+    }, (totalDuration + 2) * 1000);
   }
 
-  // Track 3: Night Market - Chill, mysterious
+  // Track 3: Night Market - Chill, ambient
   private playNightMarket(): void {
     if (!this.audioContext || !this.gainNode) return;
 
-    // Mysterious minor key melody
+    // Chill ambient melody - very spacious and relaxed
     const notes = [
-      { freq: 329.63, duration: 0.4 },   // E4
-      { freq: 311.13, duration: 0.4 },   // Eb4 (D#4)
-      { freq: 293.66, duration: 0.4 },   // D4
-      { freq: 261.63, duration: 0.6 },   // C4
-      { freq: 0, duration: 0.2 },        // Rest
-      { freq: 293.66, duration: 0.3 },   // D4
-      { freq: 329.63, duration: 0.3 },   // E4
-      { freq: 392.00, duration: 0.5 },   // G4
-      { freq: 329.63, duration: 0.4 },   // E4
-      { freq: 0, duration: 0.3 },        // Rest
-      { freq: 440.00, duration: 0.3 },   // A4
-      { freq: 392.00, duration: 0.3 },   // G4
-      { freq: 329.63, duration: 0.4 },   // E4
-      { freq: 293.66, duration: 0.6 },   // D4
-      { freq: 0, duration: 0.4 },        // Rest
+      { freq: 293.66, duration: 1.2 },   // D4
+      { freq: 0, duration: 0.8 },        // Rest
+      { freq: 329.63, duration: 1.0 },   // E4
+      { freq: 392.00, duration: 1.4 },   // G4
+      { freq: 0, duration: 1.2 },        // Long rest
+
+      { freq: 440.00, duration: 1.0 },   // A4
+      { freq: 392.00, duration: 0.8 },   // G4
+      { freq: 329.63, duration: 1.4 },   // E4
+      { freq: 0, duration: 1.0 },        // Rest
+
+      { freq: 293.66, duration: 0.8 },   // D4
+      { freq: 261.63, duration: 1.2 },   // C4
+      { freq: 0, duration: 1.5 },        // Long rest
+
+      { freq: 329.63, duration: 1.0 },   // E4
+      { freq: 293.66, duration: 0.8 },   // D4
+      { freq: 261.63, duration: 1.6 },   // C4
+      { freq: 0, duration: 2.0 },        // Very long rest
+
+      { freq: 392.00, duration: 1.2 },   // G4
+      { freq: 329.63, duration: 1.0 },   // E4
+      { freq: 293.66, duration: 1.4 },   // D4
+      { freq: 0, duration: 2.5 },        // Extra long rest before loop
     ];
 
     const pad = [
-      { freq: 130.81, duration: 1.0 },   // C3
-      { freq: 0, duration: 0.2 },
-      { freq: 146.83, duration: 0.8 },   // D3
-      { freq: 0, duration: 0.2 },
-      { freq: 164.81, duration: 1.0 },   // E3
-      { freq: 0, duration: 0.2 },
-      { freq: 196.00, duration: 0.8 },   // G3
-      { freq: 0, duration: 0.2 },
-      { freq: 146.83, duration: 1.2 },   // D3
-      { freq: 0, duration: 0.4 },
+      { freq: 130.81, duration: 4.0 },   // C3
+      { freq: 0, duration: 1.5 },
+      { freq: 110.00, duration: 4.0 },   // A2
+      { freq: 0, duration: 1.5 },
+      { freq: 98.00, duration: 4.0 },    // G2
+      { freq: 0, duration: 1.5 },
+      { freq: 130.81, duration: 5.0 },   // C3
+      { freq: 0, duration: 2.0 },
     ];
 
-    let time = this.audioContext.currentTime;
+    let time = this.audioContext.currentTime + 0.1;
     const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
 
     notes.forEach((note) => {
       if (note.freq > 0) {
-        this.playNote(note.freq, time, note.duration * 0.9, 0.10);
+        this.playNote(note.freq, time, note.duration * 0.9, 0.06, "sine");
       }
       time += note.duration;
     });
 
-    let padTime = this.audioContext.currentTime;
+    let padTime = this.audioContext.currentTime + 0.1;
     pad.forEach((note) => {
       if (note.freq > 0) {
-        this.playNote(note.freq, padTime, note.duration * 0.95, 0.05);
+        this.playNote(note.freq, padTime, note.duration * 0.95, 0.03, "sine");
       }
       padTime += note.duration;
     });
@@ -739,96 +766,107 @@ export class WorldScene extends Phaser.Scene {
       if (this.musicPlaying) {
         this.playCurrentTrack();
       }
-    }, totalDuration * 1000);
+    }, (totalDuration + 2) * 1000);
   }
 
-  // Track 4: Victory March - Triumphant, heroic
+  // Track 4: Victory March - Gentle, hopeful
   private playVictoryMarch(): void {
     if (!this.audioContext || !this.gainNode) return;
 
-    // Heroic fanfare in G major
+    // Gentle hopeful melody - uplifting but calm
     const notes = [
-      { freq: 392.00, duration: 0.2 },   // G4
-      { freq: 392.00, duration: 0.2 },   // G4
-      { freq: 392.00, duration: 0.2 },   // G4
-      { freq: 523.25, duration: 0.6 },   // C5
-      { freq: 0, duration: 0.1 },        // Rest
-      { freq: 493.88, duration: 0.2 },   // B4
-      { freq: 440.00, duration: 0.2 },   // A4
-      { freq: 392.00, duration: 0.4 },   // G4
-      { freq: 523.25, duration: 0.6 },   // C5
-      { freq: 0, duration: 0.1 },        // Rest
-      { freq: 587.33, duration: 0.2 },   // D5
-      { freq: 523.25, duration: 0.2 },   // C5
-      { freq: 493.88, duration: 0.2 },   // B4
-      { freq: 440.00, duration: 0.2 },   // A4
-      { freq: 493.88, duration: 0.2 },   // B4
-      { freq: 523.25, duration: 0.6 },   // C5
-      { freq: 0, duration: 0.3 },        // Rest
+      { freq: 392.00, duration: 1.0 },   // G4
+      { freq: 440.00, duration: 0.8 },   // A4
+      { freq: 493.88, duration: 1.2 },   // B4
+      { freq: 0, duration: 0.8 },        // Rest
+
+      { freq: 523.25, duration: 1.0 },   // C5
+      { freq: 493.88, duration: 0.8 },   // B4
+      { freq: 440.00, duration: 1.2 },   // A4
+      { freq: 0, duration: 1.0 },        // Long rest
+
+      { freq: 392.00, duration: 0.8 },   // G4
+      { freq: 329.63, duration: 0.8 },   // E4
+      { freq: 392.00, duration: 1.0 },   // G4
+      { freq: 440.00, duration: 1.4 },   // A4
+      { freq: 0, duration: 1.2 },        // Long rest
+
+      { freq: 493.88, duration: 1.0 },   // B4
+      { freq: 523.25, duration: 1.2 },   // C5
+      { freq: 0, duration: 0.6 },        // Rest
+      { freq: 493.88, duration: 0.8 },   // B4
+      { freq: 440.00, duration: 1.0 },   // A4
+      { freq: 392.00, duration: 1.6 },   // G4
+      { freq: 0, duration: 2.5 },        // Very long rest before loop
     ];
 
-    const fanfare = [
-      { freq: 196.00, duration: 0.8 },   // G3
-      { freq: 0, duration: 0.1 },
-      { freq: 261.63, duration: 0.4 },   // C4
-      { freq: 196.00, duration: 0.4 },   // G3
-      { freq: 261.63, duration: 0.6 },   // C4
-      { freq: 0, duration: 0.1 },
-      { freq: 293.66, duration: 0.3 },   // D4
-      { freq: 261.63, duration: 0.3 },   // C4
-      { freq: 246.94, duration: 0.3 },   // B3
-      { freq: 220.00, duration: 0.3 },   // A3
-      { freq: 246.94, duration: 0.3 },   // B3
-      { freq: 261.63, duration: 0.6 },   // C4
-      { freq: 0, duration: 0.3 },
+    const bass = [
+      { freq: 196.00, duration: 4.0 },   // G3
+      { freq: 0, duration: 1.0 },
+      { freq: 130.81, duration: 4.0 },   // C3
+      { freq: 0, duration: 1.0 },
+      { freq: 164.81, duration: 3.5 },   // E3
+      { freq: 0, duration: 1.5 },
+      { freq: 196.00, duration: 5.0 },   // G3
+      { freq: 0, duration: 2.0 },
     ];
 
-    let time = this.audioContext.currentTime;
+    let time = this.audioContext.currentTime + 0.1;
     const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
 
     notes.forEach((note) => {
       if (note.freq > 0) {
-        this.playNote(note.freq, time, note.duration * 0.85, 0.12);
+        this.playNote(note.freq, time, note.duration * 0.85, 0.07, "sine");
       }
       time += note.duration;
     });
 
-    let fanfareTime = this.audioContext.currentTime;
-    fanfare.forEach((note) => {
+    let bassTime = this.audioContext.currentTime + 0.1;
+    bass.forEach((note) => {
       if (note.freq > 0) {
-        this.playNote(note.freq, fanfareTime, note.duration * 0.9, 0.07);
+        this.playNote(note.freq, bassTime, note.duration * 0.9, 0.03, "triangle");
       }
-      fanfareTime += note.duration;
+      bassTime += note.duration;
     });
 
     this.musicInterval = window.setTimeout(() => {
       if (this.musicPlaying) {
         this.playCurrentTrack();
       }
-    }, totalDuration * 1000);
+    }, (totalDuration + 2) * 1000);
   }
 
-  private playNote(frequency: number, startTime: number, duration: number, volume: number): void {
+  private playNote(frequency: number, startTime: number, duration: number, volume: number, waveType: OscillatorType = "sine"): void {
     if (!this.audioContext || !this.gainNode) return;
 
     const oscillator = this.audioContext.createOscillator();
     const noteGain = this.audioContext.createGain();
 
-    oscillator.connect(noteGain);
+    // Add a low-pass filter for smoother sound
+    const filter = this.audioContext.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 2000;
+    filter.Q.value = 0.5;
+
+    oscillator.connect(filter);
+    filter.connect(noteGain);
     noteGain.connect(this.gainNode);
 
-    // Square wave for retro chiptune sound
-    oscillator.type = "square";
+    // Use sine wave for clean, smooth sound (triangle for slight warmth)
+    oscillator.type = waveType;
     oscillator.frequency.value = frequency;
 
-    // Envelope for smooth attack/release
+    // Smooth envelope with longer attack/release for ambient feel
+    const attackTime = Math.min(0.08, duration * 0.15);
+    const releaseTime = Math.min(0.15, duration * 0.3);
+
     noteGain.gain.setValueAtTime(0, startTime);
-    noteGain.gain.linearRampToValueAtTime(volume, startTime + 0.02);
-    noteGain.gain.setValueAtTime(volume, startTime + duration - 0.05);
-    noteGain.gain.linearRampToValueAtTime(0, startTime + duration);
+    noteGain.gain.linearRampToValueAtTime(volume, startTime + attackTime);
+    noteGain.gain.setValueAtTime(volume * 0.8, startTime + duration - releaseTime);
+    noteGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
     oscillator.start(startTime);
-    oscillator.stop(startTime + duration);
+    oscillator.stop(startTime + duration + 0.01);
   }
 
   private toggleMusic(): void {
@@ -844,7 +882,7 @@ export class WorldScene extends Phaser.Scene {
     } else {
       this.musicPlaying = true;
       if (this.gainNode) {
-        this.gainNode.gain.value = 0.15;
+        this.gainNode.gain.value = 0.08;
       }
       this.playCurrentTrack();
     }
