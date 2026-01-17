@@ -1976,29 +1976,30 @@ export class WorldScene extends Phaser.Scene {
     nameText.setOrigin(0.5, 0.5);
 
     if (isTreasury) {
-      // Community Rewards Hub tooltip
-      const descText = this.add.text(0, -10, "Community Rewards Hub", {
+      // Community Rewards Hub tooltip - 5% ecosystem fee breakdown
+      const descText = this.add.text(0, -12, "5% Ecosystem Fee", {
         fontFamily: "monospace",
         fontSize: "8px",
         color: "#4ade80",
       });
       descText.setOrigin(0.5, 0.5);
 
-      const infoText = this.add.text(0, 6, "10% goes to strongest communities", {
+      const breakdownText = this.add.text(0, 4, "50% Community | 25% Airdrops\n15% Creator Bonus | 10% Dev", {
         fontFamily: "monospace",
-        fontSize: "7px",
+        fontSize: "6px",
         color: "#9ca3af",
+        align: "center",
       });
-      infoText.setOrigin(0.5, 0.5);
+      breakdownText.setOrigin(0.5, 0.5);
 
-      const clickText = this.add.text(0, 22, "🔍 Click to verify on Solscan", {
+      const clickText = this.add.text(0, 24, "🔍 Click to verify on Solscan", {
         fontFamily: "monospace",
         fontSize: "7px",
         color: "#60a5fa",
       });
       clickText.setOrigin(0.5, 0.5);
 
-      tooltipContainer.add([bg, nameText, descText, infoText, clickText]);
+      tooltipContainer.add([bg, nameText, descText, breakdownText, clickText]);
     } else {
       // Regular building tooltip
       const mcapText = this.add.text(0, -12, building.marketCap ? this.formatMarketCap(building.marketCap) : "N/A", {
