@@ -3,9 +3,9 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "BagsWorld - Living Pixel Art Crypto World",
+  title: "BagsWorld",
   description:
-    "A self-evolving pixel art game world that lives and dies based on real Bags.fm on-chain activity. Launch tokens, watch buildings grow, and earn fees from trading.",
+    "A gamified world powered by real Bags.fm trading on Solana. Launch tokens, watch buildings grow, and earn fees.",
   keywords: ["Solana", "crypto", "game", "Bags.fm", "DeFi", "pixel art", "token launch", "fee share"],
   icons: {
     icon: [
@@ -15,15 +15,15 @@ export const metadata: Metadata = {
     apple: "/favicon.svg",
   },
   openGraph: {
-    title: "BagsWorld - Living Pixel Art Crypto World",
-    description: "A self-evolving pixel art game powered by real Solana trading data. Launch tokens, watch buildings grow based on market cap, and earn fees.",
+    title: "BagsWorld",
+    description: "A gamified world powered by real Bags.fm trading on Solana.",
     type: "website",
     siteName: "BagsWorld",
   },
   twitter: {
     card: "summary_large_image",
-    title: "BagsWorld - Living Pixel Art Crypto World",
-    description: "A self-evolving pixel art game powered by real Solana trading data. Built on Bags.fm.",
+    title: "BagsWorld",
+    description: "A gamified world powered by real Bags.fm trading on Solana.",
   },
 };
 

@@ -33,7 +33,7 @@ const AI_PERSONALITIES: AIPersonality[] = [
   {
     name: "Bags Bot",
     trait: "optimistic",
-    catchphrase: "welcome to BagsWorld, where every bag earns fees 🏛️💰",
+    catchphrase: "watching the world with you",
   },
 ];
 
