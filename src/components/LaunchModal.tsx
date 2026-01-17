@@ -167,6 +167,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           action: "configure-fees",
           data: {
             mint: tokenMint,
+            payer: publicKey?.toBase58(),
             feeClaimers: allFeeClaimers,
           },
         }),

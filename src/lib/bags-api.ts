@@ -278,12 +278,25 @@ class BagsApiClient {
       provider: string;
       providerUsername: string;
       bps: number; // basis points (100 = 1%)
-    }>
+    }>,
+    payer: string
   ): Promise<{
     configId: string;
     totalBps: number;
   }> {
-    const requestBody = { mint, feeClaimers };
+    // Transform to Bags API expected format
+    const claimersArray = feeClaimers.map(fc => ({
+      provider: fc.provider,
+      providerUsername: fc.providerUsername,
+    }));
+    const basisPointsArray = feeClaimers.map(fc => fc.bps);
+
+    const requestBody = {
+      baseMint: mint,
+      payer,
+      claimersArray,
+      basisPointsArray,
+    };
     console.log("Bags API createFeeShareConfig request:", JSON.stringify(requestBody, null, 2));
     try {
       const result = await this.fetch<{ configId: string; totalBps: number }>("/fee-share/config", {
