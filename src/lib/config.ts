@@ -270,6 +270,32 @@ export const ECOSYSTEM_CONFIG = {
   },
 
   // -------------------------------------------------------------------------
+  // DADDYGHOST - The Dev (Trading Agent Character)
+  // -------------------------------------------------------------------------
+  // DaddyGhost (@DaddyGhost) is the developer/trencher who can execute trades
+  dev: {
+    id: "daddyghost",
+    username: "The Dev",
+    provider: "twitter" as const,
+    providerUsername: "DaddyGhost",
+    twitterHandle: "DaddyGhost",
+    mood: "happy" as const,
+    // Trencher personality - in the trenches, making calls, trading
+    quotes: [
+      "yo, you want me to ape into something? just say the word fam",
+      "been in the trenches all day. found some gems. wanna see?",
+      "i can check any token for you - just drop the CA or name",
+      "the dev does not mass dm. the dev builds and trades.",
+      "let's get this bread. what are we buying today?",
+      "i built this whole world. now let me help you trade in it.",
+      "trust the process. i've been doing this since the bear market.",
+      "not financial advice but... *proceeds to give financial advice*",
+    ],
+    // Clicking Dev opens trading assistant
+    interactionType: "trading-agent",
+  },
+
+  // -------------------------------------------------------------------------
   // EXTERNAL LINKS
   // -------------------------------------------------------------------------
   links: {

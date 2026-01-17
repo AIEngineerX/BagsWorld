@@ -282,7 +282,7 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
   {
     mint: "StarterPokeCenter11111111111111111111111111",
     name: "PokeCenter",
-    symbol: "HEAL",
+    symbol: "POKECENTER",
     description: "Welcome trainer! This is where citizens rest and recover. Launch a token to build your own building in BagsWorld!",
     imageUrl: "/assets/buildings/pokecenter.png",
     creator: "BagsWorld",
@@ -492,6 +492,24 @@ export async function POST(request: NextRequest) {
       isFinn: true, // Special flag for the game to recognize
     } as FeeEarner & { isFinn: boolean };
 
+    // ALWAYS add The Dev (DaddyGhost) as the trading agent character
+    // DaddyGhost (@DaddyGhost) is the developer who built BagsWorld
+    const dev: FeeEarner = {
+      rank: 0, // Special rank
+      username: "The Dev",
+      providerUsername: "DaddyGhost",
+      provider: "twitter" as FeeEarner["provider"],
+      wallet: "daddyghost-dev-permanent",
+      avatarUrl: undefined, // Will use special dev sprite
+      lifetimeEarnings: 420690, // Trencher numbers
+      earnings24h: 0,
+      change24h: 0,
+      tokenCount: 0,
+      topToken: undefined,
+      isDev: true, // Special flag for the game to recognize
+    } as FeeEarner & { isDev: boolean };
+
+    earners.unshift(dev); // The Dev fourth
     earners.unshift(finn); // Finn third
     earners.unshift(ash); // Ash second
     earners.unshift(toly); // Toly always first

@@ -474,6 +474,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private playCurrentTrack(): void {
+    // Clear any existing scheduled track to prevent overlapping
+    if (this.musicInterval) {
+      clearTimeout(this.musicInterval);
+      this.musicInterval = null;
+    }
+
     switch (this.currentTrack) {
       case 0:
         this.playPokemonMelody();
@@ -1261,11 +1267,12 @@ export class WorldScene extends Phaser.Scene {
         const isToly = character.isToly === true;
         const isAsh = character.isAsh === true;
         const isFinn = character.isFinn === true;
-        const isSpecial = isToly || isAsh || isFinn;
+        const isDev = character.isDev === true;
+        const isSpecial = isToly || isAsh || isFinn || isDev;
         const variant = index % 9;
         this.characterVariants.set(character.id, variant);
 
-        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : this.getCharacterTexture(character.mood, variant);
+        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : this.getCharacterTexture(character.mood, variant);
         sprite = this.add.sprite(character.x, character.y, textureKey);
         sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
         sprite.setInteractive();
@@ -1280,6 +1287,8 @@ export class WorldScene extends Phaser.Scene {
             this.showAshTooltip(sprite!);
           } else if (isFinn) {
             this.showFinnTooltip(sprite!);
+          } else if (isDev) {
+            this.showDevTooltip(sprite!);
           } else {
             this.showCharacterTooltip(character, sprite!);
           }
@@ -1300,6 +1309,9 @@ export class WorldScene extends Phaser.Scene {
           } else if (isFinn) {
             // Finn opens the Bags.fm guide chat
             window.dispatchEvent(new CustomEvent("bagsworld-finn-click"));
+          } else if (isDev) {
+            // The Dev opens the trading agent chat
+            window.dispatchEvent(new CustomEvent("bagsworld-dev-click"));
           } else if (character.profileUrl) {
             // Open profile page in new tab
             window.open(character.profileUrl, "_blank");
@@ -1382,6 +1394,28 @@ export class WorldScene extends Phaser.Scene {
           });
         }
 
+        // Add purple/cyan glow effect for The Dev
+        if (isDev) {
+          const glow = this.add.sprite(character.x, character.y, "glow");
+          glow.setScale(1.0);
+          glow.setAlpha(0.3);
+          glow.setTint(0x8b5cf6); // Purple (hacker vibes)
+          glow.setDepth(10);
+
+          // Store reference to glow for cleanup
+          (sprite as any).devGlow = glow;
+
+          this.tweens.add({
+            targets: glow,
+            alpha: 0.5,
+            scale: 1.2,
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+
         this.characterSprites.set(character.id, sprite);
       } else {
         // Update special character glow positions if they exist
@@ -1400,13 +1434,19 @@ export class WorldScene extends Phaser.Scene {
           finnGlow.x = sprite.x;
           finnGlow.y = sprite.y;
         }
+        const devGlow = (sprite as any).devGlow;
+        if (devGlow) {
+          devGlow.x = sprite.x;
+          devGlow.y = sprite.y;
+        }
       }
 
       // Update texture based on mood (skip for special characters)
       const isToly = character.isToly === true;
       const isAsh = character.isAsh === true;
       const isFinn = character.isFinn === true;
-      if (!isToly && !isAsh && !isFinn) {
+      const isDev = character.isDev === true;
+      if (!isToly && !isAsh && !isFinn && !isDev) {
         const variant = this.characterVariants.get(character.id) ?? 0;
         const expectedTexture = this.getCharacterTexture(character.mood, variant);
         if (sprite.texture.key !== expectedTexture) {
@@ -1726,6 +1766,47 @@ export class WorldScene extends Phaser.Scene {
       fontFamily: "monospace",
       fontSize: "7px",
       color: "#fbbf24",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showDevTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 165, 68, 0x0a0a0f, 0.95);
+    bg.setStrokeStyle(2, 0x8b5cf6); // Purple border (hacker vibes)
+
+    const nameText = this.add.text(0, -22, "👻 The Dev", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#8b5cf6",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "@DaddyGhost • Trading Agent", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "in the trenches. let's trade.", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "💰 Click to talk trading", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#4ade80",
     });
     clickText.setOrigin(0.5, 0.5);
 
