@@ -77,9 +77,10 @@ export const ECOSYSTEM_CONFIG = {
   // CITIZEN CONFIGURATION
   // -------------------------------------------------------------------------
   // Citizens are X/Twitter accounts that receive fee shares
+  // Note: Bags API v2 only supports twitter, github, kick for token launch fee claimers
   citizens: {
     maxPopulation: 15,
-    supportedProviders: ["twitter", "tiktok", "instagram", "github", "kick"] as const,
+    supportedProviders: ["twitter", "github", "kick"] as const,
   },
 
   // -------------------------------------------------------------------------
