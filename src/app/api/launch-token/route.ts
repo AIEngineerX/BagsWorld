@@ -233,7 +233,7 @@ async function handleLookupWallet(
   try {
     const result = await api.getWalletByUsername(
       data.provider,
-      data.username.replace("@", "")
+      data.username.replace(/@/g, "").trim()
     );
 
     return NextResponse.json({
