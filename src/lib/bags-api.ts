@@ -285,10 +285,8 @@ class BagsApiClient {
     totalBps: number;
   }> {
     // Transform to Bags API expected format
-    const claimersArray = feeClaimers.map(fc => ({
-      provider: fc.provider,
-      providerUsername: fc.providerUsername,
-    }));
+    // claimersArray is strings in format "provider:username"
+    const claimersArray = feeClaimers.map(fc => `${fc.provider}:${fc.providerUsername}`);
     const basisPointsArray = feeClaimers.map(fc => fc.bps);
 
     const requestBody = {
