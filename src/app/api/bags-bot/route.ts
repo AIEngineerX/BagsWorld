@@ -149,8 +149,11 @@ async function handleChat(
 
   // Use Claude API if available for general chat
   if (ANTHROPIC_API_KEY) {
+    console.log("Using Claude API for chat response");
     const response = await generateClaudeBotResponse(personality, worldState, userMessage, chatHistory);
     return NextResponse.json({ action: response });
+  } else {
+    console.log("ANTHROPIC_API_KEY not set, using fallback responses");
   }
 
   // Fallback response
@@ -648,13 +651,18 @@ ${worldState.topBuildings?.length ? `- Top token: $${worldState.topBuildings[0].
       }),
     });
 
-    if (!response.ok) throw new Error("Claude API error");
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Claude API error:", response.status, errorText);
+      throw new Error(`Claude API error: ${response.status}`);
+    }
 
     const data = await response.json();
     const content = data.content[0]?.text || "...";
 
     return { type: "speak", message: content };
-  } catch {
+  } catch (error) {
+    console.error("generateClaudeBotResponse error:", error);
     return generateFallbackBotResponse(personality, worldState, userMessage);
   }
 }
