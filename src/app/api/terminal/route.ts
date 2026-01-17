@@ -42,6 +42,20 @@ export interface TokenSafety {
   warnings: string[];
 }
 
+// BagsWorld hot token interface
+export interface BagsWorldToken {
+  mint: string;
+  name: string;
+  symbol: string;
+  imageUrl?: string;
+  price: number;
+  volume24h: number;
+  lifetimeFees: number;
+  createdAt: number;
+  creator: string;
+  isFeatured?: boolean;
+}
+
 interface TerminalRequestBody {
   action:
     | "trending"
@@ -50,7 +64,8 @@ interface TerminalRequestBody {
     | "token-safety"
     | "quote"
     | "ultra-order"
-    | "ultra-execute";
+    | "ultra-execute"
+    | "bags-hot";
   data?: {
     // For search
     query?: string;
@@ -104,6 +119,9 @@ export async function POST(request: Request) {
       case "ultra-execute":
         return handleUltraExecute(data);
 
+      case "bags-hot":
+        return handleBagsHot(data?.limit);
+
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
@@ -133,6 +151,8 @@ export async function GET(request: Request) {
     case "token-safety":
       if (!mint) return NextResponse.json({ error: "Missing mint" }, { status: 400 });
       return handleTokenSafety(mint);
+    case "bags-hot":
+      return handleBagsHot(limit);
     default:
       return handleTrending(limit);
   }
@@ -475,6 +495,83 @@ async function handleUltraExecute(data?: TerminalRequestBody["data"]): Promise<N
     console.error("Ultra execute error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Execute failed" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Get hot tokens launched on BagsWorld
+ * Fetches from global database and enriches with Jupiter price data
+ */
+async function handleBagsHot(limit: number = 10): Promise<NextResponse> {
+  try {
+    // Fetch BagsWorld tokens from global database
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const globalRes = await fetch(`${baseUrl}/api/global-tokens`);
+
+    if (!globalRes.ok) {
+      return NextResponse.json({
+        success: true,
+        tokens: [],
+        source: "bagsworld",
+        message: "No BagsWorld tokens found",
+      });
+    }
+
+    const globalData = await globalRes.json();
+
+    if (!globalData.configured || !globalData.tokens || globalData.tokens.length === 0) {
+      return NextResponse.json({
+        success: true,
+        tokens: [],
+        source: "bagsworld",
+        message: "No BagsWorld tokens found",
+      });
+    }
+
+    // Get mints for price lookup
+    const mints = globalData.tokens.map((t: any) => t.mint);
+
+    // Fetch prices from Jupiter
+    let prices: Record<string, { price: string }> = {};
+    try {
+      prices = await jupiter.getTokenPrices(mints);
+    } catch (e) {
+      console.error("Price fetch error:", e);
+    }
+
+    // Transform and sort by volume/fees
+    const tokens: BagsWorldToken[] = globalData.tokens.map((t: any) => ({
+      mint: t.mint,
+      name: t.name,
+      symbol: t.symbol,
+      imageUrl: t.image_url,
+      price: prices[t.mint] ? parseFloat(prices[t.mint].price) : 0,
+      volume24h: t.volume_24h || 0,
+      lifetimeFees: t.lifetime_fees || 0,
+      createdAt: t.created_at ? new Date(t.created_at).getTime() : 0,
+      creator: t.creator_wallet || "",
+      isFeatured: t.is_featured || false,
+    }));
+
+    // Sort by: featured first, then by volume (descending)
+    tokens.sort((a, b) => {
+      if (a.isFeatured && !b.isFeatured) return -1;
+      if (!a.isFeatured && b.isFeatured) return 1;
+      return b.volume24h - a.volume24h;
+    });
+
+    return NextResponse.json({
+      success: true,
+      tokens: tokens.slice(0, limit),
+      total: tokens.length,
+      source: "bagsworld",
+    });
+  } catch (error) {
+    console.error("BagsWorld hot error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to fetch BagsWorld tokens" },
       { status: 500 }
     );
   }

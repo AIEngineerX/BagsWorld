@@ -6,8 +6,21 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { VersionedTransaction } from "@solana/web3.js";
 import type { TrendingToken, NewPair, TokenSafety } from "@/lib/types";
 
-type TerminalTab = "trending" | "new-pairs" | "search" | "trade";
+type TerminalTab = "bags" | "trending" | "new-pairs" | "search" | "trade";
 type TradeDirection = "buy" | "sell";
+
+interface BagsWorldToken {
+  mint: string;
+  name: string;
+  symbol: string;
+  imageUrl?: string;
+  price: number;
+  volume24h: number;
+  lifetimeFees: number;
+  createdAt: number;
+  creator: string;
+  isFeatured?: boolean;
+}
 
 interface TradingTerminalProps {
   isOpen: boolean;
@@ -48,7 +61,8 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
 
-  const [activeTab, setActiveTab] = useState<TerminalTab>("trending");
+  const [activeTab, setActiveTab] = useState<TerminalTab>("bags");
+  const [bagsTokens, setBagsTokens] = useState<BagsWorldToken[]>([]);
   const [trending, setTrending] = useState<TrendingToken[]>([]);
   const [newPairs, setNewPairs] = useState<NewPair[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -57,7 +71,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Trade state
-  const [selectedToken, setSelectedToken] = useState<TrendingToken | NewPair | SearchResult | null>(null);
+  const [selectedToken, setSelectedToken] = useState<TrendingToken | NewPair | SearchResult | BagsWorldToken | null>(null);
   const [tradeDirection, setTradeDirection] = useState<TradeDirection>("buy");
   const [tradeAmount, setTradeAmount] = useState<number>(0.1);
   const [slippage, setSlippage] = useState<number>(500);
@@ -69,9 +83,25 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
   // Fetch data on tab change
   useEffect(() => {
     if (!isOpen) return;
-    if (activeTab === "trending") fetchTrending();
+    if (activeTab === "bags") fetchBagsHot();
+    else if (activeTab === "trending") fetchTrending();
     else if (activeTab === "new-pairs") fetchNewPairs();
   }, [isOpen, activeTab]);
+
+  const fetchBagsHot = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/terminal?action=bags-hot&limit=6");
+      const data = await res.json();
+      if (data.success) setBagsTokens(data.tokens || []);
+      else setError(data.error || "Failed to fetch");
+    } catch {
+      setError("Failed to fetch BagsWorld tokens");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchTrending = async () => {
     setIsLoading(true);
@@ -173,7 +203,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
     }
   }, [selectedToken, tradeAmount, slippage, tradeDirection, activeTab, connected, fetchUltraOrder]);
 
-  const handleSelectToken = (token: TrendingToken | NewPair | SearchResult) => {
+  const handleSelectToken = (token: TrendingToken | NewPair | SearchResult | BagsWorldToken) => {
     setSelectedToken(token);
     setActiveTab("trade");
     setUltraOrder(null);
@@ -247,17 +277,19 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
             <span className="font-pixel text-bags-green text-sm">TERMINAL</span>
             <span className="font-pixel text-[8px] text-blue-400 bg-blue-900/30 px-1">JUPITER</span>
             <div className="flex gap-1">
-              {(["trending", "new-pairs", "search", "trade"] as TerminalTab[]).map((tab) => (
+              {(["bags", "trending", "new-pairs", "search", "trade"] as TerminalTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`font-pixel text-[10px] px-3 py-1 border-2 transition-all ${
                     activeTab === tab
-                      ? "bg-bags-green text-black border-bags-green"
+                      ? tab === "bags"
+                        ? "bg-bags-gold text-black border-bags-gold"
+                        : "bg-bags-green text-black border-bags-green"
                       : "bg-transparent text-gray-400 border-gray-600 hover:border-bags-green hover:text-bags-green"
                   }`}
                 >
-                  {tab === "trending" ? "HOT" : tab === "new-pairs" ? "NEW" : tab === "search" ? "SEARCH" : "TRADE"}
+                  {tab === "bags" ? "BAGS" : tab === "trending" ? "HOT" : tab === "new-pairs" ? "NEW" : tab === "search" ? "SEARCH" : "TRADE"}
                 </button>
               ))}
             </div>
@@ -278,6 +310,40 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
             </div>
           ) : (
             <>
+              {/* BagsWorld Hot Tokens */}
+              {activeTab === "bags" && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-pixel text-[10px] text-bags-gold">LAUNCHED ON BAGSWORLD</span>
+                    <span className="font-pixel text-[8px] text-gray-500">Powered by Bags.fm</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {bagsTokens.length === 0 ? (
+                      <p className="font-pixel text-gray-500 text-xs col-span-3 text-center py-8">No BagsWorld tokens yet. Launch one!</p>
+                    ) : bagsTokens.map((token) => (
+                      <button
+                        key={token.mint}
+                        onClick={() => handleSelectToken(token)}
+                        className="bg-bags-dark border-2 border-gray-600 hover:border-bags-gold p-2 text-left transition-all group relative"
+                      >
+                        {token.isFeatured && (
+                          <span className="absolute top-1 right-1 font-pixel text-[8px] text-bags-gold">★</span>
+                        )}
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-pixel text-[10px] text-bags-gold">${token.price > 0 ? token.price.toFixed(6) : "—"}</span>
+                          <span className="font-pixel text-[8px] text-gray-400">VOL: {formatVolume(token.volume24h)}</span>
+                        </div>
+                        <div className="font-pixel text-white text-sm group-hover:text-bags-gold truncate">${token.symbol}</div>
+                        <div className="font-pixel text-gray-500 text-[10px] truncate">{token.name}</div>
+                        {token.lifetimeFees > 0 && (
+                          <div className="font-pixel text-[8px] text-bags-green mt-1">FEES: ${token.lifetimeFees.toFixed(2)}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Trending */}
               {activeTab === "trending" && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
