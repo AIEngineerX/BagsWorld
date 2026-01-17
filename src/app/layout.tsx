@@ -7,6 +7,13 @@ export const metadata: Metadata = {
   description:
     "A gamified world powered by real Bags.fm trading on Solana. Launch tokens, watch buildings grow, and earn fees.",
   keywords: ["Solana", "crypto", "game", "Bags.fm", "DeFi", "pixel art", "token launch", "fee share"],
+  manifest: "/manifest.json",
+  themeColor: "#4ade80",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+  },
   icons: {
     icon: [
       { url: "/favicon-hd.svg", type: "image/svg+xml" },
@@ -16,6 +23,11 @@ export const metadata: Metadata = {
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BagsWorld",
   },
   openGraph: {
     title: "BagsWorld",
