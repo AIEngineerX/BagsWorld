@@ -24,6 +24,7 @@ interface LaunchRequestBody {
     website?: string;
     // For configure-fees
     mint?: string;
+    payer?: string; // Wallet address of the payer
     feeClaimers?: Array<{
       provider: string;
       providerUsername: string;
@@ -150,9 +151,9 @@ async function handleConfigureFees(
   api: BagsApiClient,
   data: LaunchRequestBody["data"]
 ): Promise<NextResponse> {
-  if (!data.mint || !data.feeClaimers?.length) {
+  if (!data.mint || !data.feeClaimers?.length || !data.payer) {
     return NextResponse.json(
-      { error: "Missing required fields: mint, feeClaimers" },
+      { error: "Missing required fields: mint, feeClaimers, payer" },
       { status: 400 }
     );
   }
@@ -169,11 +170,12 @@ async function handleConfigureFees(
   // Debug log
   console.log("Configure fees request:", {
     mint: data.mint,
+    payer: data.payer,
     feeClaimers: JSON.stringify(data.feeClaimers, null, 2),
   });
 
   try {
-    const result = await api.createFeeShareConfig(data.mint, data.feeClaimers);
+    const result = await api.createFeeShareConfig(data.mint, data.feeClaimers, data.payer);
 
     return NextResponse.json({
       success: true,
