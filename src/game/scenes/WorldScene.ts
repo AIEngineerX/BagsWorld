@@ -38,6 +38,12 @@ export class WorldScene extends Phaser.Scene {
   // Store bound event handlers for cleanup
   private boundToggleMusic: (() => void) | null = null;
   private boundSkipTrack: (() => void) | null = null;
+  private boundBotEffect: ((e: Event) => void) | null = null;
+  private boundBotAnimal: ((e: Event) => void) | null = null;
+
+  // Announcement text object
+  private announcementText: Phaser.GameObjects.Text | null = null;
+  private announcementBg: Phaser.GameObjects.Rectangle | null = null;
 
   constructor() {
     super({ key: "WorldScene" });
@@ -92,6 +98,14 @@ export class WorldScene extends Phaser.Scene {
     this.boundSkipTrack = () => this.skipTrack();
     window.addEventListener("bagsworld-skip-track", this.boundSkipTrack);
 
+    // Listen for bot effect commands
+    this.boundBotEffect = (e: Event) => this.handleBotEffect(e as CustomEvent);
+    window.addEventListener("bagsworld-bot-effect", this.boundBotEffect);
+
+    // Listen for bot animal commands
+    this.boundBotAnimal = (e: Event) => this.handleBotAnimal(e as CustomEvent);
+    window.addEventListener("bagsworld-bot-animal", this.boundBotAnimal);
+
     // Register cleanup on scene shutdown
     this.events.on("shutdown", this.cleanup, this);
   }
@@ -106,6 +120,14 @@ export class WorldScene extends Phaser.Scene {
     if (this.boundSkipTrack) {
       window.removeEventListener("bagsworld-skip-track", this.boundSkipTrack);
       this.boundSkipTrack = null;
+    }
+    if (this.boundBotEffect) {
+      window.removeEventListener("bagsworld-bot-effect", this.boundBotEffect);
+      this.boundBotEffect = null;
+    }
+    if (this.boundBotAnimal) {
+      window.removeEventListener("bagsworld-bot-animal", this.boundBotAnimal);
+      this.boundBotAnimal = null;
     }
 
     // Stop music and clean up audio context
@@ -2321,5 +2343,259 @@ export class WorldScene extends Phaser.Scene {
       y: a.sprite.y,
       isIdle: a.isIdle,
     }));
+  }
+
+  // ===========================================
+  // BOT EFFECT HANDLERS
+  // ===========================================
+
+  private handleBotEffect(event: CustomEvent): void {
+    const { effectType, x = 400, y = 300 } = event.detail || {};
+
+    switch (effectType) {
+      case "fireworks":
+        this.playFireworks(x, y);
+        break;
+      case "celebration":
+        this.playCelebration(x, y);
+        break;
+      case "coins":
+        this.playCoinsRain();
+        break;
+      case "hearts":
+        this.playHeartsEffect(x, y);
+        break;
+      case "confetti":
+        this.playConfetti();
+        break;
+      case "stars":
+        this.playStarBurst();
+        break;
+      default:
+        console.log("[WorldScene] Unknown effect:", effectType);
+    }
+  }
+
+  private handleBotAnimal(event: CustomEvent): void {
+    const { animalType, animalAction } = event.detail || {};
+
+    if (!animalType) return;
+
+    switch (animalAction) {
+      case "pet":
+        this.petAnimal(animalType);
+        break;
+      case "scare":
+        this.scareAnimal(animalType);
+        break;
+      case "call":
+        this.callAnimal(animalType, 400); // Call to center
+        break;
+      case "feed":
+        this.feedAnimal(animalType);
+        break;
+      default:
+        this.petAnimal(animalType); // Default to pet
+    }
+  }
+
+  // Feed animal - similar to pet but with food particle
+  feedAnimal(animalType: Animal["type"]): void {
+    const animal = this.animals.find((a) => a.type === animalType);
+    if (animal) {
+      // Stop the animal
+      animal.isIdle = true;
+      animal.idleTimer = 0;
+
+      // Eating animation - bounce and grow slightly
+      this.tweens.add({
+        targets: animal.sprite,
+        scaleX: animal.sprite.scaleX * 1.1,
+        scaleY: animal.sprite.scaleY * 1.1,
+        duration: 200,
+        yoyo: true,
+        repeat: 2,
+        ease: "Bounce.easeOut",
+      });
+
+      // Food particles (using star as food)
+      const food = this.add.particles(animal.sprite.x, animal.sprite.y - 10, "star", {
+        speed: { min: 10, max: 30 },
+        angle: { min: 220, max: 320 },
+        lifespan: 800,
+        quantity: 3,
+        scale: { start: 0.3, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: 0xffd700,
+      });
+
+      food.explode(3);
+
+      this.time.delayedCall(800, () => {
+        food.destroy();
+      });
+    }
+  }
+
+  // Fireworks effect - multiple bursts in the sky
+  playFireworks(x: number = 400, y: number = 200): void {
+    const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xffffff];
+
+    // Launch multiple firework bursts
+    for (let i = 0; i < 5; i++) {
+      this.time.delayedCall(i * 300, () => {
+        const burstX = x + (Math.random() - 0.5) * 400;
+        const burstY = y + (Math.random() - 0.5) * 100;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        // Flash effect
+        this.cameras.main.flash(50, 255, 255, 255, true);
+
+        // Firework burst
+        const burst = this.add.particles(burstX, burstY, "star", {
+          speed: { min: 100, max: 200 },
+          angle: { min: 0, max: 360 },
+          lifespan: 1200,
+          quantity: 30,
+          scale: { start: 0.8, end: 0 },
+          alpha: { start: 1, end: 0 },
+          tint: color,
+          gravityY: 100,
+          blendMode: Phaser.BlendModes.ADD,
+        });
+
+        burst.explode(30);
+
+        // Sparkle trail
+        const trail = this.add.particles(burstX, burstY, "coin", {
+          speed: { min: 50, max: 150 },
+          angle: { min: 0, max: 360 },
+          lifespan: 800,
+          quantity: 15,
+          scale: { start: 0.4, end: 0 },
+          alpha: { start: 0.8, end: 0 },
+          tint: color,
+        });
+
+        trail.explode(15);
+
+        this.time.delayedCall(1500, () => {
+          burst.destroy();
+          trail.destroy();
+        });
+      });
+    }
+  }
+
+  // Hearts floating effect
+  playHeartsEffect(x: number = 400, y: number = 300): void {
+    // Create hearts using star particles with pink tint
+    const hearts = this.add.particles(x, y, "star", {
+      speed: { min: 30, max: 80 },
+      angle: { min: 220, max: 320 },
+      lifespan: 2000,
+      quantity: 20,
+      scale: { start: 0.8, end: 0 },
+      alpha: { start: 1, end: 0 },
+      tint: [0xff69b4, 0xff1493, 0xff6b6b, 0xffb6c1],
+      gravityY: -30, // Float upward
+    });
+
+    hearts.explode(20);
+
+    // Screen tint
+    this.cameras.main.flash(200, 255, 182, 193, true);
+
+    this.time.delayedCall(2500, () => {
+      hearts.destroy();
+    });
+  }
+
+  // Confetti effect - colorful particles falling from top
+  playConfetti(): void {
+    const confetti = this.add.particles(400, -20, "star", {
+      x: { min: 0, max: 800 },
+      y: -20,
+      lifespan: 4000,
+      speedY: { min: 100, max: 200 },
+      speedX: { min: -50, max: 50 },
+      scale: { start: 0.6, end: 0.2 },
+      alpha: { start: 1, end: 0.5 },
+      tint: [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xffa500],
+      rotate: { min: 0, max: 360 },
+      quantity: 3,
+      frequency: 50,
+      gravityY: 50,
+    });
+
+    confetti.setDepth(100);
+
+    // Stop after 3 seconds
+    this.time.delayedCall(3000, () => {
+      confetti.stop();
+    });
+
+    // Destroy after particles fade
+    this.time.delayedCall(7000, () => {
+      confetti.destroy();
+    });
+  }
+
+  // Show announcement banner
+  showAnnouncement(text: string, duration: number = 5000): void {
+    // Remove existing announcement
+    if (this.announcementText) {
+      this.announcementText.destroy();
+      this.announcementText = null;
+    }
+    if (this.announcementBg) {
+      this.announcementBg.destroy();
+      this.announcementBg = null;
+    }
+
+    // Create background
+    this.announcementBg = this.add.rectangle(400, 50, 600, 40, 0x000000, 0.8);
+    this.announcementBg.setStrokeStyle(2, 0x4ade80);
+    this.announcementBg.setDepth(300);
+    this.announcementBg.setAlpha(0);
+
+    // Create text
+    this.announcementText = this.add.text(400, 50, text, {
+      fontFamily: "monospace",
+      fontSize: "14px",
+      color: "#4ade80",
+      align: "center",
+    });
+    this.announcementText.setOrigin(0.5, 0.5);
+    this.announcementText.setDepth(301);
+    this.announcementText.setAlpha(0);
+
+    // Animate in
+    this.tweens.add({
+      targets: [this.announcementBg, this.announcementText],
+      alpha: 1,
+      y: 60,
+      duration: 300,
+      ease: "Back.easeOut",
+    });
+
+    // Animate out after duration
+    this.time.delayedCall(duration, () => {
+      if (this.announcementBg && this.announcementText) {
+        this.tweens.add({
+          targets: [this.announcementBg, this.announcementText],
+          alpha: 0,
+          y: 40,
+          duration: 300,
+          ease: "Back.easeIn",
+          onComplete: () => {
+            this.announcementText?.destroy();
+            this.announcementBg?.destroy();
+            this.announcementText = null;
+            this.announcementBg = null;
+          }
+        });
+      }
+    });
   }
 }
