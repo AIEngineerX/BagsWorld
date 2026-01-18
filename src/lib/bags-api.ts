@@ -392,6 +392,7 @@ class BagsApiClient {
 
       if (!configId) {
         console.error("Could not find configId in response. Full response:", result);
+        throw new Error("Fee share configuration failed - no config key received from API. The API response format may have changed.");
       }
 
       return {
