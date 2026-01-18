@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import bs58 from "bs58";
 
 interface WorldConfig {
   maxBuildings: number;
@@ -80,7 +81,7 @@ function ConfigSection({ title, children, defaultOpen = false }: { title: string
 }
 
 export function AdminConsole() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signMessage } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<WorldConfig | null>(null);
   const [defaults, setDefaults] = useState<WorldConfig | null>(null);
@@ -90,20 +91,90 @@ export function AdminConsole() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editedConfig, setEditedConfig] = useState<WorldConfig | null>(null);
 
+  // Authentication state
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
   const isAdmin = connected && publicKey?.toBase58() === ADMIN_WALLET;
+  const isAuthenticated = isAdmin && sessionToken !== null;
+
+  // Authenticate with wallet signature
+  const authenticate = useCallback(async () => {
+    if (!publicKey || !signMessage) {
+      setError("Wallet not connected or doesn't support signing");
+      return false;
+    }
+
+    try {
+      setIsAuthenticating(true);
+      setError(null);
+
+      // 1. Get challenge from server
+      const challengeRes = await fetch(
+        `/api/admin/config?action=challenge&wallet=${publicKey.toBase58()}`
+      );
+      const challengeData = await challengeRes.json();
+
+      if (!challengeRes.ok) {
+        throw new Error(challengeData.error || "Failed to get challenge");
+      }
+
+      // 2. Sign the challenge with wallet
+      const message = challengeData.challenge;
+      const messageBytes = new TextEncoder().encode(message);
+      const signatureBytes = await signMessage(messageBytes);
+      const signature = bs58.encode(signatureBytes);
+
+      // 3. Send signature to authenticate
+      const authRes = await fetch("/api/admin/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "authenticate",
+          wallet: publicKey.toBase58(),
+          signature,
+          message,
+        }),
+      });
+
+      const authData = await authRes.json();
+
+      if (!authRes.ok) {
+        throw new Error(authData.error || "Authentication failed");
+      }
+
+      // 4. Store session token
+      setSessionToken(authData.sessionToken);
+      setSuccessMessage("Authenticated successfully!");
+      setTimeout(() => setSuccessMessage(null), 2000);
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Authentication failed");
+      return false;
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }, [publicKey, signMessage]);
 
   const fetchConfig = useCallback(async () => {
-    if (!publicKey) return;
+    if (!publicKey || !sessionToken) return;
 
     try {
       setIsLoading(true);
       setError(null);
 
       const response = await fetch("/api/admin/config", {
-        headers: { "x-admin-wallet": publicKey.toBase58() },
+        headers: { "x-admin-session": sessionToken },
       });
 
-      if (!response.ok) throw new Error("Failed to fetch configuration");
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Session expired, need to re-authenticate
+          setSessionToken(null);
+          throw new Error("Session expired. Please authenticate again.");
+        }
+        throw new Error("Failed to fetch configuration");
+      }
 
       const data = await response.json();
       setConfig(data.config);
@@ -114,16 +185,31 @@ export function AdminConsole() {
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey]);
+  }, [publicKey, sessionToken]);
 
+  // Auto-authenticate when console opens
   useEffect(() => {
-    if (isOpen && isAdmin) {
+    if (isOpen && isAdmin && !isAuthenticated && !isAuthenticating) {
+      authenticate();
+    }
+  }, [isOpen, isAdmin, isAuthenticated, isAuthenticating, authenticate]);
+
+  // Fetch config after authentication
+  useEffect(() => {
+    if (isOpen && isAuthenticated) {
       fetchConfig();
     }
-  }, [isOpen, isAdmin, fetchConfig]);
+  }, [isOpen, isAuthenticated, fetchConfig]);
+
+  // Clear session when wallet disconnects
+  useEffect(() => {
+    if (!connected) {
+      setSessionToken(null);
+    }
+  }, [connected]);
 
   const handleSave = async () => {
-    if (!publicKey || !editedConfig) return;
+    if (!publicKey || !editedConfig || !sessionToken) return;
 
     try {
       setIsSaving(true);
@@ -134,13 +220,19 @@ export function AdminConsole() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-wallet": publicKey.toBase58(),
+          "x-admin-session": sessionToken,
         },
         body: JSON.stringify({ action: "update", updates: editedConfig }),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to save");
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSessionToken(null);
+          throw new Error("Session expired. Please re-authenticate.");
+        }
+        throw new Error(data.error || "Failed to save");
+      }
 
       setConfig(data.config);
       setEditedConfig(data.config);
@@ -154,7 +246,7 @@ export function AdminConsole() {
   };
 
   const handleReset = async () => {
-    if (!publicKey) return;
+    if (!publicKey || !sessionToken) return;
 
     try {
       setIsSaving(true);
@@ -164,13 +256,19 @@ export function AdminConsole() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-wallet": publicKey.toBase58(),
+          "x-admin-session": sessionToken,
         },
         body: JSON.stringify({ action: "reset" }),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to reset");
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSessionToken(null);
+          throw new Error("Session expired. Please re-authenticate.");
+        }
+        throw new Error(data.error || "Failed to reset");
+      }
 
       setConfig(data.config);
       setEditedConfig(data.config);
@@ -235,11 +333,43 @@ export function AdminConsole() {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {isLoading ? (
+            {isAuthenticating ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-3">
+                <p className="font-pixel text-[10px] text-orange-300 animate-pulse">
+                  Sign message in wallet...
+                </p>
+                <p className="font-pixel text-[7px] text-gray-500">
+                  This proves you own the admin wallet
+                </p>
+              </div>
+            ) : !isAuthenticated ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-3">
+                <p className="font-pixel text-[10px] text-orange-300">
+                  Authentication required
+                </p>
+                <button
+                  onClick={authenticate}
+                  className="px-4 py-2 font-pixel text-[9px] bg-orange-600 border border-orange-400 text-white hover:bg-orange-500"
+                >
+                  SIGN TO AUTHENTICATE
+                </button>
+                {error && (
+                  <p className="font-pixel text-[8px] text-red-400">{error}</p>
+                )}
+              </div>
+            ) : isLoading ? (
               <p className="font-pixel text-[10px] text-orange-300 animate-pulse">Loading...</p>
             ) : error ? (
               <div className="bg-red-500/10 p-2 border border-red-500/30">
                 <p className="font-pixel text-[8px] text-red-400">{error}</p>
+                {error.includes("Session expired") && (
+                  <button
+                    onClick={authenticate}
+                    className="mt-2 px-3 py-1 font-pixel text-[8px] bg-orange-600 text-white hover:bg-orange-500"
+                  >
+                    RE-AUTHENTICATE
+                  </button>
+                )}
               </div>
             ) : editedConfig ? (
               <>
