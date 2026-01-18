@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   initAutoClaimAgent,
   startAutoClaimAgent,
@@ -22,31 +22,60 @@ interface AgentRequestBody {
   };
 }
 
-// Verify authorization for agent control
-function isAuthorized(request: Request): boolean {
-  const authHeader = request.headers.get("Authorization");
+/**
+ * Verify authorization for agent control
+ *
+ * SECURITY: Fail closed - if no secret is configured, reject all requests
+ * in production environments. Only allow unauthenticated access in
+ * explicit development mode.
+ */
+function isAuthorized(request: NextRequest): { authorized: boolean; error?: string } {
   const agentSecret = process.env.AGENT_SECRET;
+  const isDevelopment = process.env.NODE_ENV === "development";
 
-  // If no secret configured, allow (for local dev)
+  // SECURITY FIX: Fail closed when no secret is configured in production
   if (!agentSecret) {
-    return true;
+    if (isDevelopment) {
+      // Allow in development for testing, but warn
+      console.warn(
+        "[Agent API] WARNING: AGENT_SECRET not set. " +
+        "Allowing access in development mode only."
+      );
+      return { authorized: true };
+    }
+
+    // In production, reject if no secret is configured
+    console.error(
+      "[Agent API] SECURITY: AGENT_SECRET not configured. " +
+      "Rejecting request. Set AGENT_SECRET environment variable."
+    );
+    return {
+      authorized: false,
+      error: "Agent API not configured. Contact administrator.",
+    };
   }
 
   // Check bearer token
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7);
-    return token === agentSecret;
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return { authorized: false, error: "Missing or invalid Authorization header" };
   }
 
-  return false;
+  const token = authHeader.slice(7);
+  if (token !== agentSecret) {
+    return { authorized: false, error: "Invalid authorization token" };
+  }
+
+  return { authorized: true };
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // Auth check for sensitive actions
-    if (!isAuthorized(request)) {
+    // Auth check for all actions
+    const auth = isAuthorized(request);
+    if (!auth.authorized) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: auth.error || "Unauthorized" },
         { status: 401 }
       );
     }
@@ -74,9 +103,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
   } catch (error) {
+    // Don't expose internal error details
     console.error("Agent API error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to process request" },
+      { error: "Failed to process request" },
       { status: 500 }
     );
   }
@@ -96,7 +126,7 @@ async function handleStatus(): Promise<NextResponse> {
 async function handleStart(): Promise<NextResponse> {
   if (!isAgentWalletConfigured()) {
     return NextResponse.json(
-      { error: "Agent wallet not configured. Set AGENT_WALLET_PRIVATE_KEY in environment." },
+      { error: "Agent wallet not configured" },
       { status: 400 }
     );
   }
@@ -171,12 +201,29 @@ function handleConfig(
   });
 }
 
-// GET endpoint for simple status check
-export async function GET() {
+/**
+ * GET endpoint for status check
+ *
+ * SECURITY: This endpoint requires authentication to prevent
+ * information disclosure about agent wallet and status.
+ */
+export async function GET(request: NextRequest) {
+  // Require authentication for status endpoint
+  const auth = isAuthorized(request);
+  if (!auth.authorized) {
+    // Return minimal info for unauthenticated requests
+    return NextResponse.json({
+      configured: isAgentWalletConfigured(),
+      authenticated: false,
+      message: "Authentication required for full status",
+    });
+  }
+
   const walletStatus = await getAgentWalletStatus();
   const agentState = getAutoClaimState();
 
   return NextResponse.json({
+    authenticated: true,
     wallet: {
       configured: walletStatus.configured,
       publicKey: walletStatus.publicKey,
