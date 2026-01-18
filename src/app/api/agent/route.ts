@@ -8,17 +8,34 @@ import {
   updateAutoClaimConfig,
 } from "@/lib/auto-claim-agent";
 import {
+  initBuybackAgent,
+  startBuybackAgent,
+  stopBuybackAgent,
+  triggerBuyback,
+  getBuybackState,
+  updateBuybackConfig,
+} from "@/lib/buyback-agent";
+import {
   getAgentWalletStatus,
   isAgentWalletConfigured,
 } from "@/lib/agent-wallet";
 
 interface AgentRequestBody {
-  action: "status" | "start" | "stop" | "trigger" | "config";
+  action: "status" | "start" | "stop" | "trigger" | "config" | "buyback-status" | "buyback-start" | "buyback-stop" | "buyback-trigger" | "buyback-config";
   config?: {
     enabled?: boolean;
     minClaimThresholdSol?: number;
     checkIntervalMs?: number;
     maxClaimsPerRun?: number;
+  };
+  buybackConfig?: {
+    enabled?: boolean;
+    intervalMs?: number;
+    buybackPercentage?: number;
+    minBuybackSol?: number;
+    maxBuybackSol?: number;
+    topTokensCount?: number;
+    burnAfterBuy?: boolean;
   };
 }
 
@@ -81,9 +98,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body: AgentRequestBody = await request.json();
-    const { action, config } = body;
+    const { action, config, buybackConfig } = body;
 
     switch (action) {
+      // Auto-claim actions
       case "status":
         return handleStatus();
 
@@ -98,6 +116,22 @@ export async function POST(request: NextRequest) {
 
       case "config":
         return handleConfig(config);
+
+      // Buyback actions
+      case "buyback-status":
+        return handleBuybackStatus();
+
+      case "buyback-start":
+        return handleBuybackStart();
+
+      case "buyback-stop":
+        return handleBuybackStop();
+
+      case "buyback-trigger":
+        return handleBuybackTrigger();
+
+      case "buyback-config":
+        return handleBuybackConfig(buybackConfig);
 
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
@@ -201,6 +235,95 @@ function handleConfig(
   });
 }
 
+// ============================================
+// BUYBACK HANDLERS
+// ============================================
+
+function handleBuybackStatus(): NextResponse {
+  const buybackState = getBuybackState();
+
+  return NextResponse.json({
+    success: true,
+    buyback: buybackState,
+  });
+}
+
+async function handleBuybackStart(): Promise<NextResponse> {
+  if (!isAgentWalletConfigured()) {
+    return NextResponse.json(
+      { error: "Agent wallet not configured" },
+      { status: 400 }
+    );
+  }
+
+  const initialized = initBuybackAgent();
+  if (!initialized) {
+    return NextResponse.json(
+      { error: "Failed to initialize buyback agent" },
+      { status: 500 }
+    );
+  }
+
+  const started = startBuybackAgent();
+  if (!started) {
+    return NextResponse.json(
+      { error: "Failed to start buyback agent" },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: "Buyback agent started (runs every 12 hours)",
+    state: getBuybackState(),
+  });
+}
+
+function handleBuybackStop(): NextResponse {
+  stopBuybackAgent();
+
+  return NextResponse.json({
+    success: true,
+    message: "Buyback agent stopped",
+    state: getBuybackState(),
+  });
+}
+
+async function handleBuybackTrigger(): Promise<NextResponse> {
+  if (!isAgentWalletConfigured()) {
+    return NextResponse.json(
+      { error: "Agent wallet not configured" },
+      { status: 400 }
+    );
+  }
+
+  const result = await triggerBuyback();
+
+  return NextResponse.json({
+    success: result.success,
+    result,
+    state: getBuybackState(),
+  });
+}
+
+function handleBuybackConfig(
+  config?: AgentRequestBody["buybackConfig"]
+): NextResponse {
+  if (!config) {
+    return NextResponse.json({
+      success: true,
+      config: getBuybackState().config,
+    });
+  }
+
+  const newConfig = updateBuybackConfig(config);
+
+  return NextResponse.json({
+    success: true,
+    config: newConfig,
+  });
+}
+
 /**
  * GET endpoint for status check
  *
@@ -221,6 +344,7 @@ export async function GET(request: NextRequest) {
 
   const walletStatus = await getAgentWalletStatus();
   const agentState = getAutoClaimState();
+  const buybackState = getBuybackState();
 
   return NextResponse.json({
     authenticated: true,
@@ -229,12 +353,20 @@ export async function GET(request: NextRequest) {
       publicKey: walletStatus.publicKey,
       balance: walletStatus.balance,
     },
-    agent: {
+    autoClaim: {
       isRunning: agentState.isRunning,
       lastCheck: agentState.lastCheck,
       lastClaim: agentState.lastClaim,
       totalClaimed: agentState.totalClaimed,
       claimCount: agentState.claimCount,
+    },
+    buyback: {
+      isRunning: buybackState.isRunning,
+      lastBuyback: buybackState.lastBuyback,
+      totalBuybacksSol: buybackState.totalBuybacksSol,
+      totalTokensBurned: buybackState.totalTokensBurned,
+      buybackCount: buybackState.buybackCount,
+      lastTokensBought: buybackState.lastTokensBought.slice(-5),
     },
   });
 }
