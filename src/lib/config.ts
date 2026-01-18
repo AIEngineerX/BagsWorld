@@ -27,6 +27,7 @@ export const ECOSYSTEM_CONFIG = {
     // Autonomous agents manage the ecosystem wallet:
     // - Auto-Claim Agent: Claims fees every 5 minutes
     // - Buyback Agent: Every 12 hours, buys top tokens and burns them
+    // - Scout Agent: Scans for new token launches in real-time
     agents: {
       autoClaimIntervalMs: 5 * 60 * 1000,      // 5 minutes
       buybackIntervalMs: 12 * 60 * 60 * 1000,  // 12 hours
@@ -34,6 +35,11 @@ export const ECOSYSTEM_CONFIG = {
       reservePercentage: 20,                    // 20% for operations/gas
       topTokensCount: 5,                        // Buy top 5 tokens
       burnAfterBuy: true,                       // Burn purchased tokens
+      scout: {
+        minLiquidityUsd: 500,                   // Min $500 liquidity to alert
+        bagsOnly: false,                        // Track all launches or just Bags
+        maxAlertsPerMinute: 30,                 // Rate limit
+      },
     },
 
     // Provider name shown in fee shares
