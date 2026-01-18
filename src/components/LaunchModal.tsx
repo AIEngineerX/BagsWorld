@@ -444,7 +444,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="flex items-start gap-2">
                   <span className="text-xs">🏆</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Community rewards</span> - 5% goes back to strongest communities
+                    <span className="text-bags-green">Top Creator Kickback</span> - Best creator each week wins 40% of fees
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs">💎</span>
+                  <span className="font-pixel text-[7px] text-gray-300">
+                    <span className="text-bags-green">Holder rewards</span> - Top token's holders get airdrops
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
@@ -454,15 +460,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-xs">👥</span>
+                  <span className="text-xs">✨</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Auto citizens</span> - Fee claimers become walking characters
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-xs">🎁</span>
-                  <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Weekly airdrops</span> - Active holders earn bonus rewards
+                    <span className="text-bags-green">Only 3% fee</span> - Low fee, more goes to you
                   </span>
                 </div>
               </div>
@@ -615,27 +615,27 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               </p>
             </div>
 
-            {/* Ecosystem Fee - Community Rewards */}
+            {/* Ecosystem Fee - Creator & Holder Rewards */}
             <div className="bg-bags-gold/10 border border-bags-gold/30 p-3 space-y-2">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">🏆</span>
                   <div>
                     <p className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.displayName}</p>
-                    <p className="font-pixel text-[7px] text-gray-400">Goes back to strongest communities</p>
+                    <p className="font-pixel text-[7px] text-gray-400">Rewards creators & holders weekly</p>
                   </div>
                 </div>
                 <span className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.bps / 100}%</span>
               </div>
               <div className="grid grid-cols-2 gap-1 pt-1 border-t border-bags-gold/20">
                 <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-bags-gold">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.communityRewards}% Community Rewards
+                  <span className="text-bags-gold">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.topCreatorKickback}% Top Creator Kickback
                 </div>
                 <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-bags-green">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.weeklyAirdrops}% Weekly Airdrops
+                  <span className="text-purple-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.topHolderRewards}% Top Holder Rewards
                 </div>
                 <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-purple-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.creatorBonus}% Creator Bonus
+                  <span className="text-bags-green">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.communityPool}% Community Pool
                 </div>
                 <div className="font-pixel text-[6px] text-gray-400">
                   <span className="text-blue-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.development}% Development

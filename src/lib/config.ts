@@ -12,30 +12,30 @@
 
 export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
-  // ECOSYSTEM FEE STRUCTURE - COMMUNITY REWARDS
+  // ECOSYSTEM FEE STRUCTURE - CREATOR & HOLDER REWARDS
   // -------------------------------------------------------------------------
-  // Every token launched through BagsWorld contributes to community rewards
+  // Every token launched through BagsWorld contributes to rewards
   // Fees are SET PERMANENTLY at launch - they cannot be changed later
-  // This is why launching through BagsWorld ensures your community grows
+  // This creates real incentives for creators and holders
   ecosystem: {
     // Wallet that receives ecosystem fees - viewable on Solscan
     wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
-    // Fee percentage in basis points (500 = 5%)
-    feeBps: 500,
+    // Fee percentage in basis points (300 = 3%)
+    feeBps: 300,
 
-    // How the ecosystem fees are allocated - COMMUNITY FIRST
+    // How the ecosystem fees are allocated - REWARDS FOCUSED
     allocation: {
-      communityRewards: 50, // 50% - Rewards for top earners & active communities
-      weeklyAirdrops: 25,   // 25% - Weekly airdrops to engaged holders
-      creatorBonus: 15,     // 15% - Bonus rewards for top performing tokens
-      development: 10,      // 10% - Platform improvements
+      topCreatorKickback: 40, // 40% - Top creator of the week gets kickback
+      topHolderRewards: 30,   // 30% - Top token's top holders get airdrops
+      communityPool: 20,      // 20% - Weekly airdrops to active users
+      development: 10,        // 10% - Platform maintenance
     },
 
     // Provider name shown in fee shares
     // Use "solana" provider with wallet address for direct wallet fee shares
     provider: "solana" as const,
-    providerUsername: "BagsWorld Community Rewards",
+    providerUsername: "BagsWorld Rewards",
   },
 
   // -------------------------------------------------------------------------
@@ -146,19 +146,19 @@ export const ECOSYSTEM_CONFIG = {
     ],
     forEcosystem: [
       {
-        title: "5% Community Rewards",
-        description: "Fees go back to the strongest communities",
+        title: "Top Creator Kickback",
+        description: "Best performing creator each week wins 40% of fees",
         icon: "🏆",
       },
       {
-        title: "Weekly Airdrops",
-        description: "Top earners and active holders get rewarded",
-        icon: "🎁",
+        title: "Holder Rewards",
+        description: "Top holders of the #1 token get airdrops",
+        icon: "💎",
       },
       {
-        title: "Growing World",
-        description: "More tokens = bigger city = stronger network",
-        icon: "🌆",
+        title: "Only 3% Fee",
+        description: "Low fee, big rewards - more goes to you",
+        icon: "✨",
       },
     ],
   },
@@ -236,11 +236,11 @@ export const ECOSYSTEM_CONFIG = {
     // Ash explains the ecosystem with Pokemon-themed analogies
     quotes: [
       "Gotta catch 'em all... tokens that is! Each one becomes a building in BagsWorld!",
-      "A good trainer takes care of their team. Here, 5% of fees go back to the strongest communities!",
+      "Only 3% fee here, and the top creator each week gets 40% back - like winning the Pokemon League!",
       "Just like Pokemon evolve, your building grows as market cap increases!",
-      "Every citizen here earns fees from trading. It's like getting badges for battling!",
-      "I wanna be the very best! And in BagsWorld, the best communities get weekly airdrops!",
-      "Remember: the ecosystem rewards those who believe in their tokens!",
+      "Top holders of the best token get airdrops - it's like getting rare candies for being loyal!",
+      "I wanna be the very best! And in BagsWorld, the best creators and holders get rewarded weekly!",
+      "Remember: low fees, big rewards - that's the BagsWorld way!",
     ],
     // Clicking Ash opens ecosystem explainer
     interactionType: "ecosystem-guide",

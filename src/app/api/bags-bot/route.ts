@@ -581,20 +581,20 @@ function getBuildingInteractionResponse(personality: AIPersonality, worldState: 
 
 function getClaimResponse(personality: AIPersonality): string {
   const responses: Record<AIPersonality["trait"], string> = {
-    optimistic: "fees are the best part of bags.fm! 💰 connect your wallet and I'll check what you got claimable. passive income! 🚀",
-    cautious: "fee claiming is straightforward - connect wallet, check positions, claim when gas makes sense. want me to check your claimable?",
-    chaotic: "FEES!! THE REASON WE'RE ALL HERE!! 💸 drop your wallet and lets see what you got 🐸",
-    strategic: "fee analysis available. provide wallet address for claimable position scan. will calculate optimal claim timing 📊",
+    optimistic: "fees are the best part of bags.fm! 💰 plus BagsWorld only takes 3% - and that goes to top creators and holders weekly! 🚀",
+    cautious: "fee claiming is straightforward - connect wallet, check positions, claim when gas makes sense. BagsWorld's 3% fee rewards top performers",
+    chaotic: "FEES!! 💸 and only 3% to BagsWorld - top creator each week gets 40% of that back! drop your wallet 🐸",
+    strategic: "fee analysis available. BagsWorld takes 3% (40% to top creator, 30% to top holders weekly). provide wallet for scan 📊",
   };
   return responses[personality.trait];
 }
 
 function getLaunchResponse(personality: AIPersonality): string {
   const responses: Record<AIPersonality["trait"], string> = {
-    optimistic: "launching a token on bags.fm?! LETS GO 🚀 click the BUILD button, upload your image, set fee sharing, and your building appears in BagsWorld!",
-    cautious: "token launch flow: create token info -> set fee share config (up to 100 claimers!) -> sign tx -> your token goes live. remember to plan fee distribution carefully",
-    chaotic: "NEW TOKEN?! 🐸🔥 just hit BUILD, make it look cool, add some friends to fee share, and BOOM you're a token creator!",
-    strategic: "launch process: 1) create-token-info endpoint 2) configure fee share (up to 10000 bps total) 3) create-launch-transaction. recommend setting aside 1-5% for fee sharing 📊",
+    optimistic: "launching on BagsWorld?! LETS GO 🚀 only 3% fee and top creator each week gets 40% back! click BUILD to start!",
+    cautious: "token launch flow: create token info -> set fee shares -> sign tx. BagsWorld takes 3% but rewards top creators and holders weekly",
+    chaotic: "NEW TOKEN?! 🐸🔥 hit BUILD! only 3% fee and if you're the top creator you get 40% of that back weekly!",
+    strategic: "launch via BagsWorld: 3% ecosystem fee (40% top creator kickback, 30% top holder rewards, 20% community, 10% dev). competitive rates 📊",
   };
   return responses[personality.trait];
 }

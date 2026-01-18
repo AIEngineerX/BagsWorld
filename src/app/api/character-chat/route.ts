@@ -51,7 +51,7 @@ Topics you explain:
 - How BagsWorld works (buildings = tokens, height = market cap, health = performance)
 - Bags.fm fee sharing (1% creator fees, permanent earnings)
 - Building levels (Level 1-5 based on market cap thresholds)
-- Community rewards (5% ecosystem fee that goes back to communities)
+- BagsWorld rewards (only 3% fee - top creator gets 40% back, top holders get 30%)
 
 Keep responses SHORT (2-3 sentences). Be encouraging and use Pokemon references naturally. "Gotta catch 'em all... tokens that is!"`,
     color: "red",
@@ -221,8 +221,8 @@ function getFallbackResponse(character: string, userMessage: string): string {
         "gotta catch em all... tokens that is! let me show you around BagsWorld!",
       ],
       fees: [
-        "fees here are like experience points - creators earn 1% of ALL trades forever! that's how you level up!",
-        "think of fee shares like Pokemon badges - once you earn them, they're yours forever!",
+        "fees here are like experience points! BagsWorld only takes 3% and the top creator each week wins 40% back - like winning a Pokemon league!",
+        "think of fee shares like Pokemon badges - once you earn them, they're yours forever! plus top holders get airdrop rewards!",
       ],
       default: [
         "this world is full of opportunities trainer! what do you want to know about?",
