@@ -198,3 +198,91 @@ export async function updateTokenStats(
     console.error("Error updating token stats:", error);
   }
 }
+
+// ============================================
+// World Config Persistence
+// ============================================
+
+const CONFIG_KEY = "world_config";
+
+export interface StoredWorldConfig {
+  id?: number;
+  key: string;
+  config: Record<string, unknown>;
+  updated_at?: string;
+  updated_by?: string;
+}
+
+/**
+ * Load world config from Supabase
+ * Returns null if not found or Supabase not configured
+ */
+export async function loadWorldConfig(): Promise<Record<string, unknown> | null> {
+  const client = getSupabaseClient();
+  if (!client) {
+    console.log("[WorldConfig] Supabase not configured, using defaults");
+    return null;
+  }
+
+  try {
+    const { data, error } = await client
+      .from("world_config")
+      .select("config")
+      .eq("key", CONFIG_KEY)
+      .single();
+
+    if (error) {
+      // PGRST116 = no rows found, which is fine for first run
+      if (error.code !== "PGRST116") {
+        console.error("[WorldConfig] Error loading from Supabase:", error);
+      }
+      return null;
+    }
+
+    console.log("[WorldConfig] Loaded from Supabase");
+    return data?.config || null;
+  } catch (error) {
+    console.error("[WorldConfig] Supabase load error:", error);
+    return null;
+  }
+}
+
+/**
+ * Save world config to Supabase
+ * Uses upsert to create or update
+ */
+export async function saveWorldConfig(
+  config: Record<string, unknown>,
+  updatedBy?: string
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) {
+    console.log("[WorldConfig] Supabase not configured, cannot persist");
+    return false;
+  }
+
+  try {
+    const { error } = await client
+      .from("world_config")
+      .upsert(
+        {
+          key: CONFIG_KEY,
+          config,
+          updated_at: new Date().toISOString(),
+          updated_by: updatedBy || "admin",
+        },
+        { onConflict: "key" }
+      );
+
+    if (error) {
+      console.error("[WorldConfig] Error saving to Supabase:", error);
+      return false;
+    }
+
+    console.log("[WorldConfig] Saved to Supabase");
+    return true;
+  } catch (error) {
+    console.error("[WorldConfig] Supabase save error:", error);
+    return false;
+  }
+}
