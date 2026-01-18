@@ -240,6 +240,8 @@ export function transformFeeEarnerToCharacter(
   const isFinn = (earner as any).isFinn || earner.wallet === "finnbags-ceo-permanent";
   // The Dev gets a position near center-right (trenching area)
   const isDev = (earner as any).isDev || earner.wallet === "daddyghost-dev-permanent";
+  // Scout Agent gets a position on far right (watching the horizon)
+  const isScout = (earner as any).isScout || earner.wallet === "scout-agent-permanent";
 
   const position = existingCharacter
     ? { x: existingCharacter.x, y: existingCharacter.y }
@@ -251,9 +253,11 @@ export function transformFeeEarnerToCharacter(
     ? { x: 120, y: 555 } // Left side of world
     : isDev
     ? { x: WORLD_WIDTH / 2 + 180, y: 555 } // Center-right, in the trenches
+    : isScout
+    ? { x: WORLD_WIDTH - 60, y: 555 } // Far right, watching the horizon
     : generateCharacterPosition();
 
-  const isSpecialCharacter = isToly || isAsh || isFinn || isDev;
+  const isSpecialCharacter = isToly || isAsh || isFinn || isDev || isScout;
 
   return {
     id: earner.wallet,
@@ -268,11 +272,12 @@ export function transformFeeEarnerToCharacter(
     direction: Math.random() > 0.5 ? "left" : "right",
     isMoving: !isSpecialCharacter && Math.random() > 0.7, // Special characters don't wander randomly
     buildingId: earner.topToken?.mint,
-    profileUrl: isToly ? "https://x.com/toly" : isFinn ? "https://x.com/finnbags" : isDev ? "https://x.com/DaddyGhost" : isAsh ? undefined : getProfileUrl(earner.provider, earner.username),
+    profileUrl: isToly ? "https://x.com/toly" : isFinn ? "https://x.com/finnbags" : isDev ? "https://x.com/DaddyGhost" : isAsh || isScout ? undefined : getProfileUrl(earner.provider, earner.username),
     isToly, // Pass through the Toly flag
     isAsh, // Pass through the Ash flag
     isFinn, // Pass through the Finn flag
     isDev, // Pass through the Dev flag
+    isScout, // Pass through the Scout flag
   };
 }
 

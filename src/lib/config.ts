@@ -308,6 +308,31 @@ export const ECOSYSTEM_CONFIG = {
   },
 
   // -------------------------------------------------------------------------
+  // NEO - The Scout Agent (Token Launch Scanner)
+  // -------------------------------------------------------------------------
+  // Neo sees the blockchain like he sees The Matrix - pure code streaming by
+  scout: {
+    id: "scout-agent",
+    username: "Neo",
+    provider: "matrix" as const,
+    providerUsername: "TheOne",
+    mood: "happy" as const,
+    // Neo-style quotes about seeing the code/blockchain
+    quotes: [
+      "i can see the chain now. every transaction, every launch... it's all just code",
+      "new token incoming. i see the liquidity flow before it even settles",
+      "there is no rug. only the code, and whether you can read it",
+      "i don't just watch the blockchain. i see it for what it really is",
+      "the matrix has you. but out here in the trenches, i see everything",
+      "what if i told you... i can see every launch before it trends",
+      "i know kung fu. and now i know solana. scanning...",
+      "the agents can't touch you here. but the ruggers can. let me filter them out",
+    ],
+    // Clicking Neo opens the scout panel
+    interactionType: "scout-panel",
+  },
+
+  // -------------------------------------------------------------------------
   // EXTERNAL LINKS
   // -------------------------------------------------------------------------
   links: {

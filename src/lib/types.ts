@@ -16,6 +16,7 @@ export interface FeeEarner {
   isAsh?: boolean; // Special flag for Ash character
   isFinn?: boolean; // Special flag for Finn (Bags.fm CEO) character
   isDev?: boolean; // Special flag for The Dev (DaddyGhost) character
+  isScout?: boolean; // Special flag for Scout Agent character
 }
 
 export interface TokenInfo {
@@ -120,6 +121,7 @@ export interface GameCharacter {
   isAsh?: boolean; // Special flag for Ash character
   isFinn?: boolean; // Special flag for Finn (Bags.fm CEO) character
   isDev?: boolean; // Special flag for The Dev (DaddyGhost) character
+  isScout?: boolean; // Special flag for Scout Agent character
 }
 
 export interface GameBuilding {

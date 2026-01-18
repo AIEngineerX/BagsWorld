@@ -1509,11 +1509,12 @@ export class WorldScene extends Phaser.Scene {
         const isAsh = character.isAsh === true;
         const isFinn = character.isFinn === true;
         const isDev = character.isDev === true;
-        const isSpecial = isToly || isAsh || isFinn || isDev;
+        const isScout = character.isScout === true;
+        const isSpecial = isToly || isAsh || isFinn || isDev || isScout;
         const variant = index % 9;
         this.characterVariants.set(character.id, variant);
 
-        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : this.getCharacterTexture(character.mood, variant);
+        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : isScout ? "neo" : this.getCharacterTexture(character.mood, variant);
         sprite = this.add.sprite(character.x, character.y, textureKey);
         sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
         sprite.setInteractive();
@@ -1530,6 +1531,8 @@ export class WorldScene extends Phaser.Scene {
             this.showFinnTooltip(sprite!);
           } else if (isDev) {
             this.showDevTooltip(sprite!);
+          } else if (isScout) {
+            this.showScoutTooltip(sprite!);
           } else {
             this.showCharacterTooltip(character, sprite!);
           }
@@ -1553,6 +1556,9 @@ export class WorldScene extends Phaser.Scene {
           } else if (isDev) {
             // The Dev opens the trading agent chat
             window.dispatchEvent(new CustomEvent("bagsworld-dev-click"));
+          } else if (isScout) {
+            // Neo opens the scout panel
+            window.dispatchEvent(new CustomEvent("bagsworld-scout-click"));
           } else if (character.profileUrl) {
             // Open profile page in new tab
             window.open(character.profileUrl, "_blank");
@@ -1657,6 +1663,29 @@ export class WorldScene extends Phaser.Scene {
           });
         }
 
+        // Add Matrix green glow effect for Neo (Scout)
+        if (isScout) {
+          const glow = this.add.sprite(character.x, character.y, "glow");
+          glow.setScale(1.0);
+          glow.setAlpha(0.4);
+          glow.setTint(0x00ff41); // Matrix green
+          glow.setDepth(10);
+
+          // Store reference to glow for cleanup
+          (sprite as any).scoutGlow = glow;
+
+          // Faster, more digital-feeling pulse for Neo
+          this.tweens.add({
+            targets: glow,
+            alpha: 0.7,
+            scale: 1.3,
+            duration: 800,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+
         this.characterSprites.set(character.id, sprite);
       } else {
         // Update special character glow positions if they exist
@@ -1680,6 +1709,11 @@ export class WorldScene extends Phaser.Scene {
           devGlow.x = sprite.x;
           devGlow.y = sprite.y;
         }
+        const scoutGlow = (sprite as any).scoutGlow;
+        if (scoutGlow) {
+          scoutGlow.x = sprite.x;
+          scoutGlow.y = sprite.y;
+        }
       }
 
       // Update texture based on mood (skip for special characters)
@@ -1687,7 +1721,8 @@ export class WorldScene extends Phaser.Scene {
       const isAsh = character.isAsh === true;
       const isFinn = character.isFinn === true;
       const isDev = character.isDev === true;
-      if (!isToly && !isAsh && !isFinn && !isDev) {
+      const isScout = character.isScout === true;
+      if (!isToly && !isAsh && !isFinn && !isDev && !isScout) {
         const variant = this.characterVariants.get(character.id) ?? 0;
         const expectedTexture = this.getCharacterTexture(character.mood, variant);
         if (sprite.texture.key !== expectedTexture) {
@@ -2054,6 +2089,47 @@ export class WorldScene extends Phaser.Scene {
       fontFamily: "monospace",
       fontSize: "7px",
       color: "#4ade80",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showScoutTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 170, 68, 0x0a0a0f, 0.95);
+    bg.setStrokeStyle(2, 0x00ff41); // Matrix green border
+
+    const nameText = this.add.text(0, -22, "Neo", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#00ff41",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "The One • Scout Agent", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "i can see the chain now...", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to see new launches", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#00ff41",
     });
     clickText.setOrigin(0.5, 0.5);
 
