@@ -1,5 +1,6 @@
 // Character Chat API - AI-powered responses for Toly, Ash, Finn, and The Dev
 import { NextResponse } from "next/server";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -106,6 +107,26 @@ Keep responses SHORT (2-3 sentences). Use lowercasse, minimal caps, casual tone.
 };
 
 export async function POST(request: Request) {
+  // Rate limit: 10 requests per minute (AI is expensive)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`chat:${clientIP}`, RATE_LIMITS.ai);
+
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      {
+        error: "Too many requests. Please wait before chatting again.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(rateLimit.resetIn / 1000)),
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
   try {
     const body: CharacterChatRequest = await request.json();
     const { character, userMessage, chatHistory = [], worldState } = body;
