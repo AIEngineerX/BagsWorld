@@ -16,6 +16,17 @@ import {
   updateBuybackConfig,
 } from "@/lib/buyback-agent";
 import {
+  initScoutAgent,
+  startScoutAgent,
+  stopScoutAgent,
+  getScoutState,
+  updateScoutConfig,
+  getRecentLaunches,
+  blockCreator,
+  unblockCreator,
+  type ScoutConfig,
+} from "@/lib/scout-agent";
+import {
   getAgentWalletStatus,
   isAgentWalletConfigured,
 } from "@/lib/agent-wallet";
@@ -23,7 +34,8 @@ import {
 interface AgentRequestBody {
   action:
     | "status" | "start" | "stop" | "trigger" | "config"
-    | "buyback-status" | "buyback-start" | "buyback-stop" | "buyback-trigger" | "buyback-config";
+    | "buyback-status" | "buyback-start" | "buyback-stop" | "buyback-trigger" | "buyback-config"
+    | "scout-status" | "scout-start" | "scout-stop" | "scout-config" | "scout-launches" | "scout-block" | "scout-unblock";
   config?: {
     enabled?: boolean;
     minClaimThresholdSol?: number;
@@ -39,6 +51,9 @@ interface AgentRequestBody {
     topTokensCount?: number;
     burnAfterBuy?: boolean;
   };
+  scoutConfig?: Partial<ScoutConfig>;
+  creatorAddress?: string;
+  count?: number;
 }
 
 /**
@@ -100,7 +115,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: AgentRequestBody = await request.json();
-    const { action, config, buybackConfig } = body;
+    const { action, config, buybackConfig, scoutConfig, creatorAddress, count } = body;
 
     switch (action) {
       // Auto-claim actions
@@ -134,6 +149,28 @@ export async function POST(request: NextRequest) {
 
       case "buyback-config":
         return handleBuybackConfig(buybackConfig);
+
+      // Scout actions
+      case "scout-status":
+        return handleScoutStatus();
+
+      case "scout-start":
+        return handleScoutStart();
+
+      case "scout-stop":
+        return handleScoutStop();
+
+      case "scout-config":
+        return handleScoutConfig(scoutConfig);
+
+      case "scout-launches":
+        return handleScoutLaunches(count);
+
+      case "scout-block":
+        return handleScoutBlock(creatorAddress);
+
+      case "scout-unblock":
+        return handleScoutUnblock(creatorAddress);
 
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
@@ -326,6 +363,113 @@ function handleBuybackConfig(
   });
 }
 
+// ============================================
+// SCOUT HANDLERS
+// ============================================
+
+function handleScoutStatus(): NextResponse {
+  const scoutState = getScoutState();
+
+  return NextResponse.json({
+    success: true,
+    scout: scoutState,
+  });
+}
+
+function handleScoutStart(): NextResponse {
+  const initialized = initScoutAgent();
+  if (!initialized) {
+    return NextResponse.json(
+      { error: "Failed to initialize scout agent" },
+      { status: 500 }
+    );
+  }
+
+  const started = startScoutAgent();
+  if (!started) {
+    return NextResponse.json(
+      { error: "Failed to start scout agent" },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: "Scout agent started - scanning for new tokens",
+    state: getScoutState(),
+  });
+}
+
+function handleScoutStop(): NextResponse {
+  stopScoutAgent();
+
+  return NextResponse.json({
+    success: true,
+    message: "Scout agent stopped",
+    state: getScoutState(),
+  });
+}
+
+function handleScoutConfig(config?: Partial<ScoutConfig>): NextResponse {
+  if (!config) {
+    return NextResponse.json({
+      success: true,
+      config: getScoutState().config,
+    });
+  }
+
+  const newConfig = updateScoutConfig(config);
+
+  return NextResponse.json({
+    success: true,
+    config: newConfig,
+  });
+}
+
+function handleScoutLaunches(count?: number): NextResponse {
+  const launches = getRecentLaunches(count || 10);
+
+  return NextResponse.json({
+    success: true,
+    launches,
+    count: launches.length,
+  });
+}
+
+function handleScoutBlock(creatorAddress?: string): NextResponse {
+  if (!creatorAddress) {
+    return NextResponse.json(
+      { error: "creatorAddress required" },
+      { status: 400 }
+    );
+  }
+
+  blockCreator(creatorAddress);
+
+  return NextResponse.json({
+    success: true,
+    message: `Blocked creator: ${creatorAddress}`,
+    blockedCreators: getScoutState().config.filters.blockedCreators,
+  });
+}
+
+function handleScoutUnblock(creatorAddress?: string): NextResponse {
+  if (!creatorAddress) {
+    return NextResponse.json(
+      { error: "creatorAddress required" },
+      { status: 400 }
+    );
+  }
+
+  unblockCreator(creatorAddress);
+
+  return NextResponse.json({
+    success: true,
+    message: `Unblocked creator: ${creatorAddress}`,
+    blockedCreators: getScoutState().config.filters.blockedCreators,
+  });
+}
+
 /**
  * GET endpoint for status check
  *
@@ -347,6 +491,7 @@ export async function GET(request: NextRequest) {
   const walletStatus = await getAgentWalletStatus();
   const agentState = getAutoClaimState();
   const buybackState = getBuybackState();
+  const scoutState = getScoutState();
 
   return NextResponse.json({
     authenticated: true,
@@ -369,6 +514,13 @@ export async function GET(request: NextRequest) {
       totalTokensBurned: buybackState.totalTokensBurned,
       buybackCount: buybackState.buybackCount,
       lastTokensBought: buybackState.lastTokensBought.slice(-5),
+    },
+    scout: {
+      isRunning: scoutState.isRunning,
+      isConnected: scoutState.isConnected,
+      launchesScanned: scoutState.launchesScanned,
+      alertsSent: scoutState.alertsSent,
+      recentLaunches: scoutState.recentLaunches.slice(0, 5),
     },
   });
 }
