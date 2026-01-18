@@ -33,9 +33,9 @@ export const ECOSYSTEM_CONFIG = {
     },
 
     // Provider name shown in fee shares
-    // Use "solana" provider with wallet address for direct wallet fee shares
-    provider: "solana" as const,
-    providerUsername: "BagsWorld Community Rewards",
+    // Bags API v2 only supports twitter, github, kick - NOT direct wallet addresses
+    provider: "twitter" as const,
+    providerUsername: "DaddyGhost",
   },
 
   // -------------------------------------------------------------------------
@@ -322,9 +322,9 @@ export function getBuildingTier(marketCap: number): typeof ECOSYSTEM_CONFIG.buil
 export function getEcosystemFeeShare() {
   return {
     provider: ECOSYSTEM_CONFIG.ecosystem.provider,
-    providerUsername: ECOSYSTEM_CONFIG.ecosystem.wallet,
+    providerUsername: ECOSYSTEM_CONFIG.ecosystem.providerUsername,
     bps: ECOSYSTEM_CONFIG.ecosystem.feeBps,
-    displayName: ECOSYSTEM_CONFIG.ecosystem.providerUsername,
+    displayName: "BagsWorld Community Rewards",
   };
 }
 
