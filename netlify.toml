@@ -14,6 +14,29 @@
   package = "@netlify/plugin-nextjs"
 
 # ============================================================================
+# SECURITY HEADERS
+# ============================================================================
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    # Prevent clickjacking
+    X-Frame-Options = "DENY"
+    # Prevent MIME sniffing
+    X-Content-Type-Options = "nosniff"
+    # XSS Protection
+    X-XSS-Protection = "1; mode=block"
+    # Referrer policy
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Content Security Policy
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.solana.com https://*.bags.fm https://*.supabase.co wss://*.solana.com; font-src 'self' data:;"
+    # Strict Transport Security
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+# ============================================================================
 # REQUIRED: Set these in Netlify Dashboard > Site Settings > Environment Variables
 # ============================================================================
 # BAGS_API_KEY          - Your Bags.fm API key (get from Bags.fm)
