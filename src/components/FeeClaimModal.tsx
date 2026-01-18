@@ -4,8 +4,31 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { Transaction } from "@solana/web3.js";
+import { Transaction, VersionedTransaction } from "@solana/web3.js";
 import type { ClaimablePosition } from "@/lib/types";
+
+// Helper to deserialize transaction - tries VersionedTransaction first, falls back to legacy
+function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
+  const buffer = Buffer.from(base64, "base64");
+  try {
+    const firstByte = buffer[0];
+    if (firstByte >= 0x80) {
+      return VersionedTransaction.deserialize(buffer);
+    } else {
+      return Transaction.from(buffer);
+    }
+  } catch (e) {
+    try {
+      return VersionedTransaction.deserialize(buffer);
+    } catch {
+      try {
+        return Transaction.from(buffer);
+      } catch {
+        throw new Error(`Failed to deserialize transaction: ${e}`);
+      }
+    }
+  }
+}
 import { useXAuth } from "@/hooks/useXAuth";
 
 interface FeeClaimModalProps {
@@ -194,8 +217,8 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
       let successCount = 0;
       for (const txBase64 of transactions) {
         try {
-          const txBuffer = Buffer.from(txBase64, "base64");
-          const transaction = Transaction.from(txBuffer);
+          // Deserialize transaction (handles both versioned and legacy formats)
+          const transaction = deserializeTransaction(txBase64);
 
           // Sign the transaction
           const signedTx = await signTransaction(transaction);

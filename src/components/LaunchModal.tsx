@@ -3,7 +3,38 @@
 import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { Connection, VersionedTransaction } from "@solana/web3.js";
+import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
+
+// Helper to deserialize transaction - tries VersionedTransaction first, falls back to legacy
+function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
+  const buffer = Buffer.from(base64, "base64");
+
+  // Try VersionedTransaction first (check if first byte looks like a version prefix)
+  try {
+    // Versioned transactions start with a version byte (0x80 for v0)
+    // Legacy transactions start with signature count (usually 0x01)
+    const firstByte = buffer[0];
+
+    if (firstByte >= 0x80) {
+      // Likely a versioned transaction
+      return VersionedTransaction.deserialize(buffer);
+    } else {
+      // Likely a legacy transaction
+      return Transaction.from(buffer);
+    }
+  } catch (e) {
+    // If detection failed, try both
+    try {
+      return VersionedTransaction.deserialize(buffer);
+    } catch {
+      try {
+        return Transaction.from(buffer);
+      } catch {
+        throw new Error(`Failed to deserialize transaction: ${e}`);
+      }
+    }
+  }
+}
 import { saveLaunchedToken, saveTokenGlobally, getAllWorldTokens, type LaunchedToken } from "@/lib/token-registry";
 import { ECOSYSTEM_CONFIG, getEcosystemFeeShare } from "@/lib/config";
 
@@ -244,9 +275,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             const txData = feeResult.transactions[i];
             setLaunchStatus(`Signing fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
 
-            // Decode and sign the transaction
-            const txBuffer = Buffer.from(txData.transaction, "base64");
-            const transaction = VersionedTransaction.deserialize(txBuffer);
+            // Decode and sign the transaction (handles both versioned and legacy formats)
+            const transaction = deserializeTransaction(txData.transaction);
             const signedTx = await signTransaction(transaction);
 
             setLaunchStatus(`Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
@@ -318,9 +348,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         setLaunchStatus("Please sign the transaction in your wallet...");
 
-        // Decode transaction
-        const txBuffer = Buffer.from(txBase64, "base64");
-        const transaction = VersionedTransaction.deserialize(txBuffer);
+        // Decode transaction (handles both versioned and legacy formats)
+        const transaction = deserializeTransaction(txBase64);
 
         // Sign transaction
         const signedTx = await signTransaction(transaction);
