@@ -523,6 +523,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate The Dev (DaddyGhost) - trading agent character
     this.generateDevSprite();
+
+    // Generate Neo - The Scout Agent
+    this.generateNeoSprite();
   }
 
   private generateTolySprite(): void {
@@ -957,6 +960,100 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(25, 6, 2, 1);
 
     g.generateTexture("dev", 32, 32);
+    g.destroy();
+  }
+
+  private generateNeoSprite(): void {
+    // Neo - The One (Matrix-inspired Scout Agent)
+    // Black coat, sunglasses, Matrix green theme
+    const skinTone = 0xf1c27d; // Light skin
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Matrix green digital glow behind Neo
+    g.fillStyle(0x00ff41, 0.2); // Matrix green
+    g.fillCircle(16, 16, 18);
+    g.fillStyle(0x00ff41, 0.1);
+    g.fillCircle(16, 16, 22);
+
+    // Shadow
+    g.fillStyle(0x000000, 0.4);
+    g.fillEllipse(16, 30, 14, 5);
+
+    // Legs (black pants)
+    g.fillStyle(0x0a0a0a);
+    g.fillRect(10, 22, 5, 9);
+    g.fillRect(17, 22, 5, 9);
+
+    // Shoes (black boots)
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(9, 29, 6, 3);
+    g.fillRect(17, 29, 6, 3);
+    g.fillStyle(0x0a0a0a);
+    g.fillRect(9, 31, 6, 1);
+    g.fillRect(17, 31, 6, 1);
+
+    // Long black coat (iconic Matrix look)
+    g.fillStyle(0x0a0a0a);
+    g.fillRect(6, 12, 20, 16);
+
+    // Coat details - slightly lighter edges
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(6, 12, 2, 16);
+    g.fillRect(24, 12, 2, 16);
+
+    // Coat opening showing shirt
+    g.fillStyle(0x111111);
+    g.fillRect(12, 14, 8, 10);
+
+    // Arms
+    g.fillStyle(skinTone);
+    g.fillRect(4, 13, 3, 10);
+    g.fillRect(25, 13, 3, 10);
+
+    // Head
+    g.fillStyle(skinTone);
+    g.fillRect(9, 2, 14, 12);
+
+    // Hair (short, black, slicked back)
+    g.fillStyle(0x0a0a0a);
+    g.fillRect(9, 0, 14, 5);
+    g.fillRect(8, 2, 2, 3);
+    g.fillRect(22, 2, 2, 3);
+
+    // Iconic sunglasses (small, round)
+    g.fillStyle(0x1a1a1a); // Frame
+    g.fillRect(10, 5, 5, 3);
+    g.fillRect(17, 5, 5, 3);
+    g.fillRect(15, 6, 2, 1); // Bridge
+
+    // Green lens reflection (Matrix style)
+    g.fillStyle(0x00ff41, 0.6);
+    g.fillRect(11, 6, 3, 1);
+    g.fillRect(18, 6, 3, 1);
+
+    // Neutral expression
+    g.fillStyle(0x000000);
+    g.fillRect(14, 10, 4, 1);
+
+    // Matrix code rain effect above head (iconic)
+    g.fillStyle(0x00ff41, 0.8);
+    // Column 1
+    g.fillRect(8, -6, 2, 2);
+    g.fillRect(8, -2, 2, 2);
+    // Column 2
+    g.fillRect(14, -4, 2, 2);
+    g.fillRect(14, 0, 2, 2);
+    // Column 3
+    g.fillRect(20, -6, 2, 2);
+    g.fillRect(20, -2, 2, 2);
+
+    // Brighter "lead" characters
+    g.fillStyle(0x80ff80);
+    g.fillRect(8, 2, 2, 2);
+    g.fillRect(14, -6, 2, 2);
+    g.fillRect(20, 2, 2, 2);
+
+    g.generateTexture("neo", 32, 32);
     g.destroy();
   }
 

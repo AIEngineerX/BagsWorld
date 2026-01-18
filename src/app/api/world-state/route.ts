@@ -568,6 +568,24 @@ export async function POST(request: NextRequest) {
       isDev: true, // Special flag for the game to recognize
     } as FeeEarner & { isDev: boolean };
 
+    // ALWAYS add Neo as the Scout Agent character
+    // Neo sees the blockchain like he sees The Matrix - scanning for new launches
+    const scout: FeeEarner = {
+      rank: 0, // Special rank
+      username: "Neo",
+      providerUsername: "TheOne",
+      provider: "twitter" as FeeEarner["provider"],
+      wallet: "scout-agent-permanent",
+      avatarUrl: undefined, // Will use special Neo sprite
+      lifetimeEarnings: 1999, // The Matrix release year
+      earnings24h: 0,
+      change24h: 0,
+      tokenCount: 0,
+      topToken: undefined,
+      isScout: true, // Special flag for the game to recognize
+    } as FeeEarner & { isScout: boolean };
+
+    earners.unshift(scout); // Neo fifth
     earners.unshift(dev); // The Dev fourth
     earners.unshift(finn); // Finn third
     earners.unshift(ash); // Ash second
