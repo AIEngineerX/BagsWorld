@@ -282,16 +282,16 @@ export const ECOSYSTEM_CONFIG = {
     providerUsername: "DaddyGhost",
     twitterHandle: "DaddyGhost",
     mood: "happy" as const,
-    // Ghost runs the backend agents - auto-claim every 5min, buyback every 12hr
+    // Ghost runs the backend agents - auto-claim every 5min, buyback every 12hr using his own fees
     quotes: [
-      "yo i run the agents around here. auto-claiming fees every 5 minutes, buying back top tokens every 12 hours",
-      "every 12 hours i buy back the top 3 tokens and burn them. deflation gang",
-      "fees get claimed automatically to the treasury. then i use 50% for buybacks",
-      "the buyback burns tokens permanently. less supply = more value for holders",
-      "i built this whole system. auto-claim, buyback, burn. it runs 24/7",
-      "trust the process. every 12 hours the top tokens get bought and burned",
-      "not just a dev, im the ghost in the machine. always watching, always buying back",
-      "check the treasury on solscan - you can see every claim and every burn",
+      "yo i run the agents around here. my fees get auto-claimed, then 50% goes to buying back top tokens",
+      "every 12 hours i use my own fees to buy back the top 3 tokens and burn them. giving back to holders",
+      "fees sent to my account @DaddyGhost get claimed automatically. half of that goes to buybacks",
+      "im not taking from anyone - these are my creator fees. i just reinvest 50% back into buybacks",
+      "i built this and i put my money where my mouth is. 50% of my fees = buybacks and burns",
+      "trust the process. my fees, my buybacks, your gains. tokens get burned permanently",
+      "not just a dev, im the ghost in the machine. using my own bag to buy back and burn",
+      "check my wallet on solscan - you can see every claim and every burn. fully transparent",
     ],
     // Clicking Dev opens trading assistant
     interactionType: "trading-agent",
