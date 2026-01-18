@@ -3,8 +3,27 @@
 import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { VersionedTransaction } from "@solana/web3.js";
+import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
+
+// Helper to deserialize transaction - handles both versioned and legacy formats
+function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
+  const buffer = Buffer.from(base64, "base64");
+  try {
+    const firstByte = buffer[0];
+    if (firstByte >= 0x80) {
+      return VersionedTransaction.deserialize(buffer);
+    } else {
+      return Transaction.from(buffer);
+    }
+  } catch {
+    try {
+      return VersionedTransaction.deserialize(buffer);
+    } catch {
+      return Transaction.from(buffer);
+    }
+  }
+}
 
 interface ClaimTransaction {
   blockhash: {
@@ -77,9 +96,8 @@ export function PartnerClaimButton() {
       setStatus("signing");
       setMessage("Please sign the transaction...");
 
-      // Decode and sign
-      const txBytes = Buffer.from(data.transaction, "base64");
-      const tx = VersionedTransaction.deserialize(txBytes);
+      // Decode and sign (handles both versioned and legacy formats)
+      const tx = deserializeTransaction(data.transaction);
       const signedTx = await signTransaction(tx);
 
       setStatus("sending");
@@ -155,13 +173,11 @@ export function PartnerClaimButton() {
       setMessage(`Found ${transactions.length} transaction(s) to sign...`);
       setStatus("signing");
 
-      // 2. Decode and prepare transactions for signing
-      const txsToSign: VersionedTransaction[] = [];
+      // 2. Decode and prepare transactions for signing (handles both versioned and legacy)
+      const txsToSign: (VersionedTransaction | Transaction)[] = [];
 
       for (const txData of transactions) {
-        // Decode base64 transaction
-        const txBytes = Buffer.from(txData.transaction, "base64");
-        const tx = VersionedTransaction.deserialize(txBytes);
+        const tx = deserializeTransaction(txData.transaction);
         txsToSign.push(tx);
       }
 

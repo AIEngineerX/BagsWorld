@@ -4,8 +4,27 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { VersionedTransaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { VersionedTransaction, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import type { TradeQuote } from "@/lib/types";
+
+// Helper to deserialize transaction - handles both versioned and legacy formats
+function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
+  const buffer = Buffer.from(base64, "base64");
+  try {
+    const firstByte = buffer[0];
+    if (firstByte >= 0x80) {
+      return VersionedTransaction.deserialize(buffer);
+    } else {
+      return Transaction.from(buffer);
+    }
+  } catch {
+    try {
+      return VersionedTransaction.deserialize(buffer);
+    } catch {
+      return Transaction.from(buffer);
+    }
+  }
+}
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
@@ -126,10 +145,8 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
 
       const { transaction: txBase64 } = await response.json();
 
-      // Decode and sign transaction (using VersionedTransaction for modern DEX compatibility)
-      const txBuffer = Buffer.from(txBase64, "base64");
-      const transaction = VersionedTransaction.deserialize(txBuffer);
-
+      // Decode and sign transaction (handles both versioned and legacy formats)
+      const transaction = deserializeTransaction(txBase64);
       const signedTx = await signTransaction(transaction);
 
       // Send transaction
