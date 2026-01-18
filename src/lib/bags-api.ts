@@ -351,9 +351,8 @@ class BagsApiClient {
       }
     }
 
-    // Build arrays in original order
-    const claimersArray: string[] = [];
-    const basisPointsArray: number[] = [];
+    // Build arrays and deduplicate by wallet address (combine BPS for duplicates)
+    const walletBpsMap = new Map<string, number>();
 
     for (const fc of feeClaimers) {
       const key = `${fc.provider}:${fc.providerUsername}`;
@@ -361,9 +360,21 @@ class BagsApiClient {
       if (!wallet) {
         throw new Error(`Could not find wallet for ${fc.provider} user: ${fc.providerUsername}`);
       }
-      claimersArray.push(wallet);
-      basisPointsArray.push(fc.bps);
+      // Combine BPS if wallet already exists (handles duplicates)
+      const existingBps = walletBpsMap.get(wallet) || 0;
+      walletBpsMap.set(wallet, existingBps + fc.bps);
     }
+
+    // Convert map to arrays
+    const claimersArray: string[] = [];
+    const basisPointsArray: number[] = [];
+
+    for (const [wallet, bps] of walletBpsMap) {
+      claimersArray.push(wallet);
+      basisPointsArray.push(bps);
+    }
+
+    console.log(`Fee claimers deduplicated: ${feeClaimers.length} entries -> ${claimersArray.length} unique wallets`);
 
     const requestBody = {
       baseMint: mint,
