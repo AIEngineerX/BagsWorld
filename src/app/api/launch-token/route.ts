@@ -225,9 +225,11 @@ async function handleCreateLaunchTx(
       tipLamports: data.tipLamports,
     });
 
+    // result is now { transaction: string, lastValidBlockHeight?: number }
     return NextResponse.json({
       success: true,
-      transaction: result,
+      transaction: result.transaction, // Extract the transaction string
+      lastValidBlockHeight: result.lastValidBlockHeight,
     });
   } catch (error) {
     console.error("Create launch tx error:", error);

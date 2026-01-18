@@ -114,7 +114,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   const handleNextStep = () => {
     if (step === "info") {
       if (!formData.name || !formData.symbol || !formData.description) {
-        setError("please fill in all required fields ser");
+        setError("please fill in all required fields");
         return;
       }
       setError(null);
@@ -301,10 +301,19 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           throw new Error(err.error || "Failed to create launch transaction");
         }
 
-        const { transaction: txBase64 } = await launchTxResponse.json();
+        const launchResult = await launchTxResponse.json();
 
-        if (!txBase64) {
-          throw new Error("No transaction received from API. The token may already exist or there was a server error.");
+        // Handle various response formats - extract the base64 transaction string
+        let txBase64 = launchResult.transaction;
+
+        // If transaction is nested (some API versions return { transaction: { transaction: "..." } })
+        if (txBase64 && typeof txBase64 === "object" && "transaction" in txBase64) {
+          txBase64 = txBase64.transaction;
+        }
+
+        if (!txBase64 || typeof txBase64 !== "string") {
+          console.error("Invalid transaction response:", launchResult);
+          throw new Error("No valid transaction received from API. The token may already exist or there was a server error.");
         }
 
         setLaunchStatus("Please sign the transaction in your wallet...");

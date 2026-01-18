@@ -275,15 +275,26 @@ class BagsApiClient {
     configKey: string;
     tipWallet?: string;
     tipLamports?: number;
-  }): Promise<string> {
+  }): Promise<{ transaction: string; lastValidBlockHeight?: number }> {
     console.log("Bags API createLaunchTransaction request:", JSON.stringify(data, null, 2));
     try {
-      const result = await this.fetch<string>("/token-launch/create-launch-transaction", {
+      // The API may return either a string directly or an object with transaction field
+      const result = await this.fetch<string | { transaction: string; lastValidBlockHeight?: number }>("/token-launch/create-launch-transaction", {
         method: "POST",
         body: JSON.stringify(data),
       });
       console.log("Bags API createLaunchTransaction response:", result);
-      return result;
+      console.log("Response type:", typeof result);
+
+      // Handle both string and object responses
+      if (typeof result === "string") {
+        return { transaction: result };
+      } else if (result && typeof result === "object" && "transaction" in result) {
+        return result;
+      } else {
+        console.error("Unexpected response format:", result);
+        throw new Error("Invalid response format from launch transaction API");
+      }
     } catch (error) {
       console.error("Bags API createLaunchTransaction error:", error);
       throw error;
