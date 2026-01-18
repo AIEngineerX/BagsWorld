@@ -336,22 +336,25 @@ export function AshChat() {
       {/* Footer with key stats */}
       <div className="p-2 border-t border-red-500/30 bg-bags-darker">
         <div className="grid grid-cols-2 gap-2 text-center">
-          <div className="bg-red-500/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Community Pool</p>
-            <p className="font-pixel text-[10px] text-red-400">{ECOSYSTEM_CONFIG.ecosystem.allocation.communityPool}%</p>
+          <div className="bg-bags-green/10 p-1 rounded">
+            <p className="font-pixel text-[7px] text-gray-400">Buyback & Burn</p>
+            <p className="font-pixel text-[10px] text-bags-green">80%</p>
           </div>
-          <div className="bg-yellow-500/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Holder Rewards</p>
-            <p className="font-pixel text-[10px] text-yellow-400">{ECOSYSTEM_CONFIG.ecosystem.allocation.topHolderRewards}%</p>
+          <div className="bg-blue-500/10 p-1 rounded">
+            <p className="font-pixel text-[7px] text-gray-400">Operations</p>
+            <p className="font-pixel text-[10px] text-blue-400">20%</p>
           </div>
         </div>
+        <p className="font-pixel text-[6px] text-gray-500 text-center mt-1">
+          Top 5 tokens bought & burned every 12h
+        </p>
         <a
           href={`https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 mt-2"
+          className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 mt-1"
         >
-          🔍 Verify Rewards Wallet on Solscan →
+          View Buyback Wallet on Solscan
         </a>
       </div>
     </div>

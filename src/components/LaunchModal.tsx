@@ -636,19 +636,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 </div>
                 <span className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.bps / 100}%</span>
               </div>
-              <div className="grid grid-cols-2 gap-1 pt-1 border-t border-bags-gold/20">
-                <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-bags-gold">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.topCreatorKickback}% Top Creator Kickback
-                </div>
-                <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-purple-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.topHolderRewards}% Top Holder Rewards
-                </div>
-                <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-bags-green">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.communityPool}% Community Pool
-                </div>
-                <div className="font-pixel text-[6px] text-gray-400">
-                  <span className="text-blue-400">●</span> {ECOSYSTEM_CONFIG.ecosystem.allocation.development}% Development
-                </div>
+              <div className="pt-1 border-t border-bags-gold/20">
+                <p className="font-pixel text-[6px] text-gray-400">
+                  80% buys top tokens & burns them. 20% covers operations.
+                  Top performers get automatic buy pressure.
+                </p>
               </div>
               <a
                 href={`https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`}

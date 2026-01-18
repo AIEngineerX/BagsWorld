@@ -20,6 +20,7 @@ import { PartnerClaimButton } from "@/components/PartnerClaimButton";
 import { MusicButton } from "@/components/MusicButton";
 import { useWorldState } from "@/hooks/useWorldState";
 import { DatabaseStatus } from "@/components/DatabaseStatus";
+import { EcosystemStats } from "@/components/EcosystemStats";
 import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
 
@@ -157,13 +158,8 @@ export default function Home() {
               {worldState?.buildings?.length ?? 0}
             </span>
           </span>
-          <span className="text-gray-400">
-            YOUR TOKENS:{" "}
-            <span className="text-bags-gold">
-              {tokenCount ?? 0}
-            </span>
-          </span>
           <DatabaseStatus />
+          <EcosystemStats />
         </div>
         <div className="text-gray-400">
           POWERED BY{" "}
