@@ -23,6 +23,7 @@ import { DatabaseStatus } from "@/components/DatabaseStatus";
 import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
 import { TradingTerminal } from "@/components/TradingTerminal";
+import { AdminConsole } from "@/components/AdminConsole";
 
 interface BuildingClickData {
   mint: string;
@@ -141,6 +142,9 @@ export default function Home() {
 
           {/* Agent Dashboard (Admin Only) */}
           <AgentDashboard />
+
+          {/* Admin Console (Admin Only) */}
+          <AdminConsole />
         </div>
 
         {/* Sidebar */}

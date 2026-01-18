@@ -7,22 +7,16 @@ import type {
   FeeEarner,
   TokenInfo,
 } from "./types";
+import { getWorldConfig } from "./world-config";
 
-// Constants for world calculations
+// Fixed constants for world calculations
 const WORLD_WIDTH = 800;
 const WORLD_HEIGHT = 600;
-const BUILDING_SPACING = 120; // Increased spacing to prevent overlap
-const MAX_BUILDINGS = 20;
-const MAX_CHARACTERS = 15;
 
-// Volume thresholds for world health (in SOL)
-const VOLUME_THRESHOLDS = {
-  thriving: 10000,
-  healthy: 5000,
-  normal: 2000,
-  struggling: 500,
-  dying: 100,
-};
+// Dynamic config accessor - values can be changed via Admin Console
+function getConfig() {
+  return getWorldConfig();
+}
 
 // Position cache to prevent buildings from shifting when rankings change
 // Key: token mint, Value: { x, y, assignedIndex }
@@ -115,9 +109,10 @@ export function generateBuildingPosition(
   index: number,
   total: number
 ): { x: number; y: number } {
+  const config = getConfig();
   // Use a fixed grid layout with deterministic small offsets
   const maxCols = 5; // Maximum 5 buildings per row
-  const actualTotal = Math.min(total, MAX_BUILDINGS);
+  const actualTotal = Math.min(total, config.maxBuildings);
   const rows = Math.ceil(actualTotal / maxCols);
 
   const row = Math.floor(index / maxCols);
@@ -127,8 +122,8 @@ export function generateBuildingPosition(
   const buildingsInThisRow = row < rows - 1 ? maxCols : actualTotal - (rows - 1) * maxCols;
 
   // Center the buildings horizontally
-  const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
-  const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
+  const totalRowWidth = buildingsInThisRow * config.buildingSpacing;
+  const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + config.buildingSpacing / 2;
 
   // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area)
   // Buildings use origin(0.5, 1), so y position is their bottom edge
@@ -144,7 +139,7 @@ export function generateBuildingPosition(
   const offsetY = (seededRandom(index * 13 + 2) * 12 - 6); // Smaller Y offset
 
   return {
-    x: rowStartX + col * BUILDING_SPACING + offsetX,
+    x: rowStartX + col * config.buildingSpacing + offsetX,
     y: baseY + offsetY,
   };
 }
@@ -157,6 +152,8 @@ export function getCachedBuildingPosition(
   mint: string,
   existingBuildings: Set<string>
 ): { x: number; y: number } {
+  const config = getConfig();
+
   // Check if we already have a cached position for this mint
   const cached = buildingPositionCache.get(mint);
   if (cached) {
@@ -172,12 +169,12 @@ export function getCachedBuildingPosition(
 
   // Find the lowest available index
   let assignedIndex = 0;
-  while (usedIndices.has(assignedIndex) && assignedIndex < MAX_BUILDINGS) {
+  while (usedIndices.has(assignedIndex) && assignedIndex < config.maxBuildings) {
     assignedIndex++;
   }
 
   // Generate position based on assigned index
-  const position = generateBuildingPosition(assignedIndex, MAX_BUILDINGS);
+  const position = generateBuildingPosition(assignedIndex, config.maxBuildings);
 
   // Cache it
   buildingPositionCache.set(mint, {
@@ -281,9 +278,10 @@ export function transformTokenToBuilding(
   index: number,
   existingBuilding?: GameBuilding
 ): GameBuilding {
+  const config = getConfig();
   const position = existingBuilding
     ? { x: existingBuilding.x, y: existingBuilding.y }
-    : generateBuildingPosition(index, MAX_BUILDINGS);
+    : generateBuildingPosition(index, config.maxBuildings);
 
   // Check if this is a real token (not a starter/placeholder/treasury)
   const isStarterToken = token.mint.startsWith("Starter");
@@ -358,11 +356,14 @@ export function buildWorldState(
   const health = calculateWorldHealth(totalVolume, avgVolume);
   const weather = calculateWeather(health);
 
+  // Get dynamic config
+  const config = getConfig();
+
   // Transform earners to characters (keep positions from previous state)
   const previousCharacters = new Map(
     previousState?.population.map((c) => [c.id, c])
   );
-  const population = earners.slice(0, MAX_CHARACTERS).map((earner) =>
+  const population = earners.slice(0, config.maxCharacters).map((earner) =>
     transformFeeEarnerToCharacter(earner, previousCharacters.get(earner.wallet))
   );
 
@@ -377,12 +378,23 @@ export function buildWorldState(
   );
 
   // Decay system: Filter and sort buildings
-  const DECAY_THRESHOLD = 10; // Buildings below this health are removed
+  // Uses dynamic config for thresholds (adjustable via Admin Console)
   const filteredBuildings = allBuildings
-    // Keep permanent buildings (Treasury, Starter) and buildings above decay threshold
+    // Keep permanent buildings (Treasury, Starter) and buildings meeting thresholds
     .filter((b) => {
       const isPermanent = b.id.startsWith("Treasury") || b.id.startsWith("Starter");
-      return isPermanent || b.health > DECAY_THRESHOLD;
+      if (isPermanent) return true;
+
+      // Check health threshold
+      if (b.health <= config.decayThreshold) return false;
+
+      // Check minimum market cap (if configured)
+      if (config.minMarketCap > 0 && (b.marketCap ?? 0) < config.minMarketCap) return false;
+
+      // Check minimum lifetime fees (if configured) - using volume as proxy
+      // Note: lifetimeFees not directly on building, would need to be added if needed
+
+      return true;
     })
     // Sort by: permanent first, then by volume/activity, then by health
     .sort((a, b) => {
@@ -398,7 +410,7 @@ export function buildWorldState(
       return b.health - a.health;
     })
     // Limit to max buildings
-    .slice(0, MAX_BUILDINGS);
+    .slice(0, config.maxBuildings);
 
   // Get the set of active building mints for cache cleanup
   const activeMints = new Set(filteredBuildings.map((b) => b.id));
