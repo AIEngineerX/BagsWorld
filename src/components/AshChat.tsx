@@ -337,12 +337,12 @@ export function AshChat() {
       <div className="p-2 border-t border-red-500/30 bg-bags-darker">
         <div className="grid grid-cols-2 gap-2 text-center">
           <div className="bg-red-500/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Community Share</p>
-            <p className="font-pixel text-[10px] text-red-400">{ECOSYSTEM_CONFIG.ecosystem.allocation.communityRewards}%</p>
+            <p className="font-pixel text-[7px] text-gray-400">Community Pool</p>
+            <p className="font-pixel text-[10px] text-red-400">{ECOSYSTEM_CONFIG.ecosystem.allocation.communityPool}%</p>
           </div>
           <div className="bg-yellow-500/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Weekly Airdrops</p>
-            <p className="font-pixel text-[10px] text-yellow-400">{ECOSYSTEM_CONFIG.ecosystem.allocation.weeklyAirdrops}%</p>
+            <p className="font-pixel text-[7px] text-gray-400">Holder Rewards</p>
+            <p className="font-pixel text-[10px] text-yellow-400">{ECOSYSTEM_CONFIG.ecosystem.allocation.topHolderRewards}%</p>
           </div>
         </div>
         <a

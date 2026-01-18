@@ -1,5 +1,5 @@
 // Neon database client for shared global state
-import { neon } from "@netlify/neon";
+// Uses dynamic import because @netlify/neon only exists in Netlify runtime
 
 // Database types
 export interface GlobalToken {
@@ -31,17 +31,27 @@ export function isNeonConfigured(): boolean {
   return !!process.env.NETLIFY_DATABASE_URL;
 }
 
-// Get SQL client (returns null if not configured)
-function getSql() {
+// Dynamically get SQL client (returns null if not configured or not on Netlify)
+async function getSql() {
   if (!isNeonConfigured()) {
     return null;
   }
-  return neon();
+
+  try {
+    // Use string variable to prevent webpack from analyzing the import
+    const moduleName = "@netlify/neon";
+    // eslint-disable-next-line
+    const { neon } = require(moduleName);
+    return neon();
+  } catch (error) {
+    console.log("Neon module not available (not running on Netlify)");
+    return null;
+  }
 }
 
 // Fetch all global tokens (visible to everyone)
 export async function getGlobalTokens(): Promise<GlobalToken[]> {
-  const sql = getSql();
+  const sql = await getSql();
   if (!sql) {
     console.log("Neon not configured, using local storage only");
     return [];
@@ -58,7 +68,7 @@ export async function getGlobalTokens(): Promise<GlobalToken[]> {
 
 // Save a token to the global database
 export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
-  const sql = getSql();
+  const sql = await getSql();
   if (!sql) {
     console.log("Neon not configured, cannot save globally");
     return false;
@@ -115,7 +125,7 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
 
 // Get featured tokens only
 export async function getFeaturedTokens(): Promise<GlobalToken[]> {
-  const sql = getSql();
+  const sql = await getSql();
   if (!sql) {
     return [];
   }
@@ -142,7 +152,7 @@ export async function updateTokenStats(
     volume_24h?: number;
   }
 ): Promise<void> {
-  const sql = getSql();
+  const sql = await getSql();
   if (!sql) return;
 
   try {

@@ -450,7 +450,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="flex items-start gap-2">
                   <span className="text-xs">💎</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Holder rewards</span> - Top token's holders get airdrops
+                    <span className="text-bags-green">Holder rewards</span> - Top token holders get airdrops
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
