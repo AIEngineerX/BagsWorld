@@ -29,28 +29,33 @@ It transforms abstract DeFi data into something **visual, engaging, and fun** - 
 
 ## Revenue Model
 
-**BagsWorld takes a 5% ecosystem fee on all tokens launched through the platform.**
+**BagsWorld takes a 1% ecosystem fee that funds automatic buybacks of top tokens.**
 
 When someone launches a token through BagsWorld:
-1. They set their creator fee (typically 1% of all trading volume)
-2. BagsWorld automatically adds a 5% fee share to the ecosystem wallet
-3. This fee is **permanent and locked** - earning from every trade, forever
+1. They set their creator fee shares (fee recipients earn from all trading volume)
+2. BagsWorld adds a 1% fee share to the ecosystem wallet
+3. This fee is **permanently locked** - trustless and immutable
 
-### Fee Allocation
+### How It Works
 
-| Category | % | Purpose |
-|----------|---|---------|
-| Community Rewards | 50% | Rewards for top-performing communities |
-| Weekly Airdrops | 25% | Distributed to active holders |
-| Creator Bonuses | 15% | Incentives for top tokens |
-| Development | 10% | Platform improvements |
+```
+Fees collected → Buy top 5 performing tokens → Burn them
+```
 
-### Why It Works
+Every 12 hours, the buyback agent:
+1. Identifies the top 5 BagsWorld tokens by volume
+2. Uses 80% of collected fees to buy those tokens
+3. Burns the purchased tokens immediately
 
-- **Aligned incentives** - BagsWorld only earns if launched tokens succeed
-- **Recurring revenue** - Fees are permanent, creating sustainable income
-- **Network effects** - More tokens = bigger world = more users = more launches
-- **Fully transparent** - All fees verifiable on [Solscan](https://solscan.io)
+**Success rewards success.** If your token is performing well, it gets bought and burned - creating buy pressure and reducing supply.
+
+### Why Launch on BagsWorld
+
+- **Deflationary support** - Top tokens get automatic buy pressure
+- **Supply reduction** - Burned tokens are gone forever
+- **Low fee** - Only 1% goes to the ecosystem
+- **Transparent** - All buybacks and burns verifiable on [Solscan](https://solscan.io)
+- **Aligned incentives** - BagsWorld only benefits if your token succeeds
 
 ## Features
 

@@ -21,7 +21,9 @@ import {
 } from "@/lib/agent-wallet";
 
 interface AgentRequestBody {
-  action: "status" | "start" | "stop" | "trigger" | "config" | "buyback-status" | "buyback-start" | "buyback-stop" | "buyback-trigger" | "buyback-config";
+  action:
+    | "status" | "start" | "stop" | "trigger" | "config"
+    | "buyback-status" | "buyback-start" | "buyback-stop" | "buyback-trigger" | "buyback-config";
   config?: {
     enabled?: boolean;
     minClaimThresholdSol?: number;

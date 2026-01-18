@@ -71,15 +71,16 @@ export interface BuybackResult {
 const BURN_ADDRESS = new PublicKey("1nc1nerator11111111111111111111111111111111");
 
 // Default configuration
+// 80% of collected fees go to buybacks, 20% reserved for operations
 const DEFAULT_CONFIG: BuybackConfig = {
   enabled: true,
   intervalMs: 12 * 60 * 60 * 1000, // 12 hours
-  buybackPercentage: 50, // Use 50% of available balance
-  minBuybackSol: 0.1, // Minimum 0.1 SOL to trigger
+  buybackPercentage: 80, // 80% of balance for buybacks
+  minBuybackSol: 0.05, // Minimum 0.05 SOL to trigger
   maxBuybackSol: 10, // Max 10 SOL per cycle
-  topTokensCount: 3, // Buy back top 3 tokens
+  topTokensCount: 5, // Buy back top 5 tokens
   burnAfterBuy: true,
-  reserveBalanceSol: 0.05, // Keep 0.05 SOL for tx fees
+  reserveBalanceSol: 0.02, // Keep 0.02 SOL for tx fees
 };
 
 // Agent state

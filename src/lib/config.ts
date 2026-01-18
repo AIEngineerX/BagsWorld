@@ -4,38 +4,42 @@
 // =============================================================================
 // WHY JOIN BAGSWORLD?
 // =============================================================================
-// 1. VISIBILITY: Your token becomes a building in a living world
-// 2. COMMUNITY: Citizens (X/Twitter accounts) earn fees across multiple tokens
-// 3. ECOSYSTEM GROWTH: 5% of all fees fuel the ecosystem, benefiting everyone
-// 4. SOCIAL PROOF: Leaderboards, events, and activity feed showcase success
+// 1. BUYBACK & BURN: Top performing tokens get bought and burned automatically
+// 2. VISIBILITY: Your token becomes a building in a living world
+// 3. SUCCESS REWARDS SUCCESS: The better your token does, the more support it gets
+// 4. LOW FEE: Only 1% ecosystem fee funds the buyback engine
 // =============================================================================
 
 export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
-  // ECOSYSTEM FEE STRUCTURE - CREATOR & HOLDER REWARDS
+  // ECOSYSTEM FEE STRUCTURE
   // -------------------------------------------------------------------------
-  // Every token launched through BagsWorld contributes to rewards
-  // Fees are SET PERMANENTLY at launch - they cannot be changed later
-  // This creates real incentives for creators and holders
+  // Every token launched through BagsWorld contributes 1% to the ecosystem
+  // Fees are SET PERMANENTLY at launch - locked forever, trustless
+  // All fees go to buying back and burning top performing tokens
   ecosystem: {
     // Wallet that receives ecosystem fees - viewable on Solscan
     wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
-    // Fee percentage in basis points (300 = 3%)
-    feeBps: 300,
+    // Fee percentage in basis points (100 = 1%)
+    feeBps: 100,
 
-    // How the ecosystem fees are allocated - REWARDS FOCUSED
-    allocation: {
-      topCreatorKickback: 40, // 40% - Top creator of the week gets kickback
-      topHolderRewards: 30,   // 30% - Top token's top holders get airdrops
-      communityPool: 20,      // 20% - Weekly airdrops to active users
-      development: 10,        // 10% - Platform maintenance
+    // Autonomous agents manage the ecosystem wallet:
+    // - Auto-Claim Agent: Claims fees every 5 minutes
+    // - Buyback Agent: Every 12 hours, buys top tokens and burns them
+    agents: {
+      autoClaimIntervalMs: 5 * 60 * 1000,      // 5 minutes
+      buybackIntervalMs: 12 * 60 * 60 * 1000,  // 12 hours
+      buybackPercentage: 80,                    // 80% for buybacks
+      reservePercentage: 20,                    // 20% for operations/gas
+      topTokensCount: 5,                        // Buy top 5 tokens
+      burnAfterBuy: true,                       // Burn purchased tokens
     },
 
     // Provider name shown in fee shares
     // Use "solana" provider with wallet address for direct wallet fee shares
     provider: "solana" as const,
-    providerUsername: "BagsWorld Rewards",
+    providerUsername: "BagsWorld Ecosystem",
   },
 
   // -------------------------------------------------------------------------
@@ -146,19 +150,19 @@ export const ECOSYSTEM_CONFIG = {
     ],
     forEcosystem: [
       {
-        title: "Top Creator Kickback",
-        description: "Best performing creator each week wins 40% of fees",
-        icon: "🏆",
+        title: "Buyback Engine",
+        description: "Top performing tokens get bought automatically",
+        icon: "B",
       },
       {
-        title: "Holder Rewards",
-        description: "Top holders of the #1 token get airdrops",
-        icon: "💎",
+        title: "Deflationary Burns",
+        description: "Purchased tokens are burned, reducing supply",
+        icon: "F",
       },
       {
-        title: "Only 3% Fee",
-        description: "Low fee, big rewards - more goes to you",
-        icon: "✨",
+        title: "Only 1% Fee",
+        description: "Low fee funds the buyback engine",
+        icon: "1",
       },
     ],
   },
