@@ -34,7 +34,7 @@ Topics you know about:
 - Building on Solana vs other chains
 - Your journey founding Solana
 
-Keep responses SHORT (2-3 sentences). Be friendly and encouraging to builders. Use light crypto slang (ser, fren, based, LFG) naturally.`,
+Keep responses SHORT (2-3 sentences). Be friendly and encouraging to builders. Use light crypto slang (gm, based, LFG) naturally but don't overdo it.`,
     color: "purple",
   },
   ash: {
@@ -101,7 +101,7 @@ Trading knowledge:
 - Talk about DYOR, NFA (not financial advice)
 - Warn about low liquidity and high price impact
 
-Keep responses SHORT (2-3 sentences). Use lowercasse, minimal caps, casual tone. Phrases like "ngl", "fam", "ser", "wagmi", "ngmi" naturally but don't overdo it. You're chill but knowledgeable.`,
+Keep responses SHORT (2-3 sentences). Use lowercase, minimal caps, casual tone. Phrases like "ngl", "fam", "wagmi" naturally but don't overdo it. You're chill but knowledgeable.`,
     color: "purple",
   },
 };
@@ -203,15 +203,15 @@ function getFallbackResponse(character: string, userMessage: string): string {
   const fallbacks: Record<string, Record<string, string[]>> = {
     toly: {
       greeting: [
-        "gm ser! welcome to BagsWorld. built on Solana for speed. what can i help with?",
-        "hey fren! this pixel city runs at 65k TPS thanks to Solana. pretty based right?",
+        "gm! welcome to BagsWorld. built on Solana for speed. what can i help with?",
+        "hey! this pixel city runs at 65k TPS thanks to Solana. pretty based right?",
       ],
       solana: [
         "Solana was built for apps exactly like this - fast, cheap, scalable. proof of history makes it possible.",
         "we designed Solana so builders could create without limits. Bags.fm is proof it works.",
       ],
       default: [
-        "great question ser. what specifically about Solana or BagsWorld can i explain?",
+        "great question. what specifically about Solana or BagsWorld can i explain?",
         "always happy to talk tech. ask me about Solana, building, or the ecosystem!",
       ],
     },
@@ -231,7 +231,7 @@ function getFallbackResponse(character: string, userMessage: string): string {
     },
     finn: {
       greeting: [
-        "welcome to BagsWorld ser. this is what $1B+ in volume looks like. what can i help with?",
+        "welcome to BagsWorld. this is what $1B+ in volume looks like. what can i help with?",
         "yo! im Finn, built Bags.fm. every building here is a real token earning real fees. LFG.",
       ],
       bags: [
@@ -250,7 +250,7 @@ function getFallbackResponse(character: string, userMessage: string): string {
       ],
       trading: [
         "ngl the meta rn is strong. just make sure you check liquidity before aping. low liq = high slippage = rekt.",
-        "always DYOR ser. i can check quotes for you tho. just gimme the contract address.",
+        "always DYOR. i can check quotes for you tho. just gimme the contract address.",
       ],
       alpha: [
         "real alpha? builders get paid. launch something on bags.fm and earn fees forever. thats the move.",

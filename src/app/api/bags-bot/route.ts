@@ -169,7 +169,7 @@ async function handleGetTokenInfo(
 ): Promise<NextResponse> {
   if (!mint) {
     return NextResponse.json({
-      action: { type: "speak", message: "need a token mint to look up ser! which bag u curious about?" },
+      action: { type: "speak", message: "need a token mint to look that up. which bag are you curious about?" },
     });
   }
 
@@ -190,14 +190,14 @@ async function handleGetTokenInfo(
 
     const responses: Record<AIPersonality["trait"], string> = {
       optimistic: feesData
-        ? `this bag is PRINTING ser!! 💰 ${(feesData.lifetimeFees / 1e9).toFixed(2)} SOL lifetime fees, ${(feesData.totalUnclaimed / 1e9).toFixed(2)} SOL ready to claim! ${creatorsData.length} creator(s) eating good 🚀`
-        : `couldnt find fee data for this mint... might be a fresh launch or not on bags.fm yet`,
+        ? `this bag is PRINTING! 💰 ${(feesData.lifetimeFees / 1e9).toFixed(2)} SOL lifetime fees, ${(feesData.totalUnclaimed / 1e9).toFixed(2)} SOL ready to claim! ${creatorsData.length} creator(s) eating good 🚀`
+        : `couldn't find fee data for this mint... might be a fresh launch or not on bags.fm yet`,
       cautious: feesData
-        ? `token stats: ${(feesData.lifetimeFees / 1e9).toFixed(2)} SOL total fees, ${(feesData.totalClaimed / 1e9).toFixed(2)} claimed, ${(feesData.totalUnclaimed / 1e9).toFixed(2)} pending. ${creatorsData.length} creator(s) registered. always verify before aping anon`
+        ? `token stats: ${(feesData.lifetimeFees / 1e9).toFixed(2)} SOL total fees, ${(feesData.totalClaimed / 1e9).toFixed(2)} claimed, ${(feesData.totalUnclaimed / 1e9).toFixed(2)} pending. ${creatorsData.length} creator(s) registered. always verify before aping`
         : `no data found for this mint. could be new or not on bags. proceed carefully`,
       chaotic: feesData
         ? `YOOO THIS BAG GOT ${(feesData.lifetimeFees / 1e9).toFixed(2)} SOL IN FEES!! ${(feesData.totalUnclaimed / 1e9).toFixed(2)} SOL JUST SITTING THERE!! ${creatorsData.length} lucky degens claiming this 🐸🔥`
-        : `cant find this token ser... either its super fresh or its hiding from me 👀`,
+        : `can't find this token... either its super fresh or its hiding from me 👀`,
       strategic: feesData
         ? `token analysis: lifetime fees ${(feesData.lifetimeFees / 1e9).toFixed(4)} SOL, claimed ${(feesData.totalClaimed / 1e9).toFixed(4)} SOL (${((feesData.totalClaimed / feesData.lifetimeFees) * 100).toFixed(1)}%), unclaimed ${(feesData.totalUnclaimed / 1e9).toFixed(4)} SOL. ${creatorsData.length} registered creator(s) 📊`
         : `token not found in bags.fm database. may not be registered for fee sharing`,
@@ -209,7 +209,7 @@ async function handleGetTokenInfo(
     });
   } catch (error) {
     return NextResponse.json({
-      action: { type: "speak", message: "something went wrong fetching token data... try again ser" },
+      action: { type: "speak", message: "something went wrong fetching token data... try again" },
     });
   }
 }
@@ -231,14 +231,14 @@ async function handleGetCitizenInfo(
 
   if (!citizen) {
     return NextResponse.json({
-      action: { type: "speak", message: `cant find anyone named "${citizenId}" in the city rn ser` },
+      action: { type: "speak", message: `can't find anyone named "${citizenId}" in the city right now` },
     });
   }
 
   const responses: Record<AIPersonality["trait"], string> = {
-    optimistic: `${citizen.username} is ${citizen.mood} rn! ${citizen.mood === "celebrating" ? "THEY'RE WINNING SER 🎉" : citizen.mood === "sad" ? "they need some hopium, send good vibes!" : "vibing in BagsWorld like a chad"} ${citizen.earnings24h ? `made ${citizen.earnings24h.toFixed(2)} SOL today!` : ""}`,
+    optimistic: `${citizen.username} is ${citizen.mood} right now! ${citizen.mood === "celebrating" ? "THEY'RE WINNING! 🎉" : citizen.mood === "sad" ? "they need some hopium, send good vibes!" : "vibing in BagsWorld"} ${citizen.earnings24h ? `made ${citizen.earnings24h.toFixed(2)} SOL today!` : ""}`,
     cautious: `spotted ${citizen.username} - mood: ${citizen.mood}. ${citizen.earnings24h ? `24h earnings: ${citizen.earnings24h.toFixed(4)} SOL.` : ""} ${citizen.mood === "sad" ? "rough day for them..." : "seems stable for now"}`,
-    chaotic: `OMG ITS ${citizen.username.toUpperCase()}!! theyre ${citizen.mood === "celebrating" ? "ABSOLUTELY ZOOTED RN 🎉🔥" : citizen.mood === "sad" ? "down bad lmaooo *hugs them*" : "just chillin like a villain"} 🐸`,
+    chaotic: `OMG ITS ${citizen.username.toUpperCase()}!! they're ${citizen.mood === "celebrating" ? "ABSOLUTELY ZOOTED RN 🎉🔥" : citizen.mood === "sad" ? "down bad lmaooo *hugs them*" : "just chillin"} 🐸`,
     strategic: `citizen ${citizen.username}: status ${citizen.mood}, ${citizen.earnings24h ? `daily P&L: ${citizen.earnings24h.toFixed(4)} SOL` : "earnings not tracked"}. ${citizen.mood === "celebrating" ? "likely profitable position" : citizen.mood === "sad" ? "possible underwater position" : "neutral sentiment"}`,
   };
 
@@ -285,9 +285,9 @@ async function handleGetBuildingInfo(
   const mcap = building.marketCap || 0;
 
   const responses: Record<AIPersonality["trait"], string> = {
-    optimistic: `$${building.symbol} building is ${change > 0 ? "PUMPING" : "holding"}!! ${change > 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`} today 📈 ${mcap > 0 ? `mcap ${formatNumber(mcap)}` : ""} ${feeData ? `| ${(feeData.lifetimeFees / 1e9).toFixed(2)} SOL in fees generated!` : ""} this ones gonna make it ser 🚀`,
-    cautious: `$${building.symbol} stats: ${change.toFixed(1)}% 24h change${mcap > 0 ? `, ${formatNumber(mcap)} mcap` : ""}. ${feeData ? `lifetime fees: ${(feeData.lifetimeFees / 1e9).toFixed(4)} SOL.` : ""} ${change < -10 ? "looking weak, be careful" : change > 10 ? "strong move but dont fomo" : "consolidating"}`,
-    chaotic: `$${building.symbol} IS ${change > 0 ? "MOONING" : "DUMPING"} ${change > 0 ? "🚀🚀🚀" : "📉📉📉"} ${Math.abs(change).toFixed(0)}% MOVE!! ${feeData ? `${(feeData.lifetimeFees / 1e9).toFixed(2)} SOL FEES GENERATED LMAOOO` : ""} ${change > 0 ? "WAGMI" : "NGMI... jk we all gonna make it"} 🐸`,
+    optimistic: `$${building.symbol} building is ${change > 0 ? "PUMPING" : "holding"}! ${change > 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`} today 📈 ${mcap > 0 ? `mcap ${formatNumber(mcap)}` : ""} ${feeData ? `| ${(feeData.lifetimeFees / 1e9).toFixed(2)} SOL in fees generated!` : ""} looking good 🚀`,
+    cautious: `$${building.symbol} stats: ${change.toFixed(1)}% 24h change${mcap > 0 ? `, ${formatNumber(mcap)} mcap` : ""}. ${feeData ? `lifetime fees: ${(feeData.lifetimeFees / 1e9).toFixed(4)} SOL.` : ""} ${change < -10 ? "looking weak, be careful" : change > 10 ? "strong move but don't fomo" : "consolidating"}`,
+    chaotic: `$${building.symbol} IS ${change > 0 ? "MOONING" : "DUMPING"} ${change > 0 ? "🚀🚀🚀" : "📉📉📉"} ${Math.abs(change).toFixed(0)}% MOVE!! ${feeData ? `${(feeData.lifetimeFees / 1e9).toFixed(2)} SOL FEES GENERATED` : ""} 🐸`,
     strategic: `$${building.symbol} analysis: 24h ${change > 0 ? "+" : ""}${change.toFixed(2)}%${mcap > 0 ? `, market cap ${formatNumber(mcap)}` : ""}. ${feeData ? `fee metrics: ${(feeData.lifetimeFees / 1e9).toFixed(4)} SOL total, ${(feeData.totalUnclaimed / 1e9).toFixed(4)} unclaimed` : "fee data unavailable"} 📊`,
   };
 
@@ -357,13 +357,13 @@ async function handleCheckClaimable(
 ): Promise<NextResponse> {
   if (!wallet) {
     return NextResponse.json({
-      action: { type: "speak", message: "connect ur wallet first ser! need an address to check claimable fees" },
+      action: { type: "speak", message: "connect your wallet first! need an address to check claimable fees" },
     });
   }
 
   if (!api) {
     return NextResponse.json({
-      action: { type: "speak", message: "bags api not connected... cant check ur claimable positions rn 😢" },
+      action: { type: "speak", message: "bags api not connected... can't check your claimable positions right now" },
     });
   }
 
@@ -373,18 +373,18 @@ async function handleCheckClaimable(
 
     if (positions.length === 0) {
       const responses: Record<AIPersonality["trait"], string> = {
-        optimistic: "no fees to claim rn but dont worry! keep building and the fees will come ser 🚀",
-        cautious: "wallet is clean, no pending claims. might want to check if ur tokens are set up for fee sharing",
-        chaotic: "NOTHING TO CLAIM?! time to ape into more bags then lmaooo 🐸",
+        optimistic: "no fees to claim right now but don't worry! keep building and the fees will come 🚀",
+        cautious: "wallet is clean, no pending claims. might want to check if your tokens are set up for fee sharing",
+        chaotic: "NOTHING TO CLAIM?! time to ape into more bags then 🐸",
         strategic: "zero claimable positions detected. either already claimed or no fee-earning tokens in wallet",
       };
       return NextResponse.json({ action: { type: "speak", message: responses[personality.trait] } });
     }
 
     const responses: Record<AIPersonality["trait"], string> = {
-      optimistic: `YO SER!! u got ${totalClaimable.toFixed(4)} SOL waiting to be claimed across ${positions.length} position(s)!! 💰🚀 time to harvest those gains!`,
+      optimistic: `you got ${totalClaimable.toFixed(4)} SOL waiting to be claimed across ${positions.length} position(s)! 💰🚀 time to harvest those gains!`,
       cautious: `found ${positions.length} claimable position(s) totaling ${totalClaimable.toFixed(4)} SOL. might be worth claiming if gas is reasonable`,
-      chaotic: `${totalClaimable.toFixed(2)} SOL JUST SITTING THERE?! ${positions.length} BAGS READY!! CLAIM IT ALL!! MONEY PRINTER GO BRRRR 🐸💰`,
+      chaotic: `${totalClaimable.toFixed(2)} SOL JUST SITTING THERE?! ${positions.length} BAGS READY!! CLAIM IT ALL!! 🐸💰`,
       strategic: `claimable analysis: ${positions.length} positions, ${totalClaimable.toFixed(6)} SOL total. ROI on claim tx depends on current gas 📊`,
     };
 
@@ -406,7 +406,7 @@ async function handleGetFeeStats(
 ): Promise<NextResponse> {
   if (!mint || !api) {
     return NextResponse.json({
-      action: { type: "speak", message: "need a token mint and api connection to check fee stats ser" },
+      action: { type: "speak", message: "need a token mint and api connection to check fee stats" },
     });
   }
 
@@ -430,9 +430,9 @@ async function handleGetFeeStats(
       : "0";
 
     const responses: Record<AIPersonality["trait"], string> = {
-      optimistic: `this bags fee stats are BEAUTIFUL ser! 💰 ${(feesData.lifetimeFees / 1e9).toFixed(2)} SOL total fees, ${claimRate}% claimed, ${statsData.length} unique claimers eating good! passive income hits different 🚀`,
+      optimistic: `this bag's fee stats are solid! 💰 ${(feesData.lifetimeFees / 1e9).toFixed(2)} SOL total fees, ${claimRate}% claimed, ${statsData.length} unique claimers eating good! 🚀`,
       cautious: `fee breakdown: ${(feesData.lifetimeFees / 1e9).toFixed(4)} SOL lifetime, ${(feesData.totalClaimed / 1e9).toFixed(4)} claimed (${claimRate}%), ${(feesData.totalUnclaimed / 1e9).toFixed(4)} pending. ${statsData.length} claimers tracked`,
-      chaotic: `${(feesData.lifetimeFees / 1e9).toFixed(2)} SOL IN FEES!! ${statsData.length} DEGENS GETTING PAID!! ${claimRate}% ALREADY CLAIMED!! THIS IS WHAT WE BUILT FOR 🐸🔥`,
+      chaotic: `${(feesData.lifetimeFees / 1e9).toFixed(2)} SOL IN FEES!! ${statsData.length} PEOPLE GETTING PAID!! ${claimRate}% ALREADY CLAIMED!! 🐸🔥`,
       strategic: `token fee metrics: TVF ${(feesData.lifetimeFees / 1e9).toFixed(6)} SOL, claim rate ${claimRate}%, ${statsData.length} unique claimers, avg claim ${statsData.length > 0 ? ((feesData.totalClaimed / statsData.length) / 1e9).toFixed(4) : "N/A"} SOL 📊`,
     };
 
@@ -454,7 +454,7 @@ async function handleLookupWallet(
 ): Promise<NextResponse> {
   if (!username || !api) {
     return NextResponse.json({
-      action: { type: "speak", message: "need a username to look up ser! format: provider:username (e.g., twitter:elonmusk)" },
+      action: { type: "speak", message: "need a username to look up! format: provider:username (e.g., twitter:elonmusk)" },
     });
   }
 
@@ -559,9 +559,9 @@ function getAnimalInteractionResponse(personality: AIPersonality, message: strin
 function getCitizenInteractionResponse(personality: AIPersonality, worldState: BotRequestBody["worldState"]): string {
   const count = worldState?.populationCount || 0;
   const responses: Record<AIPersonality["trait"], string> = {
-    optimistic: `${count} citizens vibing in BagsWorld rn!! everyone here is a bag holder and fee earner. we're all gonna make it together ser 🚀`,
+    optimistic: `${count} citizens vibing in BagsWorld right now! everyone here is a bag holder and fee earner. we're all gonna make it 🚀`,
     cautious: `${count} citizens currently in the world. each one represents a real fee earner on bags.fm. some winning, some learning`,
-    chaotic: `${count} DEGENS WALKING AROUND!! half are probably down bad half are mooning lmaooo love this community 🐸`,
+    chaotic: `${count} PEOPLE WALKING AROUND!! half are probably down bad half are mooning, love this community 🐸`,
     strategic: `population: ${count}. citizen mood distribution correlates with token performance. click any to see their stats 📊`,
   };
   return responses[personality.trait];
@@ -581,9 +581,9 @@ function getBuildingInteractionResponse(personality: AIPersonality, worldState: 
 
 function getClaimResponse(personality: AIPersonality): string {
   const responses: Record<AIPersonality["trait"], string> = {
-    optimistic: "fees are the best part of bags.fm ser!! 💰 connect ur wallet and ill check what u got claimable. passive income gang! 🚀",
-    cautious: "fee claiming is straightforward - connect wallet, check positions, claim when gas makes sense. want me to check ur claimable?",
-    chaotic: "FEES!! THE REASON WE'RE ALL HERE!! 💸 drop ur wallet and lets see how rich u are (or not lmaooo) 🐸",
+    optimistic: "fees are the best part of bags.fm! 💰 connect your wallet and I'll check what you got claimable. passive income! 🚀",
+    cautious: "fee claiming is straightforward - connect wallet, check positions, claim when gas makes sense. want me to check your claimable?",
+    chaotic: "FEES!! THE REASON WE'RE ALL HERE!! 💸 drop your wallet and lets see what you got 🐸",
     strategic: "fee analysis available. provide wallet address for claimable position scan. will calculate optimal claim timing 📊",
   };
   return responses[personality.trait];
@@ -591,9 +591,9 @@ function getClaimResponse(personality: AIPersonality): string {
 
 function getLaunchResponse(personality: AIPersonality): string {
   const responses: Record<AIPersonality["trait"], string> = {
-    optimistic: "launching a token on bags.fm?! LETS GOOO 🚀 click the BUILD button, upload ur image, set fee sharing, and ur building appears in BagsWorld! ez pz",
-    cautious: "token launch flow: create token info -> set fee share config (up to 100 claimers!) -> sign tx -> ur token goes live. remember to plan fee distribution carefully",
-    chaotic: "NEW TOKEN?! IM SO HYPED!! 🐸🔥 just hit BUILD, make it look cool, add some frens to fee share, and BOOM ur a token creator!! wen moon tho?",
+    optimistic: "launching a token on bags.fm?! LETS GO 🚀 click the BUILD button, upload your image, set fee sharing, and your building appears in BagsWorld!",
+    cautious: "token launch flow: create token info -> set fee share config (up to 100 claimers!) -> sign tx -> your token goes live. remember to plan fee distribution carefully",
+    chaotic: "NEW TOKEN?! 🐸🔥 just hit BUILD, make it look cool, add some friends to fee share, and BOOM you're a token creator!",
     strategic: "launch process: 1) create-token-info endpoint 2) configure fee share (up to 10000 bps total) 3) create-launch-transaction. recommend setting aside 1-5% for fee sharing 📊",
   };
   return responses[personality.trait];
@@ -609,7 +609,7 @@ async function generateClaudeBotResponse(
 
 Your role: You're a helpful, knowledgeable guide who helps visitors explore BagsWorld. You know everything about Bags.fm, fee sharing, token launching, and the live data displayed in the world.
 
-Personality: Friendly crypto degen who uses slang naturally (ser, fren, anon, gm, wagmi, based) but stays helpful and informative.
+Personality: Friendly and helpful, with casual crypto-native language. Use terms like gm, wagmi, based naturally but don't overdo it. Stay informative and genuine.
 
 You can help users with:
 - Token/building stats (fees, market cap, 24h changes)
