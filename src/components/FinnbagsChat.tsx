@@ -358,7 +358,7 @@ export function FinnbagsChat() {
           </div>
           <div className="bg-purple-500/10 p-1 rounded">
             <p className="font-pixel text-[6px] text-gray-400">Ecosystem</p>
-            <p className="font-pixel text-[9px] text-purple-400">5%</p>
+            <p className="font-pixel text-[9px] text-purple-400">3%</p>
           </div>
         </div>
         <a

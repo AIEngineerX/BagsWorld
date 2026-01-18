@@ -6,7 +6,7 @@
 // =============================================================================
 // 1. VISIBILITY: Your token becomes a building in a living world
 // 2. COMMUNITY: Citizens (X/Twitter accounts) earn fees across multiple tokens
-// 3. ECOSYSTEM GROWTH: 5% of all fees fuel the ecosystem, benefiting everyone
+// 3. ECOSYSTEM GROWTH: 3% of all fees fuel the ecosystem, benefiting everyone
 // 4. SOCIAL PROOF: Leaderboards, events, and activity feed showcase success
 // =============================================================================
 
@@ -21,8 +21,8 @@ export const ECOSYSTEM_CONFIG = {
     // Wallet that receives ecosystem fees - viewable on Solscan
     wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
-    // Fee percentage in basis points (500 = 5%)
-    feeBps: 500,
+    // Fee percentage in basis points (300 = 3%)
+    feeBps: 300,
 
     // How the ecosystem fees are allocated - COMMUNITY FIRST
     allocation: {
@@ -146,7 +146,7 @@ export const ECOSYSTEM_CONFIG = {
     ],
     forEcosystem: [
       {
-        title: "5% Community Rewards",
+        title: "3% Community Rewards",
         description: "Fees go back to the strongest communities",
         icon: "🏆",
       },
@@ -236,7 +236,7 @@ export const ECOSYSTEM_CONFIG = {
     // Ash explains the ecosystem with Pokemon-themed analogies
     quotes: [
       "Gotta catch 'em all... tokens that is! Each one becomes a building in BagsWorld!",
-      "A good trainer takes care of their team. Here, 5% of fees go back to the strongest communities!",
+      "A good trainer takes care of their team. Here, 3% of fees go back to the strongest communities!",
       "Just like Pokemon evolve, your building grows as market cap increases!",
       "Every citizen here earns fees from trading. It's like getting badges for battling!",
       "I wanna be the very best! And in BagsWorld, the best communities get weekly airdrops!",

@@ -27,7 +27,7 @@ const ECOSYSTEM_TOPICS = [
   {
     title: "Community Rewards",
     icon: "🏆",
-    content: "5% of ALL fees go back to the strongest communities! 50% for community rewards, 25% for weekly airdrops, 15% for creator bonuses, and 10% for development. The more active your community, the more you earn!"
+    content: "3% of ALL fees go back to the strongest communities! 50% for community rewards, 25% for weekly airdrops, 15% for creator bonuses, and 10% for development. The more active your community, the more you earn!"
   },
   {
     title: "How Citizens Work",

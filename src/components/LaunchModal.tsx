@@ -444,7 +444,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="flex items-start gap-2">
                   <span className="text-xs">🏆</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Community rewards</span> - 5% goes back to strongest communities
+                    <span className="text-bags-green">Community rewards</span> - 3% goes back to strongest communities
                   </span>
                 </div>
                 <div className="flex items-start gap-2">

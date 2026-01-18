@@ -6,7 +6,7 @@
 - PokeCenter Hub modal with world stats and claim integration
 - Building position stability via mint-based caching
 - Duplicate name/symbol warnings in LaunchModal
-- Treasury tooltip with accurate 5% ecosystem fee breakdown
+- Treasury tooltip with accurate 3% ecosystem fee breakdown
 - Dynamic day/night sky colors and star visibility
 - Daytime sun appears during 6AM-6PM EST regardless of weather
 

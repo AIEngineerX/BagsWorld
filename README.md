@@ -29,11 +29,11 @@ It transforms abstract DeFi data into something **visual, engaging, and fun** - 
 
 ## Revenue Model
 
-**BagsWorld takes a 5% ecosystem fee on all tokens launched through the platform.**
+**BagsWorld takes a 3% ecosystem fee on all tokens launched through the platform.**
 
 When someone launches a token through BagsWorld:
 1. They set their creator fee (typically 1% of all trading volume)
-2. BagsWorld automatically adds a 5% fee share to the ecosystem wallet
+2. BagsWorld automatically adds a 3% fee share to the ecosystem wallet
 3. This fee is **permanent and locked** - earning from every trade, forever
 
 ### Fee Allocation

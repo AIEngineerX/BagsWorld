@@ -2061,8 +2061,8 @@ export class WorldScene extends Phaser.Scene {
     nameText.setOrigin(0.5, 0.5);
 
     if (isTreasury) {
-      // Community Rewards Hub tooltip - 5% ecosystem fee breakdown
-      const descText = this.add.text(0, -12, "5% Ecosystem Fee", {
+      // Community Rewards Hub tooltip - 3% ecosystem fee breakdown
+      const descText = this.add.text(0, -12, "3% Ecosystem Fee", {
         fontFamily: "monospace",
         fontSize: "8px",
         color: "#4ade80",
