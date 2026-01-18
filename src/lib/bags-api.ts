@@ -1,3 +1,37 @@
+/**
+ * Bags API Client - Write Operations & Transaction Building
+ *
+ * This module provides direct HTTP access to the Bags.fm REST API.
+ * Used for write operations, transaction building, and cases requiring
+ * raw API responses.
+ *
+ * WHY THIS EXISTS (vs bags-sdk.ts):
+ * - FormData support: Token creation requires multipart file uploads
+ * - Transaction building: SDK state.* methods are read-only
+ * - Error propagation: Write operations should throw, not return defaults
+ * - Raw responses: Need access to transaction data, config keys, etc.
+ *
+ * WHEN TO USE THIS:
+ * - Creating tokens (createTokenInfo - uses FormData)
+ * - Configuring fee shares (createFeeShareConfig)
+ * - Building launch transactions (createLaunchTransaction)
+ * - Trading (getTradeQuote, createSwapTransaction)
+ * - Fee claiming (getClaimablePositions, generateClaimTransactions)
+ * - Partner operations (generatePartnerClaimTx, getPartnerStats)
+ *
+ * WHEN TO USE bags-sdk.ts INSTEAD:
+ * - Reading token lifetime fees
+ * - Getting token creators
+ * - Fetching claim events/stats
+ * - Any read where graceful degradation is preferred
+ *
+ * API ENDPOINTS USED:
+ * - /token-launch/* - Token creation and launch flow
+ * - /fee-share/* - Fee configuration and claiming
+ * - /trade/* - Trading quotes and swaps
+ *
+ * @see bags-sdk.ts for read-only state queries with graceful error handling
+ */
 import type {
   FeeEarner,
   TokenInfo,

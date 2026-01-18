@@ -1,4 +1,27 @@
-// Bags SDK wrapper for server-side usage
+/**
+ * Bags SDK Wrapper - Read-Only State Queries
+ *
+ * This module wraps the official @bagsfm/bags-sdk for READ operations.
+ * Used for fetching token data, creators, claim events, and wallet lookups.
+ *
+ * WHY THIS EXISTS (vs bags-api.ts):
+ * - Graceful error handling: Returns defaults (0, [], null) on failure
+ * - Used for building world state where partial data is acceptable
+ * - SDK handles PublicKey conversion internally
+ *
+ * WHEN TO USE THIS:
+ * - Fetching token lifetime fees
+ * - Getting token creators
+ * - Reading claim events/stats
+ * - Wallet lookups for display purposes
+ *
+ * WHEN TO USE bags-api.ts INSTEAD:
+ * - Creating tokens (requires FormData/file upload)
+ * - Building transactions (trading, claiming, launching)
+ * - Any write operation where failures must propagate
+ *
+ * @see bags-api.ts for write operations and transaction building
+ */
 import { Connection, PublicKey } from "@solana/web3.js";
 
 // Types from the SDK
