@@ -3,18 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getGlobalTokens,
   saveGlobalToken,
-  isSupabaseConfigured,
+  isNeonConfigured,
   type GlobalToken
-} from "@/lib/supabase";
+} from "@/lib/neon";
 
 // GET - Fetch all global tokens (everyone sees these)
 export async function GET() {
   try {
-    if (!isSupabaseConfigured()) {
+    if (!isNeonConfigured()) {
       return NextResponse.json({
         tokens: [],
         configured: false,
-        message: "Database not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_KEY"
+        message: "Database not configured. Neon will be auto-configured on Netlify."
       });
     }
 
@@ -37,7 +37,7 @@ export async function GET() {
 // POST - Save a new token to the global database
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
+    if (!isNeonConfigured()) {
       return NextResponse.json(
         { error: "Database not configured", configured: false },
         { status: 503 }

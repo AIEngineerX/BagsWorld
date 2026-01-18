@@ -1,15 +1,15 @@
-// Database Status API - Check if Supabase is configured and working
+// Database Status API - Check if Neon is configured and working
 import { NextResponse } from "next/server";
-import { isSupabaseConfigured, getGlobalTokens } from "@/lib/supabase";
+import { isNeonConfigured, getGlobalTokens } from "@/lib/neon";
 
 export async function GET() {
   try {
-    const configured = isSupabaseConfigured();
+    const configured = isNeonConfigured();
 
     if (!configured) {
       return NextResponse.json({
         status: "not_configured",
-        message: "Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_KEY",
+        message: "Neon not configured. Enable Neon in Netlify dashboard.",
         tokenCount: 0,
       });
     }
@@ -19,7 +19,7 @@ export async function GET() {
 
     return NextResponse.json({
       status: "connected",
-      message: "Global database connected",
+      message: "Neon database connected",
       tokenCount: tokens.length,
     });
   } catch (error) {
