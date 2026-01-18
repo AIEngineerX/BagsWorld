@@ -286,3 +286,162 @@ export async function saveWorldConfig(
     return false;
   }
 }
+
+// ============================================
+// Achievements Persistence
+// ============================================
+
+export interface StoredAchievement {
+  id?: number;
+  wallet: string;
+  achievement_id: string;
+  unlocked_at: string;
+  progress: number;
+}
+
+/**
+ * Load all achievements for a wallet
+ */
+export async function loadUserAchievements(wallet: string): Promise<StoredAchievement[]> {
+  const client = getSupabaseClient();
+  if (!client) {
+    console.log("[Achievements] Supabase not configured");
+    return [];
+  }
+
+  try {
+    const { data, error } = await client
+      .from("achievements")
+      .select("*")
+      .eq("wallet", wallet);
+
+    if (error) {
+      console.error("[Achievements] Error loading:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error("[Achievements] Load error:", error);
+    return [];
+  }
+}
+
+/**
+ * Unlock an achievement for a wallet
+ */
+export async function unlockAchievement(
+  wallet: string,
+  achievementId: string,
+  progress: number = 1
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) {
+    console.log("[Achievements] Supabase not configured");
+    return false;
+  }
+
+  try {
+    // Check if already unlocked
+    const { data: existing } = await client
+      .from("achievements")
+      .select("id")
+      .eq("wallet", wallet)
+      .eq("achievement_id", achievementId)
+      .single();
+
+    if (existing) {
+      // Already unlocked
+      return true;
+    }
+
+    // Insert new achievement
+    const { error } = await client.from("achievements").insert({
+      wallet,
+      achievement_id: achievementId,
+      unlocked_at: new Date().toISOString(),
+      progress,
+    });
+
+    if (error) {
+      console.error("[Achievements] Error unlocking:", error);
+      return false;
+    }
+
+    console.log(`[Achievements] Unlocked: ${achievementId} for ${wallet.slice(0, 8)}...`);
+    return true;
+  } catch (error) {
+    console.error("[Achievements] Unlock error:", error);
+    return false;
+  }
+}
+
+/**
+ * Update achievement progress (for progressive achievements)
+ */
+export async function updateAchievementProgress(
+  wallet: string,
+  achievementId: string,
+  progress: number
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client
+      .from("achievements")
+      .upsert(
+        {
+          wallet,
+          achievement_id: achievementId,
+          progress,
+          unlocked_at: new Date().toISOString(),
+        },
+        { onConflict: "wallet,achievement_id" }
+      );
+
+    if (error) {
+      console.error("[Achievements] Error updating progress:", error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("[Achievements] Update error:", error);
+    return false;
+  }
+}
+
+/**
+ * Get achievement stats (for leaderboards)
+ */
+export async function getAchievementLeaderboard(): Promise<Array<{ wallet: string; count: number }>> {
+  const client = getSupabaseClient();
+  if (!client) return [];
+
+  try {
+    const { data, error } = await client
+      .from("achievements")
+      .select("wallet")
+      .order("wallet");
+
+    if (error) {
+      console.error("[Achievements] Leaderboard error:", error);
+      return [];
+    }
+
+    // Count achievements per wallet
+    const counts = new Map<string, number>();
+    for (const row of data || []) {
+      counts.set(row.wallet, (counts.get(row.wallet) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([wallet, count]) => ({ wallet, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  } catch (error) {
+    console.error("[Achievements] Leaderboard error:", error);
+    return [];
+  }
+}
