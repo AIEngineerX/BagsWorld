@@ -33,7 +33,7 @@ export default function GameCanvas({ worldState }: GameCanvasProps) {
       backgroundColor: "#0a0a0f",
       pixelArt: true,
       scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.ENVELOP,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
       physics: {
