@@ -8,46 +8,44 @@
 
 ## Executive Summary
 
-| Severity | Count |
-|----------|-------|
-| CRITICAL | 1 |
-| HIGH | 2 |
-| MEDIUM | 4 |
-| LOW | 3 |
+| Severity | Count | Status |
+|----------|-------|--------|
+| CRITICAL | 1 | **FIXED** |
+| HIGH | 2 | **FIXED** |
+| MEDIUM | 4 | Open |
+| LOW | 3 | Open |
 
-**Overall Risk Level:** MEDIUM-HIGH
+**Overall Risk Level:** LOW-MEDIUM (after fixes)
 
-The codebase follows many security best practices (no XSS, proper wallet signing, server-side API keys) but has significant authentication and authorization vulnerabilities that should be addressed before production deployment.
+The codebase follows many security best practices (no XSS, proper wallet signing, server-side API keys). Critical and high-severity authentication vulnerabilities have been fixed.
 
 ---
 
 ## CRITICAL Vulnerabilities
 
-### 1. Admin Authentication Bypass via Header Spoofing
+### 1. ~~Admin Authentication Bypass via Header Spoofing~~ **FIXED**
 
-**File:** `src/app/api/admin/config/route.ts:14-17`
+**File:** `src/app/api/admin/config/route.ts`
 
-```typescript
-function isAdminRequest(request: NextRequest): boolean {
-  const adminWallet = request.headers.get("x-admin-wallet");
-  return adminWallet === ADMIN_WALLET;
-}
-```
+**Original Issue:** Admin authentication relied solely on a client-provided header.
 
-**Issue:** Admin authentication relies solely on a client-provided header. Anyone can send `x-admin-wallet: <ADMIN_WALLET_ADDRESS>` in their request and gain full admin access to modify world configuration.
+**Fix Applied:**
+- Implemented cryptographic wallet signature verification using `src/lib/wallet-auth.ts`
+- Challenge/response flow proves wallet ownership
+- Session tokens issued after successful signature verification
+- AdminConsole now prompts user to sign with wallet before accessing admin functions
 
-**Impact:** Complete takeover of world configuration - attackers can change building limits, decay rates, weather thresholds, and all game mechanics.
-
-**Proof of Concept:**
+**Verification:** The attack vector below no longer works:
 ```bash
+# This now returns 401 Unauthorized
 curl -X POST https://bagsworld.netlify.app/api/admin/config \
   -H "Content-Type: application/json" \
   -H "x-admin-wallet: 9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC" \
   -d '{"action":"update","updates":{"maxBuildings":1}}'
 ```
 
-**Remediation:** Implement cryptographic signature verification:
-1. Require admin to sign a challenge message with their wallet
+~~**Remediation:** Implement cryptographic signature verification:
+1. Require admin to sign a challenge message with their wallet~~
 2. Verify the signature server-side using `@solana/web3.js`
 3. Use short-lived session tokens after verification
 
@@ -55,58 +53,27 @@ curl -X POST https://bagsworld.netlify.app/api/admin/config \
 
 ## HIGH Vulnerabilities
 
-### 2. Agent API Authentication Disabled When Secret Not Set
+### 2. ~~Agent API Authentication Disabled When Secret Not Set~~ **FIXED**
 
-**File:** `src/app/api/agent/route.ts:26-42`
+**File:** `src/app/api/agent/route.ts`
 
-```typescript
-function isAuthorized(request: Request): boolean {
-  const agentSecret = process.env.AGENT_SECRET;
+**Original Issue:** If `AGENT_SECRET` not set, agent API was completely open.
 
-  // If no secret configured, allow (for local dev)
-  if (!agentSecret) {
-    return true;  // DANGER: Allows all requests
-  }
-  // ...
-}
-```
+**Fix Applied:**
+- Changed to fail-closed: rejects all requests in production when AGENT_SECRET not configured
+- Only allows unauthenticated access in explicit `NODE_ENV=development`
+- Logs security warnings when accessed without proper configuration
 
-**Issue:** If `AGENT_SECRET` environment variable is not set (common in quick deployments), the agent API is completely open. Attackers can:
-- Start/stop the auto-claim agent
-- Trigger claims from the agent wallet
-- Modify agent configuration
+### 3. ~~Sensitive Agent Status Exposed Without Authentication~~ **FIXED**
 
-**Impact:** Unauthorized control of autonomous trading operations, potential fund theft.
+**File:** `src/app/api/agent/route.ts`
 
-**Remediation:**
-```typescript
-function isAuthorized(request: Request): boolean {
-  const agentSecret = process.env.AGENT_SECRET;
+**Original Issue:** GET endpoint exposed wallet address and balance without auth.
 
-  if (!agentSecret) {
-    console.error("AGENT_SECRET not configured - rejecting request");
-    return false;  // Fail closed, not open
-  }
-  // ...
-}
-```
-
-### 3. Sensitive Agent Status Exposed Without Authentication
-
-**File:** `src/app/api/agent/route.ts:175-193`
-
-```typescript
-export async function GET() {
-  const walletStatus = await getAgentWalletStatus();
-  // Returns wallet public key, balance, etc.
-}
-```
-
-**Issue:** The GET endpoint exposes agent wallet address and balance without any authentication, enabling reconnaissance.
-
-**Impact:** Information disclosure enables targeted attacks.
-
-**Remediation:** Require authentication for status endpoint or limit exposed information.
+**Fix Applied:**
+- GET endpoint now requires authentication
+- Unauthenticated requests receive minimal response: `{ configured: boolean, authenticated: false }`
+- Full status (wallet address, balance, agent state) only returned to authenticated requests
 
 ---
 
