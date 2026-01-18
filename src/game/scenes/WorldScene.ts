@@ -1757,11 +1757,15 @@ export class WorldScene extends Phaser.Scene {
           container?.setScale(1.1);
           this.showBuildingTooltip(building, container!);
           this.input.setDefaultCursor("pointer");
+          // Add hover glow effect
+          this.addBuildingHoverGlow(container!, building.level);
         });
         container.on("pointerout", () => {
           container?.setScale(1);
           this.hideTooltip();
           this.input.setDefaultCursor("default");
+          // Remove hover glow
+          this.removeBuildingHoverGlow(container!);
         });
         container.on("pointerdown", () => {
           const isPokeCenter = building.id.includes("PokeCenter");
@@ -1810,11 +1814,14 @@ export class WorldScene extends Phaser.Scene {
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
         const newTexture = isPokeCenter ? "pokecenter" : `building_${building.level}`;
         if (sprite.texture.key !== newTexture) {
+          // Level up animation with particles
+          this.playBuildingLevelUp(container, building.level);
           this.tweens.add({
             targets: container,
-            scale: 1.15,
-            duration: 150,
+            scale: 1.2,
+            duration: 200,
             yoyo: true,
+            ease: "Back.easeOut",
             onComplete: () => {
               sprite.setTexture(newTexture);
             },
@@ -1822,6 +1829,83 @@ export class WorldScene extends Phaser.Scene {
         }
       }
     });
+  }
+
+  // Building hover glow effect
+  private addBuildingHoverGlow(container: Phaser.GameObjects.Container, level: number): void {
+    // Color based on level
+    const glowColors = [0x4ade80, 0x60a5fa, 0xa855f7, 0xfbbf24, 0xef4444];
+    const color = glowColors[level - 1] || 0x4ade80;
+
+    const hoverGlow = this.add.graphics();
+    hoverGlow.setName("hoverGlow");
+
+    // Draw glow circle
+    hoverGlow.fillStyle(color, 0.15);
+    hoverGlow.fillCircle(0, -30, 35 + level * 5);
+    hoverGlow.fillStyle(color, 0.1);
+    hoverGlow.fillCircle(0, -30, 45 + level * 5);
+
+    container.addAt(hoverGlow, 0);
+
+    // Pulse animation
+    this.tweens.add({
+      targets: hoverGlow,
+      alpha: 0.6,
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  private removeBuildingHoverGlow(container: Phaser.GameObjects.Container): void {
+    const glow = container.getByName("hoverGlow");
+    if (glow) {
+      this.tweens.killTweensOf(glow);
+      glow.destroy();
+    }
+  }
+
+  // Building level up particle effect
+  private playBuildingLevelUp(container: Phaser.GameObjects.Container, newLevel: number): void {
+    const x = container.x;
+    const y = container.y - 40;
+
+    // Star burst
+    const stars = this.add.particles(x, y, "star", {
+      speed: { min: 80, max: 150 },
+      angle: { min: 200, max: 340 },
+      lifespan: 800,
+      quantity: 10 + newLevel * 2,
+      scale: { start: 0.6, end: 0 },
+      alpha: { start: 1, end: 0 },
+      tint: [0xfbbf24, 0x4ade80, 0x60a5fa],
+    });
+    stars.setDepth(100);
+    stars.explode(10 + newLevel * 2);
+
+    // Coin shower for higher levels
+    if (newLevel >= 3) {
+      const coins = this.add.particles(x, y - 20, "coin", {
+        speed: { min: 50, max: 100 },
+        angle: { min: 220, max: 320 },
+        lifespan: 1000,
+        quantity: newLevel * 3,
+        scale: { start: 0.8, end: 0 },
+        gravityY: 200,
+        rotate: { min: 0, max: 360 },
+      });
+      coins.setDepth(100);
+      coins.explode(newLevel * 3);
+
+      this.time.delayedCall(1000, () => coins.destroy());
+    }
+
+    // Flash effect
+    this.cameras.main.flash(150, 251, 191, 36, true);
+
+    this.time.delayedCall(800, () => stars.destroy());
   }
 
   private tooltip: Phaser.GameObjects.Container | null = null;

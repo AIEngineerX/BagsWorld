@@ -3,8 +3,7 @@
 import dynamic from "next/dynamic";
 import { Suspense, useState, useEffect } from "react";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
-import { Leaderboard } from "@/components/Leaderboard";
-import { EventFeed } from "@/components/EventFeed";
+import { TabbedSidebar } from "@/components/TabbedSidebar";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
 import { AshChat } from "@/components/AshChat";
@@ -12,7 +11,6 @@ import { TolyChat } from "@/components/TolyChat";
 import { FinnbagsChat } from "@/components/FinnbagsChat";
 import { DevChat } from "@/components/DevChat";
 import { AgentDashboard } from "@/components/AgentDashboard";
-import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
 import { TradeModal } from "@/components/TradeModal";
@@ -29,6 +27,18 @@ interface BuildingClickData {
   symbol: string;
   name: string;
   tokenUrl?: string;
+}
+
+// Weather emoji helper
+function getWeatherEmoji(weather: string | undefined): string {
+  switch (weather) {
+    case "sunny": return "☀️";
+    case "cloudy": return "☁️";
+    case "rain": return "🌧️";
+    case "storm": return "⛈️";
+    case "apocalypse": return "🔥";
+    default: return "🌤️";
+  }
 }
 
 const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
@@ -73,34 +83,55 @@ export default function Home() {
   return (
     <main className="h-screen w-screen overflow-hidden flex flex-col">
       {/* Header */}
-      <header className="h-16 bg-bags-dark border-b-4 border-bags-green flex items-center justify-between px-4">
-        <div className="flex items-center gap-4">
-          <h1 className="font-pixel text-lg text-bags-green">BAGSWORLD</h1>
+      <header className="h-14 bg-bags-dark border-b-4 border-bags-green flex items-center justify-between px-4">
+        {/* Left: Logo + Health */}
+        <div className="flex items-center gap-3">
+          <h1 className="font-pixel text-base text-bags-green tracking-wider">BAGSWORLD</h1>
           <WorldHealthBar health={worldState?.health ?? 50} />
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setShowTerminal(!showTerminal)}
-            className={`font-pixel text-[10px] px-3 py-1.5 border-2 rounded transition-all flex items-center gap-1 ${
-              showTerminal
-                ? "bg-red-600 border-red-400 text-white"
-                : "bg-bags-darker border-gray-600 text-gray-300 hover:border-bags-green hover:text-bags-green"
-            }`}
-          >
-            <span>🎮</span>
-            <span>TERMINAL</span>
-            <span className="text-[8px]">{showTerminal ? "▲" : "▼"}</span>
-          </button>
-          <div className="font-pixel text-xs">
-            <span className="text-gray-400">WEATHER: </span>
-            <span className="text-bags-gold">
-              {worldState?.weather?.toUpperCase() ?? "LOADING"}
+          <div className="hidden md:flex items-center gap-2 ml-2 font-pixel text-[9px]">
+            <span className="text-gray-500">|</span>
+            <span className="text-gray-400">
+              {getWeatherEmoji(worldState?.weather)} {worldState?.weather?.toUpperCase() ?? "..."}
             </span>
           </div>
+        </div>
+
+        {/* Center: Quick Stats */}
+        <div className="hidden lg:flex items-center gap-4 font-pixel text-[9px]">
+          <div className="flex items-center gap-1">
+            <span className="text-gray-500">POP</span>
+            <span className="text-white">{worldState?.population?.length ?? 0}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-gray-500">BLDGS</span>
+            <span className="text-white">{worldState?.buildings?.length ?? 0}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-gray-500">YOURS</span>
+            <span className="text-bags-gold">{tokenCount ?? 0}</span>
+          </div>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowTerminal(!showTerminal)}
+            className={`font-pixel text-[9px] px-2 py-1 border-2 rounded transition-all flex items-center gap-1 ${
+              showTerminal
+                ? "bg-bags-green/20 border-bags-green text-bags-green"
+                : "bg-bags-darker border-gray-600 text-gray-400 hover:border-bags-green hover:text-bags-green"
+            }`}
+            title="Trading Terminal"
+          >
+            <span>📈</span>
+            <span className="hidden sm:inline">TRADE</span>
+          </button>
           <MusicButton />
           <WalletButton />
-          <PartnerClaimButton />
-          <ClaimButton />
+          <div className="hidden md:flex items-center gap-2">
+            <PartnerClaimButton />
+            <ClaimButton />
+          </div>
           <LaunchButton />
         </div>
       </header>
@@ -143,54 +174,27 @@ export default function Home() {
           <AgentDashboard />
         </div>
 
-        {/* Sidebar */}
-        <aside className="w-80 bg-bags-dark border-l-4 border-bags-green flex flex-col">
-          {/* Your Buildings */}
-          <div className="max-h-48 overflow-hidden border-b-2 border-bags-green/50">
-            <YourBuildings onRefresh={refreshAfterLaunch} />
-          </div>
-
-          {/* Leaderboard */}
-          <div className="flex-1 overflow-hidden">
-            <Leaderboard />
-          </div>
-
-          {/* Event Feed */}
-          <div className="h-48 border-t-4 border-bags-green">
-            <EventFeed events={worldState?.events ?? []} />
-          </div>
-        </aside>
+        {/* Sidebar - Tabbed Interface */}
+        <TabbedSidebar
+          events={worldState?.events ?? []}
+          onRefresh={refreshAfterLaunch}
+        />
       </div>
 
       {/* Footer status bar */}
-      <footer className="h-8 bg-bags-dark border-t-4 border-bags-green flex items-center justify-between px-4 font-pixel text-[10px]">
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400">
-            POPULATION:{" "}
-            <span className="text-white">
-              {worldState?.population?.length ?? 0}
-            </span>
-          </span>
-          <span className="text-gray-400">
-            BUILDINGS:{" "}
-            <span className="text-white">
-              {worldState?.buildings?.length ?? 0}
-            </span>
-          </span>
-          <span className="text-gray-400">
-            YOUR TOKENS:{" "}
-            <span className="text-bags-gold">
-              {tokenCount ?? 0}
-            </span>
-          </span>
+      <footer className="h-6 bg-bags-darker border-t-2 border-bags-green/50 flex items-center justify-between px-4 font-pixel text-[8px]">
+        <div className="flex items-center gap-3">
           <DatabaseStatus />
+          <span className="text-gray-600 hidden sm:inline">
+            {worldState?.timeInfo?.isNight ? "🌙" : "☀️"} {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" })} EST
+          </span>
         </div>
-        <div className="text-gray-400">
+        <div className="text-gray-500">
           POWERED BY{" "}
           <a
             href="https://bags.fm"
             target="_blank"
-            className="text-bags-green hover:underline"
+            className="text-bags-green/70 hover:text-bags-green"
           >
             BAGS.FM
           </a>
