@@ -1,12 +1,12 @@
-# BagsWorld 🌍
+# BagsWorld
 
-A self-evolving pixel art game world that lives and dies based on real [Bags.fm](https://bags.fm) on-chain activity on Solana. Think SimCity meets crypto - where every token is a building and every trader is a citizen!
+A self-evolving pixel art game world that visualizes real [Bags.fm](https://bags.fm) on-chain activity on Solana. Launch tokens, watch buildings grow, and earn creator fees!
 
 ![BagsWorld](https://img.shields.io/badge/Powered%20by-Bags.fm-green) ![Solana](https://img.shields.io/badge/Built%20on-Solana-purple)
 
 ## What is BagsWorld?
 
-**BagsWorld is a living, gamified visualization of real-time Solana trading activity from Bags.fm.**
+**BagsWorld is a living, gamified visualization of your token launches on Bags.fm.**
 
 It transforms abstract DeFi data into something **visual, engaging, and fun** - making crypto more accessible to everyone.
 
@@ -17,8 +17,8 @@ It transforms abstract DeFi data into something **visual, engaging, and fun** - 
 | Token launched | Building appears |
 | Market cap grows | Building levels up (1-5) |
 | Fee share recipient | Citizen walking around |
-| High trading volume | Sunny weather |
-| Low activity | Storms and rain |
+| High fee claiming activity | World health increases |
+| Creator fees earned | Characters celebrate |
 
 ### Why It Matters
 
@@ -27,45 +27,54 @@ It transforms abstract DeFi data into something **visual, engaging, and fun** - 
 - **Builds community** - Shared world creates shared experience
 - **Transparent** - All data comes from real on-chain activity
 
-## Revenue Model
+## Creator Rewards System
 
-**BagsWorld takes a 1% ecosystem fee that funds automatic buybacks of top tokens.**
+**BagsWorld takes a 1% ecosystem fee that funds creator rewards.**
 
 When someone launches a token through BagsWorld:
 1. They set their creator fee shares (fee recipients earn from all trading volume)
 2. BagsWorld adds a 1% fee share to the ecosystem wallet
-3. This fee is **permanently locked** - trustless and immutable
+3. Top creators get rewarded from the pool
 
 ### How It Works
 
 ```
-Fees collected → Buy top 5 performing tokens → Burn them
+Ecosystem fees collected → Pool reaches 10 SOL threshold → Top 3 creators paid
 ```
 
-Every 12 hours, the buyback agent:
-1. Identifies the top 5 BagsWorld tokens by volume
-2. Uses 80% of collected fees to buy those tokens
-3. Burns the purchased tokens immediately
+Distribution split:
+- **1st place**: 50% of pool
+- **2nd place**: 30% of pool
+- **3rd place**: 20% of pool
 
-**Success rewards success.** If your token is performing well, it gets bought and burned - creating buy pressure and reducing supply.
-
-### Why Launch on BagsWorld
-
-- **Deflationary support** - Top tokens get automatic buy pressure
-- **Supply reduction** - Burned tokens are gone forever
-- **Low fee** - Only 1% goes to the ecosystem
-- **Transparent** - All buybacks and burns verifiable on [Solscan](https://solscan.io)
-- **Aligned incentives** - BagsWorld only benefits if your token succeeds
+Backup timer: If threshold isn't reached within 5 days, distribution happens anyway.
 
 ## Features
 
-- **Living World**: Weather and health change based on real trading volume
+- **Living World**: Health changes based on real Bags.fm fee activity (claims, lifetime fees)
 - **Token Buildings**: Each token becomes a building that evolves with market cap
-- **Diverse Citizens**: Fee earners become pixel art characters with moods based on earnings
-- **AI Guides**: Toly (Solana), Ash (ecosystem), and Finn (Bags.fm) help onboard users
+- **Diverse Citizens**: Fee earners become pixel art characters with moods
+- **AI Guides**: Toly, Ash, Finn, The Dev, and Neo help users navigate
 - **Real-time Events**: Watch token launches, fee claims, and milestones
-- **Direct Trading**: Click buildings to trade tokens without leaving the game
-- **PokeCenter**: Starter building with Pokemon-inspired design
+- **Direct Trading**: Click buildings to trade tokens
+- **Two Zones**: Park (main area) and City (trending tokens)
+- **Day/Night Cycle**: Synced to EST timezone
+
+## World Health
+
+World health is calculated from **real Bags.fm data**:
+- **24h Claim Volume** (60% weight) - SOL claimed by creators
+- **Lifetime Fees** (30% weight) - Total fees across all tokens
+- **Active Tokens** (10% weight) - Number of tokens with activity
+
+| Health | Status | Meaning |
+|--------|--------|---------|
+| 80%+ | THRIVING | High fee activity |
+| 60%+ | HEALTHY | Good activity |
+| 45%+ | GROWING | Some activity |
+| 25%+ | QUIET | Baseline - working but no activity |
+| 10%+ | DORMANT | Low activity |
+| <10% | DYING | Critical |
 
 ## Building Levels
 
@@ -77,6 +86,14 @@ Every 12 hours, the buyback agent:
 | 4 | $2M - $10M | Modern tower |
 | 5 | $10M+ | BagsWorld skyscraper |
 
+## AI Characters
+
+- **Toly** - Solana co-founder, explains blockchain tech
+- **Ash** - Pokemon-themed guide, explains ecosystem mechanics
+- **Finn** - Bags.fm CEO, explains the platform
+- **The Dev** - Trading agent, helps with market analysis
+- **Neo** - Scout agent, watches for new launches
+
 ## Tech Stack
 
 - **Next.js 14** - React framework with App Router
@@ -84,7 +101,7 @@ Every 12 hours, the buyback agent:
 - **Solana Web3.js** - Blockchain interaction
 - **Bags.fm SDK** - Trading and token data
 - **Claude AI** - Intelligent NPC conversations
-- **Supabase** - Shared global state
+- **Neon Database** - Shared global state (auto-configured on Netlify)
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
 - **Zustand** - State management
@@ -117,11 +134,9 @@ cp .env.example .env.local
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `BAGS_API_KEY` | Yes | Your Bags.fm API key |
-| `NEXT_PUBLIC_SOLANA_RPC_URL` | Yes | Solana RPC endpoint |
-| `NEXT_PUBLIC_ECOSYSTEM_WALLET` | Yes | Treasury wallet for ecosystem fees |
+| `SOLANA_RPC_URL` | Yes | Helius RPC URL for transactions |
+| `NEXT_PUBLIC_SOLANA_RPC_URL` | No | Client-side RPC (defaults to Ankr) |
 | `ANTHROPIC_API_KEY` | No | Claude API for AI characters |
-| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase for shared state |
-| `NEXT_PUBLIC_SUPABASE_KEY` | No | Supabase anon key |
 
 ### Development
 
@@ -130,26 +145,6 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to explore the world!
-
-## World Mechanics
-
-### Weather System
-- ☀️ **Sunny** (80%+ health): High trading volume
-- ⛅ **Cloudy** (60-80%): Normal activity
-- 🌧️ **Rain** (40-60%): Below average
-- ⛈️ **Storm** (20-40%): Low activity
-- 💀 **Apocalypse** (<20%): Critical
-
-### Character Moods
-- 🥳 **Celebrating**: Major gains
-- 😎 **Happy**: Good performance
-- 😐 **Neutral**: Normal activity
-- 😔 **Sad**: Losses
-
-### AI Characters
-- **Toly** - Solana co-founder, explains blockchain tech
-- **Ash** - Pokemon-themed guide, explains ecosystem mechanics
-- **Finn** - Bags.fm CEO, explains the platform
 
 ## Deployment
 
@@ -160,38 +155,7 @@ Open [http://localhost:3000](http://localhost:3000) to explore the world!
 3. Publish directory: `.next`
 4. Add environment variables in dashboard
 
-## Global State Setup (Supabase)
-
-For tokens launched by one user to be visible to ALL users, you need to set up Supabase:
-
-### 1. Create a Supabase Project
-
-1. Go to [supabase.com](https://supabase.com) and create a free project
-2. Note your Project URL and anon key from Settings > API
-
-### 2. Run the Schema Migration
-
-1. Go to the SQL Editor in your Supabase dashboard
-2. Copy the contents of `supabase/schema.sql`
-3. Run the SQL to create the `tokens` table
-
-### 3. Configure Environment Variables
-
-Add these to your `.env.local` (and Netlify dashboard):
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_KEY=your-anon-key
-```
-
-### 4. Verify Connection
-
-Look at the footer in BagsWorld - you should see:
-- `● GLOBAL: ON` - Database connected, tokens shared globally
-- `○ GLOBAL: LOCAL` - Not configured, tokens only saved locally
-- `✕ GLOBAL: ERR` - Database error
-
-Without Supabase, buildings are **session-only** - each user sees only their own launched tokens.
+Neon database auto-configures on Netlify for global token storage.
 
 ## License
 
@@ -199,6 +163,6 @@ MIT
 
 ## Credits
 
-Built with ❤️ for the Bags.fm ecosystem on Solana
+Built for the Bags.fm ecosystem on Solana
 
 Co-created with [Claude Code](https://claude.ai/code)
