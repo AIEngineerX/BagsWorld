@@ -370,8 +370,19 @@ class BagsApiClient {
 
       // Handle both string and object responses
       if (typeof result === "string") {
+        console.log("Transaction string length:", result.length);
+        console.log("Transaction preview:", result.substring(0, 100) + "...");
+        if (!result || result.length < 100) {
+          throw new Error(`Launch transaction API returned empty or invalid transaction (length: ${result?.length || 0})`);
+        }
         return { transaction: result };
       } else if (result && typeof result === "object" && "transaction" in result) {
+        const tx = (result as { transaction: string }).transaction;
+        console.log("Transaction string length:", tx?.length);
+        console.log("Transaction preview:", tx?.substring(0, 100) + "...");
+        if (!tx || tx.length < 100) {
+          throw new Error(`Launch transaction API returned empty or invalid transaction (length: ${tx?.length || 0})`);
+        }
         return result;
       } else {
         console.error("Unexpected response format:", result);
@@ -472,6 +483,10 @@ class BagsApiClient {
       });
       console.log("Bags API createFeeShareConfig raw response:", JSON.stringify(result, null, 2));
       console.log("Response keys:", Object.keys(result));
+      console.log("Response type:", typeof result);
+      console.log("meteoraConfigKey:", result.meteoraConfigKey);
+      console.log("configKey:", result.configKey);
+      console.log("config:", result.config);
 
       // Handle different possible response field names - check all variations
       // The API returns "meteoraConfigKey" as the config key to use for launch
@@ -496,6 +511,10 @@ class BagsApiClient {
 
       if (!configId) {
         console.error("Could not find configId in response. Full response:", result);
+        throw new Error(
+          `Fee share config created but no configKey returned. API response keys: ${Object.keys(result).join(", ")}. ` +
+          `This may indicate a Bags.fm API change. Please report this issue.`
+        );
       }
 
       return {
