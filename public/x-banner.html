@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>BagsWorld X Banner</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0d0d1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: monospace;
+    }
+    .info {
+      color: #888;
+      margin-bottom: 20px;
+    }
+    canvas {
+      border: 2px solid #333;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .download-btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      background: #4ade80;
+      color: #000;
+      border: none;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: monospace;
+    }
+    .download-btn:hover {
+      background: #22c55e;
+    }
+  </style>
+</head>
+<body>
+  <div class="info">BagsWorld X Banner - 1500x500px (High Quality)</div>
+  <canvas id="banner" width="1500" height="500"></canvas>
+  <button class="download-btn" onclick="downloadBanner()">Download Banner (PNG)</button>
+
+  <script>
+    const canvas = document.getElementById('banner');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    // Exact colors from the logo
+    const colors = {
+      // Background
+      spaceDark: '#12121f',
+      spaceMid: '#1a1a2e',
+
+      // Stars
+      starBright: '#ffffff',
+      starDim: '#8888aa',
+      starFaint: '#555577',
+
+      // Globe ocean
+      oceanDeep: '#1a5a6e',
+      oceanMid: '#2d8a9e',
+      oceanLight: '#3ba5b5',
+      oceanHighlight: '#5bc5d5',
+
+      // Globe land
+      landDark: '#2d6b3a',
+      landMid: '#4a9e5a',
+      landLight: '#6ac07a',
+      landHighlight: '#8adf9a',
+
+      // Activity dots on globe
+      activityOrange: '#e89030',
+      activityYellow: '#f0c040',
+
+      // Dollar sign
+      dollarDark: '#1a1a1a',
+      dollarGlow: '#4ae080',
+
+      // Beanie
+      beanieLight: '#d4a574',
+      beanieMid: '#c09060',
+      beanieDark: '#a07850',
+      beanieDeep: '#806040',
+      beanieShadow: '#604830',
+
+      // Accent colors
+      bagsGreen: '#4ade80',
+      solanaGreen: '#14f195',
+      solanaPurple: '#9945ff'
+    };
+
+    // Pixel size for the detailed globe
+    const PX = 3;
+
+    // Draw the space background matching logo exactly
+    function drawBackground() {
+      // Gradient from top to bottom
+      const gradient = ctx.createLinearGradient(0, 0, 0, 500);
+      gradient.addColorStop(0, '#0a0a14');
+      gradient.addColorStop(0.3, '#12121f');
+      gradient.addColorStop(0.7, '#1a1a2e');
+      gradient.addColorStop(1, '#1e1e35');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 1500, 500);
+    }
+
+    // Draw stars like in the logo
+    function drawStars() {
+      // Seed for consistent star placement
+      const stars = [
+        // Bright stars
+        {x: 45, y: 38, s: 2, c: colors.starBright},
+        {x: 120, y: 85, s: 2, c: colors.starBright},
+        {x: 280, y: 42, s: 2, c: colors.starBright},
+        {x: 380, y: 120, s: 2, c: colors.starBright},
+        {x: 520, y: 65, s: 2, c: colors.starBright},
+        {x: 680, y: 35, s: 2, c: colors.starBright},
+        {x: 820, y: 88, s: 2, c: colors.starBright},
+        {x: 950, y: 45, s: 2, c: colors.starBright},
+        {x: 1100, y: 72, s: 2, c: colors.starBright},
+        {x: 1250, y: 38, s: 2, c: colors.starBright},
+        {x: 1380, y: 95, s: 2, c: colors.starBright},
+        {x: 1450, y: 55, s: 2, c: colors.starBright},
+
+        {x: 78, y: 180, s: 2, c: colors.starBright},
+        {x: 195, y: 230, s: 2, c: colors.starBright},
+        {x: 1320, y: 195, s: 2, c: colors.starBright},
+        {x: 1420, y: 250, s: 2, c: colors.starBright},
+
+        {x: 55, y: 380, s: 2, c: colors.starBright},
+        {x: 165, y: 420, s: 2, c: colors.starBright},
+        {x: 1350, y: 365, s: 2, c: colors.starBright},
+        {x: 1460, y: 410, s: 2, c: colors.starBright},
+      ];
+
+      // Add more random dimmer stars
+      for (let i = 0; i < 150; i++) {
+        const seed = i * 7919 + 1234;
+        stars.push({
+          x: (seed * 13) % 1500,
+          y: (seed * 17) % 500,
+          s: 1 + (seed % 2),
+          c: seed % 3 === 0 ? colors.starDim : colors.starFaint
+        });
+      }
+
+      stars.forEach(star => {
+        ctx.fillStyle = star.c;
+        ctx.fillRect(star.x, star.y, star.s, star.s);
+      });
+    }
+
+    // Draw high-quality pixel globe matching the logo
+    function drawGlobe(centerX, centerY, radius) {
+      const px = PX;
+
+      // Draw the globe pixel by pixel
+      for (let y = -radius; y <= radius; y += px) {
+        for (let x = -radius; x <= radius; x += px) {
+          const dist = Math.sqrt(x * x + y * y);
+
+          if (dist <= radius) {
+            const screenX = centerX + x;
+            const screenY = centerY + y;
+
+            // Normalized position for shading
+            const nx = x / radius;
+            const ny = y / radius;
+            const nz = Math.sqrt(Math.max(0, 1 - nx*nx - ny*ny));
+
+            // Check if this pixel is land or ocean
+            const isLand = checkLand(nx, ny, centerX, centerY, radius);
+
+            // Spherical shading - light from top-left
+            const shade = (nz * 0.5 + 0.5) * (1 - ny * 0.3) * (1 - nx * 0.15);
+
+            if (isLand) {
+              // Land colors with variation
+              const landNoise = Math.sin(x * 0.3) * Math.cos(y * 0.25) * 0.3 + 0.5;
+              if (shade > 0.7 && landNoise > 0.6) {
+                ctx.fillStyle = colors.landHighlight;
+              } else if (shade > 0.55) {
+                ctx.fillStyle = colors.landLight;
+              } else if (shade > 0.4) {
+                ctx.fillStyle = colors.landMid;
+              } else {
+                ctx.fillStyle = colors.landDark;
+              }
+            } else {
+              // Ocean colors
+              if (shade > 0.7) {
+                ctx.fillStyle = colors.oceanHighlight;
+              } else if (shade > 0.55) {
+                ctx.fillStyle = colors.oceanLight;
+              } else if (shade > 0.4) {
+                ctx.fillStyle = colors.oceanMid;
+              } else {
+                ctx.fillStyle = colors.oceanDeep;
+              }
+            }
+
+            ctx.fillRect(screenX, screenY, px, px);
+          }
+        }
+      }
+
+      // Add activity dots (orange/yellow spots on the globe)
+      drawActivityDots(centerX, centerY, radius);
+
+      // Draw dollar sign with glow
+      drawDollarSign(centerX, centerY, radius);
+    }
+
+    // Check if a point should be land (creating continent shapes)
+    function checkLand(nx, ny, cx, cy, r) {
+      // Create continent-like shapes similar to the logo
+
+      // Main left continent (like Americas)
+      const leftContinent = (
+        (nx > -0.7 && nx < -0.1 && ny > -0.4 && ny < 0.5) ||
+        (nx > -0.6 && nx < -0.2 && ny > -0.6 && ny < -0.2)
+      );
+
+      // Right continent (like Africa/Europe/Asia)
+      const rightContinent = (
+        (nx > 0.0 && nx < 0.6 && ny > -0.7 && ny < 0.4) ||
+        (nx > 0.2 && nx < 0.7 && ny > -0.3 && ny < 0.6)
+      );
+
+      // Top landmass
+      const topLand = (nx > -0.3 && nx < 0.3 && ny > -0.8 && ny < -0.5);
+
+      // Add some noise for natural edges
+      const noise = Math.sin(nx * 15) * Math.cos(ny * 12) * 0.15;
+      const adjustedNx = nx + noise;
+      const adjustedNy = ny + noise * 0.5;
+
+      // More detailed continent shapes
+      const inLeftMain = adjustedNx > -0.65 && adjustedNx < -0.15 && adjustedNy > -0.35 && adjustedNy < 0.45;
+      const inLeftUpper = adjustedNx > -0.55 && adjustedNx < -0.25 && adjustedNy > -0.55 && adjustedNy < -0.15;
+      const inRightMain = adjustedNx > 0.05 && adjustedNx < 0.55 && adjustedNy > -0.6 && adjustedNy < 0.35;
+      const inRightLower = adjustedNx > 0.15 && adjustedNx < 0.6 && adjustedNy > 0.1 && adjustedNy < 0.55;
+      const inTop = adjustedNx > -0.25 && adjustedNx < 0.25 && adjustedNy > -0.75 && adjustedNy < -0.45;
+
+      return inLeftMain || inLeftUpper || inRightMain || inRightLower || inTop;
+    }
+
+    // Draw activity dots on the globe
+    function drawActivityDots(cx, cy, r) {
+      const dots = [
+        {nx: -0.4, ny: -0.1, c: colors.activityOrange},
+        {nx: -0.3, ny: 0.2, c: colors.activityYellow},
+        {nx: 0.3, ny: -0.2, c: colors.activityOrange},
+        {nx: 0.4, ny: 0.1, c: colors.activityYellow},
+        {nx: 0.1, ny: -0.5, c: colors.activityOrange},
+        {nx: -0.2, ny: 0.35, c: colors.activityYellow},
+        {nx: 0.25, ny: 0.3, c: colors.activityOrange},
+      ];
+
+      dots.forEach(dot => {
+        const x = cx + dot.nx * r;
+        const y = cy + dot.ny * r;
+        ctx.fillStyle = dot.c;
+        ctx.fillRect(x - 2, y - 2, 5, 5);
+      });
+    }
+
+    // Draw dollar sign with subtle glow
+    function drawDollarSign(cx, cy, r) {
+      const px = PX;
+
+      // Glow effect
+      ctx.fillStyle = 'rgba(74, 222, 128, 0.15)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Dollar sign - drawn pixel by pixel like in the logo
+      ctx.fillStyle = colors.dollarDark;
+
+      // Vertical line
+      for (let y = -25; y <= 25; y += px) {
+        ctx.fillRect(cx - px, cy + y, px * 2, px);
+      }
+
+      // Top curve of S
+      for (let x = -12; x <= 9; x += px) {
+        ctx.fillRect(cx + x, cy - 20, px, px * 2);
+      }
+      ctx.fillRect(cx - 15, cy - 17, px * 2, px * 3);
+      ctx.fillRect(cx - 15, cy - 14, px * 2, px * 2);
+
+      // Middle bar
+      for (let x = -9; x <= 9; x += px) {
+        ctx.fillRect(cx + x, cy - 3, px, px * 2);
+      }
+
+      // Bottom curve of S
+      ctx.fillRect(cx + 12, cy + 5, px * 2, px * 3);
+      ctx.fillRect(cx + 12, cy + 8, px * 2, px * 3);
+      for (let x = -12; x <= 9; x += px) {
+        ctx.fillRect(cx + x, cy + 17, px, px * 2);
+      }
+
+      // Small highlight on dollar sign
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.fillRect(cx - 6, cy - 18, px, px);
+      ctx.fillRect(cx - 3, cy - 1, px, px);
+    }
+
+    // Draw high-quality beanie matching the logo exactly
+    function drawBeanie(cx, globeTop, r) {
+      const px = PX;
+      const beanieHeight = 55;
+      const foldHeight = 15;
+
+      // Main beanie dome
+      for (let y = 0; y < beanieHeight; y += px) {
+        // Calculate width at this height (dome shape)
+        const progress = y / beanieHeight;
+        const widthFactor = Math.cos(progress * Math.PI * 0.45);
+        const halfWidth = (r + 15) * widthFactor;
+
+        // Determine color based on vertical ribs
+        for (let x = -halfWidth; x <= halfWidth; x += px) {
+          // Rib pattern - vertical stripes
+          const ribIndex = Math.floor((x + halfWidth) / 8);
+          const inRibGroove = (ribIndex % 2 === 0);
+
+          // Vertical shading (lighter at top)
+          let color;
+          if (progress < 0.25) {
+            color = inRibGroove ? colors.beanieMid : colors.beanieLight;
+          } else if (progress < 0.5) {
+            color = inRibGroove ? colors.beanieDark : colors.beanieMid;
+          } else if (progress < 0.75) {
+            color = inRibGroove ? colors.beanieDeep : colors.beanieDark;
+          } else {
+            color = inRibGroove ? colors.beanieShadow : colors.beanieDeep;
+          }
+
+          // Left side highlight
+          if (x < -halfWidth * 0.6 && progress < 0.4) {
+            color = colors.beanieLight;
+          }
+
+          ctx.fillStyle = color;
+          ctx.fillRect(cx + x, globeTop - y, px, px);
+        }
+      }
+
+      // Beanie fold/rim at the bottom
+      for (let y = 0; y < foldHeight; y += px) {
+        const halfWidth = r + 12;
+
+        for (let x = -halfWidth; x <= halfWidth; x += px) {
+          const ribIndex = Math.floor((x + halfWidth) / 6);
+          const inRibGroove = (ribIndex % 2 === 0);
+
+          let color;
+          if (y < foldHeight * 0.3) {
+            color = inRibGroove ? colors.beanieDark : colors.beanieMid;
+          } else if (y < foldHeight * 0.7) {
+            color = inRibGroove ? colors.beanieDeep : colors.beanieDark;
+          } else {
+            color = inRibGroove ? colors.beanieShadow : colors.beanieDeep;
+          }
+
+          ctx.fillStyle = color;
+          ctx.fillRect(cx + x, globeTop + y + 3, px, px);
+        }
+      }
+
+      // Top pom/tip of beanie
+      const tipY = globeTop - beanieHeight;
+      ctx.fillStyle = colors.beanieMid;
+      ctx.fillRect(cx - 6, tipY - 6, 12, 6);
+      ctx.fillStyle = colors.beanieLight;
+      ctx.fillRect(cx - 3, tipY - 9, 6, 6);
+    }
+
+    // Draw a complete BagsWorld globe with beanie (logo style)
+    function drawLogoGlobe(x, y, scale = 1) {
+      const radius = 85 * scale;
+      const globeTop = y - radius + 10;
+
+      drawGlobe(x, y, radius);
+      drawBeanie(x, globeTop, radius);
+    }
+
+    // Draw Finn sprite (improved quality)
+    function drawFinn(x, y, scale = 3) {
+      const s = scale;
+
+      // Glow
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+      ctx.beginPath();
+      ctx.arc(x + 16*s, y + 16*s, 20*s, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath();
+      ctx.ellipse(x + 16*s, y + 30*s, 12*s, 4*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Legs
+      ctx.fillStyle = '#1a2030';
+      ctx.fillRect(x + 10*s, y + 22*s, 5*s, 9*s);
+      ctx.fillRect(x + 17*s, y + 22*s, 5*s, 9*s);
+
+      // Shoes
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + 9*s, y + 29*s, 6*s, 3*s);
+      ctx.fillRect(x + 17*s, y + 29*s, 6*s, 3*s);
+      ctx.fillStyle = '#e0e0e0';
+      ctx.fillRect(x + 9*s, y + 31*s, 6*s, 1*s);
+      ctx.fillRect(x + 17*s, y + 31*s, 6*s, 1*s);
+
+      // Body (emerald hoodie)
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(x + 8*s, y + 12*s, 16*s, 12*s);
+      ctx.fillStyle = '#0d9668';
+      ctx.fillRect(x + 8*s, y + 12*s, 3*s, 12*s);
+      ctx.fillRect(x + 21*s, y + 12*s, 3*s, 12*s);
+
+      // Arms
+      ctx.fillStyle = '#ffd5b4';
+      ctx.fillRect(x + 5*s, y + 13*s, 4*s, 10*s);
+      ctx.fillRect(x + 23*s, y + 13*s, 4*s, 10*s);
+
+      // Head
+      ctx.fillStyle = '#ffd5b4';
+      ctx.fillRect(x + 9*s, y + 2*s, 14*s, 12*s);
+
+      // Hair
+      ctx.fillStyle = '#3d2a1a';
+      ctx.fillRect(x + 9*s, y + 0*s, 14*s, 4*s);
+      ctx.fillRect(x + 8*s, y + 1*s, 2*s, 4*s);
+      ctx.fillRect(x + 22*s, y + 1*s, 2*s, 4*s);
+
+      // Pink beanie
+      ctx.fillStyle = '#ec4899';
+      ctx.fillRect(x + 7*s, y - 3*s, 18*s, 5*s);
+      ctx.fillRect(x + 8*s, y - 5*s, 16*s, 3*s);
+      ctx.fillStyle = '#db2777';
+      ctx.fillRect(x + 7*s, y + 1*s, 18*s, 2*s);
+      // Beanie ribs
+      ctx.fillStyle = '#d63d84';
+      for (let i = 0; i < 16; i += 3) {
+        ctx.fillRect(x + (8 + i)*s, y - 4*s, s, 5*s);
+      }
+
+      // Eyes
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + 11*s, y + 5*s, 4*s, 3*s);
+      ctx.fillRect(x + 17*s, y + 5*s, 4*s, 3*s);
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(x + 13*s, y + 5*s, 2*s, 2*s);
+      ctx.fillRect(x + 19*s, y + 5*s, 2*s, 2*s);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(x + 13*s, y + 5*s, 1*s, 1*s);
+      ctx.fillRect(x + 19*s, y + 5*s, 1*s, 1*s);
+
+      // Smile
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(x + 14*s, y + 10*s, 4*s, 1*s);
+      ctx.fillRect(x + 13*s, y + 9*s, 1*s, 1*s);
+      ctx.fillRect(x + 18*s, y + 9*s, 1*s, 1*s);
+    }
+
+    // Draw Toly sprite (improved)
+    function drawToly(x, y, scale = 3) {
+      const s = scale;
+
+      // Glow
+      ctx.fillStyle = 'rgba(153, 69, 255, 0.2)';
+      ctx.beginPath();
+      ctx.arc(x + 16*s, y + 16*s, 20*s, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath();
+      ctx.ellipse(x + 16*s, y + 30*s, 12*s, 4*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Legs
+      ctx.fillStyle = '#1e3a5f';
+      ctx.fillRect(x + 10*s, y + 22*s, 5*s, 9*s);
+      ctx.fillRect(x + 17*s, y + 22*s, 5*s, 9*s);
+
+      // Shoes
+      ctx.fillStyle = '#2d3748';
+      ctx.fillRect(x + 9*s, y + 29*s, 6*s, 3*s);
+      ctx.fillRect(x + 17*s, y + 29*s, 6*s, 3*s);
+
+      // Body (Solana purple)
+      ctx.fillStyle = '#9945ff';
+      ctx.fillRect(x + 8*s, y + 12*s, 16*s, 12*s);
+      ctx.fillStyle = '#7c35db';
+      ctx.fillRect(x + 8*s, y + 12*s, 3*s, 12*s);
+      ctx.fillRect(x + 21*s, y + 12*s, 3*s, 12*s);
+
+      // Solana logo
+      ctx.fillStyle = '#14f195';
+      ctx.fillRect(x + 12*s, y + 15*s, 8*s, 2*s);
+      ctx.fillRect(x + 12*s, y + 18*s, 8*s, 2*s);
+      ctx.fillRect(x + 12*s, y + 21*s, 8*s, 2*s);
+
+      // Arms
+      ctx.fillStyle = '#f1c27d';
+      ctx.fillRect(x + 5*s, y + 13*s, 4*s, 10*s);
+      ctx.fillRect(x + 23*s, y + 13*s, 4*s, 10*s);
+
+      // Head
+      ctx.fillStyle = '#f1c27d';
+      ctx.fillRect(x + 9*s, y + 2*s, 14*s, 12*s);
+
+      // Hair
+      ctx.fillStyle = '#3d2a1a';
+      ctx.fillRect(x + 9*s, y + 0*s, 14*s, 5*s);
+      ctx.fillRect(x + 8*s, y + 2*s, 2*s, 4*s);
+      ctx.fillRect(x + 22*s, y + 2*s, 2*s, 4*s);
+
+      // Beard
+      ctx.fillStyle = '#4a3525';
+      ctx.fillRect(x + 10*s, y + 10*s, 12*s, 4*s);
+      ctx.fillRect(x + 11*s, y + 9*s, 10*s, 2*s);
+      ctx.fillRect(x + 12*s, y + 13*s, 8*s, 1*s);
+
+      // Eyes
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + 11*s, y + 5*s, 4*s, 3*s);
+      ctx.fillRect(x + 17*s, y + 5*s, 4*s, 3*s);
+      ctx.fillStyle = '#1e3a5f';
+      ctx.fillRect(x + 13*s, y + 5*s, 2*s, 2*s);
+      ctx.fillRect(x + 19*s, y + 5*s, 2*s, 2*s);
+    }
+
+    // Draw Neo sprite (improved)
+    function drawNeo(x, y, scale = 3) {
+      const s = scale;
+
+      // Matrix glow
+      ctx.fillStyle = 'rgba(0, 255, 65, 0.15)';
+      ctx.beginPath();
+      ctx.arc(x + 16*s, y + 16*s, 20*s, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.ellipse(x + 16*s, y + 30*s, 12*s, 4*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Legs
+      ctx.fillStyle = '#080808';
+      ctx.fillRect(x + 10*s, y + 22*s, 5*s, 9*s);
+      ctx.fillRect(x + 17*s, y + 22*s, 5*s, 9*s);
+
+      // Shoes
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(x + 9*s, y + 29*s, 6*s, 3*s);
+      ctx.fillRect(x + 17*s, y + 29*s, 6*s, 3*s);
+
+      // Long coat
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(x + 6*s, y + 12*s, 20*s, 18*s);
+      ctx.fillStyle = '#151515';
+      ctx.fillRect(x + 6*s, y + 12*s, 2*s, 18*s);
+      ctx.fillRect(x + 24*s, y + 12*s, 2*s, 18*s);
+
+      // Arms
+      ctx.fillStyle = '#f1c27d';
+      ctx.fillRect(x + 4*s, y + 13*s, 3*s, 10*s);
+      ctx.fillRect(x + 25*s, y + 13*s, 3*s, 10*s);
+
+      // Head
+      ctx.fillStyle = '#f1c27d';
+      ctx.fillRect(x + 9*s, y + 2*s, 14*s, 12*s);
+
+      // Hair
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(x + 9*s, y + 0*s, 14*s, 5*s);
+      ctx.fillRect(x + 8*s, y + 2*s, 2*s, 3*s);
+      ctx.fillRect(x + 22*s, y + 2*s, 2*s, 3*s);
+
+      // Sunglasses
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(x + 10*s, y + 5*s, 5*s, 3*s);
+      ctx.fillRect(x + 17*s, y + 5*s, 5*s, 3*s);
+      ctx.fillRect(x + 15*s, y + 6*s, 2*s, 1*s);
+      ctx.fillStyle = '#00ff41';
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(x + 11*s, y + 6*s, 3*s, 1*s);
+      ctx.fillRect(x + 18*s, y + 6*s, 3*s, 1*s);
+      ctx.globalAlpha = 1;
+
+      // Matrix code
+      ctx.fillStyle = '#00ff41';
+      ctx.globalAlpha = 0.8;
+      const codeY = y - 8*s;
+      ctx.fillRect(x + 8*s, codeY, 2*s, 2*s);
+      ctx.fillRect(x + 8*s, codeY + 4*s, 2*s, 2*s);
+      ctx.fillRect(x + 14*s, codeY + 2*s, 2*s, 2*s);
+      ctx.fillRect(x + 20*s, codeY, 2*s, 2*s);
+      ctx.fillRect(x + 20*s, codeY + 4*s, 2*s, 2*s);
+      ctx.globalAlpha = 1;
+    }
+
+    // Draw Dev sprite (improved)
+    function drawDev(x, y, scale = 3) {
+      const s = scale;
+
+      // Glow
+      ctx.fillStyle = 'rgba(139, 92, 246, 0.2)';
+      ctx.beginPath();
+      ctx.arc(x + 16*s, y + 16*s, 20*s, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath();
+      ctx.ellipse(x + 16*s, y + 30*s, 12*s, 4*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Legs
+      ctx.fillStyle = '#1a1a25';
+      ctx.fillRect(x + 10*s, y + 22*s, 5*s, 9*s);
+      ctx.fillRect(x + 17*s, y + 22*s, 5*s, 9*s);
+
+      // Shoes
+      ctx.fillStyle = '#2d2d3a';
+      ctx.fillRect(x + 9*s, y + 29*s, 6*s, 3*s);
+      ctx.fillRect(x + 17*s, y + 29*s, 6*s, 3*s);
+
+      // Dark hoodie
+      ctx.fillStyle = '#1f2937';
+      ctx.fillRect(x + 8*s, y + 12*s, 16*s, 12*s);
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(x + 8*s, y + 12*s, 3*s, 12*s);
+      ctx.fillRect(x + 21*s, y + 12*s, 3*s, 12*s);
+
+      // Ghost icon
+      ctx.fillStyle = '#8b5cf6';
+      ctx.fillRect(x + 12*s, y + 15*s, 8*s, 7*s);
+      ctx.fillRect(x + 11*s, y + 16*s, 2*s, 5*s);
+      ctx.fillRect(x + 19*s, y + 16*s, 2*s, 5*s);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + 13*s, y + 17*s, 2*s, 2*s);
+      ctx.fillRect(x + 17*s, y + 17*s, 2*s, 2*s);
+
+      // Hood
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(x + 8*s, y + 2*s, 16*s, 6*s);
+      ctx.fillRect(x + 7*s, y + 4*s, 2*s, 8*s);
+      ctx.fillRect(x + 23*s, y + 4*s, 2*s, 8*s);
+
+      // Arms
+      ctx.fillStyle = '#e0ac69';
+      ctx.fillRect(x + 5*s, y + 13*s, 4*s, 10*s);
+      ctx.fillRect(x + 23*s, y + 13*s, 4*s, 10*s);
+
+      // Head
+      ctx.fillStyle = '#e0ac69';
+      ctx.fillRect(x + 10*s, y + 4*s, 12*s, 10*s);
+
+      // Hair
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(x + 10*s, y + 2*s, 12*s, 4*s);
+      ctx.fillRect(x + 9*s, y + 3*s, 2*s, 3*s);
+      ctx.fillRect(x + 21*s, y + 3*s, 2*s, 3*s);
+      ctx.fillRect(x + 12*s, y + 1*s, 2*s, 2*s);
+      ctx.fillRect(x + 18*s, y + 1*s, 2*s, 2*s);
+
+      // Glasses
+      ctx.fillStyle = '#2d3748';
+      ctx.fillRect(x + 10*s, y + 6*s, 12*s, 1*s);
+      ctx.fillRect(x + 10*s, y + 6*s, 5*s, 4*s);
+      ctx.fillRect(x + 17*s, y + 6*s, 5*s, 4*s);
+      ctx.fillStyle = '#60a5fa';
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(x + 11*s, y + 7*s, 3*s, 2*s);
+      ctx.fillRect(x + 18*s, y + 7*s, 3*s, 2*s);
+      ctx.globalAlpha = 1;
+    }
+
+    // Draw animals with better quality
+    function drawDog(x, y, scale = 2.5) {
+      const s = scale;
+      // Body
+      ctx.fillStyle = '#c68642';
+      ctx.fillRect(x + 4*s, y + 8*s, 16*s, 10*s);
+      // Head
+      ctx.fillRect(x + 18*s, y + 4*s, 10*s, 10*s);
+      // Ears
+      ctx.fillStyle = '#8d5524';
+      ctx.fillRect(x + 18*s, y + 2*s, 4*s, 4*s);
+      ctx.fillRect(x + 24*s, y + 2*s, 4*s, 4*s);
+      // Snout
+      ctx.fillStyle = '#ffdbac';
+      ctx.fillRect(x + 26*s, y + 8*s, 4*s, 4*s);
+      // Nose
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(x + 28*s, y + 9*s, 2*s, 2*s);
+      // Eye
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(x + 22*s, y + 6*s, 2*s, 2*s);
+      // Legs
+      ctx.fillStyle = '#c68642';
+      ctx.fillRect(x + 6*s, y + 16*s, 3*s, 6*s);
+      ctx.fillRect(x + 14*s, y + 16*s, 3*s, 6*s);
+      // Tail
+      ctx.fillRect(x + 2*s, y + 6*s, 3*s, 4*s);
+    }
+
+    function drawCat(x, y, scale = 2.5) {
+      const s = scale;
+      // Body
+      ctx.fillStyle = '#6b7280';
+      ctx.fillRect(x + 6*s, y + 10*s, 14*s, 8*s);
+      // Head
+      ctx.fillRect(x + 16*s, y + 4*s, 10*s, 10*s);
+      // Ears
+      ctx.fillStyle = '#4b5563';
+      ctx.beginPath();
+      ctx.moveTo(x + 16*s, y + 6*s);
+      ctx.lineTo(x + 18*s, y);
+      ctx.lineTo(x + 20*s, y + 6*s);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x + 24*s, y + 6*s);
+      ctx.lineTo(x + 26*s, y);
+      ctx.lineTo(x + 28*s, y + 6*s);
+      ctx.fill();
+      // Eyes
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(x + 18*s, y + 7*s, 2*s, 3*s);
+      ctx.fillRect(x + 23*s, y + 7*s, 2*s, 3*s);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(x + 18*s, y + 8*s, 1*s, 2*s);
+      ctx.fillRect(x + 23*s, y + 8*s, 1*s, 2*s);
+      // Nose
+      ctx.fillStyle = '#fca5a5';
+      ctx.fillRect(x + 21*s, y + 10*s, 2*s, 1*s);
+      // Legs
+      ctx.fillStyle = '#6b7280';
+      ctx.fillRect(x + 8*s, y + 16*s, 3*s, 5*s);
+      ctx.fillRect(x + 15*s, y + 16*s, 3*s, 5*s);
+      // Tail
+      ctx.fillRect(x + 4*s, y + 8*s, 3*s, 2*s);
+      ctx.fillRect(x + 2*s, y + 4*s, 3*s, 5*s);
+    }
+
+    function drawBird(x, y, scale = 2.5) {
+      const s = scale;
+      // Body
+      ctx.fillStyle = '#8b4513';
+      ctx.beginPath();
+      ctx.ellipse(x + 8*s, y + 8*s, 8*s, 6*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Head
+      ctx.beginPath();
+      ctx.arc(x + 14*s, y + 6*s, 4*s, 0, Math.PI * 2);
+      ctx.fill();
+      // Beak
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(x + 18*s, y + 5*s);
+      ctx.lineTo(x + 23*s, y + 6*s);
+      ctx.lineTo(x + 18*s, y + 7*s);
+      ctx.fill();
+      // Eye
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(x + 15*s, y + 5*s, 1*s, 0, Math.PI * 2);
+      ctx.fill();
+      // Wing
+      ctx.fillStyle = '#6b4423';
+      ctx.beginPath();
+      ctx.ellipse(x + 6*s, y + 8*s, 5*s, 4*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawButterfly(x, y, scale = 2.5) {
+      const s = scale;
+      // Wings
+      ctx.fillStyle = '#ec4899';
+      ctx.beginPath();
+      ctx.ellipse(x + 4*s, y + 6*s, 4*s, 5*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x + 12*s, y + 6*s, 4*s, 5*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f472b6';
+      ctx.beginPath();
+      ctx.ellipse(x + 4*s, y + 10*s, 3*s, 4*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x + 12*s, y + 10*s, 3*s, 4*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Body
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(x + 7*s, y + 4*s, 2*s, 10*s);
+      // Wing spots
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(x + 4*s, y + 6*s, 1.5*s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x + 12*s, y + 6*s, 1.5*s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawSquirrel(x, y, scale = 2.5) {
+      const s = scale;
+      // Tail
+      ctx.fillStyle = '#b45309';
+      ctx.beginPath();
+      ctx.ellipse(x + 4*s, y + 6*s, 5*s, 8*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#d97706';
+      ctx.beginPath();
+      ctx.ellipse(x + 4*s, y + 4*s, 3*s, 5*s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Body
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(x + 8*s, y + 10*s, 10*s, 8*s);
+      // Head
+      ctx.beginPath();
+      ctx.arc(x + 20*s, y + 10*s, 5*s, 0, Math.PI * 2);
+      ctx.fill();
+      // Ear
+      ctx.fillStyle = '#92400e';
+      ctx.beginPath();
+      ctx.moveTo(x + 18*s, y + 4*s);
+      ctx.lineTo(x + 20*s, y + 2*s);
+      ctx.lineTo(x + 22*s, y + 6*s);
+      ctx.closePath();
+      ctx.fill();
+      // Eye & nose
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(x + 21*s, y + 9*s, 1*s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.arc(x + 24*s, y + 11*s, 1*s, 0, Math.PI * 2);
+      ctx.fill();
+      // Legs
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(x + 10*s, y + 16*s, 2*s, 4*s);
+      ctx.fillRect(x + 15*s, y + 16*s, 2*s, 4*s);
+    }
+
+    // Draw pixel text with better styling
+    function drawTitle(text, x, y, size, color) {
+      ctx.font = `bold ${size}px "Courier New", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Outer glow
+      ctx.fillStyle = 'rgba(74, 222, 128, 0.3)';
+      ctx.fillText(text, x, y + 4);
+
+      // Shadow
+      ctx.fillStyle = '#000000';
+      ctx.fillText(text, x + 3, y + 3);
+
+      // Main text
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+
+      // Highlight
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.fillText(text, x, y - 1);
+    }
+
+    function drawSubtitle(text, x, y, size, color) {
+      ctx.font = `bold ${size}px "Courier New", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillStyle = '#000000';
+      ctx.fillText(text, x + 2, y + 2);
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+    }
+
+    // Draw grass ground
+    function drawGround() {
+      // Base
+      ctx.fillStyle = '#1a472a';
+      ctx.fillRect(0, 435, 1500, 65);
+
+      // Grass blades
+      ctx.fillStyle = '#2d5a3d';
+      for (let x = 0; x < 1500; x += 8) {
+        const h = 8 + Math.sin(x * 0.1) * 4;
+        ctx.fillRect(x, 435, 3, h);
+      }
+      ctx.fillStyle = '#3d7a4d';
+      for (let x = 4; x < 1500; x += 12) {
+        const h = 5 + Math.cos(x * 0.15) * 3;
+        ctx.fillRect(x, 435, 2, h);
+      }
+
+      // Flowers
+      const flowerColors = ['#ef4444', '#fbbf24', '#ec4899', '#8b5cf6', '#4ade80'];
+      for (let x = 30; x < 1470; x += 60) {
+        const c = flowerColors[Math.floor((x / 60) % flowerColors.length)];
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(x + 2, 438, 2, 10);
+        ctx.fillStyle = c;
+        ctx.fillRect(x, 435, 6, 5);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(x + 2, 436, 2, 2);
+      }
+    }
+
+    // Main render
+    function render() {
+      // Clear
+      ctx.clearRect(0, 0, 1500, 500);
+
+      // Background & stars
+      drawBackground();
+      drawStars();
+
+      // Ground
+      drawGround();
+
+      // Main logo globe (left)
+      drawLogoGlobe(250, 230, 1.1);
+
+      // Smaller globe (right)
+      drawLogoGlobe(1280, 260, 0.7);
+
+      // Characters
+      drawFinn(480, 330, 3.2);
+      drawToly(590, 330, 3.2);
+      drawDev(700, 330, 3.2);
+      drawNeo(810, 330, 3.2);
+
+      // Animals
+      drawDog(920, 385, 2.2);
+      drawCat(1010, 385, 2.2);
+      drawBird(1100, 375, 2);
+      drawSquirrel(1160, 383, 2);
+      drawButterfly(1220, 350, 2);
+      drawButterfly(440, 280, 1.8);
+      drawBird(380, 100, 1.8);
+
+      // Title
+      drawTitle('BAGSWORLD', 750, 90, 85, '#4ade80');
+
+      // Tagline
+      drawSubtitle('A LIVING CRYPTO PIXEL UNIVERSE', 750, 160, 26, '#d4a574');
+
+      // Accent line
+      const gradient = ctx.createLinearGradient(480, 0, 1020, 0);
+      gradient.addColorStop(0, 'transparent');
+      gradient.addColorStop(0.2, '#f59e0b');
+      gradient.addColorStop(0.8, '#f59e0b');
+      gradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(480, 190, 540, 3);
+
+      // Bottom tagline
+      drawSubtitle('POWERED BY BAGS.FM ON SOLANA', 750, 220, 20, '#8888aa');
+
+      // Solana accents in corners
+      ctx.fillStyle = '#14f195';
+      ctx.fillRect(25, 25, 35, 3);
+      ctx.fillRect(25, 32, 35, 3);
+      ctx.fillRect(25, 39, 35, 3);
+
+      ctx.fillRect(1440, 25, 35, 3);
+      ctx.fillRect(1440, 32, 35, 3);
+      ctx.fillRect(1440, 39, 35, 3);
+
+      // Activity particles
+      const particles = [
+        {x: 95, y: 140}, {x: 180, y: 350}, {x: 390, y: 180},
+        {x: 1120, y: 110}, {x: 1350, y: 160}, {x: 1420, y: 300},
+        {x: 160, y: 420}, {x: 1380, y: 420}, {x: 70, y: 260}
+      ];
+
+      particles.forEach((p, i) => {
+        const c = i % 2 === 0 ? '#e89030' : '#f0c040';
+        ctx.fillStyle = c;
+        ctx.fillRect(p.x, p.y, 6, 6);
+        ctx.fillStyle = c + '80';
+        ctx.fillRect(p.x - 2, p.y - 2, 10, 10);
+      });
+    }
+
+    render();
+
+    function downloadBanner() {
+      const link = document.createElement('a');
+      link.download = 'bagsworld-x-banner.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>
