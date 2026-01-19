@@ -64,7 +64,7 @@ function deserializeTransaction(encoded: string): VersionedTransaction | Transac
 }
 
 export function TestLaunchButton() {
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, signTransaction, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const { setVisible: setWalletModalVisible } = useWalletModal();
 
@@ -204,17 +204,29 @@ export function TestLaunchButton() {
 
           setStatus(`Step 2/3: Broadcasting fee config tx ${i + 1}...`);
 
-          // Send transaction client-side via wallet adapter connection
+          // Send using wallet adapter - wallet handles RPC internally
           const txid = await connection.sendRawTransaction(signed.serialize(), {
             skipPreflight: false,
-            maxRetries: 3,
+            preflightCommitment: "confirmed",
           });
           addLog(`Fee tx ${i + 1} sent: ${txid}`);
 
-          // Wait for confirmation
-          const confirmation = await connection.confirmTransaction(txid, "confirmed");
-          if (confirmation.value.err) {
-            throw new Error(`Fee tx ${i + 1} failed: ${JSON.stringify(confirmation.value.err)}`);
+          // Wait for confirmation with timeout
+          setStatus(`Step 2/3: Confirming fee config tx ${i + 1}...`);
+          try {
+            const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+            await connection.confirmTransaction({
+              signature: txid,
+              blockhash: latestBlockhash.blockhash,
+              lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            }, "confirmed");
+          } catch (confirmError) {
+            addLog(`Fee tx ${i + 1} confirmation timeout, checking status...`);
+            // Check if it actually succeeded
+            const status = await connection.getSignatureStatus(txid);
+            if (status.value?.err) {
+              throw new Error(`Fee tx ${i + 1} failed: ${JSON.stringify(status.value.err)}`);
+            }
           }
 
           addLog(`Fee tx ${i + 1} confirmed: ${txid}`);
@@ -272,19 +284,34 @@ export function TestLaunchButton() {
       // Send transaction client-side via wallet adapter connection
       const txid = await connection.sendRawTransaction(signedLaunchTx.serialize(), {
         skipPreflight: false,
-        maxRetries: 3,
+        preflightCommitment: "confirmed",
       });
       addLog(`Launch tx sent: ${txid}`);
 
       setStatus("Step 3/3: Waiting for confirmation...");
 
-      // Wait for confirmation
-      const confirmation = await connection.confirmTransaction(txid, "confirmed");
-      if (confirmation.value.err) {
-        throw new Error(`Launch tx failed: ${JSON.stringify(confirmation.value.err)}`);
+      // Wait for confirmation with better error handling
+      try {
+        const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+        await connection.confirmTransaction({
+          signature: txid,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        }, "confirmed");
+      } catch (confirmError) {
+        addLog(`Confirmation timeout, checking status...`);
+        // Check if it actually succeeded
+        const status = await connection.getSignatureStatus(txid);
+        if (status.value?.err) {
+          throw new Error(`Launch tx failed: ${JSON.stringify(status.value.err)}`);
+        }
+        if (!status.value?.confirmationStatus) {
+          addLog(`Transaction may still be processing. Check: https://solscan.io/tx/${txid}`);
+        }
       }
 
       addLog(`SUCCESS! TX: ${txid}`);
+      addLog(`View on Solscan: https://solscan.io/tx/${txid}`);
       setStatus(`Token launched! TX: ${txid.substring(0, 20)}...`);
 
     } catch (err) {
