@@ -358,18 +358,16 @@ class BagsApiClient {
     tipWallet?: string;
     tipLamports?: number;
   }): Promise<{ transaction: string; lastValidBlockHeight?: number }> {
-    // Convert to SDK parameter names
+    // Bags API expects ipfs and wallet (not metadataUrl/launchWallet)
     const apiBody = {
-      metadataUrl: data.ipfs,  // SDK uses metadataUrl
+      ipfs: data.ipfs,
       tokenMint: data.tokenMint,
-      launchWallet: data.wallet,  // SDK uses launchWallet
+      wallet: data.wallet,
       initialBuyLamports: data.initialBuyLamports,
       configKey: data.configKey,
       ...(data.tipWallet && data.tipLamports ? {
-        tipConfig: {
-          tipWallet: data.tipWallet,
-          tipLamports: data.tipLamports,
-        }
+        tipWallet: data.tipWallet,
+        tipLamports: data.tipLamports,
       } : {}),
     };
     console.log("Bags API createLaunchTransaction request:", JSON.stringify(apiBody, null, 2));
