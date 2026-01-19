@@ -371,6 +371,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private setupTrendingZone(): void {
+    // Hide park decorations and animals (they belong to main_city)
+    this.decorations.forEach((d) => d.setVisible(false));
+    this.animals.forEach((a) => a.sprite.setVisible(false));
+
     // Change ground to concrete/urban
     this.ground.setTexture("concrete");
 
