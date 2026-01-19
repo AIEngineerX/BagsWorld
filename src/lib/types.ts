@@ -17,9 +17,9 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
   },
   trending: {
     id: "trending",
-    name: "City",
+    name: "BagsCity",
     description: "Downtown district with hot tokens",
-    icon: "[C]",
+    icon: "[B]",
   },
 };
 
