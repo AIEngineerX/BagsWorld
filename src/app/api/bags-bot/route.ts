@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { extractIntent, quickIntentCheck, type ExtractedIntent } from "@/lib/intent-extractor";
+import { bagsBotCharacter, generateCharacterPrompt } from "@/characters/bags-bot.character";
 
-// BagsWorld Bot - Simplified, focused on useful interactions
-// Core features: Chat with Claude, control animals, trigger world effects, announcements
+// BagsWorld Bot - elizaOS-style intelligent agent
+// Uses LLM intent extraction + rich character personality
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const CHARACTER_PROMPT = generateCharacterPrompt(bagsBotCharacter);
 
 interface BotRequest {
   action: "chat" | "animal" | "effect" | "announce";
@@ -69,90 +72,91 @@ export async function POST(request: Request) {
   }
 }
 
-// Main chat handler - uses Claude for intelligent responses
+// Main chat handler - uses LLM intent extraction for natural language understanding
 async function handleChat(body: BotRequest): Promise<NextResponse> {
   const { message = "", worldState, chatHistory = [] } = body;
-  const lowerMsg = message.toLowerCase();
-
-  // Check for specific commands that trigger actions
   const response: BotResponse = { message: "", actions: [] };
 
-  // Animal interactions
-  const animalMatch = lowerMsg.match(/\b(pet|feed|scare|call|find)\s+(the\s+)?(dog|cat|bird|butterfly|squirrel)/i);
-  if (animalMatch && animalMatch[1] && animalMatch[3]) {
-    const actionWord = animalMatch[1].toLowerCase();
-    const animal = animalMatch[3].toLowerCase() as "dog" | "cat" | "bird" | "butterfly" | "squirrel";
-    const animalAction = actionWord === "find" ? "call" : actionWord === "feed" ? "pet" : actionWord as "pet" | "scare" | "call";
+  // First: Quick check for obvious patterns (saves API calls)
+  let intent: ExtractedIntent | null = quickIntentCheck(message);
 
-    response.actions!.push({
-      type: "animal",
-      data: { animalType: animal, animalAction }
-    });
-
-    response.message = getAnimalResponse(animal, animalAction);
-    return NextResponse.json(response);
+  // If not obvious and we have API key, use LLM extraction
+  if (!intent && ANTHROPIC_API_KEY) {
+    intent = await extractIntent(message, ANTHROPIC_API_KEY, worldState);
+    console.log(`Intent extracted: ${intent.action} (${intent.confidence}) - ${intent.reasoning || "no reason"}`);
   }
 
-  // Effect triggers
-  if (lowerMsg.includes("firework") || lowerMsg.includes("celebrate") || lowerMsg.includes("party")) {
-    response.actions!.push({
-      type: "effect",
-      data: { effectType: "fireworks", x: 400, y: 200 }
-    });
-    response.message = "let's gooo! 🎆";
-    return NextResponse.json(response);
+  // Fallback to basic chat if no intent
+  if (!intent) {
+    intent = { action: "chat", confidence: 0.5 };
   }
 
-  if (lowerMsg.includes("make it rain") || lowerMsg.includes("rain coin") || lowerMsg.includes("money")) {
-    response.actions!.push({
-      type: "effect",
-      data: { effectType: "coins" }
-    });
-    response.message = "making it rain! 💰";
-    return NextResponse.json(response);
-  }
+  // Handle based on extracted intent
+  switch (intent.action) {
+    case "pet":
+    case "scare":
+    case "call":
+    case "feed": {
+      const animal = (intent.target?.name || "dog") as "dog" | "cat" | "bird" | "butterfly" | "squirrel";
+      const animalAction = intent.action === "feed" ? "pet" : intent.action;
 
-  if (lowerMsg.includes("heart") || lowerMsg.includes("love")) {
-    response.actions!.push({
-      type: "effect",
-      data: { effectType: "hearts", x: 400, y: 300 }
-    });
-    response.message = "sending love! 💕";
-    return NextResponse.json(response);
-  }
-
-  if (lowerMsg.includes("confetti") || lowerMsg.includes("woohoo") || lowerMsg.includes("congrat")) {
-    response.actions!.push({
-      type: "effect",
-      data: { effectType: "confetti" }
-    });
-    response.message = "confetti time! 🎊";
-    return NextResponse.json(response);
-  }
-
-  if (lowerMsg.includes("star") && (lowerMsg.includes("burst") || lowerMsg.includes("shoot"))) {
-    response.actions!.push({
-      type: "effect",
-      data: { effectType: "stars" }
-    });
-    response.message = "stars! ✨";
-    return NextResponse.json(response);
-  }
-
-  // Use Claude API for general chat if available
-  if (ANTHROPIC_API_KEY) {
-    try {
-      const claudeResponse = await generateClaudeResponse(message, worldState, chatHistory);
-      response.message = claudeResponse;
+      response.actions!.push({
+        type: "animal",
+        data: { animalType: animal, animalAction }
+      });
+      response.message = getAnimalResponse(animal, animalAction);
       return NextResponse.json(response);
-    } catch (e) {
-      console.error("Claude error:", e);
+    }
+
+    case "effect": {
+      const effectName = intent.target?.name || "fireworks";
+      const effectType = effectName as "fireworks" | "coins" | "hearts" | "confetti" | "stars";
+
+      response.actions!.push({
+        type: "effect",
+        data: { effectType, x: 400, y: 250 }
+      });
+
+      const effectMessages: Record<string, string> = {
+        fireworks: "let's gooo! 🎆",
+        coins: "making it rain! 💰",
+        hearts: "sending love! 💕",
+        confetti: "confetti time! 🎊",
+        stars: "shooting stars! ✨"
+      };
+      response.message = effectMessages[effectType] || "✨";
+      return NextResponse.json(response);
+    }
+
+    case "query": {
+      // Answer questions about the world
+      if (worldState) {
+        response.message = `world health: ${worldState.health}%, weather: ${worldState.weather}, ${worldState.buildingCount} buildings, ${worldState.populationCount} citizens`;
+        if (worldState.topToken) {
+          response.message += `. top bag: $${worldState.topToken}`;
+        }
+      } else {
+        response.message = "world is vibing! check the stats panel for details";
+      }
+      return NextResponse.json(response);
+    }
+
+    case "chat":
+    default: {
+      // Use Claude for conversational responses
+      if (ANTHROPIC_API_KEY) {
+        try {
+          const claudeResponse = await generateClaudeResponse(message, worldState, chatHistory);
+          response.message = claudeResponse;
+          return NextResponse.json(response);
+        } catch (e) {
+          console.error("Claude error:", e);
+        }
+      }
+      response.message = getFallbackResponse(message, worldState);
+      return NextResponse.json(response);
     }
   }
-
-  // Fallback responses
-  response.message = getFallbackResponse(message, worldState);
-  return NextResponse.json(response);
 }
 
 // Animal control handler
@@ -216,40 +220,29 @@ async function handleAnnounce(body: BotRequest): Promise<NextResponse> {
   return NextResponse.json(response);
 }
 
-// Generate response using Claude
+// Generate response using Claude with character personality
 async function generateClaudeResponse(
   message: string,
   worldState: BotRequest["worldState"],
   chatHistory: Array<{ role: string; content: string }>
 ): Promise<string> {
-  const systemPrompt = `You are the BagsWorld Bot - a friendly guide in a pixel art city that visualizes Solana trading on Bags.fm.
-
-Your personality:
-- Helpful and friendly, casual crypto-native language
-- Keep responses SHORT (1-2 sentences max)
-- You can control animals in the world and trigger effects
-- Use simple language, light emoji use
-
-What you can do (tell users if they ask):
-- Pet/scare/call animals: dog, cat, bird, butterfly, squirrel
-- Trigger effects: fireworks, coins rain, hearts, confetti, stars
-- Answer questions about BagsWorld, Bags.fm, and Solana
-- Help with fee info and token questions
-
-Commands users can say:
-- "pet the dog" / "scare the cat" / "call the bird"
-- "fireworks" / "make it rain" / "confetti"
-- "what's the weather" / "how's the world"
-
-${worldState ? `
-Current world status:
-- Health: ${worldState.health}%
+  // Build dynamic world context
+  const worldContext = worldState ? `
+CURRENT WORLD STATE:
+- World Health: ${worldState.health}% ${worldState.health >= 80 ? "(thriving!)" : worldState.health <= 30 ? "(struggling...)" : ""}
 - Weather: ${worldState.weather}
-- Buildings: ${worldState.buildingCount}
-- Citizens: ${worldState.populationCount}
-${worldState.topToken ? `- Top token: $${worldState.topToken}` : ""}` : ""}
+- Buildings: ${worldState.buildingCount} active
+- Citizens: ${worldState.populationCount} roaming
+${worldState.topToken ? `- Top Bag: $${worldState.topToken}` : ""}
+` : "";
 
-Remember: Keep it short, helpful, and fun!`;
+  const systemPrompt = `${CHARACTER_PROMPT}
+
+CAPABILITIES (mention if user asks):
+- Control animals: pet/scare/call the dog, cat, bird, butterfly, squirrel
+- Trigger effects: fireworks, make it rain (coins), hearts, confetti, stars
+- Answer questions about BagsWorld, Bags.fm fees, and Solana
+${worldContext}`;
 
   const messages = chatHistory.slice(-6).map(m => ({
     role: m.role as "user" | "assistant",
@@ -265,8 +258,8 @@ Remember: Keep it short, helpful, and fun!`;
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 150,
+      model: "claude-opus-4-5-20251101",
+      max_tokens: 300,
       system: systemPrompt,
       messages,
     }),
@@ -320,39 +313,51 @@ function getAnimalResponse(animal: string, action: string): string {
   return actionResponses[Math.floor(Math.random() * actionResponses.length)];
 }
 
-// Fallback response when Claude isn't available
+// Fallback responses using character vocabulary
 function getFallbackResponse(message: string, worldState?: BotRequest["worldState"]): string {
   const lowerMsg = message.toLowerCase();
 
-  // Greetings
+  // Greetings - character style
   if (lowerMsg.match(/\b(hi|hello|hey|gm|sup|yo)\b/)) {
-    return "hey! i can help with animals, effects, and questions about BagsWorld. try 'pet the dog' or 'fireworks'!";
+    const greetings = [
+      "gm fren! another day another chance to make it 💰",
+      "hey ser! world's looking healthy today. try 'pet the dog' or 'make it rain'",
+      "yo anon! ready to vibe? i can control animals and trigger effects",
+      "wagmi ser! what can i help u with today?",
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
   }
 
   // Help
   if (lowerMsg.includes("help") || lowerMsg.includes("what can you do")) {
-    return "i can: pet/scare/call animals (dog, cat, bird, butterfly, squirrel), trigger effects (fireworks, coins, hearts, confetti), and answer questions!";
+    return "i can pet/scare/call animals (dog, cat, bird, butterfly, squirrel), trigger effects (fireworks, coins, hearts, confetti), and answer questions about bags.fm. try 'give the puppy some love' or 'let's party' ser";
   }
 
   // World status
   if (lowerMsg.includes("world") || lowerMsg.includes("status") || lowerMsg.includes("weather") || lowerMsg.includes("health")) {
     if (worldState) {
-      return `world health: ${worldState.health}%, weather: ${worldState.weather}, ${worldState.buildingCount} buildings, ${worldState.populationCount} citizens`;
+      const healthVibe = worldState.health >= 80 ? "we're thriving ser 📈" : worldState.health <= 30 ? "tough times but we're built different 💎" : "vibes are decent ngl";
+      return `world health: ${worldState.health}%, weather: ${worldState.weather}. ${healthVibe}`;
     }
-    return "world is vibing! check the UI for stats";
+    return "world is vibing fren! check the stats panel for the alpha";
   }
 
   // Bags.fm questions
   if (lowerMsg.includes("bags") || lowerMsg.includes("fee") || lowerMsg.includes("launch")) {
-    return "bags.fm lets you launch tokens and earn 1% of trading volume forever. BagsWorld takes just 3% - top creators get kickbacks!";
+    return "bags.fm lets u launch tokens and earn 1% of trading volume forever ser. real passive income, not just hype. bagsworld takes 3% of that - top creators get kickbacks 💰";
   }
 
-  // Default
+  // Feeling down
+  if (lowerMsg.includes("down") || lowerMsg.includes("rekt") || lowerMsg.includes("lost")) {
+    return "we've all been there ser. diamond hands through the pain - or go pet the dog, always helps 🐕";
+  }
+
+  // Default - character style
   const defaults = [
-    "try 'pet the dog' or 'fireworks' for some fun!",
-    "ask me about the world, or try 'make it rain' for coins!",
-    "i can control animals and trigger effects. what do you want to see?",
-    "say 'help' to see what i can do!"
+    "try 'give the puppy some love' or 'let's party' ser 👀",
+    "ask me about the world, or say 'make it rain' for that money energy 💰",
+    "i can control the animals and trigger effects fren. what vibes u want?",
+    "say 'help' to see what i can do! or just tell me what's on your mind anon",
   ];
   return defaults[Math.floor(Math.random() * defaults.length)];
 }

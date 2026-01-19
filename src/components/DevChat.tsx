@@ -382,12 +382,12 @@ export function DevChat() {
     // Regular chat - send to Claude API
     setIsLoading(true);
     try {
-      const response = await fetch("/api/character-chat", {
+      const response = await fetch("/api/agent-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          character: "dev",
-          userMessage: userMsg,
+          characterId: "ghost",
+          message: userMsg,
           chatHistory: messages.slice(-6).map((m) => ({
             role: m.type === "user" ? "user" : "assistant",
             content: m.message,
@@ -450,10 +450,10 @@ export function DevChat() {
           <span className="font-pixel text-sm">👻</span>
           <div>
             <p className="font-pixel text-[10px] text-purple-400">
-              GHOST AGENT
+              GHOST // THE DEV
             </p>
-            <p className="font-pixel text-[8px] text-gray-400">
-              @DaddyGhost
+            <p className="font-pixel text-[8px] text-purple-600">
+              powered by opus 4.5
             </p>
           </div>
         </div>
