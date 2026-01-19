@@ -47,7 +47,7 @@ export class WorldScene extends Phaser.Scene {
 
   // Zone system
   private currentZone: ZoneType = "main_city";
-  private launchPadElements: Phaser.GameObjects.GameObject[] = [];
+  private trendingElements: Phaser.GameObjects.GameObject[] = [];
   private mainCityElements: Phaser.GameObjects.GameObject[] = [];
   private boundZoneChange: ((e: Event) => void) | null = null;
   private zoneGround: Phaser.GameObjects.TileSprite | null = null;
@@ -153,9 +153,9 @@ export class WorldScene extends Phaser.Scene {
 
   private clearCurrentZone(): void {
     // Clear zone-specific elements based on current zone
-    if (this.currentZone === "launch_pad") {
-      this.launchPadElements.forEach((el) => el.destroy());
-      this.launchPadElements = [];
+    if (this.currentZone === "trending") {
+      this.trendingElements.forEach((el) => el.destroy());
+      this.trendingElements = [];
       this.billboardTexts.forEach((t) => t.destroy());
       this.billboardTexts = [];
       if (this.tickerText) {
@@ -184,14 +184,8 @@ export class WorldScene extends Phaser.Scene {
 
   private setupZone(zone: ZoneType): void {
     switch (zone) {
-      case "launch_pad":
-        this.setupLaunchPadZone();
-        break;
-      case "whale_waters":
-        this.setupWhaleWatersZone();
-        break;
-      case "graveyard":
-        this.setupGraveyardZone();
+      case "trending":
+        this.setupTrendingZone();
         break;
       case "main_city":
       default:
@@ -209,21 +203,21 @@ export class WorldScene extends Phaser.Scene {
     this.ground.setTexture("grass");
   }
 
-  private setupLaunchPadZone(): void {
+  private setupTrendingZone(): void {
     // Change ground to concrete/urban
     this.ground.setTexture("concrete");
 
     // Add NYC-style skyline background
-    this.createLaunchPadSkyline();
+    this.createTrendingSkyline();
 
     // Add neon signs and billboards
-    this.createLaunchPadDecorations();
+    this.createTrendingDecorations();
 
     // Add billboards with live data displays
-    this.createLaunchPadBillboards();
+    this.createTrendingBillboards();
 
     // Add ticker display at bottom
-    this.createLaunchPadTicker();
+    this.createTrendingTicker();
 
     // Start ticker animation
     this.time.addEvent({
@@ -234,165 +228,127 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  private setupWhaleWatersZone(): void {
-    // For now, similar to main city but with blue tint
-    this.decorations.forEach((d) => d.setVisible(true));
-    this.animals.forEach((a) => a.sprite.setVisible(true));
-    this.ground.setTexture("grass");
-  }
-
-  private setupGraveyardZone(): void {
-    // For now, similar to main city but with darker feel
-    this.decorations.forEach((d) => d.setVisible(true));
-    this.animals.forEach((a) => a.sprite.setVisible(true));
-    this.ground.setTexture("grass_dark");
-  }
-
-  private createLaunchPadSkyline(): void {
-    // Add multiple skyline sprites for NYC feel
-    const positions = [
-      { x: 80, y: 200, scale: 1.0 },
-      { x: 250, y: 200, scale: 0.9 },
-      { x: 450, y: 200, scale: 1.1 },
-      { x: 600, y: 200, scale: 0.95 },
-      { x: 750, y: 200, scale: 1.0 },
+  private createTrendingSkyline(): void {
+    // Back layer - distant buildings (darker, smaller)
+    const backLayer = [
+      { x: 100, y: 180, scale: 0.7, alpha: 0.4 },
+      { x: 300, y: 180, scale: 0.65, alpha: 0.4 },
+      { x: 500, y: 180, scale: 0.75, alpha: 0.4 },
+      { x: 700, y: 180, scale: 0.7, alpha: 0.4 },
     ];
 
-    positions.forEach((pos) => {
+    backLayer.forEach((pos) => {
+      const skyline = this.add.sprite(pos.x, pos.y, "skyline_bg");
+      skyline.setOrigin(0.5, 0);
+      skyline.setScale(pos.scale);
+      skyline.setDepth(-2);
+      skyline.setAlpha(pos.alpha);
+      skyline.setTint(0x111827);
+      this.skylineSprites.push(skyline);
+      this.trendingElements.push(skyline);
+    });
+
+    // Front layer - closer buildings (larger, more visible)
+    const frontLayer = [
+      { x: 60, y: 220, scale: 0.9, alpha: 0.7 },
+      { x: 200, y: 230, scale: 0.85, alpha: 0.65 },
+      { x: 400, y: 210, scale: 1.0, alpha: 0.75 },
+      { x: 600, y: 225, scale: 0.88, alpha: 0.68 },
+      { x: 740, y: 220, scale: 0.92, alpha: 0.7 },
+    ];
+
+    frontLayer.forEach((pos) => {
       const skyline = this.add.sprite(pos.x, pos.y, "skyline_bg");
       skyline.setOrigin(0.5, 0);
       skyline.setScale(pos.scale);
       skyline.setDepth(-1);
-      skyline.setAlpha(0.8);
+      skyline.setAlpha(pos.alpha);
       this.skylineSprites.push(skyline);
-      this.launchPadElements.push(skyline);
+      this.trendingElements.push(skyline);
     });
   }
 
-  private createLaunchPadDecorations(): void {
-    // Neon "LAUNCH" sign at top
-    const launchSign = this.add.sprite(400, 80, "neon_launch");
-    launchSign.setDepth(10);
-    this.launchPadElements.push(launchSign);
+  private createTrendingDecorations(): void {
+    // Neon "TRENDING" sign at top center - prominent placement
+    const trendingSign = this.add.sprite(400, 45, "neon_trending");
+    trendingSign.setDepth(10);
+    trendingSign.setScale(1.5);
+    this.trendingElements.push(trendingSign);
 
-    // Pulsing glow effect
+    // Subtle pulsing glow animation
     this.tweens.add({
-      targets: launchSign,
-      alpha: 0.7,
-      duration: 1000,
+      targets: trendingSign,
+      alpha: 0.9,
+      duration: 2000,
       yoyo: true,
       repeat: -1,
       ease: "Sine.easeInOut",
     });
 
-    // "NEW" signs on sides
-    const newSignLeft = this.add.sprite(120, 150, "neon_new");
-    newSignLeft.setDepth(10);
-    this.launchPadElements.push(newSignLeft);
-
-    const newSignRight = this.add.sprite(680, 150, "neon_new");
-    newSignRight.setDepth(10);
-    this.launchPadElements.push(newSignRight);
-
-    // Blinking arrows
-    const arrowLeft = this.add.sprite(50, 300, "neon_arrow");
-    arrowLeft.setDepth(10);
-    this.launchPadElements.push(arrowLeft);
-
-    const arrowRight = this.add.sprite(750, 300, "neon_arrow");
-    arrowRight.setFlipX(true);
-    arrowRight.setDepth(10);
-    this.launchPadElements.push(arrowRight);
-
-    // Blink arrows
-    this.tweens.add({
-      targets: [arrowLeft, arrowRight],
-      alpha: 0.3,
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-    });
-
-    // Vertical neon tubes
-    const tubePositions = [
-      { x: 30, texture: "neon_tube_green" },
-      { x: 770, texture: "neon_tube_green" },
-      { x: 60, texture: "neon_tube_blue" },
-      { x: 740, texture: "neon_tube_blue" },
+    // Street lamps at ground level for urban feel
+    const lampPositions = [
+      { x: 80, y: 540 },
+      { x: 280, y: 540 },
+      { x: 520, y: 540 },
+      { x: 720, y: 540 },
     ];
-
-    tubePositions.forEach((pos) => {
-      const tube = this.add.sprite(pos.x, 350, pos.texture);
-      tube.setDepth(1);
-      this.launchPadElements.push(tube);
-    });
-
-    // Horizontal neon tubes
-    const horzTube1 = this.add.sprite(200, 420, "neon_tube_pink");
-    horzTube1.setDepth(1);
-    this.launchPadElements.push(horzTube1);
-
-    const horzTube2 = this.add.sprite(600, 420, "neon_tube_gold");
-    horzTube2.setDepth(1);
-    this.launchPadElements.push(horzTube2);
-
-    // Street lamps (urban style)
-    const lampPositions = [{ x: 150, y: 540 }, { x: 350, y: 540 }, { x: 550, y: 540 }];
     lampPositions.forEach((pos) => {
       const lamp = this.add.sprite(pos.x, pos.y, "street_lamp");
       lamp.setOrigin(0.5, 1);
       lamp.setDepth(3);
-      this.launchPadElements.push(lamp);
+      lamp.setAlpha(0.9);
+      this.trendingElements.push(lamp);
     });
   }
 
-  private createLaunchPadBillboards(): void {
-    // Main central billboard
-    const mainBillboard = this.add.sprite(400, 200, "billboard");
+  private createTrendingBillboards(): void {
+    // Main central billboard - positioned clearly above buildings
+    const mainBillboard = this.add.sprite(400, 130, "billboard");
     mainBillboard.setDepth(5);
-    this.launchPadElements.push(mainBillboard);
+    mainBillboard.setScale(1.1);
+    this.trendingElements.push(mainBillboard);
 
-    // Billboard content - live stats text
-    const billboardTitle = this.add.text(400, 160, "LATEST LAUNCHES", {
+    // Billboard content - trending stats
+    const billboardTitle = this.add.text(400, 95, "TOP TRENDING", {
       fontFamily: "monospace",
-      fontSize: "12px",
-      color: "#4ade80",
+      fontSize: "14px",
+      color: "#fbbf24",
     });
     billboardTitle.setOrigin(0.5, 0.5);
     billboardTitle.setDepth(6);
     this.billboardTexts.push(billboardTitle);
 
     // Stats display
-    const statsText = this.add.text(400, 185, "LOADING...", {
+    const statsText = this.add.text(400, 118, "LOADING...", {
       fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#fbbf24",
+      fontSize: "11px",
+      color: "#4ade80",
     });
     statsText.setOrigin(0.5, 0.5);
     statsText.setDepth(6);
     this.billboardTexts.push(statsText);
 
     // Volume display
-    const volumeText = this.add.text(400, 205, "24H VOL: ---", {
+    const volumeText = this.add.text(400, 145, "24H VOL: ...", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: "10px",
       color: "#60a5fa",
     });
     volumeText.setOrigin(0.5, 0.5);
     volumeText.setDepth(6);
     this.billboardTexts.push(volumeText);
 
-    // Side billboards (smaller)
-    const leftBillboard = this.add.sprite(150, 280, "billboard_small");
+    // Side billboards - positioned lower to not overlap with main
+    const leftBillboard = this.add.sprite(130, 320, "billboard_small");
     leftBillboard.setDepth(5);
-    this.launchPadElements.push(leftBillboard);
+    this.trendingElements.push(leftBillboard);
 
-    const rightBillboard = this.add.sprite(650, 280, "billboard_small");
+    const rightBillboard = this.add.sprite(670, 320, "billboard_small");
     rightBillboard.setDepth(5);
-    this.launchPadElements.push(rightBillboard);
+    this.trendingElements.push(rightBillboard);
 
-    // Side billboard text
-    const leftText = this.add.text(150, 280, "TOP GAINER\n---", {
+    // Side billboard text - cleaner initial state
+    const leftText = this.add.text(130, 320, "TOP GAINER\n...", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#4ade80",
@@ -402,7 +358,7 @@ export class WorldScene extends Phaser.Scene {
     leftText.setDepth(6);
     this.billboardTexts.push(leftText);
 
-    const rightText = this.add.text(650, 280, "NEW TOKEN\n---", {
+    const rightText = this.add.text(670, 320, "VOLUME KING\n...", {
       fontFamily: "monospace",
       fontSize: "8px",
       color: "#ec4899",
@@ -424,12 +380,12 @@ export class WorldScene extends Phaser.Scene {
     this.updateBillboardData();
   }
 
-  private createLaunchPadTicker(): void {
+  private createTrendingTicker(): void {
     // Ticker display bar at bottom
     const tickerBg = this.add.sprite(400, 570, "ticker_display");
     tickerBg.setDepth(10);
     tickerBg.setScale(4, 1);
-    this.launchPadElements.push(tickerBg);
+    this.trendingElements.push(tickerBg);
 
     // Create mask for ticker text
     const maskShape = this.make.graphics({});
@@ -451,25 +407,26 @@ export class WorldScene extends Phaser.Scene {
   private getTickerContent(): string {
     // Generate ticker content from world state
     const content: string[] = [
-      ">>> BAGSWORLD LAUNCH PAD <<<",
-      "NEW TOKENS LAUNCHING EVERY MINUTE",
-      "1% ECOSYSTEM FEE ON ALL TRADES",
+      ">>> BAGSWORLD TRENDING <<<",
     ];
 
     if (this.worldState) {
       const buildings = this.worldState.buildings || [];
-      buildings.slice(0, 5).forEach((b) => {
-        content.push(`${b.symbol}: $${(b.marketCap || 0).toLocaleString()}`);
+      // Sort by volume to show most active
+      const sorted = [...buildings].sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
+      sorted.slice(0, 5).forEach((b) => {
+        const change = b.change24h ? (b.change24h > 0 ? `+${b.change24h.toFixed(1)}%` : `${b.change24h.toFixed(1)}%`) : "";
+        content.push(`${b.symbol}: $${this.formatNumber(b.marketCap || 0)} ${change}`);
       });
     }
 
-    content.push(">>> TRADE NOW ON BAGS.FM <<<");
+    content.push(">>> BAGS.FM <<<");
 
-    return content.join("   ***   ");
+    return content.join("   |   ");
   }
 
   private updateTicker(): void {
-    if (!this.tickerText || this.currentZone !== "launch_pad") return;
+    if (!this.tickerText || this.currentZone !== "trending") return;
 
     this.tickerOffset -= 2;
     this.tickerText.setX(800 + this.tickerOffset);
@@ -482,17 +439,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateBillboardData(): void {
-    if (this.currentZone !== "launch_pad" || !this.worldState) return;
+    if (this.currentZone !== "trending" || !this.worldState) return;
 
     const buildings = this.worldState.buildings || [];
 
     // Update main billboard stats
     if (this.billboardTexts.length >= 3) {
-      const newLaunches = buildings.filter((b) => {
-        // Consider "new" if building ID suggests recent
-        return b.level === 1;
-      }).length;
-
       this.billboardTexts[1].setText(`${buildings.length} ACTIVE TOKENS`);
 
       const totalVolume = buildings.reduce((sum, b) => sum + (b.volume24h || 0), 0);
@@ -501,16 +453,16 @@ export class WorldScene extends Phaser.Scene {
 
     // Update side billboards
     if (this.billboardTexts.length >= 5) {
-      // Top gainer
-      const sorted = [...buildings].sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
-      if (sorted.length > 0 && sorted[0].change24h) {
-        this.billboardTexts[3].setText(`TOP GAINER\n${sorted[0].symbol}\n+${sorted[0].change24h.toFixed(1)}%`);
+      // Top gainer by price change
+      const byGain = [...buildings].sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
+      if (byGain.length > 0 && byGain[0].change24h) {
+        this.billboardTexts[3].setText(`TOP GAINER\n${byGain[0].symbol}\n+${byGain[0].change24h.toFixed(1)}%`);
       }
 
-      // Newest token (last in list typically)
-      if (buildings.length > 0) {
-        const newest = buildings[buildings.length - 1];
-        this.billboardTexts[4].setText(`NEW TOKEN\n${newest.symbol}\n$${this.formatNumber(newest.marketCap || 0)}`);
+      // Volume king - highest 24h volume
+      const byVolume = [...buildings].sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
+      if (byVolume.length > 0) {
+        this.billboardTexts[4].setText(`VOLUME KING\n${byVolume[0].symbol}\n$${this.formatNumber(byVolume[0].volume24h || 0)}`);
       }
     }
   }

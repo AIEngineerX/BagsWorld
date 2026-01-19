@@ -1,5 +1,5 @@
 // Zone Types
-export type ZoneType = "main_city" | "launch_pad" | "whale_waters" | "graveyard";
+export type ZoneType = "main_city" | "trending";
 
 export interface ZoneInfo {
   id: ZoneType;
@@ -15,23 +15,11 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
     description: "The heart of BagsWorld",
     icon: "[M]",
   },
-  launch_pad: {
-    id: "launch_pad",
-    name: "Launch Pad",
-    description: "Fresh launches in Times Square",
-    icon: "[L]",
-  },
-  whale_waters: {
-    id: "whale_waters",
-    name: "Whale Waters",
-    description: "Top market cap tokens",
-    icon: "[W]",
-  },
-  graveyard: {
-    id: "graveyard",
-    name: "Graveyard",
-    description: "Rugged and abandoned tokens",
-    icon: "[G]",
+  trending: {
+    id: "trending",
+    name: "Trending",
+    description: "Hot tokens and top gainers",
+    icon: "[T]",
   },
 };
 

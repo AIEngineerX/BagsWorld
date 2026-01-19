@@ -1794,54 +1794,75 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generateNeonSign(): void {
-    // "LAUNCH" neon sign
+    // "TRENDING" neon sign - wider to fit text
     const g = this.make.graphics({ x: 0, y: 0 });
+    const signWidth = 100;
+    const signHeight = 24;
 
     // Backing board
     g.fillStyle(0x1a1a1a);
-    g.fillRect(0, 0, 80, 24);
+    g.fillRect(0, 0, signWidth, signHeight);
 
-    // Border glow effect
-    g.fillStyle(0x4ade80, 0.3);
-    g.fillRect(0, 0, 80, 2);
-    g.fillRect(0, 22, 80, 2);
-    g.fillRect(0, 0, 2, 24);
-    g.fillRect(78, 0, 2, 24);
+    // Border glow effect (gold for trending)
+    g.fillStyle(0xfbbf24, 0.4);
+    g.fillRect(0, 0, signWidth, 2);
+    g.fillRect(0, signHeight - 2, signWidth, 2);
+    g.fillRect(0, 0, 2, signHeight);
+    g.fillRect(signWidth - 2, 0, 2, signHeight);
 
-    // Neon text "LAUNCH" (stylized pixel letters)
-    g.fillStyle(0x4ade80);
-    // L
-    g.fillRect(6, 6, 2, 12);
-    g.fillRect(6, 16, 8, 2);
-    // A
-    g.fillRect(16, 8, 2, 10);
-    g.fillRect(24, 8, 2, 10);
-    g.fillRect(18, 6, 6, 2);
-    g.fillRect(18, 12, 6, 2);
-    // U
-    g.fillRect(28, 6, 2, 12);
-    g.fillRect(36, 6, 2, 12);
-    g.fillRect(30, 16, 6, 2);
+    // Neon text "TRENDING" (stylized pixel letters) - gold color
+    g.fillStyle(0xfbbf24);
+    const startX = 6;
+    const y = 6;
+    const letterW = 8;
+    const letterH = 12;
+    const spacing = 11;
+
+    // T
+    g.fillRect(startX, y, 8, 2);
+    g.fillRect(startX + 3, y, 2, letterH);
+    // R
+    g.fillRect(startX + spacing, y, 2, letterH);
+    g.fillRect(startX + spacing, y, 6, 2);
+    g.fillRect(startX + spacing + 5, y + 2, 2, 3);
+    g.fillRect(startX + spacing, y + 5, 6, 2);
+    g.fillRect(startX + spacing + 4, y + 7, 2, 5);
+    // E
+    g.fillRect(startX + spacing * 2, y, 2, letterH);
+    g.fillRect(startX + spacing * 2, y, 6, 2);
+    g.fillRect(startX + spacing * 2, y + 5, 5, 2);
+    g.fillRect(startX + spacing * 2, y + letterH - 2, 6, 2);
     // N
-    g.fillRect(40, 6, 2, 12);
-    g.fillRect(48, 6, 2, 12);
-    g.fillRect(42, 8, 2, 2);
-    g.fillRect(44, 10, 2, 2);
-    g.fillRect(46, 12, 2, 2);
-    // C
-    g.fillRect(52, 6, 2, 12);
-    g.fillRect(54, 6, 6, 2);
-    g.fillRect(54, 16, 6, 2);
-    // H
-    g.fillRect(62, 6, 2, 12);
-    g.fillRect(70, 6, 2, 12);
-    g.fillRect(64, 11, 6, 2);
+    g.fillRect(startX + spacing * 3, y, 2, letterH);
+    g.fillRect(startX + spacing * 3 + 6, y, 2, letterH);
+    g.fillRect(startX + spacing * 3 + 2, y + 2, 2, 2);
+    g.fillRect(startX + spacing * 3 + 4, y + 4, 2, 2);
+    // D
+    g.fillRect(startX + spacing * 4, y, 2, letterH);
+    g.fillRect(startX + spacing * 4, y, 5, 2);
+    g.fillRect(startX + spacing * 4 + 5, y + 2, 2, 8);
+    g.fillRect(startX + spacing * 4, y + letterH - 2, 5, 2);
+    // I
+    g.fillRect(startX + spacing * 5, y, 6, 2);
+    g.fillRect(startX + spacing * 5 + 2, y, 2, letterH);
+    g.fillRect(startX + spacing * 5, y + letterH - 2, 6, 2);
+    // N
+    g.fillRect(startX + spacing * 6, y, 2, letterH);
+    g.fillRect(startX + spacing * 6 + 6, y, 2, letterH);
+    g.fillRect(startX + spacing * 6 + 2, y + 2, 2, 2);
+    g.fillRect(startX + spacing * 6 + 4, y + 4, 2, 2);
+    // G
+    g.fillRect(startX + spacing * 7, y, 2, letterH);
+    g.fillRect(startX + spacing * 7, y, 7, 2);
+    g.fillRect(startX + spacing * 7, y + letterH - 2, 7, 2);
+    g.fillRect(startX + spacing * 7 + 5, y + 5, 2, 7);
+    g.fillRect(startX + spacing * 7 + 3, y + 5, 4, 2);
 
     // Glow effect around letters
-    g.fillStyle(0x4ade80, 0.2);
-    g.fillRect(4, 4, 70, 18);
+    g.fillStyle(0xfbbf24, 0.2);
+    g.fillRect(4, 4, signWidth - 8, signHeight - 8);
 
-    g.generateTexture("neon_launch", 80, 24);
+    g.generateTexture("neon_trending", signWidth, signHeight);
     g.destroy();
 
     // "NEW" neon sign (red/gold)
