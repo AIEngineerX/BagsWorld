@@ -27,10 +27,14 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   // Solana connection endpoint
-  const endpoint = useMemo(
-    () => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl("mainnet-beta"),
-    []
-  );
+  // Priority: env var > Ankr public (more reliable for txs) > Solana public
+  const endpoint = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_SOLANA_RPC_URL) {
+      return process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+    }
+    // Ankr public RPC - allows transaction sending unlike Solana's public endpoint
+    return "https://rpc.ankr.com/solana";
+  }, []);
 
   // Supported wallets
   const wallets = useMemo(
