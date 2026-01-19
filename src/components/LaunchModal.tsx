@@ -833,10 +833,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                     <select
                       value={share.provider}
                       onChange={(e) => {
-                        updateFeeShare(index, "provider", e.target.value);
-                        // Reset validation when provider changes
+                        // Update provider and reset validation in one state update
                         const updated = [...feeShares];
-                        updated[index] = { ...updated[index], walletStatus: "unchecked", walletError: undefined };
+                        updated[index] = {
+                          ...updated[index],
+                          provider: e.target.value,
+                          walletStatus: "unchecked",
+                          walletError: undefined
+                        };
                         setFeeShares(updated);
                       }}
                       className="bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white"
@@ -850,10 +854,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                         type="text"
                         value={share.username}
                         onChange={(e) => {
-                          updateFeeShare(index, "username", e.target.value);
-                          // Reset validation when username changes
+                          // Update username and reset validation in one state update
                           const updated = [...feeShares];
-                          updated[index] = { ...updated[index], walletStatus: "unchecked", walletError: undefined };
+                          updated[index] = {
+                            ...updated[index],
+                            username: e.target.value,
+                            walletStatus: "unchecked",
+                            walletError: undefined
+                          };
                           setFeeShares(updated);
                         }}
                         placeholder="@username"
