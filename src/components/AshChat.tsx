@@ -28,9 +28,9 @@ const ECOSYSTEM_TOPICS = [
     content: "Every token launched on BagsWorld becomes a building! As the market cap grows, your building evolves - from a small shop to a towering skyscraper. Level 1 is under $100K, Level 5 is $10M+!"
   },
   {
-    title: "Buyback & Burn",
-    icon: "🔥",
-    content: "Fees accumulate until they hit 1 SOL threshold. Once reached, the system instantly claims and buys back the top 5 tokens in the ecosystem - then burns them all! No delays, maximum efficiency."
+    title: "Creator Rewards",
+    icon: "R",
+    content: "1% ecosystem fee goes to the rewards pool. Top 3 creators by fee contribution get paid directly - 50% to 1st, 30% to 2nd, 20% to 3rd. SOL sent straight to your wallet!"
   },
   {
     title: "How Citizens Work",
@@ -43,14 +43,14 @@ const ECOSYSTEM_TOPICS = [
     content: "The world's weather reflects overall trading health! Sunny means things are booming (80%+ health), cloudy is normal, rain means slowing down, storm is rough times, and apocalypse... well, HODL tight!"
   },
   {
-    title: "Threshold System",
-    icon: "📊",
-    content: "Instead of constant small claims, we wait for 1 SOL to accumulate. This saves gas and makes each buyback more impactful. 80% goes to buybacks, split evenly across top 5 tokens."
+    title: "Reward Triggers",
+    icon: "T",
+    content: "Rewards distribute when pool hits 10 SOL OR 5 days pass (min 2 SOL). This ensures regular payouts while accumulating meaningful amounts for creators."
   },
   {
-    title: "Instant Burns",
-    icon: "🎯",
-    content: "When threshold is met: claim -> buyback -> burn. All in one flow, no waiting. The bought tokens are burned immediately, permanently reducing supply for all ecosystem tokens."
+    title: "The Flywheel",
+    icon: "F",
+    content: "Launch token -> Drive volume -> Generate fees -> Climb leaderboard -> Get rewarded -> Reinvest. Top creators earn more, which incentivizes building real communities."
   },
 ];
 
@@ -375,19 +375,19 @@ export function AshChat() {
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-bags-gold/10 p-1 rounded">
             <p className="font-pixel text-[7px] text-gray-400">Threshold</p>
-            <p className="font-pixel text-[10px] text-bags-gold">1 SOL</p>
+            <p className="font-pixel text-[10px] text-bags-gold">10 SOL</p>
           </div>
           <div className="bg-bags-green/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Buyback</p>
-            <p className="font-pixel text-[10px] text-bags-green">80%</p>
+            <p className="font-pixel text-[7px] text-gray-400">Creators</p>
+            <p className="font-pixel text-[10px] text-bags-green">Top 3</p>
           </div>
-          <div className="bg-red-500/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Top Tokens</p>
-            <p className="font-pixel text-[10px] text-red-400">5</p>
+          <div className="bg-bags-gold/10 p-1 rounded">
+            <p className="font-pixel text-[7px] text-gray-400">Split</p>
+            <p className="font-pixel text-[10px] text-bags-gold">50/30/20</p>
           </div>
         </div>
         <p className="font-pixel text-[6px] text-gray-500 text-center mt-1">
-          Hit threshold → Instant claim → Buy top 5 → Burn all
+          10 SOL or 5 days → Claim → Pay top 3 creators
         </p>
         <a
           href={`https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`}
@@ -395,7 +395,7 @@ export function AshChat() {
           rel="noopener noreferrer"
           className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 mt-1"
         >
-          View Buyback & Burn Wallet on Solscan
+          View Rewards Wallet on Solscan
         </a>
       </div>
     </div>
