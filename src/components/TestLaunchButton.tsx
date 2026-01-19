@@ -213,7 +213,10 @@ export function TestLaunchButton() {
 
           const sendData = await sendRes.json();
           if (!sendRes.ok) {
-            throw new Error(sendData.error || "Failed to send fee config transaction");
+            const errMsg = sendData.hint
+              ? `${sendData.error}\n${sendData.hint}`
+              : sendData.error || "Failed to send fee config transaction";
+            throw new Error(errMsg);
           }
 
           addLog(`Fee tx ${i + 1} confirmed: ${sendData.txid}`);
@@ -279,7 +282,10 @@ export function TestLaunchButton() {
 
       const sendData = await sendRes.json();
       if (!sendRes.ok) {
-        throw new Error(sendData.error || "Failed to send launch transaction");
+        const errMsg = sendData.hint
+          ? `${sendData.error}\n${sendData.hint}`
+          : sendData.error || "Failed to send launch transaction";
+        throw new Error(errMsg);
       }
 
       const txid = sendData.txid;

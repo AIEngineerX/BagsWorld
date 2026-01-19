@@ -67,10 +67,13 @@ The game uses CustomEvents for cross-component communication:
 ## Environment Variables
 
 Required:
-- `BAGS_API_KEY` - Bags.fm API key
-- `NEXT_PUBLIC_SOLANA_RPC_URL` - Solana RPC endpoint
+- `BAGS_API_KEY` - Bags.fm API key (server-side only)
+- `SOLANA_RPC_URL` - Full Helius RPC URL for transaction sending (server-side only)
+  - Format: `https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_KEY`
+  - Get free key at: https://dev.helius.xyz/
 
 Optional:
+- `NEXT_PUBLIC_SOLANA_RPC_URL` - Client-side RPC (defaults to Ankr public)
 - `ANTHROPIC_API_KEY` - Enables Claude-powered AI chat (falls back to rule-based)
 - `BAGS_API_URL` - Defaults to `https://public-api-v2.bags.fm/api/v1`
 
