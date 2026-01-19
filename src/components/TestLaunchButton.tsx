@@ -9,7 +9,7 @@ import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
  * MINIMAL TEST LAUNCH BUTTON
  *
  * This is a simplified token launch flow that follows the Bags API docs exactly:
- * 1. Create token info (upload metadata to IPFS)
+ * 1. Create token info (upload metadata + image to IPFS)
  * 2. Configure fee sharing (single claimer - your Twitter)
  * 3. Create and sign launch transaction
  *
@@ -54,15 +54,31 @@ export function TestLaunchButton() {
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
 
-  // Simple form state
+  // Form state
   const [name, setName] = useState("Test Token");
   const [symbol, setSymbol] = useState("TEST");
   const [description, setDescription] = useState("A test token launched via BagsWorld");
   const [twitterUsername, setTwitterUsername] = useState("");
+  const [initialBuySOL, setInitialBuySOL] = useState("0");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
 
   const addLog = (msg: string) => {
     console.log("[TEST]", msg);
     setLogs(prev => [...prev, `${new Date().toISOString().split('T')[1].split('.')[0]} - ${msg}`]);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setImagePreview(result);
+        setImageDataUrl(result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleTestLaunch = async () => {
@@ -82,9 +98,13 @@ export function TestLaunchButton() {
       }
 
       const cleanUsername = twitterUsername.replace(/@/g, "").toLowerCase().trim();
+      const initialBuyLamports = Math.floor(parseFloat(initialBuySOL || "0") * 1_000_000_000);
+
       addLog(`Starting test launch for $${symbol}`);
       addLog(`Fee claimer: twitter/@${cleanUsername} (100%)`);
       addLog(`Wallet: ${publicKey.toBase58()}`);
+      addLog(`Initial buy: ${initialBuySOL} SOL (${initialBuyLamports} lamports)`);
+      addLog(`Image: ${imageDataUrl ? "Custom uploaded" : "Will use default"}`);
 
       // ========================================
       // STEP 1: Create Token Info
@@ -100,11 +120,12 @@ export function TestLaunchButton() {
           name,
           symbol,
           description,
+          imageDataUrl, // Pass image if uploaded
         }),
       });
 
       const infoData = await infoRes.json();
-      addLog(`create-info response: ${JSON.stringify(infoData)}`);
+      addLog(`create-info response: ${JSON.stringify(infoData).substring(0, 500)}`);
 
       if (!infoRes.ok || !infoData.tokenMint) {
         throw new Error(infoData.error || "Failed to create token info");
@@ -132,7 +153,7 @@ export function TestLaunchButton() {
       });
 
       const feeData = await feeRes.json();
-      addLog(`configure-fees response: ${JSON.stringify(feeData)}`);
+      addLog(`configure-fees response: ${JSON.stringify(feeData).substring(0, 500)}`);
 
       if (!feeRes.ok) {
         throw new Error(feeData.error || "Failed to configure fees");
@@ -191,7 +212,7 @@ export function TestLaunchButton() {
           tokenMint,
           wallet: publicKey.toBase58(),
           configKey,
-          initialBuyLamports: 0, // No initial buy for test
+          initialBuyLamports,
         }),
       });
 
@@ -205,6 +226,7 @@ export function TestLaunchButton() {
       }
 
       if (!launchData.transaction) {
+        addLog(`Full response: ${JSON.stringify(launchData)}`);
         throw new Error("No transaction in response");
       }
 
@@ -273,10 +295,29 @@ export function TestLaunchButton() {
         </div>
 
         <div className="p-4 space-y-4">
+          {/* Image Upload */}
+          <div className="flex justify-center">
+            <label className="cursor-pointer">
+              <div className="w-20 h-20 bg-black border-2 border-dashed border-yellow-500/50 flex items-center justify-center overflow-hidden">
+                {imagePreview ? (
+                  <img src={imagePreview} alt="Token" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-pixel text-[7px] text-gray-500 text-center px-1">
+                    CLICK TO UPLOAD
+                  </span>
+                )}
+              </div>
+              <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+            </label>
+          </div>
+          <p className="font-pixel text-[7px] text-gray-500 text-center">
+            {imagePreview ? "Image uploaded" : "Optional - will use default if not provided"}
+          </p>
+
           {/* Form */}
           <div className="space-y-3">
             <div>
-              <label className="block font-pixel text-[9px] text-gray-400 mb-1">TOKEN NAME</label>
+              <label className="block font-pixel text-[9px] text-gray-400 mb-1">TOKEN NAME *</label>
               <input
                 type="text"
                 value={name}
@@ -285,7 +326,7 @@ export function TestLaunchButton() {
               />
             </div>
             <div>
-              <label className="block font-pixel text-[9px] text-gray-400 mb-1">SYMBOL</label>
+              <label className="block font-pixel text-[9px] text-gray-400 mb-1">SYMBOL *</label>
               <input
                 type="text"
                 value={symbol}
@@ -295,7 +336,7 @@ export function TestLaunchButton() {
               />
             </div>
             <div>
-              <label className="block font-pixel text-[9px] text-gray-400 mb-1">DESCRIPTION</label>
+              <label className="block font-pixel text-[9px] text-gray-400 mb-1">DESCRIPTION *</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -304,7 +345,7 @@ export function TestLaunchButton() {
             </div>
             <div>
               <label className="block font-pixel text-[9px] text-gray-400 mb-1">
-                YOUR TWITTER USERNAME (for 100% fee share)
+                YOUR TWITTER USERNAME * (for 100% fee share)
               </label>
               <input
                 type="text"
@@ -315,6 +356,23 @@ export function TestLaunchButton() {
               />
               <p className="font-pixel text-[7px] text-gray-500 mt-1">
                 Must have wallet linked at bags.fm/settings
+              </p>
+            </div>
+            <div>
+              <label className="block font-pixel text-[9px] text-gray-400 mb-1">
+                INITIAL BUY (SOL) - Optional
+              </label>
+              <input
+                type="number"
+                value={initialBuySOL}
+                onChange={(e) => setInitialBuySOL(e.target.value)}
+                placeholder="0"
+                min="0"
+                step="0.1"
+                className="w-full bg-black border border-yellow-500/50 p-2 font-pixel text-xs text-white"
+              />
+              <p className="font-pixel text-[7px] text-gray-500 mt-1">
+                SOL to buy your token at launch (0 = no initial buy)
               </p>
             </div>
           </div>
@@ -338,7 +396,7 @@ export function TestLaunchButton() {
             <div className="bg-black border border-gray-700 p-2 max-h-48 overflow-y-auto">
               <p className="font-pixel text-[8px] text-gray-500 mb-1">DEBUG LOG:</p>
               {logs.map((log, i) => (
-                <p key={i} className="font-mono text-[8px] text-gray-400">{log}</p>
+                <p key={i} className="font-mono text-[8px] text-gray-400 break-all">{log}</p>
               ))}
             </div>
           )}
@@ -346,7 +404,7 @@ export function TestLaunchButton() {
           {/* Launch Button */}
           <button
             onClick={handleTestLaunch}
-            disabled={isLoading || !twitterUsername.trim()}
+            disabled={isLoading || !twitterUsername.trim() || !name.trim() || !symbol.trim()}
             className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-700 disabled:text-gray-500 text-black font-pixel text-sm border-2 border-yellow-400 disabled:border-gray-600"
           >
             {isLoading ? "TESTING..." : "RUN TEST LAUNCH"}
