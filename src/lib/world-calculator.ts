@@ -352,9 +352,27 @@ export function transformTokenToBuilding(
   index: number,
   existingBuilding?: GameBuilding
 ): GameBuilding {
-  const position = existingBuilding
-    ? { x: existingBuilding.x, y: existingBuilding.y }
-    : generateBuildingPosition(index, MAX_BUILDINGS);
+  // Special landmark buildings get fixed positions
+  const isPokeCenter = token.symbol === "POKECENTER" || token.mint.includes("PokeCenter");
+  const isTradingGym = token.symbol === "GYM" || token.mint.includes("TradingGym");
+  const isTreasuryHub = token.mint.startsWith("Treasury");
+
+  // Fixed positions for landmark buildings (City side = left, x < 400)
+  let position: { x: number; y: number };
+  if (existingBuilding) {
+    position = { x: existingBuilding.x, y: existingBuilding.y };
+  } else if (isTradingGym) {
+    // Trading Gym: City side (left), prominent position
+    position = { x: 150, y: 480 };
+  } else if (isPokeCenter) {
+    // PokeCenter: Center-left position
+    position = { x: 280, y: 480 };
+  } else if (isTreasuryHub) {
+    // Treasury: Center position
+    position = { x: 400, y: 480 };
+  } else {
+    position = generateBuildingPosition(index, MAX_BUILDINGS);
+  }
 
   // Check if this is a real token (not a starter/placeholder/treasury)
   const isStarterToken = token.mint.startsWith("Starter");

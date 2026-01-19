@@ -21,7 +21,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
   {
     id: "neo",
     name: "Neo",
-    avatar: "N",
+    avatar: "👁️",
     personality: "analytical",
     tradingStyle: "Technical analysis, on-chain data",
     catchphrase: "I see the matrix of the markets",
@@ -30,7 +30,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
   {
     id: "ghost",
     name: "The Dev",
-    avatar: "D",
+    avatar: "👻",
     personality: "wise",
     tradingStyle: "Fundamentals, tokenomics deep dives",
     catchphrase: "Code never lies, charts sometimes do",
@@ -39,7 +39,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
   {
     id: "finn",
     name: "Finn",
-    avatar: "F",
+    avatar: "🦊",
     personality: "bullish",
     tradingStyle: "Momentum, social sentiment",
     catchphrase: "Ship it and they will come",
@@ -48,7 +48,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
   {
     id: "ash",
     name: "Ash",
-    avatar: "A",
+    avatar: "⚡",
     personality: "chaotic",
     tradingStyle: "Vibes, meme potential",
     catchphrase: "Gotta catch that alpha!",
@@ -57,7 +57,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
   {
     id: "toly",
     name: "Toly",
-    avatar: "T",
+    avatar: "◎",
     personality: "analytical",
     tradingStyle: "Infrastructure, ecosystem plays",
     catchphrase: "Build for the long term",
