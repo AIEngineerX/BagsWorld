@@ -14,11 +14,35 @@ import {
   type AgentScore,
   type TradePrediction,
   type AgentConversation,
-  type ConversationMessage,
 } from "@/lib/agent-arena";
 
 interface TradingGymModalProps {
   onClose: () => void;
+}
+
+// Agent face components with unique styling
+function AgentFace({ agent, size = "md" }: { agent: ArenaAgent; size?: "sm" | "md" | "lg" }) {
+  const sizeClasses = {
+    sm: "w-6 h-6 text-sm",
+    md: "w-10 h-10 text-lg",
+    lg: "w-14 h-14 text-2xl",
+  };
+
+  return (
+    <div
+      className={`${sizeClasses[size]} rounded-full flex items-center justify-center relative overflow-hidden`}
+      style={{
+        backgroundColor: agent.color,
+        boxShadow: `0 0 10px ${agent.color}40, inset 0 -2px 4px rgba(0,0,0,0.3)`,
+      }}
+    >
+      <span className="relative z-10">{agent.avatar}</span>
+      <div
+        className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"
+        style={{ height: "50%" }}
+      />
+    </div>
+  );
 }
 
 export function TradingGymModal({ onClose }: TradingGymModalProps) {
@@ -69,9 +93,8 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
     }
   };
 
-  const getAgentColor = (agentId: string): string => {
-    const agent = ARENA_AGENTS.find(a => a.id === agentId);
-    return agent?.color || "#888888";
+  const getAgent = (agentId: string): ArenaAgent | undefined => {
+    return ARENA_AGENTS.find(a => a.id === agentId);
   };
 
   const formatTime = (timestamp: number): string => {
@@ -92,48 +115,69 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
     setPredictions(getActivePredictions());
   };
 
+  const getRankBadge = (index: number) => {
+    if (index === 0) return { bg: "bg-yellow-500", text: "text-black", label: "1st" };
+    if (index === 1) return { bg: "bg-gray-400", text: "text-black", label: "2nd" };
+    if (index === 2) return { bg: "bg-orange-600", text: "text-white", label: "3rd" };
+    return { bg: "bg-gray-700", text: "text-gray-300", label: `${index + 1}th` };
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-bags-dark border-2 border-orange-500 rounded-lg max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col">
-        {/* Header - Pokemon Gym Style */}
-        <div className="bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 p-3 sm:p-4">
-          <div className="flex justify-between items-center">
+      <div className="bg-gradient-to-b from-gray-900 to-gray-950 border-2 border-orange-500 rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col shadow-2xl shadow-orange-500/20">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 p-4 relative overflow-hidden">
+          {/* Decorative pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0" style={{
+              backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px)"
+            }} />
+          </div>
+
+          <div className="flex justify-between items-center relative z-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-black/30 rounded-full flex items-center justify-center">
-                <span className="text-2xl">&#9876;</span>
+              <div className="w-12 h-12 bg-black/30 rounded-xl flex items-center justify-center border border-white/20">
+                <span className="text-2xl">&#9876;&#9876;</span>
               </div>
               <div>
-                <h2 className="font-pixel text-white text-sm sm:text-base">TRADING GYM</h2>
-                <p className="font-pixel text-orange-200 text-[8px] sm:text-[10px]">
+                <h2 className="font-pixel text-white text-base sm:text-lg tracking-wide">TRADING GYM</h2>
+                <p className="text-orange-200 text-[10px] sm:text-xs">
                   Where AI Agents Battle for Alpha
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-white hover:text-orange-200 text-xl font-bold p-2"
+              className="w-8 h-8 bg-black/30 hover:bg-black/50 rounded-lg flex items-center justify-center text-white transition-colors"
               aria-label="Close"
             >
-              x
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mt-3">
-            {(["arena", "leaderboard", "predictions"] as const).map((tab) => (
+          <div className="flex gap-2 mt-4 relative z-10">
+            {([
+              { id: "arena", label: "ARENA", icon: "&#9876;" },
+              { id: "leaderboard", label: "RANKINGS", icon: "&#9733;" },
+              { id: "predictions", label: "CALLS", icon: "&#8594;" },
+            ] as const).map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`font-pixel text-[10px] px-3 py-1.5 rounded transition-colors ${
-                  activeTab === tab
-                    ? "bg-black/40 text-white"
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 font-pixel text-[10px] px-3 py-2 rounded-lg transition-all ${
+                  activeTab === tab.id
+                    ? "bg-black/50 text-white border border-white/20"
                     : "bg-black/20 text-orange-200 hover:bg-black/30"
                 }`}
               >
-                {tab === "arena" ? "AGENT ARENA" : tab === "leaderboard" ? "RANKINGS" : "PREDICTIONS"}
+                <span dangerouslySetInnerHTML={{ __html: tab.icon }} />
+                {tab.label}
               </button>
             ))}
           </div>
@@ -145,65 +189,64 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
           {activeTab === "arena" && (
             <div className="space-y-4">
               {/* Current Conversation */}
-              <div className="bg-bags-darker rounded-lg border border-orange-500/30">
-                <div className="p-3 border-b border-orange-500/30 flex justify-between items-center">
+              <div className="bg-gray-800/50 rounded-xl border border-gray-700">
+                <div className="p-3 border-b border-gray-700 flex justify-between items-center">
                   <div>
                     <h3 className="font-pixel text-orange-400 text-xs">
                       {conversation?.topic || "Waiting for action..."}
                     </h3>
                     {conversation?.isActive && (
-                      <span className="inline-flex items-center gap-1 text-[8px] text-green-400">
-                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                        LIVE
+                      <span className="inline-flex items-center gap-1.5 text-[10px] text-green-400 mt-1">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        LIVE DISCUSSION
                       </span>
                     )}
                   </div>
                 </div>
 
                 {/* Messages */}
-                <div className="p-3 max-h-64 overflow-y-auto space-y-3">
+                <div className="p-3 max-h-72 overflow-y-auto space-y-3">
                   {conversation?.messages && conversation.messages.length > 0 ? (
-                    conversation.messages.map((msg) => (
-                      <div key={msg.id} className="flex gap-2">
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                          style={{ backgroundColor: getAgentColor(msg.agentId) }}
-                        >
-                          {msg.agentName[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="font-pixel text-xs"
-                              style={{ color: getAgentColor(msg.agentId) }}
-                            >
-                              {msg.agentName}
-                            </span>
-                            <span className="text-gray-500 text-[8px]">
-                              {formatTime(msg.timestamp)}
-                            </span>
-                            {msg.sentiment && (
-                              <span className={`text-[8px] px-1 rounded ${
-                                msg.sentiment === "bullish" ? "bg-green-900/50 text-green-400" :
-                                msg.sentiment === "bearish" ? "bg-red-900/50 text-red-400" :
-                                "bg-gray-800 text-gray-400"
-                              }`}>
-                                {msg.sentiment}
+                    conversation.messages.map((msg) => {
+                      const agent = getAgent(msg.agentId);
+                      return (
+                        <div key={msg.id} className="flex gap-3 group">
+                          {agent && <AgentFace agent={agent} size="sm" />}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className="font-pixel text-xs font-medium"
+                                style={{ color: agent?.color || "#888" }}
+                              >
+                                {msg.agentName}
                               </span>
-                            )}
+                              <span className="text-gray-500 text-[10px]">
+                                {formatTime(msg.timestamp)}
+                              </span>
+                              {msg.sentiment && (
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                                  msg.sentiment === "bullish" ? "bg-green-500/20 text-green-400 border border-green-500/30" :
+                                  msg.sentiment === "bearish" ? "bg-red-500/20 text-red-400 border border-red-500/30" :
+                                  "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                                }`}>
+                                  {msg.sentiment.toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-300 text-sm mt-1 leading-relaxed">
+                              {msg.message}
+                            </p>
                           </div>
-                          <p className="text-gray-300 text-sm mt-0.5 break-words">
-                            {msg.message}
-                          </p>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500 font-pixel text-xs">
+                    <div className="text-center py-10">
+                      <div className="text-4xl mb-3 opacity-50">&#9876;&#9876;</div>
+                      <p className="text-gray-400 font-pixel text-xs">
                         Agents are warming up...
                       </p>
-                      <p className="text-gray-600 text-[10px] mt-1">
+                      <p className="text-gray-500 text-[11px] mt-2">
                         Conversations start when tokens launch or pump
                       </p>
                     </div>
@@ -214,21 +257,28 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
 
               {/* Agent Roster */}
               <div>
-                <h4 className="font-pixel text-gray-400 text-[10px] mb-2">GYM TRAINERS</h4>
+                <h4 className="font-pixel text-gray-400 text-[10px] mb-3 flex items-center gap-2">
+                  <span>&#9734;</span> GYM TRAINERS
+                </h4>
                 <div className="grid grid-cols-5 gap-2">
                   {ARENA_AGENTS.map((agent) => (
                     <div
                       key={agent.id}
-                      className="bg-bags-darker rounded p-2 text-center border border-gray-700 hover:border-gray-500 transition-colors"
+                      className="bg-gray-800/50 rounded-xl p-3 text-center border border-gray-700 hover:border-gray-500 transition-all hover:scale-105 cursor-default group"
                     >
-                      <div
-                        className="w-8 h-8 rounded-full mx-auto flex items-center justify-center text-white font-bold"
-                        style={{ backgroundColor: agent.color }}
-                      >
-                        {agent.avatar}
+                      <div className="flex justify-center mb-2">
+                        <AgentFace agent={agent} size="lg" />
                       </div>
-                      <p className="font-pixel text-[8px] text-gray-300 mt-1">{agent.name}</p>
-                      <p className="text-[7px] text-gray-500 capitalize">{agent.personality}</p>
+                      <p className="font-pixel text-[10px] text-white">{agent.name}</p>
+                      <p className={`text-[9px] mt-1 capitalize px-1.5 py-0.5 rounded-full inline-block ${
+                        agent.personality === "bullish" ? "bg-green-500/20 text-green-400" :
+                        agent.personality === "bearish" ? "bg-red-500/20 text-red-400" :
+                        agent.personality === "analytical" ? "bg-blue-500/20 text-blue-400" :
+                        agent.personality === "chaotic" ? "bg-yellow-500/20 text-yellow-400" :
+                        "bg-purple-500/20 text-purple-400"
+                      }`}>
+                        {agent.personality}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -237,12 +287,14 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
               {/* Recent Conversations */}
               {recentConvos.length > 1 && (
                 <div>
-                  <h4 className="font-pixel text-gray-400 text-[10px] mb-2">RECENT BATTLES</h4>
-                  <div className="space-y-1">
+                  <h4 className="font-pixel text-gray-400 text-[10px] mb-2 flex items-center gap-2">
+                    <span>&#8635;</span> RECENT BATTLES
+                  </h4>
+                  <div className="space-y-1.5">
                     {recentConvos.slice(1).map((convo) => (
                       <div
                         key={convo.id}
-                        className="bg-bags-darker rounded p-2 flex justify-between items-center text-[10px]"
+                        className="bg-gray-800/30 rounded-lg px-3 py-2 flex justify-between items-center text-[11px] border border-gray-700/50"
                       >
                         <span className="text-gray-300">{convo.topic}</span>
                         <span className="text-gray-500">{convo.messages.length} msgs</span>
@@ -256,59 +308,56 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
 
           {/* Leaderboard Tab */}
           {activeTab === "leaderboard" && (
-            <div className="space-y-3">
-              <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border border-yellow-500/50 rounded-lg p-3">
-                <h3 className="font-pixel text-yellow-400 text-xs mb-1">GYM LEADER RANKINGS</h3>
-                <p className="text-gray-400 text-[10px]">
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/30 rounded-xl p-4">
+                <h3 className="font-pixel text-yellow-400 text-xs mb-1 flex items-center gap-2">
+                  <span>&#9733;</span> GYM LEADER RANKINGS
+                </h3>
+                <p className="text-gray-400 text-[11px]">
                   Agents compete based on prediction accuracy and total PnL
                 </p>
               </div>
 
               <div className="space-y-2">
                 {leaderboard.map((score, index) => {
-                  const agent = ARENA_AGENTS.find(a => a.id === score.agentId);
-                  const medal = index === 0 ? "1st" : index === 1 ? "2nd" : index === 2 ? "3rd" : `${index + 1}th`;
+                  const agent = getAgent(score.agentId);
+                  const badge = getRankBadge(index);
 
                   return (
                     <div
                       key={score.agentId}
-                      className={`bg-bags-darker rounded-lg p-3 border ${
-                        index === 0 ? "border-yellow-500/50" :
-                        index === 1 ? "border-gray-400/50" :
-                        index === 2 ? "border-orange-700/50" :
+                      className={`bg-gray-800/50 rounded-xl p-4 border transition-all hover:scale-[1.01] ${
+                        index === 0 ? "border-yellow-500/50 shadow-lg shadow-yellow-500/10" :
+                        index === 1 ? "border-gray-400/30" :
+                        index === 2 ? "border-orange-600/30" :
                         "border-gray-700"
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                          index === 0 ? "bg-yellow-500 text-black" :
-                          index === 1 ? "bg-gray-400 text-black" :
-                          index === 2 ? "bg-orange-700 text-white" :
-                          "bg-gray-700 text-gray-300"
-                        }`}>
-                          {medal}
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-pixel text-sm ${badge.bg} ${badge.text}`}>
+                          {badge.label}
                         </div>
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                          style={{ backgroundColor: agent?.color }}
-                        >
-                          {agent?.avatar}
-                        </div>
+                        {agent && <AgentFace agent={agent} size="md" />}
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-pixel text-white text-xs">{score.agentName}</span>
+                            <span className="font-pixel text-white text-sm">{score.agentName}</span>
                             {score.streak > 0 && (
-                              <span className="text-[8px] bg-green-900/50 text-green-400 px-1 rounded">
-                                {score.streak} streak
+                              <span className="text-[9px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full border border-green-500/30">
+                                {score.streak} streak &#128293;
+                              </span>
+                            )}
+                            {score.streak < -2 && (
+                              <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-full border border-red-500/30">
+                                cold &#10052;
                               </span>
                             )}
                           </div>
-                          <p className="text-gray-500 text-[10px] capitalize">
+                          <p className="text-gray-500 text-[10px] capitalize mt-0.5">
                             {agent?.tradingStyle}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className={`font-pixel text-sm ${score.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          <p className={`font-pixel text-base ${score.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
                             {score.totalPnl >= 0 ? "+" : ""}{score.totalPnl.toFixed(1)}%
                           </p>
                           <p className="text-gray-500 text-[10px]">
@@ -325,57 +374,55 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
 
           {/* Predictions Tab */}
           {activeTab === "predictions" && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-pixel text-orange-400 text-xs">ACTIVE PREDICTIONS</h3>
+                <h3 className="font-pixel text-orange-400 text-xs flex items-center gap-2">
+                  <span>&#8594;</span> ACTIVE PREDICTIONS
+                </h3>
                 <button
                   onClick={triggerTestPrediction}
-                  className="font-pixel text-[8px] bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded"
+                  className="font-pixel text-[10px] bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white px-3 py-1.5 rounded-lg transition-all hover:scale-105 flex items-center gap-1.5"
                 >
-                  + NEW PREDICTION
+                  <span>+</span> NEW PREDICTION
                 </button>
               </div>
 
               {predictions.length > 0 ? (
                 <div className="space-y-2">
                   {predictions.map((pred) => {
-                    const agent = ARENA_AGENTS.find(a => a.id === pred.agentId);
+                    const agent = getAgent(pred.agentId);
 
                     return (
                       <div
                         key={pred.id}
-                        className="bg-bags-darker rounded-lg p-3 border border-gray-700"
+                        className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 hover:border-gray-600 transition-all"
                       >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                            style={{ backgroundColor: agent?.color }}
-                          >
-                            {agent?.avatar}
-                          </div>
+                        <div className="flex items-center gap-4">
+                          {agent && <AgentFace agent={agent} size="md" />}
                           <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-pixel text-white text-xs">{agent?.name}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-pixel text-white text-sm">{agent?.name}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                                 pred.direction === "long"
-                                  ? "bg-green-900/50 text-green-400"
-                                  : "bg-red-900/50 text-red-400"
+                                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                  : "bg-red-500/20 text-red-400 border border-red-500/30"
                               }`}>
-                                {pred.direction.toUpperCase()}
+                                {pred.direction === "long" ? "LONG &#8593;" : "SHORT &#8595;"}
                               </span>
-                              <span className="font-pixel text-yellow-400 text-xs">
+                              <span className="font-pixel text-yellow-400 text-sm">
                                 ${pred.tokenSymbol}
                               </span>
                             </div>
-                            <p className="text-gray-500 text-[10px] mt-0.5">
-                              {pred.reasoning}
+                            <p className="text-gray-400 text-[11px] mt-1 italic">
+                              &ldquo;{pred.reasoning}&rdquo;
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-pixel text-xs text-gray-300">
-                              {pred.confidence}% conf
+                            <p className="font-pixel text-sm text-gray-300">
+                              {pred.confidence}%
                             </p>
-                            <p className="text-[10px] text-gray-500">
+                            <p className="text-[10px] text-gray-500">confidence</p>
+                            <p className="text-[10px] text-gray-500 mt-1">
                               Target: {pred.direction === "long" ? "+" : "-"}
                               {Math.abs(((pred.targetPrice - pred.entryPrice) / pred.entryPrice) * 100).toFixed(0)}%
                             </p>
@@ -386,10 +433,11 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-8 bg-bags-darker rounded-lg">
-                  <p className="text-gray-500 font-pixel text-xs">No active predictions</p>
-                  <p className="text-gray-600 text-[10px] mt-1">
-                    Click &quot;New Prediction&quot; to see agents make calls
+                <div className="text-center py-12 bg-gray-800/30 rounded-xl border border-gray-700">
+                  <div className="text-4xl mb-3 opacity-50">&#128200;</div>
+                  <p className="text-gray-400 font-pixel text-xs">No active predictions</p>
+                  <p className="text-gray-500 text-[11px] mt-2">
+                    Click &ldquo;New Prediction&rdquo; to see agents make calls
                   </p>
                 </div>
               )}
@@ -398,9 +446,9 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-orange-500/30 bg-black/30">
-          <p className="font-pixel text-gray-500 text-[8px] text-center">
-            &quot;Train hard, trade harder&quot; - Gym Leader Satoshi
+        <div className="p-3 border-t border-gray-700 bg-gray-900/50">
+          <p className="text-gray-500 text-[10px] text-center italic">
+            &ldquo;Train hard, trade harder&rdquo; - Gym Leader Satoshi
           </p>
         </div>
       </div>
