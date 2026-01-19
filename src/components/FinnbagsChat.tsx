@@ -361,14 +361,24 @@ export function FinnbagsChat() {
             <p className="font-pixel text-[9px] text-purple-400">5%</p>
           </div>
         </div>
-        <a
-          href="https://bags.fm"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-center font-pixel text-[7px] text-emerald-400 hover:text-emerald-300 mt-2"
-        >
-          🚀 Launch on Bags.fm →
-        </a>
+        <div className="flex items-center justify-between mt-2">
+          <a
+            href="https://x.com/finnbags"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-pixel text-[7px] text-emerald-400 hover:text-emerald-300 transition-colors"
+          >
+            @finnbags
+          </a>
+          <a
+            href="https://bags.fm"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-pixel text-[7px] text-emerald-400 hover:text-emerald-300"
+          >
+            Launch on Bags.fm
+          </a>
+        </div>
       </div>
     </div>
   );
