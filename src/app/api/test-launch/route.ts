@@ -46,21 +46,28 @@ async function bagsApiFetch(endpoint: string, options: RequestInit = {}) {
 
   const text = await response.text();
   console.log(`[TEST-API] Response status: ${response.status}`);
-  console.log(`[TEST-API] Response body: ${text.substring(0, 1000)}`);
+  console.log(`[TEST-API] Response body: ${text.substring(0, 2000)}`);
 
   let json;
   try {
     json = JSON.parse(text);
   } catch {
-    throw new Error(`Invalid JSON response: ${text.substring(0, 200)}`);
+    throw new Error(`Invalid JSON response (${response.status}): ${text.substring(0, 500)}`);
   }
 
   if (!response.ok) {
-    throw new Error(json.error || json.response || `API error ${response.status}`);
+    // Extract detailed error message
+    const errorMsg = json.error || json.message || json.response ||
+      (typeof json === "string" ? json : null) ||
+      `API error ${response.status}`;
+    console.error(`[TEST-API] Error details:`, JSON.stringify(json, null, 2));
+    throw new Error(`Bags API error (${response.status}): ${errorMsg}`);
   }
 
   if (json.success === false) {
-    throw new Error(json.error || json.response || "API returned success: false");
+    const errorMsg = json.error || json.message || json.response || "Unknown error";
+    console.error(`[TEST-API] API returned success=false:`, JSON.stringify(json, null, 2));
+    throw new Error(`Bags API failed: ${errorMsg}`);
   }
 
   // Return the response field if it exists, otherwise the whole json
@@ -167,14 +174,25 @@ export async function POST(request: Request) {
         // First, lookup the wallet for the Twitter username
         console.log(`[TEST-API] Looking up wallet for twitter/${twitterUsername}`);
 
-        const walletResult = await bagsApiFetch(
-          `/token-launch/fee-share/wallet/v2?provider=twitter&username=${encodeURIComponent(twitterUsername)}`
-        );
+        let walletResult;
+        try {
+          walletResult = await bagsApiFetch(
+            `/token-launch/fee-share/wallet/v2?provider=twitter&username=${encodeURIComponent(twitterUsername)}`
+          );
+          console.log("[TEST-API] Wallet lookup result:", walletResult);
+        } catch (walletError) {
+          console.error("[TEST-API] Wallet lookup failed:", walletError);
+          return NextResponse.json({
+            error: `Wallet lookup failed for @${twitterUsername}: ${walletError instanceof Error ? walletError.message : walletError}`,
+            step: "wallet-lookup",
+          }, { status: 500 });
+        }
 
-        console.log("[TEST-API] Wallet lookup result:", walletResult);
-
-        if (!walletResult.wallet) {
-          throw new Error(`Could not find wallet for twitter user: ${twitterUsername}. Link your wallet at bags.fm/settings`);
+        if (!walletResult?.wallet) {
+          return NextResponse.json({
+            error: `Could not find wallet for twitter user: @${twitterUsername}. Make sure you've linked your wallet at bags.fm/settings`,
+            step: "wallet-lookup",
+          }, { status: 400 });
         }
 
         const wallet = walletResult.wallet;
@@ -190,10 +208,20 @@ export async function POST(request: Request) {
 
         console.log("[TEST-API] Fee config request:", JSON.stringify(feeConfigBody, null, 2));
 
-        const feeResult = await bagsApiFetch("/fee-share/config", {
-          method: "POST",
-          body: JSON.stringify(feeConfigBody),
-        });
+        let feeResult;
+        try {
+          feeResult = await bagsApiFetch("/fee-share/config", {
+            method: "POST",
+            body: JSON.stringify(feeConfigBody),
+          });
+        } catch (feeError) {
+          console.error("[TEST-API] Fee config failed:", feeError);
+          return NextResponse.json({
+            error: `Fee config failed: ${feeError instanceof Error ? feeError.message : feeError}`,
+            step: "fee-config",
+            request: feeConfigBody,
+          }, { status: 500 });
+        }
 
         console.log("[TEST-API] Fee config result:", JSON.stringify(feeResult, null, 2));
         console.log("[TEST-API] Fee config result type:", typeof feeResult);
