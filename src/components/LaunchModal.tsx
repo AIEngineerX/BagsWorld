@@ -561,30 +561,30 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           <div className="p-4 space-y-4">
             {/* Why Launch Here */}
             <div className="bg-gradient-to-r from-bags-green/10 to-bags-gold/10 border border-bags-green/30 p-3 space-y-2">
-              <p className="font-pixel text-[10px] text-bags-gold">✨ WHY LAUNCH ON BAGSWORLD?</p>
+              <p className="font-pixel text-[10px] text-bags-gold">WHY LAUNCH ON BAGSWORLD?</p>
               <div className="space-y-1">
                 <div className="flex items-start gap-2">
-                  <span className="text-xs">🏆</span>
+                  <span className="font-pixel text-xs text-bags-gold">1</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Top Creator Kickback</span> - Best creator each week wins 40% of fees
+                    <span className="text-bags-green">Top 3 get paid</span> - Creators ranked by fees get SOL rewards (50/30/20)
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-xs">💎</span>
+                  <span className="font-pixel text-xs text-bags-gold">2</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Holder rewards</span> - Top token holders get airdrops
+                    <span className="text-bags-green">Direct to wallet</span> - No claiming needed, SOL sent automatically
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-xs">🏗️</span>
+                  <span className="font-pixel text-xs text-bags-gold">3</span>
                   <span className="font-pixel text-[7px] text-gray-300">
                     <span className="text-bags-green">Living building</span> - Your token appears in the game world
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-xs">✨</span>
+                  <span className="font-pixel text-xs text-bags-gold">4</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Only 1% ecosystem fee</span> - More goes to you
+                    <span className="text-bags-green">Only 1% ecosystem fee</span> - Funds the rewards pool
                   </span>
                 </div>
               </div>
