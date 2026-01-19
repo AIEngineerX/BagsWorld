@@ -42,6 +42,8 @@ interface FeeShareEntry {
   provider: string;
   username: string;
   bps: number; // basis points (100 = 1%)
+  walletStatus?: "unchecked" | "checking" | "valid" | "invalid";
+  walletError?: string;
 }
 
 // Get ecosystem config
@@ -72,8 +74,102 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   const [step, setStep] = useState<"info" | "fees" | "confirm">("info");
   const [initialBuySOL, setInitialBuySOL] = useState<string>("0"); // SOL amount to buy at launch
   const [feeShares, setFeeShares] = useState<FeeShareEntry[]>([
-    { provider: "twitter", username: "", bps: 500 }, // Default 5% to creator
+    { provider: "twitter", username: "", bps: 9900, walletStatus: "unchecked" }, // Default 99% to creator (+ 1% ecosystem = 100%)
   ]);
+  const [isValidatingWallets, setIsValidatingWallets] = useState(false);
+
+  // Validate a single fee claimer's wallet
+  const validateFeeClaimerWallet = async (
+    provider: string,
+    username: string
+  ): Promise<{ valid: boolean; error?: string }> => {
+    if (!username.trim()) {
+      return { valid: false, error: "Username required" };
+    }
+
+    try {
+      const response = await fetch("/api/launch-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "lookup-wallet",
+          data: {
+            provider,
+            username: username.replace(/@/g, "").trim(),
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.wallet) {
+          return { valid: true };
+        }
+      }
+
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.error || "Wallet not linked";
+
+      // Parse common error messages into user-friendly text
+      if (errorMsg.includes("404") || errorMsg.includes("not found")) {
+        return { valid: false, error: "User not found or wallet not linked" };
+      }
+
+      return { valid: false, error: errorMsg };
+    } catch {
+      return { valid: false, error: "Failed to verify wallet" };
+    }
+  };
+
+  // Validate all fee claimers before proceeding
+  const validateAllFeeClaimers = async (): Promise<boolean> => {
+    const validFeeShares = feeShares.filter(f => f.username.trim());
+
+    if (validFeeShares.length === 0) {
+      setError("Add at least one fee claimer with a username");
+      return false;
+    }
+
+    setIsValidatingWallets(true);
+    setError(null);
+
+    // Mark all as checking
+    setFeeShares(prev => prev.map(f =>
+      f.username.trim() ? { ...f, walletStatus: "checking" as const, walletError: undefined } : f
+    ));
+
+    let allValid = true;
+    const updatedShares = [...feeShares];
+
+    for (let i = 0; i < updatedShares.length; i++) {
+      const share = updatedShares[i];
+      if (!share.username.trim()) continue;
+
+      const result = await validateFeeClaimerWallet(share.provider, share.username);
+      updatedShares[i] = {
+        ...share,
+        walletStatus: result.valid ? "valid" : "invalid",
+        walletError: result.error,
+      };
+
+      if (!result.valid) {
+        allValid = false;
+      }
+    }
+
+    setFeeShares(updatedShares);
+    setIsValidatingWallets(false);
+
+    if (!allValid) {
+      const invalidUsers = updatedShares
+        .filter(s => s.walletStatus === "invalid")
+        .map(s => `@${s.username}`)
+        .join(", ");
+      setError(`Some users haven't linked their wallet at bags.fm/settings: ${invalidUsers}`);
+    }
+
+    return allValid;
+  };
 
   // Duplicate name/symbol warnings
   const [duplicateWarning, setDuplicateWarning] = useState<{
@@ -110,7 +206,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
   const userTotalBps = feeShares.reduce((sum, f) => sum + (f.username ? f.bps : 0), 0);
   const totalBps = userTotalBps + ecosystemFee.bps; // Include ecosystem fee
-  const isValidBps = totalBps <= 10000; // Max 100%
+  const isValidBps = totalBps === 10000; // Must equal exactly 100% (Bags.fm requirement)
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -128,7 +224,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
   const addFeeShare = () => {
     if (feeShares.length < 10) {
-      setFeeShares([...feeShares, { provider: "twitter", username: "", bps: 100 }]);
+      setFeeShares([...feeShares, { provider: "twitter", username: "", bps: 100, walletStatus: "unchecked" }]);
     }
   };
 
@@ -142,19 +238,30 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
     setFeeShares(updated);
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (step === "info") {
       if (!formData.name || !formData.symbol || !formData.description) {
-        setError("please fill in all required fields");
+        setError("Please fill in all required fields");
+        return;
+      }
+      if (!imageDataUrl) {
+        setError("Please upload a token image");
         return;
       }
       setError(null);
       setStep("fees");
     } else if (step === "fees") {
       if (!isValidBps) {
-        setError("total fee share cant exceed 100% anon");
+        setError(`Total fee share must equal exactly 100%. Currently ${(totalBps / 100).toFixed(1)}%`);
         return;
       }
+
+      // Validate all fee claimers have linked wallets before proceeding
+      const allValid = await validateAllFeeClaimers();
+      if (!allValid) {
+        return; // Error already set by validateAllFeeClaimers
+      }
+
       setError(null);
       setStep("confirm");
     }
@@ -180,7 +287,15 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         return;
       }
 
+      // Validate image is provided (Bags.fm API requires an image)
+      if (!imageDataUrl) {
+        setError("Please upload a token image. This is required by Bags.fm.");
+        setIsLoading(false);
+        return;
+      }
+
       // 1. Create token info via API
+      setLaunchStatus("Uploading token metadata to IPFS...");
       const tokenInfoResponse = await fetch("/api/launch-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -213,14 +328,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       const allocatedBps = ecosystemFee.bps + userDefinedBps;
       const remainingBps = 10000 - allocatedBps;
 
-      // Build fee claimers array - always include ecosystem fee
+      // Build fee claimers array - include ecosystem fee only if > 0
       const allFeeClaimers = [
-        // Ecosystem fee - supports BagsWorld development & community
-        {
+        // Ecosystem fee - supports BagsWorld development & community (skip if 0)
+        ...(ecosystemFee.bps > 0 ? [{
           provider: ecosystemFee.provider,
           providerUsername: ecosystemFee.providerUsername,
           bps: ecosystemFee.bps,
-        },
+        }] : []),
         // User-defined fee shares
         ...validFeeShares.map(f => ({
           provider: f.provider,
@@ -229,14 +344,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         })),
       ];
 
-      // Auto-allocate remaining BPS to the launcher's wallet to reach 10000 total
-      if (remainingBps > 0 && publicKey) {
-        allFeeClaimers.push({
-          provider: "solana",
-          providerUsername: publicKey.toBase58(),
-          bps: remainingBps,
-        });
-        console.log(`Auto-allocated ${remainingBps} bps (${remainingBps / 100}%) to launcher wallet`);
+      // Bags.fm API requires total BPS to equal exactly 10000 (100%)
+      // All fee claimers must use social providers (twitter, kick, github) - no raw wallet addresses
+      const totalAllocatedBps = ecosystemFee.bps + userDefinedBps;
+      if (totalAllocatedBps !== 10000) {
+        throw new Error(`Fee shares must total exactly 100%. Currently ${(totalAllocatedBps / 100).toFixed(1)}%. Add fee claimers to allocate the remaining ${((10000 - totalAllocatedBps) / 100).toFixed(1)}% to Twitter/GitHub/Kick accounts.`);
       }
 
       setLaunchStatus("Configuring fee sharing...");
@@ -293,7 +405,15 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         }
       } else {
         const feeError = await feeConfigResponse.json();
-        throw new Error(feeError.error || "Failed to configure fee sharing");
+        const errorMsg = feeError.error || "Failed to configure fee sharing";
+        // Provide helpful message for wallet lookup failures
+        if (errorMsg.toLowerCase().includes("lookup") || errorMsg.toLowerCase().includes("wallet") || errorMsg.toLowerCase().includes("not found")) {
+          throw new Error(`One or more fee claimers haven't linked their wallet yet. They need to connect at bags.fm/settings first. Go back to the Fee Sharing step and check which usernames show ❌`);
+        }
+        if (errorMsg.toLowerCase().includes("could not find")) {
+          throw new Error(`Could not find wallet for one of the fee claimers. Make sure the username is correct and they've linked at bags.fm/settings`);
+        }
+        throw new Error(errorMsg);
       }
 
       if (!configKey) {
@@ -427,7 +547,22 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
     } catch (err) {
       setLaunchStatus("");
-      setError(err instanceof Error ? err.message : "Failed to launch token");
+      const errorMessage = err instanceof Error ? err.message : "Failed to launch token";
+
+      // Provide user-friendly error messages for common issues
+      if (errorMessage.toLowerCase().includes("internal server error")) {
+        setError("Bags.fm API is temporarily unavailable. Please try again in a few minutes. If this persists, check bags.fm status.");
+      } else if (errorMessage.toLowerCase().includes("rate limit")) {
+        setError("Too many requests. Please wait a minute before trying again.");
+      } else if (errorMessage.toLowerCase().includes("api key") || errorMessage.toLowerCase().includes("unauthorized")) {
+        setError("API configuration issue. Please contact support.");
+      } else if (errorMessage.toLowerCase().includes("insufficient") || errorMessage.toLowerCase().includes("balance")) {
+        setError("Insufficient SOL balance in your wallet. Please add more SOL and try again.");
+      } else if (errorMessage.toLowerCase().includes("user rejected") || errorMessage.toLowerCase().includes("cancelled")) {
+        setError("Transaction was cancelled. Click Launch to try again.");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -648,75 +783,119 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             <div className="bg-bags-darker p-3 border border-bags-green/30">
               <p className="font-pixel text-[10px] text-bags-gold mb-1">💰 HOW FEES WORK</p>
               <p className="font-pixel text-[8px] text-gray-400">
-                Every trade on your token generates fees. These fees are automatically split among all fee claimers you add here.
-                They can claim their share anytime on Bags.fm.
+                Every trade generates fees split among claimers. <span className="text-bags-green">Total must equal exactly 100%.</span>
               </p>
-            </div>
-
-            {/* Ecosystem Fee - Creator & Holder Rewards */}
-            <div className="bg-bags-gold/10 border border-bags-gold/30 p-3 space-y-2">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">🏆</span>
-                  <div>
-                    <p className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.displayName}</p>
-                    <p className="font-pixel text-[7px] text-gray-400">Rewards creators & holders weekly</p>
-                  </div>
-                </div>
-                <span className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.bps / 100}%</span>
-              </div>
-              <div className="pt-1 border-t border-bags-gold/20">
-                <p className="font-pixel text-[6px] text-gray-400">
-                  80% buys top tokens & burns them. 20% covers operations.
-                  Top performers get automatic buy pressure.
+              <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30">
+                <p className="font-pixel text-[7px] text-yellow-400">
+                  ⚠️ IMPORTANT: All fee claimers must link their wallet at{" "}
+                  <a href="https://bags.fm/settings" target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-300">
+                    bags.fm/settings
+                  </a>
+                  {" "}BEFORE you launch. Wallets are verified when you click Next.
                 </p>
               </div>
-              <a
-                href={`https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 pt-1"
-              >
-                🔍 View Rewards Wallet on Solscan →
-              </a>
             </div>
+
+            {/* Ecosystem Fee - Creator & Holder Rewards (only show if > 0) */}
+            {ecosystemFee.bps > 0 && (
+              <div className="bg-bags-gold/10 border border-bags-gold/30 p-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🏆</span>
+                    <div>
+                      <p className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.displayName}</p>
+                      <p className="font-pixel text-[7px] text-gray-400">Rewards creators & holders weekly</p>
+                    </div>
+                  </div>
+                  <span className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.bps / 100}%</span>
+                </div>
+                <div className="pt-1 border-t border-bags-gold/20">
+                  <p className="font-pixel text-[6px] text-gray-400">
+                    80% buys top tokens & burns them. 20% covers operations.
+                    Top performers get automatic buy pressure.
+                  </p>
+                </div>
+                <a
+                  href={`https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 pt-1"
+                >
+                  🔍 View Rewards Wallet on Solscan →
+                </a>
+              </div>
+            )}
 
             <div className="space-y-3">
               {feeShares.map((share, index) => (
-                <div key={index} className="flex gap-2 items-center">
-                  <select
-                    value={share.provider}
-                    onChange={(e) => updateFeeShare(index, "provider", e.target.value)}
-                    className="bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white"
-                  >
-                    <option value="twitter">Twitter</option>
-                    <option value="github">GitHub</option>
-                    <option value="kick">Kick</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={share.username}
-                    onChange={(e) => updateFeeShare(index, "username", e.target.value)}
-                    placeholder="@username"
-                    className="flex-1 bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white"
-                  />
-                  <input
-                    type="number"
-                    value={share.bps / 100}
-                    onChange={(e) => updateFeeShare(index, "bps", Math.min(10000, Math.max(0, (parseFloat(e.target.value) || 0) * 100)))}
-                    className="w-16 bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white text-center"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                  />
-                  <span className="font-pixel text-[8px] text-gray-400">%</span>
-                  {feeShares.length > 1 && (
-                    <button
-                      onClick={() => removeFeeShare(index)}
-                      className="text-bags-red font-pixel text-[10px] hover:text-red-400"
+                <div key={index} className="space-y-1">
+                  <div className="flex gap-2 items-center">
+                    <select
+                      value={share.provider}
+                      onChange={(e) => {
+                        updateFeeShare(index, "provider", e.target.value);
+                        // Reset validation when provider changes
+                        const updated = [...feeShares];
+                        updated[index] = { ...updated[index], walletStatus: "unchecked", walletError: undefined };
+                        setFeeShares(updated);
+                      }}
+                      className="bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white"
                     >
-                      ✕
-                    </button>
+                      <option value="twitter">Twitter</option>
+                      <option value="github">GitHub</option>
+                      <option value="kick">Kick</option>
+                    </select>
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={share.username}
+                        onChange={(e) => {
+                          updateFeeShare(index, "username", e.target.value);
+                          // Reset validation when username changes
+                          const updated = [...feeShares];
+                          updated[index] = { ...updated[index], walletStatus: "unchecked", walletError: undefined };
+                          setFeeShares(updated);
+                        }}
+                        placeholder="@username"
+                        className={`w-full bg-bags-darker border p-2 font-pixel text-[8px] text-white pr-6 ${
+                          share.walletStatus === "invalid"
+                            ? "border-bags-red"
+                            : share.walletStatus === "valid"
+                            ? "border-bags-green"
+                            : "border-bags-green/50"
+                        }`}
+                      />
+                      {/* Validation status indicator */}
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px]">
+                        {share.walletStatus === "checking" && "⏳"}
+                        {share.walletStatus === "valid" && "✅"}
+                        {share.walletStatus === "invalid" && "❌"}
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      value={share.bps / 100}
+                      onChange={(e) => updateFeeShare(index, "bps", Math.min(10000, Math.max(0, (parseFloat(e.target.value) || 0) * 100)))}
+                      className="w-16 bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white text-center"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                    />
+                    <span className="font-pixel text-[8px] text-gray-400">%</span>
+                    {feeShares.length > 1 && (
+                      <button
+                        onClick={() => removeFeeShare(index)}
+                        className="text-bags-red font-pixel text-[10px] hover:text-red-400"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  {/* Show error message for invalid wallet */}
+                  {share.walletStatus === "invalid" && share.walletError && (
+                    <p className="font-pixel text-[7px] text-bags-red pl-1">
+                      ⚠️ {share.walletError} - Ask them to link at bags.fm/settings
+                    </p>
                   )}
                 </div>
               ))}
@@ -734,8 +913,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             <div className={`p-2 ${isValidBps ? "bg-bags-green/10" : "bg-bags-red/10"} border ${isValidBps ? "border-bags-green/30" : "border-bags-red/30"}`}>
               <p className="font-pixel text-[8px] text-center">
                 Total Fee Share: <span className={isValidBps ? "text-bags-green" : "text-bags-red"}>{(totalBps / 100).toFixed(1)}%</span>
-                {!isValidBps && <span className="text-bags-red ml-2">(max 100%)</span>}
+                {!isValidBps && <span className="text-bags-red ml-2">(must equal 100%)</span>}
               </p>
+              {!isValidBps && totalBps < 10000 && (
+                <p className="font-pixel text-[7px] text-gray-400 text-center mt-1">
+                  Add {((10000 - totalBps) / 100).toFixed(1)}% more to Twitter/GitHub/Kick accounts
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -769,11 +953,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <p className="font-pixel text-[10px] text-bags-gold">💰 Fee Distribution</p>
                 <span className="font-pixel text-[7px] text-gray-500 bg-bags-green/10 px-2 py-0.5 rounded">🔒 PERMANENT</span>
               </div>
-              {/* Ecosystem fee */}
-              <div className="flex justify-between font-pixel text-[8px] pb-1 border-b border-bags-green/20">
-                <span className="text-bags-gold">🏙️ {ecosystemFee.displayName}</span>
-                <span className="text-bags-gold">{ecosystemFee.bps / 100}%</span>
-              </div>
+              {/* Ecosystem fee (only show if > 0) */}
+              {ecosystemFee.bps > 0 && (
+                <div className="flex justify-between font-pixel text-[8px] pb-1 border-b border-bags-green/20">
+                  <span className="text-bags-gold">🏙️ {ecosystemFee.displayName}</span>
+                  <span className="text-bags-gold">{ecosystemFee.bps / 100}%</span>
+                </div>
+              )}
               {/* User fee shares */}
               {feeShares.filter(f => f.username).map((share, i) => (
                 <div key={i} className="flex justify-between font-pixel text-[8px]">
@@ -857,9 +1043,10 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             {step !== "confirm" ? (
               <button
                 onClick={handleNextStep}
-                className="flex-1 btn-retro"
+                disabled={isValidatingWallets}
+                className="flex-1 btn-retro disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                NEXT →
+                {isValidatingWallets ? "⏳ VERIFYING WALLETS..." : "NEXT →"}
               </button>
             ) : (
               <button
