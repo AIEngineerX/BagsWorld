@@ -22,9 +22,9 @@ import {
 export function Leaderboard() {
   const { worldState, selectCharacter, selectedCharacter } = useGameStore();
 
-  // Filter out guide characters (Toly, Ash, Finn, Dev) from the leaderboard
+  // Filter out guide characters (Toly, Ash, Finn, Dev, Scout) from the leaderboard
   const population = (worldState?.population ?? []).filter(
-    (c) => !c.isToly && !c.isAsh && !c.isFinn && !c.isDev
+    (c) => !c.isToly && !c.isAsh && !c.isFinn && !c.isDev && !c.isScout
   );
 
   const formatEarnings = (amount: number): string => {
