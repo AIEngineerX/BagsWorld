@@ -2,6 +2,7 @@
 // Monitors Bags.fm/pump.fun for new token launches and alerts the system
 
 import WebSocket from "ws";
+import { emitTokenLaunch } from "./agent-coordinator";
 
 // Scout configuration
 export interface ScoutConfig {
@@ -318,6 +319,11 @@ function sendAlerts(launch: TokenLaunch): void {
   console.log(
     `[Scout Agent] New token: ${launch.name} ($${launch.symbol}) - ${launch.platform}`
   );
+
+  // Emit to Agent Coordinator for cross-agent communication
+  emitTokenLaunch(launch).catch((err) => {
+    console.error("[Scout Agent] Failed to emit to coordinator:", err);
+  });
 
   for (const callback of alertCallbacks) {
     try {

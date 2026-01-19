@@ -1,0 +1,228 @@
+import { NextResponse } from "next/server";
+import {
+  startCoordinator,
+  stopCoordinator,
+  getCoordinatorState,
+  getRecentEvents,
+  getEventStats,
+  emitEvent,
+  subscribe,
+  type AgentEventType,
+  type AgentSource,
+  type EventPriority,
+  type AgentEvent,
+} from "@/lib/agent-coordinator";
+import { connectToCoordinator as connectAIAgent } from "@/lib/ai-agent";
+
+// ============================================================================
+// ANNOUNCEMENT QUEUE
+// ============================================================================
+
+// Queue of announcements to be displayed in the game
+let announcementQueue: Array<{
+  id: string;
+  message: string;
+  priority: EventPriority;
+  timestamp: number;
+  eventType: AgentEventType;
+  read: boolean;
+}> = [];
+
+const MAX_ANNOUNCEMENTS = 50;
+
+// Subscribe to events and generate announcements
+let announcementSubscription: (() => void) | null = null;
+
+function initAnnouncementHandler(): void {
+  if (announcementSubscription) return;
+
+  announcementSubscription = subscribe(
+    "*", // Subscribe to all events
+    (event: AgentEvent) => {
+      if (event.announcement) {
+        announcementQueue.unshift({
+          id: event.id,
+          message: event.announcement,
+          priority: event.priority,
+          timestamp: event.timestamp,
+          eventType: event.type,
+          read: false,
+        });
+
+        // Trim queue
+        if (announcementQueue.length > MAX_ANNOUNCEMENTS) {
+          announcementQueue = announcementQueue.slice(0, MAX_ANNOUNCEMENTS);
+        }
+      }
+    },
+    ["medium", "high", "urgent"] // Only announce important events
+  );
+
+  console.log("[Agent Coordinator API] Announcement handler initialized");
+}
+
+// ============================================================================
+// API HANDLERS
+// ============================================================================
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const action = searchParams.get("action") || "status";
+
+  switch (action) {
+    case "status": {
+      const state = getCoordinatorState();
+      return NextResponse.json({
+        isRunning: state.isRunning,
+        stats: state.stats,
+        subscriptionCount: state.subscriptions.length,
+        queueSize: state.eventQueue.length,
+      });
+    }
+
+    case "events": {
+      const count = parseInt(searchParams.get("count") || "20");
+      const type = searchParams.get("type") as AgentEventType | undefined;
+      const events = getRecentEvents(count, type);
+      return NextResponse.json({ events });
+    }
+
+    case "stats": {
+      const stats = getEventStats();
+      return NextResponse.json({ stats });
+    }
+
+    case "announcements": {
+      const unreadOnly = searchParams.get("unread") === "true";
+      const count = parseInt(searchParams.get("count") || "10");
+
+      let announcements = unreadOnly
+        ? announcementQueue.filter((a) => !a.read)
+        : announcementQueue;
+
+      announcements = announcements.slice(0, count);
+
+      return NextResponse.json({
+        announcements,
+        totalUnread: announcementQueue.filter((a) => !a.read).length,
+      });
+    }
+
+    case "poll": {
+      // Long-poll for new announcements (for game client)
+      const since = parseInt(searchParams.get("since") || "0");
+      const newAnnouncements = announcementQueue.filter(
+        (a) => a.timestamp > since && !a.read
+      );
+
+      return NextResponse.json({
+        announcements: newAnnouncements,
+        lastTimestamp: newAnnouncements[0]?.timestamp || since,
+      });
+    }
+
+    default:
+      return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { action } = body;
+
+    switch (action) {
+      case "start": {
+        startCoordinator();
+        initAnnouncementHandler();
+        connectAIAgent();
+        return NextResponse.json({ success: true, message: "Coordinator started" });
+      }
+
+      case "stop": {
+        stopCoordinator();
+        return NextResponse.json({ success: true, message: "Coordinator stopped" });
+      }
+
+      case "emit": {
+        const { type, source, data, priority } = body as {
+          type: AgentEventType;
+          source: AgentSource;
+          data: Record<string, unknown>;
+          priority?: EventPriority;
+        };
+
+        if (!type || !source || !data) {
+          return NextResponse.json(
+            { error: "Missing type, source, or data" },
+            { status: 400 }
+          );
+        }
+
+        const event = await emitEvent(type, source, data, priority || "medium");
+        return NextResponse.json({ success: true, event });
+      }
+
+      case "mark_read": {
+        const { ids } = body as { ids: string[] };
+        if (!ids || !Array.isArray(ids)) {
+          return NextResponse.json({ error: "Missing ids array" }, { status: 400 });
+        }
+
+        let markedCount = 0;
+        for (const id of ids) {
+          const announcement = announcementQueue.find((a) => a.id === id);
+          if (announcement) {
+            announcement.read = true;
+            markedCount++;
+          }
+        }
+
+        return NextResponse.json({ success: true, markedCount });
+      }
+
+      case "clear_announcements": {
+        announcementQueue = [];
+        return NextResponse.json({ success: true, message: "Announcements cleared" });
+      }
+
+      case "test_event": {
+        // Emit a test event for development
+        const testEvent = await emitEvent(
+          "system",
+          "manual",
+          { message: "Test event from API" },
+          "medium"
+        );
+        return NextResponse.json({ success: true, event: testEvent });
+      }
+
+      default:
+        return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+    }
+  } catch (error) {
+    console.error("[Agent Coordinator API] Error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// Auto-initialize on first request
+let initialized = false;
+async function initializeCoordinator(): Promise<void> {
+  if (initialized) return;
+  initialized = true;
+
+  startCoordinator();
+  initAnnouncementHandler();
+  connectAIAgent();
+
+  console.log("[Agent Coordinator API] Auto-initialized");
+}
+
+// Initialize when this module loads on the server
+if (typeof window === "undefined") {
+  initializeCoordinator();
+}
