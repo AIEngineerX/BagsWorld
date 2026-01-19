@@ -391,6 +391,9 @@ export function transformTokenToBuilding(
   const previousHealth = existingBuilding?.health ?? 50;
   const newHealth = calculateBuildingHealth(token.change24h, token.volume24h, previousHealth);
 
+  // Assign zones: Trading Gym goes to trending (City), others to main_city (Park) by default
+  const zone = isTradingGym ? "trending" as const : undefined; // undefined = appears in both zones
+
   return {
     id: token.mint,
     tokenMint: token.mint,
@@ -406,6 +409,7 @@ export function transformTokenToBuilding(
     volume24h: token.volume24h,
     change24h: token.change24h,
     tokenUrl,
+    zone,
   };
 }
 

@@ -164,6 +164,7 @@ export interface GameBuilding {
   volume24h?: number;
   change24h?: number;
   tokenUrl?: string;
+  zone?: ZoneType; // Which zone this building appears in (default: both)
 }
 
 export type GameEventType =

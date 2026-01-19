@@ -2272,9 +2272,16 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateBuildings(buildings: GameBuilding[]): void {
-    const currentIds = new Set(buildings.map((b) => b.id));
+    // Filter buildings by current zone
+    // Buildings with no zone appear in both, buildings with specific zone only in that zone
+    const zoneBuildings = buildings.filter((b) => {
+      if (!b.zone) return true; // No zone = appears everywhere
+      return b.zone === this.currentZone;
+    });
 
-    // Remove old buildings
+    const currentIds = new Set(zoneBuildings.map((b) => b.id));
+
+    // Remove old buildings (including those no longer in this zone)
     this.buildingSprites.forEach((container, id) => {
       if (!currentIds.has(id)) {
         container.destroy();
@@ -2283,7 +2290,7 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // Add or update buildings
-    buildings.forEach((building) => {
+    zoneBuildings.forEach((building) => {
       let container = this.buildingSprites.get(building.id);
 
       if (!container) {

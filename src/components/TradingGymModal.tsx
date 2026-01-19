@@ -20,27 +20,156 @@ interface TradingGymModalProps {
   onClose: () => void;
 }
 
-// Agent face components with unique styling
+// Pixel art character head configs matching in-game sprites
+const AGENT_HEADS: Record<string, {
+  skinColor: string;
+  hairColor: string;
+  glowColor: string;
+  accessory?: "sunglasses" | "cap" | "beanie" | "glasses" | "beard";
+  accessoryColor?: string;
+}> = {
+  neo: {
+    skinColor: "#f1c27d",
+    hairColor: "#1a1a1a",
+    glowColor: "#00ff41",
+    accessory: "sunglasses",
+    accessoryColor: "#0a0a0a",
+  },
+  ghost: {
+    skinColor: "#e0ac69",
+    hairColor: "#1f2937",
+    glowColor: "#8b5cf6",
+    accessory: "glasses",
+    accessoryColor: "#06b6d4",
+  },
+  finn: {
+    skinColor: "#ffd5b4",
+    hairColor: "#92400e",
+    glowColor: "#10b981",
+    accessory: "beanie",
+    accessoryColor: "#d97706",
+  },
+  ash: {
+    skinColor: "#ffdbac",
+    hairColor: "#1f2937",
+    glowColor: "#ef4444",
+    accessory: "cap",
+    accessoryColor: "#dc2626",
+  },
+  toly: {
+    skinColor: "#f1c27d",
+    hairColor: "#4a3728",
+    glowColor: "#9945ff",
+    accessory: "beard",
+    accessoryColor: "#5c4033",
+  },
+};
+
+// CSS Pixel Art Agent Head Component
 function AgentFace({ agent, size = "md" }: { agent: ArenaAgent; size?: "sm" | "md" | "lg" }) {
-  const sizeClasses = {
-    sm: "w-6 h-6 text-sm",
-    md: "w-10 h-10 text-lg",
-    lg: "w-14 h-14 text-2xl",
+  const sizeMap = { sm: 24, md: 40, lg: 56 };
+  const pixelSize = sizeMap[size];
+  const pixel = pixelSize / 12; // 12x12 grid for head
+
+  const config = AGENT_HEADS[agent.id] || {
+    skinColor: "#f1c27d",
+    hairColor: "#4a3728",
+    glowColor: agent.color,
   };
 
   return (
     <div
-      className={`${sizeClasses[size]} rounded-full flex items-center justify-center relative overflow-hidden`}
+      className="relative flex-shrink-0"
       style={{
-        backgroundColor: agent.color,
-        boxShadow: `0 0 10px ${agent.color}40, inset 0 -2px 4px rgba(0,0,0,0.3)`,
+        width: pixelSize,
+        height: pixelSize,
       }}
     >
-      <span className="relative z-10">{agent.avatar}</span>
+      {/* Glow effect */}
       <div
-        className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"
-        style={{ height: "50%" }}
+        className="absolute inset-0 rounded-full blur-sm"
+        style={{
+          backgroundColor: config.glowColor,
+          opacity: 0.4,
+          transform: "scale(1.2)",
+        }}
       />
+
+      {/* Pixel art head */}
+      <svg
+        viewBox="0 0 12 12"
+        className="relative z-10"
+        style={{
+          width: pixelSize,
+          height: pixelSize,
+          imageRendering: "pixelated",
+        }}
+      >
+        {/* Hair background */}
+        <rect x="3" y="1" width="6" height="3" fill={config.hairColor} />
+        <rect x="2" y="2" width="1" height="2" fill={config.hairColor} />
+        <rect x="9" y="2" width="1" height="2" fill={config.hairColor} />
+
+        {/* Face */}
+        <rect x="3" y="3" width="6" height="6" fill={config.skinColor} />
+        <rect x="2" y="4" width="1" height="4" fill={config.skinColor} />
+        <rect x="9" y="4" width="1" height="4" fill={config.skinColor} />
+
+        {/* Eyes */}
+        {config.accessory === "sunglasses" ? (
+          <>
+            <rect x="3" y="5" width="3" height="2" fill="#0a0a0a" />
+            <rect x="6" y="5" width="3" height="2" fill="#0a0a0a" />
+            <rect x="2" y="5" width="1" height="1" fill="#1a1a1a" />
+            <rect x="9" y="5" width="1" height="1" fill="#1a1a1a" />
+          </>
+        ) : config.accessory === "glasses" ? (
+          <>
+            <rect x="3" y="5" width="2" height="2" fill={config.accessoryColor} rx="0.5" />
+            <rect x="7" y="5" width="2" height="2" fill={config.accessoryColor} rx="0.5" />
+            <rect x="5" y="5" width="2" height="1" fill={config.accessoryColor} />
+            <rect x="4" y="6" width="1" height="1" fill="#1f2937" />
+            <rect x="7" y="6" width="1" height="1" fill="#1f2937" />
+          </>
+        ) : (
+          <>
+            <rect x="4" y="5" width="1" height="2" fill="#1f2937" />
+            <rect x="7" y="5" width="1" height="2" fill="#1f2937" />
+          </>
+        )}
+
+        {/* Mouth */}
+        <rect x="5" y="8" width="2" height="1" fill="#c9a07a" />
+
+        {/* Cap */}
+        {config.accessory === "cap" && (
+          <>
+            <rect x="2" y="1" width="8" height="2" fill={config.accessoryColor} />
+            <rect x="1" y="2" width="3" height="1" fill={config.accessoryColor} />
+            <rect x="3" y="0" width="6" height="1" fill={config.accessoryColor} />
+            <rect x="4" y="1" width="4" height="1" fill="#ffffff" opacity="0.3" />
+          </>
+        )}
+
+        {/* Beanie */}
+        {config.accessory === "beanie" && (
+          <>
+            <rect x="2" y="0" width="8" height="3" fill={config.accessoryColor} />
+            <rect x="3" y="0" width="6" height="1" fill="#ffffff" opacity="0.2" />
+            <rect x="5" y="-1" width="2" height="1" fill={config.accessoryColor} />
+          </>
+        )}
+
+        {/* Beard */}
+        {config.accessory === "beard" && (
+          <>
+            <rect x="3" y="8" width="6" height="2" fill={config.accessoryColor} />
+            <rect x="2" y="7" width="1" height="2" fill={config.accessoryColor} />
+            <rect x="9" y="7" width="1" height="2" fill={config.accessoryColor} />
+            <rect x="4" y="10" width="4" height="1" fill={config.accessoryColor} />
+          </>
+        )}
+      </svg>
     </div>
   );
 }
