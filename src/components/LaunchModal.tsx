@@ -541,7 +541,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         <div className="flex items-center justify-between p-3 sm:p-4 border-b-4 border-bags-green sticky top-0 bg-bags-dark z-10">
           <div>
             <h2 className="font-pixel text-xs sm:text-sm text-bags-green">
-              🏗️ BUILD A TOKEN
+              [+] BUILD A TOKEN
             </h2>
             <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">
               Step {step === "info" ? "1/3" : step === "fees" ? "2/3" : "3/3"}: {step === "info" ? "Token Info" : step === "fees" ? "Fee Sharing" : "Confirm"}
