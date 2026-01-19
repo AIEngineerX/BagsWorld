@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { Suspense, useState, useEffect } from "react";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -117,6 +118,12 @@ export default function Home() {
 
         {/* Desktop nav - hidden on mobile */}
         <div className="hidden lg:flex items-center gap-4">
+          <Link
+            href="/docs"
+            className="font-pixel text-[10px] text-gray-400 hover:text-bags-green transition-colors"
+          >
+            DOCS
+          </Link>
           <div className="font-pixel text-xs">
             <span className="text-gray-400">WEATHER: </span>
             <span className="text-bags-gold">
@@ -169,6 +176,12 @@ export default function Home() {
 
               {/* Action buttons */}
               <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/docs"
+                  className="btn-retro font-pixel text-[10px]"
+                >
+                  DOCS
+                </Link>
                 <MusicButton />
                 <PartnerClaimButton />
                 <ClaimButton />
