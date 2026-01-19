@@ -1,50 +1,165 @@
 import { NextResponse } from "next/server";
-import { Connection } from "@solana/web3.js";
 
 /**
  * Server-side transaction sending endpoint
  * This keeps the RPC URL secret (no NEXT_PUBLIC_ prefix)
+ *
+ * Uses direct fetch to Helius RPC instead of @solana/web3.js Connection
+ * to ensure proper API key handling.
  */
 
-const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL;
+
+// Helper to make JSON-RPC calls to Helius
+async function rpcCall(method: string, params: unknown[]) {
+  if (!SOLANA_RPC_URL) {
+    throw new Error("SOLANA_RPC_URL not configured");
+  }
+
+  const response = await fetch(SOLANA_RPC_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: Date.now(),
+      method,
+      params,
+    }),
+  });
+
+  const text = await response.text();
+  console.log(`[send-transaction] RPC ${method} response:`, text.substring(0, 500));
+
+  if (!response.ok) {
+    throw new Error(`RPC request failed: ${response.status} ${text}`);
+  }
+
+  const json = JSON.parse(text);
+
+  if (json.error) {
+    throw new Error(`RPC error ${json.error.code}: ${json.error.message}`);
+  }
+
+  return json.result;
+}
 
 export async function POST(request: Request) {
   try {
+    // Validate RPC URL is configured
+    if (!SOLANA_RPC_URL) {
+      console.error("[send-transaction] SOLANA_RPC_URL env var is not set!");
+      return NextResponse.json({
+        error: "Server misconfiguration: RPC URL not set",
+        hint: "Add SOLANA_RPC_URL to Netlify env vars. Format: https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+      }, { status: 500 });
+    }
+
+    // Log URL format (hide actual key)
+    const urlForLog = SOLANA_RPC_URL.includes("api-key=")
+      ? SOLANA_RPC_URL.replace(/api-key=.+/, "api-key=***HIDDEN***")
+      : SOLANA_RPC_URL.substring(0, 50) + "...";
+    console.log("[send-transaction] Using RPC:", urlForLog);
+
+    // Validate URL format
+    if (!SOLANA_RPC_URL.startsWith("https://")) {
+      return NextResponse.json({
+        error: "Invalid RPC URL format",
+        hint: "SOLANA_RPC_URL must start with https://"
+      }, { status: 500 });
+    }
+
     const { signedTransaction } = await request.json();
 
     if (!signedTransaction) {
       return NextResponse.json({ error: "Missing signedTransaction" }, { status: 400 });
     }
 
-    const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+    console.log("[send-transaction] Transaction base64 length:", signedTransaction.length);
 
-    // Decode the base64 signed transaction
-    const txBuffer = Buffer.from(signedTransaction, "base64");
+    // Send transaction using sendTransaction RPC method
+    // The transaction is already base64 encoded from the client
+    const txid = await rpcCall("sendTransaction", [
+      signedTransaction,
+      {
+        encoding: "base64",
+        skipPreflight: false,
+        preflightCommitment: "confirmed",
+        maxRetries: 3,
+      },
+    ]);
 
-    // Send the raw transaction
-    const txid = await connection.sendRawTransaction(txBuffer, {
-      skipPreflight: false,
-      maxRetries: 3,
-    });
+    console.log("[send-transaction] Transaction sent:", txid);
 
-    // Wait for confirmation
-    const confirmation = await connection.confirmTransaction(txid, "confirmed");
+    // Confirm transaction
+    let confirmed = false;
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds max
 
-    if (confirmation.value.err) {
+    while (!confirmed && attempts < maxAttempts) {
+      attempts++;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      try {
+        const status = await rpcCall("getSignatureStatuses", [[txid]]);
+        const txStatus = status?.value?.[0];
+
+        if (txStatus) {
+          if (txStatus.err) {
+            return NextResponse.json({
+              error: "Transaction failed on-chain",
+              details: txStatus.err,
+              txid,
+            }, { status: 500 });
+          }
+
+          if (txStatus.confirmationStatus === "confirmed" || txStatus.confirmationStatus === "finalized") {
+            confirmed = true;
+            console.log("[send-transaction] Transaction confirmed:", txStatus.confirmationStatus);
+          }
+        }
+      } catch (e) {
+        console.log("[send-transaction] Confirmation check error:", e);
+        // Continue polling
+      }
+    }
+
+    if (!confirmed) {
       return NextResponse.json({
-        error: "Transaction failed",
-        details: confirmation.value.err,
-      }, { status: 500 });
+        success: true,
+        txid,
+        warning: "Transaction sent but confirmation timed out. Check explorer.",
+      });
     }
 
     return NextResponse.json({
       success: true,
       txid,
     });
+
   } catch (error) {
     console.error("[send-transaction] Error:", error);
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Check for common RPC errors
+    if (errorMessage.includes("401") || errorMessage.includes("Unauthorized") || errorMessage.includes("-32401")) {
+      return NextResponse.json({
+        error: "RPC authentication failed (401 Unauthorized)",
+        hint: "Your Helius API key may be invalid. Generate a new key at dev.helius.xyz",
+        details: errorMessage,
+      }, { status: 500 });
+    }
+
+    if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+      return NextResponse.json({
+        error: "RPC access denied (403 Forbidden)",
+        hint: "Your RPC provider may not allow transaction sending",
+        details: errorMessage,
+      }, { status: 500 });
+    }
+
     return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to send transaction",
+      error: errorMessage,
     }, { status: 500 });
   }
 }

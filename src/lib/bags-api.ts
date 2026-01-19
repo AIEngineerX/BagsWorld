@@ -358,12 +358,24 @@ class BagsApiClient {
     tipWallet?: string;
     tipLamports?: number;
   }): Promise<{ transaction: string; lastValidBlockHeight?: number }> {
-    console.log("Bags API createLaunchTransaction request:", JSON.stringify(data, null, 2));
+    // Bags API expects ipfs and wallet (not metadataUrl/launchWallet)
+    const apiBody = {
+      ipfs: data.ipfs,
+      tokenMint: data.tokenMint,
+      wallet: data.wallet,
+      initialBuyLamports: data.initialBuyLamports,
+      configKey: data.configKey,
+      ...(data.tipWallet && data.tipLamports ? {
+        tipWallet: data.tipWallet,
+        tipLamports: data.tipLamports,
+      } : {}),
+    };
+    console.log("Bags API createLaunchTransaction request:", JSON.stringify(apiBody, null, 2));
     try {
       // The API may return either a string directly or an object with transaction field
       const result = await this.fetch<string | { transaction: string; lastValidBlockHeight?: number }>("/token-launch/create-launch-transaction", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify(apiBody),
       });
       console.log("Bags API createLaunchTransaction response:", result);
       console.log("Response type:", typeof result);
