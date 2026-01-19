@@ -5,8 +5,98 @@ import { extractIntent, quickIntentCheck } from "@/lib/intent-extractor";
 
 // Unified Agent Chat API - All characters powered by Opus 4.5
 // Each character has unique personality, knowledge, and response style
+// Neo has access to REAL on-chain data from Bags.fm API
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const BAGS_API_KEY = process.env.BAGS_API_KEY;
+const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+
+// Fetch tokens from our global database (BagsWorld tokens)
+async function fetchRecentLaunches(): Promise<string> {
+  try {
+    // Use our internal global-tokens API which stores BagsWorld launches
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "http://localhost:3000";
+    const response = await fetch(`${baseUrl}/api/global-tokens`, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) return "";
+
+    const data = await response.json();
+    if (!data.tokens || data.tokens.length === 0) {
+      return "\nNo recent BagsWorld launches found in database.";
+    }
+
+    // Sort by created_at (most recent first) and take top 5
+    const sortedTokens = data.tokens
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      .slice(0, 5);
+
+    const launches = sortedTokens.map((t: any, i: number) =>
+      `${i + 1}. $${t.symbol || "???"} (${t.name || "Unknown"}) - mint: ${t.mint?.slice(0, 8)}...${t.lifetime_fees ? ` - fees: ${t.lifetime_fees.toFixed(4)} SOL` : ""}`
+    ).join("\n");
+
+    return `\nBAGSWORLD TOKENS (${data.tokens.length} total in database):\n${launches}`;
+  } catch (e) {
+    console.error("Failed to fetch tokens:", e);
+    return "";
+  }
+}
+
+// Fetch token info by mint address
+async function fetchTokenInfo(mint: string): Promise<string> {
+  if (!BAGS_API_KEY || !mint) return "";
+
+  try {
+    const [creatorsRes, feesRes] = await Promise.all([
+      fetch(`${BAGS_API_URL}/token-launch/creator/v3?mint=${mint}`, {
+        headers: { "x-api-key": BAGS_API_KEY },
+      }),
+      fetch(`${BAGS_API_URL}/token-launch/lifetime-fees?mint=${mint}`, {
+        headers: { "x-api-key": BAGS_API_KEY },
+      }),
+    ]);
+
+    const creators = creatorsRes.ok ? await creatorsRes.json() : null;
+    const fees = feesRes.ok ? await feesRes.json() : null;
+
+    if (!creators && !fees) return "";
+
+    let info = `\nTOKEN DATA for ${mint.slice(0, 8)}...:`;
+    if (creators?.name) info += `\n- Name: ${creators.name} ($${creators.symbol || "???"})`;
+    if (creators?.creators) {
+      info += `\n- Creators: ${creators.creators.map((c: any) => `@${c.providerUsername || c.wallet?.slice(0, 6)}`).join(", ")}`;
+    }
+    if (fees?.lifetimeFeesUsd) info += `\n- Lifetime fees: $${fees.lifetimeFeesUsd.toFixed(2)}`;
+    if (fees?.lifetimeFeesSol) info += `\n- Total SOL: ${fees.lifetimeFeesSol.toFixed(4)} SOL`;
+
+    return info;
+  } catch (e) {
+    console.error("Failed to fetch token info:", e);
+    return "";
+  }
+}
+
+// Check if message is asking about launches/tokens/data
+function needsRealData(message: string, characterId: string): { launches: boolean; tokenMint?: string } {
+  if (characterId !== "neo") return { launches: false };
+
+  const lower = message.toLowerCase();
+
+  // Check for token mint address (32-44 chars, base58)
+  const mintMatch = message.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/);
+  if (mintMatch) {
+    return { launches: false, tokenMint: mintMatch[0] };
+  }
+
+  // Keywords that need launch data
+  const launchKeywords = ["launch", "new token", "recent", "latest", "scan", "see", "watch", "monitor", "what's new", "happening", "activity", "chain", "blockchain"];
+  if (launchKeywords.some(k => lower.includes(k))) {
+    return { launches: true };
+  }
+
+  return { launches: false };
+}
 
 interface AgentChatRequest {
   characterId: string; // neo, finn, ghost, ash, bags-bot
@@ -76,9 +166,20 @@ export async function POST(request: Request) {
       }
     }
 
+    // For Neo: fetch real data if asking about launches/tokens
+    let realData = "";
+    if (characterId === "neo") {
+      const dataNeeds = needsRealData(message, characterId);
+      if (dataNeeds.tokenMint) {
+        realData = await fetchTokenInfo(dataNeeds.tokenMint);
+      } else if (dataNeeds.launches) {
+        realData = await fetchRecentLaunches();
+      }
+    }
+
     // Generate response using Opus 4.5
     if (ANTHROPIC_API_KEY) {
-      const response = await generateAgentResponse(character, message, worldState, chatHistory);
+      const response = await generateAgentResponse(character, message, worldState, chatHistory, realData);
       return NextResponse.json({
         message: response,
         characterId,
@@ -106,7 +207,8 @@ async function generateAgentResponse(
   character: ReturnType<typeof getCharacter>,
   message: string,
   worldState: AgentChatRequest["worldState"],
-  chatHistory: Array<{ role: string; content: string }>
+  chatHistory: Array<{ role: string; content: string }>,
+  realData: string = ""
 ): Promise<string> {
   // Build character-specific system prompt
   const characterPrompt = generateCharacterPrompt(character);
@@ -121,8 +223,16 @@ CURRENT BAGSWORLD STATE:
 ${worldState.topToken ? `- Top Token: $${worldState.topToken}` : ""}
 ` : "";
 
+  // Add real-time data for Neo
+  const realDataContext = realData ? `
+REAL-TIME DATA (from Bags.fm API - this is LIVE data you can see):
+${realData}
+
+IMPORTANT: You have access to this real data. Reference it in your response. Don't say you can't see real-time data - you CAN and just did.
+` : "";
+
   const systemPrompt = `${characterPrompt}
-${worldContext}
+${worldContext}${realDataContext}
 IMPORTANT: Stay in character. Keep responses concise (1-3 sentences). Be helpful and engaging.`;
 
   // Build message history
