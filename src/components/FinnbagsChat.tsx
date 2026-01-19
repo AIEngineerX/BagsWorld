@@ -172,12 +172,12 @@ export function FinnbagsChat() {
     });
 
     try {
-      const response = await fetch("/api/character-chat", {
+      const response = await fetch("/api/agent-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          character: "finn",
-          userMessage: userMsg,
+          characterId: "finn",
+          message: userMsg,
           chatHistory: messages.slice(-6).map((m) => ({
             role: m.type === "user" ? "user" : "assistant",
             content: m.message,
@@ -240,10 +240,10 @@ export function FinnbagsChat() {
           <span className="font-pixel text-sm">💼</span>
           <div>
             <p className="font-pixel text-[10px] text-emerald-400">
-              FINN&apos;S BAGS GUIDE
+              FINN // FOUNDER
             </p>
-            <p className="font-pixel text-[8px] text-gray-400">
-              drag to move
+            <p className="font-pixel text-[8px] text-emerald-600">
+              powered by opus 4.5
             </p>
           </div>
         </div>

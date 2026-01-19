@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useWorldState } from "@/hooks/useWorldState";
 
 interface NeoMessage {
   id: string;
-  type: "neo" | "user" | "alert";
+  type: "neo" | "user";
   message: string;
   timestamp: number;
 }
@@ -15,47 +15,35 @@ interface Position {
   y: number;
 }
 
-const NEO_QUOTES = ECOSYSTEM_CONFIG.scout.quotes;
-
 export function NeoChat() {
   const [messages, setMessages] = useState<NeoMessage[]>([]);
+  const [input, setInput] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [position, setPosition] = useState<Position>({ x: -1, y: 16 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Listen for Neo/Scout click events
-  useEffect(() => {
-    const handleScoutClick = () => {
-      setIsOpen(true);
-      if (messages.length === 0) {
-        // Random Neo quote as greeting
-        const randomQuote = NEO_QUOTES[Math.floor(Math.random() * NEO_QUOTES.length)];
-        addMessage({
-          id: `${Date.now()}-neo`,
-          type: "neo",
-          message: randomQuote,
-          timestamp: Date.now(),
-        });
-      }
-    };
-
-    window.addEventListener("bagsworld-scout-click", handleScoutClick);
-    return () => {
-      window.removeEventListener("bagsworld-scout-click", handleScoutClick);
-    };
-  }, [messages.length]);
+  const { worldState } = useWorldState();
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen) {
+      inputRef.current?.focus();
+    }
+  }, [isOpen]);
+
   // Handle dragging
   const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
 
     const rect = chatRef.current?.getBoundingClientRect();
     if (rect) {
@@ -97,18 +85,87 @@ export function NeoChat() {
     }
   }, [isDragging, dragOffset]);
 
-  const addMessage = (message: NeoMessage) => {
-    setMessages((prev) => [...prev.slice(-20), message]);
-  };
+  const addMessage = useCallback((message: NeoMessage) => {
+    setMessages((prev) => [...prev.slice(-30), message]);
+  }, []);
 
-  const showRandomQuote = () => {
-    const randomQuote = NEO_QUOTES[Math.floor(Math.random() * NEO_QUOTES.length)];
-    addMessage({
-      id: `${Date.now()}-neo`,
-      type: "neo",
-      message: randomQuote,
-      timestamp: Date.now(),
-    });
+  const sendToNeo = useCallback(async (userMessage: string) => {
+    if (isLoading) return;
+
+    // Don't add "scanning..." as a user message
+    if (userMessage !== "scanning...") {
+      addMessage({
+        id: `${Date.now()}-user`,
+        type: "user",
+        message: userMessage,
+        timestamp: Date.now(),
+      });
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/agent-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          characterId: "neo",
+          message: userMessage,
+          worldState: worldState ? {
+            health: worldState.health,
+            weather: worldState.weather,
+            buildingCount: worldState.buildings?.length || 0,
+            populationCount: worldState.population?.length || 0,
+          } : undefined,
+          chatHistory: messages.slice(-6).map(m => ({
+            role: m.type === "user" ? "user" : "assistant",
+            content: m.message,
+          })),
+        }),
+      });
+
+      const data = await response.json();
+
+      addMessage({
+        id: `${Date.now()}-neo`,
+        type: "neo",
+        message: data.message || "the signal is unclear...",
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      console.error("Neo chat error:", error);
+      addMessage({
+        id: `${Date.now()}-neo`,
+        type: "neo",
+        message: "interference in the matrix. try again.",
+        timestamp: Date.now(),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, worldState, messages, addMessage]);
+
+  // Listen for Neo/Scout click events (must be after sendToNeo is defined)
+  useEffect(() => {
+    const handleScoutClick = () => {
+      setIsOpen(true);
+      if (messages.length === 0) {
+        sendToNeo("scanning...");
+      }
+    };
+
+    window.addEventListener("bagsworld-scout-click", handleScoutClick);
+    return () => {
+      window.removeEventListener("bagsworld-scout-click", handleScoutClick);
+    };
+  }, [messages.length, sendToNeo]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    sendToNeo(input.trim());
+    setInput("");
   };
 
   const chatStyle: React.CSSProperties = position.x >= 0
@@ -131,13 +188,13 @@ export function NeoChat() {
         className="flex items-center justify-between p-2 border-b border-green-500/50 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-green-900/30 to-black"
       >
         <div className="flex items-center gap-2">
-          <span className="text-green-400 font-mono text-lg">&#x25C9;</span>
+          <span className="text-green-400 font-mono text-lg">👁️</span>
           <div>
             <p className="font-mono text-xs text-green-400 tracking-wider">
               NEO // THE SCOUT
             </p>
             <p className="font-pixel text-[8px] text-green-600">
-              drag to move
+              powered by opus 4.5
             </p>
           </div>
         </div>
@@ -154,14 +211,14 @@ export function NeoChat() {
         <div className="absolute inset-0 bg-gradient-to-b from-green-500/5 to-transparent pointer-events-none" />
 
         {/* Messages */}
-        <div className="h-48 overflow-y-auto p-3 space-y-2 font-mono text-sm">
+        <div className="h-56 overflow-y-auto p-3 space-y-2 font-mono text-sm">
           {messages.length === 0 ? (
             <div className="text-center py-6">
               <p className="text-green-400 text-xs mb-2">
                 SYSTEM ONLINE
               </p>
               <p className="text-green-600 text-[10px]">
-                scanning the blockchain...
+                ask neo anything about the blockchain...
               </p>
             </div>
           ) : (
@@ -171,13 +228,14 @@ export function NeoChat() {
                 className={`p-2 ${
                   msg.type === "neo"
                     ? "text-green-400 border-l-2 border-green-500 pl-2"
-                    : msg.type === "alert"
-                    ? "text-yellow-400 bg-yellow-900/20 border border-yellow-500/30"
-                    : "text-white"
+                    : "text-white/80 text-right"
                 }`}
               >
                 {msg.type === "neo" && (
                   <p className="text-[8px] text-green-600 mb-1">NEO:</p>
+                )}
+                {msg.type === "user" && (
+                  <p className="text-[8px] text-white/50 mb-1">YOU:</p>
                 )}
                 <p className="text-xs leading-relaxed whitespace-pre-wrap">
                   {msg.message}
@@ -185,33 +243,42 @@ export function NeoChat() {
               </div>
             ))
           )}
+          {isLoading && (
+            <div className="text-green-500 text-xs animate-pulse pl-2 border-l-2 border-green-500">
+              <p className="text-[8px] text-green-600 mb-1">NEO:</p>
+              scanning the matrix...
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="p-2 border-t border-green-500/30 space-y-2">
-        <button
-          onClick={showRandomQuote}
-          className="w-full px-3 py-2 bg-green-900/30 border border-green-500/50 text-green-400 font-mono text-xs hover:bg-green-900/50 hover:border-green-400 transition-colors"
-        >
-          &gt; REQUEST_WISDOM()
-        </button>
-
-        <a
-          href="https://bags.fm"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full px-3 py-2 bg-green-900/20 border border-green-500/30 text-green-500 font-mono text-xs hover:bg-green-900/40 text-center transition-colors"
-        >
-          &gt; OPEN_BAGS.FM
-        </a>
-      </div>
+      {/* Input */}
+      <form onSubmit={handleSubmit} className="p-2 border-t border-green-500/30">
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="ask neo..."
+            disabled={isLoading}
+            className="flex-1 bg-green-900/20 border border-green-500/30 text-green-400 font-mono text-xs px-2 py-1.5 placeholder:text-green-700 focus:outline-none focus:border-green-400"
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !input.trim()}
+            className="px-3 py-1.5 bg-green-900/30 border border-green-500/50 text-green-400 font-mono text-xs hover:bg-green-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            &gt;
+          </button>
+        </div>
+      </form>
 
       {/* Footer */}
       <div className="p-2 border-t border-green-500/20 bg-green-900/10">
         <p className="font-mono text-[8px] text-green-700 text-center">
-          &quot;There is no spoon... only the blockchain.&quot;
+          &quot;i see the code behind everything&quot;
         </p>
       </div>
     </div>
