@@ -15,16 +15,18 @@ interface WorldHealthBarProps {
 
 export function WorldHealthBar({ health }: WorldHealthBarProps) {
   const getHealthClass = () => {
-    if (health >= 40) return "";
-    if (health >= 20) return "warning";
+    if (health >= 25) return ""; // Baseline and above = normal
+    if (health >= 10) return "warning";
     return "danger";
   };
 
+  // Status thresholds adjusted for baseline health (25-40% with no activity)
   const getStatusInfo = (): { text: string; icon: React.ReactNode } => {
     if (health >= 80) return { text: "THRIVING", icon: <StarIcon className="text-bags-gold" size={14} /> };
     if (health >= 60) return { text: "HEALTHY", icon: <SunIcon className="text-yellow-400" size={14} /> };
-    if (health >= 40) return { text: "CLOUDY", icon: <CloudSunIcon className="text-gray-300" size={14} /> };
-    if (health >= 20) return { text: "STORMY", icon: <StormIcon className="text-purple-400" size={14} /> };
+    if (health >= 45) return { text: "GROWING", icon: <CloudSunIcon className="text-green-400" size={14} /> };
+    if (health >= 25) return { text: "QUIET", icon: <CloudSunIcon className="text-gray-300" size={14} /> }; // Baseline - no activity but working
+    if (health >= 10) return { text: "DORMANT", icon: <StormIcon className="text-purple-400" size={14} /> };
     return { text: "DYING", icon: <SkullIcon className="text-red-400" size={14} /> };
   };
 
@@ -51,9 +53,11 @@ export function WorldHealthBar({ health }: WorldHealthBarProps) {
       <span className="font-pixel text-[10px] text-gray-500">{Math.round(health)}%</span>
       <span
         className={`font-pixel text-[10px] flex items-center gap-1 ${
-          health >= 40
+          health >= 45
             ? "text-bags-green"
-            : health >= 20
+            : health >= 25
+            ? "text-gray-400"
+            : health >= 10
             ? "text-bags-gold"
             : "text-bags-red"
         }`}
