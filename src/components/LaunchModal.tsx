@@ -5,33 +5,19 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
 
-// Helper to deserialize transaction - tries VersionedTransaction first, falls back to legacy
+// Helper to deserialize transaction - tries both formats
 function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
   const buffer = Buffer.from(base64, "base64");
 
-  // Try VersionedTransaction first (check if first byte looks like a version prefix)
+  // Try VersionedTransaction first (more common with modern APIs)
   try {
-    // Versioned transactions start with a version byte (0x80 for v0)
-    // Legacy transactions start with signature count (usually 0x01)
-    const firstByte = buffer[0];
-
-    if (firstByte >= 0x80) {
-      // Likely a versioned transaction
-      return VersionedTransaction.deserialize(buffer);
-    } else {
-      // Likely a legacy transaction
-      return Transaction.from(buffer);
-    }
-  } catch (e) {
-    // If detection failed, try both
+    return VersionedTransaction.deserialize(buffer);
+  } catch {
+    // Fall back to legacy Transaction
     try {
-      return VersionedTransaction.deserialize(buffer);
-    } catch {
-      try {
-        return Transaction.from(buffer);
-      } catch {
-        throw new Error(`Failed to deserialize transaction: ${e}`);
-      }
+      return Transaction.from(buffer);
+    } catch (e) {
+      throw new Error(`Failed to deserialize transaction: ${e}`);
     }
   }
 }

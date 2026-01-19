@@ -7,25 +7,16 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { Transaction, VersionedTransaction } from "@solana/web3.js";
 import type { ClaimablePosition } from "@/lib/types";
 
-// Helper to deserialize transaction - tries VersionedTransaction first, falls back to legacy
+// Helper to deserialize transaction - tries both formats
 function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
   const buffer = Buffer.from(base64, "base64");
   try {
-    const firstByte = buffer[0];
-    if (firstByte >= 0x80) {
-      return VersionedTransaction.deserialize(buffer);
-    } else {
-      return Transaction.from(buffer);
-    }
-  } catch (e) {
+    return VersionedTransaction.deserialize(buffer);
+  } catch {
     try {
-      return VersionedTransaction.deserialize(buffer);
-    } catch {
-      try {
-        return Transaction.from(buffer);
-      } catch {
-        throw new Error(`Failed to deserialize transaction: ${e}`);
-      }
+      return Transaction.from(buffer);
+    } catch (e) {
+      throw new Error(`Failed to deserialize transaction: ${e}`);
     }
   }
 }
