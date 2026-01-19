@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import type { WorldState, GameCharacter, GameBuilding } from "@/lib/types";
+import type { WorldState, GameCharacter, GameBuilding, ZoneType } from "@/lib/types";
 
 interface Animal {
   sprite: Phaser.GameObjects.Sprite;
@@ -44,6 +44,18 @@ export class WorldScene extends Phaser.Scene {
   // Announcement text object
   private announcementText: Phaser.GameObjects.Text | null = null;
   private announcementBg: Phaser.GameObjects.Rectangle | null = null;
+
+  // Zone system
+  private currentZone: ZoneType = "main_city";
+  private launchPadElements: Phaser.GameObjects.GameObject[] = [];
+  private mainCityElements: Phaser.GameObjects.GameObject[] = [];
+  private boundZoneChange: ((e: Event) => void) | null = null;
+  private zoneGround: Phaser.GameObjects.TileSprite | null = null;
+  private zonePath: Phaser.GameObjects.TileSprite | null = null;
+  private billboardTexts: Phaser.GameObjects.Text[] = [];
+  private tickerText: Phaser.GameObjects.Text | null = null;
+  private tickerOffset = 0;
+  private skylineSprites: Phaser.GameObjects.Sprite[] = [];
 
   constructor() {
     super({ key: "WorldScene" });
@@ -106,8 +118,407 @@ export class WorldScene extends Phaser.Scene {
     this.boundBotAnimal = (e: Event) => this.handleBotAnimal(e as CustomEvent);
     window.addEventListener("bagsworld-bot-animal", this.boundBotAnimal);
 
+    // Listen for zone change events
+    this.boundZoneChange = (e: Event) => this.handleZoneChange(e as CustomEvent);
+    window.addEventListener("bagsworld-zone-change", this.boundZoneChange);
+
     // Register cleanup on scene shutdown
     this.events.on("shutdown", this.cleanup, this);
+  }
+
+  private handleZoneChange(event: CustomEvent<{ zone: ZoneType }>): void {
+    const newZone = event.detail.zone;
+    if (newZone === this.currentZone) return;
+
+    // Transition to new zone
+    this.transitionToZone(newZone);
+  }
+
+  private transitionToZone(newZone: ZoneType): void {
+    // Fade out current zone
+    this.cameras.main.fade(300, 0, 0, 0, false, (camera: Phaser.Cameras.Scene2D.Camera, progress: number) => {
+      if (progress === 1) {
+        // Clear current zone elements
+        this.clearCurrentZone();
+
+        // Set up new zone
+        this.currentZone = newZone;
+        this.setupZone(newZone);
+
+        // Fade back in
+        this.cameras.main.fadeIn(300, 0, 0, 0);
+      }
+    });
+  }
+
+  private clearCurrentZone(): void {
+    // Clear zone-specific elements based on current zone
+    if (this.currentZone === "launch_pad") {
+      this.launchPadElements.forEach((el) => el.destroy());
+      this.launchPadElements = [];
+      this.billboardTexts.forEach((t) => t.destroy());
+      this.billboardTexts = [];
+      if (this.tickerText) {
+        this.tickerText.destroy();
+        this.tickerText = null;
+      }
+      this.skylineSprites.forEach((s) => s.destroy());
+      this.skylineSprites = [];
+    } else if (this.currentZone === "main_city") {
+      // Main city uses shared decorations, don't destroy them
+      // Just hide them
+      this.decorations.forEach((d) => d.setVisible(false));
+      this.animals.forEach((a) => a.sprite.setVisible(false));
+    }
+
+    // Reset ground
+    if (this.zoneGround) {
+      this.zoneGround.destroy();
+      this.zoneGround = null;
+    }
+    if (this.zonePath) {
+      this.zonePath.destroy();
+      this.zonePath = null;
+    }
+  }
+
+  private setupZone(zone: ZoneType): void {
+    switch (zone) {
+      case "launch_pad":
+        this.setupLaunchPadZone();
+        break;
+      case "whale_waters":
+        this.setupWhaleWatersZone();
+        break;
+      case "graveyard":
+        this.setupGraveyardZone();
+        break;
+      case "main_city":
+      default:
+        this.setupMainCityZone();
+        break;
+    }
+  }
+
+  private setupMainCityZone(): void {
+    // Show main city decorations
+    this.decorations.forEach((d) => d.setVisible(true));
+    this.animals.forEach((a) => a.sprite.setVisible(true));
+
+    // Reset to grass ground
+    this.ground.setTexture("grass");
+  }
+
+  private setupLaunchPadZone(): void {
+    // Change ground to concrete/urban
+    this.ground.setTexture("concrete");
+
+    // Add NYC-style skyline background
+    this.createLaunchPadSkyline();
+
+    // Add neon signs and billboards
+    this.createLaunchPadDecorations();
+
+    // Add billboards with live data displays
+    this.createLaunchPadBillboards();
+
+    // Add ticker display at bottom
+    this.createLaunchPadTicker();
+
+    // Start ticker animation
+    this.time.addEvent({
+      delay: 50,
+      callback: this.updateTicker,
+      callbackScope: this,
+      loop: true,
+    });
+  }
+
+  private setupWhaleWatersZone(): void {
+    // For now, similar to main city but with blue tint
+    this.decorations.forEach((d) => d.setVisible(true));
+    this.animals.forEach((a) => a.sprite.setVisible(true));
+    this.ground.setTexture("grass");
+  }
+
+  private setupGraveyardZone(): void {
+    // For now, similar to main city but with darker feel
+    this.decorations.forEach((d) => d.setVisible(true));
+    this.animals.forEach((a) => a.sprite.setVisible(true));
+    this.ground.setTexture("grass_dark");
+  }
+
+  private createLaunchPadSkyline(): void {
+    // Add multiple skyline sprites for NYC feel
+    const positions = [
+      { x: 80, y: 200, scale: 1.0 },
+      { x: 250, y: 200, scale: 0.9 },
+      { x: 450, y: 200, scale: 1.1 },
+      { x: 600, y: 200, scale: 0.95 },
+      { x: 750, y: 200, scale: 1.0 },
+    ];
+
+    positions.forEach((pos) => {
+      const skyline = this.add.sprite(pos.x, pos.y, "skyline_bg");
+      skyline.setOrigin(0.5, 0);
+      skyline.setScale(pos.scale);
+      skyline.setDepth(-1);
+      skyline.setAlpha(0.8);
+      this.skylineSprites.push(skyline);
+      this.launchPadElements.push(skyline);
+    });
+  }
+
+  private createLaunchPadDecorations(): void {
+    // Neon "LAUNCH" sign at top
+    const launchSign = this.add.sprite(400, 80, "neon_launch");
+    launchSign.setDepth(10);
+    this.launchPadElements.push(launchSign);
+
+    // Pulsing glow effect
+    this.tweens.add({
+      targets: launchSign,
+      alpha: 0.7,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // "NEW" signs on sides
+    const newSignLeft = this.add.sprite(120, 150, "neon_new");
+    newSignLeft.setDepth(10);
+    this.launchPadElements.push(newSignLeft);
+
+    const newSignRight = this.add.sprite(680, 150, "neon_new");
+    newSignRight.setDepth(10);
+    this.launchPadElements.push(newSignRight);
+
+    // Blinking arrows
+    const arrowLeft = this.add.sprite(50, 300, "neon_arrow");
+    arrowLeft.setDepth(10);
+    this.launchPadElements.push(arrowLeft);
+
+    const arrowRight = this.add.sprite(750, 300, "neon_arrow");
+    arrowRight.setFlipX(true);
+    arrowRight.setDepth(10);
+    this.launchPadElements.push(arrowRight);
+
+    // Blink arrows
+    this.tweens.add({
+      targets: [arrowLeft, arrowRight],
+      alpha: 0.3,
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Vertical neon tubes
+    const tubePositions = [
+      { x: 30, texture: "neon_tube_green" },
+      { x: 770, texture: "neon_tube_green" },
+      { x: 60, texture: "neon_tube_blue" },
+      { x: 740, texture: "neon_tube_blue" },
+    ];
+
+    tubePositions.forEach((pos) => {
+      const tube = this.add.sprite(pos.x, 350, pos.texture);
+      tube.setDepth(1);
+      this.launchPadElements.push(tube);
+    });
+
+    // Horizontal neon tubes
+    const horzTube1 = this.add.sprite(200, 420, "neon_tube_pink");
+    horzTube1.setDepth(1);
+    this.launchPadElements.push(horzTube1);
+
+    const horzTube2 = this.add.sprite(600, 420, "neon_tube_gold");
+    horzTube2.setDepth(1);
+    this.launchPadElements.push(horzTube2);
+
+    // Street lamps (urban style)
+    const lampPositions = [{ x: 150, y: 540 }, { x: 350, y: 540 }, { x: 550, y: 540 }];
+    lampPositions.forEach((pos) => {
+      const lamp = this.add.sprite(pos.x, pos.y, "street_lamp");
+      lamp.setOrigin(0.5, 1);
+      lamp.setDepth(3);
+      this.launchPadElements.push(lamp);
+    });
+  }
+
+  private createLaunchPadBillboards(): void {
+    // Main central billboard
+    const mainBillboard = this.add.sprite(400, 200, "billboard");
+    mainBillboard.setDepth(5);
+    this.launchPadElements.push(mainBillboard);
+
+    // Billboard content - live stats text
+    const billboardTitle = this.add.text(400, 160, "LATEST LAUNCHES", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#4ade80",
+    });
+    billboardTitle.setOrigin(0.5, 0.5);
+    billboardTitle.setDepth(6);
+    this.billboardTexts.push(billboardTitle);
+
+    // Stats display
+    const statsText = this.add.text(400, 185, "LOADING...", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#fbbf24",
+    });
+    statsText.setOrigin(0.5, 0.5);
+    statsText.setDepth(6);
+    this.billboardTexts.push(statsText);
+
+    // Volume display
+    const volumeText = this.add.text(400, 205, "24H VOL: ---", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#60a5fa",
+    });
+    volumeText.setOrigin(0.5, 0.5);
+    volumeText.setDepth(6);
+    this.billboardTexts.push(volumeText);
+
+    // Side billboards (smaller)
+    const leftBillboard = this.add.sprite(150, 280, "billboard_small");
+    leftBillboard.setDepth(5);
+    this.launchPadElements.push(leftBillboard);
+
+    const rightBillboard = this.add.sprite(650, 280, "billboard_small");
+    rightBillboard.setDepth(5);
+    this.launchPadElements.push(rightBillboard);
+
+    // Side billboard text
+    const leftText = this.add.text(150, 280, "TOP GAINER\n---", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#4ade80",
+      align: "center",
+    });
+    leftText.setOrigin(0.5, 0.5);
+    leftText.setDepth(6);
+    this.billboardTexts.push(leftText);
+
+    const rightText = this.add.text(650, 280, "NEW TOKEN\n---", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ec4899",
+      align: "center",
+    });
+    rightText.setOrigin(0.5, 0.5);
+    rightText.setDepth(6);
+    this.billboardTexts.push(rightText);
+
+    // Update billboard data periodically
+    this.time.addEvent({
+      delay: 5000,
+      callback: this.updateBillboardData,
+      callbackScope: this,
+      loop: true,
+    });
+
+    // Initial update
+    this.updateBillboardData();
+  }
+
+  private createLaunchPadTicker(): void {
+    // Ticker display bar at bottom
+    const tickerBg = this.add.sprite(400, 570, "ticker_display");
+    tickerBg.setDepth(10);
+    tickerBg.setScale(4, 1);
+    this.launchPadElements.push(tickerBg);
+
+    // Create mask for ticker text
+    const maskShape = this.make.graphics({});
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillRect(0, 560, 800, 20);
+    const mask = maskShape.createGeometryMask();
+
+    // Ticker text
+    this.tickerText = this.add.text(800, 570, this.getTickerContent(), {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#4ade80",
+    });
+    this.tickerText.setOrigin(0, 0.5);
+    this.tickerText.setDepth(11);
+    this.tickerText.setMask(mask);
+  }
+
+  private getTickerContent(): string {
+    // Generate ticker content from world state
+    const content: string[] = [
+      ">>> BAGSWORLD LAUNCH PAD <<<",
+      "NEW TOKENS LAUNCHING EVERY MINUTE",
+      "1% ECOSYSTEM FEE ON ALL TRADES",
+    ];
+
+    if (this.worldState) {
+      const buildings = this.worldState.buildings || [];
+      buildings.slice(0, 5).forEach((b) => {
+        content.push(`${b.symbol}: $${(b.marketCap || 0).toLocaleString()}`);
+      });
+    }
+
+    content.push(">>> TRADE NOW ON BAGS.FM <<<");
+
+    return content.join("   ***   ");
+  }
+
+  private updateTicker(): void {
+    if (!this.tickerText || this.currentZone !== "launch_pad") return;
+
+    this.tickerOffset -= 2;
+    this.tickerText.setX(800 + this.tickerOffset);
+
+    // Reset when fully scrolled
+    if (this.tickerOffset < -this.tickerText.width - 100) {
+      this.tickerOffset = 0;
+      this.tickerText.setText(this.getTickerContent());
+    }
+  }
+
+  private updateBillboardData(): void {
+    if (this.currentZone !== "launch_pad" || !this.worldState) return;
+
+    const buildings = this.worldState.buildings || [];
+
+    // Update main billboard stats
+    if (this.billboardTexts.length >= 3) {
+      const newLaunches = buildings.filter((b) => {
+        // Consider "new" if building ID suggests recent
+        return b.level === 1;
+      }).length;
+
+      this.billboardTexts[1].setText(`${buildings.length} ACTIVE TOKENS`);
+
+      const totalVolume = buildings.reduce((sum, b) => sum + (b.volume24h || 0), 0);
+      this.billboardTexts[2].setText(`24H VOL: $${this.formatNumber(totalVolume)}`);
+    }
+
+    // Update side billboards
+    if (this.billboardTexts.length >= 5) {
+      // Top gainer
+      const sorted = [...buildings].sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
+      if (sorted.length > 0 && sorted[0].change24h) {
+        this.billboardTexts[3].setText(`TOP GAINER\n${sorted[0].symbol}\n+${sorted[0].change24h.toFixed(1)}%`);
+      }
+
+      // Newest token (last in list typically)
+      if (buildings.length > 0) {
+        const newest = buildings[buildings.length - 1];
+        this.billboardTexts[4].setText(`NEW TOKEN\n${newest.symbol}\n$${this.formatNumber(newest.marketCap || 0)}`);
+      }
+    }
+  }
+
+  private formatNumber(num: number): string {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+    return num.toFixed(0);
   }
 
   // Cleanup method to prevent memory leaks
@@ -128,6 +539,10 @@ export class WorldScene extends Phaser.Scene {
     if (this.boundBotAnimal) {
       window.removeEventListener("bagsworld-bot-animal", this.boundBotAnimal);
       this.boundBotAnimal = null;
+    }
+    if (this.boundZoneChange) {
+      window.removeEventListener("bagsworld-zone-change", this.boundZoneChange);
+      this.boundZoneChange = null;
     }
 
     // Stop music and clean up audio context
@@ -2159,15 +2574,15 @@ export class WorldScene extends Phaser.Scene {
     nameText.setOrigin(0.5, 0.5);
 
     if (isTreasury) {
-      // Community Rewards Hub tooltip - 5% ecosystem fee breakdown
-      const descText = this.add.text(0, -12, "5% Ecosystem Fee", {
+      // Buyback & Burn Hub tooltip - threshold-based system
+      const descText = this.add.text(0, -12, "Threshold: 1 SOL", {
         fontFamily: "monospace",
         fontSize: "8px",
         color: "#4ade80",
       });
       descText.setOrigin(0.5, 0.5);
 
-      const breakdownText = this.add.text(0, 4, "50% Community | 25% Airdrops\n15% Creator Bonus | 10% Dev", {
+      const breakdownText = this.add.text(0, 4, "Hit threshold → Claim → Buy top 5 → Burn\n80% buyback | 20% operations", {
         fontFamily: "monospace",
         fontSize: "6px",
         color: "#9ca3af",
@@ -2175,7 +2590,7 @@ export class WorldScene extends Phaser.Scene {
       });
       breakdownText.setOrigin(0.5, 0.5);
 
-      const clickText = this.add.text(0, 24, "🔍 Click to verify on Solscan", {
+      const clickText = this.add.text(0, 24, "🔥 Click to verify burns on Solscan", {
         fontFamily: "monospace",
         fontSize: "7px",
         color: "#60a5fa",
