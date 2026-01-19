@@ -24,6 +24,7 @@ import { DatabaseStatus } from "@/components/DatabaseStatus";
 import { EcosystemStats } from "@/components/EcosystemStats";
 import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
+import { TestLaunchButton } from "@/components/TestLaunchButton";
 
 interface BuildingClickData {
   mint: string;
@@ -109,6 +110,7 @@ export default function Home() {
           <PartnerClaimButton />
           <ClaimButton />
           <LaunchButton />
+          <TestLaunchButton />
         </div>
 
         {/* Mobile buttons - essential actions always visible */}
