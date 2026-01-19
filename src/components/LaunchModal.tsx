@@ -758,8 +758,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 </div>
                 <div className="pt-1 border-t border-bags-gold/20">
                   <p className="font-pixel text-[6px] text-gray-400">
-                    80% buys top tokens & burns them. 20% covers operations.
-                    Top performers get automatic buy pressure.
+                    Top 3 creators by fees get rewarded. 50/30/20 split.
+                    10 SOL threshold or 5 days. Direct SOL to your wallet.
                   </p>
                 </div>
                 <a
