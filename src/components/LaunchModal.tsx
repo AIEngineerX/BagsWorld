@@ -231,21 +231,38 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       const allocatedBps = ecosystemFee.bps + userDefinedBps;
       const remainingBps = 10000 - allocatedBps;
 
-      // Build fee claimers array - include ecosystem fee only if > 0
-      const allFeeClaimers = [
-        // Ecosystem fee - supports BagsWorld development & community (skip if 0)
-        ...(ecosystemFee.bps > 0 ? [{
-          provider: ecosystemFee.provider,
-          providerUsername: ecosystemFee.providerUsername,
-          bps: ecosystemFee.bps,
-        }] : []),
-        // User-defined fee shares
-        ...validFeeShares.map(f => ({
-          provider: f.provider,
-          providerUsername: f.username.replace(/@/g, "").toLowerCase().trim(),
-          bps: f.bps,
-        })),
-      ];
+      // Build fee claimers array
+      // IMPORTANT: All usernames should be lowercase (Bags API is case-insensitive but normalized)
+      // Note: The Bags API requires wallet addresses, so usernames must have linked wallets at bags.fm/settings
+
+      // Start with user-defined fee shares
+      const userFeeClaimers = validFeeShares.map(f => ({
+        provider: f.provider,
+        providerUsername: f.username.replace(/@/g, "").toLowerCase().trim(),
+        bps: f.bps,
+      }));
+
+      // Try to include ecosystem fee if configured
+      let allFeeClaimers = [...userFeeClaimers];
+      let ecosystemFeeIncluded = false;
+
+      if (ecosystemFee.bps > 0) {
+        // Ecosystem fee is configured - add it to the list
+        // If wallet lookup fails later, the error will be shown to user
+        allFeeClaimers = [
+          {
+            provider: ecosystemFee.provider,
+            providerUsername: ecosystemFee.providerUsername.toLowerCase().trim(),
+            bps: ecosystemFee.bps,
+          },
+          ...userFeeClaimers,
+        ];
+        ecosystemFeeIncluded = true;
+      }
+
+      // Log the fee claimers being sent for debugging
+      console.log("Fee claimers being sent to API:", JSON.stringify(allFeeClaimers, null, 2));
+      console.log("Ecosystem fee included:", ecosystemFeeIncluded);
 
       // Bags.fm API requires total BPS to equal exactly 10000 (100%)
       // All fee claimers must use social providers (twitter, kick, github) - no raw wallet addresses
@@ -309,12 +326,16 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       } else {
         const feeError = await feeConfigResponse.json();
         const errorMsg = feeError.error || "Failed to configure fee sharing";
-        // Provide helpful message for wallet lookup failures
-        if (errorMsg.toLowerCase().includes("lookup") || errorMsg.toLowerCase().includes("wallet") || errorMsg.toLowerCase().includes("not found")) {
-          throw new Error(`One or more fee claimers haven't linked their wallet yet. They need to connect at bags.fm/settings first. Go back to the Fee Sharing step and check which usernames show ❌`);
-        }
-        if (errorMsg.toLowerCase().includes("could not find")) {
-          throw new Error(`Could not find wallet for one of the fee claimers. Make sure the username is correct and they've linked at bags.fm/settings`);
+        // Show the actual error from the API - it will include which username failed
+        // Common errors:
+        // - "Could not find wallet for twitter user: xyz" = user hasn't linked at bags.fm/settings
+        // - "Failed to lookup wallets for fee claimers" = bulk lookup failed
+        console.error("Fee config error:", errorMsg);
+        console.error("Fee claimers sent:", JSON.stringify(allFeeClaimers, null, 2));
+
+        // Add helpful context to the error
+        if (errorMsg.toLowerCase().includes("could not find wallet")) {
+          throw new Error(`${errorMsg}. The user needs to link their wallet at bags.fm/settings first.`);
         }
         throw new Error(errorMsg);
       }

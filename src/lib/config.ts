@@ -22,7 +22,7 @@ export const ECOSYSTEM_CONFIG = {
     wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
     // Fee percentage in basis points (100 = 1%)
-    // 1% goes to @BagsWorldApp - must be linked at bags.fm/settings
+    // 1% goes to @BagsWorldApp for ecosystem rewards
     feeBps: 100,
 
     // Autonomous agents manage the ecosystem wallet:
