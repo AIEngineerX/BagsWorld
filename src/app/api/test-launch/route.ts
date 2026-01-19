@@ -10,11 +10,30 @@ import { NextResponse } from "next/server";
 const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
 
+// Generate a simple default image (1x1 pixel PNG - green)
+function generateDefaultImage(): Blob {
+  // Minimal 1x1 green PNG
+  const pngData = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // PNG signature
+    0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1 pixels
+    0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+    0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41,
+    0x54, 0x08, 0xd7, 0x63, 0x28, 0xcf, 0x28, 0x00,
+    0x00, 0x00, 0x8d, 0x00, 0x45, 0xb5, 0xb5, 0x59,
+    0x32, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
+    0x44, 0xae, 0x42, 0x60, 0x82, // IEND chunk
+  ]);
+  return new Blob([pngData], { type: "image/png" });
+}
+
 // Simple fetch wrapper with full logging
 async function bagsApiFetch(endpoint: string, options: RequestInit = {}) {
   const url = `${BAGS_API_URL}${endpoint}`;
   console.log(`[TEST-API] Calling: ${options.method || "GET"} ${url}`);
-  console.log(`[TEST-API] Body:`, options.body);
+  if (options.body && typeof options.body === "string") {
+    console.log(`[TEST-API] Body:`, options.body);
+  }
 
   const response = await fetch(url, {
     ...options,
@@ -27,7 +46,7 @@ async function bagsApiFetch(endpoint: string, options: RequestInit = {}) {
 
   const text = await response.text();
   console.log(`[TEST-API] Response status: ${response.status}`);
-  console.log(`[TEST-API] Response body: ${text}`);
+  console.log(`[TEST-API] Response body: ${text.substring(0, 1000)}`);
 
   let json;
   try {
@@ -48,42 +67,6 @@ async function bagsApiFetch(endpoint: string, options: RequestInit = {}) {
   return json.response !== undefined ? json.response : json;
 }
 
-// FormData fetch for image upload
-async function bagsApiFormData(endpoint: string, formData: FormData) {
-  const url = `${BAGS_API_URL}${endpoint}`;
-  console.log(`[TEST-API] Calling: POST ${url} (FormData)`);
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "x-api-key": BAGS_API_KEY || "",
-      // Don't set Content-Type for FormData
-    },
-    body: formData,
-  });
-
-  const text = await response.text();
-  console.log(`[TEST-API] Response status: ${response.status}`);
-  console.log(`[TEST-API] Response body: ${text}`);
-
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error(`Invalid JSON response: ${text.substring(0, 200)}`);
-  }
-
-  if (!response.ok) {
-    throw new Error(json.error || json.response || `API error ${response.status}`);
-  }
-
-  if (json.success === false) {
-    throw new Error(json.error || json.response || "API returned success: false");
-  }
-
-  return json.response !== undefined ? json.response : json;
-}
-
 export async function POST(request: Request) {
   console.log("[TEST-API] ========== TEST LAUNCH REQUEST ==========");
 
@@ -99,23 +82,73 @@ export async function POST(request: Request) {
 
     switch (action) {
       case "create-info": {
-        // Step 1: Create token metadata
-        const { name, symbol, description } = body;
+        // Step 1: Create token metadata with image
+        const { name, symbol, description, imageDataUrl } = body;
 
         if (!name || !symbol || !description) {
           return NextResponse.json({ error: "Missing name, symbol, or description" }, { status: 400 });
         }
 
-        // Use FormData for token info (as per Bags docs)
+        // Use FormData for token info (matches working implementation)
         const formData = new FormData();
         formData.append("name", name);
         formData.append("symbol", symbol);
         formData.append("description", description);
-        // Note: No image for test - Bags API may generate a default
 
-        const result = await bagsApiFormData("/token-launch/create-token-info", formData);
+        // Add image - either from user upload or generate default
+        if (imageDataUrl && imageDataUrl.startsWith("data:")) {
+          // Convert data URL to Blob
+          const [header, base64Data] = imageDataUrl.split(",");
+          const mimeMatch = header.match(/data:([^;]+)/);
+          const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          const imageBlob = new Blob([bytes], { type: mimeType });
+          formData.append("image", imageBlob, "token-image.png");
+          console.log(`[TEST-API] Using uploaded image, size: ${imageBlob.size} bytes`);
+        } else {
+          // Generate a default image
+          const defaultImage = generateDefaultImage();
+          formData.append("image", defaultImage, "token-image.png");
+          console.log(`[TEST-API] Using default image, size: ${defaultImage.size} bytes`);
+        }
 
+        const url = `${BAGS_API_URL}/token-launch/create-token-info`;
+        console.log(`[TEST-API] Calling: POST ${url} (FormData with image)`);
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "x-api-key": BAGS_API_KEY,
+            // Don't set Content-Type for FormData - browser sets it with boundary
+          },
+          body: formData,
+        });
+
+        const text = await response.text();
+        console.log(`[TEST-API] create-token-info status: ${response.status}`);
+        console.log(`[TEST-API] create-token-info response: ${text}`);
+
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          throw new Error(`Invalid JSON: ${text.substring(0, 200)}`);
+        }
+
+        if (!response.ok || json.success === false) {
+          throw new Error(json.error || json.response || `API error ${response.status}`);
+        }
+
+        const result = json.response || json;
         console.log("[TEST-API] create-token-info result:", result);
+
+        if (!result.tokenMint || !result.tokenMetadata) {
+          throw new Error(`Missing tokenMint or tokenMetadata in response: ${JSON.stringify(result)}`);
+        }
 
         return NextResponse.json({
           tokenMint: result.tokenMint,
@@ -147,7 +180,7 @@ export async function POST(request: Request) {
         const wallet = walletResult.wallet;
         console.log(`[TEST-API] Found wallet: ${wallet}`);
 
-        // Create fee config with 100% to this wallet
+        // Create fee config with 100% to this wallet (10000 bps = 100%)
         const feeConfigBody = {
           baseMint: mint,
           payer,
@@ -163,16 +196,17 @@ export async function POST(request: Request) {
         });
 
         console.log("[TEST-API] Fee config result:", JSON.stringify(feeResult, null, 2));
-        console.log("[TEST-API] Fee config result keys:", Object.keys(feeResult));
+        console.log("[TEST-API] Fee config result type:", typeof feeResult);
+        console.log("[TEST-API] Fee config result keys:", Object.keys(feeResult || {}));
 
         // Extract configKey - try multiple possible field names
         const configKey =
-          feeResult.meteoraConfigKey ||
-          feeResult.configKey ||
-          feeResult.configId ||
-          feeResult.config_key ||
-          feeResult.config ||
-          feeResult.key ||
+          feeResult?.meteoraConfigKey ||
+          feeResult?.configKey ||
+          feeResult?.configId ||
+          feeResult?.config_key ||
+          feeResult?.config ||
+          feeResult?.key ||
           (typeof feeResult === "string" ? feeResult : null);
 
         console.log("[TEST-API] Extracted configKey:", configKey);
@@ -180,15 +214,15 @@ export async function POST(request: Request) {
         if (!configKey) {
           console.error("[TEST-API] Could not extract configKey from:", feeResult);
           return NextResponse.json({
-            error: `Fee config created but no configKey found. Response keys: ${Object.keys(feeResult).join(", ")}`,
+            error: `Fee config created but no configKey found. Response: ${JSON.stringify(feeResult)}`,
             debug: feeResult,
           }, { status: 500 });
         }
 
         return NextResponse.json({
           configKey,
-          needsCreation: feeResult.needsCreation,
-          transactions: feeResult.transactions,
+          needsCreation: feeResult?.needsCreation,
+          transactions: feeResult?.transactions,
           debug: { wallet, feeResult },
         });
       }
@@ -200,7 +234,7 @@ export async function POST(request: Request) {
         if (!ipfs || !tokenMint || !wallet || !configKey) {
           return NextResponse.json({
             error: "Missing required fields",
-            required: { ipfs, tokenMint, wallet, configKey },
+            required: { ipfs: !!ipfs, tokenMint: !!tokenMint, wallet: !!wallet, configKey: !!configKey },
           }, { status: 400 });
         }
 
@@ -220,13 +254,13 @@ export async function POST(request: Request) {
         });
 
         console.log("[TEST-API] Launch tx result type:", typeof launchResult);
-        console.log("[TEST-API] Launch tx result:", launchResult);
+        console.log("[TEST-API] Launch tx result:", typeof launchResult === "string" ? launchResult.substring(0, 200) : JSON.stringify(launchResult));
 
         // Extract transaction - could be string or object
         let transaction: string;
         if (typeof launchResult === "string") {
           transaction = launchResult;
-        } else if (launchResult.transaction) {
+        } else if (launchResult?.transaction) {
           transaction = launchResult.transaction;
         } else {
           console.error("[TEST-API] Unexpected launch result format:", launchResult);
@@ -236,19 +270,20 @@ export async function POST(request: Request) {
           }, { status: 500 });
         }
 
-        console.log("[TEST-API] Transaction length:", transaction.length);
-        console.log("[TEST-API] Transaction preview:", transaction.substring(0, 100));
+        console.log("[TEST-API] Transaction type:", typeof transaction);
+        console.log("[TEST-API] Transaction length:", transaction?.length);
+        console.log("[TEST-API] Transaction preview:", transaction?.substring(0, 100));
 
-        if (transaction.length < 100) {
+        if (!transaction || transaction.length < 100) {
           return NextResponse.json({
-            error: `Transaction too short (${transaction.length} chars)`,
-            debug: { transaction, launchResult },
+            error: `Transaction too short or empty (length: ${transaction?.length})`,
+            debug: { transaction: transaction?.substring(0, 500), launchResult },
           }, { status: 500 });
         }
 
         return NextResponse.json({
           transaction,
-          lastValidBlockHeight: launchResult.lastValidBlockHeight,
+          lastValidBlockHeight: launchResult?.lastValidBlockHeight,
         });
       }
 
