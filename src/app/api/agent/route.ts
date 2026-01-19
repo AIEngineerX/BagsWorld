@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  initAutoClaimAgent,
-  startAutoClaimAgent,
-  stopAutoClaimAgent,
-  triggerClaim,
-  getAutoClaimState,
-  updateAutoClaimConfig,
-} from "@/lib/auto-claim-agent";
-import {
-  initBuybackAgent,
-  startBuybackAgent,
-  stopBuybackAgent,
-  triggerBuyback,
-  getBuybackState,
-  updateBuybackConfig,
-} from "@/lib/buyback-agent";
+  initCreatorRewardsAgent,
+  startCreatorRewardsAgent,
+  stopCreatorRewardsAgent,
+  triggerDistribution,
+  getCreatorRewardsState,
+  updateCreatorRewardsConfig,
+  getTimeUntilDistribution,
+  type CreatorRewardsConfig,
+} from "@/lib/creator-rewards-agent";
 import {
   initScoutAgent,
   startScoutAgent,
@@ -34,23 +28,10 @@ import {
 interface AgentRequestBody {
   action:
     | "status" | "start" | "stop" | "trigger" | "config"
-    | "buyback-status" | "buyback-start" | "buyback-stop" | "buyback-trigger" | "buyback-config"
+    | "rewards-status" | "rewards-start" | "rewards-stop" | "rewards-trigger" | "rewards-config"
     | "scout-status" | "scout-start" | "scout-stop" | "scout-config" | "scout-launches" | "scout-block" | "scout-unblock";
-  config?: {
-    enabled?: boolean;
-    minClaimThresholdSol?: number;
-    checkIntervalMs?: number;
-    maxClaimsPerRun?: number;
-  };
-  buybackConfig?: {
-    enabled?: boolean;
-    intervalMs?: number;
-    buybackPercentage?: number;
-    minBuybackSol?: number;
-    maxBuybackSol?: number;
-    topTokensCount?: number;
-    burnAfterBuy?: boolean;
-  };
+  config?: Partial<CreatorRewardsConfig>;
+  rewardsConfig?: Partial<CreatorRewardsConfig>;
   scoutConfig?: Partial<ScoutConfig>;
   creatorAddress?: string;
   count?: number;
@@ -115,40 +96,29 @@ export async function POST(request: NextRequest) {
     }
 
     const body: AgentRequestBody = await request.json();
-    const { action, config, buybackConfig, scoutConfig, creatorAddress, count } = body;
+    const { action, config, rewardsConfig, scoutConfig, creatorAddress, count } = body;
 
     switch (action) {
-      // Auto-claim actions
+      // Creator Rewards actions (primary - aliased from old auto-claim names)
       case "status":
-        return handleStatus();
+      case "rewards-status":
+        return handleRewardsStatus();
 
       case "start":
-        return handleStart();
+      case "rewards-start":
+        return handleRewardsStart();
 
       case "stop":
-        return handleStop();
+      case "rewards-stop":
+        return handleRewardsStop();
 
       case "trigger":
-        return handleTrigger();
+      case "rewards-trigger":
+        return handleRewardsTrigger();
 
       case "config":
-        return handleConfig(config);
-
-      // Buyback actions
-      case "buyback-status":
-        return handleBuybackStatus();
-
-      case "buyback-start":
-        return handleBuybackStart();
-
-      case "buyback-stop":
-        return handleBuybackStop();
-
-      case "buyback-trigger":
-        return handleBuybackTrigger();
-
-      case "buyback-config":
-        return handleBuybackConfig(buybackConfig);
+      case "rewards-config":
+        return handleRewardsConfig(config || rewardsConfig);
 
       // Scout actions
       case "scout-status":
@@ -185,18 +155,24 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleStatus(): Promise<NextResponse> {
+// ============================================
+// CREATOR REWARDS HANDLERS
+// ============================================
+
+async function handleRewardsStatus(): Promise<NextResponse> {
   const walletStatus = await getAgentWalletStatus();
-  const agentState = getAutoClaimState();
+  const rewardsState = getCreatorRewardsState();
+  const timeUntil = getTimeUntilDistribution();
 
   return NextResponse.json({
     success: true,
     wallet: walletStatus,
-    agent: agentState,
+    rewards: rewardsState,
+    timeUntilDistribution: timeUntil,
   });
 }
 
-async function handleStart(): Promise<NextResponse> {
+async function handleRewardsStart(): Promise<NextResponse> {
   if (!isAgentWalletConfigured()) {
     return NextResponse.json(
       { error: "Agent wallet not configured" },
@@ -204,40 +180,40 @@ async function handleStart(): Promise<NextResponse> {
     );
   }
 
-  const initialized = initAutoClaimAgent();
+  const initialized = initCreatorRewardsAgent();
   if (!initialized) {
     return NextResponse.json(
-      { error: "Failed to initialize agent" },
+      { error: "Failed to initialize creator rewards agent" },
       { status: 500 }
     );
   }
 
-  const started = startAutoClaimAgent();
+  const started = startCreatorRewardsAgent();
   if (!started) {
     return NextResponse.json(
-      { error: "Failed to start agent" },
+      { error: "Failed to start creator rewards agent" },
       { status: 500 }
     );
   }
 
   return NextResponse.json({
     success: true,
-    message: "Auto-claim agent started",
-    state: getAutoClaimState(),
+    message: "Creator rewards agent started",
+    state: getCreatorRewardsState(),
   });
 }
 
-async function handleStop(): Promise<NextResponse> {
-  stopAutoClaimAgent();
+async function handleRewardsStop(): Promise<NextResponse> {
+  stopCreatorRewardsAgent();
 
   return NextResponse.json({
     success: true,
-    message: "Auto-claim agent stopped",
-    state: getAutoClaimState(),
+    message: "Creator rewards agent stopped",
+    state: getCreatorRewardsState(),
   });
 }
 
-async function handleTrigger(): Promise<NextResponse> {
+async function handleRewardsTrigger(): Promise<NextResponse> {
   if (!isAgentWalletConfigured()) {
     return NextResponse.json(
       { error: "Agent wallet not configured" },
@@ -245,117 +221,28 @@ async function handleTrigger(): Promise<NextResponse> {
     );
   }
 
-  const result = await triggerClaim();
+  const result = await triggerDistribution();
 
   return NextResponse.json({
     success: result.success,
     result,
-    state: getAutoClaimState(),
+    state: getCreatorRewardsState(),
   });
 }
 
-function handleConfig(
-  config?: AgentRequestBody["config"]
+function handleRewardsConfig(
+  config?: Partial<CreatorRewardsConfig>
 ): NextResponse {
   if (!config) {
     // Return current config
     return NextResponse.json({
       success: true,
-      config: getAutoClaimState().config,
+      config: getCreatorRewardsState().config,
     });
   }
 
   // Update config
-  const newConfig = updateAutoClaimConfig(config);
-
-  return NextResponse.json({
-    success: true,
-    config: newConfig,
-  });
-}
-
-// ============================================
-// BUYBACK HANDLERS
-// ============================================
-
-function handleBuybackStatus(): NextResponse {
-  const buybackState = getBuybackState();
-
-  return NextResponse.json({
-    success: true,
-    buyback: buybackState,
-  });
-}
-
-async function handleBuybackStart(): Promise<NextResponse> {
-  if (!isAgentWalletConfigured()) {
-    return NextResponse.json(
-      { error: "Agent wallet not configured" },
-      { status: 400 }
-    );
-  }
-
-  const initialized = initBuybackAgent();
-  if (!initialized) {
-    return NextResponse.json(
-      { error: "Failed to initialize buyback agent" },
-      { status: 500 }
-    );
-  }
-
-  const started = startBuybackAgent();
-  if (!started) {
-    return NextResponse.json(
-      { error: "Failed to start buyback agent" },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({
-    success: true,
-    message: "Buyback agent started (runs every 12 hours)",
-    state: getBuybackState(),
-  });
-}
-
-function handleBuybackStop(): NextResponse {
-  stopBuybackAgent();
-
-  return NextResponse.json({
-    success: true,
-    message: "Buyback agent stopped",
-    state: getBuybackState(),
-  });
-}
-
-async function handleBuybackTrigger(): Promise<NextResponse> {
-  if (!isAgentWalletConfigured()) {
-    return NextResponse.json(
-      { error: "Agent wallet not configured" },
-      { status: 400 }
-    );
-  }
-
-  const result = await triggerBuyback();
-
-  return NextResponse.json({
-    success: result.success,
-    result,
-    state: getBuybackState(),
-  });
-}
-
-function handleBuybackConfig(
-  config?: AgentRequestBody["buybackConfig"]
-): NextResponse {
-  if (!config) {
-    return NextResponse.json({
-      success: true,
-      config: getBuybackState().config,
-    });
-  }
-
-  const newConfig = updateBuybackConfig(config);
+  const newConfig = updateCreatorRewardsConfig(config);
 
   return NextResponse.json({
     success: true,
@@ -489,9 +376,9 @@ export async function GET(request: NextRequest) {
   }
 
   const walletStatus = await getAgentWalletStatus();
-  const agentState = getAutoClaimState();
-  const buybackState = getBuybackState();
+  const rewardsState = getCreatorRewardsState();
   const scoutState = getScoutState();
+  const timeUntil = getTimeUntilDistribution();
 
   return NextResponse.json({
     authenticated: true,
@@ -500,20 +387,15 @@ export async function GET(request: NextRequest) {
       publicKey: walletStatus.publicKey,
       balance: walletStatus.balance,
     },
-    autoClaim: {
-      isRunning: agentState.isRunning,
-      lastCheck: agentState.lastCheck,
-      lastClaim: agentState.lastClaim,
-      totalClaimed: agentState.totalClaimed,
-      claimCount: agentState.claimCount,
-    },
-    buyback: {
-      isRunning: buybackState.isRunning,
-      lastBuyback: buybackState.lastBuyback,
-      totalBuybacksSol: buybackState.totalBuybacksSol,
-      totalTokensBurned: buybackState.totalTokensBurned,
-      buybackCount: buybackState.buybackCount,
-      lastTokensBought: buybackState.lastTokensBought.slice(-5),
+    creatorRewards: {
+      isRunning: rewardsState.isRunning,
+      lastCheck: rewardsState.lastCheck,
+      lastDistribution: rewardsState.lastDistribution,
+      totalDistributed: rewardsState.totalDistributed,
+      distributionCount: rewardsState.distributionCount,
+      pendingPoolSol: rewardsState.pendingPoolSol,
+      topCreators: rewardsState.topCreators.slice(0, 3),
+      timeUntilDistribution: timeUntil,
     },
     scout: {
       isRunning: scoutState.isRunning,
