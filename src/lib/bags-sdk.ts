@@ -40,7 +40,7 @@ async function getSDK() {
   if (!sdkInstance) {
     const { BagsSDK } = await import("@bagsfm/bags-sdk");
     const apiKey = process.env.BAGS_API_KEY;
-    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
 
     if (!apiKey) {
       throw new Error("BAGS_API_KEY environment variable is required");

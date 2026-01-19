@@ -320,7 +320,7 @@ async function getQuickSafetyCheck(mint: string): Promise<TokenSafety> {
 
   try {
     const connection = new Connection(
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
     );
 
     const mintPubkey = new PublicKey(mint);
@@ -397,7 +397,7 @@ async function getDetailedSafetyCheck(mint: string): Promise<TokenSafety> {
 
   try {
     const connection = new Connection(
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
     );
 
     const mintPubkey = new PublicKey(mint);

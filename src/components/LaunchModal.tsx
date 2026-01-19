@@ -324,7 +324,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           }
 
           const connection = new Connection(
-            process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+            process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
           );
 
           for (let i = 0; i < feeResult.transactions.length; i++) {
@@ -426,7 +426,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         // Send to blockchain
         const connection = new Connection(
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
         );
 
         const txid = await connection.sendRawTransaction(signedTx.serialize(), {

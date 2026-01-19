@@ -20,7 +20,7 @@ export interface AgentWalletStatus {
 // Initialize the agent wallet from environment
 export function initAgentWallet(): Keypair | null {
   const privateKey = process.env.AGENT_WALLET_PRIVATE_KEY;
-  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
 
   if (!privateKey) {
     console.warn("AGENT_WALLET_PRIVATE_KEY not set - autonomous operations disabled");
@@ -52,7 +52,7 @@ export function getAgentWallet(): Keypair | null {
 // Get the connection
 export function getAgentConnection(): Connection {
   if (!connection) {
-    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
     connection = new Connection(rpcUrl, "confirmed");
   }
   return connection;

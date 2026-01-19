@@ -194,7 +194,7 @@ export function TestLaunchButton() {
         }
 
         const connection = new Connection(
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
         );
 
         for (let i = 0; i < feeTransactions.length; i++) {
@@ -264,7 +264,7 @@ export function TestLaunchButton() {
       addLog("Broadcasting transaction...");
 
       const connection = new Connection(
-        process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+        process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
       );
 
       const txid = await connection.sendRawTransaction(signedLaunchTx.serialize(), {

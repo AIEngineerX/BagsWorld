@@ -54,7 +54,7 @@ async function getBagsSDK(): Promise<any | null> {
       const { BagsSDK } = await import("@bagsfm/bags-sdk");
       const rpcUrl =
         process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-        "https://api.mainnet-beta.solana.com";
+        "https://rpc.ankr.com/solana";
       const connection = new Connection(rpcUrl, "confirmed");
       sdkInstance = new BagsSDK(
         process.env.BAGS_API_KEY!,
