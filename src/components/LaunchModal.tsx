@@ -6,18 +6,38 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
 
 // Helper to deserialize transaction - tries both formats
-function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
+function deserializeTransaction(base64: string, context: string = "transaction"): VersionedTransaction | Transaction {
+  console.log(`Deserializing ${context}:`, {
+    inputType: typeof base64,
+    inputLength: base64?.length,
+    preview: base64?.substring(0, 50) + "...",
+  });
+
+  if (!base64 || typeof base64 !== "string") {
+    throw new Error(`Invalid ${context}: expected base64 string, got ${typeof base64}`);
+  }
+
+  if (base64.length < 100) {
+    throw new Error(`Invalid ${context}: too short (${base64.length} chars), likely empty or error response`);
+  }
+
   const buffer = Buffer.from(base64, "base64");
+  console.log(`${context} buffer size:`, buffer.length, "bytes");
 
   // Try VersionedTransaction first (more common with modern APIs)
   try {
     return VersionedTransaction.deserialize(buffer);
-  } catch {
+  } catch (versionedError) {
     // Fall back to legacy Transaction
     try {
       return Transaction.from(buffer);
-    } catch (e) {
-      throw new Error(`Failed to deserialize transaction: ${e}`);
+    } catch (legacyError) {
+      console.error(`${context} deserialization failed:`, {
+        versionedError,
+        legacyError,
+        bufferSize: buffer.length,
+      });
+      throw new Error(`Failed to deserialize ${context}: buffer size ${buffer.length} bytes. This may indicate the Bags API returned an invalid transaction.`);
     }
   }
 }
@@ -294,7 +314,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             setLaunchStatus(`Signing fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
 
             // Decode and sign the transaction (handles both versioned and legacy formats)
-            const transaction = deserializeTransaction(txData.transaction);
+            const transaction = deserializeTransaction(txData.transaction, `fee-config-tx-${i + 1}`);
             const signedTx = await signTransaction(transaction);
 
             setLaunchStatus(`Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
@@ -379,7 +399,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         setLaunchStatus("Please sign the transaction in your wallet...");
 
         // Decode transaction (handles both versioned and legacy formats)
-        const transaction = deserializeTransaction(txBase64);
+        const transaction = deserializeTransaction(txBase64, "launch-transaction");
 
         // Sign transaction
         const signedTx = await signTransaction(transaction);
