@@ -32,7 +32,7 @@
   for = "/*"
   [headers.values]
     # Content Security Policy
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.solana.com https://*.bags.fm https://*.supabase.co wss://*.solana.com; font-src 'self' data:;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.solana.com https://*.bags.fm https://*.supabase.co https://rpc.ankr.com https://*.helius-rpc.com wss://*.solana.com; font-src 'self' data:;"
     # Strict Transport Security
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
@@ -40,7 +40,7 @@
 # REQUIRED: Set these in Netlify Dashboard > Site Settings > Environment Variables
 # ============================================================================
 # BAGS_API_KEY          - Your Bags.fm API key (get from Bags.fm)
-# NEXT_PUBLIC_SOLANA_RPC_URL - Solana RPC (e.g., https://api.mainnet-beta.solana.com)
+# NEXT_PUBLIC_SOLANA_RPC_URL - Solana RPC (defaults to Ankr if not set; recommended: Helius)
 #
 # OPTIONAL:
 # ANTHROPIC_API_KEY     - Enables AI-powered chat (Claude)
