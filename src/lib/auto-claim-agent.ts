@@ -1,4 +1,5 @@
-// Auto Fee Claim Agent - Autonomous fee claiming service
+// Auto Fee Claim Agent - Threshold-based fee claiming with instant buyback
+// Claims fees when threshold (1 SOL) is reached, then immediately buys back & burns top 5 tokens
 import { BagsApiClient } from "./bags-api";
 import {
   getAgentWallet,
@@ -8,15 +9,17 @@ import {
   isAgentWalletConfigured,
 } from "./agent-wallet";
 import type { ClaimablePosition } from "./types";
+import { triggerBuyback, initBuybackAgent } from "./buyback-agent";
 
 // Agent configuration
 export interface AutoClaimConfig {
   enabled: boolean;
-  minClaimThresholdSol: number; // Minimum SOL to trigger auto-claim
-  checkIntervalMs: number; // How often to check (default: 5 minutes)
+  claimThresholdSol: number; // Threshold to trigger claim+buyback (default: 1 SOL)
+  checkIntervalMs: number; // How often to check (default: 15 minutes)
   maxClaimsPerRun: number; // Limit claims per execution
   minWalletBalanceSol: number; // Minimum wallet balance needed for tx fees
-  cooldownMs: number; // Cooldown between claims
+  dustFilterSol: number; // Ignore positions below this amount
+  autoBuybackEnabled: boolean; // Trigger buyback immediately after claim
 }
 
 // Agent state
@@ -26,6 +29,7 @@ export interface AutoClaimState {
   lastClaim: number;
   totalClaimed: number;
   claimCount: number;
+  pendingClaimableSol: number; // Current claimable amount being tracked
   errors: string[];
   pendingPositions: ClaimablePosition[];
 }
@@ -37,16 +41,24 @@ export interface ClaimResult {
   totalSolClaimed: number;
   signatures: string[];
   errors: string[];
+  buybackTriggered: boolean;
+  buybackResult?: {
+    tokensBoughtBack: number;
+    totalSolSpent: number;
+    totalTokensBurned: number;
+  };
 }
 
-// Default configuration
+// Default configuration - Threshold-based claiming
+// Only claims when 1+ SOL is available, then immediately triggers buyback
 const DEFAULT_CONFIG: AutoClaimConfig = {
   enabled: true,
-  minClaimThresholdSol: 0.01, // Claim when 0.01+ SOL available
-  checkIntervalMs: 5 * 60 * 1000, // 5 minutes
-  maxClaimsPerRun: 10,
+  claimThresholdSol: 1.0, // Only claim when 1+ SOL accumulated (threshold-based)
+  checkIntervalMs: 15 * 60 * 1000, // Check every 15 minutes
+  maxClaimsPerRun: 20, // Batch more claims per run
   minWalletBalanceSol: 0.005, // Need at least 0.005 SOL for fees
-  cooldownMs: 60 * 1000, // 1 minute cooldown between claims
+  dustFilterSol: 0.01, // Ignore positions below 0.01 SOL
+  autoBuybackEnabled: true, // Trigger buyback immediately after claim
 };
 
 // Agent state (in-memory, could be persisted to DB)
@@ -56,6 +68,7 @@ let agentState: AutoClaimState = {
   lastClaim: 0,
   totalClaimed: 0,
   claimCount: 0,
+  pendingClaimableSol: 0,
   errors: [],
   pendingPositions: [],
 };
@@ -83,8 +96,9 @@ export function initAutoClaimAgent(config?: Partial<AutoClaimConfig>): boolean {
 
   console.log("Auto-claim agent initialized:", {
     wallet: getAgentPublicKey(),
-    threshold: agentConfig.minClaimThresholdSol,
-    interval: agentConfig.checkIntervalMs,
+    threshold: `${agentConfig.claimThresholdSol} SOL`,
+    interval: `${agentConfig.checkIntervalMs / 60000} min`,
+    autoBuyback: agentConfig.autoBuybackEnabled,
   });
 
   return true;
@@ -125,7 +139,8 @@ export function stopAutoClaimAgent(): void {
   console.log("Auto-claim agent stopped");
 }
 
-// Main check and claim routine
+// Main check and claim routine - THRESHOLD-BASED
+// Only claims when accumulated fees >= 1 SOL, then triggers instant buyback
 export async function runAutoClaimCheck(): Promise<ClaimResult> {
   const result: ClaimResult = {
     success: false,
@@ -133,6 +148,7 @@ export async function runAutoClaimCheck(): Promise<ClaimResult> {
     totalSolClaimed: 0,
     signatures: [],
     errors: [],
+    buybackTriggered: false,
   };
 
   try {
@@ -157,52 +173,47 @@ export async function runAutoClaimCheck(): Promise<ClaimResult> {
       return result;
     }
 
-    // Check cooldown
-    const timeSinceLastClaim = Date.now() - agentState.lastClaim;
-    if (timeSinceLastClaim < agentConfig.cooldownMs) {
-      console.log(`Cooldown active: ${Math.round((agentConfig.cooldownMs - timeSinceLastClaim) / 1000)}s remaining`);
-      return result;
-    }
-
     // Fetch claimable positions
-    console.log(`Checking claimable positions for ${walletAddress}...`);
+    console.log(`[Threshold Check] Checking claimable positions for ${walletAddress}...`);
     const positions = await bagsApi.getClaimablePositions(walletAddress);
 
     if (!positions || positions.length === 0) {
-      console.log("No claimable positions found");
+      console.log("[Threshold Check] No claimable positions found");
+      agentState.pendingClaimableSol = 0;
       result.success = true;
       return result;
     }
 
-    agentState.pendingPositions = positions;
+    // Filter out dust and calculate total claimable
+    const validPositions = positions.filter(
+      (p) => p.claimableDisplayAmount >= agentConfig.dustFilterSol
+    );
 
-    // Calculate total claimable
-    const totalClaimable = positions.reduce(
+    const totalClaimable = validPositions.reduce(
       (sum, p) => sum + p.claimableDisplayAmount,
       0
     );
 
-    console.log(`Found ${positions.length} positions with ${totalClaimable.toFixed(4)} SOL claimable`);
+    agentState.pendingPositions = validPositions;
+    agentState.pendingClaimableSol = totalClaimable;
 
-    // Check threshold
-    if (totalClaimable < agentConfig.minClaimThresholdSol) {
-      console.log(`Below threshold: ${totalClaimable} < ${agentConfig.minClaimThresholdSol}`);
+    console.log(`[Threshold Check] ${validPositions.length} positions with ${totalClaimable.toFixed(4)} SOL claimable (threshold: ${agentConfig.claimThresholdSol} SOL)`);
+
+    // THRESHOLD CHECK - Only claim when we hit the threshold
+    if (totalClaimable < agentConfig.claimThresholdSol) {
+      console.log(`[Threshold Check] Below threshold: ${totalClaimable.toFixed(4)} < ${agentConfig.claimThresholdSol} SOL - waiting for more fees to accumulate`);
       result.success = true;
       return result;
     }
 
-    // Filter positions above individual thresholds and limit
-    const positionsToClaim = positions
-      .filter((p) => p.claimableDisplayAmount > 0.001) // Ignore dust
-      .slice(0, agentConfig.maxClaimsPerRun);
+    // THRESHOLD MET - Proceed with claim
+    console.log(`[Threshold Check] THRESHOLD MET! ${totalClaimable.toFixed(4)} SOL >= ${agentConfig.claimThresholdSol} SOL - initiating claim + buyback`);
 
-    if (positionsToClaim.length === 0) {
-      result.success = true;
-      return result;
-    }
+    // Limit positions per run
+    const positionsToClaim = validPositions.slice(0, agentConfig.maxClaimsPerRun);
 
     // Generate claim transactions
-    console.log(`Generating claim transactions for ${positionsToClaim.length} positions...`);
+    console.log(`[Claim] Generating claim transactions for ${positionsToClaim.length} positions...`);
     const virtualPools = positionsToClaim.map((p) => p.virtualPool);
 
     const txResult = await bagsApi.generateClaimTransactions(walletAddress, virtualPools);
@@ -214,15 +225,15 @@ export async function runAutoClaimCheck(): Promise<ClaimResult> {
     // Execute each transaction
     for (const txBase64 of txResult.transactions) {
       try {
-        console.log("Signing and sending claim transaction...");
+        console.log("[Claim] Signing and sending claim transaction...");
         const signature = await signAndSendBase64Transaction(txBase64);
 
         result.signatures.push(signature);
         result.positionsClaimed++;
-        console.log(`Claim tx confirmed: ${signature}`);
+        console.log(`[Claim] Tx confirmed: ${signature}`);
       } catch (txError: any) {
         const errorMsg = txError.message || "Transaction failed";
-        console.error("Claim transaction error:", errorMsg);
+        console.error("[Claim] Transaction error:", errorMsg);
         result.errors.push(errorMsg);
         // Continue with other transactions
       }
@@ -240,14 +251,47 @@ export async function runAutoClaimCheck(): Promise<ClaimResult> {
       agentState.lastClaim = Date.now();
       agentState.totalClaimed += claimedAmount;
       agentState.claimCount += result.positionsClaimed;
+      agentState.pendingClaimableSol = 0; // Reset after claim
 
-      console.log(`Successfully claimed ${claimedAmount.toFixed(4)} SOL from ${result.positionsClaimed} positions`);
+      console.log(`[Claim] Successfully claimed ${claimedAmount.toFixed(4)} SOL from ${result.positionsClaimed} positions`);
+
+      // INSTANT BUYBACK - Trigger buyback immediately after successful claim
+      if (agentConfig.autoBuybackEnabled && claimedAmount >= agentConfig.claimThresholdSol * 0.5) {
+        console.log(`[Buyback] Triggering instant buyback with ${claimedAmount.toFixed(4)} SOL...`);
+
+        try {
+          // Initialize buyback agent if needed
+          initBuybackAgent();
+
+          // Small delay to let claim tx settle
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
+          // Trigger the buyback
+          const buybackResult = await triggerBuyback();
+
+          if (buybackResult.success) {
+            result.buybackTriggered = true;
+            result.buybackResult = {
+              tokensBoughtBack: buybackResult.tokensBoughtBack,
+              totalSolSpent: buybackResult.totalSolSpent,
+              totalTokensBurned: buybackResult.totalTokensBurned,
+            };
+            console.log(`[Buyback] Complete! Bought ${buybackResult.tokensBoughtBack} tokens, spent ${buybackResult.totalSolSpent.toFixed(4)} SOL, burned ${buybackResult.totalTokensBurned}`);
+          } else {
+            console.warn("[Buyback] Completed with errors:", buybackResult.errors);
+            result.errors.push(...buybackResult.errors);
+          }
+        } catch (buybackError: any) {
+          console.error("[Buyback] Error:", buybackError.message);
+          result.errors.push(`Buyback error: ${buybackError.message}`);
+        }
+      }
     }
 
     return result;
   } catch (error: any) {
     const errorMsg = error.message || "Unknown error";
-    console.error("Auto-claim error:", errorMsg);
+    console.error("[Auto-claim] Error:", errorMsg);
     result.errors.push(errorMsg);
     agentState.errors.push(`${new Date().toISOString()}: ${errorMsg}`);
 
@@ -297,6 +341,7 @@ export function resetAutoClaimState(): void {
     lastClaim: 0,
     totalClaimed: 0,
     claimCount: 0,
+    pendingClaimableSol: 0,
     errors: [],
     pendingPositions: [],
   };

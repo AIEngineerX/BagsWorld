@@ -12,6 +12,7 @@ import type {
 } from "@/lib/types";
 import { buildWorldState } from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
 
 // Bags SDK types
 interface TokenLaunchCreator {
@@ -89,8 +90,83 @@ const TOKEN_CACHE_DURATION = 30 * 1000; // 30 seconds (faster refresh for launch
 const EARNER_CACHE_DURATION = 60 * 1000; // 1 minute
 const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const CLAIM_EVENTS_CACHE_DURATION = 15 * 1000; // 15 seconds
+const PRICE_CACHE_DURATION = 60 * 1000; // 60 seconds for DexScreener rate limits
 
 let previousState: WorldState | null = null;
+
+// Price cache for DexScreener data
+interface PriceData {
+  price: number;
+  marketCap: number;
+  volume24h: number;
+  change24h: number;
+  liquidity: number;
+}
+let priceCache: DataCache<Map<string, PriceData>> | null = null;
+
+// Fetch real prices from DexScreener for all token mints
+async function fetchTokenPrices(mints: string[]): Promise<Map<string, PriceData>> {
+  // Filter out placeholder/permanent building mints (they start with "Treasury" or "Starter")
+  const realMints = mints.filter(
+    (m) => !m.startsWith("Treasury") && !m.startsWith("Starter")
+  );
+
+  if (realMints.length === 0) {
+    return new Map();
+  }
+
+  // Check cache first
+  const now = Date.now();
+  if (priceCache && now - priceCache.timestamp < PRICE_CACHE_DURATION) {
+    return priceCache.data;
+  }
+
+  try {
+    console.log(`Fetching DexScreener prices for ${realMints.length} tokens...`);
+    const pairs = await getTokensByMints(realMints);
+
+    // Build price map - use the most liquid pair for each token
+    const priceMap = new Map<string, PriceData>();
+    const pairsByMint = new Map<string, DexPair[]>();
+
+    // Group pairs by base token mint
+    for (const pair of pairs) {
+      if (!pair?.baseToken?.address) continue;
+      const mint = pair.baseToken.address;
+      if (!pairsByMint.has(mint)) {
+        pairsByMint.set(mint, []);
+      }
+      pairsByMint.get(mint)!.push(pair);
+    }
+
+    // Select the most liquid pair for each token
+    for (const [mint, tokenPairs] of pairsByMint) {
+      const bestPair = tokenPairs.reduce((best, current) => {
+        const currentLiquidity = current.liquidity?.usd || 0;
+        const bestLiquidity = best.liquidity?.usd || 0;
+        return currentLiquidity > bestLiquidity ? current : best;
+      });
+
+      priceMap.set(mint, {
+        price: parseFloat(bestPair.priceUsd) || 0,
+        marketCap: bestPair.marketCap || bestPair.fdv || 0,
+        volume24h: bestPair.volume?.h24 || 0,
+        change24h: bestPair.priceChange?.h24 || 0,
+        liquidity: bestPair.liquidity?.usd || 0,
+      });
+    }
+
+    console.log(`DexScreener: Got prices for ${priceMap.size}/${realMints.length} tokens`);
+
+    // Update cache
+    priceCache = { data: priceMap, timestamp: now };
+    return priceMap;
+  } catch (error) {
+    console.error("Error fetching DexScreener prices:", error);
+    // Return cached data if available, even if stale
+    return priceCache?.data || new Map();
+  }
+}
 
 // Fetch real Washington DC weather directly from Open-Meteo
 async function fetchDCWeather(): Promise<WorldState["weather"]> {
@@ -289,7 +365,7 @@ async function enrichTokenWithSDK(
   }
 
   // Build TokenInfo
-  // Note: Market cap requires price feed integration - showing 0 for now
+  // Market cap, price, volume, change will be filled in by DexScreener data later
   // For permanent buildings (Treasury, PokeCenter), show max level
   const isPermanentBuilding = token.mint.startsWith("Treasury") || token.mint.startsWith("Starter");
 
@@ -298,10 +374,10 @@ async function enrichTokenWithSDK(
     name: token.name,
     symbol: token.symbol,
     imageUrl: token.imageUrl,
-    price: 0,
-    marketCap: isPermanentBuilding ? 50_000_000 : (lifetimeFees > 0 ? lifetimeFees * 100 : 0), // Permanent buildings = L5, others based on fees or 0
-    volume24h: lifetimeFees > 0 ? lifetimeFees * 10 : 0,
-    change24h: 0,
+    price: 0, // Filled by DexScreener
+    marketCap: isPermanentBuilding ? 50_000_000 : 0, // Filled by DexScreener for real tokens
+    volume24h: 0, // Filled by DexScreener
+    change24h: 0, // Filled by DexScreener
     holders: 0,
     lifetimeFees,
     creator: token.creator,
@@ -310,16 +386,16 @@ async function enrichTokenWithSDK(
   return { tokenInfo, creators, claimEvents, claimEvents24h };
 }
 
-// Community Rewards wallet - always visible for transparency
+// Ecosystem rewards wallet - always visible for transparency
 const TREASURY_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC";
 
-// Community Rewards Hub - ALWAYS appears in the world (permanent landmark)
-// Links to Solscan so users can verify where community rewards come from
+// Creator Rewards Hub - ALWAYS appears in the world (permanent landmark)
+// Links to Solscan so users can verify the creator rewards system
 const TREASURY_BUILDING: RegisteredToken = {
   mint: "TreasuryBagsWorld1111111111111111111111111111",
-  name: "Community Rewards Hub",
+  name: "Creator Rewards Hub",
   symbol: "REWARDS",
-  description: "Where fees become rewards - distributed to the strongest communities. Click to verify on Solscan!",
+  description: "Top 3 creators get paid. 10 SOL threshold or 5 days. 50/30/20 split. Click to verify on Solscan!",
   imageUrl: "/assets/buildings/treasury.png",
   creator: TREASURY_WALLET,
   createdAt: Date.now() - 86400000 * 365, // 1 year ago (always been here)
@@ -421,6 +497,22 @@ export async function POST(request: NextRequest) {
       .flatMap((r) => r.claimEvents)
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 20);
+
+    // Fetch REAL prices from DexScreener and merge into tokens
+    const allMints = tokens.map((t) => t.mint);
+    const priceData = await fetchTokenPrices(allMints);
+
+    // Merge real price data into tokens
+    for (const token of tokens) {
+      const prices = priceData.get(token.mint);
+      if (prices) {
+        token.price = prices.price;
+        token.marketCap = prices.marketCap;
+        token.volume24h = prices.volume24h;
+        token.change24h = prices.change24h;
+        console.log(`${token.symbol}: Real market cap = $${prices.marketCap.toLocaleString()}`);
+      }
+    }
 
     // Aggregate all 24h claim events and calculate earnings per wallet
     const allClaimEvents24h: ClaimEvent[] = enrichedResults.flatMap((r) => r.claimEvents24h);

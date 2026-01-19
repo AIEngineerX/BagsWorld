@@ -2,12 +2,42 @@
 
 import { useState, useEffect } from "react";
 
+interface CreatorRanking {
+  wallet: string;
+  tokenSymbol: string;
+  feesGenerated: number;
+  rank: number;
+}
+
 interface EcosystemStatsData {
-  totalClaimed: number;
-  totalBuybacksSol: number;
-  totalTokensBurned: number;
-  lastBuyback: number;
-  buybackCount: number;
+  // Reward pool stats
+  pendingPoolSol: number;
+  thresholdSol: number;
+  minimumDistributionSol: number;
+
+  // Timer stats
+  cycleStartTime: number;
+  backupTimerDays: number;
+
+  // Distribution stats
+  totalDistributed: number;
+  distributionCount: number;
+  lastDistribution: number;
+
+  // Top creators
+  topCreators: CreatorRanking[];
+
+  // Recent distributions
+  recentDistributions: Array<{
+    timestamp: number;
+    totalDistributed: number;
+    recipients: Array<{
+      wallet: string;
+      tokenSymbol: string;
+      amount: number;
+      rank: number;
+    }>;
+  }>;
 }
 
 export function EcosystemStats() {
@@ -28,9 +58,23 @@ export function EcosystemStats() {
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 5 * 60 * 1000);
+    const interval = setInterval(fetchStats, 60 * 1000); // Update every minute
     return () => clearInterval(interval);
   }, []);
+
+  const formatTimeRemaining = (cycleStartTime: number, backupTimerDays: number) => {
+    const backupTimerMs = backupTimerDays * 24 * 60 * 60 * 1000;
+    const elapsed = Date.now() - cycleStartTime;
+    const remaining = backupTimerMs - elapsed;
+
+    if (remaining <= 0) return "Ready";
+
+    const days = Math.floor(remaining / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+
+    if (days > 0) return `${days}d ${hours}h`;
+    return `${hours}h`;
+  };
 
   const formatTimeAgo = (timestamp: number) => {
     if (!timestamp) return "Never";
@@ -39,6 +83,16 @@ export function EcosystemStats() {
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
+  };
+
+  const truncateWallet = (wallet: string) => {
+    if (!wallet) return "Unknown";
+    return `${wallet.slice(0, 4)}...${wallet.slice(-4)}`;
+  };
+
+  const getProgressPercentage = () => {
+    if (!stats) return 0;
+    return Math.min(100, (stats.pendingPoolSol / stats.thresholdSol) * 100);
   };
 
   if (!stats) {
@@ -50,19 +104,20 @@ export function EcosystemStats() {
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="text-gray-400 hover:text-bags-green transition-colors"
-        title="Buyback Stats - Click for details"
+        title="Creator Rewards - Click for details"
       >
-        BUYBACKS:{" "}
-        <span className="text-bags-green">{stats.totalBuybacksSol.toFixed(2)} SOL</span>
+        POOL:{" "}
+        <span className="text-bags-green">{stats.pendingPoolSol.toFixed(2)}</span>
+        <span className="text-gray-500">/{stats.thresholdSol} SOL</span>
         {" | "}
-        BURNED:{" "}
-        <span className="text-bags-gold">{stats.totalTokensBurned}</span>
+        DISTRIBUTED:{" "}
+        <span className="text-bags-gold">{stats.totalDistributed.toFixed(2)} SOL</span>
       </button>
 
       {isExpanded && (
-        <div className="absolute bottom-8 left-0 bg-bags-dark border-2 border-bags-green p-3 min-w-64 z-50 shadow-lg">
+        <div className="absolute bottom-8 left-0 bg-bags-dark border-2 border-bags-green p-3 min-w-72 z-50 shadow-lg">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="font-pixel text-xs text-bags-green">BUYBACK STATS</h3>
+            <h3 className="font-pixel text-xs text-bags-green">CREATOR REWARDS</h3>
             <button
               onClick={() => setIsExpanded(false)}
               className="text-gray-500 hover:text-white"
@@ -71,32 +126,70 @@ export function EcosystemStats() {
             </button>
           </div>
 
-          <div className="space-y-1 font-pixel text-[10px]">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Total Buybacks:</span>
-              <span className="text-bags-green">{stats.totalBuybacksSol.toFixed(4)} SOL</span>
+          {/* Progress Bar */}
+          <div className="mb-3">
+            <div className="flex justify-between text-[8px] font-pixel text-gray-400 mb-1">
+              <span>Pool Progress</span>
+              <span>{stats.pendingPoolSol.toFixed(2)} / {stats.thresholdSol} SOL</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Tokens Burned:</span>
-              <span className="text-bags-gold">{stats.totalTokensBurned}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Buyback Cycles:</span>
-              <span className="text-white">{stats.buybackCount}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Last Buyback:</span>
-              <span className="text-white">{formatTimeAgo(stats.lastBuyback)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Fees Collected:</span>
-              <span className="text-white">{stats.totalClaimed.toFixed(4)} SOL</span>
+            <div className="h-2 bg-gray-800 rounded overflow-hidden">
+              <div
+                className="h-full bg-bags-green transition-all duration-500"
+                style={{ width: `${getProgressPercentage()}%` }}
+              />
             </div>
           </div>
 
+          <div className="space-y-1 font-pixel text-[10px]">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Timer:</span>
+              <span className="text-white">
+                {formatTimeRemaining(stats.cycleStartTime, stats.backupTimerDays)}
+                {" "}(min {stats.minimumDistributionSol} SOL)
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Total Distributed:</span>
+              <span className="text-bags-gold">{stats.totalDistributed.toFixed(4)} SOL</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Distributions:</span>
+              <span className="text-white">{stats.distributionCount}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Last Distribution:</span>
+              <span className="text-white">{formatTimeAgo(stats.lastDistribution)}</span>
+            </div>
+          </div>
+
+          {/* Top Creators */}
+          {stats.topCreators && stats.topCreators.length > 0 && (
+            <div className="mt-3 pt-2 border-t border-gray-700">
+              <h4 className="font-pixel text-[9px] text-gray-400 mb-1">CURRENT TOP 3</h4>
+              <div className="space-y-1">
+                {stats.topCreators.slice(0, 3).map((creator, index) => (
+                  <div key={creator.wallet} className="flex justify-between font-pixel text-[9px]">
+                    <span className={
+                      index === 0 ? "text-bags-gold" :
+                      index === 1 ? "text-gray-300" :
+                      "text-amber-600"
+                    }>
+                      #{index + 1} ${creator.tokenSymbol}
+                    </span>
+                    <span className="text-gray-400">
+                      {truncateWallet(creator.wallet)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Distribution Split Info */}
           <div className="mt-3 pt-2 border-t border-gray-700">
             <p className="font-pixel text-[8px] text-gray-500">
-              1% fee funds buybacks every 12h. Top 5 tokens bought & burned.
+              Distribution: 50% / 30% / 20% to top 3 creators by fees generated.
+              Triggers at {stats.thresholdSol} SOL or {stats.backupTimerDays} days.
             </p>
           </div>
         </div>

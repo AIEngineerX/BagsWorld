@@ -77,6 +77,91 @@ async function fetchTokenInfo(mint: string): Promise<string> {
   }
 }
 
+// Extract action buttons based on AI response and context
+function extractActions(
+  response: string,
+  characterId: string,
+  tokenMint?: string,
+  tokenSymbol?: string,
+  tokenName?: string
+): AIAction[] {
+  const actions: AIAction[] = [];
+
+  // For Neo: Add trade button when discussing specific tokens
+  if (characterId === "neo" && tokenMint) {
+    actions.push({
+      type: "trade",
+      label: `Trade $${tokenSymbol || "TOKEN"}`,
+      data: {
+        mint: tokenMint,
+        symbol: tokenSymbol,
+        name: tokenName,
+      },
+    });
+
+    actions.push({
+      type: "link",
+      label: "View on Bags.fm",
+      data: {
+        url: `https://bags.fm/token/${tokenMint}`,
+      },
+    });
+  }
+
+  // For Ash: Add launch/claim buttons when explaining features
+  if (characterId === "ash") {
+    const lowerResponse = response.toLowerCase();
+    if (lowerResponse.includes("launch") || lowerResponse.includes("building") || lowerResponse.includes("token")) {
+      actions.push({
+        type: "launch",
+        label: "Launch Token",
+        data: {},
+      });
+    }
+    if (lowerResponse.includes("fee") || lowerResponse.includes("claim") || lowerResponse.includes("earn")) {
+      actions.push({
+        type: "claim",
+        label: "Claim Fees",
+        data: {},
+      });
+    }
+  }
+
+  // For Finn: Launch button for platform talk
+  if (characterId === "finn") {
+    const lowerResponse = response.toLowerCase();
+    if (lowerResponse.includes("launch") || lowerResponse.includes("token") || lowerResponse.includes("create")) {
+      actions.push({
+        type: "launch",
+        label: "Launch on Bags.fm",
+        data: {},
+      });
+    }
+  }
+
+  // For Ghost: Claim button when discussing fees
+  if (characterId === "ghost" || characterId === "dev") {
+    const lowerResponse = response.toLowerCase();
+    if (lowerResponse.includes("claim") || lowerResponse.includes("fee") || lowerResponse.includes("buyback")) {
+      actions.push({
+        type: "claim",
+        label: "View Claims",
+        data: {},
+      });
+      actions.push({
+        type: "link",
+        label: "Verify on Solscan",
+        data: {
+          url: "https://solscan.io/account/9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
+        },
+      });
+    }
+  }
+
+  // Limit to 3 actions max
+  return actions.slice(0, 3);
+}
+
 // Check if message is asking about launches/tokens/data
 function needsRealData(message: string, characterId: string): { launches: boolean; tokenMint?: string } {
   if (characterId !== "neo") return { launches: false };
@@ -111,14 +196,28 @@ interface AgentChatRequest {
   chatHistory?: Array<{ role: string; content: string }>;
 }
 
+// Action types for AI responses
+export type AIActionType = "trade" | "launch" | "claim" | "link" | "effect" | "animal" | "data";
+
+export interface AIAction {
+  type: AIActionType;
+  label: string;
+  data: {
+    mint?: string;
+    symbol?: string;
+    name?: string;
+    url?: string;
+    effectType?: string;
+    animalType?: string;
+    animalAction?: string;
+  };
+}
+
 interface AgentChatResponse {
   message: string;
   characterId: string;
   characterName: string;
-  actions?: Array<{
-    type: "effect" | "animal" | "data" | "link";
-    data: Record<string, unknown>;
-  }>;
+  actions?: AIAction[];
 }
 
 export async function POST(request: Request) {
@@ -156,11 +255,13 @@ export async function POST(request: Request) {
       if (intent.action === "pet" || intent.action === "scare" || intent.action === "call" || intent.action === "feed") {
         actions.push({
           type: "animal",
+          label: `${intent.action} ${intent.target?.name || "animal"}`,
           data: { animalType: intent.target?.name || "dog", animalAction: intent.action }
         });
       } else if (intent.action === "effect") {
         actions.push({
           type: "effect",
+          label: `Trigger ${intent.target?.name || "effect"}`,
           data: { effectType: intent.target?.name || "fireworks" }
         });
       }
@@ -168,10 +269,20 @@ export async function POST(request: Request) {
 
     // For Neo: fetch real data if asking about launches/tokens
     let realData = "";
+    let tokenMint: string | undefined;
+    let tokenSymbol: string | undefined;
+    let tokenName: string | undefined;
+
     if (characterId === "neo") {
       const dataNeeds = needsRealData(message, characterId);
       if (dataNeeds.tokenMint) {
+        tokenMint = dataNeeds.tokenMint;
         realData = await fetchTokenInfo(dataNeeds.tokenMint);
+        // Try to extract symbol/name from the real data
+        const symbolMatch = realData.match(/\$([A-Z0-9]+)/);
+        const nameMatch = realData.match(/Name: ([^\n]+)/);
+        if (symbolMatch) tokenSymbol = symbolMatch[1];
+        if (nameMatch) tokenName = nameMatch[1].trim();
       } else if (dataNeeds.launches) {
         realData = await fetchRecentLaunches();
       }
@@ -180,21 +291,27 @@ export async function POST(request: Request) {
     // Generate response using Opus 4.5
     if (ANTHROPIC_API_KEY) {
       const response = await generateAgentResponse(character, message, worldState, chatHistory, realData);
+
+      // Extract context-aware action buttons from the response
+      const contextActions = extractActions(response, characterId, tokenMint, tokenSymbol, tokenName);
+
       return NextResponse.json({
         message: response,
         characterId,
         characterName: meta.displayName,
-        actions,
+        actions: [...actions, ...contextActions],
       });
     }
 
     // Fallback to character quotes if no API key
     const fallbackQuote = character.postExamples[Math.floor(Math.random() * character.postExamples.length)];
+    const fallbackActions = extractActions(fallbackQuote, characterId, tokenMint, tokenSymbol, tokenName);
+
     return NextResponse.json({
       message: fallbackQuote,
       characterId,
       characterName: meta.displayName,
-      actions,
+      actions: [...actions, ...fallbackActions],
     });
 
   } catch (error) {

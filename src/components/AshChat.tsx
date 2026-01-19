@@ -3,12 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { useGameStore } from "@/lib/store";
+import { ActionButtons } from "@/components/ActionButtons";
+import type { AIAction } from "@/app/api/agent-chat/route";
 
 interface EcoMessage {
   id: string;
   type: "ash" | "user" | "info" | "tip";
   message: string;
   timestamp: number;
+  actions?: AIAction[];
 }
 
 interface Position {
@@ -25,9 +28,9 @@ const ECOSYSTEM_TOPICS = [
     content: "Every token launched on BagsWorld becomes a building! As the market cap grows, your building evolves - from a small shop to a towering skyscraper. Level 1 is under $100K, Level 5 is $10M+!"
   },
   {
-    title: "Community Rewards",
-    icon: "🏆",
-    content: "5% of ALL fees go back to the strongest communities! 50% for community rewards, 25% for weekly airdrops, 15% for creator bonuses, and 10% for development. The more active your community, the more you earn!"
+    title: "Buyback & Burn",
+    icon: "🔥",
+    content: "Fees accumulate until they hit 1 SOL threshold. Once reached, the system instantly claims and buys back the top 5 tokens in the ecosystem - then burns them all! No delays, maximum efficiency."
   },
   {
     title: "How Citizens Work",
@@ -40,14 +43,14 @@ const ECOSYSTEM_TOPICS = [
     content: "The world's weather reflects overall trading health! Sunny means things are booming (80%+ health), cloudy is normal, rain means slowing down, storm is rough times, and apocalypse... well, HODL tight!"
   },
   {
-    title: "Permanent Fees",
-    icon: "🔒",
-    content: "On Bags.fm, fees are SET PERMANENTLY at launch and can never be changed. This means launching through BagsWorld guarantees your community always benefits from the ecosystem rewards!"
+    title: "Threshold System",
+    icon: "📊",
+    content: "Instead of constant small claims, we wait for 1 SOL to accumulate. This saves gas and makes each buyback more impactful. 80% goes to buybacks, split evenly across top 5 tokens."
   },
   {
-    title: "Weekly Airdrops",
-    icon: "🎁",
-    content: "Every week, the ecosystem distributes rewards to the most active communities and holders! Top earners get bonus airdrops, and engaged holders are rewarded for their participation."
+    title: "Instant Burns",
+    icon: "🎯",
+    content: "When threshold is met: claim -> buyback -> burn. All in one flow, no waiting. The bought tokens are burned immediately, permanently reducing supply for all ecosystem tokens."
   },
 ];
 
@@ -185,6 +188,7 @@ export function AshChat() {
         type: "ash",
         message: data.message || "Great question trainer! Ask me about buildings, fees, or the weather system!",
         timestamp: Date.now(),
+        actions: data.actions || [],
       });
     } catch (error) {
       addMessage({
@@ -195,6 +199,36 @@ export function AshChat() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handle action button clicks
+  const handleAction = (action: AIAction) => {
+    switch (action.type) {
+      case "trade":
+        if (action.data.mint) {
+          window.dispatchEvent(
+            new CustomEvent("bagsworld-building-click", {
+              detail: {
+                mint: action.data.mint,
+                symbol: action.data.symbol || "TOKEN",
+                name: action.data.name || "Token",
+              },
+            })
+          );
+        }
+        break;
+      case "launch":
+        window.dispatchEvent(new CustomEvent("bagsworld-launch-click"));
+        break;
+      case "claim":
+        window.dispatchEvent(new CustomEvent("bagsworld-claim-click"));
+        break;
+      case "link":
+        if (action.data.url) {
+          window.open(action.data.url, "_blank", "noopener,noreferrer");
+        }
+        break;
     }
   };
 
@@ -217,7 +251,7 @@ export function AshChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-80 bg-bags-dark border-4 border-red-500 shadow-lg ${isDragging ? 'cursor-grabbing' : ''}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-red-500 shadow-lg ${isDragging ? 'cursor-grabbing' : ''}`}
     >
       {/* Header - Draggable */}
       <div
@@ -299,6 +333,9 @@ export function AshChat() {
               <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">
                 {msg.message}
               </p>
+              {msg.type === "ash" && msg.actions && msg.actions.length > 0 && (
+                <ActionButtons actions={msg.actions} onAction={handleAction} />
+              )}
             </div>
           ))
         )}
@@ -335,18 +372,22 @@ export function AshChat() {
 
       {/* Footer with key stats */}
       <div className="p-2 border-t border-red-500/30 bg-bags-darker">
-        <div className="grid grid-cols-2 gap-2 text-center">
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-bags-gold/10 p-1 rounded">
+            <p className="font-pixel text-[7px] text-gray-400">Threshold</p>
+            <p className="font-pixel text-[10px] text-bags-gold">1 SOL</p>
+          </div>
           <div className="bg-bags-green/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Buyback & Burn</p>
+            <p className="font-pixel text-[7px] text-gray-400">Buyback</p>
             <p className="font-pixel text-[10px] text-bags-green">80%</p>
           </div>
-          <div className="bg-blue-500/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Operations</p>
-            <p className="font-pixel text-[10px] text-blue-400">20%</p>
+          <div className="bg-red-500/10 p-1 rounded">
+            <p className="font-pixel text-[7px] text-gray-400">Top Tokens</p>
+            <p className="font-pixel text-[10px] text-red-400">5</p>
           </div>
         </div>
         <p className="font-pixel text-[6px] text-gray-500 text-center mt-1">
-          Top 5 tokens bought & burned every 12h
+          Hit threshold → Instant claim → Buy top 5 → Burn all
         </p>
         <a
           href={`https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`}
@@ -354,7 +395,7 @@ export function AshChat() {
           rel="noopener noreferrer"
           className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 mt-1"
         >
-          View Buyback Wallet on Solscan
+          View Buyback & Burn Wallet on Solscan
         </a>
       </div>
     </div>

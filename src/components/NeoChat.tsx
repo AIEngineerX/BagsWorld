@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useWorldState } from "@/hooks/useWorldState";
+import { ActionButtons } from "@/components/ActionButtons";
+import type { AIAction } from "@/app/api/agent-chat/route";
 
 interface NeoMessage {
   id: string;
   type: "neo" | "user";
   message: string;
   timestamp: number;
+  actions?: AIAction[];
 }
 
 interface Position {
@@ -131,6 +134,7 @@ export function NeoChat() {
         type: "neo",
         message: data.message || "the signal is unclear...",
         timestamp: Date.now(),
+        actions: data.actions || [],
       });
     } catch (error) {
       console.error("Neo chat error:", error);
@@ -154,9 +158,12 @@ export function NeoChat() {
       }
     };
 
+    // Listen for both event names for compatibility
     window.addEventListener("bagsworld-scout-click", handleScoutClick);
+    window.addEventListener("bagsworld-neo-click", handleScoutClick);
     return () => {
       window.removeEventListener("bagsworld-scout-click", handleScoutClick);
+      window.removeEventListener("bagsworld-neo-click", handleScoutClick);
     };
   }, [messages.length, sendToNeo]);
 
@@ -166,6 +173,36 @@ export function NeoChat() {
 
     sendToNeo(input.trim());
     setInput("");
+  };
+
+  // Handle action button clicks
+  const handleAction = (action: AIAction) => {
+    switch (action.type) {
+      case "trade":
+        if (action.data.mint) {
+          window.dispatchEvent(
+            new CustomEvent("bagsworld-building-click", {
+              detail: {
+                mint: action.data.mint,
+                symbol: action.data.symbol || "TOKEN",
+                name: action.data.name || "Token",
+              },
+            })
+          );
+        }
+        break;
+      case "launch":
+        window.dispatchEvent(new CustomEvent("bagsworld-launch-click"));
+        break;
+      case "claim":
+        window.dispatchEvent(new CustomEvent("bagsworld-claim-click"));
+        break;
+      case "link":
+        if (action.data.url) {
+          window.open(action.data.url, "_blank", "noopener,noreferrer");
+        }
+        break;
+    }
   };
 
   const chatStyle: React.CSSProperties = position.x >= 0
@@ -180,7 +217,7 @@ export function NeoChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-80 bg-black border-2 border-green-500 shadow-lg shadow-green-500/20 ${isDragging ? 'cursor-grabbing' : ''}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-black border-2 border-green-500 shadow-lg shadow-green-500/20 ${isDragging ? 'cursor-grabbing' : ''}`}
     >
       {/* Header - Draggable */}
       <div
@@ -240,6 +277,9 @@ export function NeoChat() {
                 <p className="text-xs leading-relaxed whitespace-pre-wrap">
                   {msg.message}
                 </p>
+                {msg.type === "neo" && msg.actions && msg.actions.length > 0 && (
+                  <ActionButtons actions={msg.actions} onAction={handleAction} />
+                )}
               </div>
             ))
           )}

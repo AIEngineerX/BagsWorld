@@ -4,10 +4,10 @@
 // =============================================================================
 // WHY JOIN BAGSWORLD?
 // =============================================================================
-// 1. BUYBACK & BURN: Top performing tokens get bought and burned automatically
+// 1. CREATOR REWARDS: Top 3 creators get paid directly from ecosystem fees
 // 2. VISIBILITY: Your token becomes a building in a living world
-// 3. SUCCESS REWARDS SUCCESS: The better your token does, the more support it gets
-// 4. LOW FEE: Only 1% ecosystem fee funds the buyback engine
+// 3. SUCCESS REWARDS SUCCESS: More volume = more fees = higher ranking = bigger rewards
+// 4. LOW FEE: Only 1% ecosystem fee funds the creator rewards pool
 // =============================================================================
 
 export const ECOSYSTEM_CONFIG = {
@@ -16,7 +16,7 @@ export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
   // Every token launched through BagsWorld contributes 1% to the ecosystem
   // Fees are SET PERMANENTLY at launch - locked forever, trustless
-  // All fees go to buying back and burning top performing tokens
+  // All fees go to rewarding top 3 creators based on fee contribution
   ecosystem: {
     // Wallet that receives ecosystem fees - viewable on Solscan
     wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
@@ -25,22 +25,29 @@ export const ECOSYSTEM_CONFIG = {
     // 1% goes to @BagsWorldApp for ecosystem rewards
     feeBps: 100,
 
-    // Autonomous agents manage the ecosystem wallet:
-    // - Auto-Claim Agent: Claims fees every 5 minutes
-    // - Buyback Agent: Every 12 hours, buys top tokens and burns them
-    // - Scout Agent: Scans for new token launches in real-time
-    agents: {
-      autoClaimIntervalMs: 5 * 60 * 1000,      // 5 minutes
-      buybackIntervalMs: 12 * 60 * 60 * 1000,  // 12 hours
-      buybackPercentage: 80,                    // 80% for buybacks
-      reservePercentage: 20,                    // 20% for operations/gas
-      topTokensCount: 5,                        // Buy top 5 tokens
-      burnAfterBuy: true,                       // Burn purchased tokens
-      scout: {
-        minLiquidityUsd: 500,                   // Min $500 liquidity to alert
-        bagsOnly: false,                        // Track all launches or just Bags
-        maxAlertsPerMinute: 30,                 // Rate limit
+    // Creator Rewards System
+    // - Rewards top 3 token creators based on fee contribution
+    // - Distributes when threshold hit OR backup timer expires
+    // - Direct SOL payments to creator wallets
+    rewards: {
+      thresholdSol: 10.0,                       // Distribute when 10+ SOL accumulated
+      backupTimerDays: 5,                       // Or distribute after 5 days
+      minimumDistributionSol: 2.0,             // Minimum SOL required for timer-based distribution
+      checkIntervalMs: 15 * 60 * 1000,          // Check every 15 minutes
+      reservePercentage: 10,                    // 10% reserved for gas/operations
+      topCreatorsCount: 3,                      // Reward top 3 creators
+      distribution: {
+        first: 50,                              // 1st place: 50% of pot
+        second: 30,                             // 2nd place: 30% of pot
+        third: 20,                              // 3rd place: 20% of pot
       },
+    },
+
+    // Scout Agent: Scans for new token launches in real-time
+    scout: {
+      minLiquidityUsd: 500,                     // Min $500 liquidity to alert
+      bagsOnly: false,                          // Track all launches or just Bags
+      maxAlertsPerMinute: 30,                   // Rate limit
     },
 
     // Provider name shown in fee shares
@@ -158,19 +165,19 @@ export const ECOSYSTEM_CONFIG = {
     ],
     forEcosystem: [
       {
-        title: "Buyback Engine",
-        description: "Top performing tokens get bought automatically",
-        icon: "B",
+        title: "10 SOL Threshold",
+        description: "Fees accumulate until 10 SOL or 5 days pass",
+        icon: "10",
       },
       {
-        title: "Deflationary Burns",
-        description: "Purchased tokens are burned, reducing supply",
-        icon: "F",
+        title: "Top 3 Creators",
+        description: "Top 3 token creators by fees get rewarded",
+        icon: "3",
       },
       {
-        title: "Only 1% Fee",
-        description: "Low fee funds the buyback engine",
-        icon: "1",
+        title: "Direct Rewards",
+        description: "SOL sent directly to creator wallets (50/30/20 split)",
+        icon: "S",
       },
     ],
   },
@@ -222,15 +229,15 @@ export const ECOSYSTEM_CONFIG = {
   },
 
   // -------------------------------------------------------------------------
-  // REWARDS HUB BUILDING (Permanent landmark)
+  // CREATOR REWARDS HUB (Permanent landmark)
   // -------------------------------------------------------------------------
   // This building always appears in the world and links to Solscan
-  // so users can verify and monitor community rewards transparently
+  // Shows the creator rewards system: top 3 creators get paid
   treasury: {
     id: "BagsWorldRewardsHub",
-    name: "Community Rewards Hub",
+    name: "Creator Rewards Hub",
     symbol: "REWARDS",
-    description: "Where fees become rewards - distributed weekly to the strongest communities. Click to verify on Solscan.",
+    description: "Ecosystem fees reward top 3 creators. 10 SOL threshold or 5 days. 50/30/20 split. Click to verify on Solscan.",
     level: 5, // Always max level - it's the centerpiece
     getSolscanUrl: () => `https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`,
   },
@@ -248,11 +255,11 @@ export const ECOSYSTEM_CONFIG = {
     // Ash explains the ecosystem with Pokemon-themed analogies
     quotes: [
       "Gotta catch 'em all... tokens that is! Each one becomes a building in BagsWorld!",
-      "Only 3% fee here, and the top creator each week gets 40% back - like winning the Pokemon League!",
+      "Top 3 creators get rewarded from the ecosystem pool - like winning the Pokemon League!",
       "Just like Pokemon evolve, your building grows as market cap increases!",
-      "Top holders of the best token get airdrops - it's like getting rare candies for being loyal!",
-      "I wanna be the very best! And in BagsWorld, the best creators and holders get rewarded weekly!",
-      "Remember: low fees, big rewards - that's the BagsWorld way!",
+      "Drive volume, earn fees, climb the leaderboard - top 3 get paid directly!",
+      "I wanna be the very best! And in BagsWorld, the best creators get rewarded!",
+      "Remember: 1% ecosystem fee, top 3 creators split the pot. 50/30/20!",
     ],
     // Clicking Ash opens ecosystem explainer
     interactionType: "ecosystem-guide",
@@ -286,7 +293,7 @@ export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
   // DADDYGHOST - The Dev (Trading & Agent Operations)
   // -------------------------------------------------------------------------
-  // DaddyGhost (@DaddyGhost) is the developer who runs the auto-claim and buyback agents
+  // DaddyGhost (@DaddyGhost) is the developer who runs the creator rewards system
   dev: {
     id: "daddyghost",
     username: "Ghost",
@@ -294,16 +301,16 @@ export const ECOSYSTEM_CONFIG = {
     providerUsername: "DaddyGhost",
     twitterHandle: "DaddyGhost",
     mood: "happy" as const,
-    // Ghost runs the backend agents - auto-claim every 5min, buyback every 12hr using his own fees
+    // Ghost runs the creator rewards system: fees accumulate, distribute to top 3 creators
     quotes: [
-      "yo i run the agents around here. my fees get auto-claimed, then 50% goes to buying back top tokens",
-      "every 12 hours i use my own fees to buy back the top 3 tokens and burn them. giving back to holders",
-      "fees sent to my account @DaddyGhost get claimed automatically. half of that goes to buybacks",
-      "im not taking from anyone - these are my creator fees. i just reinvest 50% back into buybacks",
-      "i built this and i put my money where my mouth is. 50% of my fees = buybacks and burns",
-      "trust the process. my fees, my buybacks, your gains. tokens get burned permanently",
-      "not just a dev, im the ghost in the machine. using my own bag to buy back and burn",
-      "check my wallet on solscan - you can see every claim and every burn. fully transparent",
+      "yo i run the rewards system. fees stack up, hit 10 SOL or 5 days, top 3 creators get paid",
+      "no middleman. ecosystem fees go directly to creator wallets. 50/30/20 split for top 3",
+      "threshold-based rewards are efficient. bigger payouts, less gas waste, real money to devs",
+      "the system tracks fee contribution. top 3 tokens by volume = top 3 creators get rewarded",
+      "i built this to reward good devs. stack fees -> hit threshold -> claim -> pay creators directly",
+      "check the wallet on solscan. fees accumulate, then boom - SOL to the top 3 creators",
+      "not just a dev, im the ghost in the machine. you build, you earn. simple as that",
+      "90% of claimed fees go to creators. top 3 by fee contribution. no burn, just rewards",
     ],
     // Clicking Dev opens trading assistant
     interactionType: "trading-agent",
