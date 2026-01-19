@@ -136,3 +136,131 @@ body {
 .glow-red {
   box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
 }
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+
+/* Touch-friendly scrollbar on mobile */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Prevent text selection on game UI elements */
+  .game-container,
+  .btn-retro {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Ensure tap highlight is visible */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: rgba(74, 222, 128, 0.3);
+  }
+}
+
+/* Mobile button sizing - larger touch targets */
+@media (max-width: 640px) {
+  .btn-retro {
+    @apply px-3 py-2 text-[10px];
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+      3px 3px 0 #166534,
+      inset -1px -1px 0 rgba(0,0,0,0.2),
+      inset 1px 1px 0 rgba(255,255,255,0.2);
+  }
+
+  .btn-retro:hover {
+    transform: none; /* Disable hover transform on touch */
+    box-shadow:
+      3px 3px 0 #166534,
+      inset -1px -1px 0 rgba(0,0,0,0.2),
+      inset 1px 1px 0 rgba(255,255,255,0.2);
+  }
+
+  .btn-retro:active {
+    transform: translate(2px, 2px);
+    box-shadow:
+      1px 1px 0 #166534;
+  }
+}
+
+/* Responsive font sizing */
+@media (max-width: 640px) {
+  .font-pixel {
+    letter-spacing: -0.5px; /* Tighter on small screens */
+  }
+}
+
+/* Modal responsive adjustments */
+@media (max-width: 640px) {
+  /* Full-width modals on mobile */
+  .modal-content {
+    max-width: 100% !important;
+    margin: 0.5rem;
+    max-height: calc(100vh - 1rem);
+  }
+}
+
+/* Health bar mobile sizing */
+@media (max-width: 640px) {
+  .health-bar {
+    height: 12px;
+  }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: max(0px)) {
+  .safe-area-bottom {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-area-top {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+}
+
+/* Landscape mode adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Compact header in landscape */
+  header {
+    height: 48px !important;
+  }
+
+  /* Hide footer in landscape on short screens */
+  footer {
+    display: none;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .scanlines {
+    display: none;
+  }
+
+  .health-bar-fill {
+    transition: none;
+  }
+
+  @keyframes pulse-danger {
+    0%, 100% {
+      opacity: 1;
+    }
+  }
+}
+
+/* Touch-friendly minimum sizes */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

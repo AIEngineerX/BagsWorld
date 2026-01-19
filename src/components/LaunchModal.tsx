@@ -487,33 +487,34 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4"
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-2 sm:p-4"
       onClick={handleBackdropClick}
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <div
-        className="bg-bags-dark border-4 border-bags-green w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-bags-dark border-4 border-bags-green w-full max-w-md max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b-4 border-bags-green sticky top-0 bg-bags-dark">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b-4 border-bags-green sticky top-0 bg-bags-dark z-10">
           <div>
-            <h2 className="font-pixel text-sm text-bags-green">
+            <h2 className="font-pixel text-xs sm:text-sm text-bags-green">
               🏗️ BUILD A TOKEN
             </h2>
-            <p className="font-pixel text-[8px] text-gray-400">
+            <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">
               Step {step === "info" ? "1/3" : step === "fees" ? "2/3" : "3/3"}: {step === "info" ? "Token Info" : step === "fees" ? "Fee Sharing" : "Confirm"}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="font-pixel text-xs text-gray-400 hover:text-white"
+            className="font-pixel text-sm p-2 text-gray-400 hover:text-white touch-target"
+            aria-label="Close"
           >
-            [X]
+            ✕
           </button>
         </div>
 
