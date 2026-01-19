@@ -15,13 +15,25 @@ const BUILDING_SPACING = 120; // Increased spacing to prevent overlap
 const MAX_BUILDINGS = 20;
 const MAX_CHARACTERS = 15;
 
-// Volume thresholds for world health (in SOL)
-const VOLUME_THRESHOLDS = {
-  thriving: 10000,
-  healthy: 5000,
-  normal: 2000,
-  struggling: 500,
-  dying: 100,
+// Bags.fm fee activity thresholds for world health (in SOL)
+// Based on 24h claim volume and lifetime fees
+const BAGS_HEALTH_THRESHOLDS = {
+  // 24h claim volume thresholds (SOL claimed in last 24h)
+  claimVolume: {
+    thriving: 50,    // 50+ SOL claimed in 24h = thriving
+    healthy: 20,     // 20+ SOL claimed
+    normal: 5,       // 5+ SOL claimed
+    struggling: 1,   // 1+ SOL claimed
+    dying: 0,        // No claims
+  },
+  // Lifetime fees weight (total fees across all tokens)
+  lifetimeFees: {
+    thriving: 1000,  // 1000+ SOL lifetime = established ecosystem
+    healthy: 500,
+    normal: 100,
+    struggling: 10,
+    dying: 0,
+  },
 };
 
 // Position cache to prevent buildings from shifting when rankings change
@@ -29,19 +41,57 @@ const VOLUME_THRESHOLDS = {
 const buildingPositionCache = new Map<string, { x: number; y: number; assignedIndex: number }>();
 let nextAvailableIndex = 0;
 
+/**
+ * Calculate world health based on Bags.fm ecosystem activity
+ * @param claimVolume24h - Total SOL claimed in the last 24 hours
+ * @param totalLifetimeFees - Total lifetime fees across all tokens
+ * @param activeTokenCount - Number of tokens with activity
+ */
 export function calculateWorldHealth(
-  totalVolume24h: number,
-  avgVolume: number
+  claimVolume24h: number,
+  totalLifetimeFees: number,
+  activeTokenCount: number = 0
 ): number {
-  if (avgVolume === 0) return 50;
+  // Weight: 60% claim activity, 30% lifetime fees, 10% token diversity
+  const claimThresholds = BAGS_HEALTH_THRESHOLDS.claimVolume;
+  const feeThresholds = BAGS_HEALTH_THRESHOLDS.lifetimeFees;
 
-  const ratio = totalVolume24h / avgVolume;
+  // Calculate claim volume score (0-100)
+  let claimScore = 0;
+  if (claimVolume24h >= claimThresholds.thriving) {
+    claimScore = 90 + Math.min(10, (claimVolume24h - claimThresholds.thriving) / 10);
+  } else if (claimVolume24h >= claimThresholds.healthy) {
+    claimScore = 70 + (claimVolume24h - claimThresholds.healthy) / (claimThresholds.thriving - claimThresholds.healthy) * 20;
+  } else if (claimVolume24h >= claimThresholds.normal) {
+    claimScore = 50 + (claimVolume24h - claimThresholds.normal) / (claimThresholds.healthy - claimThresholds.normal) * 20;
+  } else if (claimVolume24h >= claimThresholds.struggling) {
+    claimScore = 25 + (claimVolume24h - claimThresholds.struggling) / (claimThresholds.normal - claimThresholds.struggling) * 25;
+  } else {
+    claimScore = Math.max(0, claimVolume24h * 25); // 0-25 for < 1 SOL
+  }
 
-  if (ratio > 1.5) return Math.min(100, 80 + ratio * 10);
-  if (ratio > 1.0) return 70 + (ratio - 1.0) * 20;
-  if (ratio > 0.5) return 50 + (ratio - 0.5) * 40;
-  if (ratio > 0.2) return 25 + (ratio - 0.2) * 83;
-  return Math.max(0, ratio * 125);
+  // Calculate lifetime fees score (0-100)
+  let feesScore = 0;
+  if (totalLifetimeFees >= feeThresholds.thriving) {
+    feesScore = 90 + Math.min(10, (totalLifetimeFees - feeThresholds.thriving) / 100);
+  } else if (totalLifetimeFees >= feeThresholds.healthy) {
+    feesScore = 70 + (totalLifetimeFees - feeThresholds.healthy) / (feeThresholds.thriving - feeThresholds.healthy) * 20;
+  } else if (totalLifetimeFees >= feeThresholds.normal) {
+    feesScore = 50 + (totalLifetimeFees - feeThresholds.normal) / (feeThresholds.healthy - feeThresholds.normal) * 20;
+  } else if (totalLifetimeFees >= feeThresholds.struggling) {
+    feesScore = 25 + (totalLifetimeFees - feeThresholds.struggling) / (feeThresholds.normal - feeThresholds.struggling) * 25;
+  } else {
+    feesScore = Math.max(0, totalLifetimeFees / feeThresholds.struggling * 25);
+  }
+
+  // Calculate token diversity score (0-100)
+  // More active tokens = healthier ecosystem
+  const diversityScore = Math.min(100, activeTokenCount * 10); // 10 tokens = 100%
+
+  // Weighted average: 60% claims, 30% fees, 10% diversity
+  const health = claimScore * 0.6 + feesScore * 0.3 + diversityScore * 0.1;
+
+  return Math.round(Math.max(0, Math.min(100, health)));
 }
 
 export function calculateWeather(health: number): WeatherType {
@@ -351,16 +401,25 @@ export function generateGameEvent(
   };
 }
 
+export interface BagsHealthMetrics {
+  claimVolume24h: number;      // Total SOL claimed in 24h
+  totalLifetimeFees: number;   // Total lifetime fees across all tokens
+  activeTokenCount: number;    // Number of tokens with recent activity
+}
+
 export function buildWorldState(
   earners: FeeEarner[],
   tokens: TokenInfo[],
-  previousState?: WorldState
+  previousState?: WorldState,
+  bagsMetrics?: BagsHealthMetrics
 ): WorldState {
-  // Calculate total 24h volume
-  const totalVolume = tokens.reduce((sum, t) => sum + t.volume24h, 0);
-  const avgVolume = VOLUME_THRESHOLDS.normal;
+  // Calculate health from Bags.fm metrics (fee claims, lifetime fees)
+  // Falls back to token count if no metrics provided
+  const claimVolume24h = bagsMetrics?.claimVolume24h ?? 0;
+  const totalLifetimeFees = bagsMetrics?.totalLifetimeFees ?? tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
+  const activeTokenCount = bagsMetrics?.activeTokenCount ?? tokens.filter(t => (t.lifetimeFees || 0) > 0).length;
 
-  const health = calculateWorldHealth(totalVolume, avgVolume);
+  const health = calculateWorldHealth(claimVolume24h, totalLifetimeFees, activeTokenCount);
   const weather = calculateWeather(health);
 
   // Transform earners to characters (keep positions from previous state)
