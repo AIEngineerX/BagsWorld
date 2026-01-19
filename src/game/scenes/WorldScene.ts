@@ -57,6 +57,7 @@ export class WorldScene extends Phaser.Scene {
   private tickerText: Phaser.GameObjects.Text | null = null;
   private tickerOffset = 0;
   private skylineSprites: Phaser.GameObjects.Sprite[] = [];
+  private originalPositions: Map<Phaser.GameObjects.GameObject, number> = new Map(); // Store original X positions
 
   constructor() {
     super({ key: "WorldScene" });
@@ -84,6 +85,9 @@ export class WorldScene extends Phaser.Scene {
 
     // Add animals to the world
     this.createAnimals();
+
+    // Store original positions of decorations and animals for zone transitions
+    this.storeOriginalPositions();
 
     // Create ambient particles (pollen/leaves)
     this.createAmbientParticles();
@@ -234,15 +238,12 @@ export class WorldScene extends Phaser.Scene {
     // Clean up old elements after animation completes
     this.time.delayedCall(duration + 50, () => {
       oldElementData.forEach(({ el }) => {
-        if (el && (el as any).destroy && (el as any).active !== false) {
-          // Don't destroy decorations/animals for main city - just reset position
-          if (this.currentZone === "main_city" &&
-              (this.decorations.includes(el as any) || this.animals.some(a => a.sprite === el))) {
-            (el as any).x = (el as any).x - slideOutOffset; // Reset to original
-            (el as any).setVisible(true);
-          } else if (!this.decorations.includes(el as any) && !this.animals.some(a => a.sprite === el)) {
-            (el as any).destroy();
-          }
+        // Only destroy elements that aren't persistent (decorations/animals are reused)
+        const isDecoration = this.decorations.includes(el as any);
+        const isAnimal = this.animals.some(a => a.sprite === el);
+
+        if (!isDecoration && !isAnimal && el && (el as any).destroy && (el as any).active !== false) {
+          (el as any).destroy();
         }
       });
 
@@ -285,25 +286,36 @@ export class WorldScene extends Phaser.Scene {
     } else {
       this.setupMainCityZone();
 
-      // Animate main city elements in
+      // Animate main city elements in using their ORIGINAL positions
       const newElements = [
         ...this.decorations,
         ...this.animals.map(a => a.sprite)
       ];
 
       newElements.forEach(el => {
-        if ((el as any).x !== undefined) {
-          const targetX = (el as any).x;
-          (el as any).x = targetX + offsetX;
+        // Get the original position, not the current (off-screen) position
+        const originalX = this.originalPositions.get(el);
+        if (originalX !== undefined) {
+          (el as any).x = originalX + offsetX; // Start off-screen
           this.tweens.add({
             targets: el,
-            x: targetX,
+            x: originalX, // Animate to original position
             duration,
             ease: 'Cubic.easeOut',
           });
         }
       });
     }
+  }
+
+  private storeOriginalPositions(): void {
+    // Store original X positions of decorations and animals for zone transitions
+    this.decorations.forEach(d => {
+      this.originalPositions.set(d, (d as any).x || 0);
+    });
+    this.animals.forEach(a => {
+      this.originalPositions.set(a.sprite, (a.sprite as any).x || 0);
+    });
   }
 
   private clearCurrentZone(): void {
