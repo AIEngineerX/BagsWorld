@@ -42,8 +42,6 @@ interface FeeShareEntry {
   provider: string;
   username: string;
   bps: number; // basis points (100 = 1%)
-  walletStatus?: "unchecked" | "checking" | "valid" | "invalid";
-  walletError?: string;
 }
 
 // Get ecosystem config
@@ -74,102 +72,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   const [step, setStep] = useState<"info" | "fees" | "confirm">("info");
   const [initialBuySOL, setInitialBuySOL] = useState<string>("0"); // SOL amount to buy at launch
   const [feeShares, setFeeShares] = useState<FeeShareEntry[]>([
-    { provider: "twitter", username: "", bps: 9900, walletStatus: "unchecked" }, // Default 99% to creator (+ 1% ecosystem = 100%)
+    { provider: "twitter", username: "", bps: 9900 }, // Default 99% to creator (+ 1% ecosystem = 100%)
   ]);
-  const [isValidatingWallets, setIsValidatingWallets] = useState(false);
-
-  // Validate a single fee claimer's wallet
-  const validateFeeClaimerWallet = async (
-    provider: string,
-    username: string
-  ): Promise<{ valid: boolean; error?: string }> => {
-    if (!username.trim()) {
-      return { valid: false, error: "Username required" };
-    }
-
-    try {
-      const response = await fetch("/api/launch-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "lookup-wallet",
-          data: {
-            provider,
-            username: username.replace(/@/g, "").trim(),
-          },
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.wallet) {
-          return { valid: true };
-        }
-      }
-
-      const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error || "Wallet not linked";
-
-      // Parse common error messages into user-friendly text
-      if (errorMsg.includes("404") || errorMsg.includes("not found")) {
-        return { valid: false, error: "User not found or wallet not linked" };
-      }
-
-      return { valid: false, error: errorMsg };
-    } catch {
-      return { valid: false, error: "Failed to verify wallet" };
-    }
-  };
-
-  // Validate all fee claimers before proceeding
-  const validateAllFeeClaimers = async (): Promise<boolean> => {
-    const validFeeShares = feeShares.filter(f => f.username.trim());
-
-    if (validFeeShares.length === 0) {
-      setError("Add at least one fee claimer with a username");
-      return false;
-    }
-
-    setIsValidatingWallets(true);
-    setError(null);
-
-    // Mark all as checking
-    setFeeShares(prev => prev.map(f =>
-      f.username.trim() ? { ...f, walletStatus: "checking" as const, walletError: undefined } : f
-    ));
-
-    let allValid = true;
-    const updatedShares = [...feeShares];
-
-    for (let i = 0; i < updatedShares.length; i++) {
-      const share = updatedShares[i];
-      if (!share.username.trim()) continue;
-
-      const result = await validateFeeClaimerWallet(share.provider, share.username);
-      updatedShares[i] = {
-        ...share,
-        walletStatus: result.valid ? "valid" : "invalid",
-        walletError: result.error,
-      };
-
-      if (!result.valid) {
-        allValid = false;
-      }
-    }
-
-    setFeeShares(updatedShares);
-    setIsValidatingWallets(false);
-
-    if (!allValid) {
-      const invalidUsers = updatedShares
-        .filter(s => s.walletStatus === "invalid")
-        .map(s => `@${s.username}`)
-        .join(", ");
-      setError(`Some users haven't linked their wallet at bags.fm/settings: ${invalidUsers}`);
-    }
-
-    return allValid;
-  };
 
   // Duplicate name/symbol warnings
   const [duplicateWarning, setDuplicateWarning] = useState<{
@@ -224,7 +128,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
   const addFeeShare = () => {
     if (feeShares.length < 10) {
-      setFeeShares([...feeShares, { provider: "twitter", username: "", bps: 100, walletStatus: "unchecked" }]);
+      setFeeShares([...feeShares, { provider: "twitter", username: "", bps: 100 }]);
     }
   };
 
@@ -238,7 +142,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
     setFeeShares(updated);
   };
 
-  const handleNextStep = async () => {
+  const handleNextStep = () => {
     if (step === "info") {
       if (!formData.name || !formData.symbol || !formData.description) {
         setError("Please fill in all required fields");
@@ -255,13 +159,12 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         setError(`Total fee share must equal exactly 100%. Currently ${(totalBps / 100).toFixed(1)}%`);
         return;
       }
-
-      // Validate all fee claimers have linked wallets before proceeding
-      const allValid = await validateAllFeeClaimers();
-      if (!allValid) {
-        return; // Error already set by validateAllFeeClaimers
+      // Check at least one fee claimer has a username
+      const validFeeShares = feeShares.filter(f => f.username.trim());
+      if (validFeeShares.length === 0) {
+        setError("Add at least one fee claimer with a username");
+        return;
       }
-
       setError(null);
       setStep("confirm");
     }
@@ -785,15 +688,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <p className="font-pixel text-[8px] text-gray-400">
                 Every trade generates fees split among claimers. <span className="text-bags-green">Total must equal exactly 100%.</span>
               </p>
-              <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30">
-                <p className="font-pixel text-[7px] text-yellow-400">
-                  ⚠️ IMPORTANT: All fee claimers must link their wallet at{" "}
-                  <a href="https://bags.fm/settings" target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-300">
-                    bags.fm/settings
-                  </a>
-                  {" "}BEFORE you launch. Wallets are verified when you click Next.
-                </p>
-              </div>
+              <p className="font-pixel text-[7px] text-gray-500 mt-1">
+                Fee claimers need a wallet linked at{" "}
+                <a href="https://bags.fm/settings" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline hover:text-blue-300">
+                  bags.fm/settings
+                </a>
+                {" "}to claim their share.
+              </p>
             </div>
 
             {/* Ecosystem Fee - Creator & Holder Rewards (only show if > 0) */}
@@ -828,82 +729,40 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
             <div className="space-y-3">
               {feeShares.map((share, index) => (
-                <div key={index} className="space-y-1">
-                  <div className="flex gap-2 items-center">
-                    <select
-                      value={share.provider}
-                      onChange={(e) => {
-                        // Update provider and reset validation in one state update
-                        const updated = [...feeShares];
-                        updated[index] = {
-                          ...updated[index],
-                          provider: e.target.value,
-                          walletStatus: "unchecked",
-                          walletError: undefined
-                        };
-                        setFeeShares(updated);
-                      }}
-                      className="bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white"
+                <div key={index} className="flex gap-2 items-center">
+                  <select
+                    value={share.provider}
+                    onChange={(e) => updateFeeShare(index, "provider", e.target.value)}
+                    className="bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white"
+                  >
+                    <option value="twitter">Twitter</option>
+                    <option value="github">GitHub</option>
+                    <option value="kick">Kick</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={share.username}
+                    onChange={(e) => updateFeeShare(index, "username", e.target.value)}
+                    placeholder="@username"
+                    className="flex-1 bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white"
+                  />
+                  <input
+                    type="number"
+                    value={share.bps / 100}
+                    onChange={(e) => updateFeeShare(index, "bps", Math.min(10000, Math.max(0, (parseFloat(e.target.value) || 0) * 100)))}
+                    className="w-16 bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white text-center"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                  />
+                  <span className="font-pixel text-[8px] text-gray-400">%</span>
+                  {feeShares.length > 1 && (
+                    <button
+                      onClick={() => removeFeeShare(index)}
+                      className="text-bags-red font-pixel text-[10px] hover:text-red-400"
                     >
-                      <option value="twitter">Twitter</option>
-                      <option value="github">GitHub</option>
-                      <option value="kick">Kick</option>
-                    </select>
-                    <div className="flex-1 relative">
-                      <input
-                        type="text"
-                        value={share.username}
-                        onChange={(e) => {
-                          // Update username and reset validation in one state update
-                          const updated = [...feeShares];
-                          updated[index] = {
-                            ...updated[index],
-                            username: e.target.value,
-                            walletStatus: "unchecked",
-                            walletError: undefined
-                          };
-                          setFeeShares(updated);
-                        }}
-                        placeholder="@username"
-                        className={`w-full bg-bags-darker border p-2 font-pixel text-[8px] text-white pr-6 ${
-                          share.walletStatus === "invalid"
-                            ? "border-bags-red"
-                            : share.walletStatus === "valid"
-                            ? "border-bags-green"
-                            : "border-bags-green/50"
-                        }`}
-                      />
-                      {/* Validation status indicator */}
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px]">
-                        {share.walletStatus === "checking" && "⏳"}
-                        {share.walletStatus === "valid" && "✅"}
-                        {share.walletStatus === "invalid" && "❌"}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      value={share.bps / 100}
-                      onChange={(e) => updateFeeShare(index, "bps", Math.min(10000, Math.max(0, (parseFloat(e.target.value) || 0) * 100)))}
-                      className="w-16 bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white text-center"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                    />
-                    <span className="font-pixel text-[8px] text-gray-400">%</span>
-                    {feeShares.length > 1 && (
-                      <button
-                        onClick={() => removeFeeShare(index)}
-                        className="text-bags-red font-pixel text-[10px] hover:text-red-400"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  {/* Show error message for invalid wallet */}
-                  {share.walletStatus === "invalid" && share.walletError && (
-                    <p className="font-pixel text-[7px] text-bags-red pl-1">
-                      ⚠️ {share.walletError} - Ask them to link at bags.fm/settings
-                    </p>
+                      ✕
+                    </button>
                   )}
                 </div>
               ))}
@@ -1051,10 +910,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             {step !== "confirm" ? (
               <button
                 onClick={handleNextStep}
-                disabled={isValidatingWallets}
-                className="flex-1 btn-retro disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 btn-retro"
               >
-                {isValidatingWallets ? "⏳ VERIFYING WALLETS..." : "NEXT →"}
+                NEXT →
               </button>
             ) : (
               <button
