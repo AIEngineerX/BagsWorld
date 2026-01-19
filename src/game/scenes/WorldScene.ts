@@ -2299,12 +2299,13 @@ export class WorldScene extends Phaser.Scene {
         const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
         container.add(shadow);
 
-        // Use special texture for PokeCenter, otherwise use level-based building
+        // Use special texture for PokeCenter/TradingGym, otherwise use level-based building
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
-        const buildingTexture = isPokeCenter ? "pokecenter" : `building_${building.level}`;
+        const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
+        const buildingTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : `building_${building.level}`;
         const sprite = this.add.sprite(0, 0, buildingTexture);
         sprite.setOrigin(0.5, 1);
-        sprite.setScale(isPokeCenter ? 1.0 : buildingScale);
+        sprite.setScale(isPokeCenter ? 1.0 : isTradingGym ? 1.0 : buildingScale);
         container.add(sprite);
 
         // Glow effect for pumping buildings
@@ -2356,12 +2357,18 @@ export class WorldScene extends Phaser.Scene {
         });
         container.on("pointerdown", () => {
           const isPokeCenter = building.id.includes("PokeCenter");
+          const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
           const isStarterBuilding = building.id.startsWith("Starter");
           const isTreasuryBuilding = building.id.startsWith("Treasury");
 
           if (isPokeCenter) {
             // PokeCenter opens the auto-claim hub modal
             window.dispatchEvent(new CustomEvent("bagsworld-pokecenter-click", {
+              detail: { buildingId: building.id, name: building.name }
+            }));
+          } else if (isTradingGym) {
+            // TradingGym opens the AI trading arena modal
+            window.dispatchEvent(new CustomEvent("bagsworld-tradinggym-click", {
               detail: { buildingId: building.id, name: building.name }
             }));
           } else if (isStarterBuilding) {
@@ -2399,7 +2406,8 @@ export class WorldScene extends Phaser.Scene {
         // Update existing building
         const sprite = container.getAt(1) as Phaser.GameObjects.Sprite;
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
-        const newTexture = isPokeCenter ? "pokecenter" : `building_${building.level}`;
+        const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
+        const newTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : `building_${building.level}`;
         if (sprite.texture.key !== newTexture) {
           this.tweens.add({
             targets: container,

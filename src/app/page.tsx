@@ -29,6 +29,7 @@ import { FeeClaimModal } from "@/components/FeeClaimModal";
 import { ZoneNav } from "@/components/ZoneNav";
 import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
 import { AgentFeed, AgentToast } from "@/components/AgentFeed";
+import { TradingGymModal } from "@/components/TradingGymModal";
 
 interface BuildingClickData {
   mint: string;
@@ -56,6 +57,7 @@ export default function Home() {
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
   const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
   const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
+  const [showTradingGymModal, setShowTradingGymModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -72,6 +74,10 @@ export default function Home() {
       setShowPokeCenterModal(true);
     };
 
+    const handleTradingGymClick = () => {
+      setShowTradingGymModal(true);
+    };
+
     // Handle AI action button events
     const handleLaunchClick = () => {
       setShowLaunchModal(true);
@@ -83,11 +89,13 @@ export default function Home() {
 
     window.addEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
     window.addEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
+    window.addEventListener("bagsworld-tradinggym-click", handleTradingGymClick as EventListener);
     window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
     window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     return () => {
       window.removeEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
       window.removeEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
+      window.removeEventListener("bagsworld-tradinggym-click", handleTradingGymClick as EventListener);
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     };
@@ -327,6 +335,11 @@ export default function Home() {
           onClose={() => setShowPokeCenterModal(false)}
           onOpenFeeClaimModal={() => setShowFeeClaimModal(true)}
         />
+      )}
+
+      {/* Trading Gym Modal - triggered by clicking Trading Gym building */}
+      {showTradingGymModal && (
+        <TradingGymModal onClose={() => setShowTradingGymModal(false)} />
       )}
 
       {/* Fee Claim Modal - can be opened from PokeCenter or AI action buttons */}

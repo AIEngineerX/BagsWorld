@@ -117,6 +117,7 @@ export class BootScene extends Phaser.Scene {
 
     // Generate special buildings
     this.generatePokeCenter();
+    this.generateTradingGym();
 
     // Generate diverse character variants
     this.generateDiverseCharacters();
@@ -489,6 +490,119 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(bWidth - 10, canvasHeight - 26, 8, 2);
 
     g.generateTexture("pokecenter", 55, canvasHeight);
+    g.destroy();
+  }
+
+  private generateTradingGym(): void {
+    // Trading Gym - Pokemon Gym style building (orange/battle themed)
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasHeight = 160;
+    const bHeight = 100;
+    const bWidth = 60;
+
+    // Shadow
+    g.fillStyle(0x000000, 0.4);
+    g.fillRect(8, canvasHeight - bHeight + 8, bWidth - 2, bHeight);
+
+    // Building base (dark gray - stadium style)
+    g.fillStyle(0x374151);
+    g.fillRect(4, canvasHeight - bHeight, bWidth - 4, bHeight);
+
+    // Lighter left side for 3D effect
+    g.fillStyle(0x4b5563);
+    g.fillRect(4, canvasHeight - bHeight, 8, bHeight);
+
+    // Orange roof - gym style
+    g.fillStyle(0xea580c);
+    g.fillRect(0, canvasHeight - bHeight - 12, bWidth + 8, 16);
+    g.fillStyle(0xf97316);
+    g.fillRect(2, canvasHeight - bHeight - 10, bWidth + 4, 12);
+
+    // Roof peak with battle symbol
+    g.fillStyle(0xc2410c);
+    g.fillRect(bWidth / 2 - 10, canvasHeight - bHeight - 24, 28, 14);
+    g.fillStyle(0xea580c);
+    g.fillRect(bWidth / 2 - 8, canvasHeight - bHeight - 22, 24, 10);
+
+    // Crossed swords symbol on roof (gym badge style)
+    g.fillStyle(0xffffff);
+    // Left sword
+    g.fillRect(bWidth / 2 - 4, canvasHeight - bHeight - 20, 2, 8);
+    g.fillRect(bWidth / 2 - 6, canvasHeight - bHeight - 18, 6, 2);
+    // Right sword
+    g.fillRect(bWidth / 2 + 6, canvasHeight - bHeight - 20, 2, 8);
+    g.fillRect(bWidth / 2 + 4, canvasHeight - bHeight - 18, 6, 2);
+    // Cross point
+    g.fillStyle(0xfbbf24);
+    g.fillCircle(bWidth / 2 + 2, canvasHeight - bHeight - 16, 3);
+
+    // Windows - gym style (larger, arena-like)
+    const windowColor = 0xfbbf24; // Orange/gold glow
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 3; col++) {
+        const wx = 10 + col * 16;
+        const wy = canvasHeight - bHeight + 18 + row * 22;
+
+        // Window glow
+        g.fillStyle(windowColor, 0.4);
+        g.fillRect(wx - 2, wy - 2, 13, 15);
+
+        // Window
+        g.fillStyle(windowColor);
+        g.fillRect(wx, wy, 10, 12);
+
+        // Window frame
+        g.fillStyle(0x374151);
+        g.fillRect(wx + 4, wy, 2, 12);
+        g.fillRect(wx, wy + 5, 10, 2);
+      }
+    }
+
+    // "GYM" badge above door
+    g.fillStyle(0x1f2937);
+    g.fillRect(bWidth / 2 - 12, canvasHeight - bHeight + 8, 28, 12);
+    g.fillStyle(0xf97316);
+    g.fillRect(bWidth / 2 - 10, canvasHeight - bHeight + 10, 24, 8);
+
+    // Door - large arena entrance
+    const doorWidth = 20;
+    const doorHeight = 26;
+    const doorX = (bWidth - doorWidth) / 2 + 2;
+
+    // Door frame
+    g.fillStyle(0xea580c);
+    g.fillRect(doorX - 3, canvasHeight - doorHeight - 4, doorWidth + 6, doorHeight + 4);
+
+    // Door
+    g.fillStyle(0x1f2937);
+    g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
+
+    // Door window
+    g.fillStyle(0xfbbf24, 0.6);
+    g.fillRect(doorX + 4, canvasHeight - doorHeight + 4, doorWidth - 8, 10);
+
+    // Door divider
+    g.fillStyle(0xea580c);
+    g.fillRect(doorX + doorWidth / 2 - 1, canvasHeight - doorHeight, 2, doorHeight);
+
+    // Battle mat entrance
+    g.fillStyle(0xea580c);
+    g.fillRect(doorX - 6, canvasHeight - 3, doorWidth + 12, 3);
+    g.fillStyle(0xfbbf24);
+    g.fillRect(doorX - 4, canvasHeight - 2, doorWidth + 8, 2);
+
+    // Side torches/flames (decorative)
+    g.fillStyle(0xea580c);
+    g.fillRect(6, canvasHeight - 40, 4, 16);
+    g.fillRect(bWidth - 6, canvasHeight - 40, 4, 16);
+    g.fillStyle(0xfbbf24);
+    g.fillCircle(8, canvasHeight - 44, 4);
+    g.fillCircle(bWidth - 4, canvasHeight - 44, 4);
+    g.fillStyle(0xef4444);
+    g.fillCircle(8, canvasHeight - 46, 2);
+    g.fillCircle(bWidth - 4, canvasHeight - 46, 2);
+
+    g.generateTexture("tradinggym", 70, canvasHeight);
     g.destroy();
   }
 
