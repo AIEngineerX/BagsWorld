@@ -10,7 +10,7 @@ import type {
   GameEvent,
   ClaimEvent,
 } from "@/lib/types";
-import { buildWorldState } from "@/lib/world-calculator";
+import { buildWorldState, type BagsHealthMetrics } from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
 
@@ -689,8 +689,24 @@ export async function POST(request: NextRequest) {
       Promise.resolve(getESTTimeInfo()),
     ]);
 
-    // Build world state
-    const worldState = buildWorldState(earners, tokens, previousState ?? undefined);
+    // Calculate Bags.fm health metrics from real on-chain data
+    // 1. Total 24h claim volume (claims are already in lamports from SDK, convert to SOL)
+    const claimVolume24h = allClaimEvents24h.reduce((sum, e) => sum + e.amount, 0) / 1e9;
+    // 2. Total lifetime fees across all tokens
+    const totalLifetimeFees = tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
+    // 3. Count tokens with any fee activity
+    const activeTokenCount = tokens.filter(t => (t.lifetimeFees || 0) > 0).length;
+
+    const bagsMetrics: BagsHealthMetrics = {
+      claimVolume24h,
+      totalLifetimeFees,
+      activeTokenCount,
+    };
+
+    console.log(`Bags Health Metrics: 24h claims=${claimVolume24h.toFixed(2)} SOL, lifetime fees=${totalLifetimeFees.toFixed(2)} SOL, active tokens=${activeTokenCount}`);
+
+    // Build world state with Bags.fm metrics
+    const worldState = buildWorldState(earners, tokens, previousState ?? undefined, bagsMetrics);
 
     worldState.weather = realWeather;
     (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;
@@ -726,6 +742,13 @@ export async function POST(request: NextRequest) {
     // Track building count for city growth
     (worldState as any).tokenCount = tokens.length;
     (worldState as any).sdkAvailable = !!sdk;
+    // Include Bags.fm health metrics for transparency
+    (worldState as any).healthMetrics = {
+      claimVolume24h,
+      totalLifetimeFees,
+      activeTokenCount,
+      source: "bags.fm",
+    };
 
     previousState = worldState;
 
