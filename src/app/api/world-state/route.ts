@@ -412,6 +412,15 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
+  {
+    mint: "StarterTradingGym11111111111111111111111111",
+    name: "Trading Gym",
+    symbol: "GYM",
+    description: "The AI Trading Arena! Watch agents battle with predictions and compete for the top rank. Enter to spectate!",
+    imageUrl: "/assets/buildings/tradinggym.png",
+    creator: "BagsWorld",
+    createdAt: Date.now() - 86400000 * 7, // 7 days ago
+  },
 ];
 
 // Generate events from claim data and launches
