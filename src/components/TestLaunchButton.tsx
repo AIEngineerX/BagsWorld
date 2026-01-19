@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
@@ -64,6 +65,7 @@ function deserializeTransaction(encoded: string): VersionedTransaction | Transac
 
 export function TestLaunchButton() {
   const { publicKey, connected, signTransaction } = useWallet();
+  const { connection } = useConnection();
   const { setVisible: setWalletModalVisible } = useWalletModal();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -202,24 +204,20 @@ export function TestLaunchButton() {
 
           setStatus(`Step 2/3: Broadcasting fee config tx ${i + 1}...`);
 
-          // Send via server-side API to keep RPC URL secret
-          const sendRes = await fetch("/api/send-transaction", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              signedTransaction: Buffer.from(signed.serialize()).toString("base64"),
-            }),
+          // Send transaction client-side via wallet adapter connection
+          const txid = await connection.sendRawTransaction(signed.serialize(), {
+            skipPreflight: false,
+            maxRetries: 3,
           });
+          addLog(`Fee tx ${i + 1} sent: ${txid}`);
 
-          const sendData = await sendRes.json();
-          if (!sendRes.ok) {
-            const errMsg = sendData.hint
-              ? `${sendData.error}\n${sendData.hint}`
-              : sendData.error || "Failed to send fee config transaction";
-            throw new Error(errMsg);
+          // Wait for confirmation
+          const confirmation = await connection.confirmTransaction(txid, "confirmed");
+          if (confirmation.value.err) {
+            throw new Error(`Fee tx ${i + 1} failed: ${JSON.stringify(confirmation.value.err)}`);
           }
 
-          addLog(`Fee tx ${i + 1} confirmed: ${sendData.txid}`);
+          addLog(`Fee tx ${i + 1} confirmed: ${txid}`);
         }
       }
 
@@ -269,26 +267,23 @@ export function TestLaunchButton() {
       const signedLaunchTx = await signTransaction(launchTx);
 
       setStatus("Step 3/3: Broadcasting to Solana...");
-      addLog("Broadcasting transaction via server...");
+      addLog("Broadcasting transaction via wallet connection...");
 
-      // Send via server-side API to keep RPC URL secret
-      const sendRes = await fetch("/api/send-transaction", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          signedTransaction: Buffer.from(signedLaunchTx.serialize()).toString("base64"),
-        }),
+      // Send transaction client-side via wallet adapter connection
+      const txid = await connection.sendRawTransaction(signedLaunchTx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 3,
       });
+      addLog(`Launch tx sent: ${txid}`);
 
-      const sendData = await sendRes.json();
-      if (!sendRes.ok) {
-        const errMsg = sendData.hint
-          ? `${sendData.error}\n${sendData.hint}`
-          : sendData.error || "Failed to send launch transaction";
-        throw new Error(errMsg);
+      setStatus("Step 3/3: Waiting for confirmation...");
+
+      // Wait for confirmation
+      const confirmation = await connection.confirmTransaction(txid, "confirmed");
+      if (confirmation.value.err) {
+        throw new Error(`Launch tx failed: ${JSON.stringify(confirmation.value.err)}`);
       }
 
-      const txid = sendData.txid;
       addLog(`SUCCESS! TX: ${txid}`);
       setStatus(`Token launched! TX: ${txid.substring(0, 20)}...`);
 
