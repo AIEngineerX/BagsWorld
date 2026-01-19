@@ -196,7 +196,7 @@ export function TolyChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-80 bg-bags-dark border-4 border-purple-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-purple-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
     >
       {/* Header */}
       <div

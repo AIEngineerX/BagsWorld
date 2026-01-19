@@ -74,13 +74,13 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
       onClick={handleBackdropClick}
     >
       <div className="bg-bags-dark border-2 border-red-500 rounded-lg max-w-md w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-        {/* Header - PokeCenter style */}
+        {/* Header - Rewards Center style */}
         <div className="bg-gradient-to-r from-red-600 to-red-500 p-3 sm:p-4 flex justify-between items-center">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="text-2xl sm:text-3xl">🏥</div>
+            <div className="text-2xl sm:text-3xl font-pixel">R</div>
             <div>
-              <h2 className="font-pixel text-white text-xs sm:text-sm">POKECENTER</h2>
-              <p className="font-pixel text-red-200 text-[7px] sm:text-[8px]">Healing Hub & Claim Station</p>
+              <h2 className="font-pixel text-white text-xs sm:text-sm">REWARDS CENTER</h2>
+              <p className="font-pixel text-red-200 text-[7px] sm:text-[8px]">Top 3 Creators Get Paid</p>
             </div>
           </div>
           <button
@@ -96,9 +96,9 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
           {/* Welcome Message */}
           <div className="bg-red-900/30 border border-red-500/50 rounded p-3">
             <p className="font-pixel text-[10px] text-red-200">
-              Welcome, trainer! This is the BagsWorld healing hub.
-              Here you can check on your citizens, claim your fees,
-              and see how the world is doing.
+              Welcome to the BagsWorld Rewards Center.
+              Top 3 creators by fee contribution get rewarded directly.
+              Launch tokens, drive volume, earn SOL.
             </p>
           </div>
 
@@ -183,25 +183,25 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
             )}
           </div>
 
-          {/* Tips Section */}
+          {/* Creator Rewards Info */}
           <div className="border border-gray-700 rounded p-3">
-            <h3 className="font-pixel text-white text-xs mb-2">💡 Tips</h3>
+            <h3 className="font-pixel text-white text-xs mb-2">Creator Rewards</h3>
             <ul className="space-y-1">
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span>•</span>
-                <span>Launch tokens to create buildings and earn fees</span>
+                <span>1% of all fees go to the ecosystem rewards pool</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span>•</span>
-                <span>Add fee shares to bring citizens into your world</span>
+                <span>Top 3 creators by fee contribution get rewarded</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span>•</span>
-                <span>Claim fees regularly to keep your citizens happy</span>
+                <span>Distribution: 50% / 30% / 20% split</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span>•</span>
-                <span>Click on citizens to see their earnings</span>
+                <span>Triggers at 10 SOL or every 5 days (min 2 SOL)</span>
               </li>
             </ul>
           </div>

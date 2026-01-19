@@ -229,7 +229,7 @@ export function FinnbagsChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-80 bg-bags-dark border-4 border-emerald-500 shadow-lg ${isDragging ? 'cursor-grabbing' : ''}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-emerald-500 shadow-lg ${isDragging ? 'cursor-grabbing' : ''}`}
     >
       {/* Header - Draggable */}
       <div

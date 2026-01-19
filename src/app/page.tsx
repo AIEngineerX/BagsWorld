@@ -17,6 +17,7 @@ import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
 import { TradeModal } from "@/components/TradeModal";
+import { LaunchModal } from "@/components/LaunchModal";
 import { PartnerClaimButton } from "@/components/PartnerClaimButton";
 import { MusicButton } from "@/components/MusicButton";
 import { useWorldState } from "@/hooks/useWorldState";
@@ -26,6 +27,7 @@ import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
 import { TestLaunchButton } from "@/components/TestLaunchButton";
 import { ZoneNav } from "@/components/ZoneNav";
+import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
 
 interface BuildingClickData {
   mint: string;
@@ -56,6 +58,9 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // State for LaunchModal
+  const [showLaunchModal, setShowLaunchModal] = useState(false);
+
   // Listen for building click events from Phaser
   useEffect(() => {
     const handleBuildingClick = (event: CustomEvent<BuildingClickData>) => {
@@ -66,11 +71,24 @@ export default function Home() {
       setShowPokeCenterModal(true);
     };
 
+    // Handle AI action button events
+    const handleLaunchClick = () => {
+      setShowLaunchModal(true);
+    };
+
+    const handleClaimClick = () => {
+      setShowFeeClaimModal(true);
+    };
+
     window.addEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
     window.addEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
+    window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
+    window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     return () => {
       window.removeEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
       window.removeEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
+      window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
+      window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     };
   }, []);
 
@@ -191,16 +209,18 @@ export default function Home() {
             <ZoneNav />
           </div>
 
-          {/* Chat windows - hidden on small mobile */}
-          <div className="hidden sm:block">
-            <AIChat />
-            <TolyChat />
-            <AshChat />
-            <FinnbagsChat />
-            <DevChat />
-            <NeoChat />
-            <AgentDashboard />
-          </div>
+          {/* Chat windows - always rendered but can show/hide based on click events */}
+          {/* On mobile, users use MobileCharacterMenu to trigger these */}
+          <AIChat />
+          <TolyChat />
+          <AshChat />
+          <FinnbagsChat />
+          <DevChat />
+          <NeoChat />
+          <AgentDashboard />
+
+          {/* Mobile character menu - floating button */}
+          <MobileCharacterMenu />
         </div>
 
         {/* Sidebar - hidden on mobile, slide-in drawer on tablet, always visible on desktop */}
@@ -292,9 +312,20 @@ export default function Home() {
         />
       )}
 
-      {/* Fee Claim Modal - can be opened from PokeCenter */}
+      {/* Fee Claim Modal - can be opened from PokeCenter or AI action buttons */}
       {showFeeClaimModal && (
         <FeeClaimModal onClose={() => setShowFeeClaimModal(false)} />
+      )}
+
+      {/* Launch Modal - can be opened from AI action buttons */}
+      {showLaunchModal && (
+        <LaunchModal
+          onClose={() => setShowLaunchModal(false)}
+          onLaunchSuccess={() => {
+            setShowLaunchModal(false);
+            refreshAfterLaunch();
+          }}
+        />
       )}
     </main>
   );
