@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
+import bs58 from "bs58";
 
 /**
  * MINIMAL TEST LAUNCH BUTTON
@@ -16,15 +17,32 @@ import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
  * No ecosystem fees, no complexity - just the bare minimum to test the API.
  */
 
-function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
-  console.log("[TEST] Deserializing transaction, length:", base64?.length);
-  console.log("[TEST] First 100 chars:", base64?.substring(0, 100));
+function deserializeTransaction(encoded: string): VersionedTransaction | Transaction {
+  console.log("[TEST] Deserializing transaction, length:", encoded?.length);
+  console.log("[TEST] First 100 chars:", encoded?.substring(0, 100));
 
-  if (!base64 || typeof base64 !== "string" || base64.length < 50) {
-    throw new Error(`Invalid transaction data: ${typeof base64}, length: ${base64?.length}`);
+  if (!encoded || typeof encoded !== "string" || encoded.length < 50) {
+    throw new Error(`Invalid transaction data: ${typeof encoded}, length: ${encoded?.length}`);
   }
 
-  const buffer = Buffer.from(base64, "base64");
+  // Detect encoding: base58 uses alphanumeric chars (no + or /), base64 may have + / =
+  const isLikelyBase64 = encoded.includes("+") || encoded.includes("/") || encoded.endsWith("=");
+
+  let buffer: Uint8Array;
+
+  if (isLikelyBase64) {
+    console.log("[TEST] Detected base64 encoding");
+    buffer = Buffer.from(encoded, "base64");
+  } else {
+    console.log("[TEST] Detected base58 encoding");
+    try {
+      buffer = bs58.decode(encoded);
+    } catch (e) {
+      console.log("[TEST] base58 decode failed, trying base64:", e);
+      buffer = Buffer.from(encoded, "base64");
+    }
+  }
+
   console.log("[TEST] Buffer size:", buffer.length, "bytes");
 
   try {
@@ -39,7 +57,7 @@ function deserializeTransaction(base64: string): VersionedTransaction | Transact
       return tx;
     } catch (e2) {
       console.log("[TEST] Legacy Transaction failed:", e2);
-      throw new Error(`Failed to deserialize: buffer ${buffer.length} bytes`);
+      throw new Error(`Failed to deserialize: buffer ${buffer.length} bytes. Both VersionedTransaction and legacy Transaction parsing failed.`);
     }
   }
 }
