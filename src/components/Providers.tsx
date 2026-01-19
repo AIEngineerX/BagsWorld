@@ -7,7 +7,7 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { clusterApiUrl } from "@solana/web3.js";
 
 // Import wallet adapter styles
@@ -32,9 +32,10 @@ export function Providers({ children }: { children: ReactNode }) {
     []
   );
 
-  // Supported wallets (Phantom auto-registers via Standard Wallet interface)
+  // Supported wallets
   const wallets = useMemo(
     () => [
+      new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
     ],
     []
