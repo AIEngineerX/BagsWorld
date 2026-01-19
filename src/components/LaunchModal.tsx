@@ -4,24 +4,42 @@ import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
+import bs58 from "bs58";
 
-// Helper to deserialize transaction - tries both formats
-function deserializeTransaction(base64: string, context: string = "transaction"): VersionedTransaction | Transaction {
+// Helper to deserialize transaction - handles both base58 and base64 encoding
+function deserializeTransaction(encoded: string, context: string = "transaction"): VersionedTransaction | Transaction {
   console.log(`Deserializing ${context}:`, {
-    inputType: typeof base64,
-    inputLength: base64?.length,
-    preview: base64?.substring(0, 50) + "...",
+    inputType: typeof encoded,
+    inputLength: encoded?.length,
+    preview: encoded?.substring(0, 50) + "...",
   });
 
-  if (!base64 || typeof base64 !== "string") {
-    throw new Error(`Invalid ${context}: expected base64 string, got ${typeof base64}`);
+  if (!encoded || typeof encoded !== "string") {
+    throw new Error(`Invalid ${context}: expected string, got ${typeof encoded}`);
   }
 
-  if (base64.length < 100) {
-    throw new Error(`Invalid ${context}: too short (${base64.length} chars), likely empty or error response`);
+  if (encoded.length < 100) {
+    throw new Error(`Invalid ${context}: too short (${encoded.length} chars), likely empty or error response`);
   }
 
-  const buffer = Buffer.from(base64, "base64");
+  // Detect encoding: base58 uses alphanumeric chars (no + or /), base64 may have + / =
+  const isLikelyBase64 = encoded.includes("+") || encoded.includes("/") || encoded.endsWith("=");
+
+  let buffer: Uint8Array;
+
+  if (isLikelyBase64) {
+    console.log(`${context}: Detected base64 encoding`);
+    buffer = Buffer.from(encoded, "base64");
+  } else {
+    console.log(`${context}: Detected base58 encoding`);
+    try {
+      buffer = bs58.decode(encoded);
+    } catch (e) {
+      console.log(`${context}: base58 decode failed, trying base64:`, e);
+      buffer = Buffer.from(encoded, "base64");
+    }
+  }
+
   console.log(`${context} buffer size:`, buffer.length, "bytes");
 
   // Try VersionedTransaction first (more common with modern APIs)
