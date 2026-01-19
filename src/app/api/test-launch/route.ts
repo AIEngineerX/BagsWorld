@@ -257,6 +257,7 @@ export async function POST(request: Request) {
 
       case "create-launch-tx": {
         // Step 3: Create the launch transaction
+        // Note: SDK uses metadataUrl and launchWallet, but API may accept ipfs and wallet
         const { ipfs, tokenMint, wallet, configKey, initialBuyLamports = 0 } = body;
 
         if (!ipfs || !tokenMint || !wallet || !configKey) {
@@ -266,10 +267,11 @@ export async function POST(request: Request) {
           }, { status: 400 });
         }
 
+        // Match SDK parameter names: metadataUrl instead of ipfs, launchWallet instead of wallet
         const launchBody = {
-          ipfs,
+          metadataUrl: ipfs,  // SDK uses metadataUrl
           tokenMint,
-          wallet,
+          launchWallet: wallet,  // SDK uses launchWallet
           configKey,
           initialBuyLamports,
         };
