@@ -278,10 +278,21 @@ export async function POST(request: Request) {
 
         console.log("[TEST-API] Launch tx request:", JSON.stringify(launchBody, null, 2));
 
-        const launchResult = await bagsApiFetch("/token-launch/create-launch-transaction", {
-          method: "POST",
-          body: JSON.stringify(launchBody),
-        });
+        let launchResult;
+        try {
+          launchResult = await bagsApiFetch("/token-launch/create-launch-transaction", {
+            method: "POST",
+            body: JSON.stringify(launchBody),
+          });
+        } catch (launchError) {
+          console.error("[TEST-API] Launch tx API error:", launchError);
+          // Return more detail on the error
+          return NextResponse.json({
+            error: launchError instanceof Error ? launchError.message : String(launchError),
+            request: launchBody,
+            hint: "This may be a temporary Bags API issue. Try again.",
+          }, { status: 500 });
+        }
 
         console.log("[TEST-API] Launch tx result type:", typeof launchResult);
         console.log("[TEST-API] Launch tx result:", typeof launchResult === "string" ? launchResult.substring(0, 200) : JSON.stringify(launchResult));
