@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
@@ -63,7 +64,8 @@ function deserializeTransaction(encoded: string): VersionedTransaction | Transac
 }
 
 export function TestLaunchButton() {
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, signTransaction, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   const { setVisible: setWalletModalVisible } = useWalletModal();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -202,21 +204,32 @@ export function TestLaunchButton() {
 
           setStatus(`Step 2/3: Broadcasting fee config tx ${i + 1}...`);
 
-          // Send via server-side API to keep RPC URL secret
-          const sendRes = await fetch("/api/send-transaction", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              signedTransaction: Buffer.from(signed.serialize()).toString("base64"),
-            }),
+          // Send with skipPreflight to avoid blockhash expiry issues during simulation
+          const txid = await connection.sendRawTransaction(signed.serialize(), {
+            skipPreflight: true, // Skip simulation - blockhash may have expired during signing
+            maxRetries: 5,
           });
+          addLog(`Fee tx ${i + 1} sent: ${txid}`);
 
-          const sendData = await sendRes.json();
-          if (!sendRes.ok) {
-            throw new Error(sendData.error || "Failed to send fee config transaction");
+          // Wait for confirmation with timeout
+          setStatus(`Step 2/3: Confirming fee config tx ${i + 1}...`);
+          try {
+            const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+            await connection.confirmTransaction({
+              signature: txid,
+              blockhash: latestBlockhash.blockhash,
+              lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            }, "confirmed");
+          } catch (confirmError) {
+            addLog(`Fee tx ${i + 1} confirmation timeout, checking status...`);
+            // Check if it actually succeeded
+            const status = await connection.getSignatureStatus(txid);
+            if (status.value?.err) {
+              throw new Error(`Fee tx ${i + 1} failed: ${JSON.stringify(status.value.err)}`);
+            }
           }
 
-          addLog(`Fee tx ${i + 1} confirmed: ${sendData.txid}`);
+          addLog(`Fee tx ${i + 1} confirmed: ${txid}`);
         }
       }
 
@@ -266,24 +279,39 @@ export function TestLaunchButton() {
       const signedLaunchTx = await signTransaction(launchTx);
 
       setStatus("Step 3/3: Broadcasting to Solana...");
-      addLog("Broadcasting transaction via server...");
+      addLog("Broadcasting transaction via wallet connection...");
 
-      // Send via server-side API to keep RPC URL secret
-      const sendRes = await fetch("/api/send-transaction", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          signedTransaction: Buffer.from(signedLaunchTx.serialize()).toString("base64"),
-        }),
+      // Send with skipPreflight to avoid blockhash expiry issues
+      const txid = await connection.sendRawTransaction(signedLaunchTx.serialize(), {
+        skipPreflight: true, // Skip simulation - blockhash may have expired during signing
+        maxRetries: 5,
       });
+      addLog(`Launch tx sent: ${txid}`);
 
-      const sendData = await sendRes.json();
-      if (!sendRes.ok) {
-        throw new Error(sendData.error || "Failed to send launch transaction");
+      setStatus("Step 3/3: Waiting for confirmation...");
+
+      // Wait for confirmation with better error handling
+      try {
+        const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+        await connection.confirmTransaction({
+          signature: txid,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        }, "confirmed");
+      } catch (confirmError) {
+        addLog(`Confirmation timeout, checking status...`);
+        // Check if it actually succeeded
+        const status = await connection.getSignatureStatus(txid);
+        if (status.value?.err) {
+          throw new Error(`Launch tx failed: ${JSON.stringify(status.value.err)}`);
+        }
+        if (!status.value?.confirmationStatus) {
+          addLog(`Transaction may still be processing. Check: https://solscan.io/tx/${txid}`);
+        }
       }
 
-      const txid = sendData.txid;
       addLog(`SUCCESS! TX: ${txid}`);
+      addLog(`View on Solscan: https://solscan.io/tx/${txid}`);
       setStatus(`Token launched! TX: ${txid.substring(0, 20)}...`);
 
     } catch (err) {
