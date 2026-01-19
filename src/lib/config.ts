@@ -22,6 +22,7 @@ export const ECOSYSTEM_CONFIG = {
     wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
     // Fee percentage in basis points (100 = 1%)
+    // 1% goes to @BagsWorldApp - must be linked at bags.fm/settings
     feeBps: 100,
 
     // Autonomous agents manage the ecosystem wallet:
@@ -43,8 +44,9 @@ export const ECOSYSTEM_CONFIG = {
     },
 
     // Provider name shown in fee shares
-    // Use "solana" provider with wallet address for direct wallet fee shares
-    provider: "solana" as const,
+    // Must use supported social provider (twitter, kick, github) - NOT raw wallet addresses
+    // The Twitter account must be linked to the ecosystem wallet at bags.fm/settings
+    provider: "twitter" as const,
     providerUsername: "BagsWorldApp",
   },
 
@@ -356,8 +358,8 @@ export function getBuildingTier(marketCap: number): typeof ECOSYSTEM_CONFIG.buil
 
 export function getEcosystemFeeShare() {
   return {
-    provider: ECOSYSTEM_CONFIG.ecosystem.provider,
-    providerUsername: ECOSYSTEM_CONFIG.ecosystem.wallet,
+    provider: ECOSYSTEM_CONFIG.ecosystem.provider,  // "twitter"
+    providerUsername: ECOSYSTEM_CONFIG.ecosystem.providerUsername,  // "BagsWorldApp"
     bps: ECOSYSTEM_CONFIG.ecosystem.feeBps,
     displayName: ECOSYSTEM_CONFIG.ecosystem.providerUsername,
   };

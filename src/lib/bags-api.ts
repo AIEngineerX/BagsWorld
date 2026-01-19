@@ -27,39 +27,79 @@ class BagsApiClient {
 
   private async fetch<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retryCount: number = 0
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "x-api-key": this.apiKey,
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
+    const maxRetries = 3;
 
-    if (!response.ok) {
-      // Try to get error details from response body
-      let errorDetail = "";
-      try {
-        const errorBody = await response.text();
-        errorDetail = errorBody ? ` - ${errorBody}` : "";
-        console.error(`Bags API error response (${endpoint}):`, errorBody);
-      } catch {
-        // Ignore if we can't read the body
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          "x-api-key": this.apiKey,
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      });
+
+      if (!response.ok) {
+        // Try to get error details from response body
+        let errorDetail = "";
+        let parsedError: { success?: boolean; response?: string; error?: string } | null = null;
+        try {
+          const errorBody = await response.text();
+          errorDetail = errorBody ? ` - ${errorBody}` : "";
+          console.error(`Bags API error response (${endpoint}):`, errorBody);
+
+          // Try to parse as JSON to get more specific error
+          try {
+            parsedError = JSON.parse(errorBody);
+          } catch {
+            // Not JSON, use raw text
+          }
+        } catch {
+          // Ignore if we can't read the body
+        }
+
+        // Handle 500 errors with retry for transient issues
+        if (response.status >= 500 && retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+          console.log(`Bags API 500 error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.fetch<T>(endpoint, options, retryCount + 1);
+        }
+
+        // Extract error message from parsed response
+        const errorMessage = parsedError?.error ||
+          (typeof parsedError?.response === 'string' ? parsedError.response : null) ||
+          `API error: ${response.status} ${response.statusText}${errorDetail}`;
+
+        throw new Error(errorMessage);
       }
-      throw new Error(`API error: ${response.status} ${response.statusText}${errorDetail}`);
+
+      const data: ApiResponse<T> = await response.json();
+      console.log("Bags API raw json response:", JSON.stringify(data, null, 2));
+
+      if (!data.success) {
+        // Handle error in both 'error' and 'response' fields
+        const errorMessage = data.error ||
+          (typeof data.response === 'string' ? data.response : null) ||
+          "Unknown API error";
+        throw new Error(errorMessage);
+      }
+
+      return data.response as T;
+    } catch (error) {
+      // Retry on network errors
+      if (error instanceof TypeError && error.message.includes('fetch') && retryCount < maxRetries) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.log(`Network error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.fetch<T>(endpoint, options, retryCount + 1);
+      }
+      throw error;
     }
-
-    const data: ApiResponse<T> = await response.json();
-    console.log("Bags API raw json response:", JSON.stringify(data, null, 2));
-
-    if (!data.success) {
-      throw new Error(data.error || "Unknown API error");
-    }
-
-    return data.response as T;
   }
 
   // Fee Share Endpoints
@@ -107,7 +147,7 @@ class BagsApiClient {
     totalClaimed: number;
     totalUnclaimed: number;
   }> {
-    const params = new URLSearchParams({ mint: tokenMint });
+    const params = new URLSearchParams({ tokenMint });
     return this.fetch(`/token-launch/lifetime-fees?${params}`);
   }
 
@@ -119,12 +159,12 @@ class BagsApiClient {
       username?: string;
     }>
   > {
-    const params = new URLSearchParams({ mint: tokenMint });
+    const params = new URLSearchParams({ tokenMint });
     return this.fetch(`/token-launch/creator/v3?${params}`);
   }
 
   async getClaimStats(tokenMint: string): Promise<ClaimStats[]> {
-    const params = new URLSearchParams({ mint: tokenMint });
+    const params = new URLSearchParams({ tokenMint });
     return this.fetch(`/token-launch/claim-stats?${params}`);
   }
 
@@ -132,7 +172,7 @@ class BagsApiClient {
     tokenMint: string,
     limit?: number
   ): Promise<ClaimEvent[]> {
-    const params = new URLSearchParams({ mint: tokenMint });
+    const params = new URLSearchParams({ tokenMint });
     if (limit) {
       params.set("limit", limit.toString());
     }
@@ -148,7 +188,7 @@ class BagsApiClient {
     const twentyFourHoursAgo = now - 24 * 60 * 60;
 
     const params = new URLSearchParams({
-      mint: tokenMint,
+      tokenMint,
       mode: "time",
       from: twentyFourHoursAgo.toString(),
       to: now.toString(),
@@ -213,20 +253,24 @@ class BagsApiClient {
 
   // Token Launch Endpoints
 
-  async createTokenInfo(data: {
-    name: string;
-    symbol: string;
-    description: string;
-    imageBlob?: Blob;
-    imageName?: string;
-    imageUrl?: string;
-    twitter?: string;
-    telegram?: string;
-    website?: string;
-  }): Promise<{
+  async createTokenInfo(
+    data: {
+      name: string;
+      symbol: string;
+      description: string;
+      imageBlob?: Blob;
+      imageName?: string;
+      imageUrl?: string;
+      twitter?: string;
+      telegram?: string;
+      website?: string;
+    },
+    retryCount: number = 0
+  ): Promise<{
     tokenMint: string;
     tokenMetadata: string;
   }> {
+    const maxRetries = 3;
     const formData = new FormData();
     formData.append("name", data.name);
     formData.append("symbol", data.symbol);
@@ -244,27 +288,65 @@ class BagsApiClient {
     if (data.website) formData.append("website", data.website);
 
     const url = `${this.baseUrl}/token-launch/create-token-info`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "x-api-key": this.apiKey,
-        // Note: Don't set Content-Type for FormData - browser sets it with boundary
-      },
-      body: formData,
-    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API error: ${response.status} - ${errorText}`);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "x-api-key": this.apiKey,
+          // Note: Don't set Content-Type for FormData - browser sets it with boundary
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`createTokenInfo error response:`, errorText);
+
+        // Try to parse JSON error
+        let parsedError: { success?: boolean; response?: string; error?: string } | null = null;
+        try {
+          parsedError = JSON.parse(errorText);
+        } catch {
+          // Not JSON
+        }
+
+        // Retry on 500 errors
+        if (response.status >= 500 && retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          console.log(`createTokenInfo 500 error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.createTokenInfo(data, retryCount + 1);
+        }
+
+        const errorMessage = parsedError?.error ||
+          (typeof parsedError?.response === 'string' ? parsedError.response : null) ||
+          `API error: ${response.status} - ${errorText}`;
+
+        throw new Error(errorMessage);
+      }
+
+      const result: ApiResponse<{ tokenMint: string; tokenMetadata: string }> = await response.json();
+
+      if (!result.success) {
+        // Handle error in both 'error' and 'response' fields
+        const errorMessage = result.error ||
+          (typeof result.response === 'string' ? result.response : null) ||
+          "Unknown API error";
+        throw new Error(errorMessage);
+      }
+
+      return result.response as { tokenMint: string; tokenMetadata: string };
+    } catch (error) {
+      // Retry on network errors
+      if (error instanceof TypeError && error.message.includes('fetch') && retryCount < maxRetries) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.log(`createTokenInfo network error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.createTokenInfo(data, retryCount + 1);
+      }
+      throw error;
     }
-
-    const result: ApiResponse<{ tokenMint: string; tokenMetadata: string }> = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Unknown API error");
-    }
-
-    return result.response as { tokenMint: string; tokenMetadata: string };
   }
 
   async createLaunchTransaction(data: {
