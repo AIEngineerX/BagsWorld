@@ -11,15 +11,15 @@ export interface ZoneInfo {
 export const ZONES: Record<ZoneType, ZoneInfo> = {
   main_city: {
     id: "main_city",
-    name: "Main City",
-    description: "The heart of BagsWorld",
-    icon: "[M]",
+    name: "Park",
+    description: "The peaceful heart of BagsWorld",
+    icon: "[P]",
   },
   trending: {
     id: "trending",
-    name: "Trending",
-    description: "Hot tokens and top gainers",
-    icon: "[T]",
+    name: "City",
+    description: "Downtown district with hot tokens",
+    icon: "[C]",
   },
 };
 
