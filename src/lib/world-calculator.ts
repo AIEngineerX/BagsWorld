@@ -46,12 +46,25 @@ let nextAvailableIndex = 0;
  * @param claimVolume24h - Total SOL claimed in the last 24 hours
  * @param totalLifetimeFees - Total lifetime fees across all tokens
  * @param activeTokenCount - Number of tokens with activity
+ * @param buildingCount - Number of buildings in the world (for baseline)
  */
 export function calculateWorldHealth(
   claimVolume24h: number,
   totalLifetimeFees: number,
-  activeTokenCount: number = 0
+  activeTokenCount: number = 0,
+  buildingCount: number = 0
 ): number {
+  // Baseline health: world exists and is functioning (25-40%)
+  // This prevents showing 0% when infrastructure is working but no token activity
+  const BASELINE_HEALTH = 25;
+  const BUILDING_BONUS = Math.min(15, buildingCount * 3); // Up to 15% for having buildings
+  const baselineScore = BASELINE_HEALTH + BUILDING_BONUS;
+
+  // If no fee activity, return baseline
+  if (claimVolume24h === 0 && totalLifetimeFees === 0 && activeTokenCount === 0) {
+    return baselineScore;
+  }
+
   // Weight: 60% claim activity, 30% lifetime fees, 10% token diversity
   const claimThresholds = BAGS_HEALTH_THRESHOLDS.claimVolume;
   const feeThresholds = BAGS_HEALTH_THRESHOLDS.lifetimeFees;
@@ -89,7 +102,10 @@ export function calculateWorldHealth(
   const diversityScore = Math.min(100, activeTokenCount * 10); // 10 tokens = 100%
 
   // Weighted average: 60% claims, 30% fees, 10% diversity
-  const health = claimScore * 0.6 + feesScore * 0.3 + diversityScore * 0.1;
+  const activityHealth = claimScore * 0.6 + feesScore * 0.3 + diversityScore * 0.1;
+
+  // Blend baseline with activity (activity can boost above baseline)
+  const health = Math.max(baselineScore, activityHealth);
 
   return Math.round(Math.max(0, Math.min(100, health)));
 }
@@ -418,8 +434,9 @@ export function buildWorldState(
   const claimVolume24h = bagsMetrics?.claimVolume24h ?? 0;
   const totalLifetimeFees = bagsMetrics?.totalLifetimeFees ?? tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
   const activeTokenCount = bagsMetrics?.activeTokenCount ?? tokens.filter(t => (t.lifetimeFees || 0) > 0).length;
+  const buildingCount = tokens.length;
 
-  const health = calculateWorldHealth(claimVolume24h, totalLifetimeFees, activeTokenCount);
+  const health = calculateWorldHealth(claimVolume24h, totalLifetimeFees, activeTokenCount, buildingCount);
   const weather = calculateWeather(health);
 
   // Transform earners to characters (keep positions from previous state)
