@@ -308,6 +308,14 @@ export function TolyChat() {
             <p className="font-pixel text-[9px] text-purple-400">$0.00025</p>
           </div>
         </div>
+        <a
+          href="https://x.com/aeyakovenko"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-center font-pixel text-[7px] text-purple-400 hover:text-purple-300 mt-2 transition-colors"
+        >
+          @aeyakovenko
+        </a>
       </div>
     </div>
   );

@@ -575,9 +575,14 @@ export function DevChat() {
                 : 'wallet not connected'}
             </p>
           </div>
-          <p className="font-pixel text-[7px] text-gray-500">
-            bags.fm data
-          </p>
+          <a
+            href="https://x.com/DaddyGhost"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-pixel text-[7px] text-purple-400 hover:text-purple-300 transition-colors"
+          >
+            @DaddyGhost
+          </a>
         </div>
       </div>
     </div>
