@@ -47,6 +47,7 @@ export class WorldScene extends Phaser.Scene {
 
   // Zone system
   private currentZone: ZoneType = "main_city";
+  private isTransitioning = false; // Prevent overlapping transitions
   private trendingElements: Phaser.GameObjects.GameObject[] = [];
   private mainCityElements: Phaser.GameObjects.GameObject[] = [];
   private boundZoneChange: ((e: Event) => void) | null = null;
@@ -128,27 +129,181 @@ export class WorldScene extends Phaser.Scene {
 
   private handleZoneChange(event: CustomEvent<{ zone: ZoneType }>): void {
     const newZone = event.detail.zone;
-    if (newZone === this.currentZone) return;
+    if (newZone === this.currentZone || this.isTransitioning) return;
 
     // Transition to new zone
     this.transitionToZone(newZone);
   }
 
   private transitionToZone(newZone: ZoneType): void {
-    // Fade out current zone
-    this.cameras.main.fade(300, 0, 0, 0, false, (camera: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-      if (progress === 1) {
-        // Clear current zone elements
-        this.clearCurrentZone();
+    // Mark transition in progress
+    this.isTransitioning = true;
 
-        // Set up new zone
-        this.currentZone = newZone;
-        this.setupZone(newZone);
+    // Determine slide direction: trending is "to the right" of main city
+    const isGoingRight = newZone === "trending";
+    const duration = 600;
+    const slideDistance = 850; // Slightly more than screen width for full slide
 
-        // Fade back in
-        this.cameras.main.fadeIn(300, 0, 0, 0);
+    // Calculate offsets
+    const slideOutOffset = isGoingRight ? -slideDistance : slideDistance;
+    const slideInOffset = isGoingRight ? slideDistance : -slideDistance;
+
+    // Collect current zone elements to slide out
+    const oldElements: (Phaser.GameObjects.GameObject & { x?: number })[] = [];
+
+    if (this.currentZone === "trending") {
+      oldElements.push(...this.trendingElements);
+      oldElements.push(...this.billboardTexts);
+      if (this.tickerText) oldElements.push(this.tickerText);
+      oldElements.push(...this.skylineSprites);
+    } else {
+      // Main city decorations
+      this.decorations.forEach(d => oldElements.push(d));
+      this.animals.forEach(a => oldElements.push(a.sprite));
+    }
+
+    // Include buildings and characters (they slide out and get recreated)
+    this.buildingSprites.forEach(container => oldElements.push(container));
+    this.characterSprites.forEach(sprite => oldElements.push(sprite));
+
+    // Store old element original X positions for proper destruction
+    const oldElementData = oldElements.map(el => ({ el, origX: (el as any).x || 0 }));
+
+    // Create transition overlay for ground swap (slides with content)
+    const transitionOverlay = this.add.rectangle(
+      400 + slideInOffset,
+      520,
+      800,
+      200,
+      this.currentZone === "main_city" ? 0x374151 : 0x22c55e, // concrete or grass color
+      1
+    );
+    transitionOverlay.setDepth(0);
+
+    // Slide out old elements
+    oldElementData.forEach(({ el }) => {
+      if ((el as any).x !== undefined) {
+        this.tweens.add({
+          targets: el,
+          x: (el as any).x + slideOutOffset,
+          duration,
+          ease: 'Cubic.easeInOut',
+        });
       }
     });
+
+    // Slide ground texture overlay
+    this.tweens.add({
+      targets: this.ground,
+      tilePositionX: this.ground.tilePositionX + (isGoingRight ? 100 : -100),
+      duration,
+      ease: 'Cubic.easeInOut',
+    });
+
+    // Slide transition overlay in
+    this.tweens.add({
+      targets: transitionOverlay,
+      x: 400,
+      duration,
+      ease: 'Cubic.easeInOut',
+    });
+
+    // At midpoint, swap the zone
+    this.time.delayedCall(duration * 0.4, () => {
+      // Clear old zone references (elements are still animating)
+      if (this.currentZone === "trending") {
+        this.trendingElements = [];
+        this.billboardTexts = [];
+        this.tickerText = null;
+        this.skylineSprites = [];
+      }
+
+      // Update zone and set up new content
+      this.currentZone = newZone;
+
+      // Change ground texture
+      this.ground.setTexture(newZone === "trending" ? "concrete" : "grass");
+
+      // Setup new zone content (will be positioned off-screen initially)
+      this.setupZoneOffscreen(newZone, slideInOffset);
+
+      // Destroy transition overlay
+      transitionOverlay.destroy();
+    });
+
+    // Clean up old elements after animation completes
+    this.time.delayedCall(duration + 50, () => {
+      oldElementData.forEach(({ el }) => {
+        if (el && (el as any).destroy && (el as any).active !== false) {
+          // Don't destroy decorations/animals for main city - just reset position
+          if (this.currentZone === "main_city" &&
+              (this.decorations.includes(el as any) || this.animals.some(a => a.sprite === el))) {
+            (el as any).x = (el as any).x - slideOutOffset; // Reset to original
+            (el as any).setVisible(true);
+          } else if (!this.decorations.includes(el as any) && !this.animals.some(a => a.sprite === el)) {
+            (el as any).destroy();
+          }
+        }
+      });
+
+      // Clear old building/character sprite maps
+      this.buildingSprites.clear();
+      this.characterSprites.clear();
+
+      // Mark transition complete
+      this.isTransitioning = false;
+    });
+  }
+
+  private setupZoneOffscreen(zone: ZoneType, offsetX: number): void {
+    // Setup zone with elements offset, then animate them into position
+    const duration = 400;
+
+    if (zone === "trending") {
+      this.setupTrendingZone();
+
+      // Offset all new trending elements and animate them in
+      const newElements = [
+        ...this.trendingElements,
+        ...this.billboardTexts,
+        this.tickerText,
+        ...this.skylineSprites
+      ].filter(Boolean);
+
+      newElements.forEach(el => {
+        if ((el as any).x !== undefined) {
+          const targetX = (el as any).x;
+          (el as any).x = targetX + offsetX;
+          this.tweens.add({
+            targets: el,
+            x: targetX,
+            duration,
+            ease: 'Cubic.easeOut',
+          });
+        }
+      });
+    } else {
+      this.setupMainCityZone();
+
+      // Animate main city elements in
+      const newElements = [
+        ...this.decorations,
+        ...this.animals.map(a => a.sprite)
+      ];
+
+      newElements.forEach(el => {
+        if ((el as any).x !== undefined) {
+          const targetX = (el as any).x;
+          (el as any).x = targetX + offsetX;
+          this.tweens.add({
+            targets: el,
+            x: targetX,
+            duration,
+            ease: 'Cubic.easeOut',
+          });
+        }
+      });
+    }
   }
 
   private clearCurrentZone(): void {
@@ -269,7 +424,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createTrendingDecorations(): void {
-    // Neon "TRENDING" sign at top center - prominent placement
+    // Neon "CITY" sign at top center - prominent placement
     const trendingSign = this.add.sprite(400, 45, "neon_trending");
     trendingSign.setDepth(10);
     trendingSign.setScale(1.5);
@@ -308,8 +463,8 @@ export class WorldScene extends Phaser.Scene {
     mainBillboard.setScale(1.1);
     this.trendingElements.push(mainBillboard);
 
-    // Billboard content - trending stats
-    const billboardTitle = this.add.text(400, 95, "TOP TRENDING", {
+    // Billboard content - city stats
+    const billboardTitle = this.add.text(400, 95, "HOT TOKENS", {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#fbbf24",
@@ -407,7 +562,7 @@ export class WorldScene extends Phaser.Scene {
   private getTickerContent(): string {
     // Generate ticker content from world state
     const content: string[] = [
-      ">>> BAGSWORLD TRENDING <<<",
+      ">>> BAGSWORLD CITY <<<",
     ];
 
     if (this.worldState) {
