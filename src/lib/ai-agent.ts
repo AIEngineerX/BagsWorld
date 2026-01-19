@@ -1,4 +1,5 @@
 import type { WorldState, GameCharacter, GameEvent } from "./types";
+import { subscribe, emitAgentInsight, type AgentEvent } from "./agent-coordinator";
 
 // AI Agent that can observe and interact with the world
 interface AIAgentState {
@@ -463,6 +464,7 @@ class AIAgent {
 
 // Singleton instance
 let aiAgent: AIAgent | null = null;
+let coordinatorUnsubscribe: (() => void) | null = null;
 
 export function getAIAgent(): AIAgent {
   if (!aiAgent) {
@@ -474,6 +476,196 @@ export function getAIAgent(): AIAgent {
 export function resetAIAgent(personality?: AIPersonality): AIAgent {
   aiAgent = new AIAgent(personality);
   return aiAgent;
+}
+
+// ============================================================================
+// COORDINATOR INTEGRATION
+// ============================================================================
+
+/**
+ * Generate AI reaction to a coordinator event
+ */
+function generateEventReaction(event: AgentEvent, personality: AIPersonality): AIAction | null {
+  const random = Math.random();
+
+  // Don't react to everything - be selective
+  if (random > 0.6) return null;
+
+  switch (event.type) {
+    case "token_launch": {
+      const { name, symbol, platform } = event.data as { name: string; symbol: string; platform: string };
+      const messages: Record<AIPersonality["trait"], string[]> = {
+        optimistic: [
+          `$${symbol} just launched! another chance to make it ser`,
+          `fresh token alert! ${name} looking interesting`,
+          `lfg new launch! $${symbol} on ${platform}`,
+        ],
+        cautious: [
+          `new token $${symbol}... do your own research anon`,
+          `${name} just launched. watching closely`,
+          `another one... let's see how $${symbol} plays out`,
+        ],
+        chaotic: [
+          `NEW TOKEN JUST DROPPED! $${symbol} APING IN`,
+          `${name}?? idk what it is but IM INTERESTED`,
+          `$${symbol} FRESH LAUNCH LETS GOOO`,
+        ],
+        strategic: [
+          `$${symbol} launch detected. analyzing tokenomics...`,
+          `new entry: ${name}. adding to watchlist`,
+          `${platform} launch: $${symbol}. monitoring volume`,
+        ],
+      };
+      const options = messages[personality.trait];
+      return {
+        type: "speak",
+        message: options[Math.floor(Math.random() * options.length)],
+      };
+    }
+
+    case "distribution": {
+      const { totalDistributed, recipients } = event.data as { totalDistributed: number; recipients: Array<{ tokenSymbol: string; rank: number }> };
+      const topToken = recipients[0]?.tokenSymbol || "unknown";
+      const messages: Record<AIPersonality["trait"], string[]> = {
+        optimistic: [
+          `CREATOR REWARDS DROPPED! ${totalDistributed.toFixed(2)} SOL to the builders!`,
+          `bags.fm paying out! congrats to $${topToken} creator`,
+          `this is why we build ser! ${totalDistributed.toFixed(2)} SOL distributed`,
+        ],
+        cautious: [
+          `creator rewards sent: ${totalDistributed.toFixed(2)} SOL. system working as intended`,
+          `distribution complete. $${topToken} creator earned it`,
+          `rewards distributed. keep building frens`,
+        ],
+        chaotic: [
+          `MONEY PRINTER GO BRRR! ${totalDistributed.toFixed(2)} SOL TO CREATORS!`,
+          `$${topToken} creator getting PAID! we love to see it`,
+          `DISTRIBUTION SZN! creators eating good tonight`,
+        ],
+        strategic: [
+          `rewards cycle complete: ${totalDistributed.toFixed(2)} SOL. $${topToken} leads rankings`,
+          `ecosystem health indicator: distributions on schedule`,
+          `creator incentives working. ${totalDistributed.toFixed(2)} SOL moved to builders`,
+        ],
+      };
+      const options = messages[personality.trait];
+      return {
+        type: "celebrate",
+        message: options[Math.floor(Math.random() * options.length)],
+      };
+    }
+
+    case "token_pump": {
+      const { symbol, change } = event.data as { symbol: string; change: number };
+      if (change < 20) return null; // Only react to significant pumps
+
+      const messages: Record<AIPersonality["trait"], string[]> = {
+        optimistic: [
+          `$${symbol} PUMPING +${change.toFixed(0)}%! told ya ser`,
+          `green candles on $${symbol}! we eating good`,
+          `$${symbol} up ${change.toFixed(0)}%, holders winning`,
+        ],
+        cautious: [
+          `$${symbol} +${change.toFixed(0)}%... don't forget to take profits`,
+          `pump alert on $${symbol}. remember: nothing goes up forever`,
+          `${change.toFixed(0)}% move on $${symbol}. be careful out there`,
+        ],
+        chaotic: [
+          `$${symbol} SENDING IT!! +${change.toFixed(0)}% LFG`,
+          `PUMP CITY! $${symbol} going vertical`,
+          `$${symbol} MOONING! ${change.toFixed(0)}% and counting`,
+        ],
+        strategic: [
+          `$${symbol} breakout: +${change.toFixed(0)}%. momentum confirmed`,
+          `volume spike on $${symbol}, ${change.toFixed(0)}% move`,
+          `$${symbol} price action strong. watching for continuation`,
+        ],
+      };
+      const options = messages[personality.trait];
+      return {
+        type: "celebrate",
+        message: options[Math.floor(Math.random() * options.length)],
+      };
+    }
+
+    case "whale_alert": {
+      const { action, amount, tokenSymbol } = event.data as { action: string; amount: number; tokenSymbol: string };
+      const messages: Record<AIPersonality["trait"], string[]> = {
+        optimistic: [
+          `whale ${action} on $${tokenSymbol}! ${amount.toFixed(1)} SOL. smart money moving`,
+          `big money ${action === "buy" ? "accumulating" : "repositioning"} $${tokenSymbol}`,
+        ],
+        cautious: [
+          `whale alert: ${amount.toFixed(1)} SOL ${action} on $${tokenSymbol}. stay alert`,
+          `large ${action} detected. watch $${tokenSymbol} closely`,
+        ],
+        chaotic: [
+          `WHALE SPOTTED! ${amount.toFixed(1)} SOL ${action.toUpperCase()} on $${tokenSymbol}`,
+          `big fish ${action === "buy" ? "aping" : "dumping"} $${tokenSymbol}!`,
+        ],
+        strategic: [
+          `institutional flow: ${amount.toFixed(1)} SOL ${action} $${tokenSymbol}`,
+          `whale ${action} signal on $${tokenSymbol}. tracking wallet`,
+        ],
+      };
+      const options = messages[personality.trait];
+      return {
+        type: action === "buy" ? "speak" : "warn",
+        message: options[Math.floor(Math.random() * options.length)],
+      };
+    }
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * Handle incoming coordinator event
+ */
+async function handleCoordinatorEvent(event: AgentEvent): Promise<void> {
+  const agent = getAIAgent();
+  const state = agent.getState();
+
+  const reaction = generateEventReaction(event, state.personality);
+
+  if (reaction) {
+    // Emit our reaction back to the coordinator
+    await emitAgentInsight(reaction.message, reaction);
+
+    console.log(`[AI Agent] Reacted to ${event.type}: "${reaction.message}"`);
+  }
+}
+
+/**
+ * Connect AI Agent to the coordinator event bus
+ */
+export function connectToCoordinator(): () => void {
+  if (coordinatorUnsubscribe) {
+    console.log("[AI Agent] Already connected to coordinator");
+    return coordinatorUnsubscribe;
+  }
+
+  // Subscribe to relevant event types
+  coordinatorUnsubscribe = subscribe(
+    ["token_launch", "distribution", "token_pump", "token_dump", "whale_alert"],
+    handleCoordinatorEvent,
+    ["high", "urgent"] // Only react to important events
+  );
+
+  console.log("[AI Agent] Connected to Agent Coordinator");
+  return coordinatorUnsubscribe;
+}
+
+/**
+ * Disconnect AI Agent from the coordinator
+ */
+export function disconnectFromCoordinator(): void {
+  if (coordinatorUnsubscribe) {
+    coordinatorUnsubscribe();
+    coordinatorUnsubscribe = null;
+    console.log("[AI Agent] Disconnected from Agent Coordinator");
+  }
 }
 
 export { AIAgent, AI_PERSONALITIES };

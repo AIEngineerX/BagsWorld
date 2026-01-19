@@ -28,6 +28,7 @@ import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
 import { ZoneNav } from "@/components/ZoneNav";
 import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
+import { AgentFeed, AgentToast } from "@/components/AgentFeed";
 
 interface BuildingClickData {
   mint: string;
@@ -263,8 +264,13 @@ export default function Home() {
             <Leaderboard />
           </div>
 
+          {/* Agent Feed - coordinated agent activity */}
+          <div className="h-32 border-t-2 border-bags-green/50">
+            <AgentFeed compact maxItems={10} showHeader={false} className="h-full" />
+          </div>
+
           {/* Event Feed */}
-          <div className="h-48 border-t-4 border-bags-green">
+          <div className="h-36 border-t-4 border-bags-green">
             <EventFeed events={worldState?.events ?? []} />
           </div>
         </aside>
@@ -338,6 +344,9 @@ export default function Home() {
           }}
         />
       )}
+
+      {/* Agent Toast Notifications - shows real-time agent activity */}
+      <AgentToast />
     </main>
   );
 }

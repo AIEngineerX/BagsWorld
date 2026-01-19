@@ -1,6 +1,7 @@
 // Creator Rewards Agent - Distributes ecosystem fees to top 3 token creators
 // Triggers when 10 SOL threshold hit OR 5 days pass (with minimum 2 SOL)
 import { BagsApiClient } from "./bags-api";
+import { emitDistribution } from "./agent-coordinator";
 import {
   getAgentWallet,
   getAgentPublicKey,
@@ -442,6 +443,11 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
       `[Creator Rewards] Distribution complete: ${result.totalDistributed.toFixed(4)} SOL ` +
       `to ${result.recipients.filter((r) => !r.error).length} creators`
     );
+
+    // Emit distribution event to Agent Coordinator
+    emitDistribution(result).catch((err) => {
+      console.error("[Creator Rewards] Failed to emit to coordinator:", err);
+    });
 
     return result;
   } catch (error: any) {
