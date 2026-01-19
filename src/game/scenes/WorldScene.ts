@@ -145,7 +145,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Determine slide direction: trending is "to the right" of main city
     const isGoingRight = newZone === "trending";
-    const duration = 600;
+    const duration = 350; // Fast, snappy transition
     const slideDistance = 850; // Slightly more than screen width for full slide
 
     // Calculate offsets
@@ -191,7 +191,7 @@ export class WorldScene extends Phaser.Scene {
           targets: el,
           x: (el as any).x + slideOutOffset,
           duration,
-          ease: 'Cubic.easeInOut',
+          ease: 'Power2',
         });
       }
     });
@@ -201,7 +201,7 @@ export class WorldScene extends Phaser.Scene {
       targets: this.ground,
       tilePositionX: this.ground.tilePositionX + (isGoingRight ? 100 : -100),
       duration,
-      ease: 'Cubic.easeInOut',
+      ease: 'Power2',
     });
 
     // Slide transition overlay in
@@ -209,11 +209,11 @@ export class WorldScene extends Phaser.Scene {
       targets: transitionOverlay,
       x: 400,
       duration,
-      ease: 'Cubic.easeInOut',
+      ease: 'Power2',
     });
 
-    // At midpoint, swap the zone
-    this.time.delayedCall(duration * 0.4, () => {
+    // At midpoint, swap the zone (trigger early for snappy feel)
+    this.time.delayedCall(duration * 0.25, () => {
       // Clear old zone references (elements are still animating)
       if (this.currentZone === "trending") {
         this.trendingElements = [];
@@ -258,7 +258,7 @@ export class WorldScene extends Phaser.Scene {
 
   private setupZoneOffscreen(zone: ZoneType, offsetX: number): void {
     // Setup zone with elements offset, then animate them into position
-    const duration = 400;
+    const duration = 250; // Fast slide-in
 
     if (zone === "trending") {
       this.setupTrendingZone();
@@ -279,7 +279,7 @@ export class WorldScene extends Phaser.Scene {
             targets: el,
             x: targetX,
             duration,
-            ease: 'Cubic.easeOut',
+            ease: 'Power2',
           });
         }
       });
@@ -301,7 +301,7 @@ export class WorldScene extends Phaser.Scene {
             targets: el,
             x: originalX, // Animate to original position
             duration,
-            ease: 'Cubic.easeOut',
+            ease: 'Power2',
           });
         }
       });
