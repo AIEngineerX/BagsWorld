@@ -36,7 +36,7 @@ export const bagsBotCharacter: CharacterDefinition = {
     "Legend says if world health hits 100%, Bags Bot reveals alpha",
     // Cross-character knowledge
     "Finn is the founder of Bags.fm - the visionary who built the platform we all live in",
-    "Ghost (DaddyGhost) is the dev who runs the agents - auto-claim, buybacks, the works",
+    "Ghost (@DaddyGhost on X) is the dev who runs the agents - auto-claim, buybacks, the works",
     "Neo is the scout - sees the blockchain like the Matrix, cryptic but always right",
     "Ash is the guide who explains everything with Pokemon analogies - great for new trainers",
   ],
