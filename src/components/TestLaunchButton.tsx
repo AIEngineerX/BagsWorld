@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
+import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 
 /**
@@ -193,10 +193,6 @@ export function TestLaunchButton() {
           throw new Error("Wallet doesn't support signing");
         }
 
-        const connection = new Connection(
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
-        );
-
         for (let i = 0; i < feeTransactions.length; i++) {
           setStatus(`Step 2/3: Signing fee config tx ${i + 1}/${feeTransactions.length}...`);
           addLog(`Fee tx ${i + 1} data length: ${feeTransactions[i].transaction?.length}`);
@@ -205,13 +201,22 @@ export function TestLaunchButton() {
           const signed = await signTransaction(tx);
 
           setStatus(`Step 2/3: Broadcasting fee config tx ${i + 1}...`);
-          const txid = await connection.sendRawTransaction(signed.serialize(), {
-            skipPreflight: false,
-            maxRetries: 3,
+
+          // Send via server-side API to keep RPC URL secret
+          const sendRes = await fetch("/api/send-transaction", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              signedTransaction: Buffer.from(signed.serialize()).toString("base64"),
+            }),
           });
 
-          await connection.confirmTransaction(txid, "confirmed");
-          addLog(`Fee tx ${i + 1} confirmed: ${txid}`);
+          const sendData = await sendRes.json();
+          if (!sendRes.ok) {
+            throw new Error(sendData.error || "Failed to send fee config transaction");
+          }
+
+          addLog(`Fee tx ${i + 1} confirmed: ${sendData.txid}`);
         }
       }
 
@@ -261,20 +266,23 @@ export function TestLaunchButton() {
       const signedLaunchTx = await signTransaction(launchTx);
 
       setStatus("Step 3/3: Broadcasting to Solana...");
-      addLog("Broadcasting transaction...");
+      addLog("Broadcasting transaction via server...");
 
-      const connection = new Connection(
-        process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
-      );
-
-      const txid = await connection.sendRawTransaction(signedLaunchTx.serialize(), {
-        skipPreflight: false,
-        maxRetries: 3,
+      // Send via server-side API to keep RPC URL secret
+      const sendRes = await fetch("/api/send-transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signedTransaction: Buffer.from(signedLaunchTx.serialize()).toString("base64"),
+        }),
       });
 
-      setStatus("Confirming...");
-      await connection.confirmTransaction(txid, "confirmed");
+      const sendData = await sendRes.json();
+      if (!sendRes.ok) {
+        throw new Error(sendData.error || "Failed to send launch transaction");
+      }
 
+      const txid = sendData.txid;
       addLog(`SUCCESS! TX: ${txid}`);
       setStatus(`Token launched! TX: ${txid.substring(0, 20)}...`);
 
