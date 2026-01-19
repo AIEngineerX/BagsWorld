@@ -25,6 +25,7 @@ import { EcosystemStats } from "@/components/EcosystemStats";
 import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
 import { TestLaunchButton } from "@/components/TestLaunchButton";
+import { ZoneNav } from "@/components/ZoneNav";
 
 interface BuildingClickData {
   mint: string;
@@ -184,6 +185,11 @@ export default function Home() {
             <GameCanvas worldState={worldState} />
           </Suspense>
           <div className="scanlines" />
+
+          {/* Zone Navigation - positioned over game canvas */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20">
+            <ZoneNav />
+          </div>
 
           {/* Chat windows - hidden on small mobile */}
           <div className="hidden sm:block">

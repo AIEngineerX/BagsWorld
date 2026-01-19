@@ -138,6 +138,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate ambient particles
     this.generateAmbientParticles();
+
+    // Generate Launch Pad zone assets (NYC Times Square style)
+    this.generateLaunchPadAssets();
   }
 
   private generateGrass(): void {
@@ -1705,5 +1708,370 @@ export class BootScene extends Phaser.Scene {
     sparkle.fillRect(3, 3, 2, 2);
     sparkle.generateTexture("sparkle", 8, 8);
     sparkle.destroy();
+  }
+
+  private generateLaunchPadAssets(): void {
+    // Billboard/Screen - large display for live data (NYC Times Square style)
+    this.generateBillboard();
+
+    // Neon sign frame
+    this.generateNeonSign();
+
+    // Skyscraper silhouettes for background
+    this.generateSkyscraperSilhouettes();
+
+    // Digital ticker display
+    this.generateTickerDisplay();
+
+    // Concrete/asphalt ground for urban feel
+    this.generateUrbanGround();
+
+    // Street lamp (urban style)
+    this.generateStreetLamp();
+
+    // Neon tube decorations
+    this.generateNeonTubes();
+  }
+
+  private generateBillboard(): void {
+    // Large LED billboard screen (120x80 pixels)
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Frame (dark metal)
+    g.fillStyle(0x1f2937);
+    g.fillRect(0, 0, 120, 80);
+
+    // Inner frame border
+    g.fillStyle(0x374151);
+    g.fillRect(2, 2, 116, 76);
+
+    // Screen area (dark when off, will be overlaid with data)
+    g.fillStyle(0x0a0a0f);
+    g.fillRect(4, 4, 112, 72);
+
+    // LED grid effect (subtle)
+    g.fillStyle(0x111827);
+    for (let x = 4; x < 116; x += 4) {
+      g.fillRect(x, 4, 1, 72);
+    }
+    for (let y = 4; y < 76; y += 4) {
+      g.fillRect(4, y, 112, 1);
+    }
+
+    // Corner brackets (structural)
+    g.fillStyle(0x4b5563);
+    g.fillRect(0, 0, 8, 3);
+    g.fillRect(0, 0, 3, 8);
+    g.fillRect(112, 0, 8, 3);
+    g.fillRect(117, 0, 3, 8);
+    g.fillRect(0, 77, 8, 3);
+    g.fillRect(0, 72, 3, 8);
+    g.fillRect(112, 77, 8, 3);
+    g.fillRect(117, 72, 3, 8);
+
+    // Support pole (at bottom center)
+    g.fillStyle(0x374151);
+    g.fillRect(55, 78, 10, 20);
+    g.fillStyle(0x4b5563);
+    g.fillRect(57, 78, 6, 20);
+
+    g.generateTexture("billboard", 120, 100);
+    g.destroy();
+
+    // Smaller screen variant (for side displays)
+    const small = this.make.graphics({ x: 0, y: 0 });
+    small.fillStyle(0x1f2937);
+    small.fillRect(0, 0, 60, 45);
+    small.fillStyle(0x0a0a0f);
+    small.fillRect(2, 2, 56, 41);
+    // LED grid
+    small.fillStyle(0x111827);
+    for (let x = 2; x < 58; x += 3) {
+      small.fillRect(x, 2, 1, 41);
+    }
+    small.generateTexture("billboard_small", 60, 45);
+    small.destroy();
+  }
+
+  private generateNeonSign(): void {
+    // "LAUNCH" neon sign
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Backing board
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(0, 0, 80, 24);
+
+    // Border glow effect
+    g.fillStyle(0x4ade80, 0.3);
+    g.fillRect(0, 0, 80, 2);
+    g.fillRect(0, 22, 80, 2);
+    g.fillRect(0, 0, 2, 24);
+    g.fillRect(78, 0, 2, 24);
+
+    // Neon text "LAUNCH" (stylized pixel letters)
+    g.fillStyle(0x4ade80);
+    // L
+    g.fillRect(6, 6, 2, 12);
+    g.fillRect(6, 16, 8, 2);
+    // A
+    g.fillRect(16, 8, 2, 10);
+    g.fillRect(24, 8, 2, 10);
+    g.fillRect(18, 6, 6, 2);
+    g.fillRect(18, 12, 6, 2);
+    // U
+    g.fillRect(28, 6, 2, 12);
+    g.fillRect(36, 6, 2, 12);
+    g.fillRect(30, 16, 6, 2);
+    // N
+    g.fillRect(40, 6, 2, 12);
+    g.fillRect(48, 6, 2, 12);
+    g.fillRect(42, 8, 2, 2);
+    g.fillRect(44, 10, 2, 2);
+    g.fillRect(46, 12, 2, 2);
+    // C
+    g.fillRect(52, 6, 2, 12);
+    g.fillRect(54, 6, 6, 2);
+    g.fillRect(54, 16, 6, 2);
+    // H
+    g.fillRect(62, 6, 2, 12);
+    g.fillRect(70, 6, 2, 12);
+    g.fillRect(64, 11, 6, 2);
+
+    // Glow effect around letters
+    g.fillStyle(0x4ade80, 0.2);
+    g.fillRect(4, 4, 70, 18);
+
+    g.generateTexture("neon_launch", 80, 24);
+    g.destroy();
+
+    // "NEW" neon sign (red/gold)
+    const newSign = this.make.graphics({ x: 0, y: 0 });
+    newSign.fillStyle(0x1a1a1a);
+    newSign.fillRect(0, 0, 50, 20);
+
+    // Glow border
+    newSign.fillStyle(0xef4444, 0.3);
+    newSign.fillRect(0, 0, 50, 2);
+    newSign.fillRect(0, 18, 50, 2);
+
+    // "NEW" text
+    newSign.fillStyle(0xef4444);
+    // N
+    newSign.fillRect(6, 5, 2, 10);
+    newSign.fillRect(14, 5, 2, 10);
+    newSign.fillRect(8, 6, 2, 2);
+    newSign.fillRect(10, 8, 2, 2);
+    newSign.fillRect(12, 10, 2, 2);
+    // E
+    newSign.fillRect(18, 5, 2, 10);
+    newSign.fillRect(20, 5, 6, 2);
+    newSign.fillRect(20, 9, 4, 2);
+    newSign.fillRect(20, 13, 6, 2);
+    // W
+    newSign.fillRect(28, 5, 2, 10);
+    newSign.fillRect(36, 5, 2, 10);
+    newSign.fillRect(30, 11, 2, 4);
+    newSign.fillRect(32, 9, 2, 4);
+    newSign.fillRect(34, 11, 2, 4);
+
+    newSign.generateTexture("neon_new", 50, 20);
+    newSign.destroy();
+
+    // Blinking arrow (for attention)
+    const arrow = this.make.graphics({ x: 0, y: 0 });
+    arrow.fillStyle(0xfbbf24);
+    arrow.fillTriangle(0, 10, 16, 0, 16, 20);
+    arrow.fillRect(16, 6, 14, 8);
+    // Glow
+    arrow.fillStyle(0xfbbf24, 0.3);
+    arrow.fillTriangle(-2, 10, 18, -2, 18, 22);
+    arrow.generateTexture("neon_arrow", 32, 22);
+    arrow.destroy();
+  }
+
+  private generateSkyscraperSilhouettes(): void {
+    // Tall building silhouette for background (dark, moody NYC style)
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Building 1 - tall tower
+    g.fillStyle(0x111827);
+    g.fillRect(0, 40, 30, 160);
+    // Antenna
+    g.fillRect(13, 20, 4, 20);
+    g.fillStyle(0xef4444);
+    g.fillCircle(15, 18, 2);
+    // Windows (faint lights)
+    g.fillStyle(0xfbbf24, 0.3);
+    for (let y = 50; y < 190; y += 12) {
+      for (let x = 4; x < 26; x += 8) {
+        if (Math.random() > 0.3) {
+          g.fillRect(x, y, 4, 6);
+        }
+      }
+    }
+
+    // Building 2 - medium tower
+    g.fillStyle(0x1f2937);
+    g.fillRect(35, 80, 25, 120);
+    // Windows
+    g.fillStyle(0x60a5fa, 0.2);
+    for (let y = 90; y < 190; y += 10) {
+      for (let x = 38; x < 58; x += 7) {
+        if (Math.random() > 0.4) {
+          g.fillRect(x, y, 4, 5);
+        }
+      }
+    }
+
+    // Building 3 - short wide
+    g.fillStyle(0x0f172a);
+    g.fillRect(65, 120, 35, 80);
+    // Billboard on top
+    g.fillStyle(0x4ade80, 0.4);
+    g.fillRect(70, 110, 25, 12);
+
+    g.generateTexture("skyline_bg", 100, 200);
+    g.destroy();
+  }
+
+  private generateTickerDisplay(): void {
+    // Horizontal ticker/news crawl display
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Housing
+    g.fillStyle(0x1f2937);
+    g.fillRect(0, 0, 200, 16);
+
+    // Screen area
+    g.fillStyle(0x0a0a0f);
+    g.fillRect(2, 2, 196, 12);
+
+    // LED dots effect
+    g.fillStyle(0x111827);
+    for (let x = 2; x < 198; x += 2) {
+      g.fillRect(x, 2, 1, 12);
+    }
+
+    g.generateTexture("ticker_display", 200, 16);
+    g.destroy();
+  }
+
+  private generateUrbanGround(): void {
+    // Concrete/asphalt texture
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Base asphalt
+    g.fillStyle(0x374151);
+    g.fillRect(0, 0, 32, 32);
+
+    // Variation spots
+    g.fillStyle(0x4b5563);
+    for (let i = 0; i < 8; i++) {
+      const x = Math.floor(Math.random() * 28);
+      const y = Math.floor(Math.random() * 28);
+      g.fillRect(x, y, 3, 3);
+    }
+
+    // Cracks
+    g.fillStyle(0x1f2937);
+    g.fillRect(8, 0, 1, 12);
+    g.fillRect(8, 12, 6, 1);
+    g.fillRect(20, 15, 1, 17);
+
+    g.generateTexture("concrete", 32, 32);
+    g.destroy();
+
+    // Sidewalk
+    const sidewalk = this.make.graphics({ x: 0, y: 0 });
+    sidewalk.fillStyle(0x6b7280);
+    sidewalk.fillRect(0, 0, 32, 32);
+    // Grid lines
+    sidewalk.fillStyle(0x4b5563);
+    sidewalk.fillRect(0, 15, 32, 2);
+    sidewalk.fillRect(15, 0, 2, 32);
+    // Texture
+    sidewalk.fillStyle(0x9ca3af);
+    sidewalk.fillRect(4, 4, 2, 2);
+    sidewalk.fillRect(20, 22, 2, 2);
+    sidewalk.generateTexture("sidewalk", 32, 32);
+    sidewalk.destroy();
+  }
+
+  private generateStreetLamp(): void {
+    // Modern urban street lamp
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Pole
+    g.fillStyle(0x374151);
+    g.fillRect(8, 20, 4, 50);
+    g.fillStyle(0x4b5563);
+    g.fillRect(9, 20, 2, 50);
+
+    // Lamp arm
+    g.fillStyle(0x374151);
+    g.fillRect(10, 16, 14, 3);
+
+    // Lamp housing
+    g.fillStyle(0x1f2937);
+    g.fillRect(16, 10, 12, 8);
+
+    // Light (glowing)
+    g.fillStyle(0xfbbf24, 0.8);
+    g.fillRect(18, 16, 8, 4);
+
+    // Light glow effect
+    g.fillStyle(0xfbbf24, 0.2);
+    g.fillRect(14, 18, 16, 20);
+    g.fillStyle(0xfbbf24, 0.1);
+    g.fillRect(10, 22, 24, 30);
+
+    g.generateTexture("street_lamp", 32, 70);
+    g.destroy();
+  }
+
+  private generateNeonTubes(): void {
+    // Vertical neon tube (green)
+    const greenTube = this.make.graphics({ x: 0, y: 0 });
+    greenTube.fillStyle(0x4ade80, 0.3);
+    greenTube.fillRect(0, 0, 8, 60);
+    greenTube.fillStyle(0x4ade80, 0.6);
+    greenTube.fillRect(2, 0, 4, 60);
+    greenTube.fillStyle(0x4ade80);
+    greenTube.fillRect(3, 0, 2, 60);
+    greenTube.generateTexture("neon_tube_green", 8, 60);
+    greenTube.destroy();
+
+    // Horizontal neon tube (pink/magenta)
+    const pinkTube = this.make.graphics({ x: 0, y: 0 });
+    pinkTube.fillStyle(0xec4899, 0.3);
+    pinkTube.fillRect(0, 0, 80, 6);
+    pinkTube.fillStyle(0xec4899, 0.6);
+    pinkTube.fillRect(0, 1, 80, 4);
+    pinkTube.fillStyle(0xec4899);
+    pinkTube.fillRect(0, 2, 80, 2);
+    pinkTube.generateTexture("neon_tube_pink", 80, 6);
+    pinkTube.destroy();
+
+    // Blue neon tube
+    const blueTube = this.make.graphics({ x: 0, y: 0 });
+    blueTube.fillStyle(0x3b82f6, 0.3);
+    blueTube.fillRect(0, 0, 6, 40);
+    blueTube.fillStyle(0x3b82f6, 0.6);
+    blueTube.fillRect(1, 0, 4, 40);
+    blueTube.fillStyle(0x3b82f6);
+    blueTube.fillRect(2, 0, 2, 40);
+    blueTube.generateTexture("neon_tube_blue", 6, 40);
+    blueTube.destroy();
+
+    // Gold/yellow neon tube
+    const goldTube = this.make.graphics({ x: 0, y: 0 });
+    goldTube.fillStyle(0xfbbf24, 0.3);
+    goldTube.fillRect(0, 0, 60, 6);
+    goldTube.fillStyle(0xfbbf24, 0.6);
+    goldTube.fillRect(0, 1, 60, 4);
+    goldTube.fillStyle(0xfbbf24);
+    goldTube.fillRect(0, 2, 60, 2);
+    goldTube.generateTexture("neon_tube_gold", 60, 6);
+    goldTube.destroy();
   }
 }
