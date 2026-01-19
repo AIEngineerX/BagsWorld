@@ -25,7 +25,6 @@ import { DatabaseStatus } from "@/components/DatabaseStatus";
 import { EcosystemStats } from "@/components/EcosystemStats";
 import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
-import { TestLaunchButton } from "@/components/TestLaunchButton";
 import { ZoneNav } from "@/components/ZoneNav";
 import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
 
@@ -129,7 +128,6 @@ export default function Home() {
           <PartnerClaimButton />
           <ClaimButton />
           <LaunchButton />
-          <TestLaunchButton />
         </div>
 
         {/* Mobile buttons - essential actions always visible */}
