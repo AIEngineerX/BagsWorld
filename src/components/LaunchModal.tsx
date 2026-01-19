@@ -500,7 +500,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="flex items-start gap-2">
                   <span className="text-xs">✨</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Only 3% fee</span> - Low fee, more goes to you
+                    <span className="text-bags-green">Only 1% ecosystem fee</span> - More goes to you
                   </span>
                 </div>
               </div>
