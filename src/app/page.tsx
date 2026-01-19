@@ -51,6 +51,8 @@ export default function Home() {
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
   const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
   const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Listen for building click events from Phaser
   useEffect(() => {
@@ -70,15 +72,32 @@ export default function Home() {
     };
   }, []);
 
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setMobileMenuOpen(false);
+        setMobileSidebarOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <main className="h-screen w-screen overflow-hidden flex flex-col">
-      {/* Header */}
-      <header className="h-16 bg-bags-dark border-b-4 border-bags-green flex items-center justify-between px-4">
-        <div className="flex items-center gap-4">
-          <h1 className="font-pixel text-lg text-bags-green">BAGSWORLD</h1>
-          <WorldHealthBar health={worldState?.health ?? 50} />
+      {/* Header - responsive */}
+      <header className="h-14 md:h-16 bg-bags-dark border-b-4 border-bags-green flex items-center justify-between px-2 md:px-4 relative z-50">
+        {/* Left side - Logo and health */}
+        <div className="flex items-center gap-2 md:gap-4">
+          <h1 className="font-pixel text-sm md:text-lg text-bags-green">BAGSWORLD</h1>
+          <div className="hidden sm:block">
+            <WorldHealthBar health={worldState?.health ?? 50} />
+          </div>
         </div>
-        <div className="flex items-center gap-4">
+
+        {/* Desktop nav - hidden on mobile */}
+        <div className="hidden lg:flex items-center gap-4">
           <div className="font-pixel text-xs">
             <span className="text-gray-400">WEATHER: </span>
             <span className="text-bags-gold">
@@ -91,10 +110,68 @@ export default function Home() {
           <ClaimButton />
           <LaunchButton />
         </div>
+
+        {/* Mobile buttons - essential actions always visible */}
+        <div className="flex lg:hidden items-center gap-2">
+          <WalletButton />
+          <LaunchButton />
+          {/* Hamburger menu */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 text-bags-green hover:bg-bags-green/20 rounded"
+            aria-label="Toggle menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
+
+        {/* Mobile dropdown menu */}
+        {mobileMenuOpen && (
+          <div className="absolute top-full left-0 right-0 bg-bags-dark border-b-4 border-bags-green p-4 lg:hidden z-50">
+            <div className="flex flex-col gap-3">
+              {/* Health bar on mobile */}
+              <div className="sm:hidden pb-2 border-b border-bags-green/30">
+                <WorldHealthBar health={worldState?.health ?? 50} />
+              </div>
+
+              {/* Weather */}
+              <div className="font-pixel text-xs pb-2 border-b border-bags-green/30">
+                <span className="text-gray-400">WEATHER: </span>
+                <span className="text-bags-gold">
+                  {worldState?.weather?.toUpperCase() ?? "LOADING"}
+                </span>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-2">
+                <MusicButton />
+                <PartnerClaimButton />
+                <ClaimButton />
+              </div>
+
+              {/* Toggle sidebar button */}
+              <button
+                onClick={() => {
+                  setMobileSidebarOpen(!mobileSidebarOpen);
+                  setMobileMenuOpen(false);
+                }}
+                className="btn-retro w-full text-center"
+              >
+                {mobileSidebarOpen ? "HIDE STATS" : "SHOW STATS"}
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Game area */}
         <div className="flex-1 relative">
           <Suspense
@@ -106,32 +183,39 @@ export default function Home() {
           </Suspense>
           <div className="scanlines" />
 
-          {/* AI Agent Chat */}
-          <AIChat />
-
-          {/* Toly's Solana Guide */}
-          <TolyChat />
-
-          {/* Ash's Ecosystem Guide */}
-          <AshChat />
-
-          {/* Finn's Bags.fm Guide */}
-          <FinnbagsChat />
-
-          {/* The Dev's Trading Desk */}
-          <DevChat />
-
-          {/* Neo's Scout Panel */}
-          <NeoChat />
-
-          {/* Agent Dashboard (Admin Only) */}
-          <AgentDashboard />
+          {/* Chat windows - hidden on small mobile */}
+          <div className="hidden sm:block">
+            <AIChat />
+            <TolyChat />
+            <AshChat />
+            <FinnbagsChat />
+            <DevChat />
+            <NeoChat />
+            <AgentDashboard />
+          </div>
         </div>
 
-        {/* Sidebar */}
-        <aside className="w-80 bg-bags-dark border-l-4 border-bags-green flex flex-col">
+        {/* Sidebar - hidden on mobile, slide-in drawer on tablet, always visible on desktop */}
+        <aside className={`
+          ${mobileSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+          fixed lg:relative right-0 top-14 md:top-16 lg:top-0
+          w-full sm:w-80 h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] lg:h-full
+          bg-bags-dark border-l-4 border-bags-green flex flex-col
+          transition-transform duration-300 ease-in-out z-40
+        `}>
+          {/* Mobile sidebar close button */}
+          <button
+            onClick={() => setMobileSidebarOpen(false)}
+            className="lg:hidden absolute top-2 left-2 p-2 text-bags-green hover:bg-bags-green/20 rounded"
+            aria-label="Close sidebar"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
           {/* Your Buildings */}
-          <div className="max-h-48 overflow-hidden border-b-2 border-bags-green/50">
+          <div className="max-h-48 overflow-hidden border-b-2 border-bags-green/50 pt-10 lg:pt-0">
             <YourBuildings onRefresh={refreshAfterLaunch} />
           </div>
 
@@ -145,28 +229,33 @@ export default function Home() {
             <EventFeed events={worldState?.events ?? []} />
           </div>
         </aside>
+
+        {/* Mobile sidebar overlay */}
+        {mobileSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
       </div>
 
-      {/* Footer status bar */}
-      <footer className="h-8 bg-bags-dark border-t-4 border-bags-green flex items-center justify-between px-4 font-pixel text-[10px]">
-        <div className="flex items-center gap-4">
+      {/* Footer status bar - simplified on mobile */}
+      <footer className="h-8 bg-bags-dark border-t-4 border-bags-green flex items-center justify-between px-2 md:px-4 font-pixel text-[8px] md:text-[10px]">
+        <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
-            POPULATION:{" "}
-            <span className="text-white">
-              {worldState?.population?.length ?? 0}
-            </span>
+            POP: <span className="text-white">{worldState?.population?.length ?? 0}</span>
           </span>
-          <span className="text-gray-400">
-            BUILDINGS:{" "}
-            <span className="text-white">
-              {worldState?.buildings?.length ?? 0}
-            </span>
+          <span className="text-gray-400 hidden sm:inline">
+            BUILDINGS: <span className="text-white">{worldState?.buildings?.length ?? 0}</span>
           </span>
-          <DatabaseStatus />
-          <EcosystemStats />
+          <div className="hidden md:block">
+            <DatabaseStatus />
+          </div>
+          <div className="hidden lg:block">
+            <EcosystemStats />
+          </div>
         </div>
         <div className="text-gray-400">
-          POWERED BY{" "}
           <a
             href="https://bags.fm"
             target="_blank"

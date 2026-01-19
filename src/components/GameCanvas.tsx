@@ -35,6 +35,7 @@ export default function GameCanvas({ worldState }: GameCanvasProps) {
       scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
+        expandParent: true,
       },
       physics: {
         default: "arcade",
@@ -44,11 +45,26 @@ export default function GameCanvas({ worldState }: GameCanvasProps) {
         },
       },
       scene: [BootScene, WorldScene, UIScene],
+      input: {
+        activePointers: 3, // Support multi-touch
+      },
     };
 
     gameRef.current = new Phaser.Game(config);
 
+    // Handle resize/orientation changes
+    const handleResize = () => {
+      if (gameRef.current) {
+        gameRef.current.scale.refresh();
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+
     return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
       if (gameRef.current) {
         gameRef.current.destroy(true);
         gameRef.current = null;

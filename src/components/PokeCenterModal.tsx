@@ -70,22 +70,23 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-bags-dark border-2 border-red-500 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-bags-dark border-2 border-red-500 rounded-lg max-w-md w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
         {/* Header - PokeCenter style */}
-        <div className="bg-gradient-to-r from-red-600 to-red-500 p-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="text-3xl">🏥</div>
+        <div className="bg-gradient-to-r from-red-600 to-red-500 p-3 sm:p-4 flex justify-between items-center">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="text-2xl sm:text-3xl">🏥</div>
             <div>
-              <h2 className="font-pixel text-white text-sm">POKECENTER</h2>
-              <p className="font-pixel text-red-200 text-[8px]">Healing Hub & Claim Station</p>
+              <h2 className="font-pixel text-white text-xs sm:text-sm">POKECENTER</h2>
+              <p className="font-pixel text-red-200 text-[7px] sm:text-[8px]">Healing Hub & Claim Station</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-red-200 text-xl font-bold"
+            className="text-white hover:text-red-200 text-xl font-bold p-2 touch-target"
+            aria-label="Close"
           >
             ✕
           </button>

@@ -177,28 +177,29 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4"
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-2 sm:p-4"
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-bags-dark border-4 border-bags-green w-full max-w-sm"
+        className="bg-bags-dark border-4 border-bags-green w-full max-w-sm max-h-[95vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b-4 border-bags-green">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b-4 border-bags-green">
           <div>
-            <h2 className="font-pixel text-sm text-bags-green">
+            <h2 className="font-pixel text-xs sm:text-sm text-bags-green">
               TRADE ${tokenSymbol}
             </h2>
-            <p className="font-pixel text-[8px] text-gray-400">
+            <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">
               {tokenName}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="font-pixel text-xs text-gray-400 hover:text-white"
+            className="font-pixel text-sm p-2 text-gray-400 hover:text-white touch-target"
+            aria-label="Close"
           >
-            [X]
+            ✕
           </button>
         </div>
 
