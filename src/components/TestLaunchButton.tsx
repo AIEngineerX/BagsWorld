@@ -204,10 +204,10 @@ export function TestLaunchButton() {
 
           setStatus(`Step 2/3: Broadcasting fee config tx ${i + 1}...`);
 
-          // Send using wallet adapter - wallet handles RPC internally
+          // Send with skipPreflight to avoid blockhash expiry issues during simulation
           const txid = await connection.sendRawTransaction(signed.serialize(), {
-            skipPreflight: false,
-            preflightCommitment: "confirmed",
+            skipPreflight: true, // Skip simulation - blockhash may have expired during signing
+            maxRetries: 5,
           });
           addLog(`Fee tx ${i + 1} sent: ${txid}`);
 
@@ -281,10 +281,10 @@ export function TestLaunchButton() {
       setStatus("Step 3/3: Broadcasting to Solana...");
       addLog("Broadcasting transaction via wallet connection...");
 
-      // Send transaction client-side via wallet adapter connection
+      // Send with skipPreflight to avoid blockhash expiry issues
       const txid = await connection.sendRawTransaction(signedLaunchTx.serialize(), {
-        skipPreflight: false,
-        preflightCommitment: "confirmed",
+        skipPreflight: true, // Skip simulation - blockhash may have expired during signing
+        maxRetries: 5,
       });
       addLog(`Launch tx sent: ${txid}`);
 
