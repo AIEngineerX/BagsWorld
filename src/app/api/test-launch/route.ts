@@ -267,11 +267,11 @@ export async function POST(request: Request) {
           }, { status: 400 });
         }
 
-        // Match SDK parameter names: metadataUrl instead of ipfs, launchWallet instead of wallet
+        // Bags API uses ipfs and wallet (not metadataUrl/launchWallet)
         const launchBody = {
-          metadataUrl: ipfs,  // SDK uses metadataUrl
+          ipfs,
           tokenMint,
-          launchWallet: wallet,  // SDK uses launchWallet
+          wallet,
           configKey,
           initialBuyLamports,
         };
