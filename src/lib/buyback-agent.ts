@@ -11,6 +11,7 @@ import {
 import {
   PublicKey,
   Transaction,
+  VersionedTransaction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import {
@@ -231,21 +232,33 @@ async function executeSwap(
 
     const connection = getAgentConnection();
     const txBuffer = Buffer.from(swapResult.swapTransaction, "base64");
-    const transaction = Transaction.from(txBuffer);
 
-    // Get fresh blockhash
+    // Try VersionedTransaction first (modern format), fallback to legacy
+    let signature: string;
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = wallet.publicKey;
 
-    // Sign
-    transaction.sign(wallet);
+    try {
+      // Try as VersionedTransaction (v0 format) - most common for modern APIs
+      const versionedTx = VersionedTransaction.deserialize(txBuffer);
+      versionedTx.sign([wallet]);
 
-    // Send
-    const signature = await connection.sendRawTransaction(transaction.serialize(), {
-      skipPreflight: false,
-      maxRetries: 3,
-    });
+      signature = await connection.sendRawTransaction(versionedTx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 3,
+      });
+    } catch (versionedError) {
+      // Fallback to legacy Transaction format
+      console.log("[Buyback Agent] VersionedTransaction failed, trying legacy format");
+      const legacyTx = Transaction.from(txBuffer);
+      legacyTx.recentBlockhash = blockhash;
+      legacyTx.feePayer = wallet.publicKey;
+      legacyTx.sign(wallet);
+
+      signature = await connection.sendRawTransaction(legacyTx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 3,
+      });
+    }
 
     // Confirm
     await connection.confirmTransaction({
