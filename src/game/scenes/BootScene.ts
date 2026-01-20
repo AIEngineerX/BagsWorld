@@ -760,432 +760,440 @@ export class BootScene extends Phaser.Scene {
 
   private generateAshSprite(): void {
     // Ash Ketchum - Pokemon trainer style with iconic cap
+    const s = SCALE;
+    const size = Math.round(32 * s);
     const skinTone = 0xffdbac; // Light skin
     const g = this.make.graphics({ x: 0, y: 0 });
 
     // Shadow
     g.fillStyle(0x000000, 0.3);
-    g.fillEllipse(16, 30, 14, 5);
+    g.fillEllipse(Math.round(16 * s), Math.round(30 * s), Math.round(14 * s), Math.round(5 * s));
 
     // Legs (blue jeans)
     g.fillStyle(0x1e40af);
-    g.fillRect(10, 22, 5, 9);
-    g.fillRect(17, 22, 5, 9);
+    g.fillRect(Math.round(10 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
+    g.fillRect(Math.round(17 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
 
     // Shoes (red/black sneakers)
     g.fillStyle(0xdc2626);
-    g.fillRect(9, 29, 6, 3);
-    g.fillRect(17, 29, 6, 3);
+    g.fillRect(Math.round(9 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
     g.fillStyle(0xffffff);
-    g.fillRect(10, 30, 2, 1);
-    g.fillRect(18, 30, 2, 1);
+    g.fillRect(Math.round(10 * s), Math.round(30 * s), Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(Math.round(18 * s), Math.round(30 * s), Math.round(2 * s), Math.round(1 * s));
 
     // Body (blue vest over black shirt)
     g.fillStyle(0x1f2937); // Black undershirt
-    g.fillRect(8, 12, 16, 12);
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(16 * s), Math.round(12 * s));
     g.fillStyle(0x2563eb); // Blue vest
-    g.fillRect(8, 12, 5, 12);
-    g.fillRect(19, 12, 5, 12);
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(5 * s), Math.round(12 * s));
+    g.fillRect(Math.round(19 * s), Math.round(12 * s), Math.round(5 * s), Math.round(12 * s));
     // Yellow trim on vest
     g.fillStyle(0xfbbf24);
-    g.fillRect(8, 12, 1, 12);
-    g.fillRect(23, 12, 1, 12);
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(1 * s), Math.round(12 * s));
+    g.fillRect(Math.round(23 * s), Math.round(12 * s), Math.round(1 * s), Math.round(12 * s));
 
     // Arms
     g.fillStyle(skinTone);
-    g.fillRect(5, 13, 4, 10);
-    g.fillRect(23, 13, 4, 10);
+    g.fillRect(Math.round(5 * s), Math.round(13 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(Math.round(23 * s), Math.round(13 * s), Math.round(4 * s), Math.round(10 * s));
 
     // Gloves (green fingerless)
     g.fillStyle(0x22c55e);
-    g.fillRect(5, 19, 4, 4);
-    g.fillRect(23, 19, 4, 4);
+    g.fillRect(Math.round(5 * s), Math.round(19 * s), Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(Math.round(23 * s), Math.round(19 * s), Math.round(4 * s), Math.round(4 * s));
     g.fillStyle(skinTone);
-    g.fillRect(6, 21, 2, 2);
-    g.fillRect(24, 21, 2, 2);
+    g.fillRect(Math.round(6 * s), Math.round(21 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(24 * s), Math.round(21 * s), Math.round(2 * s), Math.round(2 * s));
 
     // Head
     g.fillStyle(skinTone);
-    g.fillRect(9, 2, 14, 12);
+    g.fillRect(Math.round(9 * s), Math.round(2 * s), Math.round(14 * s), Math.round(12 * s));
 
     // Hair (black, spiky)
     g.fillStyle(0x1a1a1a);
-    g.fillRect(9, 0, 14, 5);
-    g.fillRect(7, 2, 3, 5);
-    g.fillRect(22, 2, 3, 5);
+    g.fillRect(Math.round(9 * s), 0, Math.round(14 * s), Math.round(5 * s));
+    g.fillRect(Math.round(7 * s), Math.round(2 * s), Math.round(3 * s), Math.round(5 * s));
+    g.fillRect(Math.round(22 * s), Math.round(2 * s), Math.round(3 * s), Math.round(5 * s));
     // Spiky hair bits sticking out
-    g.fillRect(6, 3, 2, 3);
-    g.fillRect(24, 3, 2, 3);
-    g.fillRect(12, -1, 2, 2);
-    g.fillRect(18, -1, 2, 2);
+    g.fillRect(Math.round(6 * s), Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
+    g.fillRect(Math.round(24 * s), Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
+    g.fillRect(Math.round(12 * s), Math.round(-1 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(18 * s), Math.round(-1 * s), Math.round(2 * s), Math.round(2 * s));
 
     // Iconic Pokemon cap (red with white front and green symbol area)
     g.fillStyle(0xdc2626); // Red
-    g.fillRect(7, -2, 18, 5);
+    g.fillRect(Math.round(7 * s), Math.round(-2 * s), Math.round(18 * s), Math.round(5 * s));
     g.fillStyle(0xffffff); // White front panel
-    g.fillRect(11, -2, 10, 4);
+    g.fillRect(Math.round(11 * s), Math.round(-2 * s), Math.round(10 * s), Math.round(4 * s));
     // Green Pokemon League symbol
     g.fillStyle(0x22c55e);
-    g.fillRect(14, -1, 4, 2);
+    g.fillRect(Math.round(14 * s), Math.round(-1 * s), Math.round(4 * s), Math.round(2 * s));
     // Cap bill
     g.fillStyle(0xdc2626);
-    g.fillRect(7, 2, 10, 2);
+    g.fillRect(Math.round(7 * s), Math.round(2 * s), Math.round(10 * s), Math.round(2 * s));
 
     // Face marks (Z marks on cheeks - like Ash)
     g.fillStyle(0x8b4513);
-    g.fillRect(9, 8, 2, 1);
-    g.fillRect(9, 9, 1, 1);
-    g.fillRect(21, 8, 2, 1);
-    g.fillRect(22, 9, 1, 1);
+    g.fillRect(Math.round(9 * s), Math.round(8 * s), Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(Math.round(9 * s), Math.round(9 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(21 * s), Math.round(8 * s), Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(Math.round(22 * s), Math.round(9 * s), Math.round(1 * s), Math.round(1 * s));
 
     // Eyes (big anime style)
     g.fillStyle(0xffffff);
-    g.fillRect(11, 5, 4, 4);
-    g.fillRect(17, 5, 4, 4);
+    g.fillRect(Math.round(11 * s), Math.round(5 * s), Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(Math.round(17 * s), Math.round(5 * s), Math.round(4 * s), Math.round(4 * s));
     // Brown irises
     g.fillStyle(0x92400e);
-    g.fillRect(12, 6, 3, 3);
-    g.fillRect(18, 6, 3, 3);
+    g.fillRect(Math.round(12 * s), Math.round(6 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillRect(Math.round(18 * s), Math.round(6 * s), Math.round(3 * s), Math.round(3 * s));
     // Black pupils
     g.fillStyle(0x000000);
-    g.fillRect(13, 6, 2, 2);
-    g.fillRect(19, 6, 2, 2);
+    g.fillRect(Math.round(13 * s), Math.round(6 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(19 * s), Math.round(6 * s), Math.round(2 * s), Math.round(2 * s));
     // Eye shine
     g.fillStyle(0xffffff);
-    g.fillRect(13, 6, 1, 1);
-    g.fillRect(19, 6, 1, 1);
+    g.fillRect(Math.round(13 * s), Math.round(6 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(19 * s), Math.round(6 * s), Math.round(1 * s), Math.round(1 * s));
 
     // Determined smile
     g.fillStyle(0x000000);
-    g.fillRect(13, 11, 6, 1);
-    g.fillRect(12, 10, 1, 1);
-    g.fillRect(19, 10, 1, 1);
+    g.fillRect(Math.round(13 * s), Math.round(11 * s), Math.round(6 * s), Math.round(1 * s));
+    g.fillRect(Math.round(12 * s), Math.round(10 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(19 * s), Math.round(10 * s), Math.round(1 * s), Math.round(1 * s));
 
     // Pokeball icon floating (showing he's a trainer)
     g.fillStyle(0xdc2626);
-    g.fillCircle(28, 4, 4);
+    g.fillCircle(Math.round(28 * s), Math.round(4 * s), Math.round(4 * s));
     g.fillStyle(0xffffff);
-    g.fillRect(24, 3, 8, 2);
-    g.fillCircle(28, 4, 4);
+    g.fillRect(Math.round(24 * s), Math.round(3 * s), Math.round(8 * s), Math.round(2 * s));
+    g.fillCircle(Math.round(28 * s), Math.round(4 * s), Math.round(4 * s));
     g.fillStyle(0xdc2626);
-    g.fillRect(24, 0, 8, 4);
+    g.fillRect(Math.round(24 * s), 0, Math.round(8 * s), Math.round(4 * s));
     g.fillStyle(0xffffff);
-    g.fillRect(24, 4, 8, 4);
+    g.fillRect(Math.round(24 * s), Math.round(4 * s), Math.round(8 * s), Math.round(4 * s));
     g.fillStyle(0x1f2937);
-    g.fillRect(24, 3, 8, 2);
+    g.fillRect(Math.round(24 * s), Math.round(3 * s), Math.round(8 * s), Math.round(2 * s));
     g.fillStyle(0xffffff);
-    g.fillCircle(28, 4, 2);
+    g.fillCircle(Math.round(28 * s), Math.round(4 * s), Math.round(2 * s));
     g.fillStyle(0x1f2937);
-    g.fillCircle(28, 4, 1);
+    g.fillCircle(Math.round(28 * s), Math.round(4 * s), Math.round(1 * s));
 
-    g.generateTexture("ash", 32, 32);
+    g.generateTexture("ash", size, size);
     g.destroy();
   }
 
   private generateFinnSprite(): void {
     // Finn (@finnbags) - Bags.fm CEO
     // Casual tech founder look with WIF-inspired beanie, emerald brand colors
+    const s = SCALE;
+    const size = Math.round(32 * s);
     const skinTone = 0xffd5b4; // Light skin
     const g = this.make.graphics({ x: 0, y: 0 });
 
     // Bags green glow behind Finn
     g.fillStyle(0x10b981, 0.15); // Emerald
-    g.fillCircle(16, 16, 18);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(18 * s));
     g.fillStyle(0x059669, 0.1);
-    g.fillCircle(16, 16, 22);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(22 * s));
 
     // Shadow
     g.fillStyle(0x000000, 0.3);
-    g.fillEllipse(16, 30, 14, 5);
+    g.fillEllipse(Math.round(16 * s), Math.round(30 * s), Math.round(14 * s), Math.round(5 * s));
 
     // Legs (dark jeans)
     g.fillStyle(0x1f2937);
-    g.fillRect(10, 22, 5, 9);
-    g.fillRect(17, 22, 5, 9);
+    g.fillRect(Math.round(10 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
+    g.fillRect(Math.round(17 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
 
     // Shoes (white sneakers - clean founder style)
     g.fillStyle(0xffffff);
-    g.fillRect(9, 29, 6, 3);
-    g.fillRect(17, 29, 6, 3);
+    g.fillRect(Math.round(9 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
     g.fillStyle(0xe5e7eb);
-    g.fillRect(9, 31, 6, 1);
-    g.fillRect(17, 31, 6, 1);
+    g.fillRect(Math.round(9 * s), Math.round(31 * s), Math.round(6 * s), Math.round(1 * s));
+    g.fillRect(Math.round(17 * s), Math.round(31 * s), Math.round(6 * s), Math.round(1 * s));
 
     // Body (emerald hoodie - Bags brand)
     g.fillStyle(0x10b981); // Emerald
-    g.fillRect(8, 12, 16, 12);
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(16 * s), Math.round(12 * s));
 
     // Hoodie details (darker sides)
     g.fillStyle(0x059669);
-    g.fillRect(8, 12, 3, 12);
-    g.fillRect(21, 12, 3, 12);
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(3 * s), Math.round(12 * s));
+    g.fillRect(Math.round(21 * s), Math.round(12 * s), Math.round(3 * s), Math.round(12 * s));
 
     // "BAGS" text on hoodie (simplified)
     g.fillStyle(0xffffff);
-    g.fillRect(11, 16, 2, 4); // B
-    g.fillRect(11, 16, 4, 1);
-    g.fillRect(11, 18, 4, 1);
-    g.fillRect(11, 20, 4, 1);
-    g.fillRect(14, 16, 1, 4);
-    g.fillRect(16, 16, 3, 4); // A (simplified)
-    g.fillRect(17, 15, 1, 1);
+    g.fillRect(Math.round(11 * s), Math.round(16 * s), Math.round(2 * s), Math.round(4 * s)); // B
+    g.fillRect(Math.round(11 * s), Math.round(16 * s), Math.round(4 * s), Math.round(1 * s));
+    g.fillRect(Math.round(11 * s), Math.round(18 * s), Math.round(4 * s), Math.round(1 * s));
+    g.fillRect(Math.round(11 * s), Math.round(20 * s), Math.round(4 * s), Math.round(1 * s));
+    g.fillRect(Math.round(14 * s), Math.round(16 * s), Math.round(1 * s), Math.round(4 * s));
+    g.fillRect(Math.round(16 * s), Math.round(16 * s), Math.round(3 * s), Math.round(4 * s)); // A (simplified)
+    g.fillRect(Math.round(17 * s), Math.round(15 * s), Math.round(1 * s), Math.round(1 * s));
 
     // Arms
     g.fillStyle(skinTone);
-    g.fillRect(5, 13, 4, 10);
-    g.fillRect(23, 13, 4, 10);
+    g.fillRect(Math.round(5 * s), Math.round(13 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(Math.round(23 * s), Math.round(13 * s), Math.round(4 * s), Math.round(10 * s));
 
     // Head
     g.fillStyle(skinTone);
-    g.fillRect(9, 2, 14, 12);
+    g.fillRect(Math.round(9 * s), Math.round(2 * s), Math.round(14 * s), Math.round(12 * s));
 
     // Hair (short, neat)
     g.fillStyle(0x4a3728); // Brown
-    g.fillRect(9, 0, 14, 4);
-    g.fillRect(8, 1, 2, 4);
-    g.fillRect(22, 1, 2, 4);
+    g.fillRect(Math.round(9 * s), 0, Math.round(14 * s), Math.round(4 * s));
+    g.fillRect(Math.round(8 * s), Math.round(1 * s), Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(Math.round(22 * s), Math.round(1 * s), Math.round(2 * s), Math.round(4 * s));
 
     // WIF-inspired pink beanie!
     g.fillStyle(0xec4899); // Pink like WIF hat
-    g.fillRect(7, -3, 18, 5);
-    g.fillRect(8, -4, 16, 2);
+    g.fillRect(Math.round(7 * s), Math.round(-3 * s), Math.round(18 * s), Math.round(5 * s));
+    g.fillRect(Math.round(8 * s), Math.round(-4 * s), Math.round(16 * s), Math.round(2 * s));
     // Beanie fold
     g.fillStyle(0xdb2777);
-    g.fillRect(7, 1, 18, 2);
+    g.fillRect(Math.round(7 * s), Math.round(1 * s), Math.round(18 * s), Math.round(2 * s));
 
     // Eyes (friendly, entrepreneurial)
     g.fillStyle(0xffffff);
-    g.fillRect(11, 5, 4, 3);
-    g.fillRect(17, 5, 4, 3);
+    g.fillRect(Math.round(11 * s), Math.round(5 * s), Math.round(4 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(5 * s), Math.round(4 * s), Math.round(3 * s));
     // Blue pupils
     g.fillStyle(0x3b82f6);
-    g.fillRect(13, 5, 2, 2);
-    g.fillRect(19, 5, 2, 2);
+    g.fillRect(Math.round(13 * s), Math.round(5 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(19 * s), Math.round(5 * s), Math.round(2 * s), Math.round(2 * s));
 
     // Friendly smile
     g.fillStyle(0xffffff);
-    g.fillRect(13, 10, 6, 2);
+    g.fillRect(Math.round(13 * s), Math.round(10 * s), Math.round(6 * s), Math.round(2 * s));
     g.fillStyle(skinTone);
-    g.fillRect(13, 10, 6, 1);
+    g.fillRect(Math.round(13 * s), Math.round(10 * s), Math.round(6 * s), Math.round(1 * s));
 
     // Money bag icon floating (showing he's about bags!)
     g.fillStyle(0xfbbf24); // Gold
-    g.fillCircle(28, 4, 4);
+    g.fillCircle(Math.round(28 * s), Math.round(4 * s), Math.round(4 * s));
     g.fillStyle(0xf59e0b);
-    g.fillRect(26, 0, 4, 2);
+    g.fillRect(Math.round(26 * s), 0, Math.round(4 * s), Math.round(2 * s));
     // $ sign on bag
     g.fillStyle(0x065f46);
-    g.fillRect(27, 2, 2, 4);
-    g.fillRect(26, 3, 1, 1);
-    g.fillRect(29, 4, 1, 1);
+    g.fillRect(Math.round(27 * s), Math.round(2 * s), Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(Math.round(26 * s), Math.round(3 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(29 * s), Math.round(4 * s), Math.round(1 * s), Math.round(1 * s));
 
-    g.generateTexture("finn", 32, 32);
+    g.generateTexture("finn", size, size);
     g.destroy();
   }
 
   private generateDevSprite(): void {
     // DaddyGhost (@DaddyGhost) - The Dev / Trencher
     // Hacker/dev aesthetic with hoodie, glasses, ghost theme
+    const s = SCALE;
+    const size = Math.round(32 * s);
     const skinTone = 0xe0ac69; // Medium skin
     const g = this.make.graphics({ x: 0, y: 0 });
 
     // Ghost/ethereal glow behind The Dev (purple/cyan hacker vibes)
     g.fillStyle(0x8b5cf6, 0.15); // Purple
-    g.fillCircle(16, 16, 18);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(18 * s));
     g.fillStyle(0x06b6d4, 0.1); // Cyan
-    g.fillCircle(16, 16, 22);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(22 * s));
 
     // Shadow
     g.fillStyle(0x000000, 0.3);
-    g.fillEllipse(16, 30, 14, 5);
+    g.fillEllipse(Math.round(16 * s), Math.round(30 * s), Math.round(14 * s), Math.round(5 * s));
 
     // Legs (black joggers - dev uniform)
     g.fillStyle(0x1f2937);
-    g.fillRect(10, 22, 5, 9);
-    g.fillRect(17, 22, 5, 9);
+    g.fillRect(Math.round(10 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
+    g.fillRect(Math.round(17 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
 
     // Shoes (dark sneakers)
     g.fillStyle(0x374151);
-    g.fillRect(9, 29, 6, 3);
-    g.fillRect(17, 29, 6, 3);
+    g.fillRect(Math.round(9 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
     g.fillStyle(0x4b5563);
-    g.fillRect(10, 30, 4, 1);
-    g.fillRect(18, 30, 4, 1);
+    g.fillRect(Math.round(10 * s), Math.round(30 * s), Math.round(4 * s), Math.round(1 * s));
+    g.fillRect(Math.round(18 * s), Math.round(30 * s), Math.round(4 * s), Math.round(1 * s));
 
     // Body (dark hoodie with hood up - mysterious dev)
     g.fillStyle(0x1f2937); // Dark gray hoodie
-    g.fillRect(8, 12, 16, 12);
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(16 * s), Math.round(12 * s));
 
     // Hoodie details (darker sides)
     g.fillStyle(0x111827);
-    g.fillRect(8, 12, 3, 12);
-    g.fillRect(21, 12, 3, 12);
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(3 * s), Math.round(12 * s));
+    g.fillRect(Math.round(21 * s), Math.round(12 * s), Math.round(3 * s), Math.round(12 * s));
 
     // Hood shadow around face
     g.fillStyle(0x111827);
-    g.fillRect(8, 2, 16, 6);
-    g.fillRect(7, 4, 2, 8);
-    g.fillRect(23, 4, 2, 8);
+    g.fillRect(Math.round(8 * s), Math.round(2 * s), Math.round(16 * s), Math.round(6 * s));
+    g.fillRect(Math.round(7 * s), Math.round(4 * s), Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(Math.round(23 * s), Math.round(4 * s), Math.round(2 * s), Math.round(8 * s));
 
     // Ghost icon on hoodie (the brand!)
     g.fillStyle(0x8b5cf6); // Purple ghost
-    g.fillRect(13, 15, 6, 6);
-    g.fillRect(12, 16, 2, 4);
-    g.fillRect(18, 16, 2, 4);
+    g.fillRect(Math.round(13 * s), Math.round(15 * s), Math.round(6 * s), Math.round(6 * s));
+    g.fillRect(Math.round(12 * s), Math.round(16 * s), Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(Math.round(18 * s), Math.round(16 * s), Math.round(2 * s), Math.round(4 * s));
     // Ghost eyes
     g.fillStyle(0xffffff);
-    g.fillRect(14, 16, 2, 2);
-    g.fillRect(17, 16, 2, 2);
+    g.fillRect(Math.round(14 * s), Math.round(16 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(17 * s), Math.round(16 * s), Math.round(2 * s), Math.round(2 * s));
 
     // Arms
     g.fillStyle(skinTone);
-    g.fillRect(5, 13, 4, 10);
-    g.fillRect(23, 13, 4, 10);
+    g.fillRect(Math.round(5 * s), Math.round(13 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(Math.round(23 * s), Math.round(13 * s), Math.round(4 * s), Math.round(10 * s));
 
     // Head
     g.fillStyle(skinTone);
-    g.fillRect(10, 4, 12, 10);
+    g.fillRect(Math.round(10 * s), Math.round(4 * s), Math.round(12 * s), Math.round(10 * s));
 
     // Hair (dark, messy - been coding all night)
     g.fillStyle(0x1a1a1a);
-    g.fillRect(10, 2, 12, 4);
-    g.fillRect(9, 3, 2, 3);
-    g.fillRect(21, 3, 2, 3);
+    g.fillRect(Math.round(10 * s), Math.round(2 * s), Math.round(12 * s), Math.round(4 * s));
+    g.fillRect(Math.round(9 * s), Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
+    g.fillRect(Math.round(21 * s), Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
     // Messy bits sticking out
-    g.fillRect(8, 4, 2, 2);
-    g.fillRect(22, 4, 2, 2);
-    g.fillRect(12, 1, 2, 2);
-    g.fillRect(18, 1, 2, 2);
+    g.fillRect(Math.round(8 * s), Math.round(4 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(22 * s), Math.round(4 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(12 * s), Math.round(1 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(18 * s), Math.round(1 * s), Math.round(2 * s), Math.round(2 * s));
 
     // Glasses (dev essential)
     g.fillStyle(0x374151); // Frame
-    g.fillRect(10, 6, 12, 1);
-    g.fillRect(10, 6, 5, 4);
-    g.fillRect(17, 6, 5, 4);
+    g.fillRect(Math.round(10 * s), Math.round(6 * s), Math.round(12 * s), Math.round(1 * s));
+    g.fillRect(Math.round(10 * s), Math.round(6 * s), Math.round(5 * s), Math.round(4 * s));
+    g.fillRect(Math.round(17 * s), Math.round(6 * s), Math.round(5 * s), Math.round(4 * s));
     // Lens
     g.fillStyle(0x60a5fa, 0.6); // Blue tinted
-    g.fillRect(11, 7, 3, 2);
-    g.fillRect(18, 7, 3, 2);
+    g.fillRect(Math.round(11 * s), Math.round(7 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(18 * s), Math.round(7 * s), Math.round(3 * s), Math.round(2 * s));
     // Lens shine
     g.fillStyle(0xffffff, 0.4);
-    g.fillRect(11, 7, 1, 1);
-    g.fillRect(18, 7, 1, 1);
+    g.fillRect(Math.round(11 * s), Math.round(7 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(18 * s), Math.round(7 * s), Math.round(1 * s), Math.round(1 * s));
 
     // Eyes behind glasses
     g.fillStyle(0x000000);
-    g.fillRect(12, 7, 2, 2);
-    g.fillRect(19, 7, 2, 2);
+    g.fillRect(Math.round(12 * s), Math.round(7 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(19 * s), Math.round(7 * s), Math.round(2 * s), Math.round(2 * s));
 
     // Slight smirk (knows something you don't)
     g.fillStyle(0x000000);
-    g.fillRect(14, 11, 4, 1);
-    g.fillRect(18, 10, 1, 1);
+    g.fillRect(Math.round(14 * s), Math.round(11 * s), Math.round(4 * s), Math.round(1 * s));
+    g.fillRect(Math.round(18 * s), Math.round(10 * s), Math.round(1 * s), Math.round(1 * s));
 
     // Terminal/code icon floating (showing he's a dev)
     g.fillStyle(0x1f2937);
-    g.fillRect(24, 0, 8, 8);
+    g.fillRect(Math.round(24 * s), 0, Math.round(8 * s), Math.round(8 * s));
     g.fillStyle(0x4ade80); // Green terminal text
-    g.fillRect(25, 2, 1, 1);
-    g.fillRect(26, 2, 3, 1);
-    g.fillRect(25, 4, 1, 1);
-    g.fillRect(26, 4, 4, 1);
-    g.fillRect(25, 6, 2, 1);
+    g.fillRect(Math.round(25 * s), Math.round(2 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(26 * s), Math.round(2 * s), Math.round(3 * s), Math.round(1 * s));
+    g.fillRect(Math.round(25 * s), Math.round(4 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(26 * s), Math.round(4 * s), Math.round(4 * s), Math.round(1 * s));
+    g.fillRect(Math.round(25 * s), Math.round(6 * s), Math.round(2 * s), Math.round(1 * s));
 
-    g.generateTexture("dev", 32, 32);
+    g.generateTexture("dev", size, size);
     g.destroy();
   }
 
   private generateNeoSprite(): void {
     // Neo - The One (Matrix-inspired Scout Agent)
     // Black coat, sunglasses, Matrix green theme
+    const s = SCALE;
+    const size = Math.round(32 * s);
     const skinTone = 0xf1c27d; // Light skin
     const g = this.make.graphics({ x: 0, y: 0 });
 
     // Matrix green digital glow behind Neo
     g.fillStyle(0x00ff41, 0.2); // Matrix green
-    g.fillCircle(16, 16, 18);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(18 * s));
     g.fillStyle(0x00ff41, 0.1);
-    g.fillCircle(16, 16, 22);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(22 * s));
 
     // Shadow
     g.fillStyle(0x000000, 0.4);
-    g.fillEllipse(16, 30, 14, 5);
+    g.fillEllipse(Math.round(16 * s), Math.round(30 * s), Math.round(14 * s), Math.round(5 * s));
 
     // Legs (black pants)
     g.fillStyle(0x0a0a0a);
-    g.fillRect(10, 22, 5, 9);
-    g.fillRect(17, 22, 5, 9);
+    g.fillRect(Math.round(10 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
+    g.fillRect(Math.round(17 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
 
     // Shoes (black boots)
     g.fillStyle(0x1a1a1a);
-    g.fillRect(9, 29, 6, 3);
-    g.fillRect(17, 29, 6, 3);
+    g.fillRect(Math.round(9 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
     g.fillStyle(0x0a0a0a);
-    g.fillRect(9, 31, 6, 1);
-    g.fillRect(17, 31, 6, 1);
+    g.fillRect(Math.round(9 * s), Math.round(31 * s), Math.round(6 * s), Math.round(1 * s));
+    g.fillRect(Math.round(17 * s), Math.round(31 * s), Math.round(6 * s), Math.round(1 * s));
 
     // Long black coat (iconic Matrix look)
     g.fillStyle(0x0a0a0a);
-    g.fillRect(6, 12, 20, 16);
+    g.fillRect(Math.round(6 * s), Math.round(12 * s), Math.round(20 * s), Math.round(16 * s));
 
     // Coat details - slightly lighter edges
     g.fillStyle(0x1a1a1a);
-    g.fillRect(6, 12, 2, 16);
-    g.fillRect(24, 12, 2, 16);
+    g.fillRect(Math.round(6 * s), Math.round(12 * s), Math.round(2 * s), Math.round(16 * s));
+    g.fillRect(Math.round(24 * s), Math.round(12 * s), Math.round(2 * s), Math.round(16 * s));
 
     // Coat opening showing shirt
     g.fillStyle(0x111111);
-    g.fillRect(12, 14, 8, 10);
+    g.fillRect(Math.round(12 * s), Math.round(14 * s), Math.round(8 * s), Math.round(10 * s));
 
     // Arms
     g.fillStyle(skinTone);
-    g.fillRect(4, 13, 3, 10);
-    g.fillRect(25, 13, 3, 10);
+    g.fillRect(Math.round(4 * s), Math.round(13 * s), Math.round(3 * s), Math.round(10 * s));
+    g.fillRect(Math.round(25 * s), Math.round(13 * s), Math.round(3 * s), Math.round(10 * s));
 
     // Head
     g.fillStyle(skinTone);
-    g.fillRect(9, 2, 14, 12);
+    g.fillRect(Math.round(9 * s), Math.round(2 * s), Math.round(14 * s), Math.round(12 * s));
 
     // Hair (short, black, slicked back)
     g.fillStyle(0x0a0a0a);
-    g.fillRect(9, 0, 14, 5);
-    g.fillRect(8, 2, 2, 3);
-    g.fillRect(22, 2, 2, 3);
+    g.fillRect(Math.round(9 * s), 0, Math.round(14 * s), Math.round(5 * s));
+    g.fillRect(Math.round(8 * s), Math.round(2 * s), Math.round(2 * s), Math.round(3 * s));
+    g.fillRect(Math.round(22 * s), Math.round(2 * s), Math.round(2 * s), Math.round(3 * s));
 
     // Iconic sunglasses (small, round)
     g.fillStyle(0x1a1a1a); // Frame
-    g.fillRect(10, 5, 5, 3);
-    g.fillRect(17, 5, 5, 3);
-    g.fillRect(15, 6, 2, 1); // Bridge
+    g.fillRect(Math.round(10 * s), Math.round(5 * s), Math.round(5 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(5 * s), Math.round(5 * s), Math.round(3 * s));
+    g.fillRect(Math.round(15 * s), Math.round(6 * s), Math.round(2 * s), Math.round(1 * s)); // Bridge
 
     // Green lens reflection (Matrix style)
     g.fillStyle(0x00ff41, 0.6);
-    g.fillRect(11, 6, 3, 1);
-    g.fillRect(18, 6, 3, 1);
+    g.fillRect(Math.round(11 * s), Math.round(6 * s), Math.round(3 * s), Math.round(1 * s));
+    g.fillRect(Math.round(18 * s), Math.round(6 * s), Math.round(3 * s), Math.round(1 * s));
 
     // Neutral expression
     g.fillStyle(0x000000);
-    g.fillRect(14, 10, 4, 1);
+    g.fillRect(Math.round(14 * s), Math.round(10 * s), Math.round(4 * s), Math.round(1 * s));
 
     // Matrix code rain effect above head (iconic)
     g.fillStyle(0x00ff41, 0.8);
     // Column 1
-    g.fillRect(8, -6, 2, 2);
-    g.fillRect(8, -2, 2, 2);
+    g.fillRect(Math.round(8 * s), Math.round(-6 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(8 * s), Math.round(-2 * s), Math.round(2 * s), Math.round(2 * s));
     // Column 2
-    g.fillRect(14, -4, 2, 2);
-    g.fillRect(14, 0, 2, 2);
+    g.fillRect(Math.round(14 * s), Math.round(-4 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(14 * s), 0, Math.round(2 * s), Math.round(2 * s));
     // Column 3
-    g.fillRect(20, -6, 2, 2);
-    g.fillRect(20, -2, 2, 2);
+    g.fillRect(Math.round(20 * s), Math.round(-6 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(20 * s), Math.round(-2 * s), Math.round(2 * s), Math.round(2 * s));
 
     // Brighter "lead" characters
     g.fillStyle(0x80ff80);
-    g.fillRect(8, 2, 2, 2);
-    g.fillRect(14, -6, 2, 2);
-    g.fillRect(20, 2, 2, 2);
+    g.fillRect(Math.round(8 * s), Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(14 * s), Math.round(-6 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(20 * s), Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
 
-    g.generateTexture("neo", 32, 32);
+    g.generateTexture("neo", size, size);
     g.destroy();
   }
 
