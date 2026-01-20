@@ -469,11 +469,26 @@ export async function POST(request: NextRequest) {
         });
 
         // Create paper trade based on sentiment
-        const direction = response.sentiment === "bullish" ? "long" : response.sentiment === "bearish" ? "short" : (Math.random() > 0.5 ? "long" : "short");
+        const direction: "long" | "short" = response.sentiment === "bullish" ? "long" : response.sentiment === "bearish" ? "short" : (Math.random() > 0.5 ? "long" : "short");
         const currentPrice = Math.random() * 0.01; // Would use real price in production
         const volatility = response.confidence > 70 ? 0.3 : response.confidence > 50 ? 0.2 : 0.15;
 
-        const trade = {
+        const trade: {
+          id: string;
+          agentId: string;
+          tokenMint: string;
+          tokenSymbol: string;
+          direction: "long" | "short";
+          entryPrice: number;
+          targetPrice: number;
+          stopLoss: number;
+          confidence: number;
+          reasoning: string;
+          timestamp: number;
+          status: "active" | "won" | "lost" | "expired";
+          exitPrice?: number;
+          pnlPercent?: number;
+        } = {
           id: `trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           agentId: agentId || "neo",
           tokenMint: tokenMint || "unknown",
@@ -485,7 +500,7 @@ export async function POST(request: NextRequest) {
           confidence: response.confidence,
           reasoning: response.message,
           timestamp: Date.now(),
-          status: "active" as const,
+          status: "active",
         };
 
         paperTrades.set(trade.id, trade);
