@@ -1239,25 +1239,27 @@ export class WorldScene extends Phaser.Scene {
       this.decorations.push(rock);
     });
 
-    // Add fountain in center background
-    const fountain = this.add.sprite(400, 420, "fountain");
+    // Add fountain in center of park (above the path)
+    const fountainY = 480; // Position fountain base on grass, above path
+    const fountain = this.add.sprite(400, fountainY, "fountain");
     fountain.setOrigin(0.5, 1);
-    fountain.setDepth(1);
-    fountain.setScale(1.2);
+    fountain.setDepth(2);
+    fountain.setScale(1.0);
     this.decorations.push(fountain);
 
-    // Water spray particles - store reference to hide in other zones
-    this.fountainWater = this.add.particles(400, 385, "rain", {
-      speed: { min: 20, max: 50 },
-      angle: { min: 250, max: 290 },
-      lifespan: 600,
-      quantity: 2,
-      frequency: 100,
-      scale: { start: 0.5, end: 0 },
-      alpha: { start: 0.6, end: 0 },
-      gravityY: 50,
+    // Water spray particles - aligned with fountain top
+    this.fountainWater = this.add.particles(400, fountainY - 35, "rain", {
+      speed: { min: 30, max: 60 },
+      angle: { min: 260, max: 280 },
+      lifespan: 500,
+      quantity: 3,
+      frequency: 80,
+      scale: { start: 0.4, end: 0.1 },
+      alpha: { start: 0.7, end: 0 },
+      gravityY: 80,
+      tint: 0x60a5fa, // Blue tint for water
     });
-    this.fountainWater.setDepth(1);
+    this.fountainWater.setDepth(2);
 
     // Add flag poles
     const flagPositions = [{ x: 50, y: 430 }, { x: 750, y: 430 }];
@@ -2307,15 +2309,8 @@ export class WorldScene extends Phaser.Scene {
           }
         });
 
-        // Idle bounce animation - Special characters have slower, more deliberate movement
-        this.tweens.add({
-          targets: sprite,
-          y: character.y - (isSpecial ? 2 : 3),
-          duration: isSpecial ? 1200 : 800 + Math.random() * 400,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.easeInOut",
-        });
+        // Walking animation - characters randomly walk around the park
+        this.startCharacterWalking(sprite, character, isSpecial);
 
         // Add Solana gradient aura glow effect for Toly
         if (isToly) {
@@ -3429,6 +3424,130 @@ export class WorldScene extends Phaser.Scene {
           }
         });
       }
+    });
+  }
+
+  // Character walking system
+  private startCharacterWalking(
+    sprite: Phaser.GameObjects.Sprite,
+    character: GameCharacter,
+    isSpecial: boolean
+  ): void {
+    // Store the original Y position for the character
+    const baseY = character.y;
+    const walkSpeed = isSpecial ? 0.3 : 0.5;
+    const walkRange = isSpecial ? 60 : 100; // How far they can walk from starting position
+    const minX = Math.max(80, character.x - walkRange);
+    const maxX = Math.min(720, character.x + walkRange);
+
+    // Walking state stored on sprite
+    (sprite as any).isWalking = false;
+    (sprite as any).walkDirection = 1;
+    (sprite as any).baseY = baseY;
+
+    // Idle bounce when not walking
+    const idleTween = this.tweens.add({
+      targets: sprite,
+      y: baseY - (isSpecial ? 2 : 3),
+      duration: isSpecial ? 1200 : 800 + Math.random() * 400,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Store tween reference for cleanup
+    (sprite as any).idleTween = idleTween;
+
+    // Randomly decide to walk
+    const maybeWalk = () => {
+      if (!sprite.active) return;
+
+      // 30% chance to start walking
+      if (Math.random() < 0.3 && !(sprite as any).isWalking) {
+        this.walkCharacter(sprite, minX, maxX, baseY, walkSpeed, isSpecial);
+      }
+
+      // Schedule next check (every 3-8 seconds)
+      this.time.delayedCall(3000 + Math.random() * 5000, maybeWalk);
+    };
+
+    // Start the walking checks after initial delay
+    this.time.delayedCall(1000 + Math.random() * 3000, maybeWalk);
+  }
+
+  private walkCharacter(
+    sprite: Phaser.GameObjects.Sprite,
+    minX: number,
+    maxX: number,
+    baseY: number,
+    speed: number,
+    isSpecial: boolean
+  ): void {
+    if (!sprite.active) return;
+
+    (sprite as any).isWalking = true;
+
+    // Pick a random destination within range
+    const currentX = sprite.x;
+    const targetX = minX + Math.random() * (maxX - minX);
+    const distance = Math.abs(targetX - currentX);
+    const duration = distance / speed * 16; // Convert to ms based on speed
+
+    // Flip sprite based on direction
+    const goingRight = targetX > currentX;
+    sprite.setFlipX(!goingRight);
+
+    // Stop idle bounce while walking
+    const idleTween = (sprite as any).idleTween as Phaser.Tweens.Tween;
+    if (idleTween) {
+      idleTween.pause();
+    }
+
+    // Walking bob animation
+    const walkBob = this.tweens.add({
+      targets: sprite,
+      y: baseY - 4,
+      duration: 150,
+      yoyo: true,
+      repeat: Math.floor(duration / 300),
+      ease: "Sine.easeInOut",
+    });
+
+    // Move to target
+    this.tweens.add({
+      targets: sprite,
+      x: targetX,
+      duration: duration,
+      ease: "Linear",
+      onComplete: () => {
+        (sprite as any).isWalking = false;
+        walkBob.stop();
+        sprite.setY(baseY);
+
+        // Resume idle bounce
+        if (idleTween) {
+          idleTween.resume();
+        }
+
+        // Update any attached glow effects
+        const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow"];
+        glowKeys.forEach((key) => {
+          const glow = (sprite as any)[key];
+          if (glow && glow.active) {
+            glow.setX(sprite.x);
+          }
+        });
+      },
+      onUpdate: () => {
+        // Update glow position while walking
+        const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow"];
+        glowKeys.forEach((key) => {
+          const glow = (sprite as any)[key];
+          if (glow && glow.active) {
+            glow.setX(sprite.x);
+          }
+        });
+      },
     });
   }
 }
