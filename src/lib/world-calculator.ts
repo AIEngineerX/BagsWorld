@@ -327,7 +327,7 @@ export function transformFeeEarnerToCharacter(
     : isDev
     ? { x: WORLD_WIDTH / 2 + Math.round(180 * SCALE), y: groundY } // Center-right, in the trenches
     : isScout
-    ? { x: WORLD_WIDTH - Math.round(60 * SCALE), y: groundY } // Far right, watching the horizon
+    ? { x: Math.round(170 * SCALE), y: groundY } // BagsCity side, near Trading Gym - watching for new launches
     : isCJ
     ? { x: Math.round(90 * SCALE), y: groundY } // BagsCity, right next to the Casino (x: 80)
     : generateCharacterPosition();
