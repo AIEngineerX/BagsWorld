@@ -517,7 +517,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         // Send to blockchain with retry logic for blockhash issues
         // If the transaction has pre-signed components (from API), we need to request
         // a fresh transaction from the API rather than modifying the blockhash ourselves
-        let txid: string;
+        let txid: string | undefined;
         let sendAttempts = 0;
         const maxSendAttempts = 3;
         let currentSignedTx = signedTx;
@@ -588,11 +588,15 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           }
         }
 
+        if (!txid) {
+          throw new Error("Failed to send transaction after multiple attempts");
+        }
+
         setLaunchStatus("Confirming transaction...");
 
         // Wait for confirmation
         const confirmation = await connection.confirmTransaction({
-          signature: txid!,
+          signature: txid,
           blockhash,
           lastValidBlockHeight,
         }, "confirmed");
