@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { isAdmin } from "@/lib/config";
 
 interface AgentStatus {
   wallet: {
@@ -36,8 +37,6 @@ interface ClaimResult {
   errors: string[];
 }
 
-const ADMIN_WALLET = process.env.NEXT_PUBLIC_ADMIN_WALLET;
-
 export function AgentDashboard() {
   const { publicKey, connected } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
@@ -47,8 +46,8 @@ export function AgentDashboard() {
   const [lastResult, setLastResult] = useState<ClaimResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if current wallet is admin
-  const isAdmin = connected && publicKey?.toBase58() === ADMIN_WALLET;
+  // Check if current wallet is admin using the config helper
+  const isUserAdmin = connected && isAdmin(publicKey?.toBase58());
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -71,13 +70,13 @@ export function AgentDashboard() {
 
   // Fetch status when opened
   useEffect(() => {
-    if (isOpen && isAdmin) {
+    if (isOpen && isUserAdmin) {
       fetchStatus();
       // Refresh every 30 seconds while open
       const interval = setInterval(fetchStatus, 30000);
       return () => clearInterval(interval);
     }
-  }, [isOpen, isAdmin, fetchStatus]);
+  }, [isOpen, isUserAdmin, fetchStatus]);
 
   const handleTriggerClaim = async () => {
     try {
@@ -123,7 +122,7 @@ export function AgentDashboard() {
   };
 
   // Don't render anything if not admin
-  if (!isAdmin) {
+  if (!isUserAdmin) {
     return null;
   }
 
@@ -132,10 +131,17 @@ export function AgentDashboard() {
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 left-4 z-50 px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-pixel text-[10px] border-2 border-purple-400 shadow-lg"
+        className={`fixed bottom-4 left-4 z-50 px-3 py-2 font-pixel text-[10px] border-2 shadow-lg transition-all ${
+          isOpen
+            ? "bg-purple-700 border-purple-300 text-white"
+            : "bg-bags-dark border-purple-500 text-purple-300 hover:bg-purple-900 hover:border-purple-400 hover:text-purple-200"
+        }`}
         title="Agent Dashboard (Admin Only)"
       >
-        🤖 AGENT
+        <span className="flex items-center gap-1.5">
+          <span className={`inline-block w-2 h-2 rounded-full ${status?.agent?.isRunning ? "bg-bags-green animate-pulse" : "bg-purple-400"}`} />
+          AGENT
+        </span>
       </button>
 
       {/* Dashboard Panel */}
@@ -145,10 +151,10 @@ export function AgentDashboard() {
           <div className="flex items-center justify-between p-3 border-b-2 border-purple-500 bg-purple-900/30">
             <div>
               <h2 className="font-pixel text-sm text-purple-300">
-                🤖 AUTO-CLAIM AGENT
+                [ADMIN] AUTO-CLAIM AGENT
               </h2>
               <p className="font-pixel text-[8px] text-gray-400">
-                Admin Dashboard
+                Fee Collection Dashboard
               </p>
             </div>
             <button
@@ -184,7 +190,7 @@ export function AgentDashboard() {
                     </>
                   ) : (
                     <p className="font-pixel text-[10px] text-red-400">
-                      ⚠️ Not configured
+                      [!] Not configured
                     </p>
                   )}
                 </div>
@@ -299,7 +305,7 @@ export function AgentDashboard() {
                     {lastResult.success ? (
                       <>
                         <p className="font-pixel text-[10px] text-bags-green">
-                          ✅ Claimed {lastResult.totalSolClaimed.toFixed(4)} SOL
+                          [OK] Claimed {lastResult.totalSolClaimed.toFixed(4)} SOL
                         </p>
                         <p className="font-pixel text-[8px] text-gray-400">
                           {lastResult.positionsClaimed} positions
@@ -307,7 +313,7 @@ export function AgentDashboard() {
                       </>
                     ) : (
                       <p className="font-pixel text-[10px] text-red-400">
-                        ❌ {lastResult.errors[0] || "Failed"}
+                        [ERR] {lastResult.errors[0] || "Failed"}
                       </p>
                     )}
                   </div>
@@ -350,7 +356,7 @@ export function AgentDashboard() {
               disabled={isClaiming || !status?.wallet.configured}
               className="w-full py-2 bg-gradient-to-r from-purple-600 to-bags-green text-white font-pixel text-[10px] hover:from-purple-500 hover:to-bags-green/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {isClaiming ? "🔄 CLAIMING..." : "⚡ TRIGGER CLAIM NOW"}
+              {isClaiming ? "[...] CLAIMING" : "[>] TRIGGER CLAIM NOW"}
             </button>
 
             <button
@@ -358,7 +364,7 @@ export function AgentDashboard() {
               disabled={isLoading}
               className="w-full py-1 bg-bags-darker border border-purple-500/30 text-purple-300 font-pixel text-[8px] hover:bg-purple-500/10 disabled:opacity-50"
             >
-              {isLoading ? "Refreshing..." : "🔄 Refresh Status"}
+              {isLoading ? "Refreshing..." : "[~] Refresh Status"}
             </button>
           </div>
 
