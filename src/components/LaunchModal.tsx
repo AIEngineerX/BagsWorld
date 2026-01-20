@@ -376,37 +376,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
             setLaunchStatus(`Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
 
-            // Send and confirm
-            let txid: string;
-            try {
-              txid = await connection.sendRawTransaction(signedTx.serialize(), {
-                skipPreflight: false,
-                maxRetries: 5,
-              });
-            } catch (sendError: unknown) {
-              const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-              console.error("Fee config tx error:", sendError);
-
-              if (!hasExistingSignatures && (errorMessage.includes("Blockhash not found") || errorMessage.includes("block height exceeded"))) {
-                console.log("Blockhash expired, retrying with fresh blockhash...");
-                const fresh = await connection.getLatestBlockhash("confirmed");
-                blockhash = fresh.blockhash;
-                lastValidBlockHeight = fresh.lastValidBlockHeight;
-
-                if (transaction instanceof VersionedTransaction) {
-                  transaction.message.recentBlockhash = blockhash;
-                } else {
-                  transaction.recentBlockhash = blockhash;
-                }
-                const resignedTx = await signTransaction(transaction);
-                txid = await connection.sendRawTransaction(resignedTx.serialize(), {
-                  skipPreflight: true,
-                  maxRetries: 5,
-                });
-              } else {
-                throw sendError;
-              }
-            }
+            // Send transaction - skip preflight to avoid blockhash simulation issues
+            // The transaction will still be validated by validators when submitted
+            const txid = await connection.sendRawTransaction(signedTx.serialize(), {
+              skipPreflight: true,
+              preflightCommitment: "confirmed",
+              maxRetries: 5,
+            });
 
             await connection.confirmTransaction({
               signature: txid,
@@ -538,43 +514,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         setLaunchStatus("Broadcasting to Solana...");
 
-        // Send to blockchain
-        let txid: string;
-        try {
-          txid = await connection.sendRawTransaction(signedTx.serialize(), {
-            skipPreflight: false,
-            maxRetries: 5,
-          });
-        } catch (sendError: unknown) {
-          const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-
-          // Log full error for debugging
-          console.error("Transaction send error:", sendError);
-          if (sendError && typeof sendError === 'object' && 'logs' in sendError) {
-            console.error("Transaction logs:", (sendError as { logs: string[] }).logs);
-          }
-
-          // If blockhash expired and we can modify it (no existing signatures), retry
-          if (!hasExistingSignatures && (errorMessage.includes("Blockhash not found") || errorMessage.includes("block height exceeded"))) {
-            console.log("Blockhash expired during send, retrying with fresh blockhash...");
-            const fresh = await connection.getLatestBlockhash("confirmed");
-            blockhash = fresh.blockhash;
-            lastValidBlockHeight = fresh.lastValidBlockHeight;
-
-            if (transaction instanceof VersionedTransaction) {
-              transaction.message.recentBlockhash = blockhash;
-            } else {
-              transaction.recentBlockhash = blockhash;
-            }
-            const resignedTx = await signTransaction(transaction);
-            txid = await connection.sendRawTransaction(resignedTx.serialize(), {
-              skipPreflight: true,
-              maxRetries: 5,
-            });
-          } else {
-            throw sendError;
-          }
-        }
+        // Send to blockchain - skip preflight to avoid blockhash simulation issues
+        // The transaction will still be validated by validators when submitted
+        const txid = await connection.sendRawTransaction(signedTx.serialize(), {
+          skipPreflight: true,
+          preflightCommitment: "confirmed",
+          maxRetries: 5,
+        });
 
         setLaunchStatus("Confirming transaction...");
 
