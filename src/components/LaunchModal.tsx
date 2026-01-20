@@ -335,17 +335,51 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
             // Decode and sign the transaction (handles both versioned and legacy formats)
             const transaction = deserializeTransaction(txData.transaction, `fee-config-tx-${i + 1}`);
+
+            // Refresh blockhash to avoid "Blockhash not found" errors
+            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+            if (transaction instanceof VersionedTransaction) {
+              transaction.message.recentBlockhash = blockhash;
+            } else {
+              transaction.recentBlockhash = blockhash;
+            }
+
             const signedTx = await signTransaction(transaction);
 
             setLaunchStatus(`Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
 
-            // Send and confirm
-            const txid = await connection.sendRawTransaction(signedTx.serialize(), {
-              skipPreflight: false,
-              maxRetries: 3,
-            });
+            // Send and confirm with retry logic
+            let txid: string;
+            try {
+              txid = await connection.sendRawTransaction(signedTx.serialize(), {
+                skipPreflight: false,
+                maxRetries: 5,
+              });
+            } catch (sendError: unknown) {
+              const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+              if (errorMessage.includes("Blockhash not found") || errorMessage.includes("block height exceeded")) {
+                console.log("Blockhash expired, retrying with fresh blockhash...");
+                const fresh = await connection.getLatestBlockhash("confirmed");
+                if (transaction instanceof VersionedTransaction) {
+                  transaction.message.recentBlockhash = fresh.blockhash;
+                } else {
+                  transaction.recentBlockhash = fresh.blockhash;
+                }
+                const resignedTx = await signTransaction(transaction);
+                txid = await connection.sendRawTransaction(resignedTx.serialize(), {
+                  skipPreflight: true,
+                  maxRetries: 5,
+                });
+              } else {
+                throw sendError;
+              }
+            }
 
-            await connection.confirmTransaction(txid, "confirmed");
+            await connection.confirmTransaction({
+              signature: txid,
+              blockhash,
+              lastValidBlockHeight,
+            }, "confirmed");
             console.log(`Fee config transaction ${i + 1} confirmed:`, txid);
           }
         }
@@ -421,25 +455,62 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         // Decode transaction (handles both versioned and legacy formats)
         const transaction = deserializeTransaction(txBase64, "launch-transaction");
 
+        // Get connection for blockhash refresh
+        const connection = new Connection(
+          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
+        );
+
+        // Refresh blockhash to avoid "Blockhash not found" errors
+        // This is needed because time may have passed since the API created the transaction
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+
+        if (transaction instanceof VersionedTransaction) {
+          transaction.message.recentBlockhash = blockhash;
+        } else {
+          transaction.recentBlockhash = blockhash;
+        }
+
         // Sign transaction
         const signedTx = await signTransaction(transaction);
 
         setLaunchStatus("Broadcasting to Solana...");
 
-        // Send to blockchain
-        const connection = new Connection(
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
-        );
-
-        const txid = await connection.sendRawTransaction(signedTx.serialize(), {
-          skipPreflight: false,
-          maxRetries: 3,
-        });
+        // Send to blockchain with retry logic
+        let txid: string;
+        try {
+          txid = await connection.sendRawTransaction(signedTx.serialize(), {
+            skipPreflight: false,
+            maxRetries: 5,
+          });
+        } catch (sendError: unknown) {
+          // If blockhash expired again, try once more with fresh blockhash
+          const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+          if (errorMessage.includes("Blockhash not found") || errorMessage.includes("block height exceeded")) {
+            console.log("Blockhash expired during send, retrying with fresh blockhash...");
+            const fresh = await connection.getLatestBlockhash("confirmed");
+            if (transaction instanceof VersionedTransaction) {
+              transaction.message.recentBlockhash = fresh.blockhash;
+            } else {
+              transaction.recentBlockhash = fresh.blockhash;
+            }
+            const resignedTx = await signTransaction(transaction);
+            txid = await connection.sendRawTransaction(resignedTx.serialize(), {
+              skipPreflight: true, // Skip preflight on retry
+              maxRetries: 5,
+            });
+          } else {
+            throw sendError;
+          }
+        }
 
         setLaunchStatus("Confirming transaction...");
 
-        // Wait for confirmation
-        await connection.confirmTransaction(txid, "confirmed");
+        // Wait for confirmation with timeout
+        const confirmation = await connection.confirmTransaction({
+          signature: txid,
+          blockhash,
+          lastValidBlockHeight,
+        }, "confirmed");
 
         console.log("Token launched on-chain! TX:", txid);
       }
