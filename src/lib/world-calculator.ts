@@ -360,6 +360,7 @@ export function transformTokenToBuilding(
   // Special landmark buildings get fixed positions
   const isPokeCenter = token.symbol === "POKECENTER" || token.mint.includes("PokeCenter");
   const isTradingGym = token.symbol === "GYM" || token.mint.includes("TradingGym");
+  const isCasino = token.symbol === "CASINO" || token.mint.includes("Casino");
   const isTreasuryHub = token.mint.startsWith("Treasury");
 
   // Fixed positions for landmark buildings (City side = left, x < center, scaled)
@@ -367,11 +368,14 @@ export function transformTokenToBuilding(
   let position: { x: number; y: number };
   if (existingBuilding) {
     position = { x: existingBuilding.x, y: existingBuilding.y };
+  } else if (isCasino) {
+    // Casino: BagsCity side (far left), Vegas-style landmark
+    position = { x: Math.round(80 * SCALE), y: landmarkY };
   } else if (isTradingGym) {
-    // Trading Gym: City side (left), prominent position
+    // Trading Gym: BagsCity side, prominent position
     position = { x: Math.round(150 * SCALE), y: landmarkY };
   } else if (isPokeCenter) {
-    // PokeCenter: Center-left position
+    // PokeCenter: Park side (center-right)
     position = { x: Math.round(280 * SCALE), y: landmarkY };
   } else if (isTreasuryHub) {
     // Treasury: Center position
@@ -397,8 +401,8 @@ export function transformTokenToBuilding(
   const previousHealth = existingBuilding?.health ?? 50;
   const newHealth = calculateBuildingHealth(token.change24h, token.volume24h, previousHealth);
 
-  // Assign zones: Trading Gym goes to BagsCity only, all other buildings go to Park only
-  const zone = isTradingGym ? "trending" as const : "main_city" as const;
+  // Assign zones: Trading Gym and Casino go to BagsCity, all other buildings go to Park
+  const zone = (isTradingGym || isCasino) ? "trending" as const : "main_city" as const;
 
   return {
     id: token.mint,
