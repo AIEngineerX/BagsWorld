@@ -514,19 +514,85 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         setLaunchStatus("Broadcasting to Solana...");
 
-        // Send to blockchain - skip preflight to avoid blockhash simulation issues
-        // The transaction will still be validated by validators when submitted
-        const txid = await connection.sendRawTransaction(signedTx.serialize(), {
-          skipPreflight: true,
-          preflightCommitment: "confirmed",
-          maxRetries: 5,
-        });
+        // Send to blockchain with retry logic for blockhash issues
+        // If the transaction has pre-signed components (from API), we need to request
+        // a fresh transaction from the API rather than modifying the blockhash ourselves
+        let txid: string;
+        let sendAttempts = 0;
+        const maxSendAttempts = 3;
+        let currentSignedTx = signedTx;
+
+        while (sendAttempts < maxSendAttempts) {
+          sendAttempts++;
+          try {
+            txid = await connection.sendRawTransaction(currentSignedTx.serialize(), {
+              skipPreflight: true,
+              preflightCommitment: "confirmed",
+              maxRetries: 5,
+            });
+            break; // Success, exit loop
+          } catch (sendError: unknown) {
+            const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+            console.error(`Send attempt ${sendAttempts} failed:`, errorMessage);
+
+            // If blockhash error and we haven't hit max attempts, request fresh transaction from API
+            if (sendAttempts < maxSendAttempts &&
+                (errorMessage.includes("Blockhash not found") ||
+                 errorMessage.includes("block height exceeded"))) {
+              console.log("Requesting fresh transaction from API...");
+              setLaunchStatus(`Retrying (${sendAttempts}/${maxSendAttempts})...`);
+
+              // Request a completely new transaction from the API with fresh blockhash
+              const retryResponse = await fetch("/api/launch-token", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "create-launch-tx",
+                  data: {
+                    ipfs: tokenMetadata,
+                    tokenMint: tokenMint,
+                    wallet: publicKey?.toBase58(),
+                    initialBuyLamports: Math.floor(parseFloat(initialBuySOL || "0") * 1_000_000_000),
+                    configKey: configKey,
+                  },
+                }),
+              });
+
+              if (!retryResponse.ok) {
+                const retryErr = await retryResponse.json();
+                throw new Error(retryErr.error || "Failed to create retry transaction");
+              }
+
+              const retryResult = await retryResponse.json();
+              let retryTxBase64 = retryResult.transaction;
+              if (retryTxBase64 && typeof retryTxBase64 === "object" && "transaction" in retryTxBase64) {
+                retryTxBase64 = retryTxBase64.transaction;
+              }
+
+              const retryTransaction = deserializeTransaction(retryTxBase64, "retry-launch-transaction");
+
+              // Get fresh blockhash for confirmation tracking
+              const freshBlockhash = await connection.getLatestBlockhash("confirmed");
+              blockhash = freshBlockhash.blockhash;
+              lastValidBlockHeight = freshBlockhash.lastValidBlockHeight;
+
+              // Sign the fresh transaction
+              setLaunchStatus("Please sign the transaction...");
+              currentSignedTx = await signTransaction(retryTransaction);
+              setLaunchStatus("Broadcasting to Solana...");
+
+              // Continue loop to try sending
+            } else {
+              throw sendError;
+            }
+          }
+        }
 
         setLaunchStatus("Confirming transaction...");
 
         // Wait for confirmation
         const confirmation = await connection.confirmTransaction({
-          signature: txid,
+          signature: txid!,
           blockhash,
           lastValidBlockHeight,
         }, "confirmed");
