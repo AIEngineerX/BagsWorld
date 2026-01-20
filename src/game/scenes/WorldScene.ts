@@ -1834,7 +1834,11 @@ export class WorldScene extends Phaser.Scene {
       }
     });
 
-    // Animate animals
+    // Animate animals (scaled for 1280x960 resolution)
+    const animalMinX = Math.round(50 * SCALE);
+    const animalMaxX = Math.round(750 * SCALE);
+    const animalRoamRange = Math.round(700 * SCALE);
+
     this.animals.forEach((animal) => {
       if (animal.isIdle) {
         animal.idleTimer += 1;
@@ -1842,13 +1846,13 @@ export class WorldScene extends Phaser.Scene {
         if (animal.idleTimer > 100 + Math.random() * 200) {
           animal.isIdle = false;
           animal.idleTimer = 0;
-          animal.targetX = 50 + Math.random() * 700;
+          animal.targetX = animalMinX + Math.random() * animalRoamRange;
           animal.direction = animal.targetX > animal.sprite.x ? "right" : "left";
         }
       } else {
         // Move toward target
         const dx = animal.targetX - animal.sprite.x;
-        if (Math.abs(dx) < 5) {
+        if (Math.abs(dx) < 5 * SCALE) {
           // Reached target, become idle
           animal.isIdle = true;
         } else {
@@ -1856,14 +1860,14 @@ export class WorldScene extends Phaser.Scene {
           animal.sprite.setFlipX(dx < 0);
         }
 
-        // Keep within bounds
-        if (animal.sprite.x < 30) {
-          animal.sprite.x = 30;
-          animal.targetX = 50 + Math.random() * 300;
+        // Keep within bounds (scaled)
+        if (animal.sprite.x < animalMinX) {
+          animal.sprite.x = animalMinX;
+          animal.targetX = animalMinX + Math.random() * Math.round(300 * SCALE);
         }
-        if (animal.sprite.x > 770) {
-          animal.sprite.x = 770;
-          animal.targetX = 500 + Math.random() * 250;
+        if (animal.sprite.x > animalMaxX) {
+          animal.sprite.x = animalMaxX;
+          animal.targetX = Math.round(400 * SCALE) + Math.random() * Math.round(350 * SCALE);
         }
       }
     });
