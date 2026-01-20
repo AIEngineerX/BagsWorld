@@ -76,22 +76,23 @@ const CONVERSATION_COOLDOWN = 20000; // 20 seconds after conversation ends
 
 // Character relationships (who tends to talk to whom)
 const CHARACTER_AFFINITIES: Record<string, string[]> = {
-  finn: ["ghost", "neo", "ash"], // Finn talks to his team
-  ghost: ["finn", "neo"], // Ghost works with Finn and Neo
+  finn: ["ghost", "neo", "ash", "cj"], // Finn talks to his team
+  ghost: ["finn", "neo", "cj"], // Ghost works with Finn and Neo
   neo: ["ghost", "finn", "ash"], // Neo scans and reports
   ash: ["finn", "neo", "bags-bot"], // Ash helps onboard
   "bags-bot": ["ash", "finn", "neo"], // Bags Bot is friendly with everyone
+  cj: ["ghost", "finn", "neo"], // CJ keeps it real with the crew
 };
 
 // Topics that trigger conversations
 const CONVERSATION_TOPICS = {
-  token_launch: ["finn", "neo", "ghost"],
-  fee_claim: ["ghost", "finn", "ash"],
+  token_launch: ["finn", "neo", "ghost", "cj"],
+  fee_claim: ["ghost", "finn", "ash", "cj"],
   world_health: ["bags-bot", "ash", "finn"],
-  distribution: ["ghost", "finn"],
-  whale_alert: ["neo", "ghost", "finn"],
-  price_pump: ["finn", "neo", "bags-bot"],
-  price_dump: ["ghost", "neo", "ash"],
+  distribution: ["ghost", "finn", "cj"],
+  whale_alert: ["neo", "ghost", "finn", "cj"],
+  price_pump: ["finn", "neo", "bags-bot", "cj"],
+  price_dump: ["ghost", "neo", "ash", "cj"],
 };
 
 // ============================================================================
@@ -117,6 +118,8 @@ function getCharacterVoice(characterId: string): {
       return { style: "pokemon analogies, encouraging, uses trainer terminology", maxLength: 75, emoji: true };
     case "bags-bot":
       return { style: "crypto twitter slang, ser/fren, supportive degen", maxLength: 70, emoji: true };
+    case "cj":
+      return { style: "hood energy, straight up, 'aw shit here we go again', calls people homie", maxLength: 65, emoji: false };
     default:
       return { style: "casual, friendly", maxLength: 60, emoji: false };
   }
@@ -295,6 +298,43 @@ function getTopicResponses(
         "the animals are vibing. that's usually bullish ngl",
       ],
     },
+    cj: {
+      token_launch: [
+        `aw shit here we go again. new launch ${tokenSymbol ? `$${tokenSymbol}` : ''}`,
+        `seen a hundred of these homie. ${tokenSymbol || 'this one'} could run could rug`,
+        "just another day in the trenches. new token, new game",
+      ],
+      fee_claim: [
+        `${username || 'homie'} just claimed ${amount ? amount.toFixed(2) : 'some'} SOL. we out here`,
+        "man that's how you eat in this game. claim them fees",
+        "fees flowing. this is what surviving looks like",
+      ],
+      distribution: [
+        "top 3 just got paid. that's how the game works out here",
+        `${amount ? amount.toFixed(2) : ''} SOL to the builders. respect`,
+        "creators getting their cut. we survive another day",
+      ],
+      whale_alert: [
+        "damn big money moving. been here before homie",
+        `whale alert. ${amount ? amount.toFixed(2) : ''} SOL. aw shit`,
+        "seen whales come and go. just stay focused",
+      ],
+      price_pump: [
+        `${tokenSymbol ? `$${tokenSymbol}` : 'token'} pumping ${change ? change.toFixed(0) : ''}%. don't get too comfortable`,
+        "let's get it. but the game changes quick homie",
+        "pumping today. just don't forget to take profits fool",
+      ],
+      price_dump: [
+        "aw shit here we go again. market dumping",
+        `${tokenSymbol || 'token'} down ${change ? Math.abs(change).toFixed(0) : ''}%. been through worse`,
+        "red days come and go. we survive out here",
+      ],
+      general: [
+        "just another day in the trenches homie",
+        "we still out here. the game don't stop",
+        "seen this movie before. we know how it ends",
+      ],
+    },
   };
 
   // Get character's responses for this topic
@@ -311,6 +351,7 @@ function getTopicResponses(
       neo: ["i see it too.", "the code agrees.", "truth."],
       ash: ["yes! exactly!", "good point!", "like a critical hit!"],
       "bags-bot": ["based.", "this ser.", "real."],
+      cj: ["real talk.", "facts homie.", "that's how it is."],
     };
     const acks = acknowledgments[characterId] || ["yeah."];
     const ack = acks[Math.floor(Math.random() * acks.length)];

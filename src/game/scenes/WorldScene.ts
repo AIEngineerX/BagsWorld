@@ -937,6 +937,7 @@ export class WorldScene extends Phaser.Scene {
       if (characterId === "neo" && spriteData.isScout) return sprite;
       if (characterId === "ash" && spriteData.isAsh) return sprite;
       if (characterId === "toly" && spriteData.isToly) return sprite;
+      if (characterId === "cj" && spriteData.isCJ) return sprite;
     }
 
     return null;
@@ -949,6 +950,7 @@ export class WorldScene extends Phaser.Scene {
     if (character.isScout) return "neo";
     if (character.isAsh) return "ash";
     if (character.isToly) return "toly";
+    if (character.isCJ) return "cj";
     return character.id;
   }
 
@@ -976,6 +978,10 @@ export class WorldScene extends Phaser.Scene {
     if (character.isScout && spriteData.scoutGlow) {
       spriteData.scoutGlow.x = sprite.x;
       spriteData.scoutGlow.y = sprite.y;
+    }
+    if (character.isCJ && spriteData.cjGlow) {
+      spriteData.cjGlow.x = sprite.x;
+      spriteData.cjGlow.y = sprite.y;
     }
   }
 
@@ -2573,11 +2579,12 @@ export class WorldScene extends Phaser.Scene {
         const isFinn = character.isFinn === true;
         const isDev = character.isDev === true;
         const isScout = character.isScout === true;
-        const isSpecial = isToly || isAsh || isFinn || isDev || isScout;
+        const isCJ = character.isCJ === true;
+        const isSpecial = isToly || isAsh || isFinn || isDev || isScout || isCJ;
         const variant = index % 9;
         this.characterVariants.set(character.id, variant);
 
-        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : isScout ? "neo" : this.getCharacterTexture(character.mood, variant);
+        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : isScout ? "neo" : isCJ ? "cj" : this.getCharacterTexture(character.mood, variant);
         sprite = this.add.sprite(character.x, character.y, textureKey);
         sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
         sprite.setInteractive();
@@ -2596,6 +2603,8 @@ export class WorldScene extends Phaser.Scene {
             this.showDevTooltip(sprite!);
           } else if (isScout) {
             this.showScoutTooltip(sprite!);
+          } else if (isCJ) {
+            this.showCJTooltip(sprite!);
           } else {
             this.showCharacterTooltip(character, sprite!);
           }
@@ -2622,6 +2631,9 @@ export class WorldScene extends Phaser.Scene {
           } else if (isScout) {
             // Neo opens the scout panel
             window.dispatchEvent(new CustomEvent("bagsworld-scout-click"));
+          } else if (isCJ) {
+            // CJ opens the hood rat chat
+            window.dispatchEvent(new CustomEvent("bagsworld-cj-click"));
           } else if (character.profileUrl) {
             // Open profile page in new tab
             window.open(character.profileUrl, "_blank");
@@ -2742,12 +2754,35 @@ export class WorldScene extends Phaser.Scene {
           });
         }
 
+        // Add Grove Street orange glow effect for CJ
+        if (isCJ) {
+          const glow = this.add.sprite(character.x, character.y, "glow");
+          glow.setScale(1.0);
+          glow.setAlpha(0.3);
+          glow.setTint(0xf97316); // Grove Street orange
+          glow.setDepth(10);
+
+          // Store reference to glow for cleanup
+          (sprite as any).cjGlow = glow;
+
+          this.tweens.add({
+            targets: glow,
+            alpha: 0.5,
+            scale: 1.2,
+            duration: 1200,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+
         // Store character type flags on sprite for speech bubble system
         (sprite as any).isToly = isToly;
         (sprite as any).isAsh = isAsh;
         (sprite as any).isFinn = isFinn;
         (sprite as any).isDev = isDev;
         (sprite as any).isScout = isScout;
+        (sprite as any).isCJ = isCJ;
 
         this.characterSprites.set(character.id, sprite);
       } else {
@@ -2777,6 +2812,11 @@ export class WorldScene extends Phaser.Scene {
           scoutGlow.x = sprite.x;
           scoutGlow.y = sprite.y;
         }
+        const cjGlow = (sprite as any).cjGlow;
+        if (cjGlow) {
+          cjGlow.x = sprite.x;
+          cjGlow.y = sprite.y;
+        }
       }
 
       // Update texture based on mood (skip for special characters)
@@ -2785,7 +2825,8 @@ export class WorldScene extends Phaser.Scene {
       const isFinn = character.isFinn === true;
       const isDev = character.isDev === true;
       const isScout = character.isScout === true;
-      if (!isToly && !isAsh && !isFinn && !isDev && !isScout) {
+      const isCJ = character.isCJ === true;
+      if (!isToly && !isAsh && !isFinn && !isDev && !isScout && !isCJ) {
         const variant = this.characterVariants.get(character.id) ?? 0;
         const expectedTexture = this.getCharacterTexture(character.mood, variant);
         if (sprite.texture.key !== expectedTexture) {
@@ -3231,6 +3272,47 @@ export class WorldScene extends Phaser.Scene {
       fontFamily: "monospace",
       fontSize: "7px",
       color: "#00ff41",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showCJTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 160, 68, 0x1a0f00, 0.95);
+    bg.setStrokeStyle(2, 0xf97316); // Grove Street orange border
+
+    const nameText = this.add.text(0, -22, "CJ", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#f97316",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Hood Rat • BagsCity", {
+      fontFamily: "monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "aw shit here we go again", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#f97316",
     });
     clickText.setOrigin(0.5, 0.5);
 

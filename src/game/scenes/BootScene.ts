@@ -1001,6 +1001,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate Neo - The Scout Agent
     this.generateNeoSprite();
+
+    // Generate CJ - The Hood Rat from BagsCity
+    this.generateCJSprite();
   }
 
   private generateTolySprite(): void {
@@ -1539,6 +1542,94 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(Math.round(20 * s), Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
 
     g.generateTexture("neo", size, size);
+    g.destroy();
+  }
+
+  private generateCJSprite(): void {
+    // CJ - On-chain hood rat from BagsCity (GTA San Andreas inspired)
+    // White tank top, baggy jeans, dark skin, bald head, Grove Street orange accent
+    const s = SCALE;
+    const size = Math.round(32 * s);
+    const skinTone = 0x8b5a2b; // Dark brown skin
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Grove Street orange glow behind CJ
+    g.fillStyle(0xf97316, 0.15);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(18 * s));
+    g.fillStyle(0xf97316, 0.08);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(22 * s));
+
+    // Shadow
+    g.fillStyle(0x000000, 0.4);
+    g.fillEllipse(Math.round(16 * s), Math.round(30 * s), Math.round(14 * s), Math.round(5 * s));
+
+    // Legs (baggy blue jeans)
+    g.fillStyle(0x1e3a5f); // Dark blue denim
+    g.fillRect(Math.round(9 * s), Math.round(20 * s), Math.round(6 * s), Math.round(11 * s));
+    g.fillRect(Math.round(17 * s), Math.round(20 * s), Math.round(6 * s), Math.round(11 * s));
+    // Baggy look - wider at bottom
+    g.fillRect(Math.round(8 * s), Math.round(26 * s), Math.round(7 * s), Math.round(5 * s));
+    g.fillRect(Math.round(17 * s), Math.round(26 * s), Math.round(7 * s), Math.round(5 * s));
+
+    // Shoes (black/white sneakers)
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(Math.round(8 * s), Math.round(29 * s), Math.round(7 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(29 * s), Math.round(7 * s), Math.round(3 * s));
+    // White stripe
+    g.fillStyle(0xffffff);
+    g.fillRect(Math.round(8 * s), Math.round(30 * s), Math.round(7 * s), Math.round(1 * s));
+    g.fillRect(Math.round(17 * s), Math.round(30 * s), Math.round(7 * s), Math.round(1 * s));
+
+    // White tank top (wife beater - iconic CJ look)
+    g.fillStyle(0xf5f5f5);
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(16 * s), Math.round(10 * s));
+    // Tank top straps
+    g.fillRect(Math.round(9 * s), Math.round(10 * s), Math.round(4 * s), Math.round(3 * s));
+    g.fillRect(Math.round(19 * s), Math.round(10 * s), Math.round(4 * s), Math.round(3 * s));
+
+    // Arms (muscular)
+    g.fillStyle(skinTone);
+    g.fillRect(Math.round(4 * s), Math.round(12 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(Math.round(23 * s), Math.round(12 * s), Math.round(5 * s), Math.round(10 * s));
+    // Hands
+    g.fillRect(Math.round(4 * s), Math.round(21 * s), Math.round(4 * s), Math.round(3 * s));
+    g.fillRect(Math.round(24 * s), Math.round(21 * s), Math.round(4 * s), Math.round(3 * s));
+
+    // Head (bald)
+    g.fillStyle(skinTone);
+    g.fillRect(Math.round(9 * s), Math.round(1 * s), Math.round(14 * s), Math.round(11 * s));
+
+    // Bald head shine
+    g.fillStyle(0xa0724c, 0.5);
+    g.fillRect(Math.round(12 * s), Math.round(2 * s), Math.round(4 * s), Math.round(2 * s));
+
+    // Goatee
+    g.fillStyle(0x2d1f14);
+    g.fillRect(Math.round(13 * s), Math.round(9 * s), Math.round(6 * s), Math.round(2 * s));
+
+    // Eyes
+    g.fillStyle(0xffffff);
+    g.fillRect(Math.round(11 * s), Math.round(4 * s), Math.round(4 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(4 * s), Math.round(4 * s), Math.round(3 * s));
+    // Pupils
+    g.fillStyle(0x2d1f14);
+    g.fillRect(Math.round(12 * s), Math.round(5 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(18 * s), Math.round(5 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Slight frown/neutral expression
+    g.fillStyle(0x2d1f14);
+    g.fillRect(Math.round(13 * s), Math.round(7 * s), Math.round(6 * s), Math.round(1 * s));
+
+    // Grove Street orange bandana on arm (subtle gang reference)
+    g.fillStyle(0xf97316);
+    g.fillRect(Math.round(4 * s), Math.round(14 * s), Math.round(5 * s), Math.round(2 * s));
+
+    // Chain (subtle gold)
+    g.fillStyle(0xffd700, 0.8);
+    g.fillRect(Math.round(11 * s), Math.round(11 * s), Math.round(10 * s), Math.round(1 * s));
+    g.fillRect(Math.round(14 * s), Math.round(12 * s), Math.round(4 * s), Math.round(2 * s));
+
+    g.generateTexture("cj", size, size);
     g.destroy();
   }
 

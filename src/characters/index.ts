@@ -6,6 +6,7 @@ import { neoCharacter } from "./neo.character";
 import { finnCharacter } from "./finn.character";
 import { ghostCharacter } from "./ghost.character";
 import { ashCharacter } from "./ash.character";
+import { cjCharacter } from "./cj.character";
 
 // Export all characters
 export { bagsBotCharacter } from "./bags-bot.character";
@@ -13,6 +14,7 @@ export { neoCharacter } from "./neo.character";
 export { finnCharacter } from "./finn.character";
 export { ghostCharacter } from "./ghost.character";
 export { ashCharacter } from "./ash.character";
+export { cjCharacter } from "./cj.character";
 
 // Export types and utilities
 export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.character";
@@ -24,6 +26,7 @@ export const characters: Record<string, CharacterDefinition> = {
   "finn": finnCharacter,
   "ghost": ghostCharacter,
   "ash": ashCharacter,
+  "cj": cjCharacter,
 };
 
 // Get character by ID with fallback
@@ -72,5 +75,11 @@ export const characterMeta: Record<string, {
     role: "Guide",
     color: "#ef4444", // red (pokemon)
     icon: "⚡",
+  },
+  "cj": {
+    displayName: "CJ",
+    role: "Hood Rat",
+    color: "#f97316", // orange (grove street)
+    icon: "🔫",
   },
 };
