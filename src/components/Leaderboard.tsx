@@ -87,7 +87,7 @@ export function Leaderboard() {
       <div className="flex-1 overflow-y-auto space-y-1">
         {population.length === 0 ? (
           <div className="text-center py-8 px-4">
-            <div className="text-3xl mb-2 font-mono">◇</div>
+            <div className="text-3xl mb-2">👥</div>
             <p className="font-pixel text-[10px] text-gray-500 mb-1">
               No citizens yet
             </p>
