@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
+import type { BagsApiClient } from "@/lib/bags-api";
 import type { TradeQuote } from "@/lib/types";
+
+// SOL mint address
+const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 interface TradeRequestBody {
   action: "quote" | "swap";
