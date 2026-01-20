@@ -440,16 +440,26 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createTrendingDecorations(): void {
-    // Neon "CITY" sign at top center - prominent placement
-    const trendingSign = this.add.sprite(400, 45, "neon_trending");
+    // Neon "BAGSCITY" sign at top center - text-based for clarity
+    const signBg = this.add.rectangle(400, 45, 140, 30, 0x1a1a1a);
+    signBg.setDepth(9);
+    signBg.setStrokeStyle(2, 0xfbbf24, 0.6);
+    this.trendingElements.push(signBg);
+
+    const trendingSign = this.add.text(400, 45, "BAGSCITY", {
+      fontFamily: "monospace",
+      fontSize: "18px",
+      color: "#fbbf24",
+      fontStyle: "bold",
+    });
+    trendingSign.setOrigin(0.5, 0.5);
     trendingSign.setDepth(10);
-    trendingSign.setScale(1.5);
     this.trendingElements.push(trendingSign);
 
     // Subtle pulsing glow animation
     this.tweens.add({
-      targets: trendingSign,
-      alpha: 0.9,
+      targets: [trendingSign, signBg],
+      alpha: 0.85,
       duration: 2000,
       yoyo: true,
       repeat: -1,
@@ -474,13 +484,13 @@ export class WorldScene extends Phaser.Scene {
 
   private createTrendingBillboards(): void {
     // Main central billboard - positioned clearly above buildings
-    const mainBillboard = this.add.sprite(400, 130, "billboard");
+    const mainBillboard = this.add.sprite(400, 140, "billboard");
     mainBillboard.setDepth(5);
-    mainBillboard.setScale(1.1);
+    mainBillboard.setScale(1.2);
     this.trendingElements.push(mainBillboard);
 
-    // Billboard content - city stats
-    const billboardTitle = this.add.text(400, 95, "HOT TOKENS", {
+    // Billboard content - city stats (centered within billboard)
+    const billboardTitle = this.add.text(400, 110, "HOT TOKENS", {
       fontFamily: "monospace",
       fontSize: "14px",
       color: "#fbbf24",
@@ -490,7 +500,7 @@ export class WorldScene extends Phaser.Scene {
     this.billboardTexts.push(billboardTitle);
 
     // Stats display
-    const statsText = this.add.text(400, 118, "LOADING...", {
+    const statsText = this.add.text(400, 135, "LOADING...", {
       fontFamily: "monospace",
       fontSize: "11px",
       color: "#4ade80",
@@ -500,7 +510,7 @@ export class WorldScene extends Phaser.Scene {
     this.billboardTexts.push(statsText);
 
     // Volume display
-    const volumeText = this.add.text(400, 145, "24H VOL: ...", {
+    const volumeText = this.add.text(400, 158, "24H VOL: ...", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#60a5fa",
@@ -2026,6 +2036,20 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateCharacters(characters: GameCharacter[]): void {
+    // Characters only appear in Park (main_city), not in BagsCity
+    if (this.currentZone !== "main_city") {
+      // Hide all characters when in BagsCity
+      this.characterSprites.forEach((sprite) => {
+        sprite.setVisible(false);
+      });
+      return;
+    }
+
+    // Show characters when in Park
+    this.characterSprites.forEach((sprite) => {
+      sprite.setVisible(true);
+    });
+
     const currentIds = new Set(characters.map((c) => c.id));
 
     // Remove old characters
