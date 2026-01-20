@@ -155,12 +155,12 @@ export const ECOSYSTEM_CONFIG = {
       {
         title: "Profile Visibility",
         description: "Your X/Twitter is linked - followers can find you",
-        icon: "⊕",
+        icon: "👤",
       },
       {
         title: "Mood Reflects Earnings",
         description: "Your character celebrates when you're earning",
-        icon: "✧",
+        icon: "😊",
       },
     ],
     forEcosystem: [
