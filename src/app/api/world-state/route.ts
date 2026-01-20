@@ -548,6 +548,9 @@ export async function POST(request: NextRequest) {
         if (!creator.providerUsername && !creator.username) return;
         if (creator.username === "BagsWorld") return;
 
+        // Skip creators who don't receive fees (royaltyBps = 0 means no fee share)
+        if (creator.royaltyBps === 0) return;
+
         const normalizedUsername = (creator.providerUsername || creator.username).toLowerCase();
         const existing = earnerMap.get(creator.wallet);
         // Get real 24h earnings for this wallet from claim events
@@ -585,6 +588,11 @@ export async function POST(request: NextRequest) {
 
           // Skip if username is empty or a placeholder
           if (!share.username || share.username === "BagsWorld") {
+            return;
+          }
+
+          // Skip fee shares with 0 bps (no actual fee allocation)
+          if (!share.bps || share.bps === 0) {
             return;
           }
 
