@@ -85,6 +85,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
     symbol: "",
     description: "",
     twitter: "",
+    telegram: "",
     website: "",
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -233,8 +234,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             symbol: formData.symbol,
             description: formData.description,
             image: imageDataUrl || "",
-            twitter: formData.twitter,
-            website: formData.website,
+            twitter: formData.twitter || undefined,
+            telegram: formData.telegram || undefined,
+            website: formData.website || undefined,
           },
         }),
       });
@@ -684,33 +686,49 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             </div>
 
             {/* Social Links */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block font-pixel text-[8px] text-gray-400 mb-1">
-                  X (TWITTER)
-                </label>
-                <input
-                  type="text"
-                  value={formData.twitter}
-                  onChange={(e) =>
-                    setFormData({ ...formData, twitter: e.target.value })
-                  }
-                  className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-[10px] text-white focus:outline-none focus:border-bags-gold"
-                  placeholder="@handle or x.com/..."
-                />
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-pixel text-[8px] text-gray-400 mb-1">
+                    X (TWITTER) URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.twitter}
+                    onChange={(e) =>
+                      setFormData({ ...formData, twitter: e.target.value })
+                    }
+                    className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-[10px] text-white focus:outline-none focus:border-bags-gold"
+                    placeholder="https://x.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block font-pixel text-[8px] text-gray-400 mb-1">
+                    WEBSITE
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.website}
+                    onChange={(e) =>
+                      setFormData({ ...formData, website: e.target.value })
+                    }
+                    className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-[10px] text-white focus:outline-none focus:border-bags-gold"
+                    placeholder="https://"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block font-pixel text-[8px] text-gray-400 mb-1">
-                  WEBSITE
+                  TELEGRAM URL
                 </label>
                 <input
-                  type="text"
-                  value={formData.website}
+                  type="url"
+                  value={formData.telegram}
                   onChange={(e) =>
-                    setFormData({ ...formData, website: e.target.value })
+                    setFormData({ ...formData, telegram: e.target.value })
                   }
                   className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-[10px] text-white focus:outline-none focus:border-bags-gold"
-                  placeholder="https://"
+                  placeholder="https://t.me/..."
                 />
               </div>
             </div>
@@ -733,6 +751,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <p className="font-pixel text-[10px] text-bags-gold mb-1">💰 HOW FEES WORK</p>
               <p className="font-pixel text-[8px] text-gray-400">
                 Every trade generates fees split among claimers. <span className="text-bags-green">Total must equal exactly 100%.</span>
+              </p>
+              <p className="font-pixel text-[7px] text-gray-500 mt-1">
+                Supported providers: <span className="text-bags-green">Twitter, GitHub, Kick</span>
               </p>
               <p className="font-pixel text-[7px] text-gray-500 mt-1">
                 Fee claimers need a wallet linked at{" "}

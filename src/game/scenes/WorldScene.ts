@@ -480,27 +480,225 @@ export class WorldScene extends Phaser.Scene {
       lamp.setAlpha(0.9);
       this.trendingElements.push(lamp);
     });
+
+    // Add city urban elements
+    this.createCityStreetElements();
+  }
+
+  private createCityStreetElements(): void {
+    // Road/street at the bottom with lane markings
+    const road = this.add.rectangle(400, 575, 800, 50, 0x1f2937);
+    road.setDepth(0);
+    this.trendingElements.push(road);
+
+    // Road lane markings (dashed yellow center line)
+    for (let x = 20; x < 780; x += 60) {
+      const roadLine = this.add.sprite(x, 575, "road_line");
+      roadLine.setDepth(1);
+      this.trendingElements.push(roadLine);
+    }
+
+    // Sidewalk strip along bottom of buildings
+    const sidewalk = this.add.tileSprite(400, 545, 800, 20, "sidewalk");
+    sidewalk.setDepth(1);
+    this.trendingElements.push(sidewalk);
+
+    // Crosswalks at intersections
+    const crosswalk1 = this.add.sprite(150, 575, "crosswalk");
+    crosswalk1.setDepth(1);
+    this.trendingElements.push(crosswalk1);
+
+    const crosswalk2 = this.add.sprite(650, 575, "crosswalk");
+    crosswalk2.setDepth(1);
+    this.trendingElements.push(crosswalk2);
+
+    // Traffic lights
+    const trafficLight1 = this.add.sprite(120, 510, "traffic_light");
+    trafficLight1.setOrigin(0.5, 1);
+    trafficLight1.setDepth(4);
+    this.trendingElements.push(trafficLight1);
+
+    const trafficLight2 = this.add.sprite(680, 510, "traffic_light");
+    trafficLight2.setOrigin(0.5, 1);
+    trafficLight2.setDepth(4);
+    trafficLight2.setFlipX(true);
+    this.trendingElements.push(trafficLight2);
+
+    // Parked cars along the street
+    const carPositions = [
+      { x: 60, y: 565, type: "taxi" },
+      { x: 250, y: 565, type: "car_blue" },
+      { x: 550, y: 565, type: "car_blue" },
+      { x: 740, y: 565, type: "taxi" },
+    ];
+    carPositions.forEach((pos) => {
+      const car = this.add.sprite(pos.x, pos.y, pos.type);
+      car.setOrigin(0.5, 0.5);
+      car.setDepth(2);
+      this.trendingElements.push(car);
+    });
+
+    // Fire hydrants
+    const hydrant1 = this.add.sprite(180, 535, "fire_hydrant");
+    hydrant1.setOrigin(0.5, 1);
+    hydrant1.setDepth(3);
+    this.trendingElements.push(hydrant1);
+
+    const hydrant2 = this.add.sprite(620, 535, "fire_hydrant");
+    hydrant2.setOrigin(0.5, 1);
+    hydrant2.setDepth(3);
+    this.trendingElements.push(hydrant2);
+
+    // Trash cans
+    const trashCan1 = this.add.sprite(340, 535, "trash_can");
+    trashCan1.setOrigin(0.5, 1);
+    trashCan1.setDepth(3);
+    this.trendingElements.push(trashCan1);
+
+    const trashCan2 = this.add.sprite(460, 535, "trash_can");
+    trashCan2.setOrigin(0.5, 1);
+    trashCan2.setDepth(3);
+    this.trendingElements.push(trashCan2);
+
+    // Advertisement posters on sides
+    const adPoster1 = this.add.sprite(30, 400, "ad_poster");
+    adPoster1.setOrigin(0.5, 0.5);
+    adPoster1.setDepth(4);
+    this.trendingElements.push(adPoster1);
+
+    const adPoster2 = this.add.sprite(770, 400, "ad_poster");
+    adPoster2.setOrigin(0.5, 0.5);
+    adPoster2.setDepth(4);
+    this.trendingElements.push(adPoster2);
+
+    // Neon accent tubes on buildings
+    const neonTube1 = this.add.sprite(50, 300, "neon_tube_green");
+    neonTube1.setDepth(5);
+    this.trendingElements.push(neonTube1);
+
+    const neonTube2 = this.add.sprite(750, 300, "neon_tube_blue");
+    neonTube2.setDepth(5);
+    this.trendingElements.push(neonTube2);
+
+    // Horizontal neon accents
+    const pinkNeon = this.add.sprite(200, 250, "neon_tube_pink");
+    pinkNeon.setDepth(5);
+    pinkNeon.setAlpha(0.8);
+    this.trendingElements.push(pinkNeon);
+
+    const goldNeon = this.add.sprite(600, 280, "neon_tube_gold");
+    goldNeon.setDepth(5);
+    goldNeon.setAlpha(0.8);
+    this.trendingElements.push(goldNeon);
+
+    // Animate neon tubes with subtle flickering
+    this.tweens.add({
+      targets: [neonTube1, neonTube2, pinkNeon, goldNeon],
+      alpha: { from: 0.6, to: 1 },
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Add moving car animation (taxi driving across)
+    this.createMovingTraffic();
+  }
+
+  private createMovingTraffic(): void {
+    // Create a taxi that drives across the screen periodically
+    const movingTaxi = this.add.sprite(-60, 585, "taxi");
+    movingTaxi.setDepth(3);
+    movingTaxi.setFlipX(true);
+    this.trendingElements.push(movingTaxi);
+
+    // Animate taxi driving across
+    const driveTaxi = () => {
+      movingTaxi.setX(-60);
+      this.tweens.add({
+        targets: movingTaxi,
+        x: 860,
+        duration: 8000,
+        ease: "Linear",
+        onComplete: () => {
+          // Wait and repeat
+          this.time.delayedCall(5000, driveTaxi);
+        },
+      });
+    };
+
+    // Start after a delay
+    this.time.delayedCall(2000, driveTaxi);
+
+    // Create a blue car going the other direction
+    const movingCar = this.add.sprite(860, 565, "car_blue");
+    movingCar.setDepth(3);
+    this.trendingElements.push(movingCar);
+
+    const driveCar = () => {
+      movingCar.setX(860);
+      this.tweens.add({
+        targets: movingCar,
+        x: -60,
+        duration: 10000,
+        ease: "Linear",
+        onComplete: () => {
+          this.time.delayedCall(7000, driveCar);
+        },
+      });
+    };
+
+    this.time.delayedCall(4000, driveCar);
   }
 
   private createTrendingBillboards(): void {
-    // Main central billboard - positioned clearly above buildings
-    const mainBillboard = this.add.sprite(400, 140, "billboard");
-    mainBillboard.setDepth(5);
-    mainBillboard.setScale(1.2);
-    this.trendingElements.push(mainBillboard);
+    // Main central billboard - custom styled container
+    const billboardX = 400;
+    const billboardY = 150;
+    const billboardWidth = 160;
+    const billboardHeight = 90;
 
-    // Billboard content - city stats (centered within billboard)
-    const billboardTitle = this.add.text(400, 110, "HOT TOKENS", {
+    // Billboard frame (dark background with border)
+    const billboardFrame = this.add.rectangle(
+      billboardX, billboardY,
+      billboardWidth + 6, billboardHeight + 6,
+      0x1a1a1a
+    );
+    billboardFrame.setStrokeStyle(2, 0xfbbf24);
+    billboardFrame.setDepth(5);
+    this.trendingElements.push(billboardFrame);
+
+    // Inner billboard background
+    const billboardBg = this.add.rectangle(
+      billboardX, billboardY,
+      billboardWidth, billboardHeight,
+      0x0d0d0d
+    );
+    billboardBg.setDepth(5);
+    this.trendingElements.push(billboardBg);
+
+    // HOT TOKENS header bar
+    const headerBar = this.add.rectangle(
+      billboardX, billboardY - 30,
+      billboardWidth, 22,
+      0xfbbf24
+    );
+    headerBar.setDepth(6);
+    this.trendingElements.push(headerBar);
+
+    // Billboard title text
+    const billboardTitle = this.add.text(billboardX, billboardY - 30, "HOT TOKENS", {
       fontFamily: "monospace",
-      fontSize: "14px",
-      color: "#fbbf24",
+      fontSize: "12px",
+      color: "#0d0d0d",
+      fontStyle: "bold",
     });
     billboardTitle.setOrigin(0.5, 0.5);
-    billboardTitle.setDepth(6);
+    billboardTitle.setDepth(7);
     this.billboardTexts.push(billboardTitle);
 
-    // Stats display
-    const statsText = this.add.text(400, 135, "LOADING...", {
+    // Stats display (centered in billboard)
+    const statsText = this.add.text(billboardX, billboardY, "LOADING...", {
       fontFamily: "monospace",
       fontSize: "11px",
       color: "#4ade80",
@@ -509,8 +707,8 @@ export class WorldScene extends Phaser.Scene {
     statsText.setDepth(6);
     this.billboardTexts.push(statsText);
 
-    // Volume display
-    const volumeText = this.add.text(400, 158, "24H VOL: ...", {
+    // Volume display (below stats)
+    const volumeText = this.add.text(billboardX, billboardY + 25, "24H VOL: ...", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#60a5fa",
@@ -519,19 +717,37 @@ export class WorldScene extends Phaser.Scene {
     volumeText.setDepth(6);
     this.billboardTexts.push(volumeText);
 
-    // Side billboards - positioned lower to not overlap with main
-    const leftBillboard = this.add.sprite(130, 320, "billboard_small");
-    leftBillboard.setDepth(5);
-    this.trendingElements.push(leftBillboard);
+    // Side billboards - styled containers
+    const sideBillboardWidth = 100;
+    const sideBillboardHeight = 60;
 
-    const rightBillboard = this.add.sprite(670, 320, "billboard_small");
-    rightBillboard.setDepth(5);
-    this.trendingElements.push(rightBillboard);
+    // Left billboard - TOP GAINER
+    const leftFrame = this.add.rectangle(130, 320, sideBillboardWidth + 4, sideBillboardHeight + 4, 0x1a1a1a);
+    leftFrame.setStrokeStyle(2, 0x4ade80);
+    leftFrame.setDepth(5);
+    this.trendingElements.push(leftFrame);
 
-    // Side billboard text - cleaner initial state
-    const leftText = this.add.text(130, 320, "TOP GAINER\n...", {
+    const leftBg = this.add.rectangle(130, 320, sideBillboardWidth, sideBillboardHeight, 0x0d0d0d);
+    leftBg.setDepth(5);
+    this.trendingElements.push(leftBg);
+
+    const leftHeader = this.add.rectangle(130, 300, sideBillboardWidth, 16, 0x4ade80);
+    leftHeader.setDepth(6);
+    this.trendingElements.push(leftHeader);
+
+    const leftTitle = this.add.text(130, 300, "TOP GAINER", {
       fontFamily: "monospace",
       fontSize: "8px",
+      color: "#0d0d0d",
+      fontStyle: "bold",
+    });
+    leftTitle.setOrigin(0.5, 0.5);
+    leftTitle.setDepth(7);
+    this.billboardTexts.push(leftTitle);
+
+    const leftText = this.add.text(130, 328, "...", {
+      fontFamily: "monospace",
+      fontSize: "9px",
       color: "#4ade80",
       align: "center",
     });
@@ -539,9 +755,33 @@ export class WorldScene extends Phaser.Scene {
     leftText.setDepth(6);
     this.billboardTexts.push(leftText);
 
-    const rightText = this.add.text(670, 320, "VOLUME KING\n...", {
+    // Right billboard - VOLUME KING
+    const rightFrame = this.add.rectangle(670, 320, sideBillboardWidth + 4, sideBillboardHeight + 4, 0x1a1a1a);
+    rightFrame.setStrokeStyle(2, 0xec4899);
+    rightFrame.setDepth(5);
+    this.trendingElements.push(rightFrame);
+
+    const rightBg = this.add.rectangle(670, 320, sideBillboardWidth, sideBillboardHeight, 0x0d0d0d);
+    rightBg.setDepth(5);
+    this.trendingElements.push(rightBg);
+
+    const rightHeader = this.add.rectangle(670, 300, sideBillboardWidth, 16, 0xec4899);
+    rightHeader.setDepth(6);
+    this.trendingElements.push(rightHeader);
+
+    const rightTitle = this.add.text(670, 300, "VOLUME KING", {
       fontFamily: "monospace",
       fontSize: "8px",
+      color: "#0d0d0d",
+      fontStyle: "bold",
+    });
+    rightTitle.setOrigin(0.5, 0.5);
+    rightTitle.setDepth(7);
+    this.billboardTexts.push(rightTitle);
+
+    const rightText = this.add.text(670, 328, "...", {
+      fontFamily: "monospace",
+      fontSize: "9px",
       color: "#ec4899",
       align: "center",
     });
@@ -624,6 +864,15 @@ export class WorldScene extends Phaser.Scene {
 
     const buildings = this.worldState.buildings || [];
 
+    // Billboard text indices:
+    // [0] = HOT TOKENS title (static)
+    // [1] = stats text (main billboard)
+    // [2] = volume text (main billboard)
+    // [3] = TOP GAINER title (static)
+    // [4] = left content
+    // [5] = VOLUME KING title (static)
+    // [6] = right content
+
     // Update main billboard stats
     if (this.billboardTexts.length >= 3) {
       this.billboardTexts[1].setText(`${buildings.length} ACTIVE TOKENS`);
@@ -632,18 +881,18 @@ export class WorldScene extends Phaser.Scene {
       this.billboardTexts[2].setText(`24H VOL: $${this.formatNumber(totalVolume)}`);
     }
 
-    // Update side billboards
-    if (this.billboardTexts.length >= 5) {
+    // Update side billboards content (skip title texts at indices 3 and 5)
+    if (this.billboardTexts.length >= 7) {
       // Top gainer by price change
       const byGain = [...buildings].sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
       if (byGain.length > 0 && byGain[0].change24h) {
-        this.billboardTexts[3].setText(`TOP GAINER\n${byGain[0].symbol}\n+${byGain[0].change24h.toFixed(1)}%`);
+        this.billboardTexts[4].setText(`${byGain[0].symbol}\n+${byGain[0].change24h.toFixed(1)}%`);
       }
 
       // Volume king - highest 24h volume
       const byVolume = [...buildings].sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
       if (byVolume.length > 0) {
-        this.billboardTexts[4].setText(`VOLUME KING\n${byVolume[0].symbol}\n$${this.formatNumber(byVolume[0].volume24h || 0)}`);
+        this.billboardTexts[6].setText(`${byVolume[0].symbol}\n$${this.formatNumber(byVolume[0].volume24h || 0)}`);
       }
     }
   }

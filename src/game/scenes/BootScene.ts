@@ -2185,5 +2185,296 @@ export class BootScene extends Phaser.Scene {
     goldTube.fillRect(0, 2, 60, 2);
     goldTube.generateTexture("neon_tube_gold", 60, 6);
     goldTube.destroy();
+
+    // Generate additional city assets
+    this.generateCityAssets();
+  }
+
+  private generateCityAssets(): void {
+    // Parked car (side view)
+    this.generateCar();
+
+    // Fire hydrant
+    this.generateFireHydrant();
+
+    // Trash can
+    this.generateTrashCan();
+
+    // Road markings
+    this.generateRoadMarkings();
+
+    // Advertising poster
+    this.generateAdPoster();
+
+    // Traffic light
+    this.generateTrafficLight();
+
+    // Taxi/cab variant
+    this.generateTaxi();
+  }
+
+  private generateCar(): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Shadow
+    g.fillStyle(0x000000, 0.3);
+    g.fillRect(4, 22, 44, 6);
+
+    // Car body (blue sedan)
+    g.fillStyle(0x1e40af);
+    g.fillRect(4, 8, 44, 14);
+
+    // Lighter top for 3D effect
+    g.fillStyle(0x3b82f6);
+    g.fillRect(4, 8, 44, 4);
+
+    // Roof/cabin
+    g.fillStyle(0x1e3a8a);
+    g.fillRect(14, 2, 22, 8);
+
+    // Windows (glass)
+    g.fillStyle(0x60a5fa, 0.8);
+    g.fillRect(16, 4, 8, 5);
+    g.fillRect(26, 4, 8, 5);
+
+    // Window frame
+    g.fillStyle(0x0f172a);
+    g.fillRect(24, 4, 2, 5);
+
+    // Wheels
+    g.fillStyle(0x1f2937);
+    g.fillCircle(12, 20, 5);
+    g.fillCircle(40, 20, 5);
+
+    // Wheel centers (hubcaps)
+    g.fillStyle(0x6b7280);
+    g.fillCircle(12, 20, 2);
+    g.fillCircle(40, 20, 2);
+
+    // Headlights
+    g.fillStyle(0xfef3c7);
+    g.fillRect(46, 12, 2, 4);
+
+    // Taillights
+    g.fillStyle(0xef4444);
+    g.fillRect(4, 12, 2, 4);
+
+    g.generateTexture("car_blue", 52, 28);
+    g.destroy();
+  }
+
+  private generateFireHydrant(): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Shadow
+    g.fillStyle(0x000000, 0.3);
+    g.fillRect(2, 22, 12, 4);
+
+    // Base
+    g.fillStyle(0xdc2626);
+    g.fillRect(4, 18, 8, 6);
+
+    // Body
+    g.fillStyle(0xef4444);
+    g.fillRect(3, 8, 10, 12);
+
+    // Cap
+    g.fillStyle(0xb91c1c);
+    g.fillRect(2, 4, 12, 6);
+    g.fillRect(5, 2, 6, 4);
+
+    // Side valves
+    g.fillStyle(0xfbbf24);
+    g.fillRect(0, 10, 4, 4);
+    g.fillRect(12, 10, 4, 4);
+
+    // Highlight
+    g.fillStyle(0xfca5a5, 0.5);
+    g.fillRect(5, 8, 2, 10);
+
+    g.generateTexture("fire_hydrant", 16, 26);
+    g.destroy();
+  }
+
+  private generateTrashCan(): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Shadow
+    g.fillStyle(0x000000, 0.3);
+    g.fillRect(2, 26, 16, 4);
+
+    // Can body
+    g.fillStyle(0x374151);
+    g.fillRect(2, 8, 16, 20);
+
+    // Darker side for 3D
+    g.fillStyle(0x1f2937);
+    g.fillRect(2, 8, 4, 20);
+
+    // Lid
+    g.fillStyle(0x4b5563);
+    g.fillRect(0, 4, 20, 6);
+
+    // Handle
+    g.fillStyle(0x6b7280);
+    g.fillRect(8, 2, 4, 4);
+
+    // Recycling symbol area
+    g.fillStyle(0x4ade80);
+    g.fillRect(6, 14, 8, 8);
+
+    g.generateTexture("trash_can", 20, 30);
+    g.destroy();
+  }
+
+  private generateRoadMarkings(): void {
+    // Crosswalk
+    const crosswalk = this.make.graphics({ x: 0, y: 0 });
+    crosswalk.fillStyle(0x374151);
+    crosswalk.fillRect(0, 0, 60, 30);
+
+    // White stripes
+    crosswalk.fillStyle(0xffffff, 0.9);
+    for (let x = 4; x < 56; x += 10) {
+      crosswalk.fillRect(x, 2, 6, 26);
+    }
+
+    crosswalk.generateTexture("crosswalk", 60, 30);
+    crosswalk.destroy();
+
+    // Road line (dashed)
+    const roadLine = this.make.graphics({ x: 0, y: 0 });
+    roadLine.fillStyle(0xfbbf24);
+    roadLine.fillRect(0, 0, 20, 4);
+    roadLine.generateTexture("road_line", 20, 4);
+    roadLine.destroy();
+  }
+
+  private generateAdPoster(): void {
+    // Wall-mounted advertisement poster
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Frame
+    g.fillStyle(0x1f2937);
+    g.fillRect(0, 0, 40, 50);
+
+    // Poster background
+    g.fillStyle(0x0a0a0f);
+    g.fillRect(2, 2, 36, 46);
+
+    // "BAGS" brand ad
+    g.fillStyle(0x4ade80);
+    g.fillRect(6, 6, 28, 12);
+
+    // Abstract art lines
+    g.fillStyle(0xfbbf24);
+    g.fillRect(8, 22, 24, 2);
+    g.fillStyle(0xec4899);
+    g.fillRect(8, 28, 20, 2);
+    g.fillStyle(0x3b82f6);
+    g.fillRect(8, 34, 16, 2);
+
+    // "TRADE NOW" text area
+    g.fillStyle(0xfbbf24, 0.8);
+    g.fillRect(6, 40, 28, 6);
+
+    g.generateTexture("ad_poster", 40, 50);
+    g.destroy();
+  }
+
+  private generateTrafficLight(): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Pole
+    g.fillStyle(0x374151);
+    g.fillRect(6, 36, 4, 30);
+
+    // Light housing
+    g.fillStyle(0x1f2937);
+    g.fillRect(0, 0, 16, 38);
+
+    // Light frame
+    g.fillStyle(0x374151);
+    g.fillRect(1, 1, 14, 36);
+
+    // Red light (top) - off
+    g.fillStyle(0x7f1d1d);
+    g.fillCircle(8, 8, 4);
+
+    // Yellow light (middle) - off
+    g.fillStyle(0x78350f);
+    g.fillCircle(8, 19, 4);
+
+    // Green light (bottom) - on
+    g.fillStyle(0x4ade80);
+    g.fillCircle(8, 30, 4);
+    // Glow
+    g.fillStyle(0x4ade80, 0.3);
+    g.fillCircle(8, 30, 6);
+
+    g.generateTexture("traffic_light", 16, 66);
+    g.destroy();
+  }
+
+  private generateTaxi(): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Shadow
+    g.fillStyle(0x000000, 0.3);
+    g.fillRect(4, 22, 44, 6);
+
+    // Car body (yellow taxi)
+    g.fillStyle(0xeab308);
+    g.fillRect(4, 8, 44, 14);
+
+    // Lighter top for 3D effect
+    g.fillStyle(0xfbbf24);
+    g.fillRect(4, 8, 44, 4);
+
+    // Roof/cabin
+    g.fillStyle(0xca8a04);
+    g.fillRect(14, 2, 22, 8);
+
+    // Taxi sign on roof
+    g.fillStyle(0xfef3c7);
+    g.fillRect(20, 0, 10, 4);
+
+    // Windows (glass)
+    g.fillStyle(0x60a5fa, 0.8);
+    g.fillRect(16, 4, 8, 5);
+    g.fillRect(26, 4, 8, 5);
+
+    // Window frame
+    g.fillStyle(0x0f172a);
+    g.fillRect(24, 4, 2, 5);
+
+    // Checkered stripe
+    g.fillStyle(0x0f172a);
+    for (let x = 6; x < 46; x += 4) {
+      if ((x / 4) % 2 === 0) {
+        g.fillRect(x, 14, 4, 4);
+      }
+    }
+
+    // Wheels
+    g.fillStyle(0x1f2937);
+    g.fillCircle(12, 20, 5);
+    g.fillCircle(40, 20, 5);
+
+    // Wheel centers (hubcaps)
+    g.fillStyle(0x6b7280);
+    g.fillCircle(12, 20, 2);
+    g.fillCircle(40, 20, 2);
+
+    // Headlights
+    g.fillStyle(0xfef3c7);
+    g.fillRect(46, 12, 2, 4);
+
+    // Taillights
+    g.fillStyle(0xef4444);
+    g.fillRect(4, 12, 2, 4);
+
+    g.generateTexture("taxi", 52, 28);
+    g.destroy();
   }
 }
