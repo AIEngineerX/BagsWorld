@@ -1,4 +1,4 @@
-// Token Registry - stores launched tokens in localStorage + global Supabase database
+// Token Registry - stores launched tokens in localStorage + global Neon database
 // This is the core of the BagsWorld experience - tokens users launch become buildings
 // Now supports GLOBAL state so everyone sees the same buildings!
 
@@ -21,8 +21,9 @@ export interface LaunchedToken {
   volume24h?: number;
   lastUpdated?: number;
   // Source tracking
-  isGlobal?: boolean; // From Supabase
+  isGlobal?: boolean; // From Neon
   isFeatured?: boolean;
+  isVerified?: boolean;
 }
 
 const STORAGE_KEY = "bagsworld_tokens";
@@ -144,6 +145,7 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
       lastUpdated: t.last_updated ? new Date(t.last_updated).getTime() : undefined,
       isGlobal: true,
       isFeatured: t.is_featured,
+      isVerified: t.is_verified,
     }));
 
     // Update cache

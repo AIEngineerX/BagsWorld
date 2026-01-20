@@ -143,9 +143,9 @@ export class WorldScene extends Phaser.Scene {
     // Mark transition in progress
     this.isTransitioning = true;
 
-    // Determine slide direction: trending is "to the right" of main city
+    // Determine slide direction: BagsCity is "to the right" of Park
     const isGoingRight = newZone === "trending";
-    const duration = 350; // Fast, snappy transition
+    const duration = 600; // Smooth, cinematic transition
     const slideDistance = 850; // Slightly more than screen width for full slide
 
     // Calculate offsets
@@ -184,14 +184,14 @@ export class WorldScene extends Phaser.Scene {
     );
     transitionOverlay.setDepth(0);
 
-    // Slide out old elements
+    // Slide out old elements with smooth easing
     oldElementData.forEach(({ el }) => {
       if ((el as any).x !== undefined) {
         this.tweens.add({
           targets: el,
           x: (el as any).x + slideOutOffset,
           duration,
-          ease: 'Power2',
+          ease: 'Cubic.easeInOut',
         });
       }
     });
@@ -201,7 +201,7 @@ export class WorldScene extends Phaser.Scene {
       targets: this.ground,
       tilePositionX: this.ground.tilePositionX + (isGoingRight ? 100 : -100),
       duration,
-      ease: 'Power2',
+      ease: 'Cubic.easeInOut',
     });
 
     // Slide transition overlay in
@@ -209,11 +209,11 @@ export class WorldScene extends Phaser.Scene {
       targets: transitionOverlay,
       x: 400,
       duration,
-      ease: 'Power2',
+      ease: 'Cubic.easeInOut',
     });
 
-    // At midpoint, swap the zone (trigger early for snappy feel)
-    this.time.delayedCall(duration * 0.25, () => {
+    // At 40% through animation, swap the zone for smooth visual transition
+    this.time.delayedCall(duration * 0.4, () => {
       // Clear old zone references (elements are still animating)
       if (this.currentZone === "trending") {
         this.trendingElements = [];
@@ -258,12 +258,12 @@ export class WorldScene extends Phaser.Scene {
 
   private setupZoneOffscreen(zone: ZoneType, offsetX: number): void {
     // Setup zone with elements offset, then animate them into position
-    const duration = 250; // Fast slide-in
+    const duration = 400; // Smooth slide-in matching the overall transition feel
 
     if (zone === "trending") {
       this.setupTrendingZone();
 
-      // Offset all new trending elements and animate them in
+      // Offset all new BagsCity elements and animate them in
       const newElements = [
         ...this.trendingElements,
         ...this.billboardTexts,
@@ -279,14 +279,14 @@ export class WorldScene extends Phaser.Scene {
             targets: el,
             x: targetX,
             duration,
-            ease: 'Power2',
+            ease: 'Cubic.easeOut',
           });
         }
       });
     } else {
       this.setupMainCityZone();
 
-      // Animate main city elements in using their ORIGINAL positions
+      // Animate Park elements in using their ORIGINAL positions
       const newElements = [
         ...this.decorations,
         ...this.animals.map(a => a.sprite)
@@ -301,7 +301,7 @@ export class WorldScene extends Phaser.Scene {
             targets: el,
             x: originalX, // Animate to original position
             duration,
-            ease: 'Power2',
+            ease: 'Cubic.easeOut',
           });
         }
       });
