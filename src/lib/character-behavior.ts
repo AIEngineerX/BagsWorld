@@ -236,23 +236,25 @@ function getCharacterId(id: string): string {
 // ============================================================================
 
 function dispatchBehaviorCommands(commands: BehaviorCommand[], narrative?: string): void {
-  // Dispatch individual commands for each character
+  // Dispatch individual movement commands for each character
   commands.forEach(cmd => {
     window.dispatchEvent(new CustomEvent("bagsworld-character-behavior", {
       detail: cmd,
     }));
-
-    // If there's dialogue, also trigger dialogue display
-    if (cmd.dialogue) {
-      window.dispatchEvent(new CustomEvent("bagsworld-character-speak", {
-        detail: {
-          characterId: cmd.characterId,
-          message: cmd.dialogue,
-          emotion: cmd.emotion,
-        },
-      }));
-    }
   });
+
+  // Only ONE character speaks per behavior cycle (pick randomly from those with dialogue)
+  const commandsWithDialogue = commands.filter(cmd => cmd.dialogue);
+  if (commandsWithDialogue.length > 0) {
+    const speaker = commandsWithDialogue[Math.floor(Math.random() * commandsWithDialogue.length)];
+    window.dispatchEvent(new CustomEvent("bagsworld-character-speak", {
+      detail: {
+        characterId: speaker.characterId,
+        message: speaker.dialogue,
+        emotion: speaker.emotion,
+      },
+    }));
+  }
 
   // Dispatch scene narrative if present
   if (narrative) {
