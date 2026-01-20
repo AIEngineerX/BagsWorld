@@ -1,11 +1,57 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, Component, ReactNode } from "react";
 import * as Phaser from "phaser";
 import { BootScene } from "@/game/scenes/BootScene";
 import { WorldScene } from "@/game/scenes/WorldScene";
 import { UIScene } from "@/game/scenes/UIScene";
 import type { WorldState } from "@/lib/types";
+
+// Error boundary to catch Phaser/game errors without crashing the entire UI
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class GameErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("GameCanvas error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
+          <div className="text-center p-4">
+            <p className="text-lg mb-2">Game failed to load</p>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // Animal control event types
 interface AnimalControlEvent {
@@ -18,7 +64,7 @@ interface GameCanvasProps {
   worldState: WorldState | null;
 }
 
-export default function GameCanvas({ worldState }: GameCanvasProps) {
+function GameCanvasInner({ worldState }: GameCanvasProps) {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -28,8 +74,8 @@ export default function GameCanvas({ worldState }: GameCanvasProps) {
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: containerRef.current,
-      width: 800,
-      height: 600,
+      width: 1280,
+      height: 960,
       backgroundColor: "#0a0a0f",
       pixelArt: true,
       scale: {
@@ -122,5 +168,14 @@ export default function GameCanvas({ worldState }: GameCanvasProps) {
       ref={containerRef}
       className="w-full h-full flex items-center justify-center"
     />
+  );
+}
+
+// Wrapped export with error boundary
+export default function GameCanvasWithErrorBoundary(props: GameCanvasProps) {
+  return (
+    <GameErrorBoundary>
+      <GameCanvasInner {...props} />
+    </GameErrorBoundary>
   );
 }

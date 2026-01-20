@@ -33,23 +33,34 @@ interface TokenClaimEventSDK {
   timestamp: number;
 }
 
-// Lazy-loaded SDK instance
+// Lazy-loaded SDK instance with proper mutex to prevent race conditions
 let sdkInstance: any = null;
-let sdkInitPromise: Promise<any> | null = null;
+let sdkInitPromise: Promise<any | null> | null = null;
+let sdkInitFailed = false;
+let sdkFailedAt = 0;
+const SDK_RETRY_DELAY = 5000; // Wait 5 seconds before retrying after failure
 
 async function getBagsSDK(): Promise<any | null> {
   if (!process.env.BAGS_API_KEY) {
     return null;
   }
 
+  // Return cached instance if available
   if (sdkInstance) {
     return sdkInstance;
   }
 
+  // If init failed recently, don't retry immediately (prevents cascading failures)
+  if (sdkInitFailed && Date.now() - sdkFailedAt < SDK_RETRY_DELAY) {
+    return null;
+  }
+
+  // If initialization is in progress, wait for it
   if (sdkInitPromise) {
     return sdkInitPromise;
   }
 
+  // Start initialization
   sdkInitPromise = (async () => {
     try {
       const { BagsSDK } = await import("@bagsfm/bags-sdk");
@@ -63,11 +74,16 @@ async function getBagsSDK(): Promise<any | null> {
         "processed"
       );
       console.log("Bags SDK initialized successfully");
+      sdkInitFailed = false;
       return sdkInstance;
     } catch (error) {
       console.error("Failed to initialize Bags SDK:", error);
-      sdkInitPromise = null;
+      sdkInitFailed = true;
+      sdkFailedAt = Date.now();
       return null;
+    } finally {
+      // Clear promise so future calls can retry (after delay if failed)
+      sdkInitPromise = null;
     }
   })();
 
@@ -440,10 +456,10 @@ function generateEvents(
       events.unshift({
         id: eventId,
         type: "fee_claim",
-        message: `${claim.claimerUsername || claim.claimer.slice(0, 8)} claimed ${(claim.amount / 1e9).toFixed(2)} SOL from ${token?.symbol || "token"}`,
+        message: `${claim.claimerUsername || claim.claimer?.slice(0, 8) || 'Unknown'} claimed ${(claim.amount / 1e9).toFixed(2)} SOL from ${token?.symbol || "token"}`,
         timestamp: claim.timestamp * 1000,
         data: {
-          username: claim.claimerUsername || claim.claimer.slice(0, 8),
+          username: claim.claimerUsername || claim.claimer?.slice(0, 8) || 'Unknown',
           tokenName: token?.name,
           amount: claim.amount / 1e9,
         },
