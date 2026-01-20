@@ -153,7 +153,7 @@ export class WorldScene extends Phaser.Scene {
     // Determine slide direction: BagsCity is "to the right" of Park
     const isGoingRight = newZone === "trending";
     const duration = 600; // Smooth, cinematic transition
-    const slideDistance = 850; // Slightly more than screen width for full slide
+    const slideDistance = Math.round(850 * SCALE); // Slightly more than screen width for full slide (scaled)
 
     // Calculate offsets
     const slideOutOffset = isGoingRight ? -slideDistance : slideDistance;
@@ -180,12 +180,12 @@ export class WorldScene extends Phaser.Scene {
     // Store old element original X positions for proper destruction
     const oldElementData = oldElements.map(el => ({ el, origX: (el as any).x || 0 }));
 
-    // Create transition overlay for ground swap (slides with content)
+    // Create transition overlay for ground swap (slides with content, scaled)
     const transitionOverlay = this.add.rectangle(
-      400 + slideInOffset,
-      520,
-      800,
-      200,
+      GAME_WIDTH / 2 + slideInOffset,
+      Math.round(520 * SCALE),
+      GAME_WIDTH,
+      Math.round(200 * SCALE),
       this.currentZone === "main_city" ? 0x374151 : 0x22c55e, // concrete or grass color
       1
     );
@@ -203,10 +203,10 @@ export class WorldScene extends Phaser.Scene {
       }
     });
 
-    // Slide ground texture overlay
+    // Slide ground texture overlay (scaled)
     this.tweens.add({
       targets: this.ground,
-      tilePositionX: this.ground.tilePositionX + (isGoingRight ? 100 : -100),
+      tilePositionX: this.ground.tilePositionX + (isGoingRight ? Math.round(100 * SCALE) : -Math.round(100 * SCALE)),
       duration,
       ease: 'Cubic.easeInOut',
     });
@@ -214,7 +214,7 @@ export class WorldScene extends Phaser.Scene {
     // Slide transition overlay in
     this.tweens.add({
       targets: transitionOverlay,
-      x: 400,
+      x: GAME_WIDTH / 2,
       duration,
       ease: 'Cubic.easeInOut',
     });
@@ -418,12 +418,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createTrendingSkyline(): void {
-    // Back layer - distant buildings (darker, smaller)
+    // Back layer - distant buildings (darker, smaller, scaled)
     const backLayer = [
-      { x: 100, y: 180, scale: 0.7, alpha: 0.4 },
-      { x: 300, y: 180, scale: 0.65, alpha: 0.4 },
-      { x: 500, y: 180, scale: 0.75, alpha: 0.4 },
-      { x: 700, y: 180, scale: 0.7, alpha: 0.4 },
+      { x: Math.round(100 * SCALE), y: Math.round(180 * SCALE), scale: 0.7 * SCALE, alpha: 0.4 },
+      { x: Math.round(300 * SCALE), y: Math.round(180 * SCALE), scale: 0.65 * SCALE, alpha: 0.4 },
+      { x: Math.round(500 * SCALE), y: Math.round(180 * SCALE), scale: 0.75 * SCALE, alpha: 0.4 },
+      { x: Math.round(700 * SCALE), y: Math.round(180 * SCALE), scale: 0.7 * SCALE, alpha: 0.4 },
     ];
 
     backLayer.forEach((pos) => {
@@ -437,13 +437,13 @@ export class WorldScene extends Phaser.Scene {
       this.trendingElements.push(skyline);
     });
 
-    // Front layer - closer buildings (larger, more visible)
+    // Front layer - closer buildings (larger, more visible, scaled)
     const frontLayer = [
-      { x: 60, y: 220, scale: 0.9, alpha: 0.7 },
-      { x: 200, y: 230, scale: 0.85, alpha: 0.65 },
-      { x: 400, y: 210, scale: 1.0, alpha: 0.75 },
-      { x: 600, y: 225, scale: 0.88, alpha: 0.68 },
-      { x: 740, y: 220, scale: 0.92, alpha: 0.7 },
+      { x: Math.round(60 * SCALE), y: Math.round(220 * SCALE), scale: 0.9 * SCALE, alpha: 0.7 },
+      { x: Math.round(200 * SCALE), y: Math.round(230 * SCALE), scale: 0.85 * SCALE, alpha: 0.65 },
+      { x: Math.round(400 * SCALE), y: Math.round(210 * SCALE), scale: 1.0 * SCALE, alpha: 0.75 },
+      { x: Math.round(600 * SCALE), y: Math.round(225 * SCALE), scale: 0.88 * SCALE, alpha: 0.68 },
+      { x: Math.round(740 * SCALE), y: Math.round(220 * SCALE), scale: 0.92 * SCALE, alpha: 0.7 },
     ];
 
     frontLayer.forEach((pos) => {
@@ -458,12 +458,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createTrendingDecorations(): void {
-    // Street lamps at ground level for urban feel
+    // Street lamps at ground level for urban feel (scaled)
     const lampPositions = [
-      { x: 100, y: 540 },
-      { x: 300, y: 540 },
-      { x: 500, y: 540 },
-      { x: 700, y: 540 },
+      { x: Math.round(100 * SCALE), y: Math.round(540 * SCALE) },
+      { x: Math.round(300 * SCALE), y: Math.round(540 * SCALE) },
+      { x: Math.round(500 * SCALE), y: Math.round(540 * SCALE) },
+      { x: Math.round(700 * SCALE), y: Math.round(540 * SCALE) },
     ];
     lampPositions.forEach((pos) => {
       const lamp = this.add.sprite(pos.x, pos.y, "street_lamp");
@@ -477,52 +477,52 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createCityStreetElements(): void {
-    // Sidewalk/pavement area (covers the grass area)
-    const pavement = this.add.rectangle(400, 520, 800, 160, 0x374151);
+    // Sidewalk/pavement area (covers the grass area, scaled)
+    const pavement = this.add.rectangle(GAME_WIDTH / 2, Math.round(520 * SCALE), GAME_WIDTH, Math.round(160 * SCALE), 0x374151);
     pavement.setDepth(0);
     this.trendingElements.push(pavement);
 
-    // Road at the bottom
-    const road = this.add.rectangle(400, 575, 800, 50, 0x1f2937);
+    // Road at the bottom (scaled)
+    const road = this.add.rectangle(GAME_WIDTH / 2, Math.round(575 * SCALE), GAME_WIDTH, Math.round(50 * SCALE), 0x1f2937);
     road.setDepth(1);
     this.trendingElements.push(road);
 
-    // Road lane markings (dashed yellow center line)
-    for (let x = 30; x < 780; x += 50) {
-      const roadLine = this.add.rectangle(x, 575, 25, 3, 0xfbbf24);
+    // Road lane markings (dashed yellow center line, scaled)
+    for (let x = Math.round(30 * SCALE); x < Math.round(780 * SCALE); x += Math.round(50 * SCALE)) {
+      const roadLine = this.add.rectangle(x, Math.round(575 * SCALE), Math.round(25 * SCALE), Math.round(3 * SCALE), 0xfbbf24);
       roadLine.setDepth(2);
       this.trendingElements.push(roadLine);
     }
 
-    // Sidewalk curb line
-    const curb = this.add.rectangle(400, 548, 800, 4, 0x6b7280);
+    // Sidewalk curb line (scaled)
+    const curb = this.add.rectangle(GAME_WIDTH / 2, Math.round(548 * SCALE), GAME_WIDTH, Math.round(4 * SCALE), 0x6b7280);
     curb.setDepth(2);
     this.trendingElements.push(curb);
 
-    // Crosswalks at intersections
-    this.createCrosswalk(200, 575);
-    this.createCrosswalk(600, 575);
+    // Crosswalks at intersections (scaled)
+    this.createCrosswalk(Math.round(200 * SCALE), Math.round(575 * SCALE));
+    this.createCrosswalk(Math.round(600 * SCALE), Math.round(575 * SCALE));
 
-    // Traffic lights near crosswalks
-    const trafficLight1 = this.add.sprite(170, 520, "traffic_light");
+    // Traffic lights near crosswalks (scaled)
+    const trafficLight1 = this.add.sprite(Math.round(170 * SCALE), Math.round(520 * SCALE), "traffic_light");
     trafficLight1.setOrigin(0.5, 1);
     trafficLight1.setDepth(4);
     this.trendingElements.push(trafficLight1);
 
-    const trafficLight2 = this.add.sprite(630, 520, "traffic_light");
+    const trafficLight2 = this.add.sprite(Math.round(630 * SCALE), Math.round(520 * SCALE), "traffic_light");
     trafficLight2.setOrigin(0.5, 1);
     trafficLight2.setDepth(4);
     trafficLight2.setFlipX(true);
     this.trendingElements.push(trafficLight2);
 
-    // Fire hydrant
-    const hydrant = this.add.sprite(350, 545, "fire_hydrant");
+    // Fire hydrant (scaled)
+    const hydrant = this.add.sprite(Math.round(350 * SCALE), Math.round(545 * SCALE), "fire_hydrant");
     hydrant.setOrigin(0.5, 1);
     hydrant.setDepth(3);
     this.trendingElements.push(hydrant);
 
-    // Trash can
-    const trashCan = this.add.sprite(450, 545, "trash_can");
+    // Trash can (scaled)
+    const trashCan = this.add.sprite(Math.round(450 * SCALE), Math.round(545 * SCALE), "trash_can");
     trashCan.setOrigin(0.5, 1);
     trashCan.setDepth(3);
     this.trendingElements.push(trashCan);
@@ -532,26 +532,26 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createCrosswalk(x: number, y: number): void {
-    // Create crosswalk stripes
-    for (let i = -25; i <= 25; i += 10) {
-      const stripe = this.add.rectangle(x + i, y, 6, 30, 0xffffff, 0.9);
+    // Create crosswalk stripes (scaled spacing and dimensions)
+    for (let i = Math.round(-25 * SCALE); i <= Math.round(25 * SCALE); i += Math.round(10 * SCALE)) {
+      const stripe = this.add.rectangle(x + i, y, Math.round(6 * SCALE), Math.round(30 * SCALE), 0xffffff, 0.9);
       stripe.setDepth(2);
       this.trendingElements.push(stripe);
     }
   }
 
   private createMovingTraffic(): void {
-    // Taxi driving right
-    const movingTaxi = this.add.sprite(-60, 585, "taxi");
+    // Taxi driving right (scaled)
+    const movingTaxi = this.add.sprite(Math.round(-60 * SCALE), Math.round(585 * SCALE), "taxi");
     movingTaxi.setDepth(3);
     movingTaxi.setFlipX(true);
     this.trendingElements.push(movingTaxi);
 
     const driveTaxi = () => {
-      movingTaxi.setX(-60);
+      movingTaxi.setX(Math.round(-60 * SCALE));
       this.tweens.add({
         targets: movingTaxi,
-        x: 860,
+        x: GAME_WIDTH + Math.round(60 * SCALE),
         duration: 6000,
         ease: "Linear",
         onComplete: () => {
@@ -561,16 +561,16 @@ export class WorldScene extends Phaser.Scene {
     };
     this.time.delayedCall(1000, driveTaxi);
 
-    // Blue car driving left
-    const movingCar = this.add.sprite(860, 565, "car_blue");
+    // Blue car driving left (scaled)
+    const movingCar = this.add.sprite(GAME_WIDTH + Math.round(60 * SCALE), Math.round(565 * SCALE), "car_blue");
     movingCar.setDepth(3);
     this.trendingElements.push(movingCar);
 
     const driveCar = () => {
-      movingCar.setX(860);
+      movingCar.setX(GAME_WIDTH + Math.round(60 * SCALE));
       this.tweens.add({
         targets: movingCar,
-        x: -60,
+        x: Math.round(-60 * SCALE),
         duration: 7000,
         ease: "Linear",
         onComplete: () => {
@@ -582,19 +582,19 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createTrendingBillboards(): void {
-    // Main central billboard - custom styled container
-    const billboardX = 400;
-    const billboardY = 150;
-    const billboardWidth = 160;
-    const billboardHeight = 90;
+    // Main central billboard - custom styled container (scaled)
+    const billboardX = Math.round(400 * SCALE);
+    const billboardY = Math.round(150 * SCALE);
+    const billboardWidth = Math.round(160 * SCALE);
+    const billboardHeight = Math.round(90 * SCALE);
 
     // Billboard frame (dark background with border)
     const billboardFrame = this.add.rectangle(
       billboardX, billboardY,
-      billboardWidth + 6, billboardHeight + 6,
+      billboardWidth + Math.round(6 * SCALE), billboardHeight + Math.round(6 * SCALE),
       0x1a1a1a
     );
-    billboardFrame.setStrokeStyle(2, 0xfbbf24);
+    billboardFrame.setStrokeStyle(Math.round(2 * SCALE), 0xfbbf24);
     billboardFrame.setDepth(5);
     this.trendingElements.push(billboardFrame);
 
@@ -609,17 +609,17 @@ export class WorldScene extends Phaser.Scene {
 
     // HOT TOKENS header bar
     const headerBar = this.add.rectangle(
-      billboardX, billboardY - 30,
-      billboardWidth, 22,
+      billboardX, billboardY - Math.round(30 * SCALE),
+      billboardWidth, Math.round(22 * SCALE),
       0xfbbf24
     );
     headerBar.setDepth(6);
     this.trendingElements.push(headerBar);
 
-    // Billboard title text
-    const billboardTitle = this.add.text(billboardX, billboardY - 30, "HOT TOKENS", {
+    // Billboard title text (scaled font)
+    const billboardTitle = this.add.text(billboardX, billboardY - Math.round(30 * SCALE), "HOT TOKENS", {
       fontFamily: "monospace",
-      fontSize: "12px",
+      fontSize: `${Math.round(12 * SCALE)}px`,
       color: "#0d0d0d",
       fontStyle: "bold",
     });
@@ -627,47 +627,52 @@ export class WorldScene extends Phaser.Scene {
     billboardTitle.setDepth(7);
     this.billboardTexts.push(billboardTitle);
 
-    // Stats display (centered in billboard)
+    // Stats display (centered in billboard, scaled font)
     const statsText = this.add.text(billboardX, billboardY, "LOADING...", {
       fontFamily: "monospace",
-      fontSize: "11px",
+      fontSize: `${Math.round(11 * SCALE)}px`,
       color: "#4ade80",
     });
     statsText.setOrigin(0.5, 0.5);
     statsText.setDepth(6);
     this.billboardTexts.push(statsText);
 
-    // Volume display (below stats)
-    const volumeText = this.add.text(billboardX, billboardY + 25, "24H VOL: ...", {
+    // Volume display (below stats, scaled font)
+    const volumeText = this.add.text(billboardX, billboardY + Math.round(25 * SCALE), "24H VOL: ...", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: `${Math.round(10 * SCALE)}px`,
       color: "#60a5fa",
     });
     volumeText.setOrigin(0.5, 0.5);
     volumeText.setDepth(6);
     this.billboardTexts.push(volumeText);
 
-    // Side billboards - styled containers
-    const sideBillboardWidth = 100;
-    const sideBillboardHeight = 60;
+    // Side billboards - styled containers (scaled)
+    const sideBillboardWidth = Math.round(100 * SCALE);
+    const sideBillboardHeight = Math.round(60 * SCALE);
+    const leftX = Math.round(130 * SCALE);
+    const rightX = Math.round(670 * SCALE);
+    const sideY = Math.round(320 * SCALE);
+    const sideHeaderY = Math.round(300 * SCALE);
+    const sideTextY = Math.round(328 * SCALE);
 
     // Left billboard - TOP GAINER
-    const leftFrame = this.add.rectangle(130, 320, sideBillboardWidth + 4, sideBillboardHeight + 4, 0x1a1a1a);
-    leftFrame.setStrokeStyle(2, 0x4ade80);
+    const leftFrame = this.add.rectangle(leftX, sideY, sideBillboardWidth + Math.round(4 * SCALE), sideBillboardHeight + Math.round(4 * SCALE), 0x1a1a1a);
+    leftFrame.setStrokeStyle(Math.round(2 * SCALE), 0x4ade80);
     leftFrame.setDepth(5);
     this.trendingElements.push(leftFrame);
 
-    const leftBg = this.add.rectangle(130, 320, sideBillboardWidth, sideBillboardHeight, 0x0d0d0d);
+    const leftBg = this.add.rectangle(leftX, sideY, sideBillboardWidth, sideBillboardHeight, 0x0d0d0d);
     leftBg.setDepth(5);
     this.trendingElements.push(leftBg);
 
-    const leftHeader = this.add.rectangle(130, 300, sideBillboardWidth, 16, 0x4ade80);
+    const leftHeader = this.add.rectangle(leftX, sideHeaderY, sideBillboardWidth, Math.round(16 * SCALE), 0x4ade80);
     leftHeader.setDepth(6);
     this.trendingElements.push(leftHeader);
 
-    const leftTitle = this.add.text(130, 300, "TOP GAINER", {
+    const leftTitle = this.add.text(leftX, sideHeaderY, "TOP GAINER", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: `${Math.round(8 * SCALE)}px`,
       color: "#0d0d0d",
       fontStyle: "bold",
     });
@@ -675,9 +680,9 @@ export class WorldScene extends Phaser.Scene {
     leftTitle.setDepth(7);
     this.billboardTexts.push(leftTitle);
 
-    const leftText = this.add.text(130, 328, "...", {
+    const leftText = this.add.text(leftX, sideTextY, "...", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: `${Math.round(9 * SCALE)}px`,
       color: "#4ade80",
       align: "center",
     });
@@ -686,22 +691,22 @@ export class WorldScene extends Phaser.Scene {
     this.billboardTexts.push(leftText);
 
     // Right billboard - VOLUME KING
-    const rightFrame = this.add.rectangle(670, 320, sideBillboardWidth + 4, sideBillboardHeight + 4, 0x1a1a1a);
-    rightFrame.setStrokeStyle(2, 0xec4899);
+    const rightFrame = this.add.rectangle(rightX, sideY, sideBillboardWidth + Math.round(4 * SCALE), sideBillboardHeight + Math.round(4 * SCALE), 0x1a1a1a);
+    rightFrame.setStrokeStyle(Math.round(2 * SCALE), 0xec4899);
     rightFrame.setDepth(5);
     this.trendingElements.push(rightFrame);
 
-    const rightBg = this.add.rectangle(670, 320, sideBillboardWidth, sideBillboardHeight, 0x0d0d0d);
+    const rightBg = this.add.rectangle(rightX, sideY, sideBillboardWidth, sideBillboardHeight, 0x0d0d0d);
     rightBg.setDepth(5);
     this.trendingElements.push(rightBg);
 
-    const rightHeader = this.add.rectangle(670, 300, sideBillboardWidth, 16, 0xec4899);
+    const rightHeader = this.add.rectangle(rightX, sideHeaderY, sideBillboardWidth, Math.round(16 * SCALE), 0xec4899);
     rightHeader.setDepth(6);
     this.trendingElements.push(rightHeader);
 
-    const rightTitle = this.add.text(670, 300, "VOLUME KING", {
+    const rightTitle = this.add.text(rightX, sideHeaderY, "VOLUME KING", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: `${Math.round(8 * SCALE)}px`,
       color: "#0d0d0d",
       fontStyle: "bold",
     });
@@ -709,9 +714,9 @@ export class WorldScene extends Phaser.Scene {
     rightTitle.setDepth(7);
     this.billboardTexts.push(rightTitle);
 
-    const rightText = this.add.text(670, 328, "...", {
+    const rightText = this.add.text(rightX, sideTextY, "...", {
       fontFamily: "monospace",
-      fontSize: "9px",
+      fontSize: `${Math.round(9 * SCALE)}px`,
       color: "#ec4899",
       align: "center",
     });
@@ -732,29 +737,29 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createTrendingTicker(): void {
-    // Ticker display bar at very bottom of screen
-    const tickerY = 592;
+    // Ticker display bar at very bottom of screen (scaled)
+    const tickerY = Math.round(592 * SCALE);
 
     // Dark background bar for ticker
-    const tickerBg = this.add.rectangle(400, tickerY, 800, 16, 0x0a0a0f);
+    const tickerBg = this.add.rectangle(GAME_WIDTH / 2, tickerY, GAME_WIDTH, Math.round(16 * SCALE), 0x0a0a0f);
     tickerBg.setDepth(10);
     this.trendingElements.push(tickerBg);
 
     // Subtle top border
-    const tickerBorder = this.add.rectangle(400, tickerY - 8, 800, 1, 0x374151);
+    const tickerBorder = this.add.rectangle(GAME_WIDTH / 2, tickerY - Math.round(8 * SCALE), GAME_WIDTH, Math.round(1 * SCALE), 0x374151);
     tickerBorder.setDepth(10);
     this.trendingElements.push(tickerBorder);
 
-    // Create mask for ticker text
+    // Create mask for ticker text (scaled)
     const maskShape = this.make.graphics({});
     maskShape.fillStyle(0xffffff);
-    maskShape.fillRect(0, tickerY - 8, 800, 16);
+    maskShape.fillRect(0, tickerY - Math.round(8 * SCALE), GAME_WIDTH, Math.round(16 * SCALE));
     const mask = maskShape.createGeometryMask();
 
-    // Ticker text
-    this.tickerText = this.add.text(800, tickerY, this.getTickerContent(), {
+    // Ticker text (scaled font)
+    this.tickerText = this.add.text(GAME_WIDTH, tickerY, this.getTickerContent(), {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: `${Math.round(10 * SCALE)}px`,
       color: "#4ade80",
     });
     this.tickerText.setOrigin(0, 0.5);
@@ -786,11 +791,11 @@ export class WorldScene extends Phaser.Scene {
   private updateTicker(): void {
     if (!this.tickerText || this.currentZone !== "trending") return;
 
-    this.tickerOffset -= 2;
-    this.tickerText.setX(800 + this.tickerOffset);
+    this.tickerOffset -= Math.round(2 * SCALE);
+    this.tickerText.setX(GAME_WIDTH + this.tickerOffset);
 
-    // Reset when fully scrolled
-    if (this.tickerOffset < -this.tickerText.width - 100) {
+    // Reset when fully scrolled (scaled offset)
+    if (this.tickerOffset < -this.tickerText.width - Math.round(100 * SCALE)) {
       this.tickerOffset = 0;
       this.tickerText.setText(this.getTickerContent());
     }
@@ -979,57 +984,57 @@ export class WorldScene extends Phaser.Scene {
     // Subtle dark silhouette color
     const silhouetteColor = 0x0a1020;
 
-    // Draw distant buildings as simple rectangles
+    // Draw distant buildings as simple rectangles (scaled for higher resolution)
     skyline.fillStyle(silhouetteColor, 0.6);
 
     // Left cluster
-    skyline.fillRect(20, 340, 15, 60);
-    skyline.fillRect(40, 320, 20, 80);
-    skyline.fillRect(65, 350, 12, 50);
-    skyline.fillRect(82, 330, 18, 70);
-    skyline.fillRect(105, 355, 14, 45);
+    skyline.fillRect(Math.round(20 * SCALE), Math.round(340 * SCALE), Math.round(15 * SCALE), Math.round(60 * SCALE));
+    skyline.fillRect(Math.round(40 * SCALE), Math.round(320 * SCALE), Math.round(20 * SCALE), Math.round(80 * SCALE));
+    skyline.fillRect(Math.round(65 * SCALE), Math.round(350 * SCALE), Math.round(12 * SCALE), Math.round(50 * SCALE));
+    skyline.fillRect(Math.round(82 * SCALE), Math.round(330 * SCALE), Math.round(18 * SCALE), Math.round(70 * SCALE));
+    skyline.fillRect(Math.round(105 * SCALE), Math.round(355 * SCALE), Math.round(14 * SCALE), Math.round(45 * SCALE));
 
     // Center-left cluster
-    skyline.fillRect(160, 335, 16, 65);
-    skyline.fillRect(180, 310, 25, 90);
-    skyline.fillRect(210, 345, 14, 55);
-    skyline.fillRect(230, 325, 20, 75);
+    skyline.fillRect(Math.round(160 * SCALE), Math.round(335 * SCALE), Math.round(16 * SCALE), Math.round(65 * SCALE));
+    skyline.fillRect(Math.round(180 * SCALE), Math.round(310 * SCALE), Math.round(25 * SCALE), Math.round(90 * SCALE));
+    skyline.fillRect(Math.round(210 * SCALE), Math.round(345 * SCALE), Math.round(14 * SCALE), Math.round(55 * SCALE));
+    skyline.fillRect(Math.round(230 * SCALE), Math.round(325 * SCALE), Math.round(20 * SCALE), Math.round(75 * SCALE));
 
     // Center cluster (taller - focal point)
-    skyline.fillRect(320, 300, 22, 100);
-    skyline.fillRect(348, 280, 30, 120);
-    skyline.fillRect(385, 295, 24, 105);
-    skyline.fillRect(415, 315, 18, 85);
-    skyline.fillRect(438, 330, 16, 70);
+    skyline.fillRect(Math.round(320 * SCALE), Math.round(300 * SCALE), Math.round(22 * SCALE), Math.round(100 * SCALE));
+    skyline.fillRect(Math.round(348 * SCALE), Math.round(280 * SCALE), Math.round(30 * SCALE), Math.round(120 * SCALE));
+    skyline.fillRect(Math.round(385 * SCALE), Math.round(295 * SCALE), Math.round(24 * SCALE), Math.round(105 * SCALE));
+    skyline.fillRect(Math.round(415 * SCALE), Math.round(315 * SCALE), Math.round(18 * SCALE), Math.round(85 * SCALE));
+    skyline.fillRect(Math.round(438 * SCALE), Math.round(330 * SCALE), Math.round(16 * SCALE), Math.round(70 * SCALE));
 
     // Center-right cluster
-    skyline.fillRect(520, 340, 18, 60);
-    skyline.fillRect(545, 320, 22, 80);
-    skyline.fillRect(572, 350, 14, 50);
+    skyline.fillRect(Math.round(520 * SCALE), Math.round(340 * SCALE), Math.round(18 * SCALE), Math.round(60 * SCALE));
+    skyline.fillRect(Math.round(545 * SCALE), Math.round(320 * SCALE), Math.round(22 * SCALE), Math.round(80 * SCALE));
+    skyline.fillRect(Math.round(572 * SCALE), Math.round(350 * SCALE), Math.round(14 * SCALE), Math.round(50 * SCALE));
 
     // Right cluster
-    skyline.fillRect(640, 335, 16, 65);
-    skyline.fillRect(662, 315, 24, 85);
-    skyline.fillRect(692, 345, 18, 55);
-    skyline.fillRect(715, 325, 20, 75);
-    skyline.fillRect(740, 355, 15, 45);
-    skyline.fillRect(760, 338, 22, 62);
+    skyline.fillRect(Math.round(640 * SCALE), Math.round(335 * SCALE), Math.round(16 * SCALE), Math.round(65 * SCALE));
+    skyline.fillRect(Math.round(662 * SCALE), Math.round(315 * SCALE), Math.round(24 * SCALE), Math.round(85 * SCALE));
+    skyline.fillRect(Math.round(692 * SCALE), Math.round(345 * SCALE), Math.round(18 * SCALE), Math.round(55 * SCALE));
+    skyline.fillRect(Math.round(715 * SCALE), Math.round(325 * SCALE), Math.round(20 * SCALE), Math.round(75 * SCALE));
+    skyline.fillRect(Math.round(740 * SCALE), Math.round(355 * SCALE), Math.round(15 * SCALE), Math.round(45 * SCALE));
+    skyline.fillRect(Math.round(760 * SCALE), Math.round(338 * SCALE), Math.round(22 * SCALE), Math.round(62 * SCALE));
 
     // Add subtle window lights (very sparse and dim)
     const windowColor = 0xffd700;
     skyline.fillStyle(windowColor, 0.15);
 
-    // A few random lit windows
+    // A few random lit windows (scaled)
     const windowPositions = [
-      { x: 185, y: 330, w: 3, h: 4 },
-      { x: 185, y: 345, w: 3, h: 4 },
-      { x: 352, y: 300, w: 4, h: 5 },
-      { x: 360, y: 320, w: 4, h: 5 },
-      { x: 360, y: 350, w: 4, h: 5 },
-      { x: 390, y: 315, w: 3, h: 4 },
-      { x: 550, y: 340, w: 3, h: 4 },
-      { x: 668, y: 335, w: 3, h: 4 },
-      { x: 668, y: 360, w: 3, h: 4 },
+      { x: Math.round(185 * SCALE), y: Math.round(330 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
+      { x: Math.round(185 * SCALE), y: Math.round(345 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
+      { x: Math.round(352 * SCALE), y: Math.round(300 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
+      { x: Math.round(360 * SCALE), y: Math.round(320 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
+      { x: Math.round(360 * SCALE), y: Math.round(350 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
+      { x: Math.round(390 * SCALE), y: Math.round(315 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
+      { x: Math.round(550 * SCALE), y: Math.round(340 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
+      { x: Math.round(668 * SCALE), y: Math.round(335 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
+      { x: Math.round(668 * SCALE), y: Math.round(360 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
     ];
 
     for (const win of windowPositions) {
@@ -1038,19 +1043,19 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createDecorations(): void {
-    // Add trees
+    // Add trees (scaled positions)
     const treePositions = [
-      { x: 50, y: 460 },
-      { x: 750, y: 455 },
-      { x: 180, y: 470 },
-      { x: 620, y: 465 },
+      { x: Math.round(50 * SCALE), y: Math.round(460 * SCALE) },
+      { x: Math.round(750 * SCALE), y: Math.round(455 * SCALE) },
+      { x: Math.round(180 * SCALE), y: Math.round(470 * SCALE) },
+      { x: Math.round(620 * SCALE), y: Math.round(465 * SCALE) },
     ];
 
     treePositions.forEach((pos, i) => {
       const tree = this.add.sprite(pos.x, pos.y, "tree");
       tree.setOrigin(0.5, 1);
       tree.setDepth(2);
-      tree.setScale(0.9 + Math.random() * 0.3);
+      tree.setScale((0.9 + Math.random() * 0.3) * SCALE);
       this.decorations.push(tree);
 
       // Gentle sway animation
@@ -1064,24 +1069,27 @@ export class WorldScene extends Phaser.Scene {
       });
     });
 
-    // Add bushes
+    // Add bushes (scaled positions)
     const bushPositions = [
-      { x: 100, y: 480 },
-      { x: 300, y: 475 },
-      { x: 500, y: 478 },
-      { x: 700, y: 476 },
+      { x: Math.round(100 * SCALE), y: Math.round(480 * SCALE) },
+      { x: Math.round(300 * SCALE), y: Math.round(475 * SCALE) },
+      { x: Math.round(500 * SCALE), y: Math.round(478 * SCALE) },
+      { x: Math.round(700 * SCALE), y: Math.round(476 * SCALE) },
     ];
 
     bushPositions.forEach((pos) => {
       const bush = this.add.sprite(pos.x, pos.y, "bush");
       bush.setOrigin(0.5, 1);
       bush.setDepth(2);
-      bush.setScale(0.7 + Math.random() * 0.3);
+      bush.setScale((0.7 + Math.random() * 0.3) * SCALE);
       this.decorations.push(bush);
     });
 
-    // Add lamp posts
-    const lampPositions = [{ x: 200, y: 540 }, { x: 600, y: 540 }];
+    // Add lamp posts (scaled positions)
+    const lampPositions = [
+      { x: Math.round(200 * SCALE), y: Math.round(540 * SCALE) },
+      { x: Math.round(600 * SCALE), y: Math.round(540 * SCALE) },
+    ];
 
     lampPositions.forEach((pos) => {
       const lamp = this.add.sprite(pos.x, pos.y, "lamp");
@@ -1089,25 +1097,28 @@ export class WorldScene extends Phaser.Scene {
       lamp.setDepth(3);
       this.decorations.push(lamp);
 
-      // Add light glow
-      const glow = this.add.sprite(pos.x, pos.y - 30, "glow");
+      // Add light glow (scaled)
+      const glow = this.add.sprite(pos.x, pos.y - Math.round(30 * SCALE), "glow");
       glow.setAlpha(0.3);
-      glow.setScale(0.8);
+      glow.setScale(0.8 * SCALE);
       glow.setDepth(2);
       glow.setTint(0xfbbf24);
 
       this.tweens.add({
         targets: glow,
         alpha: 0.5,
-        scale: 0.9,
+        scale: 0.9 * SCALE,
         duration: 1500,
         yoyo: true,
         repeat: -1,
       });
     });
 
-    // Add benches
-    const benchPositions = [{ x: 350, y: 545 }, { x: 450, y: 545 }];
+    // Add benches (scaled positions)
+    const benchPositions = [
+      { x: Math.round(350 * SCALE), y: Math.round(545 * SCALE) },
+      { x: Math.round(450 * SCALE), y: Math.round(545 * SCALE) },
+    ];
 
     benchPositions.forEach((pos) => {
       const bench = this.add.sprite(pos.x, pos.y, "bench");
@@ -1120,12 +1131,12 @@ export class WorldScene extends Phaser.Scene {
   private createClouds(): void {
     for (let i = 0; i < 6; i++) {
       const cloud = this.add.sprite(
-        Math.random() * 900 - 50,
-        30 + Math.random() * 120,
+        Math.random() * GAME_WIDTH * 1.1 - Math.round(50 * SCALE),
+        Math.round(30 * SCALE) + Math.random() * Math.round(120 * SCALE),
         "cloud"
       );
       cloud.setAlpha(0.5 + Math.random() * 0.3);
-      cloud.setScale(0.6 + Math.random() * 0.5);
+      cloud.setScale((0.6 + Math.random() * 0.5) * SCALE);
       cloud.setDepth(1);
       this.clouds.push(cloud);
     }
@@ -1134,15 +1145,15 @@ export class WorldScene extends Phaser.Scene {
   private createAnimals(): void {
     const animalTypes: Animal["type"][] = ["dog", "cat", "bird", "butterfly", "squirrel"];
 
-    // Create a variety of animals
+    // Create a variety of animals (scaled positions)
     const animalConfigs = [
-      { type: "dog" as const, x: 150, y: 555, scale: 1.2 },
-      { type: "cat" as const, x: 650, y: 555, scale: 1.1 },
-      { type: "bird" as const, x: 100, y: 480, scale: 0.8 },
-      { type: "bird" as const, x: 700, y: 490, scale: 0.7 },
-      { type: "butterfly" as const, x: 300, y: 470, scale: 0.6 },
-      { type: "butterfly" as const, x: 500, y: 460, scale: 0.5 },
-      { type: "squirrel" as const, x: 80, y: 475, scale: 1.0 },
+      { type: "dog" as const, x: Math.round(150 * SCALE), y: Math.round(555 * SCALE), scale: 1.2 * SCALE },
+      { type: "cat" as const, x: Math.round(650 * SCALE), y: Math.round(555 * SCALE), scale: 1.1 * SCALE },
+      { type: "bird" as const, x: Math.round(100 * SCALE), y: Math.round(480 * SCALE), scale: 0.8 * SCALE },
+      { type: "bird" as const, x: Math.round(700 * SCALE), y: Math.round(490 * SCALE), scale: 0.7 * SCALE },
+      { type: "butterfly" as const, x: Math.round(300 * SCALE), y: Math.round(470 * SCALE), scale: 0.6 * SCALE },
+      { type: "butterfly" as const, x: Math.round(500 * SCALE), y: Math.round(460 * SCALE), scale: 0.5 * SCALE },
+      { type: "squirrel" as const, x: Math.round(80 * SCALE), y: Math.round(475 * SCALE), scale: 1.0 * SCALE },
     ];
 
     animalConfigs.forEach((config) => {
@@ -1158,8 +1169,8 @@ export class WorldScene extends Phaser.Scene {
       const animal: Animal = {
         sprite,
         type: config.type,
-        targetX: config.x + (Math.random() * 200 - 100),
-        speed: config.type === "butterfly" ? 0.3 : config.type === "bird" ? 0.5 : 0.2,
+        targetX: config.x + (Math.random() * Math.round(200 * SCALE) - Math.round(100 * SCALE)),
+        speed: config.type === "butterfly" ? 0.3 * SCALE : config.type === "bird" ? 0.5 * SCALE : 0.2 * SCALE,
         direction: Math.random() > 0.5 ? "left" : "right",
         idleTimer: 0,
         isIdle: Math.random() > 0.5,
@@ -1167,11 +1178,11 @@ export class WorldScene extends Phaser.Scene {
 
       this.animals.push(animal);
 
-      // Add idle animation for ground animals
+      // Add idle animation for ground animals (scaled movement)
       if (config.type !== "bird" && config.type !== "butterfly") {
         this.tweens.add({
           targets: sprite,
-          y: config.y - 2,
+          y: config.y - Math.round(2 * SCALE),
           duration: 500 + Math.random() * 300,
           yoyo: true,
           repeat: -1,
@@ -1179,11 +1190,11 @@ export class WorldScene extends Phaser.Scene {
         });
       }
 
-      // Flying animation for birds and butterflies
+      // Flying animation for birds and butterflies (scaled movement)
       if (config.type === "bird") {
         this.tweens.add({
           targets: sprite,
-          y: config.y - 15,
+          y: config.y - Math.round(15 * SCALE),
           duration: 800 + Math.random() * 400,
           yoyo: true,
           repeat: -1,
@@ -1194,7 +1205,7 @@ export class WorldScene extends Phaser.Scene {
       if (config.type === "butterfly") {
         this.tweens.add({
           targets: sprite,
-          y: config.y - 20,
+          y: config.y - Math.round(20 * SCALE),
           angle: 5,
           duration: 600 + Math.random() * 300,
           yoyo: true,
@@ -1206,20 +1217,20 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createExtraDecorations(): void {
-    // Add flower patches
+    // Add flower patches (scaled positions)
     const flowerPositions = [
-      { x: 130, y: 490 },
-      { x: 280, y: 485 },
-      { x: 420, y: 488 },
-      { x: 560, y: 482 },
-      { x: 680, y: 486 },
+      { x: Math.round(130 * SCALE), y: Math.round(490 * SCALE) },
+      { x: Math.round(280 * SCALE), y: Math.round(485 * SCALE) },
+      { x: Math.round(420 * SCALE), y: Math.round(488 * SCALE) },
+      { x: Math.round(560 * SCALE), y: Math.round(482 * SCALE) },
+      { x: Math.round(680 * SCALE), y: Math.round(486 * SCALE) },
     ];
 
     flowerPositions.forEach((pos) => {
       const flower = this.add.sprite(pos.x, pos.y, "flower");
       flower.setOrigin(0.5, 1);
       flower.setDepth(2);
-      flower.setScale(0.8 + Math.random() * 0.4);
+      flower.setScale((0.8 + Math.random() * 0.4) * SCALE);
       this.decorations.push(flower);
 
       // Gentle sway
@@ -1233,45 +1244,49 @@ export class WorldScene extends Phaser.Scene {
       });
     });
 
-    // Add rocks
+    // Add rocks (scaled positions)
     const rockPositions = [
-      { x: 70, y: 555 },
-      { x: 730, y: 552 },
-      { x: 380, y: 558 },
+      { x: Math.round(70 * SCALE), y: Math.round(555 * SCALE) },
+      { x: Math.round(730 * SCALE), y: Math.round(552 * SCALE) },
+      { x: Math.round(380 * SCALE), y: Math.round(558 * SCALE) },
     ];
 
     rockPositions.forEach((pos) => {
       const rock = this.add.sprite(pos.x, pos.y, "rock");
       rock.setOrigin(0.5, 1);
       rock.setDepth(2);
-      rock.setScale(0.6 + Math.random() * 0.3);
+      rock.setScale((0.6 + Math.random() * 0.3) * SCALE);
       this.decorations.push(rock);
     });
 
-    // Add fountain in center of park (above the path)
-    const fountainY = 480; // Position fountain base on grass, above path
-    const fountain = this.add.sprite(400, fountainY, "fountain");
+    // Add fountain in center of park (above the path, scaled)
+    const fountainY = Math.round(480 * SCALE);
+    const fountainX = Math.round(400 * SCALE);
+    const fountain = this.add.sprite(fountainX, fountainY, "fountain");
     fountain.setOrigin(0.5, 1);
     fountain.setDepth(2);
-    fountain.setScale(1.0);
+    fountain.setScale(SCALE);
     this.decorations.push(fountain);
 
-    // Water spray particles - aligned with fountain top
-    this.fountainWater = this.add.particles(400, fountainY - 35, "rain", {
-      speed: { min: 30, max: 60 },
+    // Water spray particles - aligned with fountain top (scaled)
+    this.fountainWater = this.add.particles(fountainX, fountainY - Math.round(35 * SCALE), "rain", {
+      speed: { min: Math.round(30 * SCALE), max: Math.round(60 * SCALE) },
       angle: { min: 260, max: 280 },
       lifespan: 500,
       quantity: 3,
       frequency: 80,
-      scale: { start: 0.4, end: 0.1 },
+      scale: { start: 0.4 * SCALE, end: 0.1 * SCALE },
       alpha: { start: 0.7, end: 0 },
-      gravityY: 80,
+      gravityY: Math.round(80 * SCALE),
       tint: 0x60a5fa, // Blue tint for water
     });
     this.fountainWater.setDepth(2);
 
-    // Add flag poles
-    const flagPositions = [{ x: 50, y: 430 }, { x: 750, y: 430 }];
+    // Add flag poles (scaled positions)
+    const flagPositions = [
+      { x: Math.round(50 * SCALE), y: Math.round(430 * SCALE) },
+      { x: Math.round(750 * SCALE), y: Math.round(430 * SCALE) },
+    ];
     flagPositions.forEach((pos) => {
       const flag = this.add.sprite(pos.x, pos.y, "flag");
       flag.setOrigin(0.5, 1);
@@ -1281,7 +1296,7 @@ export class WorldScene extends Phaser.Scene {
       // Flag waving
       this.tweens.add({
         targets: flag,
-        scaleX: 0.9,
+        scaleX: 0.9 * SCALE,
         duration: 800,
         yoyo: true,
         repeat: -1,
@@ -1289,18 +1304,18 @@ export class WorldScene extends Phaser.Scene {
       });
     });
 
-    // Add pond in corner
-    const pond = this.add.sprite(100, 500, "pond");
+    // Add pond in corner (scaled position)
+    const pond = this.add.sprite(Math.round(100 * SCALE), Math.round(500 * SCALE), "pond");
     pond.setOrigin(0.5, 0.5);
     pond.setDepth(0);
-    pond.setScale(1.5);
+    pond.setScale(1.5 * SCALE);
     pond.setAlpha(0.8);
     this.decorations.push(pond);
 
-    // Ripple effect on pond
+    // Ripple effect on pond (scaled)
     this.tweens.add({
       targets: pond,
-      scale: 1.55,
+      scale: 1.55 * SCALE,
       alpha: 0.6,
       duration: 2000,
       yoyo: true,
@@ -1310,14 +1325,14 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createAmbientParticles(): void {
-    // Floating pollen/dust particles during day
-    this.ambientParticles = this.add.particles(400, 200, "pollen", {
-      x: { min: 0, max: 800 },
-      y: { min: 100, max: 400 },
+    // Floating pollen/dust particles during day (scaled)
+    this.ambientParticles = this.add.particles(GAME_WIDTH / 2, Math.round(200 * SCALE), "pollen", {
+      x: { min: 0, max: GAME_WIDTH },
+      y: { min: Math.round(100 * SCALE), max: Math.round(400 * SCALE) },
       lifespan: 8000,
-      speedX: { min: 5, max: 20 },
-      speedY: { min: -5, max: 5 },
-      scale: { start: 0.3, end: 0 },
+      speedX: { min: Math.round(5 * SCALE), max: Math.round(20 * SCALE) },
+      speedY: { min: Math.round(-5 * SCALE), max: Math.round(5 * SCALE) },
+      scale: { start: 0.3 * SCALE, end: 0 },
       alpha: { start: 0.4, end: 0 },
       quantity: 1,
       frequency: 500,
@@ -1328,13 +1343,13 @@ export class WorldScene extends Phaser.Scene {
   private createFireflies(): void {
     if (this.fireflies) return;
 
-    this.fireflies = this.add.particles(400, 400, "firefly", {
-      x: { min: 50, max: 750 },
-      y: { min: 350, max: 500 },
+    this.fireflies = this.add.particles(GAME_WIDTH / 2, Math.round(400 * SCALE), "firefly", {
+      x: { min: Math.round(50 * SCALE), max: Math.round(750 * SCALE) },
+      y: { min: Math.round(350 * SCALE), max: Math.round(500 * SCALE) },
       lifespan: 4000,
-      speedX: { min: -20, max: 20 },
-      speedY: { min: -20, max: 20 },
-      scale: { start: 0.8, end: 0 },
+      speedX: { min: Math.round(-20 * SCALE), max: Math.round(20 * SCALE) },
+      speedY: { min: Math.round(-20 * SCALE), max: Math.round(20 * SCALE) },
+      scale: { start: 0.8 * SCALE, end: 0 },
       alpha: { start: 0, end: 1, ease: "Sine.easeInOut" },
       quantity: 1,
       frequency: 300,
@@ -2151,12 +2166,12 @@ export class WorldScene extends Phaser.Scene {
 
   private createRainEffect(isStorm: boolean): void {
     this.weatherEmitter = this.add.particles(0, 0, "rain", {
-      x: { min: 0, max: 800 },
-      y: -10,
+      x: { min: 0, max: GAME_WIDTH },
+      y: Math.round(-10 * SCALE),
       lifespan: 800,
-      speedY: { min: 300, max: 500 },
-      speedX: isStorm ? { min: -100, max: -150 } : { min: -20, max: 20 },
-      scale: { start: 1, end: 0.6 },
+      speedY: { min: Math.round(300 * SCALE), max: Math.round(500 * SCALE) },
+      speedX: isStorm ? { min: Math.round(-100 * SCALE), max: Math.round(-150 * SCALE) } : { min: Math.round(-20 * SCALE), max: Math.round(20 * SCALE) },
+      scale: { start: SCALE, end: 0.6 * SCALE },
       quantity: isStorm ? 15 : 8,
       frequency: 30,
       alpha: { start: 0.8, end: 0.3 },
@@ -2172,10 +2187,10 @@ export class WorldScene extends Phaser.Scene {
           // Flash
           this.cameras.main.flash(100, 255, 255, 255, true);
 
-          // Lightning bolt
-          const x = 100 + Math.random() * 600;
-          const lightning = this.add.sprite(x, 100, "lightning");
-          lightning.setScale(2);
+          // Lightning bolt (scaled)
+          const x = Math.round(100 * SCALE) + Math.random() * Math.round(600 * SCALE);
+          const lightning = this.add.sprite(x, Math.round(100 * SCALE), "lightning");
+          lightning.setScale(2 * SCALE);
           lightning.setDepth(60);
 
           this.tweens.add({
@@ -2210,14 +2225,14 @@ export class WorldScene extends Phaser.Scene {
       loop: true,
     });
 
-    // Falling embers
+    // Falling embers (scaled)
     this.weatherEmitter = this.add.particles(0, 0, "coin", {
-      x: { min: 0, max: 800 },
-      y: -10,
+      x: { min: 0, max: GAME_WIDTH },
+      y: Math.round(-10 * SCALE),
       lifespan: 3000,
-      speedY: { min: 50, max: 100 },
-      speedX: { min: -30, max: 30 },
-      scale: { start: 0.3, end: 0 },
+      speedY: { min: Math.round(50 * SCALE), max: Math.round(100 * SCALE) },
+      speedX: { min: Math.round(-30 * SCALE), max: Math.round(30 * SCALE) },
+      scale: { start: 0.3 * SCALE, end: 0 },
       quantity: 2,
       frequency: 200,
       tint: 0xff4444,
@@ -2997,7 +3012,7 @@ export class WorldScene extends Phaser.Scene {
   private triggerEvent(event: WorldState["events"][0]): void {
     switch (event.type) {
       case "token_launch":
-        this.playCelebration(400, 350);
+        this.playCelebration(GAME_WIDTH / 2, Math.round(350 * SCALE));
         break;
       case "fee_claim":
         this.playCoinsRain();
@@ -3010,31 +3025,31 @@ export class WorldScene extends Phaser.Scene {
         this.cameras.main.shake(400, 0.008);
         break;
       case "milestone":
-        this.playCelebration(400, 350);
+        this.playCelebration(GAME_WIDTH / 2, Math.round(350 * SCALE));
         this.cameras.main.flash(400, 251, 191, 36, true);
         break;
     }
   }
 
   private playCelebration(x: number, y: number): void {
-    // Coins
+    // Coins (scaled)
     const coins = this.add.particles(x, y, "coin", {
-      speed: { min: 150, max: 250 },
+      speed: { min: Math.round(150 * SCALE), max: Math.round(250 * SCALE) },
       angle: { min: 220, max: 320 },
       lifespan: 1500,
       quantity: 25,
-      scale: { start: 1.2, end: 0 },
-      gravityY: 300,
+      scale: { start: 1.2 * SCALE, end: 0 },
+      gravityY: Math.round(300 * SCALE),
       rotate: { min: 0, max: 360 },
     });
 
-    // Stars
+    // Stars (scaled)
     const stars = this.add.particles(x, y, "star", {
-      speed: { min: 100, max: 200 },
+      speed: { min: Math.round(100 * SCALE), max: Math.round(200 * SCALE) },
       angle: { min: 0, max: 360 },
       lifespan: 1200,
       quantity: 15,
-      scale: { start: 0.8, end: 0 },
+      scale: { start: 0.8 * SCALE, end: 0 },
       alpha: { start: 1, end: 0 },
     });
 
@@ -3045,13 +3060,13 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private playCoinsRain(): void {
-    const particles = this.add.particles(400, 0, "coin", {
-      x: { min: 50, max: 750 },
-      y: -20,
+    const particles = this.add.particles(GAME_WIDTH / 2, 0, "coin", {
+      x: { min: Math.round(50 * SCALE), max: Math.round(750 * SCALE) },
+      y: Math.round(-20 * SCALE),
       lifespan: 2500,
-      speedY: { min: 150, max: 250 },
-      speedX: { min: -30, max: 30 },
-      scale: { start: 1, end: 0.5 },
+      speedY: { min: Math.round(150 * SCALE), max: Math.round(250 * SCALE) },
+      speedX: { min: Math.round(-30 * SCALE), max: Math.round(30 * SCALE) },
+      scale: { start: SCALE, end: 0.5 * SCALE },
       quantity: 40,
       frequency: -1,
       rotate: { min: 0, max: 360 },
@@ -3065,12 +3080,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private playStarBurst(): void {
-    const particles = this.add.particles(400, 300, "star", {
-      speed: { min: 200, max: 400 },
+    const particles = this.add.particles(GAME_WIDTH / 2, Math.round(300 * SCALE), "star", {
+      speed: { min: Math.round(200 * SCALE), max: Math.round(400 * SCALE) },
       angle: { min: 0, max: 360 },
       lifespan: 1000,
       quantity: 20,
-      scale: { start: 1, end: 0 },
+      scale: { start: SCALE, end: 0 },
       alpha: { start: 1, end: 0 },
       tint: [0x4ade80, 0xfbbf24, 0x60a5fa],
     });
@@ -3082,11 +3097,11 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  // Animal control methods for Bags Bot
+  // Animal control methods for Bags Bot (scaled positions)
   moveAnimalTo(animalType: Animal["type"], targetX: number): void {
     const animal = this.animals.find((a) => a.type === animalType);
     if (animal) {
-      animal.targetX = Math.max(50, Math.min(750, targetX));
+      animal.targetX = Math.max(Math.round(50 * SCALE), Math.min(Math.round(750 * SCALE), targetX));
       animal.isIdle = false;
       animal.direction = animal.targetX > animal.sprite.x ? "right" : "left";
     }
@@ -3099,23 +3114,23 @@ export class WorldScene extends Phaser.Scene {
       animal.isIdle = true;
       animal.idleTimer = 0;
 
-      // Happy bounce animation
+      // Happy bounce animation (scaled)
       this.tweens.add({
         targets: animal.sprite,
-        y: animal.sprite.y - 15,
+        y: animal.sprite.y - Math.round(15 * SCALE),
         duration: 200,
         yoyo: true,
         repeat: 2,
         ease: "Bounce.easeOut",
       });
 
-      // Hearts effect
-      const hearts = this.add.particles(animal.sprite.x, animal.sprite.y - 20, "star", {
-        speed: { min: 30, max: 60 },
+      // Hearts effect (scaled)
+      const hearts = this.add.particles(animal.sprite.x, animal.sprite.y - Math.round(20 * SCALE), "star", {
+        speed: { min: Math.round(30 * SCALE), max: Math.round(60 * SCALE) },
         angle: { min: 220, max: 320 },
         lifespan: 1000,
         quantity: 5,
-        scale: { start: 0.5, end: 0 },
+        scale: { start: 0.5 * SCALE, end: 0 },
         alpha: { start: 1, end: 0 },
         tint: 0xff69b4,
       });
@@ -3131,23 +3146,23 @@ export class WorldScene extends Phaser.Scene {
   scareAnimal(animalType: Animal["type"]): void {
     const animal = this.animals.find((a) => a.type === animalType);
     if (animal) {
-      // Run away to random side
+      // Run away to random side (scaled)
       animal.isIdle = false;
-      animal.targetX = animal.sprite.x > 400 ? 50 : 750;
+      animal.targetX = animal.sprite.x > GAME_WIDTH / 2 ? Math.round(50 * SCALE) : Math.round(750 * SCALE);
       animal.speed = animal.speed * 3; // Temporarily faster
 
-      // Shake animation
+      // Shake animation (scaled)
       this.tweens.add({
         targets: animal.sprite,
-        x: animal.sprite.x + 5,
+        x: animal.sprite.x + Math.round(5 * SCALE),
         duration: 50,
         yoyo: true,
         repeat: 4,
       });
 
-      // Reset speed after 2 seconds
+      // Reset speed after 2 seconds (scaled)
       this.time.delayedCall(2000, () => {
-        animal.speed = animal.type === "butterfly" ? 0.3 : animal.type === "bird" ? 0.5 : 0.2;
+        animal.speed = animal.type === "butterfly" ? 0.3 * SCALE : animal.type === "bird" ? 0.5 * SCALE : 0.2 * SCALE;
       });
     }
   }
@@ -3155,12 +3170,12 @@ export class WorldScene extends Phaser.Scene {
   callAnimal(animalType: Animal["type"], targetX: number): void {
     const animal = this.animals.find((a) => a.type === animalType);
     if (animal) {
-      animal.targetX = Math.max(50, Math.min(750, targetX));
+      animal.targetX = Math.max(Math.round(50 * SCALE), Math.min(Math.round(750 * SCALE), targetX));
       animal.isIdle = false;
       animal.direction = animal.targetX > animal.sprite.x ? "right" : "left";
       animal.speed = animal.speed * 1.5; // Move a bit faster when called
 
-      // Reset speed after reaching target
+      // Reset speed after reaching target (scaled)
       this.time.delayedCall(3000, () => {
         animal.speed = animal.type === "butterfly" ? 0.3 : animal.type === "bird" ? 0.5 : 0.2;
       });
@@ -3189,7 +3204,7 @@ export class WorldScene extends Phaser.Scene {
   // ===========================================
 
   private handleBotEffect(event: CustomEvent): void {
-    const { effectType, x = 400, y = 300 } = event.detail || {};
+    const { effectType, x = GAME_WIDTH / 2, y = Math.round(300 * SCALE) } = event.detail || {};
 
     switch (effectType) {
       case "fireworks":
@@ -3228,7 +3243,7 @@ export class WorldScene extends Phaser.Scene {
         this.scareAnimal(animalType);
         break;
       case "call":
-        this.callAnimal(animalType, 400); // Call to center
+        this.callAnimal(animalType, GAME_WIDTH / 2); // Call to center
         break;
       case "feed":
         this.feedAnimal(animalType);
@@ -3238,7 +3253,7 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  // Feed animal - similar to pet but with food particle
+  // Feed animal - similar to pet but with food particle (scaled)
   feedAnimal(animalType: Animal["type"]): void {
     const animal = this.animals.find((a) => a.type === animalType);
     if (animal) {
@@ -3257,13 +3272,13 @@ export class WorldScene extends Phaser.Scene {
         ease: "Bounce.easeOut",
       });
 
-      // Food particles (using star as food)
-      const food = this.add.particles(animal.sprite.x, animal.sprite.y - 10, "star", {
-        speed: { min: 10, max: 30 },
+      // Food particles (using star as food, scaled)
+      const food = this.add.particles(animal.sprite.x, animal.sprite.y - Math.round(10 * SCALE), "star", {
+        speed: { min: Math.round(10 * SCALE), max: Math.round(30 * SCALE) },
         angle: { min: 220, max: 320 },
         lifespan: 800,
         quantity: 3,
-        scale: { start: 0.3, end: 0 },
+        scale: { start: 0.3 * SCALE, end: 0 },
         alpha: { start: 1, end: 0 },
         tint: 0xffd700,
       });
@@ -3276,42 +3291,42 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  // Fireworks effect - multiple bursts in the sky
-  playFireworks(x: number = 400, y: number = 200): void {
+  // Fireworks effect - multiple bursts in the sky (scaled)
+  playFireworks(x: number = GAME_WIDTH / 2, y: number = Math.round(200 * SCALE)): void {
     const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xffffff];
 
-    // Launch multiple firework bursts
+    // Launch multiple firework bursts (scaled)
     for (let i = 0; i < 5; i++) {
       this.time.delayedCall(i * 300, () => {
-        const burstX = x + (Math.random() - 0.5) * 400;
-        const burstY = y + (Math.random() - 0.5) * 100;
+        const burstX = x + (Math.random() - 0.5) * Math.round(400 * SCALE);
+        const burstY = y + (Math.random() - 0.5) * Math.round(100 * SCALE);
         const color = colors[Math.floor(Math.random() * colors.length)];
 
         // Flash effect
         this.cameras.main.flash(50, 255, 255, 255, true);
 
-        // Firework burst
+        // Firework burst (scaled)
         const burst = this.add.particles(burstX, burstY, "star", {
-          speed: { min: 100, max: 200 },
+          speed: { min: Math.round(100 * SCALE), max: Math.round(200 * SCALE) },
           angle: { min: 0, max: 360 },
           lifespan: 1200,
           quantity: 30,
-          scale: { start: 0.8, end: 0 },
+          scale: { start: 0.8 * SCALE, end: 0 },
           alpha: { start: 1, end: 0 },
           tint: color,
-          gravityY: 100,
+          gravityY: Math.round(100 * SCALE),
           blendMode: Phaser.BlendModes.ADD,
         });
 
         burst.explode(30);
 
-        // Sparkle trail
+        // Sparkle trail (scaled)
         const trail = this.add.particles(burstX, burstY, "coin", {
-          speed: { min: 50, max: 150 },
+          speed: { min: Math.round(50 * SCALE), max: Math.round(150 * SCALE) },
           angle: { min: 0, max: 360 },
           lifespan: 800,
           quantity: 15,
-          scale: { start: 0.4, end: 0 },
+          scale: { start: 0.4 * SCALE, end: 0 },
           alpha: { start: 0.8, end: 0 },
           tint: color,
         });
@@ -3326,18 +3341,18 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  // Hearts floating effect
-  playHeartsEffect(x: number = 400, y: number = 300): void {
-    // Create hearts using star particles with pink tint
+  // Hearts floating effect (scaled)
+  playHeartsEffect(x: number = GAME_WIDTH / 2, y: number = Math.round(300 * SCALE)): void {
+    // Create hearts using star particles with pink tint (scaled)
     const hearts = this.add.particles(x, y, "star", {
-      speed: { min: 30, max: 80 },
+      speed: { min: Math.round(30 * SCALE), max: Math.round(80 * SCALE) },
       angle: { min: 220, max: 320 },
       lifespan: 2000,
       quantity: 20,
-      scale: { start: 0.8, end: 0 },
+      scale: { start: 0.8 * SCALE, end: 0 },
       alpha: { start: 1, end: 0 },
       tint: [0xff69b4, 0xff1493, 0xff6b6b, 0xffb6c1],
-      gravityY: -30, // Float upward
+      gravityY: Math.round(-30 * SCALE), // Float upward
     });
 
     hearts.explode(20);
@@ -3350,21 +3365,21 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  // Confetti effect - colorful particles falling from top
+  // Confetti effect - colorful particles falling from top (scaled)
   playConfetti(): void {
-    const confetti = this.add.particles(400, -20, "star", {
-      x: { min: 0, max: 800 },
-      y: -20,
+    const confetti = this.add.particles(GAME_WIDTH / 2, Math.round(-20 * SCALE), "star", {
+      x: { min: 0, max: GAME_WIDTH },
+      y: Math.round(-20 * SCALE),
       lifespan: 4000,
-      speedY: { min: 100, max: 200 },
-      speedX: { min: -50, max: 50 },
-      scale: { start: 0.6, end: 0.2 },
+      speedY: { min: Math.round(100 * SCALE), max: Math.round(200 * SCALE) },
+      speedX: { min: Math.round(-50 * SCALE), max: Math.round(50 * SCALE) },
+      scale: { start: 0.6 * SCALE, end: 0.2 * SCALE },
       alpha: { start: 1, end: 0.5 },
       tint: [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xffa500],
       rotate: { min: 0, max: 360 },
       quantity: 3,
       frequency: 50,
-      gravityY: 50,
+      gravityY: Math.round(50 * SCALE),
     });
 
     confetti.setDepth(100);
@@ -3380,7 +3395,7 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  // Show announcement banner
+  // Show announcement banner (scaled)
   showAnnouncement(text: string, duration: number = 5000): void {
     // Remove existing announcement
     if (this.announcementText) {
@@ -3392,16 +3407,16 @@ export class WorldScene extends Phaser.Scene {
       this.announcementBg = null;
     }
 
-    // Create background
-    this.announcementBg = this.add.rectangle(400, 50, 600, 40, 0x000000, 0.8);
-    this.announcementBg.setStrokeStyle(2, 0x4ade80);
+    // Create background (scaled)
+    this.announcementBg = this.add.rectangle(GAME_WIDTH / 2, Math.round(50 * SCALE), Math.round(600 * SCALE), Math.round(40 * SCALE), 0x000000, 0.8);
+    this.announcementBg.setStrokeStyle(Math.round(2 * SCALE), 0x4ade80);
     this.announcementBg.setDepth(300);
     this.announcementBg.setAlpha(0);
 
-    // Create text
-    this.announcementText = this.add.text(400, 50, text, {
+    // Create text (scaled font)
+    this.announcementText = this.add.text(GAME_WIDTH / 2, Math.round(50 * SCALE), text, {
       fontFamily: "monospace",
-      fontSize: "14px",
+      fontSize: `${Math.round(14 * SCALE)}px`,
       color: "#4ade80",
       align: "center",
     });
@@ -3409,11 +3424,11 @@ export class WorldScene extends Phaser.Scene {
     this.announcementText.setDepth(301);
     this.announcementText.setAlpha(0);
 
-    // Animate in
+    // Animate in (scaled)
     this.tweens.add({
       targets: [this.announcementBg, this.announcementText],
       alpha: 1,
-      y: 60,
+      y: Math.round(60 * SCALE),
       duration: 300,
       ease: "Back.easeOut",
     });
