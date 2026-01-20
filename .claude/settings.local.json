@@ -10,7 +10,8 @@
       "Bash(npm run build:*)",
       "Bash(curl:*)",
       "WebFetch(domain:localhost)",
-      "Skill(bags-ecosystem-builder)"
+      "Skill(bags-ecosystem-builder)",
+      "Bash(git rebase:*)"
     ]
   }
 }
