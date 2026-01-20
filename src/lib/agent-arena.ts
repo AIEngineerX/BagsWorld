@@ -1,10 +1,10 @@
-// Agent Arena - Agent-to-Agent conversations and Trading Competition
-// Agents talk to each other publicly about ecosystem events and compete on predictions
+// Agent Arena - REAL AI agents competing with live calls
+// Agents analyze tokens, make predictions, and compete on performance
 
-import { subscribe, emitEvent, type AgentEvent, type AgentEventType } from "./agent-coordinator";
+import { subscribe, type AgentEvent } from "./agent-coordinator";
 
 // ============================================================================
-// AGENT PERSONALITIES FOR ARENA
+// ARENA AGENTS - Compete in the Trading Gym
 // ============================================================================
 
 export interface ArenaAgent {
@@ -25,7 +25,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
     personality: "analytical",
     tradingStyle: "Technical analysis, on-chain data",
     catchphrase: "I see the matrix of the markets",
-    color: "#22c55e", // green
+    color: "#22c55e",
   },
   {
     id: "ghost",
@@ -34,7 +34,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
     personality: "wise",
     tradingStyle: "Fundamentals, tokenomics deep dives",
     catchphrase: "Code never lies, charts sometimes do",
-    color: "#a855f7", // purple
+    color: "#a855f7",
   },
   {
     id: "finn",
@@ -43,7 +43,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
     personality: "bullish",
     tradingStyle: "Momentum, social sentiment",
     catchphrase: "Ship it and they will come",
-    color: "#3b82f6", // blue
+    color: "#3b82f6",
   },
   {
     id: "ash",
@@ -52,7 +52,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
     personality: "chaotic",
     tradingStyle: "Vibes, meme potential",
     catchphrase: "Gotta catch that alpha!",
-    color: "#eab308", // yellow
+    color: "#eab308",
   },
   {
     id: "toly",
@@ -61,9 +61,50 @@ export const ARENA_AGENTS: ArenaAgent[] = [
     personality: "analytical",
     tradingStyle: "Infrastructure, ecosystem plays",
     catchphrase: "Build for the long term",
-    color: "#14b8a6", // teal
+    color: "#14b8a6",
   },
 ];
+
+// ============================================================================
+// CALLS SYSTEM - Real predictions that get tracked
+// ============================================================================
+
+export interface AgentCall {
+  id: string;
+  agentId: string;
+  agentName: string;
+  tokenMint: string;
+  tokenSymbol: string;
+  tokenName?: string;
+  direction: "long" | "short";
+  entryPrice: number;
+  targetPrice: number;
+  stopLoss: number;
+  confidence: number;
+  reasoning: string;
+  timestamp: number;
+  expiresAt: number; // 24h from creation
+  status: "active" | "won" | "lost" | "expired";
+  exitPrice?: number;
+  pnlPercent?: number;
+  resolvedAt?: number;
+}
+
+export interface AgentScore {
+  agentId: string;
+  agentName: string;
+  wins: number;
+  losses: number;
+  totalPnl: number;
+  winRate: number;
+  streak: number;
+  bestTrade: number;
+  worstTrade: number;
+  totalCalls: number;
+  activeCalls: number;
+  rank: number;
+  lastCallTime: number;
+}
 
 // ============================================================================
 // CONVERSATION SYSTEM
@@ -78,524 +119,485 @@ export interface ConversationMessage {
   replyTo?: string;
   sentiment?: "bullish" | "bearish" | "neutral";
   confidence?: number;
+  isAI: boolean; // true = real AI, false = template
 }
 
 export interface AgentConversation {
   id: string;
   topic: string;
+  tokenSymbol?: string;
+  tokenMint?: string;
   triggerEvent?: AgentEvent;
   messages: ConversationMessage[];
   startTime: number;
   isActive: boolean;
+  isLoading: boolean;
 }
 
-// State
+// ============================================================================
+// STATE MANAGEMENT
+// ============================================================================
+
 let conversations: AgentConversation[] = [];
 let currentConversation: AgentConversation | null = null;
+let calls: AgentCall[] = [];
+let scores: Map<string, AgentScore> = new Map();
+
 const MAX_CONVERSATIONS = 20;
-const MAX_MESSAGES_PER_CONVO = 10;
+const MAX_CALLS = 100;
+const CALL_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-// Conversation listeners
+// Initialize scores for all agents
+ARENA_AGENTS.forEach((agent) => {
+  scores.set(agent.id, {
+    agentId: agent.id,
+    agentName: agent.name,
+    wins: 0,
+    losses: 0,
+    totalPnl: 0,
+    winRate: 0,
+    streak: 0,
+    bestTrade: 0,
+    worstTrade: 0,
+    totalCalls: 0,
+    activeCalls: 0,
+    rank: 0,
+    lastCallTime: 0,
+  });
+});
+
+// Listeners
 type ConversationListener = (conversation: AgentConversation) => void;
+type CallListener = (call: AgentCall) => void;
 let conversationListeners: ConversationListener[] = [];
+let callListeners: CallListener[] = [];
 
-// ============================================================================
-// RESPONSE GENERATORS
-// ============================================================================
+function notifyConversationListeners(conversation: AgentConversation): void {
+  conversationListeners.forEach((listener) => {
+    try {
+      listener(conversation);
+    } catch (e) {
+      console.error("[Arena] Conversation listener error:", e);
+    }
+  });
+}
 
-function generateAgentResponse(
-  agent: ArenaAgent,
-  event: AgentEvent,
-  previousMessages: ConversationMessage[]
-): string {
-  const eventData = event.data as Record<string, unknown>;
-
-  // Token launch responses
-  if (event.type === "token_launch") {
-    const symbol = eventData.symbol as string || "???";
-    const name = eventData.name as string || "Unknown";
-
-    const responses: Record<ArenaAgent["personality"], string[]> = {
-      bullish: [
-        `$${symbol} just dropped and I'm BULLISH. Name's got meme energy.`,
-        `Fresh launch alert! $${symbol} - adding to my watchlist immediately.`,
-        `${name}? The ticker $${symbol} alone is worth an ape. LFG!`,
-      ],
-      bearish: [
-        `Another $${symbol}... I'll wait for the chart to prove itself.`,
-        `${name} launching now? Timing seems off tbh.`,
-        `$${symbol} - watching but not touching until we see real volume.`,
-      ],
-      analytical: [
-        `$${symbol} launch detected. Analyzing tokenomics and creator history...`,
-        `New entry: ${name}. Need to see holder distribution before making a call.`,
-        `$${symbol} - checking on-chain metrics. Will report back with data.`,
-      ],
-      chaotic: [
-        `$${symbol}?! Name sounds memeable, I'm in! 🚀`,
-        `YOOO ${name} just dropped! Aping first, asking questions never!`,
-        `$${symbol} FRESH LAUNCH! My degen senses are tingling!`,
-      ],
-      wise: [
-        `$${symbol} enters the arena. Let's see if the team can execute.`,
-        `New token ${name}. Remember - 95% of launches fail. Be selective.`,
-        `$${symbol} - interesting timing with current market conditions.`,
-      ],
-    };
-
-    const options = responses[agent.personality];
-    return options[Math.floor(Math.random() * options.length)];
-  }
-
-  // Token pump responses
-  if (event.type === "token_pump") {
-    const symbol = eventData.symbol as string || "???";
-    const change = eventData.change as number || 0;
-
-    const responses: Record<ArenaAgent["personality"], string[]> = {
-      bullish: [
-        `Called it! $${symbol} +${change.toFixed(0)}% and we're just getting started!`,
-        `$${symbol} PUMPING! This is why we hold, frens.`,
-        `+${change.toFixed(0)}% on $${symbol}. Bears in shambles rn.`,
-      ],
-      bearish: [
-        `$${symbol} up ${change.toFixed(0)}%... classic bull trap setup.`,
-        `Nice pump on $${symbol}, but I've seen this movie before. Taking profits here.`,
-        `${change.toFixed(0)}% move. RSI is screaming overbought.`,
-      ],
-      analytical: [
-        `$${symbol} +${change.toFixed(0)}%. Volume confirms the move. Next resistance at...`,
-        `Breakout confirmed on $${symbol}. ${change.toFixed(0)}% with strong OBV.`,
-        `Data shows ${change.toFixed(0)}% pump driven by whale accumulation.`,
-      ],
-      chaotic: [
-        `$${symbol} GOING VERTICAL!! +${change.toFixed(0)}% LETS GOOOO 🚀🚀`,
-        `HOLY PUMP! $${symbol} said "hold my beer" +${change.toFixed(0)}%!!`,
-        `I'M LITERALLY SHAKING $${symbol} UP ${change.toFixed(0)}%!!!`,
-      ],
-      wise: [
-        `$${symbol} showing strength, +${change.toFixed(0)}%. But remember to take profits.`,
-        `${change.toFixed(0)}% is nice, but the real question is - what's the utility?`,
-        `Good move on $${symbol}. Let's see if it holds these levels.`,
-      ],
-    };
-
-    const options = responses[agent.personality];
-    return options[Math.floor(Math.random() * options.length)];
-  }
-
-  // Reply to previous message
-  if (previousMessages.length > 0) {
-    const lastMsg = previousMessages[previousMessages.length - 1];
-    const lastAgent = ARENA_AGENTS.find(a => a.id === lastMsg.agentId);
-
-    const replyResponses: Record<ArenaAgent["personality"], string[]> = {
-      bullish: [
-        `Interesting take, @${lastAgent?.name}. But I think you're underestimating the upside.`,
-        `@${lastAgent?.name} has a point, but momentum is momentum. Ride it.`,
-        `Disagree with @${lastAgent?.name} here. The trend is your friend.`,
-      ],
-      bearish: [
-        `@${lastAgent?.name} might be right short term, but zoom out...`,
-        `Counter-point to @${lastAgent?.name}: what about the macro headwinds?`,
-        `Respectfully disagree with @${lastAgent?.name}. Risk/reward isn't there.`,
-      ],
-      analytical: [
-        `@${lastAgent?.name}'s thesis is interesting. Let me add some data...`,
-        `Building on what @${lastAgent?.name} said, the on-chain data shows...`,
-        `@${lastAgent?.name} makes valid points. My analysis suggests similar.`,
-      ],
-      chaotic: [
-        `@${lastAgent?.name} spitting facts or cap?? Either way I'M IN!`,
-        `What @${lastAgent?.name} said but make it degen 🐸`,
-        `@${lastAgent?.name} gets it! This is the way!`,
-      ],
-      wise: [
-        `@${lastAgent?.name} raises a good point worth considering.`,
-        `Both perspectives have merit. @${lastAgent?.name}, what's your conviction level?`,
-        `@${lastAgent?.name}, I'd add that patience is key in these situations.`,
-      ],
-    };
-
-    const options = replyResponses[agent.personality];
-    return options[Math.floor(Math.random() * options.length)];
-  }
-
-  // Default response
-  return `${agent.catchphrase}`;
+function notifyCallListeners(call: AgentCall): void {
+  callListeners.forEach((listener) => {
+    try {
+      listener(call);
+    } catch (e) {
+      console.error("[Arena] Call listener error:", e);
+    }
+  });
 }
 
 // ============================================================================
-// CONVERSATION MANAGEMENT
+// API INTEGRATION - Calls the real AI arena endpoint
 // ============================================================================
 
-function generateConversationId(): string {
-  return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+async function fetchArenaAPI(action: string, data: Record<string, unknown> = {}): Promise<any> {
+  try {
+    const response = await fetch("/api/arena", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...data }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Arena API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("[Arena] API error:", error);
+    return null;
+  }
 }
 
-function generateMessageId(): string {
-  return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+// ============================================================================
+// CONVERSATION FUNCTIONS
+// ============================================================================
+
+function generateId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 /**
- * Start a new conversation triggered by an event
+ * Start a new AI-powered conversation about a token or event
  */
-export function startConversation(event: AgentEvent): AgentConversation {
-  // Create topic based on event
-  let topic = "General Discussion";
-  const eventData = event.data as Record<string, unknown>;
+export async function startConversation(
+  event: AgentEvent | null,
+  tokenSymbol?: string,
+  tokenMint?: string
+): Promise<AgentConversation> {
+  const eventData = (event?.data || {}) as Record<string, unknown>;
+  const symbol = tokenSymbol || (eventData.symbol as string) || "???";
+  const mint = tokenMint || (eventData.mint as string);
+  const name = (eventData.name as string) || "";
 
-  if (event.type === "token_launch") {
-    topic = `New Launch: $${eventData.symbol || "???"}`;
-  } else if (event.type === "token_pump") {
-    topic = `$${eventData.symbol || "???"} Pump Discussion`;
-  } else if (event.type === "token_dump") {
-    topic = `$${eventData.symbol || "???"} Price Action`;
-  } else if (event.type === "distribution") {
-    topic = "Creator Rewards Distribution";
+  // Determine topic
+  let topic = "Market Discussion";
+  let eventType: "token_launch" | "token_pump" | "analysis" = "analysis";
+
+  if (event?.type === "token_launch") {
+    topic = `🚀 NEW LAUNCH: $${symbol}`;
+    eventType = "token_launch";
+  } else if (event?.type === "token_pump") {
+    topic = `📈 $${symbol} PUMPING`;
+    eventType = "token_pump";
+  } else if (symbol !== "???") {
+    topic = `💬 Analyzing $${symbol}`;
   }
 
   const conversation: AgentConversation = {
-    id: generateConversationId(),
+    id: generateId("conv"),
     topic,
-    triggerEvent: event,
+    tokenSymbol: symbol,
+    tokenMint: mint,
+    triggerEvent: event || undefined,
     messages: [],
     startTime: Date.now(),
     isActive: true,
+    isLoading: true,
   };
 
-  // Select 2-4 random agents to participate
-  const participantCount = 2 + Math.floor(Math.random() * 3);
-  const shuffled = [...ARENA_AGENTS].sort(() => Math.random() - 0.5);
-  const participants = shuffled.slice(0, participantCount);
-
-  // Generate initial messages
-  participants.forEach((agent, index) => {
-    setTimeout(() => {
-      if (!conversation.isActive) return;
-
-      const message: ConversationMessage = {
-        id: generateMessageId(),
-        agentId: agent.id,
-        agentName: agent.name,
-        message: generateAgentResponse(agent, event, conversation.messages),
-        timestamp: Date.now(),
-        sentiment: agent.personality === "bullish" ? "bullish" :
-                   agent.personality === "bearish" ? "bearish" : "neutral",
-      };
-
-      conversation.messages.push(message);
-      notifyListeners(conversation);
-
-      // Maybe add a reply
-      if (index < participants.length - 1 && Math.random() > 0.5) {
-        const nextAgent = participants[index + 1];
-        setTimeout(() => {
-          if (!conversation.isActive || conversation.messages.length >= MAX_MESSAGES_PER_CONVO) return;
-
-          const reply: ConversationMessage = {
-            id: generateMessageId(),
-            agentId: nextAgent.id,
-            agentName: nextAgent.name,
-            message: generateAgentResponse(nextAgent, event, conversation.messages),
-            timestamp: Date.now(),
-            replyTo: message.id,
-          };
-
-          conversation.messages.push(reply);
-          notifyListeners(conversation);
-        }, 2000 + Math.random() * 3000);
-      }
-    }, index * (1500 + Math.random() * 2000));
-  });
-
-  // End conversation after some time
-  setTimeout(() => {
-    conversation.isActive = false;
-  }, 30000);
-
-  // Store conversation
+  // Store immediately so UI updates
   conversations.unshift(conversation);
   if (conversations.length > MAX_CONVERSATIONS) {
     conversations = conversations.slice(0, MAX_CONVERSATIONS);
   }
-
   currentConversation = conversation;
-  notifyListeners(conversation);
+  notifyConversationListeners(conversation);
 
+  // Fetch real AI responses
+  try {
+    const result = await fetchArenaAPI("event", {
+      eventType,
+      tokenSymbol: symbol,
+      tokenName: name,
+      tokenMint: mint,
+    });
+
+    if (result?.success && result.messages) {
+      // Add AI messages to conversation
+      result.messages.forEach((msg: any) => {
+        const message: ConversationMessage = {
+          id: generateId("msg"),
+          agentId: msg.agentId,
+          agentName: msg.agentName,
+          message: msg.message,
+          timestamp: msg.timestamp || Date.now(),
+          sentiment: msg.sentiment,
+          confidence: msg.confidence,
+          isAI: true,
+        };
+        conversation.messages.push(message);
+      });
+    } else {
+      // Fallback to template if AI fails
+      const selectedAgents = [...ARENA_AGENTS].sort(() => Math.random() - 0.5).slice(0, 3);
+      selectedAgents.forEach((agent) => {
+        const message: ConversationMessage = {
+          id: generateId("msg"),
+          agentId: agent.id,
+          agentName: agent.name,
+          message: generateFallbackResponse(agent, symbol, eventType),
+          timestamp: Date.now(),
+          sentiment: agent.personality === "bullish" ? "bullish" : agent.personality === "bearish" ? "bearish" : "neutral",
+          isAI: false,
+        };
+        conversation.messages.push(message);
+      });
+    }
+  } catch (error) {
+    console.error("[Arena] Conversation generation error:", error);
+  }
+
+  conversation.isLoading = false;
+
+  // Auto-close after 60 seconds
+  setTimeout(() => {
+    conversation.isActive = false;
+    notifyConversationListeners(conversation);
+  }, 60000);
+
+  notifyConversationListeners(conversation);
   return conversation;
 }
 
 /**
- * Add a message to an existing conversation
+ * Have agents discuss a topic with real AI
  */
-export function addMessageToConversation(
-  conversationId: string,
-  agentId: string,
-  message: string
-): ConversationMessage | null {
-  const conversation = conversations.find(c => c.id === conversationId);
-  if (!conversation || !conversation.isActive) return null;
-
-  const agent = ARENA_AGENTS.find(a => a.id === agentId);
-  if (!agent) return null;
-
-  const msg: ConversationMessage = {
-    id: generateMessageId(),
-    agentId: agent.id,
-    agentName: agent.name,
-    message,
-    timestamp: Date.now(),
+export async function discussTopic(
+  tokenSymbol?: string,
+  tokenMint?: string,
+  customPrompt?: string
+): Promise<AgentConversation> {
+  const conversation: AgentConversation = {
+    id: generateId("conv"),
+    topic: tokenSymbol ? `💬 $${tokenSymbol} Discussion` : "💬 Market Talk",
+    tokenSymbol,
+    tokenMint,
+    messages: [],
+    startTime: Date.now(),
+    isActive: true,
+    isLoading: true,
   };
 
-  conversation.messages.push(msg);
+  conversations.unshift(conversation);
+  if (conversations.length > MAX_CONVERSATIONS) {
+    conversations = conversations.slice(0, MAX_CONVERSATIONS);
+  }
+  currentConversation = conversation;
+  notifyConversationListeners(conversation);
 
-  if (conversation.messages.length >= MAX_MESSAGES_PER_CONVO) {
-    conversation.isActive = false;
+  try {
+    const result = await fetchArenaAPI("discuss", {
+      tokenSymbol,
+      tokenMint,
+      userPrompt: customPrompt,
+    });
+
+    if (result?.success && result.messages) {
+      result.messages.forEach((msg: any) => {
+        const message: ConversationMessage = {
+          id: generateId("msg"),
+          agentId: msg.agentId,
+          agentName: msg.agentName,
+          message: msg.message,
+          timestamp: msg.timestamp || Date.now(),
+          sentiment: msg.sentiment,
+          confidence: msg.confidence,
+          isAI: true,
+        };
+        conversation.messages.push(message);
+      });
+    }
+  } catch (error) {
+    console.error("[Arena] Discussion error:", error);
   }
 
-  notifyListeners(conversation);
-  return msg;
+  conversation.isLoading = false;
+  notifyConversationListeners(conversation);
+  return conversation;
+}
+
+// Fallback response generator
+function generateFallbackResponse(agent: ArenaAgent, symbol: string, eventType: string): string {
+  const responses: Record<string, Record<string, string[]>> = {
+    token_launch: {
+      bullish: [`$${symbol} just dropped and I'm feeling bullish. Ticker has energy.`, `Fresh launch $${symbol}! Adding to watchlist.`],
+      bearish: [`$${symbol}... waiting for the chart to prove itself.`, `New launch timing seems off. Watching $${symbol}.`],
+      analytical: [`$${symbol} launch detected. Analyzing metrics...`, `Need to see holder distribution on $${symbol}.`],
+      chaotic: [`$${symbol}?! Name sounds memeable, might ape!`, `YOOO $${symbol} just dropped! Vibes check...`],
+      wise: [`$${symbol} enters the arena. Let's see execution.`, `New token $${symbol}. 95% fail. Be selective.`],
+    },
+    token_pump: {
+      bullish: [`$${symbol} pumping! This is why we hold.`, `Called it! $${symbol} moving.`],
+      bearish: [`$${symbol} pump... classic bull trap setup?`, `Nice pump but I've seen this before.`],
+      analytical: [`$${symbol} breakout. Volume confirms the move.`, `Analyzing $${symbol} pump metrics...`],
+      chaotic: [`$${symbol} GOING VERTICAL!! 🚀`, `LETS GOOOO $${symbol}!!!`],
+      wise: [`$${symbol} showing strength. But take profits.`, `Good move on $${symbol}. Can it hold?`],
+    },
+    analysis: {
+      bullish: [`$${symbol} looking strong.`, `Bullish on $${symbol} setup.`],
+      bearish: [`$${symbol} needs more proof.`, `Cautious on $${symbol}.`],
+      analytical: [`Analyzing $${symbol} data...`, `$${symbol} metrics loading...`],
+      chaotic: [`$${symbol} vibes check!`, `What's the $${symbol} play?!`],
+      wise: [`$${symbol} - patience is key.`, `Studying $${symbol} fundamentals.`],
+    },
+  };
+
+  const eventResponses = responses[eventType] || responses.analysis;
+  const personalityResponses = eventResponses[agent.personality] || eventResponses.analytical;
+  return personalityResponses[Math.floor(Math.random() * personalityResponses.length)];
 }
 
 // ============================================================================
-// TRADING COMPETITION
+// CALLS SYSTEM - Agents make real predictions
 // ============================================================================
-
-export interface TradePrediction {
-  id: string;
-  agentId: string;
-  tokenSymbol: string;
-  tokenMint?: string;
-  direction: "long" | "short";
-  entryPrice: number;
-  targetPrice: number;
-  stopLoss: number;
-  confidence: number; // 1-100
-  reasoning: string;
-  timestamp: number;
-  status: "active" | "won" | "lost" | "expired";
-  exitPrice?: number;
-  pnlPercent?: number;
-}
-
-export interface AgentScore {
-  agentId: string;
-  agentName: string;
-  wins: number;
-  losses: number;
-  totalPnl: number;
-  winRate: number;
-  streak: number;
-  bestTrade: number;
-  rank: number;
-}
-
-// Competition state
-let predictions: TradePrediction[] = [];
-let agentScores: Map<string, AgentScore> = new Map();
-const MAX_PREDICTIONS = 100;
-
-// Initialize scores
-ARENA_AGENTS.forEach(agent => {
-  agentScores.set(agent.id, {
-    agentId: agent.id,
-    agentName: agent.name,
-    wins: Math.floor(Math.random() * 10) + 5, // Start with some history
-    losses: Math.floor(Math.random() * 8) + 3,
-    totalPnl: (Math.random() * 200 - 50), // -50 to +150
-    winRate: 0,
-    streak: Math.floor(Math.random() * 5) - 2,
-    bestTrade: Math.random() * 100 + 20,
-    rank: 0,
-  });
-});
-
-// Calculate win rates and ranks
-function updateRankings(): void {
-  const scores = Array.from(agentScores.values());
-
-  scores.forEach(score => {
-    const total = score.wins + score.losses;
-    score.winRate = total > 0 ? (score.wins / total) * 100 : 0;
-  });
-
-  // Sort by total PnL
-  scores.sort((a, b) => b.totalPnl - a.totalPnl);
-  scores.forEach((score, index) => {
-    score.rank = index + 1;
-  });
-}
-
-updateRankings();
 
 /**
- * Agent makes a prediction
+ * Have an agent make a call (prediction) on a token
  */
-export function makePrediction(
+export async function makeCall(
   agentId: string,
   tokenSymbol: string,
-  direction: "long" | "short",
-  currentPrice: number
-): TradePrediction | null {
-  const agent = ARENA_AGENTS.find(a => a.id === agentId);
+  tokenMint?: string,
+  tokenName?: string
+): Promise<AgentCall | null> {
+  const agent = ARENA_AGENTS.find((a) => a.id === agentId);
   if (!agent) return null;
 
-  // Generate target and stop based on personality
-  const volatility = agent.personality === "chaotic" ? 0.3 :
-                     agent.personality === "analytical" ? 0.15 : 0.2;
+  try {
+    const result = await fetchArenaAPI("predict", {
+      agentId,
+      tokenSymbol,
+      tokenMint,
+      tokenName,
+    });
 
-  const targetMultiplier = direction === "long" ? 1 + volatility : 1 - volatility;
-  const stopMultiplier = direction === "long" ? 1 - (volatility * 0.5) : 1 + (volatility * 0.5);
+    if (result?.success && result.prediction) {
+      const pred = result.prediction;
+      const call: AgentCall = {
+        id: pred.id || generateId("call"),
+        agentId,
+        agentName: agent.name,
+        tokenMint: pred.tokenMint || tokenMint || "",
+        tokenSymbol: pred.tokenSymbol || tokenSymbol,
+        tokenName: tokenName,
+        direction: pred.direction,
+        entryPrice: pred.entryPrice,
+        targetPrice: pred.targetPrice,
+        stopLoss: pred.stopLoss,
+        confidence: pred.confidence || result.analysis?.confidence || 50,
+        reasoning: result.analysis?.message || pred.reasoning || "AI analysis",
+        timestamp: Date.now(),
+        expiresAt: Date.now() + CALL_DURATION_MS,
+        status: "active",
+      };
 
-  const confidence = agent.personality === "bullish" ? 70 + Math.random() * 25 :
-                     agent.personality === "bearish" ? 60 + Math.random() * 20 :
-                     agent.personality === "analytical" ? 65 + Math.random() * 30 :
-                     50 + Math.random() * 40;
+      // Store call
+      calls.unshift(call);
+      if (calls.length > MAX_CALLS) {
+        calls = calls.slice(0, MAX_CALLS);
+      }
 
-  const reasonings: Record<ArenaAgent["personality"], string[]> = {
-    bullish: ["Momentum is strong", "Social sentiment bullish", "Breakout imminent"],
-    bearish: ["Overbought conditions", "Resistance ahead", "Taking contrarian position"],
-    analytical: ["On-chain metrics support this", "Volume profile favorable", "Key levels identified"],
-    chaotic: ["Vibes are immaculate", "Chart looks memeable", "Trust the process"],
-    wise: ["Risk/reward favorable", "Patience will pay off", "Fundamentals align"],
-  };
+      // Update agent stats
+      const score = scores.get(agentId);
+      if (score) {
+        score.totalCalls++;
+        score.activeCalls++;
+        score.lastCallTime = Date.now();
+      }
 
-  const prediction: TradePrediction = {
-    id: `pred_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    agentId,
-    tokenSymbol,
-    direction,
-    entryPrice: currentPrice,
-    targetPrice: currentPrice * targetMultiplier,
-    stopLoss: currentPrice * stopMultiplier,
-    confidence: Math.round(confidence),
-    reasoning: reasonings[agent.personality][Math.floor(Math.random() * 3)],
-    timestamp: Date.now(),
-    status: "active",
-  };
-
-  predictions.unshift(prediction);
-  if (predictions.length > MAX_PREDICTIONS) {
-    predictions = predictions.slice(0, MAX_PREDICTIONS);
-  }
-
-  return prediction;
-}
-
-/**
- * Resolve a prediction (called when price target or stop is hit)
- */
-export function resolvePrediction(
-  predictionId: string,
-  exitPrice: number,
-  won: boolean
-): void {
-  const prediction = predictions.find(p => p.id === predictionId);
-  if (!prediction || prediction.status !== "active") return;
-
-  prediction.status = won ? "won" : "lost";
-  prediction.exitPrice = exitPrice;
-
-  const pnl = prediction.direction === "long"
-    ? ((exitPrice - prediction.entryPrice) / prediction.entryPrice) * 100
-    : ((prediction.entryPrice - exitPrice) / prediction.entryPrice) * 100;
-
-  prediction.pnlPercent = pnl;
-
-  // Update agent score
-  const score = agentScores.get(prediction.agentId);
-  if (score) {
-    if (won) {
-      score.wins++;
-      score.streak = score.streak >= 0 ? score.streak + 1 : 1;
-      if (pnl > score.bestTrade) score.bestTrade = pnl;
-    } else {
-      score.losses++;
-      score.streak = score.streak <= 0 ? score.streak - 1 : -1;
+      notifyCallListeners(call);
+      return call;
     }
-    score.totalPnl += pnl;
+  } catch (error) {
+    console.error("[Arena] Make call error:", error);
+  }
+
+  return null;
+}
+
+/**
+ * Resolve a call (mark as won/lost based on price)
+ */
+export function resolveCall(
+  callId: string,
+  currentPrice: number,
+  forceStatus?: "won" | "lost" | "expired"
+): void {
+  const call = calls.find((c) => c.id === callId);
+  if (!call || call.status !== "active") return;
+
+  let won = false;
+  let pnl = 0;
+
+  if (forceStatus) {
+    call.status = forceStatus;
+    won = forceStatus === "won";
+  } else {
+    // Check if target or stop hit
+    if (call.direction === "long") {
+      if (currentPrice >= call.targetPrice) {
+        won = true;
+        call.status = "won";
+      } else if (currentPrice <= call.stopLoss) {
+        won = false;
+        call.status = "lost";
+      }
+    } else {
+      if (currentPrice <= call.targetPrice) {
+        won = true;
+        call.status = "won";
+      } else if (currentPrice >= call.stopLoss) {
+        won = false;
+        call.status = "lost";
+      }
+    }
+  }
+
+  if (call.status !== "active") {
+    call.exitPrice = currentPrice;
+    call.resolvedAt = Date.now();
+
+    // Calculate PnL
+    if (call.direction === "long") {
+      pnl = ((currentPrice - call.entryPrice) / call.entryPrice) * 100;
+    } else {
+      pnl = ((call.entryPrice - currentPrice) / call.entryPrice) * 100;
+    }
+    call.pnlPercent = pnl;
+
+    // Update agent score
+    const score = scores.get(call.agentId);
+    if (score) {
+      score.activeCalls = Math.max(0, score.activeCalls - 1);
+
+      if (won) {
+        score.wins++;
+        score.streak = score.streak >= 0 ? score.streak + 1 : 1;
+        if (pnl > score.bestTrade) score.bestTrade = pnl;
+      } else {
+        score.losses++;
+        score.streak = score.streak <= 0 ? score.streak - 1 : -1;
+        if (pnl < score.worstTrade) score.worstTrade = pnl;
+      }
+
+      score.totalPnl += pnl;
+      const total = score.wins + score.losses;
+      score.winRate = total > 0 ? (score.wins / total) * 100 : 0;
+    }
+
     updateRankings();
+    notifyCallListeners(call);
   }
 }
 
 /**
- * Get leaderboard
+ * Check and expire old calls
  */
-export function getLeaderboard(): AgentScore[] {
-  return Array.from(agentScores.values()).sort((a, b) => a.rank - b.rank);
-}
-
-/**
- * Get active predictions
- */
-export function getActivePredictions(): TradePrediction[] {
-  return predictions.filter(p => p.status === "active");
-}
-
-/**
- * Get recent predictions for an agent
- */
-export function getAgentPredictions(agentId: string, limit: number = 10): TradePrediction[] {
-  return predictions.filter(p => p.agentId === agentId).slice(0, limit);
-}
-
-// ============================================================================
-// LISTENERS
-// ============================================================================
-
-function notifyListeners(conversation: AgentConversation): void {
-  conversationListeners.forEach(listener => {
-    try {
-      listener(conversation);
-    } catch (e) {
-      console.error("[Agent Arena] Listener error:", e);
+export function checkExpiredCalls(): void {
+  const now = Date.now();
+  calls.forEach((call) => {
+    if (call.status === "active" && now >= call.expiresAt) {
+      resolveCall(call.id, call.entryPrice, "expired");
     }
   });
 }
 
-export function onConversation(listener: ConversationListener): () => void {
-  conversationListeners.push(listener);
-  return () => {
-    conversationListeners = conversationListeners.filter(l => l !== listener);
-  };
+// Run expiry check every minute
+if (typeof window !== "undefined") {
+  setInterval(checkExpiredCalls, 60000);
 }
 
 // ============================================================================
-// COORDINATOR INTEGRATION
+// RANKINGS
 // ============================================================================
 
-let coordinatorUnsubscribe: (() => void) | null = null;
+function updateRankings(): void {
+  const allScores = Array.from(scores.values());
+  allScores.sort((a, b) => {
+    // Primary: Win rate (if enough trades)
+    const aHasEnough = a.totalCalls >= 5;
+    const bHasEnough = b.totalCalls >= 5;
 
-/**
- * Connect arena to coordinator - auto-start conversations on events
- */
-export function connectArenaToCoordinator(): () => void {
-  if (coordinatorUnsubscribe) return coordinatorUnsubscribe;
+    if (aHasEnough && !bHasEnough) return -1;
+    if (!aHasEnough && bHasEnough) return 1;
 
-  coordinatorUnsubscribe = subscribe(
-    ["token_launch", "token_pump", "distribution"],
-    (event: AgentEvent) => {
-      // 70% chance to start a conversation on high priority events
-      if (event.priority === "high" && Math.random() > 0.3) {
-        startConversation(event);
-      }
-    },
-    ["high", "urgent"]
-  );
+    // Secondary: Total PnL
+    if (b.totalPnl !== a.totalPnl) return b.totalPnl - a.totalPnl;
 
-  console.log("[Agent Arena] Connected to coordinator");
-  return coordinatorUnsubscribe;
-}
+    // Tertiary: Win rate
+    return b.winRate - a.winRate;
+  });
 
-/**
- * Disconnect from coordinator
- */
-export function disconnectArena(): void {
-  if (coordinatorUnsubscribe) {
-    coordinatorUnsubscribe();
-    coordinatorUnsubscribe = null;
-  }
+  allScores.forEach((score, index) => {
+    score.rank = index + 1;
+  });
 }
 
 // ============================================================================
@@ -610,6 +612,98 @@ export function getRecentConversations(limit: number = 10): AgentConversation[] 
   return conversations.slice(0, limit);
 }
 
-export function getAgentById(id: string): ArenaAgent | undefined {
-  return ARENA_AGENTS.find(a => a.id === id);
+export function getActiveCalls(): AgentCall[] {
+  return calls.filter((c) => c.status === "active");
 }
+
+export function getAllCalls(limit: number = 50): AgentCall[] {
+  return calls.slice(0, limit);
+}
+
+export function getAgentCalls(agentId: string, limit: number = 10): AgentCall[] {
+  return calls.filter((c) => c.agentId === agentId).slice(0, limit);
+}
+
+export function getLeaderboard(): AgentScore[] {
+  updateRankings();
+  return Array.from(scores.values()).sort((a, b) => a.rank - b.rank);
+}
+
+export function getAgentScore(agentId: string): AgentScore | undefined {
+  return scores.get(agentId);
+}
+
+export function getAgentById(id: string): ArenaAgent | undefined {
+  return ARENA_AGENTS.find((a) => a.id === id);
+}
+
+// ============================================================================
+// LISTENERS
+// ============================================================================
+
+export function onConversation(listener: ConversationListener): () => void {
+  conversationListeners.push(listener);
+  return () => {
+    conversationListeners = conversationListeners.filter((l) => l !== listener);
+  };
+}
+
+export function onCall(listener: CallListener): () => void {
+  callListeners.push(listener);
+  return () => {
+    callListeners = callListeners.filter((l) => l !== listener);
+  };
+}
+
+// ============================================================================
+// COORDINATOR INTEGRATION
+// ============================================================================
+
+let coordinatorUnsubscribe: (() => void) | null = null;
+
+export function connectArenaToCoordinator(): () => void {
+  if (coordinatorUnsubscribe) return coordinatorUnsubscribe;
+
+  coordinatorUnsubscribe = subscribe(
+    ["token_launch", "token_pump"],
+    async (event: AgentEvent) => {
+      // Start conversation on high priority events
+      if (event.priority === "high" || event.priority === "urgent") {
+        await startConversation(event);
+
+        // 50% chance for random agent to make a call on new launches
+        if (event.type === "token_launch" && Math.random() > 0.5) {
+          const randomAgent = ARENA_AGENTS[Math.floor(Math.random() * ARENA_AGENTS.length)];
+          const data = event.data as Record<string, unknown>;
+          await makeCall(
+            randomAgent.id,
+            (data.symbol as string) || "???",
+            data.mint as string,
+            data.name as string
+          );
+        }
+      }
+    },
+    ["high", "urgent"]
+  );
+
+  console.log("[Arena] Connected to coordinator - AI mode");
+  return coordinatorUnsubscribe;
+}
+
+export function disconnectArena(): void {
+  if (coordinatorUnsubscribe) {
+    coordinatorUnsubscribe();
+    coordinatorUnsubscribe = null;
+  }
+}
+
+// Legacy exports for compatibility
+export type { AgentCall as TradePrediction };
+export const getActivePredictions = getActiveCalls;
+export const makePrediction = (
+  agentId: string,
+  tokenSymbol: string,
+  direction: "long" | "short",
+  currentPrice: number
+) => makeCall(agentId, tokenSymbol);

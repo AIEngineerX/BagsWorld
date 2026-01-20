@@ -115,7 +115,7 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
               <div className="font-pixel text-gray-500 text-[8px]">Citizens</div>
             </div>
             <div className="bg-bags-darker rounded p-2 text-center">
-              <div className="text-xl font-mono">✧</div>
+              <div className="text-xl">😊</div>
               <div className="font-pixel text-bags-green text-sm">{happyCitizens}</div>
               <div className="font-pixel text-gray-500 text-[8px]">Happy</div>
             </div>

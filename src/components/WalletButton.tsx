@@ -90,7 +90,7 @@ export function WalletButton() {
             onClick={handleCopyAddress}
             className="w-full px-3 py-2 font-pixel text-[10px] text-left text-gray-300 hover:bg-bags-green/10 hover:text-white transition-colors flex items-center gap-2"
           >
-            <span className="opacity-60">⊕</span> Copy Address
+            <span className="opacity-60">📋</span> Copy Address
           </button>
           <a
             href={`https://solscan.io/account/${publicKey?.toBase58()}`}
