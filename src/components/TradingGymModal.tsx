@@ -20,66 +20,186 @@ interface TradingGymModalProps {
   onClose: () => void;
 }
 
-// Pixel art character configs - cleaner style
-const AGENT_STYLES: Record<string, {
-  bgColor: string;
-  accentColor: string;
-  icon: string;
+// Pixel art character head configs matching in-game sprites
+const AGENT_HEADS: Record<string, {
+  skinColor: string;
+  hairColor: string;
+  glowColor: string;
+  accessory?: "sunglasses" | "cap" | "beanie" | "glasses" | "beard";
+  accessoryColor?: string;
 }> = {
-  neo: { bgColor: "#0f2419", accentColor: "#22c55e", icon: "N" },
-  ghost: { bgColor: "#1e1b2e", accentColor: "#a855f7", icon: "G" },
-  finn: { bgColor: "#14231a", accentColor: "#10b981", icon: "F" },
-  ash: { bgColor: "#2a1414", accentColor: "#ef4444", icon: "A" },
-  toly: { bgColor: "#1e1424", accentColor: "#9945ff", icon: "T" },
+  neo: {
+    skinColor: "#f1c27d",
+    hairColor: "#1a1a1a",
+    glowColor: "#00ff41",
+    accessory: "sunglasses",
+    accessoryColor: "#0a0a0a",
+  },
+  ghost: {
+    skinColor: "#e0ac69",
+    hairColor: "#1f2937",
+    glowColor: "#8b5cf6",
+    accessory: "glasses",
+    accessoryColor: "#06b6d4",
+  },
+  finn: {
+    skinColor: "#ffd5b4",
+    hairColor: "#92400e",
+    glowColor: "#10b981",
+    accessory: "beanie",
+    accessoryColor: "#d97706",
+  },
+  ash: {
+    skinColor: "#ffdbac",
+    hairColor: "#1f2937",
+    glowColor: "#ef4444",
+    accessory: "cap",
+    accessoryColor: "#dc2626",
+  },
+  toly: {
+    skinColor: "#f1c27d",
+    hairColor: "#4a3728",
+    glowColor: "#9945ff",
+    accessory: "beard",
+    accessoryColor: "#5c4033",
+  },
 };
 
-function TrainerBadge({ agent, size = "md" }: { agent: ArenaAgent; size?: "sm" | "md" | "lg" }) {
-  const sizeMap = { sm: 28, md: 40, lg: 52 };
+// CSS Pixel Art Agent Head Component
+function AgentFace({ agent, size = "md" }: { agent: ArenaAgent; size?: "sm" | "md" | "lg" }) {
+  const sizeMap = { sm: 24, md: 40, lg: 56 };
   const pixelSize = sizeMap[size];
-  const style = AGENT_STYLES[agent.id] || { bgColor: "#1a1a1a", accentColor: agent.color, icon: agent.name[0] };
+  const pixel = pixelSize / 12; // 12x12 grid for head
+
+  const config = AGENT_HEADS[agent.id] || {
+    skinColor: "#f1c27d",
+    hairColor: "#4a3728",
+    glowColor: agent.color,
+  };
 
   return (
     <div
-      className="relative flex-shrink-0 rounded-lg border-2 flex items-center justify-center font-pixel"
+      className="relative flex-shrink-0"
       style={{
         width: pixelSize,
         height: pixelSize,
-        backgroundColor: style.bgColor,
-        borderColor: style.accentColor,
-        color: style.accentColor,
-        fontSize: size === "sm" ? 10 : size === "md" ? 14 : 18,
       }}
     >
-      {style.icon}
-      {/* Status dot */}
+      {/* Glow effect */}
       <div
-        className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-bags-dark"
-        style={{ backgroundColor: style.accentColor }}
+        className="absolute inset-0 rounded-full blur-sm"
+        style={{
+          backgroundColor: config.glowColor,
+          opacity: 0.4,
+          transform: "scale(1.2)",
+        }}
       />
+
+      {/* Pixel art head */}
+      <svg
+        viewBox="0 0 12 12"
+        className="relative z-10"
+        style={{
+          width: pixelSize,
+          height: pixelSize,
+          imageRendering: "pixelated",
+        }}
+      >
+        {/* Hair background */}
+        <rect x="3" y="1" width="6" height="3" fill={config.hairColor} />
+        <rect x="2" y="2" width="1" height="2" fill={config.hairColor} />
+        <rect x="9" y="2" width="1" height="2" fill={config.hairColor} />
+
+        {/* Face */}
+        <rect x="3" y="3" width="6" height="6" fill={config.skinColor} />
+        <rect x="2" y="4" width="1" height="4" fill={config.skinColor} />
+        <rect x="9" y="4" width="1" height="4" fill={config.skinColor} />
+
+        {/* Eyes */}
+        {config.accessory === "sunglasses" ? (
+          <>
+            <rect x="3" y="5" width="3" height="2" fill="#0a0a0a" />
+            <rect x="6" y="5" width="3" height="2" fill="#0a0a0a" />
+            <rect x="2" y="5" width="1" height="1" fill="#1a1a1a" />
+            <rect x="9" y="5" width="1" height="1" fill="#1a1a1a" />
+          </>
+        ) : config.accessory === "glasses" ? (
+          <>
+            <rect x="3" y="5" width="2" height="2" fill={config.accessoryColor} rx="0.5" />
+            <rect x="7" y="5" width="2" height="2" fill={config.accessoryColor} rx="0.5" />
+            <rect x="5" y="5" width="2" height="1" fill={config.accessoryColor} />
+            <rect x="4" y="6" width="1" height="1" fill="#1f2937" />
+            <rect x="7" y="6" width="1" height="1" fill="#1f2937" />
+          </>
+        ) : (
+          <>
+            <rect x="4" y="5" width="1" height="2" fill="#1f2937" />
+            <rect x="7" y="5" width="1" height="2" fill="#1f2937" />
+          </>
+        )}
+
+        {/* Mouth */}
+        <rect x="5" y="8" width="2" height="1" fill="#c9a07a" />
+
+        {/* Cap */}
+        {config.accessory === "cap" && (
+          <>
+            <rect x="2" y="1" width="8" height="2" fill={config.accessoryColor} />
+            <rect x="1" y="2" width="3" height="1" fill={config.accessoryColor} />
+            <rect x="3" y="0" width="6" height="1" fill={config.accessoryColor} />
+            <rect x="4" y="1" width="4" height="1" fill="#ffffff" opacity="0.3" />
+          </>
+        )}
+
+        {/* Beanie */}
+        {config.accessory === "beanie" && (
+          <>
+            <rect x="2" y="0" width="8" height="3" fill={config.accessoryColor} />
+            <rect x="3" y="0" width="6" height="1" fill="#ffffff" opacity="0.2" />
+            <rect x="5" y="-1" width="2" height="1" fill={config.accessoryColor} />
+          </>
+        )}
+
+        {/* Beard */}
+        {config.accessory === "beard" && (
+          <>
+            <rect x="3" y="8" width="6" height="2" fill={config.accessoryColor} />
+            <rect x="2" y="7" width="1" height="2" fill={config.accessoryColor} />
+            <rect x="9" y="7" width="1" height="2" fill={config.accessoryColor} />
+            <rect x="4" y="10" width="4" height="1" fill={config.accessoryColor} />
+          </>
+        )}
+      </svg>
     </div>
   );
 }
 
 export function TradingGymModal({ onClose }: TradingGymModalProps) {
-  const [activeTab, setActiveTab] = useState<"arena" | "rankings" | "calls">("arena");
+  const [activeTab, setActiveTab] = useState<"arena" | "leaderboard" | "predictions">("arena");
   const [leaderboard, setLeaderboard] = useState<AgentScore[]>([]);
   const [predictions, setPredictions] = useState<TradePrediction[]>([]);
   const [conversation, setConversation] = useState<AgentConversation | null>(null);
   const [recentConvos, setRecentConvos] = useState<AgentConversation[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Connect to arena and listen for conversations
   useEffect(() => {
+    // Connect arena to coordinator
     const disconnect = connectArenaToCoordinator();
+
+    // Listen for new conversations
     const unsubscribe = onConversation((convo) => {
       setConversation({ ...convo });
       setRecentConvos(getRecentConversations(5));
     });
 
+    // Initial load
     setLeaderboard(getLeaderboard());
     setPredictions(getActivePredictions());
     setConversation(getCurrentConversation());
     setRecentConvos(getRecentConversations(5));
 
+    // Refresh periodically
     const interval = setInterval(() => {
       setLeaderboard(getLeaderboard());
       setPredictions(getActivePredictions());
@@ -91,6 +211,7 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
     };
   }, []);
 
+  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation?.messages]);
@@ -123,14 +244,11 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
     setPredictions(getActivePredictions());
   };
 
-  const getTypeColor = (personality: string) => {
-    switch (personality) {
-      case "bullish": return { bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/30" };
-      case "bearish": return { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/30" };
-      case "analytical": return { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30" };
-      case "chaotic": return { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/30" };
-      default: return { bg: "bg-purple-500/20", text: "text-purple-400", border: "border-purple-500/30" };
-    }
+  const getRankBadge = (index: number) => {
+    if (index === 0) return { bg: "bg-yellow-500", text: "text-black", label: "1st" };
+    if (index === 1) return { bg: "bg-gray-400", text: "text-black", label: "2nd" };
+    if (index === 2) return { bg: "bg-orange-600", text: "text-white", label: "3rd" };
+    return { bg: "bg-gray-700", text: "text-gray-300", label: `${index + 1}th` };
   };
 
   return (
@@ -138,44 +256,56 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-bags-dark border-4 border-amber-600 rounded-lg max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col">
-        {/* Header - Gym Badge style */}
-        <div className="bg-gradient-to-r from-amber-700 to-amber-600 p-4">
-          <div className="flex justify-between items-center">
+      <div className="bg-gradient-to-b from-gray-900 to-gray-950 border-2 border-orange-500 rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col shadow-2xl shadow-orange-500/20">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 p-4 relative overflow-hidden">
+          {/* Decorative pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0" style={{
+              backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px)"
+            }} />
+          </div>
+
+          <div className="flex justify-between items-center relative z-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-900/50 border-2 border-amber-400 rounded-lg flex items-center justify-center">
-                <span className="font-pixel text-amber-300 text-lg">T</span>
+              <div className="w-12 h-12 bg-black/30 rounded-xl flex items-center justify-center border border-white/20">
+                <span className="text-2xl">&#9876;&#9876;</span>
               </div>
               <div>
-                <h2 className="font-pixel text-white text-sm">TRADING GYM</h2>
-                <p className="text-amber-200 text-[10px]">Train with AI Agents</p>
+                <h2 className="font-pixel text-white text-base sm:text-lg tracking-wide">TRADING GYM</h2>
+                <p className="text-orange-200 text-[10px] sm:text-xs">
+                  Where AI Agents Battle for Alpha
+                </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 bg-amber-900/50 hover:bg-amber-900 rounded-lg flex items-center justify-center text-amber-200 hover:text-white transition-colors font-pixel text-xs"
+              className="w-8 h-8 bg-black/30 hover:bg-black/50 rounded-lg flex items-center justify-center text-white transition-colors"
               aria-label="Close"
             >
-              X
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-4 relative z-10">
             {([
-              { id: "arena", label: "ARENA" },
-              { id: "rankings", label: "RANKINGS" },
-              { id: "calls", label: "CALLS" },
+              { id: "arena", label: "ARENA", icon: "&#9876;" },
+              { id: "leaderboard", label: "RANKINGS", icon: "&#9733;" },
+              { id: "predictions", label: "CALLS", icon: "&#8594;" },
             ] as const).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`font-pixel text-[10px] px-4 py-1.5 rounded transition-all ${
+                className={`flex items-center gap-1.5 font-pixel text-[10px] px-3 py-2 rounded-lg transition-all ${
                   activeTab === tab.id
-                    ? "bg-amber-900/80 text-amber-100 border border-amber-400/50"
-                    : "bg-amber-900/30 text-amber-300/70 hover:bg-amber-900/50 border border-transparent"
+                    ? "bg-black/50 text-white border border-white/20"
+                    : "bg-black/20 text-orange-200 hover:bg-black/30"
                 }`}
               >
+                <span dangerouslySetInnerHTML={{ __html: tab.icon }} />
                 {tab.label}
               </button>
             ))}
@@ -183,99 +313,120 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-bags-dark to-bags-darker">
-          {/* Arena Tab */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* Arena Tab - Agent Conversations */}
           {activeTab === "arena" && (
             <div className="space-y-4">
-              {/* Battle Area */}
-              <div className="bg-bags-darker border-2 border-gray-700 rounded-lg overflow-hidden">
-                <div className="p-3 border-b border-gray-700 flex justify-between items-center bg-gray-800/30">
-                  <span className="font-pixel text-[11px] text-amber-400">
-                    {conversation?.topic || "Waiting for challengers..."}
-                  </span>
-                  {conversation?.isActive && (
-                    <span className="flex items-center gap-1.5 text-[10px] text-green-400">
-                      <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                      LIVE
-                    </span>
-                  )}
+              {/* Current Conversation */}
+              <div className="bg-gray-800/50 rounded-xl border border-gray-700">
+                <div className="p-3 border-b border-gray-700 flex justify-between items-center">
+                  <div>
+                    <h3 className="font-pixel text-orange-400 text-xs">
+                      {conversation?.topic || "Waiting for action..."}
+                    </h3>
+                    {conversation?.isActive && (
+                      <span className="inline-flex items-center gap-1.5 text-[10px] text-green-400 mt-1">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        LIVE DISCUSSION
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Messages */}
-                <div className="p-3 max-h-60 overflow-y-auto space-y-3">
+                <div className="p-3 max-h-72 overflow-y-auto space-y-3">
                   {conversation?.messages && conversation.messages.length > 0 ? (
                     conversation.messages.map((msg) => {
                       const agent = getAgent(msg.agentId);
                       return (
-                        <div key={msg.id} className="flex gap-3">
-                          {agent && <TrainerBadge agent={agent} size="sm" />}
+                        <div key={msg.id} className="flex gap-3 group">
+                          {agent && <AgentFace agent={agent} size="sm" />}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-pixel text-[11px]" style={{ color: agent?.color || "#888" }}>
+                              <span
+                                className="font-pixel text-xs font-medium"
+                                style={{ color: agent?.color || "#888" }}
+                              >
                                 {msg.agentName}
                               </span>
-                              <span className="text-gray-500 text-[10px]">{formatTime(msg.timestamp)}</span>
+                              <span className="text-gray-500 text-[10px]">
+                                {formatTime(msg.timestamp)}
+                              </span>
                               {msg.sentiment && (
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                                  msg.sentiment === "bullish" ? "bg-green-500/20 text-green-400" :
-                                  msg.sentiment === "bearish" ? "bg-red-500/20 text-red-400" :
-                                  "bg-gray-500/20 text-gray-400"
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                                  msg.sentiment === "bullish" ? "bg-green-500/20 text-green-400 border border-green-500/30" :
+                                  msg.sentiment === "bearish" ? "bg-red-500/20 text-red-400 border border-red-500/30" :
+                                  "bg-gray-500/20 text-gray-400 border border-gray-500/30"
                                 }`}>
                                   {msg.sentiment.toUpperCase()}
                                 </span>
                               )}
                             </div>
-                            <p className="text-gray-300 text-[12px] mt-1">{msg.message}</p>
+                            <p className="text-gray-300 text-sm mt-1 leading-relaxed">
+                              {msg.message}
+                            </p>
                           </div>
                         </div>
                       );
                     })
                   ) : (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500 font-pixel text-[11px]">No active discussions</p>
-                      <p className="text-gray-600 text-[10px] mt-1">Agents activate when tokens launch or pump</p>
+                    <div className="text-center py-10">
+                      <div className="text-4xl mb-3 opacity-50">&#9876;&#9876;</div>
+                      <p className="text-gray-400 font-pixel text-xs">
+                        Agents are warming up...
+                      </p>
+                      <p className="text-gray-500 text-[11px] mt-2">
+                        Conversations start when tokens launch or pump
+                      </p>
                     </div>
                   )}
                   <div ref={chatEndRef} />
                 </div>
               </div>
 
-              {/* Trainers */}
+              {/* Agent Roster */}
               <div>
-                <p className="font-pixel text-[10px] text-amber-400 mb-3">GYM TRAINERS</p>
+                <h4 className="font-pixel text-gray-400 text-[10px] mb-3 flex items-center gap-2">
+                  <span>&#9734;</span> GYM TRAINERS
+                </h4>
                 <div className="grid grid-cols-5 gap-2">
-                  {ARENA_AGENTS.map((agent) => {
-                    const typeColor = getTypeColor(agent.personality);
-                    return (
-                      <div
-                        key={agent.id}
-                        className="bg-bags-darker border border-gray-700 rounded-lg p-3 text-center hover:border-gray-600 transition-colors"
-                      >
-                        <div className="flex justify-center mb-2">
-                          <TrainerBadge agent={agent} size="lg" />
-                        </div>
-                        <p className="font-pixel text-[10px] text-white">{agent.name}</p>
-                        <p className={`text-[9px] mt-1 px-2 py-0.5 rounded inline-block ${typeColor.bg} ${typeColor.text} border ${typeColor.border}`}>
-                          {agent.personality}
-                        </p>
+                  {ARENA_AGENTS.map((agent) => (
+                    <div
+                      key={agent.id}
+                      className="bg-gray-800/50 rounded-xl p-3 text-center border border-gray-700 hover:border-gray-500 transition-all hover:scale-105 cursor-default group"
+                    >
+                      <div className="flex justify-center mb-2">
+                        <AgentFace agent={agent} size="lg" />
                       </div>
-                    );
-                  })}
+                      <p className="font-pixel text-[10px] text-white">{agent.name}</p>
+                      <p className={`text-[9px] mt-1 capitalize px-1.5 py-0.5 rounded-full inline-block ${
+                        agent.personality === "bullish" ? "bg-green-500/20 text-green-400" :
+                        agent.personality === "bearish" ? "bg-red-500/20 text-red-400" :
+                        agent.personality === "analytical" ? "bg-blue-500/20 text-blue-400" :
+                        agent.personality === "chaotic" ? "bg-yellow-500/20 text-yellow-400" :
+                        "bg-purple-500/20 text-purple-400"
+                      }`}>
+                        {agent.personality}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Recent */}
+              {/* Recent Conversations */}
               {recentConvos.length > 1 && (
                 <div>
-                  <p className="font-pixel text-[10px] text-gray-500 mb-2">RECENT MATCHES</p>
-                  <div className="space-y-1">
+                  <h4 className="font-pixel text-gray-400 text-[10px] mb-2 flex items-center gap-2">
+                    <span>&#8635;</span> RECENT BATTLES
+                  </h4>
+                  <div className="space-y-1.5">
                     {recentConvos.slice(1).map((convo) => (
                       <div
                         key={convo.id}
-                        className="bg-bags-darker border border-gray-700/50 rounded px-3 py-2 flex justify-between items-center text-[11px]"
+                        className="bg-gray-800/30 rounded-lg px-3 py-2 flex justify-between items-center text-[11px] border border-gray-700/50"
                       >
-                        <span className="text-gray-400 truncate">{convo.topic}</span>
-                        <span className="text-gray-600">{convo.messages.length} msgs</span>
+                        <span className="text-gray-300">{convo.topic}</span>
+                        <span className="text-gray-500">{convo.messages.length} msgs</span>
                       </div>
                     ))}
                   </div>
@@ -284,52 +435,58 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
             </div>
           )}
 
-          {/* Rankings Tab */}
-          {activeTab === "rankings" && (
+          {/* Leaderboard Tab */}
+          {activeTab === "leaderboard" && (
             <div className="space-y-4">
-              <div className="bg-gradient-to-r from-amber-900/30 to-amber-800/20 border border-amber-500/30 rounded-lg p-3">
-                <p className="font-pixel text-amber-400 text-[11px]">TRAINER RANKINGS</p>
-                <p className="text-gray-400 text-[10px] mt-1">Based on prediction accuracy and total gains</p>
+              <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/30 rounded-xl p-4">
+                <h3 className="font-pixel text-yellow-400 text-xs mb-1 flex items-center gap-2">
+                  <span>&#9733;</span> GYM LEADER RANKINGS
+                </h3>
+                <p className="text-gray-400 text-[11px]">
+                  Agents compete based on prediction accuracy and total PnL
+                </p>
               </div>
 
               <div className="space-y-2">
                 {leaderboard.map((score, index) => {
                   const agent = getAgent(score.agentId);
-                  const rankColors = [
-                    { border: "border-amber-400/50", badge: "bg-amber-500 text-black" },
-                    { border: "border-gray-400/50", badge: "bg-gray-400 text-black" },
-                    { border: "border-amber-700/50", badge: "bg-amber-700 text-white" },
-                  ];
-                  const rankStyle = rankColors[index] || { border: "border-gray-700", badge: "bg-gray-700 text-gray-300" };
+                  const badge = getRankBadge(index);
 
                   return (
                     <div
                       key={score.agentId}
-                      className={`bg-bags-darker border-2 rounded-lg p-3 ${rankStyle.border}`}
+                      className={`bg-gray-800/50 rounded-xl p-4 border transition-all hover:scale-[1.01] ${
+                        index === 0 ? "border-yellow-500/50 shadow-lg shadow-yellow-500/10" :
+                        index === 1 ? "border-gray-400/30" :
+                        index === 2 ? "border-orange-600/30" :
+                        "border-gray-700"
+                      }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded flex items-center justify-center font-pixel text-[11px] ${rankStyle.badge}`}>
-                          #{index + 1}
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-pixel text-sm ${badge.bg} ${badge.text}`}>
+                          {badge.label}
                         </div>
-                        {agent && <TrainerBadge agent={agent} size="md" />}
+                        {agent && <AgentFace agent={agent} size="md" />}
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-pixel text-[12px] text-white">{score.agentName}</span>
+                            <span className="font-pixel text-white text-sm">{score.agentName}</span>
                             {score.streak > 0 && (
-                              <span className="text-[9px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded border border-green-500/30">
-                                +{score.streak} streak
+                              <span className="text-[9px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full border border-green-500/30">
+                                {score.streak} streak &#128293;
                               </span>
                             )}
                             {score.streak < -2 && (
-                              <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded border border-red-500/30">
-                                {score.streak} cold
+                              <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-full border border-red-500/30">
+                                cold &#10052;
                               </span>
                             )}
                           </div>
-                          <p className="text-gray-500 text-[10px]">{agent?.tradingStyle}</p>
+                          <p className="text-gray-500 text-[10px] capitalize mt-0.5">
+                            {agent?.tradingStyle}
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className={`font-pixel text-sm ${score.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          <p className={`font-pixel text-base ${score.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
                             {score.totalPnl >= 0 ? "+" : ""}{score.totalPnl.toFixed(1)}%
                           </p>
                           <p className="text-gray-500 text-[10px]">
@@ -344,16 +501,18 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
             </div>
           )}
 
-          {/* Calls Tab */}
-          {activeTab === "calls" && (
+          {/* Predictions Tab */}
+          {activeTab === "predictions" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <p className="font-pixel text-[10px] text-amber-400">ACTIVE CALLS</p>
+                <h3 className="font-pixel text-orange-400 text-xs flex items-center gap-2">
+                  <span>&#8594;</span> ACTIVE PREDICTIONS
+                </h3>
                 <button
                   onClick={triggerTestPrediction}
-                  className="font-pixel text-[10px] bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 px-3 py-1.5 rounded border border-amber-500/30 transition-all"
+                  className="font-pixel text-[10px] bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white px-3 py-1.5 rounded-lg transition-all hover:scale-105 flex items-center gap-1.5"
                 >
-                  [+] NEW CALL
+                  <span>+</span> NEW PREDICTION
                 </button>
               </div>
 
@@ -361,30 +520,38 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                 <div className="space-y-2">
                   {predictions.map((pred) => {
                     const agent = getAgent(pred.agentId);
+
                     return (
                       <div
                         key={pred.id}
-                        className="bg-bags-darker border-2 border-gray-700 rounded-lg p-3"
+                        className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 hover:border-gray-600 transition-all"
                       >
-                        <div className="flex items-center gap-3">
-                          {agent && <TrainerBadge agent={agent} size="md" />}
+                        <div className="flex items-center gap-4">
+                          {agent && <AgentFace agent={agent} size="md" />}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-pixel text-[11px] text-white">{agent?.name}</span>
-                              <span className={`text-[10px] px-2 py-0.5 rounded font-pixel ${
+                              <span className="font-pixel text-white text-sm">{agent?.name}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                                 pred.direction === "long"
                                   ? "bg-green-500/20 text-green-400 border border-green-500/30"
                                   : "bg-red-500/20 text-red-400 border border-red-500/30"
                               }`}>
-                                {pred.direction.toUpperCase()}
+                                {pred.direction === "long" ? "LONG &#8593;" : "SHORT &#8595;"}
                               </span>
-                              <span className="font-pixel text-[11px] text-amber-400">${pred.tokenSymbol}</span>
+                              <span className="font-pixel text-yellow-400 text-sm">
+                                ${pred.tokenSymbol}
+                              </span>
                             </div>
-                            <p className="text-gray-400 text-[11px] mt-1">{pred.reasoning}</p>
+                            <p className="text-gray-400 text-[11px] mt-1 italic">
+                              &ldquo;{pred.reasoning}&rdquo;
+                            </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-pixel text-sm text-white">{pred.confidence}%</p>
-                            <p className="text-[10px] text-gray-500">
+                            <p className="font-pixel text-sm text-gray-300">
+                              {pred.confidence}%
+                            </p>
+                            <p className="text-[10px] text-gray-500">confidence</p>
+                            <p className="text-[10px] text-gray-500 mt-1">
                               Target: {pred.direction === "long" ? "+" : "-"}
                               {Math.abs(((pred.targetPrice - pred.entryPrice) / pred.entryPrice) * 100).toFixed(0)}%
                             </p>
@@ -395,9 +562,12 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-10 bg-bags-darker border-2 border-gray-700 rounded-lg">
-                  <p className="text-gray-500 font-pixel text-[11px]">No active calls</p>
-                  <p className="text-gray-600 text-[10px] mt-1">Click [+] NEW CALL to simulate</p>
+                <div className="text-center py-12 bg-gray-800/30 rounded-xl border border-gray-700">
+                  <div className="text-4xl mb-3 opacity-50">&#128200;</div>
+                  <p className="text-gray-400 font-pixel text-xs">No active predictions</p>
+                  <p className="text-gray-500 text-[11px] mt-2">
+                    Click &ldquo;New Prediction&rdquo; to see agents make calls
+                  </p>
                 </div>
               )}
             </div>
@@ -405,9 +575,9 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t-2 border-amber-600/50 bg-bags-darker">
-          <p className="text-gray-500 text-[10px] text-center">
-            Train your trading instincts - not financial advice
+        <div className="p-3 border-t border-gray-700 bg-gray-900/50">
+          <p className="text-gray-500 text-[10px] text-center italic">
+            &ldquo;Train hard, trade harder&rdquo; - Gym Leader Satoshi
           </p>
         </div>
       </div>
