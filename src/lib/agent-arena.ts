@@ -57,7 +57,7 @@ export const ARENA_AGENTS: ArenaAgent[] = [
   {
     id: "toly",
     name: "Toly",
-    avatar: "◎",
+    avatar: "⚡",
     personality: "analytical",
     tradingStyle: "Infrastructure, ecosystem plays",
     catchphrase: "Build for the long term",

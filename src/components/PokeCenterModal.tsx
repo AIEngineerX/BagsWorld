@@ -105,7 +105,7 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
           {/* World Stats */}
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-bags-darker rounded p-2 text-center">
-              <div className="text-xl font-mono">◆</div>
+              <div className="text-xl">🏢</div>
               <div className="font-pixel text-bags-green text-sm">{buildingCount}</div>
               <div className="font-pixel text-gray-500 text-[8px]">Buildings</div>
             </div>

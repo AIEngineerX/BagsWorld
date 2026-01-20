@@ -82,7 +82,7 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm">◆</span>
+          <span className="text-sm">🏢</span>
           <span className="font-pixel text-[10px] text-bags-green">
             YOUR BUILDINGS
           </span>
@@ -112,14 +112,14 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-lg font-mono">
+                    <span className="text-lg">
                       {index === 0
-                        ? "◆"
+                        ? "🏦"
                         : index === 1
-                          ? "◈"
+                          ? "🏢"
                           : index === 2
-                            ? "◇"
-                            : "▫"}
+                            ? "🏠"
+                            : "🏚️"}
                     </span>
                   )}
                 </div>

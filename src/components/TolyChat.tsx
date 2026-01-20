@@ -18,7 +18,7 @@ interface Position {
 const SOLANA_TOPICS = [
   {
     title: "What is Solana?",
-    icon: "◎",
+    icon: "☀️",
     content: "Solana is a high-performance blockchain built for speed and scale. We achieve 65,000+ TPS using Proof of History - a cryptographic clock that orders transactions without waiting for consensus."
   },
   {
@@ -204,7 +204,7 @@ export function TolyChat() {
         className="flex items-center justify-between p-2 border-b-4 border-purple-500 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-purple-600/20 to-purple-400/20"
       >
         <div className="flex items-center gap-2">
-          <span className="font-pixel text-sm">◎</span>
+          <span className="font-pixel text-sm">⚡</span>
           <div>
             <p className="font-pixel text-[10px] text-purple-400">TOLY - SOLANA CO-FOUNDER</p>
             <p className="font-pixel text-[8px] text-gray-400">drag to move</p>
@@ -238,7 +238,7 @@ export function TolyChat() {
       <div className="h-40 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-4">
-            <p className="font-pixel text-[10px] text-purple-400 mb-1">◎ gm ser!</p>
+            <p className="font-pixel text-[10px] text-purple-400 mb-1">⚡ gm ser!</p>
             <p className="font-pixel text-[8px] text-gray-400">I&apos;m Toly, co-founder of Solana.</p>
             <p className="font-pixel text-[7px] text-gray-500 mt-2">Ask me anything or click a topic above</p>
           </div>
@@ -256,7 +256,7 @@ export function TolyChat() {
             >
               {msg.type === "toly" && <p className="font-pixel text-[6px] text-purple-400 mb-1">Toly:</p>}
               {msg.type === "user" && <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>}
-              {msg.type === "info" && <p className="font-pixel text-[6px] text-blue-400 mb-1">◎ Solana:</p>}
+              {msg.type === "info" && <p className="font-pixel text-[6px] text-blue-400 mb-1">☀️ Solana:</p>}
               <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
             </div>
           ))

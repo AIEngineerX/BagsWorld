@@ -2695,7 +2695,7 @@ export class WorldScene extends Phaser.Scene {
     const bg = this.add.rectangle(0, 0, 165, 68, 0x0a0a0f, 0.95);
     bg.setStrokeStyle(2, 0x9945ff); // Solana purple border
 
-    const nameText = this.add.text(0, -22, "◎ toly", {
+    const nameText = this.add.text(0, -22, "⚡ toly", {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#14f195", // Solana green
