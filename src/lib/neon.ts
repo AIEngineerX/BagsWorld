@@ -99,7 +99,7 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
         INSERT INTO tokens (
           mint, name, symbol, description, image_url,
           creator_wallet, fee_shares, lifetime_fees, market_cap,
-          is_featured, is_verified
+          volume_24h, is_featured, is_verified
         ) VALUES (
           ${token.mint},
           ${token.name},
@@ -110,6 +110,7 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
           ${JSON.stringify(token.fee_shares) || null},
           ${token.lifetime_fees || null},
           ${token.market_cap || null},
+          ${token.volume_24h || null},
           false,
           false
         )
