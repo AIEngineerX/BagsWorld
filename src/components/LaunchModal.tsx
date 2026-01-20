@@ -772,7 +772,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                     <span className="text-sm">🏆</span>
                     <div>
                       <p className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.displayName}</p>
-                      <p className="font-pixel text-[7px] text-gray-400">Rewards creators & holders weekly</p>
+                      <p className="font-pixel text-[7px] text-gray-400">Rewards top 3 creators by fees</p>
                     </div>
                   </div>
                   <span className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.bps / 100}%</span>
@@ -780,7 +780,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="pt-1 border-t border-bags-gold/20">
                   <p className="font-pixel text-[6px] text-gray-400">
                     Top 3 creators by fees get rewarded. 50/30/20 split.
-                    10 SOL threshold or 5 days. Direct SOL to your wallet.
+                    Triggers at 10 SOL or 5 days (min 2 SOL). Direct SOL to your wallet.
                   </p>
                 </div>
                 <a
