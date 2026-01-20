@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 interface CasinoModalProps {
   onClose: () => void;
 }
 
-// Tab types
 type CasinoTab = "raffle" | "wheel" | "history";
 
-// Types for casino data
 interface RaffleState {
   id: number;
   status: "active" | "drawing" | "completed";
@@ -41,16 +39,16 @@ interface HistoryEntry {
   isWin: boolean;
 }
 
-// Wheel segments
+// Wheel segments with better colors
 const WHEEL_SEGMENTS = [
-  { label: "MISS", color: "#1f2937", prize: 0, probability: 50 },
-  { label: "0.01", color: "#059669", prize: 0.01, probability: 25 },
-  { label: "MISS", color: "#374151", prize: 0, probability: 50 },
-  { label: "0.05", color: "#2563eb", prize: 0.05, probability: 15 },
-  { label: "MISS", color: "#1f2937", prize: 0, probability: 50 },
-  { label: "0.1", color: "#7c3aed", prize: 0.1, probability: 8 },
-  { label: "MISS", color: "#374151", prize: 0, probability: 50 },
-  { label: "JACKPOT", color: "#dc2626", prize: 0.5, probability: 2 },
+  { label: "MISS", color: "#18181b", textColor: "#52525b", prize: 0 },
+  { label: "0.01", color: "#065f46", textColor: "#34d399", prize: 0.01 },
+  { label: "MISS", color: "#27272a", textColor: "#52525b", prize: 0 },
+  { label: "0.05", color: "#1e40af", textColor: "#60a5fa", prize: 0.05 },
+  { label: "MISS", color: "#18181b", textColor: "#52525b", prize: 0 },
+  { label: "0.1", color: "#581c87", textColor: "#c084fc", prize: 0.1 },
+  { label: "MISS", color: "#27272a", textColor: "#52525b", prize: 0 },
+  { label: "0.5", color: "#991b1b", textColor: "#fbbf24", prize: 0.5 },
 ];
 
 export function CasinoModal({ onClose }: CasinoModalProps) {
@@ -65,32 +63,47 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   const [spinResult, setSpinResult] = useState<{ label: string; prize: number } | null>(null);
   const [enteringRaffle, setEnteringRaffle] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownTime, setCooldownTime] = useState<string>("");
 
-  // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
   };
+
+  // Format time remaining
+  const formatTimeRemaining = useCallback((endTime: number) => {
+    const remaining = Math.max(0, endTime - Date.now());
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  }, []);
+
+  // Update cooldown timer
+  useEffect(() => {
+    if (wheelState?.cooldownEnds && !wheelState.canSpin) {
+      const interval = setInterval(() => {
+        const time = formatTimeRemaining(wheelState.cooldownEnds!);
+        setCooldownTime(time);
+        if (wheelState.cooldownEnds! <= Date.now()) {
+          setWheelState(prev => prev ? { ...prev, canSpin: true } : null);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [wheelState?.cooldownEnds, wheelState?.canSpin, formatTimeRemaining]);
 
   // Fetch casino state
   useEffect(() => {
     const fetchCasinoState = async () => {
       setIsLoading(true);
       try {
-        // Fetch raffle state
-        const raffleRes = await fetch("/api/casino/raffle");
-        if (raffleRes.ok) {
-          const data = await raffleRes.json();
-          setRaffleState(data);
-        }
+        const [raffleRes, wheelRes] = await Promise.all([
+          fetch("/api/casino/raffle"),
+          fetch("/api/casino/wheel"),
+        ]);
 
-        // Fetch wheel state
-        const wheelRes = await fetch("/api/casino/wheel");
-        if (wheelRes.ok) {
-          const data = await wheelRes.json();
-          setWheelState(data);
-        }
+        if (raffleRes.ok) setRaffleState(await raffleRes.json());
+        if (wheelRes.ok) setWheelState(await wheelRes.json());
 
-        // Fetch history if connected
         if (publicKey) {
           const historyRes = await fetch(`/api/casino/history?wallet=${publicKey.toBase58()}`);
           if (historyRes.ok) {
@@ -104,17 +117,14 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
         setIsLoading(false);
       }
     };
-
     fetchCasinoState();
   }, [publicKey]);
 
-  // Handle raffle entry
   const handleEnterRaffle = async () => {
     if (!connected || !publicKey) {
-      setError("Please connect your wallet first");
+      setError("Connect wallet to enter");
       return;
     }
-
     setEnteringRaffle(true);
     setError(null);
 
@@ -129,23 +139,17 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
         setRaffleState((prev) => prev ? { ...prev, userEntered: true, entryCount: prev.entryCount + 1 } : null);
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to enter raffle");
+        setError(data.error || "Failed to enter");
       }
-    } catch (err) {
-      setError("Network error - please try again");
+    } catch {
+      setError("Network error");
     } finally {
       setEnteringRaffle(false);
     }
   };
 
-  // Handle wheel spin
   const handleSpin = async () => {
-    if (!connected || !publicKey) {
-      setError("Please connect your wallet first");
-      return;
-    }
-
-    if (isSpinning) return;
+    if (!connected || !publicKey || isSpinning) return;
 
     setIsSpinning(true);
     setSpinResult(null);
@@ -160,86 +164,51 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
 
       if (res.ok) {
         const data = await res.json();
-
-        // Calculate rotation to land on result
-        const segmentIndex = WHEEL_SEGMENTS.findIndex((s) => s.label === data.result || (s.prize === data.prize && s.label !== "MISS"));
+        const segmentIndex = WHEEL_SEGMENTS.findIndex((s) => s.prize === data.prize);
         const segmentAngle = 360 / WHEEL_SEGMENTS.length;
         const targetAngle = segmentIndex * segmentAngle + segmentAngle / 2;
-        const spins = 5; // Number of full rotations
-        const finalRotation = wheelRotation + 360 * spins + (360 - targetAngle);
+        const finalRotation = wheelRotation + 360 * 6 + (360 - targetAngle);
 
         setWheelRotation(finalRotation);
 
-        // Show result after animation
         setTimeout(() => {
           setSpinResult({ label: data.result, prize: data.prize });
           setIsSpinning(false);
-
-          // Update wheel state with cooldown
           setWheelState((prev) => prev ? {
             ...prev,
             canSpin: false,
             cooldownEnds: Date.now() + 10 * 60 * 1000,
-            lastSpin: {
-              result: data.result,
-              prize: data.prize,
-              timestamp: Date.now(),
-            },
           } : null);
-        }, 4000);
+        }, 5000);
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to spin wheel");
+        setError(data.error || "Spin failed");
         setIsSpinning(false);
       }
-    } catch (err) {
-      setError("Network error - please try again");
+    } catch {
+      setError("Network error");
       setIsSpinning(false);
     }
   };
 
-  // Format SOL amount
-  const formatSol = (lamports: number) => {
-    return (lamports / 1e9).toFixed(4);
-  };
-
-  // Format time remaining
-  const formatTimeRemaining = (endTime: number) => {
-    const remaining = Math.max(0, endTime - Date.now());
-    const minutes = Math.floor(remaining / 60000);
-    const seconds = Math.floor((remaining % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
+  const formatSol = (lamports: number) => (lamports / 1e9).toFixed(3);
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-gradient-to-b from-gray-900 to-gray-950 border-2 border-purple-500 rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col shadow-2xl shadow-purple-500/20">
+      <div className="bg-[#0c0c0f] border border-purple-500/30 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600 p-4 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px)" }} />
-          </div>
-
-          <div className="flex justify-between items-center relative z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-black/30 rounded-xl flex items-center justify-center border border-yellow-400/50">
-                <span className="text-2xl">🎰</span>
-              </div>
-              <div>
-                <h2 className="font-pixel text-white text-base sm:text-lg tracking-wide">BAGSWORLD CASINO</h2>
-                <p className="text-purple-200 text-[10px] sm:text-xs flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-                  Funded by Ghost&apos;s Trading Fees
-                </p>
-              </div>
+        <div className="relative bg-gradient-to-b from-purple-900/40 to-transparent p-5 border-b border-purple-500/20">
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="font-pixel text-lg text-white tracking-wider">BAGSWORLD CASINO</h2>
+              <p className="text-purple-400/80 text-xs mt-1">Funded by BagsWorld</p>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 bg-black/30 hover:bg-black/50 rounded-lg flex items-center justify-center text-white transition-colors"
-              aria-label="Close"
+              className="text-gray-500 hover:text-white transition-colors p-1"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -248,22 +217,21 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mt-4 relative z-10">
+          <div className="flex gap-1 mt-5">
             {([
-              { id: "raffle", label: "FREE RAFFLE", icon: "🎟️" },
-              { id: "wheel", label: "WHEEL", icon: "🎡" },
-              { id: "history", label: "HISTORY", icon: "📜" },
+              { id: "raffle", label: "Raffle" },
+              { id: "wheel", label: "Wheel" },
+              { id: "history", label: "History" },
             ] as const).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 font-pixel text-[10px] px-3 py-2 rounded-lg transition-all ${
+                className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${
                   activeTab === tab.id
-                    ? "bg-black/50 text-white border border-white/20"
-                    : "bg-black/20 text-purple-200 hover:bg-black/30"
+                    ? "bg-purple-600 text-white"
+                    : "text-gray-400 hover:text-white hover:bg-white/5"
                 }`}
               >
-                <span>{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
@@ -271,201 +239,184 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-5">
           {isLoading ? (
             <div className="flex items-center justify-center h-48">
-              <div className="text-center">
-                <div className="text-4xl animate-bounce mb-2">🎰</div>
-                <p className="font-pixel text-xs text-purple-300">Loading casino...</p>
-              </div>
+              <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
             <>
               {/* Raffle Tab */}
               {activeTab === "raffle" && (
-                <div className="space-y-4">
-                  {/* Pot Display */}
-                  <div className="bg-gradient-to-br from-purple-900/50 to-purple-950/50 rounded-xl border border-yellow-500/50 p-6 text-center">
-                    <p className="font-pixel text-[10px] text-purple-300 mb-2">CURRENT POT</p>
-                    <div className="text-3xl sm:text-4xl font-pixel text-yellow-400 animate-pulse">
-                      {raffleState ? formatSol(raffleState.potLamports) : "0.0000"} SOL
-                    </div>
-                    <div className="mt-4 flex items-center justify-center gap-4 text-[10px] sm:text-xs">
-                      <div className="text-gray-400">
-                        <span className="text-white font-pixel">{raffleState?.entryCount || 0}</span> entries
-                      </div>
-                      <div className="text-gray-400">
-                        Draws at <span className="text-yellow-400 font-pixel">{raffleState?.threshold || 0.5} SOL</span>
+                <div className="space-y-5">
+                  {/* Pot Card */}
+                  <div className="bg-gradient-to-br from-purple-900/30 to-purple-950/20 rounded-xl p-6 border border-purple-500/20">
+                    <div className="text-center">
+                      <p className="text-purple-400 text-xs uppercase tracking-wider mb-2">Current Pot</p>
+                      <p className="text-4xl font-bold text-white mb-1">
+                        {raffleState ? formatSol(raffleState.potLamports) : "0.000"}
+                        <span className="text-lg text-purple-400 ml-2">SOL</span>
+                      </p>
+                      <div className="flex items-center justify-center gap-4 mt-4 text-xs">
+                        <span className="text-gray-400">
+                          <span className="text-white font-medium">{raffleState?.entryCount || 0}</span> entries
+                        </span>
+                        <span className="text-gray-600">•</span>
+                        <span className="text-gray-400">
+                          Draws at <span className="text-purple-400 font-medium">{raffleState?.threshold || 0.5} SOL</span>
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Entry Section */}
-                  <div className="bg-gray-800/50 rounded-xl border border-gray-700 p-4">
-                    <h3 className="font-pixel text-sm text-yellow-400 mb-3">FREE ENTRY</h3>
-                    <p className="text-xs text-gray-300 mb-4">
-                      Enter for free! One entry per wallet per round. When the pot reaches the threshold,
-                      a random winner takes the entire pot.
-                    </p>
-
+                  {/* Entry */}
+                  <div className="bg-white/5 rounded-xl p-5 border border-white/5">
                     {!connected ? (
-                      <div className="text-center py-4 text-gray-400 font-pixel text-[10px]">
-                        Connect your wallet to enter
-                      </div>
+                      <p className="text-center text-gray-500 text-sm py-4">Connect wallet to enter</p>
                     ) : raffleState?.userEntered ? (
                       <div className="text-center py-4">
-                        <div className="text-2xl mb-2">✅</div>
-                        <p className="font-pixel text-xs text-green-400">You&apos;re entered!</p>
-                        <p className="text-[10px] text-gray-400 mt-1">Good luck!</p>
+                        <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <p className="text-green-400 font-medium">You&apos;re in!</p>
+                        <p className="text-gray-500 text-xs mt-1">Good luck</p>
                       </div>
                     ) : (
                       <button
                         onClick={handleEnterRaffle}
                         disabled={enteringRaffle}
-                        className="w-full py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-pixel text-xs rounded-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition-all disabled:opacity-50"
                       >
-                        {enteringRaffle ? "ENTERING..." : "ENTER RAFFLE (FREE)"}
+                        {enteringRaffle ? "Entering..." : "Enter Free Raffle"}
                       </button>
                     )}
                   </div>
 
-                  {/* How it works */}
-                  <div className="bg-gray-800/30 rounded-xl border border-gray-700/50 p-4">
-                    <h4 className="font-pixel text-[10px] text-purple-300 mb-2">HOW IT WORKS</h4>
-                    <ul className="text-[10px] text-gray-400 space-y-1">
-                      <li>• Ghost&apos;s trading fees fill the pot</li>
-                      <li>• Enter for free (one entry per wallet)</li>
-                      <li>• When pot reaches threshold, drawing begins</li>
-                      <li>• Winner takes 100% of the pot</li>
-                    </ul>
+                  {/* Info */}
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <p>• Free entry, one per wallet</p>
+                    <p>• Winner takes 100% of pot</p>
+                    <p>• Drawing when threshold reached</p>
                   </div>
                 </div>
               )}
 
               {/* Wheel Tab */}
               {activeTab === "wheel" && (
-                <div className="space-y-4">
-                  {/* Wheel Display */}
+                <div className="space-y-5">
+                  {/* Wheel */}
                   <div className="flex flex-col items-center">
-                    {/* Wheel Container */}
-                    <div className="relative w-48 h-48 sm:w-64 sm:h-64 mb-4">
+                    <div className="relative w-56 h-56 mb-6">
                       {/* Pointer */}
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-10">
-                        <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] sm:border-l-[12px] sm:border-r-[12px] sm:border-t-[20px] border-l-transparent border-r-transparent border-t-yellow-400" />
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 z-10">
+                        <div className="w-4 h-6 bg-yellow-400 clip-triangle" style={{
+                          clipPath: "polygon(50% 100%, 0% 0%, 100% 0%)"
+                        }} />
                       </div>
 
-                      {/* Wheel SVG */}
-                      <svg
-                        viewBox="0 0 200 200"
-                        className="w-full h-full transition-transform"
+                      {/* Wheel */}
+                      <div
+                        className="w-full h-full rounded-full border-4 border-purple-500/50 shadow-lg shadow-purple-500/20 overflow-hidden"
                         style={{
                           transform: `rotate(${wheelRotation}deg)`,
-                          transitionDuration: isSpinning ? "4s" : "0s",
-                          transitionTimingFunction: "cubic-bezier(0.17, 0.67, 0.12, 0.99)",
+                          transition: isSpinning ? "transform 5s cubic-bezier(0.2, 0.8, 0.3, 1)" : "none",
                         }}
                       >
-                        {WHEEL_SEGMENTS.map((segment, i) => {
-                          const angle = (360 / WHEEL_SEGMENTS.length) * i;
-                          const endAngle = angle + 360 / WHEEL_SEGMENTS.length;
-                          const startRad = (angle - 90) * (Math.PI / 180);
-                          const endRad = (endAngle - 90) * (Math.PI / 180);
-                          const x1 = 100 + 90 * Math.cos(startRad);
-                          const y1 = 100 + 90 * Math.sin(startRad);
-                          const x2 = 100 + 90 * Math.cos(endRad);
-                          const y2 = 100 + 90 * Math.sin(endRad);
-                          const largeArc = 360 / WHEEL_SEGMENTS.length > 180 ? 1 : 0;
+                        <svg viewBox="0 0 200 200" className="w-full h-full">
+                          {WHEEL_SEGMENTS.map((segment, i) => {
+                            const angle = (360 / WHEEL_SEGMENTS.length) * i;
+                            const endAngle = angle + 360 / WHEEL_SEGMENTS.length;
+                            const startRad = (angle - 90) * (Math.PI / 180);
+                            const endRad = (endAngle - 90) * (Math.PI / 180);
+                            const x1 = 100 + 100 * Math.cos(startRad);
+                            const y1 = 100 + 100 * Math.sin(startRad);
+                            const x2 = 100 + 100 * Math.cos(endRad);
+                            const y2 = 100 + 100 * Math.sin(endRad);
+                            const midRad = (startRad + endRad) / 2;
+                            const textX = 100 + 65 * Math.cos(midRad);
+                            const textY = 100 + 65 * Math.sin(midRad);
 
-                          return (
-                            <g key={i}>
-                              <path
-                                d={`M100,100 L${x1},${y1} A90,90 0 ${largeArc},1 ${x2},${y2} Z`}
-                                fill={segment.color}
-                                stroke="#0a0a0f"
-                                strokeWidth="2"
-                              />
-                              <text
-                                x={100 + 55 * Math.cos((startRad + endRad) / 2)}
-                                y={100 + 55 * Math.sin((startRad + endRad) / 2)}
-                                fill="white"
-                                fontSize="8"
-                                fontWeight="bold"
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                                transform={`rotate(${(angle + endAngle) / 2}, ${100 + 55 * Math.cos((startRad + endRad) / 2)}, ${100 + 55 * Math.sin((startRad + endRad) / 2)})`}
-                              >
-                                {segment.label}
-                              </text>
-                            </g>
-                          );
-                        })}
-                        <circle cx="100" cy="100" r="15" fill="#2d1b4e" stroke="#fbbf24" strokeWidth="3" />
-                        <text x="100" y="100" fill="#fbbf24" fontSize="10" textAnchor="middle" dominantBaseline="middle" fontWeight="bold">SOL</text>
-                      </svg>
+                            return (
+                              <g key={i}>
+                                <path
+                                  d={`M100,100 L${x1},${y1} A100,100 0 0,1 ${x2},${y2} Z`}
+                                  fill={segment.color}
+                                />
+                                <text
+                                  x={textX}
+                                  y={textY}
+                                  fill={segment.textColor}
+                                  fontSize="11"
+                                  fontWeight="bold"
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                  transform={`rotate(${(angle + endAngle) / 2}, ${textX}, ${textY})`}
+                                >
+                                  {segment.label}
+                                </text>
+                              </g>
+                            );
+                          })}
+                          {/* Center */}
+                          <circle cx="100" cy="100" r="20" fill="#1a1a1e" stroke="#7c3aed" strokeWidth="3" />
+                          <text x="100" y="100" fill="#a855f7" fontSize="8" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">SPIN</text>
+                        </svg>
+                      </div>
                     </div>
 
-                    {/* Spin Result */}
+                    {/* Result */}
                     {spinResult && (
-                      <div className={`text-center mb-4 p-3 rounded-xl w-full ${spinResult.prize > 0 ? "bg-green-900/30 border border-green-500/50" : "bg-gray-800/50 border border-gray-600/50"}`}>
-                        <p className="font-pixel text-sm">
-                          {spinResult.prize > 0 ? (
-                            <>
-                              <span className="text-green-400">YOU WON!</span>
-                              <span className="text-yellow-400 ml-2">{spinResult.prize} SOL</span>
-                            </>
-                          ) : (
-                            <span className="text-gray-400">Better luck next time!</span>
-                          )}
-                        </p>
+                      <div className={`w-full p-4 rounded-xl mb-4 text-center ${
+                        spinResult.prize > 0 ? "bg-green-500/10 border border-green-500/30" : "bg-white/5 border border-white/10"
+                      }`}>
+                        {spinResult.prize > 0 ? (
+                          <p className="text-green-400 font-medium">
+                            Won <span className="text-white">{spinResult.prize} SOL</span>
+                          </p>
+                        ) : (
+                          <p className="text-gray-400">No win this time</p>
+                        )}
                       </div>
                     )}
 
-                    {/* Pot Balance */}
-                    <div className="text-center mb-4">
-                      <p className="font-pixel text-[10px] text-purple-300">POT BALANCE</p>
-                      <p className="font-pixel text-xl text-yellow-400">{wheelState?.potBalance?.toFixed(4) || "0.0000"} SOL</p>
-                    </div>
-
                     {/* Spin Button */}
                     {!connected ? (
-                      <div className="text-center py-4 text-gray-400 font-pixel text-[10px]">
-                        Connect your wallet to spin
-                      </div>
-                    ) : wheelState && !wheelState.canSpin && wheelState.cooldownEnds ? (
-                      <div className="text-center py-4">
-                        <p className="font-pixel text-xs text-yellow-400">Cooldown: {formatTimeRemaining(wheelState.cooldownEnds)}</p>
-                        <p className="text-[10px] text-gray-400 mt-1">One spin every 10 minutes</p>
+                      <p className="text-gray-500 text-sm">Connect wallet to spin</p>
+                    ) : wheelState && !wheelState.canSpin ? (
+                      <div className="text-center">
+                        <p className="text-purple-400 font-mono text-lg">{cooldownTime}</p>
+                        <p className="text-gray-500 text-xs mt-1">until next spin</p>
                       </div>
                     ) : (
                       <button
                         onClick={handleSpin}
-                        disabled={isSpinning || Boolean(wheelState && !wheelState.canSpin)}
-                        className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-pixel text-sm rounded-xl transition-all transform hover:scale-[1.05] disabled:opacity-50 disabled:cursor-not-allowed border-2 border-yellow-500/50"
+                        disabled={isSpinning}
+                        className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-medium rounded-xl transition-all disabled:opacity-50 border border-purple-400/30"
                       >
-                        {isSpinning ? "SPINNING..." : "🎰 SPIN (FREE)"}
+                        {isSpinning ? "Spinning..." : "Spin Free"}
                       </button>
                     )}
                   </div>
 
-                  {/* Prize Table */}
-                  <div className="bg-gray-800/30 rounded-xl border border-gray-700/50 p-4">
-                    <h4 className="font-pixel text-[10px] text-purple-300 mb-3">PRIZES</h4>
-                    <div className="grid grid-cols-2 gap-2 text-[10px]">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400">0.01 SOL</span>
-                        <span className="text-green-400 font-pixel">25%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400">0.05 SOL</span>
-                        <span className="text-blue-400 font-pixel">15%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400">0.1 SOL</span>
-                        <span className="text-purple-400 font-pixel">8%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400">JACKPOT</span>
-                        <span className="text-red-400 font-pixel">2%</span>
-                      </div>
+                  {/* Prizes */}
+                  <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                    <div className="bg-green-900/20 rounded-lg p-2">
+                      <p className="text-green-400 font-medium">0.01</p>
+                      <p className="text-gray-500">25%</p>
+                    </div>
+                    <div className="bg-blue-900/20 rounded-lg p-2">
+                      <p className="text-blue-400 font-medium">0.05</p>
+                      <p className="text-gray-500">15%</p>
+                    </div>
+                    <div className="bg-purple-900/20 rounded-lg p-2">
+                      <p className="text-purple-400 font-medium">0.10</p>
+                      <p className="text-gray-500">8%</p>
+                    </div>
+                    <div className="bg-red-900/20 rounded-lg p-2">
+                      <p className="text-yellow-400 font-medium">0.50</p>
+                      <p className="text-gray-500">2%</p>
                     </div>
                   </div>
                 </div>
@@ -473,40 +424,35 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
 
               {/* History Tab */}
               {activeTab === "history" && (
-                <div className="space-y-3">
+                <div>
                   {!connected ? (
-                    <div className="text-center py-12 text-gray-400 font-pixel text-[10px]">
-                      Connect your wallet to view history
-                    </div>
+                    <p className="text-center text-gray-500 py-12">Connect wallet to view history</p>
                   ) : history.length === 0 ? (
                     <div className="text-center py-12">
-                      <div className="text-4xl mb-4">📜</div>
-                      <p className="font-pixel text-xs text-gray-400">No casino history yet</p>
-                      <p className="text-[10px] text-gray-500 mt-1">Try your luck at the raffle or wheel!</p>
+                      <p className="text-gray-500">No history yet</p>
+                      <p className="text-gray-600 text-xs mt-1">Play to see your results here</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       {history.map((entry) => (
                         <div
                           key={entry.id}
-                          className={`p-3 rounded-xl border ${
-                            entry.isWin ? "bg-green-900/20 border-green-700/50" : "bg-gray-800/30 border-gray-700/50"
+                          className={`flex items-center justify-between p-3 rounded-lg ${
+                            entry.isWin ? "bg-green-500/10" : "bg-white/5"
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span>{entry.type === "raffle" ? "🎟️" : "🎡"}</span>
-                              <span className="font-pixel text-[10px] text-white">
-                                {entry.type.toUpperCase()}
-                              </span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg">{entry.type === "raffle" ? "🎟️" : "🎡"}</span>
+                            <div>
+                              <p className="text-white text-sm capitalize">{entry.type}</p>
+                              <p className="text-gray-500 text-xs">
+                                {new Date(entry.timestamp).toLocaleDateString()}
+                              </p>
                             </div>
-                            <span className={`font-pixel text-[10px] ${entry.isWin ? "text-green-400" : "text-gray-400"}`}>
-                              {entry.isWin ? `+${entry.amount.toFixed(4)} SOL` : entry.result}
-                            </span>
                           </div>
-                          <p className="text-[9px] text-gray-500 mt-1">
-                            {new Date(entry.timestamp).toLocaleString()}
-                          </p>
+                          <span className={`font-medium ${entry.isWin ? "text-green-400" : "text-gray-500"}`}>
+                            {entry.isWin ? `+${entry.amount.toFixed(3)}` : entry.result}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -516,19 +462,11 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
             </>
           )}
 
-          {/* Error Display */}
           {error && (
-            <div className="mt-4 p-3 bg-red-900/30 border border-red-500/50 rounded-xl text-red-300 text-[10px] font-pixel">
+            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
               {error}
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-gray-700/50 bg-gray-900/50 px-4 py-3">
-          <p className="font-pixel text-[9px] text-gray-500 text-center">
-            All prizes funded by Ghost&apos;s trading fees. Play responsibly!
-          </p>
         </div>
       </div>
     </div>
