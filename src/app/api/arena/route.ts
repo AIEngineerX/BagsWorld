@@ -1,6 +1,7 @@
 // AI Trading Arena API - Real AI agents with live Bags.fm data
 import { NextRequest, NextResponse } from "next/server";
 import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
+import { getGlobalTokens, isNeonConfigured } from "@/lib/neon";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
@@ -131,7 +132,11 @@ SPEECH PATTERN:
   },
 };
 
-// Fetch live token data from Bags.fm
+// Simple cache for live token data (5 second TTL)
+let tokenCache: { data: any[]; timestamp: number } | null = null;
+const CACHE_TTL = 5000; // 5 seconds
+
+// Fetch live token data from database directly (no internal HTTP call)
 async function fetchLiveTokenData(mint?: string): Promise<{
   recentLaunches: any[];
   tokenData?: any;
@@ -141,18 +146,18 @@ async function fetchLiveTokenData(mint?: string): Promise<{
   };
 
   try {
-    // Fetch from our global tokens database (BagsWorld launches)
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "http://localhost:3000";
-    const tokensRes = await fetch(`${baseUrl}/api/global-tokens`, {
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-    });
-
-    if (tokensRes.ok) {
-      const data = await tokensRes.json();
-      result.recentLaunches = (data.tokens || [])
+    // Use cache if available and fresh
+    const now = Date.now();
+    if (tokenCache && (now - tokenCache.timestamp) < CACHE_TTL) {
+      result.recentLaunches = tokenCache.data;
+    } else if (isNeonConfigured()) {
+      // Direct database call instead of HTTP request
+      const tokens = await getGlobalTokens();
+      result.recentLaunches = (tokens || [])
         .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
         .slice(0, 10);
+      // Update cache
+      tokenCache = { data: result.recentLaunches, timestamp: now };
     }
 
     // If specific mint requested, get detailed data
