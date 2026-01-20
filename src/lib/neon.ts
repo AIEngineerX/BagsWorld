@@ -58,11 +58,13 @@ export async function getGlobalTokens(): Promise<GlobalToken[]> {
   }
 
   try {
+    console.log("Executing query: SELECT * FROM tokens ORDER BY created_at DESC");
     const rows = await sql`SELECT * FROM tokens ORDER BY created_at DESC`;
+    console.log("Query returned rows:", rows?.length ?? 0);
     return rows as GlobalToken[];
   } catch (error) {
     console.error("Error fetching global tokens:", error);
-    return [];
+    throw error; // Re-throw to see full error in status endpoint
   }
 }
 
