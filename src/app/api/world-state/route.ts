@@ -531,12 +531,24 @@ export async function POST(request: NextRequest) {
 
     // Build fee earners from SDK creators AND registered fee shares
     const earnerMap = new Map<string, FeeEarner>();
+    // Track usernames we've already seen (normalized to lowercase) to prevent duplicates
+    const seenUsernames = new Set<string>();
     let rank = 1;
 
-    // First, add creators from SDK data
+    // First, add creators from SDK data (skip permanent building creators like "BagsWorld")
     enrichedResults.forEach((result, index) => {
       const token = tokens[index];
+      // Skip permanent buildings (Treasury, Starter buildings) - they don't have real creators
+      if (token.mint.startsWith("Treasury") || token.mint.startsWith("Starter")) {
+        return;
+      }
+
       result.creators.forEach((creator) => {
+        // Skip if no valid username or it's a placeholder
+        if (!creator.providerUsername && !creator.username) return;
+        if (creator.username === "BagsWorld") return;
+
+        const normalizedUsername = (creator.providerUsername || creator.username).toLowerCase();
         const existing = earnerMap.get(creator.wallet);
         // Get real 24h earnings for this wallet from claim events
         const walletEarnings24h = earnings24hPerWallet.get(creator.wallet) || 0;
@@ -550,13 +562,20 @@ export async function POST(request: NextRequest) {
           }
         } else {
           earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++, walletEarnings24h));
+          seenUsernames.add(normalizedUsername);
         }
       });
     });
 
     // Then, add citizens from registered token fee shares (Twitter/X linked)
+    // Skip if they already appear from SDK creators (to avoid duplicates)
     tokensToProcess.forEach((registeredToken, index) => {
       const token = tokens[index];
+      // Skip permanent buildings
+      if (token.mint.startsWith("Treasury") || token.mint.startsWith("Starter")) {
+        return;
+      }
+
       if (registeredToken.feeShares && registeredToken.feeShares.length > 0) {
         registeredToken.feeShares.forEach((share) => {
           // Skip ecosystem fee share - it's for the treasury, not a citizen
@@ -564,8 +583,20 @@ export async function POST(request: NextRequest) {
             return;
           }
 
+          // Skip if username is empty or a placeholder
+          if (!share.username || share.username === "BagsWorld") {
+            return;
+          }
+
+          const normalizedUsername = share.username.toLowerCase();
+
+          // Skip if we already have this username from SDK creators
+          if (seenUsernames.has(normalizedUsername)) {
+            return;
+          }
+
           // Create a unique ID from provider + username (normalized to lowercase)
-          const uniqueId = `${share.provider}-${share.username.toLowerCase()}`;
+          const uniqueId = `${share.provider}-${normalizedUsername}`;
           const existing = earnerMap.get(uniqueId);
 
           if (existing) {
@@ -591,6 +622,7 @@ export async function POST(request: NextRequest) {
               topToken: token,
             };
             earnerMap.set(uniqueId, feeShareEarner);
+            seenUsernames.add(normalizedUsername);
           }
         });
       }
