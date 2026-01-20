@@ -3,14 +3,76 @@ import * as Phaser from "phaser";
 // Scale factor for higher resolution sprites (1.6x for 1280x960 canvas)
 const SCALE = 1.6;
 
+// ========================================
+// BAGSWORLD PIXEL ART PALETTE (32 colors)
+// Cohesive retro palette for consistent visuals
+// ========================================
+const PALETTE = {
+  // Backgrounds & Darks
+  void: 0x0a0a0f,       // Darkest - UI backgrounds
+  night: 0x1a1a2e,      // Dark blue-black
+  shadow: 0x16213e,     // Shadow blue
+
+  // Grays (buildings, concrete)
+  darkGray: 0x1f2937,
+  gray: 0x374151,
+  midGray: 0x4b5563,
+  lightGray: 0x6b7280,
+  silver: 0x9ca3af,
+
+  // Greens (nature, Bags brand, success)
+  darkGreen: 0x14532d,
+  forest: 0x166534,
+  green: 0x22c55e,
+  bagsGreen: 0x4ade80,  // Primary brand color
+  mint: 0x86efac,
+
+  // Blues (water, tech, corporate)
+  navy: 0x1e3a8a,
+  blue: 0x2563eb,
+  sky: 0x3b82f6,
+  lightBlue: 0x60a5fa,
+  cyan: 0x06b6d4,
+
+  // Purples (casino, premium, Solana)
+  deepPurple: 0x2d1b4e,
+  purple: 0x7c3aed,
+  violet: 0x8b5cf6,
+  lavender: 0xa855f7,
+  solanaPurple: 0x9945ff,
+
+  // Warm colors (alerts, highlights)
+  darkRed: 0x991b1b,
+  red: 0xdc2626,
+  brightRed: 0xef4444,
+  orange: 0xf97316,
+  amber: 0xf59e0b,
+  gold: 0xfbbf24,
+  yellow: 0xfde047,
+
+  // Skin tones
+  skinLight: 0xffdbac,
+  skinTan: 0xf1c27d,
+  skinMedium: 0xe0ac69,
+  skinOlive: 0xc68642,
+  skinBrown: 0x8d5524,
+  skinDark: 0x5c3317,
+
+  // Utility
+  white: 0xffffff,
+  cream: 0xfef3c7,
+  brown: 0x78350f,
+  darkBrown: 0x451a03,
+};
+
 // Skin tone palette for diversity
 const SKIN_TONES = [
-  0xffdbac, // Light
-  0xf1c27d, // Light tan
-  0xe0ac69, // Tan
-  0xc68642, // Medium
-  0x8d5524, // Brown
-  0x5c3317, // Dark brown
+  PALETTE.skinLight,
+  PALETTE.skinTan,
+  PALETTE.skinMedium,
+  PALETTE.skinOlive,
+  PALETTE.skinBrown,
+  PALETTE.skinDark,
 ];
 
 // Hair colors
@@ -23,21 +85,41 @@ const HAIR_COLORS = [
   0xe5e5e5, // White/Gray
   0xff6b6b, // Pink (dyed)
   0x4ecdc4, // Teal (dyed)
-  0xa855f7, // Purple (dyed)
+  PALETTE.lavender, // Purple (dyed)
 ];
 
 // Shirt colors
 const SHIRT_COLORS = [
-  0x4ade80, // Green (Bags green)
-  0x3b82f6, // Blue
-  0xef4444, // Red
-  0xfbbf24, // Gold
-  0xa855f7, // Purple
+  PALETTE.bagsGreen,
+  PALETTE.sky,
+  PALETTE.brightRed,
+  PALETTE.gold,
+  PALETTE.lavender,
   0xec4899, // Pink
-  0x06b6d4, // Cyan
-  0xf97316, // Orange
-  0x6b7280, // Gray
+  PALETTE.cyan,
+  PALETTE.orange,
+  PALETTE.lightGray,
 ];
+
+// ========================================
+// PIXEL ART HELPER FUNCTIONS
+// ========================================
+
+// Darken a color by a percentage (0-1)
+function darken(color: number, amount: number): number {
+  const r = Math.max(0, ((color >> 16) & 0xff) * (1 - amount));
+  const g = Math.max(0, ((color >> 8) & 0xff) * (1 - amount));
+  const b = Math.max(0, (color & 0xff) * (1 - amount));
+  return (Math.floor(r) << 16) | (Math.floor(g) << 8) | Math.floor(b);
+}
+
+// Lighten a color by a percentage (0-1)
+function lighten(color: number, amount: number): number {
+  const r = Math.min(255, ((color >> 16) & 0xff) + (255 - ((color >> 16) & 0xff)) * amount);
+  const g = Math.min(255, ((color >> 8) & 0xff) + (255 - ((color >> 8) & 0xff)) * amount);
+  const b = Math.min(255, (color & 0xff) + (255 - (color & 0xff)) * amount);
+  return (Math.floor(r) << 16) | (Math.floor(g) << 8) | Math.floor(b);
+}
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -212,11 +294,11 @@ export class BootScene extends Phaser.Scene {
     // Level 5: Top tier empire ($10M+) - BagsWorld Skyscraper
     const s = SCALE; // Local alias for readability
     const buildingConfigs = [
-      { base: 0x8b5cf6, roof: 0xfbbf24, accent: 0xfbbf24, height: Math.round(40 * s), width: Math.round(30 * s), style: "shop" },      // Level 1: Purple shop with gold roof
-      { base: 0x3b82f6, roof: 0x1e40af, accent: 0x60a5fa, height: Math.round(55 * s), width: Math.round(34 * s), style: "office" },    // Level 2: Blue office building
-      { base: 0x374151, roof: 0x4ade80, accent: 0x4ade80, height: Math.round(75 * s), width: Math.round(38 * s), style: "corporate" }, // Level 3: Gray corp with green accents
-      { base: 0x1e3a8a, roof: 0x60a5fa, accent: 0xfbbf24, height: Math.round(100 * s), width: Math.round(42 * s), style: "tower" },    // Level 4: Modern blue tower
-      { base: 0x0f172a, roof: 0x4ade80, accent: 0x4ade80, height: Math.round(130 * s), width: Math.round(48 * s), style: "skyscraper" }, // Level 5: BagsWorld HQ
+      { base: PALETTE.violet, roof: PALETTE.gold, accent: PALETTE.gold, height: Math.round(40 * s), width: Math.round(30 * s), style: "shop" },           // Level 1: Purple shop with gold roof
+      { base: PALETTE.sky, roof: PALETTE.navy, accent: PALETTE.lightBlue, height: Math.round(55 * s), width: Math.round(34 * s), style: "office" },       // Level 2: Blue office building
+      { base: PALETTE.gray, roof: PALETTE.bagsGreen, accent: PALETTE.bagsGreen, height: Math.round(75 * s), width: Math.round(38 * s), style: "corporate" }, // Level 3: Gray corp with green accents
+      { base: PALETTE.navy, roof: PALETTE.lightBlue, accent: PALETTE.gold, height: Math.round(100 * s), width: Math.round(42 * s), style: "tower" },       // Level 4: Modern blue tower
+      { base: PALETTE.night, roof: PALETTE.bagsGreen, accent: PALETTE.bagsGreen, height: Math.round(130 * s), width: Math.round(48 * s), style: "skyscraper" }, // Level 5: BagsWorld HQ
     ];
 
     for (let level = 1; level <= 5; level++) {
@@ -227,34 +309,47 @@ export class BootScene extends Phaser.Scene {
       const canvasHeight = Math.round(140 * s);
       const canvasWidth = Math.round(55 * s);
 
-      // Shadow
-      buildingGraphics.fillStyle(0x000000, 0.4);
+      // Drop shadow (darker, more defined)
+      buildingGraphics.fillStyle(PALETTE.void, 0.5);
       buildingGraphics.fillRect(Math.round(6 * s), canvasHeight - bHeight + Math.round(6 * s), bWidth - Math.round(2 * s), bHeight);
 
-      // Building base
+      // Building base (midtone)
       buildingGraphics.fillStyle(config.base);
       buildingGraphics.fillRect(Math.round(4 * s), canvasHeight - bHeight, bWidth - Math.round(4 * s), bHeight);
 
-      // Lighter left side for 3D effect
-      buildingGraphics.fillStyle(config.base + 0x181818);
+      // Highlight left edge (light hits from left)
+      buildingGraphics.fillStyle(lighten(config.base, 0.2));
       buildingGraphics.fillRect(Math.round(4 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
 
-      // Darker right side
-      buildingGraphics.fillStyle(config.base - 0x0a0a0a);
+      // Shadow right edge
+      buildingGraphics.fillStyle(darken(config.base, 0.25));
       buildingGraphics.fillRect(bWidth - Math.round(6 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
+
+      // Subtle dithering pattern on main face for texture
+      buildingGraphics.fillStyle(darken(config.base, 0.08));
+      for (let py = 0; py < bHeight; py += Math.round(4 * s)) {
+        for (let px = Math.round(10 * s); px < bWidth - Math.round(10 * s); px += Math.round(8 * s)) {
+          if ((py / Math.round(4 * s) + px / Math.round(8 * s)) % 2 === 0) {
+            buildingGraphics.fillRect(Math.round(4 * s) + px, canvasHeight - bHeight + py, Math.round(2 * s), Math.round(2 * s));
+          }
+        }
+      }
 
       // Style-specific roof and decorations
       if (level === 1) {
-        // Shop - awning style roof
+        // Shop - awning style roof with shading
         buildingGraphics.fillStyle(config.roof);
         buildingGraphics.fillRect(0, canvasHeight - bHeight - Math.round(6 * s), bWidth + Math.round(4 * s), Math.round(8 * s));
+        // Awning highlight
+        buildingGraphics.fillStyle(lighten(config.roof, 0.15));
+        buildingGraphics.fillRect(0, canvasHeight - bHeight - Math.round(6 * s), bWidth + Math.round(4 * s), Math.round(2 * s));
         // Stripes on awning
-        buildingGraphics.fillStyle(0xef4444);
+        buildingGraphics.fillStyle(PALETTE.brightRed);
         for (let i = 0; i < bWidth; i += Math.round(8 * s)) {
           buildingGraphics.fillRect(i, canvasHeight - bHeight - Math.round(5 * s), Math.round(4 * s), Math.round(6 * s));
         }
-        // Shop sign
-        buildingGraphics.fillStyle(0x1f2937);
+        // Shop sign with depth
+        buildingGraphics.fillStyle(PALETTE.darkGray);
         buildingGraphics.fillRect(Math.round(6 * s), canvasHeight - bHeight + Math.round(4 * s), bWidth - Math.round(12 * s), Math.round(8 * s));
         buildingGraphics.fillStyle(config.accent);
         buildingGraphics.fillRect(Math.round(8 * s), canvasHeight - bHeight + Math.round(5 * s), bWidth - Math.round(16 * s), Math.round(6 * s));
@@ -262,51 +357,70 @@ export class BootScene extends Phaser.Scene {
         // Office - flat roof with AC unit
         buildingGraphics.fillStyle(config.roof);
         buildingGraphics.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(4 * s), bWidth, Math.round(6 * s));
-        // AC unit
-        buildingGraphics.fillStyle(0x6b7280);
+        // Roof highlight
+        buildingGraphics.fillStyle(lighten(config.roof, 0.2));
+        buildingGraphics.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(4 * s), bWidth, Math.round(2 * s));
+        // AC unit with shading
+        buildingGraphics.fillStyle(PALETTE.lightGray);
         buildingGraphics.fillRect(bWidth - Math.round(12 * s), canvasHeight - bHeight - Math.round(10 * s), Math.round(8 * s), Math.round(8 * s));
-        buildingGraphics.fillStyle(0x9ca3af);
+        buildingGraphics.fillStyle(PALETTE.silver);
         buildingGraphics.fillRect(bWidth - Math.round(10 * s), canvasHeight - bHeight - Math.round(8 * s), Math.round(4 * s), Math.round(4 * s));
+        buildingGraphics.fillStyle(PALETTE.midGray);
+        buildingGraphics.fillRect(bWidth - Math.round(6 * s), canvasHeight - bHeight - Math.round(10 * s), Math.round(2 * s), Math.round(8 * s));
       } else if (level === 3) {
         // Corporate HQ - glass dome style top
         buildingGraphics.fillStyle(config.roof);
         buildingGraphics.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(8 * s), bWidth, Math.round(10 * s));
+        // Roof shading
+        buildingGraphics.fillStyle(lighten(config.roof, 0.15));
+        buildingGraphics.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(8 * s), bWidth, Math.round(3 * s));
         // Dome accent
         buildingGraphics.fillStyle(config.accent);
         buildingGraphics.fillRect(bWidth / 2 - Math.round(6 * s), canvasHeight - bHeight - Math.round(14 * s), Math.round(16 * s), Math.round(8 * s));
         // Helipad marker
-        buildingGraphics.fillStyle(0xffffff);
+        buildingGraphics.fillStyle(PALETTE.white);
         buildingGraphics.fillCircle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(4 * s), Math.round(6 * s));
         buildingGraphics.fillStyle(config.roof);
         buildingGraphics.fillCircle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(4 * s), Math.round(4 * s));
       } else if (level === 4) {
-        // Modern tower - stepped top
+        // Modern tower - stepped top with shading
         buildingGraphics.fillStyle(config.roof);
         buildingGraphics.fillRect(Math.round(6 * s), canvasHeight - bHeight - Math.round(10 * s), bWidth - Math.round(8 * s), Math.round(12 * s));
         buildingGraphics.fillRect(Math.round(10 * s), canvasHeight - bHeight - Math.round(18 * s), bWidth - Math.round(16 * s), Math.round(10 * s));
         buildingGraphics.fillRect(Math.round(14 * s), canvasHeight - bHeight - Math.round(24 * s), bWidth - Math.round(24 * s), Math.round(8 * s));
+        // Step highlights
+        buildingGraphics.fillStyle(lighten(config.roof, 0.2));
+        buildingGraphics.fillRect(Math.round(6 * s), canvasHeight - bHeight - Math.round(10 * s), bWidth - Math.round(8 * s), Math.round(2 * s));
+        buildingGraphics.fillRect(Math.round(10 * s), canvasHeight - bHeight - Math.round(18 * s), bWidth - Math.round(16 * s), Math.round(2 * s));
         // Antenna
-        buildingGraphics.fillStyle(0x9ca3af);
+        buildingGraphics.fillStyle(PALETTE.silver);
         buildingGraphics.fillRect(bWidth / 2, canvasHeight - bHeight - Math.round(32 * s), Math.round(2 * s), Math.round(12 * s));
-        buildingGraphics.fillStyle(0xef4444);
+        buildingGraphics.fillStyle(PALETTE.brightRed);
         buildingGraphics.fillCircle(bWidth / 2 + Math.round(1 * s), canvasHeight - bHeight - Math.round(34 * s), Math.round(2 * s));
       } else if (level === 5) {
         // BagsWorld Skyscraper - grand spire
         buildingGraphics.fillStyle(config.roof);
         buildingGraphics.fillTriangle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(30 * s), Math.round(8 * s), canvasHeight - bHeight, bWidth - Math.round(4 * s), canvasHeight - bHeight);
+        // Spire highlight
+        buildingGraphics.fillStyle(lighten(config.roof, 0.25));
+        buildingGraphics.fillRect(Math.round(8 * s), canvasHeight - bHeight - Math.round(5 * s), Math.round(10 * s), Math.round(5 * s));
         // Multiple spires
         buildingGraphics.fillStyle(config.accent);
         buildingGraphics.fillRect(bWidth / 2 - Math.round(1 * s), canvasHeight - bHeight - Math.round(45 * s), Math.round(6 * s), Math.round(20 * s));
         // Crown jewel
-        buildingGraphics.fillStyle(0xfbbf24);
+        buildingGraphics.fillStyle(PALETTE.gold);
         buildingGraphics.fillCircle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(48 * s), Math.round(4 * s));
+        buildingGraphics.fillStyle(lighten(PALETTE.gold, 0.3));
+        buildingGraphics.fillCircle(bWidth / 2 + Math.round(1 * s), canvasHeight - bHeight - Math.round(49 * s), Math.round(2 * s));
         // Beacon light
-        buildingGraphics.fillStyle(0xef4444);
+        buildingGraphics.fillStyle(PALETTE.brightRed);
         buildingGraphics.fillCircle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(50 * s), Math.round(2 * s));
-        // Side spires
+        // Side spires with shading
         buildingGraphics.fillStyle(config.roof);
         buildingGraphics.fillRect(Math.round(8 * s), canvasHeight - bHeight - Math.round(15 * s), Math.round(4 * s), Math.round(18 * s));
         buildingGraphics.fillRect(bWidth - Math.round(8 * s), canvasHeight - bHeight - Math.round(15 * s), Math.round(4 * s), Math.round(18 * s));
+        buildingGraphics.fillStyle(lighten(config.roof, 0.15));
+        buildingGraphics.fillRect(Math.round(8 * s), canvasHeight - bHeight - Math.round(15 * s), Math.round(2 * s), Math.round(18 * s));
       }
 
       // Windows - style varies by building type
@@ -328,17 +442,21 @@ export class BootScene extends Phaser.Scene {
           // Skip windows where door is for level 1-2
           if (level <= 2 && row === windowRows - 1 && col === Math.floor(windowCols / 2)) continue;
 
-          // Window glow
-          buildingGraphics.fillStyle(config.accent, 0.3);
+          // Window glow (subtle)
+          buildingGraphics.fillStyle(config.accent, 0.25);
           buildingGraphics.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), windowWidth + Math.round(2 * s), windowHeight + Math.round(2 * s));
 
-          // Window
+          // Window base
           buildingGraphics.fillStyle(config.accent);
           buildingGraphics.fillRect(wx, wy, windowWidth, windowHeight);
 
+          // Window highlight (top-left reflection)
+          buildingGraphics.fillStyle(lighten(config.accent, 0.35));
+          buildingGraphics.fillRect(wx, wy, Math.round(2 * s), Math.round(2 * s));
+
           // Window frame for higher levels
           if (level >= 3) {
-            buildingGraphics.fillStyle(config.base - 0x151515);
+            buildingGraphics.fillStyle(darken(config.base, 0.2));
             buildingGraphics.fillRect(wx + windowWidth / 2 - Math.round(1 * s), wy, Math.round(1 * s), windowHeight);
             buildingGraphics.fillRect(wx, wy + windowHeight / 2, windowWidth, Math.round(1 * s));
           }
@@ -351,39 +469,55 @@ export class BootScene extends Phaser.Scene {
       const doorX = (bWidth - doorWidth) / 2 + Math.round(2 * s);
 
       if (level === 5) {
-        // Grand entrance with columns
-        buildingGraphics.fillStyle(0x374151);
+        // Grand entrance with columns (with highlight/shadow)
+        buildingGraphics.fillStyle(PALETTE.gray);
         buildingGraphics.fillRect(doorX - Math.round(6 * s), canvasHeight - doorHeight - Math.round(4 * s), Math.round(4 * s), doorHeight + Math.round(4 * s));
         buildingGraphics.fillRect(doorX + doorWidth + Math.round(2 * s), canvasHeight - doorHeight - Math.round(4 * s), Math.round(4 * s), doorHeight + Math.round(4 * s));
+        // Column highlights
+        buildingGraphics.fillStyle(lighten(PALETTE.gray, 0.2));
+        buildingGraphics.fillRect(doorX - Math.round(6 * s), canvasHeight - doorHeight - Math.round(4 * s), Math.round(1 * s), doorHeight + Math.round(4 * s));
         // Entrance overhang
         buildingGraphics.fillStyle(config.accent);
         buildingGraphics.fillRect(doorX - Math.round(8 * s), canvasHeight - doorHeight - Math.round(8 * s), doorWidth + Math.round(16 * s), Math.round(6 * s));
+        buildingGraphics.fillStyle(lighten(config.accent, 0.2));
+        buildingGraphics.fillRect(doorX - Math.round(8 * s), canvasHeight - doorHeight - Math.round(8 * s), doorWidth + Math.round(16 * s), Math.round(2 * s));
       }
 
       // Door frame
-      buildingGraphics.fillStyle(0x1f2937);
+      buildingGraphics.fillStyle(PALETTE.darkGray);
       buildingGraphics.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
-      // Door
-      buildingGraphics.fillStyle(level >= 3 ? 0x374151 : 0x78350f);
+      // Door with shading
+      const doorColor = level >= 3 ? PALETTE.gray : PALETTE.brown;
+      buildingGraphics.fillStyle(doorColor);
       buildingGraphics.fillRect(doorX + Math.round(1 * s), canvasHeight - doorHeight + Math.round(1 * s), doorWidth - Math.round(2 * s), doorHeight - Math.round(1 * s));
+      // Door highlight
+      buildingGraphics.fillStyle(lighten(doorColor, 0.15));
+      buildingGraphics.fillRect(doorX + Math.round(1 * s), canvasHeight - doorHeight + Math.round(1 * s), Math.round(2 * s), doorHeight - Math.round(1 * s));
       // Door handle
       buildingGraphics.fillStyle(config.accent);
       buildingGraphics.fillRect(doorX + doorWidth - Math.round(4 * s), canvasHeight - doorHeight / 2 - Math.round(1 * s), Math.round(2 * s), Math.round(3 * s));
 
       // Building sign for level 3+
       if (level >= 3) {
-        buildingGraphics.fillStyle(0x1f2937);
+        buildingGraphics.fillStyle(PALETTE.darkGray);
         buildingGraphics.fillRect(doorX - Math.round(6 * s), canvasHeight - doorHeight - Math.round(12 * s), doorWidth + Math.round(12 * s), Math.round(8 * s));
         buildingGraphics.fillStyle(config.accent);
         buildingGraphics.fillRect(doorX - Math.round(4 * s), canvasHeight - doorHeight - Math.round(11 * s), doorWidth + Math.round(8 * s), Math.round(6 * s));
+        // Sign highlight
+        buildingGraphics.fillStyle(lighten(config.accent, 0.25));
+        buildingGraphics.fillRect(doorX - Math.round(4 * s), canvasHeight - doorHeight - Math.round(11 * s), doorWidth + Math.round(8 * s), Math.round(2 * s));
       }
 
       // Side decorations for level 4-5
       if (level >= 4) {
-        // Vertical accent lines
-        buildingGraphics.fillStyle(config.accent, 0.3);
+        // Vertical accent lines with gradient effect
+        buildingGraphics.fillStyle(config.accent, 0.2);
         buildingGraphics.fillRect(Math.round(6 * s), canvasHeight - bHeight + Math.round(5 * s), Math.round(2 * s), bHeight - Math.round(20 * s));
         buildingGraphics.fillRect(bWidth - Math.round(4 * s), canvasHeight - bHeight + Math.round(5 * s), Math.round(2 * s), bHeight - Math.round(20 * s));
+        // Brighter accent near top
+        buildingGraphics.fillStyle(config.accent, 0.35);
+        buildingGraphics.fillRect(Math.round(6 * s), canvasHeight - bHeight + Math.round(5 * s), Math.round(2 * s), Math.round(20 * s));
+        buildingGraphics.fillRect(bWidth - Math.round(4 * s), canvasHeight - bHeight + Math.round(5 * s), Math.round(2 * s), Math.round(20 * s));
       }
 
       buildingGraphics.generateTexture(`building_${level}`, canvasWidth, canvasHeight);
@@ -401,65 +535,79 @@ export class BootScene extends Phaser.Scene {
     const bWidth = Math.round(50 * s);
 
     // Shadow
-    g.fillStyle(0x000000, 0.4);
+    g.fillStyle(PALETTE.void, 0.5);
     g.fillRect(Math.round(6 * s), canvasHeight - bHeight + Math.round(6 * s), bWidth - Math.round(2 * s), bHeight);
 
     // Building base (white/cream)
-    g.fillStyle(0xfef3c7);
+    g.fillStyle(PALETTE.cream);
     g.fillRect(Math.round(4 * s), canvasHeight - bHeight, bWidth - Math.round(4 * s), bHeight);
 
-    // Lighter left side for 3D effect
-    g.fillStyle(0xfefce8);
+    // Highlight left side
+    g.fillStyle(lighten(PALETTE.cream, 0.15));
     g.fillRect(Math.round(4 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
 
-    // Red roof - iconic PokeCenter style
-    g.fillStyle(0xdc2626);
-    g.fillRect(0, canvasHeight - bHeight - Math.round(8 * s), bWidth + Math.round(4 * s), Math.round(12 * s));
-    g.fillStyle(0xef4444);
-    g.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(6 * s), bWidth, Math.round(8 * s));
+    // Shadow right side
+    g.fillStyle(darken(PALETTE.cream, 0.1));
+    g.fillRect(bWidth - Math.round(6 * s), canvasHeight - bHeight, Math.round(4 * s), bHeight);
 
-    // Roof peak/overhang
-    g.fillStyle(0xb91c1c);
+    // Red roof - iconic PokeCenter style with shading
+    g.fillStyle(PALETTE.red);
+    g.fillRect(0, canvasHeight - bHeight - Math.round(8 * s), bWidth + Math.round(4 * s), Math.round(12 * s));
+    g.fillStyle(PALETTE.brightRed);
+    g.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(6 * s), bWidth, Math.round(8 * s));
+    // Roof highlight
+    g.fillStyle(lighten(PALETTE.brightRed, 0.2));
+    g.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(6 * s), bWidth, Math.round(2 * s));
+
+    // Roof peak/overhang with shading
+    g.fillStyle(PALETTE.darkRed);
     g.fillRect(bWidth / 2 - Math.round(8 * s), canvasHeight - bHeight - Math.round(16 * s), Math.round(20 * s), Math.round(10 * s));
-    g.fillStyle(0xdc2626);
+    g.fillStyle(PALETTE.red);
     g.fillRect(bWidth / 2 - Math.round(6 * s), canvasHeight - bHeight - Math.round(14 * s), Math.round(16 * s), Math.round(6 * s));
+    // Peak highlight
+    g.fillStyle(lighten(PALETTE.red, 0.15));
+    g.fillRect(bWidth / 2 - Math.round(6 * s), canvasHeight - bHeight - Math.round(14 * s), Math.round(16 * s), Math.round(2 * s));
 
     // Pokeball logo on roof peak
-    g.fillStyle(0xffffff);
+    g.fillStyle(PALETTE.white);
     g.fillCircle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(10 * s), Math.round(6 * s));
-    g.fillStyle(0xdc2626);
+    g.fillStyle(PALETTE.red);
     g.fillRect(bWidth / 2 - Math.round(4 * s), canvasHeight - bHeight - Math.round(16 * s), Math.round(12 * s), Math.round(6 * s));
-    g.fillStyle(0x1f2937);
+    g.fillStyle(PALETTE.darkGray);
     g.fillRect(bWidth / 2 - Math.round(4 * s), canvasHeight - bHeight - Math.round(11 * s), Math.round(12 * s), Math.round(2 * s));
-    g.fillStyle(0xffffff);
+    g.fillStyle(PALETTE.white);
     g.fillCircle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(10 * s), Math.round(3 * s));
-    g.fillStyle(0x1f2937);
+    g.fillStyle(PALETTE.darkGray);
     g.fillCircle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(10 * s), Math.round(1.5 * s));
 
     // Windows (2 rows, 3 columns)
-    const windowColor = 0x60a5fa;
+    const windowColor = PALETTE.lightBlue;
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 3; col++) {
         const wx = Math.round(10 * s) + col * Math.round(12 * s);
         const wy = canvasHeight - bHeight + Math.round(15 * s) + row * Math.round(18 * s);
 
         // Window glow
-        g.fillStyle(windowColor, 0.3);
+        g.fillStyle(windowColor, 0.25);
         g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(9 * s), Math.round(11 * s));
 
         // Window
         g.fillStyle(windowColor);
         g.fillRect(wx, wy, Math.round(8 * s), Math.round(10 * s));
 
+        // Window highlight
+        g.fillStyle(lighten(windowColor, 0.3));
+        g.fillRect(wx, wy, Math.round(2 * s), Math.round(2 * s));
+
         // Window frame
-        g.fillStyle(0xfef3c7);
+        g.fillStyle(PALETTE.cream);
         g.fillRect(wx + Math.round(3 * s), wy, Math.round(2 * s), Math.round(10 * s));
         g.fillRect(wx, wy + Math.round(4 * s), Math.round(8 * s), Math.round(2 * s));
       }
     }
 
     // Red cross/plus sign (healing center)
-    g.fillStyle(0xdc2626);
+    g.fillStyle(PALETTE.red);
     g.fillRect(bWidth / 2 - Math.round(1 * s), canvasHeight - bHeight + Math.round(8 * s), Math.round(6 * s), Math.round(2 * s));
     g.fillRect(bWidth / 2 + Math.round(1 * s), canvasHeight - bHeight + Math.round(6 * s), Math.round(2 * s), Math.round(6 * s));
 
@@ -468,36 +616,41 @@ export class BootScene extends Phaser.Scene {
     const doorHeight = Math.round(20 * s);
     const doorX = (bWidth - doorWidth) / 2 + Math.round(2 * s);
 
-    // Door frame
-    g.fillStyle(0xdc2626);
+    // Door frame with shading
+    g.fillStyle(PALETTE.red);
     g.fillRect(doorX - Math.round(2 * s), canvasHeight - doorHeight - Math.round(4 * s), doorWidth + Math.round(4 * s), doorHeight + Math.round(4 * s));
+    g.fillStyle(lighten(PALETTE.red, 0.15));
+    g.fillRect(doorX - Math.round(2 * s), canvasHeight - doorHeight - Math.round(4 * s), Math.round(2 * s), doorHeight + Math.round(4 * s));
 
     // Glass doors
-    g.fillStyle(0x93c5fd);
+    g.fillStyle(PALETTE.lightBlue);
     g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
+    // Glass reflection
+    g.fillStyle(lighten(PALETTE.lightBlue, 0.3));
+    g.fillRect(doorX + Math.round(2 * s), canvasHeight - doorHeight + Math.round(2 * s), Math.round(4 * s), Math.round(6 * s));
 
     // Door divider
-    g.fillStyle(0x1f2937);
+    g.fillStyle(PALETTE.darkGray);
     g.fillRect(doorX + doorWidth / 2 - Math.round(1 * s), canvasHeight - doorHeight, Math.round(2 * s), doorHeight);
 
     // Welcome mat
-    g.fillStyle(0xdc2626);
+    g.fillStyle(PALETTE.red);
     g.fillRect(doorX - Math.round(4 * s), canvasHeight - Math.round(2 * s), doorWidth + Math.round(8 * s), Math.round(2 * s));
 
     // "P" sign above door
-    g.fillStyle(0x1f2937);
+    g.fillStyle(PALETTE.darkGray);
     g.fillRect(doorX + Math.round(2 * s), canvasHeight - doorHeight - Math.round(10 * s), doorWidth - Math.round(4 * s), Math.round(8 * s));
-    g.fillStyle(0xffffff);
+    g.fillStyle(PALETTE.white);
     g.fillRect(doorX + Math.round(5 * s), canvasHeight - doorHeight - Math.round(9 * s), Math.round(2 * s), Math.round(6 * s));
     g.fillRect(doorX + Math.round(5 * s), canvasHeight - doorHeight - Math.round(9 * s), Math.round(5 * s), Math.round(2 * s));
     g.fillRect(doorX + Math.round(8 * s), canvasHeight - doorHeight - Math.round(9 * s), Math.round(2 * s), Math.round(4 * s));
     g.fillRect(doorX + Math.round(5 * s), canvasHeight - doorHeight - Math.round(6 * s), Math.round(5 * s), Math.round(2 * s));
 
     // Side decorations - pokeball symbols
-    g.fillStyle(0xdc2626);
+    g.fillStyle(PALETTE.red);
     g.fillCircle(Math.round(10 * s), canvasHeight - Math.round(25 * s), Math.round(4 * s));
     g.fillCircle(bWidth - Math.round(6 * s), canvasHeight - Math.round(25 * s), Math.round(4 * s));
-    g.fillStyle(0xffffff);
+    g.fillStyle(PALETTE.white);
     g.fillRect(Math.round(6 * s), canvasHeight - Math.round(26 * s), Math.round(8 * s), Math.round(2 * s));
     g.fillRect(bWidth - Math.round(10 * s), canvasHeight - Math.round(26 * s), Math.round(8 * s), Math.round(2 * s));
 
@@ -515,31 +668,41 @@ export class BootScene extends Phaser.Scene {
     const bWidth = Math.round(60 * s);
 
     // Shadow
-    g.fillStyle(0x000000, 0.4);
+    g.fillStyle(PALETTE.void, 0.5);
     g.fillRect(Math.round(8 * s), canvasHeight - bHeight + Math.round(8 * s), bWidth - Math.round(2 * s), bHeight);
 
     // Building base (dark gray - stadium style)
-    g.fillStyle(0x374151);
+    g.fillStyle(PALETTE.gray);
     g.fillRect(Math.round(4 * s), canvasHeight - bHeight, bWidth - Math.round(4 * s), bHeight);
 
-    // Lighter left side for 3D effect
-    g.fillStyle(0x4b5563);
+    // Highlight left side
+    g.fillStyle(lighten(PALETTE.gray, 0.15));
     g.fillRect(Math.round(4 * s), canvasHeight - bHeight, Math.round(8 * s), bHeight);
 
-    // Orange roof - gym style
-    g.fillStyle(0xea580c);
+    // Shadow right side
+    g.fillStyle(darken(PALETTE.gray, 0.2));
+    g.fillRect(bWidth - Math.round(8 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
+
+    // Orange roof - gym style with shading
+    g.fillStyle(PALETTE.orange);
     g.fillRect(0, canvasHeight - bHeight - Math.round(12 * s), bWidth + Math.round(8 * s), Math.round(16 * s));
-    g.fillStyle(0xf97316);
+    g.fillStyle(lighten(PALETTE.orange, 0.15));
     g.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(10 * s), bWidth + Math.round(4 * s), Math.round(12 * s));
+    // Roof highlight
+    g.fillStyle(lighten(PALETTE.orange, 0.3));
+    g.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(10 * s), bWidth + Math.round(4 * s), Math.round(3 * s));
 
     // Roof peak with battle symbol
-    g.fillStyle(0xc2410c);
+    g.fillStyle(darken(PALETTE.orange, 0.2));
     g.fillRect(bWidth / 2 - Math.round(10 * s), canvasHeight - bHeight - Math.round(24 * s), Math.round(28 * s), Math.round(14 * s));
-    g.fillStyle(0xea580c);
+    g.fillStyle(PALETTE.orange);
     g.fillRect(bWidth / 2 - Math.round(8 * s), canvasHeight - bHeight - Math.round(22 * s), Math.round(24 * s), Math.round(10 * s));
+    // Peak highlight
+    g.fillStyle(lighten(PALETTE.orange, 0.2));
+    g.fillRect(bWidth / 2 - Math.round(8 * s), canvasHeight - bHeight - Math.round(22 * s), Math.round(24 * s), Math.round(2 * s));
 
     // Crossed swords symbol on roof (gym badge style)
-    g.fillStyle(0xffffff);
+    g.fillStyle(PALETTE.white);
     // Left sword
     g.fillRect(bWidth / 2 - Math.round(4 * s), canvasHeight - bHeight - Math.round(20 * s), Math.round(2 * s), Math.round(8 * s));
     g.fillRect(bWidth / 2 - Math.round(6 * s), canvasHeight - bHeight - Math.round(18 * s), Math.round(6 * s), Math.round(2 * s));
@@ -547,74 +710,96 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(bWidth / 2 + Math.round(6 * s), canvasHeight - bHeight - Math.round(20 * s), Math.round(2 * s), Math.round(8 * s));
     g.fillRect(bWidth / 2 + Math.round(4 * s), canvasHeight - bHeight - Math.round(18 * s), Math.round(6 * s), Math.round(2 * s));
     // Cross point
-    g.fillStyle(0xfbbf24);
+    g.fillStyle(PALETTE.gold);
     g.fillCircle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(16 * s), Math.round(3 * s));
+    g.fillStyle(lighten(PALETTE.gold, 0.3));
+    g.fillCircle(bWidth / 2 + Math.round(1 * s), canvasHeight - bHeight - Math.round(17 * s), Math.round(1 * s));
 
     // Windows - gym style (larger, arena-like)
-    const windowColor = 0xfbbf24; // Orange/gold glow
+    const windowColor = PALETTE.gold;
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 3; col++) {
         const wx = Math.round(10 * s) + col * Math.round(16 * s);
         const wy = canvasHeight - bHeight + Math.round(18 * s) + row * Math.round(22 * s);
 
         // Window glow
-        g.fillStyle(windowColor, 0.4);
+        g.fillStyle(windowColor, 0.3);
         g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), Math.round(13 * s), Math.round(15 * s));
 
         // Window
         g.fillStyle(windowColor);
         g.fillRect(wx, wy, Math.round(10 * s), Math.round(12 * s));
 
+        // Window highlight
+        g.fillStyle(lighten(windowColor, 0.35));
+        g.fillRect(wx, wy, Math.round(3 * s), Math.round(3 * s));
+
         // Window frame
-        g.fillStyle(0x374151);
+        g.fillStyle(PALETTE.gray);
         g.fillRect(wx + Math.round(4 * s), wy, Math.round(2 * s), Math.round(12 * s));
         g.fillRect(wx, wy + Math.round(5 * s), Math.round(10 * s), Math.round(2 * s));
       }
     }
 
     // "GYM" badge above door
-    g.fillStyle(0x1f2937);
+    g.fillStyle(PALETTE.darkGray);
     g.fillRect(bWidth / 2 - Math.round(12 * s), canvasHeight - bHeight + Math.round(8 * s), Math.round(28 * s), Math.round(12 * s));
-    g.fillStyle(0xf97316);
+    g.fillStyle(PALETTE.orange);
     g.fillRect(bWidth / 2 - Math.round(10 * s), canvasHeight - bHeight + Math.round(10 * s), Math.round(24 * s), Math.round(8 * s));
+    g.fillStyle(lighten(PALETTE.orange, 0.2));
+    g.fillRect(bWidth / 2 - Math.round(10 * s), canvasHeight - bHeight + Math.round(10 * s), Math.round(24 * s), Math.round(2 * s));
 
     // Door - large arena entrance
     const doorWidth = Math.round(20 * s);
     const doorHeight = Math.round(26 * s);
     const doorX = (bWidth - doorWidth) / 2 + Math.round(2 * s);
 
-    // Door frame
-    g.fillStyle(0xea580c);
+    // Door frame with shading
+    g.fillStyle(PALETTE.orange);
     g.fillRect(doorX - Math.round(3 * s), canvasHeight - doorHeight - Math.round(4 * s), doorWidth + Math.round(6 * s), doorHeight + Math.round(4 * s));
+    g.fillStyle(lighten(PALETTE.orange, 0.15));
+    g.fillRect(doorX - Math.round(3 * s), canvasHeight - doorHeight - Math.round(4 * s), Math.round(2 * s), doorHeight + Math.round(4 * s));
 
     // Door
-    g.fillStyle(0x1f2937);
+    g.fillStyle(PALETTE.darkGray);
     g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
 
     // Door window
-    g.fillStyle(0xfbbf24, 0.6);
+    g.fillStyle(PALETTE.gold, 0.6);
     g.fillRect(doorX + Math.round(4 * s), canvasHeight - doorHeight + Math.round(4 * s), doorWidth - Math.round(8 * s), Math.round(10 * s));
+    // Window reflection
+    g.fillStyle(lighten(PALETTE.gold, 0.4), 0.4);
+    g.fillRect(doorX + Math.round(5 * s), canvasHeight - doorHeight + Math.round(5 * s), Math.round(4 * s), Math.round(4 * s));
 
     // Door divider
-    g.fillStyle(0xea580c);
+    g.fillStyle(PALETTE.orange);
     g.fillRect(doorX + doorWidth / 2 - Math.round(1 * s), canvasHeight - doorHeight, Math.round(2 * s), doorHeight);
 
     // Battle mat entrance
-    g.fillStyle(0xea580c);
+    g.fillStyle(PALETTE.orange);
     g.fillRect(doorX - Math.round(6 * s), canvasHeight - Math.round(3 * s), doorWidth + Math.round(12 * s), Math.round(3 * s));
-    g.fillStyle(0xfbbf24);
+    g.fillStyle(PALETTE.gold);
     g.fillRect(doorX - Math.round(4 * s), canvasHeight - Math.round(2 * s), doorWidth + Math.round(8 * s), Math.round(2 * s));
 
-    // Side torches/flames (decorative)
-    g.fillStyle(0xea580c);
+    // Side torches/flames (decorative) with shading
+    g.fillStyle(PALETTE.orange);
     g.fillRect(Math.round(6 * s), canvasHeight - Math.round(40 * s), Math.round(4 * s), Math.round(16 * s));
     g.fillRect(bWidth - Math.round(6 * s), canvasHeight - Math.round(40 * s), Math.round(4 * s), Math.round(16 * s));
-    g.fillStyle(0xfbbf24);
+    // Torch highlight
+    g.fillStyle(lighten(PALETTE.orange, 0.2));
+    g.fillRect(Math.round(6 * s), canvasHeight - Math.round(40 * s), Math.round(1 * s), Math.round(16 * s));
+    g.fillRect(bWidth - Math.round(6 * s), canvasHeight - Math.round(40 * s), Math.round(1 * s), Math.round(16 * s));
+    // Flames
+    g.fillStyle(PALETTE.gold);
     g.fillCircle(Math.round(8 * s), canvasHeight - Math.round(44 * s), Math.round(4 * s));
     g.fillCircle(bWidth - Math.round(4 * s), canvasHeight - Math.round(44 * s), Math.round(4 * s));
-    g.fillStyle(0xef4444);
+    g.fillStyle(PALETTE.brightRed);
     g.fillCircle(Math.round(8 * s), canvasHeight - Math.round(46 * s), Math.round(2 * s));
     g.fillCircle(bWidth - Math.round(4 * s), canvasHeight - Math.round(46 * s), Math.round(2 * s));
+    // Flame cores (bright center)
+    g.fillStyle(PALETTE.yellow);
+    g.fillCircle(Math.round(8 * s), canvasHeight - Math.round(45 * s), Math.round(1 * s));
+    g.fillCircle(bWidth - Math.round(4 * s), canvasHeight - Math.round(45 * s), Math.round(1 * s));
 
     g.generateTexture("tradinggym", canvasWidth, canvasHeight);
     g.destroy();
@@ -630,41 +815,56 @@ export class BootScene extends Phaser.Scene {
     const bWidth = Math.round(60 * s);
 
     // Shadow
-    g.fillStyle(0x000000, 0.4);
+    g.fillStyle(PALETTE.void, 0.5);
     g.fillRect(Math.round(8 * s), canvasHeight - bHeight + Math.round(8 * s), bWidth - Math.round(2 * s), bHeight);
 
     // Building base (dark purple - casino style)
-    g.fillStyle(0x2d1b4e);
+    g.fillStyle(PALETTE.deepPurple);
     g.fillRect(Math.round(4 * s), canvasHeight - bHeight, bWidth - Math.round(4 * s), bHeight);
 
-    // Lighter left side for 3D effect
-    g.fillStyle(0x3d2a5e);
+    // Highlight left side
+    g.fillStyle(lighten(PALETTE.deepPurple, 0.2));
     g.fillRect(Math.round(4 * s), canvasHeight - bHeight, Math.round(8 * s), bHeight);
 
-    // Gold trim at base
-    g.fillStyle(0xfbbf24);
+    // Shadow right side
+    g.fillStyle(darken(PALETTE.deepPurple, 0.2));
+    g.fillRect(bWidth - Math.round(8 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
+
+    // Gold trim at base with highlight
+    g.fillStyle(PALETTE.gold);
     g.fillRect(Math.round(4 * s), canvasHeight - Math.round(8 * s), bWidth - Math.round(4 * s), Math.round(4 * s));
+    g.fillStyle(lighten(PALETTE.gold, 0.25));
+    g.fillRect(Math.round(4 * s), canvasHeight - Math.round(8 * s), bWidth - Math.round(4 * s), Math.round(1 * s));
 
     // Roof with neon lights effect (purple and gold)
-    g.fillStyle(0x7c3aed);
+    g.fillStyle(PALETTE.purple);
     g.fillRect(0, canvasHeight - bHeight - Math.round(12 * s), bWidth + Math.round(8 * s), Math.round(16 * s));
-    g.fillStyle(0x8b5cf6);
+    g.fillStyle(PALETTE.violet);
     g.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(10 * s), bWidth + Math.round(4 * s), Math.round(12 * s));
+    // Roof highlight
+    g.fillStyle(lighten(PALETTE.violet, 0.2));
+    g.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(10 * s), bWidth + Math.round(4 * s), Math.round(3 * s));
 
-    // Vegas-style marquee top
-    g.fillStyle(0x1f1635);
+    // Vegas-style marquee top with shading
+    g.fillStyle(darken(PALETTE.deepPurple, 0.3));
     g.fillRect(bWidth / 2 - Math.round(16 * s), canvasHeight - bHeight - Math.round(28 * s), Math.round(40 * s), Math.round(18 * s));
-    g.fillStyle(0x2d1b4e);
+    g.fillStyle(PALETTE.deepPurple);
     g.fillRect(bWidth / 2 - Math.round(14 * s), canvasHeight - bHeight - Math.round(26 * s), Math.round(36 * s), Math.round(14 * s));
+    // Marquee highlight
+    g.fillStyle(lighten(PALETTE.deepPurple, 0.15));
+    g.fillRect(bWidth / 2 - Math.round(14 * s), canvasHeight - bHeight - Math.round(26 * s), Math.round(36 * s), Math.round(3 * s));
 
     // Gold star on marquee
-    g.fillStyle(0xfbbf24);
+    g.fillStyle(PALETTE.gold);
     g.fillCircle(bWidth / 2 + Math.round(4 * s), canvasHeight - bHeight - Math.round(18 * s), Math.round(6 * s));
-    g.fillStyle(0xfde68a);
+    g.fillStyle(PALETTE.yellow);
     g.fillCircle(bWidth / 2 + Math.round(4 * s), canvasHeight - bHeight - Math.round(18 * s), Math.round(4 * s));
+    // Star glint
+    g.fillStyle(PALETTE.white);
+    g.fillCircle(bWidth / 2 + Math.round(2 * s), canvasHeight - bHeight - Math.round(20 * s), Math.round(1.5 * s));
 
     // Neon border lights on marquee (alternating gold dots)
-    g.fillStyle(0xfbbf24);
+    g.fillStyle(PALETTE.gold);
     for (let i = 0; i < 10; i++) {
       const lightX = bWidth / 2 - Math.round(14 * s) + i * Math.round(4 * s);
       g.fillCircle(lightX, canvasHeight - bHeight - Math.round(26 * s), Math.round(1.5 * s));
@@ -672,36 +872,42 @@ export class BootScene extends Phaser.Scene {
     }
 
     // Windows - casino style (large, glowing)
-    const windowColor = 0xfbbf24;
+    const windowColor = PALETTE.gold;
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 3; col++) {
         const wx = Math.round(10 * s) + col * Math.round(16 * s);
         const wy = canvasHeight - bHeight + Math.round(18 * s) + row * Math.round(22 * s);
 
         // Window glow (neon effect)
-        g.fillStyle(0xa855f7, 0.4);
+        g.fillStyle(PALETTE.lavender, 0.35);
         g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), Math.round(13 * s), Math.round(15 * s));
 
         // Window
         g.fillStyle(windowColor);
         g.fillRect(wx, wy, Math.round(10 * s), Math.round(12 * s));
 
+        // Window highlight
+        g.fillStyle(lighten(windowColor, 0.35));
+        g.fillRect(wx, wy, Math.round(3 * s), Math.round(3 * s));
+
         // Window frame (purple)
-        g.fillStyle(0x7c3aed);
+        g.fillStyle(PALETTE.purple);
         g.fillRect(wx + Math.round(4 * s), wy, Math.round(2 * s), Math.round(12 * s));
         g.fillRect(wx, wy + Math.round(5 * s), Math.round(10 * s), Math.round(2 * s));
       }
     }
 
-    // Dice symbols on front (gambling theme)
-    g.fillStyle(0xffffff);
+    // Dice symbols on front (gambling theme) with shading
+    g.fillStyle(PALETTE.white);
     g.fillRect(Math.round(12 * s), canvasHeight - bHeight + Math.round(8 * s), Math.round(8 * s), Math.round(8 * s));
-    g.fillStyle(0x1f1635);
+    g.fillStyle(darken(PALETTE.white, 0.1));
+    g.fillRect(Math.round(18 * s), canvasHeight - bHeight + Math.round(8 * s), Math.round(2 * s), Math.round(8 * s));
+    g.fillStyle(darken(PALETTE.deepPurple, 0.3));
     g.fillCircle(Math.round(14 * s), canvasHeight - bHeight + Math.round(10 * s), Math.round(1 * s));
     g.fillCircle(Math.round(18 * s), canvasHeight - bHeight + Math.round(14 * s), Math.round(1 * s));
-    g.fillStyle(0xffffff);
+    g.fillStyle(PALETTE.white);
     g.fillRect(bWidth - Math.round(16 * s), canvasHeight - bHeight + Math.round(8 * s), Math.round(8 * s), Math.round(8 * s));
-    g.fillStyle(0x1f1635);
+    g.fillStyle(darken(PALETTE.deepPurple, 0.3));
     g.fillCircle(bWidth - Math.round(12 * s), canvasHeight - bHeight + Math.round(12 * s), Math.round(1 * s));
 
     // Door - grand casino entrance
@@ -709,36 +915,50 @@ export class BootScene extends Phaser.Scene {
     const doorHeight = Math.round(26 * s);
     const doorX = (bWidth - doorWidth) / 2 + Math.round(2 * s);
 
-    // Door frame (gold)
-    g.fillStyle(0xfbbf24);
+    // Door frame (gold) with highlight
+    g.fillStyle(PALETTE.gold);
     g.fillRect(doorX - Math.round(3 * s), canvasHeight - doorHeight - Math.round(4 * s), doorWidth + Math.round(6 * s), doorHeight + Math.round(4 * s));
+    g.fillStyle(lighten(PALETTE.gold, 0.2));
+    g.fillRect(doorX - Math.round(3 * s), canvasHeight - doorHeight - Math.round(4 * s), Math.round(2 * s), doorHeight + Math.round(4 * s));
 
     // Door (dark purple)
-    g.fillStyle(0x1f1635);
+    g.fillStyle(darken(PALETTE.deepPurple, 0.3));
     g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
 
     // Door window (glowing gold)
-    g.fillStyle(0xfbbf24, 0.6);
+    g.fillStyle(PALETTE.gold, 0.6);
     g.fillRect(doorX + Math.round(4 * s), canvasHeight - doorHeight + Math.round(4 * s), doorWidth - Math.round(8 * s), Math.round(10 * s));
+    // Window reflection
+    g.fillStyle(lighten(PALETTE.gold, 0.4), 0.4);
+    g.fillRect(doorX + Math.round(5 * s), canvasHeight - doorHeight + Math.round(5 * s), Math.round(4 * s), Math.round(4 * s));
 
     // Door divider
-    g.fillStyle(0xfbbf24);
+    g.fillStyle(PALETTE.gold);
     g.fillRect(doorX + doorWidth / 2 - Math.round(1 * s), canvasHeight - doorHeight, Math.round(2 * s), doorHeight);
 
-    // Red carpet entrance
-    g.fillStyle(0xdc2626);
+    // Red carpet entrance with shading
+    g.fillStyle(PALETTE.red);
     g.fillRect(doorX - Math.round(6 * s), canvasHeight - Math.round(3 * s), doorWidth + Math.round(12 * s), Math.round(3 * s));
-    g.fillStyle(0xfbbf24);
+    // Carpet highlight
+    g.fillStyle(lighten(PALETTE.red, 0.15));
+    g.fillRect(doorX - Math.round(4 * s), canvasHeight - Math.round(3 * s), doorWidth + Math.round(8 * s), Math.round(1 * s));
+    // Gold carpet trim
+    g.fillStyle(PALETTE.gold);
     g.fillRect(doorX - Math.round(6 * s), canvasHeight - Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
     g.fillRect(doorX + doorWidth + Math.round(4 * s), canvasHeight - Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
 
-    // Side neon tubes (decorative)
-    g.fillStyle(0xa855f7);
+    // Side neon tubes (decorative) with glow
+    g.fillStyle(PALETTE.lavender);
     g.fillRect(Math.round(6 * s), canvasHeight - Math.round(50 * s), Math.round(3 * s), Math.round(25 * s));
     g.fillRect(bWidth - Math.round(5 * s), canvasHeight - Math.round(50 * s), Math.round(3 * s), Math.round(25 * s));
-    g.fillStyle(0xa855f7, 0.3);
+    // Neon glow
+    g.fillStyle(PALETTE.lavender, 0.25);
     g.fillRect(Math.round(4 * s), canvasHeight - Math.round(52 * s), Math.round(7 * s), Math.round(29 * s));
     g.fillRect(bWidth - Math.round(7 * s), canvasHeight - Math.round(52 * s), Math.round(7 * s), Math.round(29 * s));
+    // Neon tube highlights
+    g.fillStyle(lighten(PALETTE.lavender, 0.3));
+    g.fillRect(Math.round(6 * s), canvasHeight - Math.round(50 * s), Math.round(1 * s), Math.round(25 * s));
+    g.fillRect(bWidth - Math.round(5 * s), canvasHeight - Math.round(50 * s), Math.round(1 * s), Math.round(25 * s));
 
     g.generateTexture("casino", canvasWidth, canvasHeight);
     g.destroy();
@@ -1333,64 +1553,100 @@ export class BootScene extends Phaser.Scene {
     const size = Math.round(32 * s);
     const g = this.make.graphics({ x: 0, y: 0 });
 
-    // Shadow
-    g.fillStyle(0x000000, 0.2);
+    // Ground shadow (more defined)
+    g.fillStyle(PALETTE.void, 0.3);
     g.fillEllipse(Math.round(16 * s), Math.round(30 * s), Math.round(12 * s), Math.round(4 * s));
 
-    // Legs
-    const pantsColor = 0x1e3a8a;
+    // Legs with shading
+    const pantsColor = PALETTE.navy;
     g.fillStyle(pantsColor);
     g.fillRect(Math.round(10 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
     g.fillRect(Math.round(17 * s), Math.round(22 * s), Math.round(5 * s), Math.round(9 * s));
+    // Leg highlight (left side catches light)
+    g.fillStyle(lighten(pantsColor, 0.15));
+    g.fillRect(Math.round(10 * s), Math.round(22 * s), Math.round(2 * s), Math.round(9 * s));
+    g.fillRect(Math.round(17 * s), Math.round(22 * s), Math.round(2 * s), Math.round(9 * s));
+    // Inner leg shadow
+    g.fillStyle(darken(pantsColor, 0.2));
+    g.fillRect(Math.round(14 * s), Math.round(22 * s), Math.round(1 * s), Math.round(9 * s));
 
-    // Shoes
-    g.fillStyle(0x1f2937);
+    // Shoes with shading
+    g.fillStyle(PALETTE.darkGray);
     g.fillRect(Math.round(9 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
     g.fillRect(Math.round(17 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
+    // Shoe highlight
+    g.fillStyle(lighten(PALETTE.darkGray, 0.2));
+    g.fillRect(Math.round(9 * s), Math.round(29 * s), Math.round(3 * s), Math.round(1 * s));
+    g.fillRect(Math.round(17 * s), Math.round(29 * s), Math.round(3 * s), Math.round(1 * s));
 
-    // Body/Shirt
+    // Body/Shirt with proper shading
+    let activeShirtColor = shirtColor;
     if (mood === "celebrating") {
-      g.fillStyle(0xfbbf24); // Gold for celebrating
+      activeShirtColor = PALETTE.gold;
     } else if (mood === "sad") {
-      g.fillStyle(0x6b7280); // Gray for sad
-    } else {
-      g.fillStyle(shirtColor);
+      activeShirtColor = PALETTE.lightGray;
     }
+    g.fillStyle(activeShirtColor);
     g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(16 * s), Math.round(12 * s));
+    // Shirt highlight (left side)
+    g.fillStyle(lighten(activeShirtColor, 0.2));
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(4 * s), Math.round(12 * s));
+    // Shirt shadow (right side)
+    g.fillStyle(darken(activeShirtColor, 0.2));
+    g.fillRect(Math.round(20 * s), Math.round(12 * s), Math.round(4 * s), Math.round(12 * s));
+    // Collar detail
+    g.fillStyle(darken(activeShirtColor, 0.15));
+    g.fillRect(Math.round(12 * s), Math.round(12 * s), Math.round(8 * s), Math.round(2 * s));
 
-    // Shirt details
-    g.fillStyle(shirtColor - 0x111111);
-    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(3 * s), Math.round(12 * s));
-
-    // Arms
+    // Arms with shading
     g.fillStyle(skinTone);
     if (mood === "celebrating") {
       // Arms up
       g.fillRect(Math.round(5 * s), Math.round(6 * s), Math.round(4 * s), Math.round(8 * s));
       g.fillRect(Math.round(23 * s), Math.round(6 * s), Math.round(4 * s), Math.round(8 * s));
+      // Arm highlights
+      g.fillStyle(lighten(skinTone, 0.15));
+      g.fillRect(Math.round(5 * s), Math.round(6 * s), Math.round(2 * s), Math.round(8 * s));
+      g.fillRect(Math.round(23 * s), Math.round(6 * s), Math.round(2 * s), Math.round(8 * s));
     } else {
       // Arms down
       g.fillRect(Math.round(5 * s), Math.round(13 * s), Math.round(4 * s), Math.round(10 * s));
       g.fillRect(Math.round(23 * s), Math.round(13 * s), Math.round(4 * s), Math.round(10 * s));
+      // Arm highlights
+      g.fillStyle(lighten(skinTone, 0.15));
+      g.fillRect(Math.round(5 * s), Math.round(13 * s), Math.round(2 * s), Math.round(10 * s));
+      g.fillRect(Math.round(23 * s), Math.round(13 * s), Math.round(2 * s), Math.round(10 * s));
     }
 
-    // Head
+    // Head with shading
     g.fillStyle(skinTone);
     g.fillRect(Math.round(9 * s), Math.round(2 * s), Math.round(14 * s), Math.round(12 * s));
+    // Face highlight (forehead/left cheek)
+    g.fillStyle(lighten(skinTone, 0.12));
+    g.fillRect(Math.round(9 * s), Math.round(2 * s), Math.round(5 * s), Math.round(5 * s));
+    // Face shadow (right side)
+    g.fillStyle(darken(skinTone, 0.1));
+    g.fillRect(Math.round(20 * s), Math.round(4 * s), Math.round(3 * s), Math.round(8 * s));
 
-    // Hair
+    // Hair with shading
     g.fillStyle(hairColor);
     g.fillRect(Math.round(9 * s), Math.round(1 * s), Math.round(14 * s), Math.round(5 * s));
     g.fillRect(Math.round(8 * s), Math.round(3 * s), Math.round(2 * s), Math.round(4 * s));
     g.fillRect(Math.round(22 * s), Math.round(3 * s), Math.round(2 * s), Math.round(4 * s));
+    // Hair highlight
+    g.fillStyle(lighten(hairColor, 0.25));
+    g.fillRect(Math.round(10 * s), Math.round(1 * s), Math.round(4 * s), Math.round(2 * s));
+    // Hair shadow
+    g.fillStyle(darken(hairColor, 0.2));
+    g.fillRect(Math.round(19 * s), Math.round(2 * s), Math.round(4 * s), Math.round(3 * s));
 
-    // Eyes
-    g.fillStyle(0xffffff);
+    // Eyes with highlight
+    g.fillStyle(PALETTE.white);
     g.fillRect(Math.round(11 * s), Math.round(6 * s), Math.round(4 * s), Math.round(3 * s));
     g.fillRect(Math.round(17 * s), Math.round(6 * s), Math.round(4 * s), Math.round(3 * s));
 
     // Pupils
-    g.fillStyle(0x000000);
+    g.fillStyle(PALETTE.void);
     if (mood === "sad") {
       g.fillRect(Math.round(12 * s), Math.round(7 * s), Math.round(2 * s), Math.round(2 * s));
       g.fillRect(Math.round(18 * s), Math.round(7 * s), Math.round(2 * s), Math.round(2 * s));
@@ -1398,26 +1654,30 @@ export class BootScene extends Phaser.Scene {
       g.fillRect(Math.round(13 * s), Math.round(6 * s), Math.round(2 * s), Math.round(2 * s));
       g.fillRect(Math.round(19 * s), Math.round(6 * s), Math.round(2 * s), Math.round(2 * s));
     }
+    // Eye highlights (small white dot)
+    g.fillStyle(PALETTE.white);
+    g.fillRect(Math.round(13 * s), Math.round(6 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(19 * s), Math.round(6 * s), Math.round(1 * s), Math.round(1 * s));
 
     // Mouth
     if (mood === "happy" || mood === "celebrating") {
-      g.fillStyle(0x000000);
+      g.fillStyle(PALETTE.void);
       g.fillRect(Math.round(13 * s), Math.round(10 * s), Math.round(6 * s), Math.round(1 * s));
       g.fillRect(Math.round(12 * s), Math.round(9 * s), Math.round(1 * s), Math.round(1 * s));
       g.fillRect(Math.round(19 * s), Math.round(9 * s), Math.round(1 * s), Math.round(1 * s));
     } else if (mood === "sad") {
-      g.fillStyle(0x000000);
+      g.fillStyle(PALETTE.void);
       g.fillRect(Math.round(13 * s), Math.round(11 * s), Math.round(6 * s), Math.round(1 * s));
       g.fillRect(Math.round(12 * s), Math.round(10 * s), Math.round(1 * s), Math.round(1 * s));
       g.fillRect(Math.round(19 * s), Math.round(10 * s), Math.round(1 * s), Math.round(1 * s));
     } else {
-      g.fillStyle(0x000000);
+      g.fillStyle(PALETTE.void);
       g.fillRect(Math.round(14 * s), Math.round(10 * s), Math.round(4 * s), Math.round(1 * s));
     }
 
-    // Blush for happy
+    // Blush for happy (rosy cheeks)
     if (mood === "happy" || mood === "celebrating") {
-      g.fillStyle(0xff9999, 0.5);
+      g.fillStyle(0xffaaaa, 0.4);
       g.fillRect(Math.round(10 * s), Math.round(8 * s), Math.round(2 * s), Math.round(2 * s));
       g.fillRect(Math.round(20 * s), Math.round(8 * s), Math.round(2 * s), Math.round(2 * s));
     }
