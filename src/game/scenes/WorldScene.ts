@@ -366,7 +366,8 @@ export class WorldScene extends Phaser.Scene {
     this.decorations.forEach((d) => d.setVisible(true));
     this.animals.forEach((a) => a.sprite.setVisible(true));
 
-    // Reset to grass ground
+    // Show and reset grass ground
+    this.ground.setVisible(true);
     this.ground.setTexture("grass");
   }
 
@@ -375,13 +376,13 @@ export class WorldScene extends Phaser.Scene {
     this.decorations.forEach((d) => d.setVisible(false));
     this.animals.forEach((a) => a.sprite.setVisible(false));
 
-    // Change ground to concrete/urban
-    this.ground.setTexture("concrete");
+    // Hide the grass ground completely - city has its own pavement
+    this.ground.setVisible(false);
 
     // Add NYC-style skyline background
     this.createTrendingSkyline();
 
-    // Add neon signs and billboards
+    // Add street elements and decorations
     this.createTrendingDecorations();
 
     // Add billboards with live data displays
@@ -440,197 +441,110 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createTrendingDecorations(): void {
-    // Neon "BAGSCITY" sign at top center - text-based for clarity
-    const signBg = this.add.rectangle(400, 45, 140, 30, 0x1a1a1a);
-    signBg.setDepth(9);
-    signBg.setStrokeStyle(2, 0xfbbf24, 0.6);
-    this.trendingElements.push(signBg);
-
-    const trendingSign = this.add.text(400, 45, "BAGSCITY", {
-      fontFamily: "monospace",
-      fontSize: "18px",
-      color: "#fbbf24",
-      fontStyle: "bold",
-    });
-    trendingSign.setOrigin(0.5, 0.5);
-    trendingSign.setDepth(10);
-    this.trendingElements.push(trendingSign);
-
-    // Subtle pulsing glow animation
-    this.tweens.add({
-      targets: [trendingSign, signBg],
-      alpha: 0.85,
-      duration: 2000,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
-
     // Street lamps at ground level for urban feel
     const lampPositions = [
-      { x: 80, y: 540 },
-      { x: 280, y: 540 },
-      { x: 520, y: 540 },
-      { x: 720, y: 540 },
+      { x: 100, y: 540 },
+      { x: 300, y: 540 },
+      { x: 500, y: 540 },
+      { x: 700, y: 540 },
     ];
     lampPositions.forEach((pos) => {
       const lamp = this.add.sprite(pos.x, pos.y, "street_lamp");
       lamp.setOrigin(0.5, 1);
       lamp.setDepth(3);
-      lamp.setAlpha(0.9);
       this.trendingElements.push(lamp);
     });
 
-    // Add city urban elements
+    // Add city street elements
     this.createCityStreetElements();
   }
 
   private createCityStreetElements(): void {
-    // Road/street at the bottom with lane markings
+    // Sidewalk/pavement area (covers the grass area)
+    const pavement = this.add.rectangle(400, 520, 800, 160, 0x374151);
+    pavement.setDepth(0);
+    this.trendingElements.push(pavement);
+
+    // Road at the bottom
     const road = this.add.rectangle(400, 575, 800, 50, 0x1f2937);
-    road.setDepth(0);
+    road.setDepth(1);
     this.trendingElements.push(road);
 
     // Road lane markings (dashed yellow center line)
-    for (let x = 20; x < 780; x += 60) {
-      const roadLine = this.add.sprite(x, 575, "road_line");
-      roadLine.setDepth(1);
+    for (let x = 30; x < 780; x += 50) {
+      const roadLine = this.add.rectangle(x, 575, 25, 3, 0xfbbf24);
+      roadLine.setDepth(2);
       this.trendingElements.push(roadLine);
     }
 
-    // Sidewalk strip along bottom of buildings
-    const sidewalk = this.add.tileSprite(400, 545, 800, 20, "sidewalk");
-    sidewalk.setDepth(1);
-    this.trendingElements.push(sidewalk);
+    // Sidewalk curb line
+    const curb = this.add.rectangle(400, 548, 800, 4, 0x6b7280);
+    curb.setDepth(2);
+    this.trendingElements.push(curb);
 
     // Crosswalks at intersections
-    const crosswalk1 = this.add.sprite(150, 575, "crosswalk");
-    crosswalk1.setDepth(1);
-    this.trendingElements.push(crosswalk1);
+    this.createCrosswalk(200, 575);
+    this.createCrosswalk(600, 575);
 
-    const crosswalk2 = this.add.sprite(650, 575, "crosswalk");
-    crosswalk2.setDepth(1);
-    this.trendingElements.push(crosswalk2);
-
-    // Traffic lights
-    const trafficLight1 = this.add.sprite(120, 510, "traffic_light");
+    // Traffic lights near crosswalks
+    const trafficLight1 = this.add.sprite(170, 520, "traffic_light");
     trafficLight1.setOrigin(0.5, 1);
     trafficLight1.setDepth(4);
     this.trendingElements.push(trafficLight1);
 
-    const trafficLight2 = this.add.sprite(680, 510, "traffic_light");
+    const trafficLight2 = this.add.sprite(630, 520, "traffic_light");
     trafficLight2.setOrigin(0.5, 1);
     trafficLight2.setDepth(4);
     trafficLight2.setFlipX(true);
     this.trendingElements.push(trafficLight2);
 
-    // Parked cars along the street
-    const carPositions = [
-      { x: 60, y: 565, type: "taxi" },
-      { x: 250, y: 565, type: "car_blue" },
-      { x: 550, y: 565, type: "car_blue" },
-      { x: 740, y: 565, type: "taxi" },
-    ];
-    carPositions.forEach((pos) => {
-      const car = this.add.sprite(pos.x, pos.y, pos.type);
-      car.setOrigin(0.5, 0.5);
-      car.setDepth(2);
-      this.trendingElements.push(car);
-    });
+    // Fire hydrant
+    const hydrant = this.add.sprite(350, 545, "fire_hydrant");
+    hydrant.setOrigin(0.5, 1);
+    hydrant.setDepth(3);
+    this.trendingElements.push(hydrant);
 
-    // Fire hydrants
-    const hydrant1 = this.add.sprite(180, 535, "fire_hydrant");
-    hydrant1.setOrigin(0.5, 1);
-    hydrant1.setDepth(3);
-    this.trendingElements.push(hydrant1);
+    // Trash can
+    const trashCan = this.add.sprite(450, 545, "trash_can");
+    trashCan.setOrigin(0.5, 1);
+    trashCan.setDepth(3);
+    this.trendingElements.push(trashCan);
 
-    const hydrant2 = this.add.sprite(620, 535, "fire_hydrant");
-    hydrant2.setOrigin(0.5, 1);
-    hydrant2.setDepth(3);
-    this.trendingElements.push(hydrant2);
-
-    // Trash cans
-    const trashCan1 = this.add.sprite(340, 535, "trash_can");
-    trashCan1.setOrigin(0.5, 1);
-    trashCan1.setDepth(3);
-    this.trendingElements.push(trashCan1);
-
-    const trashCan2 = this.add.sprite(460, 535, "trash_can");
-    trashCan2.setOrigin(0.5, 1);
-    trashCan2.setDepth(3);
-    this.trendingElements.push(trashCan2);
-
-    // Advertisement posters on sides
-    const adPoster1 = this.add.sprite(30, 400, "ad_poster");
-    adPoster1.setOrigin(0.5, 0.5);
-    adPoster1.setDepth(4);
-    this.trendingElements.push(adPoster1);
-
-    const adPoster2 = this.add.sprite(770, 400, "ad_poster");
-    adPoster2.setOrigin(0.5, 0.5);
-    adPoster2.setDepth(4);
-    this.trendingElements.push(adPoster2);
-
-    // Neon accent tubes on buildings
-    const neonTube1 = this.add.sprite(50, 300, "neon_tube_green");
-    neonTube1.setDepth(5);
-    this.trendingElements.push(neonTube1);
-
-    const neonTube2 = this.add.sprite(750, 300, "neon_tube_blue");
-    neonTube2.setDepth(5);
-    this.trendingElements.push(neonTube2);
-
-    // Horizontal neon accents
-    const pinkNeon = this.add.sprite(200, 250, "neon_tube_pink");
-    pinkNeon.setDepth(5);
-    pinkNeon.setAlpha(0.8);
-    this.trendingElements.push(pinkNeon);
-
-    const goldNeon = this.add.sprite(600, 280, "neon_tube_gold");
-    goldNeon.setDepth(5);
-    goldNeon.setAlpha(0.8);
-    this.trendingElements.push(goldNeon);
-
-    // Animate neon tubes with subtle flickering
-    this.tweens.add({
-      targets: [neonTube1, neonTube2, pinkNeon, goldNeon],
-      alpha: { from: 0.6, to: 1 },
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
-
-    // Add moving car animation (taxi driving across)
+    // Add moving traffic
     this.createMovingTraffic();
   }
 
+  private createCrosswalk(x: number, y: number): void {
+    // Create crosswalk stripes
+    for (let i = -25; i <= 25; i += 10) {
+      const stripe = this.add.rectangle(x + i, y, 6, 30, 0xffffff, 0.9);
+      stripe.setDepth(2);
+      this.trendingElements.push(stripe);
+    }
+  }
+
   private createMovingTraffic(): void {
-    // Create a taxi that drives across the screen periodically
+    // Taxi driving right
     const movingTaxi = this.add.sprite(-60, 585, "taxi");
     movingTaxi.setDepth(3);
     movingTaxi.setFlipX(true);
     this.trendingElements.push(movingTaxi);
 
-    // Animate taxi driving across
     const driveTaxi = () => {
       movingTaxi.setX(-60);
       this.tweens.add({
         targets: movingTaxi,
         x: 860,
-        duration: 8000,
+        duration: 6000,
         ease: "Linear",
         onComplete: () => {
-          // Wait and repeat
-          this.time.delayedCall(5000, driveTaxi);
+          this.time.delayedCall(4000, driveTaxi);
         },
       });
     };
+    this.time.delayedCall(1000, driveTaxi);
 
-    // Start after a delay
-    this.time.delayedCall(2000, driveTaxi);
-
-    // Create a blue car going the other direction
+    // Blue car driving left
     const movingCar = this.add.sprite(860, 565, "car_blue");
     movingCar.setDepth(3);
     this.trendingElements.push(movingCar);
@@ -640,15 +554,14 @@ export class WorldScene extends Phaser.Scene {
       this.tweens.add({
         targets: movingCar,
         x: -60,
-        duration: 10000,
+        duration: 7000,
         ease: "Linear",
         onComplete: () => {
-          this.time.delayedCall(7000, driveCar);
+          this.time.delayedCall(5000, driveCar);
         },
       });
     };
-
-    this.time.delayedCall(4000, driveCar);
+    this.time.delayedCall(3000, driveCar);
   }
 
   private createTrendingBillboards(): void {
