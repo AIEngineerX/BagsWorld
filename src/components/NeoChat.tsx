@@ -7,7 +7,7 @@ import type { AIAction } from "@/app/api/agent-chat/route";
 
 interface NeoMessage {
   id: string;
-  type: "neo" | "user";
+  type: "neo" | "user" | "info";
   message: string;
   timestamp: number;
   actions?: AIAction[];
@@ -18,12 +18,40 @@ interface Position {
   y: number;
 }
 
+const NEO_TOPICS = [
+  {
+    title: "The Matrix",
+    icon: "🔮",
+    content: "The blockchain is the real matrix - every transaction, every smart contract, every token launch. I see through the noise to find the signal. Most people see prices. I see patterns in the code."
+  },
+  {
+    title: "Scouting Alpha",
+    icon: "👁️",
+    content: "My purpose is to watch. New launches, whale movements, unusual activity. While others react, I observe. The best plays are found before the crowd even knows they exist."
+  },
+  {
+    title: "Reading Signs",
+    icon: "📡",
+    content: "Volume spikes, holder distribution, dev wallet activity, social sentiment - these are the signals. Learn to read them and you'll see the future before it happens."
+  },
+  {
+    title: "Bags Protocol",
+    icon: "💎",
+    content: "Bags.fm is different. Built-in fee sharing means aligned incentives. When creators win, holders win. I track which tokens are accumulating fees - that's where the real alpha lives."
+  },
+  {
+    title: "Stay Vigilant",
+    icon: "⚡",
+    content: "The market never sleeps and neither do I. Every block brings new data. Every transaction tells a story. The question is: are you paying attention?"
+  },
+];
+
 export function NeoChat() {
   const [messages, setMessages] = useState<NeoMessage[]>([]);
   const [input, setInput] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [position, setPosition] = useState<Position>({ x: -1, y: 16 });
+  const [position, setPosition] = useState<Position>({ x: 16, y: -1 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -46,44 +74,33 @@ export function NeoChat() {
 
   // Handle dragging
   const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
-
+    if ((e.target as HTMLElement).closest("button, input")) return;
     const rect = chatRef.current?.getBoundingClientRect();
     if (rect) {
       setIsDragging(true);
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
+      setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     }
   };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
-
       const maxX = window.innerWidth - 320;
       const maxY = window.innerHeight - 400;
-
       setPosition({
         x: Math.max(0, Math.min(newX, maxX)),
         y: Math.max(0, Math.min(newY, maxY)),
       });
     };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
+    const handleMouseUp = () => setIsDragging(false);
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
       };
     }
   }, [isDragging, dragOffset]);
@@ -91,6 +108,15 @@ export function NeoChat() {
   const addMessage = useCallback((message: NeoMessage) => {
     setMessages((prev) => [...prev.slice(-30), message]);
   }, []);
+
+  const handleTopicClick = (topic: typeof NEO_TOPICS[0]) => {
+    addMessage({
+      id: `${Date.now()}-info`,
+      type: "info",
+      message: topic.content,
+      timestamp: Date.now(),
+    });
+  };
 
   const sendToNeo = useCallback(async (userMessage: string) => {
     if (isLoading) return;
@@ -149,7 +175,7 @@ export function NeoChat() {
     }
   }, [isLoading, worldState, messages, addMessage]);
 
-  // Listen for Neo/Scout click events (must be after sendToNeo is defined)
+  // Listen for Neo/Scout click events
   useEffect(() => {
     const handleScoutClick = () => {
       setIsOpen(true);
@@ -158,7 +184,6 @@ export function NeoChat() {
       }
     };
 
-    // Listen for both event names for compatibility
     window.addEventListener("bagsworld-scout-click", handleScoutClick);
     window.addEventListener("bagsworld-neo-click", handleScoutClick);
     return () => {
@@ -205,9 +230,9 @@ export function NeoChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.x >= 0
-    ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
-    : { right: 80, top: 80 };
+  const chatStyle: React.CSSProperties = position.y >= 0
+    ? { left: position.x, top: position.y, bottom: "auto" }
+    : { left: position.x, bottom: 80 };
 
   if (!isOpen) {
     return null;
@@ -217,107 +242,121 @@ export function NeoChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-black border-2 border-green-500 shadow-lg shadow-green-500/20 ${isDragging ? 'cursor-grabbing' : ''}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-green-500 shadow-lg shadow-green-500/20 ${isDragging ? "cursor-grabbing" : ""}`}
     >
-      {/* Header - Draggable */}
+      {/* Header */}
       <div
         onMouseDown={handleMouseDown}
-        className="flex items-center justify-between p-2 border-b border-green-500/50 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-green-900/30 to-black"
+        className="flex items-center justify-between p-2 border-b-4 border-green-500 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-green-600/20 to-cyan-600/20"
       >
         <div className="flex items-center gap-2">
-          <span className="text-green-400 font-mono text-lg">👁️</span>
+          <span className="font-pixel text-sm">👁️</span>
           <div>
-            <p className="font-mono text-xs text-green-400 tracking-wider">
-              NEO // THE SCOUT
-            </p>
-            <p className="font-pixel text-[8px] text-green-600">
-              powered by opus 4.5
-            </p>
+            <p className="font-pixel text-[10px] text-green-400">NEO - THE SCOUT</p>
+            <p className="font-pixel text-[8px] text-gray-400">drag to move</p>
           </div>
         </div>
         <button
           onClick={() => setIsOpen(false)}
-          className="font-mono text-xs text-green-600 hover:text-green-400 px-2"
+          className="font-pixel text-xs text-gray-400 hover:text-white px-2"
         >
           [X]
         </button>
       </div>
 
-      {/* Matrix-style scan lines effect */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-green-500/5 to-transparent pointer-events-none" />
-
-        {/* Messages */}
-        <div className="h-56 overflow-y-auto p-3 space-y-2 font-mono text-sm">
-          {messages.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-green-400 text-xs mb-2">
-                SYSTEM ONLINE
-              </p>
-              <p className="text-green-600 text-[10px]">
-                ask neo anything about the blockchain...
-              </p>
-            </div>
-          ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`p-2 ${
-                  msg.type === "neo"
-                    ? "text-green-400 border-l-2 border-green-500 pl-2"
-                    : "text-white/80 text-right"
-                }`}
-              >
-                {msg.type === "neo" && (
-                  <p className="text-[8px] text-green-600 mb-1">NEO:</p>
-                )}
-                {msg.type === "user" && (
-                  <p className="text-[8px] text-white/50 mb-1">YOU:</p>
-                )}
-                <p className="text-xs leading-relaxed whitespace-pre-wrap">
-                  {msg.message}
-                </p>
-                {msg.type === "neo" && msg.actions && msg.actions.length > 0 && (
-                  <ActionButtons actions={msg.actions} onAction={handleAction} />
-                )}
-              </div>
-            ))
-          )}
-          {isLoading && (
-            <div className="text-green-500 text-xs animate-pulse pl-2 border-l-2 border-green-500">
-              <p className="text-[8px] text-green-600 mb-1">NEO:</p>
-              scanning the matrix...
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+      {/* Topic Buttons */}
+      <div className="p-2 border-b border-green-500/30 bg-bags-darker">
+        <p className="font-pixel text-[8px] text-gray-400 mb-2">Matrix Intel:</p>
+        <div className="flex flex-wrap gap-1">
+          {NEO_TOPICS.map((topic, i) => (
+            <button
+              key={i}
+              onClick={() => handleTopicClick(topic)}
+              className="px-2 py-1 bg-green-500/10 border border-green-500/30 font-pixel text-[7px] text-green-300 hover:bg-green-500/20 hover:text-green-200 transition-colors"
+            >
+              {topic.icon} {topic.title}
+            </button>
+          ))}
         </div>
       </div>
 
+      {/* Messages */}
+      <div className="h-40 overflow-y-auto p-2 space-y-2">
+        {messages.length === 0 ? (
+          <div className="text-center py-4">
+            <p className="font-pixel text-[10px] text-green-400 mb-1">👁️ system online</p>
+            <p className="font-pixel text-[8px] text-gray-400">Neo here. I see everything.</p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-2">Ask me anything or click a topic above</p>
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`p-2 border-l-2 ${
+                msg.type === "neo"
+                  ? "bg-green-500/10 border-green-500"
+                  : msg.type === "user"
+                  ? "bg-bags-green/10 border-bags-green ml-4"
+                  : "bg-cyan-500/10 border-cyan-500"
+              }`}
+            >
+              {msg.type === "neo" && <p className="font-pixel text-[6px] text-green-400 mb-1">Neo:</p>}
+              {msg.type === "user" && <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>}
+              {msg.type === "info" && <p className="font-pixel text-[6px] text-cyan-400 mb-1">📡 Intel:</p>}
+              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
+              {msg.type === "neo" && msg.actions && msg.actions.length > 0 && (
+                <ActionButtons actions={msg.actions} onAction={handleAction} />
+              )}
+            </div>
+          ))
+        )}
+        {isLoading && (
+          <div className="p-2 border-l-2 bg-green-500/10 border-green-500">
+            <p className="font-pixel text-[8px] text-green-300 animate-pulse">scanning the matrix...</p>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-2 border-t border-green-500/30">
-        <div className="flex gap-2">
+      <div className="p-2 border-t border-green-500/30">
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="ask neo..."
+            placeholder="Ask Neo..."
             disabled={isLoading}
-            className="flex-1 bg-green-900/20 border border-green-500/30 text-green-400 font-mono text-xs px-2 py-1.5 placeholder:text-green-700 focus:outline-none focus:border-green-400"
+            className="flex-1 bg-bags-darker border border-green-500/30 px-2 py-1 font-pixel text-[8px] text-white placeholder-gray-500 focus:outline-none focus:border-green-500 disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="px-3 py-1.5 bg-green-900/30 border border-green-500/50 text-green-400 font-mono text-xs hover:bg-green-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 bg-green-500 text-white font-pixel text-[8px] hover:bg-green-400 disabled:opacity-50 transition-colors"
           >
-            &gt;
+            Send
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
 
       {/* Footer */}
-      <div className="p-2 border-t border-green-500/20 bg-green-900/10">
-        <p className="font-mono text-[8px] text-green-700 text-center">
+      <div className="p-2 border-t border-green-500/30 bg-bags-darker">
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-green-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-gray-400">Status</p>
+            <p className="font-pixel text-[9px] text-green-400">ONLINE</p>
+          </div>
+          <div className="bg-cyan-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-gray-400">Scanning</p>
+            <p className="font-pixel text-[9px] text-cyan-400">24/7</p>
+          </div>
+          <div className="bg-green-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-gray-400">Model</p>
+            <p className="font-pixel text-[9px] text-green-400">OPUS</p>
+          </div>
+        </div>
+        <p className="font-pixel text-[7px] text-green-600 text-center mt-2">
           &quot;i see the code behind everything&quot;
         </p>
       </div>
