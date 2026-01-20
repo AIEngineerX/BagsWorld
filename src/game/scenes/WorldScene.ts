@@ -881,20 +881,27 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createGround(): void {
-    // Main grass layer - scaled positions
-    const groundY = Math.round(520 * SCALE);
-    this.ground = this.add.tileSprite(GAME_WIDTH / 2, groundY, GAME_WIDTH, Math.round(160 * SCALE), "grass");
+    // Main grass layer - positioned to fill bottom portion of screen
+    const groundY = Math.round(540 * SCALE); // Moved down slightly
+    const groundHeight = Math.round(180 * SCALE); // Taller to ensure full coverage
+    this.ground = this.add.tileSprite(GAME_WIDTH / 2, groundY, GAME_WIDTH, groundHeight, "grass");
     this.ground.setDepth(0);
 
     // Add path in the middle
-    const pathY = Math.round(560 * SCALE);
+    const pathY = Math.round(570 * SCALE);
     const path = this.add.tileSprite(GAME_WIDTH / 2, pathY, GAME_WIDTH, Math.round(40 * SCALE), "path");
     path.setDepth(1);
 
-    // Dark grass border at top
-    const topGrassY = Math.round(445 * SCALE);
-    const topGrass = this.add.tileSprite(GAME_WIDTH / 2, topGrassY, GAME_WIDTH, Math.round(30 * SCALE), "grass_dark");
-    topGrass.setDepth(0);
+    // Subtle transition gradient above grass (replaces harsh grass_dark border)
+    const transitionGradient = this.add.graphics();
+    transitionGradient.setDepth(-0.5);
+    // Create a soft fade from sky color to grass area
+    transitionGradient.fillGradientStyle(
+      0x87ceeb, 0x87ceeb, // Sky blue top
+      0x228b22, 0x228b22, // Forest green bottom (matches grass)
+      0, 0, 0.3, 0.3 // Alpha: transparent top, slightly visible bottom
+    );
+    transitionGradient.fillRect(0, Math.round(430 * SCALE), GAME_WIDTH, Math.round(30 * SCALE));
   }
 
   private createSky(): void {
@@ -981,60 +988,68 @@ export class WorldScene extends Phaser.Scene {
     const skyline = this.add.graphics();
     skyline.setDepth(-1.5);
 
+    // Ground level where buildings should extend to (just above the grass)
+    const groundLevel = Math.round(440 * SCALE);
+
     // Subtle dark silhouette color
-    const silhouetteColor = 0x0a1020;
+    const silhouetteColor = 0x1a2535;
 
-    // Draw distant buildings as simple rectangles (scaled for higher resolution)
-    skyline.fillStyle(silhouetteColor, 0.6);
+    // Draw distant buildings - heights calculated from top to groundLevel
+    skyline.fillStyle(silhouetteColor, 0.5);
 
-    // Left cluster
-    skyline.fillRect(Math.round(20 * SCALE), Math.round(340 * SCALE), Math.round(15 * SCALE), Math.round(60 * SCALE));
-    skyline.fillRect(Math.round(40 * SCALE), Math.round(320 * SCALE), Math.round(20 * SCALE), Math.round(80 * SCALE));
-    skyline.fillRect(Math.round(65 * SCALE), Math.round(350 * SCALE), Math.round(12 * SCALE), Math.round(50 * SCALE));
-    skyline.fillRect(Math.round(82 * SCALE), Math.round(330 * SCALE), Math.round(18 * SCALE), Math.round(70 * SCALE));
-    skyline.fillRect(Math.round(105 * SCALE), Math.round(355 * SCALE), Math.round(14 * SCALE), Math.round(45 * SCALE));
+    // Helper function to draw building from top to ground
+    const drawBuilding = (x: number, topY: number, width: number) => {
+      const height = groundLevel - topY;
+      skyline.fillRect(x, topY, width, height);
+    };
+
+    // Left cluster (shorter buildings on edges)
+    drawBuilding(Math.round(15 * SCALE), Math.round(380 * SCALE), Math.round(18 * SCALE));
+    drawBuilding(Math.round(38 * SCALE), Math.round(360 * SCALE), Math.round(22 * SCALE));
+    drawBuilding(Math.round(65 * SCALE), Math.round(375 * SCALE), Math.round(16 * SCALE));
+    drawBuilding(Math.round(88 * SCALE), Math.round(355 * SCALE), Math.round(20 * SCALE));
+    drawBuilding(Math.round(115 * SCALE), Math.round(370 * SCALE), Math.round(18 * SCALE));
 
     // Center-left cluster
-    skyline.fillRect(Math.round(160 * SCALE), Math.round(335 * SCALE), Math.round(16 * SCALE), Math.round(65 * SCALE));
-    skyline.fillRect(Math.round(180 * SCALE), Math.round(310 * SCALE), Math.round(25 * SCALE), Math.round(90 * SCALE));
-    skyline.fillRect(Math.round(210 * SCALE), Math.round(345 * SCALE), Math.round(14 * SCALE), Math.round(55 * SCALE));
-    skyline.fillRect(Math.round(230 * SCALE), Math.round(325 * SCALE), Math.round(20 * SCALE), Math.round(75 * SCALE));
+    drawBuilding(Math.round(165 * SCALE), Math.round(350 * SCALE), Math.round(20 * SCALE));
+    drawBuilding(Math.round(192 * SCALE), Math.round(330 * SCALE), Math.round(28 * SCALE));
+    drawBuilding(Math.round(228 * SCALE), Math.round(355 * SCALE), Math.round(18 * SCALE));
+    drawBuilding(Math.round(253 * SCALE), Math.round(340 * SCALE), Math.round(24 * SCALE));
 
-    // Center cluster (taller - focal point)
-    skyline.fillRect(Math.round(320 * SCALE), Math.round(300 * SCALE), Math.round(22 * SCALE), Math.round(100 * SCALE));
-    skyline.fillRect(Math.round(348 * SCALE), Math.round(280 * SCALE), Math.round(30 * SCALE), Math.round(120 * SCALE));
-    skyline.fillRect(Math.round(385 * SCALE), Math.round(295 * SCALE), Math.round(24 * SCALE), Math.round(105 * SCALE));
-    skyline.fillRect(Math.round(415 * SCALE), Math.round(315 * SCALE), Math.round(18 * SCALE), Math.round(85 * SCALE));
-    skyline.fillRect(Math.round(438 * SCALE), Math.round(330 * SCALE), Math.round(16 * SCALE), Math.round(70 * SCALE));
+    // Center cluster (tallest - focal point)
+    drawBuilding(Math.round(320 * SCALE), Math.round(310 * SCALE), Math.round(26 * SCALE));
+    drawBuilding(Math.round(355 * SCALE), Math.round(280 * SCALE), Math.round(35 * SCALE)); // Tallest
+    drawBuilding(Math.round(400 * SCALE), Math.round(295 * SCALE), Math.round(30 * SCALE));
+    drawBuilding(Math.round(440 * SCALE), Math.round(320 * SCALE), Math.round(22 * SCALE));
+    drawBuilding(Math.round(470 * SCALE), Math.round(345 * SCALE), Math.round(18 * SCALE));
 
     // Center-right cluster
-    skyline.fillRect(Math.round(520 * SCALE), Math.round(340 * SCALE), Math.round(18 * SCALE), Math.round(60 * SCALE));
-    skyline.fillRect(Math.round(545 * SCALE), Math.round(320 * SCALE), Math.round(22 * SCALE), Math.round(80 * SCALE));
-    skyline.fillRect(Math.round(572 * SCALE), Math.round(350 * SCALE), Math.round(14 * SCALE), Math.round(50 * SCALE));
+    drawBuilding(Math.round(525 * SCALE), Math.round(355 * SCALE), Math.round(20 * SCALE));
+    drawBuilding(Math.round(555 * SCALE), Math.round(335 * SCALE), Math.round(26 * SCALE));
+    drawBuilding(Math.round(590 * SCALE), Math.round(360 * SCALE), Math.round(18 * SCALE));
 
     // Right cluster
-    skyline.fillRect(Math.round(640 * SCALE), Math.round(335 * SCALE), Math.round(16 * SCALE), Math.round(65 * SCALE));
-    skyline.fillRect(Math.round(662 * SCALE), Math.round(315 * SCALE), Math.round(24 * SCALE), Math.round(85 * SCALE));
-    skyline.fillRect(Math.round(692 * SCALE), Math.round(345 * SCALE), Math.round(18 * SCALE), Math.round(55 * SCALE));
-    skyline.fillRect(Math.round(715 * SCALE), Math.round(325 * SCALE), Math.round(20 * SCALE), Math.round(75 * SCALE));
-    skyline.fillRect(Math.round(740 * SCALE), Math.round(355 * SCALE), Math.round(15 * SCALE), Math.round(45 * SCALE));
-    skyline.fillRect(Math.round(760 * SCALE), Math.round(338 * SCALE), Math.round(22 * SCALE), Math.round(62 * SCALE));
+    drawBuilding(Math.round(645 * SCALE), Math.round(350 * SCALE), Math.round(20 * SCALE));
+    drawBuilding(Math.round(675 * SCALE), Math.round(330 * SCALE), Math.round(28 * SCALE));
+    drawBuilding(Math.round(712 * SCALE), Math.round(355 * SCALE), Math.round(22 * SCALE));
+    drawBuilding(Math.round(742 * SCALE), Math.round(340 * SCALE), Math.round(24 * SCALE));
+    drawBuilding(Math.round(775 * SCALE), Math.round(365 * SCALE), Math.round(20 * SCALE));
 
     // Add subtle window lights (very sparse and dim)
     const windowColor = 0xffd700;
-    skyline.fillStyle(windowColor, 0.15);
+    skyline.fillStyle(windowColor, 0.2);
 
-    // A few random lit windows (scaled)
+    // A few random lit windows
     const windowPositions = [
-      { x: Math.round(185 * SCALE), y: Math.round(330 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
-      { x: Math.round(185 * SCALE), y: Math.round(345 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
-      { x: Math.round(352 * SCALE), y: Math.round(300 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
-      { x: Math.round(360 * SCALE), y: Math.round(320 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
-      { x: Math.round(360 * SCALE), y: Math.round(350 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
-      { x: Math.round(390 * SCALE), y: Math.round(315 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
-      { x: Math.round(550 * SCALE), y: Math.round(340 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
-      { x: Math.round(668 * SCALE), y: Math.round(335 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
-      { x: Math.round(668 * SCALE), y: Math.round(360 * SCALE), w: Math.round(3 * SCALE), h: Math.round(4 * SCALE) },
+      { x: Math.round(198 * SCALE), y: Math.round(350 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
+      { x: Math.round(198 * SCALE), y: Math.round(370 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
+      { x: Math.round(362 * SCALE), y: Math.round(310 * SCALE), w: Math.round(5 * SCALE), h: Math.round(6 * SCALE) },
+      { x: Math.round(370 * SCALE), y: Math.round(340 * SCALE), w: Math.round(5 * SCALE), h: Math.round(6 * SCALE) },
+      { x: Math.round(370 * SCALE), y: Math.round(380 * SCALE), w: Math.round(5 * SCALE), h: Math.round(6 * SCALE) },
+      { x: Math.round(408 * SCALE), y: Math.round(330 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
+      { x: Math.round(562 * SCALE), y: Math.round(360 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
+      { x: Math.round(682 * SCALE), y: Math.round(355 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
+      { x: Math.round(682 * SCALE), y: Math.round(385 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
     ];
 
     for (const win of windowPositions) {
@@ -1043,12 +1058,16 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createDecorations(): void {
-    // Add trees (scaled positions)
+    // Ground reference for positioning (top of grass area)
+    const grassTop = Math.round(455 * SCALE);
+    const pathLevel = Math.round(555 * SCALE);
+
+    // Add trees (positioned at grass top level)
     const treePositions = [
-      { x: Math.round(50 * SCALE), y: Math.round(460 * SCALE) },
-      { x: Math.round(750 * SCALE), y: Math.round(455 * SCALE) },
-      { x: Math.round(180 * SCALE), y: Math.round(470 * SCALE) },
-      { x: Math.round(620 * SCALE), y: Math.round(465 * SCALE) },
+      { x: Math.round(50 * SCALE), y: grassTop },
+      { x: Math.round(750 * SCALE), y: grassTop - Math.round(5 * SCALE) },
+      { x: Math.round(180 * SCALE), y: grassTop + Math.round(10 * SCALE) },
+      { x: Math.round(620 * SCALE), y: grassTop + Math.round(5 * SCALE) },
     ];
 
     treePositions.forEach((pos, i) => {
@@ -1069,12 +1088,12 @@ export class WorldScene extends Phaser.Scene {
       });
     });
 
-    // Add bushes (scaled positions)
+    // Add bushes (positioned on grass)
     const bushPositions = [
-      { x: Math.round(100 * SCALE), y: Math.round(480 * SCALE) },
-      { x: Math.round(300 * SCALE), y: Math.round(475 * SCALE) },
-      { x: Math.round(500 * SCALE), y: Math.round(478 * SCALE) },
-      { x: Math.round(700 * SCALE), y: Math.round(476 * SCALE) },
+      { x: Math.round(100 * SCALE), y: grassTop + Math.round(25 * SCALE) },
+      { x: Math.round(300 * SCALE), y: grassTop + Math.round(20 * SCALE) },
+      { x: Math.round(500 * SCALE), y: grassTop + Math.round(23 * SCALE) },
+      { x: Math.round(700 * SCALE), y: grassTop + Math.round(21 * SCALE) },
     ];
 
     bushPositions.forEach((pos) => {
@@ -1085,10 +1104,10 @@ export class WorldScene extends Phaser.Scene {
       this.decorations.push(bush);
     });
 
-    // Add lamp posts (scaled positions)
+    // Add lamp posts (positioned near path)
     const lampPositions = [
-      { x: Math.round(200 * SCALE), y: Math.round(540 * SCALE) },
-      { x: Math.round(600 * SCALE), y: Math.round(540 * SCALE) },
+      { x: Math.round(200 * SCALE), y: pathLevel },
+      { x: Math.round(600 * SCALE), y: pathLevel },
     ];
 
     lampPositions.forEach((pos) => {
@@ -1114,10 +1133,10 @@ export class WorldScene extends Phaser.Scene {
       });
     });
 
-    // Add benches (scaled positions)
+    // Add benches (positioned near path)
     const benchPositions = [
-      { x: Math.round(350 * SCALE), y: Math.round(545 * SCALE) },
-      { x: Math.round(450 * SCALE), y: Math.round(545 * SCALE) },
+      { x: Math.round(350 * SCALE), y: pathLevel - Math.round(5 * SCALE) },
+      { x: Math.round(450 * SCALE), y: pathLevel - Math.round(5 * SCALE) },
     ];
 
     benchPositions.forEach((pos) => {
@@ -1145,15 +1164,19 @@ export class WorldScene extends Phaser.Scene {
   private createAnimals(): void {
     const animalTypes: Animal["type"][] = ["dog", "cat", "bird", "butterfly", "squirrel"];
 
-    // Create a variety of animals (scaled positions)
+    // Reference positions
+    const pathLevel = Math.round(555 * SCALE);
+    const grassTop = Math.round(455 * SCALE);
+
+    // Create a variety of animals (positioned relative to ground)
     const animalConfigs = [
-      { type: "dog" as const, x: Math.round(150 * SCALE), y: Math.round(555 * SCALE), scale: 1.2 * SCALE },
-      { type: "cat" as const, x: Math.round(650 * SCALE), y: Math.round(555 * SCALE), scale: 1.1 * SCALE },
-      { type: "bird" as const, x: Math.round(100 * SCALE), y: Math.round(480 * SCALE), scale: 0.8 * SCALE },
-      { type: "bird" as const, x: Math.round(700 * SCALE), y: Math.round(490 * SCALE), scale: 0.7 * SCALE },
-      { type: "butterfly" as const, x: Math.round(300 * SCALE), y: Math.round(470 * SCALE), scale: 0.6 * SCALE },
-      { type: "butterfly" as const, x: Math.round(500 * SCALE), y: Math.round(460 * SCALE), scale: 0.5 * SCALE },
-      { type: "squirrel" as const, x: Math.round(80 * SCALE), y: Math.round(475 * SCALE), scale: 1.0 * SCALE },
+      { type: "dog" as const, x: Math.round(150 * SCALE), y: pathLevel + Math.round(10 * SCALE), scale: 1.2 * SCALE },
+      { type: "cat" as const, x: Math.round(650 * SCALE), y: pathLevel + Math.round(10 * SCALE), scale: 1.1 * SCALE },
+      { type: "bird" as const, x: Math.round(100 * SCALE), y: grassTop - Math.round(20 * SCALE), scale: 0.8 * SCALE },
+      { type: "bird" as const, x: Math.round(700 * SCALE), y: grassTop - Math.round(10 * SCALE), scale: 0.7 * SCALE },
+      { type: "butterfly" as const, x: Math.round(300 * SCALE), y: grassTop - Math.round(30 * SCALE), scale: 0.6 * SCALE },
+      { type: "butterfly" as const, x: Math.round(500 * SCALE), y: grassTop - Math.round(40 * SCALE), scale: 0.5 * SCALE },
+      { type: "squirrel" as const, x: Math.round(80 * SCALE), y: grassTop + Math.round(20 * SCALE), scale: 1.0 * SCALE },
     ];
 
     animalConfigs.forEach((config) => {
@@ -1217,13 +1240,17 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createExtraDecorations(): void {
-    // Add flower patches (scaled positions)
+    // Reference positions
+    const grassTop = Math.round(455 * SCALE);
+    const pathLevel = Math.round(555 * SCALE);
+
+    // Add flower patches (positioned on grass)
     const flowerPositions = [
-      { x: Math.round(130 * SCALE), y: Math.round(490 * SCALE) },
-      { x: Math.round(280 * SCALE), y: Math.round(485 * SCALE) },
-      { x: Math.round(420 * SCALE), y: Math.round(488 * SCALE) },
-      { x: Math.round(560 * SCALE), y: Math.round(482 * SCALE) },
-      { x: Math.round(680 * SCALE), y: Math.round(486 * SCALE) },
+      { x: Math.round(130 * SCALE), y: grassTop + Math.round(35 * SCALE) },
+      { x: Math.round(280 * SCALE), y: grassTop + Math.round(30 * SCALE) },
+      { x: Math.round(420 * SCALE), y: grassTop + Math.round(33 * SCALE) },
+      { x: Math.round(560 * SCALE), y: grassTop + Math.round(27 * SCALE) },
+      { x: Math.round(680 * SCALE), y: grassTop + Math.round(31 * SCALE) },
     ];
 
     flowerPositions.forEach((pos) => {
@@ -1244,11 +1271,11 @@ export class WorldScene extends Phaser.Scene {
       });
     });
 
-    // Add rocks (scaled positions)
+    // Add rocks (positioned near path)
     const rockPositions = [
-      { x: Math.round(70 * SCALE), y: Math.round(555 * SCALE) },
-      { x: Math.round(730 * SCALE), y: Math.round(552 * SCALE) },
-      { x: Math.round(380 * SCALE), y: Math.round(558 * SCALE) },
+      { x: Math.round(70 * SCALE), y: pathLevel + Math.round(5 * SCALE) },
+      { x: Math.round(730 * SCALE), y: pathLevel + Math.round(2 * SCALE) },
+      { x: Math.round(380 * SCALE), y: pathLevel + Math.round(8 * SCALE) },
     ];
 
     rockPositions.forEach((pos) => {
@@ -1259,16 +1286,16 @@ export class WorldScene extends Phaser.Scene {
       this.decorations.push(rock);
     });
 
-    // Add fountain in center of park (above the path, scaled)
-    const fountainY = Math.round(480 * SCALE);
-    const fountainX = Math.round(400 * SCALE);
+    // Add fountain in center of park (above the path)
+    const fountainY = grassTop + Math.round(30 * SCALE);
+    const fountainX = GAME_WIDTH / 2;
     const fountain = this.add.sprite(fountainX, fountainY, "fountain");
     fountain.setOrigin(0.5, 1);
     fountain.setDepth(2);
     fountain.setScale(SCALE);
     this.decorations.push(fountain);
 
-    // Water spray particles - aligned with fountain top (scaled)
+    // Water spray particles - aligned with fountain top
     this.fountainWater = this.add.particles(fountainX, fountainY - Math.round(35 * SCALE), "rain", {
       speed: { min: Math.round(30 * SCALE), max: Math.round(60 * SCALE) },
       angle: { min: 260, max: 280 },
@@ -1282,10 +1309,11 @@ export class WorldScene extends Phaser.Scene {
     });
     this.fountainWater.setDepth(2);
 
-    // Add flag poles (scaled positions)
+    // Add flag poles (positioned at skyline/grass transition)
+    const flagY = grassTop - Math.round(20 * SCALE);
     const flagPositions = [
-      { x: Math.round(50 * SCALE), y: Math.round(430 * SCALE) },
-      { x: Math.round(750 * SCALE), y: Math.round(430 * SCALE) },
+      { x: Math.round(50 * SCALE), y: flagY },
+      { x: Math.round(750 * SCALE), y: flagY },
     ];
     flagPositions.forEach((pos) => {
       const flag = this.add.sprite(pos.x, pos.y, "flag");
@@ -1304,8 +1332,8 @@ export class WorldScene extends Phaser.Scene {
       });
     });
 
-    // Add pond in corner (scaled position)
-    const pond = this.add.sprite(Math.round(100 * SCALE), Math.round(500 * SCALE), "pond");
+    // Add pond in corner (positioned on grass)
+    const pond = this.add.sprite(Math.round(100 * SCALE), grassTop + Math.round(50 * SCALE), "pond");
     pond.setOrigin(0.5, 0.5);
     pond.setDepth(0);
     pond.setScale(1.5 * SCALE);
