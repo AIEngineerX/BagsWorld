@@ -48,9 +48,9 @@ export class BootScene extends Phaser.Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
-    // Create stylish loading screen
+    // Create stylish loading screen (solid color to prevent flash)
     const loadingBg = this.add.graphics();
-    loadingBg.fillGradientStyle(0x0a0a0f, 0x0a0a0f, 0x1a1a2e, 0x1a1a2e, 1);
+    loadingBg.fillStyle(0x0a0a0f, 1);
     loadingBg.fillRect(0, 0, width, height);
 
     // Logo text
