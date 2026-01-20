@@ -984,6 +984,13 @@ export class WorldScene extends Phaser.Scene {
     const { characterId, message, emotion } = event.detail;
     if (!characterId || !message || !this.speechBubbleManager) return;
 
+    // Don't interrupt autonomous dialogue conversations
+    const activeConversation = getActiveConversation();
+    if (activeConversation?.isActive) {
+      console.log(`[WorldScene] Skipping behavior speak - autonomous dialogue active`);
+      return;
+    }
+
     // Create a dialogue line and show bubble
     const line = {
       characterId,

@@ -74,6 +74,7 @@ export class SpeechBubbleManager {
 
   /**
    * Show a speech bubble for a character
+   * Only ONE bubble shows at a time - hides all others first
    */
   showBubble(line: DialogueLine, characterSpriteId?: string): SpeechBubble | null {
     const { characterId, characterName, message } = line;
@@ -88,8 +89,8 @@ export class SpeechBubbleManager {
       return null;
     }
 
-    // Remove existing bubble for this character
-    this.hideBubble(characterId);
+    // Hide ALL existing bubbles - only one character speaks at a time
+    this.hideAllBubbles();
 
     // Get character-specific colors
     const colors = CHARACTER_COLORS[characterId] || {
