@@ -11,7 +11,10 @@
       "Bash(curl:*)",
       "WebFetch(domain:localhost)",
       "Skill(bags-ecosystem-builder)",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "Bash(git stash pop:*)",
+      "Bash(git stash drop:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
