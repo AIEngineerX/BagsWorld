@@ -267,6 +267,7 @@ export class SpeechBubbleManager {
       if (characterId === "ghost" && spriteData.isDev) return spriteId;
       if (characterId === "neo" && spriteData.isScout) return spriteId;
       if (characterId === "ash" && spriteData.isAsh) return spriteId;
+      if (characterId === "toly" && spriteData.isToly) return spriteId;
       if (characterId === "bags-bot") {
         // Bags bot doesn't have a sprite, use Toly as fallback
         if (spriteData.isToly) return spriteId;

@@ -2735,6 +2735,13 @@ export class WorldScene extends Phaser.Scene {
           });
         }
 
+        // Store character type flags on sprite for speech bubble system
+        (sprite as any).isToly = isToly;
+        (sprite as any).isAsh = isAsh;
+        (sprite as any).isFinn = isFinn;
+        (sprite as any).isDev = isDev;
+        (sprite as any).isScout = isScout;
+
         this.characterSprites.set(character.id, sprite);
       } else {
         // Update special character glow positions if they exist
