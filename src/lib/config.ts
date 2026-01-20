@@ -73,11 +73,11 @@ export const ECOSYSTEM_CONFIG = {
   // Buildings grow based on market cap, giving visual progression
   buildings: {
     tiers: [
-      { level: 1, name: "Startup", minMarketCap: 0, icon: "▫" },
-      { level: 2, name: "Growing", minMarketCap: 100_000, icon: "▪" },
-      { level: 3, name: "Established", minMarketCap: 500_000, icon: "◆" },
-      { level: 4, name: "Major", minMarketCap: 2_000_000, icon: "◈" },
-      { level: 5, name: "Elite", minMarketCap: 10_000_000, icon: "✦" },
+      { level: 1, name: "Startup", minMarketCap: 0, icon: "🏠" },
+      { level: 2, name: "Growing", minMarketCap: 100_000, icon: "🏢" },
+      { level: 3, name: "Established", minMarketCap: 500_000, icon: "🏦" },
+      { level: 4, name: "Major", minMarketCap: 2_000_000, icon: "🏰" },
+      { level: 5, name: "Elite", minMarketCap: 10_000_000, icon: "👑" },
     ],
     maxBuildings: 12, // Reduced to prevent overcrowding
 
@@ -128,7 +128,7 @@ export const ECOSYSTEM_CONFIG = {
       {
         title: "Living Building",
         description: "Your token becomes a building that grows with market cap",
-        icon: "◆",
+        icon: "🏢",
       },
       {
         title: "Automatic Citizens",
@@ -150,7 +150,7 @@ export const ECOSYSTEM_CONFIG = {
       {
         title: "Earn From Multiple Tokens",
         description: "Get fee shares from any token that adds you",
-        icon: "◈",
+        icon: "💰",
       },
       {
         title: "Profile Visibility",

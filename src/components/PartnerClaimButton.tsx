@@ -244,7 +244,7 @@ export function PartnerClaimButton() {
         className="font-pixel text-[10px] px-3 py-1.5 bg-bags-gold/20 text-bags-gold border border-bags-gold/50 hover:bg-bags-gold/30 transition-colors"
         title="Claim partner fees"
       >
-        ◈ CLAIM FEES
+        💰 CLAIM FEES
       </button>
 
       {/* Claim Modal */}
@@ -261,7 +261,7 @@ export function PartnerClaimButton() {
             <div className="flex items-center justify-between p-4 border-b-4 border-bags-gold">
               <div>
                 <h2 className="font-pixel text-sm text-bags-gold">
-                  ◈ PARTNER FEE CLAIM
+                  💰 PARTNER FEE CLAIM
                 </h2>
                 <p className="font-pixel text-[8px] text-gray-400">
                   Claim your accumulated partner fees

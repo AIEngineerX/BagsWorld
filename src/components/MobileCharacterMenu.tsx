@@ -4,11 +4,11 @@ import { useState } from "react";
 
 // Character definitions for the mobile menu
 const CHARACTERS = [
-  { id: "ash", name: "Ash", icon: "▲", color: "red", event: "bagsworld-ash-click" },
-  { id: "toly", name: "Toly", icon: "◉", color: "purple", event: "bagsworld-toly-click" },
-  { id: "finn", name: "Finn", icon: "◈", color: "emerald", event: "bagsworld-finn-click" },
-  { id: "ghost", name: "Ghost", icon: "◌", color: "purple", event: "bagsworld-dev-click" },
-  { id: "neo", name: "Neo", icon: "⬡", color: "cyan", event: "bagsworld-neo-click" },
+  { id: "ash", name: "Ash", icon: "🔥", color: "red", event: "bagsworld-ash-click" },
+  { id: "toly", name: "Toly", icon: "⚡", color: "purple", event: "bagsworld-toly-click" },
+  { id: "finn", name: "Finn", icon: "💎", color: "emerald", event: "bagsworld-finn-click" },
+  { id: "ghost", name: "Ghost", icon: "👻", color: "purple", event: "bagsworld-dev-click" },
+  { id: "neo", name: "Neo", icon: "🤖", color: "cyan", event: "bagsworld-neo-click" },
 ] as const;
 
 export function MobileCharacterMenu() {

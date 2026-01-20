@@ -32,7 +32,7 @@ export function ActionButtons({ actions, onAction }: ActionButtonsProps) {
       case "launch":
         return "🚀";
       case "claim":
-        return "◈";
+        return "💰";
       case "link":
         return "🔗";
       default:

@@ -748,7 +748,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             </div>
 
             <div className="bg-bags-darker p-3 border border-bags-green/30">
-              <p className="font-pixel text-[10px] text-bags-gold mb-1">◈ HOW FEES WORK</p>
+              <p className="font-pixel text-[10px] text-bags-gold mb-1">💰 HOW FEES WORK</p>
               <p className="font-pixel text-[8px] text-gray-400">
                 Every trade generates fees split among claimers. <span className="text-bags-green">Total must equal exactly 100%.</span>
               </p>
@@ -885,13 +885,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
             <div className="bg-bags-darker p-3 space-y-2">
               <div className="flex justify-between items-center mb-2">
-                <p className="font-pixel text-[10px] text-bags-gold">◈ Fee Distribution</p>
+                <p className="font-pixel text-[10px] text-bags-gold">💰 Fee Distribution</p>
                 <span className="font-pixel text-[7px] text-gray-500 bg-bags-green/10 px-2 py-0.5 rounded">🔒 PERMANENT</span>
               </div>
               {/* Ecosystem fee (only show if > 0) */}
               {ecosystemFee.bps > 0 && (
                 <div className="flex justify-between font-pixel text-[8px] pb-1 border-b border-bags-green/20">
-                  <span className="text-bags-gold">◆ {ecosystemFee.displayName}</span>
+                  <span className="text-bags-gold">👑 {ecosystemFee.displayName}</span>
                   <span className="text-bags-gold">{ecosystemFee.bps / 100}%</span>
                 </div>
               )}
@@ -938,7 +938,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
             <div className="bg-bags-gold/10 border border-bags-gold/30 p-3">
               <p className="font-pixel text-[8px] text-bags-gold text-center">
-                ◆ Your token will appear as a building in BagsWorld!
+                🏢 Your token will appear as a building in BagsWorld!
               </p>
             </div>
           </div>
