@@ -1,6 +1,11 @@
 import * as Phaser from "phaser";
 import type { WorldState, GameCharacter, GameBuilding, ZoneType } from "@/lib/types";
 
+// Scale factor for higher resolution (must match BootScene)
+const SCALE = 1.6;
+const GAME_WIDTH = 1280;
+const GAME_HEIGHT = 960;
+
 interface Animal {
   sprite: Phaser.GameObjects.Sprite;
   type: "dog" | "cat" | "bird" | "butterfly" | "squirrel";
@@ -72,7 +77,7 @@ export class WorldScene extends Phaser.Scene {
     this.createSky();
 
     // Create day/night overlay
-    this.overlay = this.add.rectangle(400, 300, 800, 600, 0x000000, 0);
+    this.overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0);
     this.overlay.setDepth(100);
 
     // Add decorations (trees, bushes, benches, lamps)
@@ -871,16 +876,19 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createGround(): void {
-    // Main grass layer
-    this.ground = this.add.tileSprite(400, 520, 800, 160, "grass");
+    // Main grass layer - scaled positions
+    const groundY = Math.round(520 * SCALE);
+    this.ground = this.add.tileSprite(GAME_WIDTH / 2, groundY, GAME_WIDTH, Math.round(160 * SCALE), "grass");
     this.ground.setDepth(0);
 
     // Add path in the middle
-    const path = this.add.tileSprite(400, 560, 800, 40, "path");
+    const pathY = Math.round(560 * SCALE);
+    const path = this.add.tileSprite(GAME_WIDTH / 2, pathY, GAME_WIDTH, Math.round(40 * SCALE), "path");
     path.setDepth(1);
 
     // Dark grass border at top
-    const topGrass = this.add.tileSprite(400, 445, 800, 30, "grass_dark");
+    const topGrassY = Math.round(445 * SCALE);
+    const topGrass = this.add.tileSprite(GAME_WIDTH / 2, topGrassY, GAME_WIDTH, Math.round(30 * SCALE), "grass_dark");
     topGrass.setDepth(0);
   }
 
@@ -896,11 +904,11 @@ export class WorldScene extends Phaser.Scene {
 
     // Add stars (store references for day/night toggle)
     this.stars = [];
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < Math.round(50 * SCALE); i++) {
       const star = this.add.circle(
-        Math.random() * 800,
-        Math.random() * 300,
-        Math.random() * 1.5 + 0.5,
+        Math.random() * GAME_WIDTH,
+        Math.random() * Math.round(300 * SCALE),
+        Math.random() * 1.5 * SCALE + 0.5 * SCALE,
         0xffffff,
         Math.random() * 0.5 + 0.3
       );
@@ -943,7 +951,7 @@ export class WorldScene extends Phaser.Scene {
         1
       );
     }
-    this.skyGradient.fillRect(0, 0, 800, 430);
+    this.skyGradient.fillRect(0, 0, GAME_WIDTH, Math.round(430 * SCALE));
   }
 
   private updateSkyForTime(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
@@ -3439,9 +3447,9 @@ export class WorldScene extends Phaser.Scene {
     // Store the original Y position for the character
     const baseY = character.y;
     const walkSpeed = isSpecial ? 0.3 : 0.5;
-    const walkRange = isSpecial ? 60 : 100; // How far they can walk from starting position
-    const minX = Math.max(80, character.x - walkRange);
-    const maxX = Math.min(720, character.x + walkRange);
+    const walkRange = isSpecial ? Math.round(60 * SCALE) : Math.round(100 * SCALE); // How far they can walk from starting position
+    const minX = Math.max(Math.round(80 * SCALE), character.x - walkRange);
+    const maxX = Math.min(Math.round(720 * SCALE), character.x + walkRange);
 
     // Walking state stored on sprite
     (sprite as any).isWalking = false;

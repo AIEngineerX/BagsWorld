@@ -8,10 +8,11 @@ import type {
   TokenInfo,
 } from "./types";
 
-// Constants for world calculations
-const WORLD_WIDTH = 800;
-const WORLD_HEIGHT = 600;
-const BUILDING_SPACING = 120; // Increased spacing to prevent overlap
+// Constants for world calculations (scaled for 1280x960 canvas)
+const SCALE = 1.6;
+const WORLD_WIDTH = 1280;
+const WORLD_HEIGHT = 960;
+const BUILDING_SPACING = Math.round(120 * SCALE); // Increased spacing to prevent overlap
 const MAX_BUILDINGS = 20;
 const MAX_CHARACTERS = 15;
 
@@ -197,18 +198,18 @@ export function generateBuildingPosition(
   const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
   const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
 
-  // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area)
+  // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area, scaled)
   // Buildings use origin(0.5, 1), so y position is their bottom edge
   // Stack rows upward from ground level with spacing
-  const GROUND_Y = 540; // Where buildings sit on the ground
-  const ROW_SPACING = 100; // Vertical spacing between rows (slightly less than horizontal)
+  const GROUND_Y = Math.round(540 * SCALE); // Where buildings sit on the ground
+  const ROW_SPACING = Math.round(100 * SCALE); // Vertical spacing between rows (slightly less than horizontal)
 
   // Front row (row 0) is at ground level, subsequent rows stack upward (behind)
   const baseY = GROUND_Y - row * ROW_SPACING;
 
-  // Use seeded random for consistent small offsets based on index
-  const offsetX = (seededRandom(index * 7 + 1) * 16 - 8);
-  const offsetY = (seededRandom(index * 13 + 2) * 12 - 6); // Smaller Y offset
+  // Use seeded random for consistent small offsets based on index (scaled)
+  const offsetX = (seededRandom(index * 7 + 1) * Math.round(16 * SCALE) - Math.round(8 * SCALE));
+  const offsetY = (seededRandom(index * 13 + 2) * Math.round(12 * SCALE) - Math.round(6 * SCALE)); // Smaller Y offset
 
   return {
     x: rowStartX + col * BUILDING_SPACING + offsetX,
@@ -270,11 +271,13 @@ export function cleanupBuildingPositionCache(activeMints: Set<string>): void {
 }
 
 export function generateCharacterPosition(): { x: number; y: number } {
-  // Characters walk on the ground/path area (around y=555)
+  // Characters walk on the ground/path area (around y=555, scaled)
   // Small Y variation so they're not all in a perfect line
+  const groundY = Math.round(550 * SCALE);
+  const margin = Math.round(50 * SCALE);
   return {
-    x: 50 + Math.random() * (WORLD_WIDTH - 100),
-    y: 550 + Math.random() * 15, // Ground level with slight variation
+    x: margin + Math.random() * (WORLD_WIDTH - margin * 2),
+    y: groundY + Math.random() * Math.round(15 * SCALE), // Ground level with slight variation
   };
 }
 
@@ -310,18 +313,19 @@ export function transformFeeEarnerToCharacter(
   // Scout Agent gets a position on far right (watching the horizon)
   const isScout = (earner as any).isScout || earner.wallet === "scout-agent-permanent";
 
+  const groundY = Math.round(555 * SCALE);
   const position = existingCharacter
     ? { x: existingCharacter.x, y: existingCharacter.y }
     : isToly
-    ? { x: WORLD_WIDTH / 2, y: 555 } // Center X, on the ground
+    ? { x: WORLD_WIDTH / 2, y: groundY } // Center X, on the ground
     : isAsh
-    ? { x: WORLD_WIDTH - 120, y: 555 } // Right side of world
+    ? { x: WORLD_WIDTH - Math.round(120 * SCALE), y: groundY } // Right side of world
     : isFinn
-    ? { x: 120, y: 555 } // Left side of world
+    ? { x: Math.round(120 * SCALE), y: groundY } // Left side of world
     : isDev
-    ? { x: WORLD_WIDTH / 2 + 180, y: 555 } // Center-right, in the trenches
+    ? { x: WORLD_WIDTH / 2 + Math.round(180 * SCALE), y: groundY } // Center-right, in the trenches
     : isScout
-    ? { x: WORLD_WIDTH - 60, y: 555 } // Far right, watching the horizon
+    ? { x: WORLD_WIDTH - Math.round(60 * SCALE), y: groundY } // Far right, watching the horizon
     : generateCharacterPosition();
 
   const isSpecialCharacter = isToly || isAsh || isFinn || isDev || isScout;
@@ -358,19 +362,20 @@ export function transformTokenToBuilding(
   const isTradingGym = token.symbol === "GYM" || token.mint.includes("TradingGym");
   const isTreasuryHub = token.mint.startsWith("Treasury");
 
-  // Fixed positions for landmark buildings (City side = left, x < 400)
+  // Fixed positions for landmark buildings (City side = left, x < center, scaled)
+  const landmarkY = Math.round(480 * SCALE);
   let position: { x: number; y: number };
   if (existingBuilding) {
     position = { x: existingBuilding.x, y: existingBuilding.y };
   } else if (isTradingGym) {
     // Trading Gym: City side (left), prominent position
-    position = { x: 150, y: 480 };
+    position = { x: Math.round(150 * SCALE), y: landmarkY };
   } else if (isPokeCenter) {
     // PokeCenter: Center-left position
-    position = { x: 280, y: 480 };
+    position = { x: Math.round(280 * SCALE), y: landmarkY };
   } else if (isTreasuryHub) {
     // Treasury: Center position
-    position = { x: 400, y: 480 };
+    position = { x: WORLD_WIDTH / 2, y: landmarkY };
   } else {
     position = generateBuildingPosition(index, MAX_BUILDINGS);
   }
