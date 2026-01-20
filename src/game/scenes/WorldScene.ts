@@ -2584,9 +2584,11 @@ export class WorldScene extends Phaser.Scene {
           } else if (isStarterBuilding) {
             // Other starter buildings show a message
             console.log(`${building.name} - Launch a token to create a real building!`);
-          } else if (isTreasuryBuilding && building.tokenUrl) {
-            // Treasury building opens Solscan directly for transparency
-            window.open(building.tokenUrl, "_blank");
+          } else if (isTreasuryBuilding) {
+            // Treasury building opens the Creator Rewards Hub modal
+            window.dispatchEvent(new CustomEvent("bagsworld-treasury-click", {
+              detail: { buildingId: building.id, name: building.name }
+            }));
           } else {
             // Regular tokens emit event for React to open trade modal
             window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
