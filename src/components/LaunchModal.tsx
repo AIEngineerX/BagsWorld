@@ -874,10 +874,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
               <p className="font-pixel text-[8px] text-gray-400">{formData.description}</p>
 
-              {(formData.twitter || formData.website) && (
-                <div className="flex gap-4 text-[8px] font-pixel">
-                  {formData.twitter && <span className="text-blue-400">{formData.twitter}</span>}
-                  {formData.website && <span className="text-gray-400">{formData.website}</span>}
+              {(formData.twitter || formData.telegram || formData.website) && (
+                <div className="flex flex-wrap gap-2 text-[8px] font-pixel">
+                  {formData.twitter && <span className="text-blue-400 truncate max-w-[150px]" title={formData.twitter}>{formData.twitter}</span>}
+                  {formData.telegram && <span className="text-blue-300 truncate max-w-[150px]" title={formData.telegram}>{formData.telegram}</span>}
+                  {formData.website && <span className="text-gray-400 truncate max-w-[150px]" title={formData.website}>{formData.website}</span>}
                 </div>
               )}
             </div>
