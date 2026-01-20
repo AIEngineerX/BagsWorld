@@ -15,6 +15,8 @@ export class UIScene extends Phaser.Scene {
 
   private addCornerDecorations(): void {
     const graphics = this.add.graphics();
+    const width = 1280;
+    const height = 960;
 
     // Top-left corner
     graphics.lineStyle(2, 0x4ade80, 1);
@@ -27,26 +29,26 @@ export class UIScene extends Phaser.Scene {
 
     // Top-right corner
     graphics.strokeLineShape(
-      new Phaser.Geom.Line(800, 20, 800, 0)
+      new Phaser.Geom.Line(width, 20, width, 0)
     );
     graphics.strokeLineShape(
-      new Phaser.Geom.Line(780, 0, 800, 0)
+      new Phaser.Geom.Line(width - 20, 0, width, 0)
     );
 
     // Bottom-left corner
     graphics.strokeLineShape(
-      new Phaser.Geom.Line(0, 580, 0, 600)
+      new Phaser.Geom.Line(0, height - 20, 0, height)
     );
     graphics.strokeLineShape(
-      new Phaser.Geom.Line(0, 600, 20, 600)
+      new Phaser.Geom.Line(0, height, 20, height)
     );
 
     // Bottom-right corner
     graphics.strokeLineShape(
-      new Phaser.Geom.Line(800, 580, 800, 600)
+      new Phaser.Geom.Line(width, height - 20, width, height)
     );
     graphics.strokeLineShape(
-      new Phaser.Geom.Line(780, 600, 800, 600)
+      new Phaser.Geom.Line(width - 20, height, width, height)
     );
   }
 }
