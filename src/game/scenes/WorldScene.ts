@@ -128,8 +128,9 @@ export class WorldScene extends Phaser.Scene {
     this.boundZoneChange = (e: Event) => this.handleZoneChange(e as CustomEvent);
     window.addEventListener("bagsworld-zone-change", this.boundZoneChange);
 
-    // Register cleanup on scene shutdown
+    // Register cleanup on scene shutdown and destroy
     this.events.on("shutdown", this.cleanup, this);
+    this.events.on("destroy", this.cleanup, this);
   }
 
   private handleZoneChange(event: CustomEvent<{ zone: ZoneType }>): void {

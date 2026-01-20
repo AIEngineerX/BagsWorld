@@ -1,5 +1,8 @@
 import * as Phaser from "phaser";
 
+// Scale factor for higher resolution sprites (1.6x for 1280x960 canvas)
+const SCALE = 1.6;
+
 // Skin tone palette for diversity
 const SKIN_TONES = [
   0xffdbac, // Light
@@ -145,54 +148,57 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generateGrass(): void {
+    const size = Math.round(32 * SCALE);
     const grassGraphics = this.make.graphics({ x: 0, y: 0 });
 
     // Base grass
     grassGraphics.fillStyle(0x1a472a);
-    grassGraphics.fillRect(0, 0, 32, 32);
+    grassGraphics.fillRect(0, 0, size, size);
 
-    // Grass variation
+    // Grass variation - more blades for higher resolution
     grassGraphics.fillStyle(0x2d5a3d);
-    for (let i = 0; i < 12; i++) {
-      const x = Math.floor(Math.random() * 28);
-      const y = Math.floor(Math.random() * 28);
-      grassGraphics.fillRect(x, y, 2, 4);
+    const bladeCount = Math.round(12 * SCALE);
+    for (let i = 0; i < bladeCount; i++) {
+      const x = Math.floor(Math.random() * (size - 4));
+      const y = Math.floor(Math.random() * (size - 6));
+      grassGraphics.fillRect(x, y, Math.round(2 * SCALE), Math.round(4 * SCALE));
     }
 
     // Occasional flowers
     grassGraphics.fillStyle(0xfbbf24);
-    grassGraphics.fillRect(8, 12, 2, 2);
+    grassGraphics.fillRect(Math.round(8 * SCALE), Math.round(12 * SCALE), Math.round(3 * SCALE), Math.round(3 * SCALE));
     grassGraphics.fillStyle(0xef4444);
-    grassGraphics.fillRect(20, 8, 2, 2);
+    grassGraphics.fillRect(Math.round(20 * SCALE), Math.round(8 * SCALE), Math.round(3 * SCALE), Math.round(3 * SCALE));
 
-    grassGraphics.generateTexture("grass", 32, 32);
+    grassGraphics.generateTexture("grass", size, size);
     grassGraphics.destroy();
 
     // Dark grass variant
     const darkGrass = this.make.graphics({ x: 0, y: 0 });
     darkGrass.fillStyle(0x14532d);
-    darkGrass.fillRect(0, 0, 32, 32);
+    darkGrass.fillRect(0, 0, size, size);
     darkGrass.fillStyle(0x1a472a);
-    for (let i = 0; i < 8; i++) {
-      const x = Math.floor(Math.random() * 28);
-      const y = Math.floor(Math.random() * 28);
-      darkGrass.fillRect(x, y, 3, 3);
+    for (let i = 0; i < Math.round(8 * SCALE); i++) {
+      const x = Math.floor(Math.random() * (size - 5));
+      const y = Math.floor(Math.random() * (size - 5));
+      darkGrass.fillRect(x, y, Math.round(3 * SCALE), Math.round(3 * SCALE));
     }
-    darkGrass.generateTexture("grass_dark", 32, 32);
+    darkGrass.generateTexture("grass_dark", size, size);
     darkGrass.destroy();
   }
 
   private generatePath(): void {
+    const size = Math.round(32 * SCALE);
     const pathGraphics = this.make.graphics({ x: 0, y: 0 });
     pathGraphics.fillStyle(0x78716c);
-    pathGraphics.fillRect(0, 0, 32, 32);
+    pathGraphics.fillRect(0, 0, size, size);
     pathGraphics.fillStyle(0x57534e);
-    for (let i = 0; i < 6; i++) {
-      const x = Math.floor(Math.random() * 24);
-      const y = Math.floor(Math.random() * 24);
-      pathGraphics.fillRect(x, y, 6, 6);
+    for (let i = 0; i < Math.round(6 * SCALE); i++) {
+      const x = Math.floor(Math.random() * (size - 10));
+      const y = Math.floor(Math.random() * (size - 10));
+      pathGraphics.fillRect(x, y, Math.round(6 * SCALE), Math.round(6 * SCALE));
     }
-    pathGraphics.generateTexture("path", 32, 32);
+    pathGraphics.generateTexture("path", size, size);
     pathGraphics.destroy();
   }
 
@@ -203,12 +209,13 @@ export class BootScene extends Phaser.Scene {
     // Level 3: Established company ($500K-$2M) - Corporate HQ
     // Level 4: Major token ($2M-$10M) - Modern tower
     // Level 5: Top tier empire ($10M+) - BagsWorld Skyscraper
+    const s = SCALE; // Local alias for readability
     const buildingConfigs = [
-      { base: 0x8b5cf6, roof: 0xfbbf24, accent: 0xfbbf24, height: 40, width: 30, style: "shop" },      // Level 1: Purple shop with gold roof
-      { base: 0x3b82f6, roof: 0x1e40af, accent: 0x60a5fa, height: 55, width: 34, style: "office" },    // Level 2: Blue office building
-      { base: 0x374151, roof: 0x4ade80, accent: 0x4ade80, height: 75, width: 38, style: "corporate" }, // Level 3: Gray corp with green accents
-      { base: 0x1e3a8a, roof: 0x60a5fa, accent: 0xfbbf24, height: 100, width: 42, style: "tower" },    // Level 4: Modern blue tower
-      { base: 0x0f172a, roof: 0x4ade80, accent: 0x4ade80, height: 130, width: 48, style: "skyscraper" }, // Level 5: BagsWorld HQ
+      { base: 0x8b5cf6, roof: 0xfbbf24, accent: 0xfbbf24, height: Math.round(40 * s), width: Math.round(30 * s), style: "shop" },      // Level 1: Purple shop with gold roof
+      { base: 0x3b82f6, roof: 0x1e40af, accent: 0x60a5fa, height: Math.round(55 * s), width: Math.round(34 * s), style: "office" },    // Level 2: Blue office building
+      { base: 0x374151, roof: 0x4ade80, accent: 0x4ade80, height: Math.round(75 * s), width: Math.round(38 * s), style: "corporate" }, // Level 3: Gray corp with green accents
+      { base: 0x1e3a8a, roof: 0x60a5fa, accent: 0xfbbf24, height: Math.round(100 * s), width: Math.round(42 * s), style: "tower" },    // Level 4: Modern blue tower
+      { base: 0x0f172a, roof: 0x4ade80, accent: 0x4ade80, height: Math.round(130 * s), width: Math.round(48 * s), style: "skyscraper" }, // Level 5: BagsWorld HQ
     ];
 
     for (let level = 1; level <= 5; level++) {
