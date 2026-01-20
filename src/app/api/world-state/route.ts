@@ -323,7 +323,10 @@ async function enrichTokenWithSDK(
   let claimEvents: ClaimEvent[] = [];
   let claimEvents24h: ClaimEvent[] = [];
 
-  if (sdk) {
+  // Skip SDK enrichment for placeholder/permanent buildings (they have fake mints)
+  const isPlaceholderMint = token.mint.startsWith("Treasury") || token.mint.startsWith("Starter");
+
+  if (sdk && !isPlaceholderMint) {
     try {
       const mintPubkey = new PublicKey(token.mint);
 

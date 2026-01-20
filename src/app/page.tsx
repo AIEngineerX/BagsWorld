@@ -43,7 +43,7 @@ interface BuildingClickData {
 const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-bags-darker">
+    <div className="w-full h-full flex items-center justify-center bg-bags-dark">
       <div className="text-center">
         <div className="text-4xl mb-4 animate-pulse-slow">🌍</div>
         <p className="font-pixel text-xs text-bags-green animate-pulse">
@@ -226,7 +226,7 @@ export default function Home() {
         <div className="flex-1 relative">
           <Suspense
             fallback={
-              <div className="w-full h-full bg-bags-darker animate-pulse" />
+              <div className="w-full h-full bg-bags-dark" />
             }
           >
             <GameCanvas worldState={worldState} />
