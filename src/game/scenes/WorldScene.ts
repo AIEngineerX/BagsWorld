@@ -1,5 +1,7 @@
 import * as Phaser from "phaser";
 import type { WorldState, GameCharacter, GameBuilding, ZoneType } from "@/lib/types";
+import { SpeechBubbleManager } from "@/lib/speech-bubble-manager";
+import { getCurrentLine, getActiveConversation } from "@/lib/autonomous-dialogue";
 
 // Scale factor for higher resolution (must match BootScene)
 const SCALE = 1.6;
@@ -65,6 +67,15 @@ export class WorldScene extends Phaser.Scene {
   private tickerOffset = 0;
   private skylineSprites: Phaser.GameObjects.Sprite[] = [];
   private originalPositions: Map<Phaser.GameObjects.GameObject, number> = new Map(); // Store original X positions
+
+  // Speech bubble manager for autonomous dialogue
+  private speechBubbleManager: SpeechBubbleManager | null = null;
+  private lastDialogueLine: string | null = null; // Track last line to avoid duplicates
+
+  // AI-driven character behavior
+  private characterTargets: Map<string, { x: number; y: number; action: string }> = new Map();
+  private boundBehaviorHandler: ((e: Event) => void) | null = null;
+  private boundSpeakHandler: ((e: Event) => void) | null = null;
 
   constructor() {
     super({ key: "WorldScene" });
@@ -137,6 +148,20 @@ export class WorldScene extends Phaser.Scene {
     // Register cleanup on scene shutdown and destroy
     this.events.on("shutdown", this.cleanup, this);
     this.events.on("destroy", this.cleanup, this);
+
+    // Initialize speech bubble manager for autonomous dialogue
+    this.speechBubbleManager = new SpeechBubbleManager(this, this.characterSprites);
+    console.log("[WorldScene] Speech bubble manager initialized");
+
+    // Listen for AI behavior commands
+    this.boundBehaviorHandler = (e: Event) => this.handleBehaviorCommand(e as CustomEvent);
+    window.addEventListener("bagsworld-character-behavior", this.boundBehaviorHandler);
+
+    // Listen for character speak events
+    this.boundSpeakHandler = (e: Event) => this.handleCharacterSpeak(e as CustomEvent);
+    window.addEventListener("bagsworld-character-speak", this.boundSpeakHandler);
+
+    console.log("[WorldScene] AI behavior handlers initialized");
   }
 
   private handleZoneChange(event: CustomEvent<{ zone: ZoneType }>): void {
@@ -846,6 +871,161 @@ export class WorldScene extends Phaser.Scene {
     return num.toFixed(0);
   }
 
+  // Handle AI behavior commands for characters
+  private handleBehaviorCommand(event: CustomEvent): void {
+    const command = event.detail;
+    if (!command || !command.characterId) return;
+
+    const characterId = command.characterId;
+    let targetX: number | undefined;
+    let targetY: number | undefined;
+
+    // Determine target position based on command
+    if (command.target) {
+      if (command.target.type === "position" && command.target.x !== undefined) {
+        targetX = command.target.x;
+        targetY = command.target.y || Math.round(570 * SCALE);
+      } else if (command.target.type === "character" && command.target.id) {
+        // Find target character's position
+        const targetSprite = this.findCharacterSprite(command.target.id);
+        if (targetSprite) {
+          // Move near the character, not exactly on top
+          const offset = (Math.random() - 0.5) * 100;
+          targetX = targetSprite.x + offset;
+          targetY = targetSprite.y + (Math.random() - 0.5) * 30;
+        }
+      } else if (command.target.type === "building" && command.target.id) {
+        // Find building position
+        const building = this.buildingSprites.get(command.target.id);
+        if (building) {
+          targetX = building.x + (Math.random() - 0.5) * 80;
+          targetY = Math.round(580 * SCALE); // Stay on path
+        }
+      }
+    }
+
+    // If we have a valid target, store it
+    if (targetX !== undefined && targetY !== undefined) {
+      // Clamp to valid bounds
+      targetX = Math.max(100, Math.min(1180, targetX));
+      targetY = Math.max(Math.round(450 * SCALE), Math.min(Math.round(620 * SCALE), targetY));
+
+      this.characterTargets.set(characterId, {
+        x: targetX,
+        y: targetY,
+        action: command.action || "moveTo",
+      });
+
+      console.log(`[WorldScene] AI command: ${characterId} -> ${command.action} (${Math.round(targetX)}, ${Math.round(targetY)})`);
+    } else if (command.action === "idle" || command.action === "observe") {
+      // Clear target for idle/observe
+      this.characterTargets.delete(characterId);
+    }
+  }
+
+  // Find a character sprite by character ID (handles special character naming)
+  private findCharacterSprite(characterId: string): Phaser.GameObjects.Sprite | null {
+    // Direct lookup
+    const direct = this.characterSprites.get(characterId);
+    if (direct) return direct;
+
+    // Search by special character flags
+    for (const [, sprite] of this.characterSprites) {
+      const spriteData = sprite as any;
+      if (characterId === "finn" && spriteData.isFinn) return sprite;
+      if (characterId === "ghost" && spriteData.isDev) return sprite;
+      if (characterId === "neo" && spriteData.isScout) return sprite;
+      if (characterId === "ash" && spriteData.isAsh) return sprite;
+      if (characterId === "toly" && spriteData.isToly) return sprite;
+    }
+
+    return null;
+  }
+
+  // Map a character to their behavior system ID
+  private getCharacterBehaviorId(character: GameCharacter): string {
+    if (character.isFinn) return "finn";
+    if (character.isDev) return "ghost";
+    if (character.isScout) return "neo";
+    if (character.isAsh) return "ash";
+    if (character.isToly) return "toly";
+    return character.id;
+  }
+
+  // Update glow sprite positions when character moves
+  private updateCharacterGlow(sprite: Phaser.GameObjects.Sprite, character: GameCharacter): void {
+    const spriteData = sprite as any;
+
+    // Update glow position to follow sprite
+    if (character.isToly && spriteData.tolyGlow) {
+      spriteData.tolyGlow.x = sprite.x;
+      spriteData.tolyGlow.y = sprite.y;
+    }
+    if (character.isAsh && spriteData.ashGlow) {
+      spriteData.ashGlow.x = sprite.x;
+      spriteData.ashGlow.y = sprite.y;
+    }
+    if (character.isFinn && spriteData.finnGlow) {
+      spriteData.finnGlow.x = sprite.x;
+      spriteData.finnGlow.y = sprite.y;
+    }
+    if (character.isDev && spriteData.devGlow) {
+      spriteData.devGlow.x = sprite.x;
+      spriteData.devGlow.y = sprite.y;
+    }
+    if (character.isScout && spriteData.scoutGlow) {
+      spriteData.scoutGlow.x = sprite.x;
+      spriteData.scoutGlow.y = sprite.y;
+    }
+  }
+
+  // Handle character speak events (from AI behavior)
+  private handleCharacterSpeak(event: CustomEvent): void {
+    const { characterId, message, emotion } = event.detail;
+    if (!characterId || !message || !this.speechBubbleManager) return;
+
+    // Create a dialogue line and show bubble
+    const line = {
+      characterId,
+      characterName: characterId,
+      message,
+      timestamp: Date.now(),
+      emotion: emotion || "neutral",
+    };
+
+    this.speechBubbleManager.showBubble(line);
+    console.log(`[WorldScene] Character speak: ${characterId}: "${message}"`);
+  }
+
+  // Update speech bubbles for autonomous dialogue
+  private updateDialogueBubbles(): void {
+    if (!this.speechBubbleManager) return;
+
+    // Update bubble positions to follow characters
+    this.speechBubbleManager.update();
+
+    // Check for current dialogue line
+    const currentLine = getCurrentLine();
+
+    if (currentLine) {
+      // Create a unique ID for this line
+      const lineId = `${currentLine.characterId}-${currentLine.timestamp}-${currentLine.message.slice(0, 20)}`;
+
+      // Only show if it's a new line
+      if (lineId !== this.lastDialogueLine) {
+        this.lastDialogueLine = lineId;
+
+        // Update character sprites reference (in case they changed)
+        this.speechBubbleManager.setCharacterSprites(this.characterSprites);
+
+        // Show the speech bubble
+        this.speechBubbleManager.showBubble(currentLine);
+
+        console.log(`[WorldScene] Showing dialogue: ${currentLine.characterName}: "${currentLine.message}"`);
+      }
+    }
+  }
+
   // Cleanup method to prevent memory leaks
   private cleanup(): void {
     // Remove window event listeners
@@ -879,6 +1059,23 @@ export class WorldScene extends Phaser.Scene {
       this.audioContext.close();
       this.audioContext = null;
     }
+
+    // Clean up speech bubble manager
+    if (this.speechBubbleManager) {
+      this.speechBubbleManager.destroy();
+      this.speechBubbleManager = null;
+    }
+
+    // Clean up behavior handlers
+    if (this.boundBehaviorHandler) {
+      window.removeEventListener("bagsworld-character-behavior", this.boundBehaviorHandler);
+      this.boundBehaviorHandler = null;
+    }
+    if (this.boundSpeakHandler) {
+      window.removeEventListener("bagsworld-character-speak", this.boundSpeakHandler);
+      this.boundSpeakHandler = null;
+    }
+    this.characterTargets.clear();
   }
 
   private createGround(): void {
@@ -1804,24 +2001,60 @@ export class WorldScene extends Phaser.Scene {
   }
 
   update(): void {
-    // Update character movements with smoother motion
+    // Update speech bubbles for autonomous dialogue
+    this.updateDialogueBubbles();
+
+    // Update character movements with AI-driven targets
     this.characterSprites.forEach((sprite, id) => {
       const character = this.worldState?.population.find((c) => c.id === id);
-      if (character?.isMoving) {
+      if (!character) return;
+
+      // Get character's behavior ID (special characters map to their IDs)
+      const behaviorId = this.getCharacterBehaviorId(character);
+      const target = this.characterTargets.get(behaviorId);
+
+      if (target) {
+        // AI-driven movement toward target
+        const dx = target.x - sprite.x;
+        const dy = target.y - sprite.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 5) {
+          // Move toward target with smooth interpolation
+          const speed = 1.2 + Math.random() * 0.3;
+          const moveX = (dx / distance) * speed;
+          const moveY = (dy / distance) * speed;
+
+          sprite.x += moveX;
+          sprite.y += moveY;
+
+          // Face direction of movement
+          sprite.setFlipX(dx < 0);
+
+          // Update any glow sprites to follow
+          this.updateCharacterGlow(sprite, character);
+        } else {
+          // Reached target, clear it
+          this.characterTargets.delete(behaviorId);
+        }
+      } else if (character.isMoving) {
+        // Fallback: simple random wandering if no AI target
         const speed = 0.3 + Math.random() * 0.2;
         if (character.direction === "left") {
           sprite.x -= speed;
           sprite.setFlipX(true);
-          if (sprite.x < 80) {
+          if (sprite.x < 100) {
             character.direction = "right";
           }
         } else {
           sprite.x += speed;
           sprite.setFlipX(false);
-          if (sprite.x > 720) {
+          if (sprite.x > 1100) {
             character.direction = "left";
           }
         }
+        // Update glow on fallback movement too
+        this.updateCharacterGlow(sprite, character);
       }
     });
 
