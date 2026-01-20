@@ -138,7 +138,7 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
         {/* Header */}
         <div className="bg-gradient-to-r from-yellow-600 to-amber-500 p-3 sm:p-4 flex justify-between items-center">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="text-2xl sm:text-3xl">🏆</div>
+            <div className="text-2xl sm:text-3xl">👑</div>
             <div>
               <h2 className="font-pixel text-white text-xs sm:text-sm">CREATOR REWARDS HUB</h2>
               <p className="font-pixel text-yellow-200 text-[7px] sm:text-[8px]">
@@ -248,21 +248,21 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
                 <h3 className="font-pixel text-purple-400 text-xs mb-3">Reward Split</h3>
                 <div className="flex items-center justify-center gap-4">
                   <div className="text-center">
-                    <div className="text-2xl">🥇</div>
+                    <div className="text-2xl">💎</div>
                     <div className="font-pixel text-bags-gold text-lg">
                       {rewardsState.distribution.first}%
                     </div>
                     <div className="font-pixel text-gray-500 text-[8px]">1st Place</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl">🥈</div>
+                    <div className="text-2xl">✨</div>
                     <div className="font-pixel text-gray-300 text-lg">
                       {rewardsState.distribution.second}%
                     </div>
                     <div className="font-pixel text-gray-500 text-[8px]">2nd Place</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl">🥉</div>
+                    <div className="text-2xl">⚡</div>
                     <div className="font-pixel text-amber-600 text-lg">
                       {rewardsState.distribution.third}%
                     </div>
@@ -296,7 +296,7 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
                       <div key={i} className="bg-black/30 rounded p-2 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-lg">
-                            {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                            {i === 0 ? "💎" : i === 1 ? "✨" : "⚡"}
                           </span>
                           <div>
                             <div className="font-pixel text-white text-[10px]">

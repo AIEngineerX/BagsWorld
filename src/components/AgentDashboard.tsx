@@ -5,36 +5,49 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { isAdmin } from "@/lib/config";
 
 interface AgentStatus {
+  authenticated: boolean;
   wallet: {
     configured: boolean;
     publicKey: string | null;
     balance: number;
   };
-  agent: {
+  creatorRewards: {
     isRunning: boolean;
     lastCheck: number;
-    lastClaim: number;
-    totalClaimed: number;
-    claimCount: number;
-    config?: {
-      minClaimThresholdSol: number;
-      checkIntervalMs: number;
-      maxClaimsPerRun: number;
-    };
-    errors?: string[];
-    pendingPositions?: Array<{
-      baseMint: string;
-      claimableDisplayAmount: number;
+    lastDistribution: number;
+    totalDistributed: number;
+    distributionCount: number;
+    pendingPoolSol: number;
+    topCreators: Array<{
+      wallet: string;
+      tokenSymbol: string;
+      feesGenerated: number;
     }>;
+    timeUntilDistribution: {
+      thresholdMet: boolean;
+      timerExpired: boolean;
+      msUntilTimer: number;
+    };
+  };
+  scout: {
+    isRunning: boolean;
+    isConnected: boolean;
+    launchesScanned: number;
+    alertsSent: number;
   };
 }
 
-interface ClaimResult {
+interface TriggerResult {
   success: boolean;
-  positionsClaimed: number;
-  totalSolClaimed: number;
-  signatures: string[];
-  errors: string[];
+  result?: {
+    distributed: boolean;
+    reason?: string;
+    totalDistributed?: number;
+    recipients?: Array<{
+      wallet: string;
+      amount: number;
+    }>;
+  };
 }
 
 export function AgentDashboard() {
@@ -42,8 +55,8 @@ export function AgentDashboard() {
   const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<AgentStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isClaiming, setIsClaiming] = useState(false);
-  const [lastResult, setLastResult] = useState<ClaimResult | null>(null);
+  const [isTriggering, setIsTriggering] = useState(false);
+  const [lastResult, setLastResult] = useState<TriggerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Check if current wallet is admin using the config helper
@@ -54,12 +67,45 @@ export function AgentDashboard() {
       setIsLoading(true);
       setError(null);
 
+      // Note: This endpoint returns minimal info without auth
+      // Full status requires AGENT_SECRET auth header
       const response = await fetch("/api/agent");
-      if (!response.ok) {
-        throw new Error("Failed to fetch agent status");
+      const data = await response.json();
+
+      // Handle unauthenticated response
+      if (!data.authenticated) {
+        // Create a minimal status from the unauthenticated response
+        setStatus({
+          authenticated: false,
+          wallet: {
+            configured: data.configured || false,
+            publicKey: null,
+            balance: 0,
+          },
+          creatorRewards: {
+            isRunning: false,
+            lastCheck: 0,
+            lastDistribution: 0,
+            totalDistributed: 0,
+            distributionCount: 0,
+            pendingPoolSol: 0,
+            topCreators: [],
+            timeUntilDistribution: {
+              thresholdMet: false,
+              timerExpired: false,
+              msUntilTimer: 0,
+            },
+          },
+          scout: {
+            isRunning: false,
+            isConnected: false,
+            launchesScanned: 0,
+            alertsSent: 0,
+          },
+        });
+        return;
       }
 
-      const data = await response.json();
       setStatus(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load status");
@@ -78,31 +124,32 @@ export function AgentDashboard() {
     }
   }, [isOpen, isUserAdmin, fetchStatus]);
 
-  const handleTriggerClaim = async () => {
+  const handleTriggerDistribution = async () => {
     try {
-      setIsClaiming(true);
+      setIsTriggering(true);
       setError(null);
       setLastResult(null);
 
+      // Note: This requires AGENT_SECRET auth - will fail without it
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "trigger" }),
+        body: JSON.stringify({ action: "rewards-trigger" }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Claim failed");
+        throw new Error(data.error || "Trigger failed - auth required");
       }
 
-      setLastResult(data.result);
+      setLastResult(data);
       // Refresh status
       await fetchStatus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Claim failed");
+      setError(err instanceof Error ? err.message : "Trigger failed");
     } finally {
-      setIsClaiming(false);
+      setIsTriggering(false);
     }
   };
 
@@ -136,11 +183,11 @@ export function AgentDashboard() {
             ? "bg-purple-700 border-purple-300 text-white"
             : "bg-bags-dark border-purple-500 text-purple-300 hover:bg-purple-900 hover:border-purple-400 hover:text-purple-200"
         }`}
-        title="Agent Dashboard (Admin Only)"
+        title="Creator Rewards Agent (Admin Only)"
       >
         <span className="flex items-center gap-1.5">
-          <span className={`inline-block w-2 h-2 rounded-full ${status?.agent?.isRunning ? "bg-bags-green animate-pulse" : "bg-purple-400"}`} />
-          AGENT
+          <span className={`inline-block w-2 h-2 rounded-full ${status?.creatorRewards?.isRunning ? "bg-bags-green animate-pulse" : "bg-purple-400"}`} />
+          REWARDS
         </span>
       </button>
 
@@ -151,10 +198,10 @@ export function AgentDashboard() {
           <div className="flex items-center justify-between p-3 border-b-2 border-purple-500 bg-purple-900/30">
             <div>
               <h2 className="font-pixel text-sm text-purple-300">
-                [ADMIN] AUTO-CLAIM AGENT
+                [ADMIN] CREATOR REWARDS
               </h2>
               <p className="font-pixel text-[8px] text-gray-400">
-                Fee Collection Dashboard
+                Distribution Agent Status
               </p>
             </div>
             <button
@@ -173,6 +220,15 @@ export function AgentDashboard() {
               </p>
             ) : status ? (
               <>
+                {/* Auth Status */}
+                {!status.authenticated && (
+                  <div className="bg-yellow-500/10 p-2 border border-yellow-500/30">
+                    <p className="font-pixel text-[8px] text-yellow-400">
+                      [!] Limited view - AGENT_SECRET not configured
+                    </p>
+                  </div>
+                )}
+
                 {/* Wallet Status */}
                 <div className="bg-bags-darker p-2 border border-purple-500/30">
                   <p className="font-pixel text-[8px] text-gray-400 mb-1">
@@ -180,10 +236,12 @@ export function AgentDashboard() {
                   </p>
                   {status.wallet.configured ? (
                     <>
-                      <p className="font-pixel text-[10px] text-white font-mono">
-                        {status.wallet.publicKey?.slice(0, 8)}...
-                        {status.wallet.publicKey?.slice(-6)}
-                      </p>
+                      {status.wallet.publicKey && (
+                        <p className="font-pixel text-[10px] text-white font-mono">
+                          {status.wallet.publicKey.slice(0, 8)}...
+                          {status.wallet.publicKey.slice(-6)}
+                        </p>
+                      )}
                       <p className="font-pixel text-[10px] text-bags-green">
                         Balance: {status.wallet.balance.toFixed(4)} SOL
                       </p>
@@ -195,100 +253,93 @@ export function AgentDashboard() {
                   )}
                 </div>
 
-                {/* Agent Stats */}
+                {/* Rewards Stats */}
                 <div className="bg-bags-darker p-2 border border-purple-500/30">
                   <p className="font-pixel text-[8px] text-gray-400 mb-1">
-                    STATISTICS
+                    REWARD POOL
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <p className="font-pixel text-[8px] text-gray-500">
-                        Total Claimed
+                        Pending Pool
+                      </p>
+                      <p className="font-pixel text-[10px] text-bags-gold">
+                        {status.creatorRewards.pendingPoolSol.toFixed(4)} SOL
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-pixel text-[8px] text-gray-500">
+                        Total Distributed
                       </p>
                       <p className="font-pixel text-[10px] text-bags-green">
-                        {status.agent.totalClaimed.toFixed(4)} SOL
+                        {status.creatorRewards.totalDistributed.toFixed(4)} SOL
                       </p>
                     </div>
                     <div>
                       <p className="font-pixel text-[8px] text-gray-500">
-                        Claim Count
+                        Distributions
                       </p>
                       <p className="font-pixel text-[10px] text-white">
-                        {status.agent.claimCount}
+                        {status.creatorRewards.distributionCount}
                       </p>
                     </div>
                     <div>
                       <p className="font-pixel text-[8px] text-gray-500">
-                        Last Check
+                        Last Distribution
                       </p>
                       <p className="font-pixel text-[10px] text-white">
-                        {formatTimeAgo(status.agent.lastCheck)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-pixel text-[8px] text-gray-500">
-                        Last Claim
-                      </p>
-                      <p className="font-pixel text-[10px] text-white">
-                        {formatTimeAgo(status.agent.lastClaim)}
+                        {formatTimeAgo(status.creatorRewards.lastDistribution)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Config */}
-                {status.agent.config && (
-                  <div className="bg-bags-darker p-2 border border-purple-500/30">
+                {/* Top Creators */}
+                {status.creatorRewards.topCreators.length > 0 && (
+                  <div className="bg-bags-darker p-2 border border-bags-gold/30">
                     <p className="font-pixel text-[8px] text-gray-400 mb-1">
-                      CONFIGURATION
+                      TOP 3 CREATORS
                     </p>
                     <div className="space-y-1">
-                      <p className="font-pixel text-[8px] text-gray-300">
-                        Min Threshold:{" "}
-                        <span className="text-white">
-                          {status.agent.config.minClaimThresholdSol} SOL
-                        </span>
-                      </p>
-                      <p className="font-pixel text-[8px] text-gray-300">
-                        Check Interval:{" "}
-                        <span className="text-white">
-                          {status.agent.config.checkIntervalMs / 60000}m
-                        </span>
-                      </p>
-                      <p className="font-pixel text-[8px] text-gray-300">
-                        Max Claims/Run:{" "}
-                        <span className="text-white">
-                          {status.agent.config.maxClaimsPerRun}
-                        </span>
-                      </p>
+                      {status.creatorRewards.topCreators.map((creator, i) => (
+                        <div
+                          key={i}
+                          className="flex justify-between font-pixel text-[8px]"
+                        >
+                          <span className={i === 0 ? "text-bags-gold" : i === 1 ? "text-gray-300" : "text-amber-600"}>
+                            #{i + 1} ${creator.tokenSymbol}
+                          </span>
+                          <span className="text-bags-green">
+                            {creator.feesGenerated.toFixed(4)} SOL
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
 
-                {/* Pending Positions */}
-                {status.agent.pendingPositions &&
-                  status.agent.pendingPositions.length > 0 && (
-                    <div className="bg-bags-darker p-2 border border-bags-green/30">
-                      <p className="font-pixel text-[8px] text-gray-400 mb-1">
-                        CLAIMABLE POSITIONS ({status.agent.pendingPositions.length})
-                      </p>
-                      <div className="space-y-1 max-h-24 overflow-y-auto">
-                        {status.agent.pendingPositions.map((pos, i) => (
-                          <div
-                            key={i}
-                            className="flex justify-between font-pixel text-[8px]"
-                          >
-                            <span className="text-gray-400">
-                              {pos.baseMint.slice(0, 6)}...
-                            </span>
-                            <span className="text-bags-green">
-                              {pos.claimableDisplayAmount.toFixed(4)} SOL
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                {/* Distribution Status */}
+                <div className="bg-bags-darker p-2 border border-purple-500/30">
+                  <p className="font-pixel text-[8px] text-gray-400 mb-1">
+                    NEXT DISTRIBUTION
+                  </p>
+                  <div className="space-y-1">
+                    <p className="font-pixel text-[8px] text-gray-300">
+                      Threshold:{" "}
+                      <span className={status.creatorRewards.timeUntilDistribution.thresholdMet ? "text-bags-green" : "text-white"}>
+                        {status.creatorRewards.timeUntilDistribution.thresholdMet ? "[MET]" : "[NOT MET]"}
+                      </span>
+                    </p>
+                    <p className="font-pixel text-[8px] text-gray-300">
+                      Timer:{" "}
+                      <span className={status.creatorRewards.timeUntilDistribution.timerExpired ? "text-bags-green" : "text-white"}>
+                        {status.creatorRewards.timeUntilDistribution.timerExpired
+                          ? "[READY]"
+                          : `${Math.floor(status.creatorRewards.timeUntilDistribution.msUntilTimer / 3600000)}h remaining`}
+                      </span>
+                    </p>
+                  </div>
+                </div>
 
                 {/* Last Result */}
                 {lastResult && (
@@ -300,38 +351,21 @@ export function AgentDashboard() {
                     }`}
                   >
                     <p className="font-pixel text-[8px] text-gray-400 mb-1">
-                      LAST RESULT
+                      TRIGGER RESULT
                     </p>
-                    {lastResult.success ? (
-                      <>
-                        <p className="font-pixel text-[10px] text-bags-green">
-                          [OK] Claimed {lastResult.totalSolClaimed.toFixed(4)} SOL
-                        </p>
-                        <p className="font-pixel text-[8px] text-gray-400">
-                          {lastResult.positionsClaimed} positions
-                        </p>
-                      </>
+                    {lastResult.success && lastResult.result?.distributed ? (
+                      <p className="font-pixel text-[10px] text-bags-green">
+                        [OK] Distributed {lastResult.result.totalDistributed?.toFixed(4)} SOL
+                      </p>
+                    ) : lastResult.success ? (
+                      <p className="font-pixel text-[10px] text-yellow-400">
+                        [SKIP] {lastResult.result?.reason || "Not ready"}
+                      </p>
                     ) : (
                       <p className="font-pixel text-[10px] text-red-400">
-                        [ERR] {lastResult.errors[0] || "Failed"}
+                        [ERR] Trigger failed
                       </p>
                     )}
-                  </div>
-                )}
-
-                {/* Errors */}
-                {status.agent.errors && status.agent.errors.length > 0 && (
-                  <div className="bg-red-500/10 p-2 border border-red-500/30">
-                    <p className="font-pixel text-[8px] text-red-400 mb-1">
-                      RECENT ERRORS
-                    </p>
-                    <div className="space-y-1 max-h-20 overflow-y-auto">
-                      {status.agent.errors.slice(-3).map((err, i) => (
-                        <p key={i} className="font-pixel text-[7px] text-red-300">
-                          {err}
-                        </p>
-                      ))}
-                    </div>
                   </div>
                 )}
 
@@ -352,11 +386,11 @@ export function AgentDashboard() {
           {/* Actions */}
           <div className="p-3 border-t border-purple-500/30 space-y-2">
             <button
-              onClick={handleTriggerClaim}
-              disabled={isClaiming || !status?.wallet.configured}
+              onClick={handleTriggerDistribution}
+              disabled={isTriggering || !status?.wallet.configured}
               className="w-full py-2 bg-gradient-to-r from-purple-600 to-bags-green text-white font-pixel text-[10px] hover:from-purple-500 hover:to-bags-green/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {isClaiming ? "[...] CLAIMING" : "[>] TRIGGER CLAIM NOW"}
+              {isTriggering ? "[...] CHECKING" : "[>] TRIGGER DISTRIBUTION"}
             </button>
 
             <button
@@ -371,7 +405,7 @@ export function AgentDashboard() {
           {/* Footer */}
           <div className="p-2 border-t border-purple-500/30 bg-bags-darker">
             <p className="font-pixel text-[7px] text-gray-500 text-center">
-              Scheduled via GitHub Actions every 5 mins
+              Distributes at 10 SOL threshold or 5 days
             </p>
           </div>
         </div>
