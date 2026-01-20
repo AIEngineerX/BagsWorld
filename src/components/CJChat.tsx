@@ -7,7 +7,7 @@ import type { AIAction } from "@/app/api/agent-chat/route";
 
 interface CJMessage {
   id: string;
-  type: "cj" | "user";
+  type: "cj" | "user" | "info";
   message: string;
   timestamp: number;
   actions?: AIAction[];
@@ -18,12 +18,40 @@ interface Position {
   y: number;
 }
 
+const CJ_TOPICS = [
+  {
+    title: "The Hood",
+    icon: "🏘️",
+    content: "Grove Street, homie. Where legends get made. Been through wars, police raids, and came out on top. That's where real ones come from - not from some fancy house, but from the struggle."
+  },
+  {
+    title: "Bags Life",
+    icon: "💰",
+    content: "Man, this Bags.fm thing is like running your own operation - but legal. You launch a token, stack fees, watch it grow. Just like building up Grove Street Families, except the feds can't touch you."
+  },
+  {
+    title: "Survival Tips",
+    icon: "🎯",
+    content: "Three rules homie: 1) Never show all your cards. 2) Stack before you flex. 3) Your crew is everything - find people who got your back when things get hot. Same rules apply in crypto."
+  },
+  {
+    title: "BagsCity Life",
+    icon: "🌆",
+    content: "BagsCity is like the hood I always wanted - people building together, making money together. No Ballas trying to start beef, just straight hustle. This is what the future looks like, G."
+  },
+  {
+    title: "Real Talk",
+    icon: "💯",
+    content: "Most people talk big but never put in work. In the hood, you learn quick - only actions matter. Same in crypto. I don't care what you SAY you gonna do. Show me the receipts."
+  },
+];
+
 export function CJChat() {
   const [messages, setMessages] = useState<CJMessage[]>([]);
   const [input, setInput] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [position, setPosition] = useState<Position>({ x: -1, y: 16 });
+  const [position, setPosition] = useState<Position>({ x: 16, y: -1 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -46,44 +74,33 @@ export function CJChat() {
 
   // Handle dragging
   const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
-
+    if ((e.target as HTMLElement).closest("button, input")) return;
     const rect = chatRef.current?.getBoundingClientRect();
     if (rect) {
       setIsDragging(true);
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
+      setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     }
   };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
-
       const maxX = window.innerWidth - 320;
       const maxY = window.innerHeight - 400;
-
       setPosition({
         x: Math.max(0, Math.min(newX, maxX)),
         y: Math.max(0, Math.min(newY, maxY)),
       });
     };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
+    const handleMouseUp = () => setIsDragging(false);
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
       };
     }
   }, [isDragging, dragOffset]);
@@ -91,6 +108,15 @@ export function CJChat() {
   const addMessage = useCallback((message: CJMessage) => {
     setMessages((prev) => [...prev.slice(-30), message]);
   }, []);
+
+  const handleTopicClick = (topic: typeof CJ_TOPICS[0]) => {
+    addMessage({
+      id: `${Date.now()}-info`,
+      type: "info",
+      message: topic.content,
+      timestamp: Date.now(),
+    });
+  };
 
   const sendToCJ = useCallback(async (userMessage: string) => {
     if (isLoading) return;
@@ -202,9 +228,9 @@ export function CJChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.x >= 0
-    ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
-    : { left: 80, top: 80 };
+  const chatStyle: React.CSSProperties = position.y >= 0
+    ? { left: position.x, top: position.y, bottom: "auto" }
+    : { left: position.x, bottom: 80 };
 
   if (!isOpen) {
     return null;
@@ -214,106 +240,121 @@ export function CJChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-black border-2 border-orange-500 shadow-lg shadow-orange-500/20 ${isDragging ? 'cursor-grabbing' : ''}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-orange-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
     >
-      {/* Header - Draggable */}
+      {/* Header */}
       <div
         onMouseDown={handleMouseDown}
-        className="flex items-center justify-between p-2 border-b border-orange-500/50 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-orange-900/30 to-black"
+        className="flex items-center justify-between p-2 border-b-4 border-orange-500 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-orange-600/20 to-green-600/20"
       >
         <div className="flex items-center gap-2">
-          <span className="text-orange-400 font-mono text-lg">🔫</span>
+          <span className="font-pixel text-sm">🔫</span>
           <div>
-            <p className="font-mono text-xs text-orange-400 tracking-wider">
-              CJ // HOOD RAT
-            </p>
-            <p className="font-pixel text-[8px] text-orange-600">
-              grove street 4 life
-            </p>
+            <p className="font-pixel text-[10px] text-orange-400">CJ - GROVE STREET</p>
+            <p className="font-pixel text-[8px] text-gray-400">drag to move</p>
           </div>
         </div>
         <button
           onClick={() => setIsOpen(false)}
-          className="font-mono text-xs text-orange-600 hover:text-orange-400 px-2"
+          className="font-pixel text-xs text-gray-400 hover:text-white px-2"
         >
           [X]
         </button>
       </div>
 
-      {/* Messages */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 to-transparent pointer-events-none" />
-
-        <div className="h-56 overflow-y-auto p-3 space-y-2 font-mono text-sm">
-          {messages.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-orange-400 text-xs mb-2">
-                BAGSCITY RESIDENT
-              </p>
-              <p className="text-orange-600 text-[10px]">
-                keeping it real since day one...
-              </p>
-            </div>
-          ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`p-2 ${
-                  msg.type === "cj"
-                    ? "text-orange-400 border-l-2 border-orange-500 pl-2"
-                    : "text-white/80 text-right"
-                }`}
-              >
-                {msg.type === "cj" && (
-                  <p className="text-[8px] text-orange-600 mb-1">CJ:</p>
-                )}
-                {msg.type === "user" && (
-                  <p className="text-[8px] text-white/50 mb-1">YOU:</p>
-                )}
-                <p className="text-xs leading-relaxed whitespace-pre-wrap">
-                  {msg.message}
-                </p>
-                {msg.type === "cj" && msg.actions && msg.actions.length > 0 && (
-                  <ActionButtons actions={msg.actions} onAction={handleAction} />
-                )}
-              </div>
-            ))
-          )}
-          {isLoading && (
-            <div className="text-orange-500 text-xs animate-pulse pl-2 border-l-2 border-orange-500">
-              <p className="text-[8px] text-orange-600 mb-1">CJ:</p>
-              thinking about it homie...
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+      {/* Topic Buttons */}
+      <div className="p-2 border-b border-orange-500/30 bg-bags-darker">
+        <p className="font-pixel text-[8px] text-gray-400 mb-2">Real Talk Topics:</p>
+        <div className="flex flex-wrap gap-1">
+          {CJ_TOPICS.map((topic, i) => (
+            <button
+              key={i}
+              onClick={() => handleTopicClick(topic)}
+              className="px-2 py-1 bg-orange-500/10 border border-orange-500/30 font-pixel text-[7px] text-orange-300 hover:bg-orange-500/20 hover:text-orange-200 transition-colors"
+            >
+              {topic.icon} {topic.title}
+            </button>
+          ))}
         </div>
       </div>
 
+      {/* Messages */}
+      <div className="h-40 overflow-y-auto p-2 space-y-2">
+        {messages.length === 0 ? (
+          <div className="text-center py-4">
+            <p className="font-pixel text-[10px] text-orange-400 mb-1">🔫 yo what&apos;s good!</p>
+            <p className="font-pixel text-[8px] text-gray-400">CJ here, from Grove Street.</p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-2">Ask me anything or click a topic above</p>
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`p-2 border-l-2 ${
+                msg.type === "cj"
+                  ? "bg-orange-500/10 border-orange-500"
+                  : msg.type === "user"
+                  ? "bg-bags-green/10 border-bags-green ml-4"
+                  : "bg-green-500/10 border-green-500"
+              }`}
+            >
+              {msg.type === "cj" && <p className="font-pixel text-[6px] text-orange-400 mb-1">CJ:</p>}
+              {msg.type === "user" && <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>}
+              {msg.type === "info" && <p className="font-pixel text-[6px] text-green-400 mb-1">🏘️ Grove Street:</p>}
+              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
+              {msg.type === "cj" && msg.actions && msg.actions.length > 0 && (
+                <ActionButtons actions={msg.actions} onAction={handleAction} />
+              )}
+            </div>
+          ))
+        )}
+        {isLoading && (
+          <div className="p-2 border-l-2 bg-orange-500/10 border-orange-500">
+            <p className="font-pixel text-[8px] text-orange-300 animate-pulse">hold up homie...</p>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-2 border-t border-orange-500/30">
-        <div className="flex gap-2">
+      <div className="p-2 border-t border-orange-500/30">
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="talk to cj..."
+            placeholder="Talk to CJ..."
             disabled={isLoading}
-            className="flex-1 bg-orange-900/20 border border-orange-500/30 text-orange-400 font-mono text-xs px-2 py-1.5 placeholder:text-orange-700 focus:outline-none focus:border-orange-400"
+            className="flex-1 bg-bags-darker border border-orange-500/30 px-2 py-1 font-pixel text-[8px] text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="px-3 py-1.5 bg-orange-900/30 border border-orange-500/50 text-orange-400 font-mono text-xs hover:bg-orange-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 bg-orange-500 text-white font-pixel text-[8px] hover:bg-orange-400 disabled:opacity-50 transition-colors"
           >
-            &gt;
+            Send
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
 
       {/* Footer */}
-      <div className="p-2 border-t border-orange-500/20 bg-orange-900/10">
-        <p className="font-mono text-[8px] text-orange-700 text-center">
+      <div className="p-2 border-t border-orange-500/30 bg-bags-darker">
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-orange-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-gray-400">Hood Rep</p>
+            <p className="font-pixel text-[9px] text-orange-400">💯 MAX</p>
+          </div>
+          <div className="bg-green-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-gray-400">Grove St</p>
+            <p className="font-pixel text-[9px] text-green-400">4 LIFE</p>
+          </div>
+          <div className="bg-orange-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-gray-400">Status</p>
+            <p className="font-pixel text-[9px] text-orange-400">OG</p>
+          </div>
+        </div>
+        <p className="font-pixel text-[7px] text-orange-600 text-center mt-2">
           &quot;aw shit here we go again&quot;
         </p>
       </div>
