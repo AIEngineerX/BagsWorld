@@ -21,6 +21,7 @@ export class WorldScene extends Phaser.Scene {
   private characterSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
   private characterVariants: Map<string, number> = new Map(); // Store which variant each character uses
   private buildingSprites: Map<string, Phaser.GameObjects.Container> = new Map();
+  private buildingInitialized: Set<string> = new Set(); // Track which buildings have been created
   private weatherEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private clouds: Phaser.GameObjects.Sprite[] = [];
   private decorations: Phaser.GameObjects.Sprite[] = [];
@@ -2272,16 +2273,38 @@ export class WorldScene extends Phaser.Scene {
   private updateCharacters(characters: GameCharacter[]): void {
     // Characters only appear in Park (main_city), not in BagsCity
     if (this.currentZone !== "main_city") {
-      // Hide all characters when in BagsCity
+      // Hide all characters and their glows when in BagsCity
       this.characterSprites.forEach((sprite) => {
         sprite.setVisible(false);
+        // Hide associated glow sprites
+        const tolyGlow = (sprite as any).tolyGlow;
+        const ashGlow = (sprite as any).ashGlow;
+        const finnGlow = (sprite as any).finnGlow;
+        const devGlow = (sprite as any).devGlow;
+        const scoutGlow = (sprite as any).scoutGlow;
+        if (tolyGlow) tolyGlow.setVisible(false);
+        if (ashGlow) ashGlow.setVisible(false);
+        if (finnGlow) finnGlow.setVisible(false);
+        if (devGlow) devGlow.setVisible(false);
+        if (scoutGlow) scoutGlow.setVisible(false);
       });
       return;
     }
 
-    // Show characters when in Park
+    // Show characters and their glows when in Park
     this.characterSprites.forEach((sprite) => {
       sprite.setVisible(true);
+      // Show associated glow sprites
+      const tolyGlow = (sprite as any).tolyGlow;
+      const ashGlow = (sprite as any).ashGlow;
+      const finnGlow = (sprite as any).finnGlow;
+      const devGlow = (sprite as any).devGlow;
+      const scoutGlow = (sprite as any).scoutGlow;
+      if (tolyGlow) tolyGlow.setVisible(true);
+      if (ashGlow) ashGlow.setVisible(true);
+      if (finnGlow) finnGlow.setVisible(true);
+      if (devGlow) devGlow.setVisible(true);
+      if (scoutGlow) scoutGlow.setVisible(true);
     });
 
     const currentIds = new Set(characters.map((c) => c.id));
@@ -2527,6 +2550,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateBuildings(buildings: GameBuilding[]): void {
+    // First, hide all buildings
+    this.buildingSprites.forEach((container) => {
+      container.setVisible(false);
+    });
+
     // Filter buildings by current zone
     // Buildings with no zone appear in both, buildings with specific zone only in that zone
     const zoneBuildings = buildings.filter((b) => {
@@ -2535,18 +2563,21 @@ export class WorldScene extends Phaser.Scene {
     });
 
     const currentIds = new Set(zoneBuildings.map((b) => b.id));
+    const allBuildingIds = new Set(buildings.map((b) => b.id));
 
-    // Remove old buildings (including those no longer in this zone)
+    // Only destroy buildings that no longer exist in the world state
     this.buildingSprites.forEach((container, id) => {
-      if (!currentIds.has(id)) {
+      if (!allBuildingIds.has(id)) {
         container.destroy();
         this.buildingSprites.delete(id);
+        this.buildingInitialized.delete(id);
       }
     });
 
     // Add or update buildings
     zoneBuildings.forEach((building) => {
       let container = this.buildingSprites.get(building.id);
+      const isFirstTimeCreation = !this.buildingInitialized.has(building.id);
 
       if (!container) {
         container = this.add.container(building.x, building.y);
@@ -2655,18 +2686,23 @@ export class WorldScene extends Phaser.Scene {
         });
 
         this.buildingSprites.set(building.id, container);
+        this.buildingInitialized.add(building.id);
 
-        // Spawn animation
-        container.setScale(0);
-        container.setAlpha(0);
-        this.tweens.add({
-          targets: container,
-          scale: 1,
-          alpha: 1,
-          duration: 600,
-          ease: "Back.easeOut",
-        });
+        // Spawn animation only on first creation
+        if (isFirstTimeCreation) {
+          container.setScale(0);
+          container.setAlpha(0);
+          this.tweens.add({
+            targets: container,
+            scale: 1,
+            alpha: 1,
+            duration: 600,
+            ease: "Back.easeOut",
+          });
+        }
       } else {
+        // Show the existing building
+        container.setVisible(true);
         // Update existing building
         const sprite = container.getAt(1) as Phaser.GameObjects.Sprite;
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
