@@ -210,14 +210,15 @@ function buildContext(worldState: WorldState) {
 
 // Check if this is a special NPC character
 function isSpecialCharacter(id: string): boolean {
-  const specialIds = ["finn", "ghost", "neo", "ash", "toly", "dev", "scout"];
+  const specialIds = ["finn", "ghost", "neo", "ash", "toly", "dev", "scout", "cj"];
   const lowerName = id.toLowerCase();
   return specialIds.some(s => lowerName.includes(s)) ||
          id.includes("Finnbags") ||
          id.includes("The Dev") ||
          id.includes("Neo") ||
          id.includes("Ash") ||
-         id.includes("Toly");
+         id.includes("Toly") ||
+         id.includes("CJ");
 }
 
 // Map character display ID to behavior system ID
@@ -228,6 +229,7 @@ function getCharacterId(id: string): string {
   if (lower.includes("neo") || lower.includes("scout")) return "neo";
   if (lower.includes("ash")) return "ash";
   if (lower.includes("toly")) return "toly";
+  if (lower.includes("cj")) return "cj";
   return id;
 }
 

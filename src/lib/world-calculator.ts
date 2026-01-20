@@ -312,6 +312,8 @@ export function transformFeeEarnerToCharacter(
   const isDev = (earner as any).isDev || earner.wallet === "daddyghost-dev-permanent";
   // Scout Agent gets a position on far right (watching the horizon)
   const isScout = (earner as any).isScout || earner.wallet === "scout-agent-permanent";
+  // CJ gets a position in BagsCity (left side, near the Casino)
+  const isCJ = (earner as any).isCJ || earner.wallet === "cj-grove-street-permanent";
 
   const groundY = Math.round(555 * SCALE);
   const position = existingCharacter
@@ -326,9 +328,11 @@ export function transformFeeEarnerToCharacter(
     ? { x: WORLD_WIDTH / 2 + Math.round(180 * SCALE), y: groundY } // Center-right, in the trenches
     : isScout
     ? { x: WORLD_WIDTH - Math.round(60 * SCALE), y: groundY } // Far right, watching the horizon
+    : isCJ
+    ? { x: Math.round(60 * SCALE), y: groundY } // BagsCity, near the Casino (far left)
     : generateCharacterPosition();
 
-  const isSpecialCharacter = isToly || isAsh || isFinn || isDev || isScout;
+  const isSpecialCharacter = isToly || isAsh || isFinn || isDev || isScout || isCJ;
 
   return {
     id: earner.wallet,
@@ -343,12 +347,13 @@ export function transformFeeEarnerToCharacter(
     direction: Math.random() > 0.5 ? "left" : "right",
     isMoving: !isSpecialCharacter && Math.random() > 0.7, // Special characters don't wander randomly
     buildingId: earner.topToken?.mint,
-    profileUrl: isToly ? "https://x.com/toly" : isFinn ? "https://x.com/finnbags" : isDev ? "https://x.com/DaddyGhost" : isAsh || isScout ? undefined : getProfileUrl(earner.provider, earner.username),
+    profileUrl: isToly ? "https://x.com/toly" : isFinn ? "https://x.com/finnbags" : isDev ? "https://x.com/DaddyGhost" : isAsh || isScout || isCJ ? undefined : getProfileUrl(earner.provider, earner.username),
     isToly, // Pass through the Toly flag
     isAsh, // Pass through the Ash flag
     isFinn, // Pass through the Finn flag
     isDev, // Pass through the Dev flag
     isScout, // Pass through the Scout flag
+    isCJ, // Pass through the CJ flag
   };
 }
 

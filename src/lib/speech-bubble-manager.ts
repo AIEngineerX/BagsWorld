@@ -54,6 +54,7 @@ const CHARACTER_COLORS: Record<string, { bg: number; border: number; text: strin
   neo: { bg: 0x001100, border: 0x00ff41, text: "#00ff41" }, // Matrix green
   ash: { bg: 0x1a0a0a, border: 0xef4444, text: "#fca5a5" }, // Pokemon red
   "bags-bot": { bg: 0x1a1500, border: 0xf59e0b, text: "#fbbf24" }, // Amber
+  cj: { bg: 0x1a0f00, border: 0xf97316, text: "#fb923c" }, // Grove Street orange
 };
 
 export class SpeechBubbleManager {
@@ -269,6 +270,7 @@ export class SpeechBubbleManager {
       if (characterId === "neo" && spriteData.isScout) return spriteId;
       if (characterId === "ash" && spriteData.isAsh) return spriteId;
       if (characterId === "toly" && spriteData.isToly) return spriteId;
+      if (characterId === "cj" && spriteData.isCJ) return spriteId;
       if (characterId === "bags-bot") {
         // Bags bot doesn't have a sprite, use Toly as fallback
         if (spriteData.isToly) return spriteId;
@@ -321,6 +323,8 @@ export function getCharacterSpriteKey(characterId: string): {
       return { flag: "isScout" };
     case "ash":
       return { flag: "isAsh" };
+    case "cj":
+      return { flag: "isCJ" };
     case "bags-bot":
       return { flag: "isToly", fallback: "toly" }; // Use Toly sprite for Bags Bot
     default:

@@ -754,6 +754,24 @@ export async function POST(request: NextRequest) {
       isScout: true, // Special flag for the game to recognize
     } as FeeEarner & { isScout: boolean };
 
+    // ALWAYS add CJ as the hood rat character in BagsCity
+    // CJ from Grove Street, keeps it real about on-chain activity
+    const cj: FeeEarner = {
+      rank: 0, // Special rank
+      username: "CJ",
+      providerUsername: "cj_grove",
+      provider: "twitter" as FeeEarner["provider"],
+      wallet: "cj-grove-street-permanent",
+      avatarUrl: undefined, // Will use special CJ sprite
+      lifetimeEarnings: 1992, // GTA SA release year... actually 2004, but keeping hood vibes
+      earnings24h: 0,
+      change24h: 0,
+      tokenCount: 0,
+      topToken: undefined,
+      isCJ: true, // Special flag for the game to recognize
+    } as FeeEarner & { isCJ: boolean };
+
+    earners.unshift(cj); // CJ sixth
     earners.unshift(scout); // Neo fifth
     earners.unshift(dev); // The Dev fourth
     earners.unshift(finn); // Finn third
