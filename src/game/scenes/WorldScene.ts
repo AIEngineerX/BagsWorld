@@ -2913,15 +2913,15 @@ export class WorldScene extends Phaser.Scene {
     nameText.setOrigin(0.5, 0.5);
 
     if (isTreasury) {
-      // Buyback & Burn Hub tooltip - threshold-based system
-      const descText = this.add.text(0, -12, "Threshold: 1 SOL", {
+      // Creator Rewards Hub tooltip
+      const descText = this.add.text(0, -12, "Top 3 Creators Get Paid", {
         fontFamily: "monospace",
         fontSize: "8px",
         color: "#4ade80",
       });
       descText.setOrigin(0.5, 0.5);
 
-      const breakdownText = this.add.text(0, 4, "Hit threshold → Claim → Buy top 5 → Burn\n80% buyback | 20% operations", {
+      const breakdownText = this.add.text(0, 4, "10 SOL threshold or 5 day timer\n50% / 30% / 20% split", {
         fontFamily: "monospace",
         fontSize: "6px",
         color: "#9ca3af",
@@ -2929,7 +2929,7 @@ export class WorldScene extends Phaser.Scene {
       });
       breakdownText.setOrigin(0.5, 0.5);
 
-      const clickText = this.add.text(0, 24, "🔥 Click to verify burns on Solscan", {
+      const clickText = this.add.text(0, 24, "🏆 Click to view rewards hub", {
         fontFamily: "monospace",
         fontSize: "7px",
         color: "#60a5fa",
