@@ -14,7 +14,16 @@
       "Bash(git rebase:*)",
       "Bash(git stash pop:*)",
       "Bash(git stash drop:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(powershell -Command \"Remove-Item -Recurse -Force ''C:\\\\Users\\\\footb\\\\BagsWorld\\\\src''; Copy-Item -Recurse -Force ''C:\\\\Users\\\\footb\\\\Downloads\\\\BagsWorld-main \\(18\\)\\\\BagsWorld-main\\\\src'' ''C:\\\\Users\\\\footb\\\\BagsWorld\\\\src''\")",
+      "Bash(powershell -Command:*)",
+      "Bash(git reset:*)",
+      "Bash(diff:*)",
+      "Bash(npm run dev:*)",
+      "Bash(python:*)",
+      "Bash(git stash show:*)",
+      "Bash(npx netlify deploy:*)",
+      "Bash(npx netlify:*)"
     ]
   }
 }

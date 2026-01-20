@@ -329,7 +329,7 @@ export function transformFeeEarnerToCharacter(
     : isScout
     ? { x: WORLD_WIDTH - Math.round(60 * SCALE), y: groundY } // Far right, watching the horizon
     : isCJ
-    ? { x: Math.round(60 * SCALE), y: groundY } // BagsCity, near the Casino (far left)
+    ? { x: Math.round(100 * SCALE), y: groundY } // BagsCity, next to the Casino
     : generateCharacterPosition();
 
   const isSpecialCharacter = isToly || isAsh || isFinn || isDev || isScout || isCJ;
