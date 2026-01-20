@@ -69,10 +69,10 @@ let state: DialogueState = {
 };
 
 // Conversation settings
-const MIN_CONVERSATION_GAP = 30000; // 30 seconds between conversations
+const MIN_CONVERSATION_GAP = 15000; // 15 seconds between conversations
 const MAX_CONVERSATION_LINES = 6; // Max lines per conversation
-const LINE_DISPLAY_DURATION = 4000; // How long each line shows (4 seconds)
-const CONVERSATION_COOLDOWN = 45000; // 45 seconds after conversation ends
+const LINE_DISPLAY_DURATION = 5000; // How long each line shows (5 seconds)
+const CONVERSATION_COOLDOWN = 20000; // 20 seconds after conversation ends
 
 // Character relationships (who tends to talk to whom)
 const CHARACTER_AFFINITIES: Record<string, string[]> = {
@@ -657,8 +657,8 @@ export function startScheduledConversations(intervalMs: number = 60000): void {
   if (scheduledInterval) return;
 
   scheduledInterval = setInterval(async () => {
-    // 30% chance of random conversation
-    if (Math.random() > 0.3) return;
+    // 60% chance of random conversation
+    if (Math.random() > 0.6) return;
 
     const topics = ["general", "world_health"];
     const topic = topics[Math.floor(Math.random() * topics.length)];
@@ -702,8 +702,17 @@ export function initDialogueSystem(): void {
     });
   });
 
-  // Start scheduled conversations (every 45 seconds check)
-  startScheduledConversations(45000);
+  // Start scheduled conversations (every 30 seconds check)
+  startScheduledConversations(30000);
+
+  // Trigger initial conversation after a short delay (let world load)
+  setTimeout(() => {
+    console.log("[Dialogue] Triggering initial conversation...");
+    startConversation(
+      { type: "scheduled", interval: 30000 },
+      "general"
+    );
+  }, 8000);
 
   console.log("[Dialogue] System initialized");
 }
