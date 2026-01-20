@@ -14,6 +14,7 @@ import { FinnbagsChat } from "@/components/FinnbagsChat";
 import { DevChat } from "@/components/DevChat";
 import { NeoChat } from "@/components/NeoChat";
 import { AgentDashboard } from "@/components/AgentDashboard";
+import { AdminConsole } from "@/components/AdminConsole";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
@@ -246,6 +247,7 @@ export default function Home() {
           <DevChat />
           <NeoChat />
           <AgentDashboard />
+          <AdminConsole />
 
           {/* Mobile character menu - floating button */}
           <MobileCharacterMenu />
