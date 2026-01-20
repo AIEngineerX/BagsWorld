@@ -11,10 +11,9 @@ import { getAgentWalletStatus, isAgentWalletConfigured } from "@/lib/agent-walle
 /**
  * Admin-authenticated agent API
  *
- * This endpoint allows admin wallets to access agent status and trigger actions
- * by verifying the wallet address matches an admin wallet in config.
- *
- * The wallet address is passed in the request body (signed on frontend to prove ownership)
+ * Security model:
+ * - "status" action: Requires admin wallet address (read-only, low risk)
+ * - "trigger" action: Requires AGENT_SECRET (moves funds, high risk)
  */
 
 interface AdminAgentRequest {
@@ -22,12 +21,25 @@ interface AdminAgentRequest {
   walletAddress: string;
 }
 
+/**
+ * Verify AGENT_SECRET for sensitive operations
+ */
+function verifyAgentSecret(request: NextRequest): boolean {
+  const agentSecret = process.env.AGENT_SECRET;
+  if (!agentSecret) return false;
+
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+
+  return authHeader.slice(7) === agentSecret;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: AdminAgentRequest = await request.json();
     const { action, walletAddress } = body;
 
-    // Verify wallet is admin
+    // Verify wallet is admin for all actions
     if (!walletAddress || !isAdmin(walletAddress)) {
       return NextResponse.json(
         { error: "Unauthorized - admin wallet required" },
@@ -37,8 +49,16 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case "status":
+        // Status is read-only, wallet auth is sufficient
         return handleStatus();
       case "trigger":
+        // Trigger moves funds - require AGENT_SECRET
+        if (!verifyAgentSecret(request)) {
+          return NextResponse.json(
+            { error: "AGENT_SECRET required for trigger action" },
+            { status: 401 }
+          );
+        }
         return handleTrigger();
       default:
         return NextResponse.json(
