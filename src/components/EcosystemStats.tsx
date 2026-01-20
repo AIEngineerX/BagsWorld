@@ -189,7 +189,7 @@ export function EcosystemStats() {
           <div className="mt-3 pt-2 border-t border-gray-700">
             <p className="font-pixel text-[8px] text-gray-500">
               Distribution: 50% / 30% / 20% to top 3 creators by fees generated.
-              Triggers at {stats.thresholdSol} SOL or {stats.backupTimerDays} days.
+              Triggers at {stats.thresholdSol} SOL or {stats.backupTimerDays} days (min {stats.minimumDistributionSol} SOL).
             </p>
           </div>
         </div>
