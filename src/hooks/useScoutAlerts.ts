@@ -1,5 +1,5 @@
 // Hook for subscribing to Scout Agent alerts
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export interface TokenLaunch {
   mint: string;
@@ -41,6 +41,24 @@ export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
   const [error, setError] = useState<string | null>(null);
   const [lastSeenMint, setLastSeenMint] = useState<string | null>(null);
 
+  // Use refs to avoid circular dependencies in useCallback
+  const alertsRef = useRef<TokenLaunch[]>([]);
+  const lastSeenMintRef = useRef<string | null>(null);
+  const onNewLaunchRef = useRef(onNewLaunch);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    alertsRef.current = alerts;
+  }, [alerts]);
+
+  useEffect(() => {
+    lastSeenMintRef.current = lastSeenMint;
+  }, [lastSeenMint]);
+
+  useEffect(() => {
+    onNewLaunchRef.current = onNewLaunch;
+  }, [onNewLaunch]);
+
   // Fetch scout status and recent launches
   const fetchScoutData = useCallback(async () => {
     try {
@@ -59,18 +77,19 @@ export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
       if (data.launches) {
         const launches = data.launches as TokenLaunch[];
 
-        // Check for new launches
-        if (launches.length > 0 && launches[0].mint !== lastSeenMint) {
-          const newLaunches = lastSeenMint
+        // Check for new launches using refs to avoid stale closures
+        if (launches.length > 0 && launches[0].mint !== lastSeenMintRef.current) {
+          const currentAlerts = alertsRef.current;
+          const newLaunches = lastSeenMintRef.current
             ? launches.filter(
                 (l) =>
-                  alerts.findIndex((a) => a.mint === l.mint) === -1
+                  currentAlerts.findIndex((a) => a.mint === l.mint) === -1
               )
             : [];
 
           // Notify about new launches
-          if (onNewLaunch) {
-            newLaunches.forEach((launch) => onNewLaunch(launch));
+          if (onNewLaunchRef.current) {
+            newLaunches.forEach((launch) => onNewLaunchRef.current!(launch));
           }
 
           setLastSeenMint(launches[0].mint);
@@ -85,7 +104,7 @@ export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, [maxAlerts, lastSeenMint, alerts, onNewLaunch]);
+  }, [maxAlerts]);
 
   // Fetch scout state
   const fetchScoutState = useCallback(async () => {

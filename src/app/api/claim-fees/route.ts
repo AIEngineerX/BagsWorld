@@ -1,14 +1,6 @@
 import { NextResponse } from "next/server";
-import { BagsApiClient } from "@/lib/bags-api";
-
-let bagsApi: BagsApiClient | null = null;
-
-function getBagsApi(): BagsApiClient | null {
-  if (!bagsApi && process.env.BAGS_API_KEY) {
-    bagsApi = new BagsApiClient(process.env.BAGS_API_KEY);
-  }
-  return bagsApi;
-}
+import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
+import type { BagsApiClient } from "@/lib/bags-api";
 
 interface ClaimRequestBody {
   action: "get-positions" | "generate-claim-tx" | "lookup-by-x";
@@ -21,7 +13,7 @@ export async function POST(request: Request) {
   try {
     const body: ClaimRequestBody = await request.json();
     const { action, wallet, positions, xUsername } = body;
-    const api = getBagsApi();
+    const api = getServerBagsApiOrNull();
 
     if (!api) {
       return NextResponse.json(

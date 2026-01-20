@@ -1,18 +1,6 @@
 import { NextResponse } from "next/server";
-import { BagsApiClient } from "@/lib/bags-api";
+import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import type { TradeQuote } from "@/lib/types";
-
-let bagsApi: BagsApiClient | null = null;
-
-function getBagsApi(): BagsApiClient | null {
-  if (!bagsApi && process.env.BAGS_API_KEY) {
-    bagsApi = new BagsApiClient(process.env.BAGS_API_KEY);
-  }
-  return bagsApi;
-}
-
-// SOL mint address
-const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 interface TradeRequestBody {
   action: "quote" | "swap";
@@ -32,7 +20,7 @@ export async function POST(request: Request) {
   try {
     const body: TradeRequestBody = await request.json();
     const { action, data } = body;
-    const api = getBagsApi();
+    const api = getServerBagsApiOrNull();
 
     if (!api) {
       return NextResponse.json(

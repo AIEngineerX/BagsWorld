@@ -1,15 +1,6 @@
 import { NextResponse } from "next/server";
-import { BagsApiClient } from "@/lib/bags-api";
-
-// Initialize Bags API client
-let bagsApi: BagsApiClient | null = null;
-
-function getBagsApi(): BagsApiClient | null {
-  if (!bagsApi && process.env.BAGS_API_KEY) {
-    bagsApi = new BagsApiClient(process.env.BAGS_API_KEY);
-  }
-  return bagsApi;
-}
+import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
+import type { BagsApiClient } from "@/lib/bags-api";
 
 interface LaunchRequestBody {
   action: "create-info" | "configure-fees" | "create-launch-tx" | "lookup-wallet";
@@ -48,7 +39,7 @@ export async function POST(request: Request) {
   try {
     const body: LaunchRequestBody = await request.json();
     const { action, data } = body;
-    const api = getBagsApi();
+    const api = getServerBagsApiOrNull();
 
     if (!api) {
       return NextResponse.json(
