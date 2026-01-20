@@ -33,6 +33,9 @@ import { AgentFeed, AgentToast } from "@/components/AgentFeed";
 import { TradingGymModal } from "@/components/TradingGymModal";
 import { CreatorRewardsModal } from "@/components/CreatorRewardsModal";
 import { CasinoModal } from "@/components/CasinoModal";
+import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
+import { initDialogueEventBridge, cleanupDialogueEventBridge, onWorldStateUpdate, initBrowserEventListener } from "@/lib/dialogue-event-bridge";
+import { initCharacterBehavior, cleanupCharacterBehavior, updateWorldStateForBehavior } from "@/lib/character-behavior";
 
 interface BuildingClickData {
   mint: string;
@@ -129,6 +132,30 @@ export default function Home() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Initialize autonomous dialogue and behavior systems
+  useEffect(() => {
+    console.log("[Page] Initializing dialogue and behavior systems...");
+    initDialogueSystem();
+    initDialogueEventBridge();
+    initBrowserEventListener();
+    initCharacterBehavior();
+
+    return () => {
+      console.log("[Page] Cleaning up dialogue and behavior systems...");
+      cleanupDialogueSystem();
+      cleanupDialogueEventBridge();
+      cleanupCharacterBehavior();
+    };
+  }, []);
+
+  // Update dialogue and behavior systems when world state changes
+  useEffect(() => {
+    if (worldState) {
+      onWorldStateUpdate(worldState);
+      updateWorldStateForBehavior(worldState);
+    }
+  }, [worldState]);
 
   return (
     <main className="h-screen w-screen overflow-hidden flex flex-col">
