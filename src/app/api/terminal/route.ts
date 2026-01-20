@@ -1,15 +1,6 @@
 import { NextResponse } from "next/server";
-import { BagsApiClient } from "@/lib/bags-api";
+import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import { Connection, PublicKey } from "@solana/web3.js";
-
-let bagsApi: BagsApiClient | null = null;
-
-function getBagsApi(): BagsApiClient | null {
-  if (!bagsApi && process.env.BAGS_API_KEY) {
-    bagsApi = new BagsApiClient(process.env.BAGS_API_KEY);
-  }
-  return bagsApi;
-}
 
 // Types for terminal responses
 export interface TrendingToken {
@@ -278,10 +269,10 @@ async function handleQuickQuote(
     );
   }
 
-  const api = getBagsApi();
+  const api = getServerBagsApiOrNull();
   if (!api) {
     return NextResponse.json(
-      { error: "Bags API not configured" },
+      { error: "Bags API not configured. Set BAGS_API_KEY environment variable." },
       { status: 500 }
     );
   }

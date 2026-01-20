@@ -292,12 +292,12 @@ export async function getTokenByMint(mint: string): Promise<DexToken | null> {
     const pairs = await getTokenPairs(mint);
     if (pairs.length === 0) return null;
 
-    // Find the most liquid pair
+    // Find the most liquid pair (with initial value to handle edge cases)
     const bestPair = pairs.reduce((best, current) => {
       const currentLiquidity = current.liquidity?.usd || 0;
       const bestLiquidity = best.liquidity?.usd || 0;
       return currentLiquidity > bestLiquidity ? current : best;
-    });
+    }, pairs[0]);
 
     return pairToToken(bestPair);
   } catch (error) {

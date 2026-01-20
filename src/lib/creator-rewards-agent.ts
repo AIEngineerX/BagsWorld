@@ -1,6 +1,7 @@
 // Creator Rewards Agent - Distributes ecosystem fees to top 3 token creators
 // Triggers when 10 SOL threshold hit OR 5 days pass (with minimum 2 SOL)
-import { BagsApiClient } from "./bags-api";
+import { getServerBagsApi, isServerBagsApiConfigured } from "./bags-api-server";
+import type { BagsApiClient } from "./bags-api";
 import { emitDistribution } from "./agent-coordinator";
 import {
   getAgentWallet,
@@ -116,7 +117,18 @@ let agentState: CreatorRewardsState = {
 
 let agentConfig: CreatorRewardsConfig = { ...DEFAULT_CONFIG };
 let checkInterval: NodeJS.Timeout | null = null;
-let bagsApi: BagsApiClient | null = null;
+
+// Helper to get the Bags API client (uses shared singleton)
+function getBagsApiClient(): BagsApiClient | null {
+  if (!isServerBagsApiConfigured()) {
+    return null;
+  }
+  try {
+    return getServerBagsApi();
+  } catch {
+    return null;
+  }
+}
 
 // Initialize the agent
 export function initCreatorRewardsAgent(config?: Partial<CreatorRewardsConfig>): boolean {
@@ -125,13 +137,12 @@ export function initCreatorRewardsAgent(config?: Partial<CreatorRewardsConfig>):
     return false;
   }
 
-  if (!process.env.BAGS_API_KEY) {
+  if (!isServerBagsApiConfigured()) {
     console.warn("[Creator Rewards] BAGS_API_KEY not set");
     return false;
   }
 
   agentConfig = { ...DEFAULT_CONFIG, ...config };
-  bagsApi = new BagsApiClient(process.env.BAGS_API_KEY);
 
   console.log("[Creator Rewards] Initialized:", {
     wallet: getAgentPublicKey(),
@@ -147,7 +158,7 @@ export function initCreatorRewardsAgent(config?: Partial<CreatorRewardsConfig>):
 
 // Start the agent
 export function startCreatorRewardsAgent(): boolean {
-  if (!bagsApi) {
+  if (!getBagsApiClient()) {
     const initialized = initCreatorRewardsAgent();
     if (!initialized) return false;
   }
@@ -272,6 +283,7 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
   };
 
   try {
+    const bagsApi = getBagsApiClient();
     if (!bagsApi) {
       throw new Error("Agent not initialized");
     }
@@ -467,7 +479,7 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
 
 // Manual trigger
 export async function triggerDistribution(): Promise<DistributionResult> {
-  if (!bagsApi) {
+  if (!getBagsApiClient()) {
     initCreatorRewardsAgent();
   }
   return runRewardsCheck();

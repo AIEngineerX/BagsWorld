@@ -39,7 +39,6 @@ const BAGS_HEALTH_THRESHOLDS = {
 // Position cache to prevent buildings from shifting when rankings change
 // Key: token mint, Value: { x, y, assignedIndex }
 const buildingPositionCache = new Map<string, { x: number; y: number; assignedIndex: number }>();
-let nextAvailableIndex = 0;
 
 /**
  * Calculate world health based on Bags.fm ecosystem activity
@@ -94,7 +93,9 @@ export function calculateWorldHealth(
   } else if (totalLifetimeFees >= feeThresholds.struggling) {
     feesScore = 25 + (totalLifetimeFees - feeThresholds.struggling) / (feeThresholds.normal - feeThresholds.struggling) * 25;
   } else {
-    feesScore = Math.max(0, totalLifetimeFees / feeThresholds.struggling * 25);
+    // Defensive: avoid division by zero if threshold is ever 0
+    const divisor = feeThresholds.struggling || 1;
+    feesScore = Math.max(0, (totalLifetimeFees / divisor) * 25);
   }
 
   // Calculate token diversity score (0-100)

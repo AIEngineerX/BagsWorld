@@ -74,7 +74,7 @@ export function checkRateLimit(
     return {
       success: true,
       remaining: config.limit - entry.count,
-      resetIn: entry.resetTime - now,
+      resetIn: Math.max(0, entry.resetTime - now),
     };
   }
 
@@ -82,7 +82,7 @@ export function checkRateLimit(
   return {
     success: false,
     remaining: 0,
-    resetIn: entry.resetTime - now,
+    resetIn: Math.max(0, entry.resetTime - now),
   };
 }
 
