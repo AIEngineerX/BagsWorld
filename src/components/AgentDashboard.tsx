@@ -67,8 +67,24 @@ export function AgentDashboard() {
       setIsLoading(true);
       setError(null);
 
-      // Note: This endpoint returns minimal info without auth
-      // Full status requires AGENT_SECRET auth header
+      // If admin wallet connected, use admin-agent endpoint for full status
+      if (isUserAdmin && publicKey) {
+        const response = await fetch("/api/admin-agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "status",
+            walletAddress: publicKey.toBase58(),
+          }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setStatus(data);
+          return;
+        }
+      }
+
+      // Fallback to regular endpoint (returns minimal info without auth)
       const response = await fetch("/api/agent");
       const data = await response.json();
 
@@ -112,7 +128,7 @@ export function AgentDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isUserAdmin, publicKey]);
 
   // Fetch status when opened
   useEffect(() => {
@@ -125,22 +141,30 @@ export function AgentDashboard() {
   }, [isOpen, isUserAdmin, fetchStatus]);
 
   const handleTriggerDistribution = async () => {
+    if (!isUserAdmin || !publicKey) {
+      setError("Admin wallet required");
+      return;
+    }
+
     try {
       setIsTriggering(true);
       setError(null);
       setLastResult(null);
 
-      // Note: This requires AGENT_SECRET auth - will fail without it
-      const response = await fetch("/api/agent", {
+      // Use admin-agent endpoint with wallet auth
+      const response = await fetch("/api/admin-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "rewards-trigger" }),
+        body: JSON.stringify({
+          action: "trigger",
+          walletAddress: publicKey.toBase58(),
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Trigger failed - auth required");
+        throw new Error(data.error || "Trigger failed");
       }
 
       setLastResult(data);
