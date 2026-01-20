@@ -20,6 +20,7 @@ export class WorldScene extends Phaser.Scene {
   private clouds: Phaser.GameObjects.Sprite[] = [];
   private decorations: Phaser.GameObjects.Sprite[] = [];
   private animals: Animal[] = [];
+  private fountainWater: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ground!: Phaser.GameObjects.TileSprite;
   private timeOfDay = 0;
   private overlay!: Phaser.GameObjects.Rectangle;
@@ -366,6 +367,11 @@ export class WorldScene extends Phaser.Scene {
     this.decorations.forEach((d) => d.setVisible(true));
     this.animals.forEach((a) => a.sprite.setVisible(true));
 
+    // Show fountain water spray
+    if (this.fountainWater) {
+      this.fountainWater.setVisible(true);
+    }
+
     // Show and reset grass ground
     this.ground.setVisible(true);
     this.ground.setTexture("grass");
@@ -375,6 +381,11 @@ export class WorldScene extends Phaser.Scene {
     // Hide park decorations and animals (they belong to main_city)
     this.decorations.forEach((d) => d.setVisible(false));
     this.animals.forEach((a) => a.sprite.setVisible(false));
+
+    // Hide fountain water spray
+    if (this.fountainWater) {
+      this.fountainWater.setVisible(false);
+    }
 
     // Hide the grass ground completely - city has its own pavement
     this.ground.setVisible(false);
@@ -715,20 +726,27 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createTrendingTicker(): void {
-    // Ticker display bar at bottom
-    const tickerBg = this.add.sprite(400, 570, "ticker_display");
+    // Ticker display bar at very bottom of screen
+    const tickerY = 592;
+
+    // Dark background bar for ticker
+    const tickerBg = this.add.rectangle(400, tickerY, 800, 16, 0x0a0a0f);
     tickerBg.setDepth(10);
-    tickerBg.setScale(4, 1);
     this.trendingElements.push(tickerBg);
+
+    // Subtle top border
+    const tickerBorder = this.add.rectangle(400, tickerY - 8, 800, 1, 0x374151);
+    tickerBorder.setDepth(10);
+    this.trendingElements.push(tickerBorder);
 
     // Create mask for ticker text
     const maskShape = this.make.graphics({});
     maskShape.fillStyle(0xffffff);
-    maskShape.fillRect(0, 560, 800, 20);
+    maskShape.fillRect(0, tickerY - 8, 800, 16);
     const mask = maskShape.createGeometryMask();
 
     // Ticker text
-    this.tickerText = this.add.text(800, 570, this.getTickerContent(), {
+    this.tickerText = this.add.text(800, tickerY, this.getTickerContent(), {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#4ade80",
@@ -1228,8 +1246,8 @@ export class WorldScene extends Phaser.Scene {
     fountain.setScale(1.2);
     this.decorations.push(fountain);
 
-    // Water spray particles
-    const waterSpray = this.add.particles(400, 385, "rain", {
+    // Water spray particles - store reference to hide in other zones
+    this.fountainWater = this.add.particles(400, 385, "rain", {
       speed: { min: 20, max: 50 },
       angle: { min: 250, max: 290 },
       lifespan: 600,
@@ -1239,7 +1257,7 @@ export class WorldScene extends Phaser.Scene {
       alpha: { start: 0.6, end: 0 },
       gravityY: 50,
     });
-    waterSpray.setDepth(1);
+    this.fountainWater.setDepth(1);
 
     // Add flag poles
     const flagPositions = [{ x: 50, y: 430 }, { x: 750, y: 430 }];
