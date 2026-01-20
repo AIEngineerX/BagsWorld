@@ -13,6 +13,7 @@ import { TolyChat } from "@/components/TolyChat";
 import { FinnbagsChat } from "@/components/FinnbagsChat";
 import { DevChat } from "@/components/DevChat";
 import { NeoChat } from "@/components/NeoChat";
+import { CJChat } from "@/components/CJChat";
 import { AgentDashboard } from "@/components/AgentDashboard";
 import { AdminConsole } from "@/components/AdminConsole";
 import { YourBuildings } from "@/components/YourBuildings";
@@ -281,6 +282,7 @@ export default function Home() {
           <FinnbagsChat />
           <DevChat />
           <NeoChat />
+          <CJChat />
           <AgentDashboard />
           <AdminConsole />
 
