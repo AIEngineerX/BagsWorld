@@ -133,7 +133,7 @@ export const ECOSYSTEM_CONFIG = {
       {
         title: "Automatic Citizens",
         description: "Fee share recipients become citizens walking your world",
-        icon: "◇",
+        icon: "👥",
       },
       {
         title: "Event Feed",
