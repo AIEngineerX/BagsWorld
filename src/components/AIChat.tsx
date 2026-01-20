@@ -297,7 +297,7 @@ export function AIChat() {
                 onClick={() => handleQuickAction("make it rain")}
                 className="px-2 py-1 bg-bags-darker border border-yellow-500/30 font-pixel text-[7px] text-yellow-400 hover:bg-yellow-500/20"
               >
-                💰 coins
+                ◈ coins
               </button>
               <button
                 onClick={() => handleQuickAction("confetti")}

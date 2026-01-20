@@ -256,7 +256,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
                 : "text-gray-400 hover:text-white hover:bg-gray-700"
             }`}
           >
-            <span className="text-lg">🔥</span> TRENDING
+            <span className="text-lg">📈</span> TRENDING
           </button>
           <button
             onClick={() => setActiveTab("new-pairs")}

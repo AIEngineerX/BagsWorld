@@ -73,11 +73,11 @@ export const ECOSYSTEM_CONFIG = {
   // Buildings grow based on market cap, giving visual progression
   buildings: {
     tiers: [
-      { level: 1, name: "Startup Shop", minMarketCap: 0, icon: "🏪" },
-      { level: 2, name: "Growing Office", minMarketCap: 100_000, icon: "🏢" },
-      { level: 3, name: "Corporate HQ", minMarketCap: 500_000, icon: "🏛️" },
-      { level: 4, name: "Tower", minMarketCap: 2_000_000, icon: "🗼" },
-      { level: 5, name: "Skyscraper", minMarketCap: 10_000_000, icon: "🏙️" },
+      { level: 1, name: "Startup", minMarketCap: 0, icon: "▫" },
+      { level: 2, name: "Growing", minMarketCap: 100_000, icon: "▪" },
+      { level: 3, name: "Established", minMarketCap: 500_000, icon: "◆" },
+      { level: 4, name: "Major", minMarketCap: 2_000_000, icon: "◈" },
+      { level: 5, name: "Elite", minMarketCap: 10_000_000, icon: "✦" },
     ],
     maxBuildings: 12, // Reduced to prevent overcrowding
 
@@ -128,39 +128,39 @@ export const ECOSYSTEM_CONFIG = {
       {
         title: "Living Building",
         description: "Your token becomes a building that grows with market cap",
-        icon: "🏗️",
+        icon: "◆",
       },
       {
         title: "Automatic Citizens",
         description: "Fee share recipients become citizens walking your world",
-        icon: "👥",
+        icon: "◇",
       },
       {
         title: "Event Feed",
         description: "Token launches, fee claims, and milestones are celebrated",
-        icon: "📢",
+        icon: "▸",
       },
       {
         title: "Trading Built-In",
         description: "Users can trade your token directly from the game",
-        icon: "💱",
+        icon: "↗",
       },
     ],
     forCitizens: [
       {
         title: "Earn From Multiple Tokens",
         description: "Get fee shares from any token that adds you",
-        icon: "💰",
+        icon: "◈",
       },
       {
         title: "Profile Visibility",
         description: "Your X/Twitter is linked - followers can find you",
-        icon: "🔗",
+        icon: "⊕",
       },
       {
         title: "Mood Reflects Earnings",
         description: "Your character celebrates when you're earning",
-        icon: "🎉",
+        icon: "✧",
       },
     ],
     forEcosystem: [
