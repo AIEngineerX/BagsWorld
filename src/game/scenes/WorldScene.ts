@@ -2592,13 +2592,14 @@ export class WorldScene extends Phaser.Scene {
         const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
         container.add(shadow);
 
-        // Use special texture for PokeCenter/TradingGym, otherwise use level-based building
+        // Use special texture for PokeCenter/TradingGym/Casino, otherwise use level-based building
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
         const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
-        const buildingTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : `building_${building.level}`;
+        const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+        const buildingTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}`;
         const sprite = this.add.sprite(0, 0, buildingTexture);
         sprite.setOrigin(0.5, 1);
-        sprite.setScale(isPokeCenter ? 1.0 : isTradingGym ? 1.0 : buildingScale);
+        sprite.setScale(isPokeCenter ? 1.0 : isTradingGym ? 1.0 : isCasino ? 1.0 : buildingScale);
         container.add(sprite);
 
         // Glow effect for pumping buildings
@@ -2651,6 +2652,7 @@ export class WorldScene extends Phaser.Scene {
         container.on("pointerdown", () => {
           const isPokeCenter = building.id.includes("PokeCenter");
           const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
+          const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
           const isStarterBuilding = building.id.startsWith("Starter");
           const isTreasuryBuilding = building.id.startsWith("Treasury");
 
@@ -2662,6 +2664,11 @@ export class WorldScene extends Phaser.Scene {
           } else if (isTradingGym) {
             // TradingGym opens the AI trading arena modal
             window.dispatchEvent(new CustomEvent("bagsworld-tradinggym-click", {
+              detail: { buildingId: building.id, name: building.name }
+            }));
+          } else if (isCasino) {
+            // Casino opens the gambling modal with raffle and wheel
+            window.dispatchEvent(new CustomEvent("bagsworld-casino-click", {
               detail: { buildingId: building.id, name: building.name }
             }));
           } else if (isStarterBuilding) {
@@ -2707,7 +2714,8 @@ export class WorldScene extends Phaser.Scene {
         const sprite = container.getAt(1) as Phaser.GameObjects.Sprite;
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
         const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
-        const newTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : `building_${building.level}`;
+        const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+        const newTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}`;
         if (sprite.texture.key !== newTexture) {
           this.tweens.add({
             targets: container,

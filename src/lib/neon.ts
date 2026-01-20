@@ -171,3 +171,279 @@ export async function updateTokenStats(
     console.error("Error updating token stats:", error);
   }
 }
+
+// Casino Functions
+
+interface CasinoRaffle {
+  id: number;
+  status: "active" | "drawing" | "completed";
+  potLamports: number;
+  entryCount: number;
+  threshold: number;
+  entries?: string[];
+}
+
+interface CasinoHistoryEntry {
+  id: string;
+  type: "raffle" | "wheel";
+  result: string;
+  amount: number;
+  timestamp: number;
+  isWin: boolean;
+}
+
+// Get active raffle status
+export async function getCasinoRaffle(): Promise<CasinoRaffle | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    // Check if casino tables exist first
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'casino_raffles'
+      )
+    `;
+
+    if (!tableCheck[0]?.exists) {
+      // Tables not created yet, return null to use in-memory fallback
+      return null;
+    }
+
+    const result = await sql`
+      SELECT r.*,
+        (SELECT COUNT(*) FROM casino_raffle_entries WHERE raffle_id = r.id) as entry_count,
+        (SELECT json_agg(wallet) FROM casino_raffle_entries WHERE raffle_id = r.id) as entries
+      FROM casino_raffles r
+      WHERE r.status = 'active'
+      ORDER BY r.created_at DESC
+      LIMIT 1
+    `;
+
+    if (result.length === 0) return null;
+
+    return {
+      id: result[0].id,
+      status: result[0].status,
+      potLamports: parseInt(result[0].pot_lamports || "0"),
+      entryCount: parseInt(result[0].entry_count || "0"),
+      threshold: parseFloat(result[0].threshold_sol || "0.5"),
+      entries: result[0].entries || [],
+    };
+  } catch (error) {
+    console.error("Error getting casino raffle:", error);
+    return null;
+  }
+}
+
+// Enter raffle
+export async function enterCasinoRaffle(
+  wallet: string
+): Promise<{ success: boolean; error?: string; entryCount?: number }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    // Check if tables exist
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'casino_raffles'
+      )
+    `;
+
+    if (!tableCheck[0]?.exists) {
+      return { success: false, error: "Casino not initialized" };
+    }
+
+    // Get active raffle
+    const raffle = await sql`
+      SELECT id FROM casino_raffles WHERE status = 'active' LIMIT 1
+    `;
+
+    if (raffle.length === 0) {
+      return { success: false, error: "No active raffle" };
+    }
+
+    const raffleId = raffle[0].id;
+
+    // Check if already entered
+    const existing = await sql`
+      SELECT id FROM casino_raffle_entries
+      WHERE raffle_id = ${raffleId} AND wallet = ${wallet}
+    `;
+
+    if (existing.length > 0) {
+      return { success: false, error: "Already entered this raffle" };
+    }
+
+    // Enter raffle
+    await sql`
+      INSERT INTO casino_raffle_entries (raffle_id, wallet)
+      VALUES (${raffleId}, ${wallet})
+    `;
+
+    const countResult = await sql`
+      SELECT COUNT(*) as count FROM casino_raffle_entries WHERE raffle_id = ${raffleId}
+    `;
+
+    return {
+      success: true,
+      entryCount: parseInt(countResult[0]?.count || "0"),
+    };
+  } catch (error) {
+    console.error("Error entering raffle:", error);
+    return { success: false, error: "Failed to enter raffle" };
+  }
+}
+
+// Get casino pot balance
+export async function getCasinoPot(): Promise<number | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'casino_pot'
+      )
+    `;
+
+    if (!tableCheck[0]?.exists) {
+      return null;
+    }
+
+    const result = await sql`
+      SELECT balance_lamports FROM casino_pot ORDER BY updated_at DESC LIMIT 1
+    `;
+
+    if (result.length === 0) return null;
+
+    return parseInt(result[0].balance_lamports) / 1e9; // Convert to SOL
+  } catch (error) {
+    console.error("Error getting casino pot:", error);
+    return null;
+  }
+}
+
+// Record wheel spin
+export async function recordWheelSpin(
+  wallet: string,
+  prize: number,
+  result: string
+): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'casino_wheel_spins'
+      )
+    `;
+
+    if (!tableCheck[0]?.exists) {
+      return false;
+    }
+
+    await sql`
+      INSERT INTO casino_wheel_spins (wallet, result, prize_sol, is_win)
+      VALUES (${wallet}, ${result}, ${prize}, ${prize > 0})
+    `;
+
+    // Deduct from pot if won
+    if (prize > 0) {
+      await sql`
+        UPDATE casino_pot
+        SET balance_lamports = balance_lamports - ${Math.floor(prize * 1e9)},
+            updated_at = NOW()
+      `;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error recording wheel spin:", error);
+    return false;
+  }
+}
+
+// Get casino history for a wallet
+export async function getCasinoHistory(
+  wallet: string
+): Promise<CasinoHistoryEntry[] | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    // Check if tables exist
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'casino_wheel_spins'
+      )
+    `;
+
+    if (!tableCheck[0]?.exists) {
+      return null;
+    }
+
+    const wheelSpins = await sql`
+      SELECT id, result, prize_sol, is_win, created_at
+      FROM casino_wheel_spins
+      WHERE wallet = ${wallet}
+      ORDER BY created_at DESC
+      LIMIT 20
+    `;
+
+    const raffleEntries = await sql`
+      SELECT e.id, r.status, r.winner_wallet, r.prize_sol, e.created_at
+      FROM casino_raffle_entries e
+      JOIN casino_raffles r ON r.id = e.raffle_id
+      WHERE e.wallet = ${wallet}
+      ORDER BY e.created_at DESC
+      LIMIT 20
+    `;
+
+    const history: CasinoHistoryEntry[] = [];
+
+    // Add wheel spins
+    for (const spin of wheelSpins) {
+      history.push({
+        id: `wheel-${spin.id}`,
+        type: "wheel",
+        result: spin.result,
+        amount: parseFloat(spin.prize_sol || "0"),
+        timestamp: new Date(spin.created_at).getTime(),
+        isWin: spin.is_win,
+      });
+    }
+
+    // Add raffle entries
+    for (const entry of raffleEntries) {
+      const isWinner = entry.winner_wallet === wallet;
+      history.push({
+        id: `raffle-${entry.id}`,
+        type: "raffle",
+        result: entry.status === "completed"
+          ? isWinner
+            ? "WON"
+            : "LOST"
+          : "PENDING",
+        amount: isWinner ? parseFloat(entry.prize_sol || "0") : 0,
+        timestamp: new Date(entry.created_at).getTime(),
+        isWin: isWinner,
+      });
+    }
+
+    // Sort by timestamp
+    history.sort((a, b) => b.timestamp - a.timestamp);
+
+    return history.slice(0, 20);
+  } catch (error) {
+    console.error("Error getting casino history:", error);
+    return null;
+  }
+}

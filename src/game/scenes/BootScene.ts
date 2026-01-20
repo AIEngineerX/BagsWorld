@@ -121,6 +121,7 @@ export class BootScene extends Phaser.Scene {
     // Generate special buildings
     this.generatePokeCenter();
     this.generateTradingGym();
+    this.generateCasino();
 
     // Generate diverse character variants
     this.generateDiverseCharacters();
@@ -616,6 +617,130 @@ export class BootScene extends Phaser.Scene {
     g.fillCircle(bWidth - Math.round(4 * s), canvasHeight - Math.round(46 * s), Math.round(2 * s));
 
     g.generateTexture("tradinggym", canvasWidth, canvasHeight);
+    g.destroy();
+  }
+
+  private generateCasino(): void {
+    // Casino - Vegas-themed building (purple/gold, neon style)
+    const s = SCALE;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasHeight = Math.round(160 * s);
+    const canvasWidth = Math.round(70 * s);
+    const bHeight = Math.round(100 * s);
+    const bWidth = Math.round(60 * s);
+
+    // Shadow
+    g.fillStyle(0x000000, 0.4);
+    g.fillRect(Math.round(8 * s), canvasHeight - bHeight + Math.round(8 * s), bWidth - Math.round(2 * s), bHeight);
+
+    // Building base (dark purple - casino style)
+    g.fillStyle(0x2d1b4e);
+    g.fillRect(Math.round(4 * s), canvasHeight - bHeight, bWidth - Math.round(4 * s), bHeight);
+
+    // Lighter left side for 3D effect
+    g.fillStyle(0x3d2a5e);
+    g.fillRect(Math.round(4 * s), canvasHeight - bHeight, Math.round(8 * s), bHeight);
+
+    // Gold trim at base
+    g.fillStyle(0xfbbf24);
+    g.fillRect(Math.round(4 * s), canvasHeight - Math.round(8 * s), bWidth - Math.round(4 * s), Math.round(4 * s));
+
+    // Roof with neon lights effect (purple and gold)
+    g.fillStyle(0x7c3aed);
+    g.fillRect(0, canvasHeight - bHeight - Math.round(12 * s), bWidth + Math.round(8 * s), Math.round(16 * s));
+    g.fillStyle(0x8b5cf6);
+    g.fillRect(Math.round(2 * s), canvasHeight - bHeight - Math.round(10 * s), bWidth + Math.round(4 * s), Math.round(12 * s));
+
+    // Vegas-style marquee top
+    g.fillStyle(0x1f1635);
+    g.fillRect(bWidth / 2 - Math.round(16 * s), canvasHeight - bHeight - Math.round(28 * s), Math.round(40 * s), Math.round(18 * s));
+    g.fillStyle(0x2d1b4e);
+    g.fillRect(bWidth / 2 - Math.round(14 * s), canvasHeight - bHeight - Math.round(26 * s), Math.round(36 * s), Math.round(14 * s));
+
+    // Gold star on marquee
+    g.fillStyle(0xfbbf24);
+    g.fillCircle(bWidth / 2 + Math.round(4 * s), canvasHeight - bHeight - Math.round(18 * s), Math.round(6 * s));
+    g.fillStyle(0xfde68a);
+    g.fillCircle(bWidth / 2 + Math.round(4 * s), canvasHeight - bHeight - Math.round(18 * s), Math.round(4 * s));
+
+    // Neon border lights on marquee (alternating gold dots)
+    g.fillStyle(0xfbbf24);
+    for (let i = 0; i < 10; i++) {
+      const lightX = bWidth / 2 - Math.round(14 * s) + i * Math.round(4 * s);
+      g.fillCircle(lightX, canvasHeight - bHeight - Math.round(26 * s), Math.round(1.5 * s));
+      g.fillCircle(lightX, canvasHeight - bHeight - Math.round(12 * s), Math.round(1.5 * s));
+    }
+
+    // Windows - casino style (large, glowing)
+    const windowColor = 0xfbbf24;
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 3; col++) {
+        const wx = Math.round(10 * s) + col * Math.round(16 * s);
+        const wy = canvasHeight - bHeight + Math.round(18 * s) + row * Math.round(22 * s);
+
+        // Window glow (neon effect)
+        g.fillStyle(0xa855f7, 0.4);
+        g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), Math.round(13 * s), Math.round(15 * s));
+
+        // Window
+        g.fillStyle(windowColor);
+        g.fillRect(wx, wy, Math.round(10 * s), Math.round(12 * s));
+
+        // Window frame (purple)
+        g.fillStyle(0x7c3aed);
+        g.fillRect(wx + Math.round(4 * s), wy, Math.round(2 * s), Math.round(12 * s));
+        g.fillRect(wx, wy + Math.round(5 * s), Math.round(10 * s), Math.round(2 * s));
+      }
+    }
+
+    // Dice symbols on front (gambling theme)
+    g.fillStyle(0xffffff);
+    g.fillRect(Math.round(12 * s), canvasHeight - bHeight + Math.round(8 * s), Math.round(8 * s), Math.round(8 * s));
+    g.fillStyle(0x1f1635);
+    g.fillCircle(Math.round(14 * s), canvasHeight - bHeight + Math.round(10 * s), Math.round(1 * s));
+    g.fillCircle(Math.round(18 * s), canvasHeight - bHeight + Math.round(14 * s), Math.round(1 * s));
+    g.fillStyle(0xffffff);
+    g.fillRect(bWidth - Math.round(16 * s), canvasHeight - bHeight + Math.round(8 * s), Math.round(8 * s), Math.round(8 * s));
+    g.fillStyle(0x1f1635);
+    g.fillCircle(bWidth - Math.round(12 * s), canvasHeight - bHeight + Math.round(12 * s), Math.round(1 * s));
+
+    // Door - grand casino entrance
+    const doorWidth = Math.round(20 * s);
+    const doorHeight = Math.round(26 * s);
+    const doorX = (bWidth - doorWidth) / 2 + Math.round(2 * s);
+
+    // Door frame (gold)
+    g.fillStyle(0xfbbf24);
+    g.fillRect(doorX - Math.round(3 * s), canvasHeight - doorHeight - Math.round(4 * s), doorWidth + Math.round(6 * s), doorHeight + Math.round(4 * s));
+
+    // Door (dark purple)
+    g.fillStyle(0x1f1635);
+    g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
+
+    // Door window (glowing gold)
+    g.fillStyle(0xfbbf24, 0.6);
+    g.fillRect(doorX + Math.round(4 * s), canvasHeight - doorHeight + Math.round(4 * s), doorWidth - Math.round(8 * s), Math.round(10 * s));
+
+    // Door divider
+    g.fillStyle(0xfbbf24);
+    g.fillRect(doorX + doorWidth / 2 - Math.round(1 * s), canvasHeight - doorHeight, Math.round(2 * s), doorHeight);
+
+    // Red carpet entrance
+    g.fillStyle(0xdc2626);
+    g.fillRect(doorX - Math.round(6 * s), canvasHeight - Math.round(3 * s), doorWidth + Math.round(12 * s), Math.round(3 * s));
+    g.fillStyle(0xfbbf24);
+    g.fillRect(doorX - Math.round(6 * s), canvasHeight - Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
+    g.fillRect(doorX + doorWidth + Math.round(4 * s), canvasHeight - Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
+
+    // Side neon tubes (decorative)
+    g.fillStyle(0xa855f7);
+    g.fillRect(Math.round(6 * s), canvasHeight - Math.round(50 * s), Math.round(3 * s), Math.round(25 * s));
+    g.fillRect(bWidth - Math.round(5 * s), canvasHeight - Math.round(50 * s), Math.round(3 * s), Math.round(25 * s));
+    g.fillStyle(0xa855f7, 0.3);
+    g.fillRect(Math.round(4 * s), canvasHeight - Math.round(52 * s), Math.round(7 * s), Math.round(29 * s));
+    g.fillRect(bWidth - Math.round(7 * s), canvasHeight - Math.round(52 * s), Math.round(7 * s), Math.round(29 * s));
+
+    g.generateTexture("casino", canvasWidth, canvasHeight);
     g.destroy();
   }
 

@@ -440,6 +440,15 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
+  {
+    mint: "StarterCasino1111111111111111111111111111111",
+    name: "BagsWorld Casino",
+    symbol: "CASINO",
+    description: "Try your luck! Free raffle entries and wheel spins funded by Ghost's trading fees. Win SOL from the fee pool!",
+    imageUrl: "/assets/buildings/casino.png",
+    creator: "BagsWorld",
+    createdAt: Date.now() - 86400000 * 7, // 7 days ago
+  },
 ];
 
 // Generate events from claim data and launches

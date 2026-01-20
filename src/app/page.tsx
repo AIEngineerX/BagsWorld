@@ -32,6 +32,7 @@ import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
 import { AgentFeed, AgentToast } from "@/components/AgentFeed";
 import { TradingGymModal } from "@/components/TradingGymModal";
 import { CreatorRewardsModal } from "@/components/CreatorRewardsModal";
+import { CasinoModal } from "@/components/CasinoModal";
 
 interface BuildingClickData {
   mint: string;
@@ -61,6 +62,7 @@ export default function Home() {
   const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
   const [showTradingGymModal, setShowTradingGymModal] = useState(false);
   const [showCreatorRewardsModal, setShowCreatorRewardsModal] = useState(false);
+  const [showCasinoModal, setShowCasinoModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -85,6 +87,10 @@ export default function Home() {
       setShowCreatorRewardsModal(true);
     };
 
+    const handleCasinoClick = () => {
+      setShowCasinoModal(true);
+    };
+
     // Handle AI action button events
     const handleLaunchClick = () => {
       setShowLaunchModal(true);
@@ -98,6 +104,7 @@ export default function Home() {
     window.addEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
     window.addEventListener("bagsworld-tradinggym-click", handleTradingGymClick as EventListener);
     window.addEventListener("bagsworld-treasury-click", handleTreasuryClick as EventListener);
+    window.addEventListener("bagsworld-casino-click", handleCasinoClick as EventListener);
     window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
     window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     return () => {
@@ -105,6 +112,7 @@ export default function Home() {
       window.removeEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
       window.removeEventListener("bagsworld-tradinggym-click", handleTradingGymClick as EventListener);
       window.removeEventListener("bagsworld-treasury-click", handleTreasuryClick as EventListener);
+      window.removeEventListener("bagsworld-casino-click", handleCasinoClick as EventListener);
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     };
@@ -355,6 +363,11 @@ export default function Home() {
       {/* Creator Rewards Hub Modal - Treasury Building */}
       {showCreatorRewardsModal && (
         <CreatorRewardsModal onClose={() => setShowCreatorRewardsModal(false)} />
+      )}
+
+      {/* Casino Modal - triggered by clicking Casino building */}
+      {showCasinoModal && (
+        <CasinoModal onClose={() => setShowCasinoModal(false)} />
       )}
 
       {/* Fee Claim Modal - can be opened from PokeCenter or AI action buttons */}
