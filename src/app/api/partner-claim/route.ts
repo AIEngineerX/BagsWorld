@@ -74,16 +74,19 @@ async function handleCreateConfig(walletAddress: string) {
     }),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Bags API error (create-config):", response.status, errorText);
+  const rawText = await response.text();
+  console.log("=== PARTNER CREATE-CONFIG RAW RESPONSE ===");
+  console.log("Status:", response.status);
+  console.log("Raw text:", rawText);
+  console.log("==========================================");
 
+  if (!response.ok) {
     let errorMessage = "Failed to create partner config";
     try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.message || errorJson.error || errorMessage;
+      const errorJson = JSON.parse(rawText);
+      errorMessage = errorJson.message || errorJson.error || errorJson.response || errorMessage;
     } catch {
-      errorMessage = errorText || errorMessage;
+      errorMessage = rawText || errorMessage;
     }
 
     return NextResponse.json(
@@ -92,13 +95,34 @@ async function handleCreateConfig(walletAddress: string) {
     );
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    return NextResponse.json(
+      { error: `Invalid JSON response: ${rawText.substring(0, 200)}` },
+      { status: 500 }
+    );
+  }
+
+  console.log("Parsed create-config response:", JSON.stringify(data, null, 2));
+
+  // Handle various response formats
+  const transaction = data.response?.transaction || data.transaction;
+  const blockhash = data.response?.blockhash || data.blockhash;
+
+  if (!transaction) {
+    return NextResponse.json(
+      { error: `No transaction in response. Keys: ${Object.keys(data).join(", ")}` },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({
     success: true,
     action: "create-config",
-    transaction: data.response?.transaction,
-    blockhash: data.response?.blockhash,
+    transaction,
+    blockhash,
     message: "Partner config creation transaction generated. Sign to complete setup.",
   });
 }
@@ -118,21 +142,25 @@ async function handleClaimFees(walletAddress: string) {
     }),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Bags API error (claim):", response.status, errorText);
+  const rawText = await response.text();
+  console.log("=== PARTNER CLAIM-TX RAW RESPONSE ===");
+  console.log("Status:", response.status);
+  console.log("Raw text length:", rawText.length);
+  console.log("Raw text:", rawText.substring(0, 2000));
+  console.log("=====================================");
 
+  if (!response.ok) {
     let errorMessage = "Failed to generate claim transactions";
     try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.message || errorJson.error || errorMessage;
+      const errorJson = JSON.parse(rawText);
+      errorMessage = errorJson.message || errorJson.error || errorJson.response || errorMessage;
 
       // Check if partner config doesn't exist yet
       if (errorMessage.includes("not found") || errorMessage.includes("does not exist")) {
         errorMessage = "Partner config not found. Click 'Setup Partner' first to register.";
       }
     } catch {
-      errorMessage = errorText || errorMessage;
+      errorMessage = rawText || errorMessage;
     }
 
     return NextResponse.json(
@@ -141,14 +169,34 @@ async function handleClaimFees(walletAddress: string) {
     );
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    return NextResponse.json(
+      { error: `Invalid JSON response: ${rawText.substring(0, 200)}` },
+      { status: 500 }
+    );
+  }
+
+  console.log("Parsed claim response:", JSON.stringify(data, null, 2).substring(0, 2000));
+
+  // Handle various response formats
+  const transactions = data.response?.transactions || data.transactions || [];
+
+  // Log each transaction for debugging
+  if (Array.isArray(transactions)) {
+    transactions.forEach((tx: unknown, i: number) => {
+      console.log(`Transaction ${i}:`, typeof tx, JSON.stringify(tx).substring(0, 500));
+    });
+  }
 
   return NextResponse.json({
     success: true,
     action: "claim",
-    transactions: data.response?.transactions || [],
-    message: data.response?.transactions?.length
-      ? `Generated ${data.response.transactions.length} claim transaction(s)`
+    transactions,
+    message: transactions.length
+      ? `Generated ${transactions.length} claim transaction(s)`
       : "No fees available to claim",
   });
 }

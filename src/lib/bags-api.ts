@@ -571,45 +571,41 @@ class BagsApiClient {
     console.log("configKey:", result.configKey);
     console.log("config:", result.config);
 
-      // Handle different possible response field names - check all variations
-      // The API returns "meteoraConfigKey" as the config key to use for launch
-      const configId = (
-        result.meteoraConfigKey ||
-        result.configId ||
-        result.configKey ||
-        result.config_id ||
-        result.config_key ||
-        result.key ||
-        result.id ||
-        result.config ||
-        // Sometimes the response is just the string directly
-        (typeof result === "string" ? result : null)
-      ) as string;
+    // Handle different possible response field names - check all variations
+    // The API returns "meteoraConfigKey" as the config key to use for launch
+    const configId = (
+      result.meteoraConfigKey ||
+      result.configId ||
+      result.configKey ||
+      result.config_id ||
+      result.config_key ||
+      result.key ||
+      result.id ||
+      result.config ||
+      // Sometimes the response is just the string directly
+      (typeof result === "string" ? result : null)
+    ) as string;
 
-      const totalBps = (result.totalBps || result.total_bps || result.bps || 0) as number;
-      const needsCreation = result.needsCreation as boolean | undefined;
-      const transactions = result.transactions as Array<{ transaction: string; blockhash: { blockhash: string; lastValidBlockHeight: number } }> | undefined;
+    const totalBps = (result.totalBps || result.total_bps || result.bps || 0) as number;
+    const needsCreation = result.needsCreation as boolean | undefined;
+    const transactions = result.transactions as Array<{ transaction: string; blockhash: { blockhash: string; lastValidBlockHeight: number } }> | undefined;
 
-      console.log("Extracted configId:", configId, "totalBps:", totalBps, "needsCreation:", needsCreation);
+    console.log("Extracted configId:", configId, "totalBps:", totalBps, "needsCreation:", needsCreation);
 
-      if (!configId) {
-        console.error("Could not find configId in response. Full response:", result);
-        throw new Error(
-          `Fee share config created but no configKey returned. API response keys: ${Object.keys(result).join(", ")}. ` +
-          `This may indicate a Bags.fm API change. Please report this issue.`
-        );
-      }
-
-      return {
-        configId,
-        totalBps,
-        needsCreation,
-        transactions,
-      };
-    } catch (error) {
-      console.error("Bags API createFeeShareConfig error:", error);
-      throw error;
+    if (!configId) {
+      console.error("Could not find configId in response. Full response:", result);
+      throw new Error(
+        `Fee share config created but no configKey returned. API response keys: ${Object.keys(result).join(", ")}. ` +
+        `This may indicate a Bags.fm API change. Please report this issue.`
+      );
     }
+
+    return {
+      configId,
+      totalBps,
+      needsCreation,
+      transactions,
+    };
   }
 
   // Partner Fee Claiming

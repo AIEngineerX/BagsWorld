@@ -24,6 +24,8 @@ export interface GlobalToken {
   // Metadata
   is_featured?: boolean;
   is_verified?: boolean;
+  // Admin controls
+  level_override?: number | null; // Admin override for building level (1-5)
 }
 
 // Check if Neon is configured (Netlify sets NETLIFY_DATABASE_URL automatically)
