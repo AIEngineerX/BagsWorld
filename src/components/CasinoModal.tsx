@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface CasinoModalProps {
   onClose: () => void;
 }
+
+const AGE_VERIFIED_KEY = "bagsworld_casino_age_verified";
 
 // Game definitions with coming soon status
 const CASINO_GAMES = [
@@ -72,10 +74,127 @@ const CASINO_GAMES = [
 
 export function CasinoModal({ onClose }: CasinoModalProps) {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [ageVerified, setAgeVerified] = useState<boolean | null>(null);
+
+  // Check localStorage on mount
+  useEffect(() => {
+    const verified = localStorage.getItem(AGE_VERIFIED_KEY);
+    setAgeVerified(verified === "true");
+  }, []);
+
+  const handleAgeVerification = (isOver18: boolean) => {
+    if (isOver18) {
+      localStorage.setItem(AGE_VERIFIED_KEY, "true");
+      setAgeVerified(true);
+    } else {
+      onClose();
+    }
+  };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
   };
+
+  // Loading state while checking localStorage
+  if (ageVerified === null) {
+    return (
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="font-pixel text-purple-400 animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+
+  // Age verification gate
+  if (!ageVerified) {
+    return (
+      <div
+        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        onClick={handleBackdropClick}
+      >
+        <div className="bg-[#0a0a0f] border border-red-500/50 rounded-2xl max-w-md w-full overflow-hidden">
+          {/* Warning Header */}
+          <div className="bg-gradient-to-r from-red-900/60 to-red-800/40 p-6 border-b border-red-500/30">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <span className="text-4xl">⚠️</span>
+              <h2 className="font-pixel text-xl text-red-400 tracking-wider">AGE VERIFICATION</h2>
+              <span className="text-4xl">⚠️</span>
+            </div>
+            <p className="text-center text-red-300/80 text-sm">This section contains gambling content</p>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-5">
+            {/* 18+ Badge */}
+            <div className="flex justify-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center border-4 border-red-400/50 shadow-lg shadow-red-500/30">
+                <span className="font-pixel text-2xl text-white">18+</span>
+              </div>
+            </div>
+
+            {/* Legal Text */}
+            <div className="bg-black/50 border border-gray-700/50 rounded-lg p-4 max-h-40 overflow-y-auto">
+              <p className="text-gray-300 text-xs leading-relaxed mb-3">
+                By entering, you confirm that:
+              </p>
+              <ul className="text-gray-400 text-[11px] space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 mt-0.5">•</span>
+                  <span>You are <strong className="text-white">18 years of age or older</strong> (or the legal gambling age in your jurisdiction)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 mt-0.5">•</span>
+                  <span>Online gambling is <strong className="text-white">legal in your jurisdiction</strong></span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 mt-0.5">•</span>
+                  <span>You understand gambling involves <strong className="text-white">risk of financial loss</strong></span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 mt-0.5">•</span>
+                  <span>You are <strong className="text-white">not using funds you cannot afford to lose</strong></span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Responsible Gambling Notice */}
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+              <p className="text-yellow-400/90 text-[10px] text-center leading-relaxed">
+                🎰 Gambling can be addictive. Play responsibly. If you have a gambling problem,
+                please seek help at <span className="text-yellow-300">begambleaware.org</span>
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleAgeVerification(false)}
+                className="flex-1 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-pixel text-xs transition-colors border border-gray-700"
+              >
+                EXIT
+              </button>
+              <button
+                onClick={() => handleAgeVerification(true)}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-pixel text-xs transition-all shadow-lg shadow-green-500/20 border border-green-500/50"
+              >
+                I AM 18+ ENTER
+              </button>
+            </div>
+
+            {/* Generic Legal Disclaimer */}
+            <div className="border-t border-gray-800 pt-4 mt-2">
+              <p className="text-gray-500 text-[9px] text-center leading-relaxed">
+                <strong className="text-gray-400">DISCLAIMER:</strong> BagsWorld Casino is provided &quot;as is&quot; for entertainment purposes only.
+                We make no guarantees regarding winnings or outcomes. By proceeding, you acknowledge that you are solely
+                responsible for any losses incurred. BagsWorld, its developers, and affiliates shall not be held liable
+                for any direct, indirect, incidental, or consequential damages arising from your use of this service.
+                Gambling laws vary by jurisdiction - it is your responsibility to ensure compliance with local laws.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
