@@ -15,7 +15,7 @@ function deserializeTransaction(encoded: string | Record<string, unknown>, conte
   });
 
   // Handle object responses - extract transaction string
-  let txString: string;
+  let txString: string | undefined;
   if (typeof encoded === "object" && encoded !== null) {
     // Check various possible field names
     const possibleFields = ["transaction", "tx", "data", "rawTransaction", "serializedTransaction"];
@@ -26,7 +26,7 @@ function deserializeTransaction(encoded: string | Record<string, unknown>, conte
         break;
       }
     }
-    if (!txString!) {
+    if (!txString) {
       console.error(`${context}: Could not find transaction string in object:`, Object.keys(encoded));
       throw new Error(`Invalid ${context}: received object but could not find transaction string. Keys: ${Object.keys(encoded).join(", ")}`);
     }

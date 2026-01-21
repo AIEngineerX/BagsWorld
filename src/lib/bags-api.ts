@@ -387,7 +387,8 @@ class BagsApiClient {
     let data_response;
     try {
       data_response = JSON.parse(rawText);
-    } catch {
+    } catch (parseError) {
+      console.error("Launch tx JSON parse error:", parseError);
       throw new Error(`Invalid JSON response from Bags API: ${rawText.substring(0, 200)}`);
     }
 
@@ -467,8 +468,26 @@ class BagsApiClient {
           const key = `${result.provider}:${result.username}`;
           walletMap.set(key, result.wallet);
         }
-      } catch {
-        throw new Error("Failed to lookup wallets for fee claimers. Make sure all users have linked their wallets at bags.fm/settings");
+
+        // Check for any missing wallets and provide specific error
+        const missingUsers: string[] = [];
+        for (const fc of socialClaimers) {
+          const key = `${fc.provider}:${fc.providerUsername}`;
+          if (!walletMap.has(key)) {
+            missingUsers.push(`@${fc.providerUsername} (${fc.provider})`);
+          }
+        }
+        if (missingUsers.length > 0) {
+          throw new Error(`Could not find wallets for: ${missingUsers.join(", ")}. These users need to link their wallet at bags.fm/settings`);
+        }
+      } catch (lookupError) {
+        // Re-throw if it's our custom error
+        if (lookupError instanceof Error && lookupError.message.includes("Could not find wallets")) {
+          throw lookupError;
+        }
+        // Otherwise provide generic error with context
+        const userList = socialClaimers.map(fc => `@${fc.providerUsername}`).join(", ");
+        throw new Error(`Failed to lookup wallets for: ${userList}. Make sure all users have linked their wallets at bags.fm/settings`);
       }
     }
 
@@ -522,7 +541,8 @@ class BagsApiClient {
     let parsed;
     try {
       parsed = JSON.parse(rawText);
-    } catch (e) {
+    } catch (parseError) {
+      console.error("Fee config JSON parse error:", parseError);
       throw new Error(`Invalid JSON from fee config API: ${rawText.substring(0, 200)}`);
     }
 
