@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import type { BagsApiClient } from "@/lib/bags-api";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { ECOSYSTEM_CONFIG } from "@/lib/config";
 
 interface LaunchRequestBody {
   action: "create-info" | "configure-fees" | "create-launch-tx" | "lookup-wallet";
@@ -184,15 +185,27 @@ async function handleConfigureFees(
     );
   }
 
+  // Get partner config from ecosystem settings
+  const partnerWallet = ECOSYSTEM_CONFIG.ecosystem.wallet;
+  const partnerConfigPda = ECOSYSTEM_CONFIG.ecosystem.partnerConfigPda;
+
   // Debug log
   console.log("Configure fees request:", {
     mint: data.mint,
     payer: data.payer,
+    partnerWallet,
+    partnerConfigPda,
     feeClaimers: JSON.stringify(data.feeClaimers, null, 2),
   });
 
   try {
-    const result = await api.createFeeShareConfig(data.mint, data.feeClaimers, data.payer);
+    const result = await api.createFeeShareConfig(
+      data.mint,
+      data.feeClaimers,
+      data.payer,
+      partnerWallet,
+      partnerConfigPda
+    );
 
     return NextResponse.json({
       success: true,
