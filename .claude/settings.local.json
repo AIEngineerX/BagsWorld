@@ -36,7 +36,11 @@
       "Bash(git -C \"c:/Users/footb/BagsWorld-1\" commit -m \"$\\(cat <<''EOF''\nFix floating skyline and green HUD line issues\n\n- Extend distant skyline buildings down to meet the grass level\n- Replace harsh grass_dark border with subtle gradient transition\n- Use helper function to dynamically calculate building heights\n- Adjust ground positioning for better visual coverage\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git fetch:*)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(npm run dev:*)"
     ]
   }
 }
