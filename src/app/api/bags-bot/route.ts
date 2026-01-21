@@ -16,7 +16,7 @@ interface BotRequest {
   animalType?: "dog" | "cat" | "bird" | "butterfly" | "squirrel";
   animalAction?: "pet" | "scare" | "call" | "feed";
   // World effects
-  effectType?: "fireworks" | "celebration" | "coins" | "hearts" | "confetti" | "stars";
+  effectType?: "fireworks" | "celebration" | "coins" | "hearts" | "confetti" | "stars" | "ufo";
   effectX?: number;
   effectY?: number;
   // World context for Claude
@@ -122,7 +122,8 @@ async function handleChat(body: BotRequest): Promise<NextResponse> {
         coins: "making it rain! 💰",
         hearts: "sending love! 💕",
         confetti: "confetti time! 🎊",
-        stars: "shooting stars! ✨"
+        stars: "shooting stars! ✨",
+        ufo: "👽 they're coming for your bags! 🛸"
       };
       response.message = effectMessages[effectType] || "✨";
       return NextResponse.json(response);
@@ -184,7 +185,8 @@ async function handleEffect(body: BotRequest): Promise<NextResponse> {
     coins: "coins raining down! 💰",
     hearts: "spreading love! 💕",
     confetti: "confetti everywhere! 🎊",
-    stars: "shooting stars! ✨"
+    stars: "shooting stars! ✨",
+    ufo: "👽 UFO INCOMING! they're here for your bags! 🛸"
   };
 
   const response: BotResponse = {
@@ -330,7 +332,7 @@ function getFallbackResponse(message: string, worldState?: BotRequest["worldStat
 
   // Help
   if (lowerMsg.includes("help") || lowerMsg.includes("what can you do")) {
-    return "i can pet/scare/call animals (dog, cat, bird, butterfly, squirrel), trigger effects (fireworks, coins, hearts, confetti), and answer questions about bags.fm. try 'give the puppy some love' or 'let's party' ser";
+    return "i can pet/scare/call animals (dog, cat, bird, butterfly, squirrel), trigger effects (fireworks, coins, hearts, confetti, ufo 👽), and answer questions about bags.fm. try 'give the puppy some love' or 'send the aliens' ser";
   }
 
   // World status

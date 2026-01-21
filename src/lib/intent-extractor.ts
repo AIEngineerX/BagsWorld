@@ -30,7 +30,7 @@ Available actions:
 - chat: General conversation, greeting, or unclear intent
 
 Available animals: dog, cat, bird, butterfly, squirrel
-Available effects: fireworks, coins, hearts, confetti, stars
+Available effects: fireworks, coins, hearts, confetti, stars, ufo
 
 Respond with JSON only:
 {
@@ -140,6 +140,7 @@ function fallbackIntentExtraction(message: string): ExtractedIntent {
     "heart": "hearts", "love": "hearts",
     "confetti": "confetti", "woohoo": "confetti", "congrat": "confetti",
     "star": "stars",
+    "ufo": "ufo", "alien": "ufo", "spaceship": "ufo", "abduct": "ufo", "beam": "ufo",
   };
 
   for (const [pattern, effect] of Object.entries(effectPatterns)) {

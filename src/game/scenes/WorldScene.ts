@@ -3569,21 +3569,23 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private playCoinsRain(): void {
+    // Full screen coin rain effect
     const particles = this.add.particles(GAME_WIDTH / 2, 0, "coin", {
-      x: { min: Math.round(50 * SCALE), max: Math.round(750 * SCALE) },
+      x: { min: 0, max: GAME_WIDTH },
       y: Math.round(-20 * SCALE),
-      lifespan: 2500,
-      speedY: { min: Math.round(150 * SCALE), max: Math.round(250 * SCALE) },
-      speedX: { min: Math.round(-30 * SCALE), max: Math.round(30 * SCALE) },
-      scale: { start: SCALE, end: 0.5 * SCALE },
-      quantity: 40,
+      lifespan: 3000,
+      speedY: { min: Math.round(150 * SCALE), max: Math.round(300 * SCALE) },
+      speedX: { min: Math.round(-50 * SCALE), max: Math.round(50 * SCALE) },
+      scale: { start: SCALE * 1.2, end: 0.5 * SCALE },
+      quantity: 100,
       frequency: -1,
       rotate: { min: 0, max: 360 },
     });
 
-    particles.explode(40);
+    particles.setDepth(100);
+    particles.explode(100);
 
-    this.time.delayedCall(2500, () => {
+    this.time.delayedCall(3000, () => {
       particles.destroy();
     });
   }
@@ -3734,6 +3736,9 @@ export class WorldScene extends Phaser.Scene {
       case "stars":
         this.playStarBurst();
         break;
+      case "ufo":
+        this.playUFO();
+        break;
       default:
         console.log("[WorldScene] Unknown effect:", effectType);
     }
@@ -3881,27 +3886,121 @@ export class WorldScene extends Phaser.Scene {
       y: Math.round(-20 * SCALE),
       lifespan: 4000,
       speedY: { min: Math.round(100 * SCALE), max: Math.round(200 * SCALE) },
-      speedX: { min: Math.round(-50 * SCALE), max: Math.round(50 * SCALE) },
-      scale: { start: 0.6 * SCALE, end: 0.2 * SCALE },
+      speedX: { min: Math.round(-80 * SCALE), max: Math.round(80 * SCALE) },
+      scale: { start: 0.8 * SCALE, end: 0.3 * SCALE },
       alpha: { start: 1, end: 0.5 },
-      tint: [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xffa500],
+      tint: [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xffa500, 0x4ade80],
       rotate: { min: 0, max: 360 },
-      quantity: 3,
-      frequency: 50,
+      quantity: 8,
+      frequency: 30,
       gravityY: Math.round(50 * SCALE),
     });
 
     confetti.setDepth(100);
 
-    // Stop after 3 seconds
-    this.time.delayedCall(3000, () => {
+    // Stop after 4 seconds
+    this.time.delayedCall(4000, () => {
       confetti.stop();
     });
 
     // Destroy after particles fade
-    this.time.delayedCall(7000, () => {
+    this.time.delayedCall(8000, () => {
       confetti.destroy();
     });
+  }
+
+  // UFO flyby effect - alien saucer flies across screen with beam
+  playUFO(): void {
+    // Create UFO sprite using graphics
+    const ufoG = this.make.graphics({ x: 0, y: 0 });
+    const ufoSize = Math.round(60 * SCALE);
+
+    // Draw UFO saucer
+    ufoG.fillStyle(0x888888);
+    ufoG.fillEllipse(ufoSize / 2, ufoSize / 2 + 5, ufoSize, ufoSize / 3); // Body
+    ufoG.fillStyle(0x4ade80);
+    ufoG.fillEllipse(ufoSize / 2, ufoSize / 2, ufoSize / 2, ufoSize / 4); // Dome
+    ufoG.fillStyle(0x00ff00);
+    ufoG.fillCircle(ufoSize / 2, ufoSize / 2, 5); // Light
+
+    // Lights on bottom
+    ufoG.fillStyle(0xff0000);
+    ufoG.fillCircle(ufoSize / 4, ufoSize / 2 + 8, 3);
+    ufoG.fillStyle(0xffff00);
+    ufoG.fillCircle(ufoSize / 2, ufoSize / 2 + 10, 3);
+    ufoG.fillStyle(0x0000ff);
+    ufoG.fillCircle(ufoSize * 3 / 4, ufoSize / 2 + 8, 3);
+
+    ufoG.generateTexture("ufo_temp", ufoSize, ufoSize);
+    ufoG.destroy();
+
+    // Create UFO sprite starting off-screen left
+    const ufo = this.add.sprite(-100, Math.round(100 * SCALE), "ufo_temp");
+    ufo.setDepth(150);
+
+    // Create beam effect
+    const beam = this.add.graphics();
+    beam.setDepth(149);
+
+    // Animate UFO across screen with wobble
+    this.tweens.add({
+      targets: ufo,
+      x: GAME_WIDTH + 100,
+      y: { value: Math.round(150 * SCALE), duration: 4000, ease: "Sine.easeInOut", yoyo: true, repeat: 1 },
+      duration: 8000,
+      ease: "Linear",
+      onUpdate: () => {
+        // Update beam position
+        beam.clear();
+        if (ufo.x > 100 && ufo.x < GAME_WIDTH - 100) {
+          beam.fillStyle(0x00ff00, 0.3);
+          beam.fillTriangle(
+            ufo.x - 15, ufo.y + 20,
+            ufo.x + 15, ufo.y + 20,
+            ufo.x, GAME_HEIGHT
+          );
+        }
+        // Rotate UFO slightly
+        ufo.angle = Math.sin(Date.now() / 200) * 5;
+      },
+      onComplete: () => {
+        ufo.destroy();
+        beam.destroy();
+        this.textures.remove("ufo_temp");
+      },
+    });
+
+    // Add abduction particles
+    const abductionParticles = this.add.particles(GAME_WIDTH / 2, GAME_HEIGHT - 100, "star", {
+      speed: { min: 50, max: 150 },
+      angle: { min: 260, max: 280 },
+      lifespan: 2000,
+      scale: { start: 0.5, end: 0 },
+      tint: 0x00ff00,
+      alpha: { start: 0.8, end: 0 },
+      quantity: 2,
+      frequency: 100,
+    });
+    abductionParticles.setDepth(148);
+
+    // Update particle position to follow UFO
+    const particleUpdate = this.time.addEvent({
+      delay: 50,
+      callback: () => {
+        if (ufo.x > 0 && ufo.x < GAME_WIDTH) {
+          abductionParticles.setPosition(ufo.x, GAME_HEIGHT - 100);
+        }
+      },
+      loop: true,
+    });
+
+    this.time.delayedCall(8000, () => {
+      particleUpdate.destroy();
+      abductionParticles.destroy();
+    });
+
+    // Screen flash when UFO enters
+    this.cameras.main.flash(200, 0, 255, 0, true);
   }
 
   // Show announcement banner (scaled)
