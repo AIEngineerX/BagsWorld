@@ -10,15 +10,26 @@ import {
 // GET - Fetch all global tokens (everyone sees these)
 export async function GET() {
   try {
-    if (!isNeonConfigured()) {
+    const dbConfigured = isNeonConfigured();
+    console.log(`[Global Tokens] DB configured: ${dbConfigured}`);
+    console.log(`[Global Tokens] DATABASE_URL set: ${!!process.env.DATABASE_URL}`);
+    console.log(`[Global Tokens] NETLIFY_DATABASE_URL set: ${!!process.env.NETLIFY_DATABASE_URL}`);
+
+    if (!dbConfigured) {
       return NextResponse.json({
         tokens: [],
         configured: false,
-        message: "Database not configured. Neon will be auto-configured on Netlify."
+        message: "Database not configured. Set DATABASE_URL or use Netlify integration.",
+        debug: {
+          DATABASE_URL: !!process.env.DATABASE_URL,
+          NETLIFY_DATABASE_URL: !!process.env.NETLIFY_DATABASE_URL,
+        }
       });
     }
 
+    console.log("[Global Tokens] Fetching tokens from database...");
     const tokens = await getGlobalTokens();
+    console.log(`[Global Tokens] Found ${tokens.length} tokens`);
 
     return NextResponse.json({
       tokens,
@@ -26,9 +37,13 @@ export async function GET() {
       count: tokens.length,
     });
   } catch (error) {
-    console.error("Error fetching global tokens:", error);
+    console.error("[Global Tokens] Error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch global tokens" },
+      {
+        error: "Failed to fetch global tokens",
+        details: error instanceof Error ? error.message : "Unknown error",
+        configured: isNeonConfigured(),
+      },
       { status: 500 }
     );
   }
