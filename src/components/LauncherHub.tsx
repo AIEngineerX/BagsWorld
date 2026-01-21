@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { fetchGlobalTokens, type LaunchedToken } from "@/lib/token-registry";
+import { fetchGlobalTokens } from "@/lib/token-registry";
 
 interface CreatorStats {
   wallet: string;
@@ -129,31 +129,51 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
     ? creators.find(c => c.wallet === selectedCreator)
     : null;
 
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-bags-dark border-4 border-bags-green w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-bags-dark border-4 border-bags-green w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-bags-green p-3 flex justify-between items-center">
-          <h2 className="font-pixel text-black text-sm">LAUNCHER HUB</h2>
+        <div className="flex items-center justify-between p-3 border-b-4 border-bags-green">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-bags-green/20 border border-bags-green flex items-center justify-center">
+              <span className="font-pixel text-bags-green text-xs">L</span>
+            </div>
+            <div>
+              <h2 className="font-pixel text-bags-green text-xs">LAUNCHER HUB</h2>
+              <p className="font-pixel text-[8px] text-gray-400">
+                {creators.length} creator{creators.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="font-pixel text-black hover:text-red-800 text-xs"
+            className="font-pixel text-xs p-2 text-gray-400 hover:text-white border border-gray-700 hover:border-bags-green"
+            aria-label="Close"
           >
             [X]
           </button>
         </div>
 
         {/* Sort Options */}
-        <div className="p-3 border-b border-gray-700 flex gap-2">
-          <span className="font-pixel text-[10px] text-gray-400">Sort:</span>
+        <div className="p-2 border-b border-bags-green/30 flex items-center gap-2">
+          <span className="font-pixel text-[8px] text-gray-500">SORT:</span>
           {(["tokens", "fees", "recent"] as const).map((option) => (
             <button
               key={option}
               onClick={() => setSortBy(option)}
-              className={`font-pixel text-[10px] px-2 py-1 ${
+              className={`font-pixel text-[8px] px-2 py-1 border ${
                 sortBy === option
-                  ? "bg-bags-green text-black"
-                  : "text-gray-400 hover:text-white"
+                  ? "border-bags-green bg-bags-green/20 text-bags-green"
+                  : "border-transparent text-gray-400 hover:text-white"
               }`}
             >
               {option === "tokens" ? "TOKENS" : option === "fees" ? "FEES" : "RECENT"}
@@ -165,15 +185,15 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
         <div className="flex-1 overflow-y-auto p-3">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <span className="font-pixel text-xs text-gray-400 animate-pulse">
+              <span className="font-pixel text-[10px] text-gray-400 animate-pulse">
                 Loading creators...
               </span>
             </div>
           ) : creators.length === 0 ? (
             <div className="text-center py-8">
-              <p className="font-pixel text-xs text-gray-400">No launchers yet</p>
-              <p className="font-pixel text-[10px] text-gray-500 mt-2">
-                Be the first to launch a token on BagsWorld!
+              <p className="font-pixel text-[10px] text-gray-400">No launchers yet</p>
+              <p className="font-pixel text-[8px] text-gray-500 mt-2">
+                Be the first to launch on BagsWorld!
               </p>
             </div>
           ) : selectedCreatorData ? (
@@ -181,75 +201,78 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
             <div>
               <button
                 onClick={() => setSelectedCreator(null)}
-                className="font-pixel text-[10px] text-bags-green hover:text-white mb-3"
+                className="font-pixel text-[8px] text-bags-green hover:text-white mb-3"
               >
-                &lt; BACK TO LIST
+                &lt; BACK
               </button>
 
-              <div className="bg-bags-darker p-4 rounded border border-gray-700">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-bags-green to-green-700 rounded-full flex items-center justify-center">
-                    <span className="font-pixel text-black text-lg">
+              <div className="bg-bags-darker p-3 border border-bags-green/30">
+                {/* Creator Header */}
+                <div className="flex items-center gap-3 mb-3 pb-3 border-b border-bags-green/20">
+                  <div className="w-10 h-10 bg-bags-green/20 border border-bags-green flex items-center justify-center">
+                    <span className="font-pixel text-bags-green text-sm">
                       {selectedCreatorData.tokenCount}
                     </span>
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <a
                       href={`https://solscan.io/account/${selectedCreatorData.wallet}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-mono text-sm text-bags-green hover:underline"
+                      className="font-mono text-xs text-bags-green hover:text-bags-gold"
                     >
                       {truncateWallet(selectedCreatorData.wallet)}
                     </a>
-                    <p className="font-pixel text-[10px] text-gray-400">
+                    <p className="font-pixel text-[8px] text-gray-400">
                       {selectedCreatorData.tokenCount} token{selectedCreatorData.tokenCount !== 1 ? "s" : ""} launched
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-gray-800/50 p-2 rounded">
-                    <p className="font-pixel text-[8px] text-gray-400">Total Fees</p>
-                    <p className="font-pixel text-sm text-bags-gold">
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="bg-bags-dark p-2 border border-bags-green/20">
+                    <p className="font-pixel text-[7px] text-gray-500">TOTAL FEES</p>
+                    <p className="font-pixel text-xs text-bags-gold">
                       {formatSOL(selectedCreatorData.totalLifetimeFees)} SOL
                     </p>
                   </div>
-                  <div className="bg-gray-800/50 p-2 rounded">
-                    <p className="font-pixel text-[8px] text-gray-400">Total MCap</p>
-                    <p className="font-pixel text-sm text-white">
+                  <div className="bg-bags-dark p-2 border border-bags-green/20">
+                    <p className="font-pixel text-[7px] text-gray-500">TOTAL MCAP</p>
+                    <p className="font-pixel text-xs text-white">
                       {formatMarketCap(selectedCreatorData.totalMarketCap)}
                     </p>
                   </div>
                 </div>
 
-                <h4 className="font-pixel text-[10px] text-gray-400 mb-2">TOKENS</h4>
-                <div className="space-y-2">
+                {/* Tokens List */}
+                <p className="font-pixel text-[8px] text-gray-500 mb-2">TOKENS:</p>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
                   {selectedCreatorData.tokens.map((token) => (
                     <div
                       key={token.mint}
-                      className="flex items-center gap-2 bg-gray-800/30 p-2 rounded"
+                      className="flex items-center gap-2 bg-bags-dark p-2 border border-bags-green/10"
                     >
                       {token.imageUrl ? (
                         <img
                           src={token.imageUrl}
                           alt={token.symbol}
-                          className="w-8 h-8 rounded"
+                          className="w-6 h-6"
                         />
                       ) : (
-                        <div className="w-8 h-8 bg-gray-700 rounded flex items-center justify-center">
-                          <span className="font-pixel text-[8px] text-gray-400">?</span>
+                        <div className="w-6 h-6 bg-bags-green/10 border border-bags-green/30 flex items-center justify-center">
+                          <span className="font-pixel text-[6px] text-gray-500">?</span>
                         </div>
                       )}
-                      <div className="flex-1">
-                        <p className="font-pixel text-xs text-white">${token.symbol}</p>
-                        <p className="font-pixel text-[8px] text-gray-400">{token.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-pixel text-[10px] text-white truncate">${token.symbol}</p>
+                        <p className="font-pixel text-[7px] text-gray-500 truncate">{token.name}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-pixel text-[10px] text-bags-gold">
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-pixel text-[8px] text-bags-gold">
                           {formatSOL(token.lifetimeFees || 0)} SOL
                         </p>
-                        <p className="font-pixel text-[8px] text-gray-400">
+                        <p className="font-pixel text-[7px] text-gray-500">
                           {formatMarketCap(token.marketCap || 0)}
                         </p>
                       </div>
@@ -265,75 +288,77 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
                 <button
                   key={creator.wallet}
                   onClick={() => setSelectedCreator(creator.wallet)}
-                  className="w-full bg-bags-darker hover:bg-gray-800 p-3 rounded border border-gray-700 hover:border-bags-green transition-colors text-left"
+                  className="w-full bg-bags-darker hover:bg-bags-green/10 p-2 border border-bags-green/20 hover:border-bags-green transition-colors text-left"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {/* Rank */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      index === 0 ? "bg-yellow-500" :
-                      index === 1 ? "bg-gray-400" :
-                      index === 2 ? "bg-amber-700" :
-                      "bg-gray-700"
+                    <div className={`w-6 h-6 flex items-center justify-center border ${
+                      index === 0 ? "bg-yellow-500/20 border-yellow-500 text-yellow-500" :
+                      index === 1 ? "bg-gray-400/20 border-gray-400 text-gray-400" :
+                      index === 2 ? "bg-amber-700/20 border-amber-700 text-amber-600" :
+                      "bg-bags-dark border-gray-700 text-gray-500"
                     }`}>
-                      <span className="font-pixel text-xs text-black">
+                      <span className="font-pixel text-[8px]">
                         {index + 1}
                       </span>
                     </div>
 
                     {/* Wallet Info */}
-                    <div className="flex-1">
-                      <p className="font-mono text-sm text-white">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono text-[10px] text-white">
                         {truncateWallet(creator.wallet)}
                       </p>
-                      <p className="font-pixel text-[10px] text-gray-400">
+                      <p className="font-pixel text-[7px] text-gray-500">
                         {creator.tokenCount} token{creator.tokenCount !== 1 ? "s" : ""}
-                        {" "}&bull;{" "}
-                        First launch {formatTimeAgo(creator.firstLaunch)}
+                        {" · "}
+                        {formatTimeAgo(creator.firstLaunch)}
                       </p>
                     </div>
 
                     {/* Stats */}
-                    <div className="text-right">
-                      <p className="font-pixel text-xs text-bags-gold">
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-pixel text-[8px] text-bags-gold">
                         {formatSOL(creator.totalLifetimeFees)} SOL
                       </p>
-                      <p className="font-pixel text-[10px] text-gray-400">
+                      <p className="font-pixel text-[7px] text-gray-500">
                         {formatMarketCap(creator.totalMarketCap)}
                       </p>
                     </div>
                   </div>
 
                   {/* Token Previews */}
-                  <div className="flex gap-1 mt-2">
-                    {creator.tokens.slice(0, 5).map((token) => (
-                      token.imageUrl ? (
-                        <img
-                          key={token.mint}
-                          src={token.imageUrl}
-                          alt={token.symbol}
-                          className="w-6 h-6 rounded"
-                          title={`$${token.symbol}`}
-                        />
-                      ) : (
-                        <div
-                          key={token.mint}
-                          className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center"
-                          title={`$${token.symbol}`}
-                        >
-                          <span className="font-pixel text-[6px] text-gray-400">
-                            {token.symbol.charAt(0)}
+                  {creator.tokens.length > 0 && (
+                    <div className="flex gap-1 mt-2">
+                      {creator.tokens.slice(0, 5).map((token) => (
+                        token.imageUrl ? (
+                          <img
+                            key={token.mint}
+                            src={token.imageUrl}
+                            alt={token.symbol}
+                            className="w-5 h-5 border border-bags-green/20"
+                            title={`$${token.symbol}`}
+                          />
+                        ) : (
+                          <div
+                            key={token.mint}
+                            className="w-5 h-5 bg-bags-dark border border-bags-green/20 flex items-center justify-center"
+                            title={`$${token.symbol}`}
+                          >
+                            <span className="font-pixel text-[5px] text-gray-500">
+                              {token.symbol.charAt(0)}
+                            </span>
+                          </div>
+                        )
+                      ))}
+                      {creator.tokens.length > 5 && (
+                        <div className="w-5 h-5 bg-bags-dark border border-bags-green/20 flex items-center justify-center">
+                          <span className="font-pixel text-[6px] text-gray-500">
+                            +{creator.tokens.length - 5}
                           </span>
                         </div>
-                      )
-                    ))}
-                    {creator.tokens.length > 5 && (
-                      <div className="w-6 h-6 bg-gray-700 rounded flex items-center justify-center">
-                        <span className="font-pixel text-[8px] text-gray-400">
-                          +{creator.tokens.length - 5}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -341,16 +366,13 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
         </div>
 
         {/* Footer Stats */}
-        <div className="p-3 border-t border-gray-700 bg-bags-darker">
-          <div className="flex justify-between font-pixel text-[10px]">
-            <span className="text-gray-400">
-              {creators.length} Creator{creators.length !== 1 ? "s" : ""}
-            </span>
-            <span className="text-gray-400">
-              {creators.reduce((sum, c) => sum + c.tokenCount, 0)} Total Tokens
+        <div className="p-2 border-t-4 border-bags-green bg-bags-darker">
+          <div className="flex justify-between font-pixel text-[8px]">
+            <span className="text-gray-500">
+              {creators.reduce((sum, c) => sum + c.tokenCount, 0)} TOKENS
             </span>
             <span className="text-bags-gold">
-              {formatSOL(creators.reduce((sum, c) => sum + c.totalLifetimeFees, 0))} SOL Fees
+              {formatSOL(creators.reduce((sum, c) => sum + c.totalLifetimeFees, 0))} SOL FEES
             </span>
           </div>
         </div>
