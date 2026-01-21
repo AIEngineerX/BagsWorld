@@ -804,7 +804,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="flex items-start gap-2">
                   <span className="font-pixel text-xs text-bags-gold">4</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Only 1% ecosystem fee</span> - Funds the rewards pool
+                    <span className="text-bags-green">Only 1% ecosystem fee</span> - Funds rewards, casino & more
                   </span>
                 </div>
               </div>

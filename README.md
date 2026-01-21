@@ -29,9 +29,17 @@ BagsWorld transforms abstract DeFi data into a living, gamified visualization. T
 - **Creator Rewards** - 1% ecosystem fee funds rewards for top 3 creators
 - **Day/Night Cycle** - Synced to EST timezone with dynamic weather
 
-## Creator Rewards System
+## Ecosystem Fee System
 
-BagsWorld adds a 1% ecosystem fee to tokens launched through the platform. These fees fund creator rewards:
+BagsWorld adds a 1% ecosystem fee to tokens launched through the platform. These fees fund:
+
+| Allocation | Status | Description |
+|------------|--------|-------------|
+| Creator Rewards | Live | Top 3 creators by fees split the rewards pool |
+| Casino | Coming Soon | Wheel spins, raffles, and jackpots |
+| Future Features | Planned | New game mechanics and community rewards |
+
+### Creator Rewards
 
 ```
 Ecosystem fees collected --> Pool reaches 5 SOL OR 3 days pass --> Top 3 creators paid
@@ -41,6 +49,8 @@ Ecosystem fees collected --> Pool reaches 5 SOL OR 3 days pass --> Top 3 creator
 - 1st place: 50%
 - 2nd place: 30%
 - 3rd place: 20%
+
+Follow [@DaddyGhost](https://x.com/DaddyGhost) on X for updates.
 
 ## World Health
 
