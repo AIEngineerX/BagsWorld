@@ -134,11 +134,12 @@ export function CJChat() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/agent-chat", {
+      // Try ElizaOS-powered endpoint first
+      let response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          characterId: "cj",
+          character: "cj",
           message: userMessage,
           worldState: worldState ? {
             health: worldState.health,
@@ -146,19 +147,18 @@ export function CJChat() {
             buildingCount: worldState.buildings?.length || 0,
             populationCount: worldState.population?.length || 0,
           } : undefined,
-          chatHistory: messages.slice(-6).map(m => ({
-            role: m.type === "user" ? "user" : "assistant",
-            content: m.message,
-          })),
         }),
       });
 
       const data = await response.json();
 
+      // If ElizaOS response has a different format, normalize it
+      const messageText = data.response || data.message || "aw shit, something went wrong homie";
+
       addMessage({
         id: `${Date.now()}-cj`,
         type: "cj",
-        message: data.message || "aw shit, something went wrong homie",
+        message: messageText,
         timestamp: Date.now(),
         actions: data.actions || [],
       });

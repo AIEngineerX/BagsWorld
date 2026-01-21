@@ -134,11 +134,12 @@ export function NeoChat() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/agent-chat", {
+      // Try ElizaOS-powered endpoint first
+      let response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          characterId: "neo",
+          character: "neo",
           message: userMessage,
           worldState: worldState ? {
             health: worldState.health,
@@ -146,19 +147,18 @@ export function NeoChat() {
             buildingCount: worldState.buildings?.length || 0,
             populationCount: worldState.population?.length || 0,
           } : undefined,
-          chatHistory: messages.slice(-6).map(m => ({
-            role: m.type === "user" ? "user" : "assistant",
-            content: m.message,
-          })),
         }),
       });
 
-      const data = await response.json();
+      let data = await response.json();
+
+      // If ElizaOS response has a different format, normalize it
+      const messageText = data.response || data.message || "the signal is unclear...";
 
       addMessage({
         id: `${Date.now()}-neo`,
         type: "neo",
-        message: data.message || "the signal is unclear...",
+        message: messageText,
         timestamp: Date.now(),
         actions: data.actions || [],
       });

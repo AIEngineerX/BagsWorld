@@ -37,6 +37,7 @@ import { CasinoModal } from "@/components/CasinoModal";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import { initDialogueEventBridge, cleanupDialogueEventBridge, onWorldStateUpdate, initBrowserEventListener } from "@/lib/dialogue-event-bridge";
 import { initCharacterBehavior, cleanupCharacterBehavior, updateWorldStateForBehavior } from "@/lib/character-behavior";
+import { AgentActivityIndicator } from "@/components/AgentActivityIndicator";
 
 interface BuildingClickData {
   mint: string;
@@ -273,6 +274,9 @@ export default function Home() {
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20">
             <ZoneNav />
           </div>
+
+          {/* Agent Activity Indicator - shows when agents are talking */}
+          <AgentActivityIndicator />
 
           {/* Chat windows - always rendered but can show/hide based on click events */}
           {/* On mobile, users use MobileCharacterMenu to trigger these */}

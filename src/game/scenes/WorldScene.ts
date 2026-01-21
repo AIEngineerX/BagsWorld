@@ -2521,40 +2521,27 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateCharacters(characters: GameCharacter[]): void {
-    // Characters only appear in Park (main_city), not in BagsCity
-    if (this.currentZone !== "main_city") {
-      // Hide all characters and their glows when in BagsCity
-      this.characterSprites.forEach((sprite) => {
-        sprite.setVisible(false);
-        // Hide associated glow sprites
-        const tolyGlow = (sprite as any).tolyGlow;
-        const ashGlow = (sprite as any).ashGlow;
-        const finnGlow = (sprite as any).finnGlow;
-        const devGlow = (sprite as any).devGlow;
-        const scoutGlow = (sprite as any).scoutGlow;
-        if (tolyGlow) tolyGlow.setVisible(false);
-        if (ashGlow) ashGlow.setVisible(false);
-        if (finnGlow) finnGlow.setVisible(false);
-        if (devGlow) devGlow.setVisible(false);
-        if (scoutGlow) scoutGlow.setVisible(false);
-      });
-      return;
-    }
+    // Filter characters by current zone
+    // Characters with matching zone or no zone (undefined) appear in current zone
+    // Neo (isScout) and CJ go to BagsCity (trending), others to Park (main_city)
+    const zoneCharacters = characters.filter((c) => {
+      if (!c.zone) return this.currentZone === "main_city"; // Default: Park
+      return c.zone === this.currentZone;
+    });
 
-    // Show characters and their glows when in Park
-    this.characterSprites.forEach((sprite) => {
-      sprite.setVisible(true);
-      // Show associated glow sprites
-      const tolyGlow = (sprite as any).tolyGlow;
-      const ashGlow = (sprite as any).ashGlow;
-      const finnGlow = (sprite as any).finnGlow;
-      const devGlow = (sprite as any).devGlow;
-      const scoutGlow = (sprite as any).scoutGlow;
-      if (tolyGlow) tolyGlow.setVisible(true);
-      if (ashGlow) ashGlow.setVisible(true);
-      if (finnGlow) finnGlow.setVisible(true);
-      if (devGlow) devGlow.setVisible(true);
-      if (scoutGlow) scoutGlow.setVisible(true);
+    const zoneCharacterIds = new Set(zoneCharacters.map((c) => c.id));
+
+    // Show/hide sprites based on zone
+    this.characterSprites.forEach((sprite, id) => {
+      const shouldShow = zoneCharacterIds.has(id);
+      sprite.setVisible(shouldShow);
+
+      // Handle associated glow sprites
+      const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow"];
+      glowKeys.forEach((key) => {
+        const glow = (sprite as any)[key];
+        if (glow) glow.setVisible(shouldShow);
+      });
     });
 
     const currentIds = new Set(characters.map((c) => c.id));
