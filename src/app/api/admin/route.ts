@@ -1,5 +1,6 @@
 // Admin API - Protected endpoints for site management
 import { NextRequest, NextResponse } from "next/server";
+import { PublicKey } from "@solana/web3.js";
 import { isAdmin } from "@/lib/config";
 import {
   getGlobalTokens,
@@ -7,14 +8,52 @@ import {
   isNeonConfigured,
   type GlobalToken
 } from "@/lib/neon";
+import { verifySessionToken } from "@/lib/wallet-auth";
 
-// Verify admin from request headers (wallet signature would be ideal, but for now checking wallet)
+/**
+ * Validate that a string is a valid Solana public key
+ */
+function isValidSolanaAddress(address: string): boolean {
+  try {
+    new PublicKey(address);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify admin access via session token
+ * Requires: Authorization: Bearer <sessionToken>
+ * Returns the admin wallet address if valid, null otherwise
+ */
 function verifyAdmin(request: NextRequest): string | null {
-  const adminWallet = request.headers.get("x-admin-wallet");
-  if (!adminWallet || !isAdmin(adminWallet)) {
+  // Extract session token from Authorization header
+  const authHeader = request.headers.get("authorization");
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
-  return adminWallet;
+
+  const sessionToken = authHeader.replace("Bearer ", "");
+
+  if (!sessionToken) {
+    return null;
+  }
+
+  // Verify the session token and get the associated wallet
+  const wallet = verifySessionToken(sessionToken);
+
+  if (!wallet) {
+    return null;
+  }
+
+  // Double-check the wallet is still an admin
+  if (!isAdmin(wallet)) {
+    return null;
+  }
+
+  return wallet;
 }
 
 // GET - Fetch admin dashboard data
@@ -159,6 +198,30 @@ async function handleUpdateToken(data: {
   mint: string;
   updates: Partial<GlobalToken>;
 }) {
+  // Validate mint address
+  if (!data.mint || !isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
+  // Validate string field lengths to prevent abuse
+  const MAX_NAME_LENGTH = 100;
+  const MAX_SYMBOL_LENGTH = 20;
+  const MAX_DESCRIPTION_LENGTH = 1000;
+  const MAX_URL_LENGTH = 500;
+
+  if (data.updates.name && data.updates.name.length > MAX_NAME_LENGTH) {
+    return NextResponse.json({ error: `Name exceeds ${MAX_NAME_LENGTH} characters` }, { status: 400 });
+  }
+  if (data.updates.symbol && data.updates.symbol.length > MAX_SYMBOL_LENGTH) {
+    return NextResponse.json({ error: `Symbol exceeds ${MAX_SYMBOL_LENGTH} characters` }, { status: 400 });
+  }
+  if (data.updates.description && data.updates.description.length > MAX_DESCRIPTION_LENGTH) {
+    return NextResponse.json({ error: `Description exceeds ${MAX_DESCRIPTION_LENGTH} characters` }, { status: 400 });
+  }
+  if (data.updates.image_url && data.updates.image_url.length > MAX_URL_LENGTH) {
+    return NextResponse.json({ error: `Image URL exceeds ${MAX_URL_LENGTH} characters` }, { status: 400 });
+  }
+
   if (!isNeonConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
@@ -213,6 +276,11 @@ async function handleUpdateToken(data: {
 
 // Handle token deletion from global DB
 async function handleDeleteToken(data: { mint: string }) {
+  // Validate mint address
+  if (!data.mint || !isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
   if (!isNeonConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
@@ -234,6 +302,16 @@ async function handleDeleteToken(data: { mint: string }) {
 
 // Handle set featured status
 async function handleSetFeatured(data: { mint: string; featured: boolean }) {
+  // Validate mint address
+  if (!data.mint || !isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
+  // Validate featured is boolean
+  if (typeof data.featured !== "boolean") {
+    return NextResponse.json({ error: "Featured must be a boolean" }, { status: 400 });
+  }
+
   if (!isNeonConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
@@ -260,6 +338,16 @@ async function handleSetFeatured(data: { mint: string; featured: boolean }) {
 
 // Handle set verified status
 async function handleSetVerified(data: { mint: string; verified: boolean }) {
+  // Validate mint address
+  if (!data.mint || !isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
+  // Validate verified is boolean
+  if (typeof data.verified !== "boolean") {
+    return NextResponse.json({ error: "Verified must be a boolean" }, { status: 400 });
+  }
+
   if (!isNeonConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
@@ -286,6 +374,16 @@ async function handleSetVerified(data: { mint: string; verified: boolean }) {
 
 // Handle level override for buildings
 async function handleSetLevelOverride(data: { mint: string; level: number | null }) {
+  // Validate mint address
+  if (!data.mint || !isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
+  // Validate level is null or a valid level (1-5)
+  if (data.level !== null && (typeof data.level !== "number" || data.level < 1 || data.level > 5)) {
+    return NextResponse.json({ error: "Level must be null or a number between 1 and 5" }, { status: 400 });
+  }
+
   if (!isNeonConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
@@ -321,6 +419,11 @@ async function handleSetLevelOverride(data: { mint: string; level: number | null
 
 // Handle adding token manually by mint
 async function handleAddToken(data: { mint: string }) {
+  // Validate mint address
+  if (!data.mint || !isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
   if (!isNeonConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
