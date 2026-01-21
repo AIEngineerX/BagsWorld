@@ -175,11 +175,11 @@ async function handleConfigureFees(
     );
   }
 
-  // Validate total bps doesn't exceed 100%
+  // Validate total bps equals exactly 100%
   const totalBps = data.feeClaimers.reduce((sum, c) => sum + c.bps, 0);
-  if (totalBps > 10000) {
+  if (totalBps !== 10000) {
     return NextResponse.json(
-      { error: "Total fee share cannot exceed 100% (10000 bps)" },
+      { error: `Total fee share must equal exactly 100% (10000 bps). Currently: ${totalBps} bps (${(totalBps / 100).toFixed(1)}%)` },
       { status: 400 }
     );
   }
