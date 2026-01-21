@@ -1158,7 +1158,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             {/* Phantom warning notice */}
             <div className="bg-orange-500/10 border border-orange-500/30 p-3">
               <p className="font-pixel text-[8px] text-orange-400 text-center">
-                ⚠️ Phantom may show a security warning for new dApps. Click "Proceed anyway" to continue - we're pending Phantom verification.
+                ⚠️ Phantom may show a security warning for new dApps. Click &quot;Proceed anyway&quot; to continue - we&apos;re pending Phantom verification.
               </p>
             </div>
           </div>
