@@ -44,6 +44,8 @@ npm start        # Start production server
 - `WorldHealthBar.tsx` - Displays health percentage and status
 - `LaunchModal.tsx` - Token creation wizard (3 steps: info → fees → confirm)
 - `AIChat.tsx`, `TolyChat.tsx`, `AshChat.tsx`, `FinnbagsChat.tsx`, `DevChat.tsx`, `NeoChat.tsx` - Character chat interfaces
+- `TradeModal.tsx` - Token trading interface
+- `EcosystemStats.tsx` - Creator rewards pool status
 
 ### State Management
 
@@ -125,9 +127,9 @@ Health is calculated from **real Bags.fm data** in `calculateWorldHealth()`:
 Weather is derived from world health:
 - Sunny: 80%+ health
 - Cloudy: 60-80%
-- Rain: 45-60%
-- Storm: 25-45%
-- Apocalypse: < 25%
+- Rain: 40-60%
+- Storm: 20-40%
+- Apocalypse: < 20%
 
 **Day/Night**: Synced to EST timezone via `timeInfo` from API
 

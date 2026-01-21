@@ -1,5 +1,5 @@
 // Creator Rewards Agent - Distributes ecosystem fees to top 3 token creators
-// Triggers when 10 SOL threshold hit OR 5 days pass (with minimum 2 SOL)
+// Triggers when 10 SOL threshold hit OR 5 days pass (with minimum 10 SOL)
 import { getServerBagsApi, isServerBagsApiConfigured } from "./bags-api-server";
 import type { BagsApiClient } from "./bags-api";
 import { emitDistribution } from "./agent-coordinator";

@@ -48,7 +48,7 @@ export const docsContent: DocSection[] = [
             "Solana wallet (Phantom, Solflare, etc.)",
             "Small amount of SOL for fees (~0.02 SOL)",
             "Token image (PNG or JPG)",
-            "Twitter/GitHub/Kick account linked at bags.fm/settings",
+            "X (Twitter), GitHub, or Kick account linked at bags.fm/settings",
           ],
         },
       },
@@ -63,13 +63,13 @@ export const docsContent: DocSection[] = [
             number: 1,
             title: "Token Info",
             description:
-              "Upload image, enter name/symbol/description, add optional Twitter and website links",
+              "Upload image, enter name/symbol/description, add optional X (Twitter), Telegram, and website links",
           },
           {
             number: 2,
             title: "Fee Sharing",
             description:
-              "Configure who earns from trades. Add Twitter/GitHub/Kick accounts. Total must equal 100%",
+              "Configure who earns from trades. Add X (Twitter), GitHub, or Kick accounts. Total must equal 100%",
           },
           {
             number: 3,
@@ -84,7 +84,7 @@ export const docsContent: DocSection[] = [
         title: "Fee Configuration",
         content: [
           "On Bags.fm, every trade generates fees that are split among fee claimers. These splits are PERMANENT and locked at launch.",
-          "The 1% BagsWorld ecosystem fee funds the creator rewards pool. The remaining 99% goes to accounts you specify (Twitter, GitHub, or Kick usernames).",
+          "The 1% BagsWorld ecosystem fee funds the creator rewards pool. The remaining 99% goes to accounts you specify (X, GitHub, or Kick usernames).",
         ],
         infoBox: {
           title: "Important",
@@ -180,9 +180,9 @@ export const docsContent: DocSection[] = [
           rows: [
             ["80%+", "Sunny", "Bright skies, happy mood"],
             ["60-80%", "Cloudy", "Overcast, neutral mood"],
-            ["45-60%", "Rain", "Light rain, cautious mood"],
-            ["25-45%", "Storm", "Heavy rain, worried mood"],
-            ["<25%", "Apocalypse", "Dark skies, panic mood"],
+            ["40-60%", "Rain", "Light rain, cautious mood"],
+            ["20-40%", "Storm", "Heavy rain, worried mood"],
+            ["<20%", "Apocalypse", "Dark skies, panic mood"],
           ],
         },
       },
@@ -198,16 +198,16 @@ export const docsContent: DocSection[] = [
         id: "characters",
         title: "AI Characters",
         content: [
-          "BagsWorld features AI-powered characters you can chat with. Each has unique personality and expertise.",
+          "BagsWorld features AI-powered characters you can chat with. Each has unique personality and expertise. Click on any character walking in the world to start a conversation.",
         ],
         table: {
           headers: ["Character", "Role", "Expertise"],
           rows: [
             ["Toly", "Blockchain Expert", "Solana, technical questions"],
-            ["Ash", "Ecosystem Guide", "Platform features, navigation"],
-            ["Finn", "Bags CEO", "Bags.fm, fee mechanics"],
-            ["The Dev", "Trading Agent", "Market analysis, strategies"],
-            ["Neo", "Scout Agent", "New launches, alerts"],
+            ["Ash", "Ecosystem Guide", "Platform features, building mechanics"],
+            ["Finn", "Bags.fm CEO", "Bags.fm, fee mechanics, trading"],
+            ["The Dev", "Trading Agent", "Market analysis, rewards system"],
+            ["Neo", "Scout Agent", "New launches, blockchain patterns"],
           ],
         },
       },
@@ -238,8 +238,8 @@ export const docsContent: DocSection[] = [
         id: "creator-rewards",
         title: "Creator Rewards",
         content: [
-          "BagsWorld rewards the top 3 creators by fee volume each week. The rewards come from the 1% ecosystem fee collected from all BagsWorld launches.",
-          "Rewards are distributed automatically when the pool reaches 10 SOL or every 5 days, whichever comes first.",
+          "BagsWorld rewards the top 3 creators by fee volume. The rewards come from the 1% ecosystem fee collected from all BagsWorld launches.",
+          "Rewards are distributed automatically when the pool reaches 10 SOL OR after 5 days (minimum 10 SOL required). Distribution is 50/30/20 split to top 3 creators.",
         ],
         table: {
           headers: ["Rank", "Reward Share", "Distribution"],

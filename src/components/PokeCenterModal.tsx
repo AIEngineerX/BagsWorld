@@ -201,7 +201,7 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span>•</span>
-                <span>Triggers at 10 SOL or every 5 days (min 2 SOL)</span>
+                <span>Triggers at 10 SOL or every 5 days (min 10 SOL)</span>
               </li>
             </ul>
           </div>

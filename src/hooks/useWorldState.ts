@@ -87,26 +87,21 @@ export function useWorldState() {
   const query = useQuery({
     queryKey: ["worldState", registeredTokens.map((t) => t.mint).join(",")],
     queryFn: () => fetchWorldState(registeredTokens),
-    refetchInterval: 30000, // Refresh every 30 seconds
-    staleTime: 25000,
+    refetchInterval: 60000, // Refresh every 60 seconds (reduced from 30s for smoother rendering)
+    staleTime: 55000,
     retry: 3,
   });
 
+  // Performance: combine effects into single update to reduce re-renders
   useEffect(() => {
     if (query.data) {
       setWorldState(query.data);
     }
-  }, [query.data, setWorldState]);
-
-  useEffect(() => {
     setLoading(query.isLoading);
-  }, [query.isLoading, setLoading]);
-
-  useEffect(() => {
     if (query.error) {
       setError(query.error instanceof Error ? query.error.message : "Unknown error");
     }
-  }, [query.error, setError]);
+  }, [query.data, query.isLoading, query.error, setWorldState, setLoading, setError]);
 
   // Function to trigger refresh after token launch
   const refreshAfterLaunch = useCallback(() => {

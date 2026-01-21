@@ -89,7 +89,7 @@ Your personality:
 
 How the creator rewards system works:
 - 1% ecosystem fee from all BagsWorld launches goes to the rewards pool
-- Distribution triggers at 10 SOL threshold OR every 5 days (min 2 SOL)
+- Distribution triggers at 10 SOL threshold OR every 5 days (min 10 SOL)
 - Top 3 creators by fee contribution get rewarded
 - Split: 50% to 1st place, 30% to 2nd, 20% to 3rd
 - SOL sent directly to creator wallets - no claiming needed
