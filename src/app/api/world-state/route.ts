@@ -567,12 +567,22 @@ export async function POST(request: NextRequest) {
     let rank = 1;
 
     // First, add creators from SDK data (skip permanent building creators like "BagsWorld")
+    // Important: Token launchers are only included if they explicitly allocated fees to themselves
     enrichedResults.forEach((result, index) => {
       const token = tokens[index];
+      const registeredToken = tokensToProcess[index];
       // Skip permanent buildings (Treasury, Starter buildings) - they don't have real creators
       if (token.mint.startsWith("Treasury") || token.mint.startsWith("Starter")) {
         return;
       }
+
+      // Get the token launcher's wallet (the person who created the token)
+      const launcherWallet = registeredToken.creator?.toLowerCase();
+
+      // Check if the launcher explicitly allocated fees to themselves in feeShares
+      const launcherHasExplicitFeeShare = registeredToken.feeShares?.some(
+        (share) => share.provider === "solana" && share.username?.toLowerCase() === launcherWallet
+      ) || false;
 
       result.creators.forEach((creator) => {
         // Skip if no valid username or it's a placeholder
@@ -581,6 +591,14 @@ export async function POST(request: NextRequest) {
 
         // Skip creators who don't receive fees (royaltyBps = 0 means no fee share)
         if (creator.royaltyBps === 0) return;
+
+        // Skip the token launcher unless they explicitly allocated fees to themselves
+        // (Bags API always gives launchers royaltyBps > 0, but we only want to show them
+        // as citizens if they intentionally shared fees with themselves)
+        const isLauncher = creator.wallet?.toLowerCase() === launcherWallet;
+        if (isLauncher && !launcherHasExplicitFeeShare) {
+          return;
+        }
 
         const normalizedUsername = (creator.providerUsername || creator.username).toLowerCase();
         const existing = earnerMap.get(creator.wallet);
