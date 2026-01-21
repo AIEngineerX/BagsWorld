@@ -141,16 +141,13 @@ export function TolyChat() {
     });
 
     try {
-      const response = await fetch("/api/character-chat", {
+      // Use ElizaOS-powered endpoint
+      const response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           character: "toly",
-          userMessage: userMsg,
-          chatHistory: messages.slice(-6).map((m) => ({
-            role: m.type === "user" ? "user" : "assistant",
-            content: m.message,
-          })),
+          message: userMsg,
           worldState: worldState ? {
             health: worldState.health,
             weather: worldState.weather,
@@ -161,10 +158,12 @@ export function TolyChat() {
       });
 
       const data = await response.json();
+      const messageText = data.response || data.message || "interesting question ser. ask me about Solana or the ecosystem!";
+
       addMessage({
         id: `${Date.now()}-toly`,
         type: "toly",
-        message: data.message || "interesting question ser. ask me about Solana or the ecosystem!",
+        message: messageText,
         timestamp: Date.now(),
       });
     } catch (error) {

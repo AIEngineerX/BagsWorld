@@ -334,6 +334,9 @@ export function transformFeeEarnerToCharacter(
 
   const isSpecialCharacter = isToly || isAsh || isFinn || isDev || isScout || isCJ;
 
+  // Neo and CJ belong in BagsCity (trending zone), others in Park (main_city)
+  const zone = (isScout || isCJ) ? "trending" as const : "main_city" as const;
+
   return {
     id: earner.wallet,
     username: earner.providerUsername || earner.username,
@@ -348,6 +351,7 @@ export function transformFeeEarnerToCharacter(
     isMoving: !isSpecialCharacter && Math.random() > 0.7, // Special characters don't wander randomly
     buildingId: earner.topToken?.mint,
     profileUrl: isToly ? "https://x.com/toly" : isFinn ? "https://x.com/finnbags" : isDev ? "https://x.com/DaddyGhost" : isAsh || isScout || isCJ ? undefined : getProfileUrl(earner.provider, earner.username),
+    zone, // Neo and CJ in BagsCity, others in Park
     isToly, // Pass through the Toly flag
     isAsh, // Pass through the Ash flag
     isFinn, // Pass through the Finn flag

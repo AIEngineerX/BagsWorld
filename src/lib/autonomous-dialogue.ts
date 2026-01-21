@@ -68,11 +68,11 @@ let state: DialogueState = {
   characterMoods: new Map(),
 };
 
-// Conversation settings
-const MIN_CONVERSATION_GAP = 15000; // 15 seconds between conversations
-const MAX_CONVERSATION_LINES = 6; // Max lines per conversation
-const LINE_DISPLAY_DURATION = 5000; // How long each line shows (5 seconds)
-const CONVERSATION_COOLDOWN = 20000; // 20 seconds after conversation ends
+// Conversation settings - TUNED FOR VISIBILITY
+const MIN_CONVERSATION_GAP = 8000; // 8 seconds between conversations (faster!)
+const MAX_CONVERSATION_LINES = 5; // Max lines per conversation
+const LINE_DISPLAY_DURATION = 4000; // How long each line shows (4 seconds - snappier)
+const CONVERSATION_COOLDOWN = 10000; // 10 seconds after conversation ends
 
 // Character relationships (who tends to talk to whom)
 const CHARACTER_AFFINITIES: Record<string, string[]> = {
@@ -698,10 +698,10 @@ export function startScheduledConversations(intervalMs: number = 60000): void {
   if (scheduledInterval) return;
 
   scheduledInterval = setInterval(async () => {
-    // 60% chance of random conversation
-    if (Math.random() > 0.6) return;
+    // 85% chance of random conversation (much more frequent!)
+    if (Math.random() > 0.85) return;
 
-    const topics = ["general", "world_health"];
+    const topics = ["general", "world_health", "token_launch", "price_pump"];
     const topic = topics[Math.floor(Math.random() * topics.length)];
 
     await startConversation(
@@ -743,17 +743,17 @@ export function initDialogueSystem(): void {
     });
   });
 
-  // Start scheduled conversations (every 30 seconds check)
-  startScheduledConversations(30000);
+  // Start scheduled conversations (every 15 seconds check - frequent for demos!)
+  startScheduledConversations(15000);
 
-  // Trigger initial conversation after a short delay (let world load)
+  // Trigger initial conversation quickly (3 seconds after load)
   setTimeout(() => {
     console.log("[Dialogue] Triggering initial conversation...");
     startConversation(
-      { type: "scheduled", interval: 30000 },
-      "general"
+      { type: "scheduled", interval: 15000 },
+      "token_launch"
     );
-  }, 8000);
+  }, 3000);
 
   console.log("[Dialogue] System initialized");
 }

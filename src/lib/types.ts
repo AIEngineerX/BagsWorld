@@ -143,12 +143,13 @@ export interface GameCharacter {
   isMoving: boolean;
   buildingId?: string;
   profileUrl?: string;
+  zone?: ZoneType; // Which zone this character appears in (trending=BagsCity, main_city=Park)
   isToly?: boolean; // Special flag for Toly (Solana co-founder) character
   isAsh?: boolean; // Special flag for Ash character
   isFinn?: boolean; // Special flag for Finn (Bags.fm CEO) character
   isDev?: boolean; // Special flag for The Dev (DaddyGhost) character
-  isScout?: boolean; // Special flag for Scout Agent character
-  isCJ?: boolean; // Special flag for CJ character
+  isScout?: boolean; // Special flag for Scout Agent (Neo) - BagsCity
+  isCJ?: boolean; // Special flag for CJ character - BagsCity
 }
 
 export interface GameBuilding {

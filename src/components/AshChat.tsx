@@ -163,16 +163,13 @@ export function AshChat() {
     });
 
     try {
-      const response = await fetch("/api/agent-chat", {
+      // Use ElizaOS-powered endpoint
+      const response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          characterId: "ash",
+          character: "ash",
           message: userMsg,
-          chatHistory: messages.slice(-6).map((m) => ({
-            role: m.type === "user" ? "user" : "assistant",
-            content: m.message,
-          })),
           worldState: worldState ? {
             health: worldState.health,
             weather: worldState.weather,
@@ -183,10 +180,12 @@ export function AshChat() {
       });
 
       const data = await response.json();
+      const messageText = data.response || data.message || "Great question trainer! Ask me about buildings, fees, or the weather system!";
+
       addMessage({
         id: `${Date.now()}-ash`,
         type: "ash",
-        message: data.message || "Great question trainer! Ask me about buildings, fees, or the weather system!",
+        message: messageText,
         timestamp: Date.now(),
         actions: data.actions || [],
       });

@@ -32,29 +32,30 @@ export interface BubbleConfig {
 }
 
 const DEFAULT_CONFIG: BubbleConfig = {
-  maxWidth: 180,
-  padding: 8,
-  fontSize: 11,
+  maxWidth: 220, // Wider for better readability
+  padding: 12, // More padding
+  fontSize: 13, // Larger font for visibility
   backgroundColor: 0x1a1a2e,
   textColor: "#ffffff",
   borderColor: 0x4ade80,
-  borderWidth: 2,
-  cornerRadius: 8,
-  tailHeight: 8,
-  fadeInDuration: 200,
-  fadeOutDuration: 300,
-  displayDuration: 4000,
-  yOffset: -50,
+  borderWidth: 3, // Thicker border
+  cornerRadius: 10,
+  tailHeight: 10,
+  fadeInDuration: 150, // Faster fade in
+  fadeOutDuration: 250, // Faster fade out
+  displayDuration: 3500, // Slightly shorter to match dialogue timing
+  yOffset: -60, // Higher above character
 };
 
-// Character-specific bubble colors
+// Character-specific bubble colors - VIBRANT for visibility
 const CHARACTER_COLORS: Record<string, { bg: number; border: number; text: string }> = {
-  finn: { bg: 0x0f172a, border: 0x10b981, text: "#10b981" }, // Emerald
-  ghost: { bg: 0x0f0f1a, border: 0x8b5cf6, text: "#a78bfa" }, // Purple
-  neo: { bg: 0x001100, border: 0x00ff41, text: "#00ff41" }, // Matrix green
-  ash: { bg: 0x1a0a0a, border: 0xef4444, text: "#fca5a5" }, // Pokemon red
-  "bags-bot": { bg: 0x1a1500, border: 0xf59e0b, text: "#fbbf24" }, // Amber
-  cj: { bg: 0x1a0f00, border: 0xf97316, text: "#fb923c" }, // Grove Street orange
+  finn: { bg: 0x0a1f0a, border: 0x22c55e, text: "#4ade80" }, // Bright emerald
+  ghost: { bg: 0x0f0f1f, border: 0xa78bfa, text: "#c4b5fd" }, // Bright purple
+  neo: { bg: 0x001a00, border: 0x00ff55, text: "#00ff55" }, // Bright matrix green
+  ash: { bg: 0x1f0a0a, border: 0xf87171, text: "#fca5a5" }, // Bright Pokemon red
+  "bags-bot": { bg: 0x1f1a00, border: 0xfbbf24, text: "#fde047" }, // Bright amber
+  cj: { bg: 0x1f1000, border: 0xfb923c, text: "#fdba74" }, // Bright Grove Street orange
+  toly: { bg: 0x1a0a1f, border: 0xa855f7, text: "#c084fc" }, // Bright purple for Toly
 };
 
 export class SpeechBubbleManager {
