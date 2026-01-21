@@ -3,6 +3,7 @@ import {
   getCreatorRewardsState,
   initCreatorRewardsAgent,
   startCreatorRewardsAgent,
+  getTimeUntilDistribution,
 } from "@/lib/creator-rewards-agent";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { isAgentWalletConfigured } from "@/lib/agent-wallet";
@@ -77,6 +78,9 @@ export async function GET() {
 
       // Config for display
       distribution: rewardsState.config.distribution,
+
+      // Trigger info - which will happen first
+      triggerInfo: getTimeUntilDistribution(),
     });
   } catch (error) {
     console.error("Ecosystem stats error:", error);
@@ -94,6 +98,11 @@ export async function GET() {
       topCreators: [],
       recentDistributions: [],
       distribution: ECOSYSTEM_CONFIG.ecosystem.rewards.distribution,
+      triggerInfo: {
+        byThreshold: ECOSYSTEM_CONFIG.ecosystem.rewards.thresholdSol,
+        byTimer: ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays * 24 * 60 * 60 * 1000,
+        estimatedTrigger: "unknown" as const,
+      },
     });
   }
 }
