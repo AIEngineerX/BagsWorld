@@ -1,5 +1,9 @@
 // Neon database client for shared global state
-// Uses dynamic import because @netlify/neon only exists in Netlify runtime
+// Supports both:
+// 1. Netlify's built-in Neon integration (@netlify/neon with NETLIFY_DATABASE_URL)
+// 2. Direct Neon connection (@neondatabase/serverless with DATABASE_URL)
+
+import { neon as neonServerless } from "@neondatabase/serverless";
 
 // Database types
 export interface GlobalToken {
@@ -28,26 +32,90 @@ export interface GlobalToken {
   level_override?: number | null; // Admin override for building level (1-5)
 }
 
-// Check if Neon is configured (Netlify sets NETLIFY_DATABASE_URL automatically)
+// Check if Neon is configured (either Netlify integration or direct DATABASE_URL)
 export function isNeonConfigured(): boolean {
-  return !!process.env.NETLIFY_DATABASE_URL;
+  return !!(process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL);
 }
 
-// Dynamically get SQL client (returns null if not configured or not on Netlify)
-async function getSql() {
-  if (!isNeonConfigured()) {
-    return null;
+// Get which connection method is being used
+export function getNeonConnectionType(): "netlify" | "direct" | "none" {
+  if (process.env.NETLIFY_DATABASE_URL) return "netlify";
+  if (process.env.DATABASE_URL) return "direct";
+  return "none";
+}
+
+// SQL tagged template function type
+type SqlFunction = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>;
+
+// Dynamically get SQL client
+async function getSql(): Promise<SqlFunction | null> {
+  // Try Netlify's built-in Neon first (auto-configured)
+  if (process.env.NETLIFY_DATABASE_URL) {
+    try {
+      // Use string variable to prevent webpack from analyzing the import
+      const moduleName = "@netlify/neon";
+      // eslint-disable-next-line
+      const { neon } = require(moduleName);
+      return neon();
+    } catch (error) {
+      console.log("Netlify Neon module not available, trying direct connection...");
+    }
   }
 
+  // Fall back to direct Neon connection with DATABASE_URL
+  if (process.env.DATABASE_URL) {
+    try {
+      const sql = neonServerless(process.env.DATABASE_URL);
+      return sql as unknown as SqlFunction;
+    } catch (error) {
+      console.error("Failed to connect to Neon with DATABASE_URL:", error);
+      return null;
+    }
+  }
+
+  console.log("No Neon database configured (set DATABASE_URL or use Netlify integration)");
+  return null;
+}
+
+// Initialize database tables if they don't exist
+export async function initializeDatabase(): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
   try {
-    // Use string variable to prevent webpack from analyzing the import
-    const moduleName = "@netlify/neon";
-    // eslint-disable-next-line
-    const { neon } = require(moduleName);
-    return neon();
+    // Create tokens table
+    await sql`
+      CREATE TABLE IF NOT EXISTS tokens (
+        id SERIAL PRIMARY KEY,
+        mint TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        symbol TEXT NOT NULL,
+        description TEXT,
+        image_url TEXT,
+        creator_wallet TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        fee_shares JSONB DEFAULT '[]',
+        lifetime_fees DECIMAL DEFAULT 0,
+        market_cap DECIMAL DEFAULT 0,
+        volume_24h DECIMAL DEFAULT 0,
+        last_updated TIMESTAMP WITH TIME ZONE,
+        is_featured BOOLEAN DEFAULT FALSE,
+        is_verified BOOLEAN DEFAULT FALSE,
+        level_override INTEGER
+      )
+    `;
+
+    // Create indexes
+    await sql`CREATE INDEX IF NOT EXISTS idx_tokens_mint ON tokens(mint)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_tokens_creator ON tokens(creator_wallet)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_tokens_featured ON tokens(is_featured)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_tokens_created ON tokens(created_at DESC)`;
+
+    console.log("Database tables initialized successfully");
+    return true;
   } catch (error) {
-    console.log("Neon module not available (not running on Netlify)");
-    return null;
+    console.error("Error initializing database:", error);
+    return false;
   }
 }
 
@@ -60,9 +128,12 @@ export async function getGlobalTokens(): Promise<GlobalToken[]> {
   }
 
   try {
+    // First ensure tables exist
+    await initializeDatabase();
+
     console.log("Executing query: SELECT * FROM tokens ORDER BY created_at DESC");
     const rows = await sql`SELECT * FROM tokens ORDER BY created_at DESC`;
-    console.log("Query returned rows:", rows?.length ?? 0);
+    console.log("Query returned rows:", (rows as unknown[])?.length ?? 0);
     return rows as GlobalToken[];
   } catch (error) {
     console.error("Error fetching global tokens:", error);
@@ -79,10 +150,13 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
   }
 
   try {
+    // Ensure tables exist
+    await initializeDatabase();
+
     // Check if token already exists
     const existing = await sql`SELECT id FROM tokens WHERE mint = ${token.mint}`;
 
-    if (existing.length > 0) {
+    if ((existing as unknown[]).length > 0) {
       // Update existing token
       await sql`
         UPDATE tokens SET
@@ -208,7 +282,7 @@ export async function getCasinoRaffle(): Promise<CasinoRaffle | null> {
       )
     `;
 
-    if (!tableCheck[0]?.exists) {
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
       // Tables not created yet, return null to use in-memory fallback
       return null;
     }
@@ -223,15 +297,16 @@ export async function getCasinoRaffle(): Promise<CasinoRaffle | null> {
       LIMIT 1
     `;
 
-    if (result.length === 0) return null;
+    if ((result as unknown[]).length === 0) return null;
 
+    const row = (result as Array<Record<string, unknown>>)[0];
     return {
-      id: result[0].id,
-      status: result[0].status,
-      potLamports: parseInt(result[0].pot_lamports || "0"),
-      entryCount: parseInt(result[0].entry_count || "0"),
-      threshold: parseFloat(result[0].threshold_sol || "0.5"),
-      entries: result[0].entries || [],
+      id: row.id as number,
+      status: row.status as "active" | "drawing" | "completed",
+      potLamports: parseInt(String(row.pot_lamports || "0")),
+      entryCount: parseInt(String(row.entry_count || "0")),
+      threshold: parseFloat(String(row.threshold_sol || "0.5")),
+      entries: (row.entries as string[]) || [],
     };
   } catch (error) {
     console.error("Error getting casino raffle:", error);
@@ -255,7 +330,7 @@ export async function enterCasinoRaffle(
       )
     `;
 
-    if (!tableCheck[0]?.exists) {
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
       return { success: false, error: "Casino not initialized" };
     }
 
@@ -264,11 +339,11 @@ export async function enterCasinoRaffle(
       SELECT id FROM casino_raffles WHERE status = 'active' LIMIT 1
     `;
 
-    if (raffle.length === 0) {
+    if ((raffle as unknown[]).length === 0) {
       return { success: false, error: "No active raffle" };
     }
 
-    const raffleId = raffle[0].id;
+    const raffleId = (raffle as Array<{ id: number }>)[0].id;
 
     // Check if already entered
     const existing = await sql`
@@ -276,7 +351,7 @@ export async function enterCasinoRaffle(
       WHERE raffle_id = ${raffleId} AND wallet = ${wallet}
     `;
 
-    if (existing.length > 0) {
+    if ((existing as unknown[]).length > 0) {
       return { success: false, error: "Already entered this raffle" };
     }
 
@@ -292,7 +367,7 @@ export async function enterCasinoRaffle(
 
     return {
       success: true,
-      entryCount: parseInt(countResult[0]?.count || "0"),
+      entryCount: parseInt(String((countResult as Array<{ count: string }>)[0]?.count || "0")),
     };
   } catch (error) {
     console.error("Error entering raffle:", error);
@@ -313,7 +388,7 @@ export async function getCasinoPot(): Promise<number | null> {
       )
     `;
 
-    if (!tableCheck[0]?.exists) {
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
       return null;
     }
 
@@ -321,9 +396,9 @@ export async function getCasinoPot(): Promise<number | null> {
       SELECT balance_lamports FROM casino_pot ORDER BY updated_at DESC LIMIT 1
     `;
 
-    if (result.length === 0) return null;
+    if ((result as unknown[]).length === 0) return null;
 
-    return parseInt(result[0].balance_lamports) / 1e9; // Convert to SOL
+    return parseInt(String((result as Array<{ balance_lamports: string }>)[0].balance_lamports)) / 1e9; // Convert to SOL
   } catch (error) {
     console.error("Error getting casino pot:", error);
     return null;
@@ -347,7 +422,7 @@ export async function recordWheelSpin(
       )
     `;
 
-    if (!tableCheck[0]?.exists) {
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
       return false;
     }
 
@@ -388,7 +463,7 @@ export async function getCasinoHistory(
       )
     `;
 
-    if (!tableCheck[0]?.exists) {
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
       return null;
     }
 
@@ -412,7 +487,7 @@ export async function getCasinoHistory(
     const history: CasinoHistoryEntry[] = [];
 
     // Add wheel spins
-    for (const spin of wheelSpins) {
+    for (const spin of wheelSpins as Array<{ id: number; result: string; prize_sol: string; is_win: boolean; created_at: string }>) {
       history.push({
         id: `wheel-${spin.id}`,
         type: "wheel",
@@ -424,7 +499,7 @@ export async function getCasinoHistory(
     }
 
     // Add raffle entries
-    for (const entry of raffleEntries) {
+    for (const entry of raffleEntries as Array<{ id: number; status: string; winner_wallet: string; prize_sol: string; created_at: string }>) {
       const isWinner = entry.winner_wallet === wallet;
       history.push({
         id: `raffle-${entry.id}`,
