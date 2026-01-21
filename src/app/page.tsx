@@ -23,6 +23,7 @@ import { TradeModal } from "@/components/TradeModal";
 import { LaunchModal } from "@/components/LaunchModal";
 import { PartnerClaimButton } from "@/components/PartnerClaimButton";
 import { MusicButton } from "@/components/MusicButton";
+import { WorldIcon } from "@/components/icons";
 import { useWorldState } from "@/hooks/useWorldState";
 import { DatabaseStatus } from "@/components/DatabaseStatus";
 import { EcosystemStats } from "@/components/EcosystemStats";
@@ -167,7 +168,7 @@ export default function Home() {
         <div className="flex items-center gap-2 md:gap-4">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-bags-green/20 border border-bags-green flex items-center justify-center flex-shrink-0">
-              <span className="font-pixel text-bags-green text-[10px] sm:text-xs">B</span>
+              <WorldIcon className="text-bags-green" size={16} />
             </div>
             <h1 className="font-pixel text-xs sm:text-sm md:text-lg text-bags-green hidden xs:block">BAGSWORLD</h1>
           </div>
