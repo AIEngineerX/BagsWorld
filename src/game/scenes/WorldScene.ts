@@ -77,6 +77,11 @@ export class WorldScene extends Phaser.Scene {
   private boundBehaviorHandler: ((e: Event) => void) | null = null;
   private boundSpeakHandler: ((e: Event) => void) | null = null;
 
+  // Performance: character lookup map for O(1) access in update loop
+  private characterById: Map<string, GameCharacter> = new Map();
+  // Performance: cached movement speeds per character (avoid random() every frame)
+  private characterSpeeds: Map<string, number> = new Map();
+
   constructor() {
     super({ key: "WorldScene" });
   }
@@ -2018,8 +2023,9 @@ export class WorldScene extends Phaser.Scene {
     this.updateDialogueBubbles();
 
     // Update character movements with AI-driven targets
+    // Performance: use O(1) map lookup instead of O(n) find()
     this.characterSprites.forEach((sprite, id) => {
-      const character = this.worldState?.population.find((c) => c.id === id);
+      const character = this.characterById.get(id);
       if (!character) return;
 
       // Get character's behavior ID (special characters map to their IDs)
@@ -2030,11 +2036,17 @@ export class WorldScene extends Phaser.Scene {
         // AI-driven movement toward target
         const dx = target.x - sprite.x;
         const dy = target.y - sprite.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // Performance: use squared distance to avoid sqrt when possible
+        const distSq = dx * dx + dy * dy;
 
-        if (distance > 5) {
-          // Move toward target with smooth interpolation
-          const speed = 1.2 + Math.random() * 0.3;
+        if (distSq > 25) { // 5^2 = 25
+          const distance = Math.sqrt(distSq);
+          // Performance: cache speed per character instead of random every frame
+          let speed = this.characterSpeeds.get(id);
+          if (!speed) {
+            speed = 1.2 + Math.random() * 0.3;
+            this.characterSpeeds.set(id, speed);
+          }
           const moveX = (dx / distance) * speed;
           const moveY = (dy / distance) * speed;
 
@@ -2047,23 +2059,31 @@ export class WorldScene extends Phaser.Scene {
           // Update any glow sprites to follow
           this.updateCharacterGlow(sprite, character);
         } else {
-          // Reached target, clear it
+          // Reached target, clear it and reset speed for next movement
           this.characterTargets.delete(behaviorId);
+          this.characterSpeeds.delete(id);
         }
       } else if (character.isMoving) {
         // Fallback: simple random wandering if no AI target
-        const speed = 0.3 + Math.random() * 0.2;
+        // Performance: cache fallback speed too
+        let speed = this.characterSpeeds.get(id);
+        if (!speed) {
+          speed = 0.3 + Math.random() * 0.2;
+          this.characterSpeeds.set(id, speed);
+        }
         if (character.direction === "left") {
           sprite.x -= speed;
           sprite.setFlipX(true);
           if (sprite.x < 100) {
             character.direction = "right";
+            this.characterSpeeds.delete(id); // Reset speed on direction change
           }
         } else {
           sprite.x += speed;
           sprite.setFlipX(false);
           if (sprite.x > 1100) {
             character.direction = "left";
+            this.characterSpeeds.delete(id); // Reset speed on direction change
           }
         }
         // Update glow on fallback movement too
@@ -2521,6 +2541,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateCharacters(characters: GameCharacter[]): void {
+    // Performance: rebuild character lookup map for O(1) access in update()
+    this.characterById.clear();
+    characters.forEach((c) => this.characterById.set(c.id, c));
+
     // Filter characters by current zone
     // Characters with matching zone or no zone (undefined) appear in current zone
     // Neo (isScout) and CJ go to BagsCity (trending), others to Park (main_city)
@@ -2546,9 +2570,18 @@ export class WorldScene extends Phaser.Scene {
 
     const currentIds = new Set(characters.map((c) => c.id));
 
-    // Remove old characters
+    // Remove old characters and their associated glow sprites
     this.characterSprites.forEach((sprite, id) => {
       if (!currentIds.has(id)) {
+        // Clean up associated glow sprites before destroying
+        const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow"];
+        glowKeys.forEach((key) => {
+          const glow = (sprite as any)[key];
+          if (glow) {
+            this.tweens.killTweensOf(glow); // Stop any running tweens
+            glow.destroy();
+          }
+        });
         sprite.destroy();
         this.characterSprites.delete(id);
         this.characterVariants.delete(id);
@@ -2871,11 +2904,25 @@ export class WorldScene extends Phaser.Scene {
         const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
         container.add(shadow);
 
-        // Use special texture for PokeCenter/TradingGym/Casino, otherwise use level-based building
+        // Use special texture for PokeCenter/TradingGym/Casino, otherwise use level-based building with style
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
         const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
         const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-        const buildingTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}`;
+
+        // Determine building style from mint address (deterministic - same token always gets same style)
+        // Each level has 4 styles (0-3)
+        const getBuildingStyle = (id: string): number => {
+          // Use a simple hash of the building id to get a style index 0-3
+          let hash = 0;
+          for (let i = 0; i < id.length; i++) {
+            hash = ((hash << 5) - hash) + id.charCodeAt(i);
+            hash = hash & hash; // Convert to 32-bit integer
+          }
+          return Math.abs(hash) % 4;
+        };
+
+        const styleIndex = getBuildingStyle(building.id);
+        const buildingTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${styleIndex}`;
         const sprite = this.add.sprite(0, 0, buildingTexture);
         sprite.setOrigin(0.5, 1);
         sprite.setScale(isPokeCenter ? 1.0 : isTradingGym ? 1.0 : isCasino ? 1.0 : buildingScale);
@@ -2994,7 +3041,18 @@ export class WorldScene extends Phaser.Scene {
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
         const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
         const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-        const newTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}`;
+
+        // Use same hash function to get consistent style
+        const getBuildingStyleUpdate = (id: string): number => {
+          let hash = 0;
+          for (let i = 0; i < id.length; i++) {
+            hash = ((hash << 5) - hash) + id.charCodeAt(i);
+            hash = hash & hash;
+          }
+          return Math.abs(hash) % 4;
+        };
+        const updateStyleIndex = getBuildingStyleUpdate(building.id);
+        const newTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${updateStyleIndex}`;
         if (sprite.texture.key !== newTexture) {
           this.tweens.add({
             targets: container,
