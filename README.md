@@ -1,111 +1,101 @@
 # BagsWorld
 
-A self-evolving pixel art game world that visualizes real [Bags.fm](https://bags.fm) on-chain activity on Solana. Launch tokens, watch buildings grow, and earn creator fees!
+A self-evolving pixel art game that visualizes real-time [Bags.fm](https://bags.fm) on-chain activity on Solana.
 
-![BagsWorld](https://img.shields.io/badge/Powered%20by-Bags.fm-green) ![Solana](https://img.shields.io/badge/Built%20on-Solana-purple)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Solana](https://img.shields.io/badge/built%20on-Solana-9945FF)
+![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6)
 
-## What is BagsWorld?
+## Overview
 
-**BagsWorld is a living, gamified visualization of your token launches on Bags.fm.**
+BagsWorld transforms abstract DeFi data into a living, gamified visualization. Token launches become buildings, fee share recipients become citizens, and real on-chain activity drives the health of the world.
 
-It transforms abstract DeFi data into something **visual, engaging, and fun** - making crypto more accessible to everyone.
-
-### Core Concept
-
-| Real World | BagsWorld |
-|------------|-----------|
-| Token launched | Building appears |
+| On-Chain Event | In-Game Effect |
+|----------------|----------------|
+| Token launched | Building appears in world |
 | Market cap grows | Building levels up (1-5) |
 | Fee share recipient | Citizen walking around |
-| High fee claiming activity | World health increases |
+| Fee claiming activity | World health increases |
 | Creator fees earned | Characters celebrate |
-
-### Why It Matters
-
-- **Gamifies DeFi** - Makes crypto trading visual and engaging
-- **Drives discovery** - Users explore the world and find new tokens
-- **Builds community** - Shared world creates shared experience
-- **Transparent** - All data comes from real on-chain activity
-
-## Creator Rewards System
-
-**BagsWorld takes a 1% ecosystem fee that funds creator rewards.**
-
-When someone launches a token through BagsWorld:
-1. They set their creator fee shares (fee recipients earn from all trading volume)
-2. BagsWorld adds a 1% fee share to the ecosystem wallet
-3. Top creators get rewarded from the pool
-
-### How It Works
-
-```
-Ecosystem fees collected → Pool reaches 10 SOL OR 5 days pass → Top 3 creators paid
-```
-
-Distribution split:
-- **1st place**: 50% of pool
-- **2nd place**: 30% of pool
-- **3rd place**: 20% of pool
-
-Backup timer: If threshold isn't reached within 5 days, distribution happens anyway (minimum 10 SOL required).
 
 ## Features
 
-- **Living World**: Health changes based on real Bags.fm fee activity (claims, lifetime fees)
-- **Token Buildings**: Each token becomes a building that evolves with market cap
-- **Diverse Citizens**: Fee earners become pixel art characters with moods
-- **AI Guides**: Toly, Ash, Finn, The Dev, and Neo help users navigate
-- **Real-time Events**: Watch token launches, fee claims, and milestones
-- **Direct Trading**: Click buildings to trade tokens
-- **Two Zones**: Park (main area) and City (trending tokens)
-- **Day/Night Cycle**: Synced to EST timezone
+- **Living World** - Health, weather, and population react to real Bags.fm fee activity
+- **Token Buildings** - Each token becomes a building that evolves with market cap
+- **AI Characters** - Five AI-powered NPCs guide users through the ecosystem
+- **Real-time Events** - Watch token launches, fee claims, and milestones as they happen
+- **Direct Trading** - Click any building to trade the underlying token
+- **Creator Rewards** - 1% ecosystem fee funds rewards for top 3 creators
+- **Day/Night Cycle** - Synced to EST timezone with dynamic weather
+
+## Creator Rewards System
+
+BagsWorld adds a 1% ecosystem fee to tokens launched through the platform. These fees fund creator rewards:
+
+```
+Ecosystem fees collected --> Pool reaches 5 SOL OR 3 days pass --> Top 3 creators paid
+```
+
+**Distribution Split:**
+- 1st place: 50%
+- 2nd place: 30%
+- 3rd place: 20%
 
 ## World Health
 
-World health is calculated from **real Bags.fm data**:
-- **24h Claim Volume** (60% weight) - SOL claimed by creators
-- **Lifetime Fees** (30% weight) - Total fees across all tokens
-- **Active Tokens** (10% weight) - Number of tokens with activity
-- **Baseline Health**: 25% + 3% per building (max 40%) when no activity
+Health is calculated from real Bags.fm data:
 
-| Health | Status | Meaning |
-|--------|--------|---------|
-| 80%+ | THRIVING | High fee activity |
-| 60%+ | HEALTHY | Good activity |
-| 45%+ | GROWING | Some activity |
-| 25%+ | QUIET | Baseline - working but no activity |
-| 10%+ | DORMANT | Low activity |
-| <10% | DYING | Critical |
+| Metric | Weight |
+|--------|--------|
+| 24h Claim Volume | 60% |
+| Lifetime Fees | 30% |
+| Active Tokens | 10% |
+
+**Baseline:** 25% + 3% per building (max 40%) when no activity
+
+| Health Range | Status |
+|--------------|--------|
+| 80%+ | THRIVING |
+| 60-80% | HEALTHY |
+| 45-60% | GROWING |
+| 25-45% | QUIET |
+| 10-25% | DORMANT |
+| <10% | DYING |
 
 ## Building Levels
 
-| Level | Market Cap | Building Style |
-|-------|------------|----------------|
-| 1 | < $100K | Small startup shop |
+| Level | Market Cap | Style |
+|-------|------------|-------|
+| 1 | < $100K | Small shop |
 | 2 | $100K - $500K | Growing office |
 | 3 | $500K - $2M | Corporate HQ |
 | 4 | $2M - $10M | Modern tower |
-| 5 | $10M+ | BagsWorld skyscraper |
+| 5 | $10M+ | Skyscraper |
 
 ## AI Characters
 
-- **Toly** - Solana co-founder, explains blockchain tech
-- **Ash** - Pokemon-themed guide, explains ecosystem mechanics
-- **Finn** - Bags.fm CEO, explains the platform
-- **The Dev** - Trading agent, helps with market analysis
-- **Neo** - Scout agent, watches for new launches
+| Character | Role | Specialty |
+|-----------|------|-----------|
+| Toly | Blockchain Expert | Solana technical knowledge |
+| Ash | Ecosystem Guide | Platform mechanics |
+| Finn | Bags.fm CEO | Platform features |
+| The Dev | Trading Agent | Market analysis |
+| Neo | Scout Agent | Launch detection |
 
 ## Tech Stack
 
-- **Next.js 14** - React framework with App Router
-- **Phaser 3** - 2D game engine for pixel art world
-- **Solana Web3.js** - Blockchain interaction
-- **Bags.fm SDK** - Trading and token data
-- **Claude AI** - Intelligent NPC conversations
-- **Neon Database** - Shared global state (auto-configured on Netlify)
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **Zustand** - State management
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 14 (App Router) |
+| Game Engine | Phaser 3 |
+| Blockchain | Solana Web3.js |
+| Trading | Bags.fm SDK |
+| AI | Claude (Anthropic) |
+| Database | Neon (PostgreSQL) |
+| State | Zustand + TanStack Query |
+| Styling | Tailwind CSS |
+| Language | TypeScript |
 
 ## Getting Started
 
@@ -113,31 +103,30 @@ World health is calculated from **real Bags.fm data**:
 
 - Node.js 18+
 - npm or yarn
+- Bags.fm API key
 
 ### Installation
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/AIEngineerX/BagsWorld.git
 cd BagsWorld
 
 # Install dependencies
 npm install
 
-# Copy environment variables
+# Configure environment
 cp .env.example .env.local
-
-# Edit .env.local with your API keys
 ```
 
 ### Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `BAGS_API_KEY` | Yes | Your Bags.fm API key |
+| `BAGS_API_KEY` | Yes | Bags.fm API key |
 | `SOLANA_RPC_URL` | Yes | Helius RPC URL for transactions |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | No | Client-side RPC (defaults to Ankr) |
-| `ANTHROPIC_API_KEY` | No | Claude API for AI characters |
+| `ANTHROPIC_API_KEY` | No | Enables Claude AI chat |
 
 ### Development
 
@@ -145,25 +134,98 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to explore the world!
+Open [http://localhost:3000](http://localhost:3000)
+
+### Build
+
+```bash
+npm run build
+npm start
+```
 
 ## Deployment
 
 ### Netlify (Recommended)
 
-1. Connect GitHub repo to Netlify
-2. Build command: `npm run build`
-3. Publish directory: `.next`
-4. Add environment variables in dashboard
+1. Connect GitHub repository to Netlify
+2. Configure build settings:
+   - Build command: `npm run build`
+   - Publish directory: `.next`
+3. Add environment variables in dashboard
 
 Neon database auto-configures on Netlify for global token storage.
 
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/           # API routes
+│   │   ├── world-state/
+│   │   ├── character-chat/
+│   │   ├── launch-token/
+│   │   └── ecosystem-stats/
+│   └── page.tsx       # Main page
+├── components/        # React components
+├── game/
+│   └── scenes/        # Phaser scenes
+├── hooks/             # Custom hooks
+└── lib/               # Utilities and types
+```
+
+## API Reference
+
+### Key Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/world-state` | POST | Get enriched world state |
+| `/api/character-chat` | POST | Chat with AI characters |
+| `/api/launch-token` | POST | Create token launch |
+| `/api/ecosystem-stats` | GET | Creator rewards pool stats |
+
+## Security
+
+**Key Security Features:**
+- Server-side API key protection
+- Client-side wallet signing (keys never leave wallet)
+- Input validation on all endpoints
+- No XSS vulnerabilities (React JSX escaping)
+
+See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) for the full security audit report.
+
+## Testing
+
+```bash
+# Run tests
+npm test
+
+# Watch mode
+npm run test:watch
+
+# Coverage report
+npm run test:coverage
+```
+
+See [docs/TESTING.md](docs/TESTING.md) for the full testing guide.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-feature`)
+3. Commit changes (`git commit -am 'Add new feature'`)
+4. Push to branch (`git push origin feature/new-feature`)
+5. Open a Pull Request
+
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
 
-## Credits
+## Links
+
+- [Bags.fm](https://bags.fm) - Trading platform
+- [Documentation](docs/) - Project documentation
+
+---
 
 Built for the Bags.fm ecosystem on Solana
-
-Co-created with [Claude Code](https://claude.ai/code)

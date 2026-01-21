@@ -162,10 +162,15 @@ export default function Home() {
   return (
     <main className="h-screen w-screen overflow-hidden flex flex-col">
       {/* Header - responsive */}
-      <header className="h-14 md:h-16 bg-bags-dark border-b-4 border-bags-green flex items-center justify-between px-2 md:px-4 relative z-50">
+      <header className="h-14 md:h-16 bg-bags-dark border-b-4 border-bags-green flex items-center justify-between px-2 md:px-4 relative z-50 safe-area-top">
         {/* Left side - Logo and health */}
         <div className="flex items-center gap-2 md:gap-4">
-          <h1 className="font-pixel text-sm md:text-lg text-bags-green">BAGSWORLD</h1>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-bags-green/20 border border-bags-green flex items-center justify-center flex-shrink-0">
+              <span className="font-pixel text-bags-green text-[10px] sm:text-xs">B</span>
+            </div>
+            <h1 className="font-pixel text-xs sm:text-sm md:text-lg text-bags-green hidden xs:block">BAGSWORLD</h1>
+          </div>
           <div className="hidden sm:block">
             <WorldHealthBar health={worldState?.health ?? 50} />
           </div>
@@ -177,7 +182,7 @@ export default function Home() {
             href="/docs"
             className="font-pixel text-[10px] text-gray-400 hover:text-bags-green transition-colors"
           >
-            DOCS
+            [DOCS]
           </Link>
           <div className="font-pixel text-xs">
             <span className="text-gray-400">WEATHER: </span>
@@ -193,49 +198,44 @@ export default function Home() {
         </div>
 
         {/* Mobile buttons - essential actions always visible */}
-        <div className="flex lg:hidden items-center gap-2">
+        <div className="flex lg:hidden items-center gap-1.5 sm:gap-2">
           <WalletButton />
           <LaunchButton />
-          {/* Hamburger menu */}
+          {/* Hamburger menu - pixel style */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-bags-green hover:bg-bags-green/20 rounded"
+            className="w-10 h-10 sm:w-11 sm:h-11 bg-bags-dark border border-bags-green text-bags-green hover:bg-bags-green/10 flex items-center justify-center touch-target active:scale-95 transition-all"
             aria-label="Toggle menu"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
+            <span className="font-pixel text-[10px]">{mobileMenuOpen ? "[X]" : "[=]"}</span>
           </button>
         </div>
 
         {/* Mobile dropdown menu */}
         {mobileMenuOpen && (
-          <div className="absolute top-full left-0 right-0 bg-bags-dark border-b-4 border-bags-green p-4 lg:hidden z-50">
+          <div className="absolute top-full left-0 right-0 bg-bags-dark border-b-4 border-bags-green p-3 sm:p-4 lg:hidden z-50 shadow-lg shadow-bags-green/10">
             <div className="flex flex-col gap-3">
               {/* Health bar on mobile */}
-              <div className="sm:hidden pb-2 border-b border-bags-green/30">
+              <div className="sm:hidden pb-3 border-b border-bags-green/30">
+                <p className="font-pixel text-[8px] text-gray-500 mb-2">[WORLD STATUS]</p>
                 <WorldHealthBar health={worldState?.health ?? 50} />
               </div>
 
               {/* Weather */}
-              <div className="font-pixel text-xs pb-2 border-b border-bags-green/30">
-                <span className="text-gray-400">WEATHER: </span>
+              <div className="font-pixel text-xs pb-3 border-b border-bags-green/30 flex items-center justify-between">
+                <span className="text-gray-400">[WEATHER]</span>
                 <span className="text-bags-gold">
                   {worldState?.weather?.toUpperCase() ?? "LOADING"}
                 </span>
               </div>
 
-              {/* Action buttons */}
-              <div className="flex flex-wrap gap-2">
+              {/* Action buttons - grid for better touch targets */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <Link
                   href="/docs"
-                  className="btn-retro font-pixel text-[10px]"
+                  className="btn-retro font-pixel text-[10px] text-center"
                 >
-                  DOCS
+                  [DOCS]
                 </Link>
                 <MusicButton />
                 <PartnerClaimButton />
@@ -248,9 +248,9 @@ export default function Home() {
                   setMobileSidebarOpen(!mobileSidebarOpen);
                   setMobileMenuOpen(false);
                 }}
-                className="btn-retro w-full text-center"
+                className="btn-retro w-full text-center font-pixel text-[10px]"
               >
-                {mobileSidebarOpen ? "HIDE STATS" : "SHOW STATS"}
+                {mobileSidebarOpen ? "[HIDE STATS]" : "[SHOW STATS]"}
               </button>
             </div>
           </div>
@@ -344,13 +344,13 @@ export default function Home() {
       </div>
 
       {/* Footer status bar - simplified on mobile */}
-      <footer className="h-8 bg-bags-dark border-t-4 border-bags-green flex items-center justify-between px-2 md:px-4 font-pixel text-[8px] md:text-[10px]">
+      <footer className="h-8 sm:h-9 bg-bags-dark border-t-4 border-bags-green flex items-center justify-between px-2 md:px-4 font-pixel text-[7px] sm:text-[8px] md:text-[10px] safe-area-bottom">
         <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
-            POP: <span className="text-white">{worldState?.population?.length ?? 0}</span>
+            [POP:<span className="text-white ml-1">{worldState?.population?.length ?? 0}</span>]
           </span>
           <span className="text-gray-400 hidden sm:inline">
-            BUILDINGS: <span className="text-white">{worldState?.buildings?.length ?? 0}</span>
+            [BLDG:<span className="text-white ml-1">{worldState?.buildings?.length ?? 0}</span>]
           </span>
           <div className="hidden md:block">
             <DatabaseStatus />
@@ -363,9 +363,10 @@ export default function Home() {
           <a
             href="https://bags.fm"
             target="_blank"
-            className="text-bags-green hover:underline"
+            rel="noopener noreferrer"
+            className="text-bags-green hover:text-bags-gold transition-colors"
           >
-            BAGS.FM
+            [BAGS.FM]
           </a>
         </div>
       </footer>

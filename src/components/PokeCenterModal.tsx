@@ -77,7 +77,9 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
         {/* Header - Rewards Center style */}
         <div className="bg-gradient-to-r from-red-600 to-red-500 p-3 sm:p-4 flex justify-between items-center">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="text-2xl sm:text-3xl font-pixel">R</div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 rounded flex items-center justify-center">
+              <span className="font-pixel text-lg sm:text-xl text-white">+</span>
+            </div>
             <div>
               <h2 className="font-pixel text-white text-xs sm:text-sm">REWARDS CENTER</h2>
               <p className="font-pixel text-red-200 text-[7px] sm:text-[8px]">Top 3 Creators Get Paid</p>
@@ -85,10 +87,10 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-red-200 text-xl font-bold p-2 touch-target"
+            className="text-white hover:text-red-200 font-pixel text-sm p-2 touch-target"
             aria-label="Close"
           >
-            ✕
+            [X]
           </button>
         </div>
 
@@ -185,22 +187,22 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
 
           {/* Creator Rewards Info */}
           <div className="border border-gray-700 rounded p-3">
-            <h3 className="font-pixel text-white text-xs mb-2">Creator Rewards</h3>
+            <h3 className="font-pixel text-white text-xs mb-2">[*] Creator Rewards</h3>
             <ul className="space-y-1">
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
-                <span>•</span>
+                <span className="text-bags-gold">&gt;</span>
                 <span>1% of all fees go to the ecosystem rewards pool</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
-                <span>•</span>
+                <span className="text-bags-gold">&gt;</span>
                 <span>Top 3 creators by fee contribution get rewarded</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
-                <span>•</span>
+                <span className="text-bags-gold">&gt;</span>
                 <span>Distribution: 50% / 30% / 20% split</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
-                <span>•</span>
+                <span className="text-bags-gold">&gt;</span>
                 <span>Triggers at 10 SOL or every 5 days (min 10 SOL)</span>
               </li>
             </ul>

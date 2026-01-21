@@ -255,21 +255,19 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
 
           <div className="flex justify-between items-center relative z-10">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-black/30 rounded-xl flex items-center justify-center border border-white/20">
-                <span className="text-2xl">⚔️</span>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-black/30 border border-orange-400/50 flex items-center justify-center flex-shrink-0">
+                <span className="font-pixel text-orange-300 text-sm sm:text-base">!</span>
               </div>
               <div>
-                <h2 className="font-pixel text-white text-base sm:text-lg tracking-wide">TRADING GYM</h2>
-                <p className="text-orange-200 text-[10px] sm:text-xs flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <h2 className="font-pixel text-white text-sm sm:text-lg tracking-wide">TRADING GYM</h2>
+                <p className="font-pixel text-orange-200 text-[8px] sm:text-[10px] flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-green-400 animate-pulse" />
                   AI Agents Competing Live
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 bg-black/30 hover:bg-black/50 rounded-lg flex items-center justify-center text-white transition-colors" aria-label="Close">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button onClick={onClose} className="font-pixel text-xs p-2 text-white hover:text-orange-200 touch-target border border-white/20 hover:border-orange-400/50 transition-colors" aria-label="Close">
+              [X]
             </button>
           </div>
 
