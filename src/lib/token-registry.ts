@@ -24,6 +24,8 @@ export interface LaunchedToken {
   isGlobal?: boolean; // From Neon
   isFeatured?: boolean;
   isVerified?: boolean;
+  // Admin controls
+  levelOverride?: number | null; // Admin override for building level (1-5)
 }
 
 const STORAGE_KEY = "bagsworld_tokens";
@@ -146,6 +148,7 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
       isGlobal: true,
       isFeatured: t.is_featured,
       isVerified: t.is_verified,
+      levelOverride: t.level_override,
     }));
 
     // Update cache

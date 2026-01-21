@@ -1,0 +1,29 @@
+{
+  "name": "bagsworld-agents",
+  "version": "1.0.0",
+  "description": "Autonomous AI agents for BagsWorld powered by ElizaOS",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "elizaos start",
+    "dev": "elizaos start --dev",
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "test": "elizaos test"
+  },
+  "dependencies": {
+    "@elizaos/core": "^1.4.0",
+    "@elizaos/plugin-bootstrap": "^1.4.0",
+    "@elizaos/plugin-sql": "^1.4.0",
+    "@elizaos/plugin-anthropic": "^1.4.0",
+    "@elizaos/plugin-openai": "^1.4.0",
+    "@elizaos/plugin-discord": "^1.4.0",
+    "@elizaos/plugin-twitter": "^1.4.0",
+    "@elizaos/plugin-telegram": "^1.4.0",
+    "@elizaos/plugin-solana": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "bun-types": "^1.0.0"
+  }
+}

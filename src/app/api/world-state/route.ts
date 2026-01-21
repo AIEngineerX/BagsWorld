@@ -265,6 +265,8 @@ interface RegisteredToken {
     username: string;
     bps: number;
   }>;
+  // Admin controls
+  levelOverride?: number | null;
 }
 
 // Build FeeEarner from SDK creator data
@@ -400,6 +402,7 @@ async function enrichTokenWithSDK(
     holders: 0,
     lifetimeFees,
     creator: token.creator,
+    levelOverride: token.levelOverride, // Admin override for building level
   };
 
   return { tokenInfo, creators, claimEvents, claimEvents24h };

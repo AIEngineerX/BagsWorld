@@ -413,6 +413,11 @@ export function transformTokenToBuilding(
   // Assign zones: Trading Gym and Casino go to BagsCity, all other buildings go to Park
   const zone = (isTradingGym || isCasino) ? "trending" as const : "main_city" as const;
 
+  // Use level override if set by admin, otherwise calculate from market cap
+  const level = token.levelOverride && token.levelOverride >= 1 && token.levelOverride <= 5
+    ? token.levelOverride
+    : calculateBuildingLevel(token.marketCap);
+
   return {
     id: token.mint,
     tokenMint: token.mint,
@@ -420,7 +425,7 @@ export function transformTokenToBuilding(
     symbol: token.symbol,
     x: position.x,
     y: position.y,
-    level: calculateBuildingLevel(token.marketCap),
+    level,
     health: isTreasuryBuilding || isStarterToken ? 100 : newHealth, // Permanent buildings always healthy
     glowing: token.change24h > 50,
     ownerId: token.creator,

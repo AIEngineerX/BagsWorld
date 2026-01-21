@@ -57,6 +57,7 @@ export interface TokenInfo {
   holders: number;
   lifetimeFees: number;
   creator: string;
+  levelOverride?: number | null; // Admin override for building level (1-5)
 }
 
 export interface ClaimablePosition {

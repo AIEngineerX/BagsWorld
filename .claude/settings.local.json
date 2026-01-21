@@ -23,7 +23,8 @@
       "Bash(python:*)",
       "Bash(git stash show:*)",
       "Bash(npx netlify deploy:*)",
-      "Bash(npx netlify:*)"
+      "Bash(npx netlify:*)",
+      "Bash(npm install:*)"
     ]
   }
 }
