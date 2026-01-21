@@ -416,6 +416,18 @@ const TREASURY_BUILDING: RegisteredToken = {
   createdAt: Date.now() - 86400000 * 365, // 1 year ago (always been here)
 };
 
+// BagsWorld HQ - Floating headquarters in the sky above the park
+// Uses REAL token data from the official BagsWorld token
+const BAGSWORLD_HQ: RegisteredToken = {
+  mint: "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
+  name: "BagsWorld HQ",
+  symbol: "BAGSHQ",
+  description: "The floating headquarters of BagsWorld! This majestic sky fortress pulls live data from the official BagsWorld token.",
+  imageUrl: "/assets/buildings/bagshq.png",
+  creator: "BagsWorld",
+  createdAt: Date.now() - 86400000 * 365, // Origin building
+};
+
 // Starter buildings when no user tokens are registered
 const STARTER_BUILDINGS: RegisteredToken[] = [
   {
@@ -514,7 +526,7 @@ export async function POST(request: NextRequest) {
 
     // ALWAYS include Treasury building and PokeCenter (permanent landmarks)
     // Then add any user tokens
-    const permanentBuildings = [TREASURY_BUILDING, ...STARTER_BUILDINGS];
+    const permanentBuildings = [TREASURY_BUILDING, BAGSWORLD_HQ, ...STARTER_BUILDINGS];
     const tokensToProcess = [...permanentBuildings, ...registeredTokens];
 
 
