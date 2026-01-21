@@ -434,7 +434,9 @@ class BagsApiClient {
       providerUsername: string;
       bps: number; // basis points (100 = 1%)
     }>,
-    payer: string
+    payer: string,
+    partnerWallet?: string,
+    partnerConfigPda?: string
   ): Promise<{
     configId: string;
     totalBps: number;
@@ -514,12 +516,20 @@ class BagsApiClient {
       basisPointsArray.push(bps);
     }
 
-    const requestBody = {
+    const requestBody: Record<string, unknown> = {
       baseMint: mint,
       payer,
       claimersArray,
       basisPointsArray,
     };
+
+    // Include partner config if provided - this links to the correct Meteora bonding curve
+    if (partnerWallet) {
+      requestBody.partner = partnerWallet;
+    }
+    if (partnerConfigPda) {
+      requestBody.partnerConfig = partnerConfigPda;
+    }
 
     // Make raw fetch
     const url = `${this.baseUrl}/fee-share/config`;
