@@ -306,7 +306,8 @@ export class BootScene extends Phaser.Scene {
       const buildingGraphics = this.make.graphics({ x: 0, y: 0 });
       const bHeight = config.height;
       const bWidth = config.width;
-      const canvasHeight = Math.round(140 * s);
+      // Canvas height must accommodate level 5 spire (130 + 55 units above building)
+      const canvasHeight = Math.round(190 * s);
       const canvasWidth = Math.round(55 * s);
 
       // Drop shadow (darker, more defined)
