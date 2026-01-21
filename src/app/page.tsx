@@ -35,6 +35,7 @@ import { AgentFeed, AgentToast } from "@/components/AgentFeed";
 import { TradingGymModal } from "@/components/TradingGymModal";
 import { CreatorRewardsModal } from "@/components/CreatorRewardsModal";
 import { CasinoModal } from "@/components/CasinoModal";
+import { LauncherHub } from "@/components/LauncherHub";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import { initDialogueEventBridge, cleanupDialogueEventBridge, onWorldStateUpdate, initBrowserEventListener } from "@/lib/dialogue-event-bridge";
 import { initCharacterBehavior, cleanupCharacterBehavior, updateWorldStateForBehavior } from "@/lib/character-behavior";
@@ -69,6 +70,7 @@ export default function Home() {
   const [showTradingGymModal, setShowTradingGymModal] = useState(false);
   const [showCreatorRewardsModal, setShowCreatorRewardsModal] = useState(false);
   const [showCasinoModal, setShowCasinoModal] = useState(false);
+  const [showLauncherHub, setShowLauncherHub] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -359,6 +361,12 @@ export default function Home() {
           <div className="hidden lg:block">
             <EcosystemStats />
           </div>
+          <button
+            onClick={() => setShowLauncherHub(true)}
+            className="text-gray-400 hover:text-bags-green transition-colors"
+          >
+            [LAUNCHERS]
+          </button>
         </div>
         <div className="text-gray-400">
           <a
@@ -423,6 +431,11 @@ export default function Home() {
 
       {/* Agent Toast Notifications - shows real-time agent activity */}
       <AgentToast />
+
+      {/* Launcher Hub - shows wallets of people who launched on BagsWorld */}
+      {showLauncherHub && (
+        <LauncherHub onClose={() => setShowLauncherHub(false)} />
+      )}
     </main>
   );
 }
