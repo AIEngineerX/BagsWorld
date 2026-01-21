@@ -1,19 +1,65 @@
 // Partner Fee Claim API
 // Generates transactions to claim accumulated partner fees from Bags.fm
-// SECURITY: Only the configured partner wallet can claim fees
+// SECURITY: Requires cryptographic signature verification to prove wallet ownership
 //
 // Actions:
 // - "create-config": One-time setup to register as a partner (creates on-chain config)
 // - "claim": Generate transactions to claim accumulated fees
 
 import { NextRequest, NextResponse } from "next/server";
+import { PublicKey } from "@solana/web3.js";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { verifySessionToken } from "@/lib/wallet-auth";
 
 const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
 
 // Partner wallet - same as ecosystem wallet for simplicity
 const PARTNER_WALLET = ECOSYSTEM_CONFIG.ecosystem.wallet;
+
+/**
+ * Validate that a string is a valid Solana public key
+ */
+function isValidSolanaAddress(address: string): boolean {
+  try {
+    new PublicKey(address);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify partner access via session token
+ * Requires: Authorization: Bearer <sessionToken>
+ * Returns the wallet address if valid and matches partner, null otherwise
+ */
+function verifyPartner(request: NextRequest): string | null {
+  const authHeader = request.headers.get("authorization");
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const sessionToken = authHeader.replace("Bearer ", "");
+
+  if (!sessionToken) {
+    return null;
+  }
+
+  const wallet = verifySessionToken(sessionToken);
+
+  if (!wallet) {
+    return null;
+  }
+
+  // Verify wallet is the partner wallet
+  if (wallet !== PARTNER_WALLET) {
+    return null;
+  }
+
+  return wallet;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,23 +71,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { walletAddress, action = "claim" } = body;
+    // SECURITY: Verify wallet ownership via session token
+    const walletAddress = verifyPartner(request);
 
-    // SECURITY: Verify the requesting wallet matches the partner wallet
     if (!walletAddress) {
       return NextResponse.json(
-        { error: "Wallet address required" },
-        { status: 400 }
+        { error: "Unauthorized - valid session token required for partner wallet" },
+        { status: 401 }
       );
     }
 
-    if (walletAddress !== PARTNER_WALLET) {
-      return NextResponse.json(
-        { error: "Unauthorized - only the partner wallet can claim fees" },
-        { status: 403 }
-      );
-    }
+    const body = await request.json();
+    const { action = "claim" } = body;
 
     // Handle different actions
     if (action === "create-config") {
