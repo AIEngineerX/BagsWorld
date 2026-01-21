@@ -3042,10 +3042,11 @@ export class WorldScene extends Phaser.Scene {
 
         // Label with background - HQ gets gold styling
         const isHQBuilding = building.isFloating || building.symbol === "BAGSHQ";
-        const labelBg = this.add.rectangle(0, isHQBuilding ? 20 : 12, isHQBuilding ? 70 : 50, isHQBuilding ? 16 : 14, 0x000000, 0.8);
+        const labelBg = this.add.rectangle(0, isHQBuilding ? 20 : 12, isHQBuilding ? 85 : 50, isHQBuilding ? 16 : 14, 0x000000, 0.8);
         labelBg.setStrokeStyle(isHQBuilding ? 2 : 1, isHQBuilding ? 0xffd700 : 0x4ade80);
         container.add(labelBg);
-        const label = this.add.text(0, isHQBuilding ? 20 : 12, building.symbol, {
+        const labelText = isHQBuilding ? "$BagsWorld" : building.symbol;
+        const label = this.add.text(0, isHQBuilding ? 20 : 12, labelText, {
           fontFamily: "monospace",
           fontSize: isHQBuilding ? "11px" : "9px",
           color: isHQBuilding ? "#ffd700" : "#4ade80",
