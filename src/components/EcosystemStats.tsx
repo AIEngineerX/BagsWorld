@@ -9,6 +9,12 @@ interface CreatorRanking {
   rank: number;
 }
 
+interface TriggerInfo {
+  byThreshold: number | null; // SOL needed to hit threshold
+  byTimer: number; // ms until timer expires
+  estimatedTrigger: "threshold" | "timer" | "unknown";
+}
+
 interface EcosystemStatsData {
   // Reward pool stats
   pendingPoolSol: number;
@@ -38,6 +44,9 @@ interface EcosystemStatsData {
       rank: number;
     }>;
   }>;
+
+  // Trigger info
+  triggerInfo?: TriggerInfo;
 }
 
 export function EcosystemStats() {
@@ -165,17 +174,49 @@ export function EcosystemStats() {
             </div>
           </div>
 
-          <div className="space-y-1 font-pixel text-[10px]">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Next Distribution:</span>
-              <span className={`font-mono ${countdown === "READY!" ? "text-bags-green animate-pulse" : "text-white"}`}>
-                {countdown}
-              </span>
+          {/* Dual Trigger Display */}
+          <div className="space-y-2 font-pixel text-[10px]">
+            {/* By Threshold */}
+            <div className={`p-2 rounded ${stats.triggerInfo?.estimatedTrigger === "threshold" ? "bg-bags-green/20 border border-bags-green/50" : "bg-gray-800/50"}`}>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">
+                  By Threshold:
+                  {stats.triggerInfo?.estimatedTrigger === "threshold" && (
+                    <span className="ml-1 text-bags-green">(READY!)</span>
+                  )}
+                </span>
+                <span className="text-white font-mono">
+                  {stats.pendingPoolSol.toFixed(2)} / {stats.thresholdSol} SOL
+                </span>
+              </div>
+              {stats.triggerInfo && stats.triggerInfo.byThreshold !== null && stats.triggerInfo.byThreshold > 0 && (
+                <div className="text-[8px] text-gray-500 mt-1">
+                  Need {stats.triggerInfo.byThreshold.toFixed(2)} more SOL
+                </div>
+              )}
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Min Required:</span>
-              <span className="text-white">{stats.minimumDistributionSol} SOL</span>
+
+            {/* By Timer */}
+            <div className={`p-2 rounded ${stats.triggerInfo?.estimatedTrigger === "timer" ? "bg-bags-green/20 border border-bags-green/50" : "bg-gray-800/50"}`}>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">
+                  By Timer:
+                  {countdown === "READY!" && (
+                    <span className="ml-1 text-bags-green">(READY!)</span>
+                  )}
+                </span>
+                <span className={`font-mono ${countdown === "READY!" ? "text-bags-green animate-pulse" : "text-white"}`}>
+                  {countdown}
+                </span>
+              </div>
+              <div className="text-[8px] text-gray-500 mt-1">
+                Min {stats.minimumDistributionSol} SOL required for timer trigger
+              </div>
             </div>
+          </div>
+
+          {/* Stats */}
+          <div className="space-y-1 font-pixel text-[10px] mt-3 pt-2 border-t border-gray-700">
             <div className="flex justify-between">
               <span className="text-gray-400">Total Distributed:</span>
               <span className="text-bags-gold">{stats.totalDistributed.toFixed(4)} SOL</span>
