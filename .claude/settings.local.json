@@ -41,7 +41,8 @@
       "Bash(findstr:*)",
       "Bash(powershell -Command:*)",
       "Bash(npm run dev:*)",
-      "Bash(timeout /t 15 /nobreak)"
+      "Bash(timeout /t 15 /nobreak)",
+      "Bash(git rm:*)"
     ]
   }
 }
