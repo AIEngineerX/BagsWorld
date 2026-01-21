@@ -12,7 +12,7 @@ const CASINO_GAMES = [
     id: "highlow",
     name: "HIGH / LOW",
     description: "Predict if the next card will be higher or lower",
-    icon: "🃏",
+    icon: "H/L",
     color: "from-red-600 to-red-800",
     borderColor: "border-red-500/30",
     glowColor: "shadow-red-500/20",
@@ -22,7 +22,7 @@ const CASINO_GAMES = [
     id: "coinflip",
     name: "COIN FLIP",
     description: "Double or nothing - 50/50 odds",
-    icon: "🪙",
+    icon: "2x",
     color: "from-yellow-600 to-amber-700",
     borderColor: "border-yellow-500/30",
     glowColor: "shadow-yellow-500/20",
@@ -32,7 +32,7 @@ const CASINO_GAMES = [
     id: "dice",
     name: "DICE ROLL",
     description: "Roll the dice, beat the house",
-    icon: "🎲",
+    icon: "D6",
     color: "from-green-600 to-emerald-700",
     borderColor: "border-green-500/30",
     glowColor: "shadow-green-500/20",
@@ -42,7 +42,7 @@ const CASINO_GAMES = [
     id: "slots",
     name: "SLOT MACHINE",
     description: "Match symbols to win big",
-    icon: "🎰",
+    icon: "777",
     color: "from-purple-600 to-violet-700",
     borderColor: "border-purple-500/30",
     glowColor: "shadow-purple-500/20",
@@ -52,7 +52,7 @@ const CASINO_GAMES = [
     id: "raffle",
     name: "WEEKLY RAFFLE",
     description: "Free entry, winner takes pot",
-    icon: "🎟️",
+    icon: "TKT",
     color: "from-blue-600 to-indigo-700",
     borderColor: "border-blue-500/30",
     glowColor: "shadow-blue-500/20",
@@ -62,7 +62,7 @@ const CASINO_GAMES = [
     id: "prediction",
     name: "PRICE PREDICT",
     description: "Predict token price movements",
-    icon: "📈",
+    icon: "UP",
     color: "from-cyan-600 to-teal-700",
     borderColor: "border-cyan-500/30",
     glowColor: "shadow-cyan-500/20",
@@ -87,8 +87,8 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
         <div className="relative bg-gradient-to-b from-purple-900/40 to-transparent p-6 border-b border-purple-500/20">
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl flex items-center justify-center text-3xl shadow-lg shadow-purple-500/30">
-                🎰
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+                <span className="font-pixel text-xl text-white">777</span>
               </div>
               <div>
                 <h2 className="font-pixel text-xl text-white tracking-wider">BAGSWORLD CASINO</h2>
@@ -142,7 +142,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                 )}
 
                 {/* Icon */}
-                <div className="text-4xl mb-3 filter drop-shadow-lg">
+                <div className="font-pixel text-2xl text-white/90 mb-3 filter drop-shadow-lg">
                   {game.icon}
                 </div>
 
@@ -163,7 +163,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
           {/* Coming Soon Info */}
           <div className="mt-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
             <div className="flex items-start gap-3">
-              <div className="text-2xl">🚧</div>
+              <div className="font-pixel text-lg text-yellow-500">[!]</div>
               <div>
                 <h4 className="text-purple-400 font-medium text-sm mb-1">Casino Under Construction</h4>
                 <p className="text-gray-400 text-xs leading-relaxed">
@@ -177,17 +177,17 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
           {/* Features Preview */}
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div className="bg-white/5 rounded-lg p-3 text-center border border-white/5">
-              <div className="text-lg mb-1">⚡</div>
+              <div className="font-pixel text-sm text-yellow-400 mb-1">[&gt;]</div>
               <p className="text-white text-[10px] font-medium">Instant Payouts</p>
               <p className="text-gray-500 text-[9px]">Direct to wallet</p>
             </div>
             <div className="bg-white/5 rounded-lg p-3 text-center border border-white/5">
-              <div className="text-lg mb-1">🔒</div>
+              <div className="font-pixel text-sm text-green-400 mb-1">[OK]</div>
               <p className="text-white text-[10px] font-medium">Provably Fair</p>
               <p className="text-gray-500 text-[9px]">On-chain verified</p>
             </div>
             <div className="bg-white/5 rounded-lg p-3 text-center border border-white/5">
-              <div className="text-lg mb-1">🏆</div>
+              <div className="font-pixel text-sm text-purple-400 mb-1">[#1]</div>
               <p className="text-white text-[10px] font-medium">Leaderboards</p>
               <p className="text-gray-500 text-[9px]">Compete for prizes</p>
             </div>
@@ -201,12 +201,15 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               Funded by <span className="text-purple-400">BagsWorld ecosystem fees</span>
             </p>
             <a
-              href="https://x.com/finnbags"
+              href="https://x.com/BagsWorldApp"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-purple-400 hover:text-purple-300 text-xs transition-colors"
+              className="text-purple-400 hover:text-purple-300 text-xs transition-colors flex items-center gap-1"
             >
-              Follow for updates →
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+              Follow for updates
             </a>
           </div>
         </div>
