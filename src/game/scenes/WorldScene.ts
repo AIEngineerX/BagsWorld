@@ -2959,7 +2959,7 @@ export class WorldScene extends Phaser.Scene {
         const buildingScale = buildingScales[building.level - 1] || 1.0;
 
         // Shadow scales with building (floating HQ has no direct shadow)
-        const isBagsHQ = building.isFloating || building.symbol === "BAGSHQ";
+        const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
         if (!isBagsHQ) {
           const shadowWidth = 20 + building.level * 6;
           const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
@@ -2970,7 +2970,7 @@ export class WorldScene extends Phaser.Scene {
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
         const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
         const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-        const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSHQ";
+        const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
 
         // Determine building style from mint address (deterministic - same token always gets same style)
         // Each level has 4 styles (0-3)
@@ -3041,7 +3041,7 @@ export class WorldScene extends Phaser.Scene {
         }
 
         // Label with background - HQ gets gold styling
-        const isHQBuilding = building.isFloating || building.symbol === "BAGSHQ";
+        const isHQBuilding = building.isFloating || building.symbol === "BAGSWORLD";
         const labelBg = this.add.rectangle(0, isHQBuilding ? 20 : 12, isHQBuilding ? 85 : 50, isHQBuilding ? 16 : 14, 0x000000, 0.8);
         labelBg.setStrokeStyle(isHQBuilding ? 2 : 1, isHQBuilding ? 0xffd700 : 0x4ade80);
         container.add(labelBg);
@@ -3078,7 +3078,7 @@ export class WorldScene extends Phaser.Scene {
           const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
           const isStarterBuilding = building.id.startsWith("Starter");
           const isTreasuryBuilding = building.id.startsWith("Treasury");
-          const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSHQ";
+          const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
 
           if (isPokeCenter) {
             // PokeCenter opens the auto-claim hub modal
@@ -3100,7 +3100,7 @@ export class WorldScene extends Phaser.Scene {
             window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
               detail: {
                 mint: building.tokenMint || building.id,
-                symbol: building.symbol || "BAGSHQ",
+                symbol: building.symbol || "BAGSWORLD",
                 name: building.name || "BagsWorld HQ",
                 tokenUrl: building.tokenUrl || `https://bags.fm/token/${building.tokenMint || building.id}`,
               }

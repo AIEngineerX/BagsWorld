@@ -421,7 +421,7 @@ const TREASURY_BUILDING: RegisteredToken = {
 const BAGSWORLD_HQ: RegisteredToken = {
   mint: "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
   name: "BagsWorld HQ",
-  symbol: "BAGSHQ",
+  symbol: "BAGSWORLD",
   description: "The floating headquarters of BagsWorld! This majestic sky fortress pulls live data from the official BagsWorld token.",
   imageUrl: "/assets/buildings/bagshq.png",
   creator: "BagsWorld",

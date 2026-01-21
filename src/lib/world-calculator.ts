@@ -373,7 +373,7 @@ export function transformTokenToBuilding(
   const isTreasuryHub = token.mint.startsWith("Treasury");
   // BagsWorld HQ - the floating headquarters in the sky (uses real token data)
   const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
-  const isBagsWorldHQ = token.mint === BAGSHQ_MINT || token.symbol === "BAGSHQ";
+  const isBagsWorldHQ = token.mint === BAGSHQ_MINT || token.symbol === "BAGSWORLD";
 
   // Always clear HQ from position cache to ensure it uses sky position
   if (isBagsWorldHQ) {
