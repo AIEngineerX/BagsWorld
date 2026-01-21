@@ -180,7 +180,7 @@ async function handleRewardsStart(): Promise<NextResponse> {
     );
   }
 
-  const initialized = initCreatorRewardsAgent();
+  const initialized = await initCreatorRewardsAgent();
   if (!initialized) {
     return NextResponse.json(
       { error: "Failed to initialize creator rewards agent" },
@@ -188,7 +188,7 @@ async function handleRewardsStart(): Promise<NextResponse> {
     );
   }
 
-  const started = startCreatorRewardsAgent();
+  const started = await startCreatorRewardsAgent();
   if (!started) {
     return NextResponse.json(
       { error: "Failed to start creator rewards agent" },
@@ -230,9 +230,9 @@ async function handleRewardsTrigger(): Promise<NextResponse> {
   });
 }
 
-function handleRewardsConfig(
+async function handleRewardsConfig(
   config?: Partial<CreatorRewardsConfig>
-): NextResponse {
+): Promise<NextResponse> {
   if (!config) {
     // Return current config
     return NextResponse.json({
@@ -242,7 +242,7 @@ function handleRewardsConfig(
   }
 
   // Update config
-  const newConfig = updateCreatorRewardsConfig(config);
+  const newConfig = await updateCreatorRewardsConfig(config);
 
   return NextResponse.json({
     success: true,

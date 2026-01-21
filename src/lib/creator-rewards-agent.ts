@@ -20,6 +20,11 @@ import {
 } from "@solana/web3.js";
 import { ECOSYSTEM_CONFIG } from "./config";
 import type { ClaimablePosition } from "./types";
+import {
+  getRewardsState,
+  saveRewardsState,
+  isNeonConfigured,
+} from "./neon";
 
 // Agent configuration
 export interface CreatorRewardsConfig {
@@ -130,8 +135,54 @@ function getBagsApiClient(): BagsApiClient | null {
   }
 }
 
+// Load persisted state from database
+async function loadPersistedState(): Promise<void> {
+  if (!isNeonConfigured()) {
+    console.log("[Creator Rewards] No database configured, using in-memory state only");
+    return;
+  }
+
+  try {
+    const persistedState = await getRewardsState();
+    if (persistedState) {
+      console.log("[Creator Rewards] Loading persisted state from database...");
+      agentState.cycleStartTime = persistedState.cycle_start_time;
+      agentState.totalDistributed = persistedState.total_distributed;
+      agentState.distributionCount = persistedState.distribution_count;
+      agentState.lastDistribution = persistedState.last_distribution;
+      agentState.recentDistributions = persistedState.recent_distributions;
+      console.log("[Creator Rewards] Persisted state loaded:", {
+        cycleStartTime: new Date(agentState.cycleStartTime).toISOString(),
+        totalDistributed: `${agentState.totalDistributed.toFixed(4)} SOL`,
+        distributionCount: agentState.distributionCount,
+        daysSinceCycleStart: ((Date.now() - agentState.cycleStartTime) / (24 * 60 * 60 * 1000)).toFixed(2),
+      });
+    }
+  } catch (error) {
+    console.error("[Creator Rewards] Error loading persisted state:", error);
+  }
+}
+
+// Save current state to database
+async function persistState(): Promise<void> {
+  if (!isNeonConfigured()) return;
+
+  try {
+    await saveRewardsState({
+      cycle_start_time: agentState.cycleStartTime,
+      total_distributed: agentState.totalDistributed,
+      distribution_count: agentState.distributionCount,
+      last_distribution: agentState.lastDistribution,
+      recent_distributions: agentState.recentDistributions,
+    });
+    console.log("[Creator Rewards] State persisted to database");
+  } catch (error) {
+    console.error("[Creator Rewards] Error persisting state:", error);
+  }
+}
+
 // Initialize the agent
-export function initCreatorRewardsAgent(config?: Partial<CreatorRewardsConfig>): boolean {
+export async function initCreatorRewardsAgent(config?: Partial<CreatorRewardsConfig>): Promise<boolean> {
   if (!isAgentWalletConfigured()) {
     console.warn("[Creator Rewards] Wallet not configured");
     return false;
@@ -143,6 +194,9 @@ export function initCreatorRewardsAgent(config?: Partial<CreatorRewardsConfig>):
   }
 
   agentConfig = { ...DEFAULT_CONFIG, ...config };
+
+  // Load persisted state from database
+  await loadPersistedState();
 
   console.log("[Creator Rewards] Initialized:", {
     wallet: getAgentPublicKey(),
@@ -157,9 +211,9 @@ export function initCreatorRewardsAgent(config?: Partial<CreatorRewardsConfig>):
 }
 
 // Start the agent
-export function startCreatorRewardsAgent(): boolean {
+export async function startCreatorRewardsAgent(): Promise<boolean> {
   if (!getBagsApiClient()) {
-    const initialized = initCreatorRewardsAgent();
+    const initialized = await initCreatorRewardsAgent();
     if (!initialized) return false;
   }
 
@@ -169,7 +223,18 @@ export function startCreatorRewardsAgent(): boolean {
   }
 
   agentState.isRunning = true;
-  agentState.cycleStartTime = Date.now();
+
+  // Only reset cycle if not loaded from persistence (cycle_start_time is still default)
+  // Check if cycle start time is within the last few seconds (meaning it was just set to Date.now())
+  const timeSinceStart = Date.now() - agentState.cycleStartTime;
+  if (timeSinceStart > 60000) {
+    // More than 1 minute ago, this was loaded from persistence - keep it
+    console.log("[Creator Rewards] Using persisted cycle start time");
+  } else if (agentState.distributionCount === 0 && agentState.totalDistributed === 0) {
+    // Fresh start with no history - this is a new cycle
+    agentState.cycleStartTime = Date.now();
+    await persistState();
+  }
 
   // Run immediately, then on interval
   runRewardsCheck();
@@ -450,6 +515,9 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
       agentState.recentDistributions = agentState.recentDistributions.slice(0, 10);
     }
 
+    // Persist state to database
+    await persistState();
+
     result.success = true;
     console.log(
       `[Creator Rewards] Distribution complete: ${result.totalDistributed.toFixed(4)} SOL ` +
@@ -480,7 +548,7 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
 // Manual trigger
 export async function triggerDistribution(): Promise<DistributionResult> {
   if (!getBagsApiClient()) {
-    initCreatorRewardsAgent();
+    await initCreatorRewardsAgent();
   }
   return runRewardsCheck();
 }
@@ -494,13 +562,13 @@ export function getCreatorRewardsState(): CreatorRewardsState & { config: Creato
 }
 
 // Update configuration
-export function updateCreatorRewardsConfig(config: Partial<CreatorRewardsConfig>): CreatorRewardsConfig {
+export async function updateCreatorRewardsConfig(config: Partial<CreatorRewardsConfig>): Promise<CreatorRewardsConfig> {
   agentConfig = { ...agentConfig, ...config };
 
   // Restart interval if running and interval changed
   if (agentState.isRunning && config.checkIntervalMs) {
     stopCreatorRewardsAgent();
-    startCreatorRewardsAgent();
+    await startCreatorRewardsAgent();
   }
 
   return agentConfig;
