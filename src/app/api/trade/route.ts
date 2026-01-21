@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import type { BagsApiClient } from "@/lib/bags-api";
 import type { TradeQuote } from "@/lib/types";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 // SOL mint address
 const SOL_MINT = "So11111111111111111111111111111111111111112";
@@ -21,6 +22,16 @@ interface TradeRequestBody {
 }
 
 export async function POST(request: Request) {
+  // Rate limit: 30 requests per minute (standard)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`trade:${clientIP}`, RATE_LIMITS.standard);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many trade requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { status: 429 }
+    );
+  }
+
   try {
     const body: TradeRequestBody = await request.json();
     const { action, data } = body;

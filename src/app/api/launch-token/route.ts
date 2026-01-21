@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import type { BagsApiClient } from "@/lib/bags-api";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 interface LaunchRequestBody {
   action: "create-info" | "configure-fees" | "create-launch-tx" | "lookup-wallet";
@@ -36,6 +37,16 @@ interface LaunchRequestBody {
 }
 
 export async function POST(request: Request) {
+  // Rate limit: 5 requests per minute (strict - prevents launch spam)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`launch:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many launch requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { status: 429 }
+    );
+  }
+
   try {
     const body: LaunchRequestBody = await request.json();
     const { action, data } = body;
