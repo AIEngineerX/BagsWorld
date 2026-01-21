@@ -54,7 +54,7 @@ export const ECOSYSTEM_CONFIG = {
     // Must use supported social provider (twitter, kick, github) - NOT raw wallet addresses
     // The Twitter account must be linked to the ecosystem wallet at bags.fm/settings
     provider: "twitter" as const,
-    providerUsername: "BagsWorldApp",
+    providerUsername: "DaddyGhost",
   },
 
   // -------------------------------------------------------------------------
