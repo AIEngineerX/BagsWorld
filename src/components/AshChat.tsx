@@ -45,7 +45,7 @@ const ECOSYSTEM_TOPICS = [
   {
     title: "Reward Triggers",
     icon: "T",
-    content: "Rewards distribute when pool hits 10 SOL OR 5 days pass (min 2 SOL). This ensures regular payouts while accumulating meaningful amounts for creators."
+    content: "Rewards distribute when pool hits 10 SOL OR 5 days pass (min 10 SOL). This ensures regular payouts while accumulating meaningful amounts for creators."
   },
   {
     title: "The Flywheel",

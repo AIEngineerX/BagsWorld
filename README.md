@@ -39,7 +39,7 @@ When someone launches a token through BagsWorld:
 ### How It Works
 
 ```
-Ecosystem fees collected → Pool reaches 10 SOL threshold → Top 3 creators paid
+Ecosystem fees collected → Pool reaches 10 SOL OR 5 days pass → Top 3 creators paid
 ```
 
 Distribution split:
@@ -47,7 +47,7 @@ Distribution split:
 - **2nd place**: 30% of pool
 - **3rd place**: 20% of pool
 
-Backup timer: If threshold isn't reached within 5 days, distribution happens anyway.
+Backup timer: If threshold isn't reached within 5 days, distribution happens anyway (minimum 10 SOL required).
 
 ## Features
 
@@ -66,6 +66,7 @@ World health is calculated from **real Bags.fm data**:
 - **24h Claim Volume** (60% weight) - SOL claimed by creators
 - **Lifetime Fees** (30% weight) - Total fees across all tokens
 - **Active Tokens** (10% weight) - Number of tokens with activity
+- **Baseline Health**: 25% + 3% per building (max 40%) when no activity
 
 | Health | Status | Meaning |
 |--------|--------|---------|
