@@ -260,7 +260,142 @@ export async function updateTokenStats(
   }
 }
 
+// ============================================
+// Creator Rewards State Persistence
+// ============================================
+
+export interface RewardsStateRecord {
+  id?: number;
+  cycle_start_time: number;
+  total_distributed: number;
+  distribution_count: number;
+  last_distribution: number;
+  recent_distributions: Array<{
+    timestamp: number;
+    totalDistributed: number;
+    recipients: Array<{
+      wallet: string;
+      tokenSymbol: string;
+      amount: number;
+      rank: number;
+    }>;
+  }>;
+  updated_at?: string;
+}
+
+// Initialize rewards state table
+export async function initializeRewardsTable(): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS rewards_state (
+        id SERIAL PRIMARY KEY,
+        cycle_start_time BIGINT NOT NULL,
+        total_distributed DECIMAL DEFAULT 0,
+        distribution_count INTEGER DEFAULT 0,
+        last_distribution BIGINT DEFAULT 0,
+        recent_distributions JSONB DEFAULT '[]',
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Ensure there's at least one row
+    const existing = await sql`SELECT id FROM rewards_state LIMIT 1`;
+    if ((existing as unknown[]).length === 0) {
+      await sql`
+        INSERT INTO rewards_state (cycle_start_time, total_distributed, distribution_count, last_distribution, recent_distributions)
+        VALUES (${Date.now()}, 0, 0, 0, '[]')
+      `;
+    }
+
+    console.log("Rewards state table initialized");
+    return true;
+  } catch (error) {
+    console.error("Error initializing rewards table:", error);
+    return false;
+  }
+}
+
+// Get persisted rewards state
+export async function getRewardsState(): Promise<RewardsStateRecord | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    // Initialize table if needed
+    await initializeRewardsTable();
+
+    const result = await sql`
+      SELECT * FROM rewards_state ORDER BY id DESC LIMIT 1
+    `;
+
+    if ((result as unknown[]).length === 0) return null;
+
+    const row = (result as Array<Record<string, unknown>>)[0];
+    return {
+      id: row.id as number,
+      cycle_start_time: safeParseInt(row.cycle_start_time as string, Date.now()),
+      total_distributed: safeParseFloat(row.total_distributed as string, 0),
+      distribution_count: safeParseInt(row.distribution_count as string, 0),
+      last_distribution: safeParseInt(row.last_distribution as string, 0),
+      recent_distributions: (row.recent_distributions as RewardsStateRecord["recent_distributions"]) || [],
+      updated_at: row.updated_at as string,
+    };
+  } catch (error) {
+    console.error("Error getting rewards state:", error);
+    return null;
+  }
+}
+
+// Save rewards state
+export async function saveRewardsState(state: Omit<RewardsStateRecord, "id" | "updated_at">): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await sql`
+      UPDATE rewards_state SET
+        cycle_start_time = ${state.cycle_start_time},
+        total_distributed = ${state.total_distributed},
+        distribution_count = ${state.distribution_count},
+        last_distribution = ${state.last_distribution},
+        recent_distributions = ${JSON.stringify(state.recent_distributions)},
+        updated_at = NOW()
+      WHERE id = (SELECT id FROM rewards_state ORDER BY id DESC LIMIT 1)
+    `;
+
+    return true;
+  } catch (error) {
+    console.error("Error saving rewards state:", error);
+    return false;
+  }
+}
+
+// Reset cycle (called after distribution)
+export async function resetRewardsCycle(): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await sql`
+      UPDATE rewards_state SET
+        cycle_start_time = ${Date.now()},
+        updated_at = NOW()
+      WHERE id = (SELECT id FROM rewards_state ORDER BY id DESC LIMIT 1)
+    `;
+
+    return true;
+  } catch (error) {
+    console.error("Error resetting rewards cycle:", error);
+    return false;
+  }
+}
+
+// ============================================
 // Casino Functions
+// ============================================
 
 interface CasinoRaffle {
   id: number;

@@ -1,14 +1,44 @@
 import { NextResponse } from "next/server";
-import { getCreatorRewardsState } from "@/lib/creator-rewards-agent";
+import {
+  getCreatorRewardsState,
+  initCreatorRewardsAgent,
+  startCreatorRewardsAgent,
+} from "@/lib/creator-rewards-agent";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { isAgentWalletConfigured } from "@/lib/agent-wallet";
+import { isServerBagsApiConfigured } from "@/lib/bags-api-server";
+
+// Track if we've attempted to auto-start
+let autoStartAttempted = false;
 
 /**
  * Public endpoint for creator rewards statistics
  * No authentication required - this is transparency data
+ * Auto-initializes the rewards agent if configured
  */
 export async function GET() {
   try {
-    const rewardsState = getCreatorRewardsState();
+    // Get initial state
+    let rewardsState = getCreatorRewardsState();
+
+    // Auto-start the rewards agent if not already running and properly configured
+    if (!rewardsState.isRunning && !autoStartAttempted) {
+      autoStartAttempted = true;
+
+      // Only attempt auto-start if wallet and API are configured
+      if (isAgentWalletConfigured() && isServerBagsApiConfigured()) {
+        console.log("[Ecosystem Stats] Auto-initializing creator rewards agent...");
+        const initialized = await initCreatorRewardsAgent();
+        if (initialized) {
+          const started = await startCreatorRewardsAgent();
+          if (started) {
+            console.log("[Ecosystem Stats] Creator rewards agent auto-started successfully");
+            // Re-fetch state after starting
+            rewardsState = getCreatorRewardsState();
+          }
+        }
+      }
+    }
 
     return NextResponse.json({
       // Pool status

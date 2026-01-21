@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface CreatorRanking {
   wallet: string;
@@ -43,7 +43,31 @@ interface EcosystemStatsData {
 export function EcosystemStats() {
   const [stats, setStats] = useState<EcosystemStatsData | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [countdown, setCountdown] = useState<string>("--:--:--");
 
+  // Calculate countdown from stats
+  const calculateCountdown = useCallback((cycleStartTime: number, backupTimerDays: number) => {
+    const backupTimerMs = backupTimerDays * 24 * 60 * 60 * 1000;
+    const elapsed = Date.now() - cycleStartTime;
+    const remaining = backupTimerMs - elapsed;
+
+    if (remaining <= 0) return "READY!";
+
+    const days = Math.floor(remaining / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+    const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
+
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+    return `${minutes}m ${seconds}s`;
+  }, []);
+
+  // Fetch stats from API
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -58,23 +82,24 @@ export function EcosystemStats() {
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 60 * 1000); // Update every minute
+    const interval = setInterval(fetchStats, 30 * 1000); // Update every 30 seconds for fresher data
     return () => clearInterval(interval);
   }, []);
 
-  const formatTimeRemaining = (cycleStartTime: number, backupTimerDays: number) => {
-    const backupTimerMs = backupTimerDays * 24 * 60 * 60 * 1000;
-    const elapsed = Date.now() - cycleStartTime;
-    const remaining = backupTimerMs - elapsed;
+  // Live countdown ticker - updates every second
+  useEffect(() => {
+    if (!stats) return;
 
-    if (remaining <= 0) return "Ready";
+    // Initial calculation
+    setCountdown(calculateCountdown(stats.cycleStartTime, stats.backupTimerDays));
 
-    const days = Math.floor(remaining / (24 * 60 * 60 * 1000));
-    const hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    // Update every second
+    const ticker = setInterval(() => {
+      setCountdown(calculateCountdown(stats.cycleStartTime, stats.backupTimerDays));
+    }, 1000);
 
-    if (days > 0) return `${days}d ${hours}h`;
-    return `${hours}h`;
-  };
+    return () => clearInterval(ticker);
+  }, [stats, calculateCountdown]);
 
   const formatTimeAgo = (timestamp: number) => {
     if (!timestamp) return "Never";
@@ -142,11 +167,14 @@ export function EcosystemStats() {
 
           <div className="space-y-1 font-pixel text-[10px]">
             <div className="flex justify-between">
-              <span className="text-gray-400">Timer:</span>
-              <span className="text-white">
-                {formatTimeRemaining(stats.cycleStartTime, stats.backupTimerDays)}
-                {" "}(min {stats.minimumDistributionSol} SOL)
+              <span className="text-gray-400">Next Distribution:</span>
+              <span className={`font-mono ${countdown === "READY!" ? "text-bags-green animate-pulse" : "text-white"}`}>
+                {countdown}
               </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Min Required:</span>
+              <span className="text-white">{stats.minimumDistributionSol} SOL</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Total Distributed:</span>
