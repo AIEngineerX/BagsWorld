@@ -42,7 +42,11 @@
       "Bash(powershell -Command:*)",
       "Bash(npm run dev:*)",
       "Bash(timeout /t 15 /nobreak)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(npx next lint)",
+      "Bash(start http://localhost:3001)",
+      "Bash(start:*)",
+      "Bash(netstat:*)"
     ]
   }
 }
