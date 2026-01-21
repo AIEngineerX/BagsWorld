@@ -23,6 +23,12 @@ let defaultCycleStart: number | null = null;
  */
 export async function GET() {
   try {
+    // Debug: Log configuration status
+    const walletConfigured = isAgentWalletConfigured();
+    const apiConfigured = isServerBagsApiConfigured();
+    const dbConfigured = isNeonConfigured();
+    console.log(`[Ecosystem Stats] Config check - Wallet: ${walletConfigured}, API: ${apiConfigured}, DB: ${dbConfigured}`);
+
     // Get initial state from agent
     let rewardsState = getCreatorRewardsState();
 
@@ -54,6 +60,8 @@ export async function GET() {
     const distributionCount = persistedState?.distribution_count || rewardsState.distributionCount;
     const lastDistribution = persistedState?.last_distribution || rewardsState.lastDistribution;
     const recentDistributions = persistedState?.recent_distributions || rewardsState.recentDistributions;
+
+    console.log(`[Ecosystem Stats] State - Running: ${rewardsState.isRunning}, Pool: ${rewardsState.pendingPoolSol}, CycleStart: ${new Date(cycleStartTime).toISOString()}`);
 
     // Auto-start the rewards agent if not already running and properly configured
     if (!rewardsState.isRunning && !autoStartAttempted) {
