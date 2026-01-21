@@ -9,6 +9,7 @@ import {
   type GlobalToken
 } from "@/lib/neon";
 import { verifySessionToken } from "@/lib/wallet-auth";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Validate that a string is a valid Solana public key
@@ -58,6 +59,16 @@ function verifyAdmin(request: NextRequest): string | null {
 
 // GET - Fetch admin dashboard data
 export async function GET(request: NextRequest) {
+  // Rate limit: 30 requests per minute (standard)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`admin:${clientIP}`, RATE_LIMITS.standard);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { status: 429 }
+    );
+  }
+
   const adminWallet = verifyAdmin(request);
   if (!adminWallet) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -83,6 +94,16 @@ export async function GET(request: NextRequest) {
 
 // POST - Admin actions (update token, delete token, etc.)
 export async function POST(request: NextRequest) {
+  // Rate limit: 30 requests per minute (standard)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`admin:${clientIP}`, RATE_LIMITS.standard);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { status: 429 }
+    );
+  }
+
   const adminWallet = verifyAdmin(request);
   if (!adminWallet) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

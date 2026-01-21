@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import type { BagsApiClient } from "@/lib/bags-api";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 interface ClaimRequestBody {
   action: "get-positions" | "generate-claim-tx" | "lookup-by-x";
@@ -10,6 +11,16 @@ interface ClaimRequestBody {
 }
 
 export async function POST(request: Request) {
+  // Rate limit: 30 requests per minute (standard)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`claim-fees:${clientIP}`, RATE_LIMITS.standard);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { status: 429 }
+    );
+  }
+
   try {
     const body: ClaimRequestBody = await request.json();
     const { action, wallet, positions, xUsername } = body;

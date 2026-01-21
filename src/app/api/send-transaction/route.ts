@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Server-side transaction sending endpoint
@@ -44,6 +45,16 @@ async function rpcCall(method: string, params: unknown[]) {
 }
 
 export async function POST(request: Request) {
+  // Rate limit: 5 requests per minute (strict - prevents transaction spam)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`send-tx:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many transaction requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { status: 429 }
+    );
+  }
+
   try {
     // Validate RPC URL is configured
     if (!SOLANA_RPC_URL) {

@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { verifySessionToken } from "@/lib/wallet-auth";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
@@ -62,6 +63,16 @@ function verifyPartner(request: NextRequest): string | null {
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 5 requests per minute (strict - financial operations)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`partner-claim:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { status: 429 }
+    );
+  }
+
   try {
     // Verify API key is configured
     if (!BAGS_API_KEY) {

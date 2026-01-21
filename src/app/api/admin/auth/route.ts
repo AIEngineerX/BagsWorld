@@ -17,6 +17,7 @@ import {
   invalidateSession,
   verifySessionToken,
 } from "@/lib/wallet-auth";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Validate that a string is a valid Solana public key
@@ -35,6 +36,16 @@ function isValidSolanaAddress(address: string): boolean {
  * Request a challenge to sign for authentication
  */
 export async function GET(request: NextRequest) {
+  // Rate limit: 5 requests per minute (strict)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`admin-auth:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { status: 429 }
+    );
+  }
+
   const wallet = request.nextUrl.searchParams.get("wallet");
 
   if (!wallet) {
@@ -76,6 +87,16 @@ export async function GET(request: NextRequest) {
  * Body: { wallet, signature, message }
  */
 export async function POST(request: NextRequest) {
+  // Rate limit: 5 requests per minute (strict)
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`admin-auth:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { wallet, signature, message } = body;
