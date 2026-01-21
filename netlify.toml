@@ -32,16 +32,29 @@
   for = "/*"
   [headers.values]
     # Content Security Policy
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.solana.com https://*.bags.fm https://*.supabase.co https://rpc.ankr.com https://*.helius-rpc.com wss://*.solana.com; font-src 'self' data:;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.solana.com https://*.bags.fm https://*.supabase.co https://*.neon.tech https://rpc.ankr.com https://*.helius-rpc.com wss://*.solana.com; font-src 'self' data:;"
     # Strict Transport Security
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
 # ============================================================================
 # REQUIRED: Set these in Netlify Dashboard > Site Settings > Environment Variables
 # ============================================================================
-# BAGS_API_KEY          - Your Bags.fm API key (get from Bags.fm)
-# NEXT_PUBLIC_SOLANA_RPC_URL - Solana RPC (defaults to Ankr if not set; recommended: Helius)
+# BAGS_API_KEY               - Your Bags.fm API key (get from Bags.fm)
+# SOLANA_RPC_URL             - Server-side Helius RPC for transactions
 #
-# OPTIONAL:
-# ANTHROPIC_API_KEY     - Enables AI-powered chat (Claude)
-# BAGS_API_URL          - Override API URL (default: https://public-api-v2.bags.fm/api/v1)
+# ============================================================================
+# NEON DATABASE (for global token storage)
+# ============================================================================
+# Option 1 (Recommended): Enable Neon integration in Netlify Dashboard
+#   - Go to Site Settings > Integrations > Neon
+#   - NETLIFY_DATABASE_URL is auto-configured
+#
+# Option 2: Manual connection string
+#   - Set DATABASE_URL to your Neon connection string
+#
+# ============================================================================
+# OPTIONAL
+# ============================================================================
+# NEXT_PUBLIC_SOLANA_RPC_URL - Client-side RPC (defaults to Ankr)
+# ANTHROPIC_API_KEY          - Enables AI-powered chat (Claude)
+# BAGS_API_URL               - Override API URL (default: https://public-api-v2.bags.fm/api/v1)

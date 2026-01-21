@@ -35,9 +35,21 @@ const GLOBAL_CACHE_DURATION = 60 * 1000; // 1 minute cache
 // Cache for global tokens (to avoid excessive API calls)
 let globalTokensCache: { tokens: LaunchedToken[]; timestamp: number } | null = null;
 
-// Featured Bags.fm tokens - hardcoded fallback if database is down
+// Featured Bags.fm tokens - seed data for initial world population
+// These tokens will appear as buildings and their fee share recipients become citizens
 export const FEATURED_BAGS_TOKENS: LaunchedToken[] = [
-  // These are backup featured tokens - the main list comes from Supabase
+  {
+    mint: "CyXBDcVQuHyEDbG661Jf3iHqxyd9wNHhE2SiQdNrBAGS",
+    name: "Bags Example",
+    symbol: "BAGS",
+    description: "Example token from Bags.fm documentation",
+    creator: "BagsExample111111111111111111111111111111111",
+    createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000, // 7 days ago
+    isFeatured: true,
+    feeShares: [
+      { provider: "twitter", username: "bagsfm", bps: 5000 },
+    ],
+  },
 ];
 
 // Get all launched tokens from localStorage
