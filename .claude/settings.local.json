@@ -40,7 +40,8 @@
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
       "Bash(powershell -Command:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(timeout /t 15 /nobreak)"
     ]
   }
 }
