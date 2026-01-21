@@ -558,6 +558,9 @@ export class WorldScene extends Phaser.Scene {
     trashCan.setDepth(3);
     this.trendingElements.push(trashCan);
 
+    // Construction signs - BagsCity is under construction
+    this.createConstructionSigns();
+
     // Add moving traffic
     this.createMovingTraffic();
   }
@@ -569,6 +572,62 @@ export class WorldScene extends Phaser.Scene {
       stripe.setDepth(2);
       this.trendingElements.push(stripe);
     }
+  }
+
+  private createConstructionSigns(): void {
+    // Two construction sign positions - left and right sides of BagsCity
+    const signPositions = [
+      { x: Math.round(120 * SCALE), y: Math.round(380 * SCALE) },
+      { x: Math.round(680 * SCALE), y: Math.round(380 * SCALE) },
+    ];
+
+    signPositions.forEach((pos) => {
+      // Sign post (wooden pole)
+      const post = this.add.rectangle(pos.x, pos.y + Math.round(40 * SCALE), Math.round(6 * SCALE), Math.round(80 * SCALE), 0x8b4513);
+      post.setDepth(5);
+      this.trendingElements.push(post);
+
+      // Sign background (orange/yellow construction color)
+      const signBg = this.add.rectangle(pos.x, pos.y, Math.round(100 * SCALE), Math.round(40 * SCALE), 0xf59e0b);
+      signBg.setDepth(6);
+      signBg.setStrokeStyle(Math.round(2 * SCALE), 0x000000);
+      this.trendingElements.push(signBg);
+
+      // Sign text
+      const signText = this.add.text(pos.x, pos.y - Math.round(5 * SCALE), "UNDER", {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(10 * SCALE)}px`,
+        color: "#000000",
+        fontStyle: "bold",
+      });
+      signText.setOrigin(0.5, 0.5);
+      signText.setDepth(7);
+      this.trendingElements.push(signText);
+
+      const signText2 = this.add.text(pos.x, pos.y + Math.round(8 * SCALE), "CONSTRUCTION", {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(8 * SCALE)}px`,
+        color: "#000000",
+        fontStyle: "bold",
+      });
+      signText2.setOrigin(0.5, 0.5);
+      signText2.setDepth(7);
+      this.trendingElements.push(signText2);
+
+      // Construction barriers (orange/white striped)
+      const barrierY = pos.y + Math.round(70 * SCALE);
+      for (let i = -1; i <= 1; i++) {
+        const barrier = this.add.rectangle(
+          pos.x + i * Math.round(30 * SCALE),
+          barrierY,
+          Math.round(25 * SCALE),
+          Math.round(12 * SCALE),
+          i % 2 === 0 ? 0xf97316 : 0xffffff
+        );
+        barrier.setDepth(5);
+        this.trendingElements.push(barrier);
+      }
+    });
   }
 
   private createMovingTraffic(): void {
