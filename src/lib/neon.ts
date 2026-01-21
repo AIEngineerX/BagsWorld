@@ -355,16 +355,31 @@ export async function saveRewardsState(state: Omit<RewardsStateRecord, "id" | "u
   if (!sql) return false;
 
   try {
-    await sql`
-      UPDATE rewards_state SET
-        cycle_start_time = ${state.cycle_start_time},
-        total_distributed = ${state.total_distributed},
-        distribution_count = ${state.distribution_count},
-        last_distribution = ${state.last_distribution},
-        recent_distributions = ${JSON.stringify(state.recent_distributions)},
-        updated_at = NOW()
-      WHERE id = (SELECT id FROM rewards_state ORDER BY id DESC LIMIT 1)
-    `;
+    // Ensure table exists
+    await initializeRewardsTable();
+
+    // Check if a row exists
+    const existing = await sql`SELECT id FROM rewards_state LIMIT 1`;
+
+    if ((existing as unknown[]).length === 0) {
+      // Insert new row
+      await sql`
+        INSERT INTO rewards_state (cycle_start_time, total_distributed, distribution_count, last_distribution, recent_distributions)
+        VALUES (${state.cycle_start_time}, ${state.total_distributed}, ${state.distribution_count}, ${state.last_distribution}, ${JSON.stringify(state.recent_distributions)})
+      `;
+    } else {
+      // Update existing row
+      await sql`
+        UPDATE rewards_state SET
+          cycle_start_time = ${state.cycle_start_time},
+          total_distributed = ${state.total_distributed},
+          distribution_count = ${state.distribution_count},
+          last_distribution = ${state.last_distribution},
+          recent_distributions = ${JSON.stringify(state.recent_distributions)},
+          updated_at = NOW()
+        WHERE id = (SELECT id FROM rewards_state ORDER BY id DESC LIMIT 1)
+      `;
+    }
 
     return true;
   } catch (error) {
