@@ -7,7 +7,15 @@
 // 1. CREATOR REWARDS: Top 3 creators get paid directly from ecosystem fees
 // 2. VISIBILITY: Your token becomes a building in a living world
 // 3. SUCCESS REWARDS SUCCESS: More volume = more fees = higher ranking = bigger rewards
-// 4. LOW FEE: Only 1% ecosystem fee funds the creator rewards pool
+// 4. LOW FEE: Only 1% ecosystem fee funds rewards, casino, and future features
+// =============================================================================
+//
+// ECOSYSTEM FEE ALLOCATION:
+// - Creator Rewards Pool: Top 3 creators by fee generation
+// - Casino Rewards: Wheel spins, raffles, and jackpots (coming soon)
+// - Future Features: New game mechanics and community rewards
+//
+// Follow @DaddyGhost on X for updates
 // =============================================================================
 
 export const ECOSYSTEM_CONFIG = {

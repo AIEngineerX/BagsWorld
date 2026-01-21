@@ -84,7 +84,7 @@ export const docsContent: DocSection[] = [
         title: "Fee Configuration",
         content: [
           "On Bags.fm, every trade generates fees that are split among fee claimers. These splits are PERMANENT and locked at launch.",
-          "The 1% BagsWorld ecosystem fee funds the creator rewards pool. The remaining 99% goes to accounts you specify (X, GitHub, or Kick usernames).",
+          "The 1% BagsWorld ecosystem fee funds creator rewards, casino prizes, and future features. The remaining 99% goes to accounts you specify (X, GitHub, or Kick usernames).",
         ],
         infoBox: {
           title: "Important",
@@ -92,13 +92,13 @@ export const docsContent: DocSection[] = [
             "Fee shares CANNOT be changed after launch",
             "Fee claimers must link wallet at bags.fm/settings",
             "Total fee shares must equal exactly 100%",
-            "1% ecosystem fee supports creator rewards",
+            "1% ecosystem fee supports the entire BagsWorld ecosystem",
           ],
         },
         table: {
           headers: ["Fee Type", "Percentage", "Purpose"],
           rows: [
-            ["Ecosystem Fee", "1%", "Creator rewards pool"],
+            ["Ecosystem Fee", "1%", "Creator rewards, casino, future features"],
             ["Creator Share", "Up to 99%", "Your earnings from trades"],
           ],
         },
@@ -239,7 +239,7 @@ export const docsContent: DocSection[] = [
         title: "Creator Rewards",
         content: [
           "BagsWorld rewards the top 3 creators by fee volume. The rewards come from the 1% ecosystem fee collected from all BagsWorld launches.",
-          "Rewards are distributed automatically when the pool reaches 10 SOL OR after 5 days (minimum 10 SOL required). Distribution is 50/30/20 split to top 3 creators.",
+          "Rewards are distributed automatically when the pool reaches 5 SOL OR after 3 days (minimum 2 SOL required). Distribution is 50/30/20 split to top 3 creators.",
         ],
         table: {
           headers: ["Rank", "Reward Share", "Distribution"],
@@ -255,6 +255,22 @@ export const docsContent: DocSection[] = [
             "Launch token through BagsWorld",
             "Have active trading volume",
             "Rank in top 3 by fees generated",
+          ],
+        },
+      },
+      {
+        id: "ecosystem-allocation",
+        title: "Ecosystem Fee Allocation",
+        content: [
+          "The 1% ecosystem fee collected from BagsWorld token launches funds multiple features to grow the ecosystem and reward participants.",
+          "Follow @DaddyGhost on X for updates on new features and reward distributions.",
+        ],
+        table: {
+          headers: ["Allocation", "Status", "Description"],
+          rows: [
+            ["Creator Rewards", "Live", "Top 3 creators split the rewards pool"],
+            ["Casino", "Coming Soon", "Wheel spins, raffles, and jackpots"],
+            ["Future Features", "Planned", "New game mechanics and community rewards"],
           ],
         },
       },
