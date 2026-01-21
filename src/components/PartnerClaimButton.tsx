@@ -6,9 +6,45 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 
-// Helper to deserialize transaction - tries both formats
-function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
-  const buffer = Buffer.from(base64, "base64");
+// Helper to deserialize transaction - handles various formats from Bags API
+function deserializeTransaction(encoded: string | Record<string, unknown>): VersionedTransaction | Transaction {
+  // Handle object responses - extract transaction string
+  let txString: string;
+  if (typeof encoded === "object" && encoded !== null) {
+    const possibleFields = ["transaction", "tx", "data", "rawTransaction"];
+    for (const field of possibleFields) {
+      if (typeof (encoded as Record<string, unknown>)[field] === "string") {
+        txString = (encoded as Record<string, unknown>)[field] as string;
+        break;
+      }
+    }
+    if (!txString!) {
+      throw new Error(`Could not find transaction string in response`);
+    }
+  } else if (typeof encoded === "string") {
+    txString = encoded;
+  } else {
+    throw new Error(`Invalid transaction: expected string or object`);
+  }
+
+  // Clean and decode
+  txString = txString.trim();
+  const isBase64 = txString.includes("+") || txString.includes("/") || txString.endsWith("=");
+
+  let buffer: Uint8Array;
+  if (isBase64) {
+    buffer = Buffer.from(txString, "base64");
+  } else {
+    // Try base58
+    const bs58 = require("bs58");
+    try {
+      buffer = bs58.decode(txString);
+    } catch {
+      buffer = Buffer.from(txString, "base64");
+    }
+  }
+
+  // Try both transaction formats
   try {
     return VersionedTransaction.deserialize(buffer);
   } catch {

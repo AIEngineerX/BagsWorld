@@ -7,55 +7,108 @@ import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 
 // Helper to deserialize transaction - handles both base58 and base64 encoding
-function deserializeTransaction(encoded: string, context: string = "transaction"): VersionedTransaction | Transaction {
+function deserializeTransaction(encoded: string | Record<string, unknown>, context: string = "transaction"): VersionedTransaction | Transaction {
   console.log(`Deserializing ${context}:`, {
     inputType: typeof encoded,
-    inputLength: encoded?.length,
-    preview: encoded?.substring(0, 50) + "...",
+    inputLength: typeof encoded === "string" ? encoded?.length : JSON.stringify(encoded).length,
+    preview: typeof encoded === "string" ? encoded?.substring(0, 100) + "..." : JSON.stringify(encoded).substring(0, 100),
   });
 
-  if (!encoded || typeof encoded !== "string") {
-    throw new Error(`Invalid ${context}: expected string, got ${typeof encoded}`);
+  // Handle object responses - extract transaction string
+  let txString: string;
+  if (typeof encoded === "object" && encoded !== null) {
+    // Check various possible field names
+    const possibleFields = ["transaction", "tx", "data", "rawTransaction", "serializedTransaction"];
+    for (const field of possibleFields) {
+      if (typeof encoded[field] === "string") {
+        console.log(`${context}: Found transaction in field "${field}"`);
+        txString = encoded[field] as string;
+        break;
+      }
+    }
+    if (!txString!) {
+      console.error(`${context}: Could not find transaction string in object:`, Object.keys(encoded));
+      throw new Error(`Invalid ${context}: received object but could not find transaction string. Keys: ${Object.keys(encoded).join(", ")}`);
+    }
+  } else if (typeof encoded === "string") {
+    txString = encoded;
+  } else {
+    throw new Error(`Invalid ${context}: expected string or object, got ${typeof encoded}`);
   }
 
-  if (encoded.length < 100) {
-    throw new Error(`Invalid ${context}: too short (${encoded.length} chars), likely empty or error response`);
+  if (!txString || txString.length < 50) {
+    throw new Error(`Invalid ${context}: too short (${txString?.length || 0} chars), likely empty or error response`);
   }
+
+  // Clean the string - remove any whitespace or newlines
+  txString = txString.trim().replace(/\s/g, "");
 
   // Detect encoding: base58 uses alphanumeric chars (no + or /), base64 may have + / =
-  const isLikelyBase64 = encoded.includes("+") || encoded.includes("/") || encoded.endsWith("=");
+  const isLikelyBase64 = txString.includes("+") || txString.includes("/") || txString.endsWith("=");
 
   let buffer: Uint8Array;
 
+  // Try both encodings
+  const errors: string[] = [];
+
   if (isLikelyBase64) {
-    console.log(`${context}: Detected base64 encoding`);
-    buffer = Buffer.from(encoded, "base64");
-  } else {
-    console.log(`${context}: Detected base58 encoding`);
+    console.log(`${context}: Trying base64 encoding first`);
     try {
-      buffer = bs58.decode(encoded);
+      buffer = Buffer.from(txString, "base64");
+      if (buffer.length < 50) {
+        throw new Error("Buffer too small after base64 decode");
+      }
     } catch (e) {
-      console.log(`${context}: base58 decode failed, trying base64:`, e);
-      buffer = Buffer.from(encoded, "base64");
+      errors.push(`base64: ${e}`);
+      console.log(`${context}: base64 failed, trying base58`);
+      try {
+        buffer = bs58.decode(txString);
+      } catch (e2) {
+        errors.push(`base58: ${e2}`);
+        throw new Error(`${context}: All decode attempts failed. ${errors.join("; ")}`);
+      }
+    }
+  } else {
+    console.log(`${context}: Trying base58 encoding first`);
+    try {
+      buffer = bs58.decode(txString);
+      if (buffer.length < 50) {
+        throw new Error("Buffer too small after base58 decode");
+      }
+    } catch (e) {
+      errors.push(`base58: ${e}`);
+      console.log(`${context}: base58 failed, trying base64`);
+      try {
+        buffer = Buffer.from(txString, "base64");
+      } catch (e2) {
+        errors.push(`base64: ${e2}`);
+        throw new Error(`${context}: All decode attempts failed. ${errors.join("; ")}`);
+      }
     }
   }
 
-  console.log(`${context} buffer size:`, buffer.length, "bytes");
+  console.log(`${context} buffer size:`, buffer!.length, "bytes");
 
   // Try VersionedTransaction first (more common with modern APIs)
   try {
-    return VersionedTransaction.deserialize(buffer);
+    const tx = VersionedTransaction.deserialize(buffer!);
+    console.log(`${context}: Successfully deserialized as VersionedTransaction`);
+    return tx;
   } catch (versionedError) {
+    console.log(`${context}: VersionedTransaction failed, trying legacy:`, versionedError);
     // Fall back to legacy Transaction
     try {
-      return Transaction.from(buffer);
+      const tx = Transaction.from(buffer!);
+      console.log(`${context}: Successfully deserialized as legacy Transaction`);
+      return tx;
     } catch (legacyError) {
       console.error(`${context} deserialization failed:`, {
         versionedError,
         legacyError,
-        bufferSize: buffer.length,
+        bufferSize: buffer!.length,
+        firstBytes: Array.from(buffer!.slice(0, 20)),
       });
-      throw new Error(`Failed to deserialize ${context}: buffer size ${buffer.length} bytes. This may indicate the Bags API returned an invalid transaction.`);
+      throw new Error(`Failed to deserialize ${context}: buffer size ${buffer!.length} bytes. First bytes: [${Array.from(buffer!.slice(0, 10)).join(",")}]. This may indicate the Bags API returned an invalid or corrupted transaction.`);
     }
   }
 }
