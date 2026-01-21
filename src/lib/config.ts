@@ -35,9 +35,9 @@ export const ECOSYSTEM_CONFIG = {
     // - Distributes when threshold hit OR backup timer expires
     // - Direct SOL payments to creator wallets
     rewards: {
-      thresholdSol: 10.0,                       // Distribute when 10+ SOL accumulated
-      backupTimerDays: 5,                       // Or distribute after 5 days
-      minimumDistributionSol: 2.0,             // Minimum SOL required for timer-based distribution
+      thresholdSol: 5.0,                        // Distribute when 5+ SOL accumulated
+      backupTimerDays: 3,                       // Or distribute after 3 days
+      minimumDistributionSol: 2.0,              // Minimum SOL required for timer-based distribution
       checkIntervalMs: 15 * 60 * 1000,          // Check every 15 minutes
       reservePercentage: 10,                    // 10% reserved for gas/operations
       topCreatorsCount: 3,                      // Reward top 3 creators
@@ -121,7 +121,7 @@ export const ECOSYSTEM_CONFIG = {
     },
 
     // Refresh intervals
-    refreshInterval: 30_000,  // 30 seconds
+    refreshInterval: 60_000,  // 60 seconds (optimized for smoother rendering)
     weatherCacheDuration: 300_000,  // 5 minutes
   },
 
@@ -170,9 +170,9 @@ export const ECOSYSTEM_CONFIG = {
     ],
     forEcosystem: [
       {
-        title: "10 SOL Threshold",
-        description: "Fees accumulate until 10 SOL or 5 days pass",
-        icon: "10",
+        title: "5 SOL Threshold",
+        description: "Fees accumulate until 5 SOL or 3 days pass",
+        icon: "5",
       },
       {
         title: "Top 3 Creators",
@@ -242,7 +242,7 @@ export const ECOSYSTEM_CONFIG = {
     id: "BagsWorldRewardsHub",
     name: "Creator Rewards Hub",
     symbol: "REWARDS",
-    description: "Ecosystem fees reward top 3 creators. 10 SOL threshold or 5 days. 50/30/20 split. Click to verify on Solscan.",
+    description: "Ecosystem fees reward top 3 creators. 5 SOL threshold or 3 days. 50/30/20 split. Click to verify on Solscan.",
     level: 5, // Always max level - it's the centerpiece
     getSolscanUrl: () => `https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`,
   },
