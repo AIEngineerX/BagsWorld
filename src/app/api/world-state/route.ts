@@ -73,11 +73,9 @@ async function getBagsSDK(): Promise<any | null> {
         connection,
         "processed"
       );
-      console.log("Bags SDK initialized successfully");
       sdkInitFailed = false;
       return sdkInstance;
-    } catch (error) {
-      console.error("Failed to initialize Bags SDK:", error);
+    } catch {
       sdkInitFailed = true;
       sdkFailedAt = Date.now();
       return null;
@@ -138,7 +136,6 @@ async function fetchTokenPrices(mints: string[]): Promise<Map<string, PriceData>
   }
 
   try {
-    console.log(`Fetching DexScreener prices for ${realMints.length} tokens...`);
     const pairs = await getTokensByMints(realMints);
 
     // Build price map - use the most liquid pair for each token
@@ -172,13 +169,10 @@ async function fetchTokenPrices(mints: string[]): Promise<Map<string, PriceData>
       });
     }
 
-    console.log(`DexScreener: Got prices for ${priceMap.size}/${realMints.length} tokens`);
-
     // Update cache
     priceCache = { data: priceMap, timestamp: now };
     return priceMap;
-  } catch (error) {
-    console.error("Error fetching DexScreener prices:", error);
+  } catch {
     // Return cached data if available, even if stale
     return priceCache?.data || new Map();
   }
@@ -221,8 +215,7 @@ async function fetchDCWeather(): Promise<WorldState["weather"]> {
     cachedWeather = { weather, fetchedAt: Date.now() };
 
     return weather;
-  } catch (error) {
-    console.error("Error fetching DC weather:", error);
+  } catch {
     return cachedWeather?.weather ?? "cloudy";
   }
 }
@@ -380,8 +373,8 @@ async function enrichTokenWithSDK(
           tokenMint: token.mint,
         }));
       }
-    } catch (error) {
-      console.log(`Could not enrich token ${token.symbol}:`, error);
+    } catch {
+      // Token enrichment failed, continue with defaults
     }
   }
 
@@ -524,7 +517,6 @@ export async function POST(request: NextRequest) {
     const permanentBuildings = [TREASURY_BUILDING, ...STARTER_BUILDINGS];
     const tokensToProcess = [...permanentBuildings, ...registeredTokens];
 
-    console.log(`Processing ${tokensToProcess.length} buildings (${permanentBuildings.length} permanent + ${registeredTokens.length} user tokens)`);
 
     // Enrich all tokens with SDK data
     const enrichedResults = await Promise.all(
@@ -550,7 +542,6 @@ export async function POST(request: NextRequest) {
         token.marketCap = prices.marketCap;
         token.volume24h = prices.volume24h;
         token.change24h = prices.change24h;
-        console.log(`${token.symbol}: Real market cap = $${prices.marketCap.toLocaleString()}`);
       }
     }
 
@@ -558,7 +549,6 @@ export async function POST(request: NextRequest) {
     const allClaimEvents24h: ClaimEvent[] = enrichedResults.flatMap((r) => r.claimEvents24h);
     const earnings24hPerWallet = calculate24hEarningsPerWallet(allClaimEvents24h);
 
-    console.log(`Found ${allClaimEvents24h.length} claim events in last 24h across ${tokens.length} tokens`);
 
     // Build fee earners from SDK creators AND registered fee shares
     const earnerMap = new Map<string, FeeEarner>();
@@ -819,7 +809,6 @@ export async function POST(request: NextRequest) {
       activeTokenCount,
     };
 
-    console.log(`Bags Health Metrics: 24h claims=${claimVolume24h.toFixed(2)} SOL, lifetime fees=${totalLifetimeFees.toFixed(2)} SOL, active tokens=${activeTokenCount}`);
 
     // Build world state with Bags.fm metrics
     const worldState = buildWorldState(earners, tokens, previousState ?? undefined, bagsMetrics);
@@ -869,8 +858,7 @@ export async function POST(request: NextRequest) {
     previousState = worldState;
 
     return NextResponse.json(worldState);
-  } catch (error) {
-    console.error("Error building world state:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to build world state" },
       { status: 500 }
@@ -947,8 +935,7 @@ export async function GET() {
     previousState = worldState;
 
     return NextResponse.json(worldState);
-  } catch (error) {
-    console.error("Error fetching world state:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch world state" },
       { status: 500 }

@@ -91,26 +91,40 @@ async function handleCreateTokenInfo(
 
     if (data.image && data.image.startsWith("data:")) {
       // It's a data URL, convert to Blob
-      const [header, base64Data] = data.image.split(",");
-      const mimeMatch = header.match(/data:([^;]+)/);
-      const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
-      const extension = mimeType.split("/")[1] || "png";
-      imageName = `token-image.${extension}`;
+      try {
+        const [header, base64Data] = data.image.split(",");
+        const mimeMatch = header.match(/data:([^;]+)/);
+        const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+        const extension = mimeType.split("/")[1] || "png";
+        imageName = `token-image.${extension}`;
 
-      const binaryString = atob(base64Data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        imageBlob = new Blob([bytes], { type: mimeType });
+      } catch {
+        return NextResponse.json(
+          { error: "Invalid base64 image data" },
+          { status: 400 }
+        );
       }
-      imageBlob = new Blob([bytes], { type: mimeType });
     } else if (data.image) {
       // It's just base64, assume PNG
-      const binaryString = atob(data.image);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      try {
+        const binaryString = atob(data.image);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        imageBlob = new Blob([bytes], { type: "image/png" });
+      } catch {
+        return NextResponse.json(
+          { error: "Invalid base64 image data" },
+          { status: 400 }
+        );
       }
-      imageBlob = new Blob([bytes], { type: "image/png" });
     }
 
     const result = await api.createTokenInfo({
