@@ -113,8 +113,6 @@ export async function POST(request: NextRequest) {
 
 // Create partner config (one-time setup)
 async function handleCreateConfig(walletAddress: string) {
-  console.log(`Creating partner config for wallet: ${walletAddress}`);
-
   const response = await fetch(`${BAGS_API_URL}/fee-share/partner-config/creation-tx`, {
     method: "POST",
     headers: {
@@ -127,10 +125,6 @@ async function handleCreateConfig(walletAddress: string) {
   });
 
   const rawText = await response.text();
-  console.log("=== PARTNER CREATE-CONFIG RAW RESPONSE ===");
-  console.log("Status:", response.status);
-  console.log("Raw text:", rawText);
-  console.log("==========================================");
 
   if (!response.ok) {
     let errorMessage = "Failed to create partner config";
@@ -140,7 +134,7 @@ async function handleCreateConfig(walletAddress: string) {
     } catch {
       errorMessage = rawText || errorMessage;
     }
-
+    console.error("[partner-claim] Create config failed:", response.status);
     return NextResponse.json(
       { error: errorMessage },
       { status: response.status }
@@ -151,13 +145,12 @@ async function handleCreateConfig(walletAddress: string) {
   try {
     data = JSON.parse(rawText);
   } catch {
+    console.error("[partner-claim] Invalid JSON response from API");
     return NextResponse.json(
-      { error: `Invalid JSON response: ${rawText.substring(0, 200)}` },
+      { error: "Invalid response from API" },
       { status: 500 }
     );
   }
-
-  console.log("Parsed create-config response:", JSON.stringify(data, null, 2));
 
   // Handle various response formats
   const transaction = data.response?.transaction || data.transaction;
@@ -181,8 +174,6 @@ async function handleCreateConfig(walletAddress: string) {
 
 // Claim accumulated fees
 async function handleClaimFees(walletAddress: string) {
-  console.log(`Generating partner claim transactions for wallet: ${walletAddress}`);
-
   const response = await fetch(`${BAGS_API_URL}/fee-share/partner-config/claim-tx`, {
     method: "POST",
     headers: {
@@ -195,11 +186,6 @@ async function handleClaimFees(walletAddress: string) {
   });
 
   const rawText = await response.text();
-  console.log("=== PARTNER CLAIM-TX RAW RESPONSE ===");
-  console.log("Status:", response.status);
-  console.log("Raw text length:", rawText.length);
-  console.log("Raw text:", rawText.substring(0, 2000));
-  console.log("=====================================");
 
   if (!response.ok) {
     let errorMessage = "Failed to generate claim transactions";
@@ -214,7 +200,7 @@ async function handleClaimFees(walletAddress: string) {
     } catch {
       errorMessage = rawText || errorMessage;
     }
-
+    console.error("[partner-claim] Claim failed:", response.status);
     return NextResponse.json(
       { error: errorMessage },
       { status: response.status }
@@ -225,23 +211,15 @@ async function handleClaimFees(walletAddress: string) {
   try {
     data = JSON.parse(rawText);
   } catch {
+    console.error("[partner-claim] Invalid JSON response from API");
     return NextResponse.json(
-      { error: `Invalid JSON response: ${rawText.substring(0, 200)}` },
+      { error: "Invalid response from API" },
       { status: 500 }
     );
   }
 
-  console.log("Parsed claim response:", JSON.stringify(data, null, 2).substring(0, 2000));
-
   // Handle various response formats
   const transactions = data.response?.transactions || data.transactions || [];
-
-  // Log each transaction for debugging
-  if (Array.isArray(transactions)) {
-    transactions.forEach((tx: unknown, i: number) => {
-      console.log(`Transaction ${i}:`, typeof tx, JSON.stringify(tx).substring(0, 500));
-    });
-  }
 
   return NextResponse.json({
     success: true,

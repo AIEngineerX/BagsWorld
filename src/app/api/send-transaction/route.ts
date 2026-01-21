@@ -29,10 +29,10 @@ async function rpcCall(method: string, params: unknown[]) {
   });
 
   const text = await response.text();
-  console.log(`[send-transaction] RPC ${method} response:`, text.substring(0, 500));
 
   if (!response.ok) {
-    throw new Error(`RPC request failed: ${response.status} ${text}`);
+    console.error(`[send-transaction] RPC ${method} failed:`, response.status);
+    throw new Error(`RPC request failed: ${response.status}`);
   }
 
   const json = JSON.parse(text);
@@ -65,12 +65,6 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
-    // Log URL format (hide actual key)
-    const urlForLog = SOLANA_RPC_URL.includes("api-key=")
-      ? SOLANA_RPC_URL.replace(/api-key=.+/, "api-key=***HIDDEN***")
-      : SOLANA_RPC_URL.substring(0, 50) + "...";
-    console.log("[send-transaction] Using RPC:", urlForLog);
-
     // Validate URL format
     if (!SOLANA_RPC_URL.startsWith("https://")) {
       return NextResponse.json({
@@ -85,8 +79,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing signedTransaction" }, { status: 400 });
     }
 
-    console.log("[send-transaction] Transaction base64 length:", signedTransaction.length);
-
     // Send transaction using sendTransaction RPC method
     // The transaction is already base64 encoded from the client
     const txid = await rpcCall("sendTransaction", [
@@ -98,8 +90,6 @@ export async function POST(request: Request) {
         maxRetries: 3,
       },
     ]);
-
-    console.log("[send-transaction] Transaction sent:", txid);
 
     // Confirm transaction
     let confirmed = false;
@@ -125,12 +115,10 @@ export async function POST(request: Request) {
 
           if (txStatus.confirmationStatus === "confirmed" || txStatus.confirmationStatus === "finalized") {
             confirmed = true;
-            console.log("[send-transaction] Transaction confirmed:", txStatus.confirmationStatus);
           }
         }
-      } catch (e) {
-        console.log("[send-transaction] Confirmation check error:", e);
-        // Continue polling
+      } catch {
+        // Continue polling on transient errors
       }
     }
 
