@@ -3004,18 +3004,18 @@ export class WorldScene extends Phaser.Scene {
             repeat: -1,
           });
 
-          // Add magical particle glow around HQ
+          // Add subtle gold glow around HQ
           const hqGlow = this.add.sprite(0, -60, "glow");
-          hqGlow.setScale(3);
-          hqGlow.setAlpha(0.3);
+          hqGlow.setScale(1.2);
+          hqGlow.setAlpha(0.15);
           hqGlow.setTint(0xffd700); // Gold glow
           container.add(hqGlow);
 
           this.tweens.add({
             targets: hqGlow,
-            alpha: 0.6,
-            scale: 3.5,
-            duration: 1500,
+            alpha: 0.25,
+            scale: 1.4,
+            duration: 2000,
             ease: "Sine.easeInOut",
             yoyo: true,
             repeat: -1,
