@@ -993,7 +993,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="pt-1 border-t border-bags-gold/20">
                   <p className="font-pixel text-[6px] text-gray-400">
                     Top 3 creators by fees get rewarded. 50/30/20 split.
-                    Triggers at 10 SOL or 5 days (min 2 SOL). Direct SOL to your wallet.
+                    Triggers at 10 SOL or 5 days (min 10 SOL). Direct SOL to your wallet.
                   </p>
                 </div>
                 <a
@@ -1152,6 +1152,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             <div className="bg-bags-gold/10 border border-bags-gold/30 p-3">
               <p className="font-pixel text-[8px] text-bags-gold text-center">
                 🏢 Your token will appear as a building in BagsWorld!
+              </p>
+            </div>
+
+            {/* Phantom warning notice */}
+            <div className="bg-orange-500/10 border border-orange-500/30 p-3">
+              <p className="font-pixel text-[8px] text-orange-400 text-center">
+                ⚠️ Phantom may show a security warning for new dApps. Click "Proceed anyway" to continue - we're pending Phantom verification.
               </p>
             </div>
           </div>
