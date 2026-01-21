@@ -21,6 +21,11 @@ export const ECOSYSTEM_CONFIG = {
     // Wallet that receives ecosystem fees - viewable on Solscan
     wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
+    // Partner Config PDA - created at dev.bags.fm
+    // This enables BagsWorld to earn Bags.fm partner fees from token launches
+    // Partner fees are SEPARATE from the 1% ecosystem fee
+    partnerConfigPda: "5TcACd9yCLEBewdRrhk9hb6A22oS2gFLzG7oH5YCq1Po",
+
     // Fee percentage in basis points (100 = 1%)
     // 1% goes to @BagsWorldApp for ecosystem rewards
     feeBps: 100,
@@ -54,7 +59,7 @@ export const ECOSYSTEM_CONFIG = {
     // Must use supported social provider (twitter, kick, github) - NOT raw wallet addresses
     // The Twitter account must be linked to the ecosystem wallet at bags.fm/settings
     provider: "twitter" as const,
-    providerUsername: "DaddyGhost",
+    providerUsername: "BagsWorldApp",
   },
 
   // -------------------------------------------------------------------------
