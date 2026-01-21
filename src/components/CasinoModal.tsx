@@ -198,29 +198,28 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-[#0a0a0f] border border-purple-500/30 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-[#0a0a0f] border border-purple-500/30 max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="relative bg-gradient-to-b from-purple-900/40 to-transparent p-6 border-b border-purple-500/20">
+        <div className="relative bg-gradient-to-b from-purple-900/40 to-transparent p-4 sm:p-6 border-b border-purple-500/20">
           <div className="flex justify-between items-start">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
-                <span className="font-pixel text-xl text-white">777</span>
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-gradient-to-br from-purple-600 to-purple-800 border border-purple-400/50 flex items-center justify-center shadow-lg shadow-purple-500/30 flex-shrink-0">
+                <span className="font-pixel text-base sm:text-xl text-white">777</span>
               </div>
               <div>
-                <h2 className="font-pixel text-xl text-white tracking-wider">BAGSWORLD CASINO</h2>
-                <p className="text-purple-400/80 text-sm mt-1">Play to earn SOL rewards</p>
+                <h2 className="font-pixel text-base sm:text-xl text-white tracking-wider">BAGSWORLD CASINO</h2>
+                <p className="font-pixel text-purple-400/80 text-[8px] sm:text-xs mt-1">Play to earn SOL rewards</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-lg"
+              className="font-pixel text-xs p-2 text-gray-400 hover:text-white touch-target border border-purple-500/30 hover:border-purple-400/60 transition-colors flex-shrink-0"
+              aria-label="Close"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              [X]
             </button>
           </div>
 

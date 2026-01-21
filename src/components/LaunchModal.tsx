@@ -754,20 +754,25 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-3 sm:p-4 border-b-4 border-bags-green sticky top-0 bg-bags-dark z-10">
-          <div>
-            <h2 className="font-pixel text-xs sm:text-sm text-bags-green">
-              [+] BUILD A TOKEN
-            </h2>
-            <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">
-              Step {step === "info" ? "1/3" : step === "fees" ? "2/3" : "3/3"}: {step === "info" ? "Token Info" : step === "fees" ? "Fee Sharing" : "Confirm"}
-            </p>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-bags-green/20 border border-bags-green rounded flex items-center justify-center flex-shrink-0">
+              <span className="font-pixel text-bags-green text-sm sm:text-base">+</span>
+            </div>
+            <div>
+              <h2 className="font-pixel text-xs sm:text-sm text-bags-green">
+                BUILD A TOKEN
+              </h2>
+              <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">
+                Step {step === "info" ? "1/3" : step === "fees" ? "2/3" : "3/3"}: {step === "info" ? "Token Info" : step === "fees" ? "Fee Sharing" : "Confirm"}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="font-pixel text-sm p-2 text-gray-400 hover:text-white touch-target"
+            className="font-pixel text-xs p-2 text-gray-400 hover:text-white touch-target border border-gray-700 hover:border-bags-green rounded"
             aria-label="Close"
           >
-            ✕
+            [X]
           </button>
         </div>
 

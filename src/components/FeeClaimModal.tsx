@@ -270,20 +270,25 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-3 sm:p-4 border-b-4 border-bags-gold sticky top-0 bg-bags-dark z-10">
-          <div>
-            <h2 className="font-pixel text-xs sm:text-sm text-bags-gold">
-              CLAIM FEES
-            </h2>
-            <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">
-              Collect your earned trading fees
-            </p>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-bags-gold/20 border border-bags-gold rounded flex items-center justify-center flex-shrink-0">
+              <span className="font-pixel text-bags-gold text-[10px] sm:text-xs">$!</span>
+            </div>
+            <div>
+              <h2 className="font-pixel text-xs sm:text-sm text-bags-gold">
+                CLAIM FEES
+              </h2>
+              <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">
+                Collect your earned trading fees
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="font-pixel text-sm p-2 text-gray-400 hover:text-white touch-target"
+            className="font-pixel text-xs p-2 text-gray-400 hover:text-white touch-target border border-gray-700 hover:border-bags-gold rounded"
             aria-label="Close"
           >
-            ✕
+            [X]
           </button>
         </div>
 

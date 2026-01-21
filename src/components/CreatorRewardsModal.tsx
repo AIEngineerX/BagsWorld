@@ -138,7 +138,9 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
         {/* Header */}
         <div className="bg-gradient-to-r from-yellow-600 to-amber-500 p-3 sm:p-4 flex justify-between items-center">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="text-2xl sm:text-3xl">👑</div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-black/20 border border-yellow-300/50 rounded flex items-center justify-center flex-shrink-0">
+              <span className="font-pixel text-white text-sm sm:text-base">*</span>
+            </div>
             <div>
               <h2 className="font-pixel text-white text-xs sm:text-sm">CREATOR REWARDS HUB</h2>
               <p className="font-pixel text-yellow-200 text-[7px] sm:text-[8px]">
@@ -148,10 +150,10 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-yellow-200 text-xl font-bold p-2"
+            className="font-pixel text-xs text-white hover:text-yellow-200 p-2 touch-target border border-yellow-300/30 hover:border-yellow-300/60 rounded"
             aria-label="Close"
           >
-            ✕
+            [X]
           </button>
         </div>
 

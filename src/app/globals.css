@@ -265,6 +265,123 @@ body {
   }
 }
 
+/* ============================================
+   ENHANCED MOBILE OPTIMIZATIONS
+   ============================================ */
+
+/* Mobile modal improvements */
+@media (max-width: 640px) {
+  /* Better modal positioning on small screens */
+  .modal-backdrop {
+    padding: 0.5rem;
+    align-items: flex-end;
+  }
+
+  /* Larger modal close buttons */
+  .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Improve input fields on mobile */
+  input[type="text"],
+  input[type="number"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    padding: 12px;
+  }
+
+  /* Better button spacing */
+  .btn-retro + .btn-retro {
+    margin-left: 0.5rem;
+  }
+
+  /* Emoji scaling for mobile */
+  .emoji-header {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+}
+
+/* Ultra-small screens (iPhone SE, etc.) */
+@media (max-width: 375px) {
+  .font-pixel {
+    font-size: 0.625rem;
+    letter-spacing: -0.75px;
+  }
+
+  .btn-retro {
+    @apply px-2 py-1.5 text-[8px];
+  }
+
+  /* Stack header items vertically on tiny screens */
+  header .flex {
+    flex-wrap: wrap;
+  }
+}
+
+/* Improve scrolling performance on mobile */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Prevent pull-to-refresh on game area */
+.game-container {
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+/* Mobile-optimized animations */
+@media (max-width: 768px) {
+  /* Faster animations on mobile for better perceived performance */
+  .transition-all {
+    transition-duration: 150ms;
+  }
+
+  /* Reduce animation complexity */
+  .animate-pulse {
+    animation-duration: 1.5s;
+  }
+}
+
+/* Fix iOS bottom bar overlap */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .modal-footer,
+  footer {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Better focus states for mobile accessibility */
+@media (max-width: 768px) {
+  button:focus,
+  a:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid var(--bags-green);
+    outline-offset: 2px;
+  }
+}
+
+/* Hide scrollbars on mobile while maintaining scroll functionality */
+@media (max-width: 640px) {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Agent Activity Indicator Animations */
 @keyframes fade-in {
   from {
