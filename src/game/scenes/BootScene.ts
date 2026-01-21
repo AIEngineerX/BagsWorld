@@ -442,7 +442,6 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private drawLevel1Roof(g: Phaser.GameObjects.Graphics, style: any, bWidth: number, bHeight: number, canvasHeight: number, s: number): void {
     const awningColor = style.awningColor || PALETTE.brightRed;
 
@@ -465,7 +464,6 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(Math.round(8 * s), canvasHeight - bHeight + Math.round(5 * s), bWidth - Math.round(16 * s), Math.round(6 * s));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private drawLevel2Roof(g: Phaser.GameObjects.Graphics, style: any, styleIndex: number, bWidth: number, bHeight: number, canvasHeight: number, s: number): void {
     // Flat roof base
     g.fillStyle(style.roof);
@@ -504,7 +502,6 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private drawLevel3Roof(g: Phaser.GameObjects.Graphics, style: any, styleIndex: number, bWidth: number, bHeight: number, canvasHeight: number, s: number): void {
     // Base roof
     g.fillStyle(style.roof);
@@ -549,7 +546,6 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private drawLevel4Roof(g: Phaser.GameObjects.Graphics, style: any, styleIndex: number, bWidth: number, bHeight: number, canvasHeight: number, s: number): void {
     if (styleIndex === 0) {
       // Modern tower - stepped
@@ -610,7 +606,6 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private drawLevel5Roof(g: Phaser.GameObjects.Graphics, style: any, styleIndex: number, bWidth: number, bHeight: number, canvasHeight: number, s: number): void {
     if (styleIndex === 0) {
       // Bags HQ - grand spire
@@ -687,7 +682,6 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private drawWindows(g: Phaser.GameObjects.Graphics, style: any, level: number, bWidth: number, bHeight: number, canvasHeight: number, s: number): void {
     const windowRows = level === 1 ? 2 : level === 2 ? 3 : level === 3 ? 4 : level === 4 ? 6 : 8;
     const windowCols = level >= 4 ? 4 : level >= 2 ? 3 : 2;
@@ -722,7 +716,6 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private drawDoor(g: Phaser.GameObjects.Graphics, style: any, level: number, bWidth: number, canvasHeight: number, s: number): void {
     const doorWidth = Math.round((level === 1 ? 12 : level >= 4 ? 14 : 10) * s);
     const doorHeight = Math.round((level >= 4 ? 16 : 12) * s);
