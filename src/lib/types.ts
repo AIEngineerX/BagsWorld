@@ -169,6 +169,7 @@ export interface GameBuilding {
   change24h?: number;
   tokenUrl?: string;
   zone?: ZoneType; // Which zone this building appears in (default: both)
+  isFloating?: boolean; // Special floating building (BagsWorld HQ)
 }
 
 export type GameEventType =

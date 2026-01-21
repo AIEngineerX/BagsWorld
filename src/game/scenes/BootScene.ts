@@ -204,6 +204,7 @@ export class BootScene extends Phaser.Scene {
     this.generatePokeCenter();
     this.generateTradingGym();
     this.generateCasino();
+    this.generateBagsWorldHQ();
 
     // Generate diverse character variants
     this.generateDiverseCharacters();
@@ -1190,6 +1191,150 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(bWidth - Math.round(5 * s), canvasHeight - Math.round(50 * s), Math.round(1 * s), Math.round(25 * s));
 
     g.generateTexture("casino", canvasWidth, canvasHeight);
+    g.destroy();
+  }
+
+  private generateBagsWorldHQ(): void {
+    const s = 1.8; // Scale for larger building
+    const canvasWidth = Math.round(80 * s);
+    const canvasHeight = Math.round(100 * s);
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    const bWidth = canvasWidth;
+    const bHeight = canvasHeight;
+
+    // Sky fortress floating island base
+    const baseY = canvasHeight - Math.round(25 * s);
+
+    // Floating island/cloud base with gradient effect
+    g.fillStyle(0x4a5568); // Dark gray rock
+    g.fillTriangle(
+      Math.round(10 * s), baseY,
+      bWidth - Math.round(10 * s), baseY,
+      bWidth / 2, canvasHeight - Math.round(5 * s)
+    );
+    // Lighter rock highlights
+    g.fillStyle(0x718096);
+    g.fillTriangle(
+      Math.round(15 * s), baseY - Math.round(2 * s),
+      bWidth - Math.round(15 * s), baseY - Math.round(2 * s),
+      bWidth / 2, canvasHeight - Math.round(10 * s)
+    );
+
+    // Cloud wisps around base
+    g.fillStyle(0xffffff, 0.6);
+    g.fillCircle(Math.round(15 * s), baseY, Math.round(8 * s));
+    g.fillCircle(bWidth - Math.round(15 * s), baseY, Math.round(6 * s));
+    g.fillCircle(bWidth / 2, canvasHeight - Math.round(8 * s), Math.round(10 * s));
+
+    // Main tower - epic castle style
+    const towerWidth = Math.round(40 * s);
+    const towerX = (bWidth - towerWidth) / 2;
+    const towerHeight = Math.round(55 * s);
+    const towerY = baseY - towerHeight;
+
+    // Tower base - deep purple/blue gradient (Bags colors)
+    g.fillStyle(0x1a1a2e);
+    g.fillRect(towerX, towerY, towerWidth, towerHeight);
+
+    // Tower mid section - slightly lighter
+    g.fillStyle(0x16213e);
+    g.fillRect(towerX + Math.round(3 * s), towerY + Math.round(5 * s), towerWidth - Math.round(6 * s), towerHeight - Math.round(10 * s));
+
+    // Golden trim borders
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(towerX, towerY, towerWidth, Math.round(2 * s)); // Top
+    g.fillRect(towerX, towerY, Math.round(2 * s), towerHeight); // Left
+    g.fillRect(towerX + towerWidth - Math.round(2 * s), towerY, Math.round(2 * s), towerHeight); // Right
+
+    // Side turrets
+    const turretWidth = Math.round(12 * s);
+    const turretHeight = Math.round(35 * s);
+
+    // Left turret
+    g.fillStyle(0x1a1a2e);
+    g.fillRect(Math.round(5 * s), baseY - turretHeight, turretWidth, turretHeight);
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(Math.round(5 * s), baseY - turretHeight, turretWidth, Math.round(2 * s));
+
+    // Right turret
+    g.fillStyle(0x1a1a2e);
+    g.fillRect(bWidth - Math.round(17 * s), baseY - turretHeight, turretWidth, turretHeight);
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(bWidth - Math.round(17 * s), baseY - turretHeight, turretWidth, Math.round(2 * s));
+
+    // Turret spires (pointed tops)
+    g.fillStyle(PALETTE.gold);
+    // Left spire
+    g.fillTriangle(
+      Math.round(5 * s), baseY - turretHeight,
+      Math.round(17 * s), baseY - turretHeight,
+      Math.round(11 * s), baseY - turretHeight - Math.round(12 * s)
+    );
+    // Right spire
+    g.fillTriangle(
+      bWidth - Math.round(17 * s), baseY - turretHeight,
+      bWidth - Math.round(5 * s), baseY - turretHeight,
+      bWidth - Math.round(11 * s), baseY - turretHeight - Math.round(12 * s)
+    );
+
+    // Main tower spire - grand central spire
+    g.fillStyle(PALETTE.gold);
+    g.fillTriangle(
+      towerX, towerY,
+      towerX + towerWidth, towerY,
+      bWidth / 2, towerY - Math.round(20 * s)
+    );
+
+    // Glowing windows - cyan/teal glow (Bags brand)
+    const windowColor = 0x4ade80; // Bags green
+    g.fillStyle(windowColor);
+
+    // Main tower windows (3 rows)
+    for (let row = 0; row < 3; row++) {
+      const windowY = towerY + Math.round(15 * s) + row * Math.round(14 * s);
+      g.fillRect(towerX + Math.round(8 * s), windowY, Math.round(8 * s), Math.round(10 * s));
+      g.fillRect(towerX + Math.round(24 * s), windowY, Math.round(8 * s), Math.round(10 * s));
+    }
+
+    // Window glow effect
+    g.fillStyle(windowColor, 0.3);
+    for (let row = 0; row < 3; row++) {
+      const windowY = towerY + Math.round(15 * s) + row * Math.round(14 * s);
+      g.fillRect(towerX + Math.round(6 * s), windowY - Math.round(2 * s), Math.round(12 * s), Math.round(14 * s));
+      g.fillRect(towerX + Math.round(22 * s), windowY - Math.round(2 * s), Math.round(12 * s), Math.round(14 * s));
+    }
+
+    // Side turret windows
+    g.fillStyle(windowColor);
+    g.fillRect(Math.round(8 * s), baseY - Math.round(25 * s), Math.round(6 * s), Math.round(8 * s));
+    g.fillRect(bWidth - Math.round(14 * s), baseY - Math.round(25 * s), Math.round(6 * s), Math.round(8 * s));
+
+    // Grand entrance door (arched)
+    g.fillStyle(0x0f0f23);
+    g.fillRect(bWidth / 2 - Math.round(6 * s), baseY - Math.round(16 * s), Math.round(12 * s), Math.round(16 * s));
+    // Door arch
+    g.fillCircle(bWidth / 2, baseY - Math.round(16 * s), Math.round(6 * s));
+    // Door trim
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(bWidth / 2 - Math.round(7 * s), baseY - Math.round(16 * s), Math.round(2 * s), Math.round(16 * s));
+    g.fillRect(bWidth / 2 + Math.round(5 * s), baseY - Math.round(16 * s), Math.round(2 * s), Math.round(16 * s));
+
+    // Floating particles/magic effect (small gold dots)
+    g.fillStyle(PALETTE.gold, 0.8);
+    const particlePositions = [
+      [20, 30], [60, 25], [35, 15], [50, 40], [25, 50], [55, 55]
+    ];
+    particlePositions.forEach(([px, py]) => {
+      g.fillCircle(Math.round(px * s / 1.8), Math.round(py * s / 1.8), Math.round(1.5 * s));
+    });
+
+    // "BAGS" text emblem at top (simplified pixel banner)
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(bWidth / 2 - Math.round(10 * s), towerY + Math.round(5 * s), Math.round(20 * s), Math.round(6 * s));
+    g.fillStyle(0x1a1a2e);
+    g.fillRect(bWidth / 2 - Math.round(8 * s), towerY + Math.round(6 * s), Math.round(16 * s), Math.round(4 * s));
+
+    g.generateTexture("bagshq", canvasWidth, canvasHeight);
     g.destroy();
   }
 

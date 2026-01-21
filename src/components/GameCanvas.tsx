@@ -120,14 +120,33 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
 
   // Update world state in the game
   useEffect(() => {
-    if (gameRef.current && worldState) {
-      const worldScene = gameRef.current.scene.getScene(
+    if (!gameRef.current || !worldState) return;
+
+    const tryUpdateWorldState = () => {
+      const worldScene = gameRef.current?.scene.getScene(
         "WorldScene"
-      ) as WorldScene;
+      ) as WorldScene | undefined;
       if (worldScene && worldScene.scene.isActive()) {
         worldScene.updateWorldState(worldState);
+        return true;
       }
-    }
+      return false;
+    };
+
+    // Try immediately
+    if (tryUpdateWorldState()) return;
+
+    // If scene not ready, retry a few times with small delay
+    let retries = 0;
+    const maxRetries = 10;
+    const retryInterval = setInterval(() => {
+      retries++;
+      if (tryUpdateWorldState() || retries >= maxRetries) {
+        clearInterval(retryInterval);
+      }
+    }, 200);
+
+    return () => clearInterval(retryInterval);
   }, [worldState]);
 
   // Listen for animal control events from Bags Bot

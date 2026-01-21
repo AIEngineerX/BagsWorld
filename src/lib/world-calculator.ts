@@ -371,11 +371,26 @@ export function transformTokenToBuilding(
   const isTradingGym = token.symbol === "GYM" || token.mint.includes("TradingGym");
   const isCasino = token.symbol === "CASINO" || token.mint.includes("Casino");
   const isTreasuryHub = token.mint.startsWith("Treasury");
+  // BagsWorld HQ - the floating headquarters in the sky (uses real token data)
+  const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
+  const isBagsWorldHQ = token.mint === BAGSHQ_MINT || token.symbol === "BAGSHQ";
+
+  // Always clear HQ from position cache to ensure it uses sky position
+  if (isBagsWorldHQ) {
+    buildingPositionCache.delete(BAGSHQ_MINT);
+  }
 
   // Fixed positions for landmark buildings (City side = left, x < center, scaled)
   const landmarkY = Math.round(480 * SCALE);
+  const skyY = 500; // Floating in the sky above the city skyline
   let position: { x: number; y: number };
-  if (existingBuilding) {
+
+  // BagsWorld HQ ALWAYS gets sky position - check this FIRST
+  if (isBagsWorldHQ) {
+    // BagsWorld HQ: Floating in the sky, center of the park
+    position = { x: Math.round(WORLD_WIDTH / 2), y: skyY };
+  } else if (existingBuilding) {
+    // Use existing position for other buildings
     position = { x: existingBuilding.x, y: existingBuilding.y };
   } else if (isCasino) {
     // Casino: BagsCity side (far left), Vegas-style landmark
@@ -411,12 +426,18 @@ export function transformTokenToBuilding(
   const newHealth = calculateBuildingHealth(token.change24h, token.volume24h, previousHealth);
 
   // Assign zones: Trading Gym and Casino go to BagsCity, all other buildings go to Park
-  const zone = (isTradingGym || isCasino) ? "trending" as const : "main_city" as const;
+  // BagsWorld HQ has NO zone - it floats in the sky visible from both zones
+  const zone = isBagsWorldHQ ? undefined : (isTradingGym || isCasino) ? "trending" as const : "main_city" as const;
 
   // Use level override if set by admin, otherwise calculate from market cap
-  const level = token.levelOverride && token.levelOverride >= 1 && token.levelOverride <= 5
-    ? token.levelOverride
-    : calculateBuildingLevel(token.marketCap);
+  // BagsWorld HQ always gets max level (it's the headquarters!)
+  const level = isBagsWorldHQ ? 5
+    : token.levelOverride && token.levelOverride >= 1 && token.levelOverride <= 5
+      ? token.levelOverride
+      : calculateBuildingLevel(token.marketCap);
+
+  // Permanent buildings (Treasury, Starter, HQ) always have full health
+  const isPermanent = isTreasuryBuilding || isStarterToken || isBagsWorldHQ;
 
   return {
     id: token.mint,
@@ -426,14 +447,15 @@ export function transformTokenToBuilding(
     x: position.x,
     y: position.y,
     level,
-    health: isTreasuryBuilding || isStarterToken ? 100 : newHealth, // Permanent buildings always healthy
-    glowing: token.change24h > 50,
+    health: isPermanent ? 100 : newHealth,
+    glowing: isBagsWorldHQ || token.change24h > 50, // HQ always glows!
     ownerId: token.creator,
     marketCap: token.marketCap,
     volume24h: token.volume24h,
     change24h: token.change24h,
     tokenUrl,
     zone,
+    isFloating: isBagsWorldHQ, // Only HQ floats
   };
 }
 
@@ -534,10 +556,18 @@ export function buildWorldState(
   cleanupBuildingPositionCache(activeMints);
 
   // Assign cached positions (buildings keep their position even when rankings change)
-  const buildings = filteredBuildings.map((building) => ({
-    ...building,
-    ...getCachedBuildingPosition(building.id, activeMints),
-  }));
+  // EXCEPT for floating buildings like HQ which have fixed sky positions
+  const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
+  const buildings = filteredBuildings.map((building) => {
+    // Skip cache for floating buildings - they use their fixed position
+    if (building.isFloating || building.id === BAGSHQ_MINT) {
+      return building;
+    }
+    return {
+      ...building,
+      ...getCachedBuildingPosition(building.id, activeMints),
+    };
+  });
 
   // Generate events for significant changes
   const events: GameEvent[] = previousState?.events.slice(0, 10) ?? [];

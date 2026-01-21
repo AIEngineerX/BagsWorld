@@ -2958,15 +2958,19 @@ export class WorldScene extends Phaser.Scene {
         const buildingScales = [0.8, 0.9, 1.0, 1.15, 1.3];
         const buildingScale = buildingScales[building.level - 1] || 1.0;
 
-        // Shadow scales with building
-        const shadowWidth = 20 + building.level * 6;
-        const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
-        container.add(shadow);
+        // Shadow scales with building (floating HQ has no direct shadow)
+        const isBagsHQ = building.isFloating || building.symbol === "BAGSHQ";
+        if (!isBagsHQ) {
+          const shadowWidth = 20 + building.level * 6;
+          const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
+          container.add(shadow);
+        }
 
-        // Use special texture for PokeCenter/TradingGym/Casino, otherwise use level-based building with style
+        // Use special texture for PokeCenter/TradingGym/Casino/HQ, otherwise use level-based building with style
         const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
         const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
         const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+        const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSHQ";
 
         // Determine building style from mint address (deterministic - same token always gets same style)
         // Each level has 4 styles (0-3)
@@ -2981,11 +2985,42 @@ export class WorldScene extends Phaser.Scene {
         };
 
         const styleIndex = getBuildingStyle(building.id);
-        const buildingTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${styleIndex}`;
+        const buildingTexture = isBagsWorldHQ ? "bagshq" : isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${styleIndex}`;
         const sprite = this.add.sprite(0, 0, buildingTexture);
         sprite.setOrigin(0.5, 1);
-        sprite.setScale(isPokeCenter ? 1.0 : isTradingGym ? 1.0 : isCasino ? 1.0 : buildingScale);
+        // HQ is larger and floating
+        const hqScale = 1.5;
+        sprite.setScale(isBagsWorldHQ ? hqScale : isPokeCenter ? 1.0 : isTradingGym ? 1.0 : isCasino ? 1.0 : buildingScale);
         container.add(sprite);
+
+        // Add floating animation for HQ
+        if (isBagsWorldHQ) {
+          this.tweens.add({
+            targets: container,
+            y: building.y - 10,
+            duration: 2000,
+            ease: "Sine.easeInOut",
+            yoyo: true,
+            repeat: -1,
+          });
+
+          // Add magical particle glow around HQ
+          const hqGlow = this.add.sprite(0, -60, "glow");
+          hqGlow.setScale(3);
+          hqGlow.setAlpha(0.3);
+          hqGlow.setTint(0xffd700); // Gold glow
+          container.add(hqGlow);
+
+          this.tweens.add({
+            targets: hqGlow,
+            alpha: 0.6,
+            scale: 3.5,
+            duration: 1500,
+            ease: "Sine.easeInOut",
+            yoyo: true,
+            repeat: -1,
+          });
+        }
 
         // Glow effect for pumping buildings
         if (building.glowing) {
@@ -3005,22 +3040,24 @@ export class WorldScene extends Phaser.Scene {
           });
         }
 
-        // Label with background
-        const labelBg = this.add.rectangle(0, 12, 50, 14, 0x000000, 0.7);
-        labelBg.setStrokeStyle(1, 0x4ade80);
+        // Label with background - HQ gets gold styling
+        const isHQBuilding = building.isFloating || building.symbol === "BAGSHQ";
+        const labelBg = this.add.rectangle(0, isHQBuilding ? 20 : 12, isHQBuilding ? 70 : 50, isHQBuilding ? 16 : 14, 0x000000, 0.8);
+        labelBg.setStrokeStyle(isHQBuilding ? 2 : 1, isHQBuilding ? 0xffd700 : 0x4ade80);
         container.add(labelBg);
-
-        const label = this.add.text(0, 12, building.symbol, {
+        const label = this.add.text(0, isHQBuilding ? 20 : 12, building.symbol, {
           fontFamily: "monospace",
-          fontSize: "9px",
-          color: "#4ade80",
+          fontSize: isHQBuilding ? "11px" : "9px",
+          color: isHQBuilding ? "#ffd700" : "#4ade80",
         });
         label.setOrigin(0.5, 0.5);
         container.add(label);
 
-        container.setDepth(5);
+        // HQ floats higher and has larger hitbox
+        container.setDepth(isHQBuilding ? 15 : 5);
+        const hitboxSize = isHQBuilding ? { w: 80, h: 160 } : { w: 40, h: 80 };
         container.setInteractive(
-          new Phaser.Geom.Rectangle(-20, -80, 40, 80),
+          new Phaser.Geom.Rectangle(-hitboxSize.w / 2, -hitboxSize.h, hitboxSize.w, hitboxSize.h),
           Phaser.Geom.Rectangle.Contains
         );
 
@@ -3040,6 +3077,7 @@ export class WorldScene extends Phaser.Scene {
           const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
           const isStarterBuilding = building.id.startsWith("Starter");
           const isTreasuryBuilding = building.id.startsWith("Treasury");
+          const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSHQ";
 
           if (isPokeCenter) {
             // PokeCenter opens the auto-claim hub modal
@@ -3055,6 +3093,16 @@ export class WorldScene extends Phaser.Scene {
             // Casino opens the gambling modal with raffle and wheel
             window.dispatchEvent(new CustomEvent("bagsworld-casino-click", {
               detail: { buildingId: building.id, name: building.name }
+            }));
+          } else if (isBagsWorldHQ) {
+            // BagsWorld HQ - opens the official token page with trade modal
+            window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
+              detail: {
+                mint: building.tokenMint || building.id,
+                symbol: building.symbol || "BAGSHQ",
+                name: building.name || "BagsWorld HQ",
+                tokenUrl: building.tokenUrl || `https://bags.fm/token/${building.tokenMint || building.id}`,
+              }
             }));
           } else if (isStarterBuilding) {
             // Other starter buildings show a message
