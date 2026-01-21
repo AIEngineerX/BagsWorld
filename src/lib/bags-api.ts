@@ -50,7 +50,6 @@ class BagsApiClient {
         try {
           const errorBody = await response.text();
           errorDetail = errorBody ? ` - ${errorBody}` : "";
-          console.error(`Bags API error response (${endpoint}):`, errorBody);
 
           // Try to parse as JSON to get more specific error
           try {
@@ -65,7 +64,6 @@ class BagsApiClient {
         // Handle 500 errors with retry for transient issues
         if (response.status >= 500 && retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
-          console.log(`Bags API 500 error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           return this.fetch<T>(endpoint, options, retryCount + 1);
         }
@@ -79,7 +77,6 @@ class BagsApiClient {
       }
 
       const data: ApiResponse<T> = await response.json();
-      console.log("Bags API raw json response:", JSON.stringify(data, null, 2));
 
       if (!data.success) {
         // Handle error in both 'error' and 'response' fields
@@ -94,7 +91,6 @@ class BagsApiClient {
       // Retry on network errors
       if (error instanceof TypeError && error.message.includes('fetch') && retryCount < maxRetries) {
         const delay = Math.pow(2, retryCount) * 1000;
-        console.log(`Network error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.fetch<T>(endpoint, options, retryCount + 1);
       }
@@ -301,7 +297,6 @@ class BagsApiClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`createTokenInfo error response:`, errorText);
 
         // Try to parse JSON error
         let parsedError: { success?: boolean; response?: string; error?: string } | null = null;
@@ -314,7 +309,6 @@ class BagsApiClient {
         // Retry on 500 errors
         if (response.status >= 500 && retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000;
-          console.log(`createTokenInfo 500 error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           return this.createTokenInfo(data, retryCount + 1);
         }
@@ -341,7 +335,6 @@ class BagsApiClient {
       // Retry on network errors
       if (error instanceof TypeError && error.message.includes('fetch') && retryCount < maxRetries) {
         const delay = Math.pow(2, retryCount) * 1000;
-        console.log(`createTokenInfo network error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.createTokenInfo(data, retryCount + 1);
       }
@@ -372,9 +365,8 @@ class BagsApiClient {
         tipLamports: data.tipLamports,
       } : {}),
     };
-    console.log("Bags API createLaunchTransaction request:", JSON.stringify(apiBody, null, 2));
 
-    // Make raw fetch to see exact response
+    // Make raw fetch
     const url = `${this.baseUrl}/token-launch/create-launch-transaction`;
     const response = await fetch(url, {
       method: "POST",
@@ -386,12 +378,6 @@ class BagsApiClient {
     });
 
     const rawText = await response.text();
-    console.log("=== RAW BAGS API RESPONSE ===");
-    console.log("Status:", response.status);
-    console.log("Raw text length:", rawText.length);
-    console.log("Raw text (first 500 chars):", rawText.substring(0, 500));
-    console.log("Raw text (last 100 chars):", rawText.substring(rawText.length - 100));
-    console.log("=============================");
 
     if (!response.ok) {
       throw new Error(`API error ${response.status}: ${rawText}`);
@@ -401,13 +387,9 @@ class BagsApiClient {
     let data_response;
     try {
       data_response = JSON.parse(rawText);
-    } catch (e) {
-      console.error("Failed to parse JSON:", e);
+    } catch {
       throw new Error(`Invalid JSON response from Bags API: ${rawText.substring(0, 200)}`);
     }
-
-    console.log("Parsed response keys:", Object.keys(data_response));
-    console.log("Parsed response:", JSON.stringify(data_response, null, 2).substring(0, 1000));
 
     // Extract transaction - check all possible locations
     let transaction: string | undefined;
@@ -417,33 +399,24 @@ class BagsApiClient {
     if (data_response.response?.transaction) {
       transaction = data_response.response.transaction;
       lastValidBlockHeight = data_response.response.lastValidBlockHeight;
-      console.log("Found transaction in response.transaction");
     }
     // Alternative: { success: true, response: "base64string" }
     else if (typeof data_response.response === "string") {
       transaction = data_response.response;
-      console.log("Found transaction as response string");
     }
     // Direct: { transaction: "..." }
     else if (data_response.transaction) {
       transaction = data_response.transaction;
       lastValidBlockHeight = data_response.lastValidBlockHeight;
-      console.log("Found transaction at root level");
     }
     // Direct string response
     else if (typeof data_response === "string") {
       transaction = data_response;
-      console.log("Response is direct string");
     }
 
     if (!transaction) {
-      console.error("Could not find transaction in response:", data_response);
       throw new Error(`No transaction found in Bags API response. Keys: ${Object.keys(data_response).join(", ")}`);
     }
-
-    console.log("Final transaction length:", transaction.length);
-    console.log("Transaction preview:", transaction.substring(0, 100));
-    console.log("Transaction end:", transaction.substring(transaction.length - 50));
 
     if (transaction.length < 100) {
       throw new Error(`Transaction too short (${transaction.length} chars) - API may have returned an error`);
@@ -487,17 +460,14 @@ class BagsApiClient {
           provider: fc.provider,
           username: fc.providerUsername,
         }));
-        console.log("Bulk wallet lookup items:", lookupItems);
 
         const results = await this.bulkWalletLookup(lookupItems);
-        console.log("Bulk wallet lookup results:", results);
 
         for (const result of results) {
           const key = `${result.provider}:${result.username}`;
           walletMap.set(key, result.wallet);
         }
-      } catch (error) {
-        console.error("Bulk wallet lookup failed:", error);
+      } catch {
         throw new Error("Failed to lookup wallets for fee claimers. Make sure all users have linked their wallets at bags.fm/settings");
       }
     }
@@ -525,17 +495,14 @@ class BagsApiClient {
       basisPointsArray.push(bps);
     }
 
-    console.log(`Fee claimers deduplicated: ${feeClaimers.length} entries -> ${claimersArray.length} unique wallets`);
-
     const requestBody = {
       baseMint: mint,
       payer,
       claimersArray,
       basisPointsArray,
     };
-    console.log("Bags API createFeeShareConfig request:", JSON.stringify(requestBody, null, 2));
 
-    // Make raw fetch to see exact response
+    // Make raw fetch
     const url = `${this.baseUrl}/fee-share/config`;
     const response = await fetch(url, {
       method: "POST",
@@ -547,11 +514,6 @@ class BagsApiClient {
     });
 
     const rawText = await response.text();
-    console.log("=== RAW FEE CONFIG RESPONSE ===");
-    console.log("Status:", response.status);
-    console.log("Raw text length:", rawText.length);
-    console.log("Raw text (first 1000):", rawText.substring(0, 1000));
-    console.log("===============================");
 
     if (!response.ok) {
       throw new Error(`Fee config API error ${response.status}: ${rawText.substring(0, 500)}`);
@@ -566,12 +528,6 @@ class BagsApiClient {
 
     // Handle wrapped response
     const result = parsed.response || parsed;
-    console.log("Bags API createFeeShareConfig parsed response:", JSON.stringify(result, null, 2).substring(0, 2000));
-    console.log("Response keys:", Object.keys(result));
-    console.log("Response type:", typeof result);
-    console.log("meteoraConfigKey:", result.meteoraConfigKey);
-    console.log("configKey:", result.configKey);
-    console.log("config:", result.config);
 
     // Handle different possible response field names - check all variations
     // The API returns "meteoraConfigKey" as the config key to use for launch
@@ -592,10 +548,7 @@ class BagsApiClient {
     const needsCreation = result.needsCreation as boolean | undefined;
     const transactions = result.transactions as Array<{ transaction: string; blockhash: { blockhash: string; lastValidBlockHeight: number } }> | undefined;
 
-    console.log("Extracted configId:", configId, "totalBps:", totalBps, "needsCreation:", needsCreation);
-
     if (!configId) {
-      console.error("Could not find configId in response. Full response:", result);
       throw new Error(
         `Fee share config created but no configKey returned. API response keys: ${Object.keys(result).join(", ")}. ` +
         `This may indicate a Bags.fm API change. Please report this issue.`

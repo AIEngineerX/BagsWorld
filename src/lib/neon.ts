@@ -47,6 +47,18 @@ export function getNeonConnectionType(): "netlify" | "direct" | "none" {
 // SQL tagged template function type
 type SqlFunction = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>;
 
+// Safe parseInt with NaN fallback
+function safeParseInt(value: string | number | null | undefined, fallback: number = 0): number {
+  const parsed = parseInt(String(value ?? fallback), 10);
+  return isNaN(parsed) ? fallback : parsed;
+}
+
+// Safe parseFloat with NaN fallback
+function safeParseFloat(value: string | number | null | undefined, fallback: number = 0): number {
+  const parsed = parseFloat(String(value ?? fallback));
+  return isNaN(parsed) ? fallback : parsed;
+}
+
 // Dynamically get SQL client
 async function getSql(): Promise<SqlFunction | null> {
   // Try Netlify's built-in Neon first (auto-configured)
@@ -303,9 +315,9 @@ export async function getCasinoRaffle(): Promise<CasinoRaffle | null> {
     return {
       id: row.id as number,
       status: row.status as "active" | "drawing" | "completed",
-      potLamports: parseInt(String(row.pot_lamports || "0")),
-      entryCount: parseInt(String(row.entry_count || "0")),
-      threshold: parseFloat(String(row.threshold_sol || "0.5")),
+      potLamports: safeParseInt(row.pot_lamports as string, 0),
+      entryCount: safeParseInt(row.entry_count as string, 0),
+      threshold: safeParseFloat(row.threshold_sol as string, 0.5),
       entries: (row.entries as string[]) || [],
     };
   } catch (error) {
@@ -367,7 +379,7 @@ export async function enterCasinoRaffle(
 
     return {
       success: true,
-      entryCount: parseInt(String((countResult as Array<{ count: string }>)[0]?.count || "0")),
+      entryCount: safeParseInt((countResult as Array<{ count: string }>)[0]?.count, 0),
     };
   } catch (error) {
     console.error("Error entering raffle:", error);
@@ -398,7 +410,7 @@ export async function getCasinoPot(): Promise<number | null> {
 
     if ((result as unknown[]).length === 0) return null;
 
-    return parseInt(String((result as Array<{ balance_lamports: string }>)[0].balance_lamports)) / 1e9; // Convert to SOL
+    return safeParseInt((result as Array<{ balance_lamports: string }>)[0].balance_lamports, 0) / 1e9; // Convert to SOL
   } catch (error) {
     console.error("Error getting casino pot:", error);
     return null;
@@ -492,7 +504,7 @@ export async function getCasinoHistory(
         id: `wheel-${spin.id}`,
         type: "wheel",
         result: spin.result,
-        amount: parseFloat(spin.prize_sol || "0"),
+        amount: safeParseFloat(spin.prize_sol, 0),
         timestamp: new Date(spin.created_at).getTime(),
         isWin: spin.is_win,
       });
@@ -509,7 +521,7 @@ export async function getCasinoHistory(
             ? "WON"
             : "LOST"
           : "PENDING",
-        amount: isWinner ? parseFloat(entry.prize_sol || "0") : 0,
+        amount: isWinner ? safeParseFloat(entry.prize_sol, 0) : 0,
         timestamp: new Date(entry.created_at).getTime(),
         isWin: isWinner,
       });
