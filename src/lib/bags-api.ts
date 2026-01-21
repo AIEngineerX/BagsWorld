@@ -371,39 +371,83 @@ class BagsApiClient {
       } : {}),
     };
     console.log("Bags API createLaunchTransaction request:", JSON.stringify(apiBody, null, 2));
-    try {
-      // The API may return either a string directly or an object with transaction field
-      const result = await this.fetch<string | { transaction: string; lastValidBlockHeight?: number }>("/token-launch/create-launch-transaction", {
-        method: "POST",
-        body: JSON.stringify(apiBody),
-      });
-      console.log("Bags API createLaunchTransaction response:", result);
-      console.log("Response type:", typeof result);
 
-      // Handle both string and object responses
-      if (typeof result === "string") {
-        console.log("Transaction string length:", result.length);
-        console.log("Transaction preview:", result.substring(0, 100) + "...");
-        if (!result || result.length < 100) {
-          throw new Error(`Launch transaction API returned empty or invalid transaction (length: ${result?.length || 0})`);
-        }
-        return { transaction: result };
-      } else if (result && typeof result === "object" && "transaction" in result) {
-        const tx = (result as { transaction: string }).transaction;
-        console.log("Transaction string length:", tx?.length);
-        console.log("Transaction preview:", tx?.substring(0, 100) + "...");
-        if (!tx || tx.length < 100) {
-          throw new Error(`Launch transaction API returned empty or invalid transaction (length: ${tx?.length || 0})`);
-        }
-        return result;
-      } else {
-        console.error("Unexpected response format:", result);
-        throw new Error("Invalid response format from launch transaction API");
-      }
-    } catch (error) {
-      console.error("Bags API createLaunchTransaction error:", error);
-      throw error;
+    // Make raw fetch to see exact response
+    const url = `${this.baseUrl}/token-launch/create-launch-transaction`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "x-api-key": this.apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(apiBody),
+    });
+
+    const rawText = await response.text();
+    console.log("=== RAW BAGS API RESPONSE ===");
+    console.log("Status:", response.status);
+    console.log("Raw text length:", rawText.length);
+    console.log("Raw text (first 500 chars):", rawText.substring(0, 500));
+    console.log("Raw text (last 100 chars):", rawText.substring(rawText.length - 100));
+    console.log("=============================");
+
+    if (!response.ok) {
+      throw new Error(`API error ${response.status}: ${rawText}`);
     }
+
+    // Parse JSON
+    let data_response;
+    try {
+      data_response = JSON.parse(rawText);
+    } catch (e) {
+      console.error("Failed to parse JSON:", e);
+      throw new Error(`Invalid JSON response from Bags API: ${rawText.substring(0, 200)}`);
+    }
+
+    console.log("Parsed response keys:", Object.keys(data_response));
+    console.log("Parsed response:", JSON.stringify(data_response, null, 2).substring(0, 1000));
+
+    // Extract transaction - check all possible locations
+    let transaction: string | undefined;
+    let lastValidBlockHeight: number | undefined;
+
+    // Standard format: { success: true, response: { transaction: "...", lastValidBlockHeight: ... } }
+    if (data_response.response?.transaction) {
+      transaction = data_response.response.transaction;
+      lastValidBlockHeight = data_response.response.lastValidBlockHeight;
+      console.log("Found transaction in response.transaction");
+    }
+    // Alternative: { success: true, response: "base64string" }
+    else if (typeof data_response.response === "string") {
+      transaction = data_response.response;
+      console.log("Found transaction as response string");
+    }
+    // Direct: { transaction: "..." }
+    else if (data_response.transaction) {
+      transaction = data_response.transaction;
+      lastValidBlockHeight = data_response.lastValidBlockHeight;
+      console.log("Found transaction at root level");
+    }
+    // Direct string response
+    else if (typeof data_response === "string") {
+      transaction = data_response;
+      console.log("Response is direct string");
+    }
+
+    if (!transaction) {
+      console.error("Could not find transaction in response:", data_response);
+      throw new Error(`No transaction found in Bags API response. Keys: ${Object.keys(data_response).join(", ")}`);
+    }
+
+    console.log("Final transaction length:", transaction.length);
+    console.log("Transaction preview:", transaction.substring(0, 100));
+    console.log("Transaction end:", transaction.substring(transaction.length - 50));
+
+    if (transaction.length < 100) {
+      throw new Error(`Transaction too short (${transaction.length} chars) - API may have returned an error`);
+    }
+
+    return { transaction, lastValidBlockHeight };
   }
 
   // Fee Share Configuration
@@ -488,17 +532,44 @@ class BagsApiClient {
       basisPointsArray,
     };
     console.log("Bags API createFeeShareConfig request:", JSON.stringify(requestBody, null, 2));
+
+    // Make raw fetch to see exact response
+    const url = `${this.baseUrl}/fee-share/config`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "x-api-key": this.apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const rawText = await response.text();
+    console.log("=== RAW FEE CONFIG RESPONSE ===");
+    console.log("Status:", response.status);
+    console.log("Raw text length:", rawText.length);
+    console.log("Raw text (first 1000):", rawText.substring(0, 1000));
+    console.log("===============================");
+
+    if (!response.ok) {
+      throw new Error(`Fee config API error ${response.status}: ${rawText.substring(0, 500)}`);
+    }
+
+    let parsed;
     try {
-      const result = await this.fetch<Record<string, unknown>>("/fee-share/config", {
-        method: "POST",
-        body: JSON.stringify(requestBody),
-      });
-      console.log("Bags API createFeeShareConfig raw response:", JSON.stringify(result, null, 2));
-      console.log("Response keys:", Object.keys(result));
-      console.log("Response type:", typeof result);
-      console.log("meteoraConfigKey:", result.meteoraConfigKey);
-      console.log("configKey:", result.configKey);
-      console.log("config:", result.config);
+      parsed = JSON.parse(rawText);
+    } catch (e) {
+      throw new Error(`Invalid JSON from fee config API: ${rawText.substring(0, 200)}`);
+    }
+
+    // Handle wrapped response
+    const result = parsed.response || parsed;
+    console.log("Bags API createFeeShareConfig parsed response:", JSON.stringify(result, null, 2).substring(0, 2000));
+    console.log("Response keys:", Object.keys(result));
+    console.log("Response type:", typeof result);
+    console.log("meteoraConfigKey:", result.meteoraConfigKey);
+    console.log("configKey:", result.configKey);
+    console.log("config:", result.config);
 
       // Handle different possible response field names - check all variations
       // The API returns "meteoraConfigKey" as the config key to use for launch
