@@ -163,7 +163,7 @@ export function Leaderboard() {
 
                 <div className="text-right">
                   <p className="font-pixel text-[10px] text-bags-gold flex items-center justify-end gap-1">
-                    <CoinIcon className="text-bags-gold" size={12} />${formatEarnings(character.earnings24h)}
+                    {formatEarnings(character.earnings24h)} SOL
                   </p>
                   <p className="font-pixel text-[8px] text-gray-500">24h</p>
                 </div>
