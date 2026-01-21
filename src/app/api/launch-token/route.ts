@@ -29,9 +29,6 @@ interface LaunchRequestBody {
     configKey?: string; // From configure-fees step
     tipWallet?: string;
     tipLamports?: number;
-    // Partner configuration for earning Bags.fm partner fees
-    partner?: string; // Partner wallet address
-    partnerConfig?: string; // Partner config PDA (derived from partner wallet)
     // For lookup-wallet
     provider?: string;
     username?: string;
@@ -206,8 +203,6 @@ async function handleCreateLaunchTx(
     wallet: data.wallet,
     initialBuyLamports: data.initialBuyLamports || 0,
     configKey: data.configKey,
-    partner: data.partner,
-    partnerConfig: data.partnerConfig,
   });
 
   try {
@@ -219,9 +214,6 @@ async function handleCreateLaunchTx(
       configKey: data.configKey,
       tipWallet: data.tipWallet,
       tipLamports: data.tipLamports,
-      // Partner configuration for Bags.fm partner fees
-      partner: data.partner,
-      partnerConfig: data.partnerConfig,
     });
 
     // result is now { transaction: string, lastValidBlockHeight?: number }
