@@ -425,7 +425,16 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
             }
 
-            const signedTx = await signTransaction(transaction);
+            let signedTx;
+            try {
+              signedTx = await signTransaction(transaction);
+            } catch (signError: unknown) {
+              const signErrorMsg = signError instanceof Error ? signError.message : String(signError);
+              if (signErrorMsg.includes("User rejected") || signErrorMsg.includes("rejected") || signErrorMsg.includes("closed")) {
+                throw new Error("Transaction cancelled. Please try again and approve all transactions in your wallet.");
+              }
+              throw new Error(`Wallet signing failed: ${signErrorMsg}`);
+            }
 
             setLaunchStatus(`Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
 
@@ -562,8 +571,29 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
         }
 
-        // Sign transaction
-        const signedTx = await signTransaction(transaction);
+        // Sign transaction - with better error handling for Phantom
+        let signedTx;
+        try {
+          signedTx = await signTransaction(transaction);
+        } catch (signError: unknown) {
+          const signErrorMsg = signError instanceof Error ? signError.message : String(signError);
+          console.error("Transaction signing failed:", signErrorMsg);
+
+          // User rejected
+          if (signErrorMsg.includes("User rejected") || signErrorMsg.includes("rejected")) {
+            throw new Error("Transaction cancelled. Please try again and approve the transaction in your wallet.");
+          }
+          // Phantom popup closed
+          if (signErrorMsg.includes("Popup closed") || signErrorMsg.includes("closed")) {
+            throw new Error("Wallet popup was closed. Please try again and complete the approval.");
+          }
+          // Transaction simulation failed
+          if (signErrorMsg.includes("simulation") || signErrorMsg.includes("Simulation")) {
+            throw new Error(`Transaction simulation failed: ${signErrorMsg}. This may be a temporary network issue - please try again.`);
+          }
+          // Generic error
+          throw new Error(`Wallet signing failed: ${signErrorMsg}`);
+        }
 
         setLaunchStatus("Broadcasting to Solana...");
 
@@ -631,7 +661,15 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
               // Sign the fresh transaction
               setLaunchStatus("Please sign the transaction...");
-              currentSignedTx = await signTransaction(retryTransaction);
+              try {
+                currentSignedTx = await signTransaction(retryTransaction);
+              } catch (retrySignError: unknown) {
+                const retrySignMsg = retrySignError instanceof Error ? retrySignError.message : String(retrySignError);
+                if (retrySignMsg.includes("User rejected") || retrySignMsg.includes("rejected") || retrySignMsg.includes("closed")) {
+                  throw new Error("Transaction cancelled. Please try again.");
+                }
+                throw new Error(`Wallet signing failed: ${retrySignMsg}`);
+              }
               setLaunchStatus("Broadcasting to Solana...");
 
               // Continue loop to try sending

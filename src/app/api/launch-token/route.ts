@@ -37,12 +37,13 @@ interface LaunchRequestBody {
 }
 
 export async function POST(request: Request) {
-  // Rate limit: 5 requests per minute (strict - prevents launch spam)
+  // Rate limit: 20 requests per minute (standard - allows full launch flow with retries)
+  // A single launch needs: create-info + configure-fees + create-launch-tx + potential retries
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`launch:${clientIP}`, RATE_LIMITS.strict);
+  const rateLimit = checkRateLimit(`launch:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many launch requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      { error: "Too many launch requests. Please wait a moment and try again.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
       { status: 429 }
     );
   }
