@@ -357,10 +357,10 @@ class BagsApiClient {
     configKey: string;
     tipWallet?: string;
     tipLamports?: number;
-    partner?: string; // Partner wallet address for earning partner fees
-    partnerConfig?: string; // Partner config PDA (derived from partner wallet)
   }): Promise<{ transaction: string; lastValidBlockHeight?: number }> {
     // Bags API expects ipfs and wallet (not metadataUrl/launchWallet)
+    // Note: Partner fees are earned via the partner config created at dev.bags.fm
+    // The API key is linked to the partner config, so fees are automatic
     const apiBody = {
       ipfs: data.ipfs,
       tokenMint: data.tokenMint,
@@ -371,10 +371,6 @@ class BagsApiClient {
         tipWallet: data.tipWallet,
         tipLamports: data.tipLamports,
       } : {}),
-      // Partner configuration for earning partner fees from Bags.fm
-      // Partner must have created their partner config via /fee-share/partner-config/creation-tx
-      ...(data.partner ? { partner: data.partner } : {}),
-      ...(data.partnerConfig ? { partnerConfig: data.partnerConfig } : {}),
     };
     console.log("Bags API createLaunchTransaction request:", JSON.stringify(apiBody, null, 2));
 

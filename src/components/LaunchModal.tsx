@@ -488,10 +488,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               wallet: publicKey?.toBase58(),
               initialBuyLamports,
               configKey: configKey,
-              // Partner configuration for earning Bags.fm partner fees
-              // This enables BagsWorld to earn the platform partner fee from launches
-              partner: ECOSYSTEM_CONFIG.ecosystem.wallet,
-              partnerConfig: ECOSYSTEM_CONFIG.ecosystem.partnerConfigPda,
             },
           }),
         });
@@ -611,9 +607,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                     wallet: publicKey?.toBase58(),
                     initialBuyLamports: Math.floor(parseFloat(initialBuySOL || "0") * 1_000_000_000),
                     configKey: configKey,
-                    // Partner configuration for earning Bags.fm partner fees
-                    partner: ECOSYSTEM_CONFIG.ecosystem.wallet,
-                    partnerConfig: ECOSYSTEM_CONFIG.ecosystem.partnerConfigPda,
                   },
                 }),
               });
