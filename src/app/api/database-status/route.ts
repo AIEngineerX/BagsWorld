@@ -1,21 +1,35 @@
 // Database Status API - Check if Neon is configured and working
 import { NextResponse } from "next/server";
-import { isNeonConfigured, getGlobalTokens } from "@/lib/neon";
+import { isNeonConfigured, getGlobalTokens, getNeonConnectionType } from "@/lib/neon";
 
 export async function GET() {
   try {
     const configured = isNeonConfigured();
-    const dbUrlExists = !!process.env.NETLIFY_DATABASE_URL;
-    const dbUrlPreview = process.env.NETLIFY_DATABASE_URL
+    const connectionType = getNeonConnectionType();
+    const netlifyDbExists = !!process.env.NETLIFY_DATABASE_URL;
+    const directDbExists = !!process.env.DATABASE_URL;
+
+    // Mask the URLs for security
+    const netlifyDbPreview = process.env.NETLIFY_DATABASE_URL
       ? process.env.NETLIFY_DATABASE_URL.substring(0, 50) + "..."
+      : "not set";
+    const directDbPreview = process.env.DATABASE_URL
+      ? process.env.DATABASE_URL.substring(0, 50) + "..."
       : "not set";
 
     if (!configured) {
       return NextResponse.json({
         status: "not_configured",
-        message: "Neon not configured. Enable Neon in Netlify dashboard.",
+        message: "Neon not configured. Set DATABASE_URL env var or enable Neon in Netlify dashboard.",
         tokenCount: 0,
-        debug: { dbUrlExists, dbUrlPreview },
+        connectionType,
+        debug: {
+          netlifyDbExists,
+          directDbExists,
+          netlifyDbPreview,
+          directDbPreview,
+          hint: "Set DATABASE_URL to your Neon connection string (postgresql://...)"
+        },
       });
     }
 
@@ -24,10 +38,16 @@ export async function GET() {
 
     return NextResponse.json({
       status: "connected",
-      message: "Neon database connected",
+      message: `Neon database connected via ${connectionType === "netlify" ? "Netlify integration" : "direct DATABASE_URL"}`,
       tokenCount: tokens.length,
+      connectionType,
       tokens: tokens.slice(0, 5), // Show first 5 tokens for debugging
-      debug: { dbUrlExists, dbUrlPreview },
+      debug: {
+        netlifyDbExists,
+        directDbExists,
+        netlifyDbPreview: connectionType === "netlify" ? netlifyDbPreview : undefined,
+        directDbPreview: connectionType === "direct" ? directDbPreview : undefined,
+      },
     });
   } catch (error) {
     console.error("Database status check error:", error);
@@ -35,9 +55,11 @@ export async function GET() {
       status: "error",
       message: error instanceof Error ? error.message : "Failed to connect to database",
       tokenCount: 0,
+      connectionType: getNeonConnectionType(),
       debug: {
         error: error instanceof Error ? error.stack : String(error),
-        dbUrlExists: !!process.env.NETLIFY_DATABASE_URL,
+        netlifyDbExists: !!process.env.NETLIFY_DATABASE_URL,
+        directDbExists: !!process.env.DATABASE_URL,
       },
     });
   }

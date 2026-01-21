@@ -1,5 +1,5 @@
 -- BagsWorld Global Tokens Schema (Neon)
--- Run this in your Neon SQL console after enabling Neon on Netlify
+-- The app auto-creates tables on first connection, but you can run this manually if needed
 
 CREATE TABLE IF NOT EXISTS tokens (
   id SERIAL PRIMARY KEY,
@@ -23,7 +23,10 @@ CREATE TABLE IF NOT EXISTS tokens (
 
   -- Metadata
   is_featured BOOLEAN DEFAULT FALSE,
-  is_verified BOOLEAN DEFAULT FALSE
+  is_verified BOOLEAN DEFAULT FALSE,
+
+  -- Admin controls
+  level_override INTEGER  -- Override building level (1-5), null = use market cap
 );
 
 -- Indexes for faster queries
