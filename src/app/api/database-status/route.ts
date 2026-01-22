@@ -6,15 +6,24 @@ export async function GET() {
   try {
     const configured = isNeonConfigured();
     const connectionType = getNeonConnectionType();
-    const netlifyDbExists = !!process.env.NETLIFY_DATABASE_URL;
-    const directDbExists = !!process.env.DATABASE_URL;
+
+    // Check all possible env var names
+    const envVars = {
+      NETLIFY_DATABASE_URL: !!process.env.NETLIFY_DATABASE_URL,
+      DATABASE_URL: !!process.env.DATABASE_URL,
+      NEON_DATABASE_URL: !!process.env.NEON_DATABASE_URL,
+      POSTGRES_URL: !!process.env.POSTGRES_URL,
+    };
+
+    const netlifyDbExists = envVars.NETLIFY_DATABASE_URL;
+    const directDbExists = envVars.DATABASE_URL || envVars.NEON_DATABASE_URL || envVars.POSTGRES_URL;
 
     // Mask the URLs for security
     const netlifyDbPreview = process.env.NETLIFY_DATABASE_URL
       ? process.env.NETLIFY_DATABASE_URL.substring(0, 50) + "..."
       : "not set";
-    const directDbPreview = process.env.DATABASE_URL
-      ? process.env.DATABASE_URL.substring(0, 50) + "..."
+    const directDbPreview = (process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL)
+      ? (process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL)!.substring(0, 50) + "..."
       : "not set";
 
     if (!configured) {
@@ -24,11 +33,9 @@ export async function GET() {
         tokenCount: 0,
         connectionType,
         debug: {
-          netlifyDbExists,
-          directDbExists,
-          netlifyDbPreview,
+          envVars,
           directDbPreview,
-          hint: "Set DATABASE_URL to your Neon connection string (postgresql://...)"
+          hint: "Set DATABASE_URL (or NEON_DATABASE_URL) to your Neon connection string (postgresql://...)"
         },
       });
     }
