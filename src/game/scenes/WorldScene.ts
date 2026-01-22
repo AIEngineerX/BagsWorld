@@ -1065,7 +1065,6 @@ export class WorldScene extends Phaser.Scene {
     if (num >= 1000) return (num / 1000).toFixed(1) + "K";
     return num.toFixed(0);
   }
-
   // Handle AI behavior commands for characters
   private handleBehaviorCommand(event: CustomEvent): void {
     const command = event.detail;
