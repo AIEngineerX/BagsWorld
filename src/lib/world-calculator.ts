@@ -179,51 +179,86 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-export function generateBuildingPosition(
-  index: number,
-  total: number
+// Fixed building plot positions for each zone
+// These are hand-picked locations that look good alongside permanent structures
+const BUILDING_PLOTS = {
+  // BagsCity (trending) - Left side of world
+  // Permanent: Casino (x=128), Trading Gym (x=240)
+  trending: [
+    // Front row - main street level
+    { x: Math.round(320 * SCALE), y: Math.round(480 * SCALE) },
+    { x: Math.round(420 * SCALE), y: Math.round(480 * SCALE) },
+    { x: Math.round(520 * SCALE), y: Math.round(480 * SCALE) },
+    // Back row - slightly behind (lower Y = further back visually)
+    { x: Math.round(280 * SCALE), y: Math.round(420 * SCALE) },
+    { x: Math.round(380 * SCALE), y: Math.round(420 * SCALE) },
+    { x: Math.round(480 * SCALE), y: Math.round(420 * SCALE) },
+  ],
+  // Park (main_city) - Center-right side of world
+  // Permanent: PokeCenter (x=448), Treasury (x=640)
+  main_city: [
+    // Front row - spread around the park
+    { x: Math.round(540 * SCALE), y: Math.round(480 * SCALE) },
+    { x: Math.round(720 * SCALE), y: Math.round(480 * SCALE) },
+    { x: Math.round(850 * SCALE), y: Math.round(480 * SCALE) },
+    { x: Math.round(980 * SCALE), y: Math.round(480 * SCALE) },
+    // Back row - behind the front buildings
+    { x: Math.round(600 * SCALE), y: Math.round(420 * SCALE) },
+    { x: Math.round(780 * SCALE), y: Math.round(420 * SCALE) },
+    { x: Math.round(920 * SCALE), y: Math.round(420 * SCALE) },
+    { x: Math.round(1060 * SCALE), y: Math.round(420 * SCALE) },
+  ],
+};
+
+/**
+ * Get a building plot position for a specific zone
+ * Uses the mint address to deterministically assign a plot
+ */
+export function getBuildingPlotPosition(
+  mint: string,
+  zone: "trending" | "main_city"
 ): { x: number; y: number } {
-  // Use a fixed grid layout with deterministic small offsets
-  const maxCols = 5; // Maximum 5 buildings per row
-  const actualTotal = Math.min(total, MAX_BUILDINGS);
-  const rows = Math.ceil(actualTotal / maxCols);
+  const plots = BUILDING_PLOTS[zone];
 
-  const row = Math.floor(index / maxCols);
-  const col = index % maxCols;
+  // Hash the mint to get a consistent plot index
+  let hash = 0;
+  for (let i = 0; i < mint.length; i++) {
+    hash = ((hash << 5) - hash) + mint.charCodeAt(i);
+    hash = hash & hash;
+  }
+  const plotIndex = Math.abs(hash) % plots.length;
 
-  // Calculate how many buildings in this row
-  const buildingsInThisRow = row < rows - 1 ? maxCols : actualTotal - (rows - 1) * maxCols;
-
-  // Center the buildings horizontally
-  const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
-  const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
-
-  // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area, scaled)
-  // Buildings use origin(0.5, 1), so y position is their bottom edge
-  // Stack rows upward from ground level with spacing
-  const GROUND_Y = Math.round(540 * SCALE); // Where buildings sit on the ground
-  const ROW_SPACING = Math.round(100 * SCALE); // Vertical spacing between rows (slightly less than horizontal)
-
-  // Front row (row 0) is at ground level, subsequent rows stack upward (behind)
-  const baseY = GROUND_Y - row * ROW_SPACING;
-
-  // Use seeded random for consistent small offsets based on index (scaled)
-  const offsetX = (seededRandom(index * 7 + 1) * Math.round(16 * SCALE) - Math.round(8 * SCALE));
-  const offsetY = (seededRandom(index * 13 + 2) * Math.round(12 * SCALE) - Math.round(6 * SCALE)); // Smaller Y offset
+  // Add small deterministic offset for visual variety
+  const offsetX = (seededRandom(hash * 7) * 20 - 10) * SCALE;
+  const offsetY = (seededRandom(hash * 13) * 10 - 5) * SCALE;
 
   return {
-    x: rowStartX + col * BUILDING_SPACING + offsetX,
-    y: baseY + offsetY,
+    x: plots[plotIndex].x + offsetX,
+    y: plots[plotIndex].y + offsetY,
   };
+}
+
+// Legacy function for backwards compatibility
+export function generateBuildingPosition(
+  index: number,
+  _total: number
+): { x: number; y: number } {
+  // Alternate between zones based on index
+  const zone = index % 2 === 0 ? "main_city" : "trending";
+  const plots = BUILDING_PLOTS[zone];
+  const plotIndex = Math.floor(index / 2) % plots.length;
+
+  return plots[plotIndex];
 }
 
 /**
  * Get or create a cached position for a building by its mint address.
  * This prevents buildings from shifting when rankings change.
+ * Now zone-aware: buildings get positions in their assigned zone.
  */
 export function getCachedBuildingPosition(
   mint: string,
-  existingBuildings: Set<string>
+  zone: "trending" | "main_city"
 ): { x: number; y: number } {
   // Check if we already have a cached position for this mint
   const cached = buildingPositionCache.get(mint);
@@ -231,21 +266,18 @@ export function getCachedBuildingPosition(
     return { x: cached.x, y: cached.y };
   }
 
-  // Find the next available index that's not in use
-  // First, collect all used indices
+  // Use the zone-specific plot positioning
+  const position = getBuildingPlotPosition(mint, zone);
+
+  // Find next available index for tracking
   const usedIndices = new Set<number>();
   buildingPositionCache.forEach((pos) => {
     usedIndices.add(pos.assignedIndex);
   });
-
-  // Find the lowest available index
   let assignedIndex = 0;
   while (usedIndices.has(assignedIndex) && assignedIndex < MAX_BUILDINGS) {
     assignedIndex++;
   }
-
-  // Generate position based on assigned index
-  const position = generateBuildingPosition(assignedIndex, MAX_BUILDINGS);
 
   // Cache it
   buildingPositionCache.set(mint, {
@@ -376,6 +408,8 @@ export function transformTokenToBuilding(
   const isTradingGym = token.symbol === "GYM" || token.mint.includes("TradingGym");
   const isCasino = token.symbol === "CASINO" || token.mint.includes("Casino");
   const isTreasuryHub = token.mint.startsWith("Treasury");
+  const isStarterToken = token.mint.startsWith("Starter");
+  const isTreasuryBuilding = token.mint.startsWith("Treasury");
   // BagsWorld HQ - the floating headquarters in the sky (uses real token data)
   const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
   const isBagsWorldHQ = token.mint === BAGSHQ_MINT || token.symbol === "BAGSWORLD";
@@ -383,6 +417,28 @@ export function transformTokenToBuilding(
   // Always clear HQ from position cache to ensure it uses sky position
   if (isBagsWorldHQ) {
     buildingPositionCache.delete(BAGSHQ_MINT);
+  }
+
+  // Determine zone FIRST (needed for position assignment)
+  // - HQ: no zone (floats in sky, visible from both)
+  // - Casino, Trading Gym: BagsCity (trending)
+  // - PokeCenter, Treasury: Park (main_city)
+  // - User-launched tokens: alternate between zones based on mint hash
+  let zone: "trending" | "main_city" | undefined;
+  if (isBagsWorldHQ) {
+    zone = undefined;
+  } else if (isTradingGym || isCasino) {
+    zone = "trending";
+  } else if (isPokeCenter || isTreasuryHub || isStarterToken) {
+    zone = "main_city";
+  } else {
+    // User-launched tokens: use mint hash to alternate between zones
+    let hash = 0;
+    for (let i = 0; i < token.mint.length; i++) {
+      hash = ((hash << 5) - hash) + token.mint.charCodeAt(i);
+      hash = hash & hash;
+    }
+    zone = Math.abs(hash) % 2 === 0 ? "main_city" : "trending";
   }
 
   // Fixed positions for landmark buildings (City side = left, x < center, scaled)
@@ -410,12 +466,9 @@ export function transformTokenToBuilding(
     // Treasury: Center position
     position = { x: WORLD_WIDTH / 2, y: landmarkY };
   } else {
-    position = generateBuildingPosition(index, MAX_BUILDINGS);
+    // User-launched buildings: get zone-specific plot position
+    position = getCachedBuildingPosition(token.mint, zone as "trending" | "main_city");
   }
-
-  // Check if this is a real token (not a starter/placeholder/treasury)
-  const isStarterToken = token.mint.startsWith("Starter");
-  const isTreasuryBuilding = token.mint.startsWith("Treasury");
 
   // Treasury links to Solscan, real tokens link to Bags.fm, starters have no link
   let tokenUrl: string | undefined;
@@ -429,10 +482,6 @@ export function transformTokenToBuilding(
   // Calculate health with decay system (uses previous health for smooth transitions)
   const previousHealth = existingBuilding?.health ?? 50;
   const newHealth = calculateBuildingHealth(token.change24h, token.volume24h, previousHealth);
-
-  // Assign zones: Trading Gym and Casino go to BagsCity, all other buildings go to Park
-  // BagsWorld HQ has NO zone - it floats in the sky visible from both zones
-  const zone = isBagsWorldHQ ? undefined : (isTradingGym || isCasino) ? "trending" as const : "main_city" as const;
 
   // Use level override if set by admin, otherwise calculate from market cap
   // BagsWorld HQ always gets max level (it's the headquarters!)
@@ -564,13 +613,13 @@ export function buildWorldState(
   // EXCEPT for floating buildings like HQ which have fixed sky positions
   const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
   const buildings = filteredBuildings.map((building) => {
-    // Skip cache for floating buildings - they use their fixed position
-    if (building.isFloating || building.id === BAGSHQ_MINT) {
+    // Skip cache for floating buildings or those without zones - they use their fixed position
+    if (building.isFloating || building.id === BAGSHQ_MINT || !building.zone) {
       return building;
     }
     return {
       ...building,
-      ...getCachedBuildingPosition(building.id, activeMints),
+      ...getCachedBuildingPosition(building.id, building.zone),
     };
   });
 
