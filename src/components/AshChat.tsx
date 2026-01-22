@@ -93,45 +93,45 @@ export function AshChat() {
   }, [messages]);
 
   // Handle dragging
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest("button, input")) return;
     const rect = chatRef.current?.getBoundingClientRect();
     if (rect) {
       setIsDragging(true);
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
+      setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     }
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handlePointerMove = (e: PointerEvent) => {
       if (!isDragging) return;
 
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
 
-      const maxX = window.innerWidth - 320;
-      const maxY = window.innerHeight - 400;
+      const chatWidth = Math.min(320, window.innerWidth - 32);
+      const maxX = window.innerWidth - chatWidth;
+      const maxY = window.innerHeight - 300;
 
       setPosition({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY)),
+        x: Math.max(8, Math.min(newX, maxX - 8)),
+        y: Math.max(60, Math.min(newY, maxY)),
       });
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
       setIsDragging(false);
     };
 
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('pointercancel', handlePointerUp);
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+        window.removeEventListener('pointercancel', handlePointerUp);
       };
     }
   }, [isDragging, dragOffset]);
@@ -254,8 +254,8 @@ export function AshChat() {
     >
       {/* Header - Draggable */}
       <div
-        onMouseDown={handleMouseDown}
-        className="flex items-center justify-between p-2 border-b-4 border-red-500 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-red-600/20 to-yellow-500/20"
+        onPointerDown={handlePointerDown}
+        className="flex items-center justify-between p-2 border-b-4 border-red-500 cursor-grab active:cursor-grabbing select-none touch-none bg-gradient-to-r from-red-600/20 to-yellow-500/20"
       >
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">⚡</span>

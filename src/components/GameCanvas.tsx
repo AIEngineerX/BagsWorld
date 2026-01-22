@@ -71,6 +71,10 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return;
 
+    // Detect mobile for performance optimizations
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isLowPower = navigator.hardwareConcurrency ? navigator.hardwareConcurrency <= 4 : isMobile;
+
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: containerRef.current,
@@ -93,6 +97,16 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
       scene: [BootScene, WorldScene, UIScene],
       input: {
         activePointers: 3, // Support multi-touch
+      },
+      // Mobile performance optimizations
+      fps: {
+        target: isMobile ? 30 : 60, // Lower FPS on mobile for battery
+        forceSetTimeOut: isLowPower, // More stable on low-power devices
+      },
+      render: {
+        antialias: false, // Disable for pixel art
+        roundPixels: true, // Crisp pixel art
+        powerPreference: isMobile ? "low-power" : "high-performance",
       },
     };
 
