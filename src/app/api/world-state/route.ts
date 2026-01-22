@@ -183,46 +183,53 @@ async function fetchTokenPrices(mints: string[]): Promise<Map<string, PriceData>
   }
 }
 
-// Fetch real Washington DC weather directly from Open-Meteo
-async function fetchDCWeather(): Promise<WorldState["weather"]> {
-  try {
-    if (
-      cachedWeather &&
-      Date.now() - cachedWeather.fetchedAt < WEATHER_CACHE_DURATION
-    ) {
-      return cachedWeather.weather;
-    }
+// Background weather fetch (non-blocking)
+let weatherFetchInProgress = false;
 
-    // Fetch directly from Open-Meteo to avoid internal API call issues
-    const DC_LAT = 38.9072;
-    const DC_LON = -77.0369;
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${DC_LAT}&longitude=${DC_LON}&current=weather_code,cloud_cover&timezone=America/New_York`;
+function fetchWeatherInBackground(): void {
+  if (weatherFetchInProgress) return;
+  weatherFetchInProgress = true;
 
-    const response = await fetch(url, { cache: "no-store" });
+  const DC_LAT = 38.9072;
+  const DC_LON = -77.0369;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${DC_LAT}&longitude=${DC_LON}&current=weather_code,cloud_cover&timezone=America/New_York`;
 
-    if (!response.ok) {
-      throw new Error("Weather API error");
-    }
+  fetch(url, { cache: "no-store" })
+    .then(response => {
+      if (!response.ok) throw new Error("Weather API error");
+      return response.json();
+    })
+    .then(data => {
+      const code = data.current.weather_code;
+      const cloudCover = data.current.cloud_cover;
 
-    const data = await response.json();
-    const code = data.current.weather_code;
-    const cloudCover = data.current.cloud_cover;
+      let weather: WorldState["weather"] = "cloudy";
+      if (code >= 95) weather = "storm";
+      else if (code >= 51) weather = "rain";
+      else if (code === 3 || cloudCover > 70) weather = "cloudy";
+      else if (code <= 2 && cloudCover < 30) weather = "sunny";
 
-    // Convert to game weather based on Open-Meteo weather codes
-    // https://open-meteo.com/en/docs - WMO Weather interpretation codes
-    // 0-3: Clear/Cloudy, 51-57: Drizzle, 61-67: Rain, 71-77: Snow, 80-82: Showers, 95-99: Thunderstorm
-    let weather: WorldState["weather"] = "cloudy";
-    if (code >= 95) weather = "storm";
-    else if (code >= 51) weather = "rain"; // All precipitation codes (drizzle, rain, snow, showers)
-    else if (code === 3 || cloudCover > 70) weather = "cloudy";
-    else if (code <= 2 && cloudCover < 30) weather = "sunny";
+      cachedWeather = { weather, fetchedAt: Date.now() };
+    })
+    .catch(() => {
+      // Silent fail - keep using cached data
+    })
+    .finally(() => {
+      weatherFetchInProgress = false;
+    });
+}
 
-    cachedWeather = { weather, fetchedAt: Date.now() };
+// Get weather instantly (non-blocking) - uses cache, triggers background refresh if stale
+function getWeatherNonBlocking(): WorldState["weather"] {
+  const now = Date.now();
 
-    return weather;
-  } catch {
-    return cachedWeather?.weather ?? "cloudy";
+  // If cache is stale, trigger background fetch
+  if (!cachedWeather || now - cachedWeather.fetchedAt >= WEATHER_CACHE_DURATION) {
+    fetchWeatherInBackground();
   }
+
+  // Always return immediately with cached or default value
+  return cachedWeather?.weather ?? "cloudy";
 }
 
 // Get current EST time info
@@ -886,11 +893,9 @@ export async function POST(request: NextRequest) {
     earners.unshift(ash); // Ash second
     earners.unshift(toly); // Toly always first
 
-    // Fetch weather and time
-    const [realWeather, timeInfo] = await Promise.all([
-      fetchDCWeather(),
-      Promise.resolve(getESTTimeInfo()),
-    ]);
+    // Get weather (non-blocking) and time
+    const realWeather = getWeatherNonBlocking();
+    const timeInfo = getESTTimeInfo();
 
     // Calculate Bags.fm health metrics from real on-chain data
     // 1. Total 24h claim volume (claims are already in lamports from SDK, convert to SOL)
@@ -977,10 +982,8 @@ export async function GET() {
       now - tokenCache.timestamp < TOKEN_CACHE_DURATION &&
       earnerCache
     ) {
-      const [realWeather, timeInfo] = await Promise.all([
-        fetchDCWeather(),
-        Promise.resolve(getESTTimeInfo()),
-      ]);
+      const realWeather = getWeatherNonBlocking();
+      const timeInfo = getESTTimeInfo();
 
       const worldState = buildWorldState(
         earnerCache.data,
@@ -1008,10 +1011,8 @@ export async function GET() {
     // No placeholder earners - only show real data from SDK
     const earners: FeeEarner[] = [];
 
-    const [realWeather, timeInfo] = await Promise.all([
-      fetchDCWeather(),
-      Promise.resolve(getESTTimeInfo()),
-    ]);
+    const realWeather = getWeatherNonBlocking();
+    const timeInfo = getESTTimeInfo();
 
     const worldState = buildWorldState(earners, tokens, previousState ?? undefined);
 

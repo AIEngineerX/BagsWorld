@@ -397,49 +397,9 @@ export class BootScene extends Phaser.Scene {
         // Door
         this.drawDoor(g, style, level, bWidth, canvasHeight, s);
 
-        // Generate texture: building_1_0, building_1_1, etc.
         g.generateTexture(`building_${level}_${styleIndex}`, canvasWidth, canvasHeight);
         g.destroy();
       }
-
-      // Also generate legacy texture (building_1, building_2, etc.) using first style
-      // This maintains backwards compatibility
-      const legacyStyle = styles[0];
-      const legacyG = this.make.graphics({ x: 0, y: 0 });
-      const bHeight = dims.height;
-      const bWidth = dims.width;
-      const canvasHeight = Math.round(190 * s);
-      const canvasWidth = Math.round(55 * s);
-
-      legacyG.fillStyle(PALETTE.void, 0.5);
-      legacyG.fillRect(Math.round(6 * s), canvasHeight - bHeight + Math.round(6 * s), bWidth - Math.round(2 * s), bHeight);
-      legacyG.fillStyle(legacyStyle.base);
-      legacyG.fillRect(Math.round(4 * s), canvasHeight - bHeight, bWidth - Math.round(4 * s), bHeight);
-      legacyG.fillStyle(lighten(legacyStyle.base, 0.2));
-      legacyG.fillRect(Math.round(4 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
-      legacyG.fillStyle(darken(legacyStyle.base, 0.25));
-      legacyG.fillRect(bWidth - Math.round(6 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
-
-      legacyG.fillStyle(darken(legacyStyle.base, 0.08));
-      for (let py = 0; py < bHeight; py += Math.round(4 * s)) {
-        for (let px = Math.round(10 * s); px < bWidth - Math.round(10 * s); px += Math.round(8 * s)) {
-          if ((py / Math.round(4 * s) + px / Math.round(8 * s)) % 2 === 0) {
-            legacyG.fillRect(Math.round(4 * s) + px, canvasHeight - bHeight + py, Math.round(2 * s), Math.round(2 * s));
-          }
-        }
-      }
-
-      if (level === 1) this.drawLevel1Roof(legacyG, legacyStyle, bWidth, bHeight, canvasHeight, s);
-      else if (level === 2) this.drawLevel2Roof(legacyG, legacyStyle, 0, bWidth, bHeight, canvasHeight, s);
-      else if (level === 3) this.drawLevel3Roof(legacyG, legacyStyle, 0, bWidth, bHeight, canvasHeight, s);
-      else if (level === 4) this.drawLevel4Roof(legacyG, legacyStyle, 0, bWidth, bHeight, canvasHeight, s);
-      else if (level === 5) this.drawLevel5Roof(legacyG, legacyStyle, 0, bWidth, bHeight, canvasHeight, s);
-
-      this.drawWindows(legacyG, legacyStyle, level, bWidth, bHeight, canvasHeight, s);
-      this.drawDoor(legacyG, legacyStyle, level, bWidth, canvasHeight, s);
-
-      legacyG.generateTexture(`building_${level}`, canvasWidth, canvasHeight);
-      legacyG.destroy();
     }
   }
 

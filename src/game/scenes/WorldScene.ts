@@ -65,6 +65,7 @@ export class WorldScene extends Phaser.Scene {
   private billboardTexts: Phaser.GameObjects.Text[] = [];
   private tickerText: Phaser.GameObjects.Text | null = null;
   private tickerOffset = 0;
+  private tickerTimer: Phaser.Time.TimerEvent | null = null;
   private skylineSprites: Phaser.GameObjects.Sprite[] = [];
   private originalPositions: Map<Phaser.GameObjects.GameObject, number> = new Map(); // Store original X positions
 
@@ -370,6 +371,11 @@ export class WorldScene extends Phaser.Scene {
         this.billboardTexts = [];
         this.tickerText = null;
         this.skylineSprites = [];
+        // Stop ticker animation to prevent memory leak
+        if (this.tickerTimer) {
+          this.tickerTimer.destroy();
+          this.tickerTimer = null;
+        }
       }
 
       // Update zone and set up new content
@@ -479,6 +485,10 @@ export class WorldScene extends Phaser.Scene {
         this.tickerText.destroy();
         this.tickerText = null;
       }
+      if (this.tickerTimer) {
+        this.tickerTimer.destroy();
+        this.tickerTimer = null;
+      }
       this.skylineSprites.forEach((s) => s.destroy());
       this.skylineSprites = [];
     } else if (this.currentZone === "main_city") {
@@ -551,8 +561,11 @@ export class WorldScene extends Phaser.Scene {
     // Add ticker display at bottom
     this.createTrendingTicker();
 
-    // Start ticker animation
-    this.time.addEvent({
+    // Start ticker animation (store reference for cleanup)
+    if (this.tickerTimer) {
+      this.tickerTimer.destroy();
+    }
+    this.tickerTimer = this.time.addEvent({
       delay: 50,
       callback: this.updateTicker,
       callbackScope: this,
