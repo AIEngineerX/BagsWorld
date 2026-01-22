@@ -3273,7 +3273,7 @@ export class WorldScene extends Phaser.Scene {
                 mint: building.tokenMint || building.id,
                 symbol: building.symbol || "BAGSWORLD",
                 name: building.name || "BagsWorld HQ",
-                tokenUrl: building.tokenUrl || `https://bags.fm/token/${building.tokenMint || building.id}`,
+                tokenUrl: building.tokenUrl || `https://bags.fm/${building.tokenMint || building.id}`,
               }
             }));
           } else if (isStarterBuilding) {

@@ -423,7 +423,7 @@ export function transformTokenToBuilding(
     // Link to Solscan so users can verify the treasury wallet
     tokenUrl = `https://solscan.io/account/${token.creator}`;
   } else if (!isStarterToken) {
-    tokenUrl = `https://bags.fm/token/${token.mint}`;
+    tokenUrl = `https://bags.fm/${token.mint}`;
   }
 
   // Calculate health with decay system (uses previous health for smooth transitions)

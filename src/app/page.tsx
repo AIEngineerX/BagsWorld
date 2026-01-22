@@ -42,6 +42,9 @@ import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dial
 import { initDialogueEventBridge, cleanupDialogueEventBridge, onWorldStateUpdate, initBrowserEventListener } from "@/lib/dialogue-event-bridge";
 import { initCharacterBehavior, cleanupCharacterBehavior, updateWorldStateForBehavior } from "@/lib/character-behavior";
 import { AgentActivityIndicator } from "@/components/AgentActivityIndicator";
+import { useWallet } from "@solana/wallet-adapter-react";
+
+const CASINO_ADMIN_WALLET = "7BAHgz9Q2ubiTaVo9sCy5AdDvNMiJaK8FebGHTM3PEwm";
 
 interface BuildingClickData {
   mint: string;
@@ -66,6 +69,7 @@ const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
 
 export default function Home() {
   const { worldState, isLoading, refreshAfterLaunch, tokenCount } = useWorldState();
+  const { publicKey } = useWallet();
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
   const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
   const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
@@ -389,6 +393,14 @@ export default function Home() {
           >
             [LAUNCHERS]
           </button>
+          {publicKey?.toString() === CASINO_ADMIN_WALLET && (
+            <button
+              onClick={() => setShowCasinoAdmin(true)}
+              className="text-bags-gold hover:text-yellow-300 transition-colors"
+            >
+              [ADMIN]
+            </button>
+          )}
         </div>
         <div className="text-gray-400">
           <a

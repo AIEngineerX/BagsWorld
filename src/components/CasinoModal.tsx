@@ -5,6 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { getCasinoAccessInfo, BAGSWORLD_TOKEN_SYMBOL, BAGSWORLD_BUY_URL, MIN_TOKEN_BALANCE } from "../lib/token-balance";
+import { CasinoAdmin } from "./CasinoAdmin";
 
 interface CasinoModalProps {
   onClose: () => void;
@@ -12,7 +13,7 @@ interface CasinoModalProps {
 
 interface RaffleState {
   id: number;
-  status: "active" | "drawing" | "completed" | "none";
+  status: "active" | "paused" | "drawing" | "completed" | "none";
   potSol: number;
   entryCount: number;
   threshold: number;
@@ -98,6 +99,7 @@ function truncateWallet(wallet: string): string {
 export function CasinoModal({ onClose }: CasinoModalProps) {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [ageVerified, setAgeVerified] = useState<boolean | null>(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   // Token gate states
   const [isCheckingAccess, setIsCheckingAccess] = useState(false);
@@ -109,6 +111,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   const [isLoadingRaffle, setIsLoadingRaffle] = useState(false);
   const [isEntering, setIsEntering] = useState(false);
   const [entryMessage, setEntryMessage] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   // Wallet hooks
   const { publicKey, connected } = useWallet();
@@ -146,20 +149,27 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     }
   }, [publicKey, connection]);
 
-  // Fetch raffle status
-  const fetchRaffleStatus = useCallback(async () => {
+  // Fetch raffle status (silent = no loading spinner for background polls)
+  const fetchRaffleStatus = useCallback(async (silent = false) => {
     if (!publicKey) return;
 
-    setIsLoadingRaffle(true);
+    if (!silent) {
+      setIsLoadingRaffle(true);
+    }
     try {
       const res = await fetch(`/api/casino/raffle?wallet=${publicKey.toString()}&includeCompleted=true`);
       const data = await res.json();
       setRaffle(data);
+      setLastRefresh(new Date());
     } catch (error) {
       console.error("Error fetching raffle:", error);
-      setRaffle({ status: "none", message: "Failed to load raffle" } as RaffleState);
+      if (!silent) {
+        setRaffle({ status: "none", message: "Failed to load raffle" } as RaffleState);
+      }
     } finally {
-      setIsLoadingRaffle(false);
+      if (!silent) {
+        setIsLoadingRaffle(false);
+      }
     }
   }, [publicKey]);
 
@@ -180,11 +190,11 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     }
   }, [selectedGame, publicKey, hasAccess, fetchRaffleStatus]);
 
-  // Auto-refresh raffle every 30s when viewing
+  // Auto-refresh raffle every 10s when viewing (silent refresh - no loading spinner)
   useEffect(() => {
     if (selectedGame !== "raffle" || !publicKey || !hasAccess) return;
 
-    const interval = setInterval(fetchRaffleStatus, 30000);
+    const interval = setInterval(() => fetchRaffleStatus(true), 10000);
     return () => clearInterval(interval);
   }, [selectedGame, publicKey, hasAccess, fetchRaffleStatus]);
 
@@ -527,8 +537,28 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                   <span className="font-pixel text-lg sm:text-xl text-white">TKT</span>
                 </div>
                 <div>
-                  <h2 className="font-pixel text-lg sm:text-xl text-white tracking-wider">RAFFLE</h2>
-                  <p className="font-pixel text-blue-400/80 text-[10px] sm:text-xs mt-1">Free entry, winner takes all</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-pixel text-lg sm:text-xl text-white tracking-wider">RAFFLE</h2>
+                    {raffle?.status === "paused" ? (
+                      <div className="flex items-center gap-1 bg-yellow-500/20 px-2 py-0.5 rounded-full">
+                        <span className="w-2 h-2 bg-yellow-500 rounded-full" />
+                        <span className="text-yellow-400 text-[9px] font-pixel">PAUSED</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 bg-green-500/20 px-2 py-0.5 rounded-full">
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        <span className="text-green-400 text-[9px] font-pixel">LIVE</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="font-pixel text-blue-400/80 text-[10px] sm:text-xs mt-1">
+                    Free entry, winner takes all
+                    {lastRefresh && (
+                      <span className="text-gray-500 ml-2">
+                        (updates every 10s)
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
               <button
@@ -606,6 +636,41 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                 </div>
                 <h3 className="font-pixel text-lg text-purple-400 mb-2">DRAWING WINNER...</h3>
                 <p className="text-gray-400 text-sm">Please wait while we select the winner</p>
+              </div>
+            ) : raffle.status === "paused" ? (
+              // Raffle is paused
+              <div className="space-y-4">
+                <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-6 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-600 to-orange-700 flex items-center justify-center">
+                    <span className="font-pixel text-2xl">&#9208;</span>
+                  </div>
+                  <h3 className="font-pixel text-lg text-yellow-400 mb-2">RAFFLE PAUSED</h3>
+                  <p className="text-gray-400 text-sm mb-4">Entries are temporarily disabled</p>
+
+                  <div className="bg-black/30 rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 text-xs">Prize Pool</span>
+                      <span className="text-white font-pixel">{raffle.potSol?.toFixed(2) || "0"} SOL</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 text-xs">Current Entries</span>
+                      <span className="text-white font-pixel">{raffle.entryCount} / {raffle.threshold}</span>
+                    </div>
+                    {raffle.userEntered && (
+                      <div className="pt-2 border-t border-yellow-500/20">
+                        <p className="text-green-400 text-xs flex items-center justify-center gap-1">
+                          <span>&#10003;</span> You&apos;re already entered
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                  <p className="text-yellow-400/90 text-xs text-center">
+                    The raffle will resume soon. Follow @BagsWorldApp for updates!
+                  </p>
+                </div>
               </div>
             ) : (
               // Active raffle
@@ -685,7 +750,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
           {/* Footer */}
           <div className="p-4 border-t border-blue-500/20 bg-black/30">
             <button
-              onClick={fetchRaffleStatus}
+              onClick={() => fetchRaffleStatus()}
               className="w-full py-2 text-blue-400 hover:text-blue-300 text-xs transition-colors flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -699,109 +764,206 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     );
   }
 
+  // Check if user is admin
+  const isAdmin = publicKey?.toString() === CASINO_ADMIN_WALLET;
+
+  // Admin panel
+  if (showAdminPanel && isAdmin) {
+    return <CasinoAdmin onClose={() => setShowAdminPanel(false)} />;
+  }
+
   // Main casino view
   return (
     <div
-      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-2 sm:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-[#0a0a0f] border border-purple-500/30 max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-gradient-to-b from-[#12061f] via-[#0a0a12] to-[#080810] border border-purple-500/20 rounded-2xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl shadow-purple-900/30">
+        {/* Decorative top border glow */}
+        <div className="h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
+
         {/* Header */}
-        <div className="relative bg-gradient-to-b from-purple-900/40 to-transparent p-4 sm:p-6 border-b border-purple-500/20">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-gradient-to-br from-purple-600 to-purple-800 border border-purple-400/50 flex items-center justify-center shadow-lg shadow-purple-500/30 flex-shrink-0">
-                <span className="font-pixel text-base sm:text-xl text-white">777</span>
+        <div className="relative p-5 sm:p-6">
+          {/* Background decoration */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl" />
+            <div className="absolute -top-10 -left-10 w-32 h-32 bg-pink-600/10 rounded-full blur-3xl" />
+          </div>
+
+          <div className="relative flex justify-between items-start">
+            <div className="flex items-center gap-4">
+              {/* Animated casino icon */}
+              <div className="relative">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/40 border border-purple-400/30">
+                  <span className="font-pixel text-xl sm:text-2xl text-white drop-shadow-lg">777</span>
+                </div>
+                {/* Sparkle effects */}
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping opacity-75" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full" />
               </div>
               <div>
-                <h2 className="font-pixel text-base sm:text-xl text-white tracking-wider">BAGSWORLD CASINO</h2>
-                <p className="font-pixel text-purple-400/80 text-[8px] sm:text-xs mt-1">Play to earn SOL rewards</p>
+                <h2 className="font-pixel text-lg sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 tracking-wider">
+                  BAGSWORLD CASINO
+                </h2>
+                <p className="text-purple-400/70 text-xs sm:text-sm mt-1 flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  Play to win SOL rewards
+                </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="font-pixel text-xs p-2 text-gray-400 hover:text-white touch-target border border-purple-500/30 hover:border-purple-400/60 transition-colors flex-shrink-0"
+              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/50 flex items-center justify-center text-gray-400 hover:text-white transition-all"
               aria-label="Close"
             >
-              [X]
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         </div>
 
-        {/* Games Grid */}
-        <div className="flex-1 overflow-y-auto p-5">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {CASINO_GAMES.map((game) => (
-              <button
-                key={game.id}
-                onClick={() => setSelectedGame(game.id)}
-                disabled={game.comingSoon}
-                className={`relative group bg-gradient-to-br ${game.color} rounded-xl p-4 border ${game.borderColor} transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${game.glowColor} disabled:opacity-70 disabled:cursor-not-allowed text-left`}
-              >
-                {/* Live Badge for raffle */}
-                {!game.comingSoon && (
-                  <div className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px] font-bold px-2 py-1 rounded-full shadow-lg animate-pulse">
-                    LIVE
-                  </div>
-                )}
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-5 pb-5">
+          {/* Featured Game - Raffle */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
+              <span className="text-green-400 text-[10px] font-pixel tracking-widest">FEATURED</span>
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
+            </div>
 
-                {/* Coming Soon Badge */}
-                {game.comingSoon && (
-                  <div className="absolute -top-2 -right-2 bg-yellow-500 text-black text-[9px] font-bold px-2 py-1 rounded-full shadow-lg animate-pulse">
-                    SOON
+            <button
+              onClick={() => setSelectedGame("raffle")}
+              className="w-full relative group overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-purple-600/20 rounded-2xl" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 opacity-0 group-hover:opacity-20 transition-opacity rounded-2xl" />
+              <div className="relative bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-500/30 rounded-2xl p-5 hover:border-blue-400/50 transition-all">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 border border-blue-400/30">
+                      <span className="font-pixel text-xl text-white">TKT</span>
+                    </div>
+                    <div className="text-left">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-pixel text-lg text-white">RAFFLE</h3>
+                        <span className="px-2 py-0.5 bg-green-500/20 border border-green-500/30 rounded-full text-green-400 text-[9px] font-pixel flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                          LIVE
+                        </span>
+                      </div>
+                      <p className="text-blue-300/70 text-sm mt-0.5">Free entry, winner takes the pot</p>
+                    </div>
                   </div>
-                )}
+                  <div className="text-right hidden sm:block">
+                    <p className="text-gray-500 text-[10px] uppercase tracking-wider">Prize Pool</p>
+                    <p className="font-pixel text-xl text-white">
+                      <span className="text-blue-400">SOL</span>
+                    </p>
+                  </div>
+                  <svg className="w-6 h-6 text-blue-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Coming Soon Section */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600/50 to-transparent" />
+              <span className="text-gray-500 text-[10px] font-pixel tracking-widest">COMING SOON</span>
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600/50 to-transparent" />
+            </div>
+          </div>
+
+          {/* Games Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {CASINO_GAMES.filter(g => g.comingSoon).map((game) => (
+              <div
+                key={game.id}
+                className="relative group bg-gradient-to-br from-gray-900/80 to-gray-800/40 rounded-xl p-4 border border-gray-700/30 opacity-60"
+              >
+                {/* Lock overlay */}
+                <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-gray-800/80 border border-gray-600/50 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                </div>
 
                 {/* Icon */}
-                <div className="font-pixel text-2xl text-white/90 mb-3 filter drop-shadow-lg">
+                <div className="font-pixel text-xl text-gray-500 mb-2">
                   {game.icon}
                 </div>
 
                 {/* Info */}
-                <h3 className="font-pixel text-xs text-white mb-1 tracking-wider">
+                <h3 className="font-pixel text-[10px] text-gray-400 mb-0.5 tracking-wider">
                   {game.name}
                 </h3>
-                <p className="text-white/60 text-[10px] leading-relaxed">
+                <p className="text-gray-600 text-[9px] leading-relaxed line-clamp-2">
                   {game.description}
                 </p>
-
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-white/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
+              </div>
             ))}
           </div>
 
-          {/* Info */}
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-            <div className="flex items-start gap-3">
-              <div className="font-pixel text-lg text-green-500">[!]</div>
-              <div>
-                <h4 className="text-blue-400 font-medium text-sm mb-1">Raffle is LIVE!</h4>
-                <p className="text-gray-400 text-xs leading-relaxed">
-                  Enter the raffle for free and win the entire prize pool! More games coming soon.
-                </p>
+          {/* Info Banner */}
+          <div className="mt-6 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-pink-600/10 to-purple-600/10 rounded-xl" />
+            <div className="relative border border-purple-500/20 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-white text-sm font-medium">More games launching soon</p>
+                  <p className="text-gray-400 text-xs mt-0.5">
+                    Coin flip, dice, slots, and more. Follow for updates!
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-purple-500/20 bg-black/30">
+        <div className="p-4 border-t border-purple-500/10 bg-black/20">
           <div className="flex items-center justify-between">
-            <p className="text-gray-500 text-xs">
-              Funded by <span className="text-purple-400">BagsWorld ecosystem fees</span>
+            <p className="text-gray-600 text-[10px] flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
+              Funded by BagsWorld ecosystem
             </p>
-            <a
-              href="https://x.com/BagsWorldApp"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-purple-400 hover:text-purple-300 text-xs transition-colors flex items-center gap-1"
-            >
-              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-              </svg>
-              Follow for updates
-            </a>
+            <div className="flex items-center gap-3">
+              {isAdmin && (
+                <button
+                  onClick={() => setShowAdminPanel(true)}
+                  className="text-green-400 hover:text-green-300 text-[10px] font-pixel transition-colors flex items-center gap-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 px-3 py-1.5 rounded-lg"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  ADMIN
+                </button>
+              )}
+              <a
+                href="https://x.com/BagsWorldApp"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white text-[10px] transition-colors flex items-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg"
+              >
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                Follow
+              </a>
+            </div>
           </div>
         </div>
       </div>
