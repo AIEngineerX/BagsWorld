@@ -1,6 +1,4 @@
-// API endpoint to fetch live data for registered tokens
-// This enriches user-launched tokens with real Bags.fm SDK data
-
+// Enrich registered tokens with live Bags.fm SDK data
 import { NextRequest, NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
 

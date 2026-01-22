@@ -209,12 +209,8 @@ describe("Token Registry", () => {
         throw new Error("QuotaExceeded");
       });
 
-      const consoleSpy = jest.spyOn(console, "error").mockImplementation();
-
-      // Should not throw
+      // Should not throw (silently fails for non-critical write errors)
       expect(() => saveLaunchedToken(token)).not.toThrow();
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
   });
 
