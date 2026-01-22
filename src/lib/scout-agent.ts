@@ -224,10 +224,11 @@ function handleTokenData(data: any): void {
 function parseTokenLaunch(data: any): TokenLaunch | null {
   try {
     // Handle pumpportal.fun format
+    // NOTE: PumpPortal only streams pump.fun launches, NOT Bags.fm launches
+    // Bags.fm uses Meteora DBC bonding curves which are on a different system
     if (data.mint && data.name) {
-      const isBags = data.txType === "create" &&
-        (data.signature?.includes(BAGS_SIGNER) || data.creator === BAGS_SIGNER);
-
+      // PumpPortal data is always from pump.fun
+      // Bags.fm launches come through the world-state API, not this WebSocket
       return {
         mint: data.mint,
         name: data.name || "Unknown",
@@ -236,7 +237,7 @@ function parseTokenLaunch(data: any): TokenLaunch | null {
         liquidity: data.vSolInBondingCurve || data.liquidity || 0,
         supply: data.initialBuy || data.supply || 0,
         timestamp: Date.now(),
-        platform: isBags ? "bags" : "pump",
+        platform: "pump", // Always pump.fun from PumpPortal
         uri: data.uri,
         signature: data.signature,
       };

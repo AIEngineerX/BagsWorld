@@ -940,6 +940,9 @@ export async function POST(request: NextRequest) {
             data: {
               tokenName: token.name,
               username: "Builder",
+              symbol: token.symbol,
+              platform: "bags",
+              mint: token.mint,
             },
           });
         }
