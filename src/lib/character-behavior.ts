@@ -42,7 +42,7 @@ const state: CharacterBehaviorState = {
 };
 
 // How often to ask Claude for new behaviors (ms)
-const BEHAVIOR_POLL_INTERVAL = 20000; // 20 seconds
+const BEHAVIOR_POLL_INTERVAL = 120000; // 2 minutes (reduced for API cost)
 
 // Minimum time between polls
 const MIN_POLL_GAP = 15000;

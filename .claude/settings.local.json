@@ -46,7 +46,25 @@
       "Bash(npx next lint)",
       "Bash(start http://localhost:3001)",
       "Bash(start:*)",
-      "Bash(netstat:*)"
+      "Bash(netstat:*)",
+      "Bash(copy \"C:\\\\Users\\\\footb\\\\Downloads\\\\qB4pcvcV_400x400.jpg\" \"C:\\\\Users\\\\footb\\\\BagsWorld\\\\public\\\\sprites\\\\shaw-avatar.jpg\")",
+      "Bash(powershell.exe -Command \"Copy-Item ''C:\\\\Users\\\\footb\\\\Downloads\\\\qB4pcvcV_400x400.jpg'' ''C:\\\\Users\\\\footb\\\\BagsWorld\\\\public\\\\sprites\\\\shaw-avatar.jpg''\")",
+      "Bash(powershell.exe -Command \"New-Item -ItemType Directory -Path ''C:\\\\Users\\\\footb\\\\BagsWorld\\\\public\\\\sprites'' -Force; Copy-Item ''C:\\\\Users\\\\footb\\\\Downloads\\\\qB4pcvcV_400x400.jpg'' ''C:\\\\Users\\\\footb\\\\BagsWorld\\\\public\\\\sprites\\\\shaw-avatar.jpg''\")",
+      "Bash(powershell.exe -Command \"if \\(Test-Path ''C:\\\\Users\\\\footb\\\\BagsWorld\\\\.env''\\) { Select-String -Path ''C:\\\\Users\\\\footb\\\\BagsWorld\\\\.env'' -Pattern ''ANTHROPIC'' } else { Write-Output ''.env not found'' }\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem -Path ''C:\\\\Users\\\\footb\\\\BagsWorld'' -Filter ''.env*'' -Force | ForEach-Object { Write-Output $_Name }\")",
+      "Bash(powershell.exe -Command \"Select-String -Path ''C:\\\\Users\\\\footb\\\\BagsWorld\\\\.env.local'' -Pattern ''ANTHROPIC'' | ForEach-Object { $_Line }\")",
+      "Bash(bun:*)",
+      "Bash(npm view:*)",
+      "Bash(powershell.exe -Command \"Invoke-WebRequest -Uri ''http://localhost:3001/status'' -UseBasicParsing | Select-Object -ExpandProperty Content\")",
+      "Bash(node:*)",
+      "WebFetch(domain:elizaos.ai)",
+      "Bash(git reset:*)",
+      "Bash(find:*)",
+      "Bash(xargs ls:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm install)",
+      "Bash(timeout 5 npx tsx:*)",
+      "Bash(npm install:*)"
     ]
   }
 }
