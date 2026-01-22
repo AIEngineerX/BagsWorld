@@ -68,6 +68,8 @@ export class WorldScene extends Phaser.Scene {
   private tickerOffset = 0;
   private tickerTimer: Phaser.Time.TimerEvent | null = null;
   private skylineSprites: Phaser.GameObjects.Sprite[] = [];
+  private billboardTimer: Phaser.Time.TimerEvent | null = null;
+  private trafficTimers: Phaser.Time.TimerEvent[] = [];
   private originalPositions: Map<Phaser.GameObjects.GameObject, number> = new Map(); // Store original X positions
 
   // Speech bubble manager for autonomous dialogue
@@ -377,6 +379,13 @@ export class WorldScene extends Phaser.Scene {
           this.tickerTimer.destroy();
           this.tickerTimer = null;
         }
+        // Stop billboard update timer
+        if (this.billboardTimer) {
+          this.billboardTimer.destroy();
+          this.billboardTimer = null;
+        }
+        // Stop traffic timers
+        this.clearTrafficTimers();
       }
 
       // Update zone and set up new content
@@ -553,12 +562,28 @@ export class WorldScene extends Phaser.Scene {
 
     // Only create elements once, then just show them
     if (!this.trendingZoneCreated) {
-      // First time - create all elements
+      // First time - stage creation across multiple frames to prevent frame drops
+      // Stage 1: Create skyline immediately (visible first, sets the scene)
       this.createTrendingSkyline();
-      this.createTrendingDecorations();
-      this.createTrendingBillboards();
-      this.createTrendingTicker();
-      this.trendingZoneCreated = true;
+
+      // Stage 2: Create decorations on next frame
+      this.time.delayedCall(0, () => {
+        if (this.currentZone !== "trending") return;
+        this.createTrendingDecorations();
+
+        // Stage 3: Create billboards on following frame
+        this.time.delayedCall(0, () => {
+          if (this.currentZone !== "trending") return;
+          this.createTrendingBillboards();
+
+          // Stage 4: Create ticker on final frame
+          this.time.delayedCall(0, () => {
+            if (this.currentZone !== "trending") return;
+            this.createTrendingTicker();
+            this.trendingZoneCreated = true;
+          });
+        });
+      });
     } else {
       // Subsequent times - just show existing elements
       this.trendingElements.forEach((el) => (el as any).setVisible(true));
@@ -762,44 +787,88 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createMovingTraffic(): void {
+    // Clear any existing traffic timers to prevent leaks
+    this.clearTrafficTimers();
+
     // Taxi driving right (scaled)
     const movingTaxi = this.add.sprite(Math.round(-60 * SCALE), Math.round(585 * SCALE), "taxi");
     movingTaxi.setDepth(3);
     movingTaxi.setFlipX(true);
     this.trendingElements.push(movingTaxi);
 
-    const driveTaxi = () => {
-      movingTaxi.setX(Math.round(-60 * SCALE));
+    // Use looping timer events instead of recursive delayedCall chains
+    const taxiTimer = this.time.addEvent({
+      delay: 10000, // Total cycle: 6000ms drive + 4000ms wait
+      callback: () => {
+        if (this.currentZone !== "trending" || !movingTaxi.active) return;
+        movingTaxi.setX(Math.round(-60 * SCALE));
+        this.tweens.add({
+          targets: movingTaxi,
+          x: GAME_WIDTH + Math.round(60 * SCALE),
+          duration: 6000,
+          ease: "Linear",
+        });
+      },
+      callbackScope: this,
+      loop: true,
+      startAt: 9000, // Start almost immediately (first drive after 1000ms)
+    });
+    this.trafficTimers.push(taxiTimer);
+
+    // Initial taxi animation
+    this.time.delayedCall(1000, () => {
+      if (this.currentZone !== "trending" || !movingTaxi.active) return;
       this.tweens.add({
         targets: movingTaxi,
         x: GAME_WIDTH + Math.round(60 * SCALE),
         duration: 6000,
         ease: "Linear",
-        onComplete: () => {
-          this.time.delayedCall(4000, driveTaxi);
-        },
       });
-    };
-    this.time.delayedCall(1000, driveTaxi);
+    });
 
     // Blue car driving left (scaled)
     const movingCar = this.add.sprite(GAME_WIDTH + Math.round(60 * SCALE), Math.round(565 * SCALE), "car_blue");
     movingCar.setDepth(3);
     this.trendingElements.push(movingCar);
 
-    const driveCar = () => {
-      movingCar.setX(GAME_WIDTH + Math.round(60 * SCALE));
+    // Use looping timer events instead of recursive delayedCall chains
+    const carTimer = this.time.addEvent({
+      delay: 12000, // Total cycle: 7000ms drive + 5000ms wait
+      callback: () => {
+        if (this.currentZone !== "trending" || !movingCar.active) return;
+        movingCar.setX(GAME_WIDTH + Math.round(60 * SCALE));
+        this.tweens.add({
+          targets: movingCar,
+          x: Math.round(-60 * SCALE),
+          duration: 7000,
+          ease: "Linear",
+        });
+      },
+      callbackScope: this,
+      loop: true,
+      startAt: 9000, // Start almost immediately (first drive after 3000ms)
+    });
+    this.trafficTimers.push(carTimer);
+
+    // Initial car animation
+    this.time.delayedCall(3000, () => {
+      if (this.currentZone !== "trending" || !movingCar.active) return;
       this.tweens.add({
         targets: movingCar,
         x: Math.round(-60 * SCALE),
         duration: 7000,
         ease: "Linear",
-        onComplete: () => {
-          this.time.delayedCall(5000, driveCar);
-        },
       });
-    };
-    this.time.delayedCall(3000, driveCar);
+    });
+  }
+
+  private clearTrafficTimers(): void {
+    this.trafficTimers.forEach(timer => {
+      if (timer && timer.destroy) {
+        timer.destroy();
+      }
+    });
+    this.trafficTimers = [];
   }
 
   private createTrendingBillboards(): void {
@@ -945,8 +1014,11 @@ export class WorldScene extends Phaser.Scene {
     rightText.setDepth(6);
     this.billboardTexts.push(rightText);
 
-    // Update billboard data periodically
-    this.time.addEvent({
+    // Update billboard data periodically (store reference for cleanup)
+    if (this.billboardTimer) {
+      this.billboardTimer.destroy();
+    }
+    this.billboardTimer = this.time.addEvent({
       delay: 5000,
       callback: this.updateBillboardData,
       callbackScope: this,
@@ -1272,6 +1344,17 @@ export class WorldScene extends Phaser.Scene {
       this.audioContext.close();
       this.audioContext = null;
     }
+
+    // Clean up zone-specific timers
+    if (this.tickerTimer) {
+      this.tickerTimer.destroy();
+      this.tickerTimer = null;
+    }
+    if (this.billboardTimer) {
+      this.billboardTimer.destroy();
+      this.billboardTimer = null;
+    }
+    this.clearTrafficTimers();
 
     // Clean up speech bubble manager
     if (this.speechBubbleManager) {
