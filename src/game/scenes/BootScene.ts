@@ -1378,6 +1378,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate CJ - The Hood Rat from BagsCity
     this.generateCJSprite();
+
+    // Generate Shaw - ElizaOS creator, ai16z co-founder
+    this.generateShawSprite();
   }
 
   private generateTolySprite(): void {
@@ -2021,6 +2024,116 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(Math.round(14 * s), Math.round(9 * s), Math.round(4 * s), Math.round(1 * s));
 
     g.generateTexture("cj", size, size);
+    g.destroy();
+  }
+
+  private generateShawSprite(): void {
+    // Shaw - ElizaOS creator (@shawmakesmagic)
+    // Based on reference: dark messy hair, teal sunglasses, pink tie-dye shirt, dark pants
+    const s = SCALE;
+    const size = Math.round(32 * s);
+    const skinTone = 0xdeb896; // Warm skin tone
+    const skinHighlight = 0xf0c8a0;
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // ai16z purple digital glow behind Shaw
+    g.fillStyle(0x9333ea, 0.15);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(18 * s));
+    g.fillStyle(0xec4899, 0.1); // Pink accent
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(22 * s));
+
+    // Shadow
+    g.fillStyle(0x000000, 0.4);
+    g.fillEllipse(Math.round(16 * s), Math.round(30 * s), Math.round(14 * s), Math.round(5 * s));
+
+    // Legs (dark gray/black pants)
+    g.fillStyle(0x1a1a2e);
+    g.fillRect(Math.round(10 * s), Math.round(21 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(Math.round(17 * s), Math.round(21 * s), Math.round(5 * s), Math.round(10 * s));
+    // Pant highlights
+    g.fillStyle(0x2a2a3e);
+    g.fillRect(Math.round(10 * s), Math.round(21 * s), Math.round(2 * s), Math.round(10 * s));
+    g.fillRect(Math.round(17 * s), Math.round(21 * s), Math.round(2 * s), Math.round(10 * s));
+
+    // Shoes (blue/white sneakers like reference)
+    g.fillStyle(0x3b82f6); // Blue base
+    g.fillRect(Math.round(9 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(29 * s), Math.round(6 * s), Math.round(3 * s));
+    // White sole
+    g.fillStyle(0xffffff);
+    g.fillRect(Math.round(9 * s), Math.round(31 * s), Math.round(6 * s), Math.round(1 * s));
+    g.fillRect(Math.round(17 * s), Math.round(31 * s), Math.round(6 * s), Math.round(1 * s));
+
+    // Pink tie-dye shirt (matching reference)
+    g.fillStyle(0xec4899); // Hot pink base
+    g.fillRect(Math.round(7 * s), Math.round(11 * s), Math.round(18 * s), Math.round(11 * s));
+    // Tie-dye swirl patterns
+    g.fillStyle(0xf472b6); // Lighter pink
+    g.fillRect(Math.round(9 * s), Math.round(13 * s), Math.round(4 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(16 * s), Math.round(5 * s), Math.round(3 * s));
+    g.fillRect(Math.round(11 * s), Math.round(18 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillStyle(0xfda4af); // Even lighter pink/peach
+    g.fillRect(Math.round(14 * s), Math.round(14 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(Math.round(8 * s), Math.round(17 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillStyle(0xfb7185); // Rose
+    g.fillRect(Math.round(19 * s), Math.round(12 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillRect(Math.round(10 * s), Math.round(19 * s), Math.round(4 * s), Math.round(2 * s));
+
+    // Arms (skin)
+    g.fillStyle(skinTone);
+    g.fillRect(Math.round(4 * s), Math.round(12 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(Math.round(24 * s), Math.round(12 * s), Math.round(4 * s), Math.round(10 * s));
+    // Arm highlights
+    g.fillStyle(skinHighlight);
+    g.fillRect(Math.round(5 * s), Math.round(13 * s), Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(Math.round(25 * s), Math.round(13 * s), Math.round(2 * s), Math.round(4 * s));
+    // Hands
+    g.fillStyle(skinTone);
+    g.fillRect(Math.round(4 * s), Math.round(21 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(25 * s), Math.round(21 * s), Math.round(3 * s), Math.round(2 * s));
+
+    // Head
+    g.fillStyle(skinTone);
+    g.fillRect(Math.round(9 * s), Math.round(3 * s), Math.round(14 * s), Math.round(10 * s));
+    // Face highlight
+    g.fillStyle(skinHighlight);
+    g.fillRect(Math.round(10 * s), Math.round(4 * s), Math.round(4 * s), Math.round(3 * s));
+
+    // Dark messy hair (matching reference - fuller, messier)
+    g.fillStyle(0x1a1a1a); // Very dark
+    // Main hair mass
+    g.fillRect(Math.round(7 * s), Math.round(-1 * s), Math.round(18 * s), Math.round(7 * s));
+    // Side hair going down (messy look)
+    g.fillRect(Math.round(6 * s), Math.round(1 * s), Math.round(3 * s), Math.round(7 * s));
+    g.fillRect(Math.round(23 * s), Math.round(1 * s), Math.round(3 * s), Math.round(7 * s));
+    // Messy bangs
+    g.fillRect(Math.round(8 * s), Math.round(4 * s), Math.round(2 * s), Math.round(3 * s));
+    g.fillRect(Math.round(22 * s), Math.round(4 * s), Math.round(2 * s), Math.round(3 * s));
+    // Hair texture highlights
+    g.fillStyle(0x2d2d3d);
+    g.fillRect(Math.round(10 * s), Math.round(0 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(17 * s), Math.round(-1 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(Math.round(7 * s), Math.round(3 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Teal/cyan sunglasses (signature look - larger like reference)
+    g.fillStyle(0x0d9488); // Teal frame
+    g.fillRect(Math.round(9 * s), Math.round(5 * s), Math.round(6 * s), Math.round(4 * s));
+    g.fillRect(Math.round(17 * s), Math.round(5 * s), Math.round(6 * s), Math.round(4 * s));
+    g.fillRect(Math.round(15 * s), Math.round(6 * s), Math.round(2 * s), Math.round(2 * s)); // Bridge
+    // Lens (bright cyan/teal)
+    g.fillStyle(0x22d3d1); // Bright teal
+    g.fillRect(Math.round(10 * s), Math.round(6 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(Math.round(18 * s), Math.round(6 * s), Math.round(4 * s), Math.round(2 * s));
+    // Lens reflection/shine
+    g.fillStyle(0x5eead4);
+    g.fillRect(Math.round(10 * s), Math.round(6 * s), Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(Math.round(18 * s), Math.round(6 * s), Math.round(2 * s), Math.round(1 * s));
+
+    // Small neutral mouth
+    g.fillStyle(0x8b6b5a);
+    g.fillRect(Math.round(13 * s), Math.round(10 * s), Math.round(6 * s), Math.round(1 * s));
+
+    g.generateTexture("shaw", size, size);
     g.destroy();
   }
 

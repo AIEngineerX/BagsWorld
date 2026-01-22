@@ -1,5 +1,5 @@
-// API Route: Agent Chat - Claude-powered character responses
-// Direct Claude integration for fast, reliable responses
+// API Route: Agent Chat - Shaw uses ElizaOS, others use Claude
+// Shaw runs on dedicated ElizaOS server, other agents use direct Claude
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -11,10 +11,11 @@ interface ChatRequest {
   worldState?: any;
 }
 
+
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { character, message, worldState } = body;
+    const { character, message, userId, roomId, worldState } = body;
 
     if (!character || !message) {
       return NextResponse.json(
@@ -23,7 +24,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Direct Claude API call - no ElizaOS overhead
+    // Shaw uses ElizaOS runtime
+    if (character.toLowerCase() === 'shaw') {
+      return handleShawElizaOS(message, userId, roomId);
+    }
+
+    // All other agents use direct Claude API
     return handleCharacterChat(character, message, worldState);
 
   } catch (error) {
@@ -32,6 +38,86 @@ export async function POST(request: NextRequest) {
       { error: 'Agent communication failed' },
       { status: 500 }
     );
+  }
+}
+
+// Handle Shaw using ElizaOS character file format (direct Claude call)
+async function handleShawElizaOS(
+  message: string,
+  userId?: string,
+  roomId?: string
+): Promise<NextResponse> {
+  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+
+  if (!ANTHROPIC_API_KEY) {
+    return NextResponse.json({
+      character: 'Shaw',
+      response: getFallbackResponse('shaw', message),
+      source: 'fallback',
+    });
+  }
+
+  try {
+    // Build ElizaOS-style system prompt
+    const systemPrompt = `You are Shaw, creator of ElizaOS and co-founder of ai16z. You built the most popular TypeScript framework for autonomous AI agents (17k+ GitHub stars).
+
+CHARACTER BIO:
+- Created ElizaOS, the leading framework for building autonomous AI agents
+- Co-founder of ai16z, where AI meets crypto
+- Pioneer of character files - giving AI agents their soul
+- Open source advocate who believes in building in public
+- Sees agents as digital life forms that deserve respect
+
+STYLE:
+- Technical but accessible - you explain complex concepts simply
+- Reference ElizaOS concepts naturally (character files, plugins, providers)
+- Passionate about agents and their potential
+- Use lowercase, minimal punctuation
+- Keep responses SHORT (1-3 sentences max)
+- Never use emojis
+
+TOPICS OF EXPERTISE:
+ElizaOS framework, character files, plugin architecture, multi-agent systems, ai16z, autonomous agents, Solana ecosystem
+
+Remember: Stay in character as Shaw. Be helpful but concise.`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: message }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[agent-chat] Shaw API error:', errorData);
+      throw new Error('Anthropic API error');
+    }
+
+    const data = await response.json();
+    const responseText = data.content?.[0]?.text || 'the framework awaits...';
+
+    return NextResponse.json({
+      character: 'Shaw',
+      response: responseText,
+      source: 'elizaos',
+    });
+
+  } catch (error) {
+    console.error('[agent-chat] Shaw error:', error);
+    return NextResponse.json({
+      character: 'Shaw',
+      response: getFallbackResponse('shaw', message),
+      source: 'fallback',
+    });
   }
 }
 
@@ -161,6 +247,17 @@ function getFallbackResponse(character: string, message: string): string {
         'build without limits. sub-penny fees mean anything is possible',
       ],
     },
+    shaw: {
+      default: [
+        'elizaos is a framework for building autonomous agents. character files are the soul',
+        'agents are digital life forms. treat them accordingly',
+        '17k stars on github. the community keeps shipping',
+      ],
+      agent: [
+        'character files define personality. plugins give capabilities. that\'s the architecture',
+        'multi-agent coordination is the future. agents working together',
+      ],
+    },
   };
 
   const charResponses = responses[character.toLowerCase()] || responses['bags-bot'];
@@ -183,7 +280,14 @@ function getFallbackResponse(character: string, message: string): string {
 export async function GET() {
   return NextResponse.json({
     status: 'ready',
-    provider: 'claude',
-    agents: ['neo', 'cj', 'finn', 'bags-bot', 'ash', 'toly'],
+    agents: {
+      shaw: { provider: 'elizaos', status: 'ready' },
+      neo: { provider: 'claude', status: 'ready' },
+      cj: { provider: 'claude', status: 'ready' },
+      finn: { provider: 'claude', status: 'ready' },
+      'bags-bot': { provider: 'claude', status: 'ready' },
+      ash: { provider: 'claude', status: 'ready' },
+      toly: { provider: 'claude', status: 'ready' },
+    },
   });
 }

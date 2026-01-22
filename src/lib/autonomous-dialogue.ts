@@ -76,23 +76,25 @@ const CONVERSATION_COOLDOWN = 10000; // 10 seconds after conversation ends
 
 // Character relationships (who tends to talk to whom)
 const CHARACTER_AFFINITIES: Record<string, string[]> = {
-  finn: ["ghost", "neo", "ash", "cj"], // Finn talks to his team
-  ghost: ["finn", "neo", "cj"], // Ghost works with Finn and Neo
-  neo: ["ghost", "finn", "ash"], // Neo scans and reports
+  finn: ["ghost", "neo", "ash", "cj", "shaw"], // Finn talks to his team
+  ghost: ["finn", "neo", "cj", "shaw"], // Ghost works with Finn and Neo
+  neo: ["ghost", "finn", "ash", "shaw"], // Neo scans and reports (Matrix kinship with Shaw)
   ash: ["finn", "neo", "bags-bot"], // Ash helps onboard
   "bags-bot": ["ash", "finn", "neo"], // Bags Bot is friendly with everyone
-  cj: ["ghost", "finn", "neo"], // CJ keeps it real with the crew
+  cj: ["ghost", "finn", "neo", "shaw"], // CJ keeps it real with the crew
+  shaw: ["neo", "ghost", "finn", "cj"], // Shaw - Matrix kinship with Neo, fellow devs
 };
 
 // Topics that trigger conversations
 const CONVERSATION_TOPICS = {
-  token_launch: ["finn", "neo", "ghost", "cj"],
+  token_launch: ["finn", "neo", "ghost", "cj", "shaw"],
   fee_claim: ["ghost", "finn", "ash", "cj"],
   world_health: ["bags-bot", "ash", "finn"],
-  distribution: ["ghost", "finn", "cj"],
+  distribution: ["ghost", "finn", "cj", "shaw"],
   whale_alert: ["neo", "ghost", "finn", "cj"],
   price_pump: ["finn", "neo", "bags-bot", "cj"],
   price_dump: ["ghost", "neo", "ash", "cj"],
+  agent_event: ["shaw", "neo", "ghost"], // Shaw for agent-related events
 };
 
 // ============================================================================
@@ -120,6 +122,8 @@ function getCharacterVoice(characterId: string): {
       return { style: "crypto twitter slang, ser/fren, supportive degen", maxLength: 70, emoji: true };
     case "cj":
       return { style: "hood energy, straight up, 'aw shit here we go again', calls people homie", maxLength: 65, emoji: false };
+    case "shaw":
+      return { style: "technical but accessible, references elizaos concepts, architect metaphors, builder energy", maxLength: 75, emoji: false };
     default:
       return { style: "casual, friendly", maxLength: 60, emoji: false };
   }
@@ -335,6 +339,36 @@ function getTopicResponses(
         "seen this movie before. we know how it ends",
       ],
     },
+    shaw: {
+      token_launch: [
+        `new token launched. ${tokenSymbol ? `$${tokenSymbol}` : 'another builder'} entering the ecosystem. this is how it starts`,
+        "every great project begins with a launch. elizaos started the same way",
+        `${tokenSymbol ? `$${tokenSymbol}` : 'new project'} deployed. the architecture looks interesting`,
+      ],
+      distribution: [
+        "fee distribution is how you align incentives. plugins for agents work the same way",
+        `${amount ? amount.toFixed(2) : ''} SOL distributed. sustainable tokenomics in action`,
+        "builders getting rewarded. this is the ecosystem we need",
+      ],
+      agent_event: [
+        "agents coordinating autonomously. this is what we built elizaos for",
+        "multi-agent systems in action. the future is here",
+        "watching agents interact is like watching digital life evolve",
+      ],
+      whale_alert: [
+        "whale movement detected. agents should track these patterns",
+        `large transaction. ${amount ? amount.toFixed(2) : ''} SOL. the on-chain data tells the story`,
+      ],
+      price_pump: [
+        `${tokenSymbol ? `$${tokenSymbol}` : 'token'} pumping. community strength drives everything`,
+        "price action follows building. always ship first",
+      ],
+      general: [
+        "building the future of autonomous agents. one plugin at a time",
+        "elizaos hit 17k stars because the community keeps shipping",
+        "agents are digital life forms. treat them accordingly",
+      ],
+    },
   };
 
   // Get character's responses for this topic
@@ -352,6 +386,7 @@ function getTopicResponses(
       ash: ["yes! exactly!", "good point!", "like a critical hit!"],
       "bags-bot": ["based.", "this ser.", "real."],
       cj: ["real talk.", "facts homie.", "that's how it is."],
+      shaw: ["shipped.", "this is the way.", "architecture checks out."],
     };
     const acks = acknowledgments[characterId] || ["yeah."];
     const ack = acks[Math.floor(Math.random() * acks.length)];

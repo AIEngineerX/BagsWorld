@@ -43,6 +43,7 @@ export interface FeeEarner {
   isDev?: boolean; // Special flag for The Dev (DaddyGhost) character
   isScout?: boolean; // Special flag for Scout Agent character
   isCJ?: boolean; // Special flag for CJ character
+  isShaw?: boolean; // Special flag for Shaw (ElizaOS creator) character
 }
 
 export interface TokenInfo {
@@ -151,6 +152,7 @@ export interface GameCharacter {
   isDev?: boolean; // Special flag for The Dev (DaddyGhost) character
   isScout?: boolean; // Special flag for Scout Agent (Neo) - BagsCity
   isCJ?: boolean; // Special flag for CJ character - BagsCity
+  isShaw?: boolean; // Special flag for Shaw (ElizaOS creator) - Park
 }
 
 export interface GameBuilding {

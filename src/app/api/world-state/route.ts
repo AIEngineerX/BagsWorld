@@ -794,6 +794,24 @@ export async function POST(request: NextRequest) {
       isCJ: true, // Special flag for the game to recognize
     } as FeeEarner & { isCJ: boolean };
 
+    // ALWAYS add Shaw as the ElizaOS creator character in the Park
+    // Shaw (@shawmakesmagic) created ElizaOS, the most popular AI agent framework
+    const shaw: FeeEarner = {
+      rank: 0, // Special rank
+      username: "Shaw",
+      providerUsername: "shawmakesmagic",
+      provider: "twitter" as FeeEarner["provider"],
+      wallet: "shaw-elizaos-permanent",
+      avatarUrl: undefined, // Will use special Shaw sprite
+      lifetimeEarnings: 17000, // 17k GitHub stars on ElizaOS
+      earnings24h: 0,
+      change24h: 0,
+      tokenCount: 0,
+      topToken: undefined,
+      isShaw: true, // Special flag for the game to recognize
+    } as FeeEarner & { isShaw: boolean };
+
+    earners.unshift(shaw); // Shaw seventh
     earners.unshift(cj); // CJ sixth
     earners.unshift(scout); // Neo fifth
     earners.unshift(dev); // The Dev fourth
