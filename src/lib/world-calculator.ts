@@ -430,6 +430,7 @@ export function transformTokenToBuilding(
     tokenUrl,
     zone,
     isFloating: isBagsWorldHQ, // Only HQ floats
+    isPermanent, // Landmark buildings (Treasury, Starter, HQ)
   };
 }
 

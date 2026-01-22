@@ -32,7 +32,7 @@ export interface TokenSafety {
   score: number; // 0-100
   mintAuthorityDisabled: boolean;
   freezeAuthorityDisabled: boolean;
-  lpBurned: boolean;
+  lpBurned: boolean | null; // null = unverified (LP burn checking not implemented)
   lpBurnedPercent: number;
   top10HolderPercent: number;
   isRugRisk: boolean;
@@ -323,7 +323,7 @@ async function getQuickSafetyCheck(mint: string): Promise<TokenSafety> {
         score: 0,
         mintAuthorityDisabled: false,
         freezeAuthorityDisabled: false,
-        lpBurned: false,
+        lpBurned: null, // Unverified - LP burn checking not implemented
         lpBurnedPercent: 0,
         top10HolderPercent: 100,
         isRugRisk: true,
@@ -357,7 +357,7 @@ async function getQuickSafetyCheck(mint: string): Promise<TokenSafety> {
         score: Math.max(0, Math.min(100, score)),
         mintAuthorityDisabled,
         freezeAuthorityDisabled,
-        lpBurned: false, // Would need LP account check
+        lpBurned: null, // Unverified - LP burn checking not implemented
         lpBurnedPercent: 0,
         top10HolderPercent: 0, // Would need token accounts query
         isRugRisk: !mintAuthorityDisabled || !freezeAuthorityDisabled,
@@ -373,7 +373,7 @@ async function getQuickSafetyCheck(mint: string): Promise<TokenSafety> {
     score: 50,
     mintAuthorityDisabled: false,
     freezeAuthorityDisabled: false,
-    lpBurned: false,
+    lpBurned: null, // Unverified - LP burn checking not implemented
     lpBurnedPercent: 0,
     top10HolderPercent: 0,
     isRugRisk: true,
@@ -402,7 +402,7 @@ async function getDetailedSafetyCheck(mint: string): Promise<TokenSafety> {
         score: 0,
         mintAuthorityDisabled: false,
         freezeAuthorityDisabled: false,
-        lpBurned: false,
+        lpBurned: null, // Unverified - LP burn checking not implemented
         lpBurnedPercent: 0,
         top10HolderPercent: 100,
         isRugRisk: true,
@@ -477,7 +477,7 @@ async function getDetailedSafetyCheck(mint: string): Promise<TokenSafety> {
       score: Math.max(0, Math.min(100, score)),
       mintAuthorityDisabled,
       freezeAuthorityDisabled,
-      lpBurned: false, // TODO: Check LP token burn
+      lpBurned: null, // Unverified - LP burn checking not implemented
       lpBurnedPercent: 0,
       top10HolderPercent,
       isRugRisk,
@@ -490,7 +490,7 @@ async function getDetailedSafetyCheck(mint: string): Promise<TokenSafety> {
       score: 0,
       mintAuthorityDisabled: false,
       freezeAuthorityDisabled: false,
-      lpBurned: false,
+      lpBurned: null, // Unverified - LP burn checking not implemented
       lpBurnedPercent: 0,
       top10HolderPercent: 0,
       isRugRisk: true,

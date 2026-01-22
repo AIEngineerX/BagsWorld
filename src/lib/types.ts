@@ -59,6 +59,7 @@ export interface TokenInfo {
   lifetimeFees: number;
   creator: string;
   levelOverride?: number | null; // Admin override for building level (1-5)
+  isPermanent?: boolean; // True for landmark buildings (Treasury, etc.) - not real on-chain tokens
 }
 
 export interface ClaimablePosition {
@@ -172,6 +173,7 @@ export interface GameBuilding {
   tokenUrl?: string;
   zone?: ZoneType; // Which zone this building appears in (default: both)
   isFloating?: boolean; // Special floating building (BagsWorld HQ)
+  isPermanent?: boolean; // Landmark building (Treasury, etc.) - not a real token
 }
 
 export type GameEventType =
