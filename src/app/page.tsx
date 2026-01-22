@@ -164,9 +164,9 @@ export default function Home() {
   }, [worldState]);
 
   return (
-    <main className="h-screen w-screen overflow-hidden flex flex-col">
+    <main className="h-[100dvh] w-screen overflow-hidden flex flex-col">
       {/* Header - responsive */}
-      <header className="h-14 md:h-16 bg-bags-dark border-b-4 border-bags-green flex items-center justify-between px-2 md:px-4 relative z-50 safe-area-top">
+      <header className="h-14 md:h-16 bg-bags-dark border-b-4 border-bags-green flex items-center justify-between px-2 md:px-4 relative z-50 safe-area-top shrink-0">
         {/* Left side - Logo and health */}
         <div className="flex items-center gap-2 md:gap-4">
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -264,7 +264,7 @@ export default function Home() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Game area */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative" style={{ touchAction: 'auto' }}>
           <Suspense
             fallback={
               <div className="w-full h-full bg-bags-dark" />
@@ -272,7 +272,8 @@ export default function Home() {
           >
             <GameCanvas worldState={worldState} />
           </Suspense>
-          <div className="scanlines" />
+          {/* Scanlines disabled on mobile via CSS for better touch handling */}
+          <div className="scanlines" aria-hidden="true" />
 
           {/* Zone Navigation - positioned over game canvas */}
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20">
@@ -303,9 +304,10 @@ export default function Home() {
         <aside className={`
           ${mobileSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
           fixed lg:relative right-0 top-14 md:top-16 lg:top-0
-          w-full sm:w-80 h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] lg:h-full
+          w-full sm:w-80 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)] lg:h-full
           bg-bags-dark border-l-4 border-bags-green flex flex-col
           transition-transform duration-300 ease-in-out z-40
+          pb-safe
         `}>
           {/* Mobile sidebar close button */}
           <button
@@ -349,7 +351,7 @@ export default function Home() {
       </div>
 
       {/* Footer status bar - simplified on mobile */}
-      <footer className="h-8 sm:h-9 bg-bags-dark border-t-4 border-bags-green flex items-center justify-between px-2 md:px-4 font-pixel text-[7px] sm:text-[8px] md:text-[10px] safe-area-bottom">
+      <footer className="h-8 sm:h-9 bg-bags-dark border-t-4 border-bags-green flex items-center justify-between px-2 md:px-4 font-pixel text-[7px] sm:text-[8px] md:text-[10px] safe-area-bottom shrink-0">
         <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
             [POP:<span className="text-white ml-1">{worldState?.population?.length ?? 0}</span>]

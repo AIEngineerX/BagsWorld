@@ -75,17 +75,51 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const isLowPower = navigator.hardwareConcurrency ? navigator.hardwareConcurrency <= 4 : isMobile;
 
+    // Use responsive canvas size based on device
+    // Mobile: Use screen dimensions for better fit
+    // Desktop: Use standard 1280x960
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    const isPortrait = screenHeight > screenWidth;
+
+    // For mobile portrait, use a more portrait-friendly aspect ratio
+    let gameWidth = 1280;
+    let gameHeight = 960;
+
+    if (isMobile) {
+      if (isPortrait) {
+        // Portrait mobile: swap dimensions for better fit
+        gameWidth = 960;
+        gameHeight = 1280;
+      }
+      // Scale down for performance on mobile
+      const scaleFactor = Math.min(screenWidth / gameWidth, screenHeight / gameHeight);
+      if (scaleFactor < 0.5) {
+        gameWidth = Math.round(gameWidth * 0.75);
+        gameHeight = Math.round(gameHeight * 0.75);
+      }
+    }
+
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: containerRef.current,
-      width: 1280,
-      height: 960,
+      width: gameWidth,
+      height: gameHeight,
       backgroundColor: "#0a0a0f",
       pixelArt: true,
       scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
         expandParent: true,
+        // On mobile, allow the game to resize with the window
+        min: {
+          width: isMobile ? 320 : 640,
+          height: isMobile ? 480 : 480
+        },
+        max: {
+          width: 1920,
+          height: 1440
+        }
       },
       physics: {
         default: "arcade",
@@ -97,6 +131,10 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
       scene: [BootScene, WorldScene, UIScene],
       input: {
         activePointers: 3, // Support multi-touch
+        touch: {
+          target: containerRef.current,
+          capture: false, // Don't capture - let browser handle scrolling
+        },
       },
       // Mobile performance optimizations
       fps: {
@@ -196,11 +234,19 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
     };
   }, []);
 
+
   return (
     <div
       ref={containerRef}
       className="w-full h-full flex items-center justify-center game-canvas-wrapper"
-      style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+      style={{
+        touchAction: 'auto',
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+        position: 'relative',
+        zIndex: 0,
+      }}
     />
   );
 }
