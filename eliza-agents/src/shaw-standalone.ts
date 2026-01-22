@@ -7,7 +7,7 @@ import { shawCharacter } from './characters/shaw';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const PORT = parseInt(process.env.SERVER_PORT || '3001');
+const PORT = parseInt(process.env.PORT || process.env.SERVER_PORT || '3001');
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 
 // Initialize Anthropic client
