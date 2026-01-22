@@ -2838,8 +2838,8 @@ export class WorldScene extends Phaser.Scene {
       const shouldShow = zoneCharacterIds.has(id);
       sprite.setVisible(shouldShow);
 
-      // Handle associated glow sprites
-      const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow"];
+      // Handle associated glow sprites (including Shaw)
+      const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow", "shawGlow"];
       glowKeys.forEach((key) => {
         const glow = (sprite as any)[key];
         if (glow) glow.setVisible(shouldShow);
@@ -2852,7 +2852,7 @@ export class WorldScene extends Phaser.Scene {
     this.characterSprites.forEach((sprite, id) => {
       if (!currentIds.has(id)) {
         // Clean up associated glow sprites before destroying
-        const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow"];
+        const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow", "shawGlow"];
         glowKeys.forEach((key) => {
           const glow = (sprite as any)[key];
           if (glow) {
@@ -2866,307 +2866,312 @@ export class WorldScene extends Phaser.Scene {
       }
     });
 
-    // Add or update characters
+    // Separate characters into existing (quick update) and new (needs creation)
+    const existingCharacters: { character: GameCharacter; sprite: Phaser.GameObjects.Sprite }[] = [];
+    const newCharacters: { character: GameCharacter; index: number }[] = [];
+
     characters.forEach((character, index) => {
-      let sprite = this.characterSprites.get(character.id);
-
-      if (!sprite) {
-        // Special characters use unique textures, others get random variants
-        const isToly = character.isToly === true;
-        const isAsh = character.isAsh === true;
-        const isFinn = character.isFinn === true;
-        const isDev = character.isDev === true;
-        const isScout = character.isScout === true;
-        const isCJ = character.isCJ === true;
-        const isShaw = character.isShaw === true;
-        const isSpecial = isToly || isAsh || isFinn || isDev || isScout || isCJ || isShaw;
-        const variant = index % 9;
-        this.characterVariants.set(character.id, variant);
-
-        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : isScout ? "neo" : isCJ ? "cj" : isShaw ? "shaw" : this.getCharacterTexture(character.mood, variant);
-        sprite = this.add.sprite(character.x, character.y, textureKey);
-        sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
-        sprite.setInteractive();
-        sprite.setScale(isSpecial ? 1.3 : 1.2); // Special characters slightly larger
-
-        // Hover effects
-        sprite.on("pointerover", () => {
-          sprite?.setScale(isSpecial ? 1.5 : 1.4);
-          if (isToly) {
-            this.showTolyTooltip(sprite!);
-          } else if (isAsh) {
-            this.showAshTooltip(sprite!);
-          } else if (isFinn) {
-            this.showFinnTooltip(sprite!);
-          } else if (isDev) {
-            this.showDevTooltip(sprite!);
-          } else if (isScout) {
-            this.showScoutTooltip(sprite!);
-          } else if (isCJ) {
-            this.showCJTooltip(sprite!);
-          } else if (isShaw) {
-            this.showShawTooltip(sprite!);
-          } else {
-            this.showCharacterTooltip(character, sprite!);
-          }
-          this.input.setDefaultCursor("pointer");
-        });
-        sprite.on("pointerout", () => {
-          sprite?.setScale(isSpecial ? 1.3 : 1.2);
-          this.hideTooltip();
-          this.input.setDefaultCursor("default");
-        });
-        sprite.on("pointerdown", () => {
-          if (isToly) {
-            // Toly opens the Solana wisdom chat
-            window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
-          } else if (isAsh) {
-            // Ash opens the ecosystem guide chat
-            window.dispatchEvent(new CustomEvent("bagsworld-ash-click"));
-          } else if (isFinn) {
-            // Finn opens the Bags.fm guide chat
-            window.dispatchEvent(new CustomEvent("bagsworld-finn-click"));
-          } else if (isDev) {
-            // The Dev opens the trading agent chat
-            window.dispatchEvent(new CustomEvent("bagsworld-dev-click"));
-          } else if (isScout) {
-            // Neo opens the scout panel
-            window.dispatchEvent(new CustomEvent("bagsworld-scout-click"));
-          } else if (isCJ) {
-            // CJ opens the hood rat chat
-            window.dispatchEvent(new CustomEvent("bagsworld-cj-click"));
-          } else if (isShaw) {
-            // Shaw opens the ElizaOS creator chat
-            window.dispatchEvent(new CustomEvent("bagsworld-shaw-click"));
-          } else if (character.profileUrl) {
-            // Open profile page in new tab
-            window.open(character.profileUrl, "_blank");
-          }
-        });
-
-        // Walking animation - characters randomly walk around the park
-        this.startCharacterWalking(sprite, character, isSpecial);
-
-        // Add Solana gradient aura glow effect for Toly
-        if (isToly) {
-          const glow = this.add.sprite(character.x, character.y, "glow");
-          glow.setScale(1.0);
-          glow.setAlpha(0.3);
-          glow.setTint(0x9945ff); // Solana purple
-          glow.setDepth(10);
-
-          // Store reference to glow for cleanup
-          (sprite as any).tolyGlow = glow;
-
-          this.tweens.add({
-            targets: glow,
-            alpha: 0.5,
-            scale: 1.2,
-            duration: 1500,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.easeInOut",
-          });
-        }
-
-        // Add red/blue aura glow effect for Ash
-        if (isAsh) {
-          const glow = this.add.sprite(character.x, character.y, "glow");
-          glow.setScale(1.0);
-          glow.setAlpha(0.3);
-          glow.setTint(0xdc2626); // Pokemon red
-          glow.setDepth(10);
-
-          // Store reference to glow for cleanup
-          (sprite as any).ashGlow = glow;
-
-          this.tweens.add({
-            targets: glow,
-            alpha: 0.5,
-            scale: 1.2,
-            duration: 1500,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.easeInOut",
-          });
-        }
-
-        // Add emerald glow effect for Finn
-        if (isFinn) {
-          const glow = this.add.sprite(character.x, character.y, "glow");
-          glow.setScale(1.0);
-          glow.setAlpha(0.3);
-          glow.setTint(0x10b981); // Emerald/Bags green
-          glow.setDepth(10);
-
-          // Store reference to glow for cleanup
-          (sprite as any).finnGlow = glow;
-
-          this.tweens.add({
-            targets: glow,
-            alpha: 0.5,
-            scale: 1.2,
-            duration: 1500,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.easeInOut",
-          });
-        }
-
-        // Add purple/cyan glow effect for The Dev
-        if (isDev) {
-          const glow = this.add.sprite(character.x, character.y, "glow");
-          glow.setScale(1.0);
-          glow.setAlpha(0.3);
-          glow.setTint(0x8b5cf6); // Purple (hacker vibes)
-          glow.setDepth(10);
-
-          // Store reference to glow for cleanup
-          (sprite as any).devGlow = glow;
-
-          this.tweens.add({
-            targets: glow,
-            alpha: 0.5,
-            scale: 1.2,
-            duration: 1500,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.easeInOut",
-          });
-        }
-
-        // Add Matrix green glow effect for Neo (Scout)
-        if (isScout) {
-          const glow = this.add.sprite(character.x, character.y, "glow");
-          glow.setScale(1.0);
-          glow.setAlpha(0.4);
-          glow.setTint(0x00ff41); // Matrix green
-          glow.setDepth(10);
-
-          // Store reference to glow for cleanup
-          (sprite as any).scoutGlow = glow;
-
-          // Faster, more digital-feeling pulse for Neo
-          this.tweens.add({
-            targets: glow,
-            alpha: 0.7,
-            scale: 1.3,
-            duration: 800,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.easeInOut",
-          });
-        }
-
-        // Add Grove Street orange glow effect for CJ
-        if (isCJ) {
-          const glow = this.add.sprite(character.x, character.y, "glow");
-          glow.setScale(1.0);
-          glow.setAlpha(0.3);
-          glow.setTint(0xf97316); // Grove Street orange
-          glow.setDepth(10);
-
-          // Store reference to glow for cleanup
-          (sprite as any).cjGlow = glow;
-
-          this.tweens.add({
-            targets: glow,
-            alpha: 0.5,
-            scale: 1.2,
-            duration: 1200,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.easeInOut",
-          });
-        }
-
-        // Add ElizaOS orange glow effect for Shaw (ElizaOS creator)
-        if (isShaw) {
-          const glow = this.add.sprite(character.x, character.y, "glow");
-          glow.setScale(1.0);
-          glow.setAlpha(0.3);
-          glow.setTint(0xff5800); // ElizaOS orange
-          glow.setDepth(10);
-
-          // Store reference to glow for cleanup
-          (sprite as any).shawGlow = glow;
-
-          this.tweens.add({
-            targets: glow,
-            alpha: 0.5,
-            scale: 1.2,
-            duration: 1000,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.easeInOut",
-          });
-        }
-
-        // Store character type flags on sprite for speech bubble system
-        (sprite as any).isToly = isToly;
-        (sprite as any).isAsh = isAsh;
-        (sprite as any).isFinn = isFinn;
-        (sprite as any).isDev = isDev;
-        (sprite as any).isScout = isScout;
-        (sprite as any).isCJ = isCJ;
-        (sprite as any).isShaw = isShaw;
-
-        this.characterSprites.set(character.id, sprite);
+      const sprite = this.characterSprites.get(character.id);
+      if (sprite) {
+        existingCharacters.push({ character, sprite });
       } else {
-        // Update special character glow positions if they exist
-        const tolyGlow = (sprite as any).tolyGlow;
-        if (tolyGlow) {
-          tolyGlow.x = sprite.x;
-          tolyGlow.y = sprite.y;
-        }
-        const ashGlow = (sprite as any).ashGlow;
-        if (ashGlow) {
-          ashGlow.x = sprite.x;
-          ashGlow.y = sprite.y;
-        }
-        const finnGlow = (sprite as any).finnGlow;
-        if (finnGlow) {
-          finnGlow.x = sprite.x;
-          finnGlow.y = sprite.y;
-        }
-        const devGlow = (sprite as any).devGlow;
-        if (devGlow) {
-          devGlow.x = sprite.x;
-          devGlow.y = sprite.y;
-        }
-        const scoutGlow = (sprite as any).scoutGlow;
-        if (scoutGlow) {
-          scoutGlow.x = sprite.x;
-          scoutGlow.y = sprite.y;
-        }
-        const cjGlow = (sprite as any).cjGlow;
-        if (cjGlow) {
-          cjGlow.x = sprite.x;
-          cjGlow.y = sprite.y;
-        }
-        const shawGlow = (sprite as any).shawGlow;
-        if (shawGlow) {
-          shawGlow.x = sprite.x;
-          shawGlow.y = sprite.y;
-        }
-      }
-
-      // Update texture based on mood (skip for special characters)
-      const isToly = character.isToly === true;
-      const isAsh = character.isAsh === true;
-      const isFinn = character.isFinn === true;
-      const isDev = character.isDev === true;
-      const isScout = character.isScout === true;
-      const isCJ = character.isCJ === true;
-      const isShaw = character.isShaw === true;
-      if (!isToly && !isAsh && !isFinn && !isDev && !isScout && !isCJ && !isShaw) {
-        const variant = this.characterVariants.get(character.id) ?? 0;
-        const expectedTexture = this.getCharacterTexture(character.mood, variant);
-        if (sprite.texture.key !== expectedTexture) {
-          sprite.setTexture(expectedTexture);
-        }
+        newCharacters.push({ character, index });
       }
     });
+
+    // Update existing characters immediately (fast path)
+    existingCharacters.forEach(({ character, sprite }) => {
+      this.updateExistingCharacter(character, sprite);
+    });
+
+    // Batch create new characters across frames to prevent frame drops
+    const BATCH_SIZE = 2; // Characters are heavier than buildings
+    const createBatch = (startIndex: number) => {
+      const endIndex = Math.min(startIndex + BATCH_SIZE, newCharacters.length);
+      for (let i = startIndex; i < endIndex; i++) {
+        this.createCharacterSprite(newCharacters[i].character, newCharacters[i].index);
+      }
+      // Schedule next batch if there are more characters
+      if (endIndex < newCharacters.length) {
+        this.time.delayedCall(0, () => createBatch(endIndex));
+      }
+    };
+
+    if (newCharacters.length > 0) {
+      createBatch(0);
+    }
+  }
+
+  private updateExistingCharacter(character: GameCharacter, sprite: Phaser.GameObjects.Sprite): void {
+    // Update special character glow positions if they exist
+    const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow", "shawGlow"];
+    glowKeys.forEach((key) => {
+      const glow = (sprite as any)[key];
+      if (glow) {
+        glow.x = sprite.x;
+        glow.y = sprite.y;
+      }
+    });
+
+    // Update texture based on mood (skip for special characters)
+    const isToly = character.isToly === true;
+    const isAsh = character.isAsh === true;
+    const isFinn = character.isFinn === true;
+    const isDev = character.isDev === true;
+    const isScout = character.isScout === true;
+    const isCJ = character.isCJ === true;
+    const isShaw = character.isShaw === true;
+    if (!isToly && !isAsh && !isFinn && !isDev && !isScout && !isCJ && !isShaw) {
+      const variant = this.characterVariants.get(character.id) ?? 0;
+      const expectedTexture = this.getCharacterTexture(character.mood, variant);
+      if (sprite.texture.key !== expectedTexture) {
+        sprite.setTexture(expectedTexture);
+      }
+    }
+  }
+
+  private createCharacterSprite(character: GameCharacter, index: number): void {
+    // Special characters use unique textures, others get random variants
+    const isToly = character.isToly === true;
+    const isAsh = character.isAsh === true;
+    const isFinn = character.isFinn === true;
+    const isDev = character.isDev === true;
+    const isScout = character.isScout === true;
+    const isCJ = character.isCJ === true;
+    const isShaw = character.isShaw === true;
+    const isSpecial = isToly || isAsh || isFinn || isDev || isScout || isCJ || isShaw;
+    const variant = index % 9;
+    this.characterVariants.set(character.id, variant);
+
+    const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : isScout ? "neo" : isCJ ? "cj" : isShaw ? "shaw" : this.getCharacterTexture(character.mood, variant);
+    const sprite = this.add.sprite(character.x, character.y, textureKey);
+    sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
+    sprite.setInteractive();
+    sprite.setScale(isSpecial ? 1.3 : 1.2); // Special characters slightly larger
+
+    // Hover effects
+    sprite.on("pointerover", () => {
+      sprite?.setScale(isSpecial ? 1.5 : 1.4);
+      if (isToly) {
+        this.showTolyTooltip(sprite!);
+      } else if (isAsh) {
+        this.showAshTooltip(sprite!);
+      } else if (isFinn) {
+        this.showFinnTooltip(sprite!);
+      } else if (isDev) {
+        this.showDevTooltip(sprite!);
+      } else if (isScout) {
+        this.showScoutTooltip(sprite!);
+      } else if (isCJ) {
+        this.showCJTooltip(sprite!);
+      } else if (isShaw) {
+        this.showShawTooltip(sprite!);
+      } else {
+        this.showCharacterTooltip(character, sprite!);
+      }
+      this.input.setDefaultCursor("pointer");
+    });
+    sprite.on("pointerout", () => {
+      sprite?.setScale(isSpecial ? 1.3 : 1.2);
+      this.hideTooltip();
+      this.input.setDefaultCursor("default");
+    });
+    sprite.on("pointerdown", () => {
+      if (isToly) {
+        // Toly opens the Solana wisdom chat
+        window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
+      } else if (isAsh) {
+        // Ash opens the ecosystem guide chat
+        window.dispatchEvent(new CustomEvent("bagsworld-ash-click"));
+      } else if (isFinn) {
+        // Finn opens the Bags.fm guide chat
+        window.dispatchEvent(new CustomEvent("bagsworld-finn-click"));
+      } else if (isDev) {
+        // The Dev opens the trading agent chat
+        window.dispatchEvent(new CustomEvent("bagsworld-dev-click"));
+      } else if (isScout) {
+        // Neo opens the scout panel
+        window.dispatchEvent(new CustomEvent("bagsworld-scout-click"));
+      } else if (isCJ) {
+        // CJ opens the hood rat chat
+        window.dispatchEvent(new CustomEvent("bagsworld-cj-click"));
+      } else if (isShaw) {
+        // Shaw opens the ElizaOS creator chat
+        window.dispatchEvent(new CustomEvent("bagsworld-shaw-click"));
+      } else if (character.profileUrl) {
+        // Open profile page in new tab
+        window.open(character.profileUrl, "_blank");
+      }
+    });
+
+    // Walking animation - characters randomly walk around the park
+    this.startCharacterWalking(sprite, character, isSpecial);
+
+    // Add Solana gradient aura glow effect for Toly
+    if (isToly) {
+      const glow = this.add.sprite(character.x, character.y, "glow");
+      glow.setScale(1.0);
+      glow.setAlpha(0.3);
+      glow.setTint(0x9945ff); // Solana purple
+      glow.setDepth(10);
+
+      // Store reference to glow for cleanup
+      (sprite as any).tolyGlow = glow;
+
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.5,
+        scale: 1.2,
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Add red/blue aura glow effect for Ash
+    if (isAsh) {
+      const glow = this.add.sprite(character.x, character.y, "glow");
+      glow.setScale(1.0);
+      glow.setAlpha(0.3);
+      glow.setTint(0xdc2626); // Pokemon red
+      glow.setDepth(10);
+
+      // Store reference to glow for cleanup
+      (sprite as any).ashGlow = glow;
+
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.5,
+        scale: 1.2,
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Add emerald glow effect for Finn
+    if (isFinn) {
+      const glow = this.add.sprite(character.x, character.y, "glow");
+      glow.setScale(1.0);
+      glow.setAlpha(0.3);
+      glow.setTint(0x10b981); // Emerald/Bags green
+      glow.setDepth(10);
+
+      // Store reference to glow for cleanup
+      (sprite as any).finnGlow = glow;
+
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.5,
+        scale: 1.2,
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Add purple/cyan glow effect for The Dev
+    if (isDev) {
+      const glow = this.add.sprite(character.x, character.y, "glow");
+      glow.setScale(1.0);
+      glow.setAlpha(0.3);
+      glow.setTint(0x8b5cf6); // Purple (hacker vibes)
+      glow.setDepth(10);
+
+      // Store reference to glow for cleanup
+      (sprite as any).devGlow = glow;
+
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.5,
+        scale: 1.2,
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Add Matrix green glow effect for Neo (Scout)
+    if (isScout) {
+      const glow = this.add.sprite(character.x, character.y, "glow");
+      glow.setScale(1.0);
+      glow.setAlpha(0.4);
+      glow.setTint(0x00ff41); // Matrix green
+      glow.setDepth(10);
+
+      // Store reference to glow for cleanup
+      (sprite as any).scoutGlow = glow;
+
+      // Faster, more digital-feeling pulse for Neo
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.7,
+        scale: 1.3,
+        duration: 800,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Add Grove Street orange glow effect for CJ
+    if (isCJ) {
+      const glow = this.add.sprite(character.x, character.y, "glow");
+      glow.setScale(1.0);
+      glow.setAlpha(0.3);
+      glow.setTint(0xf97316); // Grove Street orange
+      glow.setDepth(10);
+
+      // Store reference to glow for cleanup
+      (sprite as any).cjGlow = glow;
+
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.5,
+        scale: 1.2,
+        duration: 1200,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Add ElizaOS orange glow effect for Shaw (ElizaOS creator)
+    if (isShaw) {
+      const glow = this.add.sprite(character.x, character.y, "glow");
+      glow.setScale(1.0);
+      glow.setAlpha(0.3);
+      glow.setTint(0xff5800); // ElizaOS orange
+      glow.setDepth(10);
+
+      // Store reference to glow for cleanup
+      (sprite as any).shawGlow = glow;
+
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.5,
+        scale: 1.2,
+        duration: 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+
+    // Store character type flags on sprite for speech bubble system
+    (sprite as any).isToly = isToly;
+    (sprite as any).isAsh = isAsh;
+    (sprite as any).isFinn = isFinn;
+    (sprite as any).isDev = isDev;
+    (sprite as any).isScout = isScout;
+    (sprite as any).isCJ = isCJ;
+    (sprite as any).isShaw = isShaw;
+
+    this.characterSprites.set(character.id, sprite);
   }
 
   private getCharacterTexture(mood: GameCharacter["mood"], variant: number): string {
@@ -3187,7 +3192,6 @@ export class WorldScene extends Phaser.Scene {
       return b.zone === this.currentZone;
     });
 
-    const currentIds = new Set(zoneBuildings.map((b) => b.id));
     const allBuildingIds = new Set(buildings.map((b) => b.id));
 
     // Only destroy buildings that no longer exist in the world state
@@ -3199,235 +3203,271 @@ export class WorldScene extends Phaser.Scene {
       }
     });
 
-    // Add or update buildings
+    // Separate buildings into existing (quick update) and new (needs creation)
+    const existingBuildings: GameBuilding[] = [];
+    const newBuildings: GameBuilding[] = [];
+
     zoneBuildings.forEach((building) => {
-      let container = this.buildingSprites.get(building.id);
-      const isFirstTimeCreation = !this.buildingInitialized.has(building.id);
-
-      if (!container) {
-        container = this.add.container(building.x, building.y);
-
-        // Scale building based on level (market cap)
-        // Level 1: 0.8x, Level 2: 0.9x, Level 3: 1.0x, Level 4: 1.15x, Level 5: 1.3x
-        const buildingScales = [0.8, 0.9, 1.0, 1.15, 1.3];
-        const buildingScale = buildingScales[building.level - 1] || 1.0;
-
-        // Shadow scales with building (floating HQ has no direct shadow)
-        const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
-        if (!isBagsHQ) {
-          const shadowWidth = 20 + building.level * 6;
-          const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
-          container.add(shadow);
-        }
-
-        // Use special texture for PokeCenter/TradingGym/Casino/HQ, otherwise use level-based building with style
-        const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
-        const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
-        const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-        const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
-
-        // Determine building style from mint address (deterministic - same token always gets same style)
-        // Each level has 4 styles (0-3)
-        const getBuildingStyle = (id: string): number => {
-          // Use a simple hash of the building id to get a style index 0-3
-          let hash = 0;
-          for (let i = 0; i < id.length; i++) {
-            hash = ((hash << 5) - hash) + id.charCodeAt(i);
-            hash = hash & hash; // Convert to 32-bit integer
-          }
-          return Math.abs(hash) % 4;
-        };
-
-        const styleIndex = getBuildingStyle(building.id);
-        const buildingTexture = isBagsWorldHQ ? "bagshq" : isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${styleIndex}`;
-        const sprite = this.add.sprite(0, 0, buildingTexture);
-        sprite.setOrigin(0.5, 1);
-        // HQ is larger and floating
-        const hqScale = 1.5;
-        sprite.setScale(isBagsWorldHQ ? hqScale : isPokeCenter ? 1.0 : isTradingGym ? 1.0 : isCasino ? 1.0 : buildingScale);
-        container.add(sprite);
-
-        // Add floating animation for HQ
-        if (isBagsWorldHQ) {
-          this.tweens.add({
-            targets: container,
-            y: building.y - 10,
-            duration: 2000,
-            ease: "Sine.easeInOut",
-            yoyo: true,
-            repeat: -1,
-          });
-
-          // Add subtle gold glow around HQ
-          const hqGlow = this.add.sprite(0, -60, "glow");
-          hqGlow.setScale(1.2);
-          hqGlow.setAlpha(0.15);
-          hqGlow.setTint(0xffd700); // Gold glow
-          container.add(hqGlow);
-
-          this.tweens.add({
-            targets: hqGlow,
-            alpha: 0.25,
-            scale: 1.4,
-            duration: 2000,
-            ease: "Sine.easeInOut",
-            yoyo: true,
-            repeat: -1,
-          });
-        }
-
-        // Glow effect for pumping buildings
-        if (building.glowing) {
-          const glow = this.add.sprite(0, -40, "glow");
-          glow.setScale(1.5);
-          glow.setAlpha(0.4);
-          glow.setTint(0x4ade80);
-          container.add(glow);
-
-          this.tweens.add({
-            targets: glow,
-            alpha: 0.7,
-            scale: 1.8,
-            duration: 800,
-            yoyo: true,
-            repeat: -1,
-          });
-        }
-
-        // Label with background - HQ gets gold styling
-        const isHQBuilding = building.isFloating || building.symbol === "BAGSWORLD";
-        const labelBg = this.add.rectangle(0, isHQBuilding ? 20 : 12, isHQBuilding ? 85 : 50, isHQBuilding ? 16 : 14, 0x000000, 0.8);
-        labelBg.setStrokeStyle(isHQBuilding ? 2 : 1, isHQBuilding ? 0xffd700 : 0x4ade80);
-        container.add(labelBg);
-        const labelText = isHQBuilding ? "$BagsWorld" : building.symbol;
-        const label = this.add.text(0, isHQBuilding ? 20 : 12, labelText, {
-          fontFamily: "monospace",
-          fontSize: isHQBuilding ? "11px" : "9px",
-          color: isHQBuilding ? "#ffd700" : "#4ade80",
-        });
-        label.setOrigin(0.5, 0.5);
-        container.add(label);
-
-        // HQ floats higher and has larger hitbox
-        container.setDepth(isHQBuilding ? 15 : 5);
-        const hitboxSize = isHQBuilding ? { w: 80, h: 160 } : { w: 40, h: 80 };
-        container.setInteractive(
-          new Phaser.Geom.Rectangle(-hitboxSize.w / 2, -hitboxSize.h, hitboxSize.w, hitboxSize.h),
-          Phaser.Geom.Rectangle.Contains
-        );
-
-        container.on("pointerover", () => {
-          container?.setScale(1.1);
-          this.showBuildingTooltip(building, container!);
-          this.input.setDefaultCursor("pointer");
-        });
-        container.on("pointerout", () => {
-          container?.setScale(1);
-          this.hideTooltip();
-          this.input.setDefaultCursor("default");
-        });
-        container.on("pointerdown", () => {
-          const isPokeCenter = building.id.includes("PokeCenter");
-          const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
-          const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-          const isStarterBuilding = building.id.startsWith("Starter");
-          const isTreasuryBuilding = building.id.startsWith("Treasury");
-          const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
-
-          if (isPokeCenter) {
-            // PokeCenter opens the auto-claim hub modal
-            window.dispatchEvent(new CustomEvent("bagsworld-pokecenter-click", {
-              detail: { buildingId: building.id, name: building.name }
-            }));
-          } else if (isTradingGym) {
-            // TradingGym opens the AI trading arena modal
-            window.dispatchEvent(new CustomEvent("bagsworld-tradinggym-click", {
-              detail: { buildingId: building.id, name: building.name }
-            }));
-          } else if (isCasino) {
-            // Casino opens the gambling modal with raffle and wheel
-            window.dispatchEvent(new CustomEvent("bagsworld-casino-click", {
-              detail: { buildingId: building.id, name: building.name }
-            }));
-          } else if (isBagsWorldHQ) {
-            // BagsWorld HQ - opens the official token page with trade modal
-            window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
-              detail: {
-                mint: building.tokenMint || building.id,
-                symbol: building.symbol || "BAGSWORLD",
-                name: building.name || "BagsWorld HQ",
-                tokenUrl: building.tokenUrl || `https://bags.fm/${building.tokenMint || building.id}`,
-              }
-            }));
-          } else if (isStarterBuilding) {
-            // Other starter buildings show a message
-            console.log(`${building.name} - Launch a token to create a real building!`);
-          } else if (isTreasuryBuilding) {
-            // Treasury building opens the Creator Rewards Hub modal
-            window.dispatchEvent(new CustomEvent("bagsworld-treasury-click", {
-              detail: { buildingId: building.id, name: building.name }
-            }));
-          } else {
-            // Regular tokens emit event for React to open trade modal
-            window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
-              detail: {
-                mint: building.tokenMint || building.id,
-                symbol: building.symbol || building.name,
-                name: building.name,
-                tokenUrl: building.tokenUrl,
-              }
-            }));
-          }
-        });
-
-        this.buildingSprites.set(building.id, container);
-        this.buildingInitialized.add(building.id);
-
-        // Spawn animation only on first creation
-        if (isFirstTimeCreation) {
-          container.setScale(0);
-          container.setAlpha(0);
-          this.tweens.add({
-            targets: container,
-            scale: 1,
-            alpha: 1,
-            duration: 600,
-            ease: "Back.easeOut",
-          });
-        }
+      if (this.buildingSprites.has(building.id)) {
+        existingBuildings.push(building);
       } else {
-        // Show the existing building
-        container.setVisible(true);
-        // Update existing building
-        const sprite = container.getAt(1) as Phaser.GameObjects.Sprite;
-        const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
-        const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
-        const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
-
-        // Use same hash function to get consistent style
-        const getBuildingStyleUpdate = (id: string): number => {
-          let hash = 0;
-          for (let i = 0; i < id.length; i++) {
-            hash = ((hash << 5) - hash) + id.charCodeAt(i);
-            hash = hash & hash;
-          }
-          return Math.abs(hash) % 4;
-        };
-        const updateStyleIndex = getBuildingStyleUpdate(building.id);
-        const newTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${updateStyleIndex}`;
-        if (sprite.texture.key !== newTexture) {
-          this.tweens.add({
-            targets: container,
-            scale: 1.15,
-            duration: 150,
-            yoyo: true,
-            onComplete: () => {
-              sprite.setTexture(newTexture);
-            },
-          });
-        }
+        newBuildings.push(building);
       }
     });
+
+    // Update existing buildings immediately (fast path)
+    existingBuildings.forEach((building) => {
+      this.updateExistingBuilding(building);
+    });
+
+    // Batch create new buildings across frames to prevent frame drops
+    const BATCH_SIZE = 3;
+    const createBatch = (startIndex: number) => {
+      const endIndex = Math.min(startIndex + BATCH_SIZE, newBuildings.length);
+      for (let i = startIndex; i < endIndex; i++) {
+        this.createBuildingSprite(newBuildings[i]);
+      }
+      // Schedule next batch if there are more buildings
+      if (endIndex < newBuildings.length) {
+        this.time.delayedCall(0, () => createBatch(endIndex));
+      }
+    };
+
+    if (newBuildings.length > 0) {
+      createBatch(0);
+    }
+  }
+
+  private updateExistingBuilding(building: GameBuilding): void {
+    const container = this.buildingSprites.get(building.id);
+    if (!container) return;
+
+    // Show the existing building
+    container.setVisible(true);
+    // Update existing building
+    const sprite = container.getAt(1) as Phaser.GameObjects.Sprite;
+    const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
+    const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
+    const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+
+    // Use same hash function to get consistent style
+    const getBuildingStyleUpdate = (id: string): number => {
+      let hash = 0;
+      for (let i = 0; i < id.length; i++) {
+        hash = ((hash << 5) - hash) + id.charCodeAt(i);
+        hash = hash & hash;
+      }
+      return Math.abs(hash) % 4;
+    };
+    const updateStyleIndex = getBuildingStyleUpdate(building.id);
+    const newTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${updateStyleIndex}`;
+    if (sprite && sprite.texture.key !== newTexture) {
+      this.tweens.add({
+        targets: container,
+        scale: 1.15,
+        duration: 150,
+        yoyo: true,
+        onComplete: () => {
+          sprite.setTexture(newTexture);
+        },
+      });
+    }
+  }
+
+  private createBuildingSprite(building: GameBuilding): void {
+    if (this.buildingSprites.has(building.id)) return; // Already exists
+
+    const isFirstTimeCreation = !this.buildingInitialized.has(building.id);
+    const container = this.add.container(building.x, building.y);
+
+    // Scale building based on level (market cap)
+    // Level 1: 0.8x, Level 2: 0.9x, Level 3: 1.0x, Level 4: 1.15x, Level 5: 1.3x
+    const buildingScales = [0.8, 0.9, 1.0, 1.15, 1.3];
+    const buildingScale = buildingScales[building.level - 1] || 1.0;
+
+    // Shadow scales with building (floating HQ has no direct shadow)
+    const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
+    if (!isBagsHQ) {
+      const shadowWidth = 20 + building.level * 6;
+      const shadow = this.add.ellipse(2, 2, shadowWidth, 8, 0x000000, 0.3);
+      container.add(shadow);
+    }
+
+    // Use special texture for PokeCenter/TradingGym/Casino/HQ, otherwise use level-based building with style
+    const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
+    const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
+    const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+    const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
+
+    // Determine building style from mint address (deterministic - same token always gets same style)
+    // Each level has 4 styles (0-3)
+    const getBuildingStyle = (id: string): number => {
+      // Use a simple hash of the building id to get a style index 0-3
+      let hash = 0;
+      for (let i = 0; i < id.length; i++) {
+        hash = ((hash << 5) - hash) + id.charCodeAt(i);
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return Math.abs(hash) % 4;
+    };
+
+    const styleIndex = getBuildingStyle(building.id);
+    const buildingTexture = isBagsWorldHQ ? "bagshq" : isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${styleIndex}`;
+    const sprite = this.add.sprite(0, 0, buildingTexture);
+    sprite.setOrigin(0.5, 1);
+    // HQ is larger and floating
+    const hqScale = 1.5;
+    sprite.setScale(isBagsWorldHQ ? hqScale : isPokeCenter ? 1.0 : isTradingGym ? 1.0 : isCasino ? 1.0 : buildingScale);
+    container.add(sprite);
+
+    // Add floating animation for HQ
+    if (isBagsWorldHQ) {
+      this.tweens.add({
+        targets: container,
+        y: building.y - 10,
+        duration: 2000,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+      });
+
+      // Add subtle gold glow around HQ
+      const hqGlow = this.add.sprite(0, -60, "glow");
+      hqGlow.setScale(1.2);
+      hqGlow.setAlpha(0.15);
+      hqGlow.setTint(0xffd700); // Gold glow
+      container.add(hqGlow);
+
+      this.tweens.add({
+        targets: hqGlow,
+        alpha: 0.25,
+        scale: 1.4,
+        duration: 2000,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+
+    // Glow effect for pumping buildings
+    if (building.glowing) {
+      const glow = this.add.sprite(0, -40, "glow");
+      glow.setScale(1.5);
+      glow.setAlpha(0.4);
+      glow.setTint(0x4ade80);
+      container.add(glow);
+
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.7,
+        scale: 1.8,
+        duration: 800,
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+
+    // Label with background - HQ gets gold styling
+    const isHQBuilding = building.isFloating || building.symbol === "BAGSWORLD";
+    const labelBg = this.add.rectangle(0, isHQBuilding ? 20 : 12, isHQBuilding ? 85 : 50, isHQBuilding ? 16 : 14, 0x000000, 0.8);
+    labelBg.setStrokeStyle(isHQBuilding ? 2 : 1, isHQBuilding ? 0xffd700 : 0x4ade80);
+    container.add(labelBg);
+    const labelText = isHQBuilding ? "$BagsWorld" : building.symbol;
+    const label = this.add.text(0, isHQBuilding ? 20 : 12, labelText, {
+      fontFamily: "monospace",
+      fontSize: isHQBuilding ? "11px" : "9px",
+      color: isHQBuilding ? "#ffd700" : "#4ade80",
+    });
+    label.setOrigin(0.5, 0.5);
+    container.add(label);
+
+    // HQ floats higher and has larger hitbox
+    container.setDepth(isHQBuilding ? 15 : 5);
+    const hitboxSize = isHQBuilding ? { w: 80, h: 160 } : { w: 40, h: 80 };
+    container.setInteractive(
+      new Phaser.Geom.Rectangle(-hitboxSize.w / 2, -hitboxSize.h, hitboxSize.w, hitboxSize.h),
+      Phaser.Geom.Rectangle.Contains
+    );
+
+    container.on("pointerover", () => {
+      container?.setScale(1.1);
+      this.showBuildingTooltip(building, container!);
+      this.input.setDefaultCursor("pointer");
+    });
+    container.on("pointerout", () => {
+      container?.setScale(1);
+      this.hideTooltip();
+      this.input.setDefaultCursor("default");
+    });
+    container.on("pointerdown", () => {
+      const isPokeCenter = building.id.includes("PokeCenter");
+      const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
+      const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+      const isStarterBuilding = building.id.startsWith("Starter");
+      const isTreasuryBuilding = building.id.startsWith("Treasury");
+      const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
+
+      if (isPokeCenter) {
+        // PokeCenter opens the auto-claim hub modal
+        window.dispatchEvent(new CustomEvent("bagsworld-pokecenter-click", {
+          detail: { buildingId: building.id, name: building.name }
+        }));
+      } else if (isTradingGym) {
+        // TradingGym opens the AI trading arena modal
+        window.dispatchEvent(new CustomEvent("bagsworld-tradinggym-click", {
+          detail: { buildingId: building.id, name: building.name }
+        }));
+      } else if (isCasino) {
+        // Casino opens the gambling modal with raffle and wheel
+        window.dispatchEvent(new CustomEvent("bagsworld-casino-click", {
+          detail: { buildingId: building.id, name: building.name }
+        }));
+      } else if (isBagsWorldHQ) {
+        // BagsWorld HQ - opens the official token page with trade modal
+        window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
+          detail: {
+            mint: building.tokenMint || building.id,
+            symbol: building.symbol || "BAGSWORLD",
+            name: building.name || "BagsWorld HQ",
+            tokenUrl: building.tokenUrl || `https://bags.fm/${building.tokenMint || building.id}`,
+          }
+        }));
+      } else if (isStarterBuilding) {
+        // Other starter buildings show a message
+        console.log(`${building.name} - Launch a token to create a real building!`);
+      } else if (isTreasuryBuilding) {
+        // Treasury building opens the Creator Rewards Hub modal
+        window.dispatchEvent(new CustomEvent("bagsworld-treasury-click", {
+          detail: { buildingId: building.id, name: building.name }
+        }));
+      } else {
+        // Regular tokens emit event for React to open trade modal
+        window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
+          detail: {
+            mint: building.tokenMint || building.id,
+            symbol: building.symbol || building.name,
+            name: building.name,
+            tokenUrl: building.tokenUrl,
+          }
+        }));
+      }
+    });
+
+    this.buildingSprites.set(building.id, container);
+    this.buildingInitialized.add(building.id);
+
+    // Spawn animation only on first creation
+    if (isFirstTimeCreation) {
+      container.setScale(0);
+      container.setAlpha(0);
+      this.tweens.add({
+        targets: container,
+        scale: 1,
+        alpha: 1,
+        duration: 600,
+        ease: "Back.easeOut",
+      });
+    }
   }
 
   private tooltip: Phaser.GameObjects.Container | null = null;
