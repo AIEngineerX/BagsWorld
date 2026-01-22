@@ -36,6 +36,7 @@ import { AgentFeed, AgentToast } from "@/components/AgentFeed";
 import { TradingGymModal } from "@/components/TradingGymModal";
 import { CreatorRewardsModal } from "@/components/CreatorRewardsModal";
 import { CasinoModal } from "@/components/CasinoModal";
+import { CasinoAdmin } from "@/components/CasinoAdmin";
 import { LauncherHub } from "@/components/LauncherHub";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import { initDialogueEventBridge, cleanupDialogueEventBridge, onWorldStateUpdate, initBrowserEventListener } from "@/lib/dialogue-event-bridge";
@@ -72,6 +73,7 @@ export default function Home() {
   const [showCreatorRewardsModal, setShowCreatorRewardsModal] = useState(false);
   const [showCasinoModal, setShowCasinoModal] = useState(false);
   const [showLauncherHub, setShowLauncherHub] = useState(false);
+  const [showCasinoAdmin, setShowCasinoAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -142,6 +144,18 @@ export default function Home() {
   // Pre-warm SDK on mount (fire-and-forget for faster subsequent API calls)
   useEffect(() => {
     fetch("/api/warm-sdk").catch(() => {});
+  }, []);
+
+  // Secret keyboard shortcut for casino admin (Ctrl+Shift+R)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "R") {
+        e.preventDefault();
+        setShowCasinoAdmin(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   // Initialize autonomous dialogue and behavior systems (all sync, non-blocking)
@@ -443,6 +457,11 @@ export default function Home() {
       {/* Launcher Hub - shows wallets of people who launched on BagsWorld */}
       {showLauncherHub && (
         <LauncherHub onClose={() => setShowLauncherHub(false)} />
+      )}
+
+      {/* Casino Admin - secret panel (Ctrl+Shift+R) */}
+      {showCasinoAdmin && (
+        <CasinoAdmin onClose={() => setShowCasinoAdmin(false)} />
       )}
     </main>
   );

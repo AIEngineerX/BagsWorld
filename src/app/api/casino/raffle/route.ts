@@ -4,43 +4,54 @@ import { getCasinoRaffle, isNeonConfigured } from "@/lib/neon";
 
 export const dynamic = "force-dynamic";
 
-// In-memory state for development (replaced by DB in production)
-let raffleState = {
-  id: 1,
-  status: "active" as "active" | "drawing" | "completed",
-  potLamports: 250000000, // 0.25 SOL starting pot
-  entryCount: 3,
-  threshold: 0.5, // Draw at 0.5 SOL
-  entries: new Map<string, boolean>(), // wallet -> entered
-};
-
 export async function GET(request: NextRequest) {
   try {
     const wallet = request.nextUrl.searchParams.get("wallet");
+    const includeCompleted = request.nextUrl.searchParams.get("includeCompleted") === "true";
 
-    // Try to get from database first
+    // Try to get from database
     if (isNeonConfigured()) {
       try {
-        const dbRaffle = await getCasinoRaffle();
+        const dbRaffle = await getCasinoRaffle(includeCompleted);
+
         if (dbRaffle) {
+          // Check if user has entered (without exposing all entries)
+          const userEntered = wallet && dbRaffle.entries
+            ? dbRaffle.entries.includes(wallet)
+            : false;
+
+          // Don't expose full entries list to non-admin
           return NextResponse.json({
-            ...dbRaffle,
-            userEntered: wallet ? dbRaffle.entries?.includes(wallet) : false,
+            id: dbRaffle.id,
+            status: dbRaffle.status,
+            potSol: dbRaffle.potSol,
+            entryCount: dbRaffle.entryCount,
+            threshold: dbRaffle.threshold,
+            userEntered,
+            // Only include winner info for completed raffles
+            ...(dbRaffle.status === "completed" && {
+              winnerWallet: dbRaffle.winnerWallet,
+              prizeSol: dbRaffle.prizeSol,
+              drawnAt: dbRaffle.drawnAt,
+            }),
+            createdAt: dbRaffle.createdAt,
           });
         }
+
+        // No raffle found
+        return NextResponse.json({
+          status: "none",
+          message: "No active raffle",
+        });
       } catch (err) {
         console.error("Error fetching raffle from DB:", err);
       }
     }
 
-    // Fallback to in-memory state
+    // Database not configured
     return NextResponse.json({
-      id: raffleState.id,
-      status: raffleState.status,
-      potLamports: raffleState.potLamports,
-      entryCount: raffleState.entryCount,
-      threshold: raffleState.threshold,
-      userEntered: wallet ? raffleState.entries.has(wallet) : false,
+      status: "none",
+      message: "Casino not initialized",
     });
   } catch (error) {
     console.error("Error in raffle GET:", error);

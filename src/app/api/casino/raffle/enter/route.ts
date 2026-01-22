@@ -1,9 +1,6 @@
 // Casino Raffle Entry API
 import { NextRequest, NextResponse } from "next/server";
-import { enterCasinoRaffle, isNeonConfigured } from "@/lib/neon";
-
-// In-memory state for development
-const raffleEntries = new Map<string, boolean>();
+import { enterCasinoRaffle, checkRaffleThreshold, isNeonConfigured } from "@/lib/neon";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,42 +14,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if already entered (in-memory check)
-    if (raffleEntries.has(wallet)) {
+    // Validate wallet format (basic check)
+    if (typeof wallet !== "string" || wallet.length < 32 || wallet.length > 44) {
       return NextResponse.json(
-        { error: "Already entered this raffle round" },
+        { error: "Invalid wallet address format" },
         { status: 400 }
       );
     }
 
-    // Try to enter via database
-    if (isNeonConfigured()) {
-      try {
-        const result = await enterCasinoRaffle(wallet);
-        if (result.success) {
-          raffleEntries.set(wallet, true); // Also update in-memory
-          return NextResponse.json({
-            success: true,
-            message: "Successfully entered raffle!",
-            entryCount: result.entryCount,
-          });
-        } else {
-          return NextResponse.json(
-            { error: result.error || "Failed to enter raffle" },
-            { status: 400 }
-          );
-        }
-      } catch (err) {
-        console.error("Error entering raffle via DB:", err);
-      }
+    // Check database is configured
+    if (!isNeonConfigured()) {
+      return NextResponse.json(
+        { error: "Casino not initialized" },
+        { status: 503 }
+      );
     }
 
-    // Fallback to in-memory
-    raffleEntries.set(wallet, true);
+    // Enter raffle
+    const result = await enterCasinoRaffle(wallet);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: 400 }
+      );
+    }
+
+    // Check if threshold is reached after this entry
+    const thresholdStatus = await checkRaffleThreshold();
+
     return NextResponse.json({
       success: true,
       message: "Successfully entered raffle!",
-      entryCount: raffleEntries.size,
+      entryCount: result.entryCount,
+      threshold: thresholdStatus.threshold,
+      thresholdReached: thresholdStatus.shouldDraw,
     });
   } catch (error) {
     console.error("Error in raffle entry:", error);
