@@ -36,10 +36,11 @@ export function verifyAdminSignature(
 
     // Reconstruct the message that was signed
     const message = `casino-admin:${action}:${timestamp}`;
-    const messageBytes = new TextEncoder().encode(message);
+    // Use Uint8Array wrapper for cross-environment compatibility
+    const messageBytes = new Uint8Array(Buffer.from(message, "utf-8"));
 
-    // Decode signature from base64
-    const signatureBytes = Buffer.from(signature, "base64");
+    // Decode signature from base64 and wrap in Uint8Array
+    const signatureBytes = new Uint8Array(Buffer.from(signature, "base64"));
 
     // Verify public key format
     let publicKey: PublicKey;
@@ -49,11 +50,11 @@ export function verifyAdminSignature(
       return { verified: false, error: "Invalid wallet address" };
     }
 
-    // Verify signature using nacl
+    // Verify signature using nacl (ensure publicKey bytes are proper Uint8Array)
     const isValid = nacl.sign.detached.verify(
       messageBytes,
       signatureBytes,
-      publicKey.toBytes()
+      new Uint8Array(publicKey.toBytes())
     );
 
     if (!isValid) {

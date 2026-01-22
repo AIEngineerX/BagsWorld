@@ -11,10 +11,16 @@ const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    // Force uuid to use CJS version (ESM version causes Jest issues)
+    '^uuid$': require.resolve('uuid'),
   },
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/.next/',
+  ],
+  // Transform ESM modules that need to be compiled
+  transformIgnorePatterns: [
+    '/node_modules/(?!(uuid|jayson|@noble)/)',
   ],
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',

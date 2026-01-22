@@ -1,5 +1,10 @@
 // jest.setup.js
 import '@testing-library/jest-dom';
+import { TextEncoder, TextDecoder } from 'util';
+
+// Polyfill TextEncoder/TextDecoder for @noble/curves and Solana libs
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
