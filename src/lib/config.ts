@@ -79,7 +79,7 @@ export const ECOSYSTEM_CONFIG = {
       mint: "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
       symbol: "$BagsWorld",
       minBalance: 1_000_000,
-      buyUrl: "https://bags.fm/token/9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
+      buyUrl: "https://bags.fm/9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
     },
   },
 

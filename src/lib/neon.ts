@@ -454,7 +454,7 @@ export function getCasinoAdminWallet(): string {
 
 export interface CasinoRaffle {
   id: number;
-  status: "active" | "drawing" | "completed";
+  status: "active" | "paused" | "drawing" | "completed";
   potLamports: number;
   potSol: number;
   entryCount: number;
@@ -550,6 +550,58 @@ export async function createCasinoRaffle(
   } catch (error) {
     console.error("[Casino] Error creating raffle:", error);
     return { success: false, error: "Failed to create raffle" };
+  }
+}
+
+// Pause an active raffle (admin only)
+export async function pauseCasinoRaffle(): Promise<{ success: boolean; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    const result = await sql`
+      UPDATE casino_raffles
+      SET status = 'paused'
+      WHERE status = 'active'
+      RETURNING id
+    `;
+
+    if ((result as unknown[]).length === 0) {
+      return { success: false, error: "No active raffle to pause" };
+    }
+
+    const raffleId = (result as Array<{ id: number }>)[0].id;
+    console.log(`[Casino] Raffle #${raffleId} paused`);
+    return { success: true };
+  } catch (error) {
+    console.error("[Casino] Error pausing raffle:", error);
+    return { success: false, error: "Failed to pause raffle" };
+  }
+}
+
+// Resume a paused raffle (admin only)
+export async function resumeCasinoRaffle(): Promise<{ success: boolean; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    const result = await sql`
+      UPDATE casino_raffles
+      SET status = 'active'
+      WHERE status = 'paused'
+      RETURNING id
+    `;
+
+    if ((result as unknown[]).length === 0) {
+      return { success: false, error: "No paused raffle to resume" };
+    }
+
+    const raffleId = (result as Array<{ id: number }>)[0].id;
+    console.log(`[Casino] Raffle #${raffleId} resumed`);
+    return { success: true };
+  } catch (error) {
+    console.error("[Casino] Error resuming raffle:", error);
+    return { success: false, error: "Failed to resume raffle" };
   }
 }
 
@@ -655,7 +707,7 @@ export async function getCasinoRaffleById(raffleId: number): Promise<CasinoRaffl
     const row = (result as Array<Record<string, unknown>>)[0];
     return {
       id: row.id as number,
-      status: row.status as "active" | "drawing" | "completed",
+      status: row.status as "active" | "paused" | "drawing" | "completed",
       potLamports: safeParseInt(row.pot_lamports as string, 0),
       potSol: safeParseInt(row.pot_lamports as string, 0) / 1e9,
       entryCount: safeParseInt(row.entry_count as string, 0),
@@ -737,18 +789,18 @@ export async function getCasinoRaffle(includeCompleted: boolean = false): Promis
       return null;
     }
 
-    // First try to get active raffle
+    // First try to get active or paused raffle
     let result = await sql`
       SELECT r.*,
         (SELECT COUNT(*) FROM casino_raffle_entries WHERE raffle_id = r.id) as entry_count,
         (SELECT json_agg(wallet) FROM casino_raffle_entries WHERE raffle_id = r.id) as entries
       FROM casino_raffles r
-      WHERE r.status = 'active'
+      WHERE r.status IN ('active', 'paused')
       ORDER BY r.created_at DESC
       LIMIT 1
     `;
 
-    // If no active and includeCompleted, get most recent completed
+    // If no active/paused and includeCompleted, get most recent completed
     if ((result as unknown[]).length === 0 && includeCompleted) {
       result = await sql`
         SELECT r.*,
@@ -767,7 +819,7 @@ export async function getCasinoRaffle(includeCompleted: boolean = false): Promis
     const potLamports = safeParseInt(row.pot_lamports as string, 0);
     return {
       id: row.id as number,
-      status: row.status as "active" | "drawing" | "completed",
+      status: row.status as "active" | "paused" | "drawing" | "completed",
       potLamports,
       potSol: potLamports / 1e9,
       entryCount: safeParseInt(row.entry_count as string, 0),
@@ -842,6 +894,99 @@ export async function enterCasinoRaffle(
   } catch (error) {
     console.error("Error entering raffle:", error);
     return { success: false, error: "Failed to enter raffle" };
+  }
+}
+
+// Get entries for a specific raffle (admin)
+export async function getRaffleEntries(raffleId: number): Promise<{ wallet: string; enteredAt: string }[] | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const result = await sql`
+      SELECT wallet, created_at
+      FROM casino_raffle_entries
+      WHERE raffle_id = ${raffleId}
+      ORDER BY created_at DESC
+    `;
+
+    return (result as Array<{ wallet: string; created_at: string }>).map(row => ({
+      wallet: row.wallet,
+      enteredAt: row.created_at,
+    }));
+  } catch (error) {
+    console.error("Error getting raffle entries:", error);
+    return null;
+  }
+}
+
+// Get raffle history (admin)
+export async function getRaffleHistory(limit: number = 10): Promise<{
+  id: number;
+  status: string;
+  potSol: number;
+  entryCount: number;
+  threshold: number;
+  winnerWallet: string | null;
+  prizeSol: number | null;
+  createdAt: string;
+  drawnAt: string | null;
+}[] | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'casino_raffles'
+      )
+    `;
+
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
+      return null;
+    }
+
+    const result = await sql`
+      SELECT
+        r.id,
+        r.status,
+        r.pot_lamports,
+        r.threshold_sol,
+        r.winner_wallet,
+        r.prize_sol,
+        r.created_at,
+        r.drawn_at,
+        (SELECT COUNT(*) FROM casino_raffle_entries WHERE raffle_id = r.id) as entry_count
+      FROM casino_raffles r
+      ORDER BY r.created_at DESC
+      LIMIT ${limit}
+    `;
+
+    return (result as Array<{
+      id: number;
+      status: string;
+      pot_lamports: string;
+      threshold_sol: string;
+      winner_wallet: string | null;
+      prize_sol: string | null;
+      created_at: string;
+      drawn_at: string | null;
+      entry_count: string;
+    }>).map(row => ({
+      id: row.id,
+      status: row.status,
+      potSol: safeParseInt(row.pot_lamports, 0) / 1e9,
+      entryCount: safeParseInt(row.entry_count, 0),
+      threshold: safeParseFloat(row.threshold_sol, 50),
+      winnerWallet: row.winner_wallet,
+      prizeSol: row.prize_sol ? safeParseFloat(row.prize_sol, 0) : null,
+      createdAt: row.created_at,
+      drawnAt: row.drawn_at,
+    }));
+  } catch (error) {
+    console.error("Error getting raffle history:", error);
+    return null;
   }
 }
 
