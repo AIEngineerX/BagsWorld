@@ -60,7 +60,7 @@ export function MobileCharacterMenu() {
   };
 
   return (
-    <div className="sm:hidden fixed bottom-20 right-4 z-50">
+    <div className="sm:hidden fixed right-4 z-50" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
       {/* Expanded menu */}
       {isOpen && (
         <div className="absolute bottom-16 right-0 bg-bags-dark border-2 border-bags-green p-3 shadow-lg shadow-bags-green/20">

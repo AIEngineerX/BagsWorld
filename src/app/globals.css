@@ -15,6 +15,15 @@
 html {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
+  /* Use dynamic viewport height for mobile */
+  height: 100dvh;
+  height: -webkit-fill-available;
+}
+
+/* Ensure proper sizing on mobile */
+html, body, #__next {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
 }
 
 * {
@@ -121,6 +130,8 @@ body {
 /* Scanline effect */
 .scanlines {
   pointer-events: none;
+  -webkit-pointer-events: none;
+  touch-action: none;
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(
@@ -130,6 +141,14 @@ body {
     transparent 1px,
     transparent 2px
   );
+  z-index: 1; /* Below UI elements but above canvas */
+}
+
+/* Hide scanlines on mobile for better touch performance */
+@media (max-width: 768px), (pointer: coarse) {
+  .scanlines {
+    display: none;
+  }
 }
 
 /* Glow effects */
@@ -247,6 +266,14 @@ body {
              max(0.5rem, env(safe-area-inset-right))
              max(0.5rem, env(safe-area-inset-bottom))
              max(0.5rem, env(safe-area-inset-left));
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
   }
 }
 
@@ -394,10 +421,17 @@ body {
   overscroll-behavior-y: contain;
 }
 
-/* Game canvas touch handling - allow pan and pinch */
+/* Game canvas touch handling - allow all touch interactions */
 .game-canvas-wrapper {
-  touch-action: pan-x pan-y pinch-zoom;
+  touch-action: auto;
+  -webkit-touch-callout: none;
   overscroll-behavior: contain;
+}
+
+/* Ensure Phaser canvas can receive touch events */
+.game-canvas-wrapper canvas {
+  touch-action: auto;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Only prevent pull-to-refresh, not all touch */

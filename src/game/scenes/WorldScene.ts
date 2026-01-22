@@ -175,6 +175,10 @@ export class WorldScene extends Phaser.Scene {
   private setupMobileCameraControls(): void {
     // Check if mobile
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // Enable touch input globally for this scene
+    this.input.setTopOnly(false);
+
     if (!isMobile) return;
 
     // Set up camera bounds for panning
