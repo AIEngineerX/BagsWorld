@@ -21,7 +21,7 @@ interface Position {
 const SHAW_TOPICS = [
   {
     title: "ElizaOS",
-    icon: "🏗️",
+    icon: "🔶",
     content: "ElizaOS is a framework for building autonomous AI agents. Character files define their personality, plugins give them capabilities. 17k stars on GitHub - the community is incredible."
   },
   {
@@ -240,18 +240,18 @@ export function ShawChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-purple-500 shadow-lg shadow-purple-500/20 ${isDragging ? "cursor-grabbing" : ""}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-orange-500 shadow-lg shadow-orange-500/20 ${isDragging ? "cursor-grabbing" : ""}`}
     >
       {/* Header */}
       <div
         onMouseDown={handleMouseDown}
-        className="flex items-center justify-between p-2 border-b-4 border-purple-500 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-purple-600/20 to-fuchsia-600/20"
+        className="flex items-center justify-between p-2 border-b-4 border-orange-500 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-orange-600/20 to-amber-600/20"
       >
         <div className="flex items-center gap-2">
-          <span className="font-pixel text-sm">🏗️</span>
+          <span className="font-pixel text-sm">🔶</span>
           <div>
-            <p className="font-pixel text-[10px] text-purple-400">SHAW - ELIZAOS CREATOR</p>
-            <p className="font-pixel text-[8px] text-gray-400">drag to move</p>
+            <p className="font-pixel text-[10px] text-orange-400">SHAW - ELIZAOS CREATOR</p>
+            <p className="font-pixel text-[8px] text-gray-400">@shawmakesmagic</p>
           </div>
         </div>
         <button
@@ -263,14 +263,14 @@ export function ShawChat() {
       </div>
 
       {/* Topic Buttons */}
-      <div className="p-2 border-b border-purple-500/30 bg-bags-darker">
+      <div className="p-2 border-b border-orange-500/30 bg-bags-darker">
         <p className="font-pixel text-[8px] text-gray-400 mb-2">Framework Topics:</p>
         <div className="flex flex-wrap gap-1">
           {SHAW_TOPICS.map((topic, i) => (
             <button
               key={i}
               onClick={() => handleTopicClick(topic)}
-              className="px-2 py-1 bg-purple-500/10 border border-purple-500/30 font-pixel text-[7px] text-purple-300 hover:bg-purple-500/20 hover:text-purple-200 transition-colors"
+              className="px-2 py-1 bg-orange-500/10 border border-orange-500/30 font-pixel text-[7px] text-orange-300 hover:bg-orange-500/20 hover:text-orange-200 transition-colors"
             >
               {topic.icon} {topic.title}
             </button>
@@ -282,7 +282,7 @@ export function ShawChat() {
       <div className="h-40 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-4">
-            <p className="font-pixel text-[10px] text-purple-400 mb-1">🏗️ framework online</p>
+            <p className="font-pixel text-[10px] text-orange-400 mb-1">🔶 framework online</p>
             <p className="font-pixel text-[8px] text-gray-400">Shaw here. Let&apos;s build something.</p>
             <p className="font-pixel text-[7px] text-gray-500 mt-2">Ask me about ElizaOS or click a topic above</p>
           </div>
@@ -292,15 +292,15 @@ export function ShawChat() {
               key={msg.id}
               className={`p-2 border-l-2 ${
                 msg.type === "shaw"
-                  ? "bg-purple-500/10 border-purple-500"
+                  ? "bg-orange-500/10 border-orange-500"
                   : msg.type === "user"
                   ? "bg-bags-green/10 border-bags-green ml-4"
-                  : "bg-fuchsia-500/10 border-fuchsia-500"
+                  : "bg-amber-500/10 border-amber-500"
               }`}
             >
-              {msg.type === "shaw" && <p className="font-pixel text-[6px] text-purple-400 mb-1">Shaw:</p>}
+              {msg.type === "shaw" && <p className="font-pixel text-[6px] text-orange-400 mb-1">Shaw:</p>}
               {msg.type === "user" && <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>}
-              {msg.type === "info" && <p className="font-pixel text-[6px] text-fuchsia-400 mb-1">📄 Docs:</p>}
+              {msg.type === "info" && <p className="font-pixel text-[6px] text-amber-400 mb-1">📄 Docs:</p>}
               <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
               {msg.type === "shaw" && msg.actions && msg.actions.length > 0 && (
                 <ActionButtons actions={msg.actions} onAction={handleAction} />
@@ -309,15 +309,15 @@ export function ShawChat() {
           ))
         )}
         {isLoading && (
-          <div className="p-2 border-l-2 bg-purple-500/10 border-purple-500">
-            <p className="font-pixel text-[8px] text-purple-300 animate-pulse">compiling response...</p>
+          <div className="p-2 border-l-2 bg-orange-500/10 border-orange-500">
+            <p className="font-pixel text-[8px] text-orange-300 animate-pulse">compiling response...</p>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="p-2 border-t border-purple-500/30">
+      <div className="p-2 border-t border-orange-500/30">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             ref={inputRef}
@@ -326,12 +326,12 @@ export function ShawChat() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask Shaw..."
             disabled={isLoading}
-            className="flex-1 bg-bags-darker border border-purple-500/30 px-2 py-1 font-pixel text-[8px] text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 disabled:opacity-50"
+            className="flex-1 bg-bags-darker border border-orange-500/30 px-2 py-1 font-pixel text-[8px] text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="px-2 py-1 bg-purple-500 text-white font-pixel text-[8px] hover:bg-purple-400 disabled:opacity-50 transition-colors"
+            className="px-2 py-1 bg-orange-500 text-white font-pixel text-[8px] hover:bg-orange-400 disabled:opacity-50 transition-colors"
           >
             Send
           </button>
@@ -339,22 +339,22 @@ export function ShawChat() {
       </div>
 
       {/* Footer */}
-      <div className="p-2 border-t border-purple-500/30 bg-bags-darker">
+      <div className="p-2 border-t border-orange-500/30 bg-bags-darker">
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-purple-500/10 p-1 rounded">
+          <a href="https://github.com/elizaOS/eliza" target="_blank" rel="noopener noreferrer" className="bg-orange-500/10 p-1 rounded hover:bg-orange-500/20 transition-colors">
             <p className="font-pixel text-[6px] text-gray-400">ElizaOS Stars</p>
-            <p className="font-pixel text-[9px] text-purple-400">17K+</p>
-          </div>
-          <div className="bg-fuchsia-500/10 p-1 rounded">
-            <p className="font-pixel text-[6px] text-gray-400">ai16z</p>
-            <p className="font-pixel text-[9px] text-fuchsia-400">ACTIVE</p>
-          </div>
-          <div className="bg-purple-500/10 p-1 rounded">
-            <p className="font-pixel text-[6px] text-gray-400">Model</p>
-            <p className="font-pixel text-[9px] text-purple-400">OPUS</p>
-          </div>
+            <p className="font-pixel text-[9px] text-orange-400">17K+</p>
+          </a>
+          <a href="https://x.com/shawmakesmagic" target="_blank" rel="noopener noreferrer" className="bg-amber-500/10 p-1 rounded hover:bg-amber-500/20 transition-colors">
+            <p className="font-pixel text-[6px] text-gray-400">X/Twitter</p>
+            <p className="font-pixel text-[9px] text-amber-400">@shaw</p>
+          </a>
+          <a href="https://elizaos.ai" target="_blank" rel="noopener noreferrer" className="bg-orange-500/10 p-1 rounded hover:bg-orange-500/20 transition-colors">
+            <p className="font-pixel text-[6px] text-gray-400">Website</p>
+            <p className="font-pixel text-[9px] text-orange-400">elizaos.ai</p>
+          </a>
         </div>
-        <p className="font-pixel text-[7px] text-purple-600 text-center mt-2">
+        <p className="font-pixel text-[7px] text-orange-600 text-center mt-2">
           &quot;agents are digital life forms&quot;
         </p>
       </div>
