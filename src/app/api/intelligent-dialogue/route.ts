@@ -363,8 +363,8 @@ The conversation should feel natural, like these characters are actually discuss
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
+        model: "claude-3-haiku-20240307",
+        max_tokens: 800,
         messages: [{ role: "user", content: conversationPrompt }],
       }),
     });

@@ -145,8 +145,8 @@ async function generateBehaviors(context: WorldContext): Promise<BehaviorRespons
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1500,
+        model: "claude-3-haiku-20240307",
+        max_tokens: 1000,
         messages: [{ role: "user", content: prompt }],
       }),
     });

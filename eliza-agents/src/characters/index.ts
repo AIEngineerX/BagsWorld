@@ -7,6 +7,7 @@ export { finnCharacter } from './finn';
 export { bagsBotCharacter } from './bags-bot';
 export { tolyCharacter } from './toly';
 export { ashCharacter } from './ash';
+export { shawCharacter } from './shaw';
 
 import { neoCharacter } from './neo';
 import { cjCharacter } from './cj';
@@ -14,6 +15,7 @@ import { finnCharacter } from './finn';
 import { bagsBotCharacter } from './bags-bot';
 import { tolyCharacter } from './toly';
 import { ashCharacter } from './ash';
+import { shawCharacter } from './shaw';
 import { Character } from '@elizaos/core';
 
 // Character registry by ID
@@ -24,6 +26,7 @@ export const characters: Record<string, Character> = {
   'bags-bot': bagsBotCharacter,
   'toly': tolyCharacter,
   'ash': ashCharacter,
+  'shaw': shawCharacter,
 };
 
 // Get character by ID
@@ -44,4 +47,5 @@ export default [
   finnCharacter,
   tolyCharacter,
   ashCharacter,
+  shawCharacter,
 ];

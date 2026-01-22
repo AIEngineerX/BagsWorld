@@ -4,7 +4,15 @@
 export * from './characters';
 export * from './plugins/bags-fm';
 
-import { neoCharacter, cjCharacter, finnCharacter, bagsBotCharacter } from './characters';
+import {
+  neoCharacter,
+  cjCharacter,
+  finnCharacter,
+  bagsBotCharacter,
+  tolyCharacter,
+  ashCharacter,
+  shawCharacter,
+} from './characters';
 
 // Export default character (Bags Bot is the main guide)
 export const character = bagsBotCharacter;
@@ -15,6 +23,9 @@ export const characters = [
   neoCharacter,
   cjCharacter,
   finnCharacter,
+  tolyCharacter,
+  ashCharacter,
+  shawCharacter,
 ];
 
 // Re-export plugin for external use
