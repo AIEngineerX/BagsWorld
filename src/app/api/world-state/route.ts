@@ -13,6 +13,11 @@ import type {
 import { buildWorldState, type BagsHealthMetrics } from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
+import {
+  emitEvent,
+  startCoordinator,
+  type AgentEventType,
+} from "@/lib/agent-coordinator";
 
 // Bags SDK types
 interface TokenLaunchCreator {
@@ -515,6 +520,68 @@ function generateEvents(
   return events.sort((a, b) => b.timestamp - a.timestamp).slice(0, 25);
 }
 
+// Track emitted events to avoid duplicates
+const emittedEventIds = new Set<string>();
+
+// Emit new events to the Agent Coordinator for the Agent Feed
+async function emitEventsToCoordinator(events: GameEvent[]): Promise<void> {
+  // Start coordinator if not already running
+  startCoordinator();
+
+  for (const event of events) {
+    // Skip if already emitted
+    if (emittedEventIds.has(event.id)) continue;
+    emittedEventIds.add(event.id);
+
+    // Limit tracking to last 1000 events
+    if (emittedEventIds.size > 1000) {
+      const toRemove = Array.from(emittedEventIds).slice(0, 500);
+      toRemove.forEach(id => emittedEventIds.delete(id));
+    }
+
+    // Map game event types to coordinator event types
+    let coordinatorType: AgentEventType;
+    let priority: "low" | "medium" | "high" | "urgent" = "medium";
+
+    switch (event.type) {
+      case "token_launch":
+        coordinatorType = "token_launch";
+        priority = "high";
+        break;
+      case "fee_claim":
+        coordinatorType = "fee_claim";
+        priority = (event.data?.amount as number) >= 1 ? "high" : "medium";
+        break;
+      case "price_pump":
+        coordinatorType = "token_pump";
+        priority = "high";
+        break;
+      case "price_dump":
+        coordinatorType = "token_dump";
+        priority = "medium";
+        break;
+      case "milestone":
+        coordinatorType = "creator_milestone";
+        priority = "high";
+        break;
+      default:
+        coordinatorType = "system";
+        priority = "low";
+    }
+
+    // Emit to coordinator
+    try {
+      await emitEvent(coordinatorType, "world-state", {
+        ...event.data,
+        message: event.message,
+        originalType: event.type,
+      }, priority);
+    } catch (error) {
+      console.error("[World State] Failed to emit event to coordinator:", error);
+    }
+  }
+}
+
 // POST - Get world state for specific tokens (token launch-centric)
 export async function POST(request: NextRequest) {
   try {
@@ -873,6 +940,10 @@ export async function POST(request: NextRequest) {
         }
       }
     });
+
+    // Emit events to Agent Coordinator for the Agent Feed
+    // Use void to not block the response
+    void emitEventsToCoordinator(worldState.events);
 
     // Track building count for city growth
     (worldState as any).tokenCount = tokens.length;

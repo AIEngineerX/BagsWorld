@@ -33,32 +33,50 @@ const MAX_ANNOUNCEMENTS = 50;
 // Subscribe to events and generate announcements
 let announcementSubscription: (() => void) | null = null;
 
+function addEventToAnnouncements(event: AgentEvent): void {
+  if (!event.announcement) return;
+
+  // Don't add if already in queue
+  if (announcementQueue.some(a => a.id === event.id)) return;
+
+  announcementQueue.unshift({
+    id: event.id,
+    message: event.announcement,
+    priority: event.priority,
+    timestamp: event.timestamp,
+    eventType: event.type,
+    read: false,
+  });
+
+  // Trim queue
+  if (announcementQueue.length > MAX_ANNOUNCEMENTS) {
+    announcementQueue = announcementQueue.slice(0, MAX_ANNOUNCEMENTS);
+  }
+}
+
 function initAnnouncementHandler(): void {
   if (announcementSubscription) return;
 
+  // First, replay any existing events to the announcement queue
+  const existingEvents = getRecentEvents(MAX_ANNOUNCEMENTS);
+  const mediumHighUrgent = ["medium", "high", "urgent"];
+
+  for (const event of existingEvents) {
+    if (mediumHighUrgent.includes(event.priority)) {
+      addEventToAnnouncements(event);
+    }
+  }
+
+  // Then subscribe to future events
   announcementSubscription = subscribe(
     "*", // Subscribe to all events
     (event: AgentEvent) => {
-      if (event.announcement) {
-        announcementQueue.unshift({
-          id: event.id,
-          message: event.announcement,
-          priority: event.priority,
-          timestamp: event.timestamp,
-          eventType: event.type,
-          read: false,
-        });
-
-        // Trim queue
-        if (announcementQueue.length > MAX_ANNOUNCEMENTS) {
-          announcementQueue = announcementQueue.slice(0, MAX_ANNOUNCEMENTS);
-        }
-      }
+      addEventToAnnouncements(event);
     },
     ["medium", "high", "urgent"] // Only announce important events
   );
 
-  console.log("[Agent Coordinator API] Announcement handler initialized");
+  console.log("[Agent Coordinator API] Announcement handler initialized with", existingEvents.length, "existing events");
 }
 
 // ============================================================================
