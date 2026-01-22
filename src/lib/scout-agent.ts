@@ -64,7 +64,7 @@ const DEFAULT_CONFIG: ScoutConfig = {
     maxSupply: null, // No max supply filter
     nameContains: null, // No name filter
     blockedCreators: [], // No blocked creators
-    bagsOnly: false, // Track all launches by default
+    bagsOnly: true, // Only track Bags.fm launches
   },
   alertCooldownMs: 1000, // 1 second between alerts
   maxAlertsPerMinute: 30,
@@ -231,7 +231,7 @@ function parseTokenLaunch(data: any): TokenLaunch | null {
       return {
         mint: data.mint,
         name: data.name || "Unknown",
-        symbol: data.symbol || "???",
+        symbol: data.symbol && data.symbol !== "undefined" ? data.symbol : "???",
         creator: data.traderPublicKey || data.creator || "unknown",
         liquidity: data.vSolInBondingCurve || data.liquidity || 0,
         supply: data.initialBuy || data.supply || 0,
