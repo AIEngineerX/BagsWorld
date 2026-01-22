@@ -17,25 +17,24 @@ const MAX_BUILDINGS = 20;
 const MAX_CHARACTERS = 15;
 
 // Bags.fm fee activity thresholds for world health (in SOL)
-// Based on 24h claim volume and lifetime fees
-const BAGS_HEALTH_THRESHOLDS = {
-  // 24h claim volume thresholds (SOL claimed in last 24h)
-  claimVolume: {
-    thriving: 50,    // 50+ SOL claimed in 24h = thriving
-    healthy: 20,     // 20+ SOL claimed
-    normal: 5,       // 5+ SOL claimed
-    struggling: 1,   // 1+ SOL claimed
-    dying: 0,        // No claims
-  },
-  // Lifetime fees weight (total fees across all tokens)
-  lifetimeFees: {
-    thriving: 1000,  // 1000+ SOL lifetime = established ecosystem
-    healthy: 500,
-    normal: 100,
-    struggling: 10,
-    dying: 0,
-  },
-};
+interface HealthThresholds {
+  thriving: number;
+  healthy: number;
+  normal: number;
+  struggling: number;
+}
+
+const CLAIM_THRESHOLDS: HealthThresholds = { thriving: 50, healthy: 20, normal: 5, struggling: 1 };
+const FEE_THRESHOLDS: HealthThresholds = { thriving: 1000, healthy: 500, normal: 100, struggling: 10 };
+
+// Calculate score (0-100) from value using thresholds
+function calculateThresholdScore(value: number, t: HealthThresholds): number {
+  if (value >= t.thriving) return 90 + Math.min(10, (value - t.thriving) / (t.thriving / 5));
+  if (value >= t.healthy) return 70 + ((value - t.healthy) / (t.thriving - t.healthy)) * 20;
+  if (value >= t.normal) return 50 + ((value - t.normal) / (t.healthy - t.normal)) * 20;
+  if (value >= t.struggling) return 25 + ((value - t.struggling) / (t.normal - t.struggling)) * 25;
+  return Math.max(0, (value / (t.struggling || 1)) * 25);
+}
 
 // Position cache to prevent buildings from shifting when rankings change
 // Key: token mint, Value: { x, y, assignedIndex }
@@ -65,43 +64,10 @@ export function calculateWorldHealth(
     return baselineScore;
   }
 
-  // Weight: 60% claim activity, 30% lifetime fees, 10% token diversity
-  const claimThresholds = BAGS_HEALTH_THRESHOLDS.claimVolume;
-  const feeThresholds = BAGS_HEALTH_THRESHOLDS.lifetimeFees;
-
-  // Calculate claim volume score (0-100)
-  let claimScore = 0;
-  if (claimVolume24h >= claimThresholds.thriving) {
-    claimScore = 90 + Math.min(10, (claimVolume24h - claimThresholds.thriving) / 10);
-  } else if (claimVolume24h >= claimThresholds.healthy) {
-    claimScore = 70 + (claimVolume24h - claimThresholds.healthy) / (claimThresholds.thriving - claimThresholds.healthy) * 20;
-  } else if (claimVolume24h >= claimThresholds.normal) {
-    claimScore = 50 + (claimVolume24h - claimThresholds.normal) / (claimThresholds.healthy - claimThresholds.normal) * 20;
-  } else if (claimVolume24h >= claimThresholds.struggling) {
-    claimScore = 25 + (claimVolume24h - claimThresholds.struggling) / (claimThresholds.normal - claimThresholds.struggling) * 25;
-  } else {
-    claimScore = Math.max(0, claimVolume24h * 25); // 0-25 for < 1 SOL
-  }
-
-  // Calculate lifetime fees score (0-100)
-  let feesScore = 0;
-  if (totalLifetimeFees >= feeThresholds.thriving) {
-    feesScore = 90 + Math.min(10, (totalLifetimeFees - feeThresholds.thriving) / 100);
-  } else if (totalLifetimeFees >= feeThresholds.healthy) {
-    feesScore = 70 + (totalLifetimeFees - feeThresholds.healthy) / (feeThresholds.thriving - feeThresholds.healthy) * 20;
-  } else if (totalLifetimeFees >= feeThresholds.normal) {
-    feesScore = 50 + (totalLifetimeFees - feeThresholds.normal) / (feeThresholds.healthy - feeThresholds.normal) * 20;
-  } else if (totalLifetimeFees >= feeThresholds.struggling) {
-    feesScore = 25 + (totalLifetimeFees - feeThresholds.struggling) / (feeThresholds.normal - feeThresholds.struggling) * 25;
-  } else {
-    // Defensive: avoid division by zero if threshold is ever 0
-    const divisor = feeThresholds.struggling || 1;
-    feesScore = Math.max(0, (totalLifetimeFees / divisor) * 25);
-  }
-
-  // Calculate token diversity score (0-100)
-  // More active tokens = healthier ecosystem
-  const diversityScore = Math.min(100, activeTokenCount * 10); // 10 tokens = 100%
+  // Calculate scores using shared threshold logic
+  const claimScore = calculateThresholdScore(claimVolume24h, CLAIM_THRESHOLDS);
+  const feesScore = calculateThresholdScore(totalLifetimeFees, FEE_THRESHOLDS);
+  const diversityScore = Math.min(100, activeTokenCount * 10);
 
   // Weighted average: 60% claims, 30% fees, 10% diversity
   const activityHealth = claimScore * 0.6 + feesScore * 0.3 + diversityScore * 0.1;
@@ -298,48 +264,57 @@ function getProfileUrl(provider: string, username: string): string {
   }
 }
 
+// Special character configuration - consolidates flags, positions, zones, and profile URLs
+const SPECIAL_CHARACTERS: Record<string, {
+  flag: string;
+  wallet: string;
+  x: number;
+  zone: "main_city" | "trending";
+  profileUrl?: string;
+}> = {
+  toly: { flag: "isToly", wallet: "toly-solana-permanent", x: WORLD_WIDTH / 2, zone: "main_city", profileUrl: "https://x.com/toly" },
+  ash: { flag: "isAsh", wallet: "ash-ketchum-permanent", x: WORLD_WIDTH - Math.round(120 * SCALE), zone: "main_city" },
+  finn: { flag: "isFinn", wallet: "finnbags-ceo-permanent", x: Math.round(120 * SCALE), zone: "main_city", profileUrl: "https://x.com/finnbags" },
+  dev: { flag: "isDev", wallet: "daddyghost-dev-permanent", x: WORLD_WIDTH / 2 + Math.round(180 * SCALE), zone: "main_city", profileUrl: "https://x.com/DaddyGhost" },
+  scout: { flag: "isScout", wallet: "scout-agent-permanent", x: Math.round(170 * SCALE), zone: "trending" },
+  cj: { flag: "isCJ", wallet: "cj-grove-street-permanent", x: Math.round(90 * SCALE), zone: "trending" },
+  shaw: { flag: "isShaw", wallet: "shaw-elizaos-permanent", x: WORLD_WIDTH / 2 - Math.round(150 * SCALE), zone: "main_city", profileUrl: "https://x.com/shawmakesmagic" },
+};
+
 export function transformFeeEarnerToCharacter(
   earner: FeeEarner,
   existingCharacter?: GameCharacter
 ): GameCharacter {
-  // Toly gets a fixed central position near the Treasury
-  const isToly = earner.isToly || earner.wallet === "toly-solana-permanent";
-  // Ash gets a position on the right side of the world
-  const isAsh = (earner as any).isAsh || earner.wallet === "ash-ketchum-permanent";
-  // Finn gets a position on the left side of the world
-  const isFinn = (earner as any).isFinn || earner.wallet === "finnbags-ceo-permanent";
-  // The Dev gets a position near center-right (trenching area)
-  const isDev = (earner as any).isDev || earner.wallet === "daddyghost-dev-permanent";
-  // Scout Agent gets a position on far right (watching the horizon)
-  const isScout = (earner as any).isScout || earner.wallet === "scout-agent-permanent";
-  // CJ gets a position in BagsCity (left side, near the Casino)
-  const isCJ = (earner as any).isCJ || earner.wallet === "cj-grove-street-permanent";
-  // Shaw gets a position in the Park (ElizaOS creator, ai16z co-founder)
-  const isShaw = (earner as any).isShaw || earner.wallet === "shaw-elizaos-permanent";
-
+  const e = earner as any;
   const groundY = Math.round(555 * SCALE);
+
+  // Detect special character type
+  const specialType = Object.entries(SPECIAL_CHARACTERS).find(
+    ([, cfg]) => e[cfg.flag] || earner.wallet === cfg.wallet
+  );
+  const isSpecial = !!specialType;
+  const specialCfg = specialType?.[1];
+
+  // Build flags object
+  const flags = {
+    isToly: e.isToly || earner.wallet === SPECIAL_CHARACTERS.toly.wallet,
+    isAsh: e.isAsh || earner.wallet === SPECIAL_CHARACTERS.ash.wallet,
+    isFinn: e.isFinn || earner.wallet === SPECIAL_CHARACTERS.finn.wallet,
+    isDev: e.isDev || earner.wallet === SPECIAL_CHARACTERS.dev.wallet,
+    isScout: e.isScout || earner.wallet === SPECIAL_CHARACTERS.scout.wallet,
+    isCJ: e.isCJ || earner.wallet === SPECIAL_CHARACTERS.cj.wallet,
+    isShaw: e.isShaw || earner.wallet === SPECIAL_CHARACTERS.shaw.wallet,
+  };
+
+  // Determine position
   const position = existingCharacter
     ? { x: existingCharacter.x, y: existingCharacter.y }
-    : isToly
-    ? { x: WORLD_WIDTH / 2, y: groundY } // Center X, on the ground
-    : isAsh
-    ? { x: WORLD_WIDTH - Math.round(120 * SCALE), y: groundY } // Right side of world
-    : isFinn
-    ? { x: Math.round(120 * SCALE), y: groundY } // Left side of world
-    : isDev
-    ? { x: WORLD_WIDTH / 2 + Math.round(180 * SCALE), y: groundY } // Center-right, in the trenches
-    : isScout
-    ? { x: Math.round(170 * SCALE), y: groundY } // BagsCity side, near Trading Gym - watching for new launches
-    : isCJ
-    ? { x: Math.round(90 * SCALE), y: groundY } // BagsCity, right next to the Casino (x: 80)
-    : isShaw
-    ? { x: WORLD_WIDTH / 2 - Math.round(150 * SCALE), y: groundY } // Park, left of center - near Toly
+    : specialCfg
+    ? { x: specialCfg.x, y: groundY }
     : generateCharacterPosition();
 
-  const isSpecialCharacter = isToly || isAsh || isFinn || isDev || isScout || isCJ || isShaw;
-
-  // Neo and CJ belong in BagsCity (trending zone), others in Park (main_city)
-  const zone = (isScout || isCJ) ? "trending" as const : "main_city" as const;
+  // Determine profile URL
+  const profileUrl = specialCfg?.profileUrl ?? (isSpecial ? undefined : getProfileUrl(earner.provider, earner.username));
 
   return {
     id: earner.wallet,
@@ -349,20 +324,14 @@ export function transformFeeEarnerToCharacter(
     avatarUrl: earner.avatarUrl,
     x: position.x,
     y: position.y,
-    mood: isSpecialCharacter ? "happy" : calculateCharacterMood(earner.earnings24h, earner.change24h),
+    mood: isSpecial ? "happy" : calculateCharacterMood(earner.earnings24h, earner.change24h),
     earnings24h: earner.earnings24h,
     direction: Math.random() > 0.5 ? "left" : "right",
-    isMoving: !isSpecialCharacter && Math.random() > 0.7, // Special characters don't wander randomly
+    isMoving: !isSpecial && Math.random() > 0.7,
     buildingId: earner.topToken?.mint,
-    profileUrl: isToly ? "https://x.com/toly" : isFinn ? "https://x.com/finnbags" : isDev ? "https://x.com/DaddyGhost" : isShaw ? "https://x.com/shawmakesmagic" : isAsh || isScout || isCJ ? undefined : getProfileUrl(earner.provider, earner.username),
-    zone, // Neo and CJ in BagsCity, others in Park
-    isToly, // Pass through the Toly flag
-    isAsh, // Pass through the Ash flag
-    isFinn, // Pass through the Finn flag
-    isDev, // Pass through the Dev flag
-    isScout, // Pass through the Scout flag
-    isCJ, // Pass through the CJ flag
-    isShaw, // Pass through the Shaw flag
+    profileUrl,
+    zone: specialCfg?.zone ?? "main_city",
+    ...flags,
   };
 }
 

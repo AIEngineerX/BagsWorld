@@ -3007,155 +3007,30 @@ export class WorldScene extends Phaser.Scene {
     // Walking animation - characters randomly walk around the park
     this.startCharacterWalking(sprite, character, isSpecial);
 
-    // Add Solana gradient aura glow effect for Toly
-    if (isToly) {
+    // Add glow effects for special characters (configuration-driven)
+    const glowConfigs: Array<{ active: boolean; key: string; tint: number; alpha?: number; targetAlpha?: number; scale?: number; duration?: number }> = [
+      { active: isToly, key: "tolyGlow", tint: 0x9945ff },
+      { active: isAsh, key: "ashGlow", tint: 0xdc2626 },
+      { active: isFinn, key: "finnGlow", tint: 0x10b981 },
+      { active: isDev, key: "devGlow", tint: 0x8b5cf6 },
+      { active: isScout, key: "scoutGlow", tint: 0x00ff41, alpha: 0.4, targetAlpha: 0.7, scale: 1.3, duration: 800 },
+      { active: isCJ, key: "cjGlow", tint: 0xf97316, duration: 1200 },
+      { active: isShaw, key: "shawGlow", tint: 0xff5800, duration: 1000 },
+    ];
+
+    for (const cfg of glowConfigs) {
+      if (!cfg.active) continue;
       const glow = this.add.sprite(character.x, character.y, "glow");
       glow.setScale(1.0);
-      glow.setAlpha(0.3);
-      glow.setTint(0x9945ff); // Solana purple
+      glow.setAlpha(cfg.alpha ?? 0.3);
+      glow.setTint(cfg.tint);
       glow.setDepth(10);
-
-      // Store reference to glow for cleanup
-      (sprite as any).tolyGlow = glow;
-
+      (sprite as any)[cfg.key] = glow;
       this.tweens.add({
         targets: glow,
-        alpha: 0.5,
-        scale: 1.2,
-        duration: 1500,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    }
-
-    // Add red/blue aura glow effect for Ash
-    if (isAsh) {
-      const glow = this.add.sprite(character.x, character.y, "glow");
-      glow.setScale(1.0);
-      glow.setAlpha(0.3);
-      glow.setTint(0xdc2626); // Pokemon red
-      glow.setDepth(10);
-
-      // Store reference to glow for cleanup
-      (sprite as any).ashGlow = glow;
-
-      this.tweens.add({
-        targets: glow,
-        alpha: 0.5,
-        scale: 1.2,
-        duration: 1500,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    }
-
-    // Add emerald glow effect for Finn
-    if (isFinn) {
-      const glow = this.add.sprite(character.x, character.y, "glow");
-      glow.setScale(1.0);
-      glow.setAlpha(0.3);
-      glow.setTint(0x10b981); // Emerald/Bags green
-      glow.setDepth(10);
-
-      // Store reference to glow for cleanup
-      (sprite as any).finnGlow = glow;
-
-      this.tweens.add({
-        targets: glow,
-        alpha: 0.5,
-        scale: 1.2,
-        duration: 1500,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    }
-
-    // Add purple/cyan glow effect for The Dev
-    if (isDev) {
-      const glow = this.add.sprite(character.x, character.y, "glow");
-      glow.setScale(1.0);
-      glow.setAlpha(0.3);
-      glow.setTint(0x8b5cf6); // Purple (hacker vibes)
-      glow.setDepth(10);
-
-      // Store reference to glow for cleanup
-      (sprite as any).devGlow = glow;
-
-      this.tweens.add({
-        targets: glow,
-        alpha: 0.5,
-        scale: 1.2,
-        duration: 1500,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    }
-
-    // Add Matrix green glow effect for Neo (Scout)
-    if (isScout) {
-      const glow = this.add.sprite(character.x, character.y, "glow");
-      glow.setScale(1.0);
-      glow.setAlpha(0.4);
-      glow.setTint(0x00ff41); // Matrix green
-      glow.setDepth(10);
-
-      // Store reference to glow for cleanup
-      (sprite as any).scoutGlow = glow;
-
-      // Faster, more digital-feeling pulse for Neo
-      this.tweens.add({
-        targets: glow,
-        alpha: 0.7,
-        scale: 1.3,
-        duration: 800,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    }
-
-    // Add Grove Street orange glow effect for CJ
-    if (isCJ) {
-      const glow = this.add.sprite(character.x, character.y, "glow");
-      glow.setScale(1.0);
-      glow.setAlpha(0.3);
-      glow.setTint(0xf97316); // Grove Street orange
-      glow.setDepth(10);
-
-      // Store reference to glow for cleanup
-      (sprite as any).cjGlow = glow;
-
-      this.tweens.add({
-        targets: glow,
-        alpha: 0.5,
-        scale: 1.2,
-        duration: 1200,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    }
-
-    // Add ElizaOS orange glow effect for Shaw (ElizaOS creator)
-    if (isShaw) {
-      const glow = this.add.sprite(character.x, character.y, "glow");
-      glow.setScale(1.0);
-      glow.setAlpha(0.3);
-      glow.setTint(0xff5800); // ElizaOS orange
-      glow.setDepth(10);
-
-      // Store reference to glow for cleanup
-      (sprite as any).shawGlow = glow;
-
-      this.tweens.add({
-        targets: glow,
-        alpha: 0.5,
-        scale: 1.2,
-        duration: 1000,
+        alpha: cfg.targetAlpha ?? 0.5,
+        scale: cfg.scale ?? 1.2,
+        duration: cfg.duration ?? 1500,
         yoyo: true,
         repeat: -1,
         ease: "Sine.easeInOut",
@@ -3163,13 +3038,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Store character type flags on sprite for speech bubble system
-    (sprite as any).isToly = isToly;
-    (sprite as any).isAsh = isAsh;
-    (sprite as any).isFinn = isFinn;
-    (sprite as any).isDev = isDev;
-    (sprite as any).isScout = isScout;
-    (sprite as any).isCJ = isCJ;
-    (sprite as any).isShaw = isShaw;
+    Object.assign(sprite, { isToly, isAsh, isFinn, isDev, isScout, isCJ, isShaw });
 
     this.characterSprites.set(character.id, sprite);
   }
