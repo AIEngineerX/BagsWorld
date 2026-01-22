@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCasinoRaffle, isNeonConfigured } from "@/lib/neon";
 
+export const dynamic = "force-dynamic";
+
 // In-memory state for development (replaced by DB in production)
 let raffleState = {
   id: 1,

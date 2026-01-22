@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCasinoHistory, isNeonConfigured } from "@/lib/neon";
 
+export const dynamic = "force-dynamic";
+
 // In-memory history for development
 const historyByWallet = new Map<string, Array<{
   id: string;
