@@ -139,16 +139,20 @@ export default function Home() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Initialize autonomous dialogue and behavior systems
+  // Pre-warm SDK on mount (fire-and-forget for faster subsequent API calls)
   useEffect(() => {
-    console.log("[Page] Initializing dialogue and behavior systems...");
+    fetch("/api/warm-sdk").catch(() => {});
+  }, []);
+
+  // Initialize autonomous dialogue and behavior systems (all sync, non-blocking)
+  useEffect(() => {
+    // Run all initializations - they're synchronous and non-blocking
     initDialogueSystem();
     initDialogueEventBridge();
     initBrowserEventListener();
     initCharacterBehavior();
 
     return () => {
-      console.log("[Page] Cleaning up dialogue and behavior systems...");
       cleanupDialogueSystem();
       cleanupDialogueEventBridge();
       cleanupCharacterBehavior();
