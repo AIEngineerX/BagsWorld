@@ -3,7 +3,7 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { getCharacter, generateCharacterPrompt, characterMeta } from "@/characters";
 import { extractIntent, quickIntentCheck } from "@/lib/intent-extractor";
 
-// Unified Agent Chat API - All characters powered by Opus 4.5
+// Unified Agent Chat API - All characters powered by Sonnet 4
 // Each character has unique personality, knowledge, and response style
 // Neo has access to REAL on-chain data from Bags.fm API
 
@@ -367,7 +367,7 @@ IMPORTANT: Stay in character. Keep responses concise (1-3 sentences). Be helpful
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-opus-4-5-20251101",
+      model: "claude-sonnet-4-20250514",
       max_tokens: 300,
       system: systemPrompt,
       messages,

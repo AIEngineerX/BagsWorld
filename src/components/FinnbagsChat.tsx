@@ -243,7 +243,7 @@ export function FinnbagsChat() {
               FINN // FOUNDER
             </p>
             <p className="font-pixel text-[8px] text-emerald-600">
-              powered by opus 4.5
+              powered by sonnet 4
             </p>
           </div>
         </div>
