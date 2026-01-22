@@ -147,7 +147,9 @@ export default function Home() {
 
   // Pre-warm SDK on mount (fire-and-forget for faster subsequent API calls)
   useEffect(() => {
-    fetch("/api/warm-sdk").catch(() => {});
+    fetch("/api/warm-sdk").catch((err) => {
+      console.debug("[SDK] Pre-warm failed (non-critical):", err.message || err);
+    });
   }, []);
 
   // Secret keyboard shortcut for casino admin (Ctrl+Shift+R)

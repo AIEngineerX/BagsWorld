@@ -1068,8 +1068,10 @@ export class WorldScene extends Phaser.Scene {
 
     if (this.worldState) {
       const buildings = this.worldState.buildings || [];
-      // Sort by volume to show most active
-      const sorted = [...buildings].sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
+      // Sort by volume to show most active (exclude landmarks which have no real market data)
+      const sorted = [...buildings]
+        .filter((b) => !b.isPermanent)
+        .sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
       sorted.slice(0, 5).forEach((b) => {
         const change = b.change24h ? (b.change24h > 0 ? `+${b.change24h.toFixed(1)}%` : `${b.change24h.toFixed(1)}%`) : "";
         content.push(`${b.symbol}: $${this.formatNumber(b.marketCap || 0)} ${change}`);
@@ -3725,10 +3727,11 @@ export class WorldScene extends Phaser.Scene {
       tooltipContainer.add([bg, nameText, descText, breakdownText, clickText]);
     } else {
       // Regular building tooltip
-      const mcapText = this.add.text(0, -12, building.marketCap ? this.formatMarketCap(building.marketCap) : "N/A", {
+      const mcapDisplay = building.isPermanent ? "⭐ Landmark" : (building.marketCap ? this.formatMarketCap(building.marketCap) : "N/A");
+      const mcapText = this.add.text(0, -12, mcapDisplay, {
         fontFamily: "monospace",
         fontSize: "12px",
-        color: "#4ade80",
+        color: building.isPermanent ? "#fbbf24" : "#4ade80",
       });
       mcapText.setOrigin(0.5, 0.5);
 

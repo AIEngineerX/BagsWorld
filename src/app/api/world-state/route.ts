@@ -211,8 +211,9 @@ function fetchWeatherInBackground(): void {
 
       cachedWeather = { weather, fetchedAt: Date.now() };
     })
-    .catch(() => {
-      // Silent fail - keep using cached data
+    .catch((err) => {
+      // Log error but keep using cached data (non-critical feature)
+      console.warn("[Weather] Background fetch failed, using cached data:", err.message || err);
     })
     .finally(() => {
       weatherFetchInProgress = false;
@@ -392,7 +393,7 @@ async function enrichTokenWithSDK(
 
   // Build TokenInfo
   // Market cap, price, volume, change will be filled in by DexScreener data later
-  // For permanent buildings (Treasury, PokeCenter), show max level
+  // Permanent buildings (Treasury, PokeCenter) are UI landmarks, not real tokens
   const isPermanentBuilding = token.mint.startsWith("Treasury") || token.mint.startsWith("Starter");
 
   const tokenInfo: TokenInfo = {
@@ -400,14 +401,15 @@ async function enrichTokenWithSDK(
     name: token.name,
     symbol: token.symbol,
     imageUrl: token.imageUrl,
-    price: 0, // Filled by DexScreener
-    marketCap: isPermanentBuilding ? 50_000_000 : 0, // Filled by DexScreener for real tokens
+    price: 0, // Filled by DexScreener for real tokens
+    marketCap: 0, // Filled by DexScreener for real tokens (permanent buildings use levelOverride)
     volume24h: 0, // Filled by DexScreener
     change24h: 0, // Filled by DexScreener
     holders: 0,
     lifetimeFees,
     creator: token.creator,
-    levelOverride: token.levelOverride, // Admin override for building level
+    levelOverride: isPermanentBuilding ? 5 : token.levelOverride, // Permanent buildings show max level
+    isPermanent: isPermanentBuilding, // Mark as non-real token (UI landmark)
   };
 
   return { tokenInfo, creators, claimEvents, claimEvents24h };
@@ -950,8 +952,10 @@ export async function POST(request: NextRequest) {
     });
 
     // Emit events to Agent Coordinator for the Agent Feed
-    // Use void to not block the response
-    void emitEventsToCoordinator(worldState.events);
+    // Fire-and-forget but with error logging to avoid silent failures
+    emitEventsToCoordinator(worldState.events).catch((err) => {
+      console.error("[WorldState] Failed to emit events to coordinator:", err);
+    });
 
     // Track building count for city growth
     (worldState as any).tokenCount = tokens.length;
