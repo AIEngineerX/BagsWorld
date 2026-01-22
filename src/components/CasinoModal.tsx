@@ -23,6 +23,7 @@ interface RaffleState {
 }
 
 const AGE_VERIFIED_KEY = "bagsworld_casino_age_verified";
+const CASINO_ADMIN_WALLET = "7BAHgz9Q2ubiTaVo9sCy5AdDvNMiJaK8FebGHTM3PEwm";
 
 // Game definitions - raffle is now LIVE!
 const CASINO_GAMES = [
@@ -123,6 +124,13 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   // Check token access when age verified and wallet connected
   const checkTokenAccess = useCallback(async () => {
     if (!publicKey || !connection) return;
+
+    // Admin wallet bypasses token gate
+    if (publicKey.toString() === CASINO_ADMIN_WALLET) {
+      setTokenBalance(0);
+      setHasAccess(true);
+      return;
+    }
 
     setIsCheckingAccess(true);
     try {
