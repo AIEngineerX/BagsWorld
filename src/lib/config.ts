@@ -78,7 +78,7 @@ export const ECOSYSTEM_CONFIG = {
     gateToken: {
       mint: "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
       symbol: "$BagsWorld",
-      minBalance: 100_000,
+      minBalance: 1_000_000,
       buyUrl: "https://bags.fm/token/9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
     },
   },
