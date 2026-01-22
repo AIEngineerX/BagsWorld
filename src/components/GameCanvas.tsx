@@ -199,7 +199,8 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full flex items-center justify-center"
+      className="w-full h-full flex items-center justify-center game-canvas-wrapper"
+      style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
     />
   );
 }
