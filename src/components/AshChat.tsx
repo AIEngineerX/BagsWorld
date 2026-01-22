@@ -264,7 +264,7 @@ export function AshChat() {
               ASH // GUIDE
             </p>
             <p className="font-pixel text-[8px] text-red-600">
-              powered by opus 4.5
+              powered by sonnet 4
             </p>
           </div>
         </div>

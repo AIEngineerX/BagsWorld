@@ -453,7 +453,7 @@ export function DevChat() {
               GHOST // THE DEV
             </p>
             <p className="font-pixel text-[8px] text-purple-600">
-              powered by opus 4.5
+              powered by sonnet 4
             </p>
           </div>
         </div>
