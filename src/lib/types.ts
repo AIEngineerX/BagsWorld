@@ -193,6 +193,9 @@ export interface GameEvent {
     tokenName?: string;
     amount?: number;
     change?: number;
+    symbol?: string;
+    platform?: "bags" | "pump";
+    mint?: string;
   };
 }
 

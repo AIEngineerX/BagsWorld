@@ -237,7 +237,8 @@ function generateAnnouncement(event: AgentEvent): string {
   switch (event.type) {
     case "token_launch": {
       const launch = event.data as unknown as TokenLaunch;
-      const platform = launch.platform === "bags" ? "Bags.fm" : "pump.fun";
+      // Default to Bags.fm for world-state events or when platform is not explicitly "pump"
+      const platform = launch.platform === "pump" ? "pump.fun" : "Bags.fm";
       return `NEW LAUNCH: $${launch.symbol} just dropped on ${platform}!`;
     }
 
