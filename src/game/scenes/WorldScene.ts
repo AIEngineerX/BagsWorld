@@ -59,6 +59,7 @@ export class WorldScene extends Phaser.Scene {
   private isTransitioning = false; // Prevent overlapping transitions
   private trendingElements: Phaser.GameObjects.GameObject[] = [];
   private mainCityElements: Phaser.GameObjects.GameObject[] = [];
+  private trendingZoneCreated = false; // Cache trending zone elements
   private boundZoneChange: ((e: Event) => void) | null = null;
   private zoneGround: Phaser.GameObjects.TileSprite | null = null;
   private zonePath: Phaser.GameObjects.TileSprite | null = null;
@@ -365,13 +366,13 @@ export class WorldScene extends Phaser.Scene {
 
     // At 40% through animation, swap the zone for smooth visual transition
     this.time.delayedCall(duration * 0.4, () => {
-      // Clear old zone references (elements are still animating)
+      // Hide old zone elements (don't destroy - they're cached for reuse)
       if (this.currentZone === "trending") {
-        this.trendingElements = [];
-        this.billboardTexts = [];
-        this.tickerText = null;
-        this.skylineSprites = [];
-        // Stop ticker animation to prevent memory leak
+        this.trendingElements.forEach((el) => (el as any).setVisible(false));
+        this.billboardTexts.forEach((t) => t.setVisible(false));
+        if (this.tickerText) this.tickerText.setVisible(false);
+        this.skylineSprites.forEach((s) => s.setVisible(false));
+        // Stop ticker animation
         if (this.tickerTimer) {
           this.tickerTimer.destroy();
           this.tickerTimer = null;
@@ -394,11 +395,15 @@ export class WorldScene extends Phaser.Scene {
     // Clean up old elements after animation completes
     this.time.delayedCall(duration + 50, () => {
       oldElementData.forEach(({ el }) => {
-        // Only destroy elements that aren't persistent (decorations/animals are reused)
+        // Only destroy elements that aren't persistent (decorations/animals/trending elements are reused)
         const isDecoration = this.decorations.includes(el as any);
         const isAnimal = this.animals.some(a => a.sprite === el);
+        const isTrendingElement = this.trendingElements.includes(el) ||
+          this.skylineSprites.includes(el as any) ||
+          this.billboardTexts.includes(el as any) ||
+          el === this.tickerText;
 
-        if (!isDecoration && !isAnimal && el && (el as any).destroy && (el as any).active !== false) {
+        if (!isDecoration && !isAnimal && !isTrendingElement && el && (el as any).destroy && (el as any).active !== false) {
           (el as any).destroy();
         }
       });
@@ -477,20 +482,17 @@ export class WorldScene extends Phaser.Scene {
   private clearCurrentZone(): void {
     // Clear zone-specific elements based on current zone
     if (this.currentZone === "trending") {
-      this.trendingElements.forEach((el) => el.destroy());
-      this.trendingElements = [];
-      this.billboardTexts.forEach((t) => t.destroy());
-      this.billboardTexts = [];
+      // Just hide elements instead of destroying (they're cached for reuse)
+      this.trendingElements.forEach((el) => (el as any).setVisible(false));
+      this.billboardTexts.forEach((t) => t.setVisible(false));
       if (this.tickerText) {
-        this.tickerText.destroy();
-        this.tickerText = null;
+        this.tickerText.setVisible(false);
       }
       if (this.tickerTimer) {
         this.tickerTimer.destroy();
         this.tickerTimer = null;
       }
-      this.skylineSprites.forEach((s) => s.destroy());
-      this.skylineSprites = [];
+      this.skylineSprites.forEach((s) => s.setVisible(false));
     } else if (this.currentZone === "main_city") {
       // Main city uses shared decorations, don't destroy them
       // Just hide them
@@ -549,19 +551,23 @@ export class WorldScene extends Phaser.Scene {
     // Hide the grass ground completely - city has its own pavement
     this.ground.setVisible(false);
 
-    // Add NYC-style skyline background
-    this.createTrendingSkyline();
+    // Only create elements once, then just show them
+    if (!this.trendingZoneCreated) {
+      // First time - create all elements
+      this.createTrendingSkyline();
+      this.createTrendingDecorations();
+      this.createTrendingBillboards();
+      this.createTrendingTicker();
+      this.trendingZoneCreated = true;
+    } else {
+      // Subsequent times - just show existing elements
+      this.trendingElements.forEach((el) => (el as any).setVisible(true));
+      this.skylineSprites.forEach((s) => s.setVisible(true));
+      this.billboardTexts.forEach((t) => t.setVisible(true));
+      if (this.tickerText) this.tickerText.setVisible(true);
+    }
 
-    // Add street elements and decorations
-    this.createTrendingDecorations();
-
-    // Add billboards with live data displays
-    this.createTrendingBillboards();
-
-    // Add ticker display at bottom
-    this.createTrendingTicker();
-
-    // Start ticker animation (store reference for cleanup)
+    // Start/restart ticker animation
     if (this.tickerTimer) {
       this.tickerTimer.destroy();
     }
