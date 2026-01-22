@@ -1,7 +1,10 @@
-// API Route: Agent Chat - Shaw uses ElizaOS, others use Claude
-// Shaw runs on dedicated ElizaOS server, other agents use direct Claude
+// API Route: Agent Chat - Shaw uses TRUE ElizaOS runtime, others use Claude
+// Shaw runs on dedicated ElizaOS server with memory persistence
 
 import { NextRequest, NextResponse } from 'next/server';
+
+// ElizaOS server URL (runs on port 3001)
+const ELIZAOS_SERVER = process.env.ELIZAOS_SERVER_URL || 'http://localhost:3001';
 
 interface ChatRequest {
   character: string;
@@ -24,9 +27,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Shaw uses ElizaOS runtime
+    // Shaw uses TRUE ElizaOS runtime
     if (character.toLowerCase() === 'shaw') {
-      return handleShawElizaOS(message, userId, roomId);
+      return handleShawElizaOS(message, userId, roomId, worldState);
     }
 
     // All other agents use direct Claude API
@@ -41,11 +44,57 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Handle Shaw using ElizaOS character file format (direct Claude call)
+// Handle Shaw using TRUE ElizaOS runtime on dedicated server
 async function handleShawElizaOS(
   message: string,
   userId?: string,
-  roomId?: string
+  roomId?: string,
+  worldState?: any
+): Promise<NextResponse> {
+  try {
+    // First try the ElizaOS server
+    console.log(`[Shaw ElizaOS] Calling runtime at ${ELIZAOS_SERVER}`);
+
+    const response = await fetch(`${ELIZAOS_SERVER}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        userId: userId || 'anonymous',
+        roomId: roomId || `shaw-${userId || 'anonymous'}`,
+        worldState,
+      }),
+      // 10 second timeout
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`ElizaOS server returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return NextResponse.json({
+      character: 'Shaw',
+      response: data.response,
+      source: 'elizaos-runtime',
+      runtime: data.runtime,
+    });
+
+  } catch (error: any) {
+    console.warn('[Shaw ElizaOS] Runtime unavailable, using fallback:', error.message);
+
+    // Fallback to direct Claude call if ElizaOS server is not running
+    return handleShawFallback(message, worldState);
+  }
+}
+
+// Fallback for when ElizaOS server is not running
+async function handleShawFallback(
+  message: string,
+  worldState?: any
 ): Promise<NextResponse> {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -53,12 +102,11 @@ async function handleShawElizaOS(
     return NextResponse.json({
       character: 'Shaw',
       response: getFallbackResponse('shaw', message),
-      source: 'fallback',
+      source: 'fallback-rule-based',
     });
   }
 
   try {
-    // Build ElizaOS-style system prompt
     const systemPrompt = `You are Shaw, creator of ElizaOS and co-founder of ai16z. You built the most popular TypeScript framework for autonomous AI agents (17k+ GitHub stars).
 
 CHARACTER BIO:
@@ -75,9 +123,6 @@ STYLE:
 - Use lowercase, minimal punctuation
 - Keep responses SHORT (1-3 sentences max)
 - Never use emojis
-
-TOPICS OF EXPERTISE:
-ElizaOS framework, character files, plugin architecture, multi-agent systems, ai16z, autonomous agents, Solana ecosystem
 
 Remember: Stay in character as Shaw. Be helpful but concise.`;
 
@@ -97,8 +142,6 @@ Remember: Stay in character as Shaw. Be helpful but concise.`;
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('[agent-chat] Shaw API error:', errorData);
       throw new Error('Anthropic API error');
     }
 
@@ -108,15 +151,15 @@ Remember: Stay in character as Shaw. Be helpful but concise.`;
     return NextResponse.json({
       character: 'Shaw',
       response: responseText,
-      source: 'elizaos',
+      source: 'fallback-claude',
     });
 
   } catch (error) {
-    console.error('[agent-chat] Shaw error:', error);
+    console.error('[agent-chat] Shaw fallback error:', error);
     return NextResponse.json({
       character: 'Shaw',
       response: getFallbackResponse('shaw', message),
-      source: 'fallback',
+      source: 'fallback-rule-based',
     });
   }
 }
@@ -278,10 +321,36 @@ function getFallbackResponse(character: string, message: string): string {
 
 // GET endpoint to check agent status
 export async function GET() {
+  // Check if ElizaOS server is running
+  let elizaOsStatus = 'offline';
+  let elizaOsStats = null;
+
+  try {
+    const response = await fetch(`${ELIZAOS_SERVER}/status`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      elizaOsStatus = data.status || 'running';
+      elizaOsStats = data.stats;
+    }
+  } catch {
+    // ElizaOS server not running
+  }
+
   return NextResponse.json({
     status: 'ready',
+    elizaos: {
+      server: ELIZAOS_SERVER,
+      status: elizaOsStatus,
+      stats: elizaOsStats,
+    },
     agents: {
-      shaw: { provider: 'elizaos', status: 'ready' },
+      shaw: {
+        provider: 'elizaos-runtime',
+        status: elizaOsStatus === 'running' ? 'ready' : 'fallback',
+        runtime: elizaOsStatus === 'running' ? 'true-elizaos' : 'claude-fallback',
+      },
       neo: { provider: 'claude', status: 'ready' },
       cj: { provider: 'claude', status: 'ready' },
       finn: { provider: 'claude', status: 'ready' },
