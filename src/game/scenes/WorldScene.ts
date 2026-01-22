@@ -1002,6 +1002,7 @@ export class WorldScene extends Phaser.Scene {
       if (characterId === "ash" && spriteData.isAsh) return sprite;
       if (characterId === "toly" && spriteData.isToly) return sprite;
       if (characterId === "cj" && spriteData.isCJ) return sprite;
+      if (characterId === "shaw" && spriteData.isShaw) return sprite;
     }
 
     return null;
@@ -1015,6 +1016,7 @@ export class WorldScene extends Phaser.Scene {
     if (character.isAsh) return "ash";
     if (character.isToly) return "toly";
     if (character.isCJ) return "cj";
+    if (character.isShaw) return "shaw";
     return character.id;
   }
 
@@ -1046,6 +1048,10 @@ export class WorldScene extends Phaser.Scene {
     if (character.isCJ && spriteData.cjGlow) {
       spriteData.cjGlow.x = sprite.x;
       spriteData.cjGlow.y = sprite.y;
+    }
+    if (character.isShaw && spriteData.shawGlow) {
+      spriteData.shawGlow.x = sprite.x;
+      spriteData.shawGlow.y = sprite.y;
     }
   }
 
@@ -2659,11 +2665,12 @@ export class WorldScene extends Phaser.Scene {
         const isDev = character.isDev === true;
         const isScout = character.isScout === true;
         const isCJ = character.isCJ === true;
-        const isSpecial = isToly || isAsh || isFinn || isDev || isScout || isCJ;
+        const isShaw = character.isShaw === true;
+        const isSpecial = isToly || isAsh || isFinn || isDev || isScout || isCJ || isShaw;
         const variant = index % 9;
         this.characterVariants.set(character.id, variant);
 
-        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : isScout ? "neo" : isCJ ? "cj" : this.getCharacterTexture(character.mood, variant);
+        const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : isScout ? "neo" : isCJ ? "cj" : isShaw ? "shaw" : this.getCharacterTexture(character.mood, variant);
         sprite = this.add.sprite(character.x, character.y, textureKey);
         sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
         sprite.setInteractive();
@@ -2684,6 +2691,8 @@ export class WorldScene extends Phaser.Scene {
             this.showScoutTooltip(sprite!);
           } else if (isCJ) {
             this.showCJTooltip(sprite!);
+          } else if (isShaw) {
+            this.showShawTooltip(sprite!);
           } else {
             this.showCharacterTooltip(character, sprite!);
           }
@@ -2713,6 +2722,9 @@ export class WorldScene extends Phaser.Scene {
           } else if (isCJ) {
             // CJ opens the hood rat chat
             window.dispatchEvent(new CustomEvent("bagsworld-cj-click"));
+          } else if (isShaw) {
+            // Shaw opens the ElizaOS creator chat
+            window.dispatchEvent(new CustomEvent("bagsworld-shaw-click"));
           } else if (character.profileUrl) {
             // Open profile page in new tab
             window.open(character.profileUrl, "_blank");
@@ -2855,6 +2867,28 @@ export class WorldScene extends Phaser.Scene {
           });
         }
 
+        // Add ai16z purple glow effect for Shaw (ElizaOS creator)
+        if (isShaw) {
+          const glow = this.add.sprite(character.x, character.y, "glow");
+          glow.setScale(1.0);
+          glow.setAlpha(0.3);
+          glow.setTint(0x9333ea); // ai16z purple
+          glow.setDepth(10);
+
+          // Store reference to glow for cleanup
+          (sprite as any).shawGlow = glow;
+
+          this.tweens.add({
+            targets: glow,
+            alpha: 0.5,
+            scale: 1.2,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+
         // Store character type flags on sprite for speech bubble system
         (sprite as any).isToly = isToly;
         (sprite as any).isAsh = isAsh;
@@ -2862,6 +2896,7 @@ export class WorldScene extends Phaser.Scene {
         (sprite as any).isDev = isDev;
         (sprite as any).isScout = isScout;
         (sprite as any).isCJ = isCJ;
+        (sprite as any).isShaw = isShaw;
 
         this.characterSprites.set(character.id, sprite);
       } else {
@@ -2896,6 +2931,11 @@ export class WorldScene extends Phaser.Scene {
           cjGlow.x = sprite.x;
           cjGlow.y = sprite.y;
         }
+        const shawGlow = (sprite as any).shawGlow;
+        if (shawGlow) {
+          shawGlow.x = sprite.x;
+          shawGlow.y = sprite.y;
+        }
       }
 
       // Update texture based on mood (skip for special characters)
@@ -2905,7 +2945,8 @@ export class WorldScene extends Phaser.Scene {
       const isDev = character.isDev === true;
       const isScout = character.isScout === true;
       const isCJ = character.isCJ === true;
-      if (!isToly && !isAsh && !isFinn && !isDev && !isScout && !isCJ) {
+      const isShaw = character.isShaw === true;
+      if (!isToly && !isAsh && !isFinn && !isDev && !isScout && !isCJ && !isShaw) {
         const variant = this.characterVariants.get(character.id) ?? 0;
         const expectedTexture = this.getCharacterTexture(character.mood, variant);
         if (sprite.texture.key !== expectedTexture) {
@@ -3192,19 +3233,19 @@ export class WorldScene extends Phaser.Scene {
 
     const container = this.add.container(sprite.x, sprite.y - 65);
 
-    const bg = this.add.rectangle(0, 0, 140, 58, 0x0a0a0f, 0.95);
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x0a0a0f, 0.95);
     bg.setStrokeStyle(2, 0x4ade80);
 
     const nameText = this.add.text(0, -18, `@${character.username}`, {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "12px",
       color: "#ffffff",
     });
     nameText.setOrigin(0.5, 0.5);
 
     const providerText = this.add.text(0, -4, `${character.provider === "twitter" ? "𝕏" : character.provider}`, {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "10px",
       color: "#9ca3af",
     });
     providerText.setOrigin(0.5, 0.5);
@@ -3218,7 +3259,7 @@ export class WorldScene extends Phaser.Scene {
 
     const clickText = this.add.text(0, 24, "Click to view profile", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#6b7280",
     });
     clickText.setOrigin(0.5, 0.5);
@@ -3233,33 +3274,33 @@ export class WorldScene extends Phaser.Scene {
 
     const container = this.add.container(sprite.x, sprite.y - 70);
 
-    const bg = this.add.rectangle(0, 0, 165, 68, 0x0a0a0f, 0.95);
+    const bg = this.add.rectangle(0, 0, 185, 78, 0x0a0a0f, 0.95);
     bg.setStrokeStyle(2, 0x9945ff); // Solana purple border
 
     const nameText = this.add.text(0, -22, "⚡ toly", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "12px",
       color: "#14f195", // Solana green
     });
     nameText.setOrigin(0.5, 0.5);
 
     const titleText = this.add.text(0, -6, "Solana Co-Founder", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "10px",
       color: "#ffffff",
     });
     titleText.setOrigin(0.5, 0.5);
 
     const quoteText = this.add.text(0, 10, "Keep executing.", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#9ca3af",
     });
     quoteText.setOrigin(0.5, 0.5);
 
     const clickText = this.add.text(0, 26, "₿ Click for crypto wisdom", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#f7931a",
     });
     clickText.setOrigin(0.5, 0.5);
@@ -3274,33 +3315,33 @@ export class WorldScene extends Phaser.Scene {
 
     const container = this.add.container(sprite.x, sprite.y - 70);
 
-    const bg = this.add.rectangle(0, 0, 165, 68, 0x0a0a0f, 0.95);
+    const bg = this.add.rectangle(0, 0, 185, 78, 0x0a0a0f, 0.95);
     bg.setStrokeStyle(2, 0xdc2626); // Pokemon red border
 
     const nameText = this.add.text(0, -22, "⚡ Ash Ketchum", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "12px",
       color: "#dc2626",
     });
     nameText.setOrigin(0.5, 0.5);
 
     const titleText = this.add.text(0, -6, "Ecosystem Guide", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "10px",
       color: "#ffffff",
     });
     titleText.setOrigin(0.5, 0.5);
 
     const descText = this.add.text(0, 10, "Gotta catch 'em all... tokens!", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#9ca3af",
     });
     descText.setOrigin(0.5, 0.5);
 
     const clickText = this.add.text(0, 26, "📖 Click to learn about BagsWorld", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#fbbf24",
     });
     clickText.setOrigin(0.5, 0.5);
@@ -3315,33 +3356,33 @@ export class WorldScene extends Phaser.Scene {
 
     const container = this.add.container(sprite.x, sprite.y - 70);
 
-    const bg = this.add.rectangle(0, 0, 165, 68, 0x0a0a0f, 0.95);
+    const bg = this.add.rectangle(0, 0, 185, 78, 0x0a0a0f, 0.95);
     bg.setStrokeStyle(2, 0x10b981); // Emerald/Bags green border
 
     const nameText = this.add.text(0, -22, "💼 Finn", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "12px",
       color: "#10b981",
     });
     nameText.setOrigin(0.5, 0.5);
 
     const titleText = this.add.text(0, -6, "Bags.fm Founder & CEO", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "10px",
       color: "#ffffff",
     });
     titleText.setOrigin(0.5, 0.5);
 
     const quoteText = this.add.text(0, 10, "Launch. Earn. Build your empire.", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#9ca3af",
     });
     quoteText.setOrigin(0.5, 0.5);
 
     const clickText = this.add.text(0, 26, "🚀 Click to learn about Bags.fm", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#fbbf24",
     });
     clickText.setOrigin(0.5, 0.5);
@@ -3356,33 +3397,33 @@ export class WorldScene extends Phaser.Scene {
 
     const container = this.add.container(sprite.x, sprite.y - 70);
 
-    const bg = this.add.rectangle(0, 0, 165, 68, 0x0a0a0f, 0.95);
+    const bg = this.add.rectangle(0, 0, 185, 78, 0x0a0a0f, 0.95);
     bg.setStrokeStyle(2, 0x8b5cf6); // Purple border (hacker vibes)
 
     const nameText = this.add.text(0, -22, "👻 The Dev", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "12px",
       color: "#8b5cf6",
     });
     nameText.setOrigin(0.5, 0.5);
 
     const titleText = this.add.text(0, -6, "@DaddyGhost • Trading Agent", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "10px",
       color: "#ffffff",
     });
     titleText.setOrigin(0.5, 0.5);
 
     const quoteText = this.add.text(0, 10, "in the trenches. let's trade.", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#9ca3af",
     });
     quoteText.setOrigin(0.5, 0.5);
 
     const clickText = this.add.text(0, 26, "💰 Click to talk trading", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#4ade80",
     });
     clickText.setOrigin(0.5, 0.5);
@@ -3402,28 +3443,28 @@ export class WorldScene extends Phaser.Scene {
 
     const nameText = this.add.text(0, -22, "Neo", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "12px",
       color: "#00ff41",
     });
     nameText.setOrigin(0.5, 0.5);
 
     const titleText = this.add.text(0, -6, "The One • Scout Agent", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "10px",
       color: "#ffffff",
     });
     titleText.setOrigin(0.5, 0.5);
 
     const quoteText = this.add.text(0, 10, "i can see the chain now...", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#9ca3af",
     });
     quoteText.setOrigin(0.5, 0.5);
 
     const clickText = this.add.text(0, 26, "Click to see new launches", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#00ff41",
     });
     clickText.setOrigin(0.5, 0.5);
@@ -3438,34 +3479,75 @@ export class WorldScene extends Phaser.Scene {
 
     const container = this.add.container(sprite.x, sprite.y - 70);
 
-    const bg = this.add.rectangle(0, 0, 160, 68, 0x1a0f00, 0.95);
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x1a0f00, 0.95);
     bg.setStrokeStyle(2, 0xf97316); // Grove Street orange border
 
     const nameText = this.add.text(0, -22, "CJ", {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "12px",
       color: "#f97316",
     });
     nameText.setOrigin(0.5, 0.5);
 
     const titleText = this.add.text(0, -6, "Hood Rat • BagsCity", {
       fontFamily: "monospace",
-      fontSize: "8px",
+      fontSize: "10px",
       color: "#ffffff",
     });
     titleText.setOrigin(0.5, 0.5);
 
     const quoteText = this.add.text(0, 10, "aw shit here we go again", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#9ca3af",
     });
     quoteText.setOrigin(0.5, 0.5);
 
     const clickText = this.add.text(0, 26, "Click to talk", {
       fontFamily: "monospace",
-      fontSize: "7px",
+      fontSize: "9px",
       color: "#f97316",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showShawTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x1a0a1f, 0.95);
+    bg.setStrokeStyle(2, 0x9333ea); // ai16z purple border
+
+    const nameText = this.add.text(0, -22, "Shaw", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#9333ea",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "ElizaOS Creator • @shawmakesmagic", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "agents are digital life forms", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9333ea",
     });
     clickText.setOrigin(0.5, 0.5);
 
@@ -3489,7 +3571,7 @@ export class WorldScene extends Phaser.Scene {
 
     const nameText = this.add.text(0, -28, `${building.name}`, {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "12px",
       color: isTreasury ? "#fbbf24" : "#ffffff",
     });
     nameText.setOrigin(0.5, 0.5);
@@ -3498,7 +3580,7 @@ export class WorldScene extends Phaser.Scene {
       // Creator Rewards Hub tooltip
       const descText = this.add.text(0, -12, "Top 3 Creators Get Paid", {
         fontFamily: "monospace",
-        fontSize: "8px",
+        fontSize: "10px",
         color: "#4ade80",
       });
       descText.setOrigin(0.5, 0.5);
@@ -3513,7 +3595,7 @@ export class WorldScene extends Phaser.Scene {
 
       const clickText = this.add.text(0, 24, "🏆 Click to view rewards hub", {
         fontFamily: "monospace",
-        fontSize: "7px",
+        fontSize: "9px",
         color: "#60a5fa",
       });
       clickText.setOrigin(0.5, 0.5);
@@ -3523,7 +3605,7 @@ export class WorldScene extends Phaser.Scene {
       // Regular building tooltip
       const mcapText = this.add.text(0, -12, building.marketCap ? this.formatMarketCap(building.marketCap) : "N/A", {
         fontFamily: "monospace",
-        fontSize: "10px",
+        fontSize: "12px",
         color: "#4ade80",
       });
       mcapText.setOrigin(0.5, 0.5);
@@ -3532,7 +3614,7 @@ export class WorldScene extends Phaser.Scene {
       const levelLabel = levelLabels[building.level - 1] || `Level ${building.level}`;
       const levelText = this.add.text(0, 2, `⭐ ${levelLabel}`, {
         fontFamily: "monospace",
-        fontSize: "8px",
+        fontSize: "10px",
         color: "#fbbf24",
       });
       levelText.setOrigin(0.5, 0.5);
@@ -3541,14 +3623,14 @@ export class WorldScene extends Phaser.Scene {
       const changePrefix = (building.change24h ?? 0) >= 0 ? "+" : "";
       const changeText = this.add.text(0, 16, `${changePrefix}${(building.change24h ?? 0).toFixed(0)}% (24h)`, {
         fontFamily: "monospace",
-        fontSize: "8px",
+        fontSize: "10px",
         color: changeColor,
       });
       changeText.setOrigin(0.5, 0.5);
 
       const clickText = this.add.text(0, 32, "Click to trade", {
         fontFamily: "monospace",
-        fontSize: "7px",
+        fontSize: "9px",
         color: "#6b7280",
       });
       clickText.setOrigin(0.5, 0.5);

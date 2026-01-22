@@ -314,6 +314,8 @@ export function transformFeeEarnerToCharacter(
   const isScout = (earner as any).isScout || earner.wallet === "scout-agent-permanent";
   // CJ gets a position in BagsCity (left side, near the Casino)
   const isCJ = (earner as any).isCJ || earner.wallet === "cj-grove-street-permanent";
+  // Shaw gets a position in the Park (ElizaOS creator, ai16z co-founder)
+  const isShaw = (earner as any).isShaw || earner.wallet === "shaw-elizaos-permanent";
 
   const groundY = Math.round(555 * SCALE);
   const position = existingCharacter
@@ -330,9 +332,11 @@ export function transformFeeEarnerToCharacter(
     ? { x: Math.round(170 * SCALE), y: groundY } // BagsCity side, near Trading Gym - watching for new launches
     : isCJ
     ? { x: Math.round(90 * SCALE), y: groundY } // BagsCity, right next to the Casino (x: 80)
+    : isShaw
+    ? { x: WORLD_WIDTH / 2 - Math.round(150 * SCALE), y: groundY } // Park, left of center - near Toly
     : generateCharacterPosition();
 
-  const isSpecialCharacter = isToly || isAsh || isFinn || isDev || isScout || isCJ;
+  const isSpecialCharacter = isToly || isAsh || isFinn || isDev || isScout || isCJ || isShaw;
 
   // Neo and CJ belong in BagsCity (trending zone), others in Park (main_city)
   const zone = (isScout || isCJ) ? "trending" as const : "main_city" as const;
@@ -350,7 +354,7 @@ export function transformFeeEarnerToCharacter(
     direction: Math.random() > 0.5 ? "left" : "right",
     isMoving: !isSpecialCharacter && Math.random() > 0.7, // Special characters don't wander randomly
     buildingId: earner.topToken?.mint,
-    profileUrl: isToly ? "https://x.com/toly" : isFinn ? "https://x.com/finnbags" : isDev ? "https://x.com/DaddyGhost" : isAsh || isScout || isCJ ? undefined : getProfileUrl(earner.provider, earner.username),
+    profileUrl: isToly ? "https://x.com/toly" : isFinn ? "https://x.com/finnbags" : isDev ? "https://x.com/DaddyGhost" : isShaw ? "https://x.com/shawmakesmagic" : isAsh || isScout || isCJ ? undefined : getProfileUrl(earner.provider, earner.username),
     zone, // Neo and CJ in BagsCity, others in Park
     isToly, // Pass through the Toly flag
     isAsh, // Pass through the Ash flag
@@ -358,6 +362,7 @@ export function transformFeeEarnerToCharacter(
     isDev, // Pass through the Dev flag
     isScout, // Pass through the Scout flag
     isCJ, // Pass through the CJ flag
+    isShaw, // Pass through the Shaw flag
   };
 }
 

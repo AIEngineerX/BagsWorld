@@ -7,6 +7,7 @@ import { finnCharacter } from "./finn.character";
 import { ghostCharacter } from "./ghost.character";
 import { ashCharacter } from "./ash.character";
 import { cjCharacter } from "./cj.character";
+import { shawCharacter } from "./shaw.character";
 
 // Export all characters
 export { bagsBotCharacter } from "./bags-bot.character";
@@ -15,6 +16,7 @@ export { finnCharacter } from "./finn.character";
 export { ghostCharacter } from "./ghost.character";
 export { ashCharacter } from "./ash.character";
 export { cjCharacter } from "./cj.character";
+export { shawCharacter } from "./shaw.character";
 
 // Export types and utilities
 export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.character";
@@ -27,6 +29,7 @@ export const characters: Record<string, CharacterDefinition> = {
   "ghost": ghostCharacter,
   "ash": ashCharacter,
   "cj": cjCharacter,
+  "shaw": shawCharacter,
 };
 
 // Get character by ID with fallback
@@ -81,5 +84,11 @@ export const characterMeta: Record<string, {
     role: "Hood Rat",
     color: "#f97316", // orange (grove street)
     icon: "🔫",
+  },
+  "shaw": {
+    displayName: "Shaw",
+    role: "ElizaOS Creator",
+    color: "#9333ea", // ai16z purple
+    icon: "🏗️",
   },
 };

@@ -14,6 +14,7 @@ import { FinnbagsChat } from "@/components/FinnbagsChat";
 import { DevChat } from "@/components/DevChat";
 import { NeoChat } from "@/components/NeoChat";
 import { CJChat } from "@/components/CJChat";
+import { ShawChat } from "@/components/ShawChat";
 import { AgentDashboard } from "@/components/AgentDashboard";
 import { AdminConsole } from "@/components/AdminConsole";
 import { YourBuildings } from "@/components/YourBuildings";
@@ -290,6 +291,7 @@ export default function Home() {
           <DevChat />
           <NeoChat />
           <CJChat />
+          <ShawChat />
           <AgentDashboard />
           <AdminConsole />
 
