@@ -1,6 +1,4 @@
-// Token Registry - stores launched tokens in localStorage + global Neon database
-// This is the core of the BagsWorld experience - tokens users launch become buildings
-// Now supports GLOBAL state so everyone sees the same buildings!
+// Token Registry - localStorage + Neon database for global building state
 
 export interface LaunchedToken {
   mint: string;
@@ -35,83 +33,58 @@ const GLOBAL_CACHE_DURATION = 60 * 1000; // 1 minute cache
 // Cache for global tokens (to avoid excessive API calls)
 let globalTokensCache: { tokens: LaunchedToken[]; timestamp: number } | null = null;
 
-// Featured Bags.fm tokens - fallback if database is empty
-// Base buildings (Treasury, PokeCenter, etc.) are defined in world-state API
-// Citizens come from fee share recipients of tokens launched through the app
 export const FEATURED_BAGS_TOKENS: LaunchedToken[] = [];
 
-// Get all launched tokens from localStorage
 export function getLaunchedTokens(): LaunchedToken[] {
   if (typeof window === "undefined") return [];
-
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    return JSON.parse(stored);
+    return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error("Error reading launched tokens:", error);
+    console.error("Corrupted token registry data:", error);
     return [];
   }
 }
 
-// Save a newly launched token
 export function saveLaunchedToken(token: LaunchedToken): void {
   if (typeof window === "undefined") return;
-
   try {
     const tokens = getLaunchedTokens();
-    // Check if already exists
     const existingIndex = tokens.findIndex((t) => t.mint === token.mint);
     if (existingIndex >= 0) {
-      // Update existing
       tokens[existingIndex] = { ...tokens[existingIndex], ...token };
     } else {
-      // Add new
-      tokens.unshift(token); // Add to beginning (newest first)
+      tokens.unshift(token);
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
-  } catch (error) {
-    console.error("Error saving launched token:", error);
+  } catch {
+    // localStorage write failed
   }
 }
 
-// Update token with live data from SDK
-export function updateTokenData(
-  mint: string,
-  data: Partial<LaunchedToken>
-): void {
+export function updateTokenData(mint: string, data: Partial<LaunchedToken>): void {
   if (typeof window === "undefined") return;
-
   try {
     const tokens = getLaunchedTokens();
     const index = tokens.findIndex((t) => t.mint === mint);
     if (index >= 0) {
-      tokens[index] = {
-        ...tokens[index],
-        ...data,
-        lastUpdated: Date.now(),
-      };
+      tokens[index] = { ...tokens[index], ...data, lastUpdated: Date.now() };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
     }
-  } catch (error) {
-    console.error("Error updating token data:", error);
+  } catch {
+    // localStorage write failed
   }
 }
 
-// Remove a token from registry
 export function removeLaunchedToken(mint: string): void {
   if (typeof window === "undefined") return;
-
   try {
-    const tokens = getLaunchedTokens();
-    const filtered = tokens.filter((t) => t.mint !== mint);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  } catch (error) {
-    console.error("Error removing token:", error);
+    const tokens = getLaunchedTokens().filter((t) => t.mint !== mint);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
+  } catch {
+    // localStorage write failed
   }
 }
-
-// Fetch global tokens from API (with caching)
 export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
   // Check cache first
   const now = Date.now();

@@ -1,10 +1,7 @@
-// SDK Pre-warm endpoint - call this early to initialize SDK before it's needed
-// This reduces cold start latency on the first /api/world-state call
-
+// Pre-warm SDK to reduce cold start latency on /api/world-state
 import { NextResponse } from "next/server";
 import { Connection } from "@solana/web3.js";
 
-// Shared SDK instance (same pattern as world-state)
 let sdkInstance: any = null;
 let sdkInitPromise: Promise<any | null> | null = null;
 
