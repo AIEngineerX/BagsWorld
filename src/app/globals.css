@@ -12,6 +12,11 @@
   --bags-gold: #fbbf24;
 }
 
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
 * {
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
@@ -22,6 +27,9 @@ body {
   background: var(--bags-darker);
   color: white;
   font-family: 'Press Start 2P', monospace;
+  touch-action: manipulation; /* Allow touch, prevent double-tap zoom */
+  -webkit-touch-callout: none; /* Disable callout on long press */
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
 }
 
 /* Pixel art scrollbar */
@@ -386,10 +394,15 @@ body {
   overscroll-behavior-y: contain;
 }
 
-/* Prevent pull-to-refresh on game area */
-.game-container {
-  overscroll-behavior: none;
-  touch-action: none;
+/* Game canvas touch handling - allow pan and pinch */
+.game-canvas-wrapper {
+  touch-action: pan-x pan-y pinch-zoom;
+  overscroll-behavior: contain;
+}
+
+/* Only prevent pull-to-refresh, not all touch */
+.no-pull-refresh {
+  overscroll-behavior-y: none;
 }
 
 /* Mobile-optimized animations */
