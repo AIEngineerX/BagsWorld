@@ -34,13 +34,19 @@ export interface GlobalToken {
 
 // Check if Neon is configured (either Netlify integration or direct DATABASE_URL)
 export function isNeonConfigured(): boolean {
-  return !!(process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL);
+  // Check multiple possible env var names
+  return !!(
+    process.env.NETLIFY_DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    process.env.NEON_DATABASE_URL ||
+    process.env.POSTGRES_URL
+  );
 }
 
 // Get which connection method is being used
 export function getNeonConnectionType(): "netlify" | "direct" | "none" {
   if (process.env.NETLIFY_DATABASE_URL) return "netlify";
-  if (process.env.DATABASE_URL) return "direct";
+  if (process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL) return "direct";
   return "none";
 }
 
@@ -63,6 +69,7 @@ function safeParseFloat(value: string | number | null | undefined, fallback: num
 async function getSql(): Promise<SqlFunction | null> {
   // Try Netlify's built-in Neon first (auto-configured)
   if (process.env.NETLIFY_DATABASE_URL) {
+    console.log("[Neon] Using NETLIFY_DATABASE_URL");
     try {
       // Use string variable to prevent webpack from analyzing the import
       const moduleName = "@netlify/neon";
@@ -70,22 +77,24 @@ async function getSql(): Promise<SqlFunction | null> {
       const { neon } = require(moduleName);
       return neon();
     } catch (error) {
-      console.log("Netlify Neon module not available, trying direct connection...");
+      console.log("[Neon] Netlify Neon module not available, trying direct connection...", error);
     }
   }
 
-  // Fall back to direct Neon connection with DATABASE_URL
-  if (process.env.DATABASE_URL) {
+  // Fall back to direct Neon connection with DATABASE_URL (check multiple env var names)
+  const directUrl = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL;
+  if (directUrl) {
+    console.log("[Neon] Using direct connection URL");
     try {
-      const sql = neonServerless(process.env.DATABASE_URL);
+      const sql = neonServerless(directUrl);
       return sql as unknown as SqlFunction;
     } catch (error) {
-      console.error("Failed to connect to Neon with DATABASE_URL:", error);
+      console.error("[Neon] Failed to connect with direct URL:", error);
       return null;
     }
   }
 
-  console.log("No Neon database configured (set DATABASE_URL or use Netlify integration)");
+  console.log("[Neon] No database configured (set DATABASE_URL, NEON_DATABASE_URL, or POSTGRES_URL)");
   return null;
 }
 
@@ -95,6 +104,8 @@ export async function initializeDatabase(): Promise<boolean> {
   if (!sql) return false;
 
   try {
+    console.log("[Neon] Initializing database tables...");
+
     // Create tokens table
     await sql`
       CREATE TABLE IF NOT EXISTS tokens (
@@ -123,10 +134,14 @@ export async function initializeDatabase(): Promise<boolean> {
     await sql`CREATE INDEX IF NOT EXISTS idx_tokens_featured ON tokens(is_featured)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_tokens_created ON tokens(created_at DESC)`;
 
-    console.log("Database tables initialized successfully");
+    // Verify table exists and check row count
+    const countResult = await sql`SELECT COUNT(*) as count FROM tokens`;
+    const count = (countResult as Array<{ count: string }>)[0]?.count || '0';
+    console.log(`[Neon] Database initialized. Token count: ${count}`);
+
     return true;
   } catch (error) {
-    console.error("Error initializing database:", error);
+    console.error("[Neon] Error initializing database:", error);
     return false;
   }
 }
@@ -135,7 +150,7 @@ export async function initializeDatabase(): Promise<boolean> {
 export async function getGlobalTokens(): Promise<GlobalToken[]> {
   const sql = await getSql();
   if (!sql) {
-    console.log("Neon not configured, using local storage only");
+    console.log("[Neon] Not configured, using local storage only");
     return [];
   }
 
@@ -143,12 +158,20 @@ export async function getGlobalTokens(): Promise<GlobalToken[]> {
     // First ensure tables exist
     await initializeDatabase();
 
-    console.log("Executing query: SELECT * FROM tokens ORDER BY created_at DESC");
+    console.log("[Neon] Fetching tokens from database...");
     const rows = await sql`SELECT * FROM tokens ORDER BY created_at DESC`;
-    console.log("Query returned rows:", (rows as unknown[])?.length ?? 0);
+    const tokenCount = (rows as unknown[])?.length ?? 0;
+    console.log(`[Neon] Query returned ${tokenCount} tokens`);
+
+    // Log first token for debugging (if any)
+    if (tokenCount > 0) {
+      const firstToken = (rows as GlobalToken[])[0];
+      console.log(`[Neon] First token: ${firstToken.symbol} (${firstToken.mint?.slice(0, 8)}...) by ${firstToken.creator_wallet?.slice(0, 8)}...`);
+    }
+
     return rows as GlobalToken[];
   } catch (error) {
-    console.error("Error fetching global tokens:", error);
+    console.error("[Neon] Error fetching global tokens:", error);
     throw error; // Re-throw to see full error in status endpoint
   }
 }
@@ -157,7 +180,7 @@ export async function getGlobalTokens(): Promise<GlobalToken[]> {
 export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
   const sql = await getSql();
   if (!sql) {
-    console.log("Neon not configured, cannot save globally");
+    console.log("[Neon] Not configured, cannot save globally");
     return false;
   }
 
@@ -165,18 +188,25 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
     // Ensure tables exist
     await initializeDatabase();
 
+    // Prepare fee_shares as JSON string for JSONB column
+    const feeSharesJson = token.fee_shares ? JSON.stringify(token.fee_shares) : '[]';
+
+    console.log(`[Neon] Saving token: ${token.mint} (${token.symbol}) by ${token.creator_wallet}`);
+
     // Check if token already exists
-    const existing = await sql`SELECT id FROM tokens WHERE mint = ${token.mint}`;
+    const existing = await sql`SELECT id, creator_wallet FROM tokens WHERE mint = ${token.mint}`;
 
     if ((existing as unknown[]).length > 0) {
-      // Update existing token
+      // Update existing token - INCLUDE creator_wallet in case it was missing
+      console.log(`[Neon] Updating existing token: ${token.mint}`);
       await sql`
         UPDATE tokens SET
           name = ${token.name},
           symbol = ${token.symbol},
           description = ${token.description || null},
           image_url = ${token.image_url || null},
-          fee_shares = ${JSON.stringify(token.fee_shares) || null},
+          creator_wallet = COALESCE(${token.creator_wallet}, creator_wallet),
+          fee_shares = ${feeSharesJson}::jsonb,
           lifetime_fees = ${token.lifetime_fees || null},
           market_cap = ${token.market_cap || null},
           volume_24h = ${token.volume_24h || null},
@@ -185,6 +215,7 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
       `;
     } else {
       // Insert new token
+      console.log(`[Neon] Inserting new token: ${token.mint}`);
       await sql`
         INSERT INTO tokens (
           mint, name, symbol, description, image_url,
@@ -197,7 +228,7 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
           ${token.description || null},
           ${token.image_url || null},
           ${token.creator_wallet},
-          ${JSON.stringify(token.fee_shares) || null},
+          ${feeSharesJson}::jsonb,
           ${token.lifetime_fees || null},
           ${token.market_cap || null},
           ${token.volume_24h || null},
@@ -207,9 +238,11 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
       `;
     }
 
+    console.log(`[Neon] Successfully saved token: ${token.symbol}`);
     return true;
   } catch (error) {
-    console.error("Neon save error:", error);
+    console.error("[Neon] Save error:", error);
+    console.error("[Neon] Token data:", JSON.stringify(token, null, 2));
     return false;
   }
 }
