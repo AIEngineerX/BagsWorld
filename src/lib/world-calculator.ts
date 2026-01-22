@@ -198,10 +198,10 @@ export function generateBuildingPosition(
   const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
   const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
 
-  // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area, scaled)
+  // GROUND LEVEL: Buildings sit on the grass, matching landmark buildings
   // Buildings use origin(0.5, 1), so y position is their bottom edge
   // Stack rows upward from ground level with spacing
-  const GROUND_Y = Math.round(540 * SCALE); // Where buildings sit on the ground
+  const GROUND_Y = Math.round(480 * SCALE); // Match landmarkY used by permanent structures
   const ROW_SPACING = Math.round(100 * SCALE); // Vertical spacing between rows (slightly less than horizontal)
 
   // Front row (row 0) is at ground level, subsequent rows stack upward (behind)
