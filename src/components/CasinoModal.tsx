@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { getCasinoAccessInfo, BAGSWORLD_TOKEN_SYMBOL, BAGSWORLD_BUY_URL, MIN_TOKEN_BALANCE } from "../lib/token-balance";
 
 interface CasinoModalProps {
   onClose: () => void;
@@ -76,11 +80,50 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [ageVerified, setAgeVerified] = useState<boolean | null>(null);
 
+  // Token gate states
+  const [isCheckingAccess, setIsCheckingAccess] = useState(false);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [tokenBalance, setTokenBalance] = useState<number>(0);
+
+  // Wallet hooks
+  const { publicKey, connected } = useWallet();
+  const { connection } = useConnection();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
+
   // Check localStorage on mount
   useEffect(() => {
     const verified = localStorage.getItem(AGE_VERIFIED_KEY);
     setAgeVerified(verified === "true");
   }, []);
+
+  // Check token access when age verified and wallet connected
+  const checkTokenAccess = useCallback(async () => {
+    if (!publicKey || !connection) return;
+
+    setIsCheckingAccess(true);
+    try {
+      const accessInfo = await getCasinoAccessInfo(connection, publicKey);
+      setTokenBalance(accessInfo.balance);
+      setHasAccess(accessInfo.hasAccess);
+    } catch (error) {
+      console.error("Error checking casino access:", error);
+      setHasAccess(false);
+      setTokenBalance(0);
+    } finally {
+      setIsCheckingAccess(false);
+    }
+  }, [publicKey, connection]);
+
+  // Trigger token check when age verified and wallet changes
+  useEffect(() => {
+    if (ageVerified && connected && publicKey) {
+      checkTokenAccess();
+    } else if (!connected) {
+      // Reset access state when wallet disconnects
+      setHasAccess(null);
+      setTokenBalance(0);
+    }
+  }, [ageVerified, connected, publicKey, checkTokenAccess]);
 
   const handleAgeVerification = (isOver18: boolean) => {
     if (isOver18) {
@@ -190,6 +233,178 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                 Gambling laws vary by jurisdiction - it is your responsibility to ensure compliance with local laws.
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Token gate - wallet not connected
+  if (!connected) {
+    return (
+      <div
+        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        onClick={handleBackdropClick}
+      >
+        <div className="bg-[#0a0a0f] border border-purple-500/50 rounded-2xl max-w-md w-full overflow-hidden">
+          {/* Gate Header */}
+          <div className="bg-gradient-to-r from-purple-900/60 to-purple-800/40 p-6 border-b border-purple-500/30">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <span className="text-4xl">🎰</span>
+              <h2 className="font-pixel text-xl text-purple-400 tracking-wider">TOKEN GATE</h2>
+              <span className="text-4xl">🔒</span>
+            </div>
+            <p className="text-center text-purple-300/80 text-sm">Connect wallet to access the casino</p>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-5">
+            {/* Lock Icon */}
+            <div className="flex justify-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center border-4 border-purple-400/50 shadow-lg shadow-purple-500/30">
+                <span className="font-pixel text-3xl">🔐</span>
+              </div>
+            </div>
+
+            {/* Requirement Box */}
+            <div className="bg-black/50 border border-purple-500/30 rounded-lg p-4">
+              <p className="text-center text-white text-sm mb-2">
+                <strong>Hold {MIN_TOKEN_BALANCE.toLocaleString()} {BAGSWORLD_TOKEN_SYMBOL}</strong>
+              </p>
+              <p className="text-center text-gray-400 text-xs">
+                to unlock BagsWorld Casino games
+              </p>
+            </div>
+
+            {/* Info */}
+            <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
+              <p className="text-purple-400/90 text-[11px] text-center leading-relaxed">
+                Connect your Solana wallet to verify your {BAGSWORLD_TOKEN_SYMBOL} balance and access exclusive casino features.
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="flex-1 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-pixel text-xs transition-colors border border-gray-700"
+              >
+                EXIT
+              </button>
+              <button
+                onClick={() => setWalletModalVisible(true)}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-lg font-pixel text-xs transition-all shadow-lg shadow-purple-500/20 border border-purple-500/50"
+              >
+                CONNECT WALLET
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Token gate - checking balance
+  if (isCheckingAccess || hasAccess === null) {
+    return (
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-[#0a0a0f] border border-purple-500/30 rounded-2xl p-8 max-w-sm w-full">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center animate-pulse">
+              <span className="font-pixel text-2xl">🎰</span>
+            </div>
+            <div className="font-pixel text-purple-400 text-center">
+              Checking {BAGSWORLD_TOKEN_SYMBOL} balance...
+            </div>
+            <div className="text-gray-500 text-xs text-center">
+              Verifying casino access
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Token gate - insufficient balance (show buy prompt)
+  if (!hasAccess) {
+    return (
+      <div
+        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        onClick={handleBackdropClick}
+      >
+        <div className="bg-[#0a0a0f] border border-yellow-500/50 rounded-2xl max-w-md w-full overflow-hidden">
+          {/* Gate Header */}
+          <div className="bg-gradient-to-r from-yellow-900/60 to-orange-800/40 p-6 border-b border-yellow-500/30">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <span className="text-4xl">🪙</span>
+              <h2 className="font-pixel text-xl text-yellow-400 tracking-wider">ACCESS DENIED</h2>
+              <span className="text-4xl">🚫</span>
+            </div>
+            <p className="text-center text-yellow-300/80 text-sm">Insufficient {BAGSWORLD_TOKEN_SYMBOL} balance</p>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-5">
+            {/* Balance Display */}
+            <div className="bg-black/50 border border-yellow-500/30 rounded-lg p-5">
+              <div className="text-center mb-4">
+                <p className="text-gray-400 text-xs mb-1">Required to Enter</p>
+                <p className="text-white font-bold text-2xl font-pixel">
+                  {MIN_TOKEN_BALANCE.toLocaleString()} <span className="text-yellow-400">{BAGSWORLD_TOKEN_SYMBOL}</span>
+                </p>
+              </div>
+              <div className="w-full h-px bg-yellow-500/20 mb-4" />
+              <div className="text-center">
+                <p className="text-gray-400 text-xs mb-1">Your Balance</p>
+                <p className="text-red-400 font-bold text-xl font-pixel">
+                  {tokenBalance.toLocaleString()} <span className="text-yellow-400/60">{BAGSWORLD_TOKEN_SYMBOL}</span>
+                </p>
+              </div>
+              <div className="mt-4 text-center">
+                <p className="text-gray-500 text-[10px]">
+                  Need {(MIN_TOKEN_BALANCE - tokenBalance).toLocaleString()} more tokens
+                </p>
+              </div>
+            </div>
+
+            {/* Buy Prompt */}
+            <div className="bg-gradient-to-r from-purple-500/10 to-yellow-500/10 border border-purple-500/20 rounded-lg p-4">
+              <p className="text-white text-sm text-center mb-2 font-medium">
+                Get {BAGSWORLD_TOKEN_SYMBOL} on Bags.fm
+              </p>
+              <p className="text-gray-400 text-[11px] text-center leading-relaxed">
+                Buy {BAGSWORLD_TOKEN_SYMBOL} tokens to unlock casino access and exclusive features.
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="flex-1 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-pixel text-xs transition-colors border border-gray-700"
+              >
+                EXIT
+              </button>
+              <a
+                href={BAGSWORLD_BUY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white rounded-lg font-pixel text-xs transition-all shadow-lg shadow-yellow-500/20 border border-yellow-500/50 text-center block"
+              >
+                BUY ON BAGS.FM
+              </a>
+            </div>
+
+            {/* Refresh */}
+            <button
+              onClick={checkTokenAccess}
+              className="w-full py-2 text-purple-400 hover:text-purple-300 text-xs transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh Balance
+            </button>
           </div>
         </div>
       </div>

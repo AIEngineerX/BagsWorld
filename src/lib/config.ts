@@ -71,6 +71,19 @@ export const ECOSYSTEM_CONFIG = {
   },
 
   // -------------------------------------------------------------------------
+  // CASINO TOKEN GATE
+  // -------------------------------------------------------------------------
+  // Hold $BagsWorld tokens to access casino features
+  casino: {
+    gateToken: {
+      mint: "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
+      symbol: "$BagsWorld",
+      minBalance: 100_000,
+      buyUrl: "https://bags.fm/token/9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
+    },
+  },
+
+  // -------------------------------------------------------------------------
   // ADMIN CONFIGURATION
   // -------------------------------------------------------------------------
   admin: {
