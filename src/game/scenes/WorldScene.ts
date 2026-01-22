@@ -166,7 +166,115 @@ export class WorldScene extends Phaser.Scene {
     this.boundSpeakHandler = (e: Event) => this.handleCharacterSpeak(e as CustomEvent);
     window.addEventListener("bagsworld-character-speak", this.boundSpeakHandler);
 
+    // Setup mobile camera controls (drag to pan, pinch to zoom)
+    this.setupMobileCameraControls();
+
     console.log("[WorldScene] AI behavior handlers initialized");
+  }
+
+  private setupMobileCameraControls(): void {
+    // Check if mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (!isMobile) return;
+
+    // Set up camera bounds for panning
+    const camera = this.cameras.main;
+    camera.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Track drag state
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let cameraStartX = 0;
+    let cameraStartY = 0;
+
+    // Handle pointer down - start drag
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      // Only start drag if not clicking on a character/building
+      const hitObjects = this.input.hitTestPointer(pointer);
+      if (hitObjects.length === 0) {
+        isDragging = true;
+        dragStartX = pointer.x;
+        dragStartY = pointer.y;
+        cameraStartX = camera.scrollX;
+        cameraStartY = camera.scrollY;
+      }
+    });
+
+    // Handle pointer move - pan camera
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (!isDragging || !pointer.isDown) return;
+
+      const deltaX = dragStartX - pointer.x;
+      const deltaY = dragStartY - pointer.y;
+
+      // Apply movement scaled by zoom level
+      camera.scrollX = Phaser.Math.Clamp(
+        cameraStartX + deltaX / camera.zoom,
+        0,
+        GAME_WIDTH - camera.width / camera.zoom
+      );
+      camera.scrollY = Phaser.Math.Clamp(
+        cameraStartY + deltaY / camera.zoom,
+        0,
+        GAME_HEIGHT - camera.height / camera.zoom
+      );
+    });
+
+    // Handle pointer up - stop drag
+    this.input.on("pointerup", () => {
+      isDragging = false;
+    });
+
+    // Handle pinch to zoom (two-finger gesture)
+    let initialPinchDistance = 0;
+    let initialZoom = 1;
+
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      const pointers = this.input.manager.pointers.filter(p => p.isDown);
+      if (pointers.length === 2) {
+        initialPinchDistance = Phaser.Math.Distance.Between(
+          pointers[0].x, pointers[0].y,
+          pointers[1].x, pointers[1].y
+        );
+        initialZoom = camera.zoom;
+        isDragging = false; // Cancel drag when pinching
+      }
+    });
+
+    this.input.on("pointermove", () => {
+      const pointers = this.input.manager.pointers.filter(p => p.isDown);
+      if (pointers.length === 2 && initialPinchDistance > 0) {
+        const currentDistance = Phaser.Math.Distance.Between(
+          pointers[0].x, pointers[0].y,
+          pointers[1].x, pointers[1].y
+        );
+        const scale = currentDistance / initialPinchDistance;
+        camera.setZoom(Phaser.Math.Clamp(initialZoom * scale, 0.5, 2));
+      }
+    });
+
+    this.input.on("pointerup", () => {
+      const pointers = this.input.manager.pointers.filter(p => p.isDown);
+      if (pointers.length < 2) {
+        initialPinchDistance = 0;
+      }
+    });
+
+    // Double-tap to reset zoom
+    let lastTapTime = 0;
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      const currentTime = Date.now();
+      if (currentTime - lastTapTime < 300) {
+        // Double tap - reset camera
+        camera.setZoom(1);
+        camera.scrollX = 0;
+        camera.scrollY = 0;
+      }
+      lastTapTime = currentTime;
+    });
+
+    console.log("[WorldScene] Mobile camera controls enabled");
   }
 
   private handleZoneChange(event: CustomEvent<{ zone: ZoneType }>): void {
