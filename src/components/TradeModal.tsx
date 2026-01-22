@@ -177,11 +177,11 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-2 sm:p-4"
+      className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-[100] safe-area-bottom"
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-bags-dark border-4 border-bags-green w-full max-w-sm max-h-[95vh] overflow-y-auto"
+        className="bg-bags-dark border-4 border-bags-green w-full sm:max-w-sm max-h-[85vh] sm:max-h-[95vh] overflow-y-auto rounded-t-xl sm:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

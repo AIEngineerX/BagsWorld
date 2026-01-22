@@ -225,6 +225,61 @@ body {
   .safe-area-top {
     padding-top: max(0.5rem, env(safe-area-inset-top));
   }
+
+  .safe-area-left {
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+  }
+
+  .safe-area-right {
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+  }
+
+  .safe-area-all {
+    padding: max(0.5rem, env(safe-area-inset-top))
+             max(0.5rem, env(safe-area-inset-right))
+             max(0.5rem, env(safe-area-inset-bottom))
+             max(0.5rem, env(safe-area-inset-left));
+  }
+}
+
+/* Mobile modal sheet behavior */
+@media (max-width: 640px) {
+  /* Modals slide up from bottom on mobile */
+  .modal-sheet {
+    animation: slideUp 0.2s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Prevent body scroll when modal is open */
+  body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (pointer: coarse) {
+  /* Larger touch targets on touch devices */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Disable hover effects on touch - use active instead */
+  .hover\:bg-bags-green\/20:active {
+    background-color: rgba(74, 222, 128, 0.2);
+  }
 }
 
 /* Landscape mode adjustments */

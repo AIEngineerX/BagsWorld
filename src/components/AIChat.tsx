@@ -34,8 +34,8 @@ export function AIChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Handle dragging
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // Handle dragging - use pointer events for touch + mouse support
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button, input')) return;
 
     const rect = chatRef.current?.getBoundingClientRect();
@@ -45,39 +45,44 @@ export function AIChat() {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       });
+      // Capture pointer for reliable tracking
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     }
   }, []);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handlePointerMove = useCallback((e: PointerEvent) => {
     if (!isDragging) return;
 
     const newX = e.clientX - dragOffset.x;
     const newY = e.clientY - dragOffset.y;
 
-    // Keep within viewport bounds
-    const maxX = window.innerWidth - 320; // chat width
-    const maxY = window.innerHeight - 400; // approximate chat height
+    // Keep within viewport bounds with safe area consideration
+    const chatWidth = Math.min(320, window.innerWidth - 32);
+    const maxX = window.innerWidth - chatWidth;
+    const maxY = window.innerHeight - 300;
 
     setPosition({
-      x: Math.max(0, Math.min(newX, maxX)),
-      y: Math.max(0, Math.min(newY, maxY)),
+      x: Math.max(8, Math.min(newX, maxX - 8)),
+      y: Math.max(60, Math.min(newY, maxY)),
     });
   }, [isDragging, dragOffset]);
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     setIsDragging(false);
   }, []);
 
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('pointercancel', handlePointerUp);
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+        window.removeEventListener('pointercancel', handlePointerUp);
       };
     }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, handlePointerMove, handlePointerUp]);
 
   const addMessage = (message: ChatMessage) => {
     setMessages((prev) => [...prev.slice(-50), message]); // Keep last 50 messages
@@ -225,10 +230,10 @@ export function AIChat() {
       style={chatStyle}
       className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-bags-green shadow-lg ${isDragging ? 'cursor-grabbing' : ''}`}
     >
-      {/* Header - Draggable */}
+      {/* Header - Draggable (touch + mouse) */}
       <div
-        onMouseDown={handleMouseDown}
-        className="flex items-center justify-between p-2 border-b-4 border-bags-green cursor-grab active:cursor-grabbing select-none"
+        onPointerDown={handlePointerDown}
+        className="flex items-center justify-between p-2 border-b-4 border-bags-green cursor-grab active:cursor-grabbing select-none touch-none"
       >
         <div className="flex items-center gap-2">
           {messages.length > 0 && (

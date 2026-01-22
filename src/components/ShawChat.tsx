@@ -72,35 +72,39 @@ export function ShawChat() {
     }
   }, [isOpen]);
 
-  // Handle dragging
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // Handle dragging - use pointer events for touch + mouse support
+  const handlePointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button, input")) return;
     const rect = chatRef.current?.getBoundingClientRect();
     if (rect) {
       setIsDragging(true);
       setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     }
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handlePointerMove = (e: PointerEvent) => {
       if (!isDragging) return;
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
-      const maxX = window.innerWidth - 320;
-      const maxY = window.innerHeight - 400;
+      const chatWidth = Math.min(320, window.innerWidth - 32);
+      const maxX = window.innerWidth - chatWidth;
+      const maxY = window.innerHeight - 300;
       setPosition({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY)),
+        x: Math.max(8, Math.min(newX, maxX - 8)),
+        y: Math.max(60, Math.min(newY, maxY)),
       });
     };
-    const handleMouseUp = () => setIsDragging(false);
+    const handlePointerUp = () => setIsDragging(false);
     if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
       return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+        window.removeEventListener("pointercancel", handlePointerUp);
       };
     }
   }, [isDragging, dragOffset]);
@@ -242,10 +246,10 @@ export function ShawChat() {
       style={chatStyle}
       className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-orange-500 shadow-lg shadow-orange-500/20 ${isDragging ? "cursor-grabbing" : ""}`}
     >
-      {/* Header */}
+      {/* Header - Draggable (touch + mouse) */}
       <div
-        onMouseDown={handleMouseDown}
-        className="flex items-center justify-between p-2 border-b-4 border-orange-500 cursor-grab active:cursor-grabbing select-none bg-gradient-to-r from-orange-600/20 to-amber-600/20"
+        onPointerDown={handlePointerDown}
+        className="flex items-center justify-between p-2 border-b-4 border-orange-500 cursor-grab active:cursor-grabbing select-none touch-none bg-gradient-to-r from-orange-600/20 to-amber-600/20"
       >
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">🔶</span>
