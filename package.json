@@ -13,7 +13,11 @@
     "test:coverage": "jest --coverage",
     "test:agents": "jest --testPathPattern=agents",
     "agent:status": "curl -s http://localhost:3000/api/agent -H \"Authorization: Bearer local-dev-secret-change-in-production\" | jq",
-    "agent:trigger": "curl -s -X POST http://localhost:3000/api/agent -H \"Authorization: Bearer local-dev-secret-change-in-production\" -H \"Content-Type: application/json\" -d \"{\\\"action\\\":\\\"trigger\\\"}\" | jq"
+    "agent:trigger": "curl -s -X POST http://localhost:3000/api/agent -H \"Authorization: Bearer local-dev-secret-change-in-production\" -H \"Content-Type: application/json\" -d \"{\\\"action\\\":\\\"trigger\\\"}\" | jq",
+    "eliza:install": "cd eliza-agents && npm install",
+    "eliza:start": "cd eliza-agents && npm run shaw",
+    "eliza:dev": "cd eliza-agents && npm run dev",
+    "eliza:status": "curl -s http://localhost:3001/status | jq"
   },
   "dependencies": {
     "@bagsfm/bags-sdk": "^1.2.6",

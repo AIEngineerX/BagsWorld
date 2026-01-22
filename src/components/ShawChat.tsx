@@ -358,9 +358,12 @@ export function ShawChat() {
             <p className="font-pixel text-[9px] text-orange-400">elizaos.ai</p>
           </a>
         </div>
-        <p className="font-pixel text-[7px] text-orange-600 text-center mt-2">
-          &quot;agents are digital life forms&quot;
-        </p>
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+          <p className="font-pixel text-[7px] text-green-400">
+            powered by TRUE ElizaOS runtime
+          </p>
+        </div>
       </div>
     </div>
   );
