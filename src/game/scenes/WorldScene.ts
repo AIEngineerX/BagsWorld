@@ -2867,12 +2867,12 @@ export class WorldScene extends Phaser.Scene {
           });
         }
 
-        // Add ai16z purple glow effect for Shaw (ElizaOS creator)
+        // Add ElizaOS orange glow effect for Shaw (ElizaOS creator)
         if (isShaw) {
           const glow = this.add.sprite(character.x, character.y, "glow");
           glow.setScale(1.0);
           glow.setAlpha(0.3);
-          glow.setTint(0x9333ea); // ai16z purple
+          glow.setTint(0xff5800); // ElizaOS orange
           glow.setDepth(10);
 
           // Store reference to glow for cleanup
@@ -3520,13 +3520,13 @@ export class WorldScene extends Phaser.Scene {
 
     const container = this.add.container(sprite.x, sprite.y - 70);
 
-    const bg = this.add.rectangle(0, 0, 180, 78, 0x1a0a1f, 0.95);
-    bg.setStrokeStyle(2, 0x9333ea); // ai16z purple border
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x1f1408, 0.95);
+    bg.setStrokeStyle(2, 0xff5800); // ElizaOS orange border
 
-    const nameText = this.add.text(0, -22, "Shaw", {
+    const nameText = this.add.text(0, -22, "🔶 Shaw", {
       fontFamily: "monospace",
       fontSize: "12px",
-      color: "#9333ea",
+      color: "#ff5800",
     });
     nameText.setOrigin(0.5, 0.5);
 
@@ -3547,7 +3547,7 @@ export class WorldScene extends Phaser.Scene {
     const clickText = this.add.text(0, 26, "Click to talk", {
       fontFamily: "monospace",
       fontSize: "9px",
-      color: "#9333ea",
+      color: "#ff5800",
     });
     clickText.setOrigin(0.5, 0.5);
 

@@ -88,7 +88,7 @@ export const characterMeta: Record<string, {
   "shaw": {
     displayName: "Shaw",
     role: "ElizaOS Creator",
-    color: "#9333ea", // ai16z purple
-    icon: "🏗️",
+    color: "#FF5800", // ElizaOS orange
+    icon: "🔶",
   },
 };

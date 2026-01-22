@@ -56,7 +56,7 @@ const CHARACTER_COLORS: Record<string, { bg: number; border: number; text: strin
   "bags-bot": { bg: 0x1f1a00, border: 0xfbbf24, text: "#fde047" }, // Bright amber
   cj: { bg: 0x1f1000, border: 0xfb923c, text: "#fdba74" }, // Bright Grove Street orange
   toly: { bg: 0x1a0a1f, border: 0xa855f7, text: "#c084fc" }, // Bright purple for Toly
-  shaw: { bg: 0x1a0a1f, border: 0x9333ea, text: "#c084fc" }, // ai16z purple for Shaw
+  shaw: { bg: 0x1f1408, border: 0xff5800, text: "#ffb380" }, // ai16z purple for Shaw
 };
 
 export class SpeechBubbleManager {
