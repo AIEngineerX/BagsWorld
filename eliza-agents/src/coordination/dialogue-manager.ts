@@ -63,7 +63,7 @@ export class DialogueManager {
     );
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
@@ -335,7 +335,7 @@ Participants: ${characters.map(c => c?.name).filter(Boolean).join(', ')}
     }
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 500,
       system: systemPrompt,
       messages: [
@@ -382,7 +382,7 @@ You were just mentioned by another user. Provide a brief, in-character response.
 Keep it short (1-2 sentences) and relevant to what was said.`;
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 200,
       system: systemPrompt,
       messages: [{
