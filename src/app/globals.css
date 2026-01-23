@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,7 +33,7 @@ html, body, #__next {
 body {
   background: var(--bags-darker);
   color: white;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-pixel), 'Press Start 2P', monospace;
   touch-action: manipulation; /* Allow touch, prevent double-tap zoom */
   -webkit-touch-callout: none; /* Disable callout on long press */
   -webkit-tap-highlight-color: transparent; /* Remove tap highlight */

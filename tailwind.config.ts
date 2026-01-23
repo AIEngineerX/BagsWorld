@@ -27,7 +27,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        pixel: ['"Press Start 2P"', "monospace"],
+        pixel: ["var(--font-pixel)", '"Press Start 2P"', "monospace"],
       },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
