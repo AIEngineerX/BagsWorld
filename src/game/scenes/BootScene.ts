@@ -235,32 +235,24 @@ export class BootScene extends Phaser.Scene {
     const size = Math.round(32 * SCALE);
     const grassGraphics = this.make.graphics({ x: 0, y: 0 });
 
-    // Base grass - solid color for clean tiling
+    // Base grass
     grassGraphics.fillStyle(0x1a472a);
     grassGraphics.fillRect(0, 0, size, size);
 
-    // Grass variation - subtle darker blades scattered randomly
-    // Use a seeded pattern to avoid visible repetition when tiled
-    grassGraphics.fillStyle(0x15392a);
-    for (let i = 0; i < 8; i++) {
-      // Distribute blades evenly but with small random offsets
-      const baseX = (i % 4) * (size / 4);
-      const baseY = Math.floor(i / 4) * (size / 2);
-      const x = Math.floor(baseX + Math.random() * (size / 5));
-      const y = Math.floor(baseY + Math.random() * (size / 3));
-      grassGraphics.fillRect(x % size, y % size, Math.round(2 * SCALE), Math.round(3 * SCALE));
+    // Grass variation - more blades for higher resolution
+    grassGraphics.fillStyle(0x2d5a3d);
+    const bladeCount = Math.round(12 * SCALE);
+    for (let i = 0; i < bladeCount; i++) {
+      const x = Math.floor(Math.random() * (size - 4));
+      const y = Math.floor(Math.random() * (size - 6));
+      grassGraphics.fillRect(x, y, Math.round(2 * SCALE), Math.round(4 * SCALE));
     }
 
-    // Add subtle lighter grass highlights
-    grassGraphics.fillStyle(0x1f5232);
-    for (let i = 0; i < 6; i++) {
-      const x = Math.floor(Math.random() * (size - 3));
-      const y = Math.floor(Math.random() * (size - 4));
-      grassGraphics.fillRect(x, y, Math.round(1 * SCALE), Math.round(2 * SCALE));
-    }
-
-    // No fixed-position flowers - they create visible grid when tiled
-    // Flowers are added as separate sprites in createExtraDecorations instead
+    // Occasional flowers
+    grassGraphics.fillStyle(0xfbbf24);
+    grassGraphics.fillRect(Math.round(8 * SCALE), Math.round(12 * SCALE), Math.round(3 * SCALE), Math.round(3 * SCALE));
+    grassGraphics.fillStyle(0xef4444);
+    grassGraphics.fillRect(Math.round(20 * SCALE), Math.round(8 * SCALE), Math.round(3 * SCALE), Math.round(3 * SCALE));
 
     grassGraphics.generateTexture("grass", size, size);
     grassGraphics.destroy();

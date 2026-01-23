@@ -156,37 +156,21 @@ function seededRandom(seed: number): number {
 }
 
 // Building slots - single row at ground level, avoiding permanent structure X positions
-// Permanent landmarks are on elevated platforms (landmarkY = 480 * SCALE = 768)
-// Regular token buildings are at ground level (GROUND_Y = 540 * SCALE = 864)
+// Permanent structures: PokeCenter (448), Treasury (640) in main_city
+// Casino (128), Gym (240) in trending
 const GROUND_Y = Math.round(540 * SCALE); // 864
 
-// Landmark X positions (scaled):
-// - PokeCenter: 280 * 1.6 = 448 (main_city)
-// - Treasury: 640 (main_city, centered)
-// - Casino: 80 * 1.6 = 128 (trending)
-// - TradingGym: 150 * 1.6 = 240 (trending)
-
-// Building slots have 140px minimum spacing to prevent overlap
-// Each slot position is carefully chosen to avoid landmarks
 const BUILDING_SLOTS = {
   main_city: [
-    // 7 slots at ground level, avoiding PokeCenter (x~448) and Treasury (x~640)
-    { x: 200, y: GROUND_Y },   // Slot 0 - far left
-    { x: 340, y: GROUND_Y },   // Slot 1 - left of PokeCenter
-    { x: 540, y: GROUND_Y },   // Slot 2 - between PokeCenter and Treasury
-    { x: 760, y: GROUND_Y },   // Slot 3 - right of Treasury
-    { x: 900, y: GROUND_Y },   // Slot 4 - right side
-    { x: 1040, y: GROUND_Y },  // Slot 5 - far right
-    { x: 1140, y: GROUND_Y },  // Slot 6 - edge
+    // Front row only - avoid x=448 (PokeCenter) and x=640 (Treasury)
+    { x: 200, y: GROUND_Y }, { x: 340, y: GROUND_Y }, { x: 540, y: GROUND_Y },
+    { x: 760, y: GROUND_Y }, { x: 900, y: GROUND_Y }, { x: 1040, y: GROUND_Y },
+    { x: 1140, y: GROUND_Y },
   ],
   trending: [
-    // 6 slots at ground level, avoiding Casino (x~128) and Gym (x~240)
-    { x: 380, y: GROUND_Y },   // Slot 0 - right of Gym
-    { x: 520, y: GROUND_Y },   // Slot 1
-    { x: 660, y: GROUND_Y },   // Slot 2 - center
-    { x: 800, y: GROUND_Y },   // Slot 3
-    { x: 940, y: GROUND_Y },   // Slot 4
-    { x: 1080, y: GROUND_Y },  // Slot 5 - far right
+    // Front row only - avoid x=128 (Casino) and x=240 (Gym)
+    { x: 380, y: GROUND_Y }, { x: 520, y: GROUND_Y }, { x: 660, y: GROUND_Y },
+    { x: 800, y: GROUND_Y }, { x: 940, y: GROUND_Y }, { x: 1080, y: GROUND_Y },
   ],
 };
 
@@ -199,18 +183,10 @@ export function generateBuildingPosition(
   if (index < slots.length) {
     return { ...slots[index] };
   }
-
-  // Overflow: continue along ground level with 140px spacing
-  // Start from the rightmost slot and continue right
+  // Overflow: continue along ground level
   const overflowIndex = index - slots.length;
-  const lastSlot = slots[slots.length - 1];
-  const overflowX = lastSlot.x + (overflowIndex + 1) * 140;
-
-  // Clamp to screen bounds (WORLD_WIDTH = 1280)
-  const clampedX = Math.min(overflowX, WORLD_WIDTH - 60);
-
   return {
-    x: clampedX,
+    x: 200 + overflowIndex * 140,
     y: GROUND_Y,
   };
 }
@@ -250,14 +226,9 @@ export function getCachedBuildingPosition(
     attempts++;
   }
 
-  // If all slots full, calculate overflow position
-  // Find the maximum used index and place this building after it
+  // If all slots full, overflow to end
   if (attempts >= slots.length) {
-    let maxUsedIndex = slots.length - 1;
-    usedIndices.forEach((idx) => {
-      if (idx > maxUsedIndex) maxUsedIndex = idx;
-    });
-    assignedIndex = maxUsedIndex + 1;
+    assignedIndex = slots.length + usedIndices.size - slots.length;
   }
 
   const position = generateBuildingPosition(assignedIndex, MAX_BUILDINGS, zone);
@@ -412,28 +383,25 @@ export function transformTokenToBuilding(
   let buildingZone: "main_city" | "trending" | undefined;
 
   if (isBagsWorldHQ) {
-    // HQ floats in the sky, visible in both zones
     position = { x: Math.round(WORLD_WIDTH / 2), y: skyY };
-    buildingZone = undefined;
+    buildingZone = undefined; // HQ visible in both zones
   } else if (isCasino) {
-    // Casino on elevated platform in trending zone
     position = { x: Math.round(80 * SCALE), y: landmarkY };
     buildingZone = "trending";
   } else if (isTradingGym) {
-    // Gym on elevated platform in trending zone
     position = { x: Math.round(150 * SCALE), y: landmarkY };
     buildingZone = "trending";
   } else if (isPokeCenter) {
-    // PokeCenter on elevated platform in main_city
     position = { x: Math.round(280 * SCALE), y: landmarkY };
     buildingZone = "main_city";
   } else if (isTreasuryHub) {
-    // Treasury on elevated platform in main_city
     position = { x: WORLD_WIDTH / 2, y: landmarkY };
     buildingZone = "main_city";
+  } else if (existingBuilding) {
+    position = { x: existingBuilding.x, y: existingBuilding.y };
+    buildingZone = existingBuilding.zone;
   } else {
-    // Regular token buildings - ALWAYS use slot-based ground level position
-    // Even if existingBuilding has a position, use cache to ensure consistency
+    // Get randomized position and zone from cache
     const cached = getCachedBuildingPosition(token.mint, new Set());
     position = { x: cached.x, y: cached.y };
     buildingZone = cached.zone;
