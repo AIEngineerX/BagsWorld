@@ -763,10 +763,18 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Debug: Log all earners before sorting
+    console.log(`[WorldState] Earners before sort (${earnerMap.size}):`,
+      Array.from(earnerMap.values()).map(e => `${e.username}: ${e.lifetimeEarnings.toFixed(4)} SOL`).join(', '));
+
     let earners = Array.from(earnerMap.values())
       .sort((a, b) => b.lifetimeEarnings - a.lifetimeEarnings)
       .slice(0, 13) // Leave room for Satoshi and Ash
       .map((e, i) => ({ ...e, rank: i + 1 }));
+
+    // Debug: Log final earners
+    console.log(`[WorldState] Top earners (${earners.length}):`,
+      earners.map(e => `#${e.rank} ${e.username}: ${e.lifetimeEarnings.toFixed(4)} SOL`).join(', '));
 
     // ALWAYS add Toly as a permanent Solana guide character
     // Toly (Anatoly Yakovenko) is the co-founder of Solana

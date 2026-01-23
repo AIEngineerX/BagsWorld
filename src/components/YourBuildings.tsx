@@ -5,6 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import {
   getLaunchedTokens,
   removeLaunchedToken,
+  fetchGlobalTokens,
   type LaunchedToken,
 } from "@/lib/token-registry";
 import { TradeModal } from "./TradeModal";
@@ -24,9 +25,26 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
   const isUserAdmin = isAdmin(publicKey?.toBase58());
 
   useEffect(() => {
-    const loadTokens = () => {
+    const loadTokens = async () => {
+      // Load local tokens first for fast initial render
       const stored = getLaunchedTokens();
       setTokens(stored);
+
+      // Then fetch global tokens from database
+      try {
+        const globalTokens = await fetchGlobalTokens();
+        // Merge: local tokens first, then global (deduplicated by mint)
+        const seenMints = new Set(stored.map(t => t.mint));
+        const allTokens = [...stored];
+        globalTokens.forEach(gt => {
+          if (!seenMints.has(gt.mint)) {
+            allTokens.push(gt);
+          }
+        });
+        setTokens(allTokens);
+      } catch (error) {
+        console.error("Error loading global tokens:", error);
+      }
     };
 
     loadTokens();

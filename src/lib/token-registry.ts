@@ -168,6 +168,12 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
       });
 
       console.log(`[TokenRegistry] Parsed ${tokens.length} global tokens`);
+      // Debug: Log fee shares for each token
+      tokens.forEach(t => {
+        if (t.feeShares && t.feeShares.length > 0) {
+          console.log(`[TokenRegistry] ${t.symbol} fee shares:`, t.feeShares.map(s => `${s.username}@${s.provider}:${s.bps}bps`).join(', '));
+        }
+      });
 
       // Update cache
       globalTokensCache = { tokens, timestamp: Date.now() };
