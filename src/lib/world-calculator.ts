@@ -186,6 +186,7 @@ export function generateBuildingPosition(
 /**
  * Get or create a cached position for a building by its mint address.
  * This prevents buildings from shifting when rankings change.
+ * Only X and index are cached - Y is always recalculated to ensure ground snapping.
  */
 export function getCachedBuildingPosition(
   mint: string,
@@ -194,7 +195,13 @@ export function getCachedBuildingPosition(
   // Check if we already have a cached position for this mint
   const cached = buildingPositionCache.get(mint);
   if (cached) {
-    return { x: cached.x, y: cached.y };
+    // Recalculate Y from cached index to ensure ground snapping
+    // (in case old cache had random Y offsets)
+    const row = Math.floor(cached.assignedIndex / 5); // maxCols = 5
+    const GROUND_Y = Math.round(540 * SCALE);
+    const ROW_SPACING = Math.round(100 * SCALE);
+    const y = GROUND_Y - row * ROW_SPACING;
+    return { x: cached.x, y };
   }
 
   // Find the next available index that's not in use
@@ -213,7 +220,7 @@ export function getCachedBuildingPosition(
   // Generate position based on assigned index
   const position = generateBuildingPosition(assignedIndex, MAX_BUILDINGS);
 
-  // Cache it
+  // Cache it (Y is stored but will be recalculated on retrieval for consistency)
   buildingPositionCache.set(mint, {
     x: position.x,
     y: position.y,
