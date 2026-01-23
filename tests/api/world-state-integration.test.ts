@@ -233,7 +233,7 @@ describe("World State API Integration (Logic)", () => {
       expect(building.zone).toBe("trending");
     });
 
-    it("should place regular buildings in main_city zone", () => {
+    it("should place regular buildings in either zone based on mint hash", () => {
       const regularToken: TokenInfo = {
         mint: "RegularToken111111111111111111111111111111",
         name: "Regular Token",
@@ -243,7 +243,8 @@ describe("World State API Integration (Logic)", () => {
       };
 
       const building = transformTokenToBuilding(regularToken, 0);
-      expect(building.zone).toBe("main_city");
+      // Zone is now determined by hash of mint address for deterministic distribution
+      expect(["main_city", "trending"]).toContain(building.zone);
     });
   });
 
