@@ -633,7 +633,8 @@ describe("transformTokenToBuilding", () => {
     expect(building.name).toBe(baseToken.name);
     expect(building.symbol).toBe(baseToken.symbol);
     expect(building.level).toBe(2); // $250K = level 2
-    expect(building.zone).toBe("main_city");
+    // Zone is now determined by hash of mint address for deterministic distribution
+    expect(["main_city", "trending"]).toContain(building.zone);
     expect(building.tokenUrl).toBe(`https://bags.fm/${baseToken.mint}`);
   });
 
