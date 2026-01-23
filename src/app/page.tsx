@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense, useState, useEffect } from "react";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
 import { Leaderboard } from "@/components/Leaderboard";
+import { AgentDialogue } from "@/components/AgentDialogue";
 import { EventFeed } from "@/components/EventFeed";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
@@ -80,6 +81,7 @@ export default function Home() {
   const [showCasinoAdmin, setShowCasinoAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"leaderboard" | "agents">("agents");
 
   // State for LaunchModal
   const [showLaunchModal, setShowLaunchModal] = useState(false);
@@ -349,9 +351,35 @@ export default function Home() {
             <YourBuildings onRefresh={refreshAfterLaunch} />
           </div>
 
-          {/* Leaderboard */}
-          <div className="flex-1 overflow-hidden">
-            <Leaderboard />
+          {/* Tabbed Section: Agent Chat / Leaderboard */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {/* Tab Buttons */}
+            <div className="flex border-b-2 border-bags-green/30 bg-bags-dark">
+              <button
+                onClick={() => setSidebarTab("agents")}
+                className={`flex-1 py-2 font-pixel text-[9px] transition-colors ${
+                  sidebarTab === "agents"
+                    ? "text-bags-gold bg-bags-green/10 border-b-2 border-bags-gold -mb-0.5"
+                    : "text-gray-500 hover:text-bags-green"
+                }`}
+              >
+                [AGENTS]
+              </button>
+              <button
+                onClick={() => setSidebarTab("leaderboard")}
+                className={`flex-1 py-2 font-pixel text-[9px] transition-colors ${
+                  sidebarTab === "leaderboard"
+                    ? "text-bags-gold bg-bags-green/10 border-b-2 border-bags-gold -mb-0.5"
+                    : "text-gray-500 hover:text-bags-green"
+                }`}
+              >
+                [EARNERS]
+              </button>
+            </div>
+            {/* Tab Content */}
+            <div className="flex-1 overflow-hidden">
+              {sidebarTab === "agents" ? <AgentDialogue /> : <Leaderboard />}
+            </div>
           </div>
 
           {/* Agent Feed - coordinated agent activity */}
