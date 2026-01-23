@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useGameStore } from "@/lib/store";
 import {
   XIcon,
@@ -24,12 +23,8 @@ export function Leaderboard() {
   const { worldState, selectCharacter, selectedCharacter } = useGameStore();
 
   // Filter out guide characters (Toly, Ash, Finn, Dev, Scout, CJ, Shaw) from the leaderboard
-  // Memoized to avoid recomputing on every render
-  const population = useMemo(
-    () => (worldState?.population ?? []).filter(
-      (c) => !c.isToly && !c.isAsh && !c.isFinn && !c.isDev && !c.isScout && !c.isCJ && !c.isShaw
-    ),
-    [worldState?.population]
+  const population = (worldState?.population ?? []).filter(
+    (c) => !c.isToly && !c.isAsh && !c.isFinn && !c.isDev && !c.isScout && !c.isCJ && !c.isShaw
   );
 
   const formatEarnings = (amount: number): string => {
