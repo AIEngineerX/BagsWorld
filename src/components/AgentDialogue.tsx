@@ -55,12 +55,17 @@ const AGENT_GROUPS = [
   ["toly", "ghost", "cj"],
 ];
 
+// How long to wait before fetching next dialogue (in ms)
+const REFRESH_DELAY = 45000; // 45 seconds between dialogues
+
 export function AgentDialogue() {
   const [dialogue, setDialogue] = useState<DialogueData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [displayedTurns, setDisplayedTurns] = useState<number>(0);
   const [isTyping, setIsTyping] = useState(false);
+  const [countdown, setCountdown] = useState<number>(0);
+  const [isPaused, setIsPaused] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -86,6 +91,7 @@ export function AgentDialogue() {
     return () => clearTimeout(timer);
   }, [dialogue, displayedTurns]);
 
+  // Define fetchDialogue before the useEffect that uses it
   const fetchDialogue = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -124,6 +130,36 @@ export function AgentDialogue() {
     }
   }, []);
 
+  // Auto-refresh: start countdown when dialogue finishes
+  useEffect(() => {
+    if (!dialogue || isTyping || isPaused) return;
+    if (displayedTurns < dialogue.turns.length) return;
+
+    // Dialogue finished, start countdown
+    setCountdown(REFRESH_DELAY / 1000);
+
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    const refreshTimer = setTimeout(() => {
+      if (!isPaused) {
+        fetchDialogue();
+      }
+    }, REFRESH_DELAY);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(refreshTimer);
+    };
+  }, [dialogue, displayedTurns, isTyping, isPaused, fetchDialogue]);
+
   // Fetch initial dialogue on mount
   useEffect(() => {
     fetchDialogue();
@@ -137,14 +173,30 @@ export function AgentDialogue() {
     <div className="h-full flex flex-col bg-bags-darker">
       {/* Header */}
       <div className="flex items-center justify-between p-2 border-b-2 border-bags-green/30">
-        <span className="font-pixel text-[9px] text-bags-gold">[AGENT CHAT]</span>
-        <button
-          onClick={fetchDialogue}
-          disabled={isLoading}
-          className="font-pixel text-[8px] text-bags-green hover:text-bags-gold disabled:opacity-50"
-        >
-          {isLoading ? "..." : "[NEW]"}
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="font-pixel text-[9px] text-bags-gold">[CHAT]</span>
+          {!isPaused && (
+            <span className="font-pixel text-[6px] text-red-500 animate-pulse">LIVE</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {countdown > 0 && !isTyping && (
+            <span className="font-pixel text-[7px] text-gray-500">{countdown}s</span>
+          )}
+          <button
+            onClick={() => setIsPaused(!isPaused)}
+            className="font-pixel text-[7px] text-gray-400 hover:text-white"
+          >
+            {isPaused ? "[>]" : "[||]"}
+          </button>
+          <button
+            onClick={fetchDialogue}
+            disabled={isLoading}
+            className="font-pixel text-[8px] text-bags-green hover:text-bags-gold disabled:opacity-50"
+          >
+            {isLoading ? "..." : "[NEW]"}
+          </button>
+        </div>
       </div>
 
       {/* Topic Banner */}
