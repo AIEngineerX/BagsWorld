@@ -145,45 +145,41 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-// Building slot definitions for each zone
-// Slots are fixed positions where buildings can be placed
-const BUILDING_SLOTS = {
-  main_city: [
-    // Row 0 (front) - 5 slots
-    { x: 320, y: 864 }, { x: 480, y: 864 }, { x: 640, y: 864 }, { x: 800, y: 864 }, { x: 960, y: 864 },
-    // Row 1 (back) - 5 slots
-    { x: 320, y: 704 }, { x: 480, y: 704 }, { x: 640, y: 704 }, { x: 800, y: 704 }, { x: 960, y: 704 },
-  ],
-  trending: [
-    // Row 0 (front) - 5 slots
-    { x: 320, y: 864 }, { x: 480, y: 864 }, { x: 640, y: 864 }, { x: 800, y: 864 }, { x: 960, y: 864 },
-    // Row 1 (back) - 5 slots
-    { x: 320, y: 704 }, { x: 480, y: 704 }, { x: 640, y: 704 }, { x: 800, y: 704 }, { x: 960, y: 704 },
-  ],
-};
-
-// Export slots for WorldScene to render placeholders
-export function getBuildingSlots(zone: "main_city" | "trending"): Array<{ x: number; y: number }> {
-  return BUILDING_SLOTS[zone];
-}
-
 export function generateBuildingPosition(
   index: number,
   total: number
 ): { x: number; y: number } {
-  // Use fixed slot positions from main_city (default zone for dynamic buildings)
-  const slots = BUILDING_SLOTS.main_city;
-  if (index < slots.length) {
-    return { ...slots[index] };
-  }
+  // Use a fixed grid layout with deterministic small offsets
+  const maxCols = 5; // Maximum 5 buildings per row
+  const actualTotal = Math.min(total, MAX_BUILDINGS);
+  const rows = Math.ceil(actualTotal / maxCols);
 
-  // Fallback for overflow (shouldn't happen with MAX_BUILDINGS = 20)
-  const GROUND_Y = Math.round(540 * SCALE);
-  const col = index % 5;
-  const row = Math.floor(index / 5);
+  const row = Math.floor(index / maxCols);
+  const col = index % maxCols;
+
+  // Calculate how many buildings in this row
+  const buildingsInThisRow = row < rows - 1 ? maxCols : actualTotal - (rows - 1) * maxCols;
+
+  // Center the buildings horizontally
+  const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
+  const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
+
+  // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area, scaled)
+  // Buildings use origin(0.5, 1), so y position is their bottom edge
+  // Stack rows upward from ground level with spacing
+  const GROUND_Y = Math.round(540 * SCALE); // Where buildings sit on the ground
+  const ROW_SPACING = Math.round(100 * SCALE); // Vertical spacing between rows (slightly less than horizontal)
+
+  // Front row (row 0) is at ground level, subsequent rows stack upward (behind)
+  const baseY = GROUND_Y - row * ROW_SPACING;
+
+  // Use seeded random for consistent small offsets based on index (scaled)
+  const offsetX = (seededRandom(index * 7 + 1) * Math.round(16 * SCALE) - Math.round(8 * SCALE));
+  const offsetY = (seededRandom(index * 13 + 2) * Math.round(12 * SCALE) - Math.round(6 * SCALE)); // Smaller Y offset
+
   return {
-    x: 320 + col * 160,
-    y: GROUND_Y - row * 160,
+    x: rowStartX + col * BUILDING_SPACING + offsetX,
+    y: baseY + offsetY,
   };
 }
 
@@ -344,37 +340,44 @@ export function transformTokenToBuilding(
   index: number,
   existingBuilding?: GameBuilding
 ): GameBuilding {
-  // Detect landmark buildings
+  // Special landmark buildings get fixed positions
   const isPokeCenter = token.symbol === "POKECENTER" || token.mint.includes("PokeCenter");
   const isTradingGym = token.symbol === "GYM" || token.mint.includes("TradingGym");
   const isCasino = token.symbol === "CASINO" || token.mint.includes("Casino");
   const isTreasuryHub = token.mint.startsWith("Treasury");
+  // BagsWorld HQ - the floating headquarters in the sky (uses real token data)
   const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
   const isBagsWorldHQ = token.mint === BAGSHQ_MINT || token.symbol === "BAGSWORLD";
-  const isLandmark = isBagsWorldHQ || isCasino || isTradingGym || isPokeCenter || isTreasuryHub;
 
-  // Clear landmarks from position cache - they always use fixed positions
-  if (isLandmark) {
-    buildingPositionCache.delete(token.mint);
+  // Always clear HQ from position cache to ensure it uses sky position
+  if (isBagsWorldHQ) {
+    buildingPositionCache.delete(BAGSHQ_MINT);
   }
 
-  // Fixed positions for landmarks (ALWAYS use these, never existingBuilding)
+  // Fixed positions for landmark buildings (City side = left, x < center, scaled)
   const landmarkY = Math.round(480 * SCALE);
-  const skyY = 500;
+  const skyY = 500; // Floating in the sky above the city skyline
   let position: { x: number; y: number };
 
+  // BagsWorld HQ ALWAYS gets sky position - check this FIRST
   if (isBagsWorldHQ) {
+    // BagsWorld HQ: Floating in the sky, center of the park
     position = { x: Math.round(WORLD_WIDTH / 2), y: skyY };
+  } else if (existingBuilding) {
+    // Use existing position for other buildings
+    position = { x: existingBuilding.x, y: existingBuilding.y };
   } else if (isCasino) {
+    // Casino: BagsCity side (far left), Vegas-style landmark
     position = { x: Math.round(80 * SCALE), y: landmarkY };
   } else if (isTradingGym) {
+    // Trading Gym: BagsCity side, prominent position
     position = { x: Math.round(150 * SCALE), y: landmarkY };
   } else if (isPokeCenter) {
+    // PokeCenter: Park side (center-right)
     position = { x: Math.round(280 * SCALE), y: landmarkY };
   } else if (isTreasuryHub) {
+    // Treasury: Center position
     position = { x: WORLD_WIDTH / 2, y: landmarkY };
-  } else if (existingBuilding) {
-    position = { x: existingBuilding.x, y: existingBuilding.y };
   } else {
     position = generateBuildingPosition(index, MAX_BUILDINGS);
   }
