@@ -1,0 +1,71 @@
+# BagsWorld Agents - Render Blueprint
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: bagsworld-agents
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    plan: starter
+
+    # Health check
+    healthCheckPath: /health
+
+    # Environment variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: HOST
+        value: 0.0.0.0
+
+      # Database (from Neon)
+      - key: DATABASE_URL
+        sync: false
+
+      # AI Services
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+      # Telegram Bot
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_DEFAULT_AGENT
+        value: finn
+
+      # BagsWorld API
+      - key: BAGSWORLD_API_URL
+        sync: false
+
+      # CORS (comma-separated list)
+      - key: CORS_ORIGINS
+        sync: false
+
+      # Public URL (for Telegram webhook)
+      - key: PUBLIC_URL
+        fromService:
+          type: web
+          name: bagsworld-agents
+          property: host
+
+    # Auto-deploy on push
+    autoDeploy: true
+
+    # Build command
+    buildCommand: npm ci && npm run build
+
+    # Start command (using built JS)
+    startCommand: node dist/standalone-server.js
+
+# Alternative: Node.js native (no Docker)
+# services:
+#   - type: web
+#     name: bagsworld-agents
+#     runtime: node
+#     region: oregon
+#     plan: starter
+#     buildCommand: npm ci && npm run build
+#     startCommand: node dist/standalone-server.js
+#     healthCheckPath: /health

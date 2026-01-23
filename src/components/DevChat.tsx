@@ -379,25 +379,21 @@ export function DevChat() {
       }
     }
 
-    // Regular chat - send to Claude API
+    // Regular chat - use unified agents API
     setIsLoading(true);
     try {
-      const response = await fetch("/api/agent-chat", {
+      const conversationHistory = messages.slice(-6).map((m) => ({
+        role: m.type === "user" ? "user" : "assistant",
+        content: m.message,
+      }));
+
+      const response = await fetch("/api/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          characterId: "ghost",
+          agentId: "ghost",
           message: userMsg,
-          chatHistory: messages.slice(-6).map((m) => ({
-            role: m.type === "user" ? "user" : "assistant",
-            content: m.message,
-          })),
-          worldState: worldState ? {
-            health: worldState.health,
-            weather: worldState.weather,
-            buildingCount: worldState.buildings.length,
-            populationCount: worldState.population.length,
-          } : undefined,
+          conversationHistory,
         }),
       });
 
@@ -405,7 +401,7 @@ export function DevChat() {
       addMessage({
         id: `${Date.now()}-dev`,
         type: "dev",
-        message: data.message || "connection dropped. try again.",
+        message: data.response || "connection dropped. try again.",
         timestamp: Date.now(),
       });
     } catch (error) {

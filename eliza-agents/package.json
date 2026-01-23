@@ -1,26 +1,43 @@
 {
   "name": "bagsworld-eliza-agents",
   "version": "1.0.0",
-  "description": "ElizaOS agents for BagsWorld - Shaw and friends",
+  "description": "ElizaOS autonomous agents for BagsWorld - Neo, CJ, Finn, Ash, Toly, Shaw, Ghost, and Bags Bot",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "start": "npx tsx src/shaw-standalone.ts",
-    "dev": "npx tsx watch src/shaw-standalone.ts",
-    "shaw": "npx tsx src/shaw-standalone.ts",
-    "start:bun": "bun run src/shaw-standalone.ts",
-    "dev:bun": "bun run --watch src/shaw-standalone.ts",
-    "build": "tsc"
+    "start": "node dist/standalone-server.js",
+    "start:dev": "tsx src/standalone-server.ts",
+    "dev": "tsx --watch src/standalone-server.ts",
+    "build": "tsc",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "test": "vitest",
+    "telegram:setup": "curl -X GET http://localhost:3001/api/telegram/setup"
   },
   "dependencies": {
+    "@elizaos/core": "^1.7.2",
+    "@elizaos/plugin-bootstrap": "^1.7.2",
+    "@elizaos/plugin-sql": "^1.7.2",
+    "@elizaos/plugin-anthropic": "^1.7.2",
+    "@elizaos/plugin-telegram": "^1.7.2",
+    "@elizaos/adapter-postgres": "^1.7.2",
     "@anthropic-ai/sdk": "^0.30.0",
-    "tsx": "^4.7.0"
+    "@neondatabase/serverless": "^1.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "pg": "^8.11.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@types/pg": "^8.10.0",
+    "@types/uuid": "^9.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

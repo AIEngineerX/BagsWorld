@@ -163,24 +163,24 @@ export function AshChat() {
     });
 
     try {
-      // Use ElizaOS-powered endpoint
-      const response = await fetch("/api/eliza-agent", {
+      // Use unified agents API
+      const conversationHistory = messages.slice(-6).map((m) => ({
+        role: m.type === "user" ? "user" : "assistant",
+        content: m.message,
+      }));
+
+      const response = await fetch("/api/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          character: "ash",
+          agentId: "ash",
           message: userMsg,
-          worldState: worldState ? {
-            health: worldState.health,
-            weather: worldState.weather,
-            buildingCount: worldState.buildings.length,
-            populationCount: worldState.population.length,
-          } : undefined,
+          conversationHistory,
         }),
       });
 
       const data = await response.json();
-      const messageText = data.response || data.message || "Great question trainer! Ask me about buildings, fees, or the weather system!";
+      const messageText = data.response || "Great question trainer! Ask me about buildings, fees, or the weather system!";
 
       addMessage({
         id: `${Date.now()}-ash`,
