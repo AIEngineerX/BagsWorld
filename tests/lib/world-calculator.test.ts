@@ -446,8 +446,8 @@ describe("generateBuildingPosition", () => {
       const distance = Math.sqrt(
         Math.pow(pos1.x - pos0.x, 2) + Math.pow(pos1.y - pos0.y, 2)
       );
-      // Slot spacing varies to avoid landmarks, minimum ~140px
-      expect(distance).toBeGreaterThanOrEqual(130);
+      // Fixed slot spacing is 160px (100 * SCALE)
+      expect(distance).toBeGreaterThanOrEqual(100 * SCALE);
     });
   });
 });
