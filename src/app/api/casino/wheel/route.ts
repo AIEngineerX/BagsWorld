@@ -1,6 +1,6 @@
 // Casino Wheel of Fortune API
 import { NextRequest, NextResponse } from "next/server";
-import { getCasinoPot, recordWheelSpin, isNeonConfigured } from "@/lib/neon";
+import { getCasinoPot, recordWheelSpin, isNeonConfigured, getLastWheelSpin } from "@/lib/neon";
 
 // Wheel segments with probabilities
 const WHEEL_SEGMENTS = [
@@ -14,12 +14,11 @@ const WHEEL_SEGMENTS = [
   { label: "JACKPOT", prize: 0.5, weight: 2 },
 ];
 
-// In-memory cooldowns (wallet -> cooldown end timestamp)
-const spinCooldowns = new Map<string, number>();
 const COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
 
-// In-memory pot balance (for development)
-let potBalance = 0.35; // Starting pot
+// Fallback in-memory state (only used when DB unavailable)
+const spinCooldownsFallback = new Map<string, number>();
+let potBalanceFallback = 0.35;
 
 // Simple weighted random selection
 function spinWheel(): { label: string; prize: number } {
@@ -40,18 +39,13 @@ function spinWheel(): { label: string; prize: number } {
 export async function GET(request: NextRequest) {
   try {
     const wallet = request.nextUrl.searchParams.get("wallet");
+    const dbConfigured = isNeonConfigured();
 
-    // Get pot balance from DB or memory
-    let balance = potBalance;
-    if (isNeonConfigured()) {
-      try {
-        const dbPot = await getCasinoPot();
-        if (dbPot !== null) {
-          balance = dbPot;
-        }
-      } catch (err) {
-        console.error("Error getting pot from DB:", err);
-      }
+    // Get pot balance from DB or fallback
+    let balance = potBalanceFallback;
+    if (dbConfigured) {
+      const dbPot = await getCasinoPot();
+      if (dbPot !== null) balance = dbPot;
     }
 
     // Check cooldown for wallet
@@ -59,10 +53,20 @@ export async function GET(request: NextRequest) {
     let cooldownEnds: number | undefined;
 
     if (wallet) {
-      const cooldown = spinCooldowns.get(wallet);
-      if (cooldown && cooldown > Date.now()) {
-        canSpin = false;
-        cooldownEnds = cooldown;
+      if (dbConfigured) {
+        // Use DB-backed cooldown
+        const lastSpin = await getLastWheelSpin(wallet);
+        if (lastSpin && lastSpin + COOLDOWN_MS > Date.now()) {
+          canSpin = false;
+          cooldownEnds = lastSpin + COOLDOWN_MS;
+        }
+      } else {
+        // Fallback to in-memory
+        const cooldown = spinCooldownsFallback.get(wallet);
+        if (cooldown && cooldown > Date.now()) {
+          canSpin = false;
+          cooldownEnds = cooldown;
+        }
       }
     }
 
@@ -92,27 +96,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check cooldown
-    const cooldown = spinCooldowns.get(wallet);
-    if (cooldown && cooldown > Date.now()) {
-      const remaining = Math.ceil((cooldown - Date.now()) / 60000);
-      return NextResponse.json(
-        { error: `Please wait ${remaining} minutes before spinning again` },
-        { status: 429 }
-      );
+    const dbConfigured = isNeonConfigured();
+
+    // Check cooldown from DB or fallback
+    if (dbConfigured) {
+      const lastSpin = await getLastWheelSpin(wallet);
+      if (lastSpin && lastSpin + COOLDOWN_MS > Date.now()) {
+        const remaining = Math.ceil((lastSpin + COOLDOWN_MS - Date.now()) / 60000);
+        return NextResponse.json(
+          { error: `Please wait ${remaining} minutes before spinning again` },
+          { status: 429 }
+        );
+      }
+    } else {
+      const cooldown = spinCooldownsFallback.get(wallet);
+      if (cooldown && cooldown > Date.now()) {
+        const remaining = Math.ceil((cooldown - Date.now()) / 60000);
+        return NextResponse.json(
+          { error: `Please wait ${remaining} minutes before spinning again` },
+          { status: 429 }
+        );
+      }
     }
 
     // Get current pot balance
-    let balance = potBalance;
-    if (isNeonConfigured()) {
-      try {
-        const dbPot = await getCasinoPot();
-        if (dbPot !== null) {
-          balance = dbPot;
-        }
-      } catch (err) {
-        console.error("Error getting pot from DB:", err);
-      }
+    let balance = potBalanceFallback;
+    if (dbConfigured) {
+      const dbPot = await getCasinoPot();
+      if (dbPot !== null) balance = dbPot;
     }
 
     // Check minimum pot
@@ -129,28 +140,26 @@ export async function POST(request: NextRequest) {
     // Cap prize at pot balance
     const actualPrize = Math.min(result.prize, balance);
 
-    // Deduct from pot if won
-    if (actualPrize > 0) {
-      potBalance = Math.max(0, potBalance - actualPrize);
-
-      // Record in DB
-      if (isNeonConfigured()) {
-        try {
-          await recordWheelSpin(wallet, actualPrize, result.label);
-        } catch (err) {
-          console.error("Error recording spin in DB:", err);
-        }
+    // Record spin (also handles pot deduction in DB)
+    if (dbConfigured) {
+      await recordWheelSpin(wallet, actualPrize, result.label);
+      // Refresh balance from DB
+      const newPot = await getCasinoPot();
+      balance = newPot ?? balance - actualPrize;
+    } else {
+      // Fallback: deduct from memory
+      if (actualPrize > 0) {
+        potBalanceFallback = Math.max(0, potBalanceFallback - actualPrize);
       }
+      spinCooldownsFallback.set(wallet, Date.now() + COOLDOWN_MS);
+      balance = potBalanceFallback;
     }
-
-    // Set cooldown
-    spinCooldowns.set(wallet, Date.now() + COOLDOWN_MS);
 
     return NextResponse.json({
       success: true,
       result: result.label,
       prize: actualPrize,
-      newPotBalance: potBalance,
+      newPotBalance: balance,
     });
   } catch (error) {
     console.error("Error in wheel spin:", error);
