@@ -1062,6 +1062,39 @@ export async function recordWheelSpin(
   }
 }
 
+// Get last wheel spin time for a wallet (for cooldown check)
+export async function getLastWheelSpin(wallet: string): Promise<number | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'casino_wheel_spins'
+      )
+    `;
+
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
+      return null;
+    }
+
+    const result = await sql`
+      SELECT created_at FROM casino_wheel_spins
+      WHERE wallet = ${wallet}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    if ((result as unknown[]).length === 0) return null;
+
+    return new Date((result as Array<{ created_at: string }>)[0].created_at).getTime();
+  } catch (error) {
+    console.error("Error getting last wheel spin:", error);
+    return null;
+  }
+}
+
 // Get casino history for a wallet
 export async function getCasinoHistory(
   wallet: string
