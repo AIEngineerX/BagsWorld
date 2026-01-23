@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import type { WorldState, GameCharacter, GameBuilding, ZoneType } from "@/lib/types";
 import { SpeechBubbleManager } from "@/lib/speech-bubble-manager";
 import { getCurrentLine, getActiveConversation } from "@/lib/autonomous-dialogue";
+import { getBuildingSlots } from "@/lib/world-calculator";
 
 // Scale factor for higher resolution (must match BootScene)
 const SCALE = 1.6;
@@ -24,6 +25,7 @@ export class WorldScene extends Phaser.Scene {
   private characterVariants: Map<string, number> = new Map();
   private buildingSprites: Map<string, Phaser.GameObjects.Container> = new Map();
   private buildingInitialized: Set<string> = new Set();
+  private placeholderSlots: Phaser.GameObjects.Container[] = [];
   private weatherEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private clouds: Phaser.GameObjects.Sprite[] = [];
   private decorations: Phaser.GameObjects.Sprite[] = [];
@@ -112,6 +114,9 @@ export class WorldScene extends Phaser.Scene {
 
     // Add animals to the world
     this.createAnimals();
+
+    // Create building placeholder slots
+    this.createPlaceholderSlots();
 
     // Store original positions of decorations and animals for zone transitions
     this.storeOriginalPositions();
@@ -390,6 +395,9 @@ export class WorldScene extends Phaser.Scene {
 
       // Update zone and set up new content
       this.currentZone = newZone;
+
+      // Recreate placeholders for new zone
+      this.createPlaceholderSlots();
 
       // Change ground texture
       this.ground.setTexture(newZone === "trending" ? "concrete" : "grass");
@@ -3062,6 +3070,9 @@ export class WorldScene extends Phaser.Scene {
       return b.zone === this.currentZone;
     });
 
+    // Update placeholder visibility based on occupied slots
+    this.updatePlaceholderVisibility(buildings);
+
     const allBuildingIds = new Set(buildings.map((b) => b.id));
 
     // Only destroy buildings that no longer exist in the world state
@@ -3338,6 +3349,69 @@ export class WorldScene extends Phaser.Scene {
         ease: "Back.easeOut",
       });
     }
+  }
+
+  private createPlaceholderSlots(): void {
+    // Clear existing placeholders
+    this.placeholderSlots.forEach((slot) => slot.destroy());
+    this.placeholderSlots = [];
+
+    const slots = getBuildingSlots(this.currentZone);
+    slots.forEach((slot, index) => {
+      const container = this.add.container(slot.x, slot.y);
+
+      // Subtle dashed outline for empty slot
+      const outline = this.add.graphics();
+      outline.lineStyle(2, 0x4ade80, 0.3);
+      outline.strokeRect(-30, -60, 60, 60);
+      container.add(outline);
+
+      // Small "+" icon in center
+      const plus = this.add.text(0, -30, "+", {
+        fontFamily: "monospace",
+        fontSize: "18px",
+        color: "#4ade80",
+      });
+      plus.setOrigin(0.5, 0.5);
+      plus.setAlpha(0.4);
+      container.add(plus);
+
+      // Slot number label
+      const label = this.add.text(0, -5, `SLOT ${index + 1}`, {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: "#4ade80",
+      });
+      label.setOrigin(0.5, 0.5);
+      label.setAlpha(0.3);
+      container.add(label);
+
+      container.setDepth(1); // Behind buildings
+      container.setAlpha(0.6);
+      this.placeholderSlots.push(container);
+    });
+  }
+
+  private updatePlaceholderVisibility(buildings: GameBuilding[]): void {
+    const slots = getBuildingSlots(this.currentZone);
+    const occupiedSlots = new Set<number>();
+
+    // Find which slots are occupied by buildings
+    buildings.forEach((b) => {
+      if (b.zone === this.currentZone || !b.zone) {
+        slots.forEach((slot, index) => {
+          // Check if building is at this slot position (with tolerance)
+          if (Math.abs(b.x - slot.x) < 50 && Math.abs(b.y - slot.y) < 50) {
+            occupiedSlots.add(index);
+          }
+        });
+      }
+    });
+
+    // Show/hide placeholders based on occupancy
+    this.placeholderSlots.forEach((container, index) => {
+      container.setVisible(!occupiedSlots.has(index));
+    });
   }
 
   private tooltip: Phaser.GameObjects.Container | null = null;

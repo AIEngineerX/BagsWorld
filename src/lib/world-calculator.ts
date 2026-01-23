@@ -37,18 +37,8 @@ function calculateThresholdScore(value: number, t: HealthThresholds): number {
 }
 
 // Position cache to prevent buildings from shifting when rankings change
-// Key: token mint, Value: { x, y, assignedIndex, zone }
-const buildingPositionCache = new Map<string, { x: number; y: number; assignedIndex: number; zone: "main_city" | "trending" }>();
-
-// Hash a string to a number for seeded randomization
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash = hash & hash;
-  }
-  return Math.abs(hash);
-}
+// Key: token mint, Value: { x, y, assignedIndex }
+const buildingPositionCache = new Map<string, { x: number; y: number; assignedIndex: number }>();
 
 /**
  * Calculate world health based on Bags.fm ecosystem activity
@@ -155,92 +145,86 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-// Building slots - single row at ground level, avoiding permanent structure X positions
-// Permanent structures: PokeCenter (448), Treasury (640) in main_city
-// Casino (128), Gym (240) in trending
-const GROUND_Y = Math.round(540 * SCALE); // 864
-
+// Building slot definitions for each zone
+// Slots are fixed positions where buildings can be placed
 const BUILDING_SLOTS = {
   main_city: [
-    // Front row only - avoid x=448 (PokeCenter) and x=640 (Treasury)
-    { x: 200, y: GROUND_Y }, { x: 340, y: GROUND_Y }, { x: 540, y: GROUND_Y },
-    { x: 760, y: GROUND_Y }, { x: 900, y: GROUND_Y }, { x: 1040, y: GROUND_Y },
-    { x: 1140, y: GROUND_Y },
+    // Row 0 (front) - 5 slots
+    { x: 320, y: 864 }, { x: 480, y: 864 }, { x: 640, y: 864 }, { x: 800, y: 864 }, { x: 960, y: 864 },
+    // Row 1 (back) - 5 slots
+    { x: 320, y: 704 }, { x: 480, y: 704 }, { x: 640, y: 704 }, { x: 800, y: 704 }, { x: 960, y: 704 },
   ],
   trending: [
-    // Front row only - avoid x=128 (Casino) and x=240 (Gym)
-    { x: 380, y: GROUND_Y }, { x: 520, y: GROUND_Y }, { x: 660, y: GROUND_Y },
-    { x: 800, y: GROUND_Y }, { x: 940, y: GROUND_Y }, { x: 1080, y: GROUND_Y },
+    // Row 0 (front) - 5 slots
+    { x: 320, y: 864 }, { x: 480, y: 864 }, { x: 640, y: 864 }, { x: 800, y: 864 }, { x: 960, y: 864 },
+    // Row 1 (back) - 5 slots
+    { x: 320, y: 704 }, { x: 480, y: 704 }, { x: 640, y: 704 }, { x: 800, y: 704 }, { x: 960, y: 704 },
   ],
 };
 
+// Export slots for WorldScene to render placeholders
+export function getBuildingSlots(zone: "main_city" | "trending"): Array<{ x: number; y: number }> {
+  return BUILDING_SLOTS[zone];
+}
+
 export function generateBuildingPosition(
   index: number,
-  total: number,
-  zone: "main_city" | "trending" = "main_city"
+  total: number
 ): { x: number; y: number } {
-  const slots = BUILDING_SLOTS[zone];
+  // Use fixed slot positions from main_city (default zone for dynamic buildings)
+  const slots = BUILDING_SLOTS.main_city;
   if (index < slots.length) {
     return { ...slots[index] };
   }
-  // Overflow: continue along ground level
-  const overflowIndex = index - slots.length;
+
+  // Fallback for overflow (shouldn't happen with MAX_BUILDINGS = 20)
+  const GROUND_Y = Math.round(540 * SCALE);
+  const col = index % 5;
+  const row = Math.floor(index / 5);
   return {
-    x: 200 + overflowIndex * 140,
-    y: GROUND_Y,
+    x: 320 + col * 160,
+    y: GROUND_Y - row * 160,
   };
 }
 
 /**
  * Get or create a cached position for a building by its mint address.
- * Uses deterministic randomization based on mint hash for slot and zone assignment.
+ * This prevents buildings from shifting when rankings change.
  */
 export function getCachedBuildingPosition(
   mint: string,
   existingBuildings: Set<string>
-): { x: number; y: number; zone: "main_city" | "trending" } {
+): { x: number; y: number } {
+  // Check if we already have a cached position for this mint
   const cached = buildingPositionCache.get(mint);
   if (cached) {
-    return { x: cached.x, y: cached.y, zone: cached.zone };
+    return { x: cached.x, y: cached.y };
   }
 
-  // Use mint hash to deterministically assign zone (30% trending, 70% main_city)
-  const hash = hashString(mint);
-  const zone: "main_city" | "trending" = (hash % 10) < 3 ? "trending" : "main_city";
-  const slots = BUILDING_SLOTS[zone];
-
-  // Collect used indices for this zone
+  // Find the next available index that's not in use
+  // First, collect all used indices
   const usedIndices = new Set<number>();
   buildingPositionCache.forEach((pos) => {
-    if (pos.zone === zone) {
-      usedIndices.add(pos.assignedIndex);
-    }
+    usedIndices.add(pos.assignedIndex);
   });
 
-  // Use hash to pick a random starting slot, then find first available
-  const startSlot = hash % slots.length;
-  let assignedIndex = startSlot;
-  let attempts = 0;
-  while (usedIndices.has(assignedIndex) && attempts < slots.length) {
-    assignedIndex = (assignedIndex + 1) % slots.length;
-    attempts++;
+  // Find the lowest available index
+  let assignedIndex = 0;
+  while (usedIndices.has(assignedIndex) && assignedIndex < MAX_BUILDINGS) {
+    assignedIndex++;
   }
 
-  // If all slots full, overflow to end
-  if (attempts >= slots.length) {
-    assignedIndex = slots.length + usedIndices.size - slots.length;
-  }
+  // Generate position based on assigned index
+  const position = generateBuildingPosition(assignedIndex, MAX_BUILDINGS);
 
-  const position = generateBuildingPosition(assignedIndex, MAX_BUILDINGS, zone);
-
+  // Cache it
   buildingPositionCache.set(mint, {
     x: position.x,
     y: position.y,
     assignedIndex,
-    zone,
   });
 
-  return { ...position, zone };
+  return position;
 }
 
 /**
@@ -379,32 +363,20 @@ export function transformTokenToBuilding(
   const skyY = 500;
   let position: { x: number; y: number };
 
-  // Track zone for non-landmark buildings
-  let buildingZone: "main_city" | "trending" | undefined;
-
   if (isBagsWorldHQ) {
     position = { x: Math.round(WORLD_WIDTH / 2), y: skyY };
-    buildingZone = undefined; // HQ visible in both zones
   } else if (isCasino) {
     position = { x: Math.round(80 * SCALE), y: landmarkY };
-    buildingZone = "trending";
   } else if (isTradingGym) {
     position = { x: Math.round(150 * SCALE), y: landmarkY };
-    buildingZone = "trending";
   } else if (isPokeCenter) {
     position = { x: Math.round(280 * SCALE), y: landmarkY };
-    buildingZone = "main_city";
   } else if (isTreasuryHub) {
     position = { x: WORLD_WIDTH / 2, y: landmarkY };
-    buildingZone = "main_city";
   } else if (existingBuilding) {
     position = { x: existingBuilding.x, y: existingBuilding.y };
-    buildingZone = existingBuilding.zone;
   } else {
-    // Get randomized position and zone from cache
-    const cached = getCachedBuildingPosition(token.mint, new Set());
-    position = { x: cached.x, y: cached.y };
-    buildingZone = cached.zone;
+    position = generateBuildingPosition(index, MAX_BUILDINGS);
   }
 
   // Check if this is a real token (not a starter/placeholder/treasury)
@@ -414,16 +386,19 @@ export function transformTokenToBuilding(
   // Treasury links to Solscan, real tokens link to Bags.fm, starters have no link
   let tokenUrl: string | undefined;
   if (isTreasuryBuilding) {
+    // Link to Solscan so users can verify the treasury wallet
     tokenUrl = `https://solscan.io/account/${token.creator}`;
   } else if (!isStarterToken) {
     tokenUrl = `https://bags.fm/${token.mint}`;
   }
 
-  // Calculate health with decay system
+  // Calculate health with decay system (uses previous health for smooth transitions)
   const previousHealth = existingBuilding?.health ?? 50;
   const newHealth = calculateBuildingHealth(token.change24h, token.volume24h, previousHealth);
 
-  const zone = buildingZone;
+  // Assign zones: Trading Gym and Casino go to BagsCity, all other buildings go to Park
+  // BagsWorld HQ has NO zone - it floats in the sky visible from both zones
+  const zone = isBagsWorldHQ ? undefined : (isTradingGym || isCasino) ? "trending" as const : "main_city" as const;
 
   // Use level override if set by admin, otherwise calculate from market cap
   // BagsWorld HQ always gets max level (it's the headquarters!)
