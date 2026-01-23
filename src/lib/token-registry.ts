@@ -28,7 +28,7 @@ export interface LaunchedToken {
 
 const STORAGE_KEY = "bagsworld_tokens";
 const GLOBAL_CACHE_KEY = "bagsworld_global_cache";
-const GLOBAL_CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache (increased from 1 min)
+const GLOBAL_CACHE_DURATION = 2 * 60 * 1000; // 2 minute cache
 
 // Cache for global tokens (to avoid excessive API calls)
 let globalTokensCache: { tokens: LaunchedToken[]; timestamp: number } | null = null;
