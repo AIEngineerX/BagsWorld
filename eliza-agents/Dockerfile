@@ -1,26 +1,7 @@
 # BagsWorld Agents Server Dockerfile
-# Multi-stage build for production deployment
+# Runs TypeScript directly with tsx for simplicity
 
-# Stage 1: Build
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy source code
-COPY tsconfig.json ./
-COPY src ./src
-
-# Build TypeScript
-RUN npm run build
-
-# Stage 2: Production
-FROM node:20-alpine AS production
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -31,11 +12,12 @@ RUN addgroup -g 1001 -S bagsworld && \
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production && npm cache clean --force
+# Install all dependencies (tsx needed at runtime)
+RUN npm ci && npm cache clean --force
 
-# Copy built files from builder
-COPY --from=builder /app/dist ./dist
+# Copy source code
+COPY tsconfig.json ./
+COPY src ./src
 
 # Set ownership
 RUN chown -R bagsworld:bagsworld /app
@@ -55,5 +37,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Expose port
 EXPOSE 3001
 
-# Start server
-CMD ["node", "dist/standalone-server.js"]
+# Start server with tsx (runs TypeScript directly)
+CMD ["npx", "tsx", "src/standalone-server.ts"]

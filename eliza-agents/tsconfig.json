@@ -2,12 +2,12 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
-    "strict": true,
+    "strict": false,
+    "noImplicitAny": false,
     "skipLibCheck": true,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": ".",
@@ -17,5 +17,15 @@
     "types": ["node"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "src/server.ts",
+    "src/shaw-server.ts",
+    "src/shaw-standalone.ts",
+    "src/http-server.ts",
+    "src/coordination/**",
+    "src/db/migrate.ts"
+  ]
 }

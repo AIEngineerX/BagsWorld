@@ -1,6 +1,6 @@
 // Bags.fm Service - Handles all Bags.fm API interactions
-import type { Service, IAgentRuntime } from '../../types/elizaos';
-import { logger } from '../../types/elizaos';
+import { Service, logger } from '../../types/elizaos';
+import type { IAgentRuntime } from '../../types/elizaos';
 import type { BagsToken, BagsCreator, WorldState, BagsEvent, BagsFmConfig } from './types';
 
 export class BagsFmService extends Service {

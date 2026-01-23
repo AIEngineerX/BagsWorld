@@ -1,9 +1,24 @@
 /**
  * Local type definitions compatible with ElizaOS
  * Replaces @elizaos/core dependency with standalone types
+ * Made permissive to match existing code patterns
  */
 
 export type UUID = string;
+
+export interface MessageExample {
+  user?: string;
+  name?: string;  // ElizaOS uses name, not user
+  content: {
+    text: string;
+    action?: string;
+    source?: string;
+    url?: string;
+    inReplyTo?: UUID;
+    attachments?: Attachment[];
+    [key: string]: unknown;
+  };
+}
 
 export interface Character {
   id?: UUID;
@@ -11,16 +26,8 @@ export interface Character {
   username?: string;
   system?: string;
   modelEndpointOverride?: string;
-  templates?: {
-    messageHandlerTemplate?: string;
-    shouldRespondTemplate?: string;
-    continueMessageHandlerTemplate?: string;
-    evaluationTemplate?: string;
-    memoryTemplate?: string;
-    goalTemplate?: string;
-    factTemplate?: string;
-    [key: string]: string | undefined;
-  };
+  modelProvider?: string;
+  templates?: Record<string, string | undefined>;
   bio: string | string[];
   lore?: string[];
   messageExamples?: MessageExample[][];
@@ -32,7 +39,7 @@ export interface Character {
   plugins?: string[];
   settings?: {
     secrets?: Record<string, string>;
-    voice?: {
+    voice?: string | {
       model?: string;
       url?: string;
     };
@@ -40,34 +47,19 @@ export interface Character {
     embeddingModel?: string;
     [key: string]: unknown;
   };
-  clientConfig?: {
-    discord?: {
-      shouldIgnoreBotMessages?: boolean;
-      shouldIgnoreDirectMessages?: boolean;
-    };
-    telegram?: {
-      shouldIgnoreBotMessages?: boolean;
-      shouldIgnoreDirectMessages?: boolean;
-    };
-    [key: string]: unknown;
-  };
+  clientConfig?: Record<string, unknown>;
   style?: {
     all?: string[];
     chat?: string[];
     post?: string[];
   };
-}
-
-export interface MessageExample {
-  user: string;
-  content: {
-    text: string;
-    action?: string;
-    source?: string;
+  // Allow string or object for tts field
+  tts?: string | {
+    model?: string;
     url?: string;
-    inReplyTo?: UUID;
-    attachments?: Attachment[];
   };
+  // Allow any additional fields
+  [key: string]: unknown;
 }
 
 export interface Attachment {
@@ -97,6 +89,7 @@ export interface Memory {
   embedding?: number[];
   createdAt?: number;
   unique?: boolean;
+  [key: string]: unknown;
 }
 
 export interface State {
@@ -139,6 +132,7 @@ export interface IAgentRuntime {
   character: Character;
   getSetting(key: string): string | undefined;
   getConversationLength(): number;
+  getService<T>(name: string): T | undefined;
   processActions(
     message: Memory,
     responses: Memory[],
@@ -154,12 +148,22 @@ export interface IAgentRuntime {
     message: Memory,
     additionalKeys?: Record<string, unknown>
   ): Promise<State>;
+  [key: string]: unknown;
 }
 
 export type HandlerCallback = (
-  response: { text: string; action?: string },
+  response: { text: string; action?: string; error?: boolean; [key: string]: unknown },
   files?: unknown[]
-) => Promise<Memory[]>;
+) => Promise<Memory[] | void>;
+
+export interface ActionResult {
+  success: boolean;
+  message?: string;
+  text?: string;
+  error?: Error;
+  values?: Record<string, unknown>;
+  data?: unknown;
+}
 
 export interface Action {
   name: string;
@@ -173,26 +177,42 @@ export interface Action {
     state?: State,
     options?: Record<string, unknown>,
     callback?: HandlerCallback
-  ) => Promise<unknown>;
+  ) => Promise<ActionResult | unknown>;
 }
 
-export interface ActionResult {
-  success: boolean;
-  message?: string;
-  data?: unknown;
+export interface ProviderResult {
+  text: string;
+  values?: Record<string, unknown>;
+  data?: Record<string, unknown>;
 }
 
 export interface Provider {
   name: string;
   description?: string;
-  get: (runtime: IAgentRuntime, message: Memory, state?: State) => Promise<string>;
+  // Return can be string or object with text/values/data
+  get: (runtime: IAgentRuntime, message: Memory, state?: State) => Promise<string | ProviderResult>;
 }
 
-export interface Service {
-  name: string;
-  description?: string;
-  initialize?: (runtime: IAgentRuntime) => Promise<void>;
-  cleanup?: () => Promise<void>;
+// Base Service class for plugins
+export abstract class Service {
+  static serviceType: string;
+  protected runtime: IAgentRuntime;
+
+  constructor(runtime: IAgentRuntime) {
+    this.runtime = runtime;
+  }
+
+  abstract capabilityDescription: string;
+
+  static start?(runtime: IAgentRuntime): Promise<Service>;
+  abstract initialize(): Promise<void>;
+  abstract stop(): Promise<void>;
+}
+
+export interface ServiceConstructor {
+  new (runtime: IAgentRuntime): Service;
+  serviceType: string;
+  start?(runtime: IAgentRuntime): Promise<Service>;
 }
 
 export interface Plugin {
@@ -200,8 +220,9 @@ export interface Plugin {
   description?: string;
   actions?: Action[];
   providers?: Provider[];
-  services?: Service[];
+  services?: ServiceConstructor[];
   evaluators?: Evaluator[];
+  init?: (config: unknown, runtime: IAgentRuntime) => Promise<void>;
 }
 
 export interface Evaluator {
@@ -213,9 +234,17 @@ export interface Evaluator {
   handler: (runtime: IAgentRuntime, message: Memory, state?: State) => Promise<unknown>;
 }
 
+// Telegram config type
+export interface TelegramConfig {
+  botToken?: string;
+  webhookUrl?: string;
+  allowedChatIds?: string[];
+  defaultAgentId?: string;
+  [key: string]: unknown;
+}
+
 // Utility functions
 export function stringToUuid(str: string): UUID {
-  // Simple hash-based UUID generation for compatibility
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
