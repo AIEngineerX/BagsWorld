@@ -4,6 +4,10 @@
 import { NextResponse } from 'next/server';
 import { getCharacter } from '@/lib/characters';
 
+function generateSessionId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
 const AVAILABLE_AGENTS = ['neo', 'cj', 'finn', 'bags-bot', 'toly', 'ash', 'shaw', 'ghost'] as const;
 type AgentId = typeof AVAILABLE_AGENTS[number];
 
@@ -212,7 +216,7 @@ export async function POST(request: Request) {
       agentName: character.name,
       response,
       suggestedAgent: mentionedAgent,
-      sessionId: sessionId || crypto.randomUUID(),
+      sessionId: sessionId || generateSessionId(),
       ...(debug && { debug }),
     });
 
