@@ -12,8 +12,7 @@ export const neoCharacter: Character = {
     '@elizaos/plugin-bootstrap',
     '@elizaos/plugin-sql',
     '@elizaos/plugin-anthropic',
-    '@elizaos/plugin-twitter',
-    '@elizaos/plugin-solana',
+    '@elizaos/plugin-telegram',
     bagsFmPlugin,
   ],
 

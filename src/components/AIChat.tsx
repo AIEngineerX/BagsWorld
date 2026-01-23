@@ -132,28 +132,20 @@ export function AIChat() {
     });
 
     try {
-      // Build world context
-      const worldContext = worldState ? {
-        health: worldState.health,
-        weather: worldState.weather,
-        buildingCount: worldState.buildings.length,
-        populationCount: worldState.population.length,
-        topToken: worldState.buildings
-          .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))[0]?.symbol,
-      } : undefined;
+      // Build conversation history
+      const conversationHistory = messages.slice(-10).map(m => ({
+        role: m.sender === "user" ? "user" : "assistant",
+        content: m.message,
+      }));
 
-      // Call the bot API
-      const response = await fetch("/api/bags-bot", {
+      // Call the unified agents API
+      const response = await fetch("/api/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "chat",
+          agentId: "bags-bot",
           message: userMessage,
-          worldState: worldContext,
-          chatHistory: messages.slice(-10).map(m => ({
-            role: m.sender === "user" ? "user" : "assistant",
-            content: m.message,
-          })),
+          conversationHistory,
         }),
       });
 
@@ -165,7 +157,7 @@ export function AIChat() {
       addMessage({
         id: `${Date.now()}-bot`,
         sender: "bot",
-        message: data.message || "...",
+        message: data.response || "...",
         timestamp: Date.now(),
       });
 

@@ -172,22 +172,19 @@ export function FinnbagsChat() {
     });
 
     try {
-      const response = await fetch("/api/agent-chat", {
+      // Use unified agents API
+      const conversationHistory = messages.slice(-6).map((m) => ({
+        role: m.type === "user" ? "user" : "assistant",
+        content: m.message,
+      }));
+
+      const response = await fetch("/api/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          characterId: "finn",
+          agentId: "finn",
           message: userMsg,
-          chatHistory: messages.slice(-6).map((m) => ({
-            role: m.type === "user" ? "user" : "assistant",
-            content: m.message,
-          })),
-          worldState: worldState ? {
-            health: worldState.health,
-            weather: worldState.weather,
-            buildingCount: worldState.buildings.length,
-            populationCount: worldState.population.length,
-          } : undefined,
+          conversationHistory,
         }),
       });
 
@@ -195,7 +192,7 @@ export function FinnbagsChat() {
       addMessage({
         id: `${Date.now()}-finn`,
         type: "finn",
-        message: data.message || "This is why we built Bags. What else you want to know?",
+        message: data.response || "This is why we built Bags. What else you want to know?",
         timestamp: Date.now(),
       });
     } catch (error) {

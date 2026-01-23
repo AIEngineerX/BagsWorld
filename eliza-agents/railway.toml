@@ -1,0 +1,32 @@
+# BagsWorld Agents - Railway Configuration
+# https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Health check
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+# Number of replicas
+numReplicas = 1
+
+# Restart policy
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Sleep after inactivity (Pro plan)
+# sleepApplication = false
+
+[env]
+NODE_ENV = "production"
+PORT = "3001"
+HOST = "0.0.0.0"
+# DATABASE_URL set via Railway dashboard
+# ANTHROPIC_API_KEY set via Railway dashboard
+# TELEGRAM_BOT_TOKEN set via Railway dashboard
+TELEGRAM_DEFAULT_AGENT = "finn"
+
+# PUBLIC_URL is auto-set by Railway via ${{RAILWAY_PUBLIC_DOMAIN}}
