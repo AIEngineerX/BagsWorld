@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
+import { Press_Start_2P } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+
+const pressStart2P = Press_Start_2P({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-pixel",
+});
 
 export const metadata: Metadata = {
   title: "BagsWorld",
@@ -52,8 +60,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-bags-darker antialiased">
+    <html lang="en" className={pressStart2P.variable}>
+      <body className="min-h-screen bg-bags-darker antialiased font-pixel">
         <Providers>{children}</Providers>
       </body>
     </html>
