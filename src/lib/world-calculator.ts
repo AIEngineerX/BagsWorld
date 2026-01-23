@@ -173,13 +173,13 @@ export function generateBuildingPosition(
   // Front row (row 0) is at ground level, subsequent rows stack upward (behind)
   const baseY = GROUND_Y - row * ROW_SPACING;
 
-  // Use seeded random for consistent small offsets based on index (scaled)
+  // Use seeded random for consistent small X offset based on index (scaled)
+  // Y offset removed - buildings now snap to consistent ground level per row
   const offsetX = (seededRandom(index * 7 + 1) * Math.round(16 * SCALE) - Math.round(8 * SCALE));
-  const offsetY = (seededRandom(index * 13 + 2) * Math.round(12 * SCALE) - Math.round(6 * SCALE)); // Smaller Y offset
 
   return {
     x: rowStartX + col * BUILDING_SPACING + offsetX,
-    y: baseY + offsetY,
+    y: baseY, // Snap to ground level (no random Y offset)
   };
 }
 
