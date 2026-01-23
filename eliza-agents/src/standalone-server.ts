@@ -280,36 +280,49 @@ app.get('/api/telegram/setup', async (req, res) => {
 async function main() {
   console.log('Starting BagsWorld Agents Server...');
 
-  // Initialize database
-  console.log('Initializing database...');
-  const db = getDatabaseAdapter();
-  await db.initialize();
-
-  // Initialize coordination system
-  console.log('Initializing coordination system...');
-  const { bus } = await initializeCoordination();
-
-  // Register all agents with the bus
-  console.log('Registering agents...');
-  const agentIds = getCharacterIds().filter(id => !['bagsbot', 'dev'].includes(id));
-  for (const agentId of agentIds) {
-    const character = getCharacter(agentId);
-    if (character) {
-      bus.registerAgent({
-        id: agentId,
-        character,
-        capabilities: {
-          canGenerateDialogue: true,
-          canReceiveMentions: true,
-          canHandoffConversation: true,
-        },
-        status: 'ready',
-        lastActive: Date.now(),
-      });
+  // Initialize database (optional - server can run without it)
+  const hasDatabase = !!(process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL);
+  if (hasDatabase) {
+    try {
+      console.log('Initializing database...');
+      const db = getDatabaseAdapter();
+      await db.initialize();
+      console.log('Database initialized successfully');
+    } catch (error) {
+      console.warn('Database initialization failed, continuing without persistence:', error);
     }
+  } else {
+    console.log('No database configured, running without persistence');
   }
 
-  console.log(`Registered ${agentIds.length} agents: ${agentIds.join(', ')}`);
+  // Initialize coordination system (optional)
+  try {
+    console.log('Initializing coordination system...');
+    const { bus } = await initializeCoordination();
+
+    // Register all agents with the bus
+    console.log('Registering agents...');
+    const agentIds = getCharacterIds().filter(id => !['bagsbot', 'dev'].includes(id));
+    for (const agentId of agentIds) {
+      const character = getCharacter(agentId);
+      if (character) {
+        bus.registerAgent({
+          id: agentId,
+          character,
+          capabilities: {
+            canGenerateDialogue: true,
+            canReceiveMentions: true,
+            canHandoffConversation: true,
+          },
+          status: 'ready',
+          lastActive: Date.now(),
+        });
+      }
+    }
+    console.log(`Registered ${agentIds.length} agents: ${agentIds.join(', ')}`);
+  } catch (error) {
+    console.warn('Coordination system initialization failed, continuing without it:', error);
+  }
 
   // Start the server
   app.listen(PORT, HOST, () => {
@@ -328,7 +341,11 @@ async function main() {
   // Graceful shutdown
   const shutdown = async () => {
     console.log('\nShutting down...');
-    await cleanupCoordination();
+    try {
+      await cleanupCoordination();
+    } catch (e) {
+      // Ignore cleanup errors
+    }
     process.exit(0);
   };
 
