@@ -6,6 +6,7 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import type { TradeQuote } from "@/lib/types";
+import { getTokenDecimals } from "@/lib/token-balance";
 
 // Helper to deserialize transaction - tries both formats
 function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
@@ -59,13 +60,9 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
     setError(null);
 
     try {
-      // Convert amount to smallest unit
-      // SOL uses 9 decimals (LAMPORTS_PER_SOL = 1e9)
-      // Most Bags.fm tokens use 6 decimals (standard SPL token default)
-      // TODO: For full accuracy, fetch token decimals from chain metadata
-      const amountInSmallestUnit = direction === "buy"
-        ? Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL)
-        : Math.floor(parseFloat(amount) * 1e6);
+      // Fetch actual token decimals from chain metadata
+      const inputDecimals = await getTokenDecimals(connection, inputMint);
+      const amountInSmallestUnit = Math.floor(parseFloat(amount) * Math.pow(10, inputDecimals));
 
       const response = await fetch("/api/trade", {
         method: "POST",
@@ -94,7 +91,7 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
     } finally {
       setIsLoadingQuote(false);
     }
-  }, [amount, direction, inputMint, outputMint, slippage]);
+  }, [amount, direction, inputMint, outputMint, slippage, connection]);
 
   // Debounce quote fetching
   useEffect(() => {

@@ -1,5 +1,39 @@
 import { Connection, PublicKey } from "@solana/web3.js";
+import { getMint } from "@solana/spl-token";
 import { ECOSYSTEM_CONFIG } from "./config";
+
+// Cache token decimals to avoid repeated RPC calls
+const decimalsCache = new Map<string, number>();
+
+/**
+ * Get the decimals for a token mint
+ * @param connection Solana connection
+ * @param tokenMint Token mint address
+ * @returns Number of decimals (default 6 if fetch fails)
+ */
+export async function getTokenDecimals(
+  connection: Connection,
+  tokenMint: string
+): Promise<number> {
+  // Check cache first
+  if (decimalsCache.has(tokenMint)) {
+    return decimalsCache.get(tokenMint)!;
+  }
+
+  // SOL has 9 decimals
+  if (tokenMint === "So11111111111111111111111111111111111111112") {
+    decimalsCache.set(tokenMint, 9);
+    return 9;
+  }
+
+  const mintPubkey = new PublicKey(tokenMint);
+  const mintInfo = await getMint(connection, mintPubkey);
+  const decimals = mintInfo.decimals;
+
+  // Cache the result
+  decimalsCache.set(tokenMint, decimals);
+  return decimals;
+}
 
 // BagsWorld token gate configuration from config
 export const BAGSWORLD_TOKEN_MINT = ECOSYSTEM_CONFIG.casino.gateToken.mint;
