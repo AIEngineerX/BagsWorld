@@ -132,20 +132,13 @@ export function AIChat() {
     });
 
     try {
-      // Build conversation history
-      const conversationHistory = messages.slice(-10).map(m => ({
-        role: m.sender === "user" ? "user" : "assistant",
-        content: m.message,
-      }));
-
-      // Call the unified agents API
-      const response = await fetch("/api/agents", {
+      // Call eliza-agent API (working endpoint)
+      const response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agentId: "bags-bot",
+          character: "bags-bot",
           message: userMessage,
-          conversationHistory,
         }),
       });
 

@@ -172,19 +172,13 @@ export function FinnbagsChat() {
     });
 
     try {
-      // Use unified agents API
-      const conversationHistory = messages.slice(-6).map((m) => ({
-        role: m.type === "user" ? "user" : "assistant",
-        content: m.message,
-      }));
-
-      const response = await fetch("/api/agents", {
+      // Use character-chat API (working endpoint)
+      const response = await fetch("/api/character-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agentId: "finn",
-          message: userMsg,
-          conversationHistory,
+          character: "finn",
+          userMessage: userMsg,
         }),
       });
 
@@ -192,7 +186,7 @@ export function FinnbagsChat() {
       addMessage({
         id: `${Date.now()}-finn`,
         type: "finn",
-        message: data.response || "This is why we built Bags. What else you want to know?",
+        message: data.message || "This is why we built Bags. What else you want to know?",
         timestamp: Date.now(),
       });
     } catch (error) {

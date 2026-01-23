@@ -379,21 +379,15 @@ export function DevChat() {
       }
     }
 
-    // Regular chat - use unified agents API
+    // Regular chat - use character-chat API (working endpoint)
     setIsLoading(true);
     try {
-      const conversationHistory = messages.slice(-6).map((m) => ({
-        role: m.type === "user" ? "user" : "assistant",
-        content: m.message,
-      }));
-
-      const response = await fetch("/api/agents", {
+      const response = await fetch("/api/character-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agentId: "ghost",
-          message: userMsg,
-          conversationHistory,
+          character: "dev",
+          userMessage: userMsg,
         }),
       });
 
@@ -401,7 +395,7 @@ export function DevChat() {
       addMessage({
         id: `${Date.now()}-dev`,
         type: "dev",
-        message: data.response || "connection dropped. try again.",
+        message: data.message || "connection dropped. try again.",
         timestamp: Date.now(),
       });
     } catch (error) {

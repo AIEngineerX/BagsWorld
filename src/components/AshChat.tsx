@@ -163,24 +163,18 @@ export function AshChat() {
     });
 
     try {
-      // Use unified agents API
-      const conversationHistory = messages.slice(-6).map((m) => ({
-        role: m.type === "user" ? "user" : "assistant",
-        content: m.message,
-      }));
-
-      const response = await fetch("/api/agents", {
+      // Use character-chat API (working endpoint)
+      const response = await fetch("/api/character-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agentId: "ash",
-          message: userMsg,
-          conversationHistory,
+          character: "ash",
+          userMessage: userMsg,
         }),
       });
 
       const data = await response.json();
-      const messageText = data.response || "Great question trainer! Ask me about buildings, fees, or the weather system!";
+      const messageText = data.message || "Great question trainer! Ask me about buildings, fees, or the weather system!";
 
       addMessage({
         id: `${Date.now()}-ash`,
