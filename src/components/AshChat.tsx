@@ -163,18 +163,18 @@ export function AshChat() {
     });
 
     try {
-      // Use character-chat API (working endpoint)
-      const response = await fetch("/api/character-chat", {
+      // Use eliza-agent API - routes through ElizaOS on Railway
+      const response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           character: "ash",
-          userMessage: userMsg,
+          message: userMsg,
         }),
       });
 
       const data = await response.json();
-      const messageText = data.message || "Great question trainer! Ask me about buildings, fees, or the weather system!";
+      const messageText = data.response || data.message || "Great question trainer! Ask me about buildings, fees, or the weather system!";
 
       addMessage({
         id: `${Date.now()}-ash`,

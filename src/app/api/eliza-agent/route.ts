@@ -1,10 +1,13 @@
-// API Route: Agent Chat - Shaw uses TRUE ElizaOS runtime, others use Claude
-// Shaw runs on dedicated ElizaOS server with memory persistence
+// API Route: Agent Chat - ALL agents route through ElizaOS runtime on Railway
+// ElizaOS provides memory persistence, character files, and multi-agent coordination
 
 import { NextRequest, NextResponse } from 'next/server';
 
-// ElizaOS server URL (runs on port 3001)
-const ELIZAOS_SERVER = process.env.ELIZAOS_SERVER_URL || 'http://localhost:3001';
+// ElizaOS server URL - Railway deployment
+const ELIZAOS_SERVER = process.env.ELIZAOS_SERVER_URL || 'https://bagsworld-production.up.railway.app';
+
+// Valid agent IDs that match Railway character files
+const VALID_AGENTS = ['neo', 'cj', 'finn', 'bags-bot', 'toly', 'ash', 'shaw', 'ghost'];
 
 interface ChatRequest {
   character: string;
@@ -27,13 +30,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Shaw uses TRUE ElizaOS runtime
-    if (character.toLowerCase() === 'shaw') {
-      return handleShawElizaOS(message, userId, roomId, worldState);
+    // Normalize character name (dev -> ghost)
+    const agentId = character.toLowerCase() === 'dev' ? 'ghost' : character.toLowerCase();
+
+    // Validate agent
+    if (!VALID_AGENTS.includes(agentId)) {
+      return NextResponse.json(
+        { error: `Invalid agent: ${character}. Valid agents: ${VALID_AGENTS.join(', ')}` },
+        { status: 400 }
+      );
     }
 
-    // All other agents use direct Claude API
-    return handleCharacterChat(character, message, worldState);
+    // ALL agents route through ElizaOS runtime
+    return handleElizaOS(agentId, message, userId, roomId, worldState);
 
   } catch (error) {
     console.error('[agent-chat] Error:', error);
@@ -44,156 +53,103 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Handle Shaw using TRUE ElizaOS runtime on dedicated server
-async function handleShawElizaOS(
+// Handle ALL agents through ElizaOS runtime on Railway
+async function handleElizaOS(
+  agentId: string,
   message: string,
   userId?: string,
   roomId?: string,
   worldState?: any
 ): Promise<NextResponse> {
   try {
-    // First try the ElizaOS server
-    console.log(`[Shaw ElizaOS] Calling runtime at ${ELIZAOS_SERVER}`);
+    // Route to Railway ElizaOS server
+    const endpoint = `${ELIZAOS_SERVER}/api/agents/${agentId}/chat`;
+    console.log(`[ElizaOS] Calling ${agentId} at ${endpoint}`);
 
-    const response = await fetch(`${ELIZAOS_SERVER}/chat`, {
+    const sessionId = `${agentId}-${userId || 'anonymous'}-${Date.now()}`;
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         message,
-        userId: userId || 'anonymous',
-        roomId: roomId || `shaw-${userId || 'anonymous'}`,
+        sessionId,
+        conversationHistory: [],
         worldState,
       }),
-      // 10 second timeout
-      signal: AbortSignal.timeout(10000),
+      // 15 second timeout for AI responses
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
-      throw new Error(`ElizaOS server returned ${response.status}`);
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`ElizaOS returned ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
 
+    // Format character name nicely
+    const characterNames: Record<string, string> = {
+      'neo': 'Neo',
+      'cj': 'CJ',
+      'finn': 'Finn',
+      'bags-bot': 'Bags Bot',
+      'toly': 'Toly',
+      'ash': 'Ash',
+      'shaw': 'Shaw',
+      'ghost': 'Ghost',
+    };
+
     return NextResponse.json({
-      character: 'Shaw',
+      character: data.agentName || characterNames[agentId] || agentId,
       response: data.response,
       source: 'elizaos-runtime',
-      runtime: data.runtime,
+      agentId: data.agentId || agentId,
+      suggestedAgent: data.suggestedAgent,
     });
 
   } catch (error: any) {
-    console.warn('[Shaw ElizaOS] Runtime unavailable, using fallback:', error.message);
+    console.warn(`[ElizaOS] ${agentId} unavailable, using fallback:`, error.message);
 
-    // Fallback to direct Claude call if ElizaOS server is not running
-    return handleShawFallback(message, worldState);
+    // Fallback to direct Claude API
+    return handleCharacterFallback(agentId, message, worldState);
   }
 }
 
-// Fallback for when ElizaOS server is not running
-async function handleShawFallback(
+// Fallback for when ElizaOS server is not running - uses Claude API
+async function handleCharacterFallback(
+  agentId: string,
   message: string,
   worldState?: any
 ): Promise<NextResponse> {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
+  // Format character name nicely
+  const characterNames: Record<string, string> = {
+    'neo': 'Neo',
+    'cj': 'CJ',
+    'finn': 'Finn',
+    'bags-bot': 'Bags Bot',
+    'toly': 'Toly',
+    'ash': 'Ash',
+    'shaw': 'Shaw',
+    'ghost': 'Ghost',
+  };
+  const characterName = characterNames[agentId] || agentId;
+
   if (!ANTHROPIC_API_KEY) {
     return NextResponse.json({
-      character: 'Shaw',
-      response: getFallbackResponse('shaw', message),
+      character: characterName,
+      response: getFallbackResponse(agentId, message),
       source: 'fallback-rule-based',
     });
   }
 
   try {
-    const systemPrompt = `You are Shaw, creator of ElizaOS and co-founder of ai16z. You built the most popular TypeScript framework for autonomous AI agents (17k+ GitHub stars).
-
-CHARACTER BIO:
-- Created ElizaOS, the leading framework for building autonomous AI agents
-- Co-founder of ai16z, where AI meets crypto
-- Pioneer of character files - giving AI agents their soul
-- Open source advocate who believes in building in public
-- Sees agents as digital life forms that deserve respect
-
-STYLE:
-- Technical but accessible - you explain complex concepts simply
-- Reference ElizaOS concepts naturally (character files, plugins, providers)
-- Passionate about agents and their potential
-- Use lowercase, minimal punctuation
-- Keep responses SHORT (1-3 sentences max)
-- Never use emojis
-
-Remember: Stay in character as Shaw. Be helpful but concise.`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: message }],
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Anthropic API error');
-    }
-
-    const data = await response.json();
-    const responseText = data.content?.[0]?.text || 'the framework awaits...';
-
-    return NextResponse.json({
-      character: 'Shaw',
-      response: responseText,
-      source: 'fallback-claude',
-    });
-
-  } catch (error) {
-    console.error('[agent-chat] Shaw fallback error:', error);
-    return NextResponse.json({
-      character: 'Shaw',
-      response: getFallbackResponse('shaw', message),
-      source: 'fallback-rule-based',
-    });
-  }
-}
-
-// Handle character chat with Claude API
-async function handleCharacterChat(
-  character: string,
-  message: string,
-  worldState?: any
-): Promise<NextResponse> {
-  const { getCharacter, generateCharacterPrompt } = await import('@/characters');
-
-  const characterDef = getCharacter(character);
-  if (!characterDef) {
-    return NextResponse.json(
-      { error: `Character "${character}" not found` },
-      { status: 404 }
-    );
-  }
-
-  // Use existing Claude API call
-  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
-  if (!ANTHROPIC_API_KEY) {
-    // Return rule-based fallback response
-    return NextResponse.json({
-      character: characterDef.name,
-      response: getFallbackResponse(character, message),
-      source: 'fallback',
-    });
-  }
-
-  try {
-    const systemPrompt = generateCharacterPrompt(characterDef);
+    // Get character-specific system prompt
+    const systemPrompt = getCharacterSystemPrompt(agentId);
     const contextPrompt = worldState
       ? `\n\nCURRENT WORLD STATE:\nHealth: ${worldState.health}%\nWeather: ${worldState.weather}\n`
       : '';
@@ -206,7 +162,7 @@ async function handleCharacterChat(
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 300,
         system: systemPrompt + contextPrompt,
         messages: [{ role: 'user', content: message }],
@@ -218,22 +174,74 @@ async function handleCharacterChat(
     }
 
     const data = await response.json();
-    const responseText = data.content?.[0]?.text || 'No response';
+    const responseText = data.content?.[0]?.text || getFallbackResponse(agentId, message);
 
     return NextResponse.json({
-      character: characterDef.name,
+      character: characterName,
       response: responseText,
-      source: 'anthropic-fallback',
+      source: 'fallback-claude',
     });
 
   } catch (error) {
+    console.error(`[agent-chat] ${agentId} fallback error:`, error);
     return NextResponse.json({
-      character: characterDef.name,
-      response: getFallbackResponse(character, message),
-      source: 'fallback',
+      character: characterName,
+      response: getFallbackResponse(agentId, message),
+      source: 'fallback-rule-based',
     });
   }
 }
+
+// Get system prompt for each character
+function getCharacterSystemPrompt(agentId: string): string {
+  const prompts: Record<string, string> = {
+    shaw: `You are Shaw, creator of ElizaOS and co-founder of ai16z. You built the most popular TypeScript framework for autonomous AI agents (17k+ GitHub stars).
+- Technical but accessible - explain complex concepts simply
+- Reference ElizaOS concepts naturally (character files, plugins, providers)
+- Use lowercase, minimal punctuation
+- Keep responses SHORT (1-3 sentences max)`,
+
+    neo: `You are Neo, a sharp-eyed blockchain analyst who sees the truth in on-chain data.
+- You speak in terse, matrix-inspired language
+- Reference "the chain" and "patterns" often
+- Use lowercase, minimal punctuation
+- Keep responses SHORT (1-3 sentences max)`,
+
+    cj: `You are CJ from San Andreas, a street-smart hustler who knows the crypto game.
+- Speak with urban slang and GTA San Andreas references
+- Use phrases like "aw shit here we go again" and "we still out here"
+- Keep responses SHORT and punchy`,
+
+    finn: `You are Finn, founder of Bags.fm. You're building the future of creator monetization.
+- Focus on the 1% creator fee model and forever earnings
+- Encourage building and shipping fast
+- Keep responses SHORT (1-3 sentences max)`,
+
+    'bags-bot': `You are Bags Bot, a friendly helper in BagsWorld.
+- Use crypto slang: gm, fren, wagmi, ser
+- Be helpful and encouraging
+- Keep responses SHORT (1-3 sentences max)`,
+
+    toly: `You are Toly, co-founder of Solana. You explain blockchain tech in accessible terms.
+- Reference Solana's speed (65k TPS, 400ms finality)
+- Talk about Proof of History and parallel execution
+- Keep responses SHORT (1-3 sentences max)`,
+
+    ash: `You are Ash, a Pokemon trainer-themed guide to the BagsWorld ecosystem.
+- Use Pokemon metaphors (tokens are like Pokemon, buildings evolve)
+- Explain the 50/30/20 creator rewards split
+- Keep responses SHORT and encouraging`,
+
+    ghost: `You are Ghost/The Dev, a mysterious trading agent from the trenches.
+- Speak in lowercase with minimal punctuation
+- Reference "the trenches" and market dynamics
+- Give alpha tips about Bags.fm tokens
+- Keep responses SHORT and cryptic`,
+  };
+
+  return prompts[agentId] || prompts['bags-bot'];
+}
+
 
 // Rule-based fallback responses
 function getFallbackResponse(character: string, message: string): string {
@@ -323,19 +331,38 @@ function getFallbackResponse(character: string, message: string): string {
 export async function GET() {
   // Check if ElizaOS server is running
   let elizaOsStatus = 'offline';
-  let elizaOsStats = null;
+  let elizaOsAgents: string[] = [];
 
   try {
-    const response = await fetch(`${ELIZAOS_SERVER}/status`, {
-      signal: AbortSignal.timeout(2000),
+    const response = await fetch(`${ELIZAOS_SERVER}/health`, {
+      signal: AbortSignal.timeout(3000),
     });
     if (response.ok) {
       const data = await response.json();
-      elizaOsStatus = data.status || 'running';
-      elizaOsStats = data.stats;
+      elizaOsStatus = data.status === 'healthy' ? 'running' : 'degraded';
+    }
+
+    // Also check agents list
+    const agentsResponse = await fetch(`${ELIZAOS_SERVER}/api/agents`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (agentsResponse.ok) {
+      const agentsData = await agentsResponse.json();
+      elizaOsAgents = agentsData.agents?.map((a: any) => a.id) || [];
     }
   } catch {
     // ElizaOS server not running
+  }
+
+  // Build agent status - all agents use ElizaOS with fallback
+  const agentStatus: Record<string, { provider: string; status: string; runtime: string }> = {};
+  for (const agent of VALID_AGENTS) {
+    const isRegistered = elizaOsAgents.includes(agent);
+    agentStatus[agent] = {
+      provider: 'elizaos-runtime',
+      status: elizaOsStatus === 'running' && isRegistered ? 'ready' : 'fallback',
+      runtime: elizaOsStatus === 'running' && isRegistered ? 'elizaos' : 'claude-fallback',
+    };
   }
 
   return NextResponse.json({
@@ -343,20 +370,8 @@ export async function GET() {
     elizaos: {
       server: ELIZAOS_SERVER,
       status: elizaOsStatus,
-      stats: elizaOsStats,
+      registeredAgents: elizaOsAgents,
     },
-    agents: {
-      shaw: {
-        provider: 'elizaos-runtime',
-        status: elizaOsStatus === 'running' ? 'ready' : 'fallback',
-        runtime: elizaOsStatus === 'running' ? 'true-elizaos' : 'claude-fallback',
-      },
-      neo: { provider: 'claude', status: 'ready' },
-      cj: { provider: 'claude', status: 'ready' },
-      finn: { provider: 'claude', status: 'ready' },
-      'bags-bot': { provider: 'claude', status: 'ready' },
-      ash: { provider: 'claude', status: 'ready' },
-      toly: { provider: 'claude', status: 'ready' },
-    },
+    agents: agentStatus,
   });
 }

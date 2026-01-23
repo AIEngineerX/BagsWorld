@@ -145,18 +145,18 @@ export function TolyChat() {
     });
 
     try {
-      // Use character-chat API (working endpoint)
-      const response = await fetch("/api/character-chat", {
+      // Use eliza-agent API - routes through ElizaOS on Railway
+      const response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           character: "toly",
-          userMessage: userMsg,
+          message: userMsg,
         }),
       });
 
       const data = await response.json();
-      const messageText = data.message || "interesting question ser. ask me about Solana or the ecosystem!";
+      const messageText = data.response || data.message || "interesting question ser. ask me about Solana or the ecosystem!";
 
       addMessage({
         id: `${Date.now()}-toly`,
