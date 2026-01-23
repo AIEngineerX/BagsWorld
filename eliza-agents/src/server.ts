@@ -1,7 +1,8 @@
 // BagsWorld Agent Server
 // Provides REST API for BagsWorld frontend to communicate with ElizaOS agents
 
-import { AgentRuntime, type Character, type Memory, stringToUuid } from '@elizaos/core';
+import type { Character, Memory } from './types/elizaos';
+import { stringToUuid } from './types/elizaos';
 import { characters, getCharacter } from './characters';
 
 interface ChatRequest {

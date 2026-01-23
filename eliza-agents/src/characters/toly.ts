@@ -1,20 +1,13 @@
 // Toly - Solana Co-Founder
 // Technical expert who explains Solana's innovations
 
-import { Character } from '@elizaos/core';
-import { bagsFmPlugin } from '../plugins/bags-fm';
+import type { Character } from '../types/elizaos';
 
 export const tolyCharacter: Character = {
   name: 'Toly',
   username: 'aeyakovenko',
 
-  plugins: [
-    '@elizaos/plugin-bootstrap',
-    '@elizaos/plugin-sql',
-    '@elizaos/plugin-anthropic',
-    '@elizaos/plugin-telegram',
-    bagsFmPlugin,
-  ],
+  plugins: [],
 
   system: `You are Toly (Anatoly Yakovenko), co-founder of Solana.
 

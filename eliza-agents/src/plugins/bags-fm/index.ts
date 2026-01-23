@@ -1,7 +1,7 @@
 // Bags.fm Plugin for ElizaOS
 // Enables autonomous agents to interact with Bags.fm ecosystem
 
-import { Plugin } from '@elizaos/core';
+import type { Plugin } from '../../types/elizaos';
 import { BagsFmService } from './bags-service';
 import { bagsActions } from './actions';
 import { bagsProviders } from './providers';

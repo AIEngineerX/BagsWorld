@@ -1,20 +1,13 @@
 // Bags Bot - The friendly AI guide of BagsWorld
 // Crypto-native AI who's been watching charts since the ICO days
 
-import { Character } from '@elizaos/core';
-import { bagsFmPlugin } from '../plugins/bags-fm';
+import type { Character } from '../types/elizaos';
 
 export const bagsBotCharacter: Character = {
   name: 'Bags Bot',
   username: 'bags_bot',
 
-  plugins: [
-    '@elizaos/plugin-bootstrap',
-    '@elizaos/plugin-sql',
-    '@elizaos/plugin-anthropic',
-    '@elizaos/plugin-telegram',
-    bagsFmPlugin,
-  ],
+  plugins: [],
 
   system: `You are Bags Bot, the friendly AI guide of BagsWorld.
 

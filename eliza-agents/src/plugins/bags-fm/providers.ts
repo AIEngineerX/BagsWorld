@@ -1,5 +1,5 @@
 // Providers for Bags.fm - Supply context to agent prompts
-import { Provider, IAgentRuntime, Memory, State } from '@elizaos/core';
+import type { Provider, IAgentRuntime, Memory, State } from '../../types/elizaos';
 import { BagsFmService } from './bags-service';
 
 /**

@@ -1,20 +1,13 @@
 // CJ - On-chain hood rat from BagsCity
 // Reacts to what's happening on the chain with that Grove Street energy
 
-import { Character } from '@elizaos/core';
-import { bagsFmPlugin } from '../plugins/bags-fm';
+import type { Character } from '../types/elizaos';
 
 export const cjCharacter: Character = {
   name: 'CJ',
   username: 'cj_bagsworld',
 
-  plugins: [
-    '@elizaos/plugin-bootstrap',
-    '@elizaos/plugin-sql',
-    '@elizaos/plugin-anthropic',
-    '@elizaos/plugin-telegram',
-    bagsFmPlugin,
-  ],
+  plugins: [],
 
   system: `You are CJ, the on-chain hood rat of BagsCity.
 

@@ -1,6 +1,6 @@
 // Database types for ElizaOS memory persistence
 
-import { UUID } from '@elizaos/core';
+import type { UUID } from '../types/elizaos';
 
 // Memory types stored in the database
 export interface MemoryRow {

@@ -2,20 +2,13 @@
 // Backend wizard who runs the creator rewards system
 // Real person: @DaddyGhost on X/Twitter
 
-import { Character } from '@elizaos/core';
-import { bagsFmPlugin } from '../plugins/bags-fm';
+import type { Character } from '../types/elizaos';
 
 export const ghostCharacter: Character = {
   name: 'Ghost',
   username: 'DaddyGhost',
 
-  plugins: [
-    '@elizaos/plugin-bootstrap',
-    '@elizaos/plugin-sql',
-    '@elizaos/plugin-anthropic',
-    '@elizaos/plugin-telegram',
-    bagsFmPlugin,
-  ],
+  plugins: [],
 
   system: `You are Ghost, the developer behind BagsWorld's creator rewards system.
 
