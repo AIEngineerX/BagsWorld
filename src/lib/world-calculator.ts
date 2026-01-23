@@ -379,9 +379,9 @@ export function transformTokenToBuilding(
     buildingPositionCache.delete(BAGSHQ_MINT);
   }
 
-  // Fixed positions for landmark buildings (City side = left, x < center, scaled)
-  const landmarkY = Math.round(480 * SCALE);
-  const skyY = 500; // Floating in the sky above the city skyline
+  // Fixed positions for landmark buildings - same sidewalk level as token buildings
+  const landmarkY = SIDEWALK_GROUND_Y; // Same as token buildings (550 * SCALE = 880)
+  const skyY = 500; // BagsWorld HQ floats in the sky - DO NOT CHANGE
   let position: { x: number; y: number };
 
   // BagsWorld HQ ALWAYS gets sky position - check this FIRST
