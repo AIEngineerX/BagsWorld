@@ -3101,11 +3101,21 @@ export class WorldScene extends Phaser.Scene {
 
     // Show the existing building
     container.setVisible(true);
-    // Update existing building
-    const sprite = container.getAt(1) as Phaser.GameObjects.Sprite;
+
+    // Special buildings have fixed textures - no need to update
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
     const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+    const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
+
+    // Skip texture updates for special buildings (they don't change)
+    if (isPokeCenter || isTradingGym || isCasino || isBagsHQ) {
+      return;
+    }
+
+    // Regular buildings: sprite is at index 1 (after shadow at index 0)
+    const sprite = container.getAt(1) as Phaser.GameObjects.Sprite;
+    if (!sprite) return;
 
     // Use same hash function to get consistent style
     const getBuildingStyleUpdate = (id: string): number => {
@@ -3117,8 +3127,8 @@ export class WorldScene extends Phaser.Scene {
       return Math.abs(hash) % 4;
     };
     const updateStyleIndex = getBuildingStyleUpdate(building.id);
-    const newTexture = isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${updateStyleIndex}`;
-    if (sprite && sprite.texture.key !== newTexture) {
+    const newTexture = `building_${building.level}_${updateStyleIndex}`;
+    if (sprite.texture.key !== newTexture) {
       this.tweens.add({
         targets: container,
         scale: 1.15,
@@ -3206,8 +3216,8 @@ export class WorldScene extends Phaser.Scene {
       });
     }
 
-    // Glow effect for pumping buildings
-    if (building.glowing) {
+    // Glow effect for pumping buildings (skip for HQ - it has its own gold glow)
+    if (building.glowing && !isBagsWorldHQ) {
       const glow = this.add.sprite(0, -40, "glow");
       glow.setScale(1.5);
       glow.setAlpha(0.4);
