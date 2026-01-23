@@ -136,27 +136,22 @@ export function AgentDialogue() {
   return (
     <div className="h-full flex flex-col bg-bags-darker">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b-2 border-bags-green/30">
-        <div className="flex items-center gap-2">
-          <span className="font-pixel text-[10px] text-bags-gold">[CHAT]</span>
-          {isTyping && (
-            <span className="font-pixel text-[8px] text-gray-500 animate-pulse">...</span>
-          )}
-        </div>
+      <div className="flex items-center justify-between p-2 border-b-2 border-bags-green/30">
+        <span className="font-pixel text-[9px] text-bags-gold">[AGENT CHAT]</span>
         <button
           onClick={fetchDialogue}
           disabled={isLoading}
-          className="font-pixel text-[8px] text-bags-green hover:text-bags-gold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="font-pixel text-[8px] text-bags-green hover:text-bags-gold disabled:opacity-50"
         >
-          {isLoading ? "[...]" : "[NEW]"}
+          {isLoading ? "..." : "[NEW]"}
         </button>
       </div>
 
       {/* Topic Banner */}
       {dialogue && (
-        <div className="px-3 py-1 bg-bags-green/5 border-b border-bags-green/20">
-          <p className="font-pixel text-[7px] text-gray-400 truncate">
-            <span className="text-bags-gold">{dialogue.topic}</span>
+        <div className="p-2 bg-bags-green/5 border-b border-bags-green/20">
+          <p className="font-pixel text-[7px] text-bags-gold truncate">
+            {dialogue.topic}
           </p>
         </div>
       )}
@@ -164,7 +159,7 @@ export function AgentDialogue() {
       {/* Messages Container */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 space-y-2"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-2"
       >
         {isLoading && !dialogue && (
           <div className="flex items-center justify-center h-full">
@@ -189,49 +184,52 @@ export function AgentDialogue() {
           </div>
         )}
 
-        {dialogue && dialogue.turns.slice(0, displayedTurns).map((turn, index) => {
-          const style = getAgentStyle(turn.speaker);
-          return (
-            <div
-              key={`${turn.speaker}-${index}`}
-              className={`p-2 border-l-2 ${style.border} ${style.bg} animate-fade-in w-full`}
-            >
-              <p className={`font-pixel text-[8px] ${style.text} mb-1`}>
-                {turn.speakerName}
-              </p>
-              <p className="font-pixel text-[7px] text-white/90 leading-normal break-words whitespace-pre-wrap">
-                {turn.message}
-              </p>
-            </div>
-          );
-        })}
+        <div className="space-y-1">
+          {dialogue && dialogue.turns.slice(0, displayedTurns).map((turn, index) => {
+            const style = getAgentStyle(turn.speaker);
+            return (
+              <div
+                key={`${turn.speaker}-${index}`}
+                className={`p-2 border-l-2 ${style.border} ${style.bg}`}
+                style={{ marginLeft: 0, marginRight: 0 }}
+              >
+                <span className={`font-pixel text-[8px] ${style.text}`}>
+                  {turn.speakerName}:
+                </span>
+                <p className="font-pixel text-[7px] text-white/90 mt-0.5" style={{ wordBreak: 'break-word' }}>
+                  {turn.message}
+                </p>
+              </div>
+            );
+          })}
 
-        {/* Typing Indicator */}
-        {isTyping && dialogue && displayedTurns < dialogue.turns.length && (() => {
-          const nextSpeaker = dialogue.turns[displayedTurns]?.speaker;
-          const nextStyle = nextSpeaker ? getAgentStyle(nextSpeaker) : DEFAULT_COLOR;
-          return (
-            <div className={`p-2 border-l-2 ${nextStyle.border} ${nextStyle.bg} opacity-60 w-full`}>
-              <p className={`font-pixel text-[8px] ${nextStyle.text} animate-pulse`}>
-                {dialogue.turns[displayedTurns]?.speakerName || "Agent"} is typing...
-              </p>
-            </div>
-          );
-        })()}
+          {/* Typing Indicator */}
+          {isTyping && dialogue && displayedTurns < dialogue.turns.length && (() => {
+            const nextSpeaker = dialogue.turns[displayedTurns]?.speaker;
+            const nextStyle = nextSpeaker ? getAgentStyle(nextSpeaker) : DEFAULT_COLOR;
+            return (
+              <div className={`p-2 border-l-2 ${nextStyle.border} ${nextStyle.bg} opacity-60`}>
+                <span className={`font-pixel text-[8px] ${nextStyle.text} animate-pulse`}>
+                  {dialogue.turns[displayedTurns]?.speakerName || "Agent"} is typing...
+                </span>
+              </div>
+            );
+          })()}
+        </div>
 
         <div ref={messagesEndRef} />
       </div>
 
       {/* Participants Footer */}
       {dialogue && (
-        <div className="px-3 py-2 border-t-2 border-bags-green/30 bg-bags-dark">
-          <div className="flex items-center gap-1 flex-wrap justify-center">
+        <div className="p-2 border-t-2 border-bags-green/30 bg-bags-dark">
+          <div className="flex items-center gap-1 flex-wrap">
             {dialogue.participants.map((p) => {
               const style = getAgentStyle(p.id);
               return (
                 <span
                   key={p.id}
-                  className={`font-pixel text-[7px] px-1 py-0.5 border ${style.border} ${style.bg} ${style.text}`}
+                  className={`font-pixel text-[6px] px-1 border ${style.border} ${style.text}`}
                 >
                   {p.name}
                 </span>
