@@ -138,22 +138,13 @@ export function CJChat() {
     setIsLoading(true);
 
     try {
-      // Use unified agents API
-      const conversationHistory = messages
-        .filter(m => m.type === 'user' || m.type === 'cj')
-        .slice(-10)
-        .map(m => ({
-          role: m.type === 'user' ? 'user' : 'assistant',
-          content: m.message,
-        }));
-
-      const response = await fetch("/api/agents", {
+      // Use eliza-agent API (working endpoint)
+      const response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agentId: "cj",
+          character: "cj",
           message: userMessage,
-          conversationHistory,
         }),
       });
 

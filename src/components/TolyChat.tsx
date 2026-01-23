@@ -145,24 +145,18 @@ export function TolyChat() {
     });
 
     try {
-      // Use unified agents API
-      const conversationHistory = messages.slice(-6).map((m) => ({
-        role: m.type === "user" ? "user" : "assistant",
-        content: m.message,
-      }));
-
-      const response = await fetch("/api/agents", {
+      // Use character-chat API (working endpoint)
+      const response = await fetch("/api/character-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agentId: "toly",
-          message: userMsg,
-          conversationHistory,
+          character: "toly",
+          userMessage: userMsg,
         }),
       });
 
       const data = await response.json();
-      const messageText = data.response || "interesting question ser. ask me about Solana or the ecosystem!";
+      const messageText = data.message || "interesting question ser. ask me about Solana or the ecosystem!";
 
       addMessage({
         id: `${Date.now()}-toly`,
