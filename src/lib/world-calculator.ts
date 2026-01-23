@@ -145,41 +145,64 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
+// Ground level - SAME as landmarks (480 * SCALE = 768)
+const LANDMARK_GROUND_Y = Math.round(480 * SCALE);
+
+// Zone definitions for token-launched buildings
+// Left zone (BagsCity side): x 100-550, avoiding landmarks at 128, 240, 448
+// Right zone (Park side): x 730-1180, clear of landmarks
+const LEFT_ZONE_START = 100;
+const LEFT_ZONE_END = 550;
+const RIGHT_ZONE_START = 730;
+const RIGHT_ZONE_END = 1180;
+const MIN_SLOT_SPACING = Math.round(100 * SCALE); // Minimum gap between buildings
+
+// Landmark X positions to avoid (with clearance)
+const LANDMARK_X_POSITIONS = [
+  Math.round(80 * SCALE),   // Casino (128)
+  Math.round(150 * SCALE),  // TradingGym (240)
+  Math.round(280 * SCALE),  // PokeCenter (448)
+  WORLD_WIDTH / 2,          // HQ/Treasury (640)
+];
+const LANDMARK_CLEARANCE = 80; // Pixels to stay clear of landmarks
+
+// Generate available slots for each zone, avoiding landmarks
+function generateZoneSlots(zoneStart: number, zoneEnd: number): number[] {
+  const slots: number[] = [];
+  for (let x = zoneStart; x <= zoneEnd; x += MIN_SLOT_SPACING) {
+    // Check if this X is clear of all landmarks
+    const isClear = LANDMARK_X_POSITIONS.every(
+      landmarkX => Math.abs(x - landmarkX) >= LANDMARK_CLEARANCE
+    );
+    if (isClear) {
+      slots.push(x);
+    }
+  }
+  return slots;
+}
+
+// Pre-compute available slots for both zones
+const LEFT_ZONE_SLOTS = generateZoneSlots(LEFT_ZONE_START, LEFT_ZONE_END);
+const RIGHT_ZONE_SLOTS = generateZoneSlots(RIGHT_ZONE_START, RIGHT_ZONE_END);
+
 export function generateBuildingPosition(
   index: number,
   total: number
 ): { x: number; y: number } {
-  // Use a fixed grid layout with deterministic small offsets
-  const maxCols = 5; // Maximum 5 buildings per row
-  const actualTotal = Math.min(total, MAX_BUILDINGS);
-  const rows = Math.ceil(actualTotal / maxCols);
+  // Alternate between zones: even index → left zone, odd index → right zone
+  const useLeftZone = index % 2 === 0;
+  const slots = useLeftZone ? LEFT_ZONE_SLOTS : RIGHT_ZONE_SLOTS;
 
-  const row = Math.floor(index / maxCols);
-  const col = index % maxCols;
+  // Pick slot based on index (divide by 2 since we alternate zones)
+  const slotIndex = Math.floor(index / 2) % slots.length;
+  const baseX = slots[slotIndex] || (useLeftZone ? LEFT_ZONE_START : RIGHT_ZONE_START);
 
-  // Calculate how many buildings in this row
-  const buildingsInThisRow = row < rows - 1 ? maxCols : actualTotal - (rows - 1) * maxCols;
-
-  // Center the buildings horizontally
-  const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
-  const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
-
-  // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area, scaled)
-  // Buildings use origin(0.5, 1), so y position is their bottom edge
-  // Stack rows upward from ground level with spacing
-  const GROUND_Y = Math.round(540 * SCALE); // Where buildings sit on the ground
-  const ROW_SPACING = Math.round(100 * SCALE); // Vertical spacing between rows (slightly less than horizontal)
-
-  // Front row (row 0) is at ground level, subsequent rows stack upward (behind)
-  const baseY = GROUND_Y - row * ROW_SPACING;
-
-  // Use seeded random for consistent small offsets based on index (scaled)
-  const offsetX = (seededRandom(index * 7 + 1) * Math.round(16 * SCALE) - Math.round(8 * SCALE));
-  const offsetY = (seededRandom(index * 13 + 2) * Math.round(12 * SCALE) - Math.round(6 * SCALE)); // Smaller Y offset
+  // Small deterministic X offset for visual variety (±8 pixels)
+  const offsetX = (seededRandom(index * 7 + 1) * 16 - 8);
 
   return {
-    x: rowStartX + col * BUILDING_SPACING + offsetX,
-    y: baseY + offsetY,
+    x: baseX + offsetX,
+    y: LANDMARK_GROUND_Y, // Same ground level as landmarks - NO random Y offset
   };
 }
 
@@ -194,7 +217,8 @@ export function getCachedBuildingPosition(
   // Check if we already have a cached position for this mint
   const cached = buildingPositionCache.get(mint);
   if (cached) {
-    return { x: cached.x, y: cached.y };
+    // Always use correct ground level (in case old cache has wrong Y)
+    return { x: cached.x, y: LANDMARK_GROUND_Y };
   }
 
   // Find the next available index that's not in use
