@@ -1,7 +1,7 @@
 // BagsWorld Character Registry
 // All autonomous agents powered by ElizaOS
 
-import { Character } from '@elizaos/core';
+import type { Character } from '../types/elizaos';
 
 // Export individual characters
 export { neoCharacter } from './neo';

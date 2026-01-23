@@ -6,7 +6,7 @@ import { getSharedContext } from '../coordination/shared-context';
 import { getDialogueManager } from '../coordination/dialogue-manager';
 import { getCharacter, getCharacterIds, allCharacters } from '../characters';
 import { createLogger } from '../utils/logger';
-import type { Character } from '@elizaos/core';
+import type { Character } from '../types/elizaos';
 
 // Configuration type for bot initialization
 export interface TelegramConfig {

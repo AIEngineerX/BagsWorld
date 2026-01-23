@@ -1,5 +1,5 @@
 // Actions for Bags.fm - Define what agents can DO
-import { Action, ActionResult, IAgentRuntime, Memory, State, HandlerCallback } from '@elizaos/core';
+import type { Action, ActionResult, IAgentRuntime, Memory, State, HandlerCallback } from '../../types/elizaos';
 import { BagsFmService } from './bags-service';
 
 /**

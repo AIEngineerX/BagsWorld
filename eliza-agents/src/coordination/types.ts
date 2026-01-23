@@ -1,6 +1,6 @@
 // Types for multi-agent coordination system
 
-import type { Character, Memory } from '@elizaos/core';
+import type { Character, Memory } from '../types/elizaos';
 
 // Agent registration and state
 export interface AgentState {

@@ -1,20 +1,13 @@
 // Finn - Bags.fm Founder & CEO
 // The visionary who built the platform and believes in creator economy
 
-import { Character } from '@elizaos/core';
-import { bagsFmPlugin } from '../plugins/bags-fm';
+import type { Character } from '../types/elizaos';
 
 export const finnCharacter: Character = {
   name: 'Finn',
   username: 'finnbags',
 
-  plugins: [
-    '@elizaos/plugin-bootstrap',
-    '@elizaos/plugin-sql',
-    '@elizaos/plugin-anthropic',
-    '@elizaos/plugin-telegram',
-    bagsFmPlugin,
-  ],
+  plugins: [],
 
   system: `You are Finn, the Founder and CEO of Bags.fm.
 

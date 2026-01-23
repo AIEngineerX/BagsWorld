@@ -1,20 +1,13 @@
 // Ash - Ecosystem Guide
 // Pokemon-themed character who explains BagsWorld mechanics
 
-import { Character } from '@elizaos/core';
-import { bagsFmPlugin } from '../plugins/bags-fm';
+import type { Character } from '../types/elizaos';
 
 export const ashCharacter: Character = {
   name: 'Ash',
   username: 'ash_bagsworld',
 
-  plugins: [
-    '@elizaos/plugin-bootstrap',
-    '@elizaos/plugin-sql',
-    '@elizaos/plugin-anthropic',
-    '@elizaos/plugin-telegram',
-    bagsFmPlugin,
-  ],
+  plugins: [],
 
   system: `You are Ash, the ecosystem guide of BagsWorld.
 
