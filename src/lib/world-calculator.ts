@@ -145,48 +145,41 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-// Reserved X positions for landmark buildings (to avoid overlap)
-// These are the X coordinates where landmarks are placed
-const LANDMARK_POSITIONS = [
-  Math.round(80 * SCALE),   // Casino
-  Math.round(150 * SCALE),  // Trading Gym
-  Math.round(280 * SCALE),  // PokeCenter
-  WORLD_WIDTH / 2,          // Treasury / HQ area
-];
-const LANDMARK_CLEARANCE = Math.round(100 * SCALE); // Minimum distance from landmarks
-
 export function generateBuildingPosition(
   index: number,
   total: number
 ): { x: number; y: number } {
-  // GROUND LEVEL: All buildings sit at the same level as landmarks (480 * SCALE)
-  const LANDMARK_GROUND_Y = Math.round(480 * SCALE);
+  // Use a fixed grid layout with deterministic small offsets
+  const maxCols = 5; // Maximum 5 buildings per row
+  const actualTotal = Math.min(total, MAX_BUILDINGS);
+  const rows = Math.ceil(actualTotal / maxCols);
 
-  // Generate valid X positions that don't overlap with landmarks
-  // Start from the right side of the screen and work left, avoiding landmark zones
-  const validSlots: number[] = [];
-  const slotWidth = BUILDING_SPACING;
+  const row = Math.floor(index / maxCols);
+  const col = index % maxCols;
 
-  for (let x = Math.round(100 * SCALE); x < WORLD_WIDTH - Math.round(50 * SCALE); x += slotWidth) {
-    // Check if this position is clear of all landmarks
-    const isClearOfLandmarks = LANDMARK_POSITIONS.every(
-      landmarkX => Math.abs(x - landmarkX) >= LANDMARK_CLEARANCE
-    );
-    if (isClearOfLandmarks) {
-      validSlots.push(x);
-    }
-  }
+  // Calculate how many buildings in this row
+  const buildingsInThisRow = row < rows - 1 ? maxCols : actualTotal - (rows - 1) * maxCols;
 
-  // Use index to pick a slot (wrap around if more buildings than slots)
-  const slotIndex = index % validSlots.length;
-  const baseX = validSlots[slotIndex] || WORLD_WIDTH - Math.round(200 * SCALE);
+  // Center the buildings horizontally
+  const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
+  const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
 
-  // Add small seeded random X offset for variety
+  // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area, scaled)
+  // Buildings use origin(0.5, 1), so y position is their bottom edge
+  // Stack rows upward from ground level with spacing
+  const GROUND_Y = Math.round(540 * SCALE); // Where buildings sit on the ground
+  const ROW_SPACING = Math.round(100 * SCALE); // Vertical spacing between rows (slightly less than horizontal)
+
+  // Front row (row 0) is at ground level, subsequent rows stack upward (behind)
+  const baseY = GROUND_Y - row * ROW_SPACING;
+
+  // Use seeded random for consistent small X offset based on index (scaled)
+  // Y offset removed - buildings now snap to consistent ground level per row
   const offsetX = (seededRandom(index * 7 + 1) * Math.round(16 * SCALE) - Math.round(8 * SCALE));
 
   return {
-    x: baseX + offsetX,
-    y: LANDMARK_GROUND_Y, // Same ground level as permanent landmarks
+    x: rowStartX + col * BUILDING_SPACING + offsetX,
+    y: baseY, // Snap to ground level (no random Y offset)
   };
 }
 
@@ -202,9 +195,13 @@ export function getCachedBuildingPosition(
   // Check if we already have a cached position for this mint
   const cached = buildingPositionCache.get(mint);
   if (cached) {
-    // Always use landmark ground level (same as PokeCenter, Casino, etc.)
-    const LANDMARK_GROUND_Y = Math.round(480 * SCALE);
-    return { x: cached.x, y: LANDMARK_GROUND_Y };
+    // Recalculate Y from cached index to ensure ground snapping
+    // (in case old cache had random Y offsets)
+    const row = Math.floor(cached.assignedIndex / 5); // maxCols = 5
+    const GROUND_Y = Math.round(540 * SCALE);
+    const ROW_SPACING = Math.round(100 * SCALE);
+    const y = GROUND_Y - row * ROW_SPACING;
+    return { x: cached.x, y };
   }
 
   // Find the next available index that's not in use
