@@ -41,7 +41,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ALL agents route through ElizaOS runtime
+    // bags-bot uses Claude directly (not ElizaOS)
+    if (agentId === 'bags-bot') {
+      return handleCharacterFallback(agentId, message, worldState);
+    }
+
+    // All other agents route through ElizaOS runtime
     return handleElizaOS(agentId, message, userId, roomId, worldState);
 
   } catch (error) {
