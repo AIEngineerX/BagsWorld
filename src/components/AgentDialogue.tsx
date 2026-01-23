@@ -194,21 +194,14 @@ export function AgentDialogue() {
           return (
             <div
               key={`${turn.speaker}-${index}`}
-              className={`p-2 border-l-2 ${style.border} ${style.bg} animate-fade-in`}
+              className={`p-1.5 border-l-2 ${style.border} ${style.bg} animate-fade-in`}
             >
-              {/* Speaker Header */}
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className={`w-4 h-4 flex-shrink-0 flex items-center justify-center border ${style.border} bg-bags-dark`}>
-                  <span className={`font-pixel text-[7px] ${style.text}`}>
-                    {style.avatar}
-                  </span>
-                </div>
-                <span className={`font-pixel text-[8px] ${style.text} font-bold`}>
-                  {turn.speakerName}:
-                </span>
-              </div>
+              {/* Speaker Name */}
+              <p className={`font-pixel text-[8px] ${style.text} mb-0.5`}>
+                {turn.speakerName}:
+              </p>
               {/* Message */}
-              <p className="font-pixel text-[7px] text-white/90 leading-relaxed ml-[22px]">
+              <p className="font-pixel text-[7px] text-white/90 leading-relaxed break-words">
                 {turn.message}
               </p>
             </div>
@@ -220,17 +213,10 @@ export function AgentDialogue() {
           const nextSpeaker = dialogue.turns[displayedTurns]?.speaker;
           const nextStyle = nextSpeaker ? getAgentStyle(nextSpeaker) : DEFAULT_COLOR;
           return (
-            <div className={`p-2 border-l-2 ${nextStyle.border} ${nextStyle.bg} opacity-60`}>
-              <div className="flex items-center gap-1.5">
-                <div className={`w-4 h-4 flex-shrink-0 flex items-center justify-center border ${nextStyle.border} bg-bags-dark`}>
-                  <span className={`font-pixel text-[7px] ${nextStyle.text} animate-pulse`}>
-                    {nextStyle.avatar}
-                  </span>
-                </div>
-                <span className={`font-pixel text-[8px] ${nextStyle.text} animate-pulse`}>
-                  {dialogue.turns[displayedTurns]?.speakerName || "Agent"} is typing...
-                </span>
-              </div>
+            <div className={`p-1.5 border-l-2 ${nextStyle.border} ${nextStyle.bg} opacity-60`}>
+              <p className={`font-pixel text-[8px] ${nextStyle.text} animate-pulse`}>
+                {dialogue.turns[displayedTurns]?.speakerName || "Agent"} is typing...
+              </p>
             </div>
           );
         })()}
