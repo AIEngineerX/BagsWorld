@@ -145,8 +145,9 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-// Ground level - SAME as landmarks (480 * SCALE = 768)
-const LANDMARK_GROUND_Y = Math.round(480 * SCALE);
+// Ground level - SIDEWALK where characters walk (550 * SCALE = 880)
+// Buildings use origin(0.5, 1), so Y is where their bottom edge sits
+const SIDEWALK_GROUND_Y = Math.round(550 * SCALE);
 
 // Zone definitions for token-launched buildings
 // Left zone (BagsCity side): x 100-550, avoiding landmarks at 128, 240, 448
@@ -202,7 +203,7 @@ export function generateBuildingPosition(
 
   return {
     x: baseX + offsetX,
-    y: LANDMARK_GROUND_Y, // Same ground level as landmarks - NO random Y offset
+    y: SIDEWALK_GROUND_Y, // Same ground level as landmarks - NO random Y offset
   };
 }
 
@@ -218,7 +219,7 @@ export function getCachedBuildingPosition(
   const cached = buildingPositionCache.get(mint);
   if (cached) {
     // Always use correct ground level (in case old cache has wrong Y)
-    return { x: cached.x, y: LANDMARK_GROUND_Y };
+    return { x: cached.x, y: SIDEWALK_GROUND_Y };
   }
 
   // Find the next available index that's not in use
