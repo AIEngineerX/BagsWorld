@@ -178,7 +178,7 @@ export function NeoChat() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, worldState, messages, addMessage]);
+  }, [isLoading, messages, addMessage]);
 
   // Listen for Neo/Scout click events
   useEffect(() => {

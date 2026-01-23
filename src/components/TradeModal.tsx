@@ -91,7 +91,7 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
     } finally {
       setIsLoadingQuote(false);
     }
-  }, [amount, direction, inputMint, outputMint, slippage, connection]);
+  }, [amount, inputMint, outputMint, slippage, connection]);
 
   // Debounce quote fetching
   useEffect(() => {

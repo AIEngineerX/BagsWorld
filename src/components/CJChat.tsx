@@ -178,7 +178,7 @@ export function CJChat() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, worldState, messages, addMessage]);
+  }, [isLoading, messages, addMessage]);
 
   // Listen for CJ click events
   useEffect(() => {

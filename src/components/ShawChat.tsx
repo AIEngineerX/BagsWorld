@@ -178,7 +178,7 @@ export function ShawChat() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, worldState, messages, addMessage]);
+  }, [isLoading, messages, addMessage]);
 
   // Listen for Shaw click events
   useEffect(() => {
