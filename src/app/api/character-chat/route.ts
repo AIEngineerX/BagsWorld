@@ -138,9 +138,11 @@ export async function POST(request: Request) {
 
     // If no API key, use fallback responses
     if (!ANTHROPIC_API_KEY) {
+      console.error("[Chat] No ANTHROPIC_API_KEY configured");
       return NextResponse.json({
         message: getFallbackResponse(character, userMessage),
         character: characterConfig.name,
+        debug: "no_api_key",
       });
     }
 
@@ -173,10 +175,12 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
-      console.error("Claude API error:", await response.text());
+      const errorText = await response.text();
+      console.error("[Chat] Claude API error:", response.status, errorText);
       return NextResponse.json({
         message: getFallbackResponse(character, userMessage),
         character: characterConfig.name,
+        debug: `api_error_${response.status}`,
       });
     }
 
