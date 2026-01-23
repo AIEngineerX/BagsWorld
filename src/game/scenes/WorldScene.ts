@@ -358,12 +358,16 @@ export class WorldScene extends Phaser.Scene {
       ease: 'Cubic.easeInOut',
     });
 
-    // Slide transition overlay in
+    // Slide transition overlay in, destroy when complete
     this.tweens.add({
       targets: transitionOverlay,
       x: GAME_WIDTH / 2,
       duration,
       ease: 'Cubic.easeInOut',
+      onComplete: () => {
+        // Destroy overlay after tween completes (not mid-animation)
+        transitionOverlay.destroy();
+      },
     });
 
     // At 40% through animation, swap the zone for smooth visual transition
@@ -396,9 +400,6 @@ export class WorldScene extends Phaser.Scene {
 
       // Setup new zone content (will be positioned off-screen initially)
       this.setupZoneOffscreen(newZone, slideInOffset);
-
-      // Destroy transition overlay
-      transitionOverlay.destroy();
     });
 
     // Clean up old elements after animation completes
@@ -562,28 +563,13 @@ export class WorldScene extends Phaser.Scene {
 
     // Only create elements once, then just show them
     if (!this.trendingZoneCreated) {
-      // First time - stage creation across multiple frames to prevent frame drops
-      // Stage 1: Create skyline immediately (visible first, sets the scene)
+      // Create all trending zone elements synchronously
+      // These are lightweight procedural sprites, no need to stagger across frames
       this.createTrendingSkyline();
-
-      // Stage 2: Create decorations on next frame
-      this.time.delayedCall(0, () => {
-        if (this.currentZone !== "trending") return;
-        this.createTrendingDecorations();
-
-        // Stage 3: Create billboards on following frame
-        this.time.delayedCall(0, () => {
-          if (this.currentZone !== "trending") return;
-          this.createTrendingBillboards();
-
-          // Stage 4: Create ticker on final frame
-          this.time.delayedCall(0, () => {
-            if (this.currentZone !== "trending") return;
-            this.createTrendingTicker();
-            this.trendingZoneCreated = true;
-          });
-        });
-      });
+      this.createTrendingDecorations();
+      this.createTrendingBillboards();
+      this.createTrendingTicker();
+      this.trendingZoneCreated = true;
     } else {
       // Subsequent times - just show existing elements
       this.trendingElements.forEach((el) => (el as any).setVisible(true));
