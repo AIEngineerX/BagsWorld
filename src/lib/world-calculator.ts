@@ -546,11 +546,31 @@ export function buildWorldState(
   cleanupBuildingPositionCache(activeMints);
 
   // Assign cached positions (buildings keep their position even when rankings change)
-  // EXCEPT for floating buildings like HQ which have fixed sky positions
+  // EXCEPT for landmark/permanent buildings which have hardcoded fixed positions
   const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
+
+  // Helper to check if a building is a landmark (hardcoded position - NEVER move these)
+  const isLandmarkBuilding = (b: GameBuilding): boolean => {
+    // BagsWorld HQ
+    if (b.isFloating || b.id === BAGSHQ_MINT || b.symbol === "BAGSWORLD") return true;
+    // PokeCenter
+    if (b.symbol === "POKECENTER" || b.symbol === "HEAL" || b.id.includes("PokeCenter")) return true;
+    // Trading Gym
+    if (b.symbol === "GYM" || b.id.includes("TradingGym")) return true;
+    // Casino
+    if (b.symbol === "CASINO" || b.id.includes("Casino")) return true;
+    // Treasury
+    if (b.id.startsWith("Treasury")) return true;
+    // Starter buildings
+    if (b.id.startsWith("Starter")) return true;
+    // Permanent flag
+    if (b.isPermanent) return true;
+    return false;
+  };
+
   const buildings = filteredBuildings.map((building) => {
-    // Skip cache for floating buildings - they use their fixed position
-    if (building.isFloating || building.id === BAGSHQ_MINT) {
+    // NEVER move landmark buildings - they use their hardcoded fixed positions
+    if (isLandmarkBuilding(building)) {
       return building;
     }
     return {
