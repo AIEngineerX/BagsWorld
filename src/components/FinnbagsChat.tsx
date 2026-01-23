@@ -172,13 +172,13 @@ export function FinnbagsChat() {
     });
 
     try {
-      // Use character-chat API (working endpoint)
-      const response = await fetch("/api/character-chat", {
+      // Use eliza-agent API - routes through ElizaOS on Railway
+      const response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           character: "finn",
-          userMessage: userMsg,
+          message: userMsg,
         }),
       });
 
@@ -186,7 +186,7 @@ export function FinnbagsChat() {
       addMessage({
         id: `${Date.now()}-finn`,
         type: "finn",
-        message: data.message || "This is why we built Bags. What else you want to know?",
+        message: data.response || data.message || "This is why we built Bags. What else you want to know?",
         timestamp: Date.now(),
       });
     } catch (error) {

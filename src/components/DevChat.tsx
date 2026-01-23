@@ -379,15 +379,15 @@ export function DevChat() {
       }
     }
 
-    // Regular chat - use character-chat API (working endpoint)
+    // Regular chat - use eliza-agent API (routes through ElizaOS on Railway)
     setIsLoading(true);
     try {
-      const response = await fetch("/api/character-chat", {
+      const response = await fetch("/api/eliza-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          character: "dev",
-          userMessage: userMsg,
+          character: "ghost", // dev maps to ghost agent
+          message: userMsg,
         }),
       });
 
@@ -395,7 +395,7 @@ export function DevChat() {
       addMessage({
         id: `${Date.now()}-dev`,
         type: "dev",
-        message: data.message || "connection dropped. try again.",
+        message: data.response || data.message || "connection dropped. try again.",
         timestamp: Date.now(),
       });
     } catch (error) {
