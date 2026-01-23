@@ -15,12 +15,12 @@ interface DialogueData {
   turns: DialogueTurn[];
 }
 
-// Agent colors for visual distinction
+// Agent colors for visual distinction - Shaw is orange (ai16z vibes)
 const AGENT_COLORS: Record<string, { border: string; bg: string; text: string; avatar: string }> = {
-  shaw: { border: "border-cyan-500", bg: "bg-cyan-500/10", text: "text-cyan-400", avatar: "S" },
+  shaw: { border: "border-orange-500", bg: "bg-orange-500/10", text: "text-orange-400", avatar: "S" },
   finn: { border: "border-emerald-500", bg: "bg-emerald-500/10", text: "text-emerald-400", avatar: "F" },
-  neo: { border: "border-green-500", bg: "bg-green-500/10", text: "text-green-400", avatar: "N" },
-  cj: { border: "border-orange-500", bg: "bg-orange-500/10", text: "text-orange-400", avatar: "C" },
+  neo: { border: "border-lime-500", bg: "bg-lime-500/10", text: "text-lime-400", avatar: "N" },
+  cj: { border: "border-yellow-500", bg: "bg-yellow-500/10", text: "text-yellow-400", avatar: "C" },
   toly: { border: "border-purple-500", bg: "bg-purple-500/10", text: "text-purple-400", avatar: "T" },
   ash: { border: "border-red-500", bg: "bg-red-500/10", text: "text-red-400", avatar: "A" },
   ghost: { border: "border-violet-500", bg: "bg-violet-500/10", text: "text-violet-400", avatar: "G" },
@@ -41,14 +41,18 @@ const DIALOGUE_TOPICS = [
   "why creator fees matter",
 ];
 
-// Agent groups for different conversation types
+// Agent groups for different conversation types - more variety
 const AGENT_GROUPS = [
-  ["shaw", "finn", "toly"],
-  ["neo", "cj", "ghost"],
-  ["finn", "ash", "toly"],
-  ["shaw", "neo", "finn"],
-  ["cj", "ghost", "ash"],
-  ["toly", "shaw", "ghost"],
+  ["shaw", "finn", "neo"],
+  ["neo", "cj", "bags-bot"],
+  ["finn", "ash", "bags-bot"],
+  ["shaw", "neo", "cj"],
+  ["cj", "ash", "finn"],
+  ["toly", "finn", "shaw"],
+  ["ash", "bags-bot", "neo"],
+  ["ghost", "cj", "finn"],
+  ["neo", "shaw", "ash"],
+  ["bags-bot", "toly", "cj"],
 ];
 
 export function AgentDialogue() {
@@ -193,18 +197,18 @@ export function AgentDialogue() {
               className={`p-2 border-l-2 ${style.border} ${style.bg} animate-fade-in`}
             >
               {/* Speaker Header */}
-              <div className="flex items-center gap-2 mb-1">
-                <div className={`w-5 h-5 flex items-center justify-center border ${style.border} bg-bags-dark`}>
-                  <span className={`font-pixel text-[8px] ${style.text}`}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <div className={`w-4 h-4 flex-shrink-0 flex items-center justify-center border ${style.border} bg-bags-dark`}>
+                  <span className={`font-pixel text-[7px] ${style.text}`}>
                     {style.avatar}
                   </span>
                 </div>
-                <span className={`font-pixel text-[8px] ${style.text}`}>
-                  {turn.speakerName}
+                <span className={`font-pixel text-[8px] ${style.text} font-bold`}>
+                  {turn.speakerName}:
                 </span>
               </div>
               {/* Message */}
-              <p className="font-pixel text-[8px] text-white/90 leading-relaxed pl-7">
+              <p className="font-pixel text-[7px] text-white/90 leading-relaxed ml-[22px]">
                 {turn.message}
               </p>
             </div>
@@ -212,18 +216,24 @@ export function AgentDialogue() {
         })}
 
         {/* Typing Indicator */}
-        {isTyping && dialogue && displayedTurns < dialogue.turns.length && (
-          <div className="p-2 border-l-2 border-gray-600 bg-gray-500/5">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 flex items-center justify-center border border-gray-600 bg-bags-dark">
-                <span className="font-pixel text-[8px] text-gray-400 animate-pulse">?</span>
+        {isTyping && dialogue && displayedTurns < dialogue.turns.length && (() => {
+          const nextSpeaker = dialogue.turns[displayedTurns]?.speaker;
+          const nextStyle = nextSpeaker ? getAgentStyle(nextSpeaker) : DEFAULT_COLOR;
+          return (
+            <div className={`p-2 border-l-2 ${nextStyle.border} ${nextStyle.bg} opacity-60`}>
+              <div className="flex items-center gap-1.5">
+                <div className={`w-4 h-4 flex-shrink-0 flex items-center justify-center border ${nextStyle.border} bg-bags-dark`}>
+                  <span className={`font-pixel text-[7px] ${nextStyle.text} animate-pulse`}>
+                    {nextStyle.avatar}
+                  </span>
+                </div>
+                <span className={`font-pixel text-[8px] ${nextStyle.text} animate-pulse`}>
+                  {dialogue.turns[displayedTurns]?.speakerName || "Agent"} is typing...
+                </span>
               </div>
-              <span className="font-pixel text-[8px] text-gray-500 animate-pulse">
-                {dialogue.turns[displayedTurns]?.speakerName || "Agent"} is typing...
-              </span>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div ref={messagesEndRef} />
       </div>
@@ -231,14 +241,13 @@ export function AgentDialogue() {
       {/* Participants Footer */}
       {dialogue && (
         <div className="px-2 py-1.5 border-t-2 border-bags-green/30 bg-bags-dark">
-          <div className="flex items-center gap-1 flex-wrap">
-            <span className="font-pixel text-[6px] text-gray-500">IN CHAT:</span>
+          <div className="flex items-center gap-1.5 flex-wrap justify-center">
             {dialogue.participants.map((p) => {
               const style = getAgentStyle(p.id);
               return (
                 <span
                   key={p.id}
-                  className={`font-pixel text-[7px] px-1 py-0.5 border ${style.border} ${style.bg} ${style.text}`}
+                  className={`font-pixel text-[6px] px-1.5 py-0.5 border ${style.border} ${style.bg} ${style.text}`}
                 >
                   {p.name}
                 </span>
