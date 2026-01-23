@@ -190,11 +190,20 @@ export async function POST(request: Request) {
     // Generate response
     const apiKey = process.env.ANTHROPIC_API_KEY;
     let response: string;
+    let debug: string | undefined;
 
     if (apiKey) {
-      response = await generateResponse(apiKey, agentId, message, conversationHistory);
+      try {
+        response = await generateResponse(apiKey, agentId, message, conversationHistory);
+      } catch (err) {
+        console.error('[Agents API] Claude error:', err);
+        response = getFallbackResponse(agentId);
+        debug = `claude_error: ${err instanceof Error ? err.message : String(err)}`;
+      }
     } else {
+      console.warn('[Agents API] No ANTHROPIC_API_KEY configured');
       response = getFallbackResponse(agentId);
+      debug = 'no_api_key';
     }
 
     return NextResponse.json({
@@ -204,6 +213,7 @@ export async function POST(request: Request) {
       response,
       suggestedAgent: mentionedAgent,
       sessionId: sessionId || crypto.randomUUID(),
+      ...(debug && { debug }),
     });
 
   } catch (error) {
