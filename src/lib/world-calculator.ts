@@ -399,9 +399,24 @@ export function transformTokenToBuilding(
   const previousHealth = existingBuilding?.health ?? 50;
   const newHealth = calculateBuildingHealth(token.change24h, token.volume24h, previousHealth);
 
-  // Assign zones: Trading Gym and Casino go to BagsCity, all other buildings go to Park
-  // BagsWorld HQ has NO zone - it floats in the sky visible from both zones
-  const zone = isBagsWorldHQ ? undefined : (isTradingGym || isCasino) ? "trending" as const : "main_city" as const;
+  // Assign zones:
+  // - BagsWorld HQ has NO zone - floats in the sky visible from both zones
+  // - Trading Gym and Casino go to BagsCity (trending)
+  // - User-created buildings are distributed between Park (main_city) and BagsCity (trending)
+  //   based on a hash of their mint address for deterministic, even distribution
+  const getZoneFromMint = (mint: string): "main_city" | "trending" => {
+    let hash = 0;
+    for (let i = 0; i < mint.length; i++) {
+      hash = ((hash << 5) - hash) + mint.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return Math.abs(hash) % 2 === 0 ? "main_city" : "trending";
+  };
+
+  const zone = isBagsWorldHQ ? undefined
+    : (isTradingGym || isCasino) ? "trending" as const
+    : (isPokeCenter || isTreasuryHub) ? "main_city" as const
+    : getZoneFromMint(token.mint);
 
   // Use level override if set by admin, otherwise calculate from market cap
   // BagsWorld HQ always gets max level (it's the headquarters!)
