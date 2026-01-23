@@ -149,37 +149,30 @@ export function generateBuildingPosition(
   index: number,
   total: number
 ): { x: number; y: number } {
-  // Use a fixed grid layout with deterministic small offsets
-  const maxCols = 5; // Maximum 5 buildings per row
-  const actualTotal = Math.min(total, MAX_BUILDINGS);
-  const rows = Math.ceil(actualTotal / maxCols);
+  // GROUND LEVEL: Same Y as landmark buildings (480 * SCALE)
+  // This is where PokeCenter, Casino, Trading Gym bases touch the grass
+  const LANDMARK_GROUND_Y = Math.round(480 * SCALE);
 
-  const row = Math.floor(index / maxCols);
-  const col = index % maxCols;
+  // Place user buildings on the RIGHT side of screen to avoid landmarks
+  // Landmarks are on the left (Casino, TradingGym, PokeCenter) and center (Treasury/HQ)
+  // User buildings go from x=750 onwards
+  const START_X = Math.round(750); // Start after the landmark area
+  const END_X = WORLD_WIDTH - Math.round(80); // Leave margin on right
+  const SLOT_WIDTH = BUILDING_SPACING;
 
-  // Calculate how many buildings in this row
-  const buildingsInThisRow = row < rows - 1 ? maxCols : actualTotal - (rows - 1) * maxCols;
+  // Calculate slot position
+  const availableWidth = END_X - START_X;
+  const maxSlots = Math.floor(availableWidth / SLOT_WIDTH);
+  const slotIndex = index % Math.max(1, maxSlots);
 
-  // Center the buildings horizontally
-  const totalRowWidth = buildingsInThisRow * BUILDING_SPACING;
-  const rowStartX = (WORLD_WIDTH - totalRowWidth) / 2 + BUILDING_SPACING / 2;
+  const baseX = START_X + slotIndex * SLOT_WIDTH;
 
-  // GROUND LEVEL: Buildings sit on the ground (y=540 is the path/ground area, scaled)
-  // Buildings use origin(0.5, 1), so y position is their bottom edge
-  // Stack rows upward from ground level with spacing
-  const GROUND_Y = Math.round(540 * SCALE); // Where buildings sit on the ground
-  const ROW_SPACING = Math.round(100 * SCALE); // Vertical spacing between rows (slightly less than horizontal)
-
-  // Front row (row 0) is at ground level, subsequent rows stack upward (behind)
-  const baseY = GROUND_Y - row * ROW_SPACING;
-
-  // Use seeded random for consistent small X offset based on index (scaled)
-  // Y offset removed - buildings now snap to consistent ground level per row
+  // Add small seeded random X offset for variety
   const offsetX = (seededRandom(index * 7 + 1) * Math.round(16 * SCALE) - Math.round(8 * SCALE));
 
   return {
-    x: rowStartX + col * BUILDING_SPACING + offsetX,
-    y: baseY, // Snap to ground level (no random Y offset)
+    x: baseX + offsetX,
+    y: LANDMARK_GROUND_Y, // Same ground level as landmarks
   };
 }
 
@@ -195,13 +188,9 @@ export function getCachedBuildingPosition(
   // Check if we already have a cached position for this mint
   const cached = buildingPositionCache.get(mint);
   if (cached) {
-    // Recalculate Y from cached index to ensure ground snapping
-    // (in case old cache had random Y offsets)
-    const row = Math.floor(cached.assignedIndex / 5); // maxCols = 5
-    const GROUND_Y = Math.round(540 * SCALE);
-    const ROW_SPACING = Math.round(100 * SCALE);
-    const y = GROUND_Y - row * ROW_SPACING;
-    return { x: cached.x, y };
+    // Always use landmark ground level (same Y as PokeCenter, Casino, etc.)
+    const LANDMARK_GROUND_Y = Math.round(480 * SCALE);
+    return { x: cached.x, y: LANDMARK_GROUND_Y };
   }
 
   // Find the next available index that's not in use
@@ -553,11 +542,19 @@ export function buildWorldState(
   cleanupBuildingPositionCache(activeMints);
 
   // Assign cached positions (buildings keep their position even when rankings change)
-  // EXCEPT for floating buildings like HQ which have fixed sky positions
+  // EXCEPT for special buildings which have fixed positions
   const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
   const buildings = filteredBuildings.map((building) => {
-    // Skip cache for floating buildings - they use their fixed position
-    if (building.isFloating || building.id === BAGSHQ_MINT) {
+    // Skip cache for buildings with fixed positions:
+    // - Floating buildings (HQ)
+    // - Permanent buildings (Treasury, Starter)
+    // - Landmark buildings (PokeCenter, Casino, TradingGym)
+    const isLandmark =
+      building.symbol === "POKECENTER" || building.id.includes("PokeCenter") ||
+      building.symbol === "GYM" || building.id.includes("TradingGym") ||
+      building.symbol === "CASINO" || building.id.includes("Casino");
+
+    if (building.isFloating || building.isPermanent || building.id === BAGSHQ_MINT || isLandmark) {
       return building;
     }
     return {
