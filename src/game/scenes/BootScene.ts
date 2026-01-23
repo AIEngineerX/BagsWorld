@@ -227,8 +227,20 @@ export class BootScene extends Phaser.Scene {
     // Generate ambient particles
     this.generateAmbientParticles();
 
-    // Generate Launch Pad zone assets (NYC Times Square style)
+    // LAZY LOAD: BagsCity assets are deferred until first zone visit
+    // This is triggered by WorldScene when user navigates to trending zone
+    // See: generateLaunchPadAssets() - called on-demand, not at boot
+  }
+
+  // Public method to generate BagsCity assets on-demand (called from WorldScene)
+  public generateBagsCityAssets(): void {
+    if (this.textures.exists('billboard')) {
+      // Already generated
+      return;
+    }
+    console.log('[BootScene] Lazy loading BagsCity assets...');
     this.generateLaunchPadAssets();
+    console.log('[BootScene] BagsCity assets loaded');
   }
 
   private generateGrass(): void {

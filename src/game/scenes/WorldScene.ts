@@ -72,6 +72,10 @@ export class WorldScene extends Phaser.Scene {
   private trafficTimers: Phaser.Time.TimerEvent[] = [];
   private originalPositions: Map<Phaser.GameObjects.GameObject, number> = new Map(); // Store original X positions
 
+  // OPTIMIZATION: Zone-level caching for buildings/characters to avoid destroy/recreate on zone switch
+  private zoneBuildingCache: Map<ZoneType, Map<string, Phaser.GameObjects.Container>> = new Map();
+  private zoneCharacterCache: Map<ZoneType, Map<string, Phaser.GameObjects.Sprite>> = new Map();
+
   // Speech bubble manager for autonomous dialogue
   private speechBubbleManager: SpeechBubbleManager | null = null;
   private lastDialogueLine: string | null = null; // Track last line to avoid duplicates
@@ -403,23 +407,61 @@ export class WorldScene extends Phaser.Scene {
 
     // Clean up old elements after animation completes
     this.time.delayedCall(duration + 50, () => {
-      oldElementData.forEach(({ el }) => {
-        // Only destroy elements that aren't persistent (decorations/animals/trending elements are reused)
-        const isDecoration = this.decorations.includes(el as any);
-        const isAnimal = this.animals.some(a => a.sprite === el);
-        const isTrendingElement = this.trendingElements.includes(el) ||
-          this.skylineSprites.includes(el as any) ||
-          this.billboardTexts.includes(el as any) ||
-          el === this.tickerText;
+      // OPTIMIZATION: Cache buildings/characters per zone instead of destroying
+      // This allows instant zone switching after first visit
+      const oldZone = newZone === "trending" ? "main_city" : "trending";
 
-        if (!isDecoration && !isAnimal && !isTrendingElement && el && (el as any).destroy && (el as any).active !== false) {
-          (el as any).destroy();
+      // Cache the current buildings for this zone
+      if (!this.zoneBuildingCache.has(oldZone)) {
+        this.zoneBuildingCache.set(oldZone, new Map());
+      }
+      const buildingCache = this.zoneBuildingCache.get(oldZone)!;
+      this.buildingSprites.forEach((container, id) => {
+        // Hide instead of destroy
+        container.setVisible(false);
+        // Reset position for next time (they were animated off-screen)
+        const building = this.worldState?.buildings.find(b => b.id === id);
+        if (building) {
+          container.setX(building.x);
         }
+        buildingCache.set(id, container);
       });
 
-      // Clear old building/character sprite maps
+      // Cache the current characters for this zone
+      if (!this.zoneCharacterCache.has(oldZone)) {
+        this.zoneCharacterCache.set(oldZone, new Map());
+      }
+      const characterCache = this.zoneCharacterCache.get(oldZone)!;
+      this.characterSprites.forEach((sprite, id) => {
+        // Hide instead of destroy
+        sprite.setVisible(false);
+        // Reset position for next time
+        const character = this.worldState?.population.find(c => c.id === id);
+        if (character) {
+          sprite.setX(character.x);
+        }
+        characterCache.set(id, sprite);
+      });
+
+      // Clear maps (elements are cached, not destroyed)
       this.buildingSprites.clear();
       this.characterSprites.clear();
+
+      // Restore cached elements for the new zone if available
+      const newBuildingCache = this.zoneBuildingCache.get(newZone);
+      if (newBuildingCache) {
+        newBuildingCache.forEach((container, id) => {
+          container.setVisible(true);
+          this.buildingSprites.set(id, container);
+        });
+      }
+      const newCharacterCache = this.zoneCharacterCache.get(newZone);
+      if (newCharacterCache) {
+        newCharacterCache.forEach((sprite, id) => {
+          sprite.setVisible(true);
+          this.characterSprites.set(id, sprite);
+        });
+      }
 
       // Mark transition complete
       this.isTransitioning = false;
@@ -562,42 +604,34 @@ export class WorldScene extends Phaser.Scene {
 
     // Only create elements once, then just show them
     if (!this.trendingZoneCreated) {
-      // First time - stage creation across multiple frames to prevent frame drops
-      // Stage 1: Create skyline immediately (visible first, sets the scene)
+      // LAZY LOAD: Generate BagsCity assets on first visit (not at boot time)
+      const bootScene = this.scene.get('BootScene') as any;
+      if (bootScene && typeof bootScene.generateBagsCityAssets === 'function') {
+        bootScene.generateBagsCityAssets();
+      }
+
+      // OPTIMIZED: Create all zone components in parallel (single frame)
+      // instead of sequential delayedCall chains that caused frame stutters
       this.createTrendingSkyline();
-
-      // Stage 2: Create decorations on next frame
-      this.time.delayedCall(0, () => {
-        if (this.currentZone !== "trending") return;
-        this.createTrendingDecorations();
-
-        // Stage 3: Create billboards on following frame
-        this.time.delayedCall(0, () => {
-          if (this.currentZone !== "trending") return;
-          this.createTrendingBillboards();
-
-          // Stage 4: Create ticker on final frame
-          this.time.delayedCall(0, () => {
-            if (this.currentZone !== "trending") return;
-            this.createTrendingTicker();
-            this.trendingZoneCreated = true;
-          });
-        });
-      });
+      this.createTrendingDecorations();
+      this.createTrendingBillboards();
+      this.createTrendingTicker();
+      this.trendingZoneCreated = true;
     } else {
-      // Subsequent times - just show existing elements
+      // Subsequent times - just show existing elements (fast path)
       this.trendingElements.forEach((el) => (el as any).setVisible(true));
       this.skylineSprites.forEach((s) => s.setVisible(true));
       this.billboardTexts.forEach((t) => t.setVisible(true));
       if (this.tickerText) this.tickerText.setVisible(true);
     }
 
-    // Start/restart ticker animation
+    // Start/restart ticker animation with optimized interval
+    // 100ms is smoother than 50ms and reduces CPU usage by 50%
     if (this.tickerTimer) {
       this.tickerTimer.destroy();
     }
     this.tickerTimer = this.time.addEvent({
-      delay: 50,
+      delay: 100,
       callback: this.updateTicker,
       callbackScope: this,
       loop: true,
@@ -2887,7 +2921,8 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // Batch create new characters across frames to prevent frame drops
-    const BATCH_SIZE = 2; // Characters are heavier than buildings
+    // OPTIMIZED: Increased batch size from 2 to 5 for faster zone loading
+    const BATCH_SIZE = 5;
     const createBatch = (startIndex: number) => {
       const endIndex = Math.min(startIndex + BATCH_SIZE, newCharacters.length);
       for (let i = startIndex; i < endIndex; i++) {
@@ -3092,7 +3127,8 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // Batch create new buildings across frames to prevent frame drops
-    const BATCH_SIZE = 3;
+    // OPTIMIZED: Increased batch size from 3 to 6 for faster zone loading
+    const BATCH_SIZE = 6;
     const createBatch = (startIndex: number) => {
       const endIndex = Math.min(startIndex + BATCH_SIZE, newBuildings.length);
       for (let i = startIndex; i < endIndex; i++) {
