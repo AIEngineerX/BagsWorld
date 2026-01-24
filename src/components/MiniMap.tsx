@@ -53,7 +53,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
       {/* Map Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-12 right-4 z-40 w-12 h-12 bg-bags-dark border-2 border-bags-green hover:bg-bags-green/20 transition-colors flex items-center justify-center group"
+        className="fixed bottom-20 right-4 z-50 w-12 h-12 bg-bags-dark border-2 border-bags-green hover:bg-bags-green/20 transition-colors flex items-center justify-center group"
         aria-label="Toggle map"
       >
         <span className="font-pixel text-[10px] text-bags-green group-hover:text-white">
@@ -63,7 +63,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
 
       {/* Map Panel */}
       {isOpen && (
-        <div className="fixed bottom-24 right-4 z-40 w-72 bg-bags-dark border-2 border-bags-green shadow-lg shadow-bags-green/20">
+        <div className="fixed bottom-32 right-4 z-50 w-72 bg-bags-dark border-2 border-bags-green shadow-lg shadow-bags-green/20">
           {/* Header */}
           <div className="border-b border-bags-green/50 px-3 py-2 flex items-center justify-between">
             <span className="font-pixel text-[10px] text-bags-green">WORLD MAP</span>
