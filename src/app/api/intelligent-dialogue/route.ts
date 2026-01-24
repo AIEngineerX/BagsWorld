@@ -1,5 +1,6 @@
 // Intelligent Dialogue API - Claude-powered conversations with real Bags.fm data
 // Characters discuss actual on-chain events, market conditions, and ecosystem stats
+// Now routes through ElizaOS Runtime for memory, plugins, and coordination
 
 import { NextResponse } from "next/server";
 import { characters, generateCharacterPrompt } from "@/characters";
@@ -7,6 +8,7 @@ import { characters, generateCharacterPrompt } from "@/characters";
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
 const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+const ELIZAOS_SERVER = process.env.ELIZAOS_SERVER_URL || "https://bagsworld-production.up.railway.app";
 
 // ============================================================================
 // TYPES
@@ -21,6 +23,11 @@ interface DialogueRequest {
     amount?: number;
     change?: number;
     username?: string;
+    // Memory context for conversation continuity
+    memoryContext?: string;
+    previousTopics?: string[];
+    relationshipSentiment?: "positive" | "neutral" | "negative";
+    lastToken?: string;
   };
   lineCount?: number;
 }
@@ -311,25 +318,79 @@ RULES FOR THIS CONVERSATION:
 }
 
 /**
- * Generate a full conversation using Claude
+ * Try ElizaOS Runtime first for dialogue (has memory, plugins, coordination)
+ * Falls back to direct Claude if ElizaOS unavailable
  */
-async function generateIntelligentConversation(
+async function generateViaElizaOS(
+  participants: string[],
+  topic: string,
+  context: DialogueRequest["context"],
+  lineCount: number
+): Promise<Array<{ characterId: string; characterName: string; message: string }> | null> {
+  try {
+    const response = await fetch(`${ELIZAOS_SERVER}/api/dialogue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        participants,
+        topic,
+        context: {
+          tokenSymbol: context?.tokenSymbol,
+          amount: context?.amount,
+          change: context?.change,
+          username: context?.username,
+        },
+        lineCount,
+        style: "casual",
+      }),
+      signal: AbortSignal.timeout(12000), // 12s timeout
+    });
+
+    if (!response.ok) {
+      console.warn("[IntelligentDialogue] ElizaOS returned:", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.success && data.dialogue?.turns) {
+      console.log("[IntelligentDialogue] Using ElizaOS Runtime dialogue");
+      return data.dialogue.turns.map((turn: any) => ({
+        characterId: turn.speaker,
+        characterName: turn.speakerName || characters[turn.speaker]?.name || turn.speaker,
+        message: turn.message,
+      }));
+    }
+  } catch (error: any) {
+    console.warn("[IntelligentDialogue] ElizaOS unavailable:", error.message);
+  }
+  return null;
+}
+
+/**
+ * Generate conversation using direct Claude API (fallback)
+ */
+async function generateViaClaude(
   participants: string[],
   topic: string,
   realData: RealWorldData,
   context: DialogueRequest["context"],
-  lineCount: number = 4
-): Promise<Array<{ characterId: string; characterName: string; message: string }>> {
-  if (!ANTHROPIC_API_KEY) {
-    // Fallback to simple responses if no API key
-    return generateFallbackConversation(participants, topic, realData, lineCount);
-  }
+  lineCount: number
+): Promise<Array<{ characterId: string; characterName: string; message: string }> | null> {
+  if (!ANTHROPIC_API_KEY) return null;
 
   const dataContext = buildDataContext(realData, topic);
-  const lines: Array<{ characterId: string; characterName: string; message: string }> = [];
 
-  // Build conversation prompt
-  let conversationPrompt = `You are simulating a conversation between ${participants.length} AI characters in BagsWorld, a pixel art game that visualizes Bags.fm trading activity.
+  // Build memory context if available
+  let memorySection = "";
+  if (context?.previousTopics?.length || context?.lastToken) {
+    memorySection = `\n\nCONVERSATION HISTORY (use this for continuity):
+${context.previousTopics?.length ? `- Previously discussed: ${context.previousTopics.join(", ")}` : ""}
+${context.lastToken ? `- Last token mentioned: $${context.lastToken}` : ""}
+${context.relationshipSentiment ? `- Relationship vibe: ${context.relationshipSentiment}` : ""}
+Use this history to make callbacks or references to past conversations.`;
+  }
+
+  const conversationPrompt = `You are simulating a conversation between ${participants.length} AI characters in BagsWorld, a pixel art game that visualizes Bags.fm trading activity.
 
 CHARACTERS IN THIS CONVERSATION:
 ${participants
@@ -344,7 +405,7 @@ ${context?.tokenSymbol ? `Related Token: $${context.tokenSymbol}` : ""}
 ${context?.amount ? `Amount: ${context.amount} SOL` : ""}
 ${context?.change ? `Change: ${context.change}%` : ""}
 ${context?.username ? `User: @${context.username}` : ""}
-
+${memorySection}
 ${dataContext}
 
 Generate a natural conversation with EXACTLY ${lineCount} lines. Each line should be:
@@ -352,6 +413,7 @@ Generate a natural conversation with EXACTLY ${lineCount} lines. Each line shoul
 2. In character for the speaker
 3. Reference real data when relevant
 4. Flow naturally from the previous line
+5. If there's conversation history, occasionally reference past topics naturally
 
 FORMAT YOUR RESPONSE AS JSON:
 [
@@ -359,7 +421,7 @@ FORMAT YOUR RESPONSE AS JSON:
   ...
 ]
 
-The conversation should feel natural, like these characters are actually discussing what's happening on Bags.fm right now.`;
+The conversation should feel natural, like these characters actually know each other and are discussing what's happening on Bags.fm right now.`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -378,16 +440,16 @@ The conversation should feel natural, like these characters are actually discuss
 
     if (!response.ok) {
       console.error("[IntelligentDialogue] Claude API error:", await response.text());
-      return generateFallbackConversation(participants, topic, realData, lineCount);
+      return null;
     }
 
     const data = await response.json();
     const content = data.content[0]?.text || "";
 
-    // Parse JSON response
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
+      console.log("[IntelligentDialogue] Using Claude API fallback");
       return parsed.map((line: any) => ({
         characterId: line.speaker,
         characterName: characters[line.speaker]?.name || line.speaker,
@@ -395,9 +457,35 @@ The conversation should feel natural, like these characters are actually discuss
       }));
     }
   } catch (error) {
-    console.error("[IntelligentDialogue] Error generating conversation:", error);
+    console.error("[IntelligentDialogue] Claude API error:", error);
+  }
+  return null;
+}
+
+/**
+ * Generate a full conversation - tries ElizaOS first, then Claude, then rule-based
+ */
+async function generateIntelligentConversation(
+  participants: string[],
+  topic: string,
+  realData: RealWorldData,
+  context: DialogueRequest["context"],
+  lineCount: number = 4
+): Promise<Array<{ characterId: string; characterName: string; message: string }>> {
+  // 1. Try ElizaOS Runtime (has memory, plugins, agent coordination)
+  const elizaResult = await generateViaElizaOS(participants, topic, context, lineCount);
+  if (elizaResult && elizaResult.length > 0) {
+    return elizaResult;
   }
 
+  // 2. Fallback to direct Claude API
+  const claudeResult = await generateViaClaude(participants, topic, realData, context, lineCount);
+  if (claudeResult && claudeResult.length > 0) {
+    return claudeResult;
+  }
+
+  // 3. Final fallback to rule-based responses
+  console.log("[IntelligentDialogue] Using rule-based fallback");
   return generateFallbackConversation(participants, topic, realData, lineCount);
 }
 
