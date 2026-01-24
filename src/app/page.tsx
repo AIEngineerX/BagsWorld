@@ -40,6 +40,7 @@ import { CasinoModal } from "@/components/CasinoModal";
 import { CasinoAdmin } from "@/components/CasinoAdmin";
 import { LauncherHub } from "@/components/LauncherHub";
 import { TradingTerminalModal } from "@/components/TradingTerminalModal";
+import { MiniMap } from "@/components/MiniMap";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import {
   initDialogueEventBridge,
@@ -346,6 +347,9 @@ export default function Home() {
 
           {/* Mobile character menu - floating button */}
           <MobileCharacterMenu />
+
+          {/* Mini Map - quick access to world features */}
+          <MiniMap />
         </div>
 
         {/* Sidebar - hidden on mobile, slide-in drawer on tablet, always visible on desktop */}

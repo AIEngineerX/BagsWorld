@@ -538,17 +538,18 @@ export function getCurrentPrice(): number | null {
 export function processOpponentTurn(): Trade | null {
   if (!currentSession || currentSession.status !== "active") return null;
 
-  const opponent = DOJO_OPPONENTS.find((o) => o.id === currentSession.opponentId);
+  const session = currentSession;
+  const opponent = DOJO_OPPONENTS.find((o) => o.id === session.opponentId);
   if (!opponent) return null;
 
-  const decision = makeOpponentDecision(opponent, currentSession);
+  const decision = makeOpponentDecision(opponent, session);
   if (!decision) return null;
 
   const currentPrice = getCurrentPrice();
   if (!currentPrice) return null;
 
   if (decision.action === "buy" && decision.amount > 0) {
-    const solAmount = Math.min(decision.amount, currentSession.opponentSol);
+    const solAmount = Math.min(decision.amount, session.opponentSol);
     if (solAmount < 0.1) return null;
 
     const tokenAmount = solAmount / currentPrice;
@@ -556,7 +557,7 @@ export function processOpponentTurn(): Trade | null {
     const trade: Trade = {
       id: `trade_${Date.now()}_ai`,
       timestamp: Date.now(),
-      candleIndex: currentSession.currentCandleIndex,
+      candleIndex: session.currentCandleIndex,
       type: "buy",
       price: currentPrice,
       amount: solAmount,
@@ -564,20 +565,20 @@ export function processOpponentTurn(): Trade | null {
       trader: opponent.id,
     };
 
-    currentSession.opponentSol -= solAmount;
-    const pos = currentSession.opponentPosition;
+    session.opponentSol -= solAmount;
+    const pos = session.opponentPosition;
     const newTotalCost = pos.totalCost + solAmount;
     const newTokenAmount = pos.tokenAmount + tokenAmount;
     pos.avgEntryPrice = newTotalCost / newTokenAmount;
     pos.tokenAmount = newTokenAmount;
     pos.totalCost = newTotalCost;
 
-    currentSession.opponentTrades.push(trade);
+    session.opponentTrades.push(trade);
     return trade;
   }
 
   if (decision.action === "sell" && decision.amount > 0) {
-    const tokenAmount = Math.min(decision.amount, currentSession.opponentPosition.tokenAmount);
+    const tokenAmount = Math.min(decision.amount, session.opponentPosition.tokenAmount);
     if (tokenAmount < 0.0001) return null;
 
     const solAmount = tokenAmount * currentPrice;
@@ -585,7 +586,7 @@ export function processOpponentTurn(): Trade | null {
     const trade: Trade = {
       id: `trade_${Date.now()}_ai`,
       timestamp: Date.now(),
-      candleIndex: currentSession.currentCandleIndex,
+      candleIndex: session.currentCandleIndex,
       type: "sell",
       price: currentPrice,
       amount: solAmount,
@@ -593,8 +594,8 @@ export function processOpponentTurn(): Trade | null {
       trader: opponent.id,
     };
 
-    currentSession.opponentSol += solAmount;
-    const pos = currentSession.opponentPosition;
+    session.opponentSol += solAmount;
+    const pos = session.opponentPosition;
     pos.tokenAmount -= tokenAmount;
     if (pos.tokenAmount <= 0) {
       pos.tokenAmount = 0;
@@ -602,7 +603,7 @@ export function processOpponentTurn(): Trade | null {
       pos.totalCost = 0;
     }
 
-    currentSession.opponentTrades.push(trade);
+    session.opponentTrades.push(trade);
     return trade;
   }
 
