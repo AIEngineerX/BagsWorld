@@ -605,31 +605,25 @@ export async function POST(request: NextRequest) {
     const now = Date.now();
     const sdk = await getBagsSDK();
 
-    // Fetch global tokens from Neon to merge admin overrides
+    // Merge admin overrides from Neon global tokens
     if (isNeonConfigured()) {
       try {
         const globalTokens = await getGlobalTokens();
-        const globalTokenMap = new Map<string, GlobalToken>();
-        for (const gt of globalTokens) {
-          globalTokenMap.set(gt.mint, gt);
-        }
+        const globalTokenMap = new Map(globalTokens.map((gt) => [gt.mint, gt]));
 
-        // Merge admin overrides from global tokens into registered tokens
         registeredTokens = registeredTokens.map((token) => {
-          const globalToken = globalTokenMap.get(token.mint);
-          if (globalToken) {
-            return {
-              ...token,
-              levelOverride: globalToken.level_override ?? token.levelOverride,
-              positionOverride:
-                globalToken.position_x != null && globalToken.position_y != null
-                  ? { x: globalToken.position_x, y: globalToken.position_y }
-                  : token.positionOverride,
-              styleOverride: globalToken.style_override ?? token.styleOverride,
-              healthOverride: globalToken.health_override ?? token.healthOverride,
-            };
-          }
-          return token;
+          const gt = globalTokenMap.get(token.mint);
+          if (!gt) return token;
+          return {
+            ...token,
+            levelOverride: gt.level_override ?? token.levelOverride,
+            positionOverride:
+              gt.position_x != null && gt.position_y != null
+                ? { x: gt.position_x, y: gt.position_y }
+                : token.positionOverride,
+            styleOverride: gt.style_override ?? token.styleOverride,
+            healthOverride: gt.health_override ?? token.healthOverride,
+          };
         });
       } catch (err) {
         console.warn("[WorldState] Failed to fetch global tokens for overrides:", err);
