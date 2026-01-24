@@ -519,6 +519,10 @@ function generateEvents(
               timestamp: Date.now() - Math.random() * 3600000,
               data: {
                 tokenName: token.name,
+                tokenSymbol: token.symbol,
+                creator: token.symbol, // Use symbol as "creator" for display
+                milestone: `${formatSol(threshold)} lifetime fees`,
+                value: threshold,
                 amount: threshold,
               },
             });
