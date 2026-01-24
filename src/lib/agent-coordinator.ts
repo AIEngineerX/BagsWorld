@@ -278,47 +278,46 @@ function generateAnnouncement(event: AgentEvent): string {
   switch (event.type) {
     case "token_launch": {
       const launch = event.data as unknown as TokenLaunch;
-      // Default to Bags.fm for world-state events or when platform is not explicitly "pump"
-      const platform = launch.platform === "pump" ? "pump.fun" : "Bags.fm";
-      return `NEW LAUNCH: $${launch.symbol} just dropped on ${platform}!`;
+      const symbol = launch?.symbol || "TOKEN";
+      const platform = launch?.platform === "pump" ? "pump.fun" : "Bags.fm";
+      return `NEW LAUNCH: $${symbol} just dropped on ${platform}!`;
     }
 
     case "token_pump": {
-      const { symbol, change, price } = event.data as {
-        symbol: string;
-        change: number;
-        price?: number;
-      };
+      const data = event.data as { symbol?: string; change?: number; price?: number };
+      const symbol = data.symbol || "TOKEN";
+      const change = data.change ?? 0;
+      const price = data.price;
       return `PUMP ALERT: $${symbol} up ${change.toFixed(1)}%${price ? ` to $${price.toFixed(6)}` : ""}!`;
     }
 
     case "token_dump": {
-      const { symbol, change } = event.data as { symbol: string; change: number };
+      const data = event.data as { symbol?: string; change?: number };
+      const symbol = data.symbol || "TOKEN";
+      const change = data.change ?? 0;
       return `$${symbol} down ${Math.abs(change).toFixed(1)}%`;
     }
 
     case "fee_claim": {
-      const { username, amount, tokenSymbol } = event.data as {
-        username: string;
-        amount: number;
-        tokenSymbol?: string;
-      };
+      const data = event.data as { username?: string; amount?: number; tokenSymbol?: string };
+      const username = data.username || "Someone";
+      const amount = data.amount ?? 0;
+      const tokenSymbol = data.tokenSymbol;
       return `${username} claimed ${formatSol(amount)}${tokenSymbol ? ` from $${tokenSymbol}` : ""}!`;
     }
 
     case "distribution": {
       const result = event.data as unknown as DistributionResult;
-      const topRecipient = result.recipients?.[0];
-      const distributed = result.totalDistributed || 0;
+      const topRecipient = result?.recipients?.[0];
+      const distributed = result?.totalDistributed || 0;
       return `CREATOR REWARDS: ${formatSol(distributed)} distributed! Top: ${topRecipient?.tokenSymbol || "unknown"}`;
     }
 
     case "world_health": {
-      const { health, previousHealth, status } = event.data as {
-        health: number;
-        previousHealth: number;
-        status: string;
-      };
+      const data = event.data as { health?: number; previousHealth?: number; status?: string };
+      const health = data.health ?? 0;
+      const previousHealth = data.previousHealth ?? 0;
+      const status = data.status || "unknown";
       const direction = health > previousHealth ? "improved" : "declined";
       return `World health ${direction} to ${health}% (${status})`;
     }
@@ -338,22 +337,21 @@ function generateAnnouncement(event: AgentEvent): string {
     }
 
     case "whale_alert": {
-      const { action, amount, tokenSymbol } = event.data as {
-        action: string;
-        amount: number;
-        tokenSymbol: string;
-      };
+      const data = event.data as { action?: string; amount?: number; tokenSymbol?: string };
+      const action = data.action || "move";
+      const amount = data.amount ?? 0;
+      const tokenSymbol = data.tokenSymbol || "TOKEN";
       return `WHALE ${action.toUpperCase()}: ${formatSol(amount)} of $${tokenSymbol}`;
     }
 
     case "agent_insight": {
-      const { message } = event.data as { message: string };
-      return message;
+      const data = event.data as { message?: string };
+      return data.message || "Agent insight";
     }
 
     case "system":
     default:
-      return (event.data.message as string) || "System event";
+      return (event.data?.message as string) || "System event";
   }
 }
 

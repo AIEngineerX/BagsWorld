@@ -42,6 +42,11 @@ export function solToLamports(sol: number): number {
 export function formatSol(sol: number, includeSuffix: boolean = true): string {
   const suffix = includeSuffix ? " SOL" : "";
 
+  // Handle invalid inputs
+  if (sol === null || sol === undefined || isNaN(sol)) {
+    return `0${suffix}`;
+  }
+
   if (sol >= 1_000_000) {
     return `${(sol / 1_000_000).toFixed(1)}M${suffix}`;
   }
