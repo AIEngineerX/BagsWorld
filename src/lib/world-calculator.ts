@@ -347,7 +347,7 @@ const SPECIAL_CHARACTERS: Record<
     flag: string;
     wallet: string;
     x: number;
-    zone: "main_city" | "trending";
+    zone: "main_city" | "trending" | "academy";
     profileUrl?: string;
   }
 > = {
@@ -367,8 +367,8 @@ const SPECIAL_CHARACTERS: Record<
   finn: {
     flag: "isFinn",
     wallet: "finnbags-ceo-permanent",
-    x: Math.round(120 * SCALE),
-    zone: "main_city",
+    x: Math.round(100 * SCALE), // Clock Tower building (Dean's office)
+    zone: "academy",
     profileUrl: "https://x.com/finnbags",
   },
   dev: {
@@ -394,8 +394,59 @@ const SPECIAL_CHARACTERS: Record<
     flag: "isShaw",
     wallet: "shaw-elizaos-permanent",
     x: WORLD_WIDTH / 2 - Math.round(150 * SCALE),
-    zone: "main_city",
+    zone: "main_city", // Shaw stays in Park with other AI agents
     profileUrl: "https://x.com/shawmakesmagic",
+  },
+  // Academy Zone - Bags.fm Team (positions aligned with building locations)
+  // Buildings: 100, 230, 360, 490, 620, 750, 880, 1010 (unscaled)
+  ramo: {
+    flag: "isRamo",
+    wallet: "ramo-cto-permanent",
+    x: Math.round(230 * SCALE), // Library building
+    zone: "academy",
+    profileUrl: "https://x.com/ramyobags",
+  },
+  sincara: {
+    flag: "isSincara",
+    wallet: "sincara-frontend-permanent",
+    x: Math.round(360 * SCALE), // Art Studio building
+    zone: "academy",
+    profileUrl: "https://x.com/sincara_bags",
+  },
+  stuu: {
+    flag: "isStuu",
+    wallet: "stuu-ops-permanent",
+    x: Math.round(620 * SCALE), // Greenhouse building
+    zone: "academy",
+    profileUrl: "https://x.com/StuuBags",
+  },
+  sam: {
+    flag: "isSam",
+    wallet: "sam-growth-permanent",
+    x: Math.round(750 * SCALE), // Stage building
+    zone: "academy",
+    profileUrl: "https://x.com/Sambags12",
+  },
+  alaa: {
+    flag: "isAlaa",
+    wallet: "alaa-skunkworks-permanent",
+    x: Math.round(490 * SCALE), // Observatory building
+    zone: "academy",
+    profileUrl: "https://x.com/alaadotsol",
+  },
+  carlo: {
+    flag: "isCarlo",
+    wallet: "carlo-ambassador-permanent",
+    x: Math.round(880 * SCALE), // Welcome Hall building
+    zone: "academy",
+    profileUrl: "https://x.com/carlobags",
+  },
+  bnn: {
+    flag: "isBNN",
+    wallet: "bnn-news-permanent",
+    x: Math.round(1010 * SCALE), // BNN Tower building
+    zone: "academy",
+    profileUrl: "https://x.com/BNNBags",
   },
 };
 
@@ -422,6 +473,14 @@ export function transformFeeEarnerToCharacter(
     isScout: e.isScout || earner.wallet === SPECIAL_CHARACTERS.scout.wallet,
     isCJ: e.isCJ || earner.wallet === SPECIAL_CHARACTERS.cj.wallet,
     isShaw: e.isShaw || earner.wallet === SPECIAL_CHARACTERS.shaw.wallet,
+    // Academy Zone - Bags.fm Team
+    isRamo: e.isRamo || earner.wallet === SPECIAL_CHARACTERS.ramo.wallet,
+    isSincara: e.isSincara || earner.wallet === SPECIAL_CHARACTERS.sincara.wallet,
+    isStuu: e.isStuu || earner.wallet === SPECIAL_CHARACTERS.stuu.wallet,
+    isSam: e.isSam || earner.wallet === SPECIAL_CHARACTERS.sam.wallet,
+    isAlaa: e.isAlaa || earner.wallet === SPECIAL_CHARACTERS.alaa.wallet,
+    isCarlo: e.isCarlo || earner.wallet === SPECIAL_CHARACTERS.carlo.wallet,
+    isBNN: e.isBNN || earner.wallet === SPECIAL_CHARACTERS.bnn.wallet,
   };
 
   // Determine position
@@ -589,11 +648,66 @@ export interface BagsHealthMetrics {
   activeTokenCount: number; // Number of tokens with recent activity
 }
 
+// BagsWorld token holder for Ballers Valley mansions
+export interface BagsWorldHolder {
+  address: string;
+  balance: number;
+  percentage: number;
+  rank: number;
+}
+
+// Ballers Valley mansion positions - RANK-BASED LAYOUT
+// #1 WHALE gets center position (largest), #2-3 flank it, #4-5 on edges
+// Canvas is 1280px wide (800 * 1.6 SCALE), center is 640 (unscaled) or 1024 (scaled)
+const BALLERS_POSITIONS = [
+  { x: Math.round(400 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.5 },   // #1 - CENTER, largest (the whale)
+  { x: Math.round(200 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.3 },   // #2 - left of center
+  { x: Math.round(600 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.3 },   // #3 - right of center
+  { x: Math.round(80 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.15 },    // #4 - far left edge
+  { x: Math.round(720 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.15 },  // #5 - far right edge
+];
+
+// BagsWorld token mint for mansions
+const BAGSWORLD_TOKEN_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
+
+/**
+ * Create mansion buildings for top BagsWorld token holders
+ * Positions are rank-based: #1 WHALE in center (largest), #2-3 flanking, #4-5 on edges
+ */
+export function createMansionBuildings(holders: BagsWorldHolder[]): GameBuilding[] {
+  return holders.slice(0, 5).map((holder, index) => {
+    const position = BALLERS_POSITIONS[index];
+
+    return {
+      id: `mansion_${holder.address}`,
+      tokenMint: BAGSWORLD_TOKEN_MINT,
+      name: holder.rank === 1 ? "WHALE MANSION" : `Mansion #${holder.rank}`,
+      symbol: "MANSION",
+      x: position.x,
+      y: position.y,
+      level: 6, // Special mansion level (above normal max of 5)
+      health: 100, // Mansions always healthy
+      status: "active" as BuildingStatus,
+      glowing: true, // Mansions always glow
+      ownerId: holder.address,
+      zone: "ballers" as const,
+      isMansion: true,
+      holderRank: holder.rank,
+      holderAddress: holder.address,
+      holderBalance: holder.balance,
+      mansionScale: position.scale, // Rank-based scaling (#1 is 1.5x, #2-3 are 1.3x, etc.)
+      isPermanent: false, // Can change based on holder rankings
+      tokenUrl: `https://solscan.io/account/${holder.address}`,
+    };
+  });
+}
+
 export function buildWorldState(
   earners: FeeEarner[],
   tokens: TokenInfo[],
   previousState?: WorldState,
-  bagsMetrics?: BagsHealthMetrics
+  bagsMetrics?: BagsHealthMetrics,
+  bagsWorldHolders?: BagsWorldHolder[]
 ): WorldState {
   // Calculate health from Bags.fm metrics (fee claims, lifetime fees)
   // Falls back to token count if no metrics provided
@@ -658,7 +772,7 @@ export function buildWorldState(
   cleanupBuildingPositionCache(activeMints);
 
   // Assign cached positions (buildings keep their position even when rankings change)
-  const buildings = filteredBuildings.map((building) => {
+  const regularBuildings = filteredBuildings.map((building) => {
     // Landmark/permanent buildings use fixed positions
     if (building.isPermanent || building.isFloating) {
       return building;
@@ -668,6 +782,12 @@ export function buildWorldState(
       ...getCachedBuildingPosition(building.id, activeMints),
     };
   });
+
+  // Create mansion buildings for Ballers Valley from top BagsWorld token holders
+  const mansionBuildings = bagsWorldHolders ? createMansionBuildings(bagsWorldHolders) : [];
+
+  // Combine regular buildings with mansion buildings
+  const buildings = [...regularBuildings, ...mansionBuildings];
 
   // Generate events for significant changes
   const events: GameEvent[] = previousState?.events.slice(0, 10) ?? [];
