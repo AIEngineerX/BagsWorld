@@ -3476,7 +3476,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Special buildings have fixed textures - no need to update
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
-    const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
+    const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
     const isTradingTerminal =
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
@@ -3536,7 +3536,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Use special texture for PokeCenter/TradingGym/Casino/Terminal/HQ, otherwise use level-based building with style
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
-    const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
+    const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
     const isTradingTerminal =
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
@@ -3704,8 +3704,10 @@ export class WorldScene extends Phaser.Scene {
     label.setOrigin(0.5, 0.5);
     container.add(label);
 
-    // HQ floats higher and has larger hitbox
-    container.setDepth(isHQBuilding ? 15 : 5);
+    // HQ floats in the sky, other buildings sort by Y position (higher Y = in front)
+    // Add small X offset so buildings on the right appear behind buildings on the left at same Y
+    const buildingDepth = isHQBuilding ? 15 : Math.floor(building.y / 10) + (building.x / 10000);
+    container.setDepth(buildingDepth);
     const hitboxSize = isHQBuilding ? { w: 80, h: 160 } : { w: 40, h: 80 };
     container.setInteractive(
       new Phaser.Geom.Rectangle(-hitboxSize.w / 2, -hitboxSize.h, hitboxSize.w, hitboxSize.h),
@@ -3724,7 +3726,7 @@ export class WorldScene extends Phaser.Scene {
     });
     container.on("pointerdown", () => {
       const isPokeCenter = building.id.includes("PokeCenter");
-      const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
+      const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
       const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
       const isTradingTerminal =
         building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";

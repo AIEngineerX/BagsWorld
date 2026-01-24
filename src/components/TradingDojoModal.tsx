@@ -196,6 +196,7 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
               <div className="flex items-center justify-center gap-3 mb-2">
                 <span className="text-3xl">&#x1F94B;</span>
                 <h2 className="font-pixel text-xl text-orange-400 tracking-wider">TRADING DOJO</h2>
+                <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-pixel text-[8px] tracking-wider">BETA</span>
                 <span className="text-3xl">&#x1F525;</span>
               </div>
               <p className="text-center text-orange-300/80 text-sm">
@@ -300,7 +301,10 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 >
                   &larr; BACK
                 </button>
-                <h2 className="font-pixel text-lg text-orange-400">HOW TO SPAR</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-pixel text-lg text-orange-400">HOW TO SPAR</h2>
+                  <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-pixel text-[7px]">BETA</span>
+                </div>
                 <div className="w-12" />
               </div>
             </div>
@@ -414,25 +418,26 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 >
                   &larr; EXIT
                 </button>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-pixel text-sm text-orange-400">DOJO</span>
+                  <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-pixel text-[7px]">BETA</span>
+                </div>
+                <div className="flex items-center gap-2">
                   <div
-                    className="w-3 h-8 rounded-sm"
+                    className="w-2 h-6 rounded-sm"
                     style={{ backgroundColor: getBeltColor(playerStats.belt) }}
                   />
-                  <span className="font-pixel text-sm text-orange-400 uppercase">
-                    {playerStats.belt} Belt
+                  <span className="font-mono text-xs text-gray-500">
+                    {playerStats.wins}W-{playerStats.losses}L
                   </span>
                 </div>
-                <span className="font-mono text-xs text-gray-500">
-                  {playerStats.wins}W-{playerStats.losses}L
-                </span>
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <h3 className="font-pixel text-xs text-gray-500 uppercase tracking-wider">Select Opponent</h3>
 
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-2">
                 {DOJO_OPPONENTS.map((opponent) => {
                   const canFight = canChallenge(playerStats.belt, opponent);
                   const record = playerStats.opponentStats[opponent.id] || { wins: 0, losses: 0 };
@@ -447,48 +452,55 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                         }
                       }}
                       disabled={!canFight}
-                      className={`text-left p-4 rounded-lg border transition-all ${
+                      className={`text-left p-3 rounded-lg border transition-all ${
                         canFight
                           ? "bg-stone-900/80 border-orange-500/30 hover:border-orange-500/60 hover:bg-stone-800/80"
                           : "bg-stone-900/40 border-stone-700/50 opacity-50 cursor-not-allowed"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-                            style={{ backgroundColor: opponent.color + "30", borderColor: opponent.color }}
-                          >
-                            {opponent.difficulty <= 2 ? "&#x1F94B;" : opponent.difficulty <= 4 ? "&#x1F525;" : "&#x2694;"}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-pixel text-sm text-white">{opponent.name}</span>
-                              <span className="font-mono text-[10px] text-gray-600">
-                                LV.{opponent.difficulty}
-                              </span>
-                            </div>
-                            <p className="font-mono text-xs text-gray-500">{opponent.style}</p>
-                          </div>
+                      <div className="flex items-center gap-3">
+                        {/* Icon */}
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center text-base flex-shrink-0 border"
+                          style={{
+                            backgroundColor: opponent.color + "20",
+                            borderColor: opponent.color + "40"
+                          }}
+                        >
+                          {opponent.difficulty <= 2 ? "🥋" : opponent.difficulty <= 4 ? "🔥" : "⚔"}
                         </div>
 
-                        {!canFight ? (
-                          <span
-                            className="font-pixel text-[10px] px-2 py-1 rounded"
-                            style={{
-                              backgroundColor: getBeltColor(opponent.requiredBelt) + "30",
-                              color: getBeltColor(opponent.requiredBelt),
-                            }}
-                          >
-                            {opponent.requiredBelt.toUpperCase()} REQ
-                          </span>
-                        ) : (record.wins > 0 || record.losses > 0) ? (
-                          <span className="font-mono text-xs text-gray-600">
-                            {record.wins}W-{record.losses}L
-                          </span>
-                        ) : (
-                          <span className="font-pixel text-[10px] text-orange-400">NEW</span>
-                        )}
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-pixel text-xs text-white truncate">{opponent.name}</span>
+                            <span className="font-mono text-[9px] text-gray-600 flex-shrink-0">
+                              LV.{opponent.difficulty}
+                            </span>
+                          </div>
+                          <p className="font-mono text-[10px] text-gray-500 truncate">{opponent.style}</p>
+                        </div>
+
+                        {/* Status */}
+                        <div className="flex-shrink-0">
+                          {!canFight ? (
+                            <span
+                              className="font-pixel text-[9px] px-2 py-1 rounded whitespace-nowrap"
+                              style={{
+                                backgroundColor: getBeltColor(opponent.requiredBelt) + "30",
+                                color: getBeltColor(opponent.requiredBelt),
+                              }}
+                            >
+                              {opponent.requiredBelt.toUpperCase()}
+                            </span>
+                          ) : (record.wins > 0 || record.losses > 0) ? (
+                            <span className="font-mono text-[10px] text-gray-500 whitespace-nowrap">
+                              {record.wins}W-{record.losses}L
+                            </span>
+                          ) : (
+                            <span className="font-pixel text-[9px] text-orange-400 px-2 py-0.5 bg-orange-500/10 rounded">NEW</span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   );

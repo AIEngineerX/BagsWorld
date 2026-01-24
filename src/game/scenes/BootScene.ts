@@ -1508,285 +1508,285 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generateTradingGym(): void {
-    // Trading Gym - Pokemon Gym style building (orange/battle themed)
+    // Trading Dojo - Japanese dojo style building (traditional wooden structure)
     const s = SCALE;
     const g = this.make.graphics({ x: 0, y: 0 });
     const canvasHeight = Math.round(160 * s);
-    const canvasWidth = Math.round(70 * s);
-    const bHeight = Math.round(100 * s);
-    const bWidth = Math.round(60 * s);
+    const canvasWidth = Math.round(80 * s);
+    const bHeight = Math.round(90 * s);
+    const bWidth = Math.round(70 * s);
+    const baseX = Math.round(5 * s);
 
     // Shadow
     g.fillStyle(PALETTE.void, 0.5);
     g.fillRect(
-      Math.round(8 * s),
-      canvasHeight - bHeight + Math.round(8 * s),
-      bWidth - Math.round(2 * s),
+      baseX + Math.round(6 * s),
+      canvasHeight - bHeight + Math.round(6 * s),
+      bWidth - Math.round(4 * s),
       bHeight
     );
 
-    // Building base (dark gray - stadium style)
-    g.fillStyle(PALETTE.gray);
-    g.fillRect(Math.round(4 * s), canvasHeight - bHeight, bWidth - Math.round(4 * s), bHeight);
-
-    // Highlight left side
-    g.fillStyle(lighten(PALETTE.gray, 0.15));
-    g.fillRect(Math.round(4 * s), canvasHeight - bHeight, Math.round(8 * s), bHeight);
-
-    // Shadow right side
-    g.fillStyle(darken(PALETTE.gray, 0.2));
-    g.fillRect(bWidth - Math.round(8 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
-
-    // Orange roof - gym style with shading
-    g.fillStyle(PALETTE.orange);
+    // Wooden platform/foundation (raised floor - engawa style)
+    const platformHeight = Math.round(8 * s);
+    g.fillStyle(0x8b4513); // Saddle brown
     g.fillRect(
-      0,
-      canvasHeight - bHeight - Math.round(12 * s),
+      baseX - Math.round(4 * s),
+      canvasHeight - platformHeight,
       bWidth + Math.round(8 * s),
-      Math.round(16 * s)
+      platformHeight
     );
-    g.fillStyle(lighten(PALETTE.orange, 0.15));
+    g.fillStyle(0xa0522d); // Sienna (lighter)
     g.fillRect(
-      Math.round(2 * s),
-      canvasHeight - bHeight - Math.round(10 * s),
-      bWidth + Math.round(4 * s),
-      Math.round(12 * s)
-    );
-    // Roof highlight
-    g.fillStyle(lighten(PALETTE.orange, 0.3));
-    g.fillRect(
-      Math.round(2 * s),
-      canvasHeight - bHeight - Math.round(10 * s),
-      bWidth + Math.round(4 * s),
-      Math.round(3 * s)
-    );
-
-    // Roof peak with battle symbol
-    g.fillStyle(darken(PALETTE.orange, 0.2));
-    g.fillRect(
-      bWidth / 2 - Math.round(10 * s),
-      canvasHeight - bHeight - Math.round(24 * s),
-      Math.round(28 * s),
-      Math.round(14 * s)
-    );
-    g.fillStyle(PALETTE.orange);
-    g.fillRect(
-      bWidth / 2 - Math.round(8 * s),
-      canvasHeight - bHeight - Math.round(22 * s),
-      Math.round(24 * s),
-      Math.round(10 * s)
-    );
-    // Peak highlight
-    g.fillStyle(lighten(PALETTE.orange, 0.2));
-    g.fillRect(
-      bWidth / 2 - Math.round(8 * s),
-      canvasHeight - bHeight - Math.round(22 * s),
-      Math.round(24 * s),
+      baseX - Math.round(4 * s),
+      canvasHeight - platformHeight,
+      bWidth + Math.round(8 * s),
       Math.round(2 * s)
     );
 
-    // Crossed swords symbol on roof (gym badge style)
-    g.fillStyle(PALETTE.white);
-    // Left sword
+    // Building base (wooden walls - warm brown)
+    const woodColor = 0x8b5a2b;
+    g.fillStyle(woodColor);
+    g.fillRect(baseX, canvasHeight - bHeight, bWidth, bHeight - platformHeight);
+
+    // Wood grain texture - vertical planks
+    g.fillStyle(darken(woodColor, 0.15));
+    for (let i = 0; i < 6; i++) {
+      const plankX = baseX + Math.round(2 * s) + i * Math.round(11 * s);
+      g.fillRect(plankX, canvasHeight - bHeight, Math.round(1 * s), bHeight - platformHeight);
+    }
+
+    // Left side highlight
+    g.fillStyle(lighten(woodColor, 0.2));
+    g.fillRect(baseX, canvasHeight - bHeight, Math.round(4 * s), bHeight - platformHeight);
+
+    // Right side shadow
+    g.fillStyle(darken(woodColor, 0.25));
     g.fillRect(
-      bWidth / 2 - Math.round(4 * s),
-      canvasHeight - bHeight - Math.round(20 * s),
-      Math.round(2 * s),
+      baseX + bWidth - Math.round(6 * s),
+      canvasHeight - bHeight,
+      Math.round(6 * s),
+      bHeight - platformHeight
+    );
+
+    // Traditional curved roof (dark blue/black tiles)
+    const roofColor = 0x1a1a2e;
+    const roofOverhang = Math.round(10 * s);
+    const roofHeight = Math.round(20 * s);
+
+    // Main roof body
+    g.fillStyle(roofColor);
+    g.fillRect(
+      baseX - roofOverhang,
+      canvasHeight - bHeight - roofHeight + Math.round(4 * s),
+      bWidth + roofOverhang * 2,
+      roofHeight
+    );
+
+    // Curved roof edges (simplified pixel art curves)
+    g.fillStyle(roofColor);
+    // Left curve up
+    g.fillRect(
+      baseX - roofOverhang - Math.round(2 * s),
+      canvasHeight - bHeight - roofHeight + Math.round(8 * s),
+      Math.round(4 * s),
       Math.round(8 * s)
     );
+    // Right curve up
     g.fillRect(
-      bWidth / 2 - Math.round(6 * s),
-      canvasHeight - bHeight - Math.round(18 * s),
-      Math.round(6 * s),
-      Math.round(2 * s)
-    );
-    // Right sword
-    g.fillRect(
-      bWidth / 2 + Math.round(6 * s),
-      canvasHeight - bHeight - Math.round(20 * s),
-      Math.round(2 * s),
+      baseX + bWidth + roofOverhang - Math.round(2 * s),
+      canvasHeight - bHeight - roofHeight + Math.round(8 * s),
+      Math.round(4 * s),
       Math.round(8 * s)
     );
+
+    // Roof ridge (top peak)
+    g.fillStyle(0x2d2d44);
     g.fillRect(
-      bWidth / 2 + Math.round(4 * s),
-      canvasHeight - bHeight - Math.round(18 * s),
-      Math.round(6 * s),
-      Math.round(2 * s)
+      baseX - roofOverhang + Math.round(4 * s),
+      canvasHeight - bHeight - roofHeight,
+      bWidth + roofOverhang * 2 - Math.round(8 * s),
+      Math.round(6 * s)
     );
-    // Cross point
-    g.fillStyle(PALETTE.gold);
-    g.fillCircle(
-      bWidth / 2 + Math.round(2 * s),
-      canvasHeight - bHeight - Math.round(16 * s),
+
+    // Red accent trim under roof
+    g.fillStyle(PALETTE.brightRed);
+    g.fillRect(
+      baseX - roofOverhang + Math.round(2 * s),
+      canvasHeight - bHeight + Math.round(2 * s),
+      bWidth + roofOverhang * 2 - Math.round(4 * s),
       Math.round(3 * s)
     );
-    g.fillStyle(lighten(PALETTE.gold, 0.3));
-    g.fillCircle(
-      bWidth / 2 + Math.round(1 * s),
-      canvasHeight - bHeight - Math.round(17 * s),
+
+    // Shoji screens (paper doors/windows) - two on each side
+    const shojiColor = 0xfff8dc; // Cream white
+    const shojiFrameColor = 0x4a3728;
+    const screenWidth = Math.round(12 * s);
+    const screenHeight = Math.round(28 * s);
+    const screenY = canvasHeight - bHeight + Math.round(20 * s);
+
+    // Left shoji screen
+    g.fillStyle(shojiFrameColor);
+    g.fillRect(
+      baseX + Math.round(6 * s),
+      screenY,
+      screenWidth + Math.round(2 * s),
+      screenHeight + Math.round(2 * s)
+    );
+    g.fillStyle(shojiColor);
+    g.fillRect(baseX + Math.round(7 * s), screenY + Math.round(1 * s), screenWidth, screenHeight);
+    // Grid pattern
+    g.fillStyle(shojiFrameColor);
+    g.fillRect(
+      baseX + Math.round(7 * s) + screenWidth / 2,
+      screenY + Math.round(1 * s),
+      Math.round(1 * s),
+      screenHeight
+    );
+    g.fillRect(
+      baseX + Math.round(7 * s),
+      screenY + screenHeight / 2,
+      screenWidth,
       Math.round(1 * s)
     );
 
-    // Windows - gym style (larger, arena-like)
-    const windowColor = PALETTE.gold;
-    for (let row = 0; row < 2; row++) {
-      for (let col = 0; col < 3; col++) {
-        const wx = Math.round(10 * s) + col * Math.round(16 * s);
-        const wy = canvasHeight - bHeight + Math.round(18 * s) + row * Math.round(22 * s);
-
-        // Window glow
-        g.fillStyle(windowColor, 0.3);
-        g.fillRect(
-          wx - Math.round(2 * s),
-          wy - Math.round(2 * s),
-          Math.round(13 * s),
-          Math.round(15 * s)
-        );
-
-        // Window
-        g.fillStyle(windowColor);
-        g.fillRect(wx, wy, Math.round(10 * s), Math.round(12 * s));
-
-        // Window highlight
-        g.fillStyle(lighten(windowColor, 0.35));
-        g.fillRect(wx, wy, Math.round(3 * s), Math.round(3 * s));
-
-        // Window frame
-        g.fillStyle(PALETTE.gray);
-        g.fillRect(wx + Math.round(4 * s), wy, Math.round(2 * s), Math.round(12 * s));
-        g.fillRect(wx, wy + Math.round(5 * s), Math.round(10 * s), Math.round(2 * s));
-      }
-    }
-
-    // "GYM" badge above door
-    g.fillStyle(PALETTE.darkGray);
+    // Right shoji screen
+    g.fillStyle(shojiFrameColor);
     g.fillRect(
-      bWidth / 2 - Math.round(12 * s),
-      canvasHeight - bHeight + Math.round(8 * s),
-      Math.round(28 * s),
-      Math.round(12 * s)
+      baseX + bWidth - Math.round(20 * s),
+      screenY,
+      screenWidth + Math.round(2 * s),
+      screenHeight + Math.round(2 * s)
     );
-    g.fillStyle(PALETTE.orange);
+    g.fillStyle(shojiColor);
     g.fillRect(
-      bWidth / 2 - Math.round(10 * s),
-      canvasHeight - bHeight + Math.round(10 * s),
-      Math.round(24 * s),
-      Math.round(8 * s)
+      baseX + bWidth - Math.round(19 * s),
+      screenY + Math.round(1 * s),
+      screenWidth,
+      screenHeight
     );
-    g.fillStyle(lighten(PALETTE.orange, 0.2));
+    // Grid pattern
+    g.fillStyle(shojiFrameColor);
     g.fillRect(
-      bWidth / 2 - Math.round(10 * s),
-      canvasHeight - bHeight + Math.round(10 * s),
-      Math.round(24 * s),
-      Math.round(2 * s)
+      baseX + bWidth - Math.round(19 * s) + screenWidth / 2,
+      screenY + Math.round(1 * s),
+      Math.round(1 * s),
+      screenHeight
+    );
+    g.fillRect(
+      baseX + bWidth - Math.round(19 * s),
+      screenY + screenHeight / 2,
+      screenWidth,
+      Math.round(1 * s)
     );
 
-    // Door - large arena entrance
+    // Center entrance - sliding doors
     const doorWidth = Math.round(20 * s);
-    const doorHeight = Math.round(26 * s);
-    const doorX = (bWidth - doorWidth) / 2 + Math.round(2 * s);
+    const doorHeight = Math.round(32 * s);
+    const doorX = baseX + (bWidth - doorWidth) / 2;
+    const doorY = canvasHeight - platformHeight - doorHeight;
 
-    // Door frame with shading
+    // Door frame
+    g.fillStyle(shojiFrameColor);
+    g.fillRect(
+      doorX - Math.round(2 * s),
+      doorY - Math.round(2 * s),
+      doorWidth + Math.round(4 * s),
+      doorHeight + Math.round(2 * s)
+    );
+
+    // Door panels (slightly open - showing darkness inside)
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(doorX, doorY, doorWidth, doorHeight);
+
+    // Left door panel (shoji)
+    g.fillStyle(shojiColor);
+    g.fillRect(doorX, doorY, doorWidth / 2 - Math.round(2 * s), doorHeight);
+    g.fillStyle(shojiFrameColor);
+    g.fillRect(doorX + doorWidth / 4, doorY, Math.round(1 * s), doorHeight);
+    g.fillRect(doorX, doorY + doorHeight / 3, doorWidth / 2 - Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(
+      doorX,
+      doorY + (doorHeight * 2) / 3,
+      doorWidth / 2 - Math.round(2 * s),
+      Math.round(1 * s)
+    );
+
+    // Right door panel (shoji)
+    g.fillStyle(shojiColor);
+    g.fillRect(doorX + doorWidth / 2 + Math.round(2 * s), doorY, doorWidth / 2 - Math.round(2 * s), doorHeight);
+    g.fillStyle(shojiFrameColor);
+    g.fillRect(doorX + (doorWidth * 3) / 4, doorY, Math.round(1 * s), doorHeight);
+    g.fillRect(
+      doorX + doorWidth / 2 + Math.round(2 * s),
+      doorY + doorHeight / 3,
+      doorWidth / 2 - Math.round(2 * s),
+      Math.round(1 * s)
+    );
+    g.fillRect(
+      doorX + doorWidth / 2 + Math.round(2 * s),
+      doorY + (doorHeight * 2) / 3,
+      doorWidth / 2 - Math.round(2 * s),
+      Math.round(1 * s)
+    );
+
+    // Noren (fabric curtain above door) - orange/amber dojo colors
     g.fillStyle(PALETTE.orange);
     g.fillRect(
-      doorX - Math.round(3 * s),
-      canvasHeight - doorHeight - Math.round(4 * s),
-      doorWidth + Math.round(6 * s),
-      doorHeight + Math.round(4 * s)
-    );
-    g.fillStyle(lighten(PALETTE.orange, 0.15));
-    g.fillRect(
-      doorX - Math.round(3 * s),
-      canvasHeight - doorHeight - Math.round(4 * s),
-      Math.round(2 * s),
-      doorHeight + Math.round(4 * s)
-    );
-
-    // Door
-    g.fillStyle(PALETTE.darkGray);
-    g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
-
-    // Door window
-    g.fillStyle(PALETTE.gold, 0.6);
-    g.fillRect(
-      doorX + Math.round(4 * s),
-      canvasHeight - doorHeight + Math.round(4 * s),
-      doorWidth - Math.round(8 * s),
+      doorX - Math.round(4 * s),
+      doorY - Math.round(10 * s),
+      doorWidth + Math.round(8 * s),
       Math.round(10 * s)
     );
-    // Window reflection
-    g.fillStyle(lighten(PALETTE.gold, 0.4), 0.4);
+    // Noren slits
+    g.fillStyle(darken(PALETTE.orange, 0.3));
+    g.fillRect(doorX, doorY - Math.round(8 * s), Math.round(1 * s), Math.round(6 * s));
     g.fillRect(
-      doorX + Math.round(5 * s),
-      canvasHeight - doorHeight + Math.round(5 * s),
+      doorX + doorWidth / 3,
+      doorY - Math.round(8 * s),
+      Math.round(1 * s),
+      Math.round(6 * s)
+    );
+    g.fillRect(
+      doorX + (doorWidth * 2) / 3,
+      doorY - Math.round(8 * s),
+      Math.round(1 * s),
+      Math.round(6 * s)
+    );
+    g.fillRect(doorX + doorWidth, doorY - Math.round(8 * s), Math.round(1 * s), Math.round(6 * s));
+
+    // Dojo symbol on noren (circle - representing unity/perfection)
+    g.fillStyle(PALETTE.gold);
+    g.fillCircle(doorX + doorWidth / 2, doorY - Math.round(5 * s), Math.round(3 * s));
+    g.fillStyle(PALETTE.orange);
+    g.fillCircle(doorX + doorWidth / 2, doorY - Math.round(5 * s), Math.round(1.5 * s));
+
+    // Stone lanterns on either side
+    const lanternY = canvasHeight - platformHeight - Math.round(16 * s);
+    // Left lantern
+    g.fillStyle(0x696969); // Gray stone
+    g.fillRect(baseX - Math.round(2 * s), lanternY, Math.round(6 * s), Math.round(16 * s));
+    g.fillStyle(0x808080);
+    g.fillRect(baseX - Math.round(3 * s), lanternY + Math.round(4 * s), Math.round(8 * s), Math.round(8 * s));
+    g.fillStyle(PALETTE.gold, 0.7);
+    g.fillRect(baseX - Math.round(1 * s), lanternY + Math.round(6 * s), Math.round(4 * s), Math.round(4 * s));
+
+    // Right lantern
+    g.fillStyle(0x696969);
+    g.fillRect(baseX + bWidth - Math.round(4 * s), lanternY, Math.round(6 * s), Math.round(16 * s));
+    g.fillStyle(0x808080);
+    g.fillRect(
+      baseX + bWidth - Math.round(5 * s),
+      lanternY + Math.round(4 * s),
+      Math.round(8 * s),
+      Math.round(8 * s)
+    );
+    g.fillStyle(PALETTE.gold, 0.7);
+    g.fillRect(
+      baseX + bWidth - Math.round(3 * s),
+      lanternY + Math.round(6 * s),
       Math.round(4 * s),
       Math.round(4 * s)
     );
-
-    // Door divider
-    g.fillStyle(PALETTE.orange);
-    g.fillRect(
-      doorX + doorWidth / 2 - Math.round(1 * s),
-      canvasHeight - doorHeight,
-      Math.round(2 * s),
-      doorHeight
-    );
-
-    // Battle mat entrance
-    g.fillStyle(PALETTE.orange);
-    g.fillRect(
-      doorX - Math.round(6 * s),
-      canvasHeight - Math.round(3 * s),
-      doorWidth + Math.round(12 * s),
-      Math.round(3 * s)
-    );
-    g.fillStyle(PALETTE.gold);
-    g.fillRect(
-      doorX - Math.round(4 * s),
-      canvasHeight - Math.round(2 * s),
-      doorWidth + Math.round(8 * s),
-      Math.round(2 * s)
-    );
-
-    // Side torches/flames (decorative) with shading
-    g.fillStyle(PALETTE.orange);
-    g.fillRect(
-      Math.round(6 * s),
-      canvasHeight - Math.round(40 * s),
-      Math.round(4 * s),
-      Math.round(16 * s)
-    );
-    g.fillRect(
-      bWidth - Math.round(6 * s),
-      canvasHeight - Math.round(40 * s),
-      Math.round(4 * s),
-      Math.round(16 * s)
-    );
-    // Torch highlight
-    g.fillStyle(lighten(PALETTE.orange, 0.2));
-    g.fillRect(
-      Math.round(6 * s),
-      canvasHeight - Math.round(40 * s),
-      Math.round(1 * s),
-      Math.round(16 * s)
-    );
-    g.fillRect(
-      bWidth - Math.round(6 * s),
-      canvasHeight - Math.round(40 * s),
-      Math.round(1 * s),
-      Math.round(16 * s)
-    );
-    // Flames
-    g.fillStyle(PALETTE.gold);
-    g.fillCircle(Math.round(8 * s), canvasHeight - Math.round(44 * s), Math.round(4 * s));
-    g.fillCircle(bWidth - Math.round(4 * s), canvasHeight - Math.round(44 * s), Math.round(4 * s));
-    g.fillStyle(PALETTE.brightRed);
-    g.fillCircle(Math.round(8 * s), canvasHeight - Math.round(46 * s), Math.round(2 * s));
-    g.fillCircle(bWidth - Math.round(4 * s), canvasHeight - Math.round(46 * s), Math.round(2 * s));
-    // Flame cores (bright center)
-    g.fillStyle(PALETTE.yellow);
-    g.fillCircle(Math.round(8 * s), canvasHeight - Math.round(45 * s), Math.round(1 * s));
-    g.fillCircle(bWidth - Math.round(4 * s), canvasHeight - Math.round(45 * s), Math.round(1 * s));
 
     g.generateTexture("tradinggym", canvasWidth, canvasHeight);
     g.destroy();
