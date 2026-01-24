@@ -488,11 +488,12 @@ export function AdminConsole() {
     return `${wallet.slice(0, 4)}...${wallet.slice(-4)}`;
   };
 
-  const formatMarketCap = (mc: number | undefined) => {
-    if (!mc) return "$0";
-    if (mc >= 1_000_000) return `$${(mc / 1_000_000).toFixed(2)}M`;
-    if (mc >= 1_000) return `$${(mc / 1_000).toFixed(1)}K`;
-    return `$${mc.toFixed(0)}`;
+  const formatMarketCap = (mc: number | string | undefined | null) => {
+    const num = Number(mc) || 0;
+    if (num === 0) return "$0";
+    if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}M`;
+    if (num >= 1_000) return `$${(num / 1_000).toFixed(1)}K`;
+    return `$${num.toFixed(0)}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -670,13 +671,13 @@ export function AdminConsole() {
                   <div className="bg-bags-darker p-3 border border-red-500/30">
                     <p className="font-pixel text-[8px] text-gray-500">Reward Pool</p>
                     <p className="font-pixel text-lg text-bags-gold">
-                      {stats?.pendingPoolSol.toFixed(4) || "0"} SOL
+                      {Number(stats?.pendingPoolSol ?? 0).toFixed(4)} SOL
                     </p>
                   </div>
                   <div className="bg-bags-darker p-3 border border-red-500/30">
                     <p className="font-pixel text-[8px] text-gray-500">Total Distributed</p>
                     <p className="font-pixel text-lg text-bags-green">
-                      {stats?.totalDistributed.toFixed(4) || "0"} SOL
+                      {Number(stats?.totalDistributed ?? 0).toFixed(4)} SOL
                     </p>
                   </div>
                   <div className="bg-bags-darker p-3 border border-red-500/30">
@@ -750,7 +751,7 @@ export function AdminConsole() {
                               {truncateWallet(creator.wallet)}
                             </span>
                             <span className="font-pixel text-[10px] text-bags-green">
-                              {creator.feesGenerated.toFixed(4)} SOL
+                              {Number(creator.feesGenerated ?? 0).toFixed(4)} SOL
                             </span>
                           </div>
                         </div>
@@ -1022,7 +1023,7 @@ export function AdminConsole() {
                                       MC: {formatMarketCap(token.market_cap)}
                                     </span>
                                     <span className="font-pixel text-[7px] text-gray-500">
-                                      Fees: {(token.lifetime_fees || 0).toFixed(2)} SOL
+                                      Fees: {Number(token.lifetime_fees ?? 0).toFixed(2)} SOL
                                     </span>
                                   </div>
                                 </div>
@@ -1395,7 +1396,7 @@ export function AdminConsole() {
                     <div>
                       <p className="font-pixel text-[7px] text-gray-500">Total Distributed</p>
                       <p className="font-pixel text-lg text-bags-green">
-                        {stats?.totalDistributed.toFixed(4) || "0"} SOL
+                        {Number(stats?.totalDistributed ?? 0).toFixed(4)} SOL
                       </p>
                     </div>
                     <div>
@@ -1425,7 +1426,7 @@ export function AdminConsole() {
                               {new Date(dist.timestamp).toLocaleDateString()}
                             </span>
                             <span className="font-pixel text-[10px] text-bags-gold">
-                              {dist.totalDistributed.toFixed(4)} SOL
+                              {Number(dist.totalDistributed ?? 0).toFixed(4)} SOL
                             </span>
                           </div>
                           <div className="space-y-1">
@@ -1435,7 +1436,7 @@ export function AdminConsole() {
                                   #{r.rank} ${r.tokenSymbol}
                                 </span>
                                 <span className="font-pixel text-[8px] text-bags-green">
-                                  {r.amount.toFixed(4)} SOL
+                                  {Number(r.amount ?? 0).toFixed(4)} SOL
                                 </span>
                               </div>
                             ))}
@@ -1454,7 +1455,7 @@ export function AdminConsole() {
                       <p className="font-pixel text-[7px] text-gray-500">Total Market Cap</p>
                       <p className="font-pixel text-sm text-white">
                         {formatMarketCap(
-                          globalTokens.reduce((sum, t) => sum + (t.market_cap || 0), 0)
+                          globalTokens.reduce((sum, t) => sum + Number(t.market_cap ?? 0), 0)
                         )}
                       </p>
                     </div>
@@ -1462,7 +1463,7 @@ export function AdminConsole() {
                       <p className="font-pixel text-[7px] text-gray-500">Total Lifetime Fees</p>
                       <p className="font-pixel text-sm text-bags-green">
                         {globalTokens
-                          .reduce((sum, t) => sum + (t.lifetime_fees || 0), 0)
+                          .reduce((sum, t) => sum + Number(t.lifetime_fees ?? 0), 0)
                           .toFixed(2)}{" "}
                         SOL
                       </p>
