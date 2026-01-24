@@ -288,79 +288,162 @@ describe("calculateBuildingLevel", () => {
 });
 
 describe("calculateBuildingHealth", () => {
-  describe("price change impact", () => {
-    it("should return 50 for 0% change with no activity", () => {
-      const health = calculateBuildingHealth(0, 0, 50);
-      // Base: 50, decay: -5, blended: 50*0.7 + 50*0.3 - 5 = 45
-      expect(health).toBeLessThanOrEqual(50);
+  describe("health override (admin control)", () => {
+    it("should return exact override value when healthOverride is provided", () => {
+      // Override should bypass all calculations
+      const result = calculateBuildingHealth(1000, 50000, 100, 50, false, 75);
+      expect(result.health).toBe(75);
     });
 
-    it("should increase health for positive price change", () => {
-      const health = calculateBuildingHealth(50, 1000, 50);
-      expect(health).toBeGreaterThan(50);
+    it("should return correct status for overridden health values", () => {
+      // Active (> 75)
+      expect(calculateBuildingHealth(0, 0, 0, 50, false, 80).status).toBe("active");
+      expect(calculateBuildingHealth(0, 0, 0, 50, false, 100).status).toBe("active");
+
+      // Warning (50-75)
+      expect(calculateBuildingHealth(0, 0, 0, 50, false, 75).status).toBe("warning");
+      expect(calculateBuildingHealth(0, 0, 0, 50, false, 51).status).toBe("warning");
+
+      // Critical (25-50)
+      expect(calculateBuildingHealth(0, 0, 0, 50, false, 50).status).toBe("critical");
+      expect(calculateBuildingHealth(0, 0, 0, 50, false, 26).status).toBe("critical");
+
+      // Dormant (<= 25)
+      expect(calculateBuildingHealth(0, 0, 0, 50, false, 25).status).toBe("dormant");
+      expect(calculateBuildingHealth(0, 0, 0, 50, false, 10).status).toBe("dormant");
+      expect(calculateBuildingHealth(0, 0, 0, 50, false, 0).status).toBe("dormant");
     });
 
-    it("should decrease health for negative price change", () => {
-      // With -50% change: changeBasedHealth = 50 + (-50 * 0.5) = 25
-      // Active volume adds +10 recovery
-      // Blended: 50*0.7 + 25*0.3 + 10 = 35 + 7.5 + 10 = 52.5 -> 53
-      // The recovery from activity can offset some of the decline
-      const health = calculateBuildingHealth(-50, 1000, 50);
-      // With recovery, health may stay close to previous
-      expect(health).toBeLessThanOrEqual(60);
-      expect(health).toBeGreaterThanOrEqual(0);
+    it("should handle boundary values for healthOverride", () => {
+      // Minimum (0)
+      const min = calculateBuildingHealth(1000, 50000, 100, 80, false, 0);
+      expect(min.health).toBe(0);
+      expect(min.status).toBe("dormant");
+
+      // Maximum (100)
+      const max = calculateBuildingHealth(0, 0, -100, 10, false, 100);
+      expect(max.health).toBe(100);
+      expect(max.status).toBe("active");
     });
 
-    it("should clamp extreme price changes to -100/+100", () => {
-      const healthUp = calculateBuildingHealth(200, 1000, 50);
-      const healthDown = calculateBuildingHealth(-200, 1000, 50);
+    it("should ignore healthOverride when null", () => {
+      const withNull = calculateBuildingHealth(1000, 50000, 50, 60, false, null);
+      const withoutOverride = calculateBuildingHealth(1000, 50000, 50, 60, false);
+      // Both should calculate normally (not return null or 0)
+      expect(withNull.health).toBe(withoutOverride.health);
+      expect(withNull.status).toBe(withoutOverride.status);
+    });
 
-      // Both should be valid (0-100 range)
-      expect(healthUp).toBeGreaterThanOrEqual(0);
-      expect(healthUp).toBeLessThanOrEqual(100);
-      expect(healthDown).toBeGreaterThanOrEqual(0);
-      expect(healthDown).toBeLessThanOrEqual(100);
+    it("should ignore healthOverride when undefined", () => {
+      const withUndefined = calculateBuildingHealth(1000, 50000, 50, 60, false, undefined);
+      const withoutOverride = calculateBuildingHealth(1000, 50000, 50, 60, false);
+      expect(withUndefined.health).toBe(withoutOverride.health);
+    });
+
+    it("should override even for permanent buildings when healthOverride is set", () => {
+      // Permanent buildings normally return 100, but override should take precedence
+      const result = calculateBuildingHealth(0, 0, 0, 50, true, 25);
+      expect(result.health).toBe(25);
+      expect(result.status).toBe("dormant");
     });
   });
 
-  describe("volume activity impact", () => {
-    it("should decay health when volume < MIN_VOLUME (100)", () => {
-      const health = calculateBuildingHealth(0, 50, 50);
-      // Decay of 5 applied
-      expect(health).toBeLessThan(50);
+  describe("decay and recovery mechanics", () => {
+    it("should apply heavy decay for low volume + low market cap", () => {
+      // volume < 500, marketCap < 50000 = heavy decay (-8)
+      const result = calculateBuildingHealth(100, 10000, 0, 50);
+      expect(result.health).toBe(42); // 50 - 8 = 42
+      expect(result.status).toBe("critical");
     });
 
-    it("should recover health when volume >= MIN_VOLUME", () => {
-      const health = calculateBuildingHealth(0, 200, 40);
-      // Recovery of 10 applied
-      expect(health).toBeGreaterThan(40);
+    it("should apply moderate decay for low volume only", () => {
+      // volume < 500, marketCap >= 50000 = moderate decay (-5)
+      const result = calculateBuildingHealth(100, 100000, 0, 50);
+      expect(result.health).toBe(45); // 50 - 5 = 45
+    });
+
+    it("should apply fast recovery for high volume", () => {
+      // volume >= 2000 = fast recovery (+10)
+      const result = calculateBuildingHealth(3000, 100000, 10, 50);
+      expect(result.health).toBe(60); // 50 + 10 = 60
+    });
+
+    it("should apply light decay for moderate volume + price drop", () => {
+      // volume between thresholds, change < -20 = light decay (-2)
+      const result = calculateBuildingHealth(1000, 100000, -30, 50);
+      expect(result.health).toBe(48); // 50 - 2 = 48
+    });
+
+    it("should apply normal recovery for normal activity", () => {
+      // volume between thresholds, change >= -20 = recovery (+5)
+      const result = calculateBuildingHealth(1000, 100000, 0, 50);
+      expect(result.health).toBe(55); // 50 + 5 = 55
     });
   });
 
-  describe("previous health blending", () => {
-    it("should blend 70% previous + 30% new health", () => {
-      // Previous: 80, change-based: 50 (0% change)
-      // Blended: 80*0.7 + 50*0.3 + 10 (active) = 56 + 15 + 10 = 81
-      const health = calculateBuildingHealth(0, 200, 80);
-      expect(health).toBeGreaterThan(50);
-      expect(health).toBeLessThan(90);
+  describe("permanent buildings", () => {
+    it("should always return 100 health for permanent buildings", () => {
+      const result = calculateBuildingHealth(0, 0, -100, 10, true);
+      expect(result.health).toBe(100);
+      expect(result.status).toBe("active");
+    });
+
+    it("should ignore all other factors for permanent buildings", () => {
+      const result = calculateBuildingHealth(0, 0, -100, 0, true);
+      expect(result.health).toBe(100);
     });
   });
 
   describe("boundary conditions", () => {
     it("should never exceed 100", () => {
-      const health = calculateBuildingHealth(100, 10000, 100);
-      expect(health).toBeLessThanOrEqual(100);
+      const result = calculateBuildingHealth(5000, 1000000, 100, 99);
+      expect(result.health).toBeLessThanOrEqual(100);
     });
 
     it("should never go below 0", () => {
-      const health = calculateBuildingHealth(-100, 0, 0);
-      expect(health).toBeGreaterThanOrEqual(0);
+      const result = calculateBuildingHealth(0, 0, -100, 5);
+      expect(result.health).toBeGreaterThanOrEqual(0);
     });
 
     it("should return integer values", () => {
-      const health = calculateBuildingHealth(33.33, 123.45, 67.89);
-      expect(Number.isInteger(health)).toBe(true);
+      const result = calculateBuildingHealth(1234.56, 78901.23, 12.34, 56.78);
+      expect(Number.isInteger(result.health)).toBe(true);
+    });
+
+    it("should clamp health at 100 when recovery would exceed", () => {
+      const result = calculateBuildingHealth(5000, 1000000, 50, 95);
+      expect(result.health).toBe(100); // 95 + 10 clamped to 100
+    });
+
+    it("should clamp health at 0 when decay would go negative", () => {
+      const result = calculateBuildingHealth(0, 1000, -50, 3);
+      expect(result.health).toBe(0); // 3 - 8 clamped to 0
+    });
+  });
+
+  describe("status determination", () => {
+    it("should return active for health > 75", () => {
+      const result = calculateBuildingHealth(3000, 100000, 10, 70);
+      expect(result.health).toBe(80);
+      expect(result.status).toBe("active");
+    });
+
+    it("should return warning for health 50-75", () => {
+      const result = calculateBuildingHealth(1000, 100000, 0, 65);
+      expect(result.health).toBe(70);
+      expect(result.status).toBe("warning");
+    });
+
+    it("should return critical for health 25-50", () => {
+      const result = calculateBuildingHealth(100, 100000, 0, 40);
+      expect(result.health).toBe(35);
+      expect(result.status).toBe("critical");
+    });
+
+    it("should return dormant for health <= 25", () => {
+      const result = calculateBuildingHealth(0, 1000, -50, 30);
+      expect(result.health).toBe(22);
+      expect(result.status).toBe("dormant");
     });
   });
 });
@@ -724,6 +807,144 @@ describe("transformTokenToBuilding", () => {
 
     const building = transformTokenToBuilding(pumpingToken, 0);
     expect(building.glowing).toBe(true);
+  });
+
+  describe("admin overrides", () => {
+    it("should use positionOverride when provided", () => {
+      const tokenWithPosition: TokenInfo = {
+        ...baseToken,
+        positionOverride: { x: 500, y: 700 },
+      };
+
+      const building = transformTokenToBuilding(tokenWithPosition, 0);
+      expect(building.x).toBe(500);
+      expect(building.y).toBe(700);
+    });
+
+    it("should use generated position when positionOverride is null", () => {
+      const tokenWithNullPosition: TokenInfo = {
+        ...baseToken,
+        positionOverride: null,
+      };
+
+      const building = transformTokenToBuilding(tokenWithNullPosition, 0);
+      // Should use generated position (not 0,0)
+      expect(building.x).toBeGreaterThan(0);
+      expect(building.y).toBeGreaterThan(0);
+    });
+
+    it("should include styleOverride in building when provided", () => {
+      const tokenWithStyle: TokenInfo = {
+        ...baseToken,
+        styleOverride: 2,
+      };
+
+      const building = transformTokenToBuilding(tokenWithStyle, 0);
+      expect(building.styleOverride).toBe(2);
+    });
+
+    it("should pass styleOverride as null when not set", () => {
+      const building = transformTokenToBuilding(baseToken, 0);
+      expect(building.styleOverride).toBeUndefined();
+    });
+
+    it("should use healthOverride in building health calculation", () => {
+      const tokenWithHealth: TokenInfo = {
+        ...baseToken,
+        healthOverride: 25,
+      };
+
+      const building = transformTokenToBuilding(tokenWithHealth, 0);
+      expect(building.health).toBe(25);
+      expect(building.status).toBe("dormant");
+    });
+
+    it("should combine all overrides correctly", () => {
+      const tokenWithAllOverrides: TokenInfo = {
+        ...baseToken,
+        positionOverride: { x: 100, y: 800 },
+        styleOverride: 3,
+        healthOverride: 60,
+        levelOverride: 4,
+      };
+
+      const building = transformTokenToBuilding(tokenWithAllOverrides, 0);
+      expect(building.x).toBe(100);
+      expect(building.y).toBe(800);
+      expect(building.styleOverride).toBe(3);
+      expect(building.health).toBe(60);
+      expect(building.level).toBe(4);
+    });
+
+    it("should not use positionOverride for BagsWorld HQ (always floats in sky)", () => {
+      const hqWithOverride: TokenInfo = {
+        ...baseToken,
+        mint: "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
+        symbol: "BAGSWORLD",
+        positionOverride: { x: 100, y: 100 },
+      };
+
+      const building = transformTokenToBuilding(hqWithOverride, 0);
+      // HQ should still be in sky, not at override position
+      expect(building.y).toBe(500);
+      expect(building.isFloating).toBe(true);
+    });
+
+    it("should handle healthOverride of 0 (minimum)", () => {
+      const tokenWithZeroHealth: TokenInfo = {
+        ...baseToken,
+        healthOverride: 0,
+      };
+
+      const building = transformTokenToBuilding(tokenWithZeroHealth, 0);
+      expect(building.health).toBe(0);
+      expect(building.status).toBe("dormant");
+    });
+
+    it("should handle healthOverride of 100 (maximum)", () => {
+      const tokenWithMaxHealth: TokenInfo = {
+        ...baseToken,
+        healthOverride: 100,
+      };
+
+      const building = transformTokenToBuilding(tokenWithMaxHealth, 0);
+      expect(building.health).toBe(100);
+      expect(building.status).toBe("active");
+    });
+
+    it("should handle positionOverride at boundary values", () => {
+      // Test min boundaries
+      const tokenMinPos: TokenInfo = {
+        ...baseToken,
+        mint: "boundary-test-min",
+        positionOverride: { x: 0, y: 0 },
+      };
+      const buildingMin = transformTokenToBuilding(tokenMinPos, 0);
+      expect(buildingMin.x).toBe(0);
+      expect(buildingMin.y).toBe(0);
+
+      // Test max boundaries
+      const tokenMaxPos: TokenInfo = {
+        ...baseToken,
+        mint: "boundary-test-max",
+        positionOverride: { x: 1280, y: 960 },
+      };
+      const buildingMax = transformTokenToBuilding(tokenMaxPos, 0);
+      expect(buildingMax.x).toBe(1280);
+      expect(buildingMax.y).toBe(960);
+    });
+
+    it("should handle all styleOverride values (0-3)", () => {
+      for (let style = 0; style <= 3; style++) {
+        const tokenWithStyle: TokenInfo = {
+          ...baseToken,
+          mint: `style-test-${style}`,
+          styleOverride: style,
+        };
+        const building = transformTokenToBuilding(tokenWithStyle, 0);
+        expect(building.styleOverride).toBe(style);
+      }
+    });
   });
 });
 
