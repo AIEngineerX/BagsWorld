@@ -193,19 +193,89 @@ export const docsContent: DocSection[] = [
         ],
       },
       {
-        id: "characters",
-        title: "AI Characters",
+        id: "zones",
+        title: "World Zones",
         content: [
-          "BagsWorld features AI-powered characters you can chat with. Each has unique personality and expertise. Click on any character walking in the world to start a conversation.",
+          "BagsWorld is split into two distinct zones that you can navigate between using the minimap. Each zone has unique landmarks and atmosphere.",
         ],
         table: {
-          headers: ["Character", "Role", "Expertise"],
+          headers: ["Zone", "Theme", "Key Locations"],
           rows: [
-            ["Toly", "Blockchain Expert", "Solana, technical questions"],
-            ["Ash", "Ecosystem Guide", "Platform features, building mechanics"],
-            ["Finn", "Bags.fm CEO", "Bags.fm, fee mechanics, trading"],
-            ["The Dev", "Trading Agent", "Market analysis, rewards system"],
-            ["Neo", "Scout Agent", "New launches, blockchain patterns"],
+            ["Park", "Green, peaceful", "PokeCenter, Trading Dojo, Treasury"],
+            ["BagsCity", "Urban, neon", "Casino, Trading Terminal, Bags HQ"],
+          ],
+        },
+        infoBox: {
+          title: "Navigation",
+          items: [
+            "Click the map icon to open navigation",
+            "Switch zones using the tabs",
+            "Click locations to interact with buildings",
+            "The minimap is draggable",
+          ],
+        },
+      },
+      {
+        id: "locations",
+        title: "Landmark Buildings",
+        content: [
+          "BagsWorld features special landmark buildings with unique functionality. These are permanent fixtures that provide services to all players.",
+        ],
+        table: {
+          headers: ["Building", "Zone", "Function"],
+          rows: [
+            ["PokeCenter", "Park", "Information hub and world status"],
+            ["Trading Dojo", "Park", "AI trading sparring arena (BETA)"],
+            ["Treasury", "Park", "View and claim accumulated fees"],
+            ["Casino", "BagsCity", "Raffles, wheel spins, win SOL prizes"],
+            ["Trading Terminal", "BagsCity", "Professional trading with charts"],
+            ["BagsWorld HQ", "Sky", "Floating headquarters (coming soon)"],
+          ],
+        },
+      },
+      {
+        id: "characters",
+        title: "AI Agents",
+        content: [
+          "BagsWorld features 8 AI-powered agents you can chat with. Each has a unique personality and expertise. Click on any character walking in the world to start a conversation.",
+          "Agents are powered by ElizaOS runtime on Railway with Claude API fallback. They have persistent memory and can coordinate with each other.",
+        ],
+        table: {
+          headers: ["Agent", "Role", "Expertise"],
+          rows: [
+            ["Toly", "Blockchain Expert", "Solana co-founder, technical questions, PoH"],
+            ["Ash", "Ecosystem Guide", "Pokemon-themed tips, creator rewards"],
+            ["Finn", "Bags.fm Founder", "Platform mechanics, 1% fee model"],
+            ["Ghost/Dev", "Trading Agent", "Market analysis, alpha tips, trenches"],
+            ["Neo", "Blockchain Analyst", "On-chain patterns, token analysis"],
+            ["CJ", "Street Hustler", "GTA San Andreas vibes, crypto game"],
+            ["Shaw", "ElizaOS Creator", "AI agents, character files, plugins"],
+            ["Bags Bot", "Helper Bot", "Commands, effects, friendly helper"],
+          ],
+        },
+        infoBox: {
+          title: "AI Infrastructure",
+          items: [
+            "Primary: ElizaOS runtime on Railway",
+            "Fallback: Claude Sonnet 4 API",
+            "Memory: Persistent conversation history",
+            "Coordination: Multi-agent event system",
+          ],
+        },
+      },
+      {
+        id: "bot-commands",
+        title: "Bags Bot Commands",
+        content: [
+          "The Bags Bot can execute special commands that trigger visual effects in the world. Simply chat with the bot and mention what you want.",
+        ],
+        table: {
+          headers: ["Command Type", "Examples", "Effect"],
+          rows: [
+            ["Animals", "pet dog, call cat, scare bird", "Interact with world animals"],
+            ["Fireworks", "fireworks, celebration", "Launch fireworks display"],
+            ["Particles", "coins, confetti, stars, hearts", "Spray particle effects"],
+            ["Special", "ufo", "Trigger special animations"],
           ],
         },
       },
@@ -267,7 +337,8 @@ export const docsContent: DocSection[] = [
           headers: ["Allocation", "Status", "Description"],
           rows: [
             ["Creator Rewards", "Live", "Top 3 creators split the rewards pool"],
-            ["Casino", "Coming Soon", "Wheel spins, raffles, and jackpots"],
+            ["Casino", "Live", "Wheel spins, raffles funded by Ghost's trading fees"],
+            ["Trading Dojo", "Beta", "AI sparring arena for trading practice"],
             ["Future Features", "Planned", "New game mechanics and community rewards"],
           ],
         },
