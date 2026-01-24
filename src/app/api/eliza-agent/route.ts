@@ -118,6 +118,50 @@ async function handleElizaOS(
   }
 }
 
+// Parse bags-bot commands and return actions
+function parseBotCommands(message: string): Array<{ type: string; data: Record<string, unknown> }> {
+  const lowerMessage = message.toLowerCase().trim();
+  const actions: Array<{ type: string; data: Record<string, unknown> }> = [];
+
+  // Animal commands - only match one action per animal
+  const animalCommands: Array<{ pattern: RegExp; animal: string; action: string }> = [
+    { pattern: /pet\s*(?:the\s*)?dog/i, animal: "dog", action: "pet" },
+    { pattern: /(?:call|summon)\s*(?:the\s*)?dog/i, animal: "dog", action: "call" },
+    { pattern: /pet\s*(?:the\s*)?cat/i, animal: "cat", action: "pet" },
+    { pattern: /(?:call|summon)\s*(?:the\s*)?cat/i, animal: "cat", action: "call" },
+    { pattern: /(?:scare|shoo)\s*(?:the\s*)?bird/i, animal: "bird", action: "scare" },
+    { pattern: /(?:feed|pet)\s*(?:the\s*)?bird/i, animal: "bird", action: "feed" },
+    { pattern: /(?:chase|play\s*with)\s*(?:the\s*)?squirrel/i, animal: "squirrel", action: "chase" },
+  ];
+
+  // Only add one action per animal type
+  const matchedAnimals = new Set<string>();
+  for (const { pattern, animal, action } of animalCommands) {
+    if (pattern.test(lowerMessage) && !matchedAnimals.has(animal)) {
+      actions.push({ type: "animal", data: { animal, action } });
+      matchedAnimals.add(animal);
+    }
+  }
+
+  // Effect commands
+  const effectPatterns = [
+    { pattern: /firework|fireworks/i, effect: "fireworks" },
+    { pattern: /confetti/i, effect: "confetti" },
+    { pattern: /coin|coins|money/i, effect: "coins" },
+    { pattern: /rain\s*(?:effect)?/i, effect: "rain" },
+    { pattern: /snow/i, effect: "snow" },
+    { pattern: /sparkle|sparkles/i, effect: "sparkles" },
+  ];
+
+  for (const { pattern, effect } of effectPatterns) {
+    if (pattern.test(lowerMessage)) {
+      actions.push({ type: "effect", data: { effect } });
+    }
+  }
+
+  return actions;
+}
+
 // Fallback for when ElizaOS server is not running - uses Claude API
 async function handleCharacterFallback(
   agentId: string,
@@ -139,11 +183,26 @@ async function handleCharacterFallback(
   };
   const characterName = characterNames[agentId] || agentId;
 
+  // For bags-bot, parse commands first
+  const actions = agentId === "bags-bot" ? parseBotCommands(message) : [];
+
   if (!ANTHROPIC_API_KEY) {
+    // Generate appropriate response for actions
+    let responseText = getFallbackResponse(agentId, message);
+    if (actions.length > 0) {
+      const actionDescriptions = actions.map((a) => {
+        if (a.type === "animal") return `${a.data.action}ing the ${a.data.animal}`;
+        if (a.type === "effect") return `triggering ${a.data.effect}`;
+        return "";
+      }).filter(Boolean);
+      responseText = `done! ${actionDescriptions.join(" and ")}! `;
+    }
+
     return NextResponse.json({
       character: characterName,
-      response: getFallbackResponse(agentId, message),
+      response: responseText,
       source: "fallback-rule-based",
+      actions,
     });
   }
 
@@ -174,19 +233,41 @@ async function handleCharacterFallback(
     }
 
     const data = await response.json();
-    const responseText = data.content?.[0]?.text || getFallbackResponse(agentId, message);
+    let responseText = data.content?.[0]?.text || getFallbackResponse(agentId, message);
+
+    // If there are actions, append acknowledgment
+    if (actions.length > 0) {
+      const actionDescriptions = actions.map((a) => {
+        if (a.type === "animal") return `${a.data.action}ing the ${a.data.animal}`;
+        if (a.type === "effect") return `triggering ${a.data.effect}`;
+        return "";
+      }).filter(Boolean);
+      responseText = `done! ${actionDescriptions.join(" and ")}! `;
+    }
 
     return NextResponse.json({
       character: characterName,
       response: responseText,
       source: "fallback-claude",
+      actions,
     });
   } catch (error) {
     console.error(`[agent-chat] ${agentId} fallback error:`, error);
+    // Still execute actions even on error
+    let responseText = getFallbackResponse(agentId, message);
+    if (actions.length > 0) {
+      const actionDescriptions = actions.map((a) => {
+        if (a.type === "animal") return `${a.data.action}ing the ${a.data.animal}`;
+        if (a.type === "effect") return `triggering ${a.data.effect}`;
+        return "";
+      }).filter(Boolean);
+      responseText = `done! ${actionDescriptions.join(" and ")}! `;
+    }
     return NextResponse.json({
       character: characterName,
-      response: getFallbackResponse(agentId, message),
+      response: responseText,
       source: "fallback-rule-based",
+      actions,
     });
   }
 }
