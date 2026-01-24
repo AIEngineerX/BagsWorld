@@ -16,9 +16,8 @@ export async function GET(request: NextRequest) {
 
         if (dbRaffle) {
           // Check if user has entered (without exposing all entries)
-          const userEntered = wallet && dbRaffle.entries
-            ? dbRaffle.entries.includes(wallet)
-            : false;
+          const userEntered =
+            wallet && dbRaffle.entries ? dbRaffle.entries.includes(wallet) : false;
 
           // Don't expose full entries list to non-admin
           return NextResponse.json({
@@ -55,9 +54,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in raffle GET:", error);
-    return NextResponse.json(
-      { error: "Failed to get raffle status" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to get raffle status" }, { status: 500 });
   }
 }

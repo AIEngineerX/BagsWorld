@@ -123,9 +123,7 @@ export function useAgentEvents(options?: {
         announcements: prev.announcements.map((a) =>
           ids.includes(a.id) ? { ...a, read: true } : a
         ),
-        unreadCount: prev.announcements.filter(
-          (a) => !a.read && !ids.includes(a.id)
-        ).length,
+        unreadCount: prev.announcements.filter((a) => !a.read && !ids.includes(a.id)).length,
       }));
     } catch (error) {
       console.error("[useAgentEvents] Mark read error:", error);

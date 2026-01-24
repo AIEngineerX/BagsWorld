@@ -108,8 +108,9 @@ async function fetchLiveBagsTokens(): Promise<TokenData[]> {
         creator: pair.info?.socials?.[0]?.url || undefined,
       }))
       // Remove duplicates by mint address
-      .filter((token: TokenData, index: number, self: TokenData[]) =>
-        index === self.findIndex((t) => t.mint === token.mint)
+      .filter(
+        (token: TokenData, index: number, self: TokenData[]) =>
+          index === self.findIndex((t) => t.mint === token.mint)
       )
       // Sort by 24h volume (most active first)
       .sort((a: TokenData, b: TokenData) => b.volume24h - a.volume24h)
@@ -185,7 +186,7 @@ async function fetchRealWorldData(): Promise<RealWorldData> {
         // Merge with DexScreener creators
         stats.topCreators.forEach((c: any) => {
           const username = c.username || c.providerUsername;
-          if (username && !data.topCreators.some(tc => tc.username === username)) {
+          if (username && !data.topCreators.some((tc) => tc.username === username)) {
             data.topCreators.push({
               username,
               lifetimeEarnings: c.lifetimeEarnings || c.feeContribution || 0,
@@ -280,7 +281,11 @@ function buildDataContext(data: RealWorldData, topic: string): string {
 /**
  * Generate character-specific system prompt for dialogue
  */
-function buildCharacterPrompt(characterId: string, otherParticipants: string[], topic: string): string {
+function buildCharacterPrompt(
+  characterId: string,
+  otherParticipants: string[],
+  topic: string
+): string {
   const character = characters[characterId];
   if (!character) return "";
 
@@ -289,7 +294,7 @@ function buildCharacterPrompt(characterId: string, otherParticipants: string[], 
   // Add dialogue-specific instructions
   prompt += `\n\n=== AUTONOMOUS DIALOGUE MODE ===
 You are having a natural conversation with other characters in BagsWorld.
-Other participants: ${otherParticipants.map(id => characters[id]?.name || id).join(", ")}
+Other participants: ${otherParticipants.map((id) => characters[id]?.name || id).join(", ")}
 Topic: ${topic}
 
 RULES FOR THIS CONVERSATION:
@@ -327,10 +332,12 @@ async function generateIntelligentConversation(
   let conversationPrompt = `You are simulating a conversation between ${participants.length} AI characters in BagsWorld, a pixel art game that visualizes Bags.fm trading activity.
 
 CHARACTERS IN THIS CONVERSATION:
-${participants.map(id => {
-  const char = characters[id];
-  return char ? `- ${char.name}: ${char.style.tone}` : `- ${id}`;
-}).join("\n")}
+${participants
+  .map((id) => {
+    const char = characters[id];
+    return char ? `- ${char.name}: ${char.style.tone}` : `- ${id}`;
+  })
+  .join("\n")}
 
 TOPIC: ${topic}
 ${context?.tokenSymbol ? `Related Token: $${context.tokenSymbol}` : ""}
@@ -411,31 +418,53 @@ function generateFallbackConversation(
   // Topic-specific openers with real data
   const openers: Record<string, Record<string, string>> = {
     finn: {
-      token_launch: topToken ? `$${topToken.symbol} doing ${formatNumber(topToken.volume24h)} in volume. this is what we built for` : "new launch cooking. let's see the numbers",
-      fee_claim: topCreator ? `@${topCreator.username} leading with ${topCreator.lifetimeEarnings.toFixed(1)} SOL earned. creators getting paid` : "fees flowing to builders. exactly how it should be",
-      price_pump: topToken ? `$${topToken.symbol} up ${topToken.change24h.toFixed(0)}%. volume driving this` : "pumps follow building. always",
+      token_launch: topToken
+        ? `$${topToken.symbol} doing ${formatNumber(topToken.volume24h)} in volume. this is what we built for`
+        : "new launch cooking. let's see the numbers",
+      fee_claim: topCreator
+        ? `@${topCreator.username} leading with ${topCreator.lifetimeEarnings.toFixed(1)} SOL earned. creators getting paid`
+        : "fees flowing to builders. exactly how it should be",
+      price_pump: topToken
+        ? `$${topToken.symbol} up ${topToken.change24h.toFixed(0)}%. volume driving this`
+        : "pumps follow building. always",
       general: `${formatNumber(data.ecosystemStats.totalVolume24h)} in 24h volume. ecosystem is shipping`,
     },
     ghost: {
-      token_launch: topToken ? `scanning $${topToken.symbol}... ${formatNumber(topToken.marketCap)} mcap, fees look healthy` : "new contract deployed. checking the chain",
+      token_launch: topToken
+        ? `scanning $${topToken.symbol}... ${formatNumber(topToken.marketCap)} mcap, fees look healthy`
+        : "new contract deployed. checking the chain",
       fee_claim: `${data.ecosystemStats.totalFees24h.toFixed(2)} SOL in fees today. all verifiable on-chain`,
-      distribution: topCreator ? `top creator @${topCreator.username} at ${topCreator.lifetimeEarnings.toFixed(1)} SOL. distribution coming` : "pool accumulating. almost at threshold",
+      distribution: topCreator
+        ? `top creator @${topCreator.username} at ${topCreator.lifetimeEarnings.toFixed(1)} SOL. distribution coming`
+        : "pool accumulating. almost at threshold",
       general: "systems running clean. watching the metrics",
     },
     neo: {
-      token_launch: topToken ? `i see $${topToken.symbol} in the chain. ${topToken.change24h >= 0 ? "green" : "red"} signals` : "new patterns forming in the matrix",
-      price_pump: topToken ? `$${topToken.symbol} ascending. ${topToken.change24h.toFixed(0)}% movement detected` : "green flowing through the code",
+      token_launch: topToken
+        ? `i see $${topToken.symbol} in the chain. ${topToken.change24h >= 0 ? "green" : "red"} signals`
+        : "new patterns forming in the matrix",
+      price_pump: topToken
+        ? `$${topToken.symbol} ascending. ${topToken.change24h.toFixed(0)}% movement detected`
+        : "green flowing through the code",
       whale_alert: `large movements detected. ${formatNumber(data.ecosystemStats.totalVolume24h)} flowing today`,
       general: "the chain reveals all. watching the patterns",
     },
     ash: {
-      token_launch: topToken ? `new trainer with $${topToken.symbol}! already at ${formatNumber(topToken.marketCap)} market cap!` : "another trainer entering the league!",
-      fee_claim: topCreator ? `@${topCreator.username} is top trainer with ${topCreator.lifetimeEarnings.toFixed(1)} SOL in XP!` : "trainers leveling up with fees!",
+      token_launch: topToken
+        ? `new trainer with $${topToken.symbol}! already at ${formatNumber(topToken.marketCap)} market cap!`
+        : "another trainer entering the league!",
+      fee_claim: topCreator
+        ? `@${topCreator.username} is top trainer with ${topCreator.lifetimeEarnings.toFixed(1)} SOL in XP!`
+        : "trainers leveling up with fees!",
       general: `${data.ecosystemStats.activeTokens} pokemon... i mean tokens in the wild today!`,
     },
     "bags-bot": {
-      token_launch: topToken ? `$${topToken.symbol} just dropped ser. ${formatNumber(topToken.volume24h)} volume already 👀` : "fresh launch ngl looking spicy",
-      price_pump: topToken ? `$${topToken.symbol} pumping ${topToken.change24h.toFixed(0)}%. wagmi` : "green candles. nature is healing",
+      token_launch: topToken
+        ? `$${topToken.symbol} just dropped ser. ${formatNumber(topToken.volume24h)} volume already 👀`
+        : "fresh launch ngl looking spicy",
+      price_pump: topToken
+        ? `$${topToken.symbol} pumping ${topToken.change24h.toFixed(0)}%. wagmi`
+        : "green candles. nature is healing",
       general: `${formatNumber(data.ecosystemStats.totalVolume24h)} in volume today. bullish vibes`,
     },
   };
@@ -465,10 +494,7 @@ export async function POST(request: Request) {
     const { participants, topic, context, lineCount = 4 } = body;
 
     if (!participants || participants.length < 2) {
-      return NextResponse.json(
-        { error: "Need at least 2 participants" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Need at least 2 participants" }, { status: 400 });
     }
 
     // Fetch real-world data
@@ -520,13 +546,7 @@ export async function GET(request: Request) {
   const realData = await fetchRealWorldData();
 
   // Generate conversation
-  const conversation = await generateIntelligentConversation(
-    participants,
-    topic,
-    realData,
-    {},
-    4
-  );
+  const conversation = await generateIntelligentConversation(participants, topic, realData, {}, 4);
 
   return NextResponse.json({
     success: true,

@@ -14,7 +14,16 @@ export const metadata: Metadata = {
   title: "BagsWorld",
   description:
     "A gamified world powered by real Bags.fm trading on Solana. Launch tokens, watch buildings grow, and earn fees.",
-  keywords: ["Solana", "crypto", "game", "Bags.fm", "DeFi", "pixel art", "token launch", "fee share"],
+  keywords: [
+    "Solana",
+    "crypto",
+    "game",
+    "Bags.fm",
+    "DeFi",
+    "pixel art",
+    "token launch",
+    "fee share",
+  ],
   manifest: "/manifest.json",
   themeColor: "#4ade80",
   viewport: {
@@ -43,7 +52,8 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "BagsWorld",
-    description: "A gamified world powered by real Bags.fm trading on Solana. Launch tokens, watch buildings grow, and earn fees.",
+    description:
+      "A gamified world powered by real Bags.fm trading on Solana. Launch tokens, watch buildings grow, and earn fees.",
     type: "website",
     siteName: "BagsWorld",
   },
@@ -54,11 +64,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={pressStart2P.variable}>
       <body className="min-h-screen bg-bags-darker antialiased font-pixel">

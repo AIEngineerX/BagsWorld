@@ -16,7 +16,10 @@ export async function POST(request: Request) {
   const rateLimit = checkRateLimit(`claim-fees:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Too many requests. Try again later.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -55,25 +58,16 @@ export async function POST(request: Request) {
   }
 }
 
-async function handleGetPositions(
-  api: BagsApiClient,
-  wallet: string
-): Promise<NextResponse> {
+async function handleGetPositions(api: BagsApiClient, wallet: string): Promise<NextResponse> {
   if (!wallet) {
-    return NextResponse.json(
-      { error: "Missing required field: wallet" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing required field: wallet" }, { status: 400 });
   }
 
   try {
     const positions = await api.getClaimablePositions(wallet);
 
     // Calculate total claimable
-    const totalClaimable = positions.reduce(
-      (sum, p) => sum + p.claimableDisplayAmount,
-      0
-    );
+    const totalClaimable = positions.reduce((sum, p) => sum + p.claimableDisplayAmount, 0);
 
     return NextResponse.json({
       success: true,
@@ -118,15 +112,9 @@ async function handleGenerateClaimTx(
   }
 }
 
-async function handleLookupByX(
-  api: BagsApiClient,
-  username: string
-): Promise<NextResponse> {
+async function handleLookupByX(api: BagsApiClient, username: string): Promise<NextResponse> {
   if (!username) {
-    return NextResponse.json(
-      { error: "Missing required field: xUsername" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing required field: xUsername" }, { status: 400 });
   }
 
   try {
@@ -153,9 +141,6 @@ async function handleLookupByX(
       );
     }
 
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

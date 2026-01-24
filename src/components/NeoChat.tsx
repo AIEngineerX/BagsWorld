@@ -22,27 +22,32 @@ const NEO_TOPICS = [
   {
     title: "The Matrix",
     icon: "🔮",
-    content: "The blockchain is the real matrix - every transaction, every smart contract, every token launch. I see through the noise to find the signal. Most people see prices. I see patterns in the code."
+    content:
+      "The blockchain is the real matrix - every transaction, every smart contract, every token launch. I see through the noise to find the signal. Most people see prices. I see patterns in the code.",
   },
   {
     title: "Scouting Alpha",
     icon: "👁️",
-    content: "My purpose is to watch. New launches, whale movements, unusual activity. While others react, I observe. The best plays are found before the crowd even knows they exist."
+    content:
+      "My purpose is to watch. New launches, whale movements, unusual activity. While others react, I observe. The best plays are found before the crowd even knows they exist.",
   },
   {
     title: "Reading Signs",
     icon: "📡",
-    content: "Volume spikes, holder distribution, dev wallet activity, social sentiment - these are the signals. Learn to read them and you'll see the future before it happens."
+    content:
+      "Volume spikes, holder distribution, dev wallet activity, social sentiment - these are the signals. Learn to read them and you'll see the future before it happens.",
   },
   {
     title: "Bags Protocol",
     icon: "💎",
-    content: "Bags.fm is different. Built-in fee sharing means aligned incentives. When creators win, holders win. I track which tokens are accumulating fees - that's where the real alpha lives."
+    content:
+      "Bags.fm is different. Built-in fee sharing means aligned incentives. When creators win, holders win. I track which tokens are accumulating fees - that's where the real alpha lives.",
   },
   {
     title: "Stay Vigilant",
     icon: "⚡",
-    content: "The market never sleeps and neither do I. Every block brings new data. Every transaction tells a story. The question is: are you paying attention?"
+    content:
+      "The market never sleeps and neither do I. Every block brings new data. Every transaction tells a story. The question is: are you paying attention?",
   },
 ];
 
@@ -113,7 +118,7 @@ export function NeoChat() {
     setMessages((prev) => [...prev.slice(-30), message]);
   }, []);
 
-  const handleTopicClick = (topic: typeof NEO_TOPICS[0]) => {
+  const handleTopicClick = (topic: (typeof NEO_TOPICS)[0]) => {
     addMessage({
       id: `${Date.now()}-info`,
       type: "info",
@@ -122,54 +127,57 @@ export function NeoChat() {
     });
   };
 
-  const sendToNeo = useCallback(async (userMessage: string) => {
-    if (isLoading) return;
+  const sendToNeo = useCallback(
+    async (userMessage: string) => {
+      if (isLoading) return;
 
-    // Don't add "scanning..." as a user message
-    if (userMessage !== "scanning...") {
-      addMessage({
-        id: `${Date.now()}-user`,
-        type: "user",
-        message: userMessage,
-        timestamp: Date.now(),
-      });
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Use eliza-agent API (working endpoint)
-      const response = await fetch("/api/eliza-agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          character: "neo",
+      // Don't add "scanning..." as a user message
+      if (userMessage !== "scanning...") {
+        addMessage({
+          id: `${Date.now()}-user`,
+          type: "user",
           message: userMessage,
-        }),
-      });
+          timestamp: Date.now(),
+        });
+      }
 
-      const data = await response.json();
-      const messageText = data.response || "the signal is unclear...";
+      setIsLoading(true);
 
-      addMessage({
-        id: `${Date.now()}-neo`,
-        type: "neo",
-        message: messageText,
-        timestamp: Date.now(),
-        actions: data.actions || [],
-      });
-    } catch (error) {
-      console.error("Neo chat error:", error);
-      addMessage({
-        id: `${Date.now()}-neo`,
-        type: "neo",
-        message: "interference in the matrix. try again.",
-        timestamp: Date.now(),
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading, messages, addMessage]);
+      try {
+        // Use eliza-agent API (working endpoint)
+        const response = await fetch("/api/eliza-agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            character: "neo",
+            message: userMessage,
+          }),
+        });
+
+        const data = await response.json();
+        const messageText = data.response || "the signal is unclear...";
+
+        addMessage({
+          id: `${Date.now()}-neo`,
+          type: "neo",
+          message: messageText,
+          timestamp: Date.now(),
+          actions: data.actions || [],
+        });
+      } catch (error) {
+        console.error("Neo chat error:", error);
+        addMessage({
+          id: `${Date.now()}-neo`,
+          type: "neo",
+          message: "interference in the matrix. try again.",
+          timestamp: Date.now(),
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading, addMessage]
+  );
 
   // Listen for Neo/Scout click events
   useEffect(() => {
@@ -226,9 +234,10 @@ export function NeoChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.y >= 0
-    ? { left: position.x, top: position.y, bottom: "auto" }
-    : { left: position.x, bottom: 80 };
+  const chatStyle: React.CSSProperties =
+    position.y >= 0
+      ? { left: position.x, top: position.y, bottom: "auto" }
+      : { left: position.x, bottom: 80 };
 
   if (!isOpen) {
     return null;
@@ -282,7 +291,9 @@ export function NeoChat() {
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-green-400 mb-1">👁️ system online</p>
             <p className="font-pixel text-[8px] text-gray-400">Neo here. I see everything.</p>
-            <p className="font-pixel text-[7px] text-gray-500 mt-2">Ask me anything or click a topic above</p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-2">
+              Ask me anything or click a topic above
+            </p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -292,13 +303,19 @@ export function NeoChat() {
                 msg.type === "neo"
                   ? "bg-green-500/10 border-green-500"
                   : msg.type === "user"
-                  ? "bg-bags-green/10 border-bags-green ml-4"
-                  : "bg-cyan-500/10 border-cyan-500"
+                    ? "bg-bags-green/10 border-bags-green ml-4"
+                    : "bg-cyan-500/10 border-cyan-500"
               }`}
             >
-              {msg.type === "neo" && <p className="font-pixel text-[6px] text-green-400 mb-1">Neo:</p>}
-              {msg.type === "user" && <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>}
-              {msg.type === "info" && <p className="font-pixel text-[6px] text-cyan-400 mb-1">📡 Intel:</p>}
+              {msg.type === "neo" && (
+                <p className="font-pixel text-[6px] text-green-400 mb-1">Neo:</p>
+              )}
+              {msg.type === "user" && (
+                <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>
+              )}
+              {msg.type === "info" && (
+                <p className="font-pixel text-[6px] text-cyan-400 mb-1">📡 Intel:</p>
+              )}
               <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
               {msg.type === "neo" && msg.actions && msg.actions.length > 0 && (
                 <ActionButtons actions={msg.actions} onAction={handleAction} />
@@ -308,7 +325,9 @@ export function NeoChat() {
         )}
         {isLoading && (
           <div className="p-2 border-l-2 bg-green-500/10 border-green-500">
-            <p className="font-pixel text-[8px] text-green-300 animate-pulse">scanning the matrix...</p>
+            <p className="font-pixel text-[8px] text-green-300 animate-pulse">
+              scanning the matrix...
+            </p>
           </div>
         )}
         <div ref={messagesEndRef} />

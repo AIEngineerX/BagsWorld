@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  WorldIcon,
-  StarIcon,
-  SunIcon,
-  CloudSunIcon,
-  StormIcon,
-  SkullIcon,
-} from "./icons";
+import { WorldIcon, StarIcon, SunIcon, CloudSunIcon, StormIcon, SkullIcon } from "./icons";
 
 interface WorldHealthBarProps {
   health: number;
@@ -22,11 +15,16 @@ export function WorldHealthBar({ health }: WorldHealthBarProps) {
 
   // Status thresholds adjusted for baseline health (25-40% with no activity)
   const getStatusInfo = (): { text: string; icon: React.ReactNode } => {
-    if (health >= 80) return { text: "THRIVING", icon: <StarIcon className="text-bags-gold" size={14} /> };
-    if (health >= 60) return { text: "HEALTHY", icon: <SunIcon className="text-yellow-400" size={14} /> };
-    if (health >= 45) return { text: "GROWING", icon: <CloudSunIcon className="text-green-400" size={14} /> };
-    if (health >= 25) return { text: "QUIET", icon: <CloudSunIcon className="text-gray-300" size={14} /> }; // Baseline - no activity but working
-    if (health >= 10) return { text: "DORMANT", icon: <StormIcon className="text-purple-400" size={14} /> };
+    if (health >= 80)
+      return { text: "THRIVING", icon: <StarIcon className="text-bags-gold" size={14} /> };
+    if (health >= 60)
+      return { text: "HEALTHY", icon: <SunIcon className="text-yellow-400" size={14} /> };
+    if (health >= 45)
+      return { text: "GROWING", icon: <CloudSunIcon className="text-green-400" size={14} /> };
+    if (health >= 25)
+      return { text: "QUIET", icon: <CloudSunIcon className="text-gray-300" size={14} /> }; // Baseline - no activity but working
+    if (health >= 10)
+      return { text: "DORMANT", icon: <StormIcon className="text-purple-400" size={14} /> };
     return { text: "DYING", icon: <SkullIcon className="text-red-400" size={14} /> };
   };
 
@@ -45,10 +43,7 @@ export function WorldHealthBar({ health }: WorldHealthBarProps) {
         aria-valuemax={100}
         aria-label={`World health: ${health}%`}
       >
-        <div
-          className={`health-bar-fill ${getHealthClass()}`}
-          style={{ width: `${health}%` }}
-        />
+        <div className={`health-bar-fill ${getHealthClass()}`} style={{ width: `${health}%` }} />
       </div>
       <span className="font-pixel text-[10px] text-gray-500">{Math.round(health)}%</span>
       <span
@@ -56,10 +51,10 @@ export function WorldHealthBar({ health }: WorldHealthBarProps) {
           health >= 45
             ? "text-bags-green"
             : health >= 25
-            ? "text-gray-400"
-            : health >= 10
-            ? "text-bags-gold"
-            : "text-bags-red"
+              ? "text-gray-400"
+              : health >= 10
+                ? "text-bags-gold"
+                : "text-bags-red"
         }`}
       >
         {status.icon}

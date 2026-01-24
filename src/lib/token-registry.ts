@@ -105,12 +105,18 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
     try {
       const response = await fetch("/api/global-tokens");
       if (!response.ok) {
-        console.error("[TokenRegistry] Failed to fetch global tokens:", response.status, response.statusText);
+        console.error(
+          "[TokenRegistry] Failed to fetch global tokens:",
+          response.status,
+          response.statusText
+        );
         return globalTokensCache?.tokens || [];
       }
 
       const data = await response.json();
-      console.log(`[TokenRegistry] Global tokens response: configured=${data.configured}, count=${data.count || data.tokens?.length || 0}`);
+      console.log(
+        `[TokenRegistry] Global tokens response: configured=${data.configured}, count=${data.count || data.tokens?.length || 0}`
+      );
 
       if (!data.configured) {
         console.log("[TokenRegistry] Database not configured");
@@ -137,13 +143,16 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
         let feeShares: Array<{ provider: string; username: string; bps: number }> = [];
         if (Array.isArray(t.fee_shares)) {
           feeShares = t.fee_shares;
-        } else if (typeof t.fee_shares === 'string' && t.fee_shares.length > 2) {
+        } else if (typeof t.fee_shares === "string" && t.fee_shares.length > 2) {
           // fee_shares came back as a JSON string, parse it
           try {
             const parsed = JSON.parse(t.fee_shares);
             feeShares = Array.isArray(parsed) ? parsed : [];
           } catch (e) {
-            console.error(`[TokenRegistry] Failed to parse fee_shares for ${t.symbol}:`, t.fee_shares);
+            console.error(
+              `[TokenRegistry] Failed to parse fee_shares for ${t.symbol}:`,
+              t.fee_shares
+            );
           }
         }
 
@@ -169,9 +178,12 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
 
       console.log(`[TokenRegistry] Parsed ${tokens.length} global tokens`);
       // Debug: Log fee shares for each token
-      tokens.forEach(t => {
+      tokens.forEach((t) => {
         if (t.feeShares && t.feeShares.length > 0) {
-          console.log(`[TokenRegistry] ${t.symbol} fee shares:`, t.feeShares.map(s => `${s.username}@${s.provider}:${s.bps}bps`).join(', '));
+          console.log(
+            `[TokenRegistry] ${t.symbol} fee shares:`,
+            t.feeShares.map((s) => `${s.username}@${s.provider}:${s.bps}bps`).join(", ")
+          );
         }
       });
 
@@ -204,7 +216,9 @@ export async function saveTokenGlobally(token: LaunchedToken): Promise<boolean> 
       fee_shares: token.feeShares,
     };
 
-    console.log(`[TokenRegistry] Saving token globally: ${token.symbol} (${token.mint.slice(0, 8)}...) by ${token.creator?.slice(0, 8)}...`);
+    console.log(
+      `[TokenRegistry] Saving token globally: ${token.symbol} (${token.mint.slice(0, 8)}...) by ${token.creator?.slice(0, 8)}...`
+    );
     console.log(`[TokenRegistry] Fee shares count: ${token.feeShares?.length || 0}`);
 
     const response = await fetch("/api/global-tokens", {
@@ -220,7 +234,7 @@ export async function saveTokenGlobally(token: LaunchedToken): Promise<boolean> 
     }
 
     const result = await response.json();
-    console.log(`[TokenRegistry] Token saved globally: ${result.success ? 'success' : 'failed'}`);
+    console.log(`[TokenRegistry] Token saved globally: ${result.success ? "success" : "failed"}`);
 
     // Invalidate cache so next fetch gets fresh data
     globalTokensCache = null;
@@ -266,7 +280,7 @@ export async function getAllWorldTokensAsync(): Promise<LaunchedToken[]> {
 
   // Combine: user tokens first, then global (deduped by mint)
   const allTokens = [...userTokens];
-  const seenMints = new Set(userTokens.map(t => t.mint));
+  const seenMints = new Set(userTokens.map((t) => t.mint));
 
   globalTokens.forEach((global) => {
     if (!seenMints.has(global.mint)) {
@@ -298,8 +312,7 @@ export function getTokenCount(): { user: number; featured: number; total: number
 // Check if a token exists in registry
 export function isTokenRegistered(mint: string): boolean {
   const tokens = getLaunchedTokens();
-  return tokens.some((t) => t.mint === mint) ||
-         FEATURED_BAGS_TOKENS.some((t) => t.mint === mint);
+  return tokens.some((t) => t.mint === mint) || FEATURED_BAGS_TOKENS.some((t) => t.mint === mint);
 }
 
 // Get a specific token by mint

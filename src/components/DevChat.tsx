@@ -46,22 +46,22 @@ const AGENT_TOPICS = [
   {
     title: "Token Lookup",
     icon: "🔍",
-    description: "Get Bags.fm token stats"
+    description: "Get Bags.fm token stats",
   },
   {
     title: "My Portfolio",
     icon: "💼",
-    description: "Check your positions"
+    description: "Check your positions",
   },
   {
     title: "Trenches",
     icon: "⛏️",
-    description: "Market talk"
+    description: "Market talk",
   },
   {
     title: "Alpha",
     icon: "💡",
-    description: "Bags ecosystem tips"
+    description: "Bags ecosystem tips",
   },
 ];
 
@@ -139,13 +139,13 @@ export function DevChat() {
     };
 
     if (isDragging) {
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp);
-      window.addEventListener('pointercancel', handlePointerUp);
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
       return () => {
-        window.removeEventListener('pointermove', handlePointerMove);
-        window.removeEventListener('pointerup', handlePointerUp);
-        window.removeEventListener('pointercancel', handlePointerUp);
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+        window.removeEventListener("pointercancel", handlePointerUp);
       };
     }
   }, [isDragging, dragOffset]);
@@ -280,16 +280,18 @@ export function DevChat() {
         addMessage({
           id: `${Date.now()}-dev`,
           type: "dev",
-          message: totalClaimable > 0.01
-            ? "you got fees to claim. hit the claim button in the header."
-            : "fees are stacking. keep building.",
+          message:
+            totalClaimable > 0.01
+              ? "you got fees to claim. hit the claim button in the header."
+              : "fees are stacking. keep building.",
           timestamp: Date.now(),
         });
       } else {
         addMessage({
           id: `${Date.now()}-dev`,
           type: "dev",
-          message: "no claimable positions found. launch a token or buy into fee-sharing tokens to start earning.",
+          message:
+            "no claimable positions found. launch a token or buy into fee-sharing tokens to start earning.",
           timestamp: Date.now(),
         });
       }
@@ -305,12 +307,13 @@ export function DevChat() {
     }
   }, [connected, publicKey, setWalletModalVisible]);
 
-  const handleTopicClick = async (topic: typeof AGENT_TOPICS[0]) => {
+  const handleTopicClick = async (topic: (typeof AGENT_TOPICS)[0]) => {
     if (topic.title === "Token Lookup") {
       addMessage({
         id: `${Date.now()}-dev`,
         type: "dev",
-        message: "paste a contract address and ill pull up the bags.fm stats - fees earned, creators, claim history.",
+        message:
+          "paste a contract address and ill pull up the bags.fm stats - fees earned, creators, claim history.",
         timestamp: Date.now(),
       });
     } else if (topic.title === "My Portfolio") {
@@ -417,9 +420,10 @@ export function DevChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.x >= 0 && position.y >= 0
-    ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
-    : { right: 20, bottom: 80 };
+  const chatStyle: React.CSSProperties =
+    position.x >= 0 && position.y >= 0
+      ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
+      : { right: 20, bottom: 80 };
 
   if (!isOpen) {
     return null;
@@ -429,7 +433,7 @@ export function DevChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-purple-500 shadow-lg ${isDragging ? 'cursor-grabbing' : ''}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-purple-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
     >
       {/* Header */}
       <div
@@ -439,12 +443,8 @@ export function DevChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">👻</span>
           <div>
-            <p className="font-pixel text-[10px] text-purple-400">
-              GHOST // THE DEV
-            </p>
-            <p className="font-pixel text-[8px] text-purple-600">
-              powered by sonnet 4
-            </p>
+            <p className="font-pixel text-[10px] text-purple-400">GHOST // THE DEV</p>
+            <p className="font-pixel text-[8px] text-purple-600">powered by sonnet 4</p>
           </div>
         </div>
         <button
@@ -476,15 +476,9 @@ export function DevChat() {
       <div className="h-48 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-4">
-            <p className="font-pixel text-[10px] text-purple-400 mb-1">
-              👻 ghost agent online
-            </p>
-            <p className="font-pixel text-[8px] text-gray-400">
-              paste a CA to lookup token stats
-            </p>
-            <p className="font-pixel text-[7px] text-gray-500 mt-2">
-              or click a topic above
-            </p>
+            <p className="font-pixel text-[10px] text-purple-400 mb-1">👻 ghost agent online</p>
+            <p className="font-pixel text-[8px] text-gray-400">paste a CA to lookup token stats</p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-2">or click a topic above</p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -494,12 +488,12 @@ export function DevChat() {
                 msg.type === "dev"
                   ? "bg-purple-500/10 border-purple-500"
                   : msg.type === "user"
-                  ? "bg-cyan-500/10 border-cyan-500 ml-4"
-                  : msg.type === "info"
-                  ? "bg-blue-500/10 border-blue-500"
-                  : msg.type === "portfolio"
-                  ? "bg-green-500/10 border-green-500"
-                  : "bg-red-500/10 border-red-500"
+                    ? "bg-cyan-500/10 border-cyan-500 ml-4"
+                    : msg.type === "info"
+                      ? "bg-blue-500/10 border-blue-500"
+                      : msg.type === "portfolio"
+                        ? "bg-green-500/10 border-green-500"
+                        : "bg-red-500/10 border-red-500"
               }`}
             >
               {msg.type === "dev" && (
@@ -517,9 +511,7 @@ export function DevChat() {
               {msg.type === "error" && (
                 <p className="font-pixel text-[6px] text-red-400 mb-1">Error:</p>
               )}
-              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">
-                {msg.message}
-              </p>
+              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
             </div>
           ))
         )}
@@ -558,11 +550,11 @@ export function DevChat() {
       <div className="p-2 border-t border-purple-500/30 bg-bags-darker">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-gray-500'}`} />
+            <div className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-gray-500"}`} />
             <p className="font-pixel text-[7px] text-gray-400">
               {connected
                 ? `${publicKey?.toString().slice(0, 4)}...${publicKey?.toString().slice(-4)}`
-                : 'wallet not connected'}
+                : "wallet not connected"}
             </p>
           </div>
           <a

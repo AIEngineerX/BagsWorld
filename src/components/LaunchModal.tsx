@@ -7,11 +7,17 @@ import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 
 // Helper to deserialize transaction - handles both base58 and base64 encoding
-function deserializeTransaction(encoded: string | Record<string, unknown>, context: string = "transaction"): VersionedTransaction | Transaction {
+function deserializeTransaction(
+  encoded: string | Record<string, unknown>,
+  context: string = "transaction"
+): VersionedTransaction | Transaction {
   console.log(`Deserializing ${context}:`, {
     inputType: typeof encoded,
     inputLength: typeof encoded === "string" ? encoded?.length : JSON.stringify(encoded).length,
-    preview: typeof encoded === "string" ? encoded?.substring(0, 100) + "..." : JSON.stringify(encoded).substring(0, 100),
+    preview:
+      typeof encoded === "string"
+        ? encoded?.substring(0, 100) + "..."
+        : JSON.stringify(encoded).substring(0, 100),
   });
 
   // Handle object responses - extract transaction string
@@ -27,8 +33,13 @@ function deserializeTransaction(encoded: string | Record<string, unknown>, conte
       }
     }
     if (!txString) {
-      console.error(`${context}: Could not find transaction string in object:`, Object.keys(encoded));
-      throw new Error(`Invalid ${context}: received object but could not find transaction string. Keys: ${Object.keys(encoded).join(", ")}`);
+      console.error(
+        `${context}: Could not find transaction string in object:`,
+        Object.keys(encoded)
+      );
+      throw new Error(
+        `Invalid ${context}: received object but could not find transaction string. Keys: ${Object.keys(encoded).join(", ")}`
+      );
     }
   } else if (typeof encoded === "string") {
     txString = encoded;
@@ -37,7 +48,9 @@ function deserializeTransaction(encoded: string | Record<string, unknown>, conte
   }
 
   if (!txString || txString.length < 50) {
-    throw new Error(`Invalid ${context}: too short (${txString?.length || 0} chars), likely empty or error response`);
+    throw new Error(
+      `Invalid ${context}: too short (${txString?.length || 0} chars), likely empty or error response`
+    );
   }
 
   // Clean the string - remove any whitespace or newlines
@@ -108,11 +121,18 @@ function deserializeTransaction(encoded: string | Record<string, unknown>, conte
         bufferSize: buffer!.length,
         firstBytes: Array.from(buffer!.slice(0, 20)),
       });
-      throw new Error(`Failed to deserialize ${context}: buffer size ${buffer!.length} bytes. First bytes: [${Array.from(buffer!.slice(0, 10)).join(",")}]. This may indicate the Bags API returned an invalid or corrupted transaction.`);
+      throw new Error(
+        `Failed to deserialize ${context}: buffer size ${buffer!.length} bytes. First bytes: [${Array.from(buffer!.slice(0, 10)).join(",")}]. This may indicate the Bags API returned an invalid or corrupted transaction.`
+      );
     }
   }
 }
-import { saveLaunchedToken, saveTokenGlobally, getAllWorldTokens, type LaunchedToken } from "@/lib/token-registry";
+import {
+  saveLaunchedToken,
+  saveTokenGlobally,
+  getAllWorldTokens,
+  type LaunchedToken,
+} from "@/lib/token-registry";
 import { ECOSYSTEM_CONFIG, getEcosystemFeeShare } from "@/lib/config";
 
 interface FeeShareEntry {
@@ -175,9 +195,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
     if (formData.symbol.trim()) {
       const symbolToCheck = formData.symbol.trim().toUpperCase().replace(/^\$/, "");
-      const duplicateSymbol = existingTokens.find(
-        (t) => t.symbol.toUpperCase() === symbolToCheck
-      );
+      const duplicateSymbol = existingTokens.find((t) => t.symbol.toUpperCase() === symbolToCheck);
       if (duplicateSymbol) {
         warnings.symbol = `Symbol $${duplicateSymbol.symbol} is already in use`;
       }
@@ -234,11 +252,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       setStep("fees");
     } else if (step === "fees") {
       if (!isValidBps) {
-        setError(`Total fee share must equal exactly 100%. Currently ${(totalBps / 100).toFixed(1)}%`);
+        setError(
+          `Total fee share must equal exactly 100%. Currently ${(totalBps / 100).toFixed(1)}%`
+        );
         return;
       }
       // Check at least one fee claimer has a username
-      const validFeeShares = feeShares.filter(f => f.username.trim());
+      const validFeeShares = feeShares.filter((f) => f.username.trim());
       if (validFeeShares.length === 0) {
         setError("Add at least one fee claimer with a username");
         return;
@@ -303,7 +323,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
       // 2. Configure fee sharing (always includes ecosystem fee)
       // IMPORTANT: Bags.fm API requires BPS to sum to exactly 10000 (100%)
-      const validFeeShares = feeShares.filter(f => f.username.trim());
+      const validFeeShares = feeShares.filter((f) => f.username.trim());
 
       // Calculate total user-defined BPS
       const userDefinedBps = validFeeShares.reduce((sum, f) => sum + f.bps, 0);
@@ -315,7 +335,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       // Note: The Bags API requires wallet addresses, so usernames must have linked wallets at bags.fm/settings
 
       // Start with user-defined fee shares
-      const userFeeClaimers = validFeeShares.map(f => ({
+      const userFeeClaimers = validFeeShares.map((f) => ({
         provider: f.provider,
         providerUsername: f.username.replace(/@/g, "").toLowerCase().trim(),
         bps: f.bps,
@@ -347,7 +367,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       // All fee claimers must use social providers (twitter, kick, github) - no raw wallet addresses
       const totalAllocatedBps = ecosystemFee.bps + userDefinedBps;
       if (totalAllocatedBps !== 10000) {
-        throw new Error(`Fee shares must total exactly 100%. Currently ${(totalAllocatedBps / 100).toFixed(1)}%. Add fee claimers to allocate the remaining ${((10000 - totalAllocatedBps) / 100).toFixed(1)}% to Twitter/GitHub/Kick accounts.`);
+        throw new Error(
+          `Fee shares must total exactly 100%. Currently ${(totalAllocatedBps / 100).toFixed(1)}%. Add fee claimers to allocate the remaining ${((10000 - totalAllocatedBps) / 100).toFixed(1)}% to Twitter/GitHub/Kick accounts.`
+        );
       }
 
       setLaunchStatus("Configuring fee sharing...");
@@ -384,20 +406,25 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
           for (let i = 0; i < feeResult.transactions.length; i++) {
             const txData = feeResult.transactions[i];
-            setLaunchStatus(`Signing fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
+            setLaunchStatus(
+              `Signing fee config transaction ${i + 1}/${feeResult.transactions.length}...`
+            );
 
             // Decode and sign the transaction (handles both versioned and legacy formats)
-            const transaction = deserializeTransaction(txData.transaction, `fee-config-tx-${i + 1}`);
+            const transaction = deserializeTransaction(
+              txData.transaction,
+              `fee-config-tx-${i + 1}`
+            );
 
             // Check if transaction already has signatures
             let hasExistingSignatures = false;
             if (transaction instanceof VersionedTransaction) {
-              hasExistingSignatures = transaction.signatures.some(sig =>
-                sig.some(byte => byte !== 0)
+              hasExistingSignatures = transaction.signatures.some((sig) =>
+                sig.some((byte) => byte !== 0)
               );
             } else {
-              hasExistingSignatures = transaction.signatures.some(sig =>
-                sig.signature && sig.signature.some(byte => byte !== 0)
+              hasExistingSignatures = transaction.signatures.some(
+                (sig) => sig.signature && sig.signature.some((byte) => byte !== 0)
               );
             }
 
@@ -429,14 +456,23 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             try {
               signedTx = await signTransaction(transaction);
             } catch (signError: unknown) {
-              const signErrorMsg = signError instanceof Error ? signError.message : String(signError);
-              if (signErrorMsg.includes("User rejected") || signErrorMsg.includes("rejected") || signErrorMsg.includes("closed")) {
-                throw new Error("Transaction cancelled. Please try again and approve all transactions in your wallet.");
+              const signErrorMsg =
+                signError instanceof Error ? signError.message : String(signError);
+              if (
+                signErrorMsg.includes("User rejected") ||
+                signErrorMsg.includes("rejected") ||
+                signErrorMsg.includes("closed")
+              ) {
+                throw new Error(
+                  "Transaction cancelled. Please try again and approve all transactions in your wallet."
+                );
               }
               throw new Error(`Wallet signing failed: ${signErrorMsg}`);
             }
 
-            setLaunchStatus(`Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`);
+            setLaunchStatus(
+              `Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`
+            );
 
             // Send transaction - skip preflight to avoid blockhash simulation issues
             // The transaction will still be validated by validators when submitted
@@ -446,11 +482,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               maxRetries: 5,
             });
 
-            await connection.confirmTransaction({
-              signature: txid,
-              blockhash,
-              lastValidBlockHeight,
-            }, "confirmed");
+            await connection.confirmTransaction(
+              {
+                signature: txid,
+                blockhash,
+                lastValidBlockHeight,
+              },
+              "confirmed"
+            );
             console.log(`Fee config transaction ${i + 1} confirmed:`, txid);
           }
         }
@@ -466,7 +505,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         // Add helpful context to the error
         if (errorMsg.toLowerCase().includes("could not find wallet")) {
-          throw new Error(`${errorMsg}. The user needs to link their wallet at bags.fm/settings first.`);
+          throw new Error(
+            `${errorMsg}. The user needs to link their wallet at bags.fm/settings first.`
+          );
         }
         throw new Error(errorMsg);
       }
@@ -477,7 +518,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
       // 3. Create launch transaction, sign it, and send to blockchain
       if (!signTransaction) {
-        throw new Error("Wallet does not support transaction signing. Please use Phantom or another compatible wallet.");
+        throw new Error(
+          "Wallet does not support transaction signing. Please use Phantom or another compatible wallet."
+        );
       }
 
       {
@@ -518,7 +561,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         if (!txBase64 || typeof txBase64 !== "string") {
           console.error("Invalid transaction response:", launchResult);
-          throw new Error("No valid transaction received from API. The token may already exist or there was a server error.");
+          throw new Error(
+            "No valid transaction received from API. The token may already exist or there was a server error."
+          );
         }
 
         setLaunchStatus("Please sign the transaction in your wallet...");
@@ -535,12 +580,12 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         // If so, we should NOT modify the blockhash as it would invalidate existing signatures
         let hasExistingSignatures = false;
         if (transaction instanceof VersionedTransaction) {
-          hasExistingSignatures = transaction.signatures.some(sig =>
-            sig.some(byte => byte !== 0)
+          hasExistingSignatures = transaction.signatures.some((sig) =>
+            sig.some((byte) => byte !== 0)
           );
         } else {
-          hasExistingSignatures = transaction.signatures.some(sig =>
-            sig.signature && sig.signature.some(byte => byte !== 0)
+          hasExistingSignatures = transaction.signatures.some(
+            (sig) => sig.signature && sig.signature.some((byte) => byte !== 0)
           );
         }
 
@@ -581,7 +626,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
           // User rejected
           if (signErrorMsg.includes("User rejected") || signErrorMsg.includes("rejected")) {
-            throw new Error("Transaction cancelled. Please try again and approve the transaction in your wallet.");
+            throw new Error(
+              "Transaction cancelled. Please try again and approve the transaction in your wallet."
+            );
           }
           // Phantom popup closed
           if (signErrorMsg.includes("Popup closed") || signErrorMsg.includes("closed")) {
@@ -589,7 +636,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           }
           // Transaction simulation failed
           if (signErrorMsg.includes("simulation") || signErrorMsg.includes("Simulation")) {
-            throw new Error(`Transaction simulation failed: ${signErrorMsg}. This may be a temporary network issue - please try again.`);
+            throw new Error(
+              `Transaction simulation failed: ${signErrorMsg}. This may be a temporary network issue - please try again.`
+            );
           }
           // Generic error
           throw new Error(`Wallet signing failed: ${signErrorMsg}`);
@@ -619,9 +668,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             console.error(`Send attempt ${sendAttempts} failed:`, errorMessage);
 
             // If blockhash error and we haven't hit max attempts, request fresh transaction from API
-            if (sendAttempts < maxSendAttempts &&
-                (errorMessage.includes("Blockhash not found") ||
-                 errorMessage.includes("block height exceeded"))) {
+            if (
+              sendAttempts < maxSendAttempts &&
+              (errorMessage.includes("Blockhash not found") ||
+                errorMessage.includes("block height exceeded"))
+            ) {
               console.log("Requesting fresh transaction from API...");
               setLaunchStatus(`Retrying (${sendAttempts}/${maxSendAttempts})...`);
 
@@ -635,7 +686,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                     ipfs: tokenMetadata,
                     tokenMint: tokenMint,
                     wallet: publicKey?.toBase58(),
-                    initialBuyLamports: Math.floor(parseFloat(initialBuySOL || "0") * 1_000_000_000),
+                    initialBuyLamports: Math.floor(
+                      parseFloat(initialBuySOL || "0") * 1_000_000_000
+                    ),
                     configKey: configKey,
                   },
                 }),
@@ -648,11 +701,18 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
               const retryResult = await retryResponse.json();
               let retryTxBase64 = retryResult.transaction;
-              if (retryTxBase64 && typeof retryTxBase64 === "object" && "transaction" in retryTxBase64) {
+              if (
+                retryTxBase64 &&
+                typeof retryTxBase64 === "object" &&
+                "transaction" in retryTxBase64
+              ) {
                 retryTxBase64 = retryTxBase64.transaction;
               }
 
-              const retryTransaction = deserializeTransaction(retryTxBase64, "retry-launch-transaction");
+              const retryTransaction = deserializeTransaction(
+                retryTxBase64,
+                "retry-launch-transaction"
+              );
 
               // Get fresh blockhash for confirmation tracking
               const freshBlockhash = await connection.getLatestBlockhash("confirmed");
@@ -664,8 +724,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               try {
                 currentSignedTx = await signTransaction(retryTransaction);
               } catch (retrySignError: unknown) {
-                const retrySignMsg = retrySignError instanceof Error ? retrySignError.message : String(retrySignError);
-                if (retrySignMsg.includes("User rejected") || retrySignMsg.includes("rejected") || retrySignMsg.includes("closed")) {
+                const retrySignMsg =
+                  retrySignError instanceof Error ? retrySignError.message : String(retrySignError);
+                if (
+                  retrySignMsg.includes("User rejected") ||
+                  retrySignMsg.includes("rejected") ||
+                  retrySignMsg.includes("closed")
+                ) {
                   throw new Error("Transaction cancelled. Please try again.");
                 }
                 throw new Error(`Wallet signing failed: ${retrySignMsg}`);
@@ -686,11 +751,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         setLaunchStatus("Confirming transaction...");
 
         // Wait for confirmation
-        const confirmation = await connection.confirmTransaction({
-          signature: txid,
-          blockhash,
-          lastValidBlockHeight,
-        }, "confirmed");
+        const confirmation = await connection.confirmTransaction(
+          {
+            signature: txid,
+            blockhash,
+            lastValidBlockHeight,
+          },
+          "confirmed"
+        );
 
         console.log("Token launched on-chain! TX:", txid);
       }
@@ -731,9 +799,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
       setLaunchStatus("");
       if (globalSaveSuccess) {
-        setSuccess(`🎉 Token ${formData.symbol} launched on Bags.fm! Your building is now visible to ALL BagsWorld players!`);
+        setSuccess(
+          `🎉 Token ${formData.symbol} launched on Bags.fm! Your building is now visible to ALL BagsWorld players!`
+        );
       } else {
-        setSuccess(`🎉 Token ${formData.symbol} launched on Bags.fm! Building visible locally. (Global database not configured)`);
+        setSuccess(
+          `🎉 Token ${formData.symbol} launched on Bags.fm! Building visible locally. (Global database not configured)`
+        );
       }
 
       // Call the success callback to refresh the world state
@@ -745,21 +817,31 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       setTimeout(() => {
         onClose();
       }, 3000);
-
     } catch (err) {
       setLaunchStatus("");
       const errorMessage = err instanceof Error ? err.message : "Failed to launch token";
 
       // Provide user-friendly error messages for common issues
       if (errorMessage.toLowerCase().includes("internal server error")) {
-        setError("Bags.fm API is temporarily unavailable. Please try again in a few minutes. If this persists, check bags.fm status.");
+        setError(
+          "Bags.fm API is temporarily unavailable. Please try again in a few minutes. If this persists, check bags.fm status."
+        );
       } else if (errorMessage.toLowerCase().includes("rate limit")) {
         setError("Too many requests. Please wait a minute before trying again.");
-      } else if (errorMessage.toLowerCase().includes("api key") || errorMessage.toLowerCase().includes("unauthorized")) {
+      } else if (
+        errorMessage.toLowerCase().includes("api key") ||
+        errorMessage.toLowerCase().includes("unauthorized")
+      ) {
         setError("API configuration issue. Please contact support.");
-      } else if (errorMessage.toLowerCase().includes("insufficient") || errorMessage.toLowerCase().includes("balance")) {
+      } else if (
+        errorMessage.toLowerCase().includes("insufficient") ||
+        errorMessage.toLowerCase().includes("balance")
+      ) {
         setError("Insufficient SOL balance in your wallet. Please add more SOL and try again.");
-      } else if (errorMessage.toLowerCase().includes("user rejected") || errorMessage.toLowerCase().includes("cancelled")) {
+      } else if (
+        errorMessage.toLowerCase().includes("user rejected") ||
+        errorMessage.toLowerCase().includes("cancelled")
+      ) {
         setError("Transaction was cancelled. Click Launch to try again.");
       } else {
         setError(errorMessage);
@@ -797,11 +879,10 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <span className="font-pixel text-bags-green text-sm sm:text-base">+</span>
             </div>
             <div>
-              <h2 className="font-pixel text-xs sm:text-sm text-bags-green">
-                BUILD A TOKEN
-              </h2>
+              <h2 className="font-pixel text-xs sm:text-sm text-bags-green">BUILD A TOKEN</h2>
               <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">
-                Step {step === "info" ? "1/3" : step === "fees" ? "2/3" : "3/3"}: {step === "info" ? "Token Info" : step === "fees" ? "Fee Sharing" : "Confirm"}
+                Step {step === "info" ? "1/3" : step === "fees" ? "2/3" : "3/3"}:{" "}
+                {step === "info" ? "Token Info" : step === "fees" ? "Fee Sharing" : "Confirm"}
               </p>
             </div>
           </div>
@@ -824,25 +905,29 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="flex items-start gap-2">
                   <span className="font-pixel text-xs text-bags-gold">1</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Top 3 get paid</span> - Creators ranked by fees get SOL rewards (50/30/20)
+                    <span className="text-bags-green">Top 3 get paid</span> - Creators ranked by
+                    fees get SOL rewards (50/30/20)
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="font-pixel text-xs text-bags-gold">2</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Direct to wallet</span> - No claiming needed, SOL sent automatically
+                    <span className="text-bags-green">Direct to wallet</span> - No claiming needed,
+                    SOL sent automatically
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="font-pixel text-xs text-bags-gold">3</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Living building</span> - Your token appears in the game world
+                    <span className="text-bags-green">Living building</span> - Your token appears in
+                    the game world
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="font-pixel text-xs text-bags-gold">4</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Only 1% ecosystem fee</span> - Funds rewards, casino & more
+                    <span className="text-bags-green">Only 1% ecosystem fee</span> - Funds rewards,
+                    casino & more
                   </span>
                 </div>
               </div>
@@ -853,11 +938,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <label className="cursor-pointer">
                 <div className="w-24 h-24 bg-bags-darker border-2 border-dashed border-bags-green flex items-center justify-center overflow-hidden">
                   {imagePreview ? (
-                    <img
-                      src={imagePreview}
-                      alt="Token"
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={imagePreview} alt="Token" className="w-full h-full object-cover" />
                   ) : (
                     <span className="font-pixel text-[8px] text-gray-500 text-center">
                       CLICK TO
@@ -883,9 +964,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className={`w-full bg-bags-darker border-2 p-2 font-pixel text-xs text-white focus:outline-none ${
                   duplicateWarning.name
                     ? "border-yellow-500 focus:border-yellow-400"
@@ -902,9 +981,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
             {/* Symbol */}
             <div>
-              <label className="block font-pixel text-[10px] text-gray-400 mb-1">
-                SYMBOL *
-              </label>
+              <label className="block font-pixel text-[10px] text-gray-400 mb-1">SYMBOL *</label>
               <input
                 type="text"
                 value={formData.symbol}
@@ -933,9 +1010,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               </label>
               <textarea
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-xs text-white focus:outline-none focus:border-bags-gold h-20 resize-none"
                 placeholder="Describe your token..."
               />
@@ -951,23 +1026,17 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   <input
                     type="url"
                     value={formData.twitter}
-                    onChange={(e) =>
-                      setFormData({ ...formData, twitter: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
                     className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-[10px] text-white focus:outline-none focus:border-bags-gold"
                     placeholder="https://x.com/..."
                   />
                 </div>
                 <div>
-                  <label className="block font-pixel text-[8px] text-gray-400 mb-1">
-                    WEBSITE
-                  </label>
+                  <label className="block font-pixel text-[8px] text-gray-400 mb-1">WEBSITE</label>
                   <input
                     type="url"
                     value={formData.website}
-                    onChange={(e) =>
-                      setFormData({ ...formData, website: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                     className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-[10px] text-white focus:outline-none focus:border-bags-gold"
                     placeholder="https://"
                   />
@@ -980,9 +1049,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <input
                   type="url"
                   value={formData.telegram}
-                  onChange={(e) =>
-                    setFormData({ ...formData, telegram: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, telegram: e.target.value })}
                   className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-[10px] text-white focus:outline-none focus:border-bags-gold"
                   placeholder="https://t.me/..."
                 />
@@ -996,27 +1063,36 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           <div className="p-4 space-y-4">
             {/* Important notice about permanent fees */}
             <div className="bg-bags-green/10 border-2 border-bags-green p-3">
-              <p className="font-pixel text-[10px] text-bags-green mb-1">🔒 FEES ARE SET PERMANENTLY</p>
+              <p className="font-pixel text-[10px] text-bags-green mb-1">
+                🔒 FEES ARE SET PERMANENTLY
+              </p>
               <p className="font-pixel text-[8px] text-gray-300">
-                On Bags.fm, fee shares are <span className="text-bags-gold">locked at launch</span> and cannot be changed.
-                This is why launching through BagsWorld ensures the ecosystem is supported forever.
+                On Bags.fm, fee shares are <span className="text-bags-gold">locked at launch</span>{" "}
+                and cannot be changed. This is why launching through BagsWorld ensures the ecosystem
+                is supported forever.
               </p>
             </div>
 
             <div className="bg-bags-darker p-3 border border-bags-green/30">
               <p className="font-pixel text-[10px] text-bags-gold mb-1">💰 HOW FEES WORK</p>
               <p className="font-pixel text-[8px] text-gray-400">
-                Every trade generates fees split among claimers. <span className="text-bags-green">Total must equal exactly 100%.</span>
+                Every trade generates fees split among claimers.{" "}
+                <span className="text-bags-green">Total must equal exactly 100%.</span>
               </p>
               <p className="font-pixel text-[7px] text-gray-500 mt-1">
                 Supported providers: <span className="text-bags-green">Twitter, GitHub, Kick</span>
               </p>
               <p className="font-pixel text-[7px] text-gray-500 mt-1">
                 Fee claimers need a wallet linked at{" "}
-                <a href="https://bags.fm/settings" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline hover:text-blue-300">
+                <a
+                  href="https://bags.fm/settings"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 underline hover:text-blue-300"
+                >
                   bags.fm/settings
-                </a>
-                {" "}to claim their share.
+                </a>{" "}
+                to claim their share.
               </p>
             </div>
 
@@ -1027,16 +1103,22 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   <div className="flex items-center gap-2">
                     <span className="text-sm">👑</span>
                     <div>
-                      <p className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.displayName}</p>
-                      <p className="font-pixel text-[7px] text-gray-400">Rewards top 3 creators by fees</p>
+                      <p className="font-pixel text-[10px] text-bags-gold">
+                        {ecosystemFee.displayName}
+                      </p>
+                      <p className="font-pixel text-[7px] text-gray-400">
+                        Rewards top 3 creators by fees
+                      </p>
                     </div>
                   </div>
-                  <span className="font-pixel text-[10px] text-bags-gold">{ecosystemFee.bps / 100}%</span>
+                  <span className="font-pixel text-[10px] text-bags-gold">
+                    {ecosystemFee.bps / 100}%
+                  </span>
                 </div>
                 <div className="pt-1 border-t border-bags-gold/20">
                   <p className="font-pixel text-[6px] text-gray-400">
-                    Top 3 creators by fees get rewarded. 50/30/20 split.
-                    Triggers at 10 SOL or 5 days (min 10 SOL). Direct SOL to your wallet.
+                    Top 3 creators by fees get rewarded. 50/30/20 split. Triggers at 10 SOL or 5
+                    days (min 10 SOL). Direct SOL to your wallet.
                   </p>
                 </div>
                 <a
@@ -1072,7 +1154,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   <input
                     type="number"
                     value={share.bps / 100}
-                    onChange={(e) => updateFeeShare(index, "bps", Math.min(10000, Math.max(0, (parseFloat(e.target.value) || 0) * 100)))}
+                    onChange={(e) =>
+                      updateFeeShare(
+                        index,
+                        "bps",
+                        Math.min(10000, Math.max(0, (parseFloat(e.target.value) || 0) * 100))
+                      )
+                    }
                     className="w-16 bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white text-center"
                     min="0"
                     max="100"
@@ -1100,9 +1188,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               </button>
             )}
 
-            <div className={`p-2 ${isValidBps ? "bg-bags-green/10" : "bg-bags-red/10"} border ${isValidBps ? "border-bags-green/30" : "border-bags-red/30"}`}>
+            <div
+              className={`p-2 ${isValidBps ? "bg-bags-green/10" : "bg-bags-red/10"} border ${isValidBps ? "border-bags-green/30" : "border-bags-red/30"}`}
+            >
               <p className="font-pixel text-[8px] text-center">
-                Total Fee Share: <span className={isValidBps ? "text-bags-green" : "text-bags-red"}>{(totalBps / 100).toFixed(1)}%</span>
+                Total Fee Share:{" "}
+                <span className={isValidBps ? "text-bags-green" : "text-bags-red"}>
+                  {(totalBps / 100).toFixed(1)}%
+                </span>
                 {!isValidBps && <span className="text-bags-red ml-2">(must equal 100%)</span>}
               </p>
               {!isValidBps && totalBps < 10000 && (
@@ -1120,7 +1213,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             <div className="bg-bags-darker p-4 space-y-3">
               <div className="flex items-center gap-4">
                 {imagePreview && (
-                  <img src={imagePreview} alt="Token" className="w-16 h-16 object-cover border-2 border-bags-green" />
+                  <img
+                    src={imagePreview}
+                    alt="Token"
+                    className="w-16 h-16 object-cover border-2 border-bags-green"
+                  />
                 )}
                 <div>
                   <p className="font-pixel text-sm text-bags-gold">${formData.symbol}</p>
@@ -1132,9 +1229,24 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
               {(formData.twitter || formData.telegram || formData.website) && (
                 <div className="flex flex-wrap gap-2 text-[8px] font-pixel">
-                  {formData.twitter && <span className="text-blue-400 truncate max-w-[150px]" title={formData.twitter}>{formData.twitter}</span>}
-                  {formData.telegram && <span className="text-blue-300 truncate max-w-[150px]" title={formData.telegram}>{formData.telegram}</span>}
-                  {formData.website && <span className="text-gray-400 truncate max-w-[150px]" title={formData.website}>{formData.website}</span>}
+                  {formData.twitter && (
+                    <span className="text-blue-400 truncate max-w-[150px]" title={formData.twitter}>
+                      {formData.twitter}
+                    </span>
+                  )}
+                  {formData.telegram && (
+                    <span
+                      className="text-blue-300 truncate max-w-[150px]"
+                      title={formData.telegram}
+                    >
+                      {formData.telegram}
+                    </span>
+                  )}
+                  {formData.website && (
+                    <span className="text-gray-400 truncate max-w-[150px]" title={formData.website}>
+                      {formData.website}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -1142,7 +1254,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             <div className="bg-bags-darker p-3 space-y-2">
               <div className="flex justify-between items-center mb-2">
                 <p className="font-pixel text-[10px] text-bags-gold">💰 Fee Distribution</p>
-                <span className="font-pixel text-[7px] text-gray-500 bg-bags-green/10 px-2 py-0.5 rounded">🔒 PERMANENT</span>
+                <span className="font-pixel text-[7px] text-gray-500 bg-bags-green/10 px-2 py-0.5 rounded">
+                  🔒 PERMANENT
+                </span>
               </div>
               {/* Ecosystem fee (only show if > 0) */}
               {ecosystemFee.bps > 0 && (
@@ -1152,13 +1266,17 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 </div>
               )}
               {/* User fee shares */}
-              {feeShares.filter(f => f.username).map((share, i) => (
-                <div key={i} className="flex justify-between font-pixel text-[8px]">
-                  <span className="text-gray-400">{share.provider}/@{share.username}</span>
-                  <span className="text-bags-green">{(share.bps / 100).toFixed(1)}%</span>
-                </div>
-              ))}
-              {feeShares.filter(f => f.username).length === 0 && (
+              {feeShares
+                .filter((f) => f.username)
+                .map((share, i) => (
+                  <div key={i} className="flex justify-between font-pixel text-[8px]">
+                    <span className="text-gray-400">
+                      {share.provider}/@{share.username}
+                    </span>
+                    <span className="text-bags-green">{(share.bps / 100).toFixed(1)}%</span>
+                  </div>
+                ))}
+              {feeShares.filter((f) => f.username).length === 0 && (
                 <p className="font-pixel text-[8px] text-gray-500">No additional fee claimers</p>
               )}
               <div className="flex justify-between font-pixel text-[8px] pt-1 border-t border-bags-green/20">
@@ -1201,7 +1319,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             {/* Phantom warning notice */}
             <div className="bg-orange-500/10 border border-orange-500/30 p-3">
               <p className="font-pixel text-[8px] text-orange-400 text-center">
-                ⚠️ Phantom may show a security warning for new dApps. Click &quot;Proceed anyway&quot; to continue - we&apos;re pending Phantom verification.
+                ⚠️ Phantom may show a security warning for new dApps. Click &quot;Proceed
+                anyway&quot; to continue - we&apos;re pending Phantom verification.
               </p>
             </div>
           </div>
@@ -1239,10 +1358,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               </button>
             )}
             {step !== "confirm" ? (
-              <button
-                onClick={handleNextStep}
-                className="flex-1 btn-retro"
-              >
+              <button onClick={handleNextStep} className="flex-1 btn-retro">
                 NEXT →
               </button>
             ) : (
@@ -1251,7 +1367,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 disabled={isLoading || !!success}
                 className="flex-1 btn-retro disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? "🔄 LAUNCHING..." : success ? "✓ DONE" : `🚀 LAUNCH${parseFloat(initialBuySOL || "0") > 0 ? ` + BUY ${initialBuySOL} SOL` : ""}`}
+                {isLoading
+                  ? "🔄 LAUNCHING..."
+                  : success
+                    ? "✓ DONE"
+                    : `🚀 LAUNCH${parseFloat(initialBuySOL || "0") > 0 ? ` + BUY ${initialBuySOL} SOL` : ""}`}
               </button>
             )}
           </div>

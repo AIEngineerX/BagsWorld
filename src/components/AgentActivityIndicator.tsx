@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getActiveConversation, getCurrentLine, type Conversation, type DialogueLine } from "@/lib/autonomous-dialogue";
+import {
+  getActiveConversation,
+  getCurrentLine,
+  type Conversation,
+  type DialogueLine,
+} from "@/lib/autonomous-dialogue";
 
 // Character display colors
 const characterColors: Record<string, string> = {
@@ -89,9 +94,7 @@ export function AgentActivityIndicator({ className = "" }: AgentActivityIndicato
           <span className={`font-pixel text-[10px] ${speakerColor} font-bold shrink-0`}>
             {currentLine.characterName}:
           </span>
-          <p className="font-pixel text-[10px] text-white leading-relaxed">
-            {currentLine.message}
-          </p>
+          <p className="font-pixel text-[10px] text-white leading-relaxed">{currentLine.message}</p>
         </div>
 
         {/* Progress dots */}
@@ -107,8 +110,8 @@ export function AgentActivityIndicator({ className = "" }: AgentActivityIndicato
                   i === currentIndex
                     ? "bg-bags-gold"
                     : i < currentIndex
-                    ? "bg-gray-600"
-                    : "bg-gray-800"
+                      ? "bg-gray-600"
+                      : "bg-gray-800"
                 }`}
               />
             );

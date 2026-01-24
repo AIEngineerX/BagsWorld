@@ -7,11 +7,7 @@ export const metadata: Metadata = {
     "Learn how to launch tokens, understand world mechanics, and integrate with Bags.fm in BagsWorld.",
 };
 
-export default function DocsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DocsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-bags-darker">
       {/* Header */}

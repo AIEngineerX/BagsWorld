@@ -63,11 +63,14 @@ export async function GET(request: NextRequest) {
     const userInfo = await fetchXUserInfo(tokenResponse.access_token);
 
     // Redirect to client callback page with username
-    const response = redirectToCallback({
-      username: userInfo.username,
-      name: userInfo.name,
-      profileImage: userInfo.profile_image_url,
-    }, request);
+    const response = redirectToCallback(
+      {
+        username: userInfo.username,
+        name: userInfo.name,
+        profileImage: userInfo.profile_image_url,
+      },
+      request
+    );
 
     // Clear OAuth cookies
     response.cookies.delete(OAUTH_STATE_COOKIE);
@@ -76,9 +79,12 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("X OAuth callback error:", error);
-    return redirectToCallback({
-      error: error instanceof Error ? error.message : "OAuth callback failed",
-    }, request);
+    return redirectToCallback(
+      {
+        error: error instanceof Error ? error.message : "OAuth callback failed",
+      },
+      request
+    );
   }
 }
 

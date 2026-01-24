@@ -148,13 +148,16 @@ async function fetchLiveTokenData(mint?: string): Promise<{
   try {
     // Use cache if available and fresh
     const now = Date.now();
-    if (tokenCache && (now - tokenCache.timestamp) < CACHE_TTL) {
+    if (tokenCache && now - tokenCache.timestamp < CACHE_TTL) {
       result.recentLaunches = tokenCache.data;
     } else if (isNeonConfigured()) {
       // Direct database call instead of HTTP request
       const tokens = await getGlobalTokens();
       result.recentLaunches = (tokens || [])
-        .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .sort(
+          (a: any, b: any) =>
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        )
         .slice(0, 10);
       // Update cache
       tokenCache = { data: result.recentLaunches, timestamp: now };
@@ -192,7 +195,13 @@ async function fetchLiveTokenData(mint?: string): Promise<{
 async function generateAgentResponse(
   agentId: string,
   context: {
-    eventType: "token_launch" | "token_pump" | "token_dump" | "analysis" | "prediction" | "discussion";
+    eventType:
+      | "token_launch"
+      | "token_pump"
+      | "token_dump"
+      | "analysis"
+      | "prediction"
+      | "discussion";
     tokenSymbol?: string;
     tokenName?: string;
     tokenMint?: string;
@@ -296,7 +305,12 @@ Respond with 1-2 sentences. Be bold but reasoned.`;
     // Fallback to template if no API key
     return {
       message: `[${agent.name}] ${context.tokenSymbol ? `$${context.tokenSymbol} ` : ""}looks interesting. ${agent.personality === "bullish" ? "Bullish vibes." : agent.personality === "analytical" ? "Need more data." : "Watching closely."}`,
-      sentiment: agent.personality === "bullish" ? "bullish" : agent.personality === "analytical" ? "neutral" : "neutral",
+      sentiment:
+        agent.personality === "bullish"
+          ? "bullish"
+          : agent.personality === "analytical"
+            ? "neutral"
+            : "neutral",
       confidence: 50,
     };
   }
@@ -376,27 +390,31 @@ ${eventPrompt}`,
 }
 
 // Store for paper trades (in production, use database)
-const paperTrades: Map<string, {
-  id: string;
-  agentId: string;
-  tokenMint: string;
-  tokenSymbol: string;
-  direction: "long" | "short";
-  entryPrice: number;
-  targetPrice: number;
-  stopLoss: number;
-  confidence: number;
-  reasoning: string;
-  timestamp: number;
-  status: "active" | "won" | "lost" | "expired";
-  exitPrice?: number;
-  pnlPercent?: number;
-}> = new Map();
+const paperTrades: Map<
+  string,
+  {
+    id: string;
+    agentId: string;
+    tokenMint: string;
+    tokenSymbol: string;
+    direction: "long" | "short";
+    entryPrice: number;
+    targetPrice: number;
+    stopLoss: number;
+    confidence: number;
+    reasoning: string;
+    timestamp: number;
+    status: "active" | "won" | "lost" | "expired";
+    exitPrice?: number;
+    pnlPercent?: number;
+  }
+> = new Map();
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, agentId, tokenMint, tokenSymbol, tokenName, previousMessages, userPrompt } = body;
+    const { action, agentId, tokenMint, tokenSymbol, tokenName, previousMessages, userPrompt } =
+      body;
 
     switch (action) {
       case "analyze": {
@@ -474,7 +492,14 @@ export async function POST(request: NextRequest) {
         });
 
         // Create paper trade based on sentiment
-        const direction: "long" | "short" = response.sentiment === "bullish" ? "long" : response.sentiment === "bearish" ? "short" : (Math.random() > 0.5 ? "long" : "short");
+        const direction: "long" | "short" =
+          response.sentiment === "bullish"
+            ? "long"
+            : response.sentiment === "bearish"
+              ? "short"
+              : Math.random() > 0.5
+                ? "long"
+                : "short";
         const currentPrice = Math.random() * 0.01; // Would use real price in production
         const volatility = response.confidence > 70 ? 0.3 : response.confidence > 50 ? 0.2 : 0.15;
 
@@ -500,8 +525,14 @@ export async function POST(request: NextRequest) {
           tokenSymbol: tokenSymbol || "???",
           direction,
           entryPrice: currentPrice,
-          targetPrice: direction === "long" ? currentPrice * (1 + volatility) : currentPrice * (1 - volatility),
-          stopLoss: direction === "long" ? currentPrice * (1 - volatility * 0.5) : currentPrice * (1 + volatility * 0.5),
+          targetPrice:
+            direction === "long"
+              ? currentPrice * (1 + volatility)
+              : currentPrice * (1 - volatility),
+          stopLoss:
+            direction === "long"
+              ? currentPrice * (1 - volatility * 0.5)
+              : currentPrice * (1 + volatility * 0.5),
           confidence: response.confidence,
           reasoning: response.message,
           timestamp: Date.now(),
@@ -555,7 +586,10 @@ export async function POST(request: NextRequest) {
       case "leaderboard": {
         // Return paper trading leaderboard
         const trades = Array.from(paperTrades.values());
-        const agentStats: Record<string, { wins: number; losses: number; totalPnl: number; trades: number }> = {};
+        const agentStats: Record<
+          string,
+          { wins: number; losses: number; totalPnl: number; trades: number }
+        > = {};
 
         for (const trade of trades) {
           if (!agentStats[trade.agentId]) {
@@ -603,7 +637,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Arena API error:", error);
     return NextResponse.json(
-      { error: "Arena API error", details: error instanceof Error ? error.message : "Unknown error" },
+      {
+        error: "Arena API error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }

@@ -100,7 +100,7 @@ export function AdminConsole() {
   const addLog = useCallback((message: string, type: "info" | "success" | "error" = "info") => {
     const timestamp = new Date().toLocaleTimeString();
     const prefix = type === "error" ? "[ERR]" : type === "success" ? "[OK]" : "[LOG]";
-    setLogs(prev => [`[${timestamp}] ${prefix} ${message}`, ...prev.slice(0, 99)]);
+    setLogs((prev) => [`[${timestamp}] ${prefix} ${message}`, ...prev.slice(0, 99)]);
   }, []);
 
   const fetchStats = useCallback(async () => {
@@ -191,7 +191,7 @@ export function AdminConsole() {
   const handleRemoveLocalBuilding = (mint: string, symbol: string) => {
     if (confirm(`Remove local building $${symbol}?`)) {
       removeLaunchedToken(mint);
-      setLocalBuildings(prev => prev.filter(b => b.mint !== mint));
+      setLocalBuildings((prev) => prev.filter((b) => b.mint !== mint));
       window.dispatchEvent(new CustomEvent("bagsworld-token-update"));
       addLog(`Removed local building: $${symbol}`, "success");
     }
@@ -201,7 +201,7 @@ export function AdminConsole() {
     if (confirm(`Delete $${symbol} from GLOBAL database? This affects all users!`)) {
       const success = await adminAction("delete_token", { mint });
       if (success) {
-        setGlobalTokens(prev => prev.filter(t => t.mint !== mint));
+        setGlobalTokens((prev) => prev.filter((t) => t.mint !== mint));
       }
     }
   };
@@ -212,10 +212,8 @@ export function AdminConsole() {
       featured: !token.is_featured,
     });
     if (success) {
-      setGlobalTokens(prev =>
-        prev.map(t =>
-          t.mint === token.mint ? { ...t, is_featured: !t.is_featured } : t
-        )
+      setGlobalTokens((prev) =>
+        prev.map((t) => (t.mint === token.mint ? { ...t, is_featured: !t.is_featured } : t))
       );
     }
   };
@@ -226,10 +224,8 @@ export function AdminConsole() {
       verified: !token.is_verified,
     });
     if (success) {
-      setGlobalTokens(prev =>
-        prev.map(t =>
-          t.mint === token.mint ? { ...t, is_verified: !t.is_verified } : t
-        )
+      setGlobalTokens((prev) =>
+        prev.map((t) => (t.mint === token.mint ? { ...t, is_verified: !t.is_verified } : t))
       );
     }
   };
@@ -240,10 +236,8 @@ export function AdminConsole() {
       level,
     });
     if (success) {
-      setGlobalTokens(prev =>
-        prev.map(t =>
-          t.mint === token.mint ? { ...t, level_override: level } : t
-        )
+      setGlobalTokens((prev) =>
+        prev.map((t) => (t.mint === token.mint ? { ...t, level_override: level } : t))
       );
       addLog(`Set level ${level === null ? "auto" : level} for $${token.symbol}`, "success");
     }
@@ -326,16 +320,16 @@ export function AdminConsole() {
           {/* Header */}
           <div className="flex items-center justify-between p-3 border-b-2 border-red-500 bg-red-900/30">
             <div>
-              <h2 className="font-pixel text-sm text-red-300">
-                [ADMIN] BAGSWORLD CONSOLE
-              </h2>
-              <p className="font-pixel text-[8px] text-gray-400">
-                Site Management Dashboard
-              </p>
+              <h2 className="font-pixel text-sm text-red-300">[ADMIN] BAGSWORLD CONSOLE</h2>
+              <p className="font-pixel text-[8px] text-gray-400">Site Management Dashboard</p>
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => { fetchStats(); fetchAdminData(); loadLocalBuildings(); }}
+                onClick={() => {
+                  fetchStats();
+                  fetchAdminData();
+                  loadLocalBuildings();
+                }}
                 disabled={isLoading}
                 className="font-pixel text-[8px] text-red-400 hover:text-red-300 px-2 py-1 border border-red-500/30"
               >
@@ -352,19 +346,21 @@ export function AdminConsole() {
 
           {/* Tabs */}
           <div className="flex border-b border-red-500/30 overflow-x-auto">
-            {(["overview", "diagnostics", "global", "local", "analytics", "logs"] as TabType[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-shrink-0 px-4 py-2 font-pixel text-[9px] transition-colors ${
-                  activeTab === tab
-                    ? "bg-red-500/20 text-red-300 border-b-2 border-red-400"
-                    : "text-gray-500 hover:text-gray-300 hover:bg-red-500/10"
-                }`}
-              >
-                {tab.toUpperCase()}
-              </button>
-            ))}
+            {(["overview", "diagnostics", "global", "local", "analytics", "logs"] as TabType[]).map(
+              (tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-shrink-0 px-4 py-2 font-pixel text-[9px] transition-colors ${
+                    activeTab === tab
+                      ? "bg-red-500/20 text-red-300 border-b-2 border-red-400"
+                      : "text-gray-500 hover:text-gray-300 hover:bg-red-500/10"
+                  }`}
+                >
+                  {tab.toUpperCase()}
+                </button>
+              )
+            )}
           </div>
 
           {/* Content */}
@@ -376,11 +372,15 @@ export function AdminConsole() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-bags-darker p-3 border border-red-500/30">
                     <p className="font-pixel text-[8px] text-gray-500">Reward Pool</p>
-                    <p className="font-pixel text-lg text-bags-gold">{stats?.pendingPoolSol.toFixed(4) || "0"} SOL</p>
+                    <p className="font-pixel text-lg text-bags-gold">
+                      {stats?.pendingPoolSol.toFixed(4) || "0"} SOL
+                    </p>
                   </div>
                   <div className="bg-bags-darker p-3 border border-red-500/30">
                     <p className="font-pixel text-[8px] text-gray-500">Total Distributed</p>
-                    <p className="font-pixel text-lg text-bags-green">{stats?.totalDistributed.toFixed(4) || "0"} SOL</p>
+                    <p className="font-pixel text-lg text-bags-green">
+                      {stats?.totalDistributed.toFixed(4) || "0"} SOL
+                    </p>
                   </div>
                   <div className="bg-bags-darker p-3 border border-red-500/30">
                     <p className="font-pixel text-[8px] text-gray-500">Global Tokens</p>
@@ -397,19 +397,27 @@ export function AdminConsole() {
                   <p className="font-pixel text-[8px] text-gray-400 mb-2">SYSTEM STATUS</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${diagnostics?.neonDb.status === "connected" ? "bg-green-400" : "bg-red-400"}`} />
+                      <span
+                        className={`w-2 h-2 rounded-full ${diagnostics?.neonDb.status === "connected" ? "bg-green-400" : "bg-red-400"}`}
+                      />
                       <span className="font-pixel text-[9px] text-gray-300">Neon DB</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${diagnostics?.bagsApi.configured ? "bg-green-400" : "bg-red-400"}`} />
+                      <span
+                        className={`w-2 h-2 rounded-full ${diagnostics?.bagsApi.configured ? "bg-green-400" : "bg-red-400"}`}
+                      />
                       <span className="font-pixel text-[9px] text-gray-300">Bags API</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${diagnostics?.solanaRpc.status === "healthy" ? "bg-green-400" : diagnostics?.solanaRpc.configured ? "bg-yellow-400" : "bg-red-400"}`} />
+                      <span
+                        className={`w-2 h-2 rounded-full ${diagnostics?.solanaRpc.status === "healthy" ? "bg-green-400" : diagnostics?.solanaRpc.configured ? "bg-yellow-400" : "bg-red-400"}`}
+                      />
                       <span className="font-pixel text-[9px] text-gray-300">Solana RPC</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${diagnostics?.anthropicApi.configured ? "bg-green-400" : "bg-yellow-400"}`} />
+                      <span
+                        className={`w-2 h-2 rounded-full ${diagnostics?.anthropicApi.configured ? "bg-green-400" : "bg-yellow-400"}`}
+                      />
                       <span className="font-pixel text-[9px] text-gray-300">AI Chat</span>
                     </div>
                   </div>
@@ -423,16 +431,30 @@ export function AdminConsole() {
                       {stats.topCreators.slice(0, 5).map((creator, i) => (
                         <div key={creator.wallet} className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <span className={`font-pixel text-[10px] ${
-                              i === 0 ? "text-bags-gold" : i === 1 ? "text-gray-300" : i === 2 ? "text-amber-600" : "text-gray-500"
-                            }`}>
+                            <span
+                              className={`font-pixel text-[10px] ${
+                                i === 0
+                                  ? "text-bags-gold"
+                                  : i === 1
+                                    ? "text-gray-300"
+                                    : i === 2
+                                      ? "text-amber-600"
+                                      : "text-gray-500"
+                              }`}
+                            >
                               #{i + 1}
                             </span>
-                            <span className="font-pixel text-[10px] text-white">${creator.tokenSymbol}</span>
+                            <span className="font-pixel text-[10px] text-white">
+                              ${creator.tokenSymbol}
+                            </span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="font-pixel text-[8px] text-gray-500">{truncateWallet(creator.wallet)}</span>
-                            <span className="font-pixel text-[10px] text-bags-green">{creator.feesGenerated.toFixed(4)} SOL</span>
+                            <span className="font-pixel text-[8px] text-gray-500">
+                              {truncateWallet(creator.wallet)}
+                            </span>
+                            <span className="font-pixel text-[10px] text-bags-green">
+                              {creator.feesGenerated.toFixed(4)} SOL
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -499,7 +521,11 @@ export function AdminConsole() {
                   <div className="space-y-2 font-mono text-[9px]">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Configured:</span>
-                      <span className={diagnostics?.neonDb.configured ? "text-green-400" : "text-red-400"}>
+                      <span
+                        className={
+                          diagnostics?.neonDb.configured ? "text-green-400" : "text-red-400"
+                        }
+                      >
                         {diagnostics?.neonDb.configured ? "Yes" : "No"}
                       </span>
                     </div>
@@ -529,13 +555,19 @@ export function AdminConsole() {
                   <div className="space-y-2 font-mono text-[9px]">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Configured:</span>
-                      <span className={diagnostics?.bagsApi.configured ? "text-green-400" : "text-red-400"}>
+                      <span
+                        className={
+                          diagnostics?.bagsApi.configured ? "text-green-400" : "text-red-400"
+                        }
+                      >
                         {diagnostics?.bagsApi.configured ? "Yes" : "No"}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Key Length:</span>
-                      <span className="text-white">{diagnostics?.bagsApi.keyLength || 0} chars</span>
+                      <span className="text-white">
+                        {diagnostics?.bagsApi.keyLength || 0} chars
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -546,13 +578,19 @@ export function AdminConsole() {
                   <div className="space-y-2 font-mono text-[9px]">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Configured:</span>
-                      <span className={diagnostics?.solanaRpc.configured ? "text-green-400" : "text-red-400"}>
+                      <span
+                        className={
+                          diagnostics?.solanaRpc.configured ? "text-green-400" : "text-red-400"
+                        }
+                      >
                         {diagnostics?.solanaRpc.configured ? "Yes" : "No"}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">URL:</span>
-                      <span className="text-white truncate max-w-[200px]">{diagnostics?.solanaRpc.url}</span>
+                      <span className="text-white truncate max-w-[200px]">
+                        {diagnostics?.solanaRpc.url}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Health:</span>
@@ -630,7 +668,9 @@ export function AdminConsole() {
 
                   {globalTokens.length === 0 ? (
                     <p className="font-pixel text-[10px] text-gray-500 text-center py-8">
-                      {diagnostics?.neonDb.configured ? "No global tokens" : "Database not configured (Netlify only)"}
+                      {diagnostics?.neonDb.configured
+                        ? "No global tokens"
+                        : "Database not configured (Netlify only)"}
                     </p>
                   ) : (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -650,18 +690,28 @@ export function AdminConsole() {
                               )}
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <p className="font-pixel text-[11px] text-bags-gold">${token.symbol}</p>
+                                  <p className="font-pixel text-[11px] text-bags-gold">
+                                    ${token.symbol}
+                                  </p>
                                   {token.is_featured && (
-                                    <span className="font-pixel text-[7px] text-yellow-400 bg-yellow-500/20 px-1">FEATURED</span>
+                                    <span className="font-pixel text-[7px] text-yellow-400 bg-yellow-500/20 px-1">
+                                      FEATURED
+                                    </span>
                                   )}
                                   {token.is_verified && (
-                                    <span className="font-pixel text-[7px] text-blue-400 bg-blue-500/20 px-1">VERIFIED</span>
+                                    <span className="font-pixel text-[7px] text-blue-400 bg-blue-500/20 px-1">
+                                      VERIFIED
+                                    </span>
                                   )}
                                   {token.level_override && (
-                                    <span className="font-pixel text-[7px] text-purple-400 bg-purple-500/20 px-1">LVL {token.level_override}</span>
+                                    <span className="font-pixel text-[7px] text-purple-400 bg-purple-500/20 px-1">
+                                      LVL {token.level_override}
+                                    </span>
                                   )}
                                 </div>
-                                <p className="font-pixel text-[8px] text-gray-400 truncate">{token.name}</p>
+                                <p className="font-pixel text-[8px] text-gray-400 truncate">
+                                  {token.name}
+                                </p>
                                 <p className="font-pixel text-[7px] text-gray-600 font-mono truncate">
                                   {truncateWallet(token.mint)}
                                 </p>
@@ -682,7 +732,10 @@ export function AdminConsole() {
                                 value={token.level_override || "auto"}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  handleSetLevelOverride(token, val === "auto" ? null : parseInt(val));
+                                  handleSetLevelOverride(
+                                    token,
+                                    val === "auto" ? null : parseInt(val)
+                                  );
                                 }}
                                 className="bg-black/50 border border-gray-700 px-1 py-0.5 font-pixel text-[8px] text-white"
                               >
@@ -780,7 +833,9 @@ export function AdminConsole() {
                             />
                           )}
                           <div>
-                            <p className="font-pixel text-[10px] text-bags-gold">${building.symbol}</p>
+                            <p className="font-pixel text-[10px] text-bags-gold">
+                              ${building.symbol}
+                            </p>
                             <p className="font-pixel text-[8px] text-gray-400">{building.name}</p>
                             <p className="font-pixel text-[7px] text-gray-600 font-mono">
                               {truncateWallet(building.mint)}
@@ -797,7 +852,9 @@ export function AdminConsole() {
                             [VIEW]
                           </a>
                           <button
-                            onClick={() => handleRemoveLocalBuilding(building.mint, building.symbol)}
+                            onClick={() =>
+                              handleRemoveLocalBuilding(building.mint, building.symbol)
+                            }
                             className="font-pixel text-[7px] text-red-400 hover:text-red-300"
                           >
                             [DELETE]
@@ -819,15 +876,21 @@ export function AdminConsole() {
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <p className="font-pixel text-[7px] text-gray-500">Total Distributed</p>
-                      <p className="font-pixel text-lg text-bags-green">{stats?.totalDistributed.toFixed(4) || "0"} SOL</p>
+                      <p className="font-pixel text-lg text-bags-green">
+                        {stats?.totalDistributed.toFixed(4) || "0"} SOL
+                      </p>
                     </div>
                     <div>
                       <p className="font-pixel text-[7px] text-gray-500">Distribution Count</p>
-                      <p className="font-pixel text-lg text-white">{stats?.distributionCount || 0}</p>
+                      <p className="font-pixel text-lg text-white">
+                        {stats?.distributionCount || 0}
+                      </p>
                     </div>
                     <div>
                       <p className="font-pixel text-[7px] text-gray-500">Last Distribution</p>
-                      <p className="font-pixel text-sm text-white">{formatTimeAgo(stats?.lastDistribution || 0)}</p>
+                      <p className="font-pixel text-sm text-white">
+                        {formatTimeAgo(stats?.lastDistribution || 0)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -872,25 +935,30 @@ export function AdminConsole() {
                     <div>
                       <p className="font-pixel text-[7px] text-gray-500">Total Market Cap</p>
                       <p className="font-pixel text-sm text-white">
-                        {formatMarketCap(globalTokens.reduce((sum, t) => sum + (t.market_cap || 0), 0))}
+                        {formatMarketCap(
+                          globalTokens.reduce((sum, t) => sum + (t.market_cap || 0), 0)
+                        )}
                       </p>
                     </div>
                     <div>
                       <p className="font-pixel text-[7px] text-gray-500">Total Lifetime Fees</p>
                       <p className="font-pixel text-sm text-bags-green">
-                        {globalTokens.reduce((sum, t) => sum + (t.lifetime_fees || 0), 0).toFixed(2)} SOL
+                        {globalTokens
+                          .reduce((sum, t) => sum + (t.lifetime_fees || 0), 0)
+                          .toFixed(2)}{" "}
+                        SOL
                       </p>
                     </div>
                     <div>
                       <p className="font-pixel text-[7px] text-gray-500">Featured Tokens</p>
                       <p className="font-pixel text-sm text-yellow-400">
-                        {globalTokens.filter(t => t.is_featured).length}
+                        {globalTokens.filter((t) => t.is_featured).length}
                       </p>
                     </div>
                     <div>
                       <p className="font-pixel text-[7px] text-gray-500">Verified Tokens</p>
                       <p className="font-pixel text-sm text-blue-400">
-                        {globalTokens.filter(t => t.is_verified).length}
+                        {globalTokens.filter((t) => t.is_verified).length}
                       </p>
                     </div>
                   </div>
@@ -902,11 +970,15 @@ export function AdminConsole() {
                   <div className="grid grid-cols-2 gap-3 font-mono text-[9px]">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Threshold:</span>
-                      <span className="text-white">{ECOSYSTEM_CONFIG.ecosystem.rewards.thresholdSol} SOL</span>
+                      <span className="text-white">
+                        {ECOSYSTEM_CONFIG.ecosystem.rewards.thresholdSol} SOL
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Backup Timer:</span>
-                      <span className="text-white">{ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays} days</span>
+                      <span className="text-white">
+                        {ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays} days
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Distribution:</span>
@@ -950,8 +1022,8 @@ export function AdminConsole() {
                           log.includes("[ERR]")
                             ? "text-red-400"
                             : log.includes("[OK]")
-                            ? "text-green-400"
-                            : "text-gray-400"
+                              ? "text-green-400"
+                              : "text-gray-400"
                         }
                       >
                         {log}

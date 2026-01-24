@@ -4,7 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useGameStore } from "@/lib/store";
 import type { WorldState } from "@/lib/types";
 import { useEffect, useCallback, useState } from "react";
-import { getAllWorldTokens, getAllWorldTokensAsync, type LaunchedToken } from "@/lib/token-registry";
+import {
+  getAllWorldTokens,
+  getAllWorldTokensAsync,
+  type LaunchedToken,
+} from "@/lib/token-registry";
 
 // Fetch world state by POSTing registered tokens
 async function fetchWorldState(tokens: LaunchedToken[]): Promise<WorldState> {
@@ -37,8 +41,7 @@ async function fetchWorldState(tokens: LaunchedToken[]): Promise<WorldState> {
 }
 
 export function useWorldState() {
-  const { worldState, setWorldState, setLoading, setError, isLoading, error } =
-    useGameStore();
+  const { worldState, setWorldState, setLoading, setError, isLoading, error } = useGameStore();
 
   // Track registered tokens from localStorage
   const [registeredTokens, setRegisteredTokens] = useState<LaunchedToken[]>([]);

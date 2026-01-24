@@ -58,15 +58,16 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
   };
 
   // Calculate world stats
-  const citizenCount = worldState?.population?.filter(
-    (c) => !c.isToly && !c.isAsh && !c.isFinn && !c.isDev
-  ).length || 0;
-  const buildingCount = worldState?.buildings?.filter(
-    (b) => !b.id.startsWith("Treasury") && !b.id.startsWith("Starter")
-  ).length || 0;
-  const happyCitizens = worldState?.population?.filter(
-    (c) => c.mood === "happy" || c.mood === "celebrating"
-  ).length || 0;
+  const citizenCount =
+    worldState?.population?.filter((c) => !c.isToly && !c.isAsh && !c.isFinn && !c.isDev).length ||
+    0;
+  const buildingCount =
+    worldState?.buildings?.filter(
+      (b) => !b.id.startsWith("Treasury") && !b.id.startsWith("Starter")
+    ).length || 0;
+  const happyCitizens =
+    worldState?.population?.filter((c) => c.mood === "happy" || c.mood === "celebrating").length ||
+    0;
 
   return (
     <div
@@ -82,7 +83,9 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
             </div>
             <div>
               <h2 className="font-pixel text-white text-xs sm:text-sm">REWARDS CENTER</h2>
-              <p className="font-pixel text-red-200 text-[7px] sm:text-[8px]">Top 3 Creators Get Paid</p>
+              <p className="font-pixel text-red-200 text-[7px] sm:text-[8px]">
+                Top 3 Creators Get Paid
+              </p>
             </div>
           </div>
           <button
@@ -98,9 +101,8 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
           {/* Welcome Message */}
           <div className="bg-red-900/30 border border-red-500/50 rounded p-3">
             <p className="font-pixel text-[10px] text-red-200">
-              Welcome to the BagsWorld Rewards Center.
-              Top 3 creators by fee contribution get rewarded directly.
-              Launch tokens, drive volume, earn SOL.
+              Welcome to the BagsWorld Rewards Center. Top 3 creators by fee contribution get
+              rewarded directly. Launch tokens, drive volume, earn SOL.
             </p>
           </div>
 
@@ -127,9 +129,7 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
           <div className="bg-bags-darker rounded p-3 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-pixel text-white text-xs">Fee Claims</span>
-              {isLoading && (
-                <span className="font-pixel text-gray-500 text-[8px]">Loading...</span>
-              )}
+              {isLoading && <span className="font-pixel text-gray-500 text-[8px]">Loading...</span>}
             </div>
 
             {!connected ? (
@@ -152,9 +152,7 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
                       <span className="font-pixel text-green-400 text-[10px]">
                         Claimable Positions
                       </span>
-                      <span className="font-pixel text-green-400 text-sm">
-                        {positions.length}
-                      </span>
+                      <span className="font-pixel text-green-400 text-sm">{positions.length}</span>
                     </div>
                     <div className="flex justify-between items-center bg-yellow-900/30 border border-yellow-500/50 rounded p-2">
                       <span className="font-pixel text-yellow-400 text-[10px]">

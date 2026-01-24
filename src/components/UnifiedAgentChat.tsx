@@ -120,9 +120,10 @@ export function UnifiedAgentChat({
     return null;
   }
 
-  const chatStyle: React.CSSProperties = position.y >= 0
-    ? { left: position.x, top: position.y, bottom: "auto" }
-    : { left: position.x, bottom: 80 };
+  const chatStyle: React.CSSProperties =
+    position.y >= 0
+      ? { left: position.x, top: position.y, bottom: "auto" }
+      : { left: position.x, bottom: 80 };
 
   // Dynamic color classes based on agent
   const borderColor = `border-${agentInfo.color}-500`;
@@ -193,12 +194,8 @@ export function UnifiedAgentChat({
             <p className={`font-pixel text-[10px] text-${agentInfo.color}-400 mb-1`}>
               {agentInfo.icon} online
             </p>
-            <p className="font-pixel text-[8px] text-gray-400">
-              {agentInfo.tagline}
-            </p>
-            <p className="font-pixel text-[7px] text-gray-500 mt-2">
-              Ask me anything
-            </p>
+            <p className="font-pixel text-[8px] text-gray-400">{agentInfo.tagline}</p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-2">Ask me anything</p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -211,7 +208,9 @@ export function UnifiedAgentChat({
           ))
         )}
         {isLoading && (
-          <div className={`p-2 border-l-2 bg-${agentInfo.color}-500/10 border-${agentInfo.color}-500`}>
+          <div
+            className={`p-2 border-l-2 bg-${agentInfo.color}-500/10 border-${agentInfo.color}-500`}
+          >
             <p className={`font-pixel text-[8px] text-${agentInfo.color}-300 animate-pulse`}>
               thinking...
             </p>
@@ -271,24 +270,18 @@ function MessageBubble({
         isUser
           ? "bg-bags-green/10 border-bags-green ml-4"
           : isInfo
-          ? "bg-cyan-500/10 border-cyan-500"
-          : `bg-${agentInfo.color}-500/10 border-${agentInfo.color}-500`
+            ? "bg-cyan-500/10 border-cyan-500"
+            : `bg-${agentInfo.color}-500/10 border-${agentInfo.color}-500`
       }`}
     >
-      {isUser && (
-        <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>
-      )}
-      {isInfo && (
-        <p className="font-pixel text-[6px] text-cyan-400 mb-1">Info:</p>
-      )}
+      {isUser && <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>}
+      {isInfo && <p className="font-pixel text-[6px] text-cyan-400 mb-1">Info:</p>}
       {!isUser && !isInfo && (
         <p className={`font-pixel text-[6px] text-${agentInfo.color}-400 mb-1`}>
           {message.agentName || agentInfo.name}:
         </p>
       )}
-      <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">
-        {message.content}
-      </p>
+      <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{message.content}</p>
       {message.suggestedAgent && onSwitchAgent && (
         <button
           onClick={() => onSwitchAgent(message.suggestedAgent!)}

@@ -2,12 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 import { isAdmin } from "@/lib/config";
-import {
-  getGlobalTokens,
-  saveGlobalToken,
-  isNeonConfigured,
-  type GlobalToken
-} from "@/lib/neon";
+import { getGlobalTokens, saveGlobalToken, isNeonConfigured, type GlobalToken } from "@/lib/neon";
 import { verifySessionToken } from "@/lib/wallet-auth";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
@@ -64,7 +59,10 @@ export async function GET(request: NextRequest) {
   const rateLimit = checkRateLimit(`admin:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Too many requests. Try again later.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -85,10 +83,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Admin API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch admin data" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch admin data" }, { status: 500 });
   }
 }
 
@@ -99,7 +94,10 @@ export async function POST(request: NextRequest) {
   const rateLimit = checkRateLimit(`admin:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Too many requests. Try again later.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -133,10 +131,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("Admin action error:", error);
-    return NextResponse.json(
-      { error: "Action failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Action failed" }, { status: 500 });
   }
 }
 
@@ -215,10 +210,7 @@ async function getSystemDiagnostics() {
 }
 
 // Handle token update
-async function handleUpdateToken(data: {
-  mint: string;
-  updates: Partial<GlobalToken>;
-}) {
+async function handleUpdateToken(data: { mint: string; updates: Partial<GlobalToken> }) {
   // Validate mint address
   if (!data.mint || !isValidSolanaAddress(data.mint)) {
     return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
@@ -231,16 +223,28 @@ async function handleUpdateToken(data: {
   const MAX_URL_LENGTH = 500;
 
   if (data.updates.name && data.updates.name.length > MAX_NAME_LENGTH) {
-    return NextResponse.json({ error: `Name exceeds ${MAX_NAME_LENGTH} characters` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Name exceeds ${MAX_NAME_LENGTH} characters` },
+      { status: 400 }
+    );
   }
   if (data.updates.symbol && data.updates.symbol.length > MAX_SYMBOL_LENGTH) {
-    return NextResponse.json({ error: `Symbol exceeds ${MAX_SYMBOL_LENGTH} characters` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Symbol exceeds ${MAX_SYMBOL_LENGTH} characters` },
+      { status: 400 }
+    );
   }
   if (data.updates.description && data.updates.description.length > MAX_DESCRIPTION_LENGTH) {
-    return NextResponse.json({ error: `Description exceeds ${MAX_DESCRIPTION_LENGTH} characters` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Description exceeds ${MAX_DESCRIPTION_LENGTH} characters` },
+      { status: 400 }
+    );
   }
   if (data.updates.image_url && data.updates.image_url.length > MAX_URL_LENGTH) {
-    return NextResponse.json({ error: `Image URL exceeds ${MAX_URL_LENGTH} characters` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Image URL exceeds ${MAX_URL_LENGTH} characters` },
+      { status: 400 }
+    );
   }
 
   if (!isNeonConfigured()) {
@@ -402,7 +406,10 @@ async function handleSetLevelOverride(data: { mint: string; level: number | null
 
   // Validate level is null or a valid level (1-5)
   if (data.level !== null && (typeof data.level !== "number" || data.level < 1 || data.level > 5)) {
-    return NextResponse.json({ error: "Level must be null or a number between 1 and 5" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Level must be null or a number between 1 and 5" },
+      { status: 400 }
+    );
   }
 
   if (!isNeonConfigured()) {
@@ -451,9 +458,7 @@ async function handleAddToken(data: { mint: string }) {
 
   try {
     // Fetch token info from DexScreener
-    const dexResponse = await fetch(
-      `https://api.dexscreener.com/latest/dex/tokens/${data.mint}`
-    );
+    const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${data.mint}`);
 
     if (!dexResponse.ok) {
       return NextResponse.json({ error: "Token not found on DexScreener" }, { status: 404 });
@@ -496,6 +501,6 @@ async function handleClearCache() {
   // For now, we just return success
   return NextResponse.json({
     success: true,
-    message: "Cache invalidation triggered. Changes will reflect on next refresh."
+    message: "Cache invalidation triggered. Changes will reflect on next refresh.",
   });
 }

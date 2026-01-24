@@ -30,7 +30,14 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
-  const { user: xUser, isLoading: xAuthLoading, error: xAuthError, signIn: xSignIn, signOut: xSignOut, clearError: clearXError } = useXAuth();
+  const {
+    user: xUser,
+    isLoading: xAuthLoading,
+    error: xAuthError,
+    signIn: xSignIn,
+    signOut: xSignOut,
+    clearError: clearXError,
+  } = useXAuth();
 
   const [positions, setPositions] = useState<ClaimablePosition[]>([]);
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set());
@@ -125,7 +132,9 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
       setTotalClaimable(data.totalClaimable || 0);
 
       // Select all by default
-      setSelectedPositions(new Set(data.positions?.map((p: ClaimablePosition) => p.virtualPool) || []));
+      setSelectedPositions(
+        new Set(data.positions?.map((p: ClaimablePosition) => p.virtualPool) || [])
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load claimable positions");
     } finally {
@@ -144,7 +153,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
   };
 
   const selectAll = () => {
-    setSelectedPositions(new Set(positions.map(p => p.virtualPool)));
+    setSelectedPositions(new Set(positions.map((p) => p.virtualPool)));
   };
 
   const selectNone = () => {
@@ -152,7 +161,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
   };
 
   const selectedTotal = positions
-    .filter(p => selectedPositions.has(p.virtualPool))
+    .filter((p) => selectedPositions.has(p.virtualPool))
     .reduce((sum, p) => sum + p.claimableDisplayAmount, 0);
 
   // Check if connected wallet matches the X-linked wallet
@@ -227,7 +236,9 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
       }
 
       if (successCount > 0) {
-        setSuccess(`Successfully claimed from ${successCount} position${successCount > 1 ? "s" : ""}!`);
+        setSuccess(
+          `Successfully claimed from ${successCount} position${successCount > 1 ? "s" : ""}!`
+        );
         // Refresh positions after successful claim
         setTimeout(() => {
           if (walletToQuery) {
@@ -275,9 +286,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
               <span className="font-pixel text-bags-gold text-[10px] sm:text-xs">$!</span>
             </div>
             <div>
-              <h2 className="font-pixel text-xs sm:text-sm text-bags-gold">
-                CLAIM FEES
-              </h2>
+              <h2 className="font-pixel text-xs sm:text-sm text-bags-gold">CLAIM FEES</h2>
               <p className="font-pixel text-[7px] sm:text-[8px] text-gray-400">
                 Collect your earned trading fees
               </p>
@@ -307,9 +316,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
                     />
                   )}
                   <div>
-                    <p className="font-pixel text-[10px] text-white">
-                      @{xUser.username}
-                    </p>
+                    <p className="font-pixel text-[10px] text-white">@{xUser.username}</p>
                     {linkedWallet && (
                       <p className="font-pixel text-[8px] text-gray-400">
                         Wallet: {shortenAddress(linkedWallet)}
@@ -398,10 +405,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
               <p className="font-pixel text-[10px] text-gray-400 mb-2">
                 Or connect your wallet directly
               </p>
-              <button
-                onClick={() => setWalletModalVisible(true)}
-                className="btn-retro"
-              >
+              <button onClick={() => setWalletModalVisible(true)} className="btn-retro">
                 CONNECT WALLET
               </button>
             </div>
@@ -419,9 +423,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
             </div>
           ) : positions.length === 0 ? (
             <div className="text-center py-8">
-              <p className="font-pixel text-[10px] text-gray-400">
-                No claimable fees found
-              </p>
+              <p className="font-pixel text-[10px] text-gray-400">No claimable fees found</p>
               <p className="font-pixel text-[8px] text-gray-500 mt-2">
                 Launch tokens and earn fees from trades!
               </p>
@@ -495,9 +497,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
                           {position.claimableDisplayAmount.toFixed(4)} SOL
                         </p>
                         {position.isMigrated && (
-                          <p className="font-pixel text-[6px] text-blue-400">
-                            MIGRATED
-                          </p>
+                          <p className="font-pixel text-[6px] text-blue-400">MIGRATED</p>
                         )}
                       </div>
                     </div>
@@ -509,9 +509,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
               {selectedPositions.size > 0 && (
                 <div className="bg-bags-green/10 border border-bags-green/30 p-3">
                   <div className="flex justify-between items-center">
-                    <span className="font-pixel text-[10px] text-gray-400">
-                      Selected Total:
-                    </span>
+                    <span className="font-pixel text-[10px] text-gray-400">Selected Total:</span>
                     <span className="font-pixel text-sm text-bags-green">
                       {selectedTotal.toFixed(4)} SOL
                     </span>
@@ -538,10 +536,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
         {positions.length > 0 && (
           <div className="p-4 border-t border-bags-gold/30">
             {!connected ? (
-              <button
-                onClick={() => setWalletModalVisible(true)}
-                className="w-full btn-retro"
-              >
+              <button onClick={() => setWalletModalVisible(true)} className="w-full btn-retro">
                 CONNECT WALLET TO CLAIM
               </button>
             ) : linkedWallet && !walletMatches ? (

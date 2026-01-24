@@ -5,24 +5,24 @@ import { getCasinoHistory, isNeonConfigured } from "@/lib/neon";
 export const dynamic = "force-dynamic";
 
 // In-memory history for development
-const historyByWallet = new Map<string, Array<{
-  id: string;
-  type: "raffle" | "wheel";
-  result: string;
-  amount: number;
-  timestamp: number;
-  isWin: boolean;
-}>>();
+const historyByWallet = new Map<
+  string,
+  Array<{
+    id: string;
+    type: "raffle" | "wheel";
+    result: string;
+    amount: number;
+    timestamp: number;
+    isWin: boolean;
+  }>
+>();
 
 export async function GET(request: NextRequest) {
   try {
     const wallet = request.nextUrl.searchParams.get("wallet");
 
     if (!wallet) {
-      return NextResponse.json(
-        { error: "Wallet address required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Wallet address required" }, { status: 400 });
     }
 
     // Try to get from database
@@ -46,9 +46,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in history GET:", error);
-    return NextResponse.json(
-      { error: "Failed to get history" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to get history" }, { status: 500 });
   }
 }

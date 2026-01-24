@@ -16,20 +16,14 @@ function isValidSolanaAddress(address: string): boolean {
 export async function POST(request: NextRequest) {
   try {
     if (!isNeonConfigured()) {
-      return NextResponse.json(
-        { error: "Database not configured" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
     const body = await request.json();
     const { mint, name, symbol, creator } = body;
 
     if (!mint || !isValidSolanaAddress(mint)) {
-      return NextResponse.json(
-        { error: "Invalid or missing mint address" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid or missing mint address" }, { status: 400 });
     }
 
     // Create token record
@@ -48,10 +42,7 @@ export async function POST(request: NextRequest) {
     const success = await saveGlobalToken(token);
 
     if (!success) {
-      return NextResponse.json(
-        { error: "Failed to save token" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to save token" }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -61,9 +52,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Register Token] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to register token" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to register token" }, { status: 500 });
   }
 }

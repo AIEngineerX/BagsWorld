@@ -25,7 +25,12 @@ interface HealthThresholds {
 }
 
 const CLAIM_THRESHOLDS: HealthThresholds = { thriving: 50, healthy: 20, normal: 5, struggling: 1 };
-const FEE_THRESHOLDS: HealthThresholds = { thriving: 1000, healthy: 500, normal: 100, struggling: 10 };
+const FEE_THRESHOLDS: HealthThresholds = {
+  thriving: 1000,
+  healthy: 500,
+  normal: 100,
+  struggling: 10,
+};
 
 // Calculate score (0-100) from value using thresholds
 function calculateThresholdScore(value: number, t: HealthThresholds): number {
@@ -160,10 +165,10 @@ const MIN_SLOT_SPACING = Math.round(100 * SCALE); // Minimum gap between buildin
 
 // Landmark X positions to avoid (with clearance)
 const LANDMARK_X_POSITIONS = [
-  Math.round(80 * SCALE),   // Casino (128)
-  Math.round(150 * SCALE),  // TradingGym (240)
-  Math.round(280 * SCALE),  // PokeCenter (448)
-  WORLD_WIDTH / 2,          // HQ/Treasury (640)
+  Math.round(80 * SCALE), // Casino (128)
+  Math.round(150 * SCALE), // TradingGym (240)
+  Math.round(280 * SCALE), // PokeCenter (448)
+  WORLD_WIDTH / 2, // HQ/Treasury (640)
 ];
 const LANDMARK_CLEARANCE = 80; // Pixels to stay clear of landmarks
 
@@ -173,7 +178,7 @@ function generateZoneSlots(zoneStart: number, zoneEnd: number): number[] {
   for (let x = zoneStart; x <= zoneEnd; x += MIN_SLOT_SPACING) {
     // Check if this X is clear of all landmarks
     const isClear = LANDMARK_X_POSITIONS.every(
-      landmarkX => Math.abs(x - landmarkX) >= LANDMARK_CLEARANCE
+      (landmarkX) => Math.abs(x - landmarkX) >= LANDMARK_CLEARANCE
     );
     if (isClear) {
       slots.push(x);
@@ -186,10 +191,7 @@ function generateZoneSlots(zoneStart: number, zoneEnd: number): number[] {
 const LEFT_ZONE_SLOTS = generateZoneSlots(LEFT_ZONE_START, LEFT_ZONE_END);
 const RIGHT_ZONE_SLOTS = generateZoneSlots(RIGHT_ZONE_START, RIGHT_ZONE_END);
 
-export function generateBuildingPosition(
-  index: number,
-  total: number
-): { x: number; y: number } {
+export function generateBuildingPosition(index: number, total: number): { x: number; y: number } {
   // Alternate between zones: even index → left zone, odd index → right zone
   const useLeftZone = index % 2 === 0;
   const slots = useLeftZone ? LEFT_ZONE_SLOTS : RIGHT_ZONE_SLOTS;
@@ -199,7 +201,7 @@ export function generateBuildingPosition(
   const baseX = slots[slotIndex] || (useLeftZone ? LEFT_ZONE_START : RIGHT_ZONE_START);
 
   // Small deterministic X offset for visual variety (±8 pixels)
-  const offsetX = (seededRandom(index * 7 + 1) * 16 - 8);
+  const offsetX = seededRandom(index * 7 + 1) * 16 - 8;
 
   return {
     x: baseX + offsetX,
@@ -290,20 +292,62 @@ function getProfileUrl(provider: string, username: string): string {
 }
 
 // Special character configuration - consolidates flags, positions, zones, and profile URLs
-const SPECIAL_CHARACTERS: Record<string, {
-  flag: string;
-  wallet: string;
-  x: number;
-  zone: "main_city" | "trending";
-  profileUrl?: string;
-}> = {
-  toly: { flag: "isToly", wallet: "toly-solana-permanent", x: WORLD_WIDTH / 2, zone: "main_city", profileUrl: "https://x.com/toly" },
-  ash: { flag: "isAsh", wallet: "ash-ketchum-permanent", x: WORLD_WIDTH - Math.round(120 * SCALE), zone: "main_city" },
-  finn: { flag: "isFinn", wallet: "finnbags-ceo-permanent", x: Math.round(120 * SCALE), zone: "main_city", profileUrl: "https://x.com/finnbags" },
-  dev: { flag: "isDev", wallet: "daddyghost-dev-permanent", x: WORLD_WIDTH / 2 + Math.round(180 * SCALE), zone: "main_city", profileUrl: "https://x.com/DaddyGhost" },
-  scout: { flag: "isScout", wallet: "scout-agent-permanent", x: Math.round(170 * SCALE), zone: "trending" },
-  cj: { flag: "isCJ", wallet: "cj-grove-street-permanent", x: Math.round(90 * SCALE), zone: "trending" },
-  shaw: { flag: "isShaw", wallet: "shaw-elizaos-permanent", x: WORLD_WIDTH / 2 - Math.round(150 * SCALE), zone: "main_city", profileUrl: "https://x.com/shawmakesmagic" },
+const SPECIAL_CHARACTERS: Record<
+  string,
+  {
+    flag: string;
+    wallet: string;
+    x: number;
+    zone: "main_city" | "trending";
+    profileUrl?: string;
+  }
+> = {
+  toly: {
+    flag: "isToly",
+    wallet: "toly-solana-permanent",
+    x: WORLD_WIDTH / 2,
+    zone: "main_city",
+    profileUrl: "https://x.com/toly",
+  },
+  ash: {
+    flag: "isAsh",
+    wallet: "ash-ketchum-permanent",
+    x: WORLD_WIDTH - Math.round(120 * SCALE),
+    zone: "main_city",
+  },
+  finn: {
+    flag: "isFinn",
+    wallet: "finnbags-ceo-permanent",
+    x: Math.round(120 * SCALE),
+    zone: "main_city",
+    profileUrl: "https://x.com/finnbags",
+  },
+  dev: {
+    flag: "isDev",
+    wallet: "daddyghost-dev-permanent",
+    x: WORLD_WIDTH / 2 + Math.round(180 * SCALE),
+    zone: "main_city",
+    profileUrl: "https://x.com/DaddyGhost",
+  },
+  scout: {
+    flag: "isScout",
+    wallet: "scout-agent-permanent",
+    x: Math.round(170 * SCALE),
+    zone: "trending",
+  },
+  cj: {
+    flag: "isCJ",
+    wallet: "cj-grove-street-permanent",
+    x: Math.round(90 * SCALE),
+    zone: "trending",
+  },
+  shaw: {
+    flag: "isShaw",
+    wallet: "shaw-elizaos-permanent",
+    x: WORLD_WIDTH / 2 - Math.round(150 * SCALE),
+    zone: "main_city",
+    profileUrl: "https://x.com/shawmakesmagic",
+  },
 };
 
 export function transformFeeEarnerToCharacter(
@@ -335,11 +379,13 @@ export function transformFeeEarnerToCharacter(
   const position = existingCharacter
     ? { x: existingCharacter.x, y: existingCharacter.y }
     : specialCfg
-    ? { x: specialCfg.x, y: groundY }
-    : generateCharacterPosition();
+      ? { x: specialCfg.x, y: groundY }
+      : generateCharacterPosition();
 
   // Determine profile URL
-  const profileUrl = specialCfg?.profileUrl ?? (isSpecial ? undefined : getProfileUrl(earner.provider, earner.username));
+  const profileUrl =
+    specialCfg?.profileUrl ??
+    (isSpecial ? undefined : getProfileUrl(earner.provider, earner.username));
 
   return {
     id: earner.wallet,
@@ -369,6 +415,7 @@ export function transformTokenToBuilding(
   const isPokeCenter = token.symbol === "POKECENTER" || token.mint.includes("PokeCenter");
   const isTradingGym = token.symbol === "GYM" || token.mint.includes("TradingGym");
   const isCasino = token.symbol === "CASINO" || token.mint.includes("Casino");
+  const isTradingTerminal = token.symbol === "TERMINAL" || token.mint.includes("TradingTerminal");
   const isTreasuryHub = token.mint.startsWith("Treasury");
   // BagsWorld HQ - the floating headquarters in the sky (uses real token data)
   const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
@@ -394,6 +441,9 @@ export function transformTokenToBuilding(
   } else if (isCasino) {
     // Casino: BagsCity side (far left), Vegas-style landmark
     position = { x: Math.round(80 * SCALE), y: landmarkY };
+  } else if (isTradingTerminal) {
+    // Trading Terminal: Center of BagsCity, beneath BagsWorld HQ
+    position = { x: Math.round(400 * SCALE), y: landmarkY };
   } else if (isTradingGym) {
     // Trading Gym: BagsCity side, prominent position
     position = { x: Math.round(150 * SCALE), y: landmarkY };
@@ -432,20 +482,24 @@ export function transformTokenToBuilding(
   const getZoneFromMint = (mint: string): "main_city" | "trending" => {
     let hash = 0;
     for (let i = 0; i < mint.length; i++) {
-      hash = ((hash << 5) - hash) + mint.charCodeAt(i);
+      hash = (hash << 5) - hash + mint.charCodeAt(i);
       hash = hash & hash;
     }
     return Math.abs(hash) % 2 === 0 ? "main_city" : "trending";
   };
 
-  const zone = isBagsWorldHQ ? undefined
-    : (isTradingGym || isCasino) ? "trending" as const
-    : (isPokeCenter || isTreasuryHub) ? "main_city" as const
-    : getZoneFromMint(token.mint);
+  const zone = isBagsWorldHQ
+    ? undefined
+    : isTradingGym || isCasino || isTradingTerminal
+      ? ("trending" as const)
+      : isPokeCenter || isTreasuryHub
+        ? ("main_city" as const)
+        : getZoneFromMint(token.mint);
 
   // Use level override if set by admin, otherwise calculate from market cap
   // BagsWorld HQ always gets max level (it's the headquarters!)
-  const level = isBagsWorldHQ ? 5
+  const level = isBagsWorldHQ
+    ? 5
     : token.levelOverride && token.levelOverride >= 1 && token.levelOverride <= 5
       ? token.levelOverride
       : calculateBuildingLevel(token.marketCap);
@@ -474,19 +528,13 @@ export function transformTokenToBuilding(
   };
 }
 
-export function generateGameEvent(
-  type: GameEvent["type"],
-  data: GameEvent["data"]
-): GameEvent {
+export function generateGameEvent(type: GameEvent["type"], data: GameEvent["data"]): GameEvent {
   const messages: Record<GameEvent["type"], (data: GameEvent["data"]) => string> = {
     token_launch: (d) => `🏗️ ${d?.username} launched ${d?.tokenName}!`,
     building_constructed: (d) => `🏢 New building: ${d?.tokenName} constructed!`,
-    fee_claim: (d) =>
-      `💰 ${d?.username} claimed ${d?.amount?.toFixed(2)} SOL`,
-    price_pump: (d) =>
-      `📈 ${d?.tokenName} pumped ${d?.change?.toFixed(0)}%!`,
-    price_dump: (d) =>
-      `📉 ${d?.tokenName} dumped ${Math.abs(d?.change ?? 0).toFixed(0)}%`,
+    fee_claim: (d) => `💰 ${d?.username} claimed ${d?.amount?.toFixed(2)} SOL`,
+    price_pump: (d) => `📈 ${d?.tokenName} pumped ${d?.change?.toFixed(0)}%!`,
+    price_dump: (d) => `📉 ${d?.tokenName} dumped ${Math.abs(d?.change ?? 0).toFixed(0)}%`,
     milestone: (d) => `🏆 ${d?.username} reached ${d?.amount} SOL earned!`,
     whale_alert: (d) => `🐋 Whale activity on ${d?.tokenName}!`,
   };
@@ -501,9 +549,9 @@ export function generateGameEvent(
 }
 
 export interface BagsHealthMetrics {
-  claimVolume24h: number;      // Total SOL claimed in 24h
-  totalLifetimeFees: number;   // Total lifetime fees across all tokens
-  activeTokenCount: number;    // Number of tokens with recent activity
+  claimVolume24h: number; // Total SOL claimed in 24h
+  totalLifetimeFees: number; // Total lifetime fees across all tokens
+  activeTokenCount: number; // Number of tokens with recent activity
 }
 
 export function buildWorldState(
@@ -515,25 +563,28 @@ export function buildWorldState(
   // Calculate health from Bags.fm metrics (fee claims, lifetime fees)
   // Falls back to token count if no metrics provided
   const claimVolume24h = bagsMetrics?.claimVolume24h ?? 0;
-  const totalLifetimeFees = bagsMetrics?.totalLifetimeFees ?? tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
-  const activeTokenCount = bagsMetrics?.activeTokenCount ?? tokens.filter(t => (t.lifetimeFees || 0) > 0).length;
+  const totalLifetimeFees =
+    bagsMetrics?.totalLifetimeFees ?? tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
+  const activeTokenCount =
+    bagsMetrics?.activeTokenCount ?? tokens.filter((t) => (t.lifetimeFees || 0) > 0).length;
   const buildingCount = tokens.length;
 
-  const health = calculateWorldHealth(claimVolume24h, totalLifetimeFees, activeTokenCount, buildingCount);
+  const health = calculateWorldHealth(
+    claimVolume24h,
+    totalLifetimeFees,
+    activeTokenCount,
+    buildingCount
+  );
   const weather = calculateWeather(health);
 
   // Transform earners to characters (keep positions from previous state)
-  const previousCharacters = new Map(
-    previousState?.population.map((c) => [c.id, c])
-  );
-  const population = earners.slice(0, MAX_CHARACTERS).map((earner) =>
-    transformFeeEarnerToCharacter(earner, previousCharacters.get(earner.wallet))
-  );
+  const previousCharacters = new Map(previousState?.population.map((c) => [c.id, c]));
+  const population = earners
+    .slice(0, MAX_CHARACTERS)
+    .map((earner) => transformFeeEarnerToCharacter(earner, previousCharacters.get(earner.wallet)));
 
   // Transform tokens to buildings (keep positions from previous state)
-  const previousBuildings = new Map(
-    previousState?.buildings.map((b) => [b.id, b])
-  );
+  const previousBuildings = new Map(previousState?.buildings.map((b) => [b.id, b]));
 
   // Transform all tokens to buildings first
   const allBuildings = tokens.map((token, index) =>
@@ -579,7 +630,8 @@ export function buildWorldState(
     // BagsWorld HQ
     if (b.isFloating || b.id === BAGSHQ_MINT || b.symbol === "BAGSWORLD") return true;
     // PokeCenter
-    if (b.symbol === "POKECENTER" || b.symbol === "HEAL" || b.id.includes("PokeCenter")) return true;
+    if (b.symbol === "POKECENTER" || b.symbol === "HEAL" || b.id.includes("PokeCenter"))
+      return true;
     // Trading Gym
     if (b.symbol === "GYM" || b.id.includes("TradingGym")) return true;
     // Casino

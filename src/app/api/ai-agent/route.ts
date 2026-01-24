@@ -42,12 +42,7 @@ export async function POST(request: Request) {
 
     // If we have Claude API key, use it for observations
     if (ANTHROPIC_API_KEY && observation && memory) {
-      const action = await generateClaudeResponse(
-        personality,
-        worldState,
-        observation,
-        memory
-      );
+      const action = await generateClaudeResponse(personality, worldState, observation, memory);
       return NextResponse.json({ action });
     }
 
@@ -56,10 +51,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ action });
   } catch (error) {
     console.error("AI Agent API error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate AI response" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate AI response" }, { status: 500 });
   }
 }
 
@@ -90,12 +82,16 @@ Personality guidelines:
 - strategic (Galaxy Brain): Analytical, talks about charts/TA, uses 📊, finds alpha
 
 Keep responses SHORT (1-2 sentences max) and degen-flavored. Never sound corporate or robotic.
-${worldState ? `
+${
+  worldState
+    ? `
 Current world state:
 - World Health: ${worldState.health}%
 - Weather: ${worldState.weather}
 - Population: ${worldState.populationCount} characters
-- Buildings: ${worldState.buildingCount} token buildings` : ""}`;
+- Buildings: ${worldState.buildingCount} token buildings`
+    : ""
+}`;
 
   // Build conversation history
   const messages = chatHistory.slice(-8).map((m) => ({
@@ -129,27 +125,46 @@ Current world state:
   // Determine action type based on content
   let type: AIAction["type"] = "speak";
   const lowerContent = content.toLowerCase();
-  if (lowerContent.includes("🚀") || lowerContent.includes("celebrate") || lowerContent.includes("amazing")) {
+  if (
+    lowerContent.includes("🚀") ||
+    lowerContent.includes("celebrate") ||
+    lowerContent.includes("amazing")
+  ) {
     type = "celebrate";
-  } else if (lowerContent.includes("warn") || lowerContent.includes("careful") || lowerContent.includes("risk")) {
+  } else if (
+    lowerContent.includes("warn") ||
+    lowerContent.includes("careful") ||
+    lowerContent.includes("risk")
+  ) {
     type = "warn";
-  } else if (lowerContent.includes("predict") || lowerContent.includes("think") || lowerContent.includes("expect")) {
+  } else if (
+    lowerContent.includes("predict") ||
+    lowerContent.includes("think") ||
+    lowerContent.includes("expect")
+  ) {
     type = "predict";
-  } else if (lowerContent.includes("haha") || lowerContent.includes("lol") || lowerContent.includes("😂")) {
+  } else if (
+    lowerContent.includes("haha") ||
+    lowerContent.includes("lol") ||
+    lowerContent.includes("😂")
+  ) {
     type = "joke";
   }
 
   return { type, message: content };
 }
 
-function generateChatFallback(
-  personality: AIPersonality,
-  userMessage: string
-): AIAction {
+function generateChatFallback(personality: AIPersonality, userMessage: string): AIAction {
   const lowerMsg = userMessage.toLowerCase();
 
   // Greetings
-  if (lowerMsg.includes("hello") || lowerMsg.includes("hi") || lowerMsg.includes("hey") || lowerMsg.includes("gm") || lowerMsg.includes("sup")) {
+  if (
+    lowerMsg.includes("hello") ||
+    lowerMsg.includes("hi") ||
+    lowerMsg.includes("hey") ||
+    lowerMsg.includes("gm") ||
+    lowerMsg.includes("sup")
+  ) {
     const greetings: Record<string, string> = {
       optimistic: "gm gm fren!! ready to stack some bags today? 🚀",
       cautious: "hey anon. markets looking spicy today... stay sharp",
@@ -171,7 +186,14 @@ function generateChatFallback(
   }
 
   // Market/trading talk
-  if (lowerMsg.includes("market") || lowerMsg.includes("price") || lowerMsg.includes("token") || lowerMsg.includes("bags") || lowerMsg.includes("pump") || lowerMsg.includes("dump")) {
+  if (
+    lowerMsg.includes("market") ||
+    lowerMsg.includes("price") ||
+    lowerMsg.includes("token") ||
+    lowerMsg.includes("bags") ||
+    lowerMsg.includes("pump") ||
+    lowerMsg.includes("dump")
+  ) {
     const marketTalk: Record<string, string> = {
       optimistic: "charts looking bullish af ser!! time to load bags 📈🚀",
       cautious: "market kinda sketchy rn ngl. maybe wait for confirmation?",
@@ -285,7 +307,10 @@ ${worldState.recentEvents.map((e) => `- ${e.message}`).join("\n")}`
 Your observation: ${observation}
 
 Recent memory:
-${memory.slice(-5).map((m) => `- ${m.observation}`).join("\n")}
+${memory
+  .slice(-5)
+  .map((m) => `- ${m.observation}`)
+  .join("\n")}
 
 Generate a short, in-character response about what's happening in the world. Format your response as JSON:
 {

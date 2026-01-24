@@ -27,7 +27,10 @@ export async function POST(request: Request) {
   const rateLimit = checkRateLimit(`trade:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many trade requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Too many trade requests. Try again later.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }

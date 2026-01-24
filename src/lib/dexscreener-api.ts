@@ -158,10 +158,9 @@ export async function searchTokens(query: string): Promise<DexPair[]> {
  */
 export async function getTokenPairs(tokenMint: string): Promise<DexPair[]> {
   try {
-    const response = await fetch(
-      `${DEXSCREENER_API_URL}/token-pairs/v1/solana/${tokenMint}`,
-      { cache: "no-store" }
-    );
+    const response = await fetch(`${DEXSCREENER_API_URL}/token-pairs/v1/solana/${tokenMint}`, {
+      cache: "no-store",
+    });
 
     if (!response.ok) {
       throw new Error(`DexScreener API error: ${response.status}`);
@@ -184,10 +183,9 @@ export async function getTokensByMints(mints: string[]): Promise<DexPair[]> {
   }
 
   try {
-    const response = await fetch(
-      `${DEXSCREENER_API_URL}/tokens/v1/solana/${mints.join(",")}`,
-      { cache: "no-store" }
-    );
+    const response = await fetch(`${DEXSCREENER_API_URL}/tokens/v1/solana/${mints.join(",")}`, {
+      cache: "no-store",
+    });
 
     if (!response.ok) {
       throw new Error(`DexScreener API error: ${response.status}`);

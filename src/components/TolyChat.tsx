@@ -19,27 +19,32 @@ const SOLANA_TOPICS = [
   {
     title: "What is Solana?",
     icon: "☀️",
-    content: "Solana is a high-performance blockchain built for speed and scale. We achieve 65,000+ TPS using Proof of History - a cryptographic clock that orders transactions without waiting for consensus."
+    content:
+      "Solana is a high-performance blockchain built for speed and scale. We achieve 65,000+ TPS using Proof of History - a cryptographic clock that orders transactions without waiting for consensus.",
   },
   {
     title: "Proof of History",
     icon: "⏰",
-    content: "PoH creates a historical record proving events occurred at specific moments. Instead of validators agreeing on time, they verify a cryptographic sequence. This removes communication overhead and enables parallel execution."
+    content:
+      "PoH creates a historical record proving events occurred at specific moments. Instead of validators agreeing on time, they verify a cryptographic sequence. This removes communication overhead and enables parallel execution.",
   },
   {
     title: "Why So Fast?",
     icon: "⚡",
-    content: "Solana processes transactions in parallel using Sealevel. While other chains process sequentially, we run thousands of smart contracts simultaneously. Combined with Gulf Stream (mempool-less forwarding), we achieve sub-second finality."
+    content:
+      "Solana processes transactions in parallel using Sealevel. While other chains process sequentially, we run thousands of smart contracts simultaneously. Combined with Gulf Stream (mempool-less forwarding), we achieve sub-second finality.",
   },
   {
     title: "For Builders",
     icon: "🛠️",
-    content: "Build without limits. Sub-penny fees mean you can create apps that weren't possible before. Bags.fm is a perfect example - high-frequency trading with instant fee distribution, only possible on Solana."
+    content:
+      "Build without limits. Sub-penny fees mean you can create apps that weren't possible before. Bags.fm is a perfect example - high-frequency trading with instant fee distribution, only possible on Solana.",
   },
   {
     title: "The Vision",
     icon: "🌍",
-    content: "We're building a decentralized network that can support billions of users. Web3 shouldn't be slow and expensive. It should feel like the internet - instant, cheap, and accessible to everyone."
+    content:
+      "We're building a decentralized network that can support billions of users. Web3 shouldn't be slow and expensive. It should feel like the internet - instant, cheap, and accessible to everyone.",
   },
 ];
 
@@ -64,7 +69,8 @@ export function TolyChat() {
         addMessage({
           id: `${Date.now()}-toly`,
           type: "toly",
-          message: "gm ser! I'm Toly, co-founder of Solana. Welcome to BagsWorld - built on the fastest blockchain. What would you like to know?",
+          message:
+            "gm ser! I'm Toly, co-founder of Solana. Welcome to BagsWorld - built on the fastest blockchain. What would you like to know?",
           timestamp: Date.now(),
         });
       }
@@ -122,7 +128,7 @@ export function TolyChat() {
     setMessages((prev) => [...prev.slice(-30), message]);
   };
 
-  const handleTopicClick = (topic: typeof SOLANA_TOPICS[0]) => {
+  const handleTopicClick = (topic: (typeof SOLANA_TOPICS)[0]) => {
     addMessage({
       id: `${Date.now()}-info`,
       type: "info",
@@ -156,7 +162,10 @@ export function TolyChat() {
       });
 
       const data = await response.json();
-      const messageText = data.response || data.message || "interesting question ser. ask me about Solana or the ecosystem!";
+      const messageText =
+        data.response ||
+        data.message ||
+        "interesting question ser. ask me about Solana or the ecosystem!";
 
       addMessage({
         id: `${Date.now()}-toly`,
@@ -183,9 +192,10 @@ export function TolyChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.y >= 0
-    ? { left: position.x, top: position.y, bottom: "auto" }
-    : { left: position.x, bottom: 80 };
+  const chatStyle: React.CSSProperties =
+    position.y >= 0
+      ? { left: position.x, top: position.y, bottom: "auto" }
+      : { left: position.x, bottom: 80 };
 
   if (!isOpen) return null;
 
@@ -236,8 +246,12 @@ export function TolyChat() {
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-purple-400 mb-1">⚡ gm ser!</p>
-            <p className="font-pixel text-[8px] text-gray-400">I&apos;m Toly, co-founder of Solana.</p>
-            <p className="font-pixel text-[7px] text-gray-500 mt-2">Ask me anything or click a topic above</p>
+            <p className="font-pixel text-[8px] text-gray-400">
+              I&apos;m Toly, co-founder of Solana.
+            </p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-2">
+              Ask me anything or click a topic above
+            </p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -247,13 +261,19 @@ export function TolyChat() {
                 msg.type === "toly"
                   ? "bg-purple-500/10 border-purple-500"
                   : msg.type === "user"
-                  ? "bg-bags-green/10 border-bags-green ml-4"
-                  : "bg-blue-500/10 border-blue-500"
+                    ? "bg-bags-green/10 border-bags-green ml-4"
+                    : "bg-blue-500/10 border-blue-500"
               }`}
             >
-              {msg.type === "toly" && <p className="font-pixel text-[6px] text-purple-400 mb-1">Toly:</p>}
-              {msg.type === "user" && <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>}
-              {msg.type === "info" && <p className="font-pixel text-[6px] text-blue-400 mb-1">☀️ Solana:</p>}
+              {msg.type === "toly" && (
+                <p className="font-pixel text-[6px] text-purple-400 mb-1">Toly:</p>
+              )}
+              {msg.type === "user" && (
+                <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>
+              )}
+              {msg.type === "info" && (
+                <p className="font-pixel text-[6px] text-blue-400 mb-1">☀️ Solana:</p>
+              )}
               <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
             </div>
           ))

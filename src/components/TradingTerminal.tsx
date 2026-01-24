@@ -95,36 +95,39 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
     }
   };
 
-  const fetchQuote = useCallback(async (mint: string, amount: number) => {
-    setIsQuoting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/terminal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "quick-quote",
-          data: {
-            outputMint: mint,
-            amountSol: amount,
-            slippageBps: slippage,
-          },
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setQuote(data.quote);
-      } else {
-        setError(data.error || "Failed to get quote");
+  const fetchQuote = useCallback(
+    async (mint: string, amount: number) => {
+      setIsQuoting(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/terminal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "quick-quote",
+            data: {
+              outputMint: mint,
+              amountSol: amount,
+              slippageBps: slippage,
+            },
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setQuote(data.quote);
+        } else {
+          setError(data.error || "Failed to get quote");
+          setQuote(null);
+        }
+      } catch (err) {
+        setError("Failed to get quote");
         setQuote(null);
+      } finally {
+        setIsQuoting(false);
       }
-    } catch (err) {
-      setError("Failed to get quote");
-      setQuote(null);
-    } finally {
-      setIsQuoting(false);
-    }
-  }, [slippage]);
+    },
+    [slippage]
+  );
 
   const handleQuickBuy = async (token: TrendingToken | NewPair) => {
     setSelectedToken(token);
@@ -317,9 +320,11 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`font-pixel text-[10px] ${
-                            token.change24h >= 0 ? "text-[#0f380f]" : "text-red-800"
-                          }`}>
+                          <span
+                            className={`font-pixel text-[10px] ${
+                              token.change24h >= 0 ? "text-[#0f380f]" : "text-red-800"
+                            }`}
+                          >
                             {formatChange(token.change24h)}
                           </span>
                           <span className="font-pixel text-[9px] text-[#306230]">
@@ -360,7 +365,9 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`font-pixel text-[8px] px-1 rounded ${getSafetyColor(pair.safety.score)} bg-[#0f380f]`}>
+                          <span
+                            className={`font-pixel text-[8px] px-1 rounded ${getSafetyColor(pair.safety.score)} bg-[#0f380f]`}
+                          >
                             {getSafetyLabel(pair.safety)}
                           </span>
                           <span className="font-pixel text-[9px] text-[#306230]">
@@ -448,9 +455,14 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
                       ) : quote ? (
                         <div className="bg-[#8bac0f] px-2 py-1 rounded border border-[#306230]">
                           <div className="flex justify-between">
-                            <span className="font-pixel text-[8px] text-[#306230]">You receive:</span>
+                            <span className="font-pixel text-[8px] text-[#306230]">
+                              You receive:
+                            </span>
                             <span className="font-pixel text-[10px] text-[#0f380f]">
-                              {(parseFloat(quote.outAmount) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })} {selectedToken.symbol}
+                              {(parseFloat(quote.outAmount) / 1e6).toLocaleString(undefined, {
+                                maximumFractionDigits: 2,
+                              })}{" "}
+                              {selectedToken.symbol}
                             </span>
                           </div>
                         </div>
@@ -476,8 +488,8 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
                         {isSwapping
                           ? "SWAPPING..."
                           : !connected
-                          ? "[START] CONNECT WALLET"
-                          : "[A] EXECUTE BUY"}
+                            ? "[START] CONNECT WALLET"
+                            : "[A] EXECUTE BUY"}
                       </button>
                     </>
                   )}

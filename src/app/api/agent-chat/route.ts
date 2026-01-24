@@ -15,7 +15,8 @@ const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/
 async function fetchRecentLaunches(): Promise<string> {
   try {
     // Use our internal global-tokens API which stores BagsWorld launches
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "http://localhost:3000";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "http://localhost:3000";
     const response = await fetch(`${baseUrl}/api/global-tokens`, {
       headers: { "Content-Type": "application/json" },
     });
@@ -29,12 +30,18 @@ async function fetchRecentLaunches(): Promise<string> {
 
     // Sort by created_at (most recent first) and take top 5
     const sortedTokens = data.tokens
-      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+      )
       .slice(0, 5);
 
-    const launches = sortedTokens.map((t: any, i: number) =>
-      `${i + 1}. $${t.symbol || "???"} (${t.name || "Unknown"}) - mint: ${t.mint?.slice(0, 8)}...${t.lifetime_fees ? ` - fees: ${t.lifetime_fees.toFixed(4)} SOL` : ""}`
-    ).join("\n");
+    const launches = sortedTokens
+      .map(
+        (t: any, i: number) =>
+          `${i + 1}. $${t.symbol || "???"} (${t.name || "Unknown"}) - mint: ${t.mint?.slice(0, 8)}...${t.lifetime_fees ? ` - fees: ${t.lifetime_fees.toFixed(4)} SOL` : ""}`
+      )
+      .join("\n");
 
     return `\nBAGSWORLD TOKENS (${data.tokens.length} total in database):\n${launches}`;
   } catch (e) {
@@ -111,14 +118,22 @@ function extractActions(
   // For Ash: Add launch/claim buttons when explaining features
   if (characterId === "ash") {
     const lowerResponse = response.toLowerCase();
-    if (lowerResponse.includes("launch") || lowerResponse.includes("building") || lowerResponse.includes("token")) {
+    if (
+      lowerResponse.includes("launch") ||
+      lowerResponse.includes("building") ||
+      lowerResponse.includes("token")
+    ) {
       actions.push({
         type: "launch",
         label: "Launch Token",
         data: {},
       });
     }
-    if (lowerResponse.includes("fee") || lowerResponse.includes("claim") || lowerResponse.includes("earn")) {
+    if (
+      lowerResponse.includes("fee") ||
+      lowerResponse.includes("claim") ||
+      lowerResponse.includes("earn")
+    ) {
       actions.push({
         type: "claim",
         label: "Claim Fees",
@@ -130,7 +145,11 @@ function extractActions(
   // For Finn: Launch button for platform talk
   if (characterId === "finn") {
     const lowerResponse = response.toLowerCase();
-    if (lowerResponse.includes("launch") || lowerResponse.includes("token") || lowerResponse.includes("create")) {
+    if (
+      lowerResponse.includes("launch") ||
+      lowerResponse.includes("token") ||
+      lowerResponse.includes("create")
+    ) {
       actions.push({
         type: "launch",
         label: "Launch on Bags.fm",
@@ -142,7 +161,11 @@ function extractActions(
   // For Ghost: Claim button when discussing fees
   if (characterId === "ghost" || characterId === "dev") {
     const lowerResponse = response.toLowerCase();
-    if (lowerResponse.includes("claim") || lowerResponse.includes("fee") || lowerResponse.includes("buyback")) {
+    if (
+      lowerResponse.includes("claim") ||
+      lowerResponse.includes("fee") ||
+      lowerResponse.includes("buyback")
+    ) {
       actions.push({
         type: "claim",
         label: "View Claims",
@@ -163,7 +186,10 @@ function extractActions(
 }
 
 // Check if message is asking about launches/tokens/data
-function needsRealData(message: string, characterId: string): { launches: boolean; tokenMint?: string } {
+function needsRealData(
+  message: string,
+  characterId: string
+): { launches: boolean; tokenMint?: string } {
   if (characterId !== "neo") return { launches: false };
 
   const lower = message.toLowerCase();
@@ -175,8 +201,22 @@ function needsRealData(message: string, characterId: string): { launches: boolea
   }
 
   // Keywords that need launch data
-  const launchKeywords = ["launch", "new token", "recent", "latest", "scan", "see", "watch", "monitor", "what's new", "happening", "activity", "chain", "blockchain"];
-  if (launchKeywords.some(k => lower.includes(k))) {
+  const launchKeywords = [
+    "launch",
+    "new token",
+    "recent",
+    "latest",
+    "scan",
+    "see",
+    "watch",
+    "monitor",
+    "what's new",
+    "happening",
+    "activity",
+    "chain",
+    "blockchain",
+  ];
+  if (launchKeywords.some((k) => lower.includes(k))) {
     return { launches: true };
   }
 
@@ -227,7 +267,10 @@ export async function POST(request: Request) {
 
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Slow down! Try again in a moment.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Slow down! Try again in a moment.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -250,19 +293,24 @@ export async function POST(request: Request) {
     // Only bags-bot handles animal/effect commands
     if (characterId === "bags-bot" && ANTHROPIC_API_KEY) {
       const quickIntent = quickIntentCheck(message);
-      const intent = quickIntent || await extractIntent(message, ANTHROPIC_API_KEY, worldState);
+      const intent = quickIntent || (await extractIntent(message, ANTHROPIC_API_KEY, worldState));
 
-      if (intent.action === "pet" || intent.action === "scare" || intent.action === "call" || intent.action === "feed") {
+      if (
+        intent.action === "pet" ||
+        intent.action === "scare" ||
+        intent.action === "call" ||
+        intent.action === "feed"
+      ) {
         actions.push({
           type: "animal",
           label: `${intent.action} ${intent.target?.name || "animal"}`,
-          data: { animalType: intent.target?.name || "dog", animalAction: intent.action }
+          data: { animalType: intent.target?.name || "dog", animalAction: intent.action },
         });
       } else if (intent.action === "effect") {
         actions.push({
           type: "effect",
           label: `Trigger ${intent.target?.name || "effect"}`,
-          data: { effectType: intent.target?.name || "fireworks" }
+          data: { effectType: intent.target?.name || "fireworks" },
         });
       }
     }
@@ -290,10 +338,22 @@ export async function POST(request: Request) {
 
     // Generate response using Opus 4.5
     if (ANTHROPIC_API_KEY) {
-      const response = await generateAgentResponse(character, message, worldState, chatHistory, realData);
+      const response = await generateAgentResponse(
+        character,
+        message,
+        worldState,
+        chatHistory,
+        realData
+      );
 
       // Extract context-aware action buttons from the response
-      const contextActions = extractActions(response, characterId, tokenMint, tokenSymbol, tokenName);
+      const contextActions = extractActions(
+        response,
+        characterId,
+        tokenMint,
+        tokenSymbol,
+        tokenName
+      );
 
       return NextResponse.json({
         message: response,
@@ -304,8 +364,15 @@ export async function POST(request: Request) {
     }
 
     // Fallback to character quotes if no API key
-    const fallbackQuote = character.postExamples[Math.floor(Math.random() * character.postExamples.length)];
-    const fallbackActions = extractActions(fallbackQuote, characterId, tokenMint, tokenSymbol, tokenName);
+    const fallbackQuote =
+      character.postExamples[Math.floor(Math.random() * character.postExamples.length)];
+    const fallbackActions = extractActions(
+      fallbackQuote,
+      characterId,
+      tokenMint,
+      tokenSymbol,
+      tokenName
+    );
 
     return NextResponse.json({
       message: fallbackQuote,
@@ -313,7 +380,6 @@ export async function POST(request: Request) {
       characterName: meta.displayName,
       actions: [...actions, ...fallbackActions],
     });
-
   } catch (error) {
     console.error("Agent chat error:", error);
     return NextResponse.json({ error: "Agent had a hiccup" }, { status: 500 });
@@ -331,31 +397,35 @@ async function generateAgentResponse(
   const characterPrompt = generateCharacterPrompt(character);
 
   // Add world context
-  const worldContext = worldState ? `
+  const worldContext = worldState
+    ? `
 CURRENT BAGSWORLD STATE:
 - World Health: ${worldState.health}% ${worldState.health >= 80 ? "(thriving)" : worldState.health <= 30 ? "(struggling)" : ""}
 - Weather: ${worldState.weather}
 - Active Buildings: ${worldState.buildingCount}
 - Citizens: ${worldState.populationCount}
 ${worldState.topToken ? `- Top Token: $${worldState.topToken}` : ""}
-` : "";
+`
+    : "";
 
   // Add real-time data for Neo
-  const realDataContext = realData ? `
+  const realDataContext = realData
+    ? `
 REAL-TIME DATA (from Bags.fm API - this is LIVE data you can see):
 ${realData}
 
 IMPORTANT: You have access to this real data. Reference it in your response. Don't say you can't see real-time data - you CAN and just did.
-` : "";
+`
+    : "";
 
   const systemPrompt = `${characterPrompt}
 ${worldContext}${realDataContext}
 IMPORTANT: Stay in character. Keep responses concise (1-3 sentences). Be helpful and engaging.`;
 
   // Build message history
-  const messages = chatHistory.slice(-8).map(m => ({
+  const messages = chatHistory.slice(-8).map((m) => ({
     role: m.role as "user" | "assistant",
-    content: m.content
+    content: m.content,
   }));
   messages.push({ role: "user", content: message });
 

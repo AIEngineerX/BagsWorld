@@ -4,7 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { getCasinoAccessInfo, BAGSWORLD_TOKEN_SYMBOL, BAGSWORLD_BUY_URL, MIN_TOKEN_BALANCE } from "../lib/token-balance";
+import {
+  getCasinoAccessInfo,
+  BAGSWORLD_TOKEN_SYMBOL,
+  BAGSWORLD_BUY_URL,
+  MIN_TOKEN_BALANCE,
+} from "../lib/token-balance";
 import { CasinoAdmin } from "./CasinoAdmin";
 
 interface CasinoModalProps {
@@ -150,28 +155,33 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   }, [publicKey, connection]);
 
   // Fetch raffle status (silent = no loading spinner for background polls)
-  const fetchRaffleStatus = useCallback(async (silent = false) => {
-    if (!publicKey) return;
+  const fetchRaffleStatus = useCallback(
+    async (silent = false) => {
+      if (!publicKey) return;
 
-    if (!silent) {
-      setIsLoadingRaffle(true);
-    }
-    try {
-      const res = await fetch(`/api/casino/raffle?wallet=${publicKey.toString()}&includeCompleted=true`);
-      const data = await res.json();
-      setRaffle(data);
-      setLastRefresh(new Date());
-    } catch (error) {
-      console.error("Error fetching raffle:", error);
       if (!silent) {
-        setRaffle({ status: "none", message: "Failed to load raffle" } as RaffleState);
+        setIsLoadingRaffle(true);
       }
-    } finally {
-      if (!silent) {
-        setIsLoadingRaffle(false);
+      try {
+        const res = await fetch(
+          `/api/casino/raffle?wallet=${publicKey.toString()}&includeCompleted=true`
+        );
+        const data = await res.json();
+        setRaffle(data);
+        setLastRefresh(new Date());
+      } catch (error) {
+        console.error("Error fetching raffle:", error);
+        if (!silent) {
+          setRaffle({ status: "none", message: "Failed to load raffle" } as RaffleState);
+        }
+      } finally {
+        if (!silent) {
+          setIsLoadingRaffle(false);
+        }
       }
-    }
-  }, [publicKey]);
+    },
+    [publicKey]
+  );
 
   // Trigger token check when age verified and wallet changes
   useEffect(() => {
@@ -272,7 +282,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               <h2 className="font-pixel text-xl text-red-400 tracking-wider">AGE VERIFICATION</h2>
               <span className="text-4xl">&#9888;&#65039;</span>
             </div>
-            <p className="text-center text-red-300/80 text-sm">This section contains gambling content</p>
+            <p className="text-center text-red-300/80 text-sm">
+              This section contains gambling content
+            </p>
           </div>
 
           {/* Content */}
@@ -292,19 +304,33 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               <ul className="text-gray-400 text-[11px] space-y-2">
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 mt-0.5">&#8226;</span>
-                  <span>You are <strong className="text-white">18 years of age or older</strong> (or the legal gambling age in your jurisdiction)</span>
+                  <span>
+                    You are <strong className="text-white">18 years of age or older</strong> (or the
+                    legal gambling age in your jurisdiction)
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 mt-0.5">&#8226;</span>
-                  <span>Online gambling is <strong className="text-white">legal in your jurisdiction</strong></span>
+                  <span>
+                    Online gambling is{" "}
+                    <strong className="text-white">legal in your jurisdiction</strong>
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 mt-0.5">&#8226;</span>
-                  <span>You understand gambling involves <strong className="text-white">risk of financial loss</strong></span>
+                  <span>
+                    You understand gambling involves{" "}
+                    <strong className="text-white">risk of financial loss</strong>
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 mt-0.5">&#8226;</span>
-                  <span>You are <strong className="text-white">not using funds you cannot afford to lose</strong></span>
+                  <span>
+                    You are{" "}
+                    <strong className="text-white">
+                      not using funds you cannot afford to lose
+                    </strong>
+                  </span>
                 </li>
               </ul>
             </div>
@@ -312,8 +338,8 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
             {/* Responsible Gambling Notice */}
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
               <p className="text-yellow-400/90 text-[10px] text-center leading-relaxed">
-                Gambling can be addictive. Play responsibly. If you have a gambling problem,
-                please seek help at <span className="text-yellow-300">begambleaware.org</span>
+                Gambling can be addictive. Play responsibly. If you have a gambling problem, please
+                seek help at <span className="text-yellow-300">begambleaware.org</span>
               </p>
             </div>
 
@@ -336,11 +362,13 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
             {/* Generic Legal Disclaimer */}
             <div className="border-t border-gray-800 pt-4 mt-2">
               <p className="text-gray-500 text-[9px] text-center leading-relaxed">
-                <strong className="text-gray-400">DISCLAIMER:</strong> BagsWorld Casino is provided &quot;as is&quot; for entertainment purposes only.
-                We make no guarantees regarding winnings or outcomes. By proceeding, you acknowledge that you are solely
-                responsible for any losses incurred. BagsWorld, its developers, and affiliates shall not be held liable
-                for any direct, indirect, incidental, or consequential damages arising from your use of this service.
-                Gambling laws vary by jurisdiction - it is your responsibility to ensure compliance with local laws.
+                <strong className="text-gray-400">DISCLAIMER:</strong> BagsWorld Casino is provided
+                &quot;as is&quot; for entertainment purposes only. We make no guarantees regarding
+                winnings or outcomes. By proceeding, you acknowledge that you are solely responsible
+                for any losses incurred. BagsWorld, its developers, and affiliates shall not be held
+                liable for any direct, indirect, incidental, or consequential damages arising from
+                your use of this service. Gambling laws vary by jurisdiction - it is your
+                responsibility to ensure compliance with local laws.
               </p>
             </div>
           </div>
@@ -364,7 +392,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               <h2 className="font-pixel text-xl text-purple-400 tracking-wider">TOKEN GATE</h2>
               <span className="text-4xl">&#128274;</span>
             </div>
-            <p className="text-center text-purple-300/80 text-sm">Connect wallet to access the casino</p>
+            <p className="text-center text-purple-300/80 text-sm">
+              Connect wallet to access the casino
+            </p>
           </div>
 
           {/* Content */}
@@ -379,17 +409,18 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
             {/* Requirement Box */}
             <div className="bg-black/50 border border-purple-500/30 rounded-lg p-4">
               <p className="text-center text-white text-sm mb-2">
-                <strong>Hold {MIN_TOKEN_BALANCE.toLocaleString()} {BAGSWORLD_TOKEN_SYMBOL}</strong>
+                <strong>
+                  Hold {MIN_TOKEN_BALANCE.toLocaleString()} {BAGSWORLD_TOKEN_SYMBOL}
+                </strong>
               </p>
-              <p className="text-center text-gray-400 text-xs">
-                to unlock BagsWorld Casino games
-              </p>
+              <p className="text-center text-gray-400 text-xs">to unlock BagsWorld Casino games</p>
             </div>
 
             {/* Info */}
             <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
               <p className="text-purple-400/90 text-[11px] text-center leading-relaxed">
-                Connect your Solana wallet to verify your {BAGSWORLD_TOKEN_SYMBOL} balance and access exclusive casino features.
+                Connect your Solana wallet to verify your {BAGSWORLD_TOKEN_SYMBOL} balance and
+                access exclusive casino features.
               </p>
             </div>
 
@@ -426,9 +457,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
             <div className="font-pixel text-purple-400 text-center">
               Checking {BAGSWORLD_TOKEN_SYMBOL} balance...
             </div>
-            <div className="text-gray-500 text-xs text-center">
-              Verifying casino access
-            </div>
+            <div className="text-gray-500 text-xs text-center">Verifying casino access</div>
           </div>
         </div>
       </div>
@@ -450,7 +479,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               <h2 className="font-pixel text-xl text-yellow-400 tracking-wider">ACCESS DENIED</h2>
               <span className="text-4xl">&#128683;</span>
             </div>
-            <p className="text-center text-yellow-300/80 text-sm">Insufficient {BAGSWORLD_TOKEN_SYMBOL} balance</p>
+            <p className="text-center text-yellow-300/80 text-sm">
+              Insufficient {BAGSWORLD_TOKEN_SYMBOL} balance
+            </p>
           </div>
 
           {/* Content */}
@@ -460,14 +491,16 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               <div className="text-center mb-4">
                 <p className="text-gray-400 text-xs mb-1">Required to Enter</p>
                 <p className="text-white font-bold text-2xl font-pixel">
-                  {MIN_TOKEN_BALANCE.toLocaleString()} <span className="text-yellow-400">{BAGSWORLD_TOKEN_SYMBOL}</span>
+                  {MIN_TOKEN_BALANCE.toLocaleString()}{" "}
+                  <span className="text-yellow-400">{BAGSWORLD_TOKEN_SYMBOL}</span>
                 </p>
               </div>
               <div className="w-full h-px bg-yellow-500/20 mb-4" />
               <div className="text-center">
                 <p className="text-gray-400 text-xs mb-1">Your Balance</p>
                 <p className="text-red-400 font-bold text-xl font-pixel">
-                  {tokenBalance.toLocaleString()} <span className="text-yellow-400/60">{BAGSWORLD_TOKEN_SYMBOL}</span>
+                  {tokenBalance.toLocaleString()}{" "}
+                  <span className="text-yellow-400/60">{BAGSWORLD_TOKEN_SYMBOL}</span>
                 </p>
               </div>
               <div className="mt-4 text-center">
@@ -511,7 +544,12 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               className="w-full py-2 text-purple-400 hover:text-purple-300 text-xs transition-colors flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
               Refresh Balance
             </button>
@@ -538,7 +576,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="font-pixel text-lg sm:text-xl text-white tracking-wider">RAFFLE</h2>
+                    <h2 className="font-pixel text-lg sm:text-xl text-white tracking-wider">
+                      RAFFLE
+                    </h2>
                     {raffle?.status === "paused" ? (
                       <div className="flex items-center gap-1 bg-yellow-500/20 px-2 py-0.5 rounded-full">
                         <span className="w-2 h-2 bg-yellow-500 rounded-full" />
@@ -553,11 +593,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                   </div>
                   <p className="font-pixel text-blue-400/80 text-[10px] sm:text-xs mt-1">
                     Free entry, winner takes all
-                    {lastRefresh && (
-                      <span className="text-gray-500 ml-2">
-                        (updates every 10s)
-                      </span>
-                    )}
+                    {lastRefresh && <span className="text-gray-500 ml-2">(updates every 10s)</span>}
                   </p>
                 </div>
               </div>
@@ -611,13 +647,17 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                         {raffle.winnerWallet ? truncateWallet(raffle.winnerWallet) : "Unknown"}
                       </p>
                       {raffle.winnerWallet === publicKey?.toString() && (
-                        <p className="text-yellow-400 text-xs mt-1 animate-pulse">That&apos;s you!</p>
+                        <p className="text-yellow-400 text-xs mt-1 animate-pulse">
+                          That&apos;s you!
+                        </p>
                       )}
                     </div>
                     <div className="w-full h-px bg-yellow-500/20" />
                     <div>
                       <p className="text-gray-500 text-xs mb-1">Prize</p>
-                      <p className="font-pixel text-green-400 text-xl">{raffle.prizeSol?.toFixed(2) || "0"} SOL</p>
+                      <p className="font-pixel text-green-400 text-xl">
+                        {raffle.prizeSol?.toFixed(2) || "0"} SOL
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -650,11 +690,15 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                   <div className="bg-black/30 rounded-lg p-4 space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-500 text-xs">Prize Pool</span>
-                      <span className="text-white font-pixel">{raffle.potSol?.toFixed(2) || "0"} SOL</span>
+                      <span className="text-white font-pixel">
+                        {raffle.potSol?.toFixed(2) || "0"} SOL
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500 text-xs">Current Entries</span>
-                      <span className="text-white font-pixel">{raffle.entryCount} / {raffle.threshold}</span>
+                      <span className="text-white font-pixel">
+                        {raffle.entryCount} / {raffle.threshold}
+                      </span>
                     </div>
                     {raffle.userEntered && (
                       <div className="pt-2 border-t border-yellow-500/20">
@@ -695,7 +739,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                   <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min((raffle.entryCount / raffle.threshold) * 100, 100)}%` }}
+                      style={{
+                        width: `${Math.min((raffle.entryCount / raffle.threshold) * 100, 100)}%`,
+                      }}
                     />
                   </div>
                   <p className="text-gray-500 text-[10px] mt-2 text-center">
@@ -728,7 +774,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
 
                 {/* Entry message */}
                 {entryMessage && (
-                  <p className={`text-center text-sm ${entryMessage.includes("in!") ? "text-green-400" : "text-red-400"}`}>
+                  <p
+                    className={`text-center text-sm ${entryMessage.includes("in!") ? "text-green-400" : "text-red-400"}`}
+                  >
                     {entryMessage}
                   </p>
                 )}
@@ -754,7 +802,12 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               className="w-full py-2 text-blue-400 hover:text-blue-300 text-xs transition-colors flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
               Refresh Status
             </button>
@@ -795,7 +848,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               {/* Animated casino icon */}
               <div className="relative">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/40 border border-purple-400/30">
-                  <span className="font-pixel text-xl sm:text-2xl text-white drop-shadow-lg">777</span>
+                  <span className="font-pixel text-xl sm:text-2xl text-white drop-shadow-lg">
+                    777
+                  </span>
                 </div>
                 {/* Sparkle effects */}
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping opacity-75" />
@@ -817,7 +872,12 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               aria-label="Close"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -829,7 +889,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
-              <span className="text-green-400 text-[10px] font-pixel tracking-widest">FEATURED</span>
+              <span className="text-green-400 text-[10px] font-pixel tracking-widest">
+                FEATURED
+              </span>
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
             </div>
 
@@ -853,7 +915,9 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                           LIVE
                         </span>
                       </div>
-                      <p className="text-blue-300/70 text-sm mt-0.5">Free entry, winner takes the pot</p>
+                      <p className="text-blue-300/70 text-sm mt-0.5">
+                        Free entry, winner takes the pot
+                      </p>
                     </div>
                   </div>
                   <div className="text-right hidden sm:block">
@@ -862,8 +926,18 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                       <span className="text-blue-400">SOL</span>
                     </p>
                   </div>
-                  <svg className="w-6 h-6 text-blue-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-6 h-6 text-blue-400 group-hover:translate-x-1 transition-transform"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </div>
               </div>
@@ -874,14 +948,16 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600/50 to-transparent" />
-              <span className="text-gray-500 text-[10px] font-pixel tracking-widest">COMING SOON</span>
+              <span className="text-gray-500 text-[10px] font-pixel tracking-widest">
+                COMING SOON
+              </span>
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600/50 to-transparent" />
             </div>
           </div>
 
           {/* Games Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {CASINO_GAMES.filter(g => g.comingSoon).map((game) => (
+            {CASINO_GAMES.filter((g) => g.comingSoon).map((game) => (
               <div
                 key={game.id}
                 className="relative group bg-gradient-to-br from-gray-900/80 to-gray-800/40 rounded-xl p-4 border border-gray-700/30 opacity-60"
@@ -889,16 +965,24 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                 {/* Lock overlay */}
                 <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center">
                   <div className="w-8 h-8 rounded-full bg-gray-800/80 border border-gray-600/50 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    <svg
+                      className="w-4 h-4 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
                     </svg>
                   </div>
                 </div>
 
                 {/* Icon */}
-                <div className="font-pixel text-xl text-gray-500 mb-2">
-                  {game.icon}
-                </div>
+                <div className="font-pixel text-xl text-gray-500 mb-2">{game.icon}</div>
 
                 {/* Info */}
                 <h3 className="font-pixel text-[10px] text-gray-400 mb-0.5 tracking-wider">
@@ -917,8 +1001,18 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
             <div className="relative border border-purple-500/20 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-5 h-5 text-purple-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
                 <div>
@@ -946,8 +1040,18 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                   className="text-green-400 hover:text-green-300 text-[10px] font-pixel transition-colors flex items-center gap-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 px-3 py-1.5 rounded-lg"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
                   </svg>
                   ADMIN
                 </button>
@@ -959,7 +1063,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                 className="text-gray-400 hover:text-white text-[10px] transition-colors flex items-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg"
               >
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
                 Follow
               </a>

@@ -36,9 +36,7 @@ class XClient {
       return this.accessToken;
     }
 
-    const credentials = Buffer.from(
-      `${this.clientId}:${this.clientSecret}`
-    ).toString("base64");
+    const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString("base64");
 
     const response = await fetch("https://api.twitter.com/2/oauth2/token", {
       method: "POST",
@@ -132,10 +130,7 @@ class XClient {
   }
 
   // Post a tweet as reply to another
-  private async postWithReply(
-    text: string,
-    replyToId?: string
-  ): Promise<XPostResult> {
+  private async postWithReply(text: string, replyToId?: string): Promise<XPostResult> {
     if (!this.isConfigured()) {
       return {
         success: false,

@@ -1,7 +1,12 @@
 // Autonomous Dialogue Engine - Characters talk to each other without user input
 // Inspired by Shaw's AI village where characters have emergent conversations
 
-import { characters, characterMeta, generateCharacterPrompt, type CharacterDefinition } from "@/characters";
+import {
+  characters,
+  characterMeta,
+  generateCharacterPrompt,
+  type CharacterDefinition,
+} from "@/characters";
 import type { WorldState, GameEvent } from "./types";
 import type { AgentEvent, AgentEventType } from "./agent-coordinator";
 
@@ -113,17 +118,38 @@ function getCharacterVoice(characterId: string): {
     case "finn":
       return { style: "confident founder energy, action-oriented", maxLength: 80, emoji: false };
     case "ghost":
-      return { style: "technical, lowercase, mentions on-chain verification", maxLength: 70, emoji: false };
+      return {
+        style: "technical, lowercase, mentions on-chain verification",
+        maxLength: 70,
+        emoji: false,
+      };
     case "neo":
       return { style: "cryptic matrix references, 'i see the chain'", maxLength: 60, emoji: false };
     case "ash":
-      return { style: "pokemon analogies, encouraging, uses trainer terminology", maxLength: 75, emoji: true };
+      return {
+        style: "pokemon analogies, encouraging, uses trainer terminology",
+        maxLength: 75,
+        emoji: true,
+      };
     case "bags-bot":
-      return { style: "crypto twitter slang, ser/fren, supportive degen", maxLength: 70, emoji: true };
+      return {
+        style: "crypto twitter slang, ser/fren, supportive degen",
+        maxLength: 70,
+        emoji: true,
+      };
     case "cj":
-      return { style: "hood energy, straight up, 'aw shit here we go again', calls people homie", maxLength: 65, emoji: false };
+      return {
+        style: "hood energy, straight up, 'aw shit here we go again', calls people homie",
+        maxLength: 65,
+        emoji: false,
+      };
     case "shaw":
-      return { style: "technical but accessible, references elizaos concepts, architect metaphors, builder energy", maxLength: 75, emoji: false };
+      return {
+        style:
+          "technical but accessible, references elizaos concepts, architect metaphors, builder energy",
+        maxLength: 75,
+        emoji: false,
+      };
     default:
       return { style: "casual, friendly", maxLength: 60, emoji: false };
   }
@@ -176,27 +202,29 @@ function getTopicResponses(
   const responseMap: Record<string, Record<string, string[]>> = {
     finn: {
       token_launch: [
-        `new launch just dropped. ${tokenSymbol ? `$${tokenSymbol}` : 'another builder'} entering the arena`,
+        `new launch just dropped. ${tokenSymbol ? `$${tokenSymbol}` : "another builder"} entering the arena`,
         "this is why we built bags. creators shipping, community growing",
-        `love seeing new tokens. ${tokenSymbol ? `$${tokenSymbol}` : 'this one'} looks interesting`,
+        `love seeing new tokens. ${tokenSymbol ? `$${tokenSymbol}` : "this one"} looks interesting`,
         "another day, another launch. the machine keeps running",
       ],
       fee_claim: [
-        `${username || 'someone'} just claimed ${amount ? amount.toFixed(2) : 'some'} SOL. this is the way`,
+        `${username || "someone"} just claimed ${amount ? amount.toFixed(2) : "some"} SOL. this is the way`,
         "creators getting paid. exactly how it should work",
         "fees flowing to builders. the flywheel is spinning",
       ],
       world_health: [
-        worldHealth && worldHealth > 70 ? "world's looking healthy. good vibes" : "we've seen slower days. keep building",
+        worldHealth && worldHealth > 70
+          ? "world's looking healthy. good vibes"
+          : "we've seen slower days. keep building",
         "health metrics don't lie. community activity drives everything",
       ],
       distribution: [
         "top creators just got rewarded. the system works",
-        `distribution triggered. ${amount ? amount.toFixed(2) : ''} SOL to the builders`,
+        `distribution triggered. ${amount ? amount.toFixed(2) : ""} SOL to the builders`,
         "this is what sustainable looks like. build, earn, repeat",
       ],
       price_pump: [
-        `${tokenSymbol ? `$${tokenSymbol}` : 'token'} pumping ${change ? change.toFixed(0) : ''}%. community strength`,
+        `${tokenSymbol ? `$${tokenSymbol}` : "token"} pumping ${change ? change.toFixed(0) : ""}%. community strength`,
         "pumps follow building. always has, always will",
       ],
       general: [
@@ -206,46 +234,43 @@ function getTopicResponses(
     },
     ghost: {
       token_launch: [
-        `scanning the new launch... ${tokenSymbol ? `$${tokenSymbol}` : 'contract'} looks clean`,
+        `scanning the new launch... ${tokenSymbol ? `$${tokenSymbol}` : "contract"} looks clean`,
         "new token. watching the chain. will report back",
-        `${tokenSymbol || 'new mint'} just deployed. fees set correctly`,
+        `${tokenSymbol || "new mint"} just deployed. fees set correctly`,
       ],
       fee_claim: [
-        `${amount ? amount.toFixed(2) : ''} SOL claimed. check solscan for the tx`,
+        `${amount ? amount.toFixed(2) : ""} SOL claimed. check solscan for the tx`,
         "claim event detected. creator rewards system working as designed",
         "on-chain receipt: fees distributed. transparent as always",
       ],
       distribution: [
-        `distribution complete. ${amount ? amount.toFixed(2) : ''} SOL to top 3. 50/30/20 split`,
+        `distribution complete. ${amount ? amount.toFixed(2) : ""} SOL to top 3. 50/30/20 split`,
         "threshold hit. rewards sent. all verifiable on-chain",
         "top creators paid. check the wallet for proof",
       ],
       whale_alert: [
-        `whale movement detected. ${amount ? amount.toFixed(2) : 'large'} SOL ${tokenSymbol ? `on $${tokenSymbol}` : ''}`,
+        `whale movement detected. ${amount ? amount.toFixed(2) : "large"} SOL ${tokenSymbol ? `on $${tokenSymbol}` : ""}`,
         "big transaction incoming. watching closely",
       ],
-      general: [
-        "systems nominal. rewards accumulating",
-        "watching the pool. almost at threshold",
-      ],
+      general: ["systems nominal. rewards accumulating", "watching the pool. almost at threshold"],
     },
     neo: {
       token_launch: [
-        `i see it... ${tokenSymbol ? `$${tokenSymbol}` : 'new launch'} just materialized in the chain`,
+        `i see it... ${tokenSymbol ? `$${tokenSymbol}` : "new launch"} just materialized in the chain`,
         "the code reveals another creation. scanning for patterns",
-        `new signal in the noise. ${tokenSymbol || 'this one'} has interesting wallet activity`,
+        `new signal in the noise. ${tokenSymbol || "this one"} has interesting wallet activity`,
       ],
       price_pump: [
-        `${tokenSymbol ? `$${tokenSymbol}` : 'token'} ascending. the matrix shows ${change ? change.toFixed(0) : ''}% movement`,
+        `${tokenSymbol ? `$${tokenSymbol}` : "token"} ascending. the matrix shows ${change ? change.toFixed(0) : ""}% movement`,
         "i see green. the code doesn't lie about momentum",
       ],
       price_dump: [
         "red signals in the chain. some will panic. others will accumulate",
-        `${tokenSymbol ? `$${tokenSymbol}` : 'token'} descending ${change ? Math.abs(change).toFixed(0) : ''}%. watching for the bottom`,
+        `${tokenSymbol ? `$${tokenSymbol}` : "token"} descending ${change ? Math.abs(change).toFixed(0) : ""}%. watching for the bottom`,
       ],
       whale_alert: [
         "large entity moving. i see the transaction forming",
-        `whale alert. ${amount ? amount.toFixed(2) : ''} SOL shifting through the matrix`,
+        `whale alert. ${amount ? amount.toFixed(2) : ""} SOL shifting through the matrix`,
       ],
       general: [
         "scanning... the chain shows interesting patterns today",
@@ -254,19 +279,19 @@ function getTopicResponses(
     },
     ash: {
       token_launch: [
-        `new trainer entering the league! ${tokenSymbol ? `$${tokenSymbol}` : 'their token'} is their starter`,
-        `welcome to the arena ${tokenSymbol ? `$${tokenSymbol}` : 'new friend'}! time to train your community`,
+        `new trainer entering the league! ${tokenSymbol ? `$${tokenSymbol}` : "their token"} is their starter`,
+        `welcome to the arena ${tokenSymbol ? `$${tokenSymbol}` : "new friend"}! time to train your community`,
         "another journey begins! every token master started with one launch",
       ],
       fee_claim: [
-        `${username || 'trainer'} just leveled up! earned ${amount ? amount.toFixed(2) : 'some'} SOL in fees`,
+        `${username || "trainer"} just leveled up! earned ${amount ? amount.toFixed(2) : "some"} SOL in fees`,
         "fee claim = XP gained! keep training that community",
       ],
       world_health: [
         worldHealth && worldHealth > 70
           ? "world health high! the ecosystem is thriving like a fully evolved team"
           : "we're training through tough times. every master faces challenges",
-        `${worldHealth || 0}% health. ${worldHealth && worldHealth > 50 ? 'looking good!' : 'time to rally the trainers'}`,
+        `${worldHealth || 0}% health. ${worldHealth && worldHealth > 50 ? "looking good!" : "time to rally the trainers"}`,
       ],
       distribution: [
         "top 3 trainers won the league! prizes distributed",
@@ -279,22 +304,24 @@ function getTopicResponses(
     },
     "bags-bot": {
       token_launch: [
-        `new launch ser 👀 ${tokenSymbol ? `$${tokenSymbol}` : 'looking spicy'} ngl`,
+        `new launch ser 👀 ${tokenSymbol ? `$${tokenSymbol}` : "looking spicy"} ngl`,
         "another builder cooking. we're all gonna make it",
-        `${tokenSymbol ? `$${tokenSymbol}` : 'fresh mint'} just dropped. the world grows`,
+        `${tokenSymbol ? `$${tokenSymbol}` : "fresh mint"} just dropped. the world grows`,
       ],
       fee_claim: [
-        `${username || 'someone'} just claimed ${amount ? amount.toFixed(2) : 'some'} SOL. wagmi`,
+        `${username || "someone"} just claimed ${amount ? amount.toFixed(2) : "some"} SOL. wagmi`,
         "fees flowing fren. this is why we're here",
       ],
       world_health: [
         worldHealth && worldHealth > 70
           ? `world health at ${worldHealth}%... historically bullish vibes`
           : `${worldHealth || 0}% health. diamond hands time frens 💎`,
-        weather === "sunny" ? "sunny skies in bagsworld. good omens" : "weather shifting but the vibes remain",
+        weather === "sunny"
+          ? "sunny skies in bagsworld. good omens"
+          : "weather shifting but the vibes remain",
       ],
       price_pump: [
-        `${tokenSymbol ? `$${tokenSymbol}` : 'token'} pumping ${change ? change.toFixed(0) : ''}%. lfg 🚀`,
+        `${tokenSymbol ? `$${tokenSymbol}` : "token"} pumping ${change ? change.toFixed(0) : ""}%. lfg 🚀`,
         "green candles. nature is healing ser",
       ],
       general: [
@@ -304,33 +331,33 @@ function getTopicResponses(
     },
     cj: {
       token_launch: [
-        `aw shit here we go again. new launch ${tokenSymbol ? `$${tokenSymbol}` : ''}`,
-        `seen a hundred of these homie. ${tokenSymbol || 'this one'} could run could rug`,
+        `aw shit here we go again. new launch ${tokenSymbol ? `$${tokenSymbol}` : ""}`,
+        `seen a hundred of these homie. ${tokenSymbol || "this one"} could run could rug`,
         "just another day in the trenches. new token, new game",
       ],
       fee_claim: [
-        `${username || 'homie'} just claimed ${amount ? amount.toFixed(2) : 'some'} SOL. we out here`,
+        `${username || "homie"} just claimed ${amount ? amount.toFixed(2) : "some"} SOL. we out here`,
         "man that's how you eat in this game. claim them fees",
         "fees flowing. this is what surviving looks like",
       ],
       distribution: [
         "top 3 just got paid. that's how the game works out here",
-        `${amount ? amount.toFixed(2) : ''} SOL to the builders. respect`,
+        `${amount ? amount.toFixed(2) : ""} SOL to the builders. respect`,
         "creators getting their cut. we survive another day",
       ],
       whale_alert: [
         "damn big money moving. been here before homie",
-        `whale alert. ${amount ? amount.toFixed(2) : ''} SOL. aw shit`,
+        `whale alert. ${amount ? amount.toFixed(2) : ""} SOL. aw shit`,
         "seen whales come and go. just stay focused",
       ],
       price_pump: [
-        `${tokenSymbol ? `$${tokenSymbol}` : 'token'} pumping ${change ? change.toFixed(0) : ''}%. don't get too comfortable`,
+        `${tokenSymbol ? `$${tokenSymbol}` : "token"} pumping ${change ? change.toFixed(0) : ""}%. don't get too comfortable`,
         "let's get it. but the game changes quick homie",
         "pumping today. just don't forget to take profits fool",
       ],
       price_dump: [
         "aw shit here we go again. market dumping",
-        `${tokenSymbol || 'token'} down ${change ? Math.abs(change).toFixed(0) : ''}%. been through worse`,
+        `${tokenSymbol || "token"} down ${change ? Math.abs(change).toFixed(0) : ""}%. been through worse`,
         "red days come and go. we survive out here",
       ],
       general: [
@@ -341,13 +368,13 @@ function getTopicResponses(
     },
     shaw: {
       token_launch: [
-        `new token launched. ${tokenSymbol ? `$${tokenSymbol}` : 'another builder'} entering the ecosystem. this is how it starts`,
+        `new token launched. ${tokenSymbol ? `$${tokenSymbol}` : "another builder"} entering the ecosystem. this is how it starts`,
         "every great project begins with a launch. elizaos started the same way",
-        `${tokenSymbol ? `$${tokenSymbol}` : 'new project'} deployed. the architecture looks interesting`,
+        `${tokenSymbol ? `$${tokenSymbol}` : "new project"} deployed. the architecture looks interesting`,
       ],
       distribution: [
         "fee distribution is how you align incentives. plugins for agents work the same way",
-        `${amount ? amount.toFixed(2) : ''} SOL distributed. sustainable tokenomics in action`,
+        `${amount ? amount.toFixed(2) : ""} SOL distributed. sustainable tokenomics in action`,
         "builders getting rewarded. this is the ecosystem we need",
       ],
       agent_event: [
@@ -357,10 +384,10 @@ function getTopicResponses(
       ],
       whale_alert: [
         "whale movement detected. agents should track these patterns",
-        `large transaction. ${amount ? amount.toFixed(2) : ''} SOL. the on-chain data tells the story`,
+        `large transaction. ${amount ? amount.toFixed(2) : ""} SOL. the on-chain data tells the story`,
       ],
       price_pump: [
-        `${tokenSymbol ? `$${tokenSymbol}` : 'token'} pumping. community strength drives everything`,
+        `${tokenSymbol ? `$${tokenSymbol}` : "token"} pumping. community strength drives everything`,
         "price action follows building. always ship first",
       ],
       general: [
@@ -390,7 +417,7 @@ function getTopicResponses(
     };
     const acks = acknowledgments[characterId] || ["yeah."];
     const ack = acks[Math.floor(Math.random() * acks.length)];
-    responses = responses.map(r => `${ack} ${r}`);
+    responses = responses.map((r) => `${ack} ${r}`);
   }
 
   return responses;
@@ -405,11 +432,11 @@ function getTopicResponses(
  */
 function selectParticipants(topic: string, excludeIds: string[] = []): string[] {
   // Get characters interested in this topic
-  const interested = CONVERSATION_TOPICS[topic as keyof typeof CONVERSATION_TOPICS] ||
-    Object.keys(characters);
+  const interested =
+    CONVERSATION_TOPICS[topic as keyof typeof CONVERSATION_TOPICS] || Object.keys(characters);
 
   // Filter out excluded and pick 2-3 participants
-  const available = interested.filter(id => !excludeIds.includes(id));
+  const available = interested.filter((id) => !excludeIds.includes(id));
   const count = Math.min(available.length, Math.random() > 0.5 ? 3 : 2);
 
   // Shuffle and take
@@ -488,7 +515,7 @@ async function generateConversationLines(
         characterId: line.characterId,
         characterName: line.characterName,
         message: line.message,
-        timestamp: Date.now() + (i * LINE_DISPLAY_DURATION),
+        timestamp: Date.now() + i * LINE_DISPLAY_DURATION,
         replyTo: i > 0 ? intelligentLines[i - 1].characterId : undefined,
         emotion: getEmotionFromTopic(topic),
       });
@@ -501,28 +528,25 @@ async function generateConversationLines(
   for (let i = 0; i < lineCount; i++) {
     // Alternate speakers, with some randomness
     const speakerIndex = i % participants.length;
-    const speaker = Math.random() > 0.2
-      ? participants[speakerIndex]
-      : participants[Math.floor(Math.random() * participants.length)];
+    const speaker =
+      Math.random() > 0.2
+        ? participants[speakerIndex]
+        : participants[Math.floor(Math.random() * participants.length)];
 
     // Don't let same person speak twice in a row
     const lastSpeaker = conversation.lines[conversation.lines.length - 1]?.characterId;
-    const actualSpeaker = speaker === lastSpeaker && participants.length > 1
-      ? participants.find(p => p !== speaker) || speaker
-      : speaker;
+    const actualSpeaker =
+      speaker === lastSpeaker && participants.length > 1
+        ? participants.find((p) => p !== speaker) || speaker
+        : speaker;
 
-    const message = generateRuleBasedLine(
-      actualSpeaker,
-      topic,
-      context,
-      conversation.lines
-    );
+    const message = generateRuleBasedLine(actualSpeaker, topic, context, conversation.lines);
 
     const line: DialogueLine = {
       characterId: actualSpeaker,
       characterName: characterMeta[actualSpeaker]?.displayName || actualSpeaker,
       message,
-      timestamp: Date.now() + (i * LINE_DISPLAY_DURATION),
+      timestamp: Date.now() + i * LINE_DISPLAY_DURATION,
       replyTo: lastSpeaker,
       emotion: getEmotionFromTopic(topic),
     };
@@ -675,14 +699,13 @@ export async function handleAgentEvent(event: AgentEvent): Promise<void> {
   if (!triggerableEvents.includes(event.type)) return;
 
   // Random chance to trigger conversation (don't trigger on every event)
-  const triggerChance = event.priority === "high" ? 0.7 :
-                        event.priority === "urgent" ? 0.9 : 0.4;
+  const triggerChance = event.priority === "high" ? 0.7 : event.priority === "urgent" ? 0.9 : 0.4;
 
   if (Math.random() > triggerChance) return;
 
   // Build context from event data
   const context: ConversationContext = {
-    tokenSymbol: event.data.symbol as string || event.data.tokenSymbol as string,
+    tokenSymbol: (event.data.symbol as string) || (event.data.tokenSymbol as string),
     amount: event.data.amount as number,
     change: event.data.change as number,
     username: event.data.username as string,
@@ -703,20 +726,15 @@ export async function handleWorldStateChange(
   worldState: WorldState,
   previousHealth?: number
 ): Promise<void> {
-  const healthChange = previousHealth !== undefined
-    ? Math.abs(worldState.health - previousHealth)
-    : 0;
+  const healthChange =
+    previousHealth !== undefined ? Math.abs(worldState.health - previousHealth) : 0;
 
   // Trigger on significant health changes
   if (healthChange >= 10) {
-    await startConversation(
-      { type: "world_state", condition: "health_change" },
-      "world_health",
-      {
-        worldHealth: worldState.health,
-        weather: worldState.weather,
-      }
-    );
+    await startConversation({ type: "world_state", condition: "health_change" }, "world_health", {
+      worldHealth: worldState.health,
+      weather: worldState.weather,
+    });
   }
 }
 
@@ -734,15 +752,12 @@ export function startScheduledConversations(intervalMs: number = 60000): void {
 
   scheduledInterval = setInterval(async () => {
     // 40% chance of random conversation (reduced for API cost)
-    if (Math.random() > 0.40) return;
+    if (Math.random() > 0.4) return;
 
     const topics = ["general", "world_health", "token_launch", "price_pump"];
     const topic = topics[Math.floor(Math.random() * topics.length)];
 
-    await startConversation(
-      { type: "scheduled", interval: intervalMs },
-      topic
-    );
+    await startConversation({ type: "scheduled", interval: intervalMs }, topic);
   }, intervalMs);
 
   console.log("[Dialogue] Scheduled conversations started");
@@ -768,7 +783,7 @@ export function stopScheduledConversations(): void {
  */
 export function initDialogueSystem(): void {
   // Initialize character moods
-  Object.keys(characters).forEach(id => {
+  Object.keys(characters).forEach((id) => {
     state.characterMoods.set(id, {
       characterId: id,
       mood: "neutral",
@@ -784,10 +799,7 @@ export function initDialogueSystem(): void {
   // Trigger initial conversation quickly (3 seconds after load)
   setTimeout(() => {
     console.log("[Dialogue] Triggering initial conversation...");
-    startConversation(
-      { type: "scheduled", interval: 15000 },
-      "token_launch"
-    );
+    startConversation({ type: "scheduled", interval: 15000 }, "token_launch");
   }, 3000);
 
   console.log("[Dialogue] System initialized");

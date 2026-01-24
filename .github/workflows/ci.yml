@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  format:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript compiler
+        run: npm run typecheck
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, format, typecheck]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        run: npm run build
+        env:
+          # Dummy values for build - real secrets are in Netlify
+          BAGS_API_KEY: ${{ secrets.BAGS_API_KEY || 'build-placeholder' }}
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com' }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: .next/
+          retention-days: 1
+
+  ci-status:
+    name: CI Status
+    needs: [lint, format, typecheck, build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check job results
+        run: |
+          echo "=== CI Summary ==="
+          echo ""
+
+          failed=0
+
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "FAIL: Lint check failed"
+            failed=1
+          else
+            echo "PASS: Lint"
+          fi
+
+          if [ "${{ needs.format.result }}" != "success" ]; then
+            echo "FAIL: Format check failed"
+            failed=1
+          else
+            echo "PASS: Format"
+          fi
+
+          if [ "${{ needs.typecheck.result }}" != "success" ]; then
+            echo "FAIL: Type check failed"
+            failed=1
+          else
+            echo "PASS: TypeScript"
+          fi
+
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "FAIL: Build failed"
+            failed=1
+          else
+            echo "PASS: Build"
+          fi
+
+          echo ""
+          if [ $failed -eq 1 ]; then
+            echo "CI FAILED"
+            exit 1
+          else
+            echo "CI PASSED"
+          fi

@@ -37,7 +37,7 @@ function addEventToAnnouncements(event: AgentEvent): void {
   if (!event.announcement) return;
 
   // Don't add if already in queue
-  if (announcementQueue.some(a => a.id === event.id)) return;
+  if (announcementQueue.some((a) => a.id === event.id)) return;
 
   announcementQueue.unshift({
     id: event.id,
@@ -76,7 +76,11 @@ function initAnnouncementHandler(): void {
     ["medium", "high", "urgent"] // Only announce important events
   );
 
-  console.log("[Agent Coordinator API] Announcement handler initialized with", existingEvents.length, "existing events");
+  console.log(
+    "[Agent Coordinator API] Announcement handler initialized with",
+    existingEvents.length,
+    "existing events"
+  );
 }
 
 // ============================================================================
@@ -114,9 +118,7 @@ export async function GET(request: Request) {
       const unreadOnly = searchParams.get("unread") === "true";
       const count = parseInt(searchParams.get("count") || "10");
 
-      let announcements = unreadOnly
-        ? announcementQueue.filter((a) => !a.read)
-        : announcementQueue;
+      let announcements = unreadOnly ? announcementQueue.filter((a) => !a.read) : announcementQueue;
 
       announcements = announcements.slice(0, count);
 
@@ -129,9 +131,7 @@ export async function GET(request: Request) {
     case "poll": {
       // Long-poll for new announcements (for game client)
       const since = parseInt(searchParams.get("since") || "0");
-      const newAnnouncements = announcementQueue.filter(
-        (a) => a.timestamp > since && !a.read
-      );
+      const newAnnouncements = announcementQueue.filter((a) => a.timestamp > since && !a.read);
 
       return NextResponse.json({
         announcements: newAnnouncements,
@@ -171,10 +171,7 @@ export async function POST(request: Request) {
         };
 
         if (!type || !source || !data) {
-          return NextResponse.json(
-            { error: "Missing type, source, or data" },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: "Missing type, source, or data" }, { status: 400 });
         }
 
         const event = await emitEvent(type, source, data, priority || "medium");
@@ -220,10 +217,7 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("[Agent Coordinator API] Error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 

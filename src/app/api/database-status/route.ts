@@ -16,26 +16,31 @@ export async function GET() {
     };
 
     const netlifyDbExists = envVars.NETLIFY_DATABASE_URL;
-    const directDbExists = envVars.DATABASE_URL || envVars.NEON_DATABASE_URL || envVars.POSTGRES_URL;
+    const directDbExists =
+      envVars.DATABASE_URL || envVars.NEON_DATABASE_URL || envVars.POSTGRES_URL;
 
     // Mask the URLs for security
     const netlifyDbPreview = process.env.NETLIFY_DATABASE_URL
       ? process.env.NETLIFY_DATABASE_URL.substring(0, 50) + "..."
       : "not set";
-    const directDbPreview = (process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL)
-      ? (process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL)!.substring(0, 50) + "..."
-      : "not set";
+    const directDbPreview =
+      process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL
+        ? (process.env.DATABASE_URL ||
+            process.env.NEON_DATABASE_URL ||
+            process.env.POSTGRES_URL)!.substring(0, 50) + "..."
+        : "not set";
 
     if (!configured) {
       return NextResponse.json({
         status: "not_configured",
-        message: "Neon not configured. Set DATABASE_URL env var or enable Neon in Netlify dashboard.",
+        message:
+          "Neon not configured. Set DATABASE_URL env var or enable Neon in Netlify dashboard.",
         tokenCount: 0,
         connectionType,
         debug: {
           envVars,
           directDbPreview,
-          hint: "Set DATABASE_URL (or NEON_DATABASE_URL) to your Neon connection string (postgresql://...)"
+          hint: "Set DATABASE_URL (or NEON_DATABASE_URL) to your Neon connection string (postgresql://...)",
         },
       });
     }

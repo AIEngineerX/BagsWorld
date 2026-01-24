@@ -44,7 +44,10 @@ export async function POST(request: Request) {
   const rateLimit = checkRateLimit(`launch:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many launch requests. Please wait a moment and try again.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Too many launch requests. Please wait a moment and try again.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -118,10 +121,7 @@ async function handleCreateTokenInfo(
         }
         imageBlob = new Blob([bytes], { type: mimeType });
       } catch {
-        return NextResponse.json(
-          { error: "Invalid base64 image data" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Invalid base64 image data" }, { status: 400 });
       }
     } else if (data.image) {
       // It's just base64, assume PNG
@@ -133,10 +133,7 @@ async function handleCreateTokenInfo(
         }
         imageBlob = new Blob([bytes], { type: "image/png" });
       } catch {
-        return NextResponse.json(
-          { error: "Invalid base64 image data" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Invalid base64 image data" }, { status: 400 });
       }
     }
 
@@ -180,7 +177,9 @@ async function handleConfigureFees(
   const totalBps = data.feeClaimers.reduce((sum, c) => sum + c.bps, 0);
   if (totalBps !== 10000) {
     return NextResponse.json(
-      { error: `Total fee share must equal exactly 100% (10000 bps). Currently: ${totalBps} bps (${(totalBps / 100).toFixed(1)}%)` },
+      {
+        error: `Total fee share must equal exactly 100% (10000 bps). Currently: ${totalBps} bps (${(totalBps / 100).toFixed(1)}%)`,
+      },
       { status: 400 }
     );
   }

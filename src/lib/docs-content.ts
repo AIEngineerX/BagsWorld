@@ -106,9 +106,7 @@ export const docsContent: DocSection[] = [
       {
         id: "launch-tips",
         title: "Launch Tips",
-        content: [
-          "Follow these best practices to maximize your token's success in BagsWorld.",
-        ],
+        content: ["Follow these best practices to maximize your token's success in BagsWorld."],
         tips: [
           "Use a unique, memorable name and symbol",
           "High-quality pixel art images fit the aesthetic",

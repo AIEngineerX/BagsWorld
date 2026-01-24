@@ -77,10 +77,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in wheel GET:", error);
-    return NextResponse.json(
-      { error: "Failed to get wheel status" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to get wheel status" }, { status: 500 });
   }
 }
 
@@ -90,10 +87,7 @@ export async function POST(request: NextRequest) {
     const { wallet } = body;
 
     if (!wallet) {
-      return NextResponse.json(
-        { error: "Wallet address required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Wallet address required" }, { status: 400 });
     }
 
     const dbConfigured = isNeonConfigured();
@@ -163,9 +157,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in wheel spin:", error);
-    return NextResponse.json(
-      { error: "Failed to spin wheel" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to spin wheel" }, { status: 500 });
   }
 }

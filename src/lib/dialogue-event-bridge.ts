@@ -98,11 +98,7 @@ export async function triggerConversation(
     weather?: string;
   }
 ): Promise<boolean> {
-  const conversation = await startConversation(
-    { type: "random" },
-    topic,
-    context
-  );
+  const conversation = await startConversation({ type: "random" }, topic, context);
 
   return conversation !== null;
 }
@@ -136,6 +132,4 @@ export function initBrowserEventListener(): void {
 // EXPORTS
 // ============================================================================
 
-export {
-  isInitialized as isBridgeInitialized,
-};
+export { isInitialized as isBridgeInitialized };

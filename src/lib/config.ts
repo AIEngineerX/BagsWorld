@@ -27,7 +27,8 @@ export const ECOSYSTEM_CONFIG = {
   // All fees go to rewarding top 3 creators based on fee contribution
   ecosystem: {
     // Wallet that receives ecosystem fees - viewable on Solscan
-    wallet: process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
+    wallet:
+      process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
     // Partner Config PDA - created at dev.bags.fm
     // This enables BagsWorld to earn Bags.fm partner fees from token launches
@@ -43,24 +44,24 @@ export const ECOSYSTEM_CONFIG = {
     // - Distributes when threshold hit OR backup timer expires
     // - Direct SOL payments to creator wallets
     rewards: {
-      thresholdSol: 5.0,                        // Distribute when 5+ SOL accumulated
-      backupTimerDays: 3,                       // Or distribute after 3 days
-      minimumDistributionSol: 2.0,              // Minimum SOL required for timer-based distribution
-      checkIntervalMs: 15 * 60 * 1000,          // Check every 15 minutes
-      reservePercentage: 10,                    // 10% reserved for gas/operations
-      topCreatorsCount: 3,                      // Reward top 3 creators
+      thresholdSol: 5.0, // Distribute when 5+ SOL accumulated
+      backupTimerDays: 3, // Or distribute after 3 days
+      minimumDistributionSol: 2.0, // Minimum SOL required for timer-based distribution
+      checkIntervalMs: 15 * 60 * 1000, // Check every 15 minutes
+      reservePercentage: 10, // 10% reserved for gas/operations
+      topCreatorsCount: 3, // Reward top 3 creators
       distribution: {
-        first: 50,                              // 1st place: 50% of pot
-        second: 30,                             // 2nd place: 30% of pot
-        third: 20,                              // 3rd place: 20% of pot
+        first: 50, // 1st place: 50% of pot
+        second: 30, // 2nd place: 30% of pot
+        third: 20, // 3rd place: 20% of pot
       },
     },
 
     // Scout Agent: Scans for new token launches in real-time
     scout: {
-      minLiquidityUsd: 500,                     // Min $500 liquidity to alert
-      bagsOnly: false,                          // Track all launches or just Bags
-      maxAlertsPerMinute: 30,                   // Rate limit
+      minLiquidityUsd: 500, // Min $500 liquidity to alert
+      bagsOnly: false, // Track all launches or just Bags
+      maxAlertsPerMinute: 30, // Rate limit
     },
 
     // Provider name shown in fee shares
@@ -134,16 +135,16 @@ export const ECOSYSTEM_CONFIG = {
   world: {
     // Weather tied to world health (trading volume)
     weatherThresholds: {
-      sunny: 80,      // 80%+ health
-      cloudy: 60,     // 60-80% health
-      rain: 40,       // 40-60% health
-      storm: 20,      // 20-40% health
-      apocalypse: 0,  // <20% health
+      sunny: 80, // 80%+ health
+      cloudy: 60, // 60-80% health
+      rain: 40, // 40-60% health
+      storm: 20, // 20-40% health
+      apocalypse: 0, // <20% health
     },
 
     // Refresh intervals
-    refreshInterval: 60_000,  // 60 seconds (optimized for smoother rendering)
-    weatherCacheDuration: 300_000,  // 5 minutes
+    refreshInterval: 60_000, // 60 seconds (optimized for smoother rendering)
+    weatherCacheDuration: 300_000, // 5 minutes
   },
 
   // -------------------------------------------------------------------------
@@ -263,7 +264,8 @@ export const ECOSYSTEM_CONFIG = {
     id: "BagsWorldRewardsHub",
     name: "Creator Rewards Hub",
     symbol: "REWARDS",
-    description: "Ecosystem fees reward top 3 creators. 5 SOL threshold or 3 days. 50/30/20 split. Click to verify on Solscan.",
+    description:
+      "Ecosystem fees reward top 3 creators. 5 SOL threshold or 3 days. 50/30/20 split. Click to verify on Solscan.",
     level: 5, // Always max level - it's the centerpiece
     getSolscanUrl: () => `https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`,
   },
@@ -384,20 +386,22 @@ export function isAdmin(walletAddress: string | null | undefined): boolean {
   return ECOSYSTEM_CONFIG.admin.wallets.includes(walletAddress);
 }
 
-export function getBuildingTier(marketCap: number): typeof ECOSYSTEM_CONFIG.buildings.tiers[0] {
+export function getBuildingTier(marketCap: number): (typeof ECOSYSTEM_CONFIG.buildings.tiers)[0] {
   const tiers = [...ECOSYSTEM_CONFIG.buildings.tiers].reverse();
-  return tiers.find(tier => marketCap >= tier.minMarketCap) || ECOSYSTEM_CONFIG.buildings.tiers[0];
+  return (
+    tiers.find((tier) => marketCap >= tier.minMarketCap) || ECOSYSTEM_CONFIG.buildings.tiers[0]
+  );
 }
 
 export function getEcosystemFeeShare() {
   return {
-    provider: ECOSYSTEM_CONFIG.ecosystem.provider,  // "twitter"
-    providerUsername: ECOSYSTEM_CONFIG.ecosystem.providerUsername,  // "BagsWorldApp"
+    provider: ECOSYSTEM_CONFIG.ecosystem.provider, // "twitter"
+    providerUsername: ECOSYSTEM_CONFIG.ecosystem.providerUsername, // "BagsWorldApp"
     bps: ECOSYSTEM_CONFIG.ecosystem.feeBps,
     displayName: ECOSYSTEM_CONFIG.ecosystem.providerUsername,
   };
 }
 
 // Type exports
-export type Provider = typeof ECOSYSTEM_CONFIG.citizens.supportedProviders[number];
+export type Provider = (typeof ECOSYSTEM_CONFIG.citizens.supportedProviders)[number];
 export type WeatherType = keyof typeof ECOSYSTEM_CONFIG.world.weatherThresholds;

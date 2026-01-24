@@ -52,18 +52,10 @@ export function AgentFeed({
   className = "",
 }: AgentFeedProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const {
-    announcements,
-    unreadCount,
-    isConnected,
-    markAsRead,
-    markAllAsRead,
-    clearAnnouncements,
-  } = useAgentEvents({ maxAnnouncements: maxItems });
+  const { announcements, unreadCount, isConnected, markAsRead, markAllAsRead, clearAnnouncements } =
+    useAgentEvents({ maxAnnouncements: maxItems });
 
-  const visibleAnnouncements = isExpanded
-    ? announcements
-    : announcements.slice(0, compact ? 3 : 5);
+  const visibleAnnouncements = isExpanded ? announcements : announcements.slice(0, compact ? 3 : 5);
 
   const formatTime = (timestamp: number) => {
     const diff = Date.now() - timestamp;
@@ -109,8 +101,7 @@ export function AgentFeed({
                   priorityColors[a.priority]
                 } ${a.read ? "opacity-50" : "opacity-100"}`}
               >
-                <span className="text-gray-500">{formatTime(a.timestamp)}</span>{" "}
-                {a.message}
+                <span className="text-gray-500">{formatTime(a.timestamp)}</span> {a.message}
               </div>
             ))}
           </div>
@@ -146,17 +137,11 @@ export function AgentFeed({
               title={isConnected ? "Connected" : "Disconnected"}
             />
             {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="text-xs text-gray-400 hover:text-white"
-              >
+              <button onClick={markAllAsRead} className="text-xs text-gray-400 hover:text-white">
                 Mark all read
               </button>
             )}
-            <button
-              onClick={clearAnnouncements}
-              className="text-xs text-gray-400 hover:text-white"
-            >
+            <button onClick={clearAnnouncements} className="text-xs text-gray-400 hover:text-white">
               Clear
             </button>
           </div>
@@ -189,13 +174,9 @@ export function AgentFeed({
                     <span className="text-xs font-mono text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">
                       {eventTypeLabels[a.eventType] || a.eventType}
                     </span>
-                    {!a.read && (
-                      <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                    )}
+                    {!a.read && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
                   </div>
-                  <span className="text-xs text-gray-500">
-                    {formatTime(a.timestamp)}
-                  </span>
+                  <span className="text-xs text-gray-500">{formatTime(a.timestamp)}</span>
                 </div>
                 <p className="text-sm text-white font-mono">{a.message}</p>
               </div>
@@ -257,10 +238,7 @@ export function AgentToast({ className = "" }: AgentToastProps) {
           <span className="text-xs font-mono text-gray-400">
             {eventTypeLabels[latest.eventType] || "EVENT"}
           </span>
-          <button
-            onClick={handleDismiss}
-            className="text-gray-500 hover:text-white text-xs"
-          >
+          <button onClick={handleDismiss} className="text-gray-500 hover:text-white text-xs">
             x
           </button>
         </div>

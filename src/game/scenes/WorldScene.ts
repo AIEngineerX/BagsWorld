@@ -98,7 +98,14 @@ export class WorldScene extends Phaser.Scene {
     this.createSky();
 
     // Create day/night overlay
-    this.overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0);
+    this.overlay = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH,
+      GAME_HEIGHT,
+      0x000000,
+      0
+    );
     this.overlay.setDepth(100);
 
     // Add decorations (trees, bushes, benches, lamps)
@@ -239,11 +246,13 @@ export class WorldScene extends Phaser.Scene {
     let initialZoom = 1;
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      const pointers = this.input.manager.pointers.filter(p => p.isDown);
+      const pointers = this.input.manager.pointers.filter((p) => p.isDown);
       if (pointers.length === 2) {
         initialPinchDistance = Phaser.Math.Distance.Between(
-          pointers[0].x, pointers[0].y,
-          pointers[1].x, pointers[1].y
+          pointers[0].x,
+          pointers[0].y,
+          pointers[1].x,
+          pointers[1].y
         );
         initialZoom = camera.zoom;
         isDragging = false; // Cancel drag when pinching
@@ -251,11 +260,13 @@ export class WorldScene extends Phaser.Scene {
     });
 
     this.input.on("pointermove", () => {
-      const pointers = this.input.manager.pointers.filter(p => p.isDown);
+      const pointers = this.input.manager.pointers.filter((p) => p.isDown);
       if (pointers.length === 2 && initialPinchDistance > 0) {
         const currentDistance = Phaser.Math.Distance.Between(
-          pointers[0].x, pointers[0].y,
-          pointers[1].x, pointers[1].y
+          pointers[0].x,
+          pointers[0].y,
+          pointers[1].x,
+          pointers[1].y
         );
         const scale = currentDistance / initialPinchDistance;
         camera.setZoom(Phaser.Math.Clamp(initialZoom * scale, 0.5, 2));
@@ -263,7 +274,7 @@ export class WorldScene extends Phaser.Scene {
     });
 
     this.input.on("pointerup", () => {
-      const pointers = this.input.manager.pointers.filter(p => p.isDown);
+      const pointers = this.input.manager.pointers.filter((p) => p.isDown);
       if (pointers.length < 2) {
         initialPinchDistance = 0;
       }
@@ -298,21 +309,21 @@ export class WorldScene extends Phaser.Scene {
     this.isTransitioning = true;
 
     // CLEANUP: Kill any existing transition tweens to prevent accumulation
-    this.decorations.forEach(d => this.tweens.killTweensOf(d));
-    this.animals.forEach(a => this.tweens.killTweensOf(a.sprite));
-    this.trendingElements.forEach(el => this.tweens.killTweensOf(el));
-    this.billboardTexts.forEach(t => this.tweens.killTweensOf(t));
-    this.skylineSprites.forEach(s => this.tweens.killTweensOf(s));
+    this.decorations.forEach((d) => this.tweens.killTweensOf(d));
+    this.animals.forEach((a) => this.tweens.killTweensOf(a.sprite));
+    this.trendingElements.forEach((el) => this.tweens.killTweensOf(el));
+    this.billboardTexts.forEach((t) => this.tweens.killTweensOf(t));
+    this.skylineSprites.forEach((s) => this.tweens.killTweensOf(s));
     if (this.tickerText) this.tweens.killTweensOf(this.tickerText);
-    this.buildingSprites.forEach(container => this.tweens.killTweensOf(container));
-    this.characterSprites.forEach(sprite => this.tweens.killTweensOf(sprite));
+    this.buildingSprites.forEach((container) => this.tweens.killTweensOf(container));
+    this.characterSprites.forEach((sprite) => this.tweens.killTweensOf(sprite));
 
     // Reset decoration/animal positions to originals before transition
-    this.decorations.forEach(d => {
+    this.decorations.forEach((d) => {
       const origX = this.originalPositions.get(d);
       if (origX !== undefined) (d as any).x = origX;
     });
-    this.animals.forEach(a => {
+    this.animals.forEach((a) => {
       const origX = this.originalPositions.get(a.sprite);
       if (origX !== undefined) (a.sprite as any).x = origX;
     });
@@ -336,16 +347,16 @@ export class WorldScene extends Phaser.Scene {
       oldElements.push(...this.skylineSprites);
     } else {
       // Main city decorations
-      this.decorations.forEach(d => oldElements.push(d));
-      this.animals.forEach(a => oldElements.push(a.sprite));
+      this.decorations.forEach((d) => oldElements.push(d));
+      this.animals.forEach((a) => oldElements.push(a.sprite));
     }
 
     // Include buildings and characters (they slide out and get recreated)
-    this.buildingSprites.forEach(container => oldElements.push(container));
-    this.characterSprites.forEach(sprite => oldElements.push(sprite));
+    this.buildingSprites.forEach((container) => oldElements.push(container));
+    this.characterSprites.forEach((sprite) => oldElements.push(sprite));
 
     // Store old element original X positions for proper destruction
-    const oldElementData = oldElements.map(el => ({ el, origX: (el as any).x || 0 }));
+    const oldElementData = oldElements.map((el) => ({ el, origX: (el as any).x || 0 }));
 
     // Create transition overlay for ground swap (slides with content, scaled)
     const transitionOverlay = this.add.rectangle(
@@ -365,7 +376,7 @@ export class WorldScene extends Phaser.Scene {
           targets: el,
           x: (el as any).x + slideOutOffset,
           duration,
-          ease: 'Cubic.easeInOut',
+          ease: "Cubic.easeInOut",
         });
       }
     });
@@ -373,9 +384,11 @@ export class WorldScene extends Phaser.Scene {
     // Slide ground texture overlay (scaled)
     this.tweens.add({
       targets: this.ground,
-      tilePositionX: this.ground.tilePositionX + (isGoingRight ? Math.round(100 * SCALE) : -Math.round(100 * SCALE)),
+      tilePositionX:
+        this.ground.tilePositionX +
+        (isGoingRight ? Math.round(100 * SCALE) : -Math.round(100 * SCALE)),
       duration,
-      ease: 'Cubic.easeInOut',
+      ease: "Cubic.easeInOut",
     });
 
     // Slide transition overlay in, destroy when complete
@@ -383,7 +396,7 @@ export class WorldScene extends Phaser.Scene {
       targets: transitionOverlay,
       x: GAME_WIDTH / 2,
       duration,
-      ease: 'Cubic.easeInOut',
+      ease: "Cubic.easeInOut",
       onComplete: () => {
         // Destroy overlay after tween completes (not mid-animation)
         transitionOverlay.destroy();
@@ -427,13 +440,21 @@ export class WorldScene extends Phaser.Scene {
       oldElementData.forEach(({ el }) => {
         // Only destroy elements that aren't persistent (decorations/animals/trending elements are reused)
         const isDecoration = this.decorations.includes(el as any);
-        const isAnimal = this.animals.some(a => a.sprite === el);
-        const isTrendingElement = this.trendingElements.includes(el) ||
+        const isAnimal = this.animals.some((a) => a.sprite === el);
+        const isTrendingElement =
+          this.trendingElements.includes(el) ||
           this.skylineSprites.includes(el as any) ||
           this.billboardTexts.includes(el as any) ||
           el === this.tickerText;
 
-        if (!isDecoration && !isAnimal && !isTrendingElement && el && (el as any).destroy && (el as any).active !== false) {
+        if (
+          !isDecoration &&
+          !isAnimal &&
+          !isTrendingElement &&
+          el &&
+          (el as any).destroy &&
+          (el as any).active !== false
+        ) {
           (el as any).destroy();
         }
       });
@@ -466,10 +487,10 @@ export class WorldScene extends Phaser.Scene {
         ...this.trendingElements,
         ...this.billboardTexts,
         this.tickerText,
-        ...this.skylineSprites
+        ...this.skylineSprites,
       ].filter(Boolean);
 
-      newElements.forEach(el => {
+      newElements.forEach((el) => {
         if ((el as any).x !== undefined) {
           const targetX = (el as any).x;
           (el as any).x = targetX + offsetX;
@@ -477,7 +498,7 @@ export class WorldScene extends Phaser.Scene {
             targets: el,
             x: targetX,
             duration,
-            ease: 'Cubic.easeOut',
+            ease: "Cubic.easeOut",
           });
         }
       });
@@ -485,12 +506,9 @@ export class WorldScene extends Phaser.Scene {
       this.setupMainCityZone();
 
       // Animate Park elements in using their ORIGINAL positions
-      const newElements = [
-        ...this.decorations,
-        ...this.animals.map(a => a.sprite)
-      ];
+      const newElements = [...this.decorations, ...this.animals.map((a) => a.sprite)];
 
-      newElements.forEach(el => {
+      newElements.forEach((el) => {
         // Get the original position, not the current (off-screen) position
         const originalX = this.originalPositions.get(el);
         if (originalX !== undefined) {
@@ -499,7 +517,7 @@ export class WorldScene extends Phaser.Scene {
             targets: el,
             x: originalX, // Animate to original position
             duration,
-            ease: 'Cubic.easeOut',
+            ease: "Cubic.easeOut",
           });
         }
       });
@@ -508,10 +526,10 @@ export class WorldScene extends Phaser.Scene {
 
   private storeOriginalPositions(): void {
     // Store original X positions of decorations and animals for zone transitions
-    this.decorations.forEach(d => {
+    this.decorations.forEach((d) => {
       this.originalPositions.set(d, (d as any).x || 0);
     });
-    this.animals.forEach(a => {
+    this.animals.forEach((a) => {
       this.originalPositions.set(a.sprite, (a.sprite as any).x || 0);
     });
   }
@@ -678,24 +696,48 @@ export class WorldScene extends Phaser.Scene {
 
   private createCityStreetElements(): void {
     // Sidewalk/pavement area (covers the grass area, scaled)
-    const pavement = this.add.rectangle(GAME_WIDTH / 2, Math.round(520 * SCALE), GAME_WIDTH, Math.round(160 * SCALE), 0x374151);
+    const pavement = this.add.rectangle(
+      GAME_WIDTH / 2,
+      Math.round(520 * SCALE),
+      GAME_WIDTH,
+      Math.round(160 * SCALE),
+      0x374151
+    );
     pavement.setDepth(0);
     this.trendingElements.push(pavement);
 
     // Road at the bottom (scaled)
-    const road = this.add.rectangle(GAME_WIDTH / 2, Math.round(575 * SCALE), GAME_WIDTH, Math.round(50 * SCALE), 0x1f2937);
+    const road = this.add.rectangle(
+      GAME_WIDTH / 2,
+      Math.round(575 * SCALE),
+      GAME_WIDTH,
+      Math.round(50 * SCALE),
+      0x1f2937
+    );
     road.setDepth(1);
     this.trendingElements.push(road);
 
     // Road lane markings (dashed yellow center line, scaled)
     for (let x = Math.round(30 * SCALE); x < Math.round(780 * SCALE); x += Math.round(50 * SCALE)) {
-      const roadLine = this.add.rectangle(x, Math.round(575 * SCALE), Math.round(25 * SCALE), Math.round(3 * SCALE), 0xfbbf24);
+      const roadLine = this.add.rectangle(
+        x,
+        Math.round(575 * SCALE),
+        Math.round(25 * SCALE),
+        Math.round(3 * SCALE),
+        0xfbbf24
+      );
       roadLine.setDepth(2);
       this.trendingElements.push(roadLine);
     }
 
     // Sidewalk curb line (scaled)
-    const curb = this.add.rectangle(GAME_WIDTH / 2, Math.round(548 * SCALE), GAME_WIDTH, Math.round(4 * SCALE), 0x6b7280);
+    const curb = this.add.rectangle(
+      GAME_WIDTH / 2,
+      Math.round(548 * SCALE),
+      GAME_WIDTH,
+      Math.round(4 * SCALE),
+      0x6b7280
+    );
     curb.setDepth(2);
     this.trendingElements.push(curb);
 
@@ -704,19 +746,31 @@ export class WorldScene extends Phaser.Scene {
     this.createCrosswalk(Math.round(600 * SCALE), Math.round(575 * SCALE));
 
     // Traffic lights near crosswalks (scaled)
-    const trafficLight1 = this.add.sprite(Math.round(170 * SCALE), Math.round(520 * SCALE), "traffic_light");
+    const trafficLight1 = this.add.sprite(
+      Math.round(170 * SCALE),
+      Math.round(520 * SCALE),
+      "traffic_light"
+    );
     trafficLight1.setOrigin(0.5, 1);
     trafficLight1.setDepth(4);
     this.trendingElements.push(trafficLight1);
 
-    const trafficLight2 = this.add.sprite(Math.round(630 * SCALE), Math.round(520 * SCALE), "traffic_light");
+    const trafficLight2 = this.add.sprite(
+      Math.round(630 * SCALE),
+      Math.round(520 * SCALE),
+      "traffic_light"
+    );
     trafficLight2.setOrigin(0.5, 1);
     trafficLight2.setDepth(4);
     trafficLight2.setFlipX(true);
     this.trendingElements.push(trafficLight2);
 
     // Fire hydrant (scaled)
-    const hydrant = this.add.sprite(Math.round(350 * SCALE), Math.round(545 * SCALE), "fire_hydrant");
+    const hydrant = this.add.sprite(
+      Math.round(350 * SCALE),
+      Math.round(545 * SCALE),
+      "fire_hydrant"
+    );
     hydrant.setOrigin(0.5, 1);
     hydrant.setDepth(3);
     this.trendingElements.push(hydrant);
@@ -736,8 +790,19 @@ export class WorldScene extends Phaser.Scene {
 
   private createCrosswalk(x: number, y: number): void {
     // Create crosswalk stripes (scaled spacing and dimensions)
-    for (let i = Math.round(-25 * SCALE); i <= Math.round(25 * SCALE); i += Math.round(10 * SCALE)) {
-      const stripe = this.add.rectangle(x + i, y, Math.round(6 * SCALE), Math.round(30 * SCALE), 0xffffff, 0.9);
+    for (
+      let i = Math.round(-25 * SCALE);
+      i <= Math.round(25 * SCALE);
+      i += Math.round(10 * SCALE)
+    ) {
+      const stripe = this.add.rectangle(
+        x + i,
+        y,
+        Math.round(6 * SCALE),
+        Math.round(30 * SCALE),
+        0xffffff,
+        0.9
+      );
       stripe.setDepth(2);
       this.trendingElements.push(stripe);
     }
@@ -752,12 +817,24 @@ export class WorldScene extends Phaser.Scene {
 
     signPositions.forEach((pos) => {
       // Sign post (wooden pole)
-      const post = this.add.rectangle(pos.x, pos.y + Math.round(40 * SCALE), Math.round(6 * SCALE), Math.round(80 * SCALE), 0x8b4513);
+      const post = this.add.rectangle(
+        pos.x,
+        pos.y + Math.round(40 * SCALE),
+        Math.round(6 * SCALE),
+        Math.round(80 * SCALE),
+        0x8b4513
+      );
       post.setDepth(5);
       this.trendingElements.push(post);
 
       // Sign background (orange/yellow construction color)
-      const signBg = this.add.rectangle(pos.x, pos.y, Math.round(100 * SCALE), Math.round(40 * SCALE), 0xf59e0b);
+      const signBg = this.add.rectangle(
+        pos.x,
+        pos.y,
+        Math.round(100 * SCALE),
+        Math.round(40 * SCALE),
+        0xf59e0b
+      );
       signBg.setDepth(6);
       signBg.setStrokeStyle(Math.round(2 * SCALE), 0x000000);
       this.trendingElements.push(signBg);
@@ -840,7 +917,11 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // Blue car driving left (scaled)
-    const movingCar = this.add.sprite(GAME_WIDTH + Math.round(60 * SCALE), Math.round(565 * SCALE), "car_blue");
+    const movingCar = this.add.sprite(
+      GAME_WIDTH + Math.round(60 * SCALE),
+      Math.round(565 * SCALE),
+      "car_blue"
+    );
     movingCar.setDepth(3);
     this.trendingElements.push(movingCar);
 
@@ -876,7 +957,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private clearTrafficTimers(): void {
-    this.trafficTimers.forEach(timer => {
+    this.trafficTimers.forEach((timer) => {
       if (timer && timer.destroy) {
         timer.destroy();
       }
@@ -893,8 +974,10 @@ export class WorldScene extends Phaser.Scene {
 
     // Billboard frame (dark background with border)
     const billboardFrame = this.add.rectangle(
-      billboardX, billboardY,
-      billboardWidth + Math.round(6 * SCALE), billboardHeight + Math.round(6 * SCALE),
+      billboardX,
+      billboardY,
+      billboardWidth + Math.round(6 * SCALE),
+      billboardHeight + Math.round(6 * SCALE),
       0x1a1a1a
     );
     billboardFrame.setStrokeStyle(Math.round(2 * SCALE), 0xfbbf24);
@@ -903,8 +986,10 @@ export class WorldScene extends Phaser.Scene {
 
     // Inner billboard background
     const billboardBg = this.add.rectangle(
-      billboardX, billboardY,
-      billboardWidth, billboardHeight,
+      billboardX,
+      billboardY,
+      billboardWidth,
+      billboardHeight,
       0x0d0d0d
     );
     billboardBg.setDepth(5);
@@ -912,20 +997,27 @@ export class WorldScene extends Phaser.Scene {
 
     // HOT TOKENS header bar
     const headerBar = this.add.rectangle(
-      billboardX, billboardY - Math.round(30 * SCALE),
-      billboardWidth, Math.round(22 * SCALE),
+      billboardX,
+      billboardY - Math.round(30 * SCALE),
+      billboardWidth,
+      Math.round(22 * SCALE),
       0xfbbf24
     );
     headerBar.setDepth(6);
     this.trendingElements.push(headerBar);
 
     // Billboard title text (scaled font)
-    const billboardTitle = this.add.text(billboardX, billboardY - Math.round(30 * SCALE), "HOT TOKENS", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(12 * SCALE)}px`,
-      color: "#0d0d0d",
-      fontStyle: "bold",
-    });
+    const billboardTitle = this.add.text(
+      billboardX,
+      billboardY - Math.round(30 * SCALE),
+      "HOT TOKENS",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(12 * SCALE)}px`,
+        color: "#0d0d0d",
+        fontStyle: "bold",
+      }
+    );
     billboardTitle.setOrigin(0.5, 0.5);
     billboardTitle.setDepth(7);
     this.billboardTexts.push(billboardTitle);
@@ -941,11 +1033,16 @@ export class WorldScene extends Phaser.Scene {
     this.billboardTexts.push(statsText);
 
     // Volume display (below stats, scaled font)
-    const volumeText = this.add.text(billboardX, billboardY + Math.round(25 * SCALE), "24H VOL: ...", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(10 * SCALE)}px`,
-      color: "#60a5fa",
-    });
+    const volumeText = this.add.text(
+      billboardX,
+      billboardY + Math.round(25 * SCALE),
+      "24H VOL: ...",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(10 * SCALE)}px`,
+        color: "#60a5fa",
+      }
+    );
     volumeText.setOrigin(0.5, 0.5);
     volumeText.setDepth(6);
     this.billboardTexts.push(volumeText);
@@ -960,16 +1057,34 @@ export class WorldScene extends Phaser.Scene {
     const sideTextY = Math.round(328 * SCALE);
 
     // Left billboard - TOP GAINER
-    const leftFrame = this.add.rectangle(leftX, sideY, sideBillboardWidth + Math.round(4 * SCALE), sideBillboardHeight + Math.round(4 * SCALE), 0x1a1a1a);
+    const leftFrame = this.add.rectangle(
+      leftX,
+      sideY,
+      sideBillboardWidth + Math.round(4 * SCALE),
+      sideBillboardHeight + Math.round(4 * SCALE),
+      0x1a1a1a
+    );
     leftFrame.setStrokeStyle(Math.round(2 * SCALE), 0x4ade80);
     leftFrame.setDepth(5);
     this.trendingElements.push(leftFrame);
 
-    const leftBg = this.add.rectangle(leftX, sideY, sideBillboardWidth, sideBillboardHeight, 0x0d0d0d);
+    const leftBg = this.add.rectangle(
+      leftX,
+      sideY,
+      sideBillboardWidth,
+      sideBillboardHeight,
+      0x0d0d0d
+    );
     leftBg.setDepth(5);
     this.trendingElements.push(leftBg);
 
-    const leftHeader = this.add.rectangle(leftX, sideHeaderY, sideBillboardWidth, Math.round(16 * SCALE), 0x4ade80);
+    const leftHeader = this.add.rectangle(
+      leftX,
+      sideHeaderY,
+      sideBillboardWidth,
+      Math.round(16 * SCALE),
+      0x4ade80
+    );
     leftHeader.setDepth(6);
     this.trendingElements.push(leftHeader);
 
@@ -994,16 +1109,34 @@ export class WorldScene extends Phaser.Scene {
     this.billboardTexts.push(leftText);
 
     // Right billboard - VOLUME KING
-    const rightFrame = this.add.rectangle(rightX, sideY, sideBillboardWidth + Math.round(4 * SCALE), sideBillboardHeight + Math.round(4 * SCALE), 0x1a1a1a);
+    const rightFrame = this.add.rectangle(
+      rightX,
+      sideY,
+      sideBillboardWidth + Math.round(4 * SCALE),
+      sideBillboardHeight + Math.round(4 * SCALE),
+      0x1a1a1a
+    );
     rightFrame.setStrokeStyle(Math.round(2 * SCALE), 0xec4899);
     rightFrame.setDepth(5);
     this.trendingElements.push(rightFrame);
 
-    const rightBg = this.add.rectangle(rightX, sideY, sideBillboardWidth, sideBillboardHeight, 0x0d0d0d);
+    const rightBg = this.add.rectangle(
+      rightX,
+      sideY,
+      sideBillboardWidth,
+      sideBillboardHeight,
+      0x0d0d0d
+    );
     rightBg.setDepth(5);
     this.trendingElements.push(rightBg);
 
-    const rightHeader = this.add.rectangle(rightX, sideHeaderY, sideBillboardWidth, Math.round(16 * SCALE), 0xec4899);
+    const rightHeader = this.add.rectangle(
+      rightX,
+      sideHeaderY,
+      sideBillboardWidth,
+      Math.round(16 * SCALE),
+      0xec4899
+    );
     rightHeader.setDepth(6);
     this.trendingElements.push(rightHeader);
 
@@ -1047,12 +1180,24 @@ export class WorldScene extends Phaser.Scene {
     const tickerY = Math.round(592 * SCALE);
 
     // Dark background bar for ticker
-    const tickerBg = this.add.rectangle(GAME_WIDTH / 2, tickerY, GAME_WIDTH, Math.round(16 * SCALE), 0x0a0a0f);
+    const tickerBg = this.add.rectangle(
+      GAME_WIDTH / 2,
+      tickerY,
+      GAME_WIDTH,
+      Math.round(16 * SCALE),
+      0x0a0a0f
+    );
     tickerBg.setDepth(10);
     this.trendingElements.push(tickerBg);
 
     // Subtle top border
-    const tickerBorder = this.add.rectangle(GAME_WIDTH / 2, tickerY - Math.round(8 * SCALE), GAME_WIDTH, Math.round(1 * SCALE), 0x374151);
+    const tickerBorder = this.add.rectangle(
+      GAME_WIDTH / 2,
+      tickerY - Math.round(8 * SCALE),
+      GAME_WIDTH,
+      Math.round(1 * SCALE),
+      0x374151
+    );
     tickerBorder.setDepth(10);
     this.trendingElements.push(tickerBorder);
 
@@ -1075,9 +1220,7 @@ export class WorldScene extends Phaser.Scene {
 
   private getTickerContent(): string {
     // Generate ticker content from world state
-    const content: string[] = [
-      ">>> BAGSWORLD CITY <<<",
-    ];
+    const content: string[] = [">>> BAGSWORLD CITY <<<"];
 
     if (this.worldState) {
       const buildings = this.worldState.buildings || [];
@@ -1086,7 +1229,11 @@ export class WorldScene extends Phaser.Scene {
         .filter((b) => !b.isPermanent)
         .sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
       sorted.slice(0, 5).forEach((b) => {
-        const change = b.change24h ? (b.change24h > 0 ? `+${b.change24h.toFixed(1)}%` : `${b.change24h.toFixed(1)}%`) : "";
+        const change = b.change24h
+          ? b.change24h > 0
+            ? `+${b.change24h.toFixed(1)}%`
+            : `${b.change24h.toFixed(1)}%`
+          : "";
         content.push(`${b.symbol}: $${this.formatNumber(b.marketCap || 0)} ${change}`);
       });
     }
@@ -1142,7 +1289,9 @@ export class WorldScene extends Phaser.Scene {
       // Volume king - highest 24h volume
       const byVolume = [...buildings].sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
       if (byVolume.length > 0) {
-        this.billboardTexts[6].setText(`${byVolume[0].symbol}\n$${this.formatNumber(byVolume[0].volume24h || 0)}`);
+        this.billboardTexts[6].setText(
+          `${byVolume[0].symbol}\n$${this.formatNumber(byVolume[0].volume24h || 0)}`
+        );
       }
     }
   }
@@ -1197,7 +1346,9 @@ export class WorldScene extends Phaser.Scene {
         action: command.action || "moveTo",
       });
 
-      console.log(`[WorldScene] AI command: ${characterId} -> ${command.action} (${Math.round(targetX)}, ${Math.round(targetY)})`);
+      console.log(
+        `[WorldScene] AI command: ${characterId} -> ${command.action} (${Math.round(targetX)}, ${Math.round(targetY)})`
+      );
     } else if (command.action === "idle" || command.action === "observe") {
       // Clear target for idle/observe
       this.characterTargets.delete(characterId);
@@ -1321,7 +1472,9 @@ export class WorldScene extends Phaser.Scene {
         // Show the speech bubble
         this.speechBubbleManager.showBubble(currentLine);
 
-        console.log(`[WorldScene] Showing dialogue: ${currentLine.characterName}: "${currentLine.message}"`);
+        console.log(
+          `[WorldScene] Showing dialogue: ${currentLine.characterName}: "${currentLine.message}"`
+        );
       }
     }
   }
@@ -1398,7 +1551,13 @@ export class WorldScene extends Phaser.Scene {
 
     // Add path in the middle
     const pathY = Math.round(570 * SCALE);
-    const path = this.add.tileSprite(GAME_WIDTH / 2, pathY, GAME_WIDTH, Math.round(40 * SCALE), "path");
+    const path = this.add.tileSprite(
+      GAME_WIDTH / 2,
+      pathY,
+      GAME_WIDTH,
+      Math.round(40 * SCALE),
+      "path"
+    );
     path.setDepth(1);
 
     // Subtle transition gradient above grass (replaces harsh grass_dark border)
@@ -1406,9 +1565,14 @@ export class WorldScene extends Phaser.Scene {
     transitionGradient.setDepth(-0.5);
     // Create a soft fade from sky color to grass area
     transitionGradient.fillGradientStyle(
-      0x87ceeb, 0x87ceeb, // Sky blue top
-      0x228b22, 0x228b22, // Forest green bottom (matches grass)
-      0, 0, 0.3, 0.3 // Alpha: transparent top, slightly visible bottom
+      0x87ceeb,
+      0x87ceeb, // Sky blue top
+      0x228b22,
+      0x228b22, // Forest green bottom (matches grass)
+      0,
+      0,
+      0.3,
+      0.3 // Alpha: transparent top, slightly visible bottom
     );
     transitionGradient.fillRect(0, Math.round(430 * SCALE), GAME_WIDTH, Math.round(30 * SCALE));
   }
@@ -1483,7 +1647,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Show/hide stars
     const targetAlpha = isNightOrDusk ? 0.5 : 0;
-    this.stars.forEach(star => {
+    this.stars.forEach((star) => {
       this.tweens.add({
         targets: star,
         alpha: targetAlpha,
@@ -1550,15 +1714,60 @@ export class WorldScene extends Phaser.Scene {
 
     // A few random lit windows
     const windowPositions = [
-      { x: Math.round(198 * SCALE), y: Math.round(350 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
-      { x: Math.round(198 * SCALE), y: Math.round(370 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
-      { x: Math.round(362 * SCALE), y: Math.round(310 * SCALE), w: Math.round(5 * SCALE), h: Math.round(6 * SCALE) },
-      { x: Math.round(370 * SCALE), y: Math.round(340 * SCALE), w: Math.round(5 * SCALE), h: Math.round(6 * SCALE) },
-      { x: Math.round(370 * SCALE), y: Math.round(380 * SCALE), w: Math.round(5 * SCALE), h: Math.round(6 * SCALE) },
-      { x: Math.round(408 * SCALE), y: Math.round(330 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
-      { x: Math.round(562 * SCALE), y: Math.round(360 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
-      { x: Math.round(682 * SCALE), y: Math.round(355 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
-      { x: Math.round(682 * SCALE), y: Math.round(385 * SCALE), w: Math.round(4 * SCALE), h: Math.round(5 * SCALE) },
+      {
+        x: Math.round(198 * SCALE),
+        y: Math.round(350 * SCALE),
+        w: Math.round(4 * SCALE),
+        h: Math.round(5 * SCALE),
+      },
+      {
+        x: Math.round(198 * SCALE),
+        y: Math.round(370 * SCALE),
+        w: Math.round(4 * SCALE),
+        h: Math.round(5 * SCALE),
+      },
+      {
+        x: Math.round(362 * SCALE),
+        y: Math.round(310 * SCALE),
+        w: Math.round(5 * SCALE),
+        h: Math.round(6 * SCALE),
+      },
+      {
+        x: Math.round(370 * SCALE),
+        y: Math.round(340 * SCALE),
+        w: Math.round(5 * SCALE),
+        h: Math.round(6 * SCALE),
+      },
+      {
+        x: Math.round(370 * SCALE),
+        y: Math.round(380 * SCALE),
+        w: Math.round(5 * SCALE),
+        h: Math.round(6 * SCALE),
+      },
+      {
+        x: Math.round(408 * SCALE),
+        y: Math.round(330 * SCALE),
+        w: Math.round(4 * SCALE),
+        h: Math.round(5 * SCALE),
+      },
+      {
+        x: Math.round(562 * SCALE),
+        y: Math.round(360 * SCALE),
+        w: Math.round(4 * SCALE),
+        h: Math.round(5 * SCALE),
+      },
+      {
+        x: Math.round(682 * SCALE),
+        y: Math.round(355 * SCALE),
+        w: Math.round(4 * SCALE),
+        h: Math.round(5 * SCALE),
+      },
+      {
+        x: Math.round(682 * SCALE),
+        y: Math.round(385 * SCALE),
+        w: Math.round(4 * SCALE),
+        h: Math.round(5 * SCALE),
+      },
     ];
 
     for (const win of windowPositions) {
@@ -1679,13 +1888,48 @@ export class WorldScene extends Phaser.Scene {
 
     // Create a variety of animals (positioned relative to ground)
     const animalConfigs = [
-      { type: "dog" as const, x: Math.round(150 * SCALE), y: pathLevel + Math.round(10 * SCALE), scale: 1.2 * SCALE },
-      { type: "cat" as const, x: Math.round(650 * SCALE), y: pathLevel + Math.round(10 * SCALE), scale: 1.1 * SCALE },
-      { type: "bird" as const, x: Math.round(100 * SCALE), y: grassTop - Math.round(20 * SCALE), scale: 0.8 * SCALE },
-      { type: "bird" as const, x: Math.round(700 * SCALE), y: grassTop - Math.round(10 * SCALE), scale: 0.7 * SCALE },
-      { type: "butterfly" as const, x: Math.round(300 * SCALE), y: grassTop - Math.round(30 * SCALE), scale: 0.6 * SCALE },
-      { type: "butterfly" as const, x: Math.round(500 * SCALE), y: grassTop - Math.round(40 * SCALE), scale: 0.5 * SCALE },
-      { type: "squirrel" as const, x: Math.round(80 * SCALE), y: grassTop + Math.round(20 * SCALE), scale: 1.0 * SCALE },
+      {
+        type: "dog" as const,
+        x: Math.round(150 * SCALE),
+        y: pathLevel + Math.round(10 * SCALE),
+        scale: 1.2 * SCALE,
+      },
+      {
+        type: "cat" as const,
+        x: Math.round(650 * SCALE),
+        y: pathLevel + Math.round(10 * SCALE),
+        scale: 1.1 * SCALE,
+      },
+      {
+        type: "bird" as const,
+        x: Math.round(100 * SCALE),
+        y: grassTop - Math.round(20 * SCALE),
+        scale: 0.8 * SCALE,
+      },
+      {
+        type: "bird" as const,
+        x: Math.round(700 * SCALE),
+        y: grassTop - Math.round(10 * SCALE),
+        scale: 0.7 * SCALE,
+      },
+      {
+        type: "butterfly" as const,
+        x: Math.round(300 * SCALE),
+        y: grassTop - Math.round(30 * SCALE),
+        scale: 0.6 * SCALE,
+      },
+      {
+        type: "butterfly" as const,
+        x: Math.round(500 * SCALE),
+        y: grassTop - Math.round(40 * SCALE),
+        scale: 0.5 * SCALE,
+      },
+      {
+        type: "squirrel" as const,
+        x: Math.round(80 * SCALE),
+        y: grassTop + Math.round(20 * SCALE),
+        scale: 1.0 * SCALE,
+      },
     ];
 
     animalConfigs.forEach((config) => {
@@ -1702,7 +1946,12 @@ export class WorldScene extends Phaser.Scene {
         sprite,
         type: config.type,
         targetX: config.x + (Math.random() * Math.round(200 * SCALE) - Math.round(100 * SCALE)),
-        speed: config.type === "butterfly" ? 0.3 * SCALE : config.type === "bird" ? 0.5 * SCALE : 0.2 * SCALE,
+        speed:
+          config.type === "butterfly"
+            ? 0.3 * SCALE
+            : config.type === "bird"
+              ? 0.5 * SCALE
+              : 0.2 * SCALE,
         direction: Math.random() > 0.5 ? "left" : "right",
         idleTimer: 0,
         isIdle: Math.random() > 0.5,
@@ -1842,7 +2091,11 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // Add pond in corner (positioned on grass)
-    const pond = this.add.sprite(Math.round(100 * SCALE), grassTop + Math.round(50 * SCALE), "pond");
+    const pond = this.add.sprite(
+      Math.round(100 * SCALE),
+      grassTop + Math.round(50 * SCALE),
+      "pond"
+    );
     pond.setOrigin(0.5, 0.5);
     pond.setDepth(0);
     pond.setScale(1.5 * SCALE);
@@ -1919,9 +2172,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private emitTrackChange(): void {
-    window.dispatchEvent(new CustomEvent("bagsworld-track-changed", {
-      detail: { trackName: this.trackNames[this.currentTrack], trackIndex: this.currentTrack }
-    }));
+    window.dispatchEvent(
+      new CustomEvent("bagsworld-track-changed", {
+        detail: { trackName: this.trackNames[this.currentTrack], trackIndex: this.currentTrack },
+      })
+    );
   }
 
   private playCurrentTrack(): void {
@@ -1973,58 +2228,58 @@ export class WorldScene extends Phaser.Scene {
     // Slower tempo, longer notes, more space between phrases
     const notes = [
       // Phrase 1 - gentle opening
-      { freq: 392.00, duration: 0.8 },   // G4
-      { freq: 440.00, duration: 0.6 },   // A4
-      { freq: 523.25, duration: 1.0 },   // C5
-      { freq: 0, duration: 0.8 },        // Rest
-      { freq: 440.00, duration: 0.6 },   // A4
-      { freq: 392.00, duration: 0.8 },   // G4
-      { freq: 329.63, duration: 1.2 },   // E4
-      { freq: 0, duration: 1.0 },        // Long rest
+      { freq: 392.0, duration: 0.8 }, // G4
+      { freq: 440.0, duration: 0.6 }, // A4
+      { freq: 523.25, duration: 1.0 }, // C5
+      { freq: 0, duration: 0.8 }, // Rest
+      { freq: 440.0, duration: 0.6 }, // A4
+      { freq: 392.0, duration: 0.8 }, // G4
+      { freq: 329.63, duration: 1.2 }, // E4
+      { freq: 0, duration: 1.0 }, // Long rest
 
       // Phrase 2 - variation
-      { freq: 329.63, duration: 0.6 },   // E4
-      { freq: 392.00, duration: 0.8 },   // G4
-      { freq: 440.00, duration: 1.0 },   // A4
-      { freq: 0, duration: 0.6 },        // Rest
-      { freq: 523.25, duration: 0.8 },   // C5
-      { freq: 440.00, duration: 0.6 },   // A4
-      { freq: 392.00, duration: 1.2 },   // G4
-      { freq: 0, duration: 1.2 },        // Long rest
+      { freq: 329.63, duration: 0.6 }, // E4
+      { freq: 392.0, duration: 0.8 }, // G4
+      { freq: 440.0, duration: 1.0 }, // A4
+      { freq: 0, duration: 0.6 }, // Rest
+      { freq: 523.25, duration: 0.8 }, // C5
+      { freq: 440.0, duration: 0.6 }, // A4
+      { freq: 392.0, duration: 1.2 }, // G4
+      { freq: 0, duration: 1.2 }, // Long rest
 
       // Phrase 3 - descending
-      { freq: 523.25, duration: 0.8 },   // C5
-      { freq: 440.00, duration: 0.8 },   // A4
-      { freq: 392.00, duration: 0.8 },   // G4
-      { freq: 329.63, duration: 1.0 },   // E4
-      { freq: 0, duration: 0.8 },        // Rest
-      { freq: 293.66, duration: 0.6 },   // D4
-      { freq: 261.63, duration: 1.4 },   // C4
-      { freq: 0, duration: 1.5 },        // Long rest
+      { freq: 523.25, duration: 0.8 }, // C5
+      { freq: 440.0, duration: 0.8 }, // A4
+      { freq: 392.0, duration: 0.8 }, // G4
+      { freq: 329.63, duration: 1.0 }, // E4
+      { freq: 0, duration: 0.8 }, // Rest
+      { freq: 293.66, duration: 0.6 }, // D4
+      { freq: 261.63, duration: 1.4 }, // C4
+      { freq: 0, duration: 1.5 }, // Long rest
 
       // Phrase 4 - resolution
-      { freq: 261.63, duration: 0.8 },   // C4
-      { freq: 329.63, duration: 0.6 },   // E4
-      { freq: 392.00, duration: 1.0 },   // G4
-      { freq: 0, duration: 0.5 },        // Rest
-      { freq: 440.00, duration: 0.8 },   // A4
-      { freq: 392.00, duration: 1.2 },   // G4
-      { freq: 0, duration: 2.0 },        // Very long rest before loop
+      { freq: 261.63, duration: 0.8 }, // C4
+      { freq: 329.63, duration: 0.6 }, // E4
+      { freq: 392.0, duration: 1.0 }, // G4
+      { freq: 0, duration: 0.5 }, // Rest
+      { freq: 440.0, duration: 0.8 }, // A4
+      { freq: 392.0, duration: 1.2 }, // G4
+      { freq: 0, duration: 2.0 }, // Very long rest before loop
     ];
 
     // Soft, sustained bass notes (much quieter)
     const bass = [
-      { freq: 130.81, duration: 3.0 },   // C3
+      { freq: 130.81, duration: 3.0 }, // C3
       { freq: 0, duration: 1.0 },
-      { freq: 110.00, duration: 3.0 },   // A2
+      { freq: 110.0, duration: 3.0 }, // A2
       { freq: 0, duration: 1.0 },
-      { freq: 98.00, duration: 3.0 },    // G2
+      { freq: 98.0, duration: 3.0 }, // G2
       { freq: 0, duration: 1.0 },
-      { freq: 130.81, duration: 4.0 },   // C3
+      { freq: 130.81, duration: 4.0 }, // C3
       { freq: 0, duration: 2.0 },
-      { freq: 110.00, duration: 3.0 },   // A2
+      { freq: 110.0, duration: 3.0 }, // A2
       { freq: 0, duration: 1.5 },
-      { freq: 98.00, duration: 3.0 },    // G2
+      { freq: 98.0, duration: 3.0 }, // G2
       { freq: 0, duration: 2.5 },
     ];
 
@@ -2049,11 +2304,14 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // Loop with extra pause
-    this.musicInterval = window.setTimeout(() => {
-      if (this.musicPlaying) {
-        this.playCurrentTrack();
-      }
-    }, (totalDuration + 2) * 1000);
+    this.musicInterval = window.setTimeout(
+      () => {
+        if (this.musicPlaying) {
+          this.playCurrentTrack();
+        }
+      },
+      (totalDuration + 2) * 1000
+    );
   }
 
   // Track 2: Bags Anthem - Gentle, uplifting
@@ -2062,40 +2320,40 @@ export class WorldScene extends Phaser.Scene {
 
     // Gentle uplifting melody - longer phrases, more space
     const notes = [
-      { freq: 329.63, duration: 0.8 },   // E4
-      { freq: 392.00, duration: 0.6 },   // G4
-      { freq: 493.88, duration: 1.0 },   // B4
-      { freq: 0, duration: 0.6 },        // Rest
-      { freq: 440.00, duration: 0.8 },   // A4
-      { freq: 392.00, duration: 0.6 },   // G4
-      { freq: 329.63, duration: 1.2 },   // E4
-      { freq: 0, duration: 1.0 },        // Long rest
+      { freq: 329.63, duration: 0.8 }, // E4
+      { freq: 392.0, duration: 0.6 }, // G4
+      { freq: 493.88, duration: 1.0 }, // B4
+      { freq: 0, duration: 0.6 }, // Rest
+      { freq: 440.0, duration: 0.8 }, // A4
+      { freq: 392.0, duration: 0.6 }, // G4
+      { freq: 329.63, duration: 1.2 }, // E4
+      { freq: 0, duration: 1.0 }, // Long rest
 
-      { freq: 392.00, duration: 0.6 },   // G4
-      { freq: 440.00, duration: 0.8 },   // A4
-      { freq: 493.88, duration: 0.8 },   // B4
-      { freq: 523.25, duration: 1.0 },   // C5
-      { freq: 0, duration: 0.8 },        // Rest
-      { freq: 493.88, duration: 0.6 },   // B4
-      { freq: 440.00, duration: 0.8 },   // A4
-      { freq: 392.00, duration: 1.2 },   // G4
-      { freq: 0, duration: 1.2 },        // Long rest
+      { freq: 392.0, duration: 0.6 }, // G4
+      { freq: 440.0, duration: 0.8 }, // A4
+      { freq: 493.88, duration: 0.8 }, // B4
+      { freq: 523.25, duration: 1.0 }, // C5
+      { freq: 0, duration: 0.8 }, // Rest
+      { freq: 493.88, duration: 0.6 }, // B4
+      { freq: 440.0, duration: 0.8 }, // A4
+      { freq: 392.0, duration: 1.2 }, // G4
+      { freq: 0, duration: 1.2 }, // Long rest
 
-      { freq: 329.63, duration: 0.8 },   // E4
-      { freq: 293.66, duration: 0.6 },   // D4
-      { freq: 329.63, duration: 1.0 },   // E4
-      { freq: 392.00, duration: 1.2 },   // G4
-      { freq: 0, duration: 2.0 },        // Very long rest
+      { freq: 329.63, duration: 0.8 }, // E4
+      { freq: 293.66, duration: 0.6 }, // D4
+      { freq: 329.63, duration: 1.0 }, // E4
+      { freq: 392.0, duration: 1.2 }, // G4
+      { freq: 0, duration: 2.0 }, // Very long rest
     ];
 
     const bass = [
-      { freq: 164.81, duration: 3.5 },   // E3
+      { freq: 164.81, duration: 3.5 }, // E3
       { freq: 0, duration: 1.0 },
-      { freq: 130.81, duration: 3.5 },   // C3
+      { freq: 130.81, duration: 3.5 }, // C3
       { freq: 0, duration: 1.0 },
-      { freq: 146.83, duration: 3.0 },   // D3
+      { freq: 146.83, duration: 3.0 }, // D3
       { freq: 0, duration: 1.0 },
-      { freq: 164.81, duration: 3.5 },   // E3
+      { freq: 164.81, duration: 3.5 }, // E3
       { freq: 0, duration: 2.0 },
     ];
 
@@ -2117,11 +2375,14 @@ export class WorldScene extends Phaser.Scene {
       bassTime += note.duration;
     });
 
-    this.musicInterval = window.setTimeout(() => {
-      if (this.musicPlaying) {
-        this.playCurrentTrack();
-      }
-    }, (totalDuration + 2) * 1000);
+    this.musicInterval = window.setTimeout(
+      () => {
+        if (this.musicPlaying) {
+          this.playCurrentTrack();
+        }
+      },
+      (totalDuration + 2) * 1000
+    );
   }
 
   // Track 3: Night Market - Chill, ambient
@@ -2130,40 +2391,40 @@ export class WorldScene extends Phaser.Scene {
 
     // Chill ambient melody - very spacious and relaxed
     const notes = [
-      { freq: 293.66, duration: 1.2 },   // D4
-      { freq: 0, duration: 0.8 },        // Rest
-      { freq: 329.63, duration: 1.0 },   // E4
-      { freq: 392.00, duration: 1.4 },   // G4
-      { freq: 0, duration: 1.2 },        // Long rest
+      { freq: 293.66, duration: 1.2 }, // D4
+      { freq: 0, duration: 0.8 }, // Rest
+      { freq: 329.63, duration: 1.0 }, // E4
+      { freq: 392.0, duration: 1.4 }, // G4
+      { freq: 0, duration: 1.2 }, // Long rest
 
-      { freq: 440.00, duration: 1.0 },   // A4
-      { freq: 392.00, duration: 0.8 },   // G4
-      { freq: 329.63, duration: 1.4 },   // E4
-      { freq: 0, duration: 1.0 },        // Rest
+      { freq: 440.0, duration: 1.0 }, // A4
+      { freq: 392.0, duration: 0.8 }, // G4
+      { freq: 329.63, duration: 1.4 }, // E4
+      { freq: 0, duration: 1.0 }, // Rest
 
-      { freq: 293.66, duration: 0.8 },   // D4
-      { freq: 261.63, duration: 1.2 },   // C4
-      { freq: 0, duration: 1.5 },        // Long rest
+      { freq: 293.66, duration: 0.8 }, // D4
+      { freq: 261.63, duration: 1.2 }, // C4
+      { freq: 0, duration: 1.5 }, // Long rest
 
-      { freq: 329.63, duration: 1.0 },   // E4
-      { freq: 293.66, duration: 0.8 },   // D4
-      { freq: 261.63, duration: 1.6 },   // C4
-      { freq: 0, duration: 2.0 },        // Very long rest
+      { freq: 329.63, duration: 1.0 }, // E4
+      { freq: 293.66, duration: 0.8 }, // D4
+      { freq: 261.63, duration: 1.6 }, // C4
+      { freq: 0, duration: 2.0 }, // Very long rest
 
-      { freq: 392.00, duration: 1.2 },   // G4
-      { freq: 329.63, duration: 1.0 },   // E4
-      { freq: 293.66, duration: 1.4 },   // D4
-      { freq: 0, duration: 2.5 },        // Extra long rest before loop
+      { freq: 392.0, duration: 1.2 }, // G4
+      { freq: 329.63, duration: 1.0 }, // E4
+      { freq: 293.66, duration: 1.4 }, // D4
+      { freq: 0, duration: 2.5 }, // Extra long rest before loop
     ];
 
     const pad = [
-      { freq: 130.81, duration: 4.0 },   // C3
+      { freq: 130.81, duration: 4.0 }, // C3
       { freq: 0, duration: 1.5 },
-      { freq: 110.00, duration: 4.0 },   // A2
+      { freq: 110.0, duration: 4.0 }, // A2
       { freq: 0, duration: 1.5 },
-      { freq: 98.00, duration: 4.0 },    // G2
+      { freq: 98.0, duration: 4.0 }, // G2
       { freq: 0, duration: 1.5 },
-      { freq: 130.81, duration: 5.0 },   // C3
+      { freq: 130.81, duration: 5.0 }, // C3
       { freq: 0, duration: 2.0 },
     ];
 
@@ -2185,11 +2446,14 @@ export class WorldScene extends Phaser.Scene {
       padTime += note.duration;
     });
 
-    this.musicInterval = window.setTimeout(() => {
-      if (this.musicPlaying) {
-        this.playCurrentTrack();
-      }
-    }, (totalDuration + 2) * 1000);
+    this.musicInterval = window.setTimeout(
+      () => {
+        if (this.musicPlaying) {
+          this.playCurrentTrack();
+        }
+      },
+      (totalDuration + 2) * 1000
+    );
   }
 
   // Track 4: Victory March - Gentle, hopeful
@@ -2198,39 +2462,39 @@ export class WorldScene extends Phaser.Scene {
 
     // Gentle hopeful melody - uplifting but calm
     const notes = [
-      { freq: 392.00, duration: 1.0 },   // G4
-      { freq: 440.00, duration: 0.8 },   // A4
-      { freq: 493.88, duration: 1.2 },   // B4
-      { freq: 0, duration: 0.8 },        // Rest
+      { freq: 392.0, duration: 1.0 }, // G4
+      { freq: 440.0, duration: 0.8 }, // A4
+      { freq: 493.88, duration: 1.2 }, // B4
+      { freq: 0, duration: 0.8 }, // Rest
 
-      { freq: 523.25, duration: 1.0 },   // C5
-      { freq: 493.88, duration: 0.8 },   // B4
-      { freq: 440.00, duration: 1.2 },   // A4
-      { freq: 0, duration: 1.0 },        // Long rest
+      { freq: 523.25, duration: 1.0 }, // C5
+      { freq: 493.88, duration: 0.8 }, // B4
+      { freq: 440.0, duration: 1.2 }, // A4
+      { freq: 0, duration: 1.0 }, // Long rest
 
-      { freq: 392.00, duration: 0.8 },   // G4
-      { freq: 329.63, duration: 0.8 },   // E4
-      { freq: 392.00, duration: 1.0 },   // G4
-      { freq: 440.00, duration: 1.4 },   // A4
-      { freq: 0, duration: 1.2 },        // Long rest
+      { freq: 392.0, duration: 0.8 }, // G4
+      { freq: 329.63, duration: 0.8 }, // E4
+      { freq: 392.0, duration: 1.0 }, // G4
+      { freq: 440.0, duration: 1.4 }, // A4
+      { freq: 0, duration: 1.2 }, // Long rest
 
-      { freq: 493.88, duration: 1.0 },   // B4
-      { freq: 523.25, duration: 1.2 },   // C5
-      { freq: 0, duration: 0.6 },        // Rest
-      { freq: 493.88, duration: 0.8 },   // B4
-      { freq: 440.00, duration: 1.0 },   // A4
-      { freq: 392.00, duration: 1.6 },   // G4
-      { freq: 0, duration: 2.5 },        // Very long rest before loop
+      { freq: 493.88, duration: 1.0 }, // B4
+      { freq: 523.25, duration: 1.2 }, // C5
+      { freq: 0, duration: 0.6 }, // Rest
+      { freq: 493.88, duration: 0.8 }, // B4
+      { freq: 440.0, duration: 1.0 }, // A4
+      { freq: 392.0, duration: 1.6 }, // G4
+      { freq: 0, duration: 2.5 }, // Very long rest before loop
     ];
 
     const bass = [
-      { freq: 196.00, duration: 4.0 },   // G3
+      { freq: 196.0, duration: 4.0 }, // G3
       { freq: 0, duration: 1.0 },
-      { freq: 130.81, duration: 4.0 },   // C3
+      { freq: 130.81, duration: 4.0 }, // C3
       { freq: 0, duration: 1.0 },
-      { freq: 164.81, duration: 3.5 },   // E3
+      { freq: 164.81, duration: 3.5 }, // E3
       { freq: 0, duration: 1.5 },
-      { freq: 196.00, duration: 5.0 },   // G3
+      { freq: 196.0, duration: 5.0 }, // G3
       { freq: 0, duration: 2.0 },
     ];
 
@@ -2252,14 +2516,23 @@ export class WorldScene extends Phaser.Scene {
       bassTime += note.duration;
     });
 
-    this.musicInterval = window.setTimeout(() => {
-      if (this.musicPlaying) {
-        this.playCurrentTrack();
-      }
-    }, (totalDuration + 2) * 1000);
+    this.musicInterval = window.setTimeout(
+      () => {
+        if (this.musicPlaying) {
+          this.playCurrentTrack();
+        }
+      },
+      (totalDuration + 2) * 1000
+    );
   }
 
-  private playNote(frequency: number, startTime: number, duration: number, volume: number, waveType: OscillatorType = "sine"): void {
+  private playNote(
+    frequency: number,
+    startTime: number,
+    duration: number,
+    volume: number,
+    waveType: OscillatorType = "sine"
+  ): void {
     if (!this.audioContext || !this.gainNode) return;
 
     const oscillator = this.audioContext.createOscillator();
@@ -2332,7 +2605,8 @@ export class WorldScene extends Phaser.Scene {
         // Performance: use squared distance to avoid sqrt when possible
         const distSq = dx * dx + dy * dy;
 
-        if (distSq > 25) { // 5^2 = 25
+        if (distSq > 25) {
+          // 5^2 = 25
           const distance = Math.sqrt(distSq);
           // Performance: cache speed per character instead of random every frame
           let speed = this.characterSpeeds.get(id);
@@ -2466,7 +2740,11 @@ export class WorldScene extends Phaser.Scene {
 
   private currentTimeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean } | null = null;
 
-  private updateDayNightFromEST(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
+  private updateDayNightFromEST(timeInfo: {
+    isNight: boolean;
+    isDusk: boolean;
+    isDawn: boolean;
+  }): void {
     console.log("[BagsWorld] Time update:", timeInfo);
     const wasNight = this.currentTimeInfo?.isNight;
     this.currentTimeInfo = timeInfo;
@@ -2537,7 +2815,11 @@ export class WorldScene extends Phaser.Scene {
   private moonSprite: Phaser.GameObjects.Sprite | null = null;
   private starsContainer: Phaser.GameObjects.Container | null = null;
 
-  private updateCelestialBody(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
+  private updateCelestialBody(timeInfo: {
+    isNight: boolean;
+    isDusk: boolean;
+    isDawn: boolean;
+  }): void {
     // Remove existing sun if it's nighttime
     if (timeInfo.isNight && this.sunSprite) {
       this.tweens.add({
@@ -2548,7 +2830,7 @@ export class WorldScene extends Phaser.Scene {
         onComplete: () => {
           this.sunSprite?.destroy();
           this.sunSprite = null;
-        }
+        },
       });
     }
 
@@ -2585,7 +2867,7 @@ export class WorldScene extends Phaser.Scene {
         onComplete: () => {
           this.moonSprite?.destroy();
           this.moonSprite = null;
-        }
+        },
       });
     }
 
@@ -2741,9 +3023,12 @@ export class WorldScene extends Phaser.Scene {
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
       rays.fillTriangle(
-        700, 70,
-        700 + Math.cos(angle) * 150, 70 + Math.sin(angle) * 150,
-        700 + Math.cos(angle + 0.3) * 150, 70 + Math.sin(angle + 0.3) * 150
+        700,
+        70,
+        700 + Math.cos(angle) * 150,
+        70 + Math.sin(angle) * 150,
+        700 + Math.cos(angle + 0.3) * 150,
+        70 + Math.sin(angle + 0.3) * 150
       );
     }
 
@@ -2762,7 +3047,9 @@ export class WorldScene extends Phaser.Scene {
       y: Math.round(-10 * SCALE),
       lifespan: 800,
       speedY: { min: Math.round(300 * SCALE), max: Math.round(500 * SCALE) },
-      speedX: isStorm ? { min: Math.round(-100 * SCALE), max: Math.round(-150 * SCALE) } : { min: Math.round(-20 * SCALE), max: Math.round(20 * SCALE) },
+      speedX: isStorm
+        ? { min: Math.round(-100 * SCALE), max: Math.round(-150 * SCALE) }
+        : { min: Math.round(-20 * SCALE), max: Math.round(20 * SCALE) },
       scale: { start: SCALE, end: 0.6 * SCALE },
       quantity: isStorm ? 15 : 8,
       frequency: 30,
@@ -2854,7 +3141,15 @@ export class WorldScene extends Phaser.Scene {
       sprite.setVisible(shouldShow);
 
       // Handle associated glow sprites (including Shaw)
-      const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow", "shawGlow"];
+      const glowKeys = [
+        "tolyGlow",
+        "ashGlow",
+        "finnGlow",
+        "devGlow",
+        "scoutGlow",
+        "cjGlow",
+        "shawGlow",
+      ];
       glowKeys.forEach((key) => {
         const glow = (sprite as any)[key];
         if (glow) glow.setVisible(shouldShow);
@@ -2867,7 +3162,15 @@ export class WorldScene extends Phaser.Scene {
     this.characterSprites.forEach((sprite, id) => {
       if (!currentIds.has(id)) {
         // Clean up associated glow sprites before destroying
-        const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow", "shawGlow"];
+        const glowKeys = [
+          "tolyGlow",
+          "ashGlow",
+          "finnGlow",
+          "devGlow",
+          "scoutGlow",
+          "cjGlow",
+          "shawGlow",
+        ];
         glowKeys.forEach((key) => {
           const glow = (sprite as any)[key];
           if (glow) {
@@ -2882,7 +3185,8 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // Separate characters into existing (quick update) and new (needs creation)
-    const existingCharacters: { character: GameCharacter; sprite: Phaser.GameObjects.Sprite }[] = [];
+    const existingCharacters: { character: GameCharacter; sprite: Phaser.GameObjects.Sprite }[] =
+      [];
     const newCharacters: { character: GameCharacter; index: number }[] = [];
 
     characters.forEach((character, index) => {
@@ -2917,9 +3221,20 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private updateExistingCharacter(character: GameCharacter, sprite: Phaser.GameObjects.Sprite): void {
+  private updateExistingCharacter(
+    character: GameCharacter,
+    sprite: Phaser.GameObjects.Sprite
+  ): void {
     // Update special character glow positions if they exist
-    const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow", "cjGlow", "shawGlow"];
+    const glowKeys = [
+      "tolyGlow",
+      "ashGlow",
+      "finnGlow",
+      "devGlow",
+      "scoutGlow",
+      "cjGlow",
+      "shawGlow",
+    ];
     glowKeys.forEach((key) => {
       const glow = (sprite as any)[key];
       if (glow) {
@@ -2958,7 +3273,21 @@ export class WorldScene extends Phaser.Scene {
     const variant = index % 9;
     this.characterVariants.set(character.id, variant);
 
-    const textureKey = isToly ? "toly" : isAsh ? "ash" : isFinn ? "finn" : isDev ? "dev" : isScout ? "neo" : isCJ ? "cj" : isShaw ? "shaw" : this.getCharacterTexture(character.mood, variant);
+    const textureKey = isToly
+      ? "toly"
+      : isAsh
+        ? "ash"
+        : isFinn
+          ? "finn"
+          : isDev
+            ? "dev"
+            : isScout
+              ? "neo"
+              : isCJ
+                ? "cj"
+                : isShaw
+                  ? "shaw"
+                  : this.getCharacterTexture(character.mood, variant);
     const sprite = this.add.sprite(character.x, character.y, textureKey);
     sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
     sprite.setInteractive();
@@ -3023,12 +3352,28 @@ export class WorldScene extends Phaser.Scene {
     this.startCharacterWalking(sprite, character, isSpecial);
 
     // Add glow effects for special characters (configuration-driven)
-    const glowConfigs: Array<{ active: boolean; key: string; tint: number; alpha?: number; targetAlpha?: number; scale?: number; duration?: number }> = [
+    const glowConfigs: Array<{
+      active: boolean;
+      key: string;
+      tint: number;
+      alpha?: number;
+      targetAlpha?: number;
+      scale?: number;
+      duration?: number;
+    }> = [
       { active: isToly, key: "tolyGlow", tint: 0x9945ff },
       { active: isAsh, key: "ashGlow", tint: 0xdc2626 },
       { active: isFinn, key: "finnGlow", tint: 0x10b981 },
       { active: isDev, key: "devGlow", tint: 0x8b5cf6 },
-      { active: isScout, key: "scoutGlow", tint: 0x00ff41, alpha: 0.4, targetAlpha: 0.7, scale: 1.3, duration: 800 },
+      {
+        active: isScout,
+        key: "scoutGlow",
+        tint: 0x00ff41,
+        alpha: 0.4,
+        targetAlpha: 0.7,
+        scale: 1.3,
+        duration: 800,
+      },
       { active: isCJ, key: "cjGlow", tint: 0xf97316, duration: 1200 },
       { active: isShaw, key: "shawGlow", tint: 0xff5800, duration: 1000 },
     ];
@@ -3133,10 +3478,12 @@ export class WorldScene extends Phaser.Scene {
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
     const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+    const isTradingTerminal =
+      building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
     const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
 
     // Skip texture updates for special buildings (they don't change)
-    if (isPokeCenter || isTradingGym || isCasino || isBagsHQ) {
+    if (isPokeCenter || isTradingGym || isCasino || isTradingTerminal || isBagsHQ) {
       return;
     }
 
@@ -3148,7 +3495,7 @@ export class WorldScene extends Phaser.Scene {
     const getBuildingStyleUpdate = (id: string): number => {
       let hash = 0;
       for (let i = 0; i < id.length; i++) {
-        hash = ((hash << 5) - hash) + id.charCodeAt(i);
+        hash = (hash << 5) - hash + id.charCodeAt(i);
         hash = hash & hash;
       }
       return Math.abs(hash) % 4;
@@ -3187,10 +3534,12 @@ export class WorldScene extends Phaser.Scene {
       container.add(shadow);
     }
 
-    // Use special texture for PokeCenter/TradingGym/Casino/HQ, otherwise use level-based building with style
+    // Use special texture for PokeCenter/TradingGym/Casino/Terminal/HQ, otherwise use level-based building with style
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
     const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+    const isTradingTerminal =
+      building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
     const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
 
     // Determine building style from mint address (deterministic - same token always gets same style)
@@ -3199,19 +3548,41 @@ export class WorldScene extends Phaser.Scene {
       // Use a simple hash of the building id to get a style index 0-3
       let hash = 0;
       for (let i = 0; i < id.length; i++) {
-        hash = ((hash << 5) - hash) + id.charCodeAt(i);
+        hash = (hash << 5) - hash + id.charCodeAt(i);
         hash = hash & hash; // Convert to 32-bit integer
       }
       return Math.abs(hash) % 4;
     };
 
     const styleIndex = getBuildingStyle(building.id);
-    const buildingTexture = isBagsWorldHQ ? "bagshq" : isPokeCenter ? "pokecenter" : isTradingGym ? "tradinggym" : isCasino ? "casino" : `building_${building.level}_${styleIndex}`;
+    const buildingTexture = isBagsWorldHQ
+      ? "bagshq"
+      : isPokeCenter
+        ? "pokecenter"
+        : isTradingGym
+          ? "tradinggym"
+          : isCasino
+            ? "casino"
+            : isTradingTerminal
+              ? "terminal"
+              : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating
     const hqScale = 1.5;
-    sprite.setScale(isBagsWorldHQ ? hqScale : isPokeCenter ? 1.0 : isTradingGym ? 1.0 : isCasino ? 1.0 : buildingScale);
+    sprite.setScale(
+      isBagsWorldHQ
+        ? hqScale
+        : isPokeCenter
+          ? 1.0
+          : isTradingGym
+            ? 1.0
+            : isCasino
+              ? 1.0
+              : isTradingTerminal
+                ? 1.0
+                : buildingScale
+    );
     container.add(sprite);
 
     // Add floating animation for HQ
@@ -3263,7 +3634,14 @@ export class WorldScene extends Phaser.Scene {
 
     // Label with background - HQ gets gold styling
     const isHQBuilding = building.isFloating || building.symbol === "BAGSWORLD";
-    const labelBg = this.add.rectangle(0, isHQBuilding ? 20 : 12, isHQBuilding ? 85 : 50, isHQBuilding ? 16 : 14, 0x000000, 0.8);
+    const labelBg = this.add.rectangle(
+      0,
+      isHQBuilding ? 20 : 12,
+      isHQBuilding ? 85 : 50,
+      isHQBuilding ? 16 : 14,
+      0x000000,
+      0.8
+    );
     labelBg.setStrokeStyle(isHQBuilding ? 2 : 1, isHQBuilding ? 0xffd700 : 0x4ade80);
     container.add(labelBg);
     const labelText = isHQBuilding ? "$BagsWorld" : building.symbol;
@@ -3297,53 +3675,74 @@ export class WorldScene extends Phaser.Scene {
       const isPokeCenter = building.id.includes("PokeCenter");
       const isTradingGym = building.id.includes("TradingGym") || building.symbol === "GYM";
       const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
+      const isTradingTerminal =
+        building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
       const isStarterBuilding = building.id.startsWith("Starter");
       const isTreasuryBuilding = building.id.startsWith("Treasury");
       const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
 
       if (isPokeCenter) {
         // PokeCenter opens the auto-claim hub modal
-        window.dispatchEvent(new CustomEvent("bagsworld-pokecenter-click", {
-          detail: { buildingId: building.id, name: building.name }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-pokecenter-click", {
+            detail: { buildingId: building.id, name: building.name },
+          })
+        );
       } else if (isTradingGym) {
         // TradingGym opens the AI trading arena modal
-        window.dispatchEvent(new CustomEvent("bagsworld-tradinggym-click", {
-          detail: { buildingId: building.id, name: building.name }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-tradinggym-click", {
+            detail: { buildingId: building.id, name: building.name },
+          })
+        );
       } else if (isCasino) {
         // Casino opens the gambling modal with raffle and wheel
-        window.dispatchEvent(new CustomEvent("bagsworld-casino-click", {
-          detail: { buildingId: building.id, name: building.name }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-casino-click", {
+            detail: { buildingId: building.id, name: building.name },
+          })
+        );
+      } else if (isTradingTerminal) {
+        // Trading Terminal opens the professional trading terminal modal
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-terminal-click", {
+            detail: { buildingId: building.id, name: building.name },
+          })
+        );
       } else if (isBagsWorldHQ) {
         // BagsWorld HQ - opens the official token page with trade modal
-        window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
-          detail: {
-            mint: building.tokenMint || building.id,
-            symbol: building.symbol || "BAGSWORLD",
-            name: building.name || "BagsWorld HQ",
-            tokenUrl: building.tokenUrl || `https://bags.fm/${building.tokenMint || building.id}`,
-          }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-building-click", {
+            detail: {
+              mint: building.tokenMint || building.id,
+              symbol: building.symbol || "BAGSWORLD",
+              name: building.name || "BagsWorld HQ",
+              tokenUrl: building.tokenUrl || `https://bags.fm/${building.tokenMint || building.id}`,
+            },
+          })
+        );
       } else if (isStarterBuilding) {
         // Other starter buildings show a message
         console.log(`${building.name} - Launch a token to create a real building!`);
       } else if (isTreasuryBuilding) {
         // Treasury building opens the Creator Rewards Hub modal
-        window.dispatchEvent(new CustomEvent("bagsworld-treasury-click", {
-          detail: { buildingId: building.id, name: building.name }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-treasury-click", {
+            detail: { buildingId: building.id, name: building.name },
+          })
+        );
       } else {
         // Regular tokens emit event for React to open trade modal
-        window.dispatchEvent(new CustomEvent("bagsworld-building-click", {
-          detail: {
-            mint: building.tokenMint || building.id,
-            symbol: building.symbol || building.name,
-            name: building.name,
-            tokenUrl: building.tokenUrl,
-          }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-building-click", {
+            detail: {
+              mint: building.tokenMint || building.id,
+              symbol: building.symbol || building.name,
+              name: building.name,
+              tokenUrl: building.tokenUrl,
+            },
+          })
+        );
       }
     });
 
@@ -3372,10 +3771,7 @@ export class WorldScene extends Phaser.Scene {
     return `$${value.toFixed(0)}`;
   }
 
-  private showCharacterTooltip(
-    character: GameCharacter,
-    sprite: Phaser.GameObjects.Sprite
-  ): void {
+  private showCharacterTooltip(character: GameCharacter, sprite: Phaser.GameObjects.Sprite): void {
     this.hideTooltip();
 
     const container = this.add.container(sprite.x, sprite.y - 65);
@@ -3390,11 +3786,16 @@ export class WorldScene extends Phaser.Scene {
     });
     nameText.setOrigin(0.5, 0.5);
 
-    const providerText = this.add.text(0, -4, `${character.provider === "twitter" ? "𝕏" : character.provider}`, {
-      fontFamily: "monospace",
-      fontSize: "10px",
-      color: "#9ca3af",
-    });
+    const providerText = this.add.text(
+      0,
+      -4,
+      `${character.provider === "twitter" ? "𝕏" : character.provider}`,
+      {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#9ca3af",
+      }
+    );
     providerText.setOrigin(0.5, 0.5);
 
     const earningsText = this.add.text(0, 10, `💰 $${character.earnings24h.toFixed(0)} (24h)`, {
@@ -3714,7 +4115,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Treasury gets a special gold border
     const bg = this.add.rectangle(0, 0, 140, 80, 0x0a0a0f, 0.95);
-    bg.setStrokeStyle(2, isTreasury ? 0xfbbf24 : (building.health > 50 ? 0x4ade80 : 0xf87171));
+    bg.setStrokeStyle(2, isTreasury ? 0xfbbf24 : building.health > 50 ? 0x4ade80 : 0xf87171);
 
     const nameText = this.add.text(0, -28, `${building.name}`, {
       fontFamily: "monospace",
@@ -3732,12 +4133,17 @@ export class WorldScene extends Phaser.Scene {
       });
       descText.setOrigin(0.5, 0.5);
 
-      const breakdownText = this.add.text(0, 4, "10 SOL threshold or 5 day timer\n50% / 30% / 20% split", {
-        fontFamily: "monospace",
-        fontSize: "6px",
-        color: "#9ca3af",
-        align: "center",
-      });
+      const breakdownText = this.add.text(
+        0,
+        4,
+        "10 SOL threshold or 5 day timer\n50% / 30% / 20% split",
+        {
+          fontFamily: "monospace",
+          fontSize: "6px",
+          color: "#9ca3af",
+          align: "center",
+        }
+      );
       breakdownText.setOrigin(0.5, 0.5);
 
       const clickText = this.add.text(0, 24, "🏆 Click to view rewards hub", {
@@ -3750,7 +4156,11 @@ export class WorldScene extends Phaser.Scene {
       tooltipContainer.add([bg, nameText, descText, breakdownText, clickText]);
     } else {
       // Regular building tooltip
-      const mcapDisplay = building.isPermanent ? "⭐ Landmark" : (building.marketCap ? this.formatMarketCap(building.marketCap) : "N/A");
+      const mcapDisplay = building.isPermanent
+        ? "⭐ Landmark"
+        : building.marketCap
+          ? this.formatMarketCap(building.marketCap)
+          : "N/A";
       const mcapText = this.add.text(0, -12, mcapDisplay, {
         fontFamily: "monospace",
         fontSize: "12px",
@@ -3769,11 +4179,16 @@ export class WorldScene extends Phaser.Scene {
 
       const changeColor = (building.change24h ?? 0) >= 0 ? "#4ade80" : "#f87171";
       const changePrefix = (building.change24h ?? 0) >= 0 ? "+" : "";
-      const changeText = this.add.text(0, 16, `${changePrefix}${(building.change24h ?? 0).toFixed(0)}% (24h)`, {
-        fontFamily: "monospace",
-        fontSize: "10px",
-        color: changeColor,
-      });
+      const changeText = this.add.text(
+        0,
+        16,
+        `${changePrefix}${(building.change24h ?? 0).toFixed(0)}% (24h)`,
+        {
+          fontFamily: "monospace",
+          fontSize: "10px",
+          color: changeColor,
+        }
+      );
       changeText.setOrigin(0.5, 0.5);
 
       const clickText = this.add.text(0, 32, "Click to trade", {
@@ -3915,15 +4330,20 @@ export class WorldScene extends Phaser.Scene {
       });
 
       // Hearts effect (scaled)
-      const hearts = this.add.particles(animal.sprite.x, animal.sprite.y - Math.round(20 * SCALE), "star", {
-        speed: { min: Math.round(30 * SCALE), max: Math.round(60 * SCALE) },
-        angle: { min: 220, max: 320 },
-        lifespan: 1000,
-        quantity: 5,
-        scale: { start: 0.5 * SCALE, end: 0 },
-        alpha: { start: 1, end: 0 },
-        tint: 0xff69b4,
-      });
+      const hearts = this.add.particles(
+        animal.sprite.x,
+        animal.sprite.y - Math.round(20 * SCALE),
+        "star",
+        {
+          speed: { min: Math.round(30 * SCALE), max: Math.round(60 * SCALE) },
+          angle: { min: 220, max: 320 },
+          lifespan: 1000,
+          quantity: 5,
+          scale: { start: 0.5 * SCALE, end: 0 },
+          alpha: { start: 1, end: 0 },
+          tint: 0xff69b4,
+        }
+      );
 
       hearts.explode(5);
 
@@ -3938,7 +4358,8 @@ export class WorldScene extends Phaser.Scene {
     if (animal) {
       // Run away to random side (scaled)
       animal.isIdle = false;
-      animal.targetX = animal.sprite.x > GAME_WIDTH / 2 ? Math.round(50 * SCALE) : Math.round(750 * SCALE);
+      animal.targetX =
+        animal.sprite.x > GAME_WIDTH / 2 ? Math.round(50 * SCALE) : Math.round(750 * SCALE);
       animal.speed = animal.speed * 3; // Temporarily faster
 
       // Shake animation (scaled)
@@ -3952,7 +4373,12 @@ export class WorldScene extends Phaser.Scene {
 
       // Reset speed after 2 seconds (scaled)
       this.time.delayedCall(2000, () => {
-        animal.speed = animal.type === "butterfly" ? 0.3 * SCALE : animal.type === "bird" ? 0.5 * SCALE : 0.2 * SCALE;
+        animal.speed =
+          animal.type === "butterfly"
+            ? 0.3 * SCALE
+            : animal.type === "bird"
+              ? 0.5 * SCALE
+              : 0.2 * SCALE;
       });
     }
   }
@@ -4066,15 +4492,20 @@ export class WorldScene extends Phaser.Scene {
       });
 
       // Food particles (using star as food, scaled)
-      const food = this.add.particles(animal.sprite.x, animal.sprite.y - Math.round(10 * SCALE), "star", {
-        speed: { min: Math.round(10 * SCALE), max: Math.round(30 * SCALE) },
-        angle: { min: 220, max: 320 },
-        lifespan: 800,
-        quantity: 3,
-        scale: { start: 0.3 * SCALE, end: 0 },
-        alpha: { start: 1, end: 0 },
-        tint: 0xffd700,
-      });
+      const food = this.add.particles(
+        animal.sprite.x,
+        animal.sprite.y - Math.round(10 * SCALE),
+        "star",
+        {
+          speed: { min: Math.round(10 * SCALE), max: Math.round(30 * SCALE) },
+          angle: { min: 220, max: 320 },
+          lifespan: 800,
+          quantity: 3,
+          scale: { start: 0.3 * SCALE, end: 0 },
+          alpha: { start: 1, end: 0 },
+          tint: 0xffd700,
+        }
+      );
 
       food.explode(3);
 
@@ -4208,7 +4639,7 @@ export class WorldScene extends Phaser.Scene {
     ufoG.fillStyle(0xffff00);
     ufoG.fillCircle(ufoSize / 2, ufoSize / 2 + 10, 3);
     ufoG.fillStyle(0x0000ff);
-    ufoG.fillCircle(ufoSize * 3 / 4, ufoSize / 2 + 8, 3);
+    ufoG.fillCircle((ufoSize * 3) / 4, ufoSize / 2 + 8, 3);
 
     ufoG.generateTexture("ufo_temp", ufoSize, ufoSize);
     ufoG.destroy();
@@ -4225,7 +4656,13 @@ export class WorldScene extends Phaser.Scene {
     this.tweens.add({
       targets: ufo,
       x: GAME_WIDTH + 100,
-      y: { value: Math.round(150 * SCALE), duration: 4000, ease: "Sine.easeInOut", yoyo: true, repeat: 1 },
+      y: {
+        value: Math.round(150 * SCALE),
+        duration: 4000,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: 1,
+      },
       duration: 8000,
       ease: "Linear",
       onUpdate: () => {
@@ -4233,11 +4670,7 @@ export class WorldScene extends Phaser.Scene {
         beam.clear();
         if (ufo.x > 100 && ufo.x < GAME_WIDTH - 100) {
           beam.fillStyle(0x00ff00, 0.3);
-          beam.fillTriangle(
-            ufo.x - 15, ufo.y + 20,
-            ufo.x + 15, ufo.y + 20,
-            ufo.x, GAME_HEIGHT
-          );
+          beam.fillTriangle(ufo.x - 15, ufo.y + 20, ufo.x + 15, ufo.y + 20, ufo.x, GAME_HEIGHT);
         }
         // Rotate UFO slightly
         ufo.angle = Math.sin(Date.now() / 200) * 5;
@@ -4295,7 +4728,14 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Create background (scaled)
-    this.announcementBg = this.add.rectangle(GAME_WIDTH / 2, Math.round(50 * SCALE), Math.round(600 * SCALE), Math.round(40 * SCALE), 0x000000, 0.8);
+    this.announcementBg = this.add.rectangle(
+      GAME_WIDTH / 2,
+      Math.round(50 * SCALE),
+      Math.round(600 * SCALE),
+      Math.round(40 * SCALE),
+      0x000000,
+      0.8
+    );
     this.announcementBg.setStrokeStyle(Math.round(2 * SCALE), 0x4ade80);
     this.announcementBg.setDepth(300);
     this.announcementBg.setAlpha(0);
@@ -4334,7 +4774,7 @@ export class WorldScene extends Phaser.Scene {
             this.announcementBg?.destroy();
             this.announcementText = null;
             this.announcementBg = null;
-          }
+          },
         });
       }
     });
@@ -4404,7 +4844,7 @@ export class WorldScene extends Phaser.Scene {
     const currentX = sprite.x;
     const targetX = minX + Math.random() * (maxX - minX);
     const distance = Math.abs(targetX - currentX);
-    const duration = distance / speed * 16; // Convert to ms based on speed
+    const duration = (distance / speed) * 16; // Convert to ms based on speed
 
     // Flip sprite based on direction
     const goingRight = targetX > currentX;

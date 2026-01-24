@@ -10,17 +10,11 @@ export async function GET(request: NextRequest) {
     // Verify admin wallet
     const adminWallet = getCasinoAdminWallet();
     if (wallet !== adminWallet) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
     }
 
     if (!raffleId) {
-      return NextResponse.json(
-        { success: false, error: "Missing raffleId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Missing raffleId" }, { status: 400 });
     }
 
     const entries = await getRaffleEntries(parseInt(raffleId));
@@ -35,9 +29,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, entries });
   } catch (error) {
     console.error("Error fetching entries:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }

@@ -1,5 +1,12 @@
 // Server-side wallet for autonomous agent operations
-import { Keypair, Connection, Transaction, VersionedTransaction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
+import {
+  Keypair,
+  Connection,
+  Transaction,
+  VersionedTransaction,
+  sendAndConfirmTransaction,
+  PublicKey,
+} from "@solana/web3.js";
 import bs58 from "bs58";
 
 let agentKeypair: Keypair | null = null;

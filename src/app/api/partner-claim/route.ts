@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
   const rateLimit = checkRateLimit(`partner-claim:${clientIP}`, RATE_LIMITS.strict);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Too many requests. Try again later.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -76,10 +79,7 @@ export async function POST(request: NextRequest) {
   try {
     // Verify API key is configured
     if (!BAGS_API_KEY) {
-      return NextResponse.json(
-        { error: "Bags API key not configured" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Bags API key not configured" }, { status: 500 });
     }
 
     // SECURITY: Verify wallet ownership via session token
@@ -101,7 +101,6 @@ export async function POST(request: NextRequest) {
     } else {
       return handleClaimFees(walletAddress);
     }
-
   } catch (error) {
     console.error("Partner claim error:", error);
     return NextResponse.json(
@@ -135,10 +134,7 @@ async function handleCreateConfig(walletAddress: string) {
       errorMessage = rawText || errorMessage;
     }
     console.error("[partner-claim] Create config failed:", response.status);
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: response.status }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: response.status });
   }
 
   let data;
@@ -146,10 +142,7 @@ async function handleCreateConfig(walletAddress: string) {
     data = JSON.parse(rawText);
   } catch {
     console.error("[partner-claim] Invalid JSON response from API");
-    return NextResponse.json(
-      { error: "Invalid response from API" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Invalid response from API" }, { status: 500 });
   }
 
   // Handle various response formats
@@ -201,10 +194,7 @@ async function handleClaimFees(walletAddress: string) {
       errorMessage = rawText || errorMessage;
     }
     console.error("[partner-claim] Claim failed:", response.status);
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: response.status }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: response.status });
   }
 
   let data;
@@ -212,10 +202,7 @@ async function handleClaimFees(walletAddress: string) {
     data = JSON.parse(rawText);
   } catch {
     console.error("[partner-claim] Invalid JSON response from API");
-    return NextResponse.json(
-      { error: "Invalid response from API" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Invalid response from API" }, { status: 500 });
   }
 
   // Handle various response formats
@@ -238,10 +225,7 @@ export async function GET(request: NextRequest) {
     const walletAddress = searchParams.get("wallet");
 
     if (!walletAddress) {
-      return NextResponse.json(
-        { error: "Wallet address required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Wallet address required" }, { status: 400 });
     }
 
     // Check if this wallet is the partner wallet
@@ -252,12 +236,8 @@ export async function GET(request: NextRequest) {
       partnerWallet: isPartner ? PARTNER_WALLET : null,
       solscanUrl: isPartner ? `https://solscan.io/account/${PARTNER_WALLET}` : null,
     });
-
   } catch (error) {
     console.error("Partner status error:", error);
-    return NextResponse.json(
-      { error: "Failed to check partner status" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to check partner status" }, { status: 500 });
   }
 }

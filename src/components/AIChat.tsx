@@ -36,7 +36,7 @@ export function AIChat() {
 
   // Handle dragging - use pointer events for touch + mouse support
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button, input')) return;
+    if ((e.target as HTMLElement).closest("button, input")) return;
 
     const rect = chatRef.current?.getBoundingClientRect();
     if (rect) {
@@ -50,22 +50,25 @@ export function AIChat() {
     }
   }, []);
 
-  const handlePointerMove = useCallback((e: PointerEvent) => {
-    if (!isDragging) return;
+  const handlePointerMove = useCallback(
+    (e: PointerEvent) => {
+      if (!isDragging) return;
 
-    const newX = e.clientX - dragOffset.x;
-    const newY = e.clientY - dragOffset.y;
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
 
-    // Keep within viewport bounds with safe area consideration
-    const chatWidth = Math.min(320, window.innerWidth - 32);
-    const maxX = window.innerWidth - chatWidth;
-    const maxY = window.innerHeight - 300;
+      // Keep within viewport bounds with safe area consideration
+      const chatWidth = Math.min(320, window.innerWidth - 32);
+      const maxX = window.innerWidth - chatWidth;
+      const maxY = window.innerHeight - 300;
 
-    setPosition({
-      x: Math.max(8, Math.min(newX, maxX - 8)),
-      y: Math.max(60, Math.min(newY, maxY)),
-    });
-  }, [isDragging, dragOffset]);
+      setPosition({
+        x: Math.max(8, Math.min(newX, maxX - 8)),
+        y: Math.max(60, Math.min(newY, maxY)),
+      });
+    },
+    [isDragging, dragOffset]
+  );
 
   const handlePointerUp = useCallback(() => {
     setIsDragging(false);
@@ -73,13 +76,13 @@ export function AIChat() {
 
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp);
-      window.addEventListener('pointercancel', handlePointerUp);
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
       return () => {
-        window.removeEventListener('pointermove', handlePointerMove);
-        window.removeEventListener('pointerup', handlePointerUp);
-        window.removeEventListener('pointercancel', handlePointerUp);
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+        window.removeEventListener("pointercancel", handlePointerUp);
       };
     }
   }, [isDragging, handlePointerMove, handlePointerUp]);
@@ -96,7 +99,7 @@ export function AIChat() {
           // Dispatch animal control event to WorldScene
           window.dispatchEvent(
             new CustomEvent("bagsworld-bot-animal", {
-              detail: action.data
+              detail: action.data,
             })
           );
           break;
@@ -104,7 +107,7 @@ export function AIChat() {
           // Dispatch effect event to WorldScene
           window.dispatchEvent(
             new CustomEvent("bagsworld-bot-effect", {
-              detail: action.data
+              detail: action.data,
             })
           );
           break;
@@ -176,9 +179,9 @@ export function AIChat() {
     setInputValue(action);
     // Auto-send the message
     setTimeout(() => {
-      const input = document.getElementById('bot-input') as HTMLInputElement;
+      const input = document.getElementById("bot-input") as HTMLInputElement;
       if (input) {
-        input.form?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        input.form?.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
       }
     }, 100);
   };
@@ -190,15 +193,20 @@ export function AIChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.y >= 0
-    ? { left: position.x, top: position.y, bottom: 'auto' }
-    : { left: position.x, bottom: 80 };
+  const chatStyle: React.CSSProperties =
+    position.y >= 0
+      ? { left: position.x, top: position.y, bottom: "auto" }
+      : { left: position.x, bottom: 80 };
 
   if (isMinimized) {
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        style={{ left: position.x, bottom: position.y >= 0 ? 'auto' : 80, top: position.y >= 0 ? position.y : 'auto' }}
+        style={{
+          left: position.x,
+          bottom: position.y >= 0 ? "auto" : 80,
+          top: position.y >= 0 ? position.y : "auto",
+        }}
         className="fixed z-50 btn-retro flex items-center gap-2"
       >
         <span className="font-pixel text-[8px]">Bot</span>
@@ -213,7 +221,7 @@ export function AIChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-bags-green shadow-lg ${isDragging ? 'cursor-grabbing' : ''}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-bags-green shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
     >
       {/* Header - Draggable (touch + mouse) */}
       <div
@@ -230,9 +238,7 @@ export function AIChat() {
               &lt;
             </button>
           )}
-          <p className="font-pixel text-[10px] text-bags-green">
-            BagsWorld Bot
-          </p>
+          <p className="font-pixel text-[10px] text-bags-green">BagsWorld Bot</p>
         </div>
         <button
           onClick={() => setIsMinimized(true)}
@@ -246,9 +252,7 @@ export function AIChat() {
       <div className="h-48 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-2">
-            <p className="font-pixel text-[10px] text-bags-gold mb-2">
-              BagsWorld Bot
-            </p>
+            <p className="font-pixel text-[10px] text-bags-gold mb-2">BagsWorld Bot</p>
             <p className="font-pixel text-[7px] text-gray-400 mb-3">
               i can control animals, trigger effects, and answer questions!
             </p>
@@ -317,18 +321,14 @@ export function AIChat() {
               {msg.sender === "bot" && (
                 <p className="font-pixel text-[6px] text-bags-gold mb-1">Bot:</p>
               )}
-              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">
-                {msg.message}
-              </p>
+              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
             </div>
           ))
         )}
         {isLoading && (
           <div className="p-2 border-l-2 bg-white/5 border-gray-600">
             <p className="font-pixel text-[6px] text-bags-gold mb-1">Bot:</p>
-            <p className="font-pixel text-[8px] text-gray-400 animate-pulse">
-              ...
-            </p>
+            <p className="font-pixel text-[8px] text-gray-400 animate-pulse">...</p>
           </div>
         )}
         <div ref={messagesEndRef} />

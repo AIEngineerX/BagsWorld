@@ -10,16 +10,16 @@ import type { DistributionResult, CreatorRanking } from "./creator-rewards-agent
 // ============================================================================
 
 export type AgentEventType =
-  | "token_launch"      // New token detected by Scout
-  | "token_pump"        // Significant price increase
-  | "token_dump"        // Significant price decrease
-  | "fee_claim"         // Someone claimed fees
-  | "distribution"      // Creator rewards distributed
-  | "world_health"      // World health changed significantly
+  | "token_launch" // New token detected by Scout
+  | "token_pump" // Significant price increase
+  | "token_dump" // Significant price decrease
+  | "fee_claim" // Someone claimed fees
+  | "distribution" // Creator rewards distributed
+  | "world_health" // World health changed significantly
   | "creator_milestone" // Creator hit a milestone
-  | "whale_alert"       // Large transaction detected
-  | "agent_insight"     // AI Agent generated insight
-  | "system";           // System messages
+  | "whale_alert" // Large transaction detected
+  | "agent_insight" // AI Agent generated insight
+  | "system"; // System messages
 
 export type AgentSource =
   | "scout"
@@ -217,7 +217,9 @@ export function subscribe(
   };
 
   state.subscriptions.push(subscription);
-  console.log(`[Agent Coordinator] New subscription: ${subscription.id} for ${types === "*" ? "all events" : types.join(", ")}`);
+  console.log(
+    `[Agent Coordinator] New subscription: ${subscription.id} for ${types === "*" ? "all events" : types.join(", ")}`
+  );
 
   // Return unsubscribe function
   return () => {
@@ -243,7 +245,11 @@ function generateAnnouncement(event: AgentEvent): string {
     }
 
     case "token_pump": {
-      const { symbol, change, price } = event.data as { symbol: string; change: number; price?: number };
+      const { symbol, change, price } = event.data as {
+        symbol: string;
+        change: number;
+        price?: number;
+      };
       return `PUMP ALERT: $${symbol} up ${change.toFixed(1)}%${price ? ` to $${price.toFixed(6)}` : ""}!`;
     }
 
@@ -253,7 +259,11 @@ function generateAnnouncement(event: AgentEvent): string {
     }
 
     case "fee_claim": {
-      const { username, amount, tokenSymbol } = event.data as { username: string; amount: number; tokenSymbol?: string };
+      const { username, amount, tokenSymbol } = event.data as {
+        username: string;
+        amount: number;
+        tokenSymbol?: string;
+      };
       return `${username} claimed ${amount.toFixed(2)} SOL${tokenSymbol ? ` from $${tokenSymbol}` : ""}!`;
     }
 
@@ -264,18 +274,30 @@ function generateAnnouncement(event: AgentEvent): string {
     }
 
     case "world_health": {
-      const { health, previousHealth, status } = event.data as { health: number; previousHealth: number; status: string };
+      const { health, previousHealth, status } = event.data as {
+        health: number;
+        previousHealth: number;
+        status: string;
+      };
       const direction = health > previousHealth ? "improved" : "declined";
       return `World health ${direction} to ${health}% (${status})`;
     }
 
     case "creator_milestone": {
-      const { creator, milestone, value } = event.data as { creator: string; milestone: string; value: number };
+      const { creator, milestone, value } = event.data as {
+        creator: string;
+        milestone: string;
+        value: number;
+      };
       return `${creator} hit ${milestone}: ${value.toFixed(2)} SOL!`;
     }
 
     case "whale_alert": {
-      const { action, amount, tokenSymbol } = event.data as { action: string; amount: number; tokenSymbol: string };
+      const { action, amount, tokenSymbol } = event.data as {
+        action: string;
+        amount: number;
+        tokenSymbol: string;
+      };
       return `WHALE ${action.toUpperCase()}: ${amount.toFixed(2)} SOL of $${tokenSymbol}`;
     }
 
@@ -286,7 +308,7 @@ function generateAnnouncement(event: AgentEvent): string {
 
     case "system":
     default:
-      return event.data.message as string || "System event";
+      return (event.data.message as string) || "System event";
   }
 }
 
@@ -345,7 +367,12 @@ export async function emitFeeClaim(
  * Emit a distribution event (from Creator Rewards Agent)
  */
 export async function emitDistribution(result: DistributionResult): Promise<AgentEvent> {
-  return emitEvent("distribution", "creator-rewards", result as unknown as Record<string, unknown>, "high");
+  return emitEvent(
+    "distribution",
+    "creator-rewards",
+    result as unknown as Record<string, unknown>,
+    "high"
+  );
 }
 
 /**
@@ -358,16 +385,18 @@ export async function emitWorldHealthChange(
 ): Promise<AgentEvent> {
   const change = Math.abs(health - previousHealth);
   const priority: EventPriority = change >= 20 ? "high" : change >= 10 ? "medium" : "low";
-  return emitEvent("world_health", "world-state", { health, previousHealth, status, change }, priority);
+  return emitEvent(
+    "world_health",
+    "world-state",
+    { health, previousHealth, status, change },
+    priority
+  );
 }
 
 /**
  * Emit an AI agent insight
  */
-export async function emitAgentInsight(
-  message: string,
-  action?: AIAction
-): Promise<AgentEvent> {
+export async function emitAgentInsight(message: string, action?: AIAction): Promise<AgentEvent> {
   return emitEvent("agent_insight", "ai-agent", { message, action }, "low");
 }
 
@@ -381,7 +410,12 @@ export async function emitWhaleAlert(
   mint?: string,
   wallet?: string
 ): Promise<AgentEvent> {
-  return emitEvent("whale_alert", "price-monitor", { action, amount, tokenSymbol, mint, wallet }, "high");
+  return emitEvent(
+    "whale_alert",
+    "price-monitor",
+    { action, amount, tokenSymbol, mint, wallet },
+    "high"
+  );
 }
 
 // ============================================================================

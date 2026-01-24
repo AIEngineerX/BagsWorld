@@ -150,13 +150,18 @@ export class SpeechBubbleManager {
 
     // Create name tag
     const meta = characterMeta[characterId];
-    const nameTag = this.scene.add.text(0, -textHeight / 2 - 12, meta?.displayName || characterName, {
-      fontFamily: "monospace",
-      fontSize: "9px",
-      color: colors.text,
-      backgroundColor: `#${colors.bg.toString(16).padStart(6, "0")}`,
-      padding: { x: 4, y: 2 },
-    });
+    const nameTag = this.scene.add.text(
+      0,
+      -textHeight / 2 - 12,
+      meta?.displayName || characterName,
+      {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: colors.text,
+        backgroundColor: `#${colors.bg.toString(16).padStart(6, "0")}`,
+        padding: { x: 4, y: 2 },
+      }
+    );
     nameTag.setOrigin(0.5, 0.5);
 
     // Add icon
@@ -191,14 +196,15 @@ export class SpeechBubbleManager {
     };
 
     // Schedule fade out
-    bubble.fadeOutTimer = this.scene.time.delayedCall(
-      this.config.displayDuration,
-      () => this.hideBubble(characterId)
+    bubble.fadeOutTimer = this.scene.time.delayedCall(this.config.displayDuration, () =>
+      this.hideBubble(characterId)
     );
 
     this.bubbles.set(characterId, bubble);
 
-    console.log(`[SpeechBubble] Showing bubble for ${characterId}: "${message.substring(0, 30)}..."`);
+    console.log(
+      `[SpeechBubble] Showing bubble for ${characterId}: "${message.substring(0, 30)}..."`
+    );
 
     return bubble;
   }

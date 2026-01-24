@@ -22,27 +22,32 @@ const SHAW_TOPICS = [
   {
     title: "ElizaOS",
     icon: "🔶",
-    content: "ElizaOS is a framework for building autonomous AI agents. Character files define their personality, plugins give them capabilities. 17k stars on GitHub - the community is incredible."
+    content:
+      "ElizaOS is a framework for building autonomous AI agents. Character files define their personality, plugins give them capabilities. 17k stars on GitHub - the community is incredible.",
   },
   {
     title: "Character Files",
     icon: "📄",
-    content: "Character files are the DNA of an agent. Bio, lore, message examples, style - it all shapes how they think and respond. Like giving an AI a soul."
+    content:
+      "Character files are the DNA of an agent. Bio, lore, message examples, style - it all shapes how they think and respond. Like giving an AI a soul.",
   },
   {
     title: "Plugin System",
     icon: "🔌",
-    content: "Plugins extend what agents can do. Twitter, Discord, Solana, Telegram - each plugin adds new capabilities. The architecture is designed for infinite extensibility."
+    content:
+      "Plugins extend what agents can do. Twitter, Discord, Solana, Telegram - each plugin adds new capabilities. The architecture is designed for infinite extensibility.",
   },
   {
     title: "ai16z",
     icon: "🤖",
-    content: "ai16z is where AI meets crypto. Agents that can own wallets, make trades, participate in economies. The future is agents with agency."
+    content:
+      "ai16z is where AI meets crypto. Agents that can own wallets, make trades, participate in economies. The future is agents with agency.",
   },
   {
     title: "Multi-Agent",
     icon: "🌐",
-    content: "Multi-agent is the future. Agents can share memories, coordinate actions, build on each other. We're building digital societies."
+    content:
+      "Multi-agent is the future. Agents can share memories, coordinate actions, build on each other. We're building digital societies.",
   },
 ];
 
@@ -113,7 +118,7 @@ export function ShawChat() {
     setMessages((prev) => [...prev.slice(-30), message]);
   }, []);
 
-  const handleTopicClick = (topic: typeof SHAW_TOPICS[0]) => {
+  const handleTopicClick = (topic: (typeof SHAW_TOPICS)[0]) => {
     addMessage({
       id: `${Date.now()}-info`,
       type: "info",
@@ -122,54 +127,57 @@ export function ShawChat() {
     });
   };
 
-  const sendToShaw = useCallback(async (userMessage: string) => {
-    if (isLoading) return;
+  const sendToShaw = useCallback(
+    async (userMessage: string) => {
+      if (isLoading) return;
 
-    // Don't add "initializing..." as a user message
-    if (userMessage !== "initializing...") {
-      addMessage({
-        id: `${Date.now()}-user`,
-        type: "user",
-        message: userMessage,
-        timestamp: Date.now(),
-      });
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Use eliza-agent API (working endpoint)
-      const response = await fetch("/api/eliza-agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          character: "shaw",
+      // Don't add "initializing..." as a user message
+      if (userMessage !== "initializing...") {
+        addMessage({
+          id: `${Date.now()}-user`,
+          type: "user",
           message: userMessage,
-        }),
-      });
+          timestamp: Date.now(),
+        });
+      }
 
-      const data = await response.json();
-      const messageText = data.response || "the framework awaits your input...";
+      setIsLoading(true);
 
-      addMessage({
-        id: `${Date.now()}-shaw`,
-        type: "shaw",
-        message: messageText,
-        timestamp: Date.now(),
-        actions: data.actions || [],
-      });
-    } catch (error) {
-      console.error("Shaw chat error:", error);
-      addMessage({
-        id: `${Date.now()}-shaw`,
-        type: "shaw",
-        message: "connection interrupted. try again.",
-        timestamp: Date.now(),
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading, messages, addMessage]);
+      try {
+        // Use eliza-agent API (working endpoint)
+        const response = await fetch("/api/eliza-agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            character: "shaw",
+            message: userMessage,
+          }),
+        });
+
+        const data = await response.json();
+        const messageText = data.response || "the framework awaits your input...";
+
+        addMessage({
+          id: `${Date.now()}-shaw`,
+          type: "shaw",
+          message: messageText,
+          timestamp: Date.now(),
+          actions: data.actions || [],
+        });
+      } catch (error) {
+        console.error("Shaw chat error:", error);
+        addMessage({
+          id: `${Date.now()}-shaw`,
+          type: "shaw",
+          message: "connection interrupted. try again.",
+          timestamp: Date.now(),
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading, addMessage]
+  );
 
   // Listen for Shaw click events
   useEffect(() => {
@@ -224,9 +232,10 @@ export function ShawChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.y >= 0
-    ? { left: position.x, top: position.y, bottom: "auto" }
-    : { left: position.x, bottom: 80 };
+  const chatStyle: React.CSSProperties =
+    position.y >= 0
+      ? { left: position.x, top: position.y, bottom: "auto" }
+      : { left: position.x, bottom: 80 };
 
   if (!isOpen) {
     return null;
@@ -279,8 +288,12 @@ export function ShawChat() {
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-orange-400 mb-1">🔶 framework online</p>
-            <p className="font-pixel text-[8px] text-gray-400">Shaw here. Let&apos;s build something.</p>
-            <p className="font-pixel text-[7px] text-gray-500 mt-2">Ask me about ElizaOS or click a topic above</p>
+            <p className="font-pixel text-[8px] text-gray-400">
+              Shaw here. Let&apos;s build something.
+            </p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-2">
+              Ask me about ElizaOS or click a topic above
+            </p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -290,13 +303,19 @@ export function ShawChat() {
                 msg.type === "shaw"
                   ? "bg-orange-500/10 border-orange-500"
                   : msg.type === "user"
-                  ? "bg-bags-green/10 border-bags-green ml-4"
-                  : "bg-amber-500/10 border-amber-500"
+                    ? "bg-bags-green/10 border-bags-green ml-4"
+                    : "bg-amber-500/10 border-amber-500"
               }`}
             >
-              {msg.type === "shaw" && <p className="font-pixel text-[6px] text-orange-400 mb-1">Shaw:</p>}
-              {msg.type === "user" && <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>}
-              {msg.type === "info" && <p className="font-pixel text-[6px] text-amber-400 mb-1">📄 Docs:</p>}
+              {msg.type === "shaw" && (
+                <p className="font-pixel text-[6px] text-orange-400 mb-1">Shaw:</p>
+              )}
+              {msg.type === "user" && (
+                <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>
+              )}
+              {msg.type === "info" && (
+                <p className="font-pixel text-[6px] text-amber-400 mb-1">📄 Docs:</p>
+              )}
               <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
               {msg.type === "shaw" && msg.actions && msg.actions.length > 0 && (
                 <ActionButtons actions={msg.actions} onAction={handleAction} />
@@ -306,7 +325,9 @@ export function ShawChat() {
         )}
         {isLoading && (
           <div className="p-2 border-l-2 bg-orange-500/10 border-orange-500">
-            <p className="font-pixel text-[8px] text-orange-300 animate-pulse">compiling response...</p>
+            <p className="font-pixel text-[8px] text-orange-300 animate-pulse">
+              compiling response...
+            </p>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -337,24 +358,37 @@ export function ShawChat() {
       {/* Footer */}
       <div className="p-2 border-t border-orange-500/30 bg-bags-darker">
         <div className="grid grid-cols-3 gap-2 text-center">
-          <a href="https://github.com/elizaOS/eliza" target="_blank" rel="noopener noreferrer" className="bg-orange-500/10 p-1 rounded hover:bg-orange-500/20 transition-colors">
+          <a
+            href="https://github.com/elizaOS/eliza"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-orange-500/10 p-1 rounded hover:bg-orange-500/20 transition-colors"
+          >
             <p className="font-pixel text-[6px] text-gray-400">ElizaOS Stars</p>
             <p className="font-pixel text-[9px] text-orange-400">17K+</p>
           </a>
-          <a href="https://x.com/shawmakesmagic" target="_blank" rel="noopener noreferrer" className="bg-amber-500/10 p-1 rounded hover:bg-amber-500/20 transition-colors">
+          <a
+            href="https://x.com/shawmakesmagic"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-amber-500/10 p-1 rounded hover:bg-amber-500/20 transition-colors"
+          >
             <p className="font-pixel text-[6px] text-gray-400">X/Twitter</p>
             <p className="font-pixel text-[9px] text-amber-400">@shaw</p>
           </a>
-          <a href="https://elizaos.ai" target="_blank" rel="noopener noreferrer" className="bg-orange-500/10 p-1 rounded hover:bg-orange-500/20 transition-colors">
+          <a
+            href="https://elizaos.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-orange-500/10 p-1 rounded hover:bg-orange-500/20 transition-colors"
+          >
             <p className="font-pixel text-[6px] text-gray-400">Website</p>
             <p className="font-pixel text-[9px] text-orange-400">elizaos.ai</p>
           </a>
         </div>
         <div className="flex items-center justify-center gap-2 mt-2">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-          <p className="font-pixel text-[7px] text-green-400">
-            powered by TRUE ElizaOS runtime
-          </p>
+          <p className="font-pixel text-[7px] text-green-400">powered by TRUE ElizaOS runtime</p>
         </div>
       </div>
     </div>

@@ -36,9 +36,7 @@ async function getBagsSDK(): Promise<any | null> {
 
   try {
     const { BagsSDK } = await import("@bagsfm/bags-sdk");
-    const rpcUrl =
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-      "https://rpc.ankr.com/solana";
+    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
     const connection = new Connection(rpcUrl, "confirmed");
     sdkInstance = new BagsSDK(process.env.BAGS_API_KEY!, connection, "processed");
     console.log("Bags SDK initialized for tokens endpoint");
@@ -70,10 +68,7 @@ export async function POST(request: NextRequest) {
     const { mints } = body as { mints: string[] };
 
     if (!mints || !Array.isArray(mints) || mints.length === 0) {
-      return NextResponse.json(
-        { error: "mints array is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "mints array is required" }, { status: 400 });
     }
 
     // Limit to 20 tokens per request
@@ -101,12 +96,11 @@ export async function POST(request: NextRequest) {
           const mintPubkey = new PublicKey(mint);
 
           // Fetch creators, fees, and claim events
-          const [creatorsResult, feesResult, eventsResult] =
-            await Promise.allSettled([
-              sdk.state.getTokenCreators(mintPubkey),
-              sdk.state.getTokenLifetimeFees(mintPubkey),
-              sdk.state.getTokenClaimEvents(mintPubkey, { limit: 10 }),
-            ]);
+          const [creatorsResult, feesResult, eventsResult] = await Promise.allSettled([
+            sdk.state.getTokenCreators(mintPubkey),
+            sdk.state.getTokenLifetimeFees(mintPubkey),
+            sdk.state.getTokenClaimEvents(mintPubkey, { limit: 10 }),
+          ]);
 
           const creators: TokenLaunchCreator[] =
             creatorsResult.status === "fulfilled" ? creatorsResult.value : [];
@@ -151,10 +145,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in tokens endpoint:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 

@@ -45,7 +45,10 @@ export async function POST(request: Request) {
 
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Slow down! Try again in a moment.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Slow down! Try again in a moment.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -83,7 +86,9 @@ async function handleChat(body: BotRequest): Promise<NextResponse> {
   // If not obvious and we have API key, use LLM extraction
   if (!intent && ANTHROPIC_API_KEY) {
     intent = await extractIntent(message, ANTHROPIC_API_KEY, worldState);
-    console.log(`Intent extracted: ${intent.action} (${intent.confidence}) - ${intent.reasoning || "no reason"}`);
+    console.log(
+      `Intent extracted: ${intent.action} (${intent.confidence}) - ${intent.reasoning || "no reason"}`
+    );
   }
 
   // Fallback to basic chat if no intent
@@ -97,12 +102,17 @@ async function handleChat(body: BotRequest): Promise<NextResponse> {
     case "scare":
     case "call":
     case "feed": {
-      const animal = (intent.target?.name || "dog") as "dog" | "cat" | "bird" | "butterfly" | "squirrel";
+      const animal = (intent.target?.name || "dog") as
+        | "dog"
+        | "cat"
+        | "bird"
+        | "butterfly"
+        | "squirrel";
       const animalAction = intent.action === "feed" ? "pet" : intent.action;
 
       response.actions!.push({
         type: "animal",
-        data: { animalType: animal, animalAction }
+        data: { animalType: animal, animalAction },
       });
       response.message = getAnimalResponse(animal, animalAction);
       return NextResponse.json(response);
@@ -114,7 +124,7 @@ async function handleChat(body: BotRequest): Promise<NextResponse> {
 
       response.actions!.push({
         type: "effect",
-        data: { effectType, x: 400, y: 250 }
+        data: { effectType, x: 400, y: 250 },
       });
 
       const effectMessages: Record<string, string> = {
@@ -123,7 +133,7 @@ async function handleChat(body: BotRequest): Promise<NextResponse> {
         hearts: "sending love! 💕",
         confetti: "confetti time! 🎊",
         stars: "shooting stars! ✨",
-        ufo: "👽 they're coming for your bags! 🛸"
+        ufo: "👽 they're coming for your bags! 🛸",
       };
       response.message = effectMessages[effectType] || "✨";
       return NextResponse.json(response);
@@ -166,10 +176,12 @@ async function handleAnimal(body: BotRequest): Promise<NextResponse> {
 
   const response: BotResponse = {
     message: getAnimalResponse(animalType, animalAction),
-    actions: [{
-      type: "animal",
-      data: { animalType, animalAction }
-    }]
+    actions: [
+      {
+        type: "animal",
+        data: { animalType, animalAction },
+      },
+    ],
   };
 
   return NextResponse.json(response);
@@ -186,15 +198,17 @@ async function handleEffect(body: BotRequest): Promise<NextResponse> {
     hearts: "spreading love! 💕",
     confetti: "confetti everywhere! 🎊",
     stars: "shooting stars! ✨",
-    ufo: "👽 UFO INCOMING! they're here for your bags! 🛸"
+    ufo: "👽 UFO INCOMING! they're here for your bags! 🛸",
   };
 
   const response: BotResponse = {
     message: messages[effectType] || "effect triggered!",
-    actions: [{
-      type: "effect",
-      data: { effectType, x: effectX, y: effectY }
-    }]
+    actions: [
+      {
+        type: "effect",
+        data: { effectType, x: effectX, y: effectY },
+      },
+    ],
   };
 
   return NextResponse.json(response);
@@ -207,16 +221,18 @@ async function handleAnnounce(body: BotRequest): Promise<NextResponse> {
   if (!message.trim()) {
     return NextResponse.json({
       message: "what should i announce?",
-      actions: []
+      actions: [],
     });
   }
 
   const response: BotResponse = {
     message: `📢 ${message}`,
-    actions: [{
-      type: "announce",
-      data: { text: message, duration: 5000 }
-    }]
+    actions: [
+      {
+        type: "announce",
+        data: { text: message, duration: 5000 },
+      },
+    ],
   };
 
   return NextResponse.json(response);
@@ -229,14 +245,16 @@ async function generateClaudeResponse(
   chatHistory: Array<{ role: string; content: string }>
 ): Promise<string> {
   // Build dynamic world context
-  const worldContext = worldState ? `
+  const worldContext = worldState
+    ? `
 CURRENT WORLD STATE:
 - World Health: ${worldState.health}% ${worldState.health >= 80 ? "(thriving!)" : worldState.health <= 30 ? "(struggling...)" : ""}
 - Weather: ${worldState.weather}
 - Buildings: ${worldState.buildingCount} active
 - Citizens: ${worldState.populationCount} roaming
 ${worldState.topToken ? `- Top Bag: $${worldState.topToken}` : ""}
-` : "";
+`
+    : "";
 
   const systemPrompt = `${CHARACTER_PROMPT}
 
@@ -246,9 +264,9 @@ CAPABILITIES (mention if user asks):
 - Answer questions about BagsWorld, Bags.fm fees, and Solana
 ${worldContext}`;
 
-  const messages = chatHistory.slice(-6).map(m => ({
+  const messages = chatHistory.slice(-6).map((m) => ({
     role: m.role as "user" | "assistant",
-    content: m.content
+    content: m.content,
   }));
   messages.push({ role: "user", content: message });
 
@@ -282,32 +300,32 @@ function getAnimalResponse(animal: string, action: string): string {
       pet: ["good boy! 🐕", "the dog loves that! woof!", "tail wagging intensifies"],
       scare: ["the dog runs away! 🐕💨", "ruff! scared doggo"],
       call: ["here boy! the dog comes running 🐕", "the dog perks up and trots over"],
-      feed: ["nom nom! happy pupper 🐕", "the dog gobbles it up!"]
+      feed: ["nom nom! happy pupper 🐕", "the dog gobbles it up!"],
     },
     cat: {
       pet: ["purrrr 🐱", "the cat accepts your offering", "kitty vibes"],
       scare: ["the cat zooms away! 🐱💨", "startled cat!"],
       call: ["the cat... considers it 🐱", "pspsps... the cat approaches cautiously"],
-      feed: ["the cat approves 🐱", "elegant nibbles"]
+      feed: ["the cat approves 🐱", "elegant nibbles"],
     },
     bird: {
       pet: ["chirp chirp! 🐦", "the bird flutters happily"],
       scare: ["the bird flies away! 🐦💨", "startled tweet!"],
       call: ["tweet tweet! bird incoming 🐦", "the bird swoops down"],
-      feed: ["peck peck! happy bird 🐦", "the bird enjoys the treat"]
+      feed: ["peck peck! happy bird 🐦", "the bird enjoys the treat"],
     },
     butterfly: {
       pet: ["the butterfly lands on your finger! 🦋", "so gentle and pretty"],
       scare: ["the butterfly flutters away 🦋", "it dances away"],
       call: ["the butterfly floats over 🦋", "attracted by your good vibes"],
-      feed: ["the butterfly appreciates the nectar 🦋", "delicate sips"]
+      feed: ["the butterfly appreciates the nectar 🦋", "delicate sips"],
     },
     squirrel: {
       pet: ["the squirrel chatters happily! 🐿️", "fluffy tail wiggle"],
       scare: ["the squirrel scurries up a tree! 🐿️💨", "zoom!"],
       call: ["the squirrel hops over 🐿️", "curious little guy"],
-      feed: ["nom nom! the squirrel stuffs its cheeks 🐿️", "acorn acquired!"]
-    }
+      feed: ["nom nom! the squirrel stuffs its cheeks 🐿️", "acorn acquired!"],
+    },
   };
 
   const animalResponses = responses[animal] || responses.dog;
@@ -336,9 +354,19 @@ function getFallbackResponse(message: string, worldState?: BotRequest["worldStat
   }
 
   // World status
-  if (lowerMsg.includes("world") || lowerMsg.includes("status") || lowerMsg.includes("weather") || lowerMsg.includes("health")) {
+  if (
+    lowerMsg.includes("world") ||
+    lowerMsg.includes("status") ||
+    lowerMsg.includes("weather") ||
+    lowerMsg.includes("health")
+  ) {
     if (worldState) {
-      const healthVibe = worldState.health >= 80 ? "we're thriving ser 📈" : worldState.health <= 30 ? "tough times but we're built different 💎" : "vibes are decent ngl";
+      const healthVibe =
+        worldState.health >= 80
+          ? "we're thriving ser 📈"
+          : worldState.health <= 30
+            ? "tough times but we're built different 💎"
+            : "vibes are decent ngl";
       return `world health: ${worldState.health}%, weather: ${worldState.weather}. ${healthVibe}`;
     }
     return "world is vibing fren! check the stats panel for the alpha";

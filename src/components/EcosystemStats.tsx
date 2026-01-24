@@ -140,22 +140,17 @@ export function EcosystemStats() {
         className="text-gray-400 hover:text-bags-green transition-colors"
         title="Creator Rewards - Click for details"
       >
-        POOL:{" "}
-        <span className="text-bags-green">{stats.pendingPoolSol.toFixed(2)}</span>
+        POOL: <span className="text-bags-green">{stats.pendingPoolSol.toFixed(2)}</span>
         <span className="text-gray-500">/{stats.thresholdSol} SOL</span>
         {" | "}
-        DISTRIBUTED:{" "}
-        <span className="text-bags-gold">{stats.totalDistributed.toFixed(2)} SOL</span>
+        DISTRIBUTED: <span className="text-bags-gold">{stats.totalDistributed.toFixed(2)} SOL</span>
       </button>
 
       {isExpanded && (
         <div className="absolute bottom-8 left-0 bg-bags-dark border-2 border-bags-green p-3 min-w-72 z-50 shadow-lg">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-pixel text-xs text-bags-green">CREATOR REWARDS</h3>
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="text-gray-500 hover:text-white"
-            >
+            <button onClick={() => setIsExpanded(false)} className="text-gray-500 hover:text-white">
               [X]
             </button>
           </div>
@@ -164,7 +159,9 @@ export function EcosystemStats() {
           <div className="mb-3">
             <div className="flex justify-between text-[8px] font-pixel text-gray-400 mb-1">
               <span>Pool Progress</span>
-              <span>{stats.pendingPoolSol.toFixed(2)} / {stats.thresholdSol} SOL</span>
+              <span>
+                {stats.pendingPoolSol.toFixed(2)} / {stats.thresholdSol} SOL
+              </span>
             </div>
             <div className="h-2 bg-gray-800 rounded overflow-hidden">
               <div
@@ -177,7 +174,9 @@ export function EcosystemStats() {
           {/* Dual Trigger Display */}
           <div className="space-y-2 font-pixel text-[10px]">
             {/* By Threshold */}
-            <div className={`p-2 rounded ${stats.triggerInfo?.estimatedTrigger === "threshold" ? "bg-bags-green/20 border border-bags-green/50" : "bg-gray-800/50"}`}>
+            <div
+              className={`p-2 rounded ${stats.triggerInfo?.estimatedTrigger === "threshold" ? "bg-bags-green/20 border border-bags-green/50" : "bg-gray-800/50"}`}
+            >
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">
                   By Threshold:
@@ -189,23 +188,27 @@ export function EcosystemStats() {
                   {stats.pendingPoolSol.toFixed(2)} / {stats.thresholdSol} SOL
                 </span>
               </div>
-              {stats.triggerInfo && stats.triggerInfo.byThreshold !== null && stats.triggerInfo.byThreshold > 0 && (
-                <div className="text-[8px] text-gray-500 mt-1">
-                  Need {stats.triggerInfo.byThreshold.toFixed(2)} more SOL
-                </div>
-              )}
+              {stats.triggerInfo &&
+                stats.triggerInfo.byThreshold !== null &&
+                stats.triggerInfo.byThreshold > 0 && (
+                  <div className="text-[8px] text-gray-500 mt-1">
+                    Need {stats.triggerInfo.byThreshold.toFixed(2)} more SOL
+                  </div>
+                )}
             </div>
 
             {/* By Timer */}
-            <div className={`p-2 rounded ${stats.triggerInfo?.estimatedTrigger === "timer" ? "bg-bags-green/20 border border-bags-green/50" : "bg-gray-800/50"}`}>
+            <div
+              className={`p-2 rounded ${stats.triggerInfo?.estimatedTrigger === "timer" ? "bg-bags-green/20 border border-bags-green/50" : "bg-gray-800/50"}`}
+            >
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">
                   By Timer:
-                  {countdown === "READY!" && (
-                    <span className="ml-1 text-bags-green">(READY!)</span>
-                  )}
+                  {countdown === "READY!" && <span className="ml-1 text-bags-green">(READY!)</span>}
                 </span>
-                <span className={`font-mono ${countdown === "READY!" ? "text-bags-green animate-pulse" : "text-white"}`}>
+                <span
+                  className={`font-mono ${countdown === "READY!" ? "text-bags-green animate-pulse" : "text-white"}`}
+                >
                   {countdown}
                 </span>
               </div>
@@ -238,16 +241,18 @@ export function EcosystemStats() {
               <div className="space-y-1">
                 {stats.topCreators.slice(0, 3).map((creator, index) => (
                   <div key={creator.wallet} className="flex justify-between font-pixel text-[9px]">
-                    <span className={
-                      index === 0 ? "text-bags-gold" :
-                      index === 1 ? "text-gray-300" :
-                      "text-amber-600"
-                    }>
+                    <span
+                      className={
+                        index === 0
+                          ? "text-bags-gold"
+                          : index === 1
+                            ? "text-gray-300"
+                            : "text-amber-600"
+                      }
+                    >
                       #{index + 1} ${creator.tokenSymbol}
                     </span>
-                    <span className="text-gray-400">
-                      {truncateWallet(creator.wallet)}
-                    </span>
+                    <span className="text-gray-400">{truncateWallet(creator.wallet)}</span>
                   </div>
                 ))}
               </div>
@@ -257,8 +262,9 @@ export function EcosystemStats() {
           {/* Distribution Split Info */}
           <div className="mt-3 pt-2 border-t border-gray-700">
             <p className="font-pixel text-[8px] text-gray-500">
-              Distribution: 50% / 30% / 20% to top 3 creators by fees generated.
-              Triggers at {stats.thresholdSol} SOL or {stats.backupTimerDays} days (min {stats.minimumDistributionSol} SOL).
+              Distribution: 50% / 30% / 20% to top 3 creators by fees generated. Triggers at{" "}
+              {stats.thresholdSol} SOL or {stats.backupTimerDays} days (min{" "}
+              {stats.minimumDistributionSol} SOL).
             </p>
           </div>
         </div>

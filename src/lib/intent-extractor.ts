@@ -112,16 +112,32 @@ function fallbackIntentExtraction(message: string): ExtractedIntent {
   // Animal patterns
   const animals = ["dog", "puppy", "cat", "kitty", "bird", "butterfly", "squirrel"];
   const animalActions: Record<string, ExtractedIntent["action"]> = {
-    pet: "pet", love: "pet", cuddle: "pet", pat: "pet", scratch: "pet",
-    scare: "scare", spook: "scare", chase: "scare", boo: "scare",
-    call: "call", find: "call", where: "call", summon: "call",
-    feed: "feed", give: "feed", treat: "feed",
+    pet: "pet",
+    love: "pet",
+    cuddle: "pet",
+    pat: "pet",
+    scratch: "pet",
+    scare: "scare",
+    spook: "scare",
+    chase: "scare",
+    boo: "scare",
+    call: "call",
+    find: "call",
+    where: "call",
+    summon: "call",
+    feed: "feed",
+    give: "feed",
+    treat: "feed",
   };
 
   for (const [word, action] of Object.entries(animalActions)) {
     if (lower.includes(word)) {
       for (const animal of animals) {
-        if (lower.includes(animal) || (animal === "dog" && lower.includes("puppy")) || (animal === "cat" && lower.includes("kitty"))) {
+        if (
+          lower.includes(animal) ||
+          (animal === "dog" && lower.includes("puppy")) ||
+          (animal === "cat" && lower.includes("kitty"))
+        ) {
           const normalizedAnimal = animal === "puppy" ? "dog" : animal === "kitty" ? "cat" : animal;
           return {
             action,
@@ -135,12 +151,24 @@ function fallbackIntentExtraction(message: string): ExtractedIntent {
 
   // Effect patterns
   const effectPatterns: Record<string, string> = {
-    "firework": "fireworks", "party": "fireworks", "celebrate": "fireworks",
-    "rain": "coins", "money": "coins", "coin": "coins", "cash": "coins",
-    "heart": "hearts", "love": "hearts",
-    "confetti": "confetti", "woohoo": "confetti", "congrat": "confetti",
-    "star": "stars",
-    "ufo": "ufo", "alien": "ufo", "spaceship": "ufo", "abduct": "ufo", "beam": "ufo",
+    firework: "fireworks",
+    party: "fireworks",
+    celebrate: "fireworks",
+    rain: "coins",
+    money: "coins",
+    coin: "coins",
+    cash: "coins",
+    heart: "hearts",
+    love: "hearts",
+    confetti: "confetti",
+    woohoo: "confetti",
+    congrat: "confetti",
+    star: "stars",
+    ufo: "ufo",
+    alien: "ufo",
+    spaceship: "ufo",
+    abduct: "ufo",
+    beam: "ufo",
   };
 
   for (const [pattern, effect] of Object.entries(effectPatterns)) {

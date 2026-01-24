@@ -2,8 +2,8 @@
 // Handles incoming Telegram updates for BagsWorld AI agents
 // Note: Full Telegram bot functionality is in eliza-agents standalone server
 
-import { NextResponse } from 'next/server';
-import { getCharacter } from '@/lib/characters';
+import { NextResponse } from "next/server";
+import { getCharacter } from "@/lib/characters";
 
 // Telegram types
 interface TelegramUpdate {
@@ -20,7 +20,7 @@ interface TelegramUpdate {
 function verifyWebhookSecret(request: Request): boolean {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
   if (!secret) return true;
-  const headerSecret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+  const headerSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
   return headerSecret === secret;
 }
 
@@ -32,13 +32,13 @@ async function sendTelegramMessage(
   replyToMessageId?: number
 ): Promise<void> {
   await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
       text,
       reply_to_message_id: replyToMessageId,
-      parse_mode: 'Markdown',
+      parse_mode: "Markdown",
     }),
   });
 }
@@ -50,41 +50,41 @@ async function generateAgentResponse(
   message: string
 ): Promise<string> {
   const character = getCharacter(agentId);
-  const systemPrompt = character?.system || 'You are a helpful assistant.';
+  const systemPrompt = character?.system || "You are a helpful assistant.";
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022',
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 500,
       system: systemPrompt,
-      messages: [{ role: 'user', content: message }],
+      messages: [{ role: "user", content: message }],
     }),
   });
 
   if (!response.ok) {
-    throw new Error('AI service error');
+    throw new Error("AI service error");
   }
 
   const data = await response.json();
-  return data.content?.[0]?.text || 'Unable to generate response';
+  return data.content?.[0]?.text || "Unable to generate response";
 }
 
 // POST handler - receive Telegram updates
 export async function POST(request: Request) {
   if (!verifyWebhookSecret(request)) {
-    console.warn('[Telegram Webhook] Invalid secret token');
+    console.warn("[Telegram Webhook] Invalid secret token");
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
-    return NextResponse.json({ ok: true, message: 'Bot not configured' });
+    return NextResponse.json({ ok: true, message: "Bot not configured" });
   }
 
   try {
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     const text = message.text;
 
     // Handle /start command
-    if (text.startsWith('/start')) {
+    if (text.startsWith("/start")) {
       await sendTelegramMessage(
         botToken,
         chatId,
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 
     // Generate response
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    const defaultAgent = process.env.TELEGRAM_DEFAULT_AGENT || 'finn';
+    const defaultAgent = process.env.TELEGRAM_DEFAULT_AGENT || "finn";
 
     let response: string;
     if (apiKey) {
@@ -124,13 +124,13 @@ export async function POST(request: Request) {
     await sendTelegramMessage(
       botToken,
       chatId,
-      `*${character?.name || 'Agent'}*:\n${response}`,
+      `*${character?.name || "Agent"}*:\n${response}`,
       message.message_id
     );
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('[Telegram Webhook] Error:', error);
+    console.error("[Telegram Webhook] Error:", error);
     // Return 200 to prevent Telegram retries
     return NextResponse.json({ ok: true });
   }
@@ -139,17 +139,17 @@ export async function POST(request: Request) {
 // GET handler - webhook info and setup
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const action = url.searchParams.get('action');
+  const action = url.searchParams.get("action");
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     return NextResponse.json({
       configured: false,
-      message: 'TELEGRAM_BOT_TOKEN not set',
+      message: "TELEGRAM_BOT_TOKEN not set",
     });
   }
 
-  if (action === 'info') {
+  if (action === "info") {
     const response = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
     const result = await response.json();
     return NextResponse.json({
@@ -159,14 +159,14 @@ export async function GET(request: Request) {
     });
   }
 
-  if (action === 'setup') {
+  if (action === "setup") {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || url.origin;
     const webhookUrl = `${baseUrl}/api/telegram/webhook`;
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
 
     const body: Record<string, unknown> = {
       url: webhookUrl,
-      allowed_updates: ['message', 'callback_query'],
+      allowed_updates: ["message", "callback_query"],
       drop_pending_updates: false,
     };
 
@@ -175,8 +175,8 @@ export async function GET(request: Request) {
     }
 
     const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 
@@ -184,30 +184,30 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: result.ok,
       webhookUrl,
-      message: result.ok ? 'Webhook set successfully' : result.description,
+      message: result.ok ? "Webhook set successfully" : result.description,
     });
   }
 
-  if (action === 'delete') {
+  if (action === "delete") {
     const response = await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`, {
-      method: 'POST',
+      method: "POST",
     });
     const result = await response.json();
     return NextResponse.json({
       success: result.ok,
-      message: result.ok ? 'Webhook deleted' : result.description,
+      message: result.ok ? "Webhook deleted" : result.description,
     });
   }
 
   return NextResponse.json({
     configured: true,
     endpoints: {
-      webhook: '/api/telegram/webhook',
-      info: '/api/telegram/webhook?action=info',
-      setup: '/api/telegram/webhook?action=setup',
-      delete: '/api/telegram/webhook?action=delete',
+      webhook: "/api/telegram/webhook",
+      info: "/api/telegram/webhook?action=info",
+      setup: "/api/telegram/webhook?action=setup",
+      delete: "/api/telegram/webhook?action=delete",
     },
-    defaultAgent: process.env.TELEGRAM_DEFAULT_AGENT || 'finn',
-    note: 'For full multi-agent Telegram features, use the eliza-agents standalone server',
+    defaultAgent: process.env.TELEGRAM_DEFAULT_AGENT || "finn",
+    note: "For full multi-agent Telegram features, use the eliza-agents standalone server",
   });
 }

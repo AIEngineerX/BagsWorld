@@ -93,9 +93,7 @@ export async function getTokenClaimEvents(
  * Get claim events for the last 24 hours using time-based filtering
  * Uses Bags API v1.2.0+ time mode for accurate 24h earnings calculation
  */
-export async function getTokenClaimEvents24h(
-  tokenMint: string
-): Promise<TokenClaimEvent[]> {
+export async function getTokenClaimEvents24h(tokenMint: string): Promise<TokenClaimEvent[]> {
   try {
     const sdk = await getSDK();
     const mintPubkey = new PublicKey(tokenMint);

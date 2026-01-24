@@ -45,10 +45,7 @@ export interface RateLimitResult {
 /**
  * Check rate limit for a given identifier (IP, wallet, etc.)
  */
-export function checkRateLimit(
-  identifier: string,
-  config: RateLimitConfig
-): RateLimitResult {
+export function checkRateLimit(identifier: string, config: RateLimitConfig): RateLimitResult {
   cleanup();
 
   const now = Date.now();

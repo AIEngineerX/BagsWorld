@@ -1,14 +1,15 @@
 // API Route: Multi-Agent Dialogue - Proxies to Railway ElizaOS server
 // Enables agents to have conversations with each other
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-const ELIZAOS_SERVER = process.env.ELIZAOS_SERVER_URL || 'https://bagsworld-production.up.railway.app';
+const ELIZAOS_SERVER =
+  process.env.ELIZAOS_SERVER_URL || "https://bagsworld-production.up.railway.app";
 
 interface DialogueRequest {
-  participants: string[];  // Agent IDs to participate
-  topic?: string;          // Optional topic to discuss
-  turns?: number;          // Number of dialogue turns (default 3)
+  participants: string[]; // Agent IDs to participate
+  topic?: string; // Optional topic to discuss
+  turns?: number; // Number of dialogue turns (default 3)
 }
 
 export async function POST(request: NextRequest) {
@@ -18,29 +19,29 @@ export async function POST(request: NextRequest) {
 
     if (!participants || participants.length < 2) {
       return NextResponse.json(
-        { error: 'At least 2 participants required for dialogue' },
+        { error: "At least 2 participants required for dialogue" },
         { status: 400 }
       );
     }
 
-    console.log(`[dialogue] Starting dialogue between ${participants.join(', ')}`);
+    console.log(`[dialogue] Starting dialogue between ${participants.join(", ")}`);
 
     // Route to Railway ElizaOS dialogue endpoint
     const response = await fetch(`${ELIZAOS_SERVER}/api/dialogue`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         participants,
-        topic: topic || 'the current state of BagsWorld',
+        topic: topic || "the current state of BagsWorld",
         turns,
       }),
       signal: AbortSignal.timeout(30000), // 30 second timeout for multi-turn dialogue
     });
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
+      const errorText = await response.text().catch(() => "Unknown error");
       throw new Error(`ElizaOS dialogue failed: ${response.status} - ${errorText}`);
     }
 
@@ -51,21 +52,21 @@ export async function POST(request: NextRequest) {
       participants: data.participants || participants,
       topic: data.topic || topic,
     });
-
   } catch (error: any) {
-    console.error('[dialogue] Error:', error.message);
+    console.error("[dialogue] Error:", error.message);
 
     // Return a simulated dialogue as fallback
     return NextResponse.json({
       dialogue: [
         {
-          agent: 'system',
-          message: 'Multi-agent dialogue is temporarily unavailable. Try chatting with individual agents.',
+          agent: "system",
+          message:
+            "Multi-agent dialogue is temporarily unavailable. Try chatting with individual agents.",
           timestamp: Date.now(),
-        }
+        },
       ],
       error: error.message,
-      source: 'fallback',
+      source: "fallback",
     });
   }
 }
@@ -80,14 +81,14 @@ export async function GET() {
     });
     if (response.ok) {
       const data = await response.json();
-      dialogueAvailable = data.status === 'healthy';
+      dialogueAvailable = data.status === "healthy";
     }
   } catch {
     // Server not available
   }
 
   return NextResponse.json({
-    status: dialogueAvailable ? 'ready' : 'unavailable',
+    status: dialogueAvailable ? "ready" : "unavailable",
     server: ELIZAOS_SERVER,
   });
 }

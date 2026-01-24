@@ -163,7 +163,11 @@ async function generateBehaviors(context: WorldContext): Promise<BehaviorRespons
     const jsonMatch = content.match(/\{[\s\S]*"commands"[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]) as BehaviorResponse;
-      console.log("[CharacterBehavior] AI generated behaviors for", parsed.commands.length, "characters");
+      console.log(
+        "[CharacterBehavior] AI generated behaviors for",
+        parsed.commands.length,
+        "characters"
+      );
       return parsed;
     }
   } catch (error) {
@@ -174,16 +178,22 @@ async function generateBehaviors(context: WorldContext): Promise<BehaviorRespons
 }
 
 function buildBehaviorPrompt(context: WorldContext): string {
-  const characterList = context.characters.map(c => {
-    const behavior = CHARACTER_BEHAVIORS[c.id as keyof typeof CHARACTER_BEHAVIORS];
-    return `- ${c.name} (${c.id}): at (${Math.round(c.x)}, ${Math.round(c.y)}), ${c.isMoving ? "moving" : "idle"}
+  const characterList = context.characters
+    .map((c) => {
+      const behavior = CHARACTER_BEHAVIORS[c.id as keyof typeof CHARACTER_BEHAVIORS];
+      return `- ${c.name} (${c.id}): at (${Math.round(c.x)}, ${Math.round(c.y)}), ${c.isMoving ? "moving" : "idle"}
     Role: ${behavior?.role || "Resident"}
     Tendencies: ${behavior?.tendencies?.slice(0, 3).join(", ") || "wanders"}`;
-  }).join("\n");
+    })
+    .join("\n");
 
-  const buildingList = context.buildings.slice(0, 8).map(b =>
-    `- ${b.name} ($${b.symbol || "???"}) at (${Math.round(b.x)}, ${Math.round(b.y)}), level ${b.level}${b.isGlowing ? " [GLOWING - active!]" : ""}`
-  ).join("\n");
+  const buildingList = context.buildings
+    .slice(0, 8)
+    .map(
+      (b) =>
+        `- ${b.name} ($${b.symbol || "???"}) at (${Math.round(b.x)}, ${Math.round(b.y)}), level ${b.level}${b.isGlowing ? " [GLOWING - active!]" : ""}`
+    )
+    .join("\n");
 
   const specialList = context.specialBuildings.join(", ");
 
@@ -279,7 +289,7 @@ function generateFallbackBehaviors(context: WorldContext): BehaviorResponse {
 
     // Maybe approach another character
     if (Math.random() > 0.7 && context.characters.length > 1) {
-      const otherChars = context.characters.filter(c => c.id !== char.id);
+      const otherChars = context.characters.filter((c) => c.id !== char.id);
       const target = otherChars[Math.floor(Math.random() * otherChars.length)];
       commands.push({
         characterId: char.id,
@@ -322,10 +332,7 @@ export async function POST(request: Request) {
     const context: WorldContext = await request.json();
 
     if (!context.characters || context.characters.length === 0) {
-      return NextResponse.json(
-        { error: "No characters provided" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No characters provided" }, { status: 400 });
     }
 
     const behaviors = await generateBehaviors(context);
@@ -353,9 +360,7 @@ export async function GET() {
       { id: "ghost", name: "Ghost", x: 600, y: 580, isMoving: false },
       { id: "neo", name: "Neo", x: 800, y: 560, isMoving: true },
     ],
-    buildings: [
-      { id: "test-1", name: "Test Token", symbol: "TEST", x: 300, y: 500, level: 2 },
-    ],
+    buildings: [{ id: "test-1", name: "Test Token", symbol: "TEST", x: 300, y: 500, level: 2 }],
     specialBuildings: ["PokeCenter", "TradingGym", "Treasury", "Casino"],
     recentEvents: ["New token launched", "Fee claimed"],
     worldHealth: 75,

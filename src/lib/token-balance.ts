@@ -11,10 +11,7 @@ const decimalsCache = new Map<string, number>();
  * @param tokenMint Token mint address
  * @returns Number of decimals (default 6 if fetch fails)
  */
-export async function getTokenDecimals(
-  connection: Connection,
-  tokenMint: string
-): Promise<number> {
+export async function getTokenDecimals(connection: Connection, tokenMint: string): Promise<number> {
   // Check cache first
   if (decimalsCache.has(tokenMint)) {
     return decimalsCache.get(tokenMint)!;
@@ -57,10 +54,9 @@ export async function getTokenBalance(
     const mintPubkey = new PublicKey(tokenMint);
 
     // Get all token accounts owned by this wallet for the specific mint
-    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-      walletPubkey,
-      { mint: mintPubkey }
-    );
+    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(walletPubkey, {
+      mint: mintPubkey,
+    });
 
     if (tokenAccounts.value.length === 0) {
       return 0;

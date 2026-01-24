@@ -9,8 +9,7 @@ export const useGameStore = create<GameStore>((set) => ({
   selectedBuilding: null,
   currentZone: "main_city",
 
-  setWorldState: (state: WorldState) =>
-    set({ worldState: state, isLoading: false, error: null }),
+  setWorldState: (state: WorldState) => set({ worldState: state, isLoading: false, error: null }),
 
   setLoading: (loading: boolean) => set({ isLoading: loading }),
 

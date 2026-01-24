@@ -7,8 +7,7 @@ import type {
   TradeQuote,
 } from "./types";
 
-const BAGS_API_URL =
-  process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -64,13 +63,14 @@ class BagsApiClient {
         // Handle 500 errors with retry for transient issues
         if (response.status >= 500 && retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           return this.fetch<T>(endpoint, options, retryCount + 1);
         }
 
         // Extract error message from parsed response
-        const errorMessage = parsedError?.error ||
-          (typeof parsedError?.response === 'string' ? parsedError.response : null) ||
+        const errorMessage =
+          parsedError?.error ||
+          (typeof parsedError?.response === "string" ? parsedError.response : null) ||
           `API error: ${response.status} ${response.statusText}${errorDetail}`;
 
         throw new Error(errorMessage);
@@ -80,8 +80,9 @@ class BagsApiClient {
 
       if (!data.success) {
         // Handle error in both 'error' and 'response' fields
-        const errorMessage = data.error ||
-          (typeof data.response === 'string' ? data.response : null) ||
+        const errorMessage =
+          data.error ||
+          (typeof data.response === "string" ? data.response : null) ||
           "Unknown API error";
         throw new Error(errorMessage);
       }
@@ -89,9 +90,13 @@ class BagsApiClient {
       return data.response as T;
     } catch (error) {
       // Retry on network errors
-      if (error instanceof TypeError && error.message.includes('fetch') && retryCount < maxRetries) {
+      if (
+        error instanceof TypeError &&
+        error.message.includes("fetch") &&
+        retryCount < maxRetries
+      ) {
         const delay = Math.pow(2, retryCount) * 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
         return this.fetch<T>(endpoint, options, retryCount + 1);
       }
       throw error;
@@ -116,9 +121,7 @@ class BagsApiClient {
     return this.fetch(`/token-launch/fee-share/wallet/v2?${params}`);
   }
 
-  async bulkWalletLookup(
-    items: Array<{ provider: string; username: string }>
-  ): Promise<
+  async bulkWalletLookup(items: Array<{ provider: string; username: string }>): Promise<
     Array<{
       wallet: string;
       provider: string;
@@ -164,10 +167,7 @@ class BagsApiClient {
     return this.fetch(`/token-launch/claim-stats?${params}`);
   }
 
-  async getTokenClaimEvents(
-    tokenMint: string,
-    limit?: number
-  ): Promise<ClaimEvent[]> {
+  async getTokenClaimEvents(tokenMint: string, limit?: number): Promise<ClaimEvent[]> {
     const params = new URLSearchParams({ tokenMint });
     if (limit) {
       params.set("limit", limit.toString());
@@ -309,23 +309,26 @@ class BagsApiClient {
         // Retry on 500 errors
         if (response.status >= 500 && retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000;
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           return this.createTokenInfo(data, retryCount + 1);
         }
 
-        const errorMessage = parsedError?.error ||
-          (typeof parsedError?.response === 'string' ? parsedError.response : null) ||
+        const errorMessage =
+          parsedError?.error ||
+          (typeof parsedError?.response === "string" ? parsedError.response : null) ||
           `API error: ${response.status} - ${errorText}`;
 
         throw new Error(errorMessage);
       }
 
-      const result: ApiResponse<{ tokenMint: string; tokenMetadata: string }> = await response.json();
+      const result: ApiResponse<{ tokenMint: string; tokenMetadata: string }> =
+        await response.json();
 
       if (!result.success) {
         // Handle error in both 'error' and 'response' fields
-        const errorMessage = result.error ||
-          (typeof result.response === 'string' ? result.response : null) ||
+        const errorMessage =
+          result.error ||
+          (typeof result.response === "string" ? result.response : null) ||
           "Unknown API error";
         throw new Error(errorMessage);
       }
@@ -333,9 +336,13 @@ class BagsApiClient {
       return result.response as { tokenMint: string; tokenMetadata: string };
     } catch (error) {
       // Retry on network errors
-      if (error instanceof TypeError && error.message.includes('fetch') && retryCount < maxRetries) {
+      if (
+        error instanceof TypeError &&
+        error.message.includes("fetch") &&
+        retryCount < maxRetries
+      ) {
         const delay = Math.pow(2, retryCount) * 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
         return this.createTokenInfo(data, retryCount + 1);
       }
       throw error;
@@ -360,10 +367,12 @@ class BagsApiClient {
       wallet: data.wallet,
       initialBuyLamports: data.initialBuyLamports,
       configKey: data.configKey,
-      ...(data.tipWallet && data.tipLamports ? {
-        tipWallet: data.tipWallet,
-        tipLamports: data.tipLamports,
-      } : {}),
+      ...(data.tipWallet && data.tipLamports
+        ? {
+            tipWallet: data.tipWallet,
+            tipLamports: data.tipLamports,
+          }
+        : {}),
     };
 
     // Make raw fetch
@@ -416,11 +425,15 @@ class BagsApiClient {
     }
 
     if (!transaction) {
-      throw new Error(`No transaction found in Bags API response. Keys: ${Object.keys(data_response).join(", ")}`);
+      throw new Error(
+        `No transaction found in Bags API response. Keys: ${Object.keys(data_response).join(", ")}`
+      );
     }
 
     if (transaction.length < 100) {
-      throw new Error(`Transaction too short (${transaction.length} chars) - API may have returned an error`);
+      throw new Error(
+        `Transaction too short (${transaction.length} chars) - API may have returned an error`
+      );
     }
 
     return { transaction, lastValidBlockHeight };
@@ -441,11 +454,14 @@ class BagsApiClient {
     configId: string;
     totalBps: number;
     needsCreation?: boolean;
-    transactions?: Array<{ transaction: string; blockhash: { blockhash: string; lastValidBlockHeight: number } }>;
+    transactions?: Array<{
+      transaction: string;
+      blockhash: { blockhash: string; lastValidBlockHeight: number };
+    }>;
   }> {
     // Separate solana wallets from social usernames
-    const solanaClaimers = feeClaimers.filter(fc => fc.provider === "solana");
-    const socialClaimers = feeClaimers.filter(fc => fc.provider !== "solana");
+    const solanaClaimers = feeClaimers.filter((fc) => fc.provider === "solana");
+    const socialClaimers = feeClaimers.filter((fc) => fc.provider !== "solana");
 
     // Build wallet map
     const walletMap = new Map<string, string>();
@@ -459,7 +475,7 @@ class BagsApiClient {
     // Bulk lookup social usernames
     if (socialClaimers.length > 0) {
       try {
-        const lookupItems = socialClaimers.map(fc => ({
+        const lookupItems = socialClaimers.map((fc) => ({
           provider: fc.provider,
           username: fc.providerUsername,
         }));
@@ -480,16 +496,23 @@ class BagsApiClient {
           }
         }
         if (missingUsers.length > 0) {
-          throw new Error(`Could not find wallets for: ${missingUsers.join(", ")}. These users need to link their wallet at bags.fm/settings`);
+          throw new Error(
+            `Could not find wallets for: ${missingUsers.join(", ")}. These users need to link their wallet at bags.fm/settings`
+          );
         }
       } catch (lookupError) {
         // Re-throw if it's our custom error
-        if (lookupError instanceof Error && lookupError.message.includes("Could not find wallets")) {
+        if (
+          lookupError instanceof Error &&
+          lookupError.message.includes("Could not find wallets")
+        ) {
           throw lookupError;
         }
         // Otherwise provide generic error with context
-        const userList = socialClaimers.map(fc => `@${fc.providerUsername}`).join(", ");
-        throw new Error(`Failed to lookup wallets for: ${userList}. Make sure all users have linked their wallets at bags.fm/settings`);
+        const userList = socialClaimers.map((fc) => `@${fc.providerUsername}`).join(", ");
+        throw new Error(
+          `Failed to lookup wallets for: ${userList}. Make sure all users have linked their wallets at bags.fm/settings`
+        );
       }
     }
 
@@ -561,8 +584,7 @@ class BagsApiClient {
 
     // Handle different possible response field names - check all variations
     // The API returns "meteoraConfigKey" as the config key to use for launch
-    const configId = (
-      result.meteoraConfigKey ||
+    const configId = (result.meteoraConfigKey ||
       result.configId ||
       result.configKey ||
       result.config_id ||
@@ -571,17 +593,21 @@ class BagsApiClient {
       result.id ||
       result.config ||
       // Sometimes the response is just the string directly
-      (typeof result === "string" ? result : null)
-    ) as string;
+      (typeof result === "string" ? result : null)) as string;
 
     const totalBps = (result.totalBps || result.total_bps || result.bps || 0) as number;
     const needsCreation = result.needsCreation as boolean | undefined;
-    const transactions = result.transactions as Array<{ transaction: string; blockhash: { blockhash: string; lastValidBlockHeight: number } }> | undefined;
+    const transactions = result.transactions as
+      | Array<{
+          transaction: string;
+          blockhash: { blockhash: string; lastValidBlockHeight: number };
+        }>
+      | undefined;
 
     if (!configId) {
       throw new Error(
         `Fee share config created but no configKey returned. API response keys: ${Object.keys(result).join(", ")}. ` +
-        `This may indicate a Bags.fm API change. Please report this issue.`
+          `This may indicate a Bags.fm API change. Please report this issue.`
       );
     }
 

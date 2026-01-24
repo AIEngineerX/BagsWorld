@@ -88,9 +88,7 @@ export function Leaderboard() {
         {population.length === 0 ? (
           <div className="text-center py-8 px-4">
             <div className="text-3xl mb-2">👥</div>
-            <p className="font-pixel text-[10px] text-gray-500 mb-1">
-              No citizens yet
-            </p>
+            <p className="font-pixel text-[10px] text-gray-500 mb-1">No citizens yet</p>
             <p className="font-pixel text-[8px] text-gray-600">
               Launch a token to populate the world!
             </p>
@@ -113,9 +111,7 @@ export function Leaderboard() {
                 <div
                   className="w-8 h-8 rounded bg-bags-dark overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-bags-green"
                   onClick={() =>
-                    selectCharacter(
-                      selectedCharacter?.id === character.id ? null : character
-                    )
+                    selectCharacter(selectedCharacter?.id === character.id ? null : character)
                   }
                 >
                   {character.avatarUrl ? (
@@ -133,9 +129,7 @@ export function Leaderboard() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() =>
-                        selectCharacter(
-                          selectedCharacter?.id === character.id ? null : character
-                        )
+                        selectCharacter(selectedCharacter?.id === character.id ? null : character)
                       }
                       className="font-pixel text-[10px] text-white truncate hover:text-bags-green"
                     >
@@ -156,7 +150,9 @@ export function Leaderboard() {
                   </div>
                   <div className="flex items-center gap-1">
                     <p className="font-pixel text-[8px] text-gray-500">
-                      @{character.providerUsername?.toLowerCase() || character.username.toLowerCase()}
+                      @
+                      {character.providerUsername?.toLowerCase() ||
+                        character.username.toLowerCase()}
                     </p>
                   </div>
                 </div>
@@ -168,9 +164,7 @@ export function Leaderboard() {
                   <p className="font-pixel text-[8px] text-gray-500">24h</p>
                 </div>
 
-                <span title={character.mood}>
-                  {getMoodIcon(character.mood)}
-                </span>
+                <span title={character.mood}>{getMoodIcon(character.mood)}</span>
               </div>
             </div>
           ))
