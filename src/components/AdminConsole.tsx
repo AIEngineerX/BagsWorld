@@ -148,11 +148,11 @@ export function AdminConsole() {
     setLogs((prev) => [`[${timestamp}] ${prefix} ${message}`, ...prev.slice(0, 99)]);
   }, []);
 
-  // Authenticate with wallet signature
-  const authenticate = useCallback(async (): Promise<boolean> => {
+  // Authenticate with wallet signature - returns the token on success, null on failure
+  const authenticate = useCallback(async (): Promise<string | null> => {
     if (!publicKey || !signMessage) {
       setAuthError("Wallet not connected or doesn't support signing");
-      return false;
+      return null;
     }
 
     setIsAuthenticating(true);
@@ -207,12 +207,12 @@ export function AdminConsole() {
 
       addLog("Authentication successful!", "success");
       setShowAuthModal(false);
-      return true;
+      return token; // Return the actual token
     } catch (error) {
       const message = error instanceof Error ? error.message : "Authentication failed";
       setAuthError(message);
       addLog(`Authentication failed: ${message}`, "error");
-      return false;
+      return null;
     } finally {
       setIsAuthenticating(false);
     }
@@ -221,10 +221,12 @@ export function AdminConsole() {
   // Authenticated fetch wrapper - ensures valid session token
   const adminFetch = useCallback(
     async (url: string, options: RequestInit = {}): Promise<Response> => {
-      // If no session token, authenticate first
-      if (!sessionToken) {
-        const success = await authenticate();
-        if (!success) {
+      // Use current token or authenticate to get one
+      let token = sessionToken;
+
+      if (!token) {
+        token = await authenticate();
+        if (!token) {
           throw new Error("Authentication required");
         }
       }
@@ -234,7 +236,7 @@ export function AdminConsole() {
         ...options,
         headers: {
           ...options.headers,
-          Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -244,8 +246,8 @@ export function AdminConsole() {
         localStorage.removeItem(SESSION_TOKEN_KEY);
         setSessionToken(null);
 
-        const success = await authenticate();
-        if (!success) {
+        const newToken = await authenticate();
+        if (!newToken) {
           throw new Error("Re-authentication failed");
         }
 
@@ -254,7 +256,7 @@ export function AdminConsole() {
           ...options,
           headers: {
             ...options.headers,
-            Authorization: `Bearer ${sessionToken}`,
+            Authorization: `Bearer ${newToken}`,
           },
         });
       }
