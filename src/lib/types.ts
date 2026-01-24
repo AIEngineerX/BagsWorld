@@ -115,6 +115,9 @@ export interface RouteLeg {
 
 export type WeatherType = "sunny" | "cloudy" | "rain" | "storm" | "apocalypse";
 
+// Building decay status
+export type BuildingStatus = "active" | "warning" | "critical" | "dormant";
+
 export interface TimeInfo {
   hour: number;
   isNight: boolean;
@@ -165,6 +168,7 @@ export interface GameBuilding {
   y: number;
   level: number; // 1-5 based on market cap
   health: number; // 0-100 based on recent performance
+  status?: BuildingStatus; // Decay status for visual effects
   glowing: boolean;
   ownerId: string;
   marketCap?: number;

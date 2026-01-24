@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
-import type { WorldState, GameCharacter, GameBuilding, ZoneType } from "@/lib/types";
+import type { WorldState, GameCharacter, GameBuilding, ZoneType, BuildingStatus } from "@/lib/types";
+import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { SpeechBubbleManager } from "@/lib/speech-bubble-manager";
 import { getCurrentLine, getActiveConversation } from "@/lib/autonomous-dialogue";
 
@@ -3467,6 +3468,94 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  // Get building decay status from health value
+  private getStatusFromHealth(health: number): BuildingStatus {
+    const thresholds = ECOSYSTEM_CONFIG.buildings.decay.thresholds;
+    if (health <= thresholds.dormant) return "dormant";
+    if (health <= thresholds.critical) return "critical";
+    if (health <= thresholds.warning) return "warning";
+    return "active";
+  }
+
+  // Apply visual decay effects to a building sprite
+  private applyDecayVisuals(
+    building: GameBuilding,
+    sprite: Phaser.GameObjects.Sprite,
+    container: Phaser.GameObjects.Container
+  ): void {
+    // Skip permanent and floating buildings - they never decay
+    if (building.isPermanent || building.isFloating) return;
+
+    const status = building.status || this.getStatusFromHealth(building.health);
+
+    // Clear existing decay effects
+    sprite.clearTint();
+    sprite.setAlpha(1);
+
+    // Remove any existing decay tweens on this sprite
+    this.tweens.killTweensOf(sprite);
+
+    // Remove existing dormant indicator if any
+    const existingZzz = container.getByName("dormantIndicator");
+    if (existingZzz) {
+      this.tweens.killTweensOf(existingZzz);
+      existingZzz.destroy();
+    }
+
+    switch (status) {
+      case "warning":
+        sprite.setTint(0xffcc00); // Yellow tint
+        sprite.setAlpha(0.9);
+        break;
+
+      case "critical":
+        sprite.setTint(0xff6600); // Orange tint
+        sprite.setAlpha(0.75);
+        // Add pulsing effect for urgency
+        this.tweens.add({
+          targets: sprite,
+          alpha: 0.6,
+          duration: 1000,
+          yoyo: true,
+          repeat: -1,
+        });
+        break;
+
+      case "dormant":
+        sprite.setTint(0x666666); // Gray tint
+        sprite.setAlpha(0.5);
+        // Add sleeping indicator
+        this.addDormantIndicator(container);
+        break;
+
+      default:
+        // "active" - no special effects
+        break;
+    }
+  }
+
+  // Add a floating "ZZZ" indicator for dormant buildings
+  private addDormantIndicator(container: Phaser.GameObjects.Container): void {
+    const zzz = this.add.text(20, -60, "zzZ", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#9ca3af",
+    });
+    zzz.setName("dormantIndicator");
+
+    // Float animation
+    this.tweens.add({
+      targets: zzz,
+      y: zzz.y - 10,
+      alpha: { from: 1, to: 0.5 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    container.add(zzz);
+  }
+
   private updateExistingBuilding(building: GameBuilding): void {
     const container = this.buildingSprites.get(building.id);
     if (!container) return;
@@ -3490,6 +3579,9 @@ export class WorldScene extends Phaser.Scene {
     // Regular buildings: sprite is at index 1 (after shadow at index 0)
     const sprite = container.getAt(1) as Phaser.GameObjects.Sprite;
     if (!sprite) return;
+
+    // Apply decay visuals
+    this.applyDecayVisuals(building, sprite, container);
 
     // Use same hash function to get consistent style
     const getBuildingStyleUpdate = (id: string): number => {
@@ -3584,6 +3676,11 @@ export class WorldScene extends Phaser.Scene {
                 : buildingScale
     );
     container.add(sprite);
+
+    // Apply decay visuals for non-permanent buildings
+    if (!building.isPermanent && !building.isFloating) {
+      this.applyDecayVisuals(building, sprite, container);
+    }
 
     // Add floating animation for HQ
     if (isBagsWorldHQ) {
@@ -4167,9 +4264,23 @@ export class WorldScene extends Phaser.Scene {
     const isTreasury = building.id.startsWith("Treasury");
     const tooltipContainer = this.add.container(container.x, container.y - 110);
 
-    // Treasury gets a special gold border
+    // Determine border color based on building status
+    const status = building.status || this.getStatusFromHealth(building.health);
+    let borderColor = 0x4ade80; // Default green for active
+    if (isTreasury) {
+      borderColor = 0xfbbf24; // Gold for treasury
+    } else if (building.isPermanent || building.isFloating) {
+      borderColor = 0x4ade80; // Green for permanent buildings
+    } else if (status === "dormant") {
+      borderColor = 0x666666; // Gray for dormant
+    } else if (status === "critical") {
+      borderColor = 0xff6600; // Orange for critical
+    } else if (status === "warning") {
+      borderColor = 0xffcc00; // Yellow for warning
+    }
+
     const bg = this.add.rectangle(0, 0, 140, 80, 0x0a0a0f, 0.95);
-    bg.setStrokeStyle(2, isTreasury ? 0xfbbf24 : building.health > 50 ? 0x4ade80 : 0xf87171);
+    bg.setStrokeStyle(2, borderColor);
 
     const nameText = this.add.text(0, -28, `${building.name}`, {
       fontFamily: "monospace",
@@ -4245,14 +4356,36 @@ export class WorldScene extends Phaser.Scene {
       );
       changeText.setOrigin(0.5, 0.5);
 
-      const clickText = this.add.text(0, 32, "Click to trade", {
+      // Show decay status for non-permanent buildings
+      let statusText: Phaser.GameObjects.Text | null = null;
+      if (!building.isPermanent && !building.isFloating && status !== "active") {
+        const statusMessages: Record<string, { text: string; color: string }> = {
+          warning: { text: "Low activity", color: "#ffcc00" },
+          critical: { text: "Decaying - needs volume", color: "#ff6600" },
+          dormant: { text: "Dormant - no activity", color: "#666666" },
+        };
+        const statusInfo = statusMessages[status];
+        if (statusInfo) {
+          statusText = this.add.text(0, 28, statusInfo.text, {
+            fontFamily: "monospace",
+            fontSize: "8px",
+            color: statusInfo.color,
+          });
+          statusText.setOrigin(0.5, 0.5);
+        }
+      }
+
+      const clickText = this.add.text(0, statusText ? 40 : 32, "Click to trade", {
         fontFamily: "monospace",
         fontSize: "9px",
         color: "#6b7280",
       });
       clickText.setOrigin(0.5, 0.5);
 
-      tooltipContainer.add([bg, nameText, mcapText, levelText, changeText, clickText]);
+      const tooltipElements = [bg, nameText, mcapText, levelText, changeText];
+      if (statusText) tooltipElements.push(statusText);
+      tooltipElements.push(clickText);
+      tooltipContainer.add(tooltipElements);
     }
 
     tooltipContainer.setDepth(200);
