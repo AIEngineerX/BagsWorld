@@ -76,6 +76,10 @@ interface GlobalToken {
   is_featured?: boolean;
   is_verified?: boolean;
   level_override?: number | null;
+  position_x?: number | null;
+  position_y?: number | null;
+  style_override?: number | null;
+  health_override?: number | null;
 }
 
 type TabType = "overview" | "diagnostics" | "global" | "local" | "analytics" | "logs";
@@ -94,6 +98,11 @@ export function AdminConsole() {
   const [newTokenMint, setNewTokenMint] = useState("");
   const [editingToken, setEditingToken] = useState<GlobalToken | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<number | "auto">("auto");
+  const [expandedToken, setExpandedToken] = useState<string | null>(null);
+  const [positionInputs, setPositionInputs] = useState<{ [mint: string]: { x: string; y: string } }>(
+    {}
+  );
+  const [healthInputs, setHealthInputs] = useState<{ [mint: string]: string }>({});
 
   const isUserAdmin = connected && isAdmin(publicKey?.toBase58());
 
@@ -240,6 +249,72 @@ export function AdminConsole() {
         prev.map((t) => (t.mint === token.mint ? { ...t, level_override: level } : t))
       );
       addLog(`Set level ${level === null ? "auto" : level} for $${token.symbol}`, "success");
+    }
+  };
+
+  const handleSetPosition = async (token: GlobalToken, x: number | null, y: number | null) => {
+    const success = await adminAction("set_position", {
+      mint: token.mint,
+      x,
+      y,
+    });
+    if (success) {
+      setGlobalTokens((prev) =>
+        prev.map((t) => (t.mint === token.mint ? { ...t, position_x: x, position_y: y } : t))
+      );
+      addLog(
+        `Set position ${x === null ? "auto" : `(${x}, ${y})`} for $${token.symbol}`,
+        "success"
+      );
+    }
+  };
+
+  const handleSetStyle = async (token: GlobalToken, style: number | null) => {
+    const success = await adminAction("set_style", {
+      mint: token.mint,
+      style,
+    });
+    if (success) {
+      setGlobalTokens((prev) =>
+        prev.map((t) => (t.mint === token.mint ? { ...t, style_override: style } : t))
+      );
+      addLog(`Set style ${style === null ? "auto" : style} for $${token.symbol}`, "success");
+    }
+  };
+
+  const handleSetHealth = async (token: GlobalToken, health: number | null) => {
+    const success = await adminAction("set_health", {
+      mint: token.mint,
+      health,
+    });
+    if (success) {
+      setGlobalTokens((prev) =>
+        prev.map((t) => (t.mint === token.mint ? { ...t, health_override: health } : t))
+      );
+      addLog(`Set health ${health === null ? "auto" : health} for $${token.symbol}`, "success");
+    }
+  };
+
+  const getHealthStatus = (health: number | null | undefined): string => {
+    if (health === null || health === undefined) return "auto";
+    if (health <= 10) return "dormant";
+    if (health <= 25) return "critical";
+    if (health <= 50) return "warning";
+    return "active";
+  };
+
+  const getHealthStatusColor = (status: string): string => {
+    switch (status) {
+      case "active":
+        return "text-green-400";
+      case "warning":
+        return "text-yellow-400";
+      case "critical":
+        return "text-orange-400";
+      case "dormant":
+        return "text-red-400";
+      default:
+        return "text-gray-400";
     }
   };
 
@@ -673,123 +748,341 @@ export function AdminConsole() {
                         : "Database not configured (Netlify only)"}
                     </p>
                   ) : (
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
                       {globalTokens.map((token) => (
                         <div
                           key={token.mint}
-                          className="bg-bags-darker p-3 border border-red-500/20"
+                          className="bg-bags-darker border border-red-500/20"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              {token.image_url && (
-                                <img
-                                  src={token.image_url}
-                                  alt={token.symbol}
-                                  className="w-10 h-10 border border-bags-green/30 flex-shrink-0"
-                                />
-                              )}
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-pixel text-[11px] text-bags-gold">
-                                    ${token.symbol}
+                          <div className="p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                {token.image_url && (
+                                  <img
+                                    src={token.image_url}
+                                    alt={token.symbol}
+                                    className="w-10 h-10 border border-bags-green/30 flex-shrink-0"
+                                  />
+                                )}
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-pixel text-[11px] text-bags-gold">
+                                      ${token.symbol}
+                                    </p>
+                                    {token.is_featured && (
+                                      <span className="font-pixel text-[7px] text-yellow-400 bg-yellow-500/20 px-1">
+                                        FEATURED
+                                      </span>
+                                    )}
+                                    {token.is_verified && (
+                                      <span className="font-pixel text-[7px] text-blue-400 bg-blue-500/20 px-1">
+                                        VERIFIED
+                                      </span>
+                                    )}
+                                    {token.level_override && (
+                                      <span className="font-pixel text-[7px] text-purple-400 bg-purple-500/20 px-1">
+                                        LVL {token.level_override}
+                                      </span>
+                                    )}
+                                    {(token.position_x != null || token.style_override != null || token.health_override != null) && (
+                                      <span className="font-pixel text-[7px] text-cyan-400 bg-cyan-500/20 px-1">
+                                        CUSTOM
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="font-pixel text-[8px] text-gray-400 truncate">
+                                    {token.name}
                                   </p>
-                                  {token.is_featured && (
-                                    <span className="font-pixel text-[7px] text-yellow-400 bg-yellow-500/20 px-1">
-                                      FEATURED
+                                  <p className="font-pixel text-[7px] text-gray-600 font-mono truncate">
+                                    {truncateWallet(token.mint)}
+                                  </p>
+                                  <div className="flex gap-3 mt-1">
+                                    <span className="font-pixel text-[7px] text-gray-500">
+                                      MC: {formatMarketCap(token.market_cap)}
                                     </span>
-                                  )}
-                                  {token.is_verified && (
-                                    <span className="font-pixel text-[7px] text-blue-400 bg-blue-500/20 px-1">
-                                      VERIFIED
+                                    <span className="font-pixel text-[7px] text-gray-500">
+                                      Fees: {(token.lifetime_fees || 0).toFixed(2)} SOL
                                     </span>
-                                  )}
-                                  {token.level_override && (
-                                    <span className="font-pixel text-[7px] text-purple-400 bg-purple-500/20 px-1">
-                                      LVL {token.level_override}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="font-pixel text-[8px] text-gray-400 truncate">
-                                  {token.name}
-                                </p>
-                                <p className="font-pixel text-[7px] text-gray-600 font-mono truncate">
-                                  {truncateWallet(token.mint)}
-                                </p>
-                                <div className="flex gap-3 mt-1">
-                                  <span className="font-pixel text-[7px] text-gray-500">
-                                    MC: {formatMarketCap(token.market_cap)}
-                                  </span>
-                                  <span className="font-pixel text-[7px] text-gray-500">
-                                    Fees: {(token.lifetime_fees || 0).toFixed(2)} SOL
-                                  </span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            <div className="flex flex-col gap-1 flex-shrink-0">
-                              {/* Level Override */}
-                              <select
-                                value={token.level_override || "auto"}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  handleSetLevelOverride(
-                                    token,
-                                    val === "auto" ? null : parseInt(val)
-                                  );
-                                }}
-                                className="bg-black/50 border border-gray-700 px-1 py-0.5 font-pixel text-[8px] text-white"
-                              >
-                                <option value="auto">Auto</option>
-                                <option value="1">Lvl 1</option>
-                                <option value="2">Lvl 2</option>
-                                <option value="3">Lvl 3</option>
-                                <option value="4">Lvl 4</option>
-                                <option value="5">Lvl 5</option>
-                              </select>
+                              <div className="flex flex-col gap-1 flex-shrink-0">
+                                {/* Level Override */}
+                                <select
+                                  value={token.level_override || "auto"}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    handleSetLevelOverride(
+                                      token,
+                                      val === "auto" ? null : parseInt(val)
+                                    );
+                                  }}
+                                  className="bg-black/50 border border-gray-700 px-1 py-0.5 font-pixel text-[8px] text-white"
+                                >
+                                  <option value="auto">Auto</option>
+                                  <option value="1">Lvl 1</option>
+                                  <option value="2">Lvl 2</option>
+                                  <option value="3">Lvl 3</option>
+                                  <option value="4">Lvl 4</option>
+                                  <option value="5">Lvl 5</option>
+                                </select>
 
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => handleToggleFeatured(token)}
-                                  className={`font-pixel text-[7px] px-1.5 py-0.5 border ${
-                                    token.is_featured
-                                      ? "text-yellow-400 border-yellow-500/50 bg-yellow-500/20"
-                                      : "text-gray-500 border-gray-600 hover:text-yellow-400"
-                                  }`}
-                                  title="Toggle Featured"
-                                >
-                                  *
-                                </button>
-                                <button
-                                  onClick={() => handleToggleVerified(token)}
-                                  className={`font-pixel text-[7px] px-1.5 py-0.5 border ${
-                                    token.is_verified
-                                      ? "text-blue-400 border-blue-500/50 bg-blue-500/20"
-                                      : "text-gray-500 border-gray-600 hover:text-blue-400"
-                                  }`}
-                                  title="Toggle Verified"
-                                >
-                                  V
-                                </button>
-                              </div>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => handleToggleFeatured(token)}
+                                    className={`font-pixel text-[7px] px-1.5 py-0.5 border ${
+                                      token.is_featured
+                                        ? "text-yellow-400 border-yellow-500/50 bg-yellow-500/20"
+                                        : "text-gray-500 border-gray-600 hover:text-yellow-400"
+                                    }`}
+                                    title="Toggle Featured"
+                                  >
+                                    *
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleVerified(token)}
+                                    className={`font-pixel text-[7px] px-1.5 py-0.5 border ${
+                                      token.is_verified
+                                        ? "text-blue-400 border-blue-500/50 bg-blue-500/20"
+                                        : "text-gray-500 border-gray-600 hover:text-blue-400"
+                                    }`}
+                                    title="Toggle Verified"
+                                  >
+                                    V
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      setExpandedToken(
+                                        expandedToken === token.mint ? null : token.mint
+                                      )
+                                    }
+                                    className={`font-pixel text-[7px] px-1.5 py-0.5 border ${
+                                      expandedToken === token.mint
+                                        ? "text-cyan-400 border-cyan-500/50 bg-cyan-500/20"
+                                        : "text-gray-500 border-gray-600 hover:text-cyan-400"
+                                    }`}
+                                    title="Building Controls"
+                                  >
+                                    {expandedToken === token.mint ? "^" : "v"}
+                                  </button>
+                                </div>
 
-                              <div className="flex gap-1">
-                                <a
-                                  href={`https://solscan.io/token/${token.mint}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="font-pixel text-[7px] text-blue-400 hover:text-blue-300 px-1"
-                                >
-                                  [VIEW]
-                                </a>
-                                <button
-                                  onClick={() => handleDeleteGlobalToken(token.mint, token.symbol)}
-                                  className="font-pixel text-[7px] text-red-400 hover:text-red-300 px-1"
-                                >
-                                  [DEL]
-                                </button>
+                                <div className="flex gap-1">
+                                  <a
+                                    href={`https://solscan.io/token/${token.mint}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-pixel text-[7px] text-blue-400 hover:text-blue-300 px-1"
+                                  >
+                                    [VIEW]
+                                  </a>
+                                  <button
+                                    onClick={() => handleDeleteGlobalToken(token.mint, token.symbol)}
+                                    className="font-pixel text-[7px] text-red-400 hover:text-red-300 px-1"
+                                  >
+                                    [DEL]
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
+
+                          {/* Expandable Building Controls */}
+                          {expandedToken === token.mint && (
+                            <div className="border-t border-red-500/20 p-3 bg-black/30">
+                              <p className="font-pixel text-[8px] text-cyan-400 mb-3">
+                                BUILDING CONTROLS
+                              </p>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {/* Position Controls */}
+                                <div className="space-y-2">
+                                  <p className="font-pixel text-[7px] text-gray-500">Position</p>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-pixel text-[7px] text-gray-500">X:</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="1280"
+                                        value={
+                                          positionInputs[token.mint]?.x ??
+                                          (token.position_x ?? "")
+                                        }
+                                        onChange={(e) =>
+                                          setPositionInputs((prev) => ({
+                                            ...prev,
+                                            [token.mint]: {
+                                              ...prev[token.mint],
+                                              x: e.target.value,
+                                              y:
+                                                prev[token.mint]?.y ??
+                                                String(token.position_y ?? ""),
+                                            },
+                                          }))
+                                        }
+                                        placeholder="auto"
+                                        className="w-16 bg-black/50 border border-gray-700 px-1 py-0.5 font-mono text-[8px] text-white"
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-pixel text-[7px] text-gray-500">Y:</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="960"
+                                        value={
+                                          positionInputs[token.mint]?.y ??
+                                          (token.position_y ?? "")
+                                        }
+                                        onChange={(e) =>
+                                          setPositionInputs((prev) => ({
+                                            ...prev,
+                                            [token.mint]: {
+                                              ...prev[token.mint],
+                                              x:
+                                                prev[token.mint]?.x ??
+                                                String(token.position_x ?? ""),
+                                              y: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                        placeholder="auto"
+                                        className="w-16 bg-black/50 border border-gray-700 px-1 py-0.5 font-mono text-[8px] text-white"
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        const x = positionInputs[token.mint]?.x;
+                                        const y = positionInputs[token.mint]?.y;
+                                        handleSetPosition(
+                                          token,
+                                          x ? parseFloat(x) : null,
+                                          y ? parseFloat(y) : null
+                                        );
+                                      }}
+                                      className="font-pixel text-[7px] text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 border border-cyan-500/30"
+                                    >
+                                      Set
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        handleSetPosition(token, null, null);
+                                        setPositionInputs((prev) => {
+                                          const { [token.mint]: _, ...rest } = prev;
+                                          return rest;
+                                        });
+                                      }}
+                                      className="font-pixel text-[7px] text-gray-400 hover:text-gray-300 px-2 py-0.5 border border-gray-600"
+                                    >
+                                      Reset
+                                    </button>
+                                  </div>
+                                  {token.position_x != null && (
+                                    <p className="font-pixel text-[6px] text-gray-600">
+                                      Current: ({token.position_x}, {token.position_y})
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Style Controls */}
+                                <div className="space-y-2">
+                                  <p className="font-pixel text-[7px] text-gray-500">Style</p>
+                                  <select
+                                    value={token.style_override ?? "auto"}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      handleSetStyle(token, val === "auto" ? null : parseInt(val));
+                                    }}
+                                    className="bg-black/50 border border-gray-700 px-2 py-1 font-pixel text-[8px] text-white"
+                                  >
+                                    <option value="auto">Auto (from mint)</option>
+                                    <option value="0">Style 0</option>
+                                    <option value="1">Style 1</option>
+                                    <option value="2">Style 2</option>
+                                    <option value="3">Style 3</option>
+                                  </select>
+                                </div>
+
+                                {/* Health Controls */}
+                                <div className="space-y-2">
+                                  <p className="font-pixel text-[7px] text-gray-500">Health</p>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      value={
+                                        healthInputs[token.mint] ?? (token.health_override ?? "")
+                                      }
+                                      onChange={(e) =>
+                                        setHealthInputs((prev) => ({
+                                          ...prev,
+                                          [token.mint]: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="auto"
+                                      className="w-16 bg-black/50 border border-gray-700 px-1 py-0.5 font-mono text-[8px] text-white"
+                                    />
+                                    <span className="font-pixel text-[7px] text-gray-500">
+                                      / 100
+                                    </span>
+                                    <button
+                                      onClick={() => {
+                                        const health = healthInputs[token.mint];
+                                        handleSetHealth(token, health ? parseInt(health) : null);
+                                      }}
+                                      className="font-pixel text-[7px] text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 border border-cyan-500/30"
+                                    >
+                                      Set
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        handleSetHealth(token, null);
+                                        setHealthInputs((prev) => {
+                                          const { [token.mint]: _, ...rest } = prev;
+                                          return rest;
+                                        });
+                                      }}
+                                      className="font-pixel text-[7px] text-gray-400 hover:text-gray-300 px-2 py-0.5 border border-gray-600"
+                                    >
+                                      Auto
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Status Indicator */}
+                                <div className="space-y-2">
+                                  <p className="font-pixel text-[7px] text-gray-500">Status</p>
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`w-2 h-2 rounded-full ${
+                                        getHealthStatus(token.health_override) === "active"
+                                          ? "bg-green-400"
+                                          : getHealthStatus(token.health_override) === "warning"
+                                            ? "bg-yellow-400"
+                                            : getHealthStatus(token.health_override) === "critical"
+                                              ? "bg-orange-400"
+                                              : getHealthStatus(token.health_override) === "dormant"
+                                                ? "bg-red-400"
+                                                : "bg-gray-400"
+                                      }`}
+                                    />
+                                    <span
+                                      className={`font-pixel text-[8px] ${getHealthStatusColor(getHealthStatus(token.health_override))}`}
+                                    >
+                                      {getHealthStatus(token.health_override).toUpperCase()}
+                                    </span>
+                                    {token.health_override != null && (
+                                      <span className="font-pixel text-[7px] text-gray-600">
+                                        ({token.health_override}%)
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

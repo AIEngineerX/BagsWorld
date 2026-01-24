@@ -122,6 +122,12 @@ export async function POST(request: NextRequest) {
         return await handleSetVerified(data);
       case "set_level_override":
         return await handleSetLevelOverride(data);
+      case "set_position":
+        return await handleSetPosition(data);
+      case "set_style":
+        return await handleSetStyle(data);
+      case "set_health":
+        return await handleSetHealth(data);
       case "add_token":
         return await handleAddToken(data);
       case "clear_cache":
@@ -442,6 +448,133 @@ async function handleSetLevelOverride(data: { mint: string; level: number | null
   } catch (error) {
     console.error("Set level override error:", error);
     return NextResponse.json({ error: "Failed to set level override" }, { status: 500 });
+  }
+}
+
+// Handle set building position
+async function handleSetPosition(data: { mint: string; x: number | null; y: number | null }) {
+  // Validate mint address
+  if (!data.mint || !isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
+  // Validate position values
+  if (data.x !== null && (typeof data.x !== "number" || data.x < 0 || data.x > 1280)) {
+    return NextResponse.json(
+      { error: "X position must be null or a number between 0 and 1280" },
+      { status: 400 }
+    );
+  }
+  if (data.y !== null && (typeof data.y !== "number" || data.y < 0 || data.y > 960)) {
+    return NextResponse.json(
+      { error: "Y position must be null or a number between 0 and 960" },
+      { status: 400 }
+    );
+  }
+
+  if (!isNeonConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+
+  try {
+    const moduleName = "@netlify/neon";
+    // eslint-disable-next-line
+    const { neon } = require(moduleName);
+    const sql = neon();
+
+    await sql`
+      UPDATE tokens SET
+        position_x = ${data.x},
+        position_y = ${data.y},
+        last_updated = NOW()
+      WHERE mint = ${data.mint}
+    `;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Set position error:", error);
+    return NextResponse.json({ error: "Failed to set position" }, { status: 500 });
+  }
+}
+
+// Handle set building style
+async function handleSetStyle(data: { mint: string; style: number | null }) {
+  // Validate mint address
+  if (!data.mint || !isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
+  // Validate style value
+  if (data.style !== null && (typeof data.style !== "number" || data.style < 0 || data.style > 3)) {
+    return NextResponse.json(
+      { error: "Style must be null or a number between 0 and 3" },
+      { status: 400 }
+    );
+  }
+
+  if (!isNeonConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+
+  try {
+    const moduleName = "@netlify/neon";
+    // eslint-disable-next-line
+    const { neon } = require(moduleName);
+    const sql = neon();
+
+    await sql`
+      UPDATE tokens SET
+        style_override = ${data.style},
+        last_updated = NOW()
+      WHERE mint = ${data.mint}
+    `;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Set style error:", error);
+    return NextResponse.json({ error: "Failed to set style" }, { status: 500 });
+  }
+}
+
+// Handle set building health override
+async function handleSetHealth(data: { mint: string; health: number | null }) {
+  // Validate mint address
+  if (!data.mint || !isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
+  // Validate health value
+  if (
+    data.health !== null &&
+    (typeof data.health !== "number" || data.health < 0 || data.health > 100)
+  ) {
+    return NextResponse.json(
+      { error: "Health must be null or a number between 0 and 100" },
+      { status: 400 }
+    );
+  }
+
+  if (!isNeonConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+
+  try {
+    const moduleName = "@netlify/neon";
+    // eslint-disable-next-line
+    const { neon } = require(moduleName);
+    const sql = neon();
+
+    await sql`
+      UPDATE tokens SET
+        health_override = ${data.health},
+        last_updated = NOW()
+      WHERE mint = ${data.mint}
+    `;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Set health error:", error);
+    return NextResponse.json({ error: "Failed to set health" }, { status: 500 });
   }
 }
 

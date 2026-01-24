@@ -30,6 +30,10 @@ export interface GlobalToken {
   is_verified?: boolean;
   // Admin controls
   level_override?: number | null; // Admin override for building level (1-5)
+  position_x?: number | null; // X coordinate override
+  position_y?: number | null; // Y coordinate override
+  style_override?: number | null; // Building style (0-3)
+  health_override?: number | null; // Health override (0-100)
 }
 
 // Check if Neon is configured (either Netlify integration or direct DATABASE_URL)
@@ -137,6 +141,12 @@ export async function initializeDatabase(): Promise<boolean> {
     await sql`CREATE INDEX IF NOT EXISTS idx_tokens_creator ON tokens(creator_wallet)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_tokens_featured ON tokens(is_featured)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_tokens_created ON tokens(created_at DESC)`;
+
+    // Add building management columns (migration)
+    await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS position_x DECIMAL`;
+    await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS position_y DECIMAL`;
+    await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS style_override INTEGER`;
+    await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS health_override INTEGER`;
 
     // Verify table exists and check row count
     const countResult = await sql`SELECT COUNT(*) as count FROM tokens`;

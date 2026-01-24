@@ -112,8 +112,23 @@ export function calculateBuildingHealth(
   marketCap: number,
   change24h: number,
   previousHealth: number,
-  isPermanent: boolean = false
+  isPermanent: boolean = false,
+  healthOverride?: number | null
 ): { health: number; status: BuildingStatus } {
+  // If admin override exists, use it directly
+  if (healthOverride !== null && healthOverride !== undefined) {
+    const config = ECOSYSTEM_CONFIG.buildings.decay;
+    let status: BuildingStatus = "active";
+    if (healthOverride <= config.thresholds.dormant) {
+      status = "dormant";
+    } else if (healthOverride <= config.thresholds.critical) {
+      status = "critical";
+    } else if (healthOverride <= config.thresholds.warning) {
+      status = "warning";
+    }
+    return { health: healthOverride, status };
+  }
+
   // Permanent buildings (HQ, Treasury, landmarks) always healthy
   if (isPermanent) {
     return { health: 100, status: "active" };
@@ -455,9 +470,11 @@ export function transformTokenToBuilding(
   const skyY = 500; // BagsWorld HQ floats in the sky - DO NOT CHANGE
   let position: { x: number; y: number };
 
-  // BagsWorld HQ ALWAYS gets sky position - check this FIRST
-  if (isBagsWorldHQ) {
-    // BagsWorld HQ: Floating in the sky, center of the park
+  // Check for admin position override FIRST (except for floating HQ)
+  if (!isBagsWorldHQ && token.positionOverride) {
+    position = { x: token.positionOverride.x, y: token.positionOverride.y };
+  } else if (isBagsWorldHQ) {
+    // BagsWorld HQ ALWAYS gets sky position
     position = { x: Math.round(WORLD_WIDTH / 2), y: skyY };
   } else if (existingBuilding) {
     // Use existing position for other buildings
@@ -504,7 +521,8 @@ export function transformTokenToBuilding(
     token.marketCap,
     token.change24h,
     previousHealth,
-    isPermanentBuilding
+    isPermanentBuilding,
+    token.healthOverride
   );
 
   // Assign zones:
@@ -556,6 +574,7 @@ export function transformTokenToBuilding(
     zone,
     isFloating: isBagsWorldHQ, // Only HQ floats
     isPermanent: isPermanentBuilding, // Landmark buildings never decay
+    styleOverride: token.styleOverride, // Admin override for building style
   };
 }
 
