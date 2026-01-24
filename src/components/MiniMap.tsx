@@ -13,22 +13,23 @@ interface Position {
   y: number;
 }
 
-// Map locations - minimal design
-const PARK_LOCATIONS = [
-  { id: "pokecenter", name: "Heal", icon: "+", event: "bagsworld-pokecenter-click", x: 20, y: 35 },
-  { id: "gym", name: "Dojo", icon: "!", event: "bagsworld-tradinggym-click", x: 75, y: 30 },
-  { id: "treasury", name: "Bank", icon: "$", event: "bagsworld-treasury-click", x: 50, y: 60 },
-] as const;
-
-const CITY_LOCATIONS = [
-  { id: "casino", name: "Casino", icon: "*", event: "bagsworld-casino-click", x: 25, y: 40 },
-  { id: "terminal", name: "Trade", icon: ">", event: "bagsworld-terminal-click", x: 70, y: 35 },
-  { id: "hq", name: "HQ", icon: "#", event: null, x: 50, y: 20 },
-] as const;
+// Locations with clean data
+const LOCATIONS = {
+  main_city: [
+    { id: "pokecenter", name: "PokeCenter", desc: "Heal & Info", event: "bagsworld-pokecenter-click" },
+    { id: "dojo", name: "Trading Dojo", desc: "AI Sparring", event: "bagsworld-tradinggym-click" },
+    { id: "treasury", name: "Treasury", desc: "Claim Fees", event: "bagsworld-treasury-click" },
+  ],
+  trending: [
+    { id: "casino", name: "Casino", desc: "Games & Raffle", event: "bagsworld-casino-click" },
+    { id: "terminal", name: "Terminal", desc: "Live Trading", event: "bagsworld-terminal-click" },
+    { id: "hq", name: "Bags HQ", desc: "Coming Soon", event: null },
+  ],
+};
 
 export function MiniMap({ onNavigate }: MiniMapProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState<Position>({ x: -1, y: -1 }); // -1 means use default
+  const [position, setPosition] = useState<Position>({ x: -1, y: -1 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,14 +53,10 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
   // Dragging handlers
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
-
     const rect = containerRef.current?.getBoundingClientRect();
     if (rect) {
       setIsDragging(true);
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
+      setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     }
   }, []);
@@ -67,22 +64,16 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
   const handlePointerMove = useCallback(
     (e: PointerEvent) => {
       if (!isDragging) return;
-
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
-      const size = isOpen ? 200 : 48;
-
+      const size = isOpen ? 220 : 48;
       setPosition({
-        x: Math.max(8, Math.min(newX, window.innerWidth - size - 8)),
-        y: Math.max(60, Math.min(newY, window.innerHeight - size - 8)),
+        x: Math.max(8, Math.min(e.clientX - dragOffset.x, window.innerWidth - size - 8)),
+        y: Math.max(60, Math.min(e.clientY - dragOffset.y, window.innerHeight - size - 8)),
       });
     },
     [isDragging, dragOffset, isOpen]
   );
 
-  const handlePointerUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const handlePointerUp = useCallback(() => setIsDragging(false), []);
 
   useEffect(() => {
     if (isDragging) {
@@ -97,9 +88,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
     }
   }, [isDragging, handlePointerMove, handlePointerUp]);
 
-  const locations = currentZone === "main_city" ? PARK_LOCATIONS : CITY_LOCATIONS;
-
-  // Calculate style based on position state
+  const locations = LOCATIONS[currentZone === "main_city" ? "main_city" : "trending"];
   const containerStyle: React.CSSProperties =
     position.x >= 0 && position.y >= 0
       ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
@@ -109,31 +98,24 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
     <div
       ref={containerRef}
       style={containerStyle}
-      className={`fixed z-50 transition-all duration-200 ease-out ${isDragging ? "cursor-grabbing" : ""}`}
+      className={`fixed z-50 transition-all duration-200 ${isDragging ? "cursor-grabbing" : ""}`}
     >
-      {/* Collapsed: Compact floating button */}
+      {/* Floating Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
           onPointerDown={handlePointerDown}
           className={`
-            w-11 h-11 rounded-full
-            bg-gradient-to-br from-bags-dark to-black
-            border border-bags-green/60 hover:border-bags-green
+            w-11 h-11 rounded-full bg-black/90 backdrop-blur-sm
+            border border-bags-green/50 hover:border-bags-green
             shadow-lg shadow-black/50 hover:shadow-bags-green/20
             flex items-center justify-center
-            transition-all duration-200 ease-out
-            hover:scale-105 active:scale-95
+            transition-all duration-200 hover:scale-105 active:scale-95
             ${isDragging ? "cursor-grabbing" : "cursor-grab"}
           `}
           aria-label="Open map"
         >
-          <svg
-            className="w-5 h-5 text-bags-green"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5 text-bags-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -144,144 +126,91 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
         </button>
       )}
 
-      {/* Expanded: Compact map panel */}
+      {/* Map Panel */}
       {isOpen && (
-        <div
-          className={`
-            w-52 bg-gradient-to-br from-bags-dark to-black
-            border border-bags-green/40 rounded-lg
-            shadow-xl shadow-black/50
-            overflow-hidden
-            animate-in fade-in zoom-in-95 duration-150
-          `}
-        >
-          {/* Header - Draggable */}
+        <div className="w-56 bg-black/95 backdrop-blur-md border border-bags-green/30 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
+          {/* Header */}
           <div
             onPointerDown={handlePointerDown}
-            className={`
-              flex items-center justify-between px-3 py-2
-              bg-bags-green/10 border-b border-bags-green/20
-              ${isDragging ? "cursor-grabbing" : "cursor-grab"}
-            `}
+            className={`flex items-center justify-between px-4 py-3 border-b border-bags-green/20 ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
           >
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-bags-green animate-pulse" />
-              <span className="font-pixel text-[9px] text-bags-green/80 uppercase tracking-wider">
-                {currentZone === "main_city" ? "Park" : "City"}
-              </span>
-            </div>
+            <span className="font-pixel text-[10px] text-bags-green tracking-widest">NAVIGATE</span>
             <button
               onClick={() => setIsOpen(false)}
-              className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-white transition-colors"
+              className="text-gray-500 hover:text-white transition-colors text-lg leading-none"
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              &times;
             </button>
           </div>
 
-          {/* Zone Toggle */}
-          <div className="flex p-1.5 gap-1 bg-black/30">
+          {/* Zone Tabs */}
+          <div className="flex border-b border-bags-green/10">
             <button
               onClick={() => handleZoneChange("main_city")}
-              className={`
-                flex-1 py-1.5 rounded text-center font-pixel text-[8px] uppercase tracking-wide
-                transition-all duration-150
-                ${currentZone === "main_city"
-                  ? "bg-bags-green/20 text-bags-green border border-bags-green/30"
-                  : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-                }
-              `}
+              className={`flex-1 py-2.5 font-pixel text-[9px] tracking-wide transition-all ${
+                currentZone === "main_city"
+                  ? "text-bags-green bg-bags-green/10 border-b-2 border-bags-green"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
             >
-              Park
+              PARK
             </button>
             <button
               onClick={() => handleZoneChange("trending")}
-              className={`
-                flex-1 py-1.5 rounded text-center font-pixel text-[8px] uppercase tracking-wide
-                transition-all duration-150
-                ${currentZone === "trending"
-                  ? "bg-bags-green/20 text-bags-green border border-bags-green/30"
-                  : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-                }
-              `}
+              className={`flex-1 py-2.5 font-pixel text-[9px] tracking-wide transition-all ${
+                currentZone === "trending"
+                  ? "text-bags-green bg-bags-green/10 border-b-2 border-bags-green"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
             >
-              City
+              CITY
             </button>
           </div>
 
-          {/* Mini Visual Map */}
-          <div className="relative h-24 bg-[#050a05] m-1.5 rounded overflow-hidden">
-            {/* Subtle grid */}
-            <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage: `radial-gradient(circle, #22c55e 1px, transparent 1px)`,
-                backgroundSize: "12px 12px",
-              }}
-            />
-
-            {/* Location markers */}
+          {/* Locations List */}
+          <div className="p-2 space-y-1">
             {locations.map((loc) => (
               <button
                 key={loc.id}
                 onClick={() => handleLocationClick(loc.event)}
                 disabled={!loc.event}
-                className={`
-                  absolute transform -translate-x-1/2 -translate-y-1/2
-                  transition-all duration-150
-                  ${loc.event ? "hover:scale-125" : "opacity-40"}
-                `}
-                style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
+                className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                  loc.event
+                    ? "hover:bg-bags-green/10 group"
+                    : "opacity-40 cursor-not-allowed"
+                }`}
               >
-                <div
-                  className={`
-                    w-6 h-6 rounded-sm flex items-center justify-center
-                    font-pixel text-[10px] font-bold
-                    ${loc.event
-                      ? "bg-bags-green/20 text-bags-green border border-bags-green/50 hover:bg-bags-green/40 hover:border-bags-green"
-                      : "bg-gray-800/50 text-gray-600 border border-gray-700"
-                    }
-                  `}
-                >
-                  {loc.icon}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`font-pixel text-[10px] ${loc.event ? "text-white group-hover:text-bags-green" : "text-gray-500"}`}>
+                      {loc.name}
+                    </p>
+                    <p className="font-mono text-[9px] text-gray-600">{loc.desc}</p>
+                  </div>
+                  {loc.event && (
+                    <svg className="w-4 h-4 text-gray-600 group-hover:text-bags-green transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  )}
                 </div>
               </button>
             ))}
           </div>
 
-          {/* Quick location buttons */}
-          <div className="grid grid-cols-3 gap-1 p-1.5 pt-0">
-            {locations.map((loc) => (
-              <button
-                key={loc.id}
-                onClick={() => handleLocationClick(loc.event)}
-                disabled={!loc.event}
-                className={`
-                  py-1.5 rounded text-center font-pixel text-[7px] uppercase
-                  transition-all duration-150
-                  ${loc.event
-                    ? "bg-white/5 text-gray-400 hover:bg-bags-green/20 hover:text-bags-green"
-                    : "bg-transparent text-gray-600 cursor-not-allowed"
-                  }
-                `}
-              >
-                {loc.name}
-              </button>
-            ))}
-          </div>
+          {/* Divider */}
+          <div className="mx-3 border-t border-bags-green/10" />
 
-          {/* Quick actions */}
-          <div className="flex gap-1 p-1.5 pt-0">
+          {/* Quick Actions */}
+          <div className="p-2 flex gap-2">
             <button
               onClick={() => handleLocationClick("bagsworld-launch-click")}
-              className="flex-1 py-2 rounded bg-bags-green/10 border border-bags-green/30 hover:bg-bags-green/20 hover:border-bags-green font-pixel text-[8px] text-bags-green transition-all duration-150"
+              className="flex-1 py-2.5 rounded-lg bg-bags-green/10 hover:bg-bags-green/20 border border-bags-green/20 hover:border-bags-green/40 font-pixel text-[9px] text-bags-green transition-all"
             >
               LAUNCH
             </button>
             <button
               onClick={() => handleLocationClick("bagsworld-claim-click")}
-              className="flex-1 py-2 rounded bg-bags-gold/10 border border-bags-gold/30 hover:bg-bags-gold/20 hover:border-bags-gold font-pixel text-[8px] text-bags-gold transition-all duration-150"
+              className="flex-1 py-2.5 rounded-lg bg-bags-gold/10 hover:bg-bags-gold/20 border border-bags-gold/20 hover:border-bags-gold/40 font-pixel text-[9px] text-bags-gold transition-all"
             >
               CLAIM
             </button>
