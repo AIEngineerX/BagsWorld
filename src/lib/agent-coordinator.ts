@@ -4,6 +4,7 @@
 import type { TokenLaunch } from "./scout-agent";
 import type { AIAction } from "./ai-agent";
 import type { DistributionResult, CreatorRanking } from "./creator-rewards-agent";
+import { formatSol } from "./solana-utils";
 
 // ============================================================================
 // EVENT TYPES
@@ -89,6 +90,29 @@ let state: CoordinatorState = {
 const MAX_PROCESSED_EVENTS = 100;
 const MAX_QUEUE_SIZE = 50;
 
+// Event expiration - events older than this are cleaned up
+const EVENT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Run cleanup every 5 minutes
+
+let cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Remove events older than EVENT_TTL_MS
+ */
+function cleanupExpiredEvents(): void {
+  const cutoff = Date.now() - EVENT_TTL_MS;
+  const beforeCount = state.processedEvents.length;
+
+  state.processedEvents = state.processedEvents.filter(
+    (event) => event.timestamp > cutoff
+  );
+
+  const removedCount = beforeCount - state.processedEvents.length;
+  if (removedCount > 0) {
+    console.log(`[Agent Coordinator] Cleaned up ${removedCount} expired events`);
+  }
+}
+
 // ============================================================================
 // CORE FUNCTIONS
 // ============================================================================
@@ -106,6 +130,14 @@ function generateEventId(): string {
 export function startCoordinator(): void {
   if (state.isRunning) return;
   state.isRunning = true;
+
+  // Start periodic cleanup of expired events
+  if (!cleanupIntervalId) {
+    cleanupIntervalId = setInterval(cleanupExpiredEvents, CLEANUP_INTERVAL_MS);
+    // Run immediate cleanup on start
+    cleanupExpiredEvents();
+  }
+
   console.log("[Agent Coordinator] Started - agents can now communicate");
 }
 
@@ -114,6 +146,13 @@ export function startCoordinator(): void {
  */
 export function stopCoordinator(): void {
   state.isRunning = false;
+
+  // Stop cleanup interval
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+  }
+
   console.log("[Agent Coordinator] Stopped");
 }
 
@@ -264,13 +303,14 @@ function generateAnnouncement(event: AgentEvent): string {
         amount: number;
         tokenSymbol?: string;
       };
-      return `${username} claimed ${amount.toFixed(2)} SOL${tokenSymbol ? ` from $${tokenSymbol}` : ""}!`;
+      return `${username} claimed ${formatSol(amount)}${tokenSymbol ? ` from $${tokenSymbol}` : ""}!`;
     }
 
     case "distribution": {
       const result = event.data as unknown as DistributionResult;
       const topRecipient = result.recipients?.[0];
-      return `CREATOR REWARDS: ${result.totalDistributed?.toFixed(2) || "0"} SOL distributed! Top: ${topRecipient?.tokenSymbol || "unknown"}`;
+      const distributed = result.totalDistributed || 0;
+      return `CREATOR REWARDS: ${formatSol(distributed)} distributed! Top: ${topRecipient?.tokenSymbol || "unknown"}`;
     }
 
     case "world_health": {
@@ -289,7 +329,7 @@ function generateAnnouncement(event: AgentEvent): string {
         milestone: string;
         value: number;
       };
-      return `${creator} hit ${milestone}: ${value.toFixed(2)} SOL!`;
+      return `${creator} hit ${milestone}: ${formatSol(value)}!`;
     }
 
     case "whale_alert": {
@@ -298,7 +338,7 @@ function generateAnnouncement(event: AgentEvent): string {
         amount: number;
         tokenSymbol: string;
       };
-      return `WHALE ${action.toUpperCase()}: ${amount.toFixed(2)} SOL of $${tokenSymbol}`;
+      return `WHALE ${action.toUpperCase()}: ${formatSol(amount)} of $${tokenSymbol}`;
     }
 
     case "agent_insight": {

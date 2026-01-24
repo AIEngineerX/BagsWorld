@@ -9,6 +9,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
 import { emitEvent, startCoordinator, type AgentEventType } from "@/lib/agent-coordinator";
 import { getGlobalTokens, isNeonConfigured, type GlobalToken } from "@/lib/neon";
+import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
 
 // Bags SDK types
 interface TokenLaunchCreator {
@@ -291,8 +292,7 @@ function calculate24hEarningsPerWallet(claimEvents24h: ClaimEvent[]): Map<string
   for (const event of claimEvents24h) {
     const wallet = event.claimer;
     const currentEarnings = earningsMap.get(wallet) || 0;
-    // Amount is in lamports, convert to SOL
-    const amountInSol = event.amount / 1e9;
+    const amountInSol = lamportsToSol(event.amount);
     earningsMap.set(wallet, currentEarnings + amountInSol);
   }
 
@@ -342,7 +342,8 @@ async function enrichTokenWithSDK(
       }
 
       if (feesResult.status === "fulfilled") {
-        lifetimeFees = feesResult.value || 0;
+        // SDK returns lamports, convert to SOL for storage and display
+        lifetimeFees = lamportsToSol(feesResult.value || 0);
       }
 
       if (eventsResult.status === "fulfilled") {
@@ -487,15 +488,17 @@ function generateEvents(
     const eventId = `claim-${claim.signature}`;
     if (!existingIds.has(eventId)) {
       const token = tokens.find((t) => t.mint === claim.tokenMint);
+      const claimAmountSol = lamportsToSol(claim.amount);
+      const displayName = claim.claimerUsername || claim.claimer?.slice(0, 8) || "Unknown";
       events.unshift({
         id: eventId,
         type: "fee_claim",
-        message: `${claim.claimerUsername || claim.claimer?.slice(0, 8) || "Unknown"} claimed ${(claim.amount / 1e9).toFixed(2)} SOL from ${token?.symbol || "token"}`,
+        message: `${displayName} claimed ${formatSol(claimAmountSol)} from ${token?.symbol || "token"}`,
         timestamp: claim.timestamp * 1000,
         data: {
-          username: claim.claimerUsername || claim.claimer?.slice(0, 8) || "Unknown",
+          username: displayName,
           tokenName: token?.name,
-          amount: claim.amount / 1e9,
+          amount: claimAmountSol,
         },
       });
     }
@@ -512,7 +515,7 @@ function generateEvents(
             events.unshift({
               id: eventId,
               type: "milestone",
-              message: `${token.symbol} reached ${threshold} SOL in lifetime fees!`,
+              message: `${token.symbol} reached ${formatSol(threshold)} in lifetime fees!`,
               timestamp: Date.now() - Math.random() * 3600000,
               data: {
                 tokenName: token.name,
@@ -945,9 +948,9 @@ export async function POST(request: NextRequest) {
     const timeInfo = getESTTimeInfo();
 
     // Calculate Bags.fm health metrics from real on-chain data
-    // 1. Total 24h claim volume (claims are already in lamports from SDK, convert to SOL)
-    const claimVolume24h = allClaimEvents24h.reduce((sum, e) => sum + e.amount, 0) / 1e9;
-    // 2. Total lifetime fees across all tokens
+    // 1. Total 24h claim volume (claims are in lamports from SDK, convert to SOL)
+    const claimVolume24h = lamportsToSol(allClaimEvents24h.reduce((sum, e) => sum + e.amount, 0));
+    // 2. Total lifetime fees across all tokens (already in SOL after enrichment)
     const totalLifetimeFees = tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
     // 3. Count tokens with any fee activity
     const activeTokenCount = tokens.filter((t) => (t.lifetimeFees || 0) > 0).length;
