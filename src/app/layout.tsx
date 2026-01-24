@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Press_Start_2P } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -9,6 +9,15 @@ const pressStart2P = Press_Start_2P({
   display: "swap",
   variable: "--font-pixel",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+  themeColor: "#4ade80",
+};
 
 export const metadata: Metadata = {
   title: "BagsWorld",
@@ -25,14 +34,6 @@ export const metadata: Metadata = {
     "fee share",
   ],
   manifest: "/manifest.json",
-  themeColor: "#4ade80",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-    viewportFit: "cover",
-  },
   icons: {
     icon: [
       { url: "/icon-32.png", sizes: "32x32", type: "image/png" },

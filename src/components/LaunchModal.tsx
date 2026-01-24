@@ -11,119 +11,53 @@ function deserializeTransaction(
   encoded: string | Record<string, unknown>,
   context: string = "transaction"
 ): VersionedTransaction | Transaction {
-  console.log(`Deserializing ${context}:`, {
-    inputType: typeof encoded,
-    inputLength: typeof encoded === "string" ? encoded?.length : JSON.stringify(encoded).length,
-    preview:
-      typeof encoded === "string"
-        ? encoded?.substring(0, 100) + "..."
-        : JSON.stringify(encoded).substring(0, 100),
-  });
-
-  // Handle object responses - extract transaction string
+  // Extract transaction string from object or use string directly
   let txString: string | undefined;
   if (typeof encoded === "object" && encoded !== null) {
-    // Check various possible field names
     const possibleFields = ["transaction", "tx", "data", "rawTransaction", "serializedTransaction"];
     for (const field of possibleFields) {
       if (typeof encoded[field] === "string") {
-        console.log(`${context}: Found transaction in field "${field}"`);
         txString = encoded[field] as string;
         break;
       }
     }
     if (!txString) {
-      console.error(
-        `${context}: Could not find transaction string in object:`,
-        Object.keys(encoded)
-      );
-      throw new Error(
-        `Invalid ${context}: received object but could not find transaction string. Keys: ${Object.keys(encoded).join(", ")}`
-      );
+      throw new Error(`Invalid ${context}: no transaction string found in object`);
     }
   } else if (typeof encoded === "string") {
     txString = encoded;
   } else {
-    throw new Error(`Invalid ${context}: expected string or object, got ${typeof encoded}`);
+    throw new Error(`Invalid ${context}: expected string or object`);
   }
 
   if (!txString || txString.length < 50) {
-    throw new Error(
-      `Invalid ${context}: too short (${txString?.length || 0} chars), likely empty or error response`
-    );
+    throw new Error(`Invalid ${context}: too short`);
   }
 
-  // Clean the string - remove any whitespace or newlines
   txString = txString.trim().replace(/\s/g, "");
-
-  // Detect encoding: base58 uses alphanumeric chars (no + or /), base64 may have + / =
   const isLikelyBase64 = txString.includes("+") || txString.includes("/") || txString.endsWith("=");
 
   let buffer: Uint8Array;
-
-  // Try both encodings
-  const errors: string[] = [];
-
-  if (isLikelyBase64) {
-    console.log(`${context}: Trying base64 encoding first`);
+  try {
+    buffer = isLikelyBase64 ? Buffer.from(txString, "base64") : bs58.decode(txString);
+    if (buffer.length < 50) throw new Error("Buffer too small");
+  } catch {
+    // Try the other encoding
     try {
-      buffer = Buffer.from(txString, "base64");
-      if (buffer.length < 50) {
-        throw new Error("Buffer too small after base64 decode");
-      }
-    } catch (e) {
-      errors.push(`base64: ${e}`);
-      console.log(`${context}: base64 failed, trying base58`);
-      try {
-        buffer = bs58.decode(txString);
-      } catch (e2) {
-        errors.push(`base58: ${e2}`);
-        throw new Error(`${context}: All decode attempts failed. ${errors.join("; ")}`);
-      }
-    }
-  } else {
-    console.log(`${context}: Trying base58 encoding first`);
-    try {
-      buffer = bs58.decode(txString);
-      if (buffer.length < 50) {
-        throw new Error("Buffer too small after base58 decode");
-      }
-    } catch (e) {
-      errors.push(`base58: ${e}`);
-      console.log(`${context}: base58 failed, trying base64`);
-      try {
-        buffer = Buffer.from(txString, "base64");
-      } catch (e2) {
-        errors.push(`base64: ${e2}`);
-        throw new Error(`${context}: All decode attempts failed. ${errors.join("; ")}`);
-      }
+      buffer = isLikelyBase64 ? bs58.decode(txString) : Buffer.from(txString, "base64");
+    } catch {
+      throw new Error(`${context}: decode failed`);
     }
   }
 
-  console.log(`${context} buffer size:`, buffer!.length, "bytes");
-
-  // Try VersionedTransaction first (more common with modern APIs)
+  // Try VersionedTransaction first, fall back to legacy
   try {
-    const tx = VersionedTransaction.deserialize(buffer!);
-    console.log(`${context}: Successfully deserialized as VersionedTransaction`);
-    return tx;
-  } catch (versionedError) {
-    console.log(`${context}: VersionedTransaction failed, trying legacy:`, versionedError);
-    // Fall back to legacy Transaction
+    return VersionedTransaction.deserialize(buffer);
+  } catch {
     try {
-      const tx = Transaction.from(buffer!);
-      console.log(`${context}: Successfully deserialized as legacy Transaction`);
-      return tx;
-    } catch (legacyError) {
-      console.error(`${context} deserialization failed:`, {
-        versionedError,
-        legacyError,
-        bufferSize: buffer!.length,
-        firstBytes: Array.from(buffer!.slice(0, 20)),
-      });
-      throw new Error(
-        `Failed to deserialize ${context}: buffer size ${buffer!.length} bytes. First bytes: [${Array.from(buffer!.slice(0, 10)).join(",")}]. This may indicate the Bags API returned an invalid or corrupted transaction.`
-      );
+      return Transaction.from(buffer);
+    } catch {
+      throw new Error(`Failed to deserialize ${context}`);
     }
   }
 }
@@ -359,10 +293,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         ecosystemFeeIncluded = true;
       }
 
-      // Log the fee claimers being sent for debugging
-      console.log("Fee claimers being sent to API:", JSON.stringify(allFeeClaimers, null, 2));
-      console.log("Ecosystem fee included:", ecosystemFeeIncluded);
-
       // Bags.fm API requires total BPS to equal exactly 10000 (100%)
       // All fee claimers must use social providers (twitter, kick, github) - no raw wallet addresses
       const totalAllocatedBps = ecosystemFee.bps + userDefinedBps;
@@ -490,7 +420,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               },
               "confirmed"
             );
-            console.log(`Fee config transaction ${i + 1} confirmed:`, txid);
           }
         }
       } else {
@@ -673,7 +602,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               (errorMessage.includes("Blockhash not found") ||
                 errorMessage.includes("block height exceeded"))
             ) {
-              console.log("Requesting fresh transaction from API...");
               setLaunchStatus(`Retrying (${sendAttempts}/${maxSendAttempts})...`);
 
               // Request a completely new transaction from the API with fresh blockhash
@@ -759,8 +687,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           },
           "confirmed"
         );
-
-        console.log("Token launched on-chain! TX:", txid);
       }
 
       // 4. Save token to registry for the world to display

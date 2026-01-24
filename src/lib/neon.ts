@@ -74,15 +74,14 @@ function safeParseFloat(value: string | number | null | undefined, fallback: num
 async function getSql(): Promise<SqlFunction | null> {
   // Try Netlify's built-in Neon first (auto-configured)
   if (process.env.NETLIFY_DATABASE_URL) {
-    console.log("[Neon] Using NETLIFY_DATABASE_URL");
     try {
       // Use string variable to prevent webpack from analyzing the import
       const moduleName = "@netlify/neon";
       // eslint-disable-next-line
       const { neon } = require(moduleName);
       return neon();
-    } catch (error) {
-      console.log("[Neon] Netlify Neon module not available, trying direct connection...", error);
+    } catch {
+      // Netlify Neon module not available, try direct connection
     }
   }
 
@@ -90,7 +89,6 @@ async function getSql(): Promise<SqlFunction | null> {
   const directUrl =
     process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL;
   if (directUrl) {
-    console.log("[Neon] Using direct connection URL");
     try {
       const sql = neonServerless(directUrl);
       return sql as unknown as SqlFunction;
@@ -100,9 +98,6 @@ async function getSql(): Promise<SqlFunction | null> {
     }
   }
 
-  console.log(
-    "[Neon] No database configured (set DATABASE_URL, NEON_DATABASE_URL, or POSTGRES_URL)"
-  );
   return null;
 }
 
@@ -112,8 +107,6 @@ export async function initializeDatabase(): Promise<boolean> {
   if (!sql) return false;
 
   try {
-    console.log("[Neon] Initializing database tables...");
-
     // Create tokens table
     await sql`
       CREATE TABLE IF NOT EXISTS tokens (
@@ -148,11 +141,6 @@ export async function initializeDatabase(): Promise<boolean> {
     await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS style_override INTEGER`;
     await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS health_override INTEGER`;
 
-    // Verify table exists and check row count
-    const countResult = await sql`SELECT COUNT(*) as count FROM tokens`;
-    const count = (countResult as Array<{ count: string }>)[0]?.count || "0";
-    console.log(`[Neon] Database initialized. Token count: ${count}`);
-
     return true;
   } catch (error) {
     console.error("[Neon] Error initializing database:", error);
@@ -163,28 +151,12 @@ export async function initializeDatabase(): Promise<boolean> {
 // Fetch all global tokens (visible to everyone)
 export async function getGlobalTokens(): Promise<GlobalToken[]> {
   const sql = await getSql();
-  if (!sql) {
-    console.log("[Neon] Not configured, using local storage only");
-    return [];
-  }
+  if (!sql) return [];
 
   try {
     // First ensure tables exist
     await initializeDatabase();
-
-    console.log("[Neon] Fetching tokens from database...");
     const rows = await sql`SELECT * FROM tokens ORDER BY created_at DESC`;
-    const tokenCount = (rows as unknown[])?.length ?? 0;
-    console.log(`[Neon] Query returned ${tokenCount} tokens`);
-
-    // Log first token for debugging (if any)
-    if (tokenCount > 0) {
-      const firstToken = (rows as GlobalToken[])[0];
-      console.log(
-        `[Neon] First token: ${firstToken.symbol} (${firstToken.mint?.slice(0, 8)}...) by ${firstToken.creator_wallet?.slice(0, 8)}...`
-      );
-    }
-
     return rows as GlobalToken[];
   } catch (error) {
     console.error("[Neon] Error fetching global tokens:", error);
@@ -195,10 +167,7 @@ export async function getGlobalTokens(): Promise<GlobalToken[]> {
 // Save a token to the global database
 export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
   const sql = await getSql();
-  if (!sql) {
-    console.log("[Neon] Not configured, cannot save globally");
-    return false;
-  }
+  if (!sql) return false;
 
   try {
     // Ensure tables exist
@@ -207,14 +176,11 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
     // Prepare fee_shares as JSON string for JSONB column
     const feeSharesJson = token.fee_shares ? JSON.stringify(token.fee_shares) : "[]";
 
-    console.log(`[Neon] Saving token: ${token.mint} (${token.symbol}) by ${token.creator_wallet}`);
-
     // Check if token already exists
     const existing = await sql`SELECT id, creator_wallet FROM tokens WHERE mint = ${token.mint}`;
 
     if ((existing as unknown[]).length > 0) {
       // Update existing token - INCLUDE creator_wallet in case it was missing
-      console.log(`[Neon] Updating existing token: ${token.mint}`);
       await sql`
         UPDATE tokens SET
           name = ${token.name},
@@ -231,7 +197,6 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
       `;
     } else {
       // Insert new token
-      console.log(`[Neon] Inserting new token: ${token.mint}`);
       await sql`
         INSERT INTO tokens (
           mint, name, symbol, description, image_url,
@@ -253,12 +218,8 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
         )
       `;
     }
-
-    console.log(`[Neon] Successfully saved token: ${token.symbol}`);
     return true;
-  } catch (error) {
-    console.error("[Neon] Save error:", error);
-    console.error("[Neon] Token data:", JSON.stringify(token, null, 2));
+  } catch {
     return false;
   }
 }
@@ -358,11 +319,8 @@ export async function initializeRewardsTable(): Promise<boolean> {
         VALUES (${Date.now()}, 0, 0, 0, '[]')
       `;
     }
-
-    console.log("Rewards state table initialized");
     return true;
-  } catch (error) {
-    console.error("Error initializing rewards table:", error);
+  } catch {
     return false;
   }
 }
@@ -491,8 +449,6 @@ export async function initializeCasinoTables(): Promise<boolean> {
   if (!sql) return false;
 
   try {
-    console.log("[Casino] Initializing casino tables...");
-
     // Create raffles table
     await sql`
       CREATE TABLE IF NOT EXISTS casino_raffles (
@@ -524,11 +480,8 @@ export async function initializeCasinoTables(): Promise<boolean> {
     await sql`CREATE INDEX IF NOT EXISTS idx_raffle_entries_raffle ON casino_raffle_entries(raffle_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_raffle_entries_wallet ON casino_raffle_entries(wallet)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_raffles_status ON casino_raffles(status)`;
-
-    console.log("[Casino] Casino tables initialized successfully");
     return true;
-  } catch (error) {
-    console.error("[Casino] Error initializing casino tables:", error);
+  } catch {
     return false;
   }
 }
@@ -563,11 +516,8 @@ export async function createCasinoRaffle(
     `;
 
     const raffleId = (result as Array<{ id: number }>)[0]?.id;
-    console.log(`[Casino] Created raffle #${raffleId} with ${potSol} SOL pot`);
-
     return { success: true, raffleId };
-  } catch (error) {
-    console.error("[Casino] Error creating raffle:", error);
+  } catch {
     return { success: false, error: "Failed to create raffle" };
   }
 }
@@ -589,11 +539,8 @@ export async function pauseCasinoRaffle(): Promise<{ success: boolean; error?: s
       return { success: false, error: "No active raffle to pause" };
     }
 
-    const raffleId = (result as Array<{ id: number }>)[0].id;
-    console.log(`[Casino] Raffle #${raffleId} paused`);
     return { success: true };
-  } catch (error) {
-    console.error("[Casino] Error pausing raffle:", error);
+  } catch {
     return { success: false, error: "Failed to pause raffle" };
   }
 }
@@ -615,11 +562,8 @@ export async function resumeCasinoRaffle(): Promise<{ success: boolean; error?: 
       return { success: false, error: "No paused raffle to resume" };
     }
 
-    const raffleId = (result as Array<{ id: number }>)[0].id;
-    console.log(`[Casino] Raffle #${raffleId} resumed`);
     return { success: true };
-  } catch (error) {
-    console.error("[Casino] Error resuming raffle:", error);
+  } catch {
     return { success: false, error: "Failed to resume raffle" };
   }
 }
@@ -695,16 +639,13 @@ export async function drawRaffleWinner(): Promise<{
       WHERE id = ${raffle.id}
     `;
 
-    console.log(`[Casino] Raffle #${raffle.id} drawn. Winner: ${winner}, Prize: ${prizeSol} SOL`);
-
     return {
       success: true,
       winner,
       prize: prizeSol,
       entryCount,
     };
-  } catch (error) {
-    console.error("[Casino] Error drawing raffle:", error);
+  } catch {
     return { success: false, error: "Failed to draw raffle" };
   }
 }

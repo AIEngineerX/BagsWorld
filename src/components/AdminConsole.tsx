@@ -99,9 +99,9 @@ export function AdminConsole() {
   const [editingToken, setEditingToken] = useState<GlobalToken | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<number | "auto">("auto");
   const [expandedToken, setExpandedToken] = useState<string | null>(null);
-  const [positionInputs, setPositionInputs] = useState<{ [mint: string]: { x: string; y: string } }>(
-    {}
-  );
+  const [positionInputs, setPositionInputs] = useState<{
+    [mint: string]: { x: string; y: string };
+  }>({});
   const [healthInputs, setHealthInputs] = useState<{ [mint: string]: string }>({});
 
   const isUserAdmin = connected && isAdmin(publicKey?.toBase58());
@@ -258,20 +258,40 @@ export function AdminConsole() {
   };
 
   const handleSetLevelOverride = (token: GlobalToken, level: number | null) =>
-    updateToken(token, "set_level_override", { level }, { level_override: level },
-      `Set level ${level ?? "auto"} for $${token.symbol}`);
+    updateToken(
+      token,
+      "set_level_override",
+      { level },
+      { level_override: level },
+      `Set level ${level ?? "auto"} for $${token.symbol}`
+    );
 
   const handleSetPosition = (token: GlobalToken, x: number | null, y: number | null) =>
-    updateToken(token, "set_position", { x, y }, { position_x: x, position_y: y },
-      `Set position ${x === null ? "auto" : `(${x}, ${y})`} for $${token.symbol}`);
+    updateToken(
+      token,
+      "set_position",
+      { x, y },
+      { position_x: x, position_y: y },
+      `Set position ${x === null ? "auto" : `(${x}, ${y})`} for $${token.symbol}`
+    );
 
   const handleSetStyle = (token: GlobalToken, style: number | null) =>
-    updateToken(token, "set_style", { style }, { style_override: style },
-      `Set style ${style ?? "auto"} for $${token.symbol}`);
+    updateToken(
+      token,
+      "set_style",
+      { style },
+      { style_override: style },
+      `Set style ${style ?? "auto"} for $${token.symbol}`
+    );
 
   const handleSetHealth = (token: GlobalToken, health: number | null) =>
-    updateToken(token, "set_health", { health }, { health_override: health },
-      `Set health ${health ?? "auto"} for $${token.symbol}`);
+    updateToken(
+      token,
+      "set_health",
+      { health },
+      { health_override: health },
+      `Set health ${health ?? "auto"} for $${token.symbol}`
+    );
 
   const getHealthStatus = (health: number | null | undefined): string => {
     if (health == null) return "auto";
@@ -722,10 +742,7 @@ export function AdminConsole() {
                   ) : (
                     <div className="space-y-2 max-h-[500px] overflow-y-auto">
                       {globalTokens.map((token) => (
-                        <div
-                          key={token.mint}
-                          className="bg-bags-darker border border-red-500/20"
-                        >
+                        <div key={token.mint} className="bg-bags-darker border border-red-500/20">
                           <div className="p-3">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -756,7 +773,9 @@ export function AdminConsole() {
                                         LVL {token.level_override}
                                       </span>
                                     )}
-                                    {(token.position_x != null || token.style_override != null || token.health_override != null) && (
+                                    {(token.position_x != null ||
+                                      token.style_override != null ||
+                                      token.health_override != null) && (
                                       <span className="font-pixel text-[7px] text-cyan-400 bg-cyan-500/20 px-1">
                                         CUSTOM
                                       </span>
@@ -850,7 +869,9 @@ export function AdminConsole() {
                                     [VIEW]
                                   </a>
                                   <button
-                                    onClick={() => handleDeleteGlobalToken(token.mint, token.symbol)}
+                                    onClick={() =>
+                                      handleDeleteGlobalToken(token.mint, token.symbol)
+                                    }
                                     className="font-pixel text-[7px] text-red-400 hover:text-red-300 px-1"
                                   >
                                     [DEL]
@@ -872,14 +893,15 @@ export function AdminConsole() {
                                   <p className="font-pixel text-[7px] text-gray-500">Position</p>
                                   <div className="flex items-center gap-2">
                                     <div className="flex items-center gap-1">
-                                      <span className="font-pixel text-[7px] text-gray-500">X:</span>
+                                      <span className="font-pixel text-[7px] text-gray-500">
+                                        X:
+                                      </span>
                                       <input
                                         type="number"
                                         min="0"
                                         max="1280"
                                         value={
-                                          positionInputs[token.mint]?.x ??
-                                          (token.position_x ?? "")
+                                          positionInputs[token.mint]?.x ?? token.position_x ?? ""
                                         }
                                         onChange={(e) =>
                                           setPositionInputs((prev) => ({
@@ -898,14 +920,15 @@ export function AdminConsole() {
                                       />
                                     </div>
                                     <div className="flex items-center gap-1">
-                                      <span className="font-pixel text-[7px] text-gray-500">Y:</span>
+                                      <span className="font-pixel text-[7px] text-gray-500">
+                                        Y:
+                                      </span>
                                       <input
                                         type="number"
                                         min="0"
                                         max="960"
                                         value={
-                                          positionInputs[token.mint]?.y ??
-                                          (token.position_y ?? "")
+                                          positionInputs[token.mint]?.y ?? token.position_y ?? ""
                                         }
                                         onChange={(e) =>
                                           setPositionInputs((prev) => ({
@@ -985,7 +1008,7 @@ export function AdminConsole() {
                                       min="0"
                                       max="100"
                                       value={
-                                        healthInputs[token.mint] ?? (token.health_override ?? "")
+                                        healthInputs[token.mint] ?? token.health_override ?? ""
                                       }
                                       onChange={(e) =>
                                         setHealthInputs((prev) => ({

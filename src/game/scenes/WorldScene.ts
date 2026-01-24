@@ -1,5 +1,11 @@
 import * as Phaser from "phaser";
-import type { WorldState, GameCharacter, GameBuilding, ZoneType, BuildingStatus } from "@/lib/types";
+import type {
+  WorldState,
+  GameCharacter,
+  GameBuilding,
+  ZoneType,
+  BuildingStatus,
+} from "@/lib/types";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { SpeechBubbleManager } from "@/lib/speech-bubble-manager";
 import { getCurrentLine, getActiveConversation } from "@/lib/autonomous-dialogue";
@@ -168,7 +174,6 @@ export class WorldScene extends Phaser.Scene {
 
     // Initialize speech bubble manager for autonomous dialogue
     this.speechBubbleManager = new SpeechBubbleManager(this, this.characterSprites);
-    console.log("[WorldScene] Speech bubble manager initialized");
 
     // Listen for AI behavior commands
     this.boundBehaviorHandler = (e: Event) => this.handleBehaviorCommand(e as CustomEvent);
@@ -180,8 +185,6 @@ export class WorldScene extends Phaser.Scene {
 
     // Setup mobile camera controls (drag to pan, pinch to zoom)
     this.setupMobileCameraControls();
-
-    console.log("[WorldScene] AI behavior handlers initialized");
   }
 
   private setupMobileCameraControls(): void {
@@ -293,8 +296,6 @@ export class WorldScene extends Phaser.Scene {
       }
       lastTapTime = currentTime;
     });
-
-    console.log("[WorldScene] Mobile camera controls enabled");
   }
 
   private handleZoneChange(event: CustomEvent<{ zone: ZoneType }>): void {
@@ -1346,10 +1347,6 @@ export class WorldScene extends Phaser.Scene {
         y: targetY,
         action: command.action || "moveTo",
       });
-
-      console.log(
-        `[WorldScene] AI command: ${characterId} -> ${command.action} (${Math.round(targetX)}, ${Math.round(targetY)})`
-      );
     } else if (command.action === "idle" || command.action === "observe") {
       // Clear target for idle/observe
       this.characterTargets.delete(characterId);
@@ -1431,10 +1428,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Don't interrupt autonomous dialogue conversations
     const activeConversation = getActiveConversation();
-    if (activeConversation?.isActive) {
-      console.log(`[WorldScene] Skipping behavior speak - autonomous dialogue active`);
-      return;
-    }
+    if (activeConversation?.isActive) return;
 
     // Create a dialogue line and show bubble
     const line = {
@@ -1446,7 +1440,6 @@ export class WorldScene extends Phaser.Scene {
     };
 
     this.speechBubbleManager.showBubble(line);
-    console.log(`[WorldScene] Character speak: ${characterId}: "${message}"`);
   }
 
   // Update speech bubbles for autonomous dialogue
@@ -1472,10 +1465,6 @@ export class WorldScene extends Phaser.Scene {
 
         // Show the speech bubble
         this.speechBubbleManager.showBubble(currentLine);
-
-        console.log(
-          `[WorldScene] Showing dialogue: ${currentLine.characterName}: "${currentLine.message}"`
-        );
       }
     }
   }
@@ -2167,8 +2156,8 @@ export class WorldScene extends Phaser.Scene {
       this.playCurrentTrack();
       this.musicPlaying = true;
       this.emitTrackChange();
-    } catch (e) {
-      console.log("Audio not supported");
+    } catch {
+      // Audio not supported
     }
   }
 
@@ -2746,7 +2735,6 @@ export class WorldScene extends Phaser.Scene {
     isDusk: boolean;
     isDawn: boolean;
   }): void {
-    console.log("[BagsWorld] Time update:", timeInfo);
     const wasNight = this.currentTimeInfo?.isNight;
     this.currentTimeInfo = timeInfo;
     let alpha = 0;
@@ -3873,8 +3861,7 @@ export class WorldScene extends Phaser.Scene {
           })
         );
       } else if (isStarterBuilding) {
-        // Other starter buildings show a message
-        console.log(`${building.name} - Launch a token to create a real building!`);
+        // Starter buildings do nothing when clicked - they're placeholders
       } else if (isTreasuryBuilding) {
         // Treasury building opens the Creator Rewards Hub modal
         window.dispatchEvent(
@@ -4632,7 +4619,7 @@ export class WorldScene extends Phaser.Scene {
         this.playUFO();
         break;
       default:
-        console.log("[WorldScene] Unknown effect:", effectType);
+        break;
     }
   }
 
