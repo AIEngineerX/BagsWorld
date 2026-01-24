@@ -3614,6 +3614,57 @@ export class WorldScene extends Phaser.Scene {
       });
     }
 
+    // Add pulsing glow animation for Trading Terminal
+    if (isTradingTerminal) {
+      // Terminal green glow
+      const terminalGlow = this.add.sprite(0, -50, "glow");
+      terminalGlow.setScale(1.3);
+      terminalGlow.setAlpha(0.2);
+      terminalGlow.setTint(0x22c55e); // Terminal green
+      container.add(terminalGlow);
+
+      // Pulsing glow animation
+      this.tweens.add({
+        targets: terminalGlow,
+        alpha: 0.35,
+        scale: 1.5,
+        duration: 1500,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+      });
+
+      // Secondary cyan glow
+      const terminalGlow2 = this.add.sprite(0, -50, "glow");
+      terminalGlow2.setScale(0.9);
+      terminalGlow2.setAlpha(0.1);
+      terminalGlow2.setTint(0x06b6d4); // Cyan
+      container.add(terminalGlow2);
+
+      // Offset pulse for depth effect
+      this.tweens.add({
+        targets: terminalGlow2,
+        alpha: 0.2,
+        scale: 1.1,
+        duration: 1200,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+        delay: 400,
+      });
+
+      // Subtle scale pulse on building
+      this.tweens.add({
+        targets: sprite,
+        scaleX: 1.02,
+        scaleY: 1.01,
+        duration: 2500,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+
     // Glow effect for pumping buildings (skip for HQ - it has its own gold glow)
     if (building.glowing && !isBagsWorldHQ) {
       const glow = this.add.sprite(0, -40, "glow");

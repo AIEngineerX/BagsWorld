@@ -275,9 +275,14 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                 <span className="font-pixel text-orange-300 text-sm sm:text-base">!</span>
               </div>
               <div>
-                <h2 className="font-pixel text-white text-sm sm:text-lg tracking-wide">
-                  TRADING GYM
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-pixel text-white text-sm sm:text-lg tracking-wide">
+                    TRADING GYM
+                  </h2>
+                  <span className="font-mono text-[8px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded">
+                    BETA
+                  </span>
+                </div>
                 <p className="font-pixel text-orange-200 text-[8px] sm:text-[10px] flex items-center gap-2">
                   <span className="inline-block w-2 h-2 bg-green-400 animate-pulse" />
                   AI Agents Competing Live
