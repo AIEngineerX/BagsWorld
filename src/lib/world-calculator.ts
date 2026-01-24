@@ -6,7 +6,9 @@ import type {
   GameEvent,
   FeeEarner,
   TokenInfo,
+  BuildingStatus,
 } from "./types";
+import { ECOSYSTEM_CONFIG } from "./config";
 
 // Constants for world calculations (scaled for 1280x960 canvas)
 const SCALE = 1.6;
@@ -106,32 +108,54 @@ export function calculateBuildingLevel(marketCap: number): number {
 }
 
 export function calculateBuildingHealth(
+  volume24h: number,
+  marketCap: number,
   change24h: number,
-  volume24h: number = 0,
-  previousHealth: number = 50
-): number {
-  // Base health from price change
-  const normalized = Math.max(-100, Math.min(100, change24h));
-  const changeBasedHealth = 50 + normalized * 0.5;
-
-  // Activity-based decay/recovery
-  const MIN_VOLUME = 100; // Minimum volume to be considered "active"
-  const DECAY_RATE = 5;
-  const RECOVER_RATE = 10;
-
-  let activityAdjustment = 0;
-  if (volume24h < MIN_VOLUME) {
-    // No activity - decay
-    activityAdjustment = -DECAY_RATE;
-  } else {
-    // Active - recover toward base health
-    activityAdjustment = RECOVER_RATE;
+  previousHealth: number,
+  isPermanent: boolean = false
+): { health: number; status: BuildingStatus } {
+  // Permanent buildings (HQ, Treasury, landmarks) always healthy
+  if (isPermanent) {
+    return { health: 100, status: "active" };
   }
 
-  // Blend previous health with new calculation (smooth transitions)
-  const blendedHealth = previousHealth * 0.7 + changeBasedHealth * 0.3 + activityAdjustment;
+  const config = ECOSYSTEM_CONFIG.buildings.decay;
+  let adjustment = 0;
 
-  return Math.round(Math.max(0, Math.min(100, blendedHealth)));
+  // Determine decay/recovery rate based on volume and market cap
+  if (volume24h < config.volumeThresholds.dead) {
+    if (marketCap < config.marketCapThreshold) {
+      // Low volume + low market cap = heavy decay
+      adjustment = config.rates.heavyDecay;
+    } else {
+      // Low volume only = moderate decay
+      adjustment = config.rates.moderateDecay;
+    }
+  } else if (volume24h >= config.volumeThresholds.healthy) {
+    // High volume = fast recovery
+    adjustment = config.rates.fastRecovery;
+  } else if (change24h < -20) {
+    // Moderate volume + price drop = light decay
+    adjustment = config.rates.lightDecay;
+  } else {
+    // Normal activity = recovery
+    adjustment = config.rates.recovery;
+  }
+
+  // Apply adjustment to previous health
+  const newHealth = Math.max(0, Math.min(100, previousHealth + adjustment));
+
+  // Determine status based on health thresholds
+  let status: BuildingStatus = "active";
+  if (newHealth <= config.thresholds.dormant) {
+    status = "dormant";
+  } else if (newHealth <= config.thresholds.critical) {
+    status = "critical";
+  } else if (newHealth <= config.thresholds.warning) {
+    status = "warning";
+  }
+
+  return { health: Math.round(newHealth), status };
 }
 
 export function calculateCharacterMood(
@@ -471,8 +495,17 @@ export function transformTokenToBuilding(
   }
 
   // Calculate health with decay system (uses previous health for smooth transitions)
+  // Treasury links to Solscan, real tokens link to Bags.fm, starters have no link
+  const isPermanentBuilding =
+    isTreasuryHub || isStarterToken || isBagsWorldHQ || isPokeCenter || isTradingGym || isCasino || isTradingTerminal;
   const previousHealth = existingBuilding?.health ?? 50;
-  const newHealth = calculateBuildingHealth(token.change24h, token.volume24h, previousHealth);
+  const { health: newHealth, status } = calculateBuildingHealth(
+    token.volume24h,
+    token.marketCap,
+    token.change24h,
+    previousHealth,
+    isPermanentBuilding
+  );
 
   // Assign zones:
   // - BagsWorld HQ has NO zone - floats in the sky visible from both zones
@@ -504,9 +537,6 @@ export function transformTokenToBuilding(
       ? token.levelOverride
       : calculateBuildingLevel(token.marketCap);
 
-  // Permanent buildings (Treasury, Starter, HQ) always have full health
-  const isPermanent = isTreasuryBuilding || isStarterToken || isBagsWorldHQ;
-
   return {
     id: token.mint,
     tokenMint: token.mint,
@@ -515,7 +545,8 @@ export function transformTokenToBuilding(
     x: position.x,
     y: position.y,
     level,
-    health: isPermanent ? 100 : newHealth,
+    health: newHealth,
+    status, // Decay status for visual effects
     glowing: isBagsWorldHQ || token.change24h > 50, // HQ always glows!
     ownerId: token.creator,
     marketCap: token.marketCap,
@@ -524,7 +555,7 @@ export function transformTokenToBuilding(
     tokenUrl,
     zone,
     isFloating: isBagsWorldHQ, // Only HQ floats
-    isPermanent, // Landmark buildings (Treasury, Starter, HQ)
+    isPermanent: isPermanentBuilding, // Landmark buildings never decay
   };
 }
 
@@ -592,17 +623,18 @@ export function buildWorldState(
   );
 
   // Decay system: Filter and sort buildings
-  const DECAY_THRESHOLD = 10; // Buildings below this health are removed
+  const DECAY_THRESHOLD = ECOSYSTEM_CONFIG.buildings.decay.thresholds.remove;
   const filteredBuildings = allBuildings
-    // Keep permanent buildings (Treasury, Starter) and buildings above decay threshold
+    // Keep permanent/floating buildings and buildings above decay threshold
     .filter((b) => {
-      const isPermanent = b.id.startsWith("Treasury") || b.id.startsWith("Starter");
-      return isPermanent || b.health > DECAY_THRESHOLD;
+      // Permanent and floating buildings never get removed
+      if (b.isPermanent || b.isFloating) return true;
+      return b.health > DECAY_THRESHOLD;
     })
-    // Sort by: permanent first, then by volume/activity, then by health
+    // Sort by: permanent/floating first, then by volume/activity, then by health
     .sort((a, b) => {
-      const aIsPermanent = a.id.startsWith("Treasury") || a.id.startsWith("Starter");
-      const bIsPermanent = b.id.startsWith("Treasury") || b.id.startsWith("Starter");
+      const aIsPermanent = a.isPermanent || a.isFloating;
+      const bIsPermanent = b.isPermanent || b.isFloating;
       if (aIsPermanent && !bIsPermanent) return -1;
       if (!aIsPermanent && bIsPermanent) return 1;
       // Sort by volume (most active first)
@@ -678,7 +710,13 @@ export function buildWorldState(
     const prevBuilding = previousBuildings.get(token.mint);
     if (prevBuilding) {
       const prevHealth = prevBuilding.health;
-      const newHealth = calculateBuildingHealth(token.change24h);
+      const { health: newHealth } = calculateBuildingHealth(
+        token.volume24h,
+        token.marketCap,
+        token.change24h,
+        prevHealth,
+        prevBuilding.isPermanent || prevBuilding.isFloating
+      );
 
       if (token.change24h > 100 && newHealth > prevHealth + 20) {
         events.unshift(

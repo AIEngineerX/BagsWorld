@@ -108,14 +108,31 @@ export const ECOSYSTEM_CONFIG = {
     ],
     maxBuildings: 12, // Reduced to prevent overcrowding
 
-    // Decay system - buildings fade without activity
+    // Decay system - buildings fade without activity based on volume and market cap
     decay: {
       enabled: true,
-      minVolume24h: 100, // Minimum 24h volume to stay healthy (in USD)
-      healthyThreshold: 50, // Buildings with health > 50 are displayed prominently
-      removeThreshold: 10, // Buildings with health < 10 are removed
-      decayRate: 5, // Health points lost per check when inactive
-      recoverRate: 10, // Health points gained when active
+      // Volume thresholds (in USD)
+      volumeThresholds: {
+        dead: 500, // Below $500 = decay
+        healthy: 2000, // Above $2000 = fast recovery
+      },
+      // Market cap threshold for heavy decay
+      marketCapThreshold: 50000, // Below $50K + low volume = heavy decay
+      // Health status thresholds
+      thresholds: {
+        warning: 75, // Below 75 = warning status
+        critical: 50, // Below 50 = critical status
+        dormant: 25, // Below 25 = dormant status
+        remove: 10, // Below 10 = hidden from world
+      },
+      // Decay/recovery rates per refresh cycle
+      rates: {
+        heavyDecay: -8, // Low volume + low market cap
+        moderateDecay: -5, // Low volume only
+        lightDecay: -2, // Moderate volume + price drop
+        recovery: 5, // Normal activity
+        fastRecovery: 10, // High volume
+      },
     },
   },
 
