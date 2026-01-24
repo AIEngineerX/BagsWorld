@@ -8,7 +8,8 @@ import { characters, generateCharacterPrompt } from "@/characters";
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
 const BAGS_API_URL = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
-const ELIZAOS_SERVER = process.env.ELIZAOS_SERVER_URL || "https://bagsworld-production.up.railway.app";
+const ELIZAOS_SERVER =
+  process.env.ELIZAOS_SERVER_URL || "https://bagsworld-production.up.railway.app";
 
 // ============================================================================
 // TYPES

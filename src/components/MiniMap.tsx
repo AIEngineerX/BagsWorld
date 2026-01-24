@@ -137,9 +137,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
                 {/* Label */}
                 <span
                   className={`absolute top-4 left-1/2 -translate-x-1/2 font-pixel text-[7px] whitespace-nowrap ${
-                    loc.event
-                      ? "text-bags-green group-hover:text-bags-gold"
-                      : "text-gray-500"
+                    loc.event ? "text-bags-green group-hover:text-bags-gold" : "text-gray-500"
                   }`}
                 >
                   {loc.name}
@@ -208,9 +206,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
 
           {/* Footer hint */}
           <div className="border-t border-bags-green/30 px-3 py-1.5">
-            <span className="font-pixel text-[7px] text-gray-600">
-              Click locations to open
-            </span>
+            <span className="font-pixel text-[7px] text-gray-600">Click locations to open</span>
           </div>
         </div>
       )}
