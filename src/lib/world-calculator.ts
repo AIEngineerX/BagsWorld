@@ -477,8 +477,8 @@ export function transformTokenToBuilding(
   if (!isBagsWorldHQ && token.positionOverride) {
     position = { x: token.positionOverride.x, y: token.positionOverride.y };
   } else if (isBagsWorldHQ) {
-    // BagsWorld HQ ALWAYS gets sky position
-    position = { x: Math.round(WORLD_WIDTH / 2), y: skyY };
+    // BagsWorld HQ ALWAYS gets sky position (left side of world)
+    position = { x: Math.round(WORLD_WIDTH / 4), y: skyY };
   } else if (existingBuilding) {
     position = { x: existingBuilding.x, y: existingBuilding.y };
   } else if (landmark.type === "casino") {
