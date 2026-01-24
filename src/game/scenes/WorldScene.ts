@@ -3704,9 +3704,10 @@ export class WorldScene extends Phaser.Scene {
     label.setOrigin(0.5, 0.5);
     container.add(label);
 
-    // HQ floats in the sky, other buildings sort by Y position (higher Y = in front)
-    // Add small X offset so buildings on the right appear behind buildings on the left at same Y
-    const buildingDepth = isHQBuilding ? 15 : Math.floor(building.y / 10) + (building.x / 10000);
+    // Buildings render behind characters (depth 10-11) but in front of ground elements
+    // Buildings on the right appear behind buildings on the left when overlapping
+    // HQ floats in sky so it's always visible above other buildings
+    const buildingDepth = isHQBuilding ? 8 : 5 - (building.x / 10000);
     container.setDepth(buildingDepth);
     const hitboxSize = isHQBuilding ? { w: 80, h: 160 } : { w: 40, h: 80 };
     container.setInteractive(
