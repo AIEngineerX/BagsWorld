@@ -187,7 +187,6 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
       onClick={handleBackdropClick}
     >
       <div className="bg-gradient-to-b from-stone-900 to-stone-950 border border-orange-500/30 rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col shadow-2xl shadow-orange-500/10">
-
         {/* ===== WELCOME VIEW ===== */}
         {view === "welcome" && (
           <>
@@ -196,7 +195,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
               <div className="flex items-center justify-center gap-3 mb-2">
                 <span className="text-3xl">&#x1F94B;</span>
                 <h2 className="font-pixel text-xl text-orange-400 tracking-wider">TRADING DOJO</h2>
-                <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-pixel text-[8px] tracking-wider">BETA</span>
+                <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-pixel text-[8px] tracking-wider">
+                  BETA
+                </span>
                 <span className="text-3xl">&#x1F525;</span>
               </div>
               <p className="text-center text-orange-300/80 text-sm">
@@ -208,17 +209,20 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
             <div className="p-6 space-y-6">
               {/* Dojo Banner */}
               <div className="relative bg-gradient-to-br from-orange-950 to-stone-900 border border-orange-500/20 rounded-lg p-6 text-center overflow-hidden">
-                <div className="absolute inset-0 opacity-10" style={{
-                  backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(251,191,36,0.1) 10px, rgba(251,191,36,0.1) 20px)`
-                }} />
+                <div
+                  className="absolute inset-0 opacity-10"
+                  style={{
+                    backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(251,191,36,0.1) 10px, rgba(251,191,36,0.1) 20px)`,
+                  }}
+                />
                 <div className="relative">
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center border-4 border-orange-400/50 shadow-lg shadow-orange-500/30">
                     <span className="text-4xl">&#x2694;</span>
                   </div>
                   <h3 className="font-pixel text-lg text-orange-300 mb-2">Welcome, Trader</h3>
                   <p className="text-gray-400 text-sm leading-relaxed max-w-sm mx-auto">
-                    Test your skills against AI opponents using real historical price data.
-                    Win spars to earn belts and climb the ranks.
+                    Test your skills against AI opponents using real historical price data. Win
+                    spars to earn belts and climb the ranks.
                   </p>
                 </div>
               </div>
@@ -266,8 +270,11 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                   <p className="font-pixel text-[8px] text-gray-500">TOTAL SPARS</p>
                 </div>
                 <div className="bg-black/20 rounded p-2">
-                  <p className={`font-mono text-lg ${playerStats.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {playerStats.totalPnl >= 0 ? "+" : ""}{playerStats.totalPnl.toFixed(0)}%
+                  <p
+                    className={`font-mono text-lg ${playerStats.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                  >
+                    {playerStats.totalPnl >= 0 ? "+" : ""}
+                    {playerStats.totalPnl.toFixed(0)}%
                   </p>
                   <p className="font-pixel text-[8px] text-gray-500">TOTAL PNL</p>
                 </div>
@@ -303,7 +310,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 </button>
                 <div className="flex items-center gap-2">
                   <h2 className="font-pixel text-lg text-orange-400">HOW TO SPAR</h2>
-                  <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-pixel text-[7px]">BETA</span>
+                  <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-pixel text-[7px]">
+                    BETA
+                  </span>
                 </div>
                 <div className="w-12" />
               </div>
@@ -318,8 +327,8 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 <div>
                   <h4 className="font-pixel text-sm text-orange-300 mb-1">Choose Your Opponent</h4>
                   <p className="text-gray-400 text-sm leading-relaxed">
-                    Each AI opponent has a unique trading style. Start with easier opponents and work your way up.
-                    Higher belt opponents require you to earn belts first.
+                    Each AI opponent has a unique trading style. Start with easier opponents and
+                    work your way up. Higher belt opponents require you to earn belts first.
                   </p>
                 </div>
               </div>
@@ -332,8 +341,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 <div>
                   <h4 className="font-pixel text-sm text-orange-300 mb-1">Select a Token</h4>
                   <p className="text-gray-400 text-sm leading-relaxed">
-                    Pick any live Solana token to trade. You&apos;ll see its current market cap (MC).
-                    The spar uses real historical price data - you&apos;re replaying actual market moves.
+                    Pick any live Solana token to trade. You&apos;ll see its current market cap
+                    (MC). The spar uses real historical price data - you&apos;re replaying actual
+                    market moves.
                   </p>
                 </div>
               </div>
@@ -360,8 +370,8 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 <div>
                   <h4 className="font-pixel text-sm text-orange-300 mb-1">Earn Belts</h4>
                   <p className="text-gray-400 text-sm leading-relaxed">
-                    Win spars to progress through belt ranks: White → Yellow → Green → Blue → Purple → Black.
-                    Each belt unlocks tougher opponents with smarter strategies.
+                    Win spars to progress through belt ranks: White → Yellow → Green → Blue → Purple
+                    → Black. Each belt unlocks tougher opponents with smarter strategies.
                   </p>
                 </div>
               </div>
@@ -370,17 +380,21 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
               <div className="bg-black/30 rounded-lg p-4 border border-orange-500/10">
                 <h4 className="font-pixel text-xs text-gray-500 mb-3">BELT PROGRESSION</h4>
                 <div className="flex justify-between">
-                  {(["white", "yellow", "green", "blue", "purple", "black"] as Belt[]).map((belt) => (
-                    <div key={belt} className="text-center">
-                      <div
-                        className={`w-4 h-8 mx-auto rounded-sm mb-1 ${
-                          playerStats.belt === belt ? "ring-2 ring-orange-400" : ""
-                        }`}
-                        style={{ backgroundColor: getBeltColor(belt) }}
-                      />
-                      <span className="font-pixel text-[7px] text-gray-500 uppercase">{belt}</span>
-                    </div>
-                  ))}
+                  {(["white", "yellow", "green", "blue", "purple", "black"] as Belt[]).map(
+                    (belt) => (
+                      <div key={belt} className="text-center">
+                        <div
+                          className={`w-4 h-8 mx-auto rounded-sm mb-1 ${
+                            playerStats.belt === belt ? "ring-2 ring-orange-400" : ""
+                          }`}
+                          style={{ backgroundColor: getBeltColor(belt) }}
+                        />
+                        <span className="font-pixel text-[7px] text-gray-500 uppercase">
+                          {belt}
+                        </span>
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
 
@@ -420,7 +434,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 </button>
                 <div className="flex items-center gap-2">
                   <span className="font-pixel text-sm text-orange-400">DOJO</span>
-                  <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-pixel text-[7px]">BETA</span>
+                  <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/50 rounded text-amber-400 font-pixel text-[7px]">
+                    BETA
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div
@@ -435,7 +451,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <h3 className="font-pixel text-xs text-gray-500 uppercase tracking-wider">Select Opponent</h3>
+              <h3 className="font-pixel text-xs text-gray-500 uppercase tracking-wider">
+                Select Opponent
+              </h3>
 
               <div className="grid grid-cols-1 gap-2">
                 {DOJO_OPPONENTS.map((opponent) => {
@@ -464,7 +482,7 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                           className="w-9 h-9 rounded-lg flex items-center justify-center text-base flex-shrink-0 border"
                           style={{
                             backgroundColor: opponent.color + "20",
-                            borderColor: opponent.color + "40"
+                            borderColor: opponent.color + "40",
                           }}
                         >
                           {opponent.difficulty <= 2 ? "🥋" : opponent.difficulty <= 4 ? "🔥" : "⚔"}
@@ -473,12 +491,16 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-pixel text-xs text-white truncate">{opponent.name}</span>
+                            <span className="font-pixel text-xs text-white truncate">
+                              {opponent.name}
+                            </span>
                             <span className="font-mono text-[9px] text-gray-600 flex-shrink-0">
                               LV.{opponent.difficulty}
                             </span>
                           </div>
-                          <p className="font-mono text-[10px] text-gray-500 truncate">{opponent.style}</p>
+                          <p className="font-mono text-[10px] text-gray-500 truncate">
+                            {opponent.style}
+                          </p>
                         </div>
 
                         {/* Status */}
@@ -493,12 +515,14 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                             >
                               {opponent.requiredBelt.toUpperCase()}
                             </span>
-                          ) : (record.wins > 0 || record.losses > 0) ? (
+                          ) : record.wins > 0 || record.losses > 0 ? (
                             <span className="font-mono text-[10px] text-gray-500 whitespace-nowrap">
                               {record.wins}W-{record.losses}L
                             </span>
                           ) : (
-                            <span className="font-pixel text-[9px] text-orange-400 px-2 py-0.5 bg-orange-500/10 rounded">NEW</span>
+                            <span className="font-pixel text-[9px] text-orange-400 px-2 py-0.5 bg-orange-500/10 rounded">
+                              NEW
+                            </span>
                           )}
                         </div>
                       </div>
@@ -538,11 +562,15 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 <p className="font-mono text-sm text-orange-300">{selectedOpponent.style}</p>
               </div>
 
-              <h3 className="font-pixel text-xs text-gray-500 uppercase tracking-wider">Select Token to Trade</h3>
+              <h3 className="font-pixel text-xs text-gray-500 uppercase tracking-wider">
+                Select Token to Trade
+              </h3>
 
               {isLoadingTokens ? (
                 <div className="text-center py-8">
-                  <p className="font-pixel text-sm text-orange-400 animate-pulse">Loading tokens...</p>
+                  <p className="font-pixel text-sm text-orange-400 animate-pulse">
+                    Loading tokens...
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
@@ -559,7 +587,8 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                             token.change24h >= 0 ? "text-green-400" : "text-red-400"
                           }`}
                         >
-                          {token.change24h >= 0 ? "+" : ""}{token.change24h.toFixed(0)}%
+                          {token.change24h >= 0 ? "+" : ""}
+                          {token.change24h.toFixed(0)}%
                         </span>
                       </div>
                       <p className="font-mono text-xs text-gray-500">MC: {formatMC(token.mc)}</p>
@@ -590,7 +619,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                   <button
                     onClick={() => setIsPaused(!isPaused)}
                     className={`px-2 py-1 rounded text-xs font-mono ${
-                      isPaused ? "bg-green-500/20 text-green-400" : "bg-orange-500/20 text-orange-400"
+                      isPaused
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-orange-500/20 text-orange-400"
                     }`}
                   >
                     {isPaused ? "PLAY" : "PAUSE"}
@@ -602,7 +633,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
               <div className="mt-2 h-1 bg-stone-800 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-300"
-                  style={{ width: `${(session.currentCandleIndex / session.candles.length) * 100}%` }}
+                  style={{
+                    width: `${(session.currentCandleIndex / session.candles.length) * 100}%`,
+                  }}
                 />
               </div>
             </div>
@@ -619,7 +652,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 {/* Mini Chart */}
                 <div className="h-20 flex items-end gap-px">
                   {session.candles.slice(0, session.currentCandleIndex + 1).map((candle, i) => {
-                    const prices = session.candles.slice(0, session.currentCandleIndex + 1).map(c => c.close);
+                    const prices = session.candles
+                      .slice(0, session.currentCandleIndex + 1)
+                      .map((c) => c.close);
                     const min = Math.min(...prices);
                     const max = Math.max(...prices);
                     const range = max - min || 1;
@@ -649,20 +684,27 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                     <div className="flex justify-between">
                       <span className="text-gray-500">Tokens</span>
                       <span className="text-white">
-                        {session.playerPosition.tokenAmount > 0 ? session.playerPosition.tokenAmount.toFixed(1) : "-"}
+                        {session.playerPosition.tokenAmount > 0
+                          ? session.playerPosition.tokenAmount.toFixed(1)
+                          : "-"}
                       </span>
                     </div>
                     <div className="flex justify-between border-t border-blue-500/20 pt-1">
                       <span className="text-gray-500">Value</span>
                       <span className="text-blue-400 font-bold">
-                        {formatSol(session.playerSol + session.playerPosition.tokenAmount * (getCurrentPrice() || 0))}
+                        {formatSol(
+                          session.playerSol +
+                            session.playerPosition.tokenAmount * (getCurrentPrice() || 0)
+                        )}
                       </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                  <p className="font-pixel text-xs text-red-400 mb-2">{selectedOpponent?.name.toUpperCase()}</p>
+                  <p className="font-pixel text-xs text-red-400 mb-2">
+                    {selectedOpponent?.name.toUpperCase()}
+                  </p>
                   <div className="space-y-1 font-mono text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">SOL</span>
@@ -671,13 +713,18 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                     <div className="flex justify-between">
                       <span className="text-gray-500">Tokens</span>
                       <span className="text-white">
-                        {session.opponentPosition.tokenAmount > 0 ? session.opponentPosition.tokenAmount.toFixed(1) : "-"}
+                        {session.opponentPosition.tokenAmount > 0
+                          ? session.opponentPosition.tokenAmount.toFixed(1)
+                          : "-"}
                       </span>
                     </div>
                     <div className="flex justify-between border-t border-red-500/20 pt-1">
                       <span className="text-gray-500">Value</span>
                       <span className="text-red-400 font-bold">
-                        {formatSol(session.opponentSol + session.opponentPosition.tokenAmount * (getCurrentPrice() || 0))}
+                        {formatSol(
+                          session.opponentSol +
+                            session.opponentPosition.tokenAmount * (getCurrentPrice() || 0)
+                        )}
                       </span>
                     </div>
                   </div>
@@ -702,7 +749,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                       />
                       <button
                         onClick={handleBuy}
-                        disabled={parseFloat(buyAmount) <= 0 || parseFloat(buyAmount) > session.playerSol}
+                        disabled={
+                          parseFloat(buyAmount) <= 0 || parseFloat(buyAmount) > session.playerSol
+                        }
                         className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:bg-stone-700 disabled:text-gray-500 text-white font-pixel text-xs rounded transition-colors"
                       >
                         BUY
@@ -789,7 +838,11 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                         : "text-gray-400"
                   }`}
                 >
-                  {session.winner === "player" ? "VICTORY" : session.winner === "opponent" ? "DEFEAT" : "DRAW"}
+                  {session.winner === "player"
+                    ? "VICTORY"
+                    : session.winner === "opponent"
+                      ? "DEFEAT"
+                      : "DRAW"}
                 </p>
               </div>
 
@@ -810,7 +863,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                   </p>
                 </div>
                 <div className="bg-stone-900/80 border border-stone-700/50 rounded-lg p-4">
-                  <p className="font-pixel text-xs text-gray-500 mb-2">{selectedOpponent?.name.toUpperCase()}</p>
+                  <p className="font-pixel text-xs text-gray-500 mb-2">
+                    {selectedOpponent?.name.toUpperCase()}
+                  </p>
                   <p
                     className={`font-mono text-2xl ${
                       (session.opponentPnlPercent || 0) >= 0 ? "text-green-400" : "text-red-400"
@@ -843,7 +898,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 {coaching ? (
                   <div>
                     <div className="flex items-center gap-3 mb-3">
-                      <span className={`font-mono text-4xl ${getGradeColor(coaching.overallGrade)}`}>
+                      <span
+                        className={`font-mono text-4xl ${getGradeColor(coaching.overallGrade)}`}
+                      >
                         {coaching.overallGrade}
                       </span>
                     </div>

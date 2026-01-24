@@ -131,7 +131,11 @@ function parseBotCommands(message: string): Array<{ type: string; data: Record<s
     { pattern: /(?:call|summon)\s*(?:the\s*)?cat/i, animal: "cat", action: "call" },
     { pattern: /(?:scare|shoo)\s*(?:the\s*)?bird/i, animal: "bird", action: "scare" },
     { pattern: /(?:feed|pet)\s*(?:the\s*)?bird/i, animal: "bird", action: "feed" },
-    { pattern: /(?:chase|play\s*with)\s*(?:the\s*)?squirrel/i, animal: "squirrel", action: "chase" },
+    {
+      pattern: /(?:chase|play\s*with)\s*(?:the\s*)?squirrel/i,
+      animal: "squirrel",
+      action: "chase",
+    },
   ];
 
   // Only add one action per animal type
@@ -196,11 +200,13 @@ async function handleCharacterFallback(
     // Generate appropriate response for actions
     let responseText = getFallbackResponse(agentId, message);
     if (actions.length > 0) {
-      const actionDescriptions = actions.map((a) => {
-        if (a.type === "animal") return `${a.data.animalAction}ing the ${a.data.animalType}`;
-        if (a.type === "effect") return `triggering ${a.data.effectType}`;
-        return "";
-      }).filter(Boolean);
+      const actionDescriptions = actions
+        .map((a) => {
+          if (a.type === "animal") return `${a.data.animalAction}ing the ${a.data.animalType}`;
+          if (a.type === "effect") return `triggering ${a.data.effectType}`;
+          return "";
+        })
+        .filter(Boolean);
       responseText = `done! ${actionDescriptions.join(" and ")}! `;
     }
 
@@ -243,11 +249,13 @@ async function handleCharacterFallback(
 
     // If there are actions, append acknowledgment
     if (actions.length > 0) {
-      const actionDescriptions = actions.map((a) => {
-        if (a.type === "animal") return `${a.data.animalAction}ing the ${a.data.animalType}`;
-        if (a.type === "effect") return `triggering ${a.data.effectType}`;
-        return "";
-      }).filter(Boolean);
+      const actionDescriptions = actions
+        .map((a) => {
+          if (a.type === "animal") return `${a.data.animalAction}ing the ${a.data.animalType}`;
+          if (a.type === "effect") return `triggering ${a.data.effectType}`;
+          return "";
+        })
+        .filter(Boolean);
       responseText = `done! ${actionDescriptions.join(" and ")}! `;
     }
 
@@ -262,11 +270,13 @@ async function handleCharacterFallback(
     // Still execute actions even on error
     let responseText = getFallbackResponse(agentId, message);
     if (actions.length > 0) {
-      const actionDescriptions = actions.map((a) => {
-        if (a.type === "animal") return `${a.data.animalAction}ing the ${a.data.animalType}`;
-        if (a.type === "effect") return `triggering ${a.data.effectType}`;
-        return "";
-      }).filter(Boolean);
+      const actionDescriptions = actions
+        .map((a) => {
+          if (a.type === "animal") return `${a.data.animalAction}ing the ${a.data.animalType}`;
+          if (a.type === "effect") return `triggering ${a.data.effectType}`;
+          return "";
+        })
+        .filter(Boolean);
       responseText = `done! ${actionDescriptions.join(" and ")}! `;
     }
     return NextResponse.json({

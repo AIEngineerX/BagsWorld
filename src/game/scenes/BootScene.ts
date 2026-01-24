@@ -1713,7 +1713,12 @@ export class BootScene extends Phaser.Scene {
 
     // Right door panel (shoji)
     g.fillStyle(shojiColor);
-    g.fillRect(doorX + doorWidth / 2 + Math.round(2 * s), doorY, doorWidth / 2 - Math.round(2 * s), doorHeight);
+    g.fillRect(
+      doorX + doorWidth / 2 + Math.round(2 * s),
+      doorY,
+      doorWidth / 2 - Math.round(2 * s),
+      doorHeight
+    );
     g.fillStyle(shojiFrameColor);
     g.fillRect(doorX + (doorWidth * 3) / 4, doorY, Math.round(1 * s), doorHeight);
     g.fillRect(
@@ -1766,9 +1771,19 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0x696969); // Gray stone
     g.fillRect(baseX - Math.round(2 * s), lanternY, Math.round(6 * s), Math.round(16 * s));
     g.fillStyle(0x808080);
-    g.fillRect(baseX - Math.round(3 * s), lanternY + Math.round(4 * s), Math.round(8 * s), Math.round(8 * s));
+    g.fillRect(
+      baseX - Math.round(3 * s),
+      lanternY + Math.round(4 * s),
+      Math.round(8 * s),
+      Math.round(8 * s)
+    );
     g.fillStyle(PALETTE.gold, 0.7);
-    g.fillRect(baseX - Math.round(1 * s), lanternY + Math.round(6 * s), Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(
+      baseX - Math.round(1 * s),
+      lanternY + Math.round(6 * s),
+      Math.round(4 * s),
+      Math.round(4 * s)
+    );
 
     // Right lantern
     g.fillStyle(0x696969);

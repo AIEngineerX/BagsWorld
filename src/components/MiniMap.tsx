@@ -16,7 +16,12 @@ interface Position {
 // Locations with clean data
 const LOCATIONS = {
   main_city: [
-    { id: "pokecenter", name: "PokeCenter", desc: "Heal & Info", event: "bagsworld-pokecenter-click" },
+    {
+      id: "pokecenter",
+      name: "PokeCenter",
+      desc: "Heal & Info",
+      event: "bagsworld-pokecenter-click",
+    },
     { id: "dojo", name: "Trading Dojo", desc: "AI Sparring", event: "bagsworld-tradinggym-click" },
     { id: "treasury", name: "Treasury", desc: "Claim Fees", event: "bagsworld-treasury-click" },
   ],
@@ -115,7 +120,12 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
           `}
           aria-label="Open map"
         >
-          <svg className="w-5 h-5 text-bags-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-5 h-5 text-bags-green"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -175,21 +185,31 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
                 onClick={() => handleLocationClick(loc.event)}
                 disabled={!loc.event}
                 className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
-                  loc.event
-                    ? "hover:bg-bags-green/10 group"
-                    : "opacity-40 cursor-not-allowed"
+                  loc.event ? "hover:bg-bags-green/10 group" : "opacity-40 cursor-not-allowed"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`font-pixel text-[10px] ${loc.event ? "text-white group-hover:text-bags-green" : "text-gray-500"}`}>
+                    <p
+                      className={`font-pixel text-[10px] ${loc.event ? "text-white group-hover:text-bags-green" : "text-gray-500"}`}
+                    >
                       {loc.name}
                     </p>
                     <p className="font-mono text-[9px] text-gray-600">{loc.desc}</p>
                   </div>
                   {loc.event && (
-                    <svg className="w-4 h-4 text-gray-600 group-hover:text-bags-green transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <svg
+                      className="w-4 h-4 text-gray-600 group-hover:text-bags-green transition-colors"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   )}
                 </div>
