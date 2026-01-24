@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { isAdmin, ECOSYSTEM_CONFIG } from "@/lib/config";
 import { getLaunchedTokens, removeLaunchedToken, type LaunchedToken } from "@/lib/token-registry";
+import bs58 from "bs58";
+
+const SESSION_TOKEN_KEY = "bagsworld_admin_session";
 
 interface EcosystemStats {
   pendingPoolSol: number;
@@ -85,7 +88,7 @@ interface GlobalToken {
 type TabType = "overview" | "diagnostics" | "global" | "local" | "analytics" | "logs";
 
 export function AdminConsole() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signMessage } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [stats, setStats] = useState<EcosystemStats | null>(null);
@@ -104,13 +107,162 @@ export function AdminConsole() {
   }>({});
   const [healthInputs, setHealthInputs] = useState<{ [mint: string]: string }>({});
 
+  // Authentication state
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const authPromiseRef = useRef<{ resolve: (value: boolean) => void } | null>(null);
+
   const isUserAdmin = connected && isAdmin(publicKey?.toBase58());
+
+  // Load session token from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(SESSION_TOKEN_KEY);
+    if (stored) {
+      try {
+        const { token, wallet, expiry } = JSON.parse(stored);
+        // Check if token is for current wallet and not expired
+        if (wallet === publicKey?.toBase58() && expiry > Date.now()) {
+          setSessionToken(token);
+        } else {
+          localStorage.removeItem(SESSION_TOKEN_KEY);
+        }
+      } catch {
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+      }
+    }
+  }, [publicKey]);
+
+  // Clear session when wallet changes
+  useEffect(() => {
+    if (!connected) {
+      setSessionToken(null);
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+    }
+  }, [connected]);
 
   const addLog = useCallback((message: string, type: "info" | "success" | "error" = "info") => {
     const timestamp = new Date().toLocaleTimeString();
     const prefix = type === "error" ? "[ERR]" : type === "success" ? "[OK]" : "[LOG]";
     setLogs((prev) => [`[${timestamp}] ${prefix} ${message}`, ...prev.slice(0, 99)]);
   }, []);
+
+  // Authenticate with wallet signature
+  const authenticate = useCallback(async (): Promise<boolean> => {
+    if (!publicKey || !signMessage) {
+      setAuthError("Wallet not connected or doesn't support signing");
+      return false;
+    }
+
+    setIsAuthenticating(true);
+    setAuthError(null);
+    setShowAuthModal(true);
+
+    try {
+      // 1. Request challenge from server
+      addLog("Requesting authentication challenge...");
+      const challengeRes = await fetch(`/api/admin/auth?wallet=${publicKey.toBase58()}`);
+
+      if (!challengeRes.ok) {
+        const err = await challengeRes.json();
+        throw new Error(err.error || "Failed to get challenge");
+      }
+
+      const { challenge } = await challengeRes.json();
+      addLog("Challenge received, please sign with your wallet");
+
+      // 2. Sign the challenge with wallet
+      const messageBytes = new TextEncoder().encode(challenge);
+      const signature = await signMessage(messageBytes);
+      const signatureBase58 = bs58.encode(signature);
+
+      addLog("Signature received, verifying...");
+
+      // 3. Submit signature for verification
+      const authRes = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet: publicKey.toBase58(),
+          signature: signatureBase58,
+          message: challenge,
+        }),
+      });
+
+      if (!authRes.ok) {
+        const err = await authRes.json();
+        throw new Error(err.error || "Authentication failed");
+      }
+
+      const { sessionToken: token } = await authRes.json();
+
+      // 4. Store session token (expires in 1 hour)
+      const expiry = Date.now() + 55 * 60 * 1000; // 55 minutes (buffer before actual expiry)
+      localStorage.setItem(
+        SESSION_TOKEN_KEY,
+        JSON.stringify({ token, wallet: publicKey.toBase58(), expiry })
+      );
+      setSessionToken(token);
+
+      addLog("Authentication successful!", "success");
+      setShowAuthModal(false);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Authentication failed";
+      setAuthError(message);
+      addLog(`Authentication failed: ${message}`, "error");
+      return false;
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }, [publicKey, signMessage, addLog]);
+
+  // Authenticated fetch wrapper - ensures valid session token
+  const adminFetch = useCallback(
+    async (url: string, options: RequestInit = {}): Promise<Response> => {
+      // If no session token, authenticate first
+      if (!sessionToken) {
+        const success = await authenticate();
+        if (!success) {
+          throw new Error("Authentication required");
+        }
+      }
+
+      // Make the request with session token
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+
+      // If unauthorized, try to re-authenticate once
+      if (response.status === 401) {
+        addLog("Session expired, re-authenticating...");
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+        setSessionToken(null);
+
+        const success = await authenticate();
+        if (!success) {
+          throw new Error("Re-authentication failed");
+        }
+
+        // Retry with new token
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+      }
+
+      return response;
+    },
+    [sessionToken, authenticate, addLog]
+  );
 
   const fetchStats = useCallback(async () => {
     try {
@@ -130,11 +282,7 @@ export function AdminConsole() {
 
     try {
       setIsLoading(true);
-      const response = await fetch("/api/admin", {
-        headers: {
-          "x-admin-wallet": publicKey.toBase58(),
-        },
-      });
+      const response = await adminFetch("/api/admin");
 
       if (response.ok) {
         const data = await response.json();
@@ -142,14 +290,15 @@ export function AdminConsole() {
         setGlobalTokens(data.globalTokens || []);
         addLog("Admin data fetched", "success");
       } else {
-        addLog("Failed to fetch admin data", "error");
+        const err = await response.json();
+        addLog(`Failed to fetch admin data: ${err.error || response.status}`, "error");
       }
     } catch (err) {
       addLog(`Admin fetch error: ${err}`, "error");
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, addLog]);
+  }, [publicKey, addLog, adminFetch]);
 
   const loadLocalBuildings = useCallback(() => {
     const tokens = getLaunchedTokens();
@@ -171,11 +320,10 @@ export function AdminConsole() {
 
     try {
       setIsLoading(true);
-      const response = await fetch("/api/admin", {
+      const response = await adminFetch("/api/admin", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-wallet": publicKey.toBase58(),
         },
         body: JSON.stringify({ action, data }),
       });
@@ -381,6 +529,63 @@ export function AdminConsole() {
         </span>
       </button>
 
+      {/* Authentication Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80">
+          <div className="bg-bags-dark border-4 border-red-500 p-6 max-w-md w-full mx-4 shadow-2xl">
+            <h3 className="font-pixel text-sm text-red-300 mb-4">ADMIN AUTHENTICATION</h3>
+
+            {isAuthenticating ? (
+              <div className="text-center py-8">
+                <div className="animate-pulse mb-4">
+                  <span className="font-pixel text-[10px] text-yellow-400">
+                    {sessionToken ? "VERIFYING..." : "AWAITING WALLET SIGNATURE..."}
+                  </span>
+                </div>
+                <p className="font-pixel text-[8px] text-gray-400">
+                  Please sign the message in your wallet to authenticate as admin.
+                </p>
+              </div>
+            ) : authError ? (
+              <div className="py-4">
+                <div className="bg-red-500/20 border border-red-500/50 p-3 mb-4">
+                  <p className="font-pixel text-[9px] text-red-400">{authError}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => authenticate()}
+                    className="flex-1 font-pixel text-[9px] text-yellow-400 hover:text-yellow-300 bg-yellow-500/10 px-3 py-2 border border-yellow-500/30"
+                  >
+                    [RETRY]
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAuthModal(false);
+                      setAuthError(null);
+                    }}
+                    className="flex-1 font-pixel text-[9px] text-gray-400 hover:text-gray-300 px-3 py-2 border border-gray-600"
+                  >
+                    [CANCEL]
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-4">
+                <p className="font-pixel text-[8px] text-gray-400 mb-4">
+                  You need to sign a message with your wallet to access admin features.
+                </p>
+                <button
+                  onClick={() => authenticate()}
+                  className="w-full font-pixel text-[9px] text-bags-green hover:text-green-300 bg-green-500/10 px-3 py-2 border border-green-500/30"
+                >
+                  [SIGN TO AUTHENTICATE]
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Admin Console Panel */}
       {isOpen && (
         <div className="fixed inset-4 z-50 bg-bags-dark border-4 border-red-500 shadow-xl overflow-hidden flex flex-col">
@@ -388,9 +593,32 @@ export function AdminConsole() {
           <div className="flex items-center justify-between p-3 border-b-2 border-red-500 bg-red-900/30">
             <div>
               <h2 className="font-pixel text-sm text-red-300">[ADMIN] BAGSWORLD CONSOLE</h2>
-              <p className="font-pixel text-[8px] text-gray-400">Site Management Dashboard</p>
+              <div className="flex items-center gap-2">
+                <p className="font-pixel text-[8px] text-gray-400">Site Management Dashboard</p>
+                {sessionToken ? (
+                  <span className="font-pixel text-[7px] text-green-400 bg-green-500/20 px-1">
+                    AUTHENTICATED
+                  </span>
+                ) : (
+                  <span className="font-pixel text-[7px] text-yellow-400 bg-yellow-500/20 px-1">
+                    NOT SIGNED IN
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
+              {sessionToken && (
+                <button
+                  onClick={() => {
+                    localStorage.removeItem(SESSION_TOKEN_KEY);
+                    setSessionToken(null);
+                    addLog("Logged out", "info");
+                  }}
+                  className="font-pixel text-[8px] text-gray-400 hover:text-red-300 px-2 py-1 border border-gray-600"
+                >
+                  [LOGOUT]
+                </button>
+              )}
               <button
                 onClick={() => {
                   fetchStats();
