@@ -103,14 +103,11 @@ export async function fetchXUserInfo(accessToken: string): Promise<{
   name: string;
   profile_image_url?: string;
 }> {
-  const response = await fetch(
-    "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
+  const response = await fetch("https://api.twitter.com/2/users/me?user.fields=profile_image_url", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 
   if (!response.ok) {
     const error = await response.text();

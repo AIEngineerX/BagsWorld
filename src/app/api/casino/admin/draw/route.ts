@@ -1,7 +1,12 @@
 // Casino Admin API - Draw raffle winner
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSignature } from "@/lib/verify-signature";
-import { drawRaffleWinner, getCasinoAdminWallet, isNeonConfigured, checkRaffleThreshold } from "@/lib/neon";
+import {
+  drawRaffleWinner,
+  getCasinoAdminWallet,
+  isNeonConfigured,
+  checkRaffleThreshold,
+} from "@/lib/neon";
 
 export const dynamic = "force-dynamic";
 
@@ -9,10 +14,7 @@ export async function POST(request: NextRequest) {
   try {
     // Check database is configured
     if (!isNeonConfigured()) {
-      return NextResponse.json(
-        { error: "Database not configured" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
     const body = await request.json();
@@ -28,33 +30,23 @@ export async function POST(request: NextRequest) {
 
     // Verify admin signature
     const adminWallet = getCasinoAdminWallet();
-    const verification = verifyAdminSignature(
-      wallet,
-      signature,
-      "draw",
-      timestamp,
-      adminWallet
-    );
+    const verification = verifyAdminSignature(wallet, signature, "draw", timestamp, adminWallet);
 
     if (!verification.verified) {
       console.warn(`[Casino Admin] Draw failed: ${verification.error}`);
-      return NextResponse.json(
-        { error: verification.error },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: verification.error }, { status: 403 });
     }
 
     // Draw the winner
     const result = await drawRaffleWinner();
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    console.log(`[Casino Admin] Raffle drawn by ${wallet}. Winner: ${result.winner}, Prize: ${result.prize} SOL`);
+    console.log(
+      `[Casino Admin] Raffle drawn by ${wallet}. Winner: ${result.winner}, Prize: ${result.prize} SOL`
+    );
     return NextResponse.json({
       success: true,
       winner: result.winner,
@@ -64,10 +56,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Casino Admin] Draw error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -75,19 +64,13 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     if (!isNeonConfigured()) {
-      return NextResponse.json(
-        { error: "Database not configured" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
     const status = await checkRaffleThreshold();
     return NextResponse.json(status);
   } catch (error) {
     console.error("[Casino Admin] Threshold check error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

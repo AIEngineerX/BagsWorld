@@ -62,9 +62,10 @@ export async function GET() {
         error: `RPC returned ${response.status}`,
         response: text,
         rpcUrl: safeUrl,
-        hint: response.status === 401
-          ? "API key is invalid or expired. Check your Helius dashboard."
-          : "Check RPC URL format",
+        hint:
+          response.status === 401
+            ? "API key is invalid or expired. Check your Helius dashboard."
+            : "Check RPC URL format",
       });
     }
 
@@ -76,9 +77,10 @@ export async function GET() {
         error: json.error.message || "RPC error",
         code: json.error.code,
         rpcUrl: safeUrl,
-        hint: json.error.code === -32401
-          ? "API key is invalid. Generate a new key at dev.helius.xyz"
-          : undefined,
+        hint:
+          json.error.code === -32401
+            ? "API key is invalid. Generate a new key at dev.helius.xyz"
+            : undefined,
       });
     }
 
@@ -88,7 +90,6 @@ export async function GET() {
       rpcUrl: safeUrl,
       message: "Helius RPC is working!",
     });
-
   } catch (error) {
     console.error("[test-rpc] Error:", error);
     return NextResponse.json({
@@ -123,7 +124,9 @@ export async function POST() {
 
   // Test 2: getLatestBlockhash (more advanced)
   try {
-    const blockhash = await testRpcMethod(rpcUrl, "getLatestBlockhash", [{ commitment: "confirmed" }]);
+    const blockhash = await testRpcMethod(rpcUrl, "getLatestBlockhash", [
+      { commitment: "confirmed" },
+    ]);
     results.getLatestBlockhash = blockhash;
   } catch (e) {
     results.getLatestBlockhash = { error: String(e) };
@@ -132,7 +135,8 @@ export async function POST() {
   // Test 3: sendTransaction with invalid tx (should fail with tx error, NOT 401)
   // A proper 401 here means auth issue, other errors mean auth is working
   try {
-    const dummyTx = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const dummyTx =
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     const send = await testRpcMethod(rpcUrl, "sendTransaction", [dummyTx, { encoding: "base64" }]);
     results.sendTransaction = send;
 

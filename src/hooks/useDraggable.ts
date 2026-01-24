@@ -41,15 +41,18 @@ export function useDraggable(
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest("button, input, textarea")) return;
-    const rect = ref.current?.getBoundingClientRect();
-    if (rect) {
-      setIsDragging(true);
-      setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    }
-  }, [ref]);
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if ((e.target as HTMLElement).closest("button, input, textarea")) return;
+      const rect = ref.current?.getBoundingClientRect();
+      if (rect) {
+        setIsDragging(true);
+        setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      }
+    },
+    [ref]
+  );
 
   useEffect(() => {
     if (!isDragging) return;

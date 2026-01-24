@@ -57,7 +57,8 @@ export function DatabaseStatus() {
       className={`${statusColors[status.status]} cursor-help`}
       title={`${status.message}${status.tokenCount > 0 ? ` (${status.tokenCount} global tokens)` : ""}`}
     >
-      {statusIcons[status.status]} GLOBAL: {status.status === "connected" ? "ON" : status.status === "not_configured" ? "LOCAL" : "ERR"}
+      {statusIcons[status.status]} GLOBAL:{" "}
+      {status.status === "connected" ? "ON" : status.status === "not_configured" ? "LOCAL" : "ERR"}
     </span>
   );
 }

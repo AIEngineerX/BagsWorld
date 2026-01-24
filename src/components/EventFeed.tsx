@@ -28,7 +28,9 @@ export function EventFeed({ events }: EventFeedProps) {
     return "just now";
   };
 
-  const getEventStyle = (type: GameEvent["type"]): { color: string; icon: React.ReactNode; bg: string } => {
+  const getEventStyle = (
+    type: GameEvent["type"]
+  ): { color: string; icon: React.ReactNode; bg: string } => {
     switch (type) {
       case "token_launch":
         return { color: "text-purple-400", icon: <RocketIcon size={14} />, bg: "bg-purple-500/10" };
@@ -61,17 +63,24 @@ export function EventFeed({ events }: EventFeedProps) {
   return (
     <div className="h-full flex flex-col p-2">
       <h2 className="font-pixel text-xs text-bags-green mb-2 px-2 flex items-center gap-2">
-        <span className="animate-pulse"><SignalIcon size={14} /></span> BAGS.FM LIVE
+        <span className="animate-pulse">
+          <SignalIcon size={14} />
+        </span>{" "}
+        BAGS.FM LIVE
       </h2>
 
       <div className="flex-1 overflow-y-auto space-y-1">
         {events.length === 0 ? (
           <div className="text-center py-4">
-            <p className="font-pixel text-[8px] text-gray-500">
-              Waiting for activity...
-            </p>
+            <p className="font-pixel text-[8px] text-gray-500">Waiting for activity...</p>
             <div className="mt-2 text-gray-500">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="inline-block animate-pulse">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="inline-block animate-pulse"
+              >
                 <circle cx="12" cy="12" r="10" />
                 <circle cx="9" cy="10" r="1.5" fill="#0a0a0f" />
                 <circle cx="15" cy="10" r="1.5" fill="#0a0a0f" />

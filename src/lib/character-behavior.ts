@@ -170,8 +170,8 @@ async function pollBehaviors(): Promise<void> {
 function buildContext(worldState: WorldState) {
   // Extract character positions
   const characters = worldState.population
-    .filter(c => isSpecialCharacter(c.id))
-    .map(c => ({
+    .filter((c) => isSpecialCharacter(c.id))
+    .map((c) => ({
       id: getCharacterId(c.id),
       name: c.username || c.id,
       x: c.x || 400,
@@ -181,7 +181,7 @@ function buildContext(worldState: WorldState) {
     }));
 
   // Extract building info
-  const buildings = worldState.buildings.slice(0, 10).map(b => ({
+  const buildings = worldState.buildings.slice(0, 10).map((b) => ({
     id: b.id,
     name: b.name,
     symbol: b.symbol,
@@ -195,7 +195,7 @@ function buildContext(worldState: WorldState) {
   const specialBuildings = ["PokeCenter", "TradingGym", "Treasury", "Casino"];
 
   // Recent events
-  const recentEvents = worldState.events?.slice(0, 5).map(e => e.message) || [];
+  const recentEvents = worldState.events?.slice(0, 5).map((e) => e.message) || [];
 
   return {
     characters,
@@ -212,13 +212,15 @@ function buildContext(worldState: WorldState) {
 function isSpecialCharacter(id: string): boolean {
   const specialIds = ["finn", "ghost", "neo", "ash", "toly", "dev", "scout", "cj"];
   const lowerName = id.toLowerCase();
-  return specialIds.some(s => lowerName.includes(s)) ||
-         id.includes("Finnbags") ||
-         id.includes("The Dev") ||
-         id.includes("Neo") ||
-         id.includes("Ash") ||
-         id.includes("Toly") ||
-         id.includes("CJ");
+  return (
+    specialIds.some((s) => lowerName.includes(s)) ||
+    id.includes("Finnbags") ||
+    id.includes("The Dev") ||
+    id.includes("Neo") ||
+    id.includes("Ash") ||
+    id.includes("Toly") ||
+    id.includes("CJ")
+  );
 }
 
 // Map character display ID to behavior system ID
@@ -239,30 +241,36 @@ function getCharacterId(id: string): string {
 
 function dispatchBehaviorCommands(commands: BehaviorCommand[], narrative?: string): void {
   // Dispatch individual movement commands for each character
-  commands.forEach(cmd => {
-    window.dispatchEvent(new CustomEvent("bagsworld-character-behavior", {
-      detail: cmd,
-    }));
+  commands.forEach((cmd) => {
+    window.dispatchEvent(
+      new CustomEvent("bagsworld-character-behavior", {
+        detail: cmd,
+      })
+    );
   });
 
   // Only ONE character speaks per behavior cycle (pick randomly from those with dialogue)
-  const commandsWithDialogue = commands.filter(cmd => cmd.dialogue);
+  const commandsWithDialogue = commands.filter((cmd) => cmd.dialogue);
   if (commandsWithDialogue.length > 0) {
     const speaker = commandsWithDialogue[Math.floor(Math.random() * commandsWithDialogue.length)];
-    window.dispatchEvent(new CustomEvent("bagsworld-character-speak", {
-      detail: {
-        characterId: speaker.characterId,
-        message: speaker.dialogue,
-        emotion: speaker.emotion,
-      },
-    }));
+    window.dispatchEvent(
+      new CustomEvent("bagsworld-character-speak", {
+        detail: {
+          characterId: speaker.characterId,
+          message: speaker.dialogue,
+          emotion: speaker.emotion,
+        },
+      })
+    );
   }
 
   // Dispatch scene narrative if present
   if (narrative) {
-    window.dispatchEvent(new CustomEvent("bagsworld-scene-narrative", {
-      detail: { narrative },
-    }));
+    window.dispatchEvent(
+      new CustomEvent("bagsworld-scene-narrative", {
+        detail: { narrative },
+      })
+    );
   }
 }
 

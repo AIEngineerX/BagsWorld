@@ -27,7 +27,9 @@ export async function GET() {
     const walletConfigured = isAgentWalletConfigured();
     const apiConfigured = isServerBagsApiConfigured();
     const dbConfigured = isNeonConfigured();
-    console.log(`[Ecosystem Stats] Config check - Wallet: ${walletConfigured}, API: ${apiConfigured}, DB: ${dbConfigured}`);
+    console.log(
+      `[Ecosystem Stats] Config check - Wallet: ${walletConfigured}, API: ${apiConfigured}, DB: ${dbConfigured}`
+    );
 
     // Get initial state from agent
     let rewardsState = getCreatorRewardsState();
@@ -59,9 +61,12 @@ export async function GET() {
     const totalDistributed = persistedState?.total_distributed || rewardsState.totalDistributed;
     const distributionCount = persistedState?.distribution_count || rewardsState.distributionCount;
     const lastDistribution = persistedState?.last_distribution || rewardsState.lastDistribution;
-    const recentDistributions = persistedState?.recent_distributions || rewardsState.recentDistributions;
+    const recentDistributions =
+      persistedState?.recent_distributions || rewardsState.recentDistributions;
 
-    console.log(`[Ecosystem Stats] State - Running: ${rewardsState.isRunning}, Pool: ${rewardsState.pendingPoolSol}, CycleStart: ${new Date(cycleStartTime).toISOString()}`);
+    console.log(
+      `[Ecosystem Stats] State - Running: ${rewardsState.isRunning}, Pool: ${rewardsState.pendingPoolSol}, CycleStart: ${new Date(cycleStartTime).toISOString()}`
+    );
 
     // Auto-start the rewards agent if not already running and properly configured
     if (!rewardsState.isRunning && !autoStartAttempted) {
@@ -92,10 +97,11 @@ export async function GET() {
       byTimer: Math.max(0, timeRemaining),
       estimatedTrigger:
         rewardsState.pendingPoolSol >= rewardsState.config.thresholdSol
-          ? "threshold" as const
-          : timeRemaining <= 0 && rewardsState.pendingPoolSol >= rewardsState.config.minimumDistributionSol
-          ? "timer" as const
-          : "unknown" as const,
+          ? ("threshold" as const)
+          : timeRemaining <= 0 &&
+              rewardsState.pendingPoolSol >= rewardsState.config.minimumDistributionSol
+            ? ("timer" as const)
+            : ("unknown" as const),
     };
 
     return NextResponse.json({

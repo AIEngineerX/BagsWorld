@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+.swc/
+
+# Netlify
+.netlify/
+
+# Coverage
+coverage/
+
+# Generated files
+next-env.d.ts
+*.tsbuildinfo
+
+# Package manager
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Eliza agents (separate project)
+eliza-agents/
+
+# Public assets
+public/
+
+# Environment files
+.env*

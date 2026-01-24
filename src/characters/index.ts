@@ -1,7 +1,11 @@
 // Character registry - all BagsWorld AI characters
 // Each character uses Opus 4.5 for intelligent, personality-driven responses
 
-import { bagsBotCharacter, generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.character";
+import {
+  bagsBotCharacter,
+  generateCharacterPrompt,
+  type CharacterDefinition,
+} from "./bags-bot.character";
 import { neoCharacter } from "./neo.character";
 import { finnCharacter } from "./finn.character";
 import { ghostCharacter } from "./ghost.character";
@@ -24,12 +28,12 @@ export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.ch
 // Character registry by ID
 export const characters: Record<string, CharacterDefinition> = {
   "bags-bot": bagsBotCharacter,
-  "neo": neoCharacter,
-  "finn": finnCharacter,
-  "ghost": ghostCharacter,
-  "ash": ashCharacter,
-  "cj": cjCharacter,
-  "shaw": shawCharacter,
+  neo: neoCharacter,
+  finn: finnCharacter,
+  ghost: ghostCharacter,
+  ash: ashCharacter,
+  cj: cjCharacter,
+  shaw: shawCharacter,
 };
 
 // Get character by ID with fallback
@@ -43,49 +47,52 @@ export function getCharacterIds(): string[] {
 }
 
 // Character metadata for UI
-export const characterMeta: Record<string, {
-  displayName: string;
-  role: string;
-  color: string;
-  icon: string;
-}> = {
+export const characterMeta: Record<
+  string,
+  {
+    displayName: string;
+    role: string;
+    color: string;
+    icon: string;
+  }
+> = {
   "bags-bot": {
     displayName: "Bags Bot",
     role: "World Guide",
     color: "#f59e0b", // amber
     icon: "🤖",
   },
-  "neo": {
+  neo: {
     displayName: "Neo",
     role: "The Scout",
     color: "#22c55e", // green (matrix)
     icon: "👁️",
   },
-  "finn": {
+  finn: {
     displayName: "Finn",
     role: "Founder",
     color: "#3b82f6", // blue
     icon: "🎩",
   },
-  "ghost": {
+  ghost: {
     displayName: "Ghost",
     role: "The Dev",
     color: "#8b5cf6", // purple
     icon: "👻",
   },
-  "ash": {
+  ash: {
     displayName: "Ash",
     role: "Guide",
     color: "#ef4444", // red (pokemon)
     icon: "⚡",
   },
-  "cj": {
+  cj: {
     displayName: "CJ",
     role: "Hood Rat",
     color: "#f97316", // orange (grove street)
     icon: "🔫",
   },
-  "shaw": {
+  shaw: {
     displayName: "Shaw",
     role: "ElizaOS Creator",
     color: "#FF5800", // ElizaOS orange

@@ -70,9 +70,10 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
         estimatedTrigger:
           rewardsState.pendingPoolSol >= rewardsState.thresholdSol
             ? "threshold"
-            : timeRemaining <= 0 && rewardsState.pendingPoolSol >= rewardsState.minimumDistributionSol
-            ? "timer"
-            : "pending",
+            : timeRemaining <= 0 &&
+                rewardsState.pendingPoolSol >= rewardsState.minimumDistributionSol
+              ? "timer"
+              : "pending",
       });
     };
 
@@ -160,7 +161,9 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
         <div className="p-4 space-y-4">
           {isLoading ? (
             <div className="text-center py-8">
-              <div className="font-pixel text-gray-400 text-xs animate-pulse">Loading rewards data...</div>
+              <div className="font-pixel text-gray-400 text-xs animate-pulse">
+                Loading rewards data...
+              </div>
             </div>
           ) : error ? (
             <div className="bg-red-900/30 border border-red-500/50 rounded p-3">
@@ -191,7 +194,11 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
                   <div className="flex justify-between text-[8px] font-pixel text-gray-400 mb-1">
                     <span>Progress to Threshold</span>
                     <span>
-                      {Math.min(100, (rewardsState.pendingPoolSol / rewardsState.thresholdSol) * 100).toFixed(1)}%
+                      {Math.min(
+                        100,
+                        (rewardsState.pendingPoolSol / rewardsState.thresholdSol) * 100
+                      ).toFixed(1)}
+                      %
                     </span>
                   </div>
                   <div className="h-2 bg-black/50 rounded-full overflow-hidden">
@@ -231,15 +238,15 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
                         timeUntil.estimatedTrigger === "threshold"
                           ? "bg-green-900/50 text-green-400"
                           : timeUntil.estimatedTrigger === "timer"
-                          ? "bg-blue-900/50 text-blue-400"
-                          : "bg-gray-900/50 text-gray-400"
+                            ? "bg-blue-900/50 text-blue-400"
+                            : "bg-gray-900/50 text-gray-400"
                       }`}
                     >
                       {timeUntil.estimatedTrigger === "threshold"
                         ? "Will trigger by threshold"
                         : timeUntil.estimatedTrigger === "timer"
-                        ? "Will trigger by timer"
-                        : "Accumulating..."}
+                          ? "Will trigger by timer"
+                          : "Accumulating..."}
                     </span>
                   </div>
                 </div>
@@ -295,11 +302,12 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
                   <h3 className="font-pixel text-green-400 text-xs mb-3">Current Top Creators</h3>
                   <div className="space-y-2">
                     {rewardsState.topCreators.map((creator, i) => (
-                      <div key={i} className="bg-black/30 rounded p-2 flex items-center justify-between">
+                      <div
+                        key={i}
+                        className="bg-black/30 rounded p-2 flex items-center justify-between"
+                      >
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">
-                            {i === 0 ? "💎" : i === 1 ? "✨" : "⚡"}
-                          </span>
+                          <span className="text-lg">{i === 0 ? "💎" : i === 1 ? "✨" : "⚡"}</span>
                           <div>
                             <div className="font-pixel text-white text-[10px]">
                               {creator.tokenSymbol || shortenAddress(creator.wallet)}
@@ -339,7 +347,8 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
                               key={j}
                               className="font-pixel text-[7px] bg-bags-dark px-1 py-0.5 rounded text-gray-300"
                             >
-                              #{r.rank}: {r.tokenSymbol || shortenAddress(r.wallet)} ({r.amount.toFixed(3)})
+                              #{r.rank}: {r.tokenSymbol || shortenAddress(r.wallet)} (
+                              {r.amount.toFixed(3)})
                             </span>
                           ))}
                         </div>
@@ -361,7 +370,8 @@ export function CreatorRewardsModal({ onClose }: CreatorRewardsModalProps) {
                     <span className="text-bags-gold">2.</span>
                     <span>
                       Distributes when pool reaches {rewardsState.thresholdSol} SOL or after{" "}
-                      {rewardsState.backupTimerDays} days (min {rewardsState.minimumDistributionSol} SOL)
+                      {rewardsState.backupTimerDays} days (min {rewardsState.minimumDistributionSol}{" "}
+                      SOL)
                     </span>
                   </li>
                   <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">

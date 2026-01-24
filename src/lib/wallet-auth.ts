@@ -73,11 +73,7 @@ export function verifySignature(
     const messageBytes = new TextEncoder().encode(message);
 
     // Verify the signature using nacl
-    const isValid = nacl.sign.detached.verify(
-      messageBytes,
-      signatureBytes,
-      publicKeyBytes
-    );
+    const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
 
     if (isValid) {
       // Remove used challenge to prevent replay attacks

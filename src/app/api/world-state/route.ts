@@ -3,21 +3,11 @@
 // Each launched token becomes a building in BagsWorld
 
 import { NextRequest, NextResponse } from "next/server";
-import type {
-  WorldState,
-  FeeEarner,
-  TokenInfo,
-  GameEvent,
-  ClaimEvent,
-} from "@/lib/types";
+import type { WorldState, FeeEarner, TokenInfo, GameEvent, ClaimEvent } from "@/lib/types";
 import { buildWorldState, type BagsHealthMetrics } from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
-import {
-  emitEvent,
-  startCoordinator,
-  type AgentEventType,
-} from "@/lib/agent-coordinator";
+import { emitEvent, startCoordinator, type AgentEventType } from "@/lib/agent-coordinator";
 
 // Bags SDK types
 interface TokenLaunchCreator {
@@ -69,15 +59,9 @@ async function getBagsSDK(): Promise<any | null> {
   sdkInitPromise = (async () => {
     try {
       const { BagsSDK } = await import("@bagsfm/bags-sdk");
-      const rpcUrl =
-        process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-        "https://rpc.ankr.com/solana";
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana";
       const connection = new Connection(rpcUrl, "confirmed");
-      sdkInstance = new BagsSDK(
-        process.env.BAGS_API_KEY!,
-        connection,
-        "processed"
-      );
+      sdkInstance = new BagsSDK(process.env.BAGS_API_KEY!, connection, "processed");
       sdkInitFailed = false;
       return sdkInstance;
     } catch {
@@ -102,8 +86,7 @@ interface DataCache<T> {
 let tokenCache: DataCache<TokenInfo[]> | null = null;
 let earnerCache: DataCache<FeeEarner[]> | null = null;
 let claimEventsCache: DataCache<ClaimEvent[]> | null = null;
-let cachedWeather: { weather: WorldState["weather"]; fetchedAt: number } | null =
-  null;
+let cachedWeather: { weather: WorldState["weather"]; fetchedAt: number } | null = null;
 
 const TOKEN_CACHE_DURATION = 30 * 1000; // 30 seconds (faster refresh for launches)
 const EARNER_CACHE_DURATION = 60 * 1000; // 1 minute
@@ -126,9 +109,7 @@ let priceCache: DataCache<Map<string, PriceData>> | null = null;
 // Fetch real prices from DexScreener for all token mints
 async function fetchTokenPrices(mints: string[]): Promise<Map<string, PriceData>> {
   // Filter out placeholder/permanent building mints (they start with "Treasury" or "Starter")
-  const realMints = mints.filter(
-    (m) => !m.startsWith("Treasury") && !m.startsWith("Starter")
-  );
+  const realMints = mints.filter((m) => !m.startsWith("Treasury") && !m.startsWith("Starter"));
 
   if (realMints.length === 0) {
     return new Map();
@@ -195,11 +176,11 @@ function fetchWeatherInBackground(): void {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${DC_LAT}&longitude=${DC_LON}&current=weather_code,cloud_cover&timezone=America/New_York`;
 
   fetch(url, { cache: "no-store" })
-    .then(response => {
+    .then((response) => {
       if (!response.ok) throw new Error("Weather API error");
       return response.json();
     })
-    .then(data => {
+    .then((data) => {
       const code = data.current.weather_code;
       const cloudCover = data.current.cloud_cover;
 
@@ -300,9 +281,7 @@ function buildFeeEarner(
 }
 
 // Calculate 24h earnings per wallet from claim events
-function calculate24hEarningsPerWallet(
-  claimEvents24h: ClaimEvent[]
-): Map<string, number> {
+function calculate24hEarningsPerWallet(claimEvents24h: ClaimEvent[]): Map<string, number> {
   const earningsMap = new Map<string, number>();
 
   for (const event of claimEvents24h) {
@@ -342,18 +321,17 @@ async function enrichTokenWithSDK(
       const now = Math.floor(Date.now() / 1000);
       const twentyFourHoursAgo = now - 24 * 60 * 60;
 
-      const [creatorsResult, feesResult, eventsResult, events24hResult] =
-        await Promise.allSettled([
-          sdk.state.getTokenCreators(mintPubkey),
-          sdk.state.getTokenLifetimeFees(mintPubkey),
-          sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 }),
-          // Fetch 24h claim events using time-based filtering (Bags API v1.2.0+)
-          sdk.state.getTokenClaimEvents(mintPubkey, {
-            mode: "time",
-            from: twentyFourHoursAgo,
-            to: now,
-          }),
-        ]);
+      const [creatorsResult, feesResult, eventsResult, events24hResult] = await Promise.allSettled([
+        sdk.state.getTokenCreators(mintPubkey),
+        sdk.state.getTokenLifetimeFees(mintPubkey),
+        sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 }),
+        // Fetch 24h claim events using time-based filtering (Bags API v1.2.0+)
+        sdk.state.getTokenClaimEvents(mintPubkey, {
+          mode: "time",
+          from: twentyFourHoursAgo,
+          to: now,
+        }),
+      ]);
 
       if (creatorsResult.status === "fulfilled") {
         creators = creatorsResult.value || [];
@@ -424,7 +402,8 @@ const TREASURY_BUILDING: RegisteredToken = {
   mint: "TreasuryBagsWorld1111111111111111111111111111",
   name: "Creator Rewards Hub",
   symbol: "REWARDS",
-  description: "Top 3 creators get paid. 10 SOL threshold or 5 days. 50/30/20 split. Click to verify on Solscan!",
+  description:
+    "Top 3 creators get paid. 10 SOL threshold or 5 days. 50/30/20 split. Click to verify on Solscan!",
   imageUrl: "/assets/buildings/treasury.png",
   creator: TREASURY_WALLET,
   createdAt: Date.now() - 86400000 * 365, // 1 year ago (always been here)
@@ -436,7 +415,8 @@ const BAGSWORLD_HQ: RegisteredToken = {
   mint: "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
   name: "BagsWorld HQ",
   symbol: "BAGSWORLD",
-  description: "The floating headquarters of BagsWorld! This majestic sky fortress pulls live data from the official BagsWorld token.",
+  description:
+    "The floating headquarters of BagsWorld! This majestic sky fortress pulls live data from the official BagsWorld token.",
   imageUrl: "/assets/buildings/bagshq.png",
   creator: "BagsWorld",
   createdAt: Date.now() - 86400000 * 365, // Origin building
@@ -448,7 +428,8 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     mint: "StarterPokeCenter11111111111111111111111111",
     name: "PokeCenter",
     symbol: "POKECENTER",
-    description: "Welcome trainer! This is where citizens rest and recover. Launch a token to build your own building in BagsWorld!",
+    description:
+      "Welcome trainer! This is where citizens rest and recover. Launch a token to build your own building in BagsWorld!",
     imageUrl: "/assets/buildings/pokecenter.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
@@ -457,7 +438,8 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     mint: "StarterTradingGym11111111111111111111111111",
     name: "Trading Gym",
     symbol: "GYM",
-    description: "The AI Trading Arena! Watch agents battle with predictions and compete for the top rank. Enter to spectate!",
+    description:
+      "The AI Trading Arena! Watch agents battle with predictions and compete for the top rank. Enter to spectate!",
     imageUrl: "/assets/buildings/tradinggym.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
@@ -466,8 +448,19 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     mint: "StarterCasino1111111111111111111111111111111",
     name: "BagsWorld Casino",
     symbol: "CASINO",
-    description: "Try your luck! Free raffle entries and wheel spins funded by Ghost's trading fees. Win SOL from the fee pool!",
+    description:
+      "Try your luck! Free raffle entries and wheel spins funded by Ghost's trading fees. Win SOL from the fee pool!",
     imageUrl: "/assets/buildings/casino.png",
+    creator: "BagsWorld",
+    createdAt: Date.now() - 86400000 * 7, // 7 days ago
+  },
+  {
+    mint: "StarterTradingTerminal111111111111111111111",
+    name: "Trading Terminal",
+    symbol: "TERMINAL",
+    description:
+      "Professional trading terminal with real-time charts. Track prices, analyze trends, and trade any Solana token.",
+    imageUrl: "/assets/buildings/terminal.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
@@ -490,10 +483,10 @@ function generateEvents(
       events.unshift({
         id: eventId,
         type: "fee_claim",
-        message: `${claim.claimerUsername || claim.claimer?.slice(0, 8) || 'Unknown'} claimed ${(claim.amount / 1e9).toFixed(2)} SOL from ${token?.symbol || "token"}`,
+        message: `${claim.claimerUsername || claim.claimer?.slice(0, 8) || "Unknown"} claimed ${(claim.amount / 1e9).toFixed(2)} SOL from ${token?.symbol || "token"}`,
         timestamp: claim.timestamp * 1000,
         data: {
-          username: claim.claimerUsername || claim.claimer?.slice(0, 8) || 'Unknown',
+          username: claim.claimerUsername || claim.claimer?.slice(0, 8) || "Unknown",
           tokenName: token?.name,
           amount: claim.amount / 1e9,
         },
@@ -545,7 +538,7 @@ async function emitEventsToCoordinator(events: GameEvent[]): Promise<void> {
     // Limit tracking to last 1000 events
     if (emittedEventIds.size > 1000) {
       const toRemove = Array.from(emittedEventIds).slice(0, 500);
-      toRemove.forEach(id => emittedEventIds.delete(id));
+      toRemove.forEach((id) => emittedEventIds.delete(id));
     }
 
     // Map game event types to coordinator event types
@@ -580,11 +573,16 @@ async function emitEventsToCoordinator(events: GameEvent[]): Promise<void> {
 
     // Emit to coordinator
     try {
-      await emitEvent(coordinatorType, "world-state", {
-        ...event.data,
-        message: event.message,
-        originalType: event.type,
-      }, priority);
+      await emitEvent(
+        coordinatorType,
+        "world-state",
+        {
+          ...event.data,
+          message: event.message,
+          originalType: event.type,
+        },
+        priority
+      );
     } catch (error) {
       console.error("[World State] Failed to emit event to coordinator:", error);
     }
@@ -604,7 +602,6 @@ export async function POST(request: NextRequest) {
     // Then add any user tokens
     const permanentBuildings = [TREASURY_BUILDING, BAGSWORLD_HQ, ...STARTER_BUILDINGS];
     const tokensToProcess = [...permanentBuildings, ...registeredTokens];
-
 
     // Enrich all tokens with SDK data
     const enrichedResults = await Promise.all(
@@ -637,7 +634,6 @@ export async function POST(request: NextRequest) {
     const allClaimEvents24h: ClaimEvent[] = enrichedResults.flatMap((r) => r.claimEvents24h);
     const earnings24hPerWallet = calculate24hEarningsPerWallet(allClaimEvents24h);
 
-
     // Build fee earners from SDK creators AND registered fee shares
     const earnerMap = new Map<string, FeeEarner>();
     // Track usernames we've already seen (normalized to lowercase) to prevent duplicates
@@ -658,9 +654,10 @@ export async function POST(request: NextRequest) {
       const launcherWallet = registeredToken.creator?.toLowerCase();
 
       // Check if the launcher explicitly allocated fees to themselves in feeShares
-      const launcherHasExplicitFeeShare = registeredToken.feeShares?.some(
-        (share) => share.provider === "solana" && share.username?.toLowerCase() === launcherWallet
-      ) || false;
+      const launcherHasExplicitFeeShare =
+        registeredToken.feeShares?.some(
+          (share) => share.provider === "solana" && share.username?.toLowerCase() === launcherWallet
+        ) || false;
 
       result.creators.forEach((creator) => {
         // Skip if no valid username or it's a placeholder
@@ -764,8 +761,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Debug: Log all earners before sorting
-    console.log(`[WorldState] Earners before sort (${earnerMap.size}):`,
-      Array.from(earnerMap.values()).map(e => `${e.username}: ${e.lifetimeEarnings.toFixed(4)} SOL`).join(', '));
+    console.log(
+      `[WorldState] Earners before sort (${earnerMap.size}):`,
+      Array.from(earnerMap.values())
+        .map((e) => `${e.username}: ${e.lifetimeEarnings.toFixed(4)} SOL`)
+        .join(", ")
+    );
 
     let earners = Array.from(earnerMap.values())
       .sort((a, b) => b.lifetimeEarnings - a.lifetimeEarnings)
@@ -773,8 +774,12 @@ export async function POST(request: NextRequest) {
       .map((e, i) => ({ ...e, rank: i + 1 }));
 
     // Debug: Log final earners
-    console.log(`[WorldState] Top earners (${earners.length}):`,
-      earners.map(e => `#${e.rank} ${e.username}: ${e.lifetimeEarnings.toFixed(4)} SOL`).join(', '));
+    console.log(
+      `[WorldState] Top earners (${earners.length}):`,
+      earners
+        .map((e) => `#${e.rank} ${e.username}: ${e.lifetimeEarnings.toFixed(4)} SOL`)
+        .join(", ")
+    );
 
     // ALWAYS add Toly as a permanent Solana guide character
     // Toly (Anatoly Yakovenko) is the co-founder of Solana
@@ -913,14 +918,13 @@ export async function POST(request: NextRequest) {
     // 2. Total lifetime fees across all tokens
     const totalLifetimeFees = tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
     // 3. Count tokens with any fee activity
-    const activeTokenCount = tokens.filter(t => (t.lifetimeFees || 0) > 0).length;
+    const activeTokenCount = tokens.filter((t) => (t.lifetimeFees || 0) > 0).length;
 
     const bagsMetrics: BagsHealthMetrics = {
       claimVolume24h,
       totalLifetimeFees,
       activeTokenCount,
     };
-
 
     // Build world state with Bags.fm metrics
     const worldState = buildWorldState(earners, tokens, previousState ?? undefined, bagsMetrics);
@@ -929,11 +933,7 @@ export async function POST(request: NextRequest) {
     (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;
 
     // Generate events
-    worldState.events = generateEvents(
-      allClaimEvents,
-      tokens,
-      previousState?.events || []
-    );
+    worldState.events = generateEvents(allClaimEvents, tokens, previousState?.events || []);
 
     // Add token launch events for new tokens
     tokens.forEach((token) => {
@@ -980,10 +980,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(worldState);
   } catch {
-    return NextResponse.json(
-      { error: "Failed to build world state" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to build world state" }, { status: 500 });
   }
 }
 
@@ -992,11 +989,7 @@ export async function GET() {
   try {
     // Use cached data if available
     const now = Date.now();
-    if (
-      tokenCache &&
-      now - tokenCache.timestamp < TOKEN_CACHE_DURATION &&
-      earnerCache
-    ) {
+    if (tokenCache && now - tokenCache.timestamp < TOKEN_CACHE_DURATION && earnerCache) {
       const realWeather = getWeatherNonBlocking();
       const timeInfo = getESTTimeInfo();
 
@@ -1053,9 +1046,6 @@ export async function GET() {
 
     return NextResponse.json(worldState);
   } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch world state" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch world state" }, { status: 500 });
   }
 }

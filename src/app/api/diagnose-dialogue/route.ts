@@ -22,7 +22,7 @@ async function testBagsAPI(): Promise<{
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    "Authorization": `Bearer ${BAGS_API_KEY}`,
+    Authorization: `Bearer ${BAGS_API_KEY}`,
   };
 
   const endpoints: Record<string, { status: string; data?: any; error?: string }> = {};
@@ -32,7 +32,10 @@ async function testBagsAPI(): Promise<{
     const res = await fetch(`${BAGS_API_URL}/token-launch/trending?limit=5`, { headers });
     if (res.ok) {
       const data = await res.json();
-      endpoints["trending"] = { status: "ok", data: { count: data.tokens?.length || 0, sample: data.tokens?.[0] } };
+      endpoints["trending"] = {
+        status: "ok",
+        data: { count: data.tokens?.length || 0, sample: data.tokens?.[0] },
+      };
     } else {
       endpoints["trending"] = { status: "error", error: `HTTP ${res.status}` };
     }
@@ -45,7 +48,10 @@ async function testBagsAPI(): Promise<{
     const res = await fetch(`${BAGS_API_URL}/fee-share/leaderboard?limit=5`, { headers });
     if (res.ok) {
       const data = await res.json();
-      endpoints["leaderboard"] = { status: "ok", data: { count: data.earners?.length || 0, sample: data.earners?.[0] } };
+      endpoints["leaderboard"] = {
+        status: "ok",
+        data: { count: data.earners?.length || 0, sample: data.earners?.[0] },
+      };
     } else {
       endpoints["leaderboard"] = { status: "error", error: `HTTP ${res.status}` };
     }
@@ -53,7 +59,7 @@ async function testBagsAPI(): Promise<{
     endpoints["leaderboard"] = { status: "error", error: String(e) };
   }
 
-  const hasErrors = Object.values(endpoints).some(e => e.status === "error");
+  const hasErrors = Object.values(endpoints).some((e) => e.status === "error");
   return { status: hasErrors ? "error" : "connected", endpoints };
 }
 
@@ -63,11 +69,51 @@ async function testBagsAPI(): Promise<{
 
 const MOCK_DATA = {
   topTokens: [
-    { mint: "BAGS111", symbol: "BAGS", name: "Bags Token", marketCap: 2500000, volume24h: 450000, change24h: 23.5, lifetimeFees: 4500 },
-    { mint: "MOON222", symbol: "MOON", name: "MoonBag", marketCap: 890000, volume24h: 125000, change24h: -8.2, lifetimeFees: 1250 },
-    { mint: "DEGEN333", symbol: "DEGEN", name: "Degen Finance", marketCap: 650000, volume24h: 89000, change24h: 156.7, lifetimeFees: 890 },
-    { mint: "PUMP444", symbol: "PUMP", name: "PumpIt", marketCap: 420000, volume24h: 67000, change24h: 45.0, lifetimeFees: 670 },
-    { mint: "ALPHA555", symbol: "ALPHA", name: "Alpha Hunters", marketCap: 180000, volume24h: 23000, change24h: 12.3, lifetimeFees: 230 },
+    {
+      mint: "BAGS111",
+      symbol: "BAGS",
+      name: "Bags Token",
+      marketCap: 2500000,
+      volume24h: 450000,
+      change24h: 23.5,
+      lifetimeFees: 4500,
+    },
+    {
+      mint: "MOON222",
+      symbol: "MOON",
+      name: "MoonBag",
+      marketCap: 890000,
+      volume24h: 125000,
+      change24h: -8.2,
+      lifetimeFees: 1250,
+    },
+    {
+      mint: "DEGEN333",
+      symbol: "DEGEN",
+      name: "Degen Finance",
+      marketCap: 650000,
+      volume24h: 89000,
+      change24h: 156.7,
+      lifetimeFees: 890,
+    },
+    {
+      mint: "PUMP444",
+      symbol: "PUMP",
+      name: "PumpIt",
+      marketCap: 420000,
+      volume24h: 67000,
+      change24h: 45.0,
+      lifetimeFees: 670,
+    },
+    {
+      mint: "ALPHA555",
+      symbol: "ALPHA",
+      name: "Alpha Hunters",
+      marketCap: 180000,
+      volume24h: 23000,
+      change24h: 12.3,
+      lifetimeFees: 230,
+    },
   ],
   topCreators: [
     { username: "cryptobuilder", lifetimeEarnings: 125.5, tokenCount: 3, topToken: "BAGS" },
@@ -190,14 +236,25 @@ FORMAT AS JSON:
 // FALLBACK DEMO (no API needed)
 // ============================================================================
 
-function generateFallbackDemo(mockData: typeof MOCK_DATA): Array<{ speaker: string; message: string }> {
+function generateFallbackDemo(
+  mockData: typeof MOCK_DATA
+): Array<{ speaker: string; message: string }> {
   return [
-    { speaker: "finn", message: `$DEGEN up 156% today. $650K mcap and climbing. this is why we built bags` },
-    { speaker: "ghost", message: `watching @cryptobuilder at 125.5 SOL earned. top creator rn. all on-chain` },
+    {
+      speaker: "finn",
+      message: `$DEGEN up 156% today. $650K mcap and climbing. this is why we built bags`,
+    },
+    {
+      speaker: "ghost",
+      message: `watching @cryptobuilder at 125.5 SOL earned. top creator rn. all on-chain`,
+    },
     { speaker: "neo", message: `i see the pattern. $BAGS at $2.5M mcap. the code shows strength` },
     { speaker: "finn", message: `$754K in 24h volume across 47 tokens. ecosystem is shipping` },
     { speaker: "ghost", message: `7,540 SOL in fees today. creators getting paid. check solscan` },
-    { speaker: "neo", message: `@degenwhale accumulating. 89 SOL earned. the matrix rewards builders` },
+    {
+      speaker: "neo",
+      message: `@degenwhale accumulating. 89 SOL earned. the matrix rewards builders`,
+    },
   ];
 }
 
@@ -230,10 +287,13 @@ export async function GET() {
       },
     },
     mock_data_used: MOCK_DATA,
-    intelligent_output: claudeResult.status === "generated" ? {
-      source: "Claude AI with real-time data context",
-      conversation: claudeResult.conversation,
-    } : null,
+    intelligent_output:
+      claudeResult.status === "generated"
+        ? {
+            source: "Claude AI with real-time data context",
+            conversation: claudeResult.conversation,
+          }
+        : null,
     fallback_output: {
       source: "Rule-based with mock data (used when Claude unavailable)",
       conversation: fallbackDemo,
@@ -245,11 +305,12 @@ export async function GET() {
         "2. Ensure BAGS_API_KEY is set for real data",
         "3. Restart the dev server",
       ],
-      current_behavior: claudeResult.status === "generated"
-        ? "Full intelligent mode - Claude generates contextual dialogue with real data"
-        : claudeResult.status === "no_key"
-        ? "Fallback mode - Using rule-based responses (no Claude API key)"
-        : "Fallback mode - Claude API error, using rule-based responses",
+      current_behavior:
+        claudeResult.status === "generated"
+          ? "Full intelligent mode - Claude generates contextual dialogue with real data"
+          : claudeResult.status === "no_key"
+            ? "Fallback mode - Using rule-based responses (no Claude API key)"
+            : "Fallback mode - Claude API error, using rule-based responses",
     },
   });
 }

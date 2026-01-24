@@ -54,12 +54,14 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
             creatorMap.set(token.creator, {
               wallet: token.creator,
               tokenCount: 1,
-              tokens: [{
-                symbol: token.symbol,
-                name: token.name,
-                mint: token.mint,
-                imageUrl: token.imageUrl,
-              }],
+              tokens: [
+                {
+                  symbol: token.symbol,
+                  name: token.name,
+                  mint: token.mint,
+                  imageUrl: token.imageUrl,
+                },
+              ],
               totalLifetimeFees: token.lifetimeFees || 0,
               firstLaunch: token.createdAt,
             });
@@ -68,8 +70,9 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
       }
 
       // Sort by token count
-      const creatorList = Array.from(creatorMap.values())
-        .sort((a, b) => b.tokenCount - a.tokenCount);
+      const creatorList = Array.from(creatorMap.values()).sort(
+        (a, b) => b.tokenCount - a.tokenCount
+      );
       setCreators(creatorList);
     } catch (error) {
       console.error("Error loading creators:", error);
@@ -87,7 +90,7 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
   };
 
   const selectedCreatorData = selectedCreator
-    ? creators.find(c => c.wallet === selectedCreator)
+    ? creators.find((c) => c.wallet === selectedCreator)
     : null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -103,10 +106,7 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
         {/* Header */}
         <div className="bg-bags-green px-3 py-2 flex justify-between items-center">
           <span className="font-pixel text-black text-xs">LAUNCHERS</span>
-          <button
-            onClick={onClose}
-            className="font-pixel text-black hover:text-red-800 text-xs"
-          >
+          <button onClick={onClose} className="font-pixel text-black hover:text-red-800 text-xs">
             [X]
           </button>
         </div>
@@ -115,9 +115,7 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="p-4 text-center">
-              <span className="font-pixel text-[10px] text-gray-500 animate-pulse">
-                LOADING...
-              </span>
+              <span className="font-pixel text-[10px] text-gray-500 animate-pulse">LOADING...</span>
             </div>
           ) : creators.length === 0 ? (
             <div className="p-4 text-center">
@@ -143,7 +141,8 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
                   {truncateWallet(selectedCreatorData.wallet)}
                 </a>
                 <div className="font-pixel text-[8px] text-gray-500 mt-1">
-                  {selectedCreatorData.tokenCount} TOKENS | {formatSOL(selectedCreatorData.totalLifetimeFees)} SOL FEES
+                  {selectedCreatorData.tokenCount} TOKENS |{" "}
+                  {formatSOL(selectedCreatorData.totalLifetimeFees)} SOL FEES
                 </div>
               </div>
 
@@ -174,12 +173,17 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
                   onClick={() => setSelectedCreator(creator.wallet)}
                   className="w-full flex items-center gap-2 p-2 border-b border-bags-green/20 hover:bg-bags-green/10 text-left"
                 >
-                  <span className={`font-pixel text-[8px] w-4 ${
-                    i === 0 ? "text-yellow-400" :
-                    i === 1 ? "text-gray-400" :
-                    i === 2 ? "text-amber-600" :
-                    "text-gray-600"
-                  }`}>
+                  <span
+                    className={`font-pixel text-[8px] w-4 ${
+                      i === 0
+                        ? "text-yellow-400"
+                        : i === 1
+                          ? "text-gray-400"
+                          : i === 2
+                            ? "text-amber-600"
+                            : "text-gray-600"
+                    }`}
+                  >
                     {i + 1}.
                   </span>
                   <div className="flex-1 min-w-0">

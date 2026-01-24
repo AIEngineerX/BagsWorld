@@ -49,8 +49,7 @@ class AIAgent {
       currentThought: "Observing the world...",
       lastAction: "",
       personality:
-        personality ??
-        AI_PERSONALITIES[Math.floor(Math.random() * AI_PERSONALITIES.length)],
+        personality ?? AI_PERSONALITIES[Math.floor(Math.random() * AI_PERSONALITIES.length)],
       memory: [],
     };
   }
@@ -188,10 +187,7 @@ class AIAgent {
     return this.generateRandomCommentary(worldState, personality);
   }
 
-  private reactToLaunch(
-    event: GameEvent,
-    personality: AIPersonality
-  ): AIAction {
+  private reactToLaunch(event: GameEvent, personality: AIPersonality): AIAction {
     const messages: Record<AIPersonality["trait"], string[]> = {
       optimistic: [
         `${event.data?.tokenName}?! say less fren, i'm aping 🚀`,
@@ -348,10 +344,26 @@ class AIAgent {
 
   private reactToStorm(personality: AIPersonality): AIAction {
     const messages: Record<AIPersonality["trait"], string[]> = {
-      optimistic: [`storm outside but green candles inside vibes ☁️`, `volatility = opportunity ser, stay comfy`, `after the storm comes the pump! 🌈`],
-      cautious: [`storm brewing... might be time to de-risk anon`, `this weather giving me 2022 flashbacks ngl`, `batten down the hatches frens, choppy waters ahead`],
-      chaotic: [`STORMY WEATHER STORMY CHARTS LFG ⚡🐸`, `*dances in the volatility* this is my element!!`, `thunder = the sound of liquidations lmaoo`],
-      strategic: [`high volatility detected. perfect for scalping`, `storm phase historically correlates with accumulation zones`, `volatility expanding. adjusting position sizes accordingly`],
+      optimistic: [
+        `storm outside but green candles inside vibes ☁️`,
+        `volatility = opportunity ser, stay comfy`,
+        `after the storm comes the pump! 🌈`,
+      ],
+      cautious: [
+        `storm brewing... might be time to de-risk anon`,
+        `this weather giving me 2022 flashbacks ngl`,
+        `batten down the hatches frens, choppy waters ahead`,
+      ],
+      chaotic: [
+        `STORMY WEATHER STORMY CHARTS LFG ⚡🐸`,
+        `*dances in the volatility* this is my element!!`,
+        `thunder = the sound of liquidations lmaoo`,
+      ],
+      strategic: [
+        `high volatility detected. perfect for scalping`,
+        `storm phase historically correlates with accumulation zones`,
+        `volatility expanding. adjusting position sizes accordingly`,
+      ],
     };
 
     const options = messages[personality.trait];
@@ -378,9 +390,7 @@ class AIAgent {
     // Comment on a random citizen
     if (random < 0.5 && worldState.population.length > 0) {
       const citizen =
-        worldState.population[
-          Math.floor(Math.random() * worldState.population.length)
-        ];
+        worldState.population[Math.floor(Math.random() * worldState.population.length)];
 
       const encouragements: Record<AIPersonality["trait"], Record<string, string>> = {
         optimistic: {
@@ -405,7 +415,8 @@ class AIAgent {
         },
       };
 
-      const moodKey = citizen.mood === "celebrating" ? "celebrating" : citizen.mood === "sad" ? "sad" : "default";
+      const moodKey =
+        citizen.mood === "celebrating" ? "celebrating" : citizen.mood === "sad" ? "sad" : "default";
       return {
         type: "encourage",
         target: citizen.id,
@@ -416,9 +427,7 @@ class AIAgent {
     // Comment on a building
     if (random < 0.7 && worldState.buildings.length > 0) {
       const building =
-        worldState.buildings[
-          Math.floor(Math.random() * worldState.buildings.length)
-        ];
+        worldState.buildings[Math.floor(Math.random() * worldState.buildings.length)];
 
       const buildingComments: Record<AIPersonality["trait"], Record<string, string>> = {
         optimistic: {
@@ -493,7 +502,11 @@ function generateEventReaction(event: AgentEvent, personality: AIPersonality): A
 
   switch (event.type) {
     case "token_launch": {
-      const { name, symbol, platform } = event.data as { name: string; symbol: string; platform: string };
+      const { name, symbol, platform } = event.data as {
+        name: string;
+        symbol: string;
+        platform: string;
+      };
       const messages: Record<AIPersonality["trait"], string[]> = {
         optimistic: [
           `$${symbol} just launched! another chance to make it ser`,
@@ -524,7 +537,10 @@ function generateEventReaction(event: AgentEvent, personality: AIPersonality): A
     }
 
     case "distribution": {
-      const { totalDistributed, recipients } = event.data as { totalDistributed: number; recipients: Array<{ tokenSymbol: string; rank: number }> };
+      const { totalDistributed, recipients } = event.data as {
+        totalDistributed: number;
+        recipients: Array<{ tokenSymbol: string; rank: number }>;
+      };
       const topToken = recipients[0]?.tokenSymbol || "unknown";
       const messages: Record<AIPersonality["trait"], string[]> = {
         optimistic: [
@@ -589,7 +605,11 @@ function generateEventReaction(event: AgentEvent, personality: AIPersonality): A
     }
 
     case "whale_alert": {
-      const { action, amount, tokenSymbol } = event.data as { action: string; amount: number; tokenSymbol: string };
+      const { action, amount, tokenSymbol } = event.data as {
+        action: string;
+        amount: number;
+        tokenSymbol: string;
+      };
       const messages: Record<AIPersonality["trait"], string[]> = {
         optimistic: [
           `whale ${action} on $${tokenSymbol}! ${amount.toFixed(1)} SOL. smart money moving`,

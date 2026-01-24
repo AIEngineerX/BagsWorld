@@ -193,10 +193,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Character chat error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate response" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate response" }, { status: 500 });
   }
 }
 
@@ -269,32 +266,55 @@ function getFallbackResponse(character: string, userMessage: string): string {
   const charFallbacks = fallbacks[character] || fallbacks.finn;
 
   // Match intent
-  if (lowerMsg.includes("hi") || lowerMsg.includes("hello") || lowerMsg.includes("gm") || lowerMsg.includes("hey")) {
+  if (
+    lowerMsg.includes("hi") ||
+    lowerMsg.includes("hello") ||
+    lowerMsg.includes("gm") ||
+    lowerMsg.includes("hey")
+  ) {
     const greetings = charFallbacks.greeting;
     return greetings[Math.floor(Math.random() * greetings.length)];
   }
 
-  if (character === "toly" && (lowerMsg.includes("solana") || lowerMsg.includes("sol") || lowerMsg.includes("blockchain"))) {
+  if (
+    character === "toly" &&
+    (lowerMsg.includes("solana") || lowerMsg.includes("sol") || lowerMsg.includes("blockchain"))
+  ) {
     const solana = charFallbacks.solana;
     return solana[Math.floor(Math.random() * solana.length)];
   }
 
-  if (character === "ash" && (lowerMsg.includes("fee") || lowerMsg.includes("earn") || lowerMsg.includes("money"))) {
+  if (
+    character === "ash" &&
+    (lowerMsg.includes("fee") || lowerMsg.includes("earn") || lowerMsg.includes("money"))
+  ) {
     const fees = charFallbacks.fees;
     return fees[Math.floor(Math.random() * fees.length)];
   }
 
-  if (character === "finn" && (lowerMsg.includes("bags") || lowerMsg.includes("launch") || lowerMsg.includes("token"))) {
+  if (
+    character === "finn" &&
+    (lowerMsg.includes("bags") || lowerMsg.includes("launch") || lowerMsg.includes("token"))
+  ) {
     const bags = charFallbacks.bags;
     return bags[Math.floor(Math.random() * bags.length)];
   }
 
-  if (character === "dev" && (lowerMsg.includes("trade") || lowerMsg.includes("buy") || lowerMsg.includes("sell") || lowerMsg.includes("quote"))) {
+  if (
+    character === "dev" &&
+    (lowerMsg.includes("trade") ||
+      lowerMsg.includes("buy") ||
+      lowerMsg.includes("sell") ||
+      lowerMsg.includes("quote"))
+  ) {
     const trading = charFallbacks.trading;
     return trading[Math.floor(Math.random() * trading.length)];
   }
 
-  if (character === "dev" && (lowerMsg.includes("alpha") || lowerMsg.includes("tip") || lowerMsg.includes("advice"))) {
+  if (
+    character === "dev" &&
+    (lowerMsg.includes("alpha") || lowerMsg.includes("tip") || lowerMsg.includes("advice"))
+  ) {
     const alpha = charFallbacks.alpha;
     return alpha[Math.floor(Math.random() * alpha.length)];
   }

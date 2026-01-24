@@ -36,7 +36,11 @@ function getWeatherDescription(code: number): string {
 }
 
 // Convert weather code to game weather state
-function getGameWeather(code: number, cloudCover: number, precipitation: number): WeatherData["gameWeather"] {
+function getGameWeather(
+  code: number,
+  cloudCover: number,
+  precipitation: number
+): WeatherData["gameWeather"] {
   // Thunderstorm
   if (code >= 95 && code <= 99) return "storm";
 

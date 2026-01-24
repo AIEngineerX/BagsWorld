@@ -100,7 +100,9 @@ function formatLogEntry(entry: LogEntry): string {
   const { timestamp, level, message, context, error } = entry;
   const levelPadded = level.toUpperCase().padEnd(5);
   const contextStr = context ? ` ${JSON.stringify(context)}` : "";
-  const errorStr = error ? `\n  Error: ${error.message}${error.stack ? `\n  Stack: ${error.stack}` : ""}` : "";
+  const errorStr = error
+    ? `\n  Error: ${error.message}${error.stack ? `\n  Stack: ${error.stack}` : ""}`
+    : "";
 
   return `[${timestamp}] ${levelPadded} ${message}${contextStr}${errorStr}`;
 }

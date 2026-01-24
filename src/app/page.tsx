@@ -39,9 +39,19 @@ import { CreatorRewardsModal } from "@/components/CreatorRewardsModal";
 import { CasinoModal } from "@/components/CasinoModal";
 import { CasinoAdmin } from "@/components/CasinoAdmin";
 import { LauncherHub } from "@/components/LauncherHub";
+import { TradingTerminalModal } from "@/components/TradingTerminalModal";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
-import { initDialogueEventBridge, cleanupDialogueEventBridge, onWorldStateUpdate, initBrowserEventListener } from "@/lib/dialogue-event-bridge";
-import { initCharacterBehavior, cleanupCharacterBehavior, updateWorldStateForBehavior } from "@/lib/character-behavior";
+import {
+  initDialogueEventBridge,
+  cleanupDialogueEventBridge,
+  onWorldStateUpdate,
+  initBrowserEventListener,
+} from "@/lib/dialogue-event-bridge";
+import {
+  initCharacterBehavior,
+  cleanupCharacterBehavior,
+  updateWorldStateForBehavior,
+} from "@/lib/character-behavior";
 import { AgentActivityIndicator } from "@/components/AgentActivityIndicator";
 import { useWallet } from "@solana/wallet-adapter-react";
 
@@ -60,9 +70,7 @@ const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
     <div className="w-full h-full flex items-center justify-center bg-bags-dark">
       <div className="text-center">
         <div className="text-4xl mb-4 animate-pulse-slow">🌍</div>
-        <p className="font-pixel text-xs text-bags-green animate-pulse">
-          Loading BagsWorld...
-        </p>
+        <p className="font-pixel text-xs text-bags-green animate-pulse">Loading BagsWorld...</p>
       </div>
     </div>
   ),
@@ -79,6 +87,7 @@ export default function Home() {
   const [showCasinoModal, setShowCasinoModal] = useState(false);
   const [showLauncherHub, setShowLauncherHub] = useState(false);
   const [showCasinoAdmin, setShowCasinoAdmin] = useState(false);
+  const [showTradingTerminal, setShowTradingTerminal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"leaderboard" | "agents">("agents");
@@ -108,6 +117,10 @@ export default function Home() {
       setShowCasinoModal(true);
     };
 
+    const handleTradingTerminalClick = () => {
+      setShowTradingTerminal(true);
+    };
+
     // Handle AI action button events
     const handleLaunchClick = () => {
       setShowLaunchModal(true);
@@ -122,14 +135,28 @@ export default function Home() {
     window.addEventListener("bagsworld-tradinggym-click", handleTradingGymClick as EventListener);
     window.addEventListener("bagsworld-treasury-click", handleTreasuryClick as EventListener);
     window.addEventListener("bagsworld-casino-click", handleCasinoClick as EventListener);
+    window.addEventListener(
+      "bagsworld-terminal-click",
+      handleTradingTerminalClick as EventListener
+    );
     window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
     window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     return () => {
       window.removeEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
-      window.removeEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
-      window.removeEventListener("bagsworld-tradinggym-click", handleTradingGymClick as EventListener);
+      window.removeEventListener(
+        "bagsworld-pokecenter-click",
+        handlePokeCenterClick as EventListener
+      );
+      window.removeEventListener(
+        "bagsworld-tradinggym-click",
+        handleTradingGymClick as EventListener
+      );
       window.removeEventListener("bagsworld-treasury-click", handleTreasuryClick as EventListener);
       window.removeEventListener("bagsworld-casino-click", handleCasinoClick as EventListener);
+      window.removeEventListener(
+        "bagsworld-terminal-click",
+        handleTradingTerminalClick as EventListener
+      );
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     };
@@ -199,7 +226,9 @@ export default function Home() {
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-bags-green/20 border border-bags-green flex items-center justify-center flex-shrink-0">
               <WorldIcon className="text-bags-green" size={16} />
             </div>
-            <h1 className="font-pixel text-xs sm:text-sm md:text-lg text-bags-green hidden xs:block">BAGSWORLD</h1>
+            <h1 className="font-pixel text-xs sm:text-sm md:text-lg text-bags-green hidden xs:block">
+              BAGSWORLD
+            </h1>
           </div>
           <div className="hidden sm:block">
             <WorldHealthBar health={worldState?.health ?? 50} />
@@ -261,10 +290,7 @@ export default function Home() {
 
               {/* Action buttons - grid for better touch targets */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <Link
-                  href="/docs"
-                  className="btn-retro font-pixel text-[10px] text-center"
-                >
+                <Link href="/docs" className="btn-retro font-pixel text-[10px] text-center">
                   [DOCS]
                 </Link>
                 <MusicButton />
@@ -290,12 +316,8 @@ export default function Home() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Game area */}
-        <div className="flex-1 relative" style={{ touchAction: 'auto' }}>
-          <Suspense
-            fallback={
-              <div className="w-full h-full bg-bags-dark" />
-            }
-          >
+        <div className="flex-1 relative" style={{ touchAction: "auto" }}>
+          <Suspense fallback={<div className="w-full h-full bg-bags-dark" />}>
             <GameCanvas worldState={worldState} />
           </Suspense>
           {/* Scanlines disabled on mobile via CSS for better touch handling */}
@@ -327,14 +349,16 @@ export default function Home() {
         </div>
 
         {/* Sidebar - hidden on mobile, slide-in drawer on tablet, always visible on desktop */}
-        <aside className={`
-          ${mobileSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+        <aside
+          className={`
+          ${mobileSidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
           fixed lg:relative right-0 top-14 md:top-16 lg:top-0
           w-full sm:w-80 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)] lg:h-full
           bg-bags-dark border-l-4 border-bags-green flex flex-col
           transition-transform duration-300 ease-in-out z-40
           pb-safe
-        `}>
+        `}
+        >
           {/* Mobile sidebar close button */}
           <button
             onClick={() => setMobileSidebarOpen(false)}
@@ -342,7 +366,12 @@ export default function Home() {
             aria-label="Close sidebar"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
 
@@ -418,6 +447,12 @@ export default function Home() {
             <EcosystemStats />
           </div>
           <button
+            onClick={() => setShowTradingTerminal(true)}
+            className="text-[#22c55e] hover:text-[#16a34a] transition-colors"
+          >
+            [TERMINAL]
+          </button>
+          <button
             onClick={() => setShowLauncherHub(true)}
             className="text-gray-400 hover:text-bags-green transition-colors"
           >
@@ -463,9 +498,7 @@ export default function Home() {
       )}
 
       {/* Trading Gym Modal - triggered by clicking Trading Gym building */}
-      {showTradingGymModal && (
-        <TradingGymModal onClose={() => setShowTradingGymModal(false)} />
-      )}
+      {showTradingGymModal && <TradingGymModal onClose={() => setShowTradingGymModal(false)} />}
 
       {/* Creator Rewards Hub Modal - Treasury Building */}
       {showCreatorRewardsModal && (
@@ -473,14 +506,15 @@ export default function Home() {
       )}
 
       {/* Casino Modal - triggered by clicking Casino building */}
-      {showCasinoModal && (
-        <CasinoModal onClose={() => setShowCasinoModal(false)} />
+      {showCasinoModal && <CasinoModal onClose={() => setShowCasinoModal(false)} />}
+
+      {/* Trading Terminal Modal - professional trading terminal with charts */}
+      {showTradingTerminal && (
+        <TradingTerminalModal onClose={() => setShowTradingTerminal(false)} />
       )}
 
       {/* Fee Claim Modal - can be opened from PokeCenter or AI action buttons */}
-      {showFeeClaimModal && (
-        <FeeClaimModal onClose={() => setShowFeeClaimModal(false)} />
-      )}
+      {showFeeClaimModal && <FeeClaimModal onClose={() => setShowFeeClaimModal(false)} />}
 
       {/* Launch Modal - can be opened from AI action buttons */}
       {showLaunchModal && (
@@ -497,14 +531,10 @@ export default function Home() {
       <AgentToast />
 
       {/* Launcher Hub - shows wallets of people who launched on BagsWorld */}
-      {showLauncherHub && (
-        <LauncherHub onClose={() => setShowLauncherHub(false)} />
-      )}
+      {showLauncherHub && <LauncherHub onClose={() => setShowLauncherHub(false)} />}
 
       {/* Casino Admin - secret panel (Ctrl+Shift+R) */}
-      {showCasinoAdmin && (
-        <CasinoAdmin onClose={() => setShowCasinoAdmin(false)} />
-      )}
+      {showCasinoAdmin && <CasinoAdmin onClose={() => setShowCasinoAdmin(false)} />}
     </main>
   );
 }

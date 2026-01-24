@@ -20,16 +20,27 @@ import {
   unblockCreator,
   type ScoutConfig,
 } from "@/lib/scout-agent";
-import {
-  getAgentWalletStatus,
-  isAgentWalletConfigured,
-} from "@/lib/agent-wallet";
+import { getAgentWalletStatus, isAgentWalletConfigured } from "@/lib/agent-wallet";
 
 interface AgentRequestBody {
   action:
-    | "status" | "start" | "stop" | "trigger" | "config"
-    | "rewards-status" | "rewards-start" | "rewards-stop" | "rewards-trigger" | "rewards-config"
-    | "scout-status" | "scout-start" | "scout-stop" | "scout-config" | "scout-launches" | "scout-block" | "scout-unblock";
+    | "status"
+    | "start"
+    | "stop"
+    | "trigger"
+    | "config"
+    | "rewards-status"
+    | "rewards-start"
+    | "rewards-stop"
+    | "rewards-trigger"
+    | "rewards-config"
+    | "scout-status"
+    | "scout-start"
+    | "scout-stop"
+    | "scout-config"
+    | "scout-launches"
+    | "scout-block"
+    | "scout-unblock";
   config?: Partial<CreatorRewardsConfig>;
   rewardsConfig?: Partial<CreatorRewardsConfig>;
   scoutConfig?: Partial<ScoutConfig>;
@@ -53,8 +64,7 @@ function isAuthorized(request: NextRequest): { authorized: boolean; error?: stri
     if (isDevelopment) {
       // Allow in development for testing, but warn
       console.warn(
-        "[Agent API] WARNING: AGENT_SECRET not set. " +
-        "Allowing access in development mode only."
+        "[Agent API] WARNING: AGENT_SECRET not set. " + "Allowing access in development mode only."
       );
       return { authorized: true };
     }
@@ -62,7 +72,7 @@ function isAuthorized(request: NextRequest): { authorized: boolean; error?: stri
     // In production, reject if no secret is configured
     console.error(
       "[Agent API] SECURITY: AGENT_SECRET not configured. " +
-      "Rejecting request. Set AGENT_SECRET environment variable."
+        "Rejecting request. Set AGENT_SECRET environment variable."
     );
     return {
       authorized: false,
@@ -89,10 +99,7 @@ export async function POST(request: NextRequest) {
     // Auth check for all actions
     const auth = isAuthorized(request);
     if (!auth.authorized) {
-      return NextResponse.json(
-        { error: auth.error || "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: auth.error || "Unauthorized" }, { status: 401 });
     }
 
     const body: AgentRequestBody = await request.json();
@@ -148,10 +155,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Don't expose internal error details
     console.error("Agent API error:", error);
-    return NextResponse.json(
-      { error: "Failed to process request" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
   }
 }
 
@@ -174,10 +178,7 @@ async function handleRewardsStatus(): Promise<NextResponse> {
 
 async function handleRewardsStart(): Promise<NextResponse> {
   if (!isAgentWalletConfigured()) {
-    return NextResponse.json(
-      { error: "Agent wallet not configured" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Agent wallet not configured" }, { status: 400 });
   }
 
   const initialized = await initCreatorRewardsAgent();
@@ -190,10 +191,7 @@ async function handleRewardsStart(): Promise<NextResponse> {
 
   const started = await startCreatorRewardsAgent();
   if (!started) {
-    return NextResponse.json(
-      { error: "Failed to start creator rewards agent" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to start creator rewards agent" }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -215,10 +213,7 @@ async function handleRewardsStop(): Promise<NextResponse> {
 
 async function handleRewardsTrigger(): Promise<NextResponse> {
   if (!isAgentWalletConfigured()) {
-    return NextResponse.json(
-      { error: "Agent wallet not configured" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Agent wallet not configured" }, { status: 400 });
   }
 
   const result = await triggerDistribution();
@@ -230,9 +225,7 @@ async function handleRewardsTrigger(): Promise<NextResponse> {
   });
 }
 
-async function handleRewardsConfig(
-  config?: Partial<CreatorRewardsConfig>
-): Promise<NextResponse> {
+async function handleRewardsConfig(config?: Partial<CreatorRewardsConfig>): Promise<NextResponse> {
   if (!config) {
     // Return current config
     return NextResponse.json({
@@ -266,18 +259,12 @@ function handleScoutStatus(): NextResponse {
 function handleScoutStart(): NextResponse {
   const initialized = initScoutAgent();
   if (!initialized) {
-    return NextResponse.json(
-      { error: "Failed to initialize scout agent" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to initialize scout agent" }, { status: 500 });
   }
 
   const started = startScoutAgent();
   if (!started) {
-    return NextResponse.json(
-      { error: "Failed to start scout agent" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to start scout agent" }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -325,10 +312,7 @@ function handleScoutLaunches(count?: number): NextResponse {
 
 function handleScoutBlock(creatorAddress?: string): NextResponse {
   if (!creatorAddress) {
-    return NextResponse.json(
-      { error: "creatorAddress required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "creatorAddress required" }, { status: 400 });
   }
 
   blockCreator(creatorAddress);
@@ -342,10 +326,7 @@ function handleScoutBlock(creatorAddress?: string): NextResponse {
 
 function handleScoutUnblock(creatorAddress?: string): NextResponse {
   if (!creatorAddress) {
-    return NextResponse.json(
-      { error: "creatorAddress required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "creatorAddress required" }, { status: 400 });
   }
 
   unblockCreator(creatorAddress);

@@ -41,7 +41,10 @@ export async function GET(request: NextRequest) {
   const rateLimit = checkRateLimit(`admin-auth:${clientIP}`, RATE_LIMITS.strict);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Too many requests. Try again later.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -49,27 +52,18 @@ export async function GET(request: NextRequest) {
   const wallet = request.nextUrl.searchParams.get("wallet");
 
   if (!wallet) {
-    return NextResponse.json(
-      { error: "Missing wallet parameter" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing wallet parameter" }, { status: 400 });
   }
 
   // Validate wallet address format
   if (!isValidSolanaAddress(wallet)) {
-    return NextResponse.json(
-      { error: "Invalid wallet address format" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid wallet address format" }, { status: 400 });
   }
 
   // Check if wallet is an admin before generating challenge
   if (!isAdmin(wallet)) {
     // Return same error as invalid wallet to prevent enumeration
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Generate challenge for wallet to sign
@@ -92,7 +86,10 @@ export async function POST(request: NextRequest) {
   const rateLimit = checkRateLimit(`admin-auth:${clientIP}`, RATE_LIMITS.strict);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Too many requests. Try again later.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -111,36 +108,24 @@ export async function POST(request: NextRequest) {
 
     // Validate wallet address format
     if (!isValidSolanaAddress(wallet)) {
-      return NextResponse.json(
-        { error: "Invalid wallet address format" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid wallet address format" }, { status: 400 });
     }
 
     // Validate signature format (base58 encoded)
     if (typeof signature !== "string" || signature.length < 64 || signature.length > 128) {
-      return NextResponse.json(
-        { error: "Invalid signature format" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid signature format" }, { status: 400 });
     }
 
     // Check if wallet is an admin
     if (!isAdmin(wallet)) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Verify the signature against the challenge
     const isValid = verifySignature(wallet, signature, message);
 
     if (!isValid) {
-      return NextResponse.json(
-        { error: "Invalid or expired signature" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid or expired signature" }, { status: 401 });
     }
 
     // Create session token
@@ -153,10 +138,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[AdminAuth] Authentication error:", error);
-    return NextResponse.json(
-      { error: "Authentication failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Authentication failed" }, { status: 500 });
   }
 }
 
@@ -168,10 +150,7 @@ export async function DELETE(request: NextRequest) {
   const sessionToken = request.headers.get("authorization")?.replace("Bearer ", "");
 
   if (!sessionToken) {
-    return NextResponse.json(
-      { error: "Missing session token" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing session token" }, { status: 400 });
   }
 
   // Verify the token exists before invalidating

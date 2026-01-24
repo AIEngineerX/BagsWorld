@@ -7,7 +7,9 @@ import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 
 // Helper to deserialize transaction - handles various formats from Bags API
-function deserializeTransaction(encoded: string | Record<string, unknown>): VersionedTransaction | Transaction {
+function deserializeTransaction(
+  encoded: string | Record<string, unknown>
+): VersionedTransaction | Transaction {
   // Handle object responses - extract transaction string
   let txString: string;
   if (typeof encoded === "object" && encoded !== null) {
@@ -71,7 +73,9 @@ export function PartnerClaimButton() {
   const [isPartner, setIsPartner] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [status, setStatus] = useState<"idle" | "generating" | "signing" | "sending" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "generating" | "signing" | "sending" | "success" | "error"
+  >("idle");
   const [message, setMessage] = useState("");
   const [txSignatures, setTxSignatures] = useState<string[]>([]);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -149,7 +153,6 @@ export function PartnerClaimButton() {
       setStatus("success");
       setMessage("Partner config created! You can now claim fees.");
       setNeedsSetup(false);
-
     } catch (error) {
       console.error("Setup error:", error);
       setStatus("error");
@@ -255,7 +258,6 @@ export function PartnerClaimButton() {
         setStatus("error");
         setMessage("Failed to confirm any transactions. Please try again.");
       }
-
     } catch (error) {
       console.error("Claim error:", error);
       setStatus("error");
@@ -296,9 +298,7 @@ export function PartnerClaimButton() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b-4 border-bags-gold">
               <div>
-                <h2 className="font-pixel text-sm text-bags-gold">
-                  💰 PARTNER FEE CLAIM
-                </h2>
+                <h2 className="font-pixel text-sm text-bags-gold">💰 PARTNER FEE CLAIM</h2>
                 <p className="font-pixel text-[8px] text-gray-400">
                   Claim your accumulated partner fees
                 </p>
@@ -341,20 +341,24 @@ export function PartnerClaimButton() {
 
               {/* Status Messages */}
               {status !== "idle" && (
-                <div className={`p-3 border ${
-                  status === "success"
-                    ? "bg-bags-green/20 border-bags-green"
-                    : status === "error"
-                    ? "bg-red-500/20 border-red-500"
-                    : "bg-bags-gold/20 border-bags-gold"
-                }`}>
-                  <p className={`font-pixel text-[10px] ${
+                <div
+                  className={`p-3 border ${
                     status === "success"
-                      ? "text-bags-green"
+                      ? "bg-bags-green/20 border-bags-green"
                       : status === "error"
-                      ? "text-red-400"
-                      : "text-bags-gold"
-                  }`}>
+                        ? "bg-red-500/20 border-red-500"
+                        : "bg-bags-gold/20 border-bags-gold"
+                  }`}
+                >
+                  <p
+                    className={`font-pixel text-[10px] ${
+                      status === "success"
+                        ? "text-bags-green"
+                        : status === "error"
+                          ? "text-red-400"
+                          : "text-bags-gold"
+                    }`}
+                  >
                     {status === "generating" && "⏳ "}
                     {status === "signing" && "✍️ "}
                     {status === "sending" && "📤 "}

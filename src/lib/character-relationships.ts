@@ -35,34 +35,174 @@ export interface CharacterState {
 // Pre-defined relationships based on lore
 const DEFAULT_RELATIONSHIPS: Partial<CharacterRelationship>[] = [
   // Finn's relationships
-  { fromCharacter: "finn", toCharacter: "ghost", trust: 0.9, respect: 0.85, familiarity: 0.9, sentiment: "positive" },
-  { fromCharacter: "finn", toCharacter: "neo", trust: 0.7, respect: 0.8, familiarity: 0.7, sentiment: "positive" },
-  { fromCharacter: "finn", toCharacter: "ash", trust: 0.8, respect: 0.7, familiarity: 0.8, sentiment: "positive" },
-  { fromCharacter: "finn", toCharacter: "bags-bot", trust: 0.6, respect: 0.5, familiarity: 0.6, sentiment: "positive" },
+  {
+    fromCharacter: "finn",
+    toCharacter: "ghost",
+    trust: 0.9,
+    respect: 0.85,
+    familiarity: 0.9,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "finn",
+    toCharacter: "neo",
+    trust: 0.7,
+    respect: 0.8,
+    familiarity: 0.7,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "finn",
+    toCharacter: "ash",
+    trust: 0.8,
+    respect: 0.7,
+    familiarity: 0.8,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "finn",
+    toCharacter: "bags-bot",
+    trust: 0.6,
+    respect: 0.5,
+    familiarity: 0.6,
+    sentiment: "positive",
+  },
 
   // Ghost's relationships
-  { fromCharacter: "ghost", toCharacter: "finn", trust: 0.85, respect: 0.9, familiarity: 0.9, sentiment: "positive" },
-  { fromCharacter: "ghost", toCharacter: "neo", trust: 0.8, respect: 0.85, familiarity: 0.8, sentiment: "positive" },
-  { fromCharacter: "ghost", toCharacter: "ash", trust: 0.5, respect: 0.6, familiarity: 0.5, sentiment: "neutral" },
-  { fromCharacter: "ghost", toCharacter: "bags-bot", trust: 0.4, respect: 0.5, familiarity: 0.5, sentiment: "neutral" },
+  {
+    fromCharacter: "ghost",
+    toCharacter: "finn",
+    trust: 0.85,
+    respect: 0.9,
+    familiarity: 0.9,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "ghost",
+    toCharacter: "neo",
+    trust: 0.8,
+    respect: 0.85,
+    familiarity: 0.8,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "ghost",
+    toCharacter: "ash",
+    trust: 0.5,
+    respect: 0.6,
+    familiarity: 0.5,
+    sentiment: "neutral",
+  },
+  {
+    fromCharacter: "ghost",
+    toCharacter: "bags-bot",
+    trust: 0.4,
+    respect: 0.5,
+    familiarity: 0.5,
+    sentiment: "neutral",
+  },
 
   // Neo's relationships
-  { fromCharacter: "neo", toCharacter: "finn", trust: 0.7, respect: 0.8, familiarity: 0.7, sentiment: "positive" },
-  { fromCharacter: "neo", toCharacter: "ghost", trust: 0.85, respect: 0.9, familiarity: 0.8, sentiment: "positive" },
-  { fromCharacter: "neo", toCharacter: "ash", trust: 0.4, respect: 0.5, familiarity: 0.4, sentiment: "neutral" },
-  { fromCharacter: "neo", toCharacter: "bags-bot", trust: 0.3, respect: 0.4, familiarity: 0.3, sentiment: "neutral" },
+  {
+    fromCharacter: "neo",
+    toCharacter: "finn",
+    trust: 0.7,
+    respect: 0.8,
+    familiarity: 0.7,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "neo",
+    toCharacter: "ghost",
+    trust: 0.85,
+    respect: 0.9,
+    familiarity: 0.8,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "neo",
+    toCharacter: "ash",
+    trust: 0.4,
+    respect: 0.5,
+    familiarity: 0.4,
+    sentiment: "neutral",
+  },
+  {
+    fromCharacter: "neo",
+    toCharacter: "bags-bot",
+    trust: 0.3,
+    respect: 0.4,
+    familiarity: 0.3,
+    sentiment: "neutral",
+  },
 
   // Ash's relationships
-  { fromCharacter: "ash", toCharacter: "finn", trust: 0.8, respect: 0.85, familiarity: 0.8, sentiment: "positive" },
-  { fromCharacter: "ash", toCharacter: "ghost", trust: 0.6, respect: 0.7, familiarity: 0.5, sentiment: "positive" },
-  { fromCharacter: "ash", toCharacter: "neo", trust: 0.5, respect: 0.6, familiarity: 0.4, sentiment: "neutral" },
-  { fromCharacter: "ash", toCharacter: "bags-bot", trust: 0.7, respect: 0.6, familiarity: 0.7, sentiment: "positive" },
+  {
+    fromCharacter: "ash",
+    toCharacter: "finn",
+    trust: 0.8,
+    respect: 0.85,
+    familiarity: 0.8,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "ash",
+    toCharacter: "ghost",
+    trust: 0.6,
+    respect: 0.7,
+    familiarity: 0.5,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "ash",
+    toCharacter: "neo",
+    trust: 0.5,
+    respect: 0.6,
+    familiarity: 0.4,
+    sentiment: "neutral",
+  },
+  {
+    fromCharacter: "ash",
+    toCharacter: "bags-bot",
+    trust: 0.7,
+    respect: 0.6,
+    familiarity: 0.7,
+    sentiment: "positive",
+  },
 
   // Bags Bot's relationships
-  { fromCharacter: "bags-bot", toCharacter: "finn", trust: 0.7, respect: 0.8, familiarity: 0.7, sentiment: "positive" },
-  { fromCharacter: "bags-bot", toCharacter: "ghost", trust: 0.6, respect: 0.7, familiarity: 0.6, sentiment: "positive" },
-  { fromCharacter: "bags-bot", toCharacter: "neo", trust: 0.5, respect: 0.6, familiarity: 0.5, sentiment: "neutral" },
-  { fromCharacter: "bags-bot", toCharacter: "ash", trust: 0.8, respect: 0.7, familiarity: 0.8, sentiment: "positive" },
+  {
+    fromCharacter: "bags-bot",
+    toCharacter: "finn",
+    trust: 0.7,
+    respect: 0.8,
+    familiarity: 0.7,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "bags-bot",
+    toCharacter: "ghost",
+    trust: 0.6,
+    respect: 0.7,
+    familiarity: 0.6,
+    sentiment: "positive",
+  },
+  {
+    fromCharacter: "bags-bot",
+    toCharacter: "neo",
+    trust: 0.5,
+    respect: 0.6,
+    familiarity: 0.5,
+    sentiment: "neutral",
+  },
+  {
+    fromCharacter: "bags-bot",
+    toCharacter: "ash",
+    trust: 0.8,
+    respect: 0.7,
+    familiarity: 0.8,
+    sentiment: "positive",
+  },
 ];
 
 // ============================================================================
@@ -240,10 +380,7 @@ export function recordInteraction(
 /**
  * Update character mood
  */
-export function updateCharacterMood(
-  characterId: string,
-  mood: CharacterState["mood"]
-): void {
+export function updateCharacterMood(characterId: string, mood: CharacterState["mood"]): void {
   const charState = state.characterStates.get(characterId);
   if (charState) {
     charState.mood = mood;
@@ -253,10 +390,7 @@ export function updateCharacterMood(
 /**
  * Update character energy
  */
-export function updateCharacterEnergy(
-  characterId: string,
-  delta: number
-): void {
+export function updateCharacterEnergy(characterId: string, delta: number): void {
   const charState = state.characterStates.get(characterId);
   if (charState) {
     charState.energy = Math.max(0, Math.min(100, charState.energy + delta));

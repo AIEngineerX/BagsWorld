@@ -9,10 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     // Check database is configured
     if (!isNeonConfigured()) {
-      return NextResponse.json(
-        { error: "Database not configured" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
     const body = await request.json();
@@ -28,30 +25,18 @@ export async function POST(request: NextRequest) {
 
     // Verify admin signature
     const adminWallet = getCasinoAdminWallet();
-    const verification = verifyAdminSignature(
-      wallet,
-      signature,
-      "init",
-      timestamp,
-      adminWallet
-    );
+    const verification = verifyAdminSignature(wallet, signature, "init", timestamp, adminWallet);
 
     if (!verification.verified) {
       console.warn(`[Casino Admin] Init failed: ${verification.error}`);
-      return NextResponse.json(
-        { error: verification.error },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: verification.error }, { status: 403 });
     }
 
     // Initialize tables
     const success = await initializeCasinoTables();
 
     if (!success) {
-      return NextResponse.json(
-        { error: "Failed to initialize casino tables" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to initialize casino tables" }, { status: 500 });
     }
 
     console.log(`[Casino Admin] Tables initialized by ${wallet}`);
@@ -61,9 +46,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Casino Admin] Init error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

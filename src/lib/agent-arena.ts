@@ -304,7 +304,12 @@ export async function startConversation(
           agentName: agent.name,
           message: generateFallbackResponse(agent, symbol, eventType),
           timestamp: Date.now(),
-          sentiment: agent.personality === "bullish" ? "bullish" : agent.personality === "bearish" ? "bearish" : "neutral",
+          sentiment:
+            agent.personality === "bullish"
+              ? "bullish"
+              : agent.personality === "bearish"
+                ? "bearish"
+                : "neutral",
           isAI: false,
         };
         conversation.messages.push(message);
@@ -387,18 +392,42 @@ export async function discussTopic(
 function generateFallbackResponse(agent: ArenaAgent, symbol: string, eventType: string): string {
   const responses: Record<string, Record<string, string[]>> = {
     token_launch: {
-      bullish: [`$${symbol} just dropped and I'm feeling bullish. Ticker has energy.`, `Fresh launch $${symbol}! Adding to watchlist.`],
-      bearish: [`$${symbol}... waiting for the chart to prove itself.`, `New launch timing seems off. Watching $${symbol}.`],
-      analytical: [`$${symbol} launch detected. Analyzing metrics...`, `Need to see holder distribution on $${symbol}.`],
-      chaotic: [`$${symbol}?! Name sounds memeable, might ape!`, `YOOO $${symbol} just dropped! Vibes check...`],
-      wise: [`$${symbol} enters the arena. Let's see execution.`, `New token $${symbol}. 95% fail. Be selective.`],
+      bullish: [
+        `$${symbol} just dropped and I'm feeling bullish. Ticker has energy.`,
+        `Fresh launch $${symbol}! Adding to watchlist.`,
+      ],
+      bearish: [
+        `$${symbol}... waiting for the chart to prove itself.`,
+        `New launch timing seems off. Watching $${symbol}.`,
+      ],
+      analytical: [
+        `$${symbol} launch detected. Analyzing metrics...`,
+        `Need to see holder distribution on $${symbol}.`,
+      ],
+      chaotic: [
+        `$${symbol}?! Name sounds memeable, might ape!`,
+        `YOOO $${symbol} just dropped! Vibes check...`,
+      ],
+      wise: [
+        `$${symbol} enters the arena. Let's see execution.`,
+        `New token $${symbol}. 95% fail. Be selective.`,
+      ],
     },
     token_pump: {
       bullish: [`$${symbol} pumping! This is why we hold.`, `Called it! $${symbol} moving.`],
-      bearish: [`$${symbol} pump... classic bull trap setup?`, `Nice pump but I've seen this before.`],
-      analytical: [`$${symbol} breakout. Volume confirms the move.`, `Analyzing $${symbol} pump metrics...`],
+      bearish: [
+        `$${symbol} pump... classic bull trap setup?`,
+        `Nice pump but I've seen this before.`,
+      ],
+      analytical: [
+        `$${symbol} breakout. Volume confirms the move.`,
+        `Analyzing $${symbol} pump metrics...`,
+      ],
       chaotic: [`$${symbol} GOING VERTICAL!! 🚀`, `LETS GOOOO $${symbol}!!!`],
-      wise: [`$${symbol} showing strength. But take profits.`, `Good move on $${symbol}. Can it hold?`],
+      wise: [
+        `$${symbol} showing strength. But take profits.`,
+        `Good move on $${symbol}. Can it hold?`,
+      ],
     },
     analysis: {
       bullish: [`$${symbol} looking strong.`, `Bullish on $${symbol} setup.`],

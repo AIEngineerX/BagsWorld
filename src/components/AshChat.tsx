@@ -25,32 +25,38 @@ const ECOSYSTEM_TOPICS = [
   {
     title: "How Buildings Work",
     icon: "🏗️",
-    content: "Every token launched on BagsWorld becomes a building! As the market cap grows, your building evolves - from a small shop to a towering skyscraper. Level 1 is under $100K, Level 5 is $10M+!"
+    content:
+      "Every token launched on BagsWorld becomes a building! As the market cap grows, your building evolves - from a small shop to a towering skyscraper. Level 1 is under $100K, Level 5 is $10M+!",
   },
   {
     title: "Creator Rewards",
     icon: "R",
-    content: "1% ecosystem fee goes to the rewards pool. Top 3 creators by fee contribution get paid directly - 50% to 1st, 30% to 2nd, 20% to 3rd. SOL sent straight to your wallet!"
+    content:
+      "1% ecosystem fee goes to the rewards pool. Top 3 creators by fee contribution get paid directly - 50% to 1st, 30% to 2nd, 20% to 3rd. SOL sent straight to your wallet!",
   },
   {
     title: "How Citizens Work",
     icon: "👥",
-    content: "Every X/Twitter account that receives fee shares becomes a citizen walking around BagsWorld! Their mood changes based on earnings - celebrating when fees are flowing, sad when things are quiet."
+    content:
+      "Every X/Twitter account that receives fee shares becomes a citizen walking around BagsWorld! Their mood changes based on earnings - celebrating when fees are flowing, sad when things are quiet.",
   },
   {
     title: "Weather System",
     icon: "🌤️",
-    content: "The world's weather reflects overall trading health! Sunny means things are booming (80%+ health), cloudy is normal, rain means slowing down, storm is rough times, and apocalypse... well, HODL tight!"
+    content:
+      "The world's weather reflects overall trading health! Sunny means things are booming (80%+ health), cloudy is normal, rain means slowing down, storm is rough times, and apocalypse... well, HODL tight!",
   },
   {
     title: "Reward Triggers",
     icon: "T",
-    content: "Rewards distribute when pool hits 10 SOL OR 5 days pass (min 10 SOL). This ensures regular payouts while accumulating meaningful amounts for creators."
+    content:
+      "Rewards distribute when pool hits 10 SOL OR 5 days pass (min 10 SOL). This ensures regular payouts while accumulating meaningful amounts for creators.",
   },
   {
     title: "The Flywheel",
     icon: "F",
-    content: "Launch token -> Drive volume -> Generate fees -> Climb leaderboard -> Get rewarded -> Reinvest. Top creators earn more, which incentivizes building real communities."
+    content:
+      "Launch token -> Drive volume -> Generate fees -> Climb leaderboard -> Get rewarded -> Reinvest. Top creators earn more, which incentivizes building real communities.",
   },
 ];
 
@@ -75,7 +81,8 @@ export function AshChat() {
         addMessage({
           id: `${Date.now()}-ash`,
           type: "ash",
-          message: "Hey trainer! Welcome to BagsWorld! Each building here is like a Pokemon - it evolves as it grows stronger. What would you like to know?",
+          message:
+            "Hey trainer! Welcome to BagsWorld! Each building here is like a Pokemon - it evolves as it grows stronger. What would you like to know?",
           timestamp: Date.now(),
         });
       }
@@ -125,13 +132,13 @@ export function AshChat() {
     };
 
     if (isDragging) {
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp);
-      window.addEventListener('pointercancel', handlePointerUp);
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
       return () => {
-        window.removeEventListener('pointermove', handlePointerMove);
-        window.removeEventListener('pointerup', handlePointerUp);
-        window.removeEventListener('pointercancel', handlePointerUp);
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+        window.removeEventListener("pointercancel", handlePointerUp);
       };
     }
   }, [isDragging, dragOffset]);
@@ -140,7 +147,7 @@ export function AshChat() {
     setMessages((prev) => [...prev.slice(-30), message]);
   };
 
-  const handleTopicClick = (topic: typeof ECOSYSTEM_TOPICS[0]) => {
+  const handleTopicClick = (topic: (typeof ECOSYSTEM_TOPICS)[0]) => {
     addMessage({
       id: `${Date.now()}-info`,
       type: "info",
@@ -174,7 +181,10 @@ export function AshChat() {
       });
 
       const data = await response.json();
-      const messageText = data.response || data.message || "Great question trainer! Ask me about buildings, fees, or the weather system!";
+      const messageText =
+        data.response ||
+        data.message ||
+        "Great question trainer! Ask me about buildings, fees, or the weather system!";
 
       addMessage({
         id: `${Date.now()}-ash`,
@@ -232,9 +242,10 @@ export function AshChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.x >= 0
-    ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
-    : { right: 16, bottom: 80 };
+  const chatStyle: React.CSSProperties =
+    position.x >= 0
+      ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
+      : { right: 16, bottom: 80 };
 
   if (!isOpen) {
     return null; // Hidden until Ash is clicked
@@ -244,7 +255,7 @@ export function AshChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-red-500 shadow-lg ${isDragging ? 'cursor-grabbing' : ''}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-red-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
     >
       {/* Header - Draggable */}
       <div
@@ -254,12 +265,8 @@ export function AshChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">⚡</span>
           <div>
-            <p className="font-pixel text-[10px] text-red-400">
-              ASH // GUIDE
-            </p>
-            <p className="font-pixel text-[8px] text-red-600">
-              powered by sonnet 4
-            </p>
+            <p className="font-pixel text-[10px] text-red-400">ASH // GUIDE</p>
+            <p className="font-pixel text-[8px] text-red-600">powered by sonnet 4</p>
           </div>
         </div>
         <button
@@ -290,9 +297,7 @@ export function AshChat() {
       <div className="h-36 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-4">
-            <p className="font-pixel text-[10px] text-red-400 mb-1">
-              ⚡ Welcome, Trainer!
-            </p>
+            <p className="font-pixel text-[10px] text-red-400 mb-1">⚡ Welcome, Trainer!</p>
             <p className="font-pixel text-[8px] text-gray-400">
               I&apos;m Ash! Ask me anything about BagsWorld!
             </p>
@@ -308,10 +313,10 @@ export function AshChat() {
                 msg.type === "ash"
                   ? "bg-red-500/10 border-red-500"
                   : msg.type === "user"
-                  ? "bg-bags-green/10 border-bags-green ml-4"
-                  : msg.type === "info"
-                  ? "bg-blue-500/10 border-blue-500"
-                  : "bg-yellow-500/10 border-yellow-500"
+                    ? "bg-bags-green/10 border-bags-green ml-4"
+                    : msg.type === "info"
+                      ? "bg-blue-500/10 border-blue-500"
+                      : "bg-yellow-500/10 border-yellow-500"
               }`}
             >
               {msg.type === "ash" && (
@@ -323,9 +328,7 @@ export function AshChat() {
               {msg.type === "info" && (
                 <p className="font-pixel text-[6px] text-blue-400 mb-1">📖 Info:</p>
               )}
-              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">
-                {msg.message}
-              </p>
+              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
               {msg.type === "ash" && msg.actions && msg.actions.length > 0 && (
                 <ActionButtons actions={msg.actions} onAction={handleAction} />
               )}

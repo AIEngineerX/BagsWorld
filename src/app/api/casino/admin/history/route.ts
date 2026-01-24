@@ -10,10 +10,7 @@ export async function GET(request: NextRequest) {
     // Verify admin wallet
     const adminWallet = getCasinoAdminWallet();
     if (wallet !== adminWallet) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
     }
 
     const history = await getRaffleHistory(parseInt(limit));
@@ -28,9 +25,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, history });
   } catch (error) {
     console.error("Error fetching history:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }

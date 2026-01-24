@@ -24,13 +24,16 @@ interface TradingGymModalProps {
 }
 
 // Pixel art character head configs
-const AGENT_HEADS: Record<string, {
-  skinColor: string;
-  hairColor: string;
-  glowColor: string;
-  accessory?: "sunglasses" | "cap" | "beanie" | "glasses" | "beard";
-  accessoryColor?: string;
-}> = {
+const AGENT_HEADS: Record<
+  string,
+  {
+    skinColor: string;
+    hairColor: string;
+    glowColor: string;
+    accessory?: "sunglasses" | "cap" | "beanie" | "glasses" | "beard";
+    accessoryColor?: string;
+  }
+> = {
   neo: {
     skinColor: "#f1c27d",
     hairColor: "#1a1a1a",
@@ -85,7 +88,11 @@ function AgentFace({ agent, size = "md" }: { agent: ArenaAgent; size?: "sm" | "m
         className="absolute inset-0 rounded-full blur-sm"
         style={{ backgroundColor: config.glowColor, opacity: 0.4, transform: "scale(1.2)" }}
       />
-      <svg viewBox="0 0 12 12" className="relative z-10" style={{ width: pixelSize, height: pixelSize, imageRendering: "pixelated" }}>
+      <svg
+        viewBox="0 0 12 12"
+        className="relative z-10"
+        style={{ width: pixelSize, height: pixelSize, imageRendering: "pixelated" }}
+      >
         <rect x="3" y="1" width="6" height="3" fill={config.hairColor} />
         <rect x="2" y="2" width="1" height="2" fill={config.hairColor} />
         <rect x="9" y="2" width="1" height="2" fill={config.hairColor} />
@@ -245,12 +252,21 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4" onClick={handleBackdropClick}>
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={handleBackdropClick}
+    >
       <div className="bg-gradient-to-b from-gray-900 to-gray-950 border-2 border-orange-500 rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col shadow-2xl shadow-orange-500/20">
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 p-4 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px)" }} />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px)",
+              }}
+            />
           </div>
 
           <div className="flex justify-between items-center relative z-10">
@@ -259,25 +275,33 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                 <span className="font-pixel text-orange-300 text-sm sm:text-base">!</span>
               </div>
               <div>
-                <h2 className="font-pixel text-white text-sm sm:text-lg tracking-wide">TRADING GYM</h2>
+                <h2 className="font-pixel text-white text-sm sm:text-lg tracking-wide">
+                  TRADING GYM
+                </h2>
                 <p className="font-pixel text-orange-200 text-[8px] sm:text-[10px] flex items-center gap-2">
                   <span className="inline-block w-2 h-2 bg-green-400 animate-pulse" />
                   AI Agents Competing Live
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="font-pixel text-xs p-2 text-white hover:text-orange-200 touch-target border border-white/20 hover:border-orange-400/50 transition-colors" aria-label="Close">
+            <button
+              onClick={onClose}
+              className="font-pixel text-xs p-2 text-white hover:text-orange-200 touch-target border border-white/20 hover:border-orange-400/50 transition-colors"
+              aria-label="Close"
+            >
               [X]
             </button>
           </div>
 
           {/* Tabs */}
           <div className="flex gap-2 mt-4 relative z-10">
-            {([
-              { id: "arena", label: "LIVE ARENA", icon: "⚡" },
-              { id: "leaderboard", label: "RANKINGS", icon: "🏆" },
-              { id: "calls", label: "CALLS", icon: "📊" },
-            ] as const).map((tab) => (
+            {(
+              [
+                { id: "arena", label: "LIVE ARENA", icon: "⚡" },
+                { id: "leaderboard", label: "RANKINGS", icon: "🏆" },
+                { id: "calls", label: "CALLS", icon: "📊" },
+              ] as const
+            ).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -315,7 +339,9 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                         className="flex-shrink-0 bg-black/30 hover:bg-black/50 rounded-lg px-3 py-2 border border-green-500/20 transition-all hover:scale-105 disabled:opacity-50"
                       >
                         <p className="font-pixel text-[10px] text-green-400">${token.symbol}</p>
-                        <p className="text-[8px] text-gray-500 truncate max-w-[80px]">{token.name}</p>
+                        <p className="text-[8px] text-gray-500 truncate max-w-[80px]">
+                          {token.name}
+                        </p>
                       </button>
                     ))}
                   </div>
@@ -361,26 +387,37 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                           {agent && <AgentFace agent={agent} size="sm" />}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-pixel text-xs font-medium" style={{ color: agent?.color || "#888" }}>
+                              <span
+                                className="font-pixel text-xs font-medium"
+                                style={{ color: agent?.color || "#888" }}
+                              >
                                 {msg.agentName}
                               </span>
-                              <span className="text-gray-500 text-[10px]">{formatTime(msg.timestamp)}</span>
+                              <span className="text-gray-500 text-[10px]">
+                                {formatTime(msg.timestamp)}
+                              </span>
                               {msg.isAI && (
                                 <span className="text-[8px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
                                   AI
                                 </span>
                               )}
                               {msg.sentiment && (
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                                  msg.sentiment === "bullish" ? "bg-green-500/20 text-green-400 border border-green-500/30" :
-                                  msg.sentiment === "bearish" ? "bg-red-500/20 text-red-400 border border-red-500/30" :
-                                  "bg-gray-500/20 text-gray-400 border border-gray-500/30"
-                                }`}>
+                                <span
+                                  className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                                    msg.sentiment === "bullish"
+                                      ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                      : msg.sentiment === "bearish"
+                                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                        : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                                  }`}
+                                >
                                   {msg.sentiment.toUpperCase()}
                                 </span>
                               )}
                             </div>
-                            <p className="text-gray-300 text-sm mt-1 leading-relaxed">{msg.message}</p>
+                            <p className="text-gray-300 text-sm mt-1 leading-relaxed">
+                              {msg.message}
+                            </p>
                           </div>
                         </div>
                       );
@@ -389,7 +426,9 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                     <div className="text-center py-10">
                       <div className="text-4xl mb-3 opacity-50">⚔️</div>
                       <p className="text-gray-400 font-pixel text-xs">Agents are warming up...</p>
-                      <p className="text-gray-500 text-[11px] mt-2">Click a token above to start a discussion</p>
+                      <p className="text-gray-500 text-[11px] mt-2">
+                        Click a token above to start a discussion
+                      </p>
                     </div>
                   )}
                   <div ref={chatEndRef} />
@@ -414,13 +453,19 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                           <AgentFace agent={agent} size="lg" />
                         </div>
                         <p className="font-pixel text-[10px] text-white">{agent.name}</p>
-                        <p className={`text-[9px] mt-1 ${
-                          agent.personality === "bullish" ? "text-green-400" :
-                          agent.personality === "bearish" ? "text-red-400" :
-                          agent.personality === "analytical" ? "text-blue-400" :
-                          agent.personality === "chaotic" ? "text-yellow-400" :
-                          "text-purple-400"
-                        }`}>
+                        <p
+                          className={`text-[9px] mt-1 ${
+                            agent.personality === "bullish"
+                              ? "text-green-400"
+                              : agent.personality === "bearish"
+                                ? "text-red-400"
+                                : agent.personality === "analytical"
+                                  ? "text-blue-400"
+                                  : agent.personality === "chaotic"
+                                    ? "text-yellow-400"
+                                    : "text-purple-400"
+                          }`}
+                        >
                           {score?.totalCalls || 0} calls
                         </p>
                       </div>
@@ -452,14 +497,19 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                     <div
                       key={score.agentId}
                       className={`bg-gray-800/50 rounded-xl p-4 border transition-all hover:scale-[1.01] ${
-                        index === 0 ? "border-yellow-500/50 shadow-lg shadow-yellow-500/10" :
-                        index === 1 ? "border-gray-400/30" :
-                        index === 2 ? "border-orange-600/30" :
-                        "border-gray-700"
+                        index === 0
+                          ? "border-yellow-500/50 shadow-lg shadow-yellow-500/10"
+                          : index === 1
+                            ? "border-gray-400/30"
+                            : index === 2
+                              ? "border-orange-600/30"
+                              : "border-gray-700"
                       }`}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-pixel text-lg ${badge.bg} ${badge.text}`}>
+                        <div
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center font-pixel text-lg ${badge.bg} ${badge.text}`}
+                        >
                           {badge.icon}
                         </div>
                         {agent && <AgentFace agent={agent} size="md" />}
@@ -482,15 +532,16 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className={`font-pixel text-base ${score.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                            {score.totalPnl >= 0 ? "+" : ""}{score.totalPnl.toFixed(1)}%
+                          <p
+                            className={`font-pixel text-base ${score.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                          >
+                            {score.totalPnl >= 0 ? "+" : ""}
+                            {score.totalPnl.toFixed(1)}%
                           </p>
                           <p className="text-gray-500 text-[10px]">
                             {score.wins}W / {score.losses}L ({score.winRate.toFixed(0)}%)
                           </p>
-                          <p className="text-gray-600 text-[9px]">
-                            {score.totalCalls} total calls
-                          </p>
+                          <p className="text-gray-600 text-[9px]">{score.totalCalls} total calls</p>
                         </div>
                       </div>
                     </div>
@@ -500,7 +551,9 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                 {leaderboard.every((s) => s.totalCalls === 0) && (
                   <div className="text-center py-8">
                     <p className="text-gray-500 font-pixel text-xs">No calls yet</p>
-                    <p className="text-gray-600 text-[10px] mt-1">Launch a token to see agents compete</p>
+                    <p className="text-gray-600 text-[10px] mt-1">
+                      Launch a token to see agents compete
+                    </p>
                   </div>
                 )}
               </div>
@@ -537,22 +590,31 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                       const hoursLeft = Math.floor(timeLeft / 3600000);
 
                       return (
-                        <div key={call.id} className="bg-gray-800/50 rounded-xl p-4 border border-green-500/30">
+                        <div
+                          key={call.id}
+                          className="bg-gray-800/50 rounded-xl p-4 border border-green-500/30"
+                        >
                           <div className="flex items-center gap-4">
                             {agent && <AgentFace agent={agent} size="md" />}
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-pixel text-white text-sm">{agent?.name}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                                  call.direction === "long"
-                                    ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                    : "bg-red-500/20 text-red-400 border border-red-500/30"
-                                }`}>
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                    call.direction === "long"
+                                      ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                      : "bg-red-500/20 text-red-400 border border-red-500/30"
+                                  }`}
+                                >
                                   {call.direction === "long" ? "📈 LONG" : "📉 SHORT"}
                                 </span>
-                                <span className="font-pixel text-yellow-400 text-sm">${call.tokenSymbol}</span>
+                                <span className="font-pixel text-yellow-400 text-sm">
+                                  ${call.tokenSymbol}
+                                </span>
                               </div>
-                              <p className="text-gray-400 text-[11px] mt-1 italic">&ldquo;{call.reasoning}&rdquo;</p>
+                              <p className="text-gray-400 text-[11px] mt-1 italic">
+                                &ldquo;{call.reasoning}&rdquo;
+                              </p>
                             </div>
                             <div className="text-right">
                               <p className="font-pixel text-sm text-white">{call.confidence}%</p>
@@ -576,30 +638,46 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                       const agent = getAgent(call.agentId);
 
                       return (
-                        <div key={call.id} className={`bg-gray-800/30 rounded-lg p-3 border ${
-                          call.status === "won" ? "border-green-500/30" :
-                          call.status === "lost" ? "border-red-500/30" :
-                          call.status === "expired" ? "border-gray-500/30" :
-                          "border-gray-700"
-                        }`}>
+                        <div
+                          key={call.id}
+                          className={`bg-gray-800/30 rounded-lg p-3 border ${
+                            call.status === "won"
+                              ? "border-green-500/30"
+                              : call.status === "lost"
+                                ? "border-red-500/30"
+                                : call.status === "expired"
+                                  ? "border-gray-500/30"
+                                  : "border-gray-700"
+                          }`}
+                        >
                           <div className="flex items-center gap-3">
                             {agent && <AgentFace agent={agent} size="sm" />}
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-pixel text-[10px] text-white">{agent?.name}</span>
-                                <span className={`text-[9px] ${call.direction === "long" ? "text-green-400" : "text-red-400"}`}>
+                                <span className="font-pixel text-[10px] text-white">
+                                  {agent?.name}
+                                </span>
+                                <span
+                                  className={`text-[9px] ${call.direction === "long" ? "text-green-400" : "text-red-400"}`}
+                                >
                                   {call.direction.toUpperCase()}
                                 </span>
-                                <span className="font-pixel text-[10px] text-yellow-400">${call.tokenSymbol}</span>
+                                <span className="font-pixel text-[10px] text-yellow-400">
+                                  ${call.tokenSymbol}
+                                </span>
                               </div>
                             </div>
                             <div className="text-right">
                               {call.status === "active" ? (
                                 <span className="text-[9px] text-blue-400">ACTIVE</span>
                               ) : call.status === "won" ? (
-                                <span className="text-[9px] text-green-400">+{call.pnlPercent?.toFixed(1)}%</span>
+                                <span className="text-[9px] text-green-400">
+                                  +{call.pnlPercent?.toFixed(1)}%
+                                </span>
                               ) : call.status === "lost" ? (
-                                <span className="text-[9px] text-red-400">{call.pnlPercent?.toFixed(1)}%</span>
+                                <span className="text-[9px] text-red-400">
+                                  {call.pnlPercent?.toFixed(1)}%
+                                </span>
                               ) : (
                                 <span className="text-[9px] text-gray-500">EXPIRED</span>
                               )}
@@ -613,7 +691,9 @@ export function TradingGymModal({ onClose }: TradingGymModalProps) {
                   <div className="text-center py-12 bg-gray-800/30 rounded-xl border border-gray-700">
                     <div className="text-4xl mb-3 opacity-50">📊</div>
                     <p className="text-gray-400 font-pixel text-xs">No calls yet</p>
-                    <p className="text-gray-500 text-[11px] mt-2">Click &ldquo;New Call&rdquo; to see agents make predictions</p>
+                    <p className="text-gray-500 text-[11px] mt-2">
+                      Click &ldquo;New Call&rdquo; to see agents make predictions
+                    </p>
                   </div>
                 )}
               </div>

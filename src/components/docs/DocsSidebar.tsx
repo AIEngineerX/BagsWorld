@@ -15,9 +15,7 @@ export function DocsSidebar({ activeSection, onNavigate }: DocsSidebarProps) {
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections((prev) =>
-      prev.includes(sectionId)
-        ? prev.filter((id) => id !== sectionId)
-        : [...prev, sectionId]
+      prev.includes(sectionId) ? prev.filter((id) => id !== sectionId) : [...prev, sectionId]
     );
   };
 
@@ -84,17 +82,12 @@ export function MobileDocsSidebar({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />
 
       {/* Drawer */}
       <div className="fixed left-0 top-0 bottom-0 w-64 bg-bags-dark border-r-4 border-bags-green z-50 lg:hidden">
         <div className="flex items-center justify-between p-3 border-b-2 border-bags-green/50">
-          <span className="font-pixel text-[10px] text-bags-green">
-            NAVIGATION
-          </span>
+          <span className="font-pixel text-[10px] text-bags-green">NAVIGATION</span>
           <button
             onClick={onClose}
             className="font-pixel text-sm p-2 text-gray-400 hover:text-white"

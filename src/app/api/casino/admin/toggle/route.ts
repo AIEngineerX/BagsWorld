@@ -52,27 +52,18 @@ export async function POST(request: NextRequest) {
     if (action === "pause") {
       const result = await pauseCasinoRaffle();
       if (!result.success) {
-        return NextResponse.json(
-          { success: false, error: result.error },
-          { status: 400 }
-        );
+        return NextResponse.json({ success: false, error: result.error }, { status: 400 });
       }
       return NextResponse.json({ success: true, status: "paused" });
     } else {
       const result = await resumeCasinoRaffle();
       if (!result.success) {
-        return NextResponse.json(
-          { success: false, error: result.error },
-          { status: 400 }
-        );
+        return NextResponse.json({ success: false, error: result.error }, { status: 400 });
       }
       return NextResponse.json({ success: true, status: "active" });
     }
   } catch (error) {
     console.error("Error toggling raffle:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }

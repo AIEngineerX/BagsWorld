@@ -41,10 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Verify wallet is admin for all actions
     if (!walletAddress || !isAdmin(walletAddress)) {
-      return NextResponse.json(
-        { error: "Unauthorized - admin wallet required" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized - admin wallet required" }, { status: 401 });
     }
 
     switch (action) {
@@ -61,10 +58,7 @@ export async function POST(request: NextRequest) {
         }
         return handleTrigger();
       default:
-        return NextResponse.json(
-          { error: "Unknown action" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
   } catch (error) {
     console.error("[Admin Agent API] Error:", error);
@@ -117,10 +111,7 @@ async function handleStatus(): Promise<NextResponse> {
 
 async function handleTrigger(): Promise<NextResponse> {
   if (!isAgentWalletConfigured()) {
-    return NextResponse.json(
-      { error: "Agent wallet not configured" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Agent wallet not configured" }, { status: 400 });
   }
 
   const result = await triggerDistribution();

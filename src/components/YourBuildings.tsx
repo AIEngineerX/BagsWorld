@@ -34,9 +34,9 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
       try {
         const globalTokens = await fetchGlobalTokens();
         // Merge: local tokens first, then global (deduplicated by mint)
-        const seenMints = new Set(stored.map(t => t.mint));
+        const seenMints = new Set(stored.map((t) => t.mint));
         const allTokens = [...stored];
-        globalTokens.forEach(gt => {
+        globalTokens.forEach((gt) => {
           if (!seenMints.has(gt.mint)) {
             allTokens.push(gt);
           }
@@ -83,9 +83,7 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
     return (
       <div className="p-4 text-center">
         <div className="text-2xl mb-2">📋</div>
-        <p className="font-pixel text-[10px] text-gray-400 mb-2">
-          No buildings yet!
-        </p>
+        <p className="font-pixel text-[10px] text-gray-400 mb-2">No buildings yet!</p>
         <p className="font-pixel text-[8px] text-gray-500">
           Launch a token to build your first structure
         </p>
@@ -101,16 +99,10 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
       >
         <div className="flex items-center gap-2">
           <span className="text-sm">🏢</span>
-          <span className="font-pixel text-[10px] text-bags-green">
-            YOUR BUILDINGS
-          </span>
-          <span className="font-pixel text-[8px] text-gray-500">
-            ({tokens.length})
-          </span>
+          <span className="font-pixel text-[10px] text-bags-green">YOUR BUILDINGS</span>
+          <span className="font-pixel text-[8px] text-gray-500">({tokens.length})</span>
         </div>
-        <span className="font-pixel text-[10px] text-gray-500">
-          {isExpanded ? "▼" : "▶"}
-        </span>
+        <span className="font-pixel text-[10px] text-gray-500">{isExpanded ? "▼" : "▶"}</span>
       </div>
 
       {isExpanded && (
@@ -131,13 +123,7 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
                     />
                   ) : (
                     <span className="text-lg">
-                      {index === 0
-                        ? "🏦"
-                        : index === 1
-                          ? "🏢"
-                          : index === 2
-                            ? "🏠"
-                            : "🏚️"}
+                      {index === 0 ? "🏦" : index === 1 ? "🏢" : index === 2 ? "🏠" : "🏚️"}
                     </span>
                   )}
                 </div>
@@ -145,16 +131,12 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
                 {/* Token Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-pixel text-[10px] text-bags-gold">
-                      ${token.symbol}
-                    </span>
+                    <span className="font-pixel text-[10px] text-bags-gold">${token.symbol}</span>
                     <span className="font-pixel text-[8px] text-gray-500">
                       {formatAge(token.createdAt)}
                     </span>
                   </div>
-                  <p className="font-pixel text-[8px] text-gray-400 truncate">
-                    {token.name}
-                  </p>
+                  <p className="font-pixel text-[8px] text-gray-400 truncate">{token.name}</p>
                   {token.lifetimeFees && token.lifetimeFees > 0 ? (
                     <p className="font-pixel text-[8px] text-bags-green mt-1">
                       +{token.lifetimeFees.toFixed(2)} SOL fees

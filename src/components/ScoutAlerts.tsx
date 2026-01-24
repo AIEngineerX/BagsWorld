@@ -52,9 +52,7 @@ export function ScoutAlerts({ onTokenClick, maxVisible = 3 }: ScoutAlertsProps) 
                 <span className="text-green-400 text-xs font-bold uppercase">
                   {launch.platform === "bags" ? "BAGS" : "NEW"}
                 </span>
-                <span className="text-white font-medium truncate">
-                  {launch.name}
-                </span>
+                <span className="text-white font-medium truncate">{launch.name}</span>
                 <span className="text-gray-400 text-sm">${launch.symbol}</span>
               </div>
 
@@ -64,7 +62,8 @@ export function ScoutAlerts({ onTokenClick, maxVisible = 3 }: ScoutAlertsProps) 
 
               {launch.liquidity > 0 && (
                 <div className="text-gray-500 text-xs mt-1">
-                  Liq: {(launch.liquidity * 200).toLocaleString("en-US", {
+                  Liq:{" "}
+                  {(launch.liquidity * 200).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
                     maximumFractionDigits: 0,
@@ -77,12 +76,7 @@ export function ScoutAlerts({ onTokenClick, maxVisible = 3 }: ScoutAlertsProps) 
               onClick={() => dismissToast(launch.mint)}
               className="text-gray-500 hover:text-white transition-colors"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -149,8 +143,8 @@ export function ScoutStatus() {
           scoutState.isConnected
             ? "bg-green-500 animate-pulse"
             : scoutState.isRunning
-            ? "bg-yellow-500"
-            : "bg-gray-500"
+              ? "bg-yellow-500"
+              : "bg-gray-500"
         }`}
       />
       <span className="text-gray-400">

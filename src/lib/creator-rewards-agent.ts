@@ -20,11 +20,7 @@ import {
 } from "@solana/web3.js";
 import { ECOSYSTEM_CONFIG } from "./config";
 import type { ClaimablePosition } from "./types";
-import {
-  getRewardsState,
-  saveRewardsState,
-  isNeonConfigured,
-} from "./neon";
+import { getRewardsState, saveRewardsState, isNeonConfigured } from "./neon";
 
 // Agent configuration
 export interface CreatorRewardsConfig {
@@ -155,7 +151,10 @@ async function loadPersistedState(): Promise<void> {
         cycleStartTime: new Date(agentState.cycleStartTime).toISOString(),
         totalDistributed: `${agentState.totalDistributed.toFixed(4)} SOL`,
         distributionCount: agentState.distributionCount,
-        daysSinceCycleStart: ((Date.now() - agentState.cycleStartTime) / (24 * 60 * 60 * 1000)).toFixed(2),
+        daysSinceCycleStart: (
+          (Date.now() - agentState.cycleStartTime) /
+          (24 * 60 * 60 * 1000)
+        ).toFixed(2),
       });
     }
   } catch (error) {
@@ -182,7 +181,9 @@ async function persistState(): Promise<void> {
 }
 
 // Initialize the agent
-export async function initCreatorRewardsAgent(config?: Partial<CreatorRewardsConfig>): Promise<boolean> {
+export async function initCreatorRewardsAgent(
+  config?: Partial<CreatorRewardsConfig>
+): Promise<boolean> {
   if (!isAgentWalletConfigured()) {
     console.warn("[Creator Rewards] Wallet not configured");
     return false;
@@ -328,7 +329,9 @@ async function sendRewardToCreator(
 
     const signature = await sendAndConfirmTransaction(connection, transaction, [wallet]);
 
-    console.log(`[Creator Rewards] Sent ${amountSol.toFixed(4)} SOL to ${recipientWallet}: ${signature}`);
+    console.log(
+      `[Creator Rewards] Sent ${amountSol.toFixed(4)} SOL to ${recipientWallet}: ${signature}`
+    );
 
     return { success: true, signature };
   } catch (error: any) {
@@ -373,10 +376,7 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
     }
 
     // Calculate total claimable
-    const totalClaimable = positions.reduce(
-      (sum, p) => sum + p.claimableDisplayAmount,
-      0
-    );
+    const totalClaimable = positions.reduce((sum, p) => sum + p.claimableDisplayAmount, 0);
     agentState.pendingPoolSol = totalClaimable;
 
     // Get top creators for display
@@ -385,15 +385,16 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
 
     console.log(
       `[Creator Rewards] Pool: ${totalClaimable.toFixed(4)} SOL | ` +
-      `Threshold: ${agentConfig.thresholdSol} SOL | ` +
-      `Days since cycle start: ${((Date.now() - agentState.cycleStartTime) / (24 * 60 * 60 * 1000)).toFixed(1)}`
+        `Threshold: ${agentConfig.thresholdSol} SOL | ` +
+        `Days since cycle start: ${((Date.now() - agentState.cycleStartTime) / (24 * 60 * 60 * 1000)).toFixed(1)}`
     );
 
     // Check if we should distribute
     const timeSinceCycleStart = Date.now() - agentState.cycleStartTime;
     const thresholdMet = totalClaimable >= agentConfig.thresholdSol;
-    const timerExpired = timeSinceCycleStart >= agentConfig.backupTimerMs &&
-                         totalClaimable >= agentConfig.minimumDistributionSol;
+    const timerExpired =
+      timeSinceCycleStart >= agentConfig.backupTimerMs &&
+      totalClaimable >= agentConfig.minimumDistributionSol;
 
     if (!thresholdMet && !timerExpired) {
       console.log("[Creator Rewards] Neither threshold nor timer conditions met - waiting");
@@ -404,7 +405,7 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
     result.trigger = thresholdMet ? "threshold" : "timer";
     console.log(
       `[Creator Rewards] DISTRIBUTION TRIGGERED (${result.trigger}) - ` +
-      `${totalClaimable.toFixed(4)} SOL to distribute`
+        `${totalClaimable.toFixed(4)} SOL to distribute`
     );
 
     // Claim all positions
@@ -441,8 +442,8 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
 
     console.log(
       `[Creator Rewards] Claimed: ${claimedAmount.toFixed(4)} SOL | ` +
-      `Reserve: ${reserveAmount.toFixed(4)} SOL | ` +
-      `Distributable: ${distributableAmount.toFixed(4)} SOL`
+        `Reserve: ${reserveAmount.toFixed(4)} SOL | ` +
+        `Distributable: ${distributableAmount.toFixed(4)} SOL`
     );
 
     if (topCreators.length === 0) {
@@ -467,7 +468,7 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
 
       console.log(
         `[Creator Rewards] Sending ${rewardAmount.toFixed(4)} SOL (${percentage}%) to ` +
-        `${creator.tokenSymbol} creator (rank #${creator.rank}): ${creator.wallet}`
+          `${creator.tokenSymbol} creator (rank #${creator.rank}): ${creator.wallet}`
       );
 
       const transferResult = await sendRewardToCreator(creator.wallet, rewardAmount);
@@ -521,7 +522,7 @@ export async function runRewardsCheck(): Promise<DistributionResult> {
     result.success = true;
     console.log(
       `[Creator Rewards] Distribution complete: ${result.totalDistributed.toFixed(4)} SOL ` +
-      `to ${result.recipients.filter((r) => !r.error).length} creators`
+        `to ${result.recipients.filter((r) => !r.error).length} creators`
     );
 
     // Emit distribution event to Agent Coordinator
@@ -562,7 +563,9 @@ export function getCreatorRewardsState(): CreatorRewardsState & { config: Creato
 }
 
 // Update configuration
-export async function updateCreatorRewardsConfig(config: Partial<CreatorRewardsConfig>): Promise<CreatorRewardsConfig> {
+export async function updateCreatorRewardsConfig(
+  config: Partial<CreatorRewardsConfig>
+): Promise<CreatorRewardsConfig> {
   agentConfig = { ...agentConfig, ...config };
 
   // Restart interval if running and interval changed
@@ -606,7 +609,7 @@ export function getTimeUntilDistribution(): {
       agentState.pendingPoolSol >= agentConfig.thresholdSol
         ? "threshold"
         : timeRemaining <= 0 && agentState.pendingPoolSol >= agentConfig.minimumDistributionSol
-        ? "timer"
-        : "unknown",
+          ? "timer"
+          : "unknown",
   };
 }

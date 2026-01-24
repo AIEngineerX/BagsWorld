@@ -22,27 +22,32 @@ const BAGS_TOPICS = [
   {
     title: "Launch Tokens",
     icon: "🚀",
-    content: "Launch your own memecoin in seconds! No code required. Just pick a name, upload an image, and you're live. Your token becomes a building in BagsWorld that grows with market cap."
+    content:
+      "Launch your own memecoin in seconds! No code required. Just pick a name, upload an image, and you're live. Your token becomes a building in BagsWorld that grows with market cap.",
   },
   {
     title: "Earn Forever",
     icon: "💰",
-    content: "Creators earn 1% of ALL trading volume on their tokens - forever. Set your fee shares at launch and they're locked permanently. No rugs, no changes, just consistent earnings."
+    content:
+      "Creators earn 1% of ALL trading volume on their tokens - forever. Set your fee shares at launch and they're locked permanently. No rugs, no changes, just consistent earnings.",
   },
   {
     title: "Fee Sharing",
     icon: "🤝",
-    content: "Split your fees with anyone! Add your community members, collaborators, or influencers as fee share recipients. They earn every time someone trades your token."
+    content:
+      "Split your fees with anyone! Add your community members, collaborators, or influencers as fee share recipients. They earn every time someone trades your token.",
   },
   {
     title: "Building Levels",
     icon: "🏗️",
-    content: "Your building evolves based on market cap:\n• Level 1: Under $100K (Shop)\n• Level 2: $100K-$500K (Office)\n• Level 3: $500K-$2M (HQ)\n• Level 4: $2M-$10M (Tower)\n• Level 5: $10M+ (Skyscraper)"
+    content:
+      "Your building evolves based on market cap:\n• Level 1: Under $100K (Shop)\n• Level 2: $100K-$500K (Office)\n• Level 3: $500K-$2M (HQ)\n• Level 4: $2M-$10M (Tower)\n• Level 5: $10M+ (Skyscraper)",
   },
   {
     title: "Why Bags.fm?",
     icon: "💎",
-    content: "Over $1B in volume in under 30 days. Fastest growing launchpad in crypto. Fair launches, permanent fees, and a community that actually builds. This is where culture meets capital."
+    content:
+      "Over $1B in volume in under 30 days. Fastest growing launchpad in crypto. Fair launches, permanent fees, and a community that actually builds. This is where culture meets capital.",
   },
 ];
 
@@ -117,13 +122,13 @@ export function FinnbagsChat() {
     };
 
     if (isDragging) {
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp);
-      window.addEventListener('pointercancel', handlePointerUp);
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
       return () => {
-        window.removeEventListener('pointermove', handlePointerMove);
-        window.removeEventListener('pointerup', handlePointerUp);
-        window.removeEventListener('pointercancel', handlePointerUp);
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+        window.removeEventListener("pointercancel", handlePointerUp);
       };
     }
   }, [isDragging, dragOffset]);
@@ -132,7 +137,7 @@ export function FinnbagsChat() {
     setMessages((prev) => [...prev.slice(-30), message]);
   };
 
-  const handleTopicClick = (topic: typeof BAGS_TOPICS[0]) => {
+  const handleTopicClick = (topic: (typeof BAGS_TOPICS)[0]) => {
     addMessage({
       id: `${Date.now()}-info`,
       type: "info",
@@ -186,7 +191,8 @@ export function FinnbagsChat() {
       addMessage({
         id: `${Date.now()}-finn`,
         type: "finn",
-        message: data.response || data.message || "This is why we built Bags. What else you want to know?",
+        message:
+          data.response || data.message || "This is why we built Bags. What else you want to know?",
         timestamp: Date.now(),
       });
     } catch (error) {
@@ -208,9 +214,10 @@ export function FinnbagsChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.x >= 0 && position.y >= 0
-    ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
-    : { right: 350, bottom: 80 };
+  const chatStyle: React.CSSProperties =
+    position.x >= 0 && position.y >= 0
+      ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
+      : { right: 350, bottom: 80 };
 
   if (!isOpen) {
     return null; // Hidden until Finn is clicked
@@ -220,7 +227,7 @@ export function FinnbagsChat() {
     <div
       ref={chatRef}
       style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-emerald-500 shadow-lg ${isDragging ? 'cursor-grabbing' : ''}`}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-emerald-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
     >
       {/* Header - Draggable */}
       <div
@@ -230,12 +237,8 @@ export function FinnbagsChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">💼</span>
           <div>
-            <p className="font-pixel text-[10px] text-emerald-400">
-              FINN // FOUNDER
-            </p>
-            <p className="font-pixel text-[8px] text-emerald-600">
-              powered by sonnet 4
-            </p>
+            <p className="font-pixel text-[10px] text-emerald-400">FINN // FOUNDER</p>
+            <p className="font-pixel text-[8px] text-emerald-600">powered by sonnet 4</p>
           </div>
         </div>
         <button
@@ -266,9 +269,7 @@ export function FinnbagsChat() {
       <div className="h-36 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-4">
-            <p className="font-pixel text-[10px] text-emerald-400 mb-1">
-              💼 Hey, I&apos;m Finn!
-            </p>
+            <p className="font-pixel text-[10px] text-emerald-400 mb-1">💼 Hey, I&apos;m Finn!</p>
             <p className="font-pixel text-[8px] text-gray-400">
               Founder of Bags.fm. Let me show you around.
             </p>
@@ -284,10 +285,10 @@ export function FinnbagsChat() {
                 msg.type === "finn"
                   ? "bg-emerald-500/10 border-emerald-500"
                   : msg.type === "user"
-                  ? "bg-bags-green/10 border-bags-green ml-4"
-                  : msg.type === "info"
-                  ? "bg-blue-500/10 border-blue-500"
-                  : "bg-yellow-500/10 border-yellow-500"
+                    ? "bg-bags-green/10 border-bags-green ml-4"
+                    : msg.type === "info"
+                      ? "bg-blue-500/10 border-blue-500"
+                      : "bg-yellow-500/10 border-yellow-500"
               }`}
             >
               {msg.type === "finn" && (
@@ -299,9 +300,7 @@ export function FinnbagsChat() {
               {msg.type === "info" && (
                 <p className="font-pixel text-[6px] text-blue-400 mb-1">📖 Info:</p>
               )}
-              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">
-                {msg.message}
-              </p>
+              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
             </div>
           ))
         )}

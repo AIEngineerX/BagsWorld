@@ -1,10 +1,10 @@
 // Multi-Agent Dialogue API Route
 // Triggers conversations between BagsWorld AI agents
 
-import { NextResponse } from 'next/server';
-import { getCharacter, type Character } from '@/lib/characters';
+import { NextResponse } from "next/server";
+import { getCharacter, type Character } from "@/lib/characters";
 
-const AVAILABLE_AGENTS = ['neo', 'cj', 'finn', 'bags-bot', 'toly', 'ash', 'shaw', 'ghost'] as const;
+const AVAILABLE_AGENTS = ["neo", "cj", "finn", "bags-bot", "toly", "ash", "shaw", "ghost"] as const;
 
 interface DialogueTurn {
   speaker: string;
@@ -23,21 +23,26 @@ function buildDialogueSystemPrompt(
 
 Your task is to generate a natural, in-character conversation about: "${topic}"
 
-The conversation should be ${style === 'casual' ? 'casual and friendly' :
-    style === 'formal' ? 'professional and informative' :
-    style === 'debate' ? 'a respectful debate with different viewpoints' :
-    'collaborative and solution-oriented'}.
+The conversation should be ${
+    style === "casual"
+      ? "casual and friendly"
+      : style === "formal"
+        ? "professional and informative"
+        : style === "debate"
+          ? "a respectful debate with different viewpoints"
+          : "collaborative and solution-oriented"
+  }.
 
 CHARACTER PROFILES:
 `;
 
   for (const char of characters) {
     if (!char) continue;
-    const bio = Array.isArray(char.bio) ? char.bio : [char.bio || ''];
+    const bio = Array.isArray(char.bio) ? char.bio : [char.bio || ""];
     const styleAll = char.style?.all || [];
     prompt += `\n**${char.name}**:\n`;
-    prompt += `- Bio: ${bio.slice(0, 2).join('. ')}\n`;
-    prompt += `- Style: ${styleAll.slice(0, 2).join(', ')}\n`;
+    prompt += `- Bio: ${bio.slice(0, 2).join(". ")}\n`;
+    prompt += `- Style: ${styleAll.slice(0, 2).join(", ")}\n`;
   }
 
   prompt += `
@@ -65,7 +70,7 @@ Example:
 // Parse dialogue response
 function parseDialogueResponse(text: string, participants: string[]): DialogueTurn[] {
   const turns: DialogueTurn[] = [];
-  const lines = text.split('\n').filter(line => line.trim());
+  const lines = text.split("\n").filter((line) => line.trim());
 
   for (const line of lines) {
     const match = line.match(/^\[?(\w+)\]?:\s*(.+)$/);
@@ -73,9 +78,7 @@ function parseDialogueResponse(text: string, participants: string[]): DialogueTu
       const speaker = match[1];
       const message = match[2].trim();
 
-      const validSpeaker = participants.find(
-        p => p.toLowerCase() === speaker.toLowerCase()
-      );
+      const validSpeaker = participants.find((p) => p.toLowerCase() === speaker.toLowerCase());
 
       if (validSpeaker) {
         const character = getCharacter(validSpeaker);
@@ -102,16 +105,19 @@ async function generateDialogue(
   style: string,
   context?: string
 ): Promise<{ turns: DialogueTurn[]; sentiment: string }> {
-  const characters = participants.map(p => getCharacter(p));
+  const characters = participants.map((p) => getCharacter(p));
   const systemPrompt = buildDialogueSystemPrompt(characters, topic, style);
 
-  const initiatorChar = characters.find(c => c?.name.toLowerCase() === initiator.toLowerCase());
+  const initiatorChar = characters.find((c) => c?.name.toLowerCase() === initiator.toLowerCase());
   const initiatorName = initiatorChar?.name || initiator;
 
   let userPrompt = `Generate a ${maxTurns}-turn conversation about "${topic}".
 
 The conversation starts with ${initiatorName} initiating.
-Participants: ${characters.map(c => c?.name).filter(Boolean).join(', ')}
+Participants: ${characters
+    .map((c) => c?.name)
+    .filter(Boolean)
+    .join(", ")}
 `;
 
   if (context) {
@@ -120,18 +126,18 @@ Participants: ${characters.map(c => c?.name).filter(Boolean).join(', ')}
 
   userPrompt += `\nGenerate the dialogue now:`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022',
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 2000,
       system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [{ role: "user", content: userPrompt }],
     }),
   });
 
@@ -143,27 +149,40 @@ Participants: ${characters.map(c => c?.name).filter(Boolean).join(', ')}
   const data = await response.json();
   const content = data.content?.[0];
 
-  if (content?.type !== 'text') {
-    throw new Error('Unexpected response format');
+  if (content?.type !== "text") {
+    throw new Error("Unexpected response format");
   }
 
   const turns = parseDialogueResponse(content.text, participants);
 
   // Determine sentiment
-  const positiveWords = ['great', 'good', 'excellent', 'love', 'amazing', 'bullish', 'pumping', 'wagmi'];
-  const negativeWords = ['bad', 'terrible', 'hate', 'bearish', 'dumping', 'ngmi', 'rug'];
+  const positiveWords = [
+    "great",
+    "good",
+    "excellent",
+    "love",
+    "amazing",
+    "bullish",
+    "pumping",
+    "wagmi",
+  ];
+  const negativeWords = ["bad", "terrible", "hate", "bearish", "dumping", "ngmi", "rug"];
 
   let positiveCount = 0;
   let negativeCount = 0;
 
   for (const turn of turns) {
     const lower = turn.message.toLowerCase();
-    positiveCount += positiveWords.filter(w => lower.includes(w)).length;
-    negativeCount += negativeWords.filter(w => lower.includes(w)).length;
+    positiveCount += positiveWords.filter((w) => lower.includes(w)).length;
+    negativeCount += negativeWords.filter((w) => lower.includes(w)).length;
   }
 
-  const sentiment = positiveCount > negativeCount ? 'positive' :
-                    negativeCount > positiveCount ? 'negative' : 'neutral';
+  const sentiment =
+    positiveCount > negativeCount
+      ? "positive"
+      : negativeCount > positiveCount
+        ? "negative"
+        : "neutral";
 
   return { turns, sentiment };
 }
@@ -172,20 +191,10 @@ Participants: ${characters.map(c => c?.name).filter(Boolean).join(', ')}
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      topic,
-      participants,
-      initiator,
-      maxTurns = 6,
-      style = 'casual',
-      context,
-    } = body;
+    const { topic, participants, initiator, maxTurns = 6, style = "casual", context } = body;
 
     if (!topic) {
-      return NextResponse.json(
-        { error: 'topic is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "topic is required" }, { status: 400 });
     }
 
     // Default to 2 random agents if none specified
@@ -199,7 +208,9 @@ export async function POST(request: Request) {
     for (const participant of dialogueParticipants) {
       if (!getCharacter(participant)) {
         return NextResponse.json(
-          { error: `Unknown participant: ${participant}. Available: ${AVAILABLE_AGENTS.join(', ')}` },
+          {
+            error: `Unknown participant: ${participant}. Available: ${AVAILABLE_AGENTS.join(", ")}`,
+          },
           { status: 400 }
         );
       }
@@ -215,7 +226,7 @@ export async function POST(request: Request) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'AI service not configured. Please set ANTHROPIC_API_KEY.' },
+        { error: "AI service not configured. Please set ANTHROPIC_API_KEY." },
         { status: 503 }
       );
     }
@@ -246,55 +257,60 @@ export async function POST(request: Request) {
         style,
       },
     });
-
   } catch (error) {
-    console.error('[Dialogue API] Error:', error);
+    console.error("[Dialogue API] Error:", error);
 
     if (error instanceof Error) {
-      if (error.message.includes('Claude API')) {
-        return NextResponse.json(
-          { error: 'AI service error. Please try again.' },
-          { status: 503 }
-        );
+      if (error.message.includes("Claude API")) {
+        return NextResponse.json({ error: "AI service error. Please try again." }, { status: 503 });
       }
     }
 
-    return NextResponse.json(
-      { error: 'Failed to generate dialogue' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate dialogue" }, { status: 500 });
   }
 }
 
 // Agent expertise mapping
 const AGENT_EXPERTISE: Record<string, string[]> = {
-  'neo': ['alpha', 'scanning', 'patterns'],
-  'cj': ['community', 'vibes', 'culture'],
-  'finn': ['launches', 'bags.fm', 'creators'],
-  'bags-bot': ['market data', 'trading', 'metrics'],
-  'toly': ['solana', 'blockchain', 'PoH'],
-  'ash': ['evolution', 'growth', 'exploration'],
-  'shaw': ['elizaos', 'agents', 'multi-agent'],
-  'ghost': ['rewards', 'fees', 'distribution'],
+  neo: ["alpha", "scanning", "patterns"],
+  cj: ["community", "vibes", "culture"],
+  finn: ["launches", "bags.fm", "creators"],
+  "bags-bot": ["market data", "trading", "metrics"],
+  toly: ["solana", "blockchain", "PoH"],
+  ash: ["evolution", "growth", "exploration"],
+  shaw: ["elizaos", "agents", "multi-agent"],
+  ghost: ["rewards", "fees", "distribution"],
 };
 
 const SUGGESTED_TOPICS = [
-  { topic: 'Creator rewards on Solana', participants: ['finn', 'ghost', 'toly'], style: 'collaborative' },
-  { topic: 'Is this token going to pump?', participants: ['neo', 'cj', 'bags-bot'], style: 'debate' },
-  { topic: 'Building the AI agent ecosystem', participants: ['shaw', 'toly', 'finn'], style: 'casual' },
-  { topic: 'Evolving your token', participants: ['ash', 'finn', 'ghost'], style: 'collaborative' },
-  { topic: 'Early alpha on launches', participants: ['neo', 'finn', 'cj'], style: 'casual' },
+  {
+    topic: "Creator rewards on Solana",
+    participants: ["finn", "ghost", "toly"],
+    style: "collaborative",
+  },
+  {
+    topic: "Is this token going to pump?",
+    participants: ["neo", "cj", "bags-bot"],
+    style: "debate",
+  },
+  {
+    topic: "Building the AI agent ecosystem",
+    participants: ["shaw", "toly", "finn"],
+    style: "casual",
+  },
+  { topic: "Evolving your token", participants: ["ash", "finn", "ghost"], style: "collaborative" },
+  { topic: "Early alpha on launches", participants: ["neo", "finn", "cj"], style: "casual" },
 ];
 
 // GET handler - list available dialogue topics and agents
 export async function GET() {
-  const agents = AVAILABLE_AGENTS.map(id => {
+  const agents = AVAILABLE_AGENTS.map((id) => {
     const character = getCharacter(id);
     const bio = character?.bio;
     return {
       id,
       name: character?.name || id,
-      description: Array.isArray(bio) ? bio[0] : 'A BagsWorld AI agent',
+      description: Array.isArray(bio) ? bio[0] : "A BagsWorld AI agent",
       expertise: AGENT_EXPERTISE[id] || [],
     };
   });
@@ -303,7 +319,7 @@ export async function GET() {
     success: true,
     agents,
     suggestedTopics: SUGGESTED_TOPICS,
-    styles: ['casual', 'formal', 'debate', 'collaborative'],
+    styles: ["casual", "formal", "debate", "collaborative"],
     maxTurnsRange: { min: 4, max: 12, default: 6 },
   });
 }

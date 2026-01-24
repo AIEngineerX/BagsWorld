@@ -69,10 +69,7 @@ export async function POST(request: Request) {
 
       case "token-safety":
         if (!data?.mint) {
-          return NextResponse.json(
-            { error: "Missing required field: mint" },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: "Missing required field: mint" }, { status: 400 });
         }
         return handleTokenSafety(data.mint);
 
@@ -105,10 +102,7 @@ export async function GET(request: Request) {
       return handleNewPairs(limit);
     case "token-safety":
       if (!mint) {
-        return NextResponse.json(
-          { error: "Missing required param: mint" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Missing required param: mint" }, { status: 400 });
       }
       return handleTokenSafety(mint);
     default:
@@ -116,10 +110,7 @@ export async function GET(request: Request) {
   }
 }
 
-async function handleTrending(
-  limit: number = 10,
-  offset: number = 0
-): Promise<NextResponse> {
+async function handleTrending(limit: number = 10, offset: number = 0): Promise<NextResponse> {
   try {
     // Fetch from global tokens API to get world buildings data
     const response = await fetch(
@@ -202,8 +193,8 @@ async function handleNewPairs(limit: number = 10): Promise<NextResponse> {
     // Sort by creation time (newest first) and add safety scores
     const pairs: NewPair[] = await Promise.all(
       data.tokens
-        .sort((a: any, b: any) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        .sort(
+          (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )
         .slice(0, limit)
         .map(async (token: any) => {
@@ -259,9 +250,7 @@ async function handleTokenSafety(mint: string): Promise<NextResponse> {
   }
 }
 
-async function handleQuickQuote(
-  data?: TerminalRequestBody["data"]
-): Promise<NextResponse> {
+async function handleQuickQuote(data?: TerminalRequestBody["data"]): Promise<NextResponse> {
   if (!data?.outputMint || !data?.amountSol) {
     return NextResponse.json(
       { error: "Missing required fields: outputMint, amountSol" },
@@ -452,7 +441,9 @@ async function getDetailedSafetyCheck(mint: string): Promise<TokenSafety> {
         top10HolderPercent = Number((top10Sum * BigInt(10000)) / totalSupply) / 100;
 
         if (top10HolderPercent > 80) {
-          warnings.push(`Top 10 holders own ${top10HolderPercent.toFixed(1)}% - high concentration`);
+          warnings.push(
+            `Top 10 holders own ${top10HolderPercent.toFixed(1)}% - high concentration`
+          );
           score -= 20;
         } else if (top10HolderPercent > 50) {
           warnings.push(`Top 10 holders own ${top10HolderPercent.toFixed(1)}%`);

@@ -46,7 +46,8 @@ export function isNeonConfigured(): boolean {
 // Get which connection method is being used
 export function getNeonConnectionType(): "netlify" | "direct" | "none" {
   if (process.env.NETLIFY_DATABASE_URL) return "netlify";
-  if (process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL) return "direct";
+  if (process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL)
+    return "direct";
   return "none";
 }
 
@@ -82,7 +83,8 @@ async function getSql(): Promise<SqlFunction | null> {
   }
 
   // Fall back to direct Neon connection with DATABASE_URL (check multiple env var names)
-  const directUrl = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL;
+  const directUrl =
+    process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL;
   if (directUrl) {
     console.log("[Neon] Using direct connection URL");
     try {
@@ -94,7 +96,9 @@ async function getSql(): Promise<SqlFunction | null> {
     }
   }
 
-  console.log("[Neon] No database configured (set DATABASE_URL, NEON_DATABASE_URL, or POSTGRES_URL)");
+  console.log(
+    "[Neon] No database configured (set DATABASE_URL, NEON_DATABASE_URL, or POSTGRES_URL)"
+  );
   return null;
 }
 
@@ -136,7 +140,7 @@ export async function initializeDatabase(): Promise<boolean> {
 
     // Verify table exists and check row count
     const countResult = await sql`SELECT COUNT(*) as count FROM tokens`;
-    const count = (countResult as Array<{ count: string }>)[0]?.count || '0';
+    const count = (countResult as Array<{ count: string }>)[0]?.count || "0";
     console.log(`[Neon] Database initialized. Token count: ${count}`);
 
     return true;
@@ -166,7 +170,9 @@ export async function getGlobalTokens(): Promise<GlobalToken[]> {
     // Log first token for debugging (if any)
     if (tokenCount > 0) {
       const firstToken = (rows as GlobalToken[])[0];
-      console.log(`[Neon] First token: ${firstToken.symbol} (${firstToken.mint?.slice(0, 8)}...) by ${firstToken.creator_wallet?.slice(0, 8)}...`);
+      console.log(
+        `[Neon] First token: ${firstToken.symbol} (${firstToken.mint?.slice(0, 8)}...) by ${firstToken.creator_wallet?.slice(0, 8)}...`
+      );
     }
 
     return rows as GlobalToken[];
@@ -189,7 +195,7 @@ export async function saveGlobalToken(token: GlobalToken): Promise<boolean> {
     await initializeDatabase();
 
     // Prepare fee_shares as JSON string for JSONB column
-    const feeSharesJson = token.fee_shares ? JSON.stringify(token.fee_shares) : '[]';
+    const feeSharesJson = token.fee_shares ? JSON.stringify(token.fee_shares) : "[]";
 
     console.log(`[Neon] Saving token: ${token.mint} (${token.symbol}) by ${token.creator_wallet}`);
 
@@ -373,7 +379,8 @@ export async function getRewardsState(): Promise<RewardsStateRecord | null> {
       total_distributed: safeParseFloat(row.total_distributed as string, 0),
       distribution_count: safeParseInt(row.distribution_count as string, 0),
       last_distribution: safeParseInt(row.last_distribution as string, 0),
-      recent_distributions: (row.recent_distributions as RewardsStateRecord["recent_distributions"]) || [],
+      recent_distributions:
+        (row.recent_distributions as RewardsStateRecord["recent_distributions"]) || [],
       updated_at: row.updated_at as string,
     };
   } catch (error) {
@@ -383,7 +390,9 @@ export async function getRewardsState(): Promise<RewardsStateRecord | null> {
 }
 
 // Save rewards state
-export async function saveRewardsState(state: Omit<RewardsStateRecord, "id" | "updated_at">): Promise<boolean> {
+export async function saveRewardsState(
+  state: Omit<RewardsStateRecord, "id" | "updated_at">
+): Promise<boolean> {
   const sql = await getSql();
   if (!sql) return false;
 
@@ -631,12 +640,14 @@ export async function drawRaffleWinner(): Promise<{
       return { success: false, error: "No active raffle found" };
     }
 
-    const raffle = (raffleResult as Array<{
-      id: number;
-      pot_lamports: string;
-      entries: string[] | null;
-      entry_count: string;
-    }>)[0];
+    const raffle = (
+      raffleResult as Array<{
+        id: number;
+        pot_lamports: string;
+        entries: string[] | null;
+        entry_count: string;
+      }>
+    )[0];
 
     const entries = raffle.entries || [];
     const entryCount = safeParseInt(raffle.entry_count, 0);
@@ -771,7 +782,9 @@ interface CasinoHistoryEntry {
 }
 
 // Get active raffle status (or most recent completed if no active)
-export async function getCasinoRaffle(includeCompleted: boolean = false): Promise<CasinoRaffle | null> {
+export async function getCasinoRaffle(
+  includeCompleted: boolean = false
+): Promise<CasinoRaffle | null> {
   const sql = await getSql();
   if (!sql) return null;
 
@@ -898,7 +911,9 @@ export async function enterCasinoRaffle(
 }
 
 // Get entries for a specific raffle (admin)
-export async function getRaffleEntries(raffleId: number): Promise<{ wallet: string; enteredAt: string }[] | null> {
+export async function getRaffleEntries(
+  raffleId: number
+): Promise<{ wallet: string; enteredAt: string }[] | null> {
   const sql = await getSql();
   if (!sql) return null;
 
@@ -910,7 +925,7 @@ export async function getRaffleEntries(raffleId: number): Promise<{ wallet: stri
       ORDER BY created_at DESC
     `;
 
-    return (result as Array<{ wallet: string; created_at: string }>).map(row => ({
+    return (result as Array<{ wallet: string; created_at: string }>).map((row) => ({
       wallet: row.wallet,
       enteredAt: row.created_at,
     }));
@@ -921,17 +936,20 @@ export async function getRaffleEntries(raffleId: number): Promise<{ wallet: stri
 }
 
 // Get raffle history (admin)
-export async function getRaffleHistory(limit: number = 10): Promise<{
-  id: number;
-  status: string;
-  potSol: number;
-  entryCount: number;
-  threshold: number;
-  winnerWallet: string | null;
-  prizeSol: number | null;
-  createdAt: string;
-  drawnAt: string | null;
-}[] | null> {
+export async function getRaffleHistory(limit: number = 10): Promise<
+  | {
+      id: number;
+      status: string;
+      potSol: number;
+      entryCount: number;
+      threshold: number;
+      winnerWallet: string | null;
+      prizeSol: number | null;
+      createdAt: string;
+      drawnAt: string | null;
+    }[]
+  | null
+> {
   const sql = await getSql();
   if (!sql) return null;
 
@@ -963,17 +981,19 @@ export async function getRaffleHistory(limit: number = 10): Promise<{
       LIMIT ${limit}
     `;
 
-    return (result as Array<{
-      id: number;
-      status: string;
-      pot_lamports: string;
-      threshold_sol: string;
-      winner_wallet: string | null;
-      prize_sol: string | null;
-      created_at: string;
-      drawn_at: string | null;
-      entry_count: string;
-    }>).map(row => ({
+    return (
+      result as Array<{
+        id: number;
+        status: string;
+        pot_lamports: string;
+        threshold_sol: string;
+        winner_wallet: string | null;
+        prize_sol: string | null;
+        created_at: string;
+        drawn_at: string | null;
+        entry_count: string;
+      }>
+    ).map((row) => ({
       id: row.id,
       status: row.status,
       potSol: safeParseInt(row.pot_lamports, 0) / 1e9,
@@ -1013,7 +1033,9 @@ export async function getCasinoPot(): Promise<number | null> {
 
     if ((result as unknown[]).length === 0) return null;
 
-    return safeParseInt((result as Array<{ balance_lamports: string }>)[0].balance_lamports, 0) / 1e9; // Convert to SOL
+    return (
+      safeParseInt((result as Array<{ balance_lamports: string }>)[0].balance_lamports, 0) / 1e9
+    ); // Convert to SOL
   } catch (error) {
     console.error("Error getting casino pot:", error);
     return null;
@@ -1096,9 +1118,7 @@ export async function getLastWheelSpin(wallet: string): Promise<number | null> {
 }
 
 // Get casino history for a wallet
-export async function getCasinoHistory(
-  wallet: string
-): Promise<CasinoHistoryEntry[] | null> {
+export async function getCasinoHistory(wallet: string): Promise<CasinoHistoryEntry[] | null> {
   const sql = await getSql();
   if (!sql) return null;
 
@@ -1135,7 +1155,13 @@ export async function getCasinoHistory(
     const history: CasinoHistoryEntry[] = [];
 
     // Add wheel spins
-    for (const spin of wheelSpins as Array<{ id: number; result: string; prize_sol: string; is_win: boolean; created_at: string }>) {
+    for (const spin of wheelSpins as Array<{
+      id: number;
+      result: string;
+      prize_sol: string;
+      is_win: boolean;
+      created_at: string;
+    }>) {
       history.push({
         id: `wheel-${spin.id}`,
         type: "wheel",
@@ -1147,16 +1173,18 @@ export async function getCasinoHistory(
     }
 
     // Add raffle entries
-    for (const entry of raffleEntries as Array<{ id: number; status: string; winner_wallet: string; prize_sol: string; created_at: string }>) {
+    for (const entry of raffleEntries as Array<{
+      id: number;
+      status: string;
+      winner_wallet: string;
+      prize_sol: string;
+      created_at: string;
+    }>) {
       const isWinner = entry.winner_wallet === wallet;
       history.push({
         id: `raffle-${entry.id}`,
         type: "raffle",
-        result: entry.status === "completed"
-          ? isWinner
-            ? "WON"
-            : "LOST"
-          : "PENDING",
+        result: entry.status === "completed" ? (isWinner ? "WON" : "LOST") : "PENDING",
         amount: isWinner ? safeParseFloat(entry.prize_sol, 0) : 0,
         timestamp: new Date(entry.created_at).getTime(),
         isWin: isWinner,

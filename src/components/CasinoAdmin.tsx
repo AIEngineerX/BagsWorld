@@ -96,7 +96,9 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
 
     setIsLoadingEntries(true);
     try {
-      const res = await fetch(`/api/casino/admin/entries?wallet=${publicKey.toString()}&raffleId=${raffle.id}`);
+      const res = await fetch(
+        `/api/casino/admin/entries?wallet=${publicKey.toString()}&raffleId=${raffle.id}`
+      );
       const data = await res.json();
       if (data.success) {
         setEntries(data.entries || []);
@@ -141,7 +143,9 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
   }, [activeTab, fetchHistory]);
 
   // Sign message helper
-  const signAdminMessage = async (action: string): Promise<{ signature: string; timestamp: number } | null> => {
+  const signAdminMessage = async (
+    action: string
+  ): Promise<{ signature: string; timestamp: number } | null> => {
     if (!signMessage || !publicKey) {
       setError("Wallet not connected or doesn't support signing");
       return null;
@@ -390,7 +394,11 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
   // Helper to format date
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return (
+      date.toLocaleDateString() +
+      " " +
+      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    );
   };
 
   // Helper to truncate wallet
@@ -478,12 +486,17 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Status:</span>
-                      <span className={
-                        raffle.status === "active" ? "text-green-400" :
-                        raffle.status === "paused" ? "text-yellow-400" :
-                        raffle.status === "completed" ? "text-blue-400" :
-                        "text-purple-400"
-                      }>
+                      <span
+                        className={
+                          raffle.status === "active"
+                            ? "text-green-400"
+                            : raffle.status === "paused"
+                              ? "text-yellow-400"
+                              : raffle.status === "completed"
+                                ? "text-blue-400"
+                                : "text-purple-400"
+                        }
+                      >
                         {raffle.status?.toUpperCase()}
                       </span>
                     </div>
@@ -493,7 +506,9 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Entries:</span>
-                      <span className="text-white">{raffle.entryCount || 0} / {raffle.threshold || 50}</span>
+                      <span className="text-white">
+                        {raffle.entryCount || 0} / {raffle.threshold || 50}
+                      </span>
                     </div>
                     {raffle.winnerWallet && (
                       <div className="flex justify-between">
@@ -540,7 +555,9 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
               {/* Initialize */}
               <div className="bg-gray-900/30 border border-gray-700/30 rounded-lg p-4">
                 <h4 className="font-pixel text-xs text-gray-400 mb-2">1. INITIALIZE TABLES</h4>
-                <p className="text-gray-500 text-xs mb-3">First-time setup only. Creates database tables.</p>
+                <p className="text-gray-500 text-xs mb-3">
+                  First-time setup only. Creates database tables.
+                </p>
                 <button
                   onClick={handleInit}
                   disabled={isLoading}
@@ -596,7 +613,11 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
                 </p>
                 <button
                   onClick={handleDraw}
-                  disabled={isLoading || (raffle?.status !== "active" && raffle?.status !== "paused") || !raffle?.entryCount}
+                  disabled={
+                    isLoading ||
+                    (raffle?.status !== "active" && raffle?.status !== "paused") ||
+                    !raffle?.entryCount
+                  }
                   className="w-full py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded font-pixel text-xs"
                 >
                   {isLoading ? "DRAWING..." : "DRAW WINNER"}
@@ -604,9 +625,10 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
                 {raffle?.status !== "active" && raffle?.status !== "paused" && (
                   <p className="text-gray-500 text-xs mt-2">No active raffle to draw</p>
                 )}
-                {(raffle?.status === "active" || raffle?.status === "paused") && !raffle?.entryCount && (
-                  <p className="text-yellow-400 text-xs mt-2">No entries yet</p>
-                )}
+                {(raffle?.status === "active" || raffle?.status === "paused") &&
+                  !raffle?.entryCount && (
+                    <p className="text-yellow-400 text-xs mt-2">No entries yet</p>
+                  )}
               </div>
 
               {/* Footer note */}
@@ -659,17 +681,32 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
                       </thead>
                       <tbody>
                         {entries.map((entry, idx) => (
-                          <tr key={entry.wallet} className="border-t border-gray-800/50 hover:bg-gray-800/30">
+                          <tr
+                            key={entry.wallet}
+                            className="border-t border-gray-800/50 hover:bg-gray-800/30"
+                          >
                             <td className="p-3 text-gray-500">{idx + 1}</td>
                             <td className="p-3">
-                              <span className="font-mono text-white">{truncateWallet(entry.wallet)}</span>
+                              <span className="font-mono text-white">
+                                {truncateWallet(entry.wallet)}
+                              </span>
                               <button
                                 onClick={() => navigator.clipboard.writeText(entry.wallet)}
                                 className="ml-2 text-gray-500 hover:text-blue-400"
                                 title="Copy full address"
                               >
-                                <svg className="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                <svg
+                                  className="w-3 h-3 inline"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                  />
                                 </svg>
                               </button>
                             </td>
@@ -718,21 +755,29 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
                     <div
                       key={item.id}
                       className={`bg-gray-900/30 border rounded-lg p-4 ${
-                        item.status === "completed" ? "border-green-500/30" :
-                        item.status === "active" ? "border-blue-500/30" :
-                        item.status === "paused" ? "border-yellow-500/30" :
-                        "border-gray-700/30"
+                        item.status === "completed"
+                          ? "border-green-500/30"
+                          : item.status === "active"
+                            ? "border-blue-500/30"
+                            : item.status === "paused"
+                              ? "border-yellow-500/30"
+                              : "border-gray-700/30"
                       }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
                           <span className="font-pixel text-white">#{item.id}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded ${
-                            item.status === "completed" ? "bg-green-500/20 text-green-400" :
-                            item.status === "active" ? "bg-blue-500/20 text-blue-400" :
-                            item.status === "paused" ? "bg-yellow-500/20 text-yellow-400" :
-                            "bg-gray-500/20 text-gray-400"
-                          }`}>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded ${
+                              item.status === "completed"
+                                ? "bg-green-500/20 text-green-400"
+                                : item.status === "active"
+                                  ? "bg-blue-500/20 text-blue-400"
+                                  : item.status === "paused"
+                                    ? "bg-yellow-500/20 text-yellow-400"
+                                    : "bg-gray-500/20 text-gray-400"
+                            }`}
+                          >
                             {item.status.toUpperCase()}
                           </span>
                         </div>
@@ -748,7 +793,9 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
                         </div>
                         <div>
                           <span className="text-gray-500">Entries:</span>
-                          <span className="text-white ml-2">{item.entryCount} / {item.threshold}</span>
+                          <span className="text-white ml-2">
+                            {item.entryCount} / {item.threshold}
+                          </span>
                         </div>
                       </div>
 
@@ -765,8 +812,18 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
                                 className="text-gray-500 hover:text-yellow-400"
                                 title="Copy winner address"
                               >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                  />
                                 </svg>
                               </button>
                             </div>
@@ -774,7 +831,9 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
                           {item.prizeSol && (
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-gray-500 text-xs">Prize:</span>
-                              <span className="text-green-400 text-xs">{item.prizeSol.toFixed(2)} SOL</span>
+                              <span className="text-green-400 text-xs">
+                                {item.prizeSol.toFixed(2)} SOL
+                              </span>
                             </div>
                           )}
                           {item.drawnAt && (

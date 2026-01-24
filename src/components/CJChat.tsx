@@ -22,27 +22,32 @@ const CJ_TOPICS = [
   {
     title: "The Hood",
     icon: "🏘️",
-    content: "Grove Street, homie. Where legends get made. Been through wars, police raids, and came out on top. That's where real ones come from - not from some fancy house, but from the struggle."
+    content:
+      "Grove Street, homie. Where legends get made. Been through wars, police raids, and came out on top. That's where real ones come from - not from some fancy house, but from the struggle.",
   },
   {
     title: "Bags Life",
     icon: "💰",
-    content: "Man, this Bags.fm thing is like running your own operation - but legal. You launch a token, stack fees, watch it grow. Just like building up Grove Street Families, except the feds can't touch you."
+    content:
+      "Man, this Bags.fm thing is like running your own operation - but legal. You launch a token, stack fees, watch it grow. Just like building up Grove Street Families, except the feds can't touch you.",
   },
   {
     title: "Survival Tips",
     icon: "🎯",
-    content: "Three rules homie: 1) Never show all your cards. 2) Stack before you flex. 3) Your crew is everything - find people who got your back when things get hot. Same rules apply in crypto."
+    content:
+      "Three rules homie: 1) Never show all your cards. 2) Stack before you flex. 3) Your crew is everything - find people who got your back when things get hot. Same rules apply in crypto.",
   },
   {
     title: "BagsCity Life",
     icon: "🌆",
-    content: "BagsCity is like the hood I always wanted - people building together, making money together. No Ballas trying to start beef, just straight hustle. This is what the future looks like, G."
+    content:
+      "BagsCity is like the hood I always wanted - people building together, making money together. No Ballas trying to start beef, just straight hustle. This is what the future looks like, G.",
   },
   {
     title: "Real Talk",
     icon: "💯",
-    content: "Most people talk big but never put in work. In the hood, you learn quick - only actions matter. Same in crypto. I don't care what you SAY you gonna do. Show me the receipts."
+    content:
+      "Most people talk big but never put in work. In the hood, you learn quick - only actions matter. Same in crypto. I don't care what you SAY you gonna do. Show me the receipts.",
   },
 ];
 
@@ -113,7 +118,7 @@ export function CJChat() {
     setMessages((prev) => [...prev.slice(-30), message]);
   }, []);
 
-  const handleTopicClick = (topic: typeof CJ_TOPICS[0]) => {
+  const handleTopicClick = (topic: (typeof CJ_TOPICS)[0]) => {
     addMessage({
       id: `${Date.now()}-info`,
       type: "info",
@@ -122,54 +127,57 @@ export function CJChat() {
     });
   };
 
-  const sendToCJ = useCallback(async (userMessage: string) => {
-    if (isLoading) return;
+  const sendToCJ = useCallback(
+    async (userMessage: string) => {
+      if (isLoading) return;
 
-    // Don't add opening line as user message
-    if (userMessage !== "yo what's good") {
-      addMessage({
-        id: `${Date.now()}-user`,
-        type: "user",
-        message: userMessage,
-        timestamp: Date.now(),
-      });
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Use eliza-agent API (working endpoint)
-      const response = await fetch("/api/eliza-agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          character: "cj",
+      // Don't add opening line as user message
+      if (userMessage !== "yo what's good") {
+        addMessage({
+          id: `${Date.now()}-user`,
+          type: "user",
           message: userMessage,
-        }),
-      });
+          timestamp: Date.now(),
+        });
+      }
 
-      const data = await response.json();
-      const messageText = data.response || "aw shit, something went wrong homie";
+      setIsLoading(true);
 
-      addMessage({
-        id: `${Date.now()}-cj`,
-        type: "cj",
-        message: messageText,
-        timestamp: Date.now(),
-        actions: data.actions || [],
-      });
-    } catch (error) {
-      console.error("CJ chat error:", error);
-      addMessage({
-        id: `${Date.now()}-cj`,
-        type: "cj",
-        message: "damn homie, connection dropped. try again",
-        timestamp: Date.now(),
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading, messages, addMessage]);
+      try {
+        // Use eliza-agent API (working endpoint)
+        const response = await fetch("/api/eliza-agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            character: "cj",
+            message: userMessage,
+          }),
+        });
+
+        const data = await response.json();
+        const messageText = data.response || "aw shit, something went wrong homie";
+
+        addMessage({
+          id: `${Date.now()}-cj`,
+          type: "cj",
+          message: messageText,
+          timestamp: Date.now(),
+          actions: data.actions || [],
+        });
+      } catch (error) {
+        console.error("CJ chat error:", error);
+        addMessage({
+          id: `${Date.now()}-cj`,
+          type: "cj",
+          message: "damn homie, connection dropped. try again",
+          timestamp: Date.now(),
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading, addMessage]
+  );
 
   // Listen for CJ click events
   useEffect(() => {
@@ -224,9 +232,10 @@ export function CJChat() {
     }
   };
 
-  const chatStyle: React.CSSProperties = position.y >= 0
-    ? { left: position.x, top: position.y, bottom: "auto" }
-    : { left: position.x, bottom: 80 };
+  const chatStyle: React.CSSProperties =
+    position.y >= 0
+      ? { left: position.x, top: position.y, bottom: "auto" }
+      : { left: position.x, bottom: 80 };
 
   if (!isOpen) {
     return null;
@@ -280,7 +289,9 @@ export function CJChat() {
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-orange-400 mb-1">🔫 yo what&apos;s good!</p>
             <p className="font-pixel text-[8px] text-gray-400">CJ here, from Grove Street.</p>
-            <p className="font-pixel text-[7px] text-gray-500 mt-2">Ask me anything or click a topic above</p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-2">
+              Ask me anything or click a topic above
+            </p>
           </div>
         ) : (
           messages.map((msg) => (
@@ -290,13 +301,19 @@ export function CJChat() {
                 msg.type === "cj"
                   ? "bg-orange-500/10 border-orange-500"
                   : msg.type === "user"
-                  ? "bg-bags-green/10 border-bags-green ml-4"
-                  : "bg-green-500/10 border-green-500"
+                    ? "bg-bags-green/10 border-bags-green ml-4"
+                    : "bg-green-500/10 border-green-500"
               }`}
             >
-              {msg.type === "cj" && <p className="font-pixel text-[6px] text-orange-400 mb-1">CJ:</p>}
-              {msg.type === "user" && <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>}
-              {msg.type === "info" && <p className="font-pixel text-[6px] text-green-400 mb-1">🏘️ Grove Street:</p>}
+              {msg.type === "cj" && (
+                <p className="font-pixel text-[6px] text-orange-400 mb-1">CJ:</p>
+              )}
+              {msg.type === "user" && (
+                <p className="font-pixel text-[6px] text-bags-green mb-1">You:</p>
+              )}
+              {msg.type === "info" && (
+                <p className="font-pixel text-[6px] text-green-400 mb-1">🏘️ Grove Street:</p>
+              )}
               <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
               {msg.type === "cj" && msg.actions && msg.actions.length > 0 && (
                 <ActionButtons actions={msg.actions} onAction={handleAction} />

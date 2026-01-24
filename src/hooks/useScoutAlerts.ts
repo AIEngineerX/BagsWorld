@@ -29,11 +29,7 @@ interface UseScoutAlertsOptions {
 }
 
 export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
-  const {
-    pollIntervalMs = 5000,
-    maxAlerts = 20,
-    onNewLaunch,
-  } = options;
+  const { pollIntervalMs = 5000, maxAlerts = 20, onNewLaunch } = options;
 
   const [alerts, setAlerts] = useState<TokenLaunch[]>([]);
   const [scoutState, setScoutState] = useState<ScoutState | null>(null);
@@ -81,10 +77,7 @@ export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
         if (launches.length > 0 && launches[0].mint !== lastSeenMintRef.current) {
           const currentAlerts = alertsRef.current;
           const newLaunches = lastSeenMintRef.current
-            ? launches.filter(
-                (l) =>
-                  currentAlerts.findIndex((a) => a.mint === l.mint) === -1
-              )
+            ? launches.filter((l) => currentAlerts.findIndex((a) => a.mint === l.mint) === -1)
             : [];
 
           // Notify about new launches

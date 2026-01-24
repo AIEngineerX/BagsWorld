@@ -50,7 +50,10 @@ export async function POST(request: Request) {
   const rateLimit = checkRateLimit(`send-tx:${clientIP}`, RATE_LIMITS.strict);
   if (!rateLimit.success) {
     return NextResponse.json(
-      { error: "Too many transaction requests. Try again later.", retryAfter: Math.ceil(rateLimit.resetIn / 1000) },
+      {
+        error: "Too many transaction requests. Try again later.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
       { status: 429 }
     );
   }
@@ -59,18 +62,24 @@ export async function POST(request: Request) {
     // Validate RPC URL is configured
     if (!SOLANA_RPC_URL) {
       console.error("[send-transaction] SOLANA_RPC_URL env var is not set!");
-      return NextResponse.json({
-        error: "Server misconfiguration: RPC URL not set",
-        hint: "Add SOLANA_RPC_URL to Netlify env vars. Format: https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "Server misconfiguration: RPC URL not set",
+          hint: "Add SOLANA_RPC_URL to Netlify env vars. Format: https://mainnet.helius-rpc.com/?api-key=YOUR_KEY",
+        },
+        { status: 500 }
+      );
     }
 
     // Validate URL format
     if (!SOLANA_RPC_URL.startsWith("https://")) {
-      return NextResponse.json({
-        error: "Invalid RPC URL format",
-        hint: "SOLANA_RPC_URL must start with https://"
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "Invalid RPC URL format",
+          hint: "SOLANA_RPC_URL must start with https://",
+        },
+        { status: 500 }
+      );
     }
 
     const { signedTransaction } = await request.json();
@@ -98,7 +107,7 @@ export async function POST(request: Request) {
 
     while (!confirmed && attempts < maxAttempts) {
       attempts++;
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       try {
         const status = await rpcCall("getSignatureStatuses", [[txid]]);
@@ -106,14 +115,20 @@ export async function POST(request: Request) {
 
         if (txStatus) {
           if (txStatus.err) {
-            return NextResponse.json({
-              error: "Transaction failed on-chain",
-              details: txStatus.err,
-              txid,
-            }, { status: 500 });
+            return NextResponse.json(
+              {
+                error: "Transaction failed on-chain",
+                details: txStatus.err,
+                txid,
+              },
+              { status: 500 }
+            );
           }
 
-          if (txStatus.confirmationStatus === "confirmed" || txStatus.confirmationStatus === "finalized") {
+          if (
+            txStatus.confirmationStatus === "confirmed" ||
+            txStatus.confirmationStatus === "finalized"
+          ) {
             confirmed = true;
           }
         }
@@ -134,31 +149,43 @@ export async function POST(request: Request) {
       success: true,
       txid,
     });
-
   } catch (error) {
     console.error("[send-transaction] Error:", error);
 
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     // Check for common RPC errors
-    if (errorMessage.includes("401") || errorMessage.includes("Unauthorized") || errorMessage.includes("-32401")) {
-      return NextResponse.json({
-        error: "RPC authentication failed (401 Unauthorized)",
-        hint: "Your Helius API key may be invalid. Generate a new key at dev.helius.xyz",
-        details: errorMessage,
-      }, { status: 500 });
+    if (
+      errorMessage.includes("401") ||
+      errorMessage.includes("Unauthorized") ||
+      errorMessage.includes("-32401")
+    ) {
+      return NextResponse.json(
+        {
+          error: "RPC authentication failed (401 Unauthorized)",
+          hint: "Your Helius API key may be invalid. Generate a new key at dev.helius.xyz",
+          details: errorMessage,
+        },
+        { status: 500 }
+      );
     }
 
     if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
-      return NextResponse.json({
-        error: "RPC access denied (403 Forbidden)",
-        hint: "Your RPC provider may not allow transaction sending",
-        details: errorMessage,
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "RPC access denied (403 Forbidden)",
+          hint: "Your RPC provider may not allow transaction sending",
+          details: errorMessage,
+        },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({
-      error: errorMessage,
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: errorMessage,
+      },
+      { status: 500 }
+    );
   }
 }

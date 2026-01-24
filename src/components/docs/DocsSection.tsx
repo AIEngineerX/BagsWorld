@@ -22,13 +22,7 @@ function InfoBox({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-function DataTable({
-  headers,
-  rows,
-}: {
-  headers: string[];
-  rows: string[][];
-}) {
+function DataTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
     <div className="overflow-x-auto my-3">
       <table className="w-full border-2 border-bags-green/50">
@@ -46,10 +40,7 @@ function DataTable({
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr
-              key={i}
-              className={i % 2 === 0 ? "bg-bags-darker/50" : "bg-bags-dark"}
-            >
+            <tr key={i} className={i % 2 === 0 ? "bg-bags-darker/50" : "bg-bags-dark"}>
               {row.map((cell, j) => (
                 <td
                   key={j}
@@ -71,19 +62,13 @@ function CodeBlock({ title, code }: { title: string; code: string }) {
     <div className="my-3">
       <p className="font-pixel text-[8px] text-bags-gold mb-1">{title}</p>
       <pre className="bg-bags-darker border border-bags-green/30 p-3 overflow-x-auto">
-        <code className="font-mono text-[9px] text-bags-green whitespace-pre">
-          {code}
-        </code>
+        <code className="font-mono text-[9px] text-bags-green whitespace-pre">{code}</code>
       </pre>
     </div>
   );
 }
 
-function Steps({
-  steps,
-}: {
-  steps: { number: number; title: string; description: string }[];
-}) {
+function Steps({ steps }: { steps: { number: number; title: string; description: string }[] }) {
   return (
     <div className="space-y-3 my-3">
       {steps.map((step) => (
@@ -92,17 +77,11 @@ function Steps({
           className="flex gap-3 bg-bags-darker/50 p-3 border-l-4 border-bags-green"
         >
           <div className="flex-shrink-0 w-6 h-6 bg-bags-green flex items-center justify-center">
-            <span className="font-pixel text-[10px] text-bags-dark font-bold">
-              {step.number}
-            </span>
+            <span className="font-pixel text-[10px] text-bags-dark font-bold">{step.number}</span>
           </div>
           <div>
-            <p className="font-pixel text-[10px] text-bags-gold mb-1">
-              {step.title}
-            </p>
-            <p className="font-pixel text-[8px] text-gray-300">
-              {step.description}
-            </p>
+            <p className="font-pixel text-[10px] text-bags-gold mb-1">{step.title}</p>
+            <p className="font-pixel text-[8px] text-gray-300">{step.description}</p>
           </div>
         </div>
       ))}

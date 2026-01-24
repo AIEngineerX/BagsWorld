@@ -34,18 +34,20 @@ class GameErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback || (
-        <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
-          <div className="text-center p-4">
-            <p className="text-lg mb-2">Game failed to load</p>
-            <button
-              onClick={() => this.setState({ hasError: false, error: null })}
-              className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700"
-            >
-              Retry
-            </button>
+      return (
+        this.props.fallback || (
+          <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
+            <div className="text-center p-4">
+              <p className="text-lg mb-2">Game failed to load</p>
+              <button
+                onClick={() => this.setState({ hasError: false, error: null })}
+                className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700"
+              >
+                Retry
+              </button>
+            </div>
           </div>
-        </div>
+        )
       );
     }
 
@@ -73,7 +75,9 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
 
     // Detect mobile for performance optimizations
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const isLowPower = navigator.hardwareConcurrency ? navigator.hardwareConcurrency <= 4 : isMobile;
+    const isLowPower = navigator.hardwareConcurrency
+      ? navigator.hardwareConcurrency <= 4
+      : isMobile;
 
     // Use responsive canvas size based on device
     // Mobile: Use screen dimensions for better fit
@@ -114,12 +118,12 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
         // On mobile, allow the game to resize with the window
         min: {
           width: isMobile ? 320 : 640,
-          height: isMobile ? 480 : 480
+          height: isMobile ? 480 : 480,
         },
         max: {
           width: 1920,
-          height: 1440
-        }
+          height: 1440,
+        },
       },
       physics: {
         default: "arcade",
@@ -175,9 +179,7 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
     if (!gameRef.current || !worldState) return;
 
     const tryUpdateWorldState = () => {
-      const worldScene = gameRef.current?.scene.getScene(
-        "WorldScene"
-      ) as WorldScene | undefined;
+      const worldScene = gameRef.current?.scene.getScene("WorldScene") as WorldScene | undefined;
       if (worldScene && worldScene.scene.isActive()) {
         worldScene.updateWorldState(worldState);
         return true;
@@ -234,17 +236,16 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
     };
   }, []);
 
-
   return (
     <div
       ref={containerRef}
       className="w-full h-full flex items-center justify-center game-canvas-wrapper"
       style={{
-        touchAction: 'auto',
-        WebkitTouchCallout: 'none',
-        WebkitUserSelect: 'none',
-        userSelect: 'none',
-        position: 'relative',
+        touchAction: "auto",
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+        position: "relative",
         zIndex: 0,
       }}
     />

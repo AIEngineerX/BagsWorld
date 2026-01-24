@@ -317,9 +317,7 @@ function canSendAlert(): boolean {
 function sendAlerts(launch: TokenLaunch): void {
   scoutState.alertsSent++;
 
-  console.log(
-    `[Scout Agent] New token: ${launch.name} ($${launch.symbol}) - ${launch.platform}`
-  );
+  console.log(`[Scout Agent] New token: ${launch.name} ($${launch.symbol}) - ${launch.platform}`);
 
   // Emit to Agent Coordinator for cross-agent communication
   emitTokenLaunch(launch).catch((err) => {

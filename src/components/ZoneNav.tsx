@@ -12,9 +12,7 @@ export function ZoneNav() {
     if (zone === currentZone) return;
 
     // Dispatch event for Phaser to handle zone transition
-    window.dispatchEvent(
-      new CustomEvent("bagsworld-zone-change", { detail: { zone } })
-    );
+    window.dispatchEvent(new CustomEvent("bagsworld-zone-change", { detail: { zone } }));
 
     setZone(zone);
   };
@@ -34,9 +32,10 @@ export function ZoneNav() {
               font-pixel text-[10px] px-3 py-1.5 rounded transition-all duration-200
               flex items-center gap-1
               border
-              ${isActive
-                ? "bg-bags-green text-bags-dark border-bags-green shadow-[0_0_10px_rgba(74,222,128,0.5)]"
-                : "text-gray-400 hover:text-bags-green hover:bg-bags-green/10 border-gray-600 hover:border-bags-green/50"
+              ${
+                isActive
+                  ? "bg-bags-green text-bags-dark border-bags-green shadow-[0_0_10px_rgba(74,222,128,0.5)]"
+                  : "text-gray-400 hover:text-bags-green hover:bg-bags-green/10 border-gray-600 hover:border-bags-green/50"
               }
               ${isTrending && !isActive ? "border-bags-gold/50 text-bags-gold" : ""}
             `}

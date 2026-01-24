@@ -58,7 +58,10 @@ async function fetchReportData(): Promise<DailyReportData> {
   // Extract top runners (fee earners) - filter out the guide characters
   const runners = (worldState.population || [])
     .filter((p: any) => !p.isToly && !p.isAsh && !p.isFinn && !p.isDev)
-    .sort((a: any, b: any) => (b.lifetimeEarnings || b.earnings24h || 0) - (a.lifetimeEarnings || a.earnings24h || 0))
+    .sort(
+      (a: any, b: any) =>
+        (b.lifetimeEarnings || b.earnings24h || 0) - (a.lifetimeEarnings || a.earnings24h || 0)
+    )
     .slice(0, 10)
     .map((runner: any, index: number) => ({
       rank: index + 1,
@@ -127,9 +130,7 @@ function generateReportText(data: DailyReportData): string[] {
   if (data.topRunners.length > 0) {
     mainTweet += `TOP RUNNERS:\n`;
     data.topRunners.slice(0, 5).forEach((runner) => {
-      const handle = runner.provider === "twitter"
-        ? `@${runner.username}`
-        : runner.username;
+      const handle = runner.provider === "twitter" ? `@${runner.username}` : runner.username;
       mainTweet += `${runner.rank}. ${handle}\n`;
     });
   } else {
@@ -156,9 +157,7 @@ function generateReportText(data: DailyReportData): string[] {
 }
 
 // Generate and optionally post the daily report
-export async function generateDailyReport(
-  postToX: boolean = false
-): Promise<ReportResult> {
+export async function generateDailyReport(postToX: boolean = false): Promise<ReportResult> {
   try {
     // Fetch data
     const data = await fetchReportData();
@@ -181,9 +180,7 @@ export async function generateDailyReport(
       }
 
       const results = await xClient.postThread(tweets);
-      tweetIds = results
-        .filter((r) => r.success && r.tweetId)
-        .map((r) => r.tweetId!);
+      tweetIds = results.filter((r) => r.success && r.tweetId).map((r) => r.tweetId!);
 
       const failedCount = results.filter((r) => !r.success).length;
       if (failedCount === results.length) {

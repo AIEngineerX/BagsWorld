@@ -36,19 +36,23 @@ export async function GET(request: Request) {
 
       return NextResponse.json({
         success: true,
-        activeConversation: active ? {
-          id: active.id,
-          participants: active.participants,
-          topic: active.topic,
-          lineCount: active.lines.length,
-          isActive: active.isActive,
-        } : null,
-        currentLine: currentLine ? {
-          characterId: currentLine.characterId,
-          characterName: currentLine.characterName,
-          message: currentLine.message,
-        } : null,
-        recentConversations: history.map(c => ({
+        activeConversation: active
+          ? {
+              id: active.id,
+              participants: active.participants,
+              topic: active.topic,
+              lineCount: active.lines.length,
+              isActive: active.isActive,
+            }
+          : null,
+        currentLine: currentLine
+          ? {
+              characterId: currentLine.characterId,
+              characterName: currentLine.characterName,
+              message: currentLine.message,
+            }
+          : null,
+        recentConversations: history.map((c) => ({
           id: c.id,
           participants: c.participants,
           topic: c.topic,
@@ -70,7 +74,9 @@ export async function GET(request: Request) {
           topic,
           context: {
             tokenSymbol: searchParams.get("symbol"),
-            amount: searchParams.get("amount") ? parseFloat(searchParams.get("amount")!) : undefined,
+            amount: searchParams.get("amount")
+              ? parseFloat(searchParams.get("amount")!)
+              : undefined,
           },
           lineCount: 5,
         }),
@@ -98,11 +104,7 @@ export async function GET(request: Request) {
       worldHealth: parseInt(searchParams.get("health") || "75"),
     };
 
-    const conversation = await startConversation(
-      { type: "random" },
-      topic,
-      context
-    );
+    const conversation = await startConversation({ type: "random" }, topic, context);
 
     if (!conversation) {
       return NextResponse.json({
@@ -117,7 +119,7 @@ export async function GET(request: Request) {
         id: conversation.id,
         participants: conversation.participants,
         topic: conversation.topic,
-        lines: conversation.lines.map(line => ({
+        lines: conversation.lines.map((line) => ({
           characterId: line.characterId,
           characterName: line.characterName,
           message: line.message,
@@ -127,9 +129,12 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("[TestDialogue] Error:", error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }

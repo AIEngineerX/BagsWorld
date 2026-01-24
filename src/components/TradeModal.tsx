@@ -288,9 +288,7 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
           {/* Quote Display */}
           {isLoadingQuote && (
             <div className="bg-bags-darker p-3 border border-bags-green/30">
-              <p className="font-pixel text-[10px] text-gray-400 animate-pulse">
-                Getting quote...
-              </p>
+              <p className="font-pixel text-[10px] text-gray-400 animate-pulse">Getting quote...</p>
             </div>
           )}
 
@@ -312,9 +310,11 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
               </div>
               <div className="flex justify-between">
                 <span className="font-pixel text-[8px] text-gray-400">Price impact:</span>
-                <span className={`font-pixel text-[8px] ${
-                  parseFloat(quote.priceImpactPct) > 5 ? "text-bags-red" : "text-gray-400"
-                }`}>
+                <span
+                  className={`font-pixel text-[8px] ${
+                    parseFloat(quote.priceImpactPct) > 5 ? "text-bags-red" : "text-gray-400"
+                  }`}
+                >
                   {parseFloat(quote.priceImpactPct).toFixed(2)}%
                 </span>
               </div>
@@ -348,10 +348,10 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
             {isSwapping
               ? "SWAPPING..."
               : !connected
-              ? "CONNECT WALLET"
-              : direction === "buy"
-              ? `BUY ${tokenSymbol}`
-              : `SELL ${tokenSymbol}`}
+                ? "CONNECT WALLET"
+                : direction === "buy"
+                  ? `BUY ${tokenSymbol}`
+                  : `SELL ${tokenSymbol}`}
           </button>
         </div>
       </div>
