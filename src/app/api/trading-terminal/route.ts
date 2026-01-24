@@ -15,6 +15,47 @@ interface TokenWithMetrics {
   poolAddress?: string;
 }
 
+interface TokenDetailedInfo {
+  mint: string;
+  name: string;
+  symbol: string;
+  imageUrl?: string;
+  price: number;
+  marketCap: number;
+  fdv: number;
+  volume24h: number;
+  volume6h: number;
+  volume1h: number;
+  liquidity: number;
+  change5m: number;
+  change1h: number;
+  change6h: number;
+  change24h: number;
+  holders?: number;
+  txns24h: { buys: number; sells: number };
+  pairAddress?: string;
+  dexId?: string;
+  priceNative?: string;
+  supply?: number;
+}
+
+interface RecentTrade {
+  signature: string;
+  type: "buy" | "sell";
+  amount: number;
+  priceUsd: number;
+  totalUsd: number;
+  maker: string;
+  timestamp: number;
+}
+
+interface TokenHolder {
+  address: string;
+  balance: number;
+  percentage: number;
+  rank: number;
+}
+
 interface OHLCVCandle {
   time: number;
   open: number;
@@ -54,13 +95,19 @@ const dexScreenerCache = new Map<
     timestamp: number;
   }
 >();
+const tokenDetailCache = new Map<string, { data: TokenDetailedInfo | null; timestamp: number }>();
+const tradesCache = new Map<string, { data: RecentTrade[]; timestamp: number }>();
+const holdersCache = new Map<string, { data: TokenHolder[]; timestamp: number }>();
 
 const TOKENS_CACHE_TTL = 30000; // 30 seconds
 const HISTORY_CACHE_TTL = 15000; // 15 seconds
 const LEADERBOARD_CACHE_TTL = 60000; // 60 seconds
 const POOL_CACHE_TTL = 300000; // 5 minutes (pools don't change)
-const OHLCV_CACHE_TTL = 60000; // 1 minute for candle data
+const OHLCV_CACHE_TTL = 15000; // 15 seconds for faster chart updates
 const DEX_CACHE_TTL = 20000; // 20 seconds for price data
+const TOKEN_DETAIL_CACHE_TTL = 10000; // 10 seconds for detailed info
+const TRADES_CACHE_TTL = 5000; // 5 seconds for recent trades
+const HOLDERS_CACHE_TTL = 60000; // 60 seconds for holders
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -76,6 +123,21 @@ export async function GET(request: NextRequest) {
       return handleTokens(sortBy);
     case "search":
       return handleSearch(query || "");
+    case "tokenInfo":
+      if (!mint) {
+        return NextResponse.json({ error: "mint parameter required" }, { status: 400 });
+      }
+      return handleTokenInfo(mint);
+    case "trades":
+      if (!mint) {
+        return NextResponse.json({ error: "mint parameter required" }, { status: 400 });
+      }
+      return handleTokenTrades(mint);
+    case "holders":
+      if (!mint) {
+        return NextResponse.json({ error: "mint parameter required" }, { status: 400 });
+      }
+      return handleTokenHolders(mint);
     case "ohlcv":
       if (!mint) {
         return NextResponse.json({ error: "mint parameter required" }, { status: 400 });
@@ -187,6 +249,161 @@ async function handleSearch(query: string): Promise<NextResponse> {
   return NextResponse.json({ tokens });
 }
 
+async function handleTokenInfo(mint: string): Promise<NextResponse> {
+  // Check cache
+  const cached = tokenDetailCache.get(mint);
+  if (cached && Date.now() - cached.timestamp < TOKEN_DETAIL_CACHE_TTL) {
+    return NextResponse.json({ token: cached.data, cached: true });
+  }
+
+  // Fetch comprehensive data from DexScreener
+  const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, {
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    tokenDetailCache.set(mint, { data: null, timestamp: Date.now() });
+    return NextResponse.json({ token: null, error: "Failed to fetch token info" });
+  }
+
+  const data = await response.json();
+  const pair = data.pairs?.[0];
+
+  if (!pair) {
+    tokenDetailCache.set(mint, { data: null, timestamp: Date.now() });
+    return NextResponse.json({ token: null, error: "Token not found" });
+  }
+
+  const tokenInfo: TokenDetailedInfo = {
+    mint,
+    name: pair.baseToken?.name || "Unknown",
+    symbol: pair.baseToken?.symbol || "???",
+    imageUrl: pair.info?.imageUrl,
+    price: parseFloat(pair.priceUsd) || 0,
+    marketCap: pair.marketCap || 0,
+    fdv: pair.fdv || pair.marketCap || 0,
+    volume24h: pair.volume?.h24 || 0,
+    volume6h: pair.volume?.h6 || 0,
+    volume1h: pair.volume?.h1 || 0,
+    liquidity: pair.liquidity?.usd || 0,
+    change5m: pair.priceChange?.m5 || 0,
+    change1h: pair.priceChange?.h1 || 0,
+    change6h: pair.priceChange?.h6 || 0,
+    change24h: pair.priceChange?.h24 || 0,
+    txns24h: {
+      buys: pair.txns?.h24?.buys || 0,
+      sells: pair.txns?.h24?.sells || 0,
+    },
+    pairAddress: pair.pairAddress,
+    dexId: pair.dexId,
+    priceNative: pair.priceNative,
+  };
+
+  tokenDetailCache.set(mint, { data: tokenInfo, timestamp: Date.now() });
+  return NextResponse.json({ token: tokenInfo });
+}
+
+async function handleTokenTrades(mint: string): Promise<NextResponse> {
+  // Check cache
+  const cached = tradesCache.get(mint);
+  if (cached && Date.now() - cached.timestamp < TRADES_CACHE_TTL) {
+    return NextResponse.json({ trades: cached.data, cached: true });
+  }
+
+  // Get pair address first
+  const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, {
+    headers: { Accept: "application/json" },
+  });
+
+  if (!dexResponse.ok) {
+    return NextResponse.json({ trades: [], error: "Failed to fetch pair info" });
+  }
+
+  const dexData = await dexResponse.json();
+  const pair = dexData.pairs?.[0];
+
+  if (!pair?.pairAddress) {
+    return NextResponse.json({ trades: [], error: "No pair found" });
+  }
+
+  // Fetch recent trades from Birdeye or use GeckoTerminal trades
+  // Using GeckoTerminal trades endpoint
+  const tradesResponse = await fetch(
+    `https://api.geckoterminal.com/api/v2/networks/solana/pools/${pair.pairAddress}/trades?trade_volume_in_usd_greater_than=0`,
+    { headers: { Accept: "application/json" } }
+  );
+
+  const trades: RecentTrade[] = [];
+
+  if (tradesResponse.ok) {
+    const tradesData = await tradesResponse.json();
+    const rawTrades = tradesData.data || [];
+
+    for (const trade of rawTrades.slice(0, 50)) {
+      const attrs = trade.attributes || {};
+      trades.push({
+        signature: trade.id || "",
+        type: attrs.kind === "buy" ? "buy" : "sell",
+        amount: parseFloat(attrs.volume_in_usd) || 0,
+        priceUsd: parseFloat(attrs.price_to_in_usd) || 0,
+        totalUsd: parseFloat(attrs.volume_in_usd) || 0,
+        maker: attrs.tx_from_address || "",
+        timestamp: new Date(attrs.block_timestamp || Date.now()).getTime(),
+      });
+    }
+  }
+
+  tradesCache.set(mint, { data: trades, timestamp: Date.now() });
+  return NextResponse.json({ trades });
+}
+
+async function handleTokenHolders(mint: string): Promise<NextResponse> {
+  // Check cache
+  const cached = holdersCache.get(mint);
+  if (cached && Date.now() - cached.timestamp < HOLDERS_CACHE_TTL) {
+    return NextResponse.json({ holders: cached.data, cached: true });
+  }
+
+  // Try to fetch holders from Helius or Solscan
+  // Note: This requires an API key for most services
+  // For now, we'll return a placeholder with top holder info if available
+
+  // Try using SolanaFM API (free tier)
+  const response = await fetch(
+    `https://api.solana.fm/v1/tokens/${mint}/holders?page=1&pageSize=20`,
+    { headers: { Accept: "application/json" } }
+  );
+
+  const holders: TokenHolder[] = [];
+
+  if (response.ok) {
+    const data = await response.json();
+    const holderList = data.result || data.data || [];
+
+    let rank = 1;
+    for (const holder of holderList) {
+      holders.push({
+        address: holder.owner || holder.address || "",
+        balance: parseFloat(holder.amount) || parseFloat(holder.balance) || 0,
+        percentage: parseFloat(holder.percentage) || 0,
+        rank: rank++,
+      });
+    }
+  }
+
+  // If no holders found, try to get holder count from DexScreener pair info
+  if (holders.length === 0) {
+    const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
+    if (dexResponse.ok) {
+      const dexData = await dexResponse.json();
+      // DexScreener doesn't provide holder list, just return empty with message
+    }
+  }
+
+  holdersCache.set(mint, { data: holders, timestamp: Date.now() });
+  return NextResponse.json({ holders, holderCount: holders.length });
+}
+
 async function handlePoolDiscovery(mint: string): Promise<NextResponse> {
   // Check cache first
   const cached = poolCache.get(mint);
@@ -275,6 +492,7 @@ async function handleOHLCV(mint: string, interval: string): Promise<NextResponse
 
   // Map interval to GeckoTerminal format
   const timeframeMap: Record<string, { timeframe: string; aggregate: number }> = {
+    "1s": { timeframe: "minute", aggregate: 1 }, // 1s maps to 1m (smallest available)
     "1m": { timeframe: "minute", aggregate: 1 },
     "5m": { timeframe: "minute", aggregate: 5 },
     "15m": { timeframe: "minute", aggregate: 15 },
@@ -283,7 +501,7 @@ async function handleOHLCV(mint: string, interval: string): Promise<NextResponse
     "1d": { timeframe: "day", aggregate: 1 },
   };
 
-  const tf = timeframeMap[interval] || timeframeMap["1h"];
+  const tf = timeframeMap[interval] || timeframeMap["1m"];
 
   // Fetch OHLCV from GeckoTerminal
   const ohlcvResponse = await fetch(

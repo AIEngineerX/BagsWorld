@@ -165,9 +165,9 @@ const MIN_SLOT_SPACING = Math.round(100 * SCALE); // Minimum gap between buildin
 
 // Landmark X positions to avoid (with clearance)
 const LANDMARK_X_POSITIONS = [
-  Math.round(80 * SCALE), // Casino (128)
-  Math.round(150 * SCALE), // TradingGym (240)
+  Math.round(50 * SCALE), // Casino (80) - far left
   Math.round(280 * SCALE), // PokeCenter (448)
+  Math.round(380 * SCALE), // TradingGym (608) - spaced from casino
   WORLD_WIDTH / 2, // HQ/Treasury (640)
 ];
 const LANDMARK_CLEARANCE = 80; // Pixels to stay clear of landmarks
@@ -439,14 +439,14 @@ export function transformTokenToBuilding(
     // Use existing position for other buildings
     position = { x: existingBuilding.x, y: existingBuilding.y };
   } else if (isCasino) {
-    // Casino: BagsCity side (far left), Vegas-style landmark
-    position = { x: Math.round(80 * SCALE), y: landmarkY };
-  } else if (isTradingTerminal) {
-    // Trading Terminal: Center of BagsCity, beneath BagsWorld HQ
-    position = { x: Math.round(400 * SCALE), y: landmarkY };
+    // Casino: BagsCity far left, Vegas-style landmark
+    position = { x: Math.round(50 * SCALE), y: landmarkY };
   } else if (isTradingGym) {
-    // Trading Gym: BagsCity side, prominent position
-    position = { x: Math.round(150 * SCALE), y: landmarkY };
+    // Trading Gym: BagsCity center-left, spaced from Casino
+    position = { x: Math.round(380 * SCALE), y: landmarkY };
+  } else if (isTradingTerminal) {
+    // Trading Terminal: Right of center in BagsCity
+    position = { x: Math.round(520 * SCALE), y: landmarkY };
   } else if (isPokeCenter) {
     // PokeCenter: Park side (center-right)
     position = { x: Math.round(280 * SCALE), y: landmarkY };

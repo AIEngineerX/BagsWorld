@@ -2118,174 +2118,228 @@ export class BootScene extends Phaser.Scene {
   private generateTradingTerminal(): void {
     const s = SCALE;
     const g = this.make.graphics({ x: 0, y: 0 });
-    const canvasHeight = Math.round(160 * s);
-    const canvasWidth = Math.round(70 * s);
-    const bHeight = Math.round(105 * s);
-    const bWidth = Math.round(60 * s);
+    const canvasHeight = Math.round(180 * s);
+    const canvasWidth = Math.round(110 * s);
+    const bHeight = Math.round(120 * s);
+    const bWidth = Math.round(100 * s);
 
     // Terminal color palette (dark, professional)
-    const terminalBlack = 0x0a0a0f;
-    const terminalDark = 0x12121a;
-    const terminalGray = 0x1e293b;
+    const terminalBlack = 0x08080c;
+    const terminalDark = 0x0f0f16;
+    const terminalGray = 0x1a1f2e;
     const terminalGreen = 0x22c55e;
     const terminalCyan = 0x06b6d4;
     const terminalRed = 0xef4444;
+    const terminalGold = 0xfbbf24;
+    const terminalPurple = 0xa855f7;
 
-    // Shadow
-    g.fillStyle(PALETTE.void, 0.5);
+    // Shadow (subtle, professional)
+    g.fillStyle(PALETTE.void, 0.4);
     g.fillRect(
-      Math.round(8 * s),
-      canvasHeight - bHeight + Math.round(8 * s),
-      bWidth - Math.round(2 * s),
+      Math.round(10 * s),
+      canvasHeight - bHeight + Math.round(6 * s),
+      bWidth - Math.round(4 * s),
       bHeight
     );
 
-    // Building base (dark terminal black)
+    // Building base (sleek dark)
     g.fillStyle(terminalBlack);
-    g.fillRect(Math.round(4 * s), canvasHeight - bHeight, bWidth - Math.round(4 * s), bHeight);
+    g.fillRect(Math.round(5 * s), canvasHeight - bHeight, bWidth - Math.round(5 * s), bHeight);
 
-    // Subtle left highlight
+    // Gradient effect - left highlight
     g.fillStyle(terminalDark);
-    g.fillRect(Math.round(4 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
+    g.fillRect(Math.round(5 * s), canvasHeight - bHeight, Math.round(8 * s), bHeight);
 
-    // Right shadow
-    g.fillStyle(0x050508);
+    // Right edge shadow
+    g.fillStyle(0x040406);
     g.fillRect(bWidth - Math.round(8 * s), canvasHeight - bHeight, Math.round(6 * s), bHeight);
 
-    // Roof - flat modern terminal style with green accent line
+    // Sleek roof with multi-layer design
     g.fillStyle(terminalGray);
-    g.fillRect(
-      0,
-      canvasHeight - bHeight - Math.round(8 * s),
-      bWidth + Math.round(8 * s),
-      Math.round(12 * s)
-    );
-    // Green neon top line
-    g.fillStyle(terminalGreen);
-    g.fillRect(
-      Math.round(2 * s),
-      canvasHeight - bHeight - Math.round(8 * s),
-      bWidth + Math.round(4 * s),
-      Math.round(2 * s)
-    );
-    // Glow effect
-    g.fillStyle(terminalGreen, 0.3);
     g.fillRect(
       0,
       canvasHeight - bHeight - Math.round(10 * s),
-      bWidth + Math.round(8 * s),
-      Math.round(4 * s)
-    );
-
-    // "TERMINAL" sign area (dark panel with text)
-    g.fillStyle(terminalDark);
-    g.fillRect(
-      bWidth / 2 - Math.round(22 * s),
-      canvasHeight - bHeight - Math.round(22 * s),
-      Math.round(52 * s),
+      bWidth + Math.round(10 * s),
       Math.round(14 * s)
     );
-    // Sign border
-    g.fillStyle(terminalGray);
-    g.fillRect(
-      bWidth / 2 - Math.round(22 * s),
-      canvasHeight - bHeight - Math.round(22 * s),
-      Math.round(52 * s),
-      Math.round(1 * s)
-    );
-    g.fillRect(
-      bWidth / 2 - Math.round(22 * s),
-      canvasHeight - bHeight - Math.round(9 * s),
-      Math.round(52 * s),
-      Math.round(1 * s)
-    );
-    // Green text pixels for "TERM" (simplified)
+
+    // Primary neon accent line (green)
     g.fillStyle(terminalGreen);
-    const textY = canvasHeight - bHeight - Math.round(18 * s);
+    g.fillRect(
+      Math.round(2 * s),
+      canvasHeight - bHeight - Math.round(10 * s),
+      bWidth + Math.round(6 * s),
+      Math.round(2 * s)
+    );
+
+    // Secondary accent line (cyan)
+    g.fillStyle(terminalCyan);
+    g.fillRect(
+      Math.round(4 * s),
+      canvasHeight - bHeight - Math.round(7 * s),
+      bWidth + Math.round(2 * s),
+      Math.round(1 * s)
+    );
+
+    // Glow effect on roof
+    g.fillStyle(terminalGreen, 0.25);
+    g.fillRect(
+      0,
+      canvasHeight - bHeight - Math.round(14 * s),
+      bWidth + Math.round(10 * s),
+      Math.round(6 * s)
+    );
+
+    // "TERMINAL" sign panel (elegant, centered)
+    const signWidth = Math.round(70 * s);
+    const signX = (bWidth - signWidth) / 2 + Math.round(2 * s);
+    g.fillStyle(terminalDark);
+    g.fillRect(signX, canvasHeight - bHeight - Math.round(26 * s), signWidth, Math.round(16 * s));
+
+    // Sign border accents
+    g.fillStyle(terminalGray);
+    g.fillRect(signX, canvasHeight - bHeight - Math.round(26 * s), signWidth, Math.round(1 * s));
+    g.fillRect(signX, canvasHeight - bHeight - Math.round(11 * s), signWidth, Math.round(1 * s));
+
+    // Gold corner accents on sign
+    g.fillStyle(terminalGold);
+    g.fillRect(
+      signX,
+      canvasHeight - bHeight - Math.round(26 * s),
+      Math.round(3 * s),
+      Math.round(3 * s)
+    );
+    g.fillRect(
+      signX + signWidth - Math.round(3 * s),
+      canvasHeight - bHeight - Math.round(26 * s),
+      Math.round(3 * s),
+      Math.round(3 * s)
+    );
+
+    // Green text pixels for "TERMINAL" (full word)
+    g.fillStyle(terminalGreen);
+    const textY = canvasHeight - bHeight - Math.round(22 * s);
+    const letterSpacing = Math.round(8 * s);
+    let letterX = signX + Math.round(4 * s);
+
     // T
-    g.fillRect(bWidth / 2 - Math.round(18 * s), textY, Math.round(6 * s), Math.round(2 * s));
-    g.fillRect(bWidth / 2 - Math.round(16 * s), textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY, Math.round(6 * s), Math.round(2 * s));
+    g.fillRect(letterX + Math.round(2 * s), textY, Math.round(2 * s), Math.round(8 * s));
+    letterX += letterSpacing;
+
     // E
-    g.fillRect(bWidth / 2 - Math.round(10 * s), textY, Math.round(5 * s), Math.round(2 * s));
-    g.fillRect(
-      bWidth / 2 - Math.round(10 * s),
-      textY + Math.round(3 * s),
-      Math.round(4 * s),
-      Math.round(2 * s)
-    );
-    g.fillRect(
-      bWidth / 2 - Math.round(10 * s),
-      textY + Math.round(6 * s),
-      Math.round(5 * s),
-      Math.round(2 * s)
-    );
-    g.fillRect(bWidth / 2 - Math.round(10 * s), textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
+    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(letterX, textY + Math.round(6 * s), Math.round(5 * s), Math.round(2 * s));
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
+    letterX += letterSpacing;
+
     // R
-    g.fillRect(bWidth / 2 - Math.round(3 * s), textY, Math.round(5 * s), Math.round(2 * s));
-    g.fillRect(bWidth / 2 - Math.round(3 * s), textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(letterX + Math.round(3 * s), textY, Math.round(2 * s), Math.round(4 * s));
     g.fillRect(
-      bWidth / 2 - Math.round(3 * s),
-      textY + Math.round(3 * s),
-      Math.round(4 * s),
-      Math.round(2 * s)
-    );
-    g.fillRect(bWidth / 2 + Math.round(1 * s), textY, Math.round(2 * s), Math.round(4 * s));
-    g.fillRect(
-      bWidth / 2 + Math.round(1 * s),
+      letterX + Math.round(3 * s),
       textY + Math.round(5 * s),
       Math.round(2 * s),
       Math.round(3 * s)
     );
-    // M
-    g.fillRect(bWidth / 2 + Math.round(5 * s), textY, Math.round(2 * s), Math.round(8 * s));
-    g.fillRect(bWidth / 2 + Math.round(11 * s), textY, Math.round(2 * s), Math.round(8 * s));
-    g.fillRect(
-      bWidth / 2 + Math.round(7 * s),
-      textY + Math.round(2 * s),
-      Math.round(2 * s),
-      Math.round(2 * s)
-    );
-    g.fillRect(
-      bWidth / 2 + Math.round(9 * s),
-      textY + Math.round(2 * s),
-      Math.round(2 * s),
-      Math.round(2 * s)
-    );
+    letterX += letterSpacing;
 
-    // Main monitor screens (large, showing chart lines)
-    const screenY = canvasHeight - bHeight + Math.round(12 * s);
-    const screenWidth = Math.round(44 * s);
-    const screenHeight = Math.round(28 * s);
+    // M
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX + Math.round(5 * s), textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(
+      letterX + Math.round(2 * s),
+      textY + Math.round(2 * s),
+      Math.round(1 * s),
+      Math.round(2 * s)
+    );
+    g.fillRect(
+      letterX + Math.round(4 * s),
+      textY + Math.round(2 * s),
+      Math.round(1 * s),
+      Math.round(2 * s)
+    );
+    letterX += letterSpacing;
+
+    // I
+    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
+    g.fillRect(letterX + Math.round(1.5 * s), textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY + Math.round(6 * s), Math.round(5 * s), Math.round(2 * s));
+    letterX += Math.round(6 * s);
+
+    // N
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX + Math.round(4 * s), textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(
+      letterX + Math.round(2 * s),
+      textY + Math.round(2 * s),
+      Math.round(2 * s),
+      Math.round(2 * s)
+    );
+    letterX += letterSpacing;
+
+    // A
+    g.fillRect(letterX + Math.round(2 * s), textY, Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(letterX, textY + Math.round(2 * s), Math.round(2 * s), Math.round(6 * s));
+    g.fillRect(
+      letterX + Math.round(4 * s),
+      textY + Math.round(2 * s),
+      Math.round(2 * s),
+      Math.round(6 * s)
+    );
+    g.fillRect(
+      letterX + Math.round(2 * s),
+      textY + Math.round(4 * s),
+      Math.round(2 * s),
+      Math.round(2 * s)
+    );
+    letterX += letterSpacing;
+
+    // L
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY + Math.round(6 * s), Math.round(5 * s), Math.round(2 * s));
+
+    // Main monitor screen (large, centered)
+    const screenY = canvasHeight - bHeight + Math.round(14 * s);
+    const screenWidth = Math.round(70 * s);
+    const screenHeight = Math.round(36 * s);
     const screenX = (bWidth - screenWidth) / 2 + Math.round(2 * s);
 
-    // Screen bezel
+    // Screen bezel (sleek dark frame)
     g.fillStyle(terminalGray);
     g.fillRect(
-      screenX - Math.round(2 * s),
-      screenY - Math.round(2 * s),
-      screenWidth + Math.round(4 * s),
-      screenHeight + Math.round(4 * s)
+      screenX - Math.round(3 * s),
+      screenY - Math.round(3 * s),
+      screenWidth + Math.round(6 * s),
+      screenHeight + Math.round(6 * s)
     );
 
     // Screen background
     g.fillStyle(terminalDark);
     g.fillRect(screenX, screenY, screenWidth, screenHeight);
 
-    // Candlestick chart visualization
-    const chartX = screenX + Math.round(3 * s);
-    const chartY = screenY + Math.round(4 * s);
-    const chartHeight = Math.round(18 * s);
+    // Candlestick chart visualization (more candles for wider screen)
+    const chartX = screenX + Math.round(4 * s);
+    const chartY = screenY + Math.round(5 * s);
+    const chartHeight = Math.round(22 * s);
 
-    // Draw candlesticks (green up, red down pattern)
+    // Draw candlesticks (green up, red down pattern - more candles)
     const candles = [
-      { up: true, height: 0.4 },
-      { up: false, height: 0.6 },
-      { up: true, height: 0.3 },
+      { up: true, height: 0.35 },
+      { up: true, height: 0.5 },
+      { up: false, height: 0.4 },
+      { up: true, height: 0.6 },
+      { up: true, height: 0.75 },
+      { up: false, height: 0.55 },
+      { up: true, height: 0.8 },
       { up: true, height: 0.7 },
       { up: false, height: 0.5 },
-      { up: true, height: 0.8 },
-      { up: true, height: 0.6 },
-      { up: false, height: 0.4 },
+      { up: true, height: 0.65 },
+      { up: true, height: 0.85 },
+      { up: false, height: 0.6 },
     ];
 
     candles.forEach((candle, i) => {
@@ -2307,181 +2361,269 @@ export class BootScene extends Phaser.Scene {
       g.fillRect(candleX, candleY, Math.round(4 * s), candleH);
     });
 
-    // Price line (horizontal)
-    g.fillStyle(terminalCyan, 0.5);
+    // Price line (horizontal, cyan)
+    g.fillStyle(terminalCyan, 0.6);
     g.fillRect(
-      screenX + Math.round(2 * s),
-      screenY + Math.round(14 * s),
-      screenWidth - Math.round(4 * s),
+      screenX + Math.round(3 * s),
+      screenY + Math.round(16 * s),
+      screenWidth - Math.round(6 * s),
       Math.round(1 * s)
     );
 
     // Volume bars at bottom of screen
-    g.fillStyle(terminalGreen, 0.4);
-    for (let i = 0; i < 8; i++) {
-      const volHeight = Math.round((2 + Math.random() * 3) * s);
+    const volColors = [
+      terminalGreen,
+      terminalGreen,
+      terminalRed,
+      terminalGreen,
+      terminalGreen,
+      terminalRed,
+      terminalGreen,
+      terminalGreen,
+      terminalRed,
+      terminalGreen,
+      terminalGreen,
+      terminalRed,
+    ];
+    for (let i = 0; i < 12; i++) {
+      const volHeight = Math.round((2 + (i % 3 === 0 ? 4 : 2)) * s);
+      g.fillStyle(volColors[i], 0.5);
       g.fillRect(
-        screenX + Math.round(3 * s) + i * Math.round(5 * s),
-        screenY + screenHeight - volHeight - Math.round(2 * s),
+        screenX + Math.round(4 * s) + i * Math.round(5 * s),
+        screenY + screenHeight - volHeight - Math.round(3 * s),
         Math.round(4 * s),
         volHeight
       );
     }
 
-    // Screen glow
-    g.fillStyle(terminalGreen, 0.15);
+    // Screen glow effect
+    g.fillStyle(terminalGreen, 0.12);
     g.fillRect(
-      screenX - Math.round(4 * s),
-      screenY - Math.round(4 * s),
-      screenWidth + Math.round(8 * s),
-      screenHeight + Math.round(8 * s)
+      screenX - Math.round(5 * s),
+      screenY - Math.round(5 * s),
+      screenWidth + Math.round(10 * s),
+      screenHeight + Math.round(10 * s)
     );
 
-    // Secondary smaller monitors (left and right)
-    const smallScreenW = Math.round(12 * s);
-    const smallScreenH = Math.round(16 * s);
-    const smallScreenY = canvasHeight - bHeight + Math.round(48 * s);
+    // Side panels with data displays (left and right of main screen)
+    const sidePanelW = Math.round(16 * s);
+    const sidePanelH = Math.round(50 * s);
+    const sidePanelY = canvasHeight - bHeight + Math.round(55 * s);
 
-    // Left monitor
+    // Left panel (portfolio/holdings)
     g.fillStyle(terminalGray);
     g.fillRect(
-      Math.round(8 * s),
-      smallScreenY - Math.round(1 * s),
-      smallScreenW + Math.round(2 * s),
-      smallScreenH + Math.round(2 * s)
+      Math.round(10 * s),
+      sidePanelY - Math.round(2 * s),
+      sidePanelW + Math.round(4 * s),
+      sidePanelH + Math.round(4 * s)
     );
     g.fillStyle(terminalDark);
-    g.fillRect(Math.round(9 * s), smallScreenY, smallScreenW, smallScreenH);
-    // Green data lines
-    g.fillStyle(terminalGreen, 0.8);
-    for (let i = 0; i < 4; i++) {
+    g.fillRect(Math.round(12 * s), sidePanelY, sidePanelW, sidePanelH);
+
+    // Portfolio bars (green gradient)
+    for (let i = 0; i < 6; i++) {
+      const barWidth = Math.round((8 + Math.random() * 6) * s);
+      g.fillStyle(terminalGreen, 0.6 + i * 0.06);
       g.fillRect(
-        Math.round(11 * s),
-        smallScreenY + Math.round(3 * s) + i * Math.round(3.5 * s),
+        Math.round(14 * s),
+        sidePanelY + Math.round(4 * s) + i * Math.round(7 * s),
+        barWidth,
+        Math.round(4 * s)
+      );
+    }
+
+    // Right panel (order book)
+    g.fillStyle(terminalGray);
+    g.fillRect(
+      bWidth - Math.round(24 * s),
+      sidePanelY - Math.round(2 * s),
+      sidePanelW + Math.round(4 * s),
+      sidePanelH + Math.round(4 * s)
+    );
+    g.fillStyle(terminalDark);
+    g.fillRect(bWidth - Math.round(22 * s), sidePanelY, sidePanelW, sidePanelH);
+
+    // Order book (green bids, red asks)
+    for (let i = 0; i < 3; i++) {
+      g.fillStyle(terminalGreen, 0.8);
+      g.fillRect(
+        bWidth - Math.round(20 * s),
+        sidePanelY + Math.round(4 * s) + i * Math.round(6 * s),
+        Math.round(10 * s),
+        Math.round(3 * s)
+      );
+    }
+    for (let i = 3; i < 6; i++) {
+      g.fillStyle(terminalRed, 0.8);
+      g.fillRect(
+        bWidth - Math.round(20 * s),
+        sidePanelY + Math.round(4 * s) + i * Math.round(6 * s),
         Math.round(8 * s),
-        Math.round(1.5 * s)
+        Math.round(3 * s)
       );
     }
 
-    // Right monitor
-    g.fillStyle(terminalGray);
-    g.fillRect(
-      bWidth - Math.round(16 * s),
-      smallScreenY - Math.round(1 * s),
-      smallScreenW + Math.round(2 * s),
-      smallScreenH + Math.round(2 * s)
-    );
-    g.fillStyle(terminalDark);
-    g.fillRect(bWidth - Math.round(15 * s), smallScreenY, smallScreenW, smallScreenH);
-    // Cyan data lines (order book style)
-    g.fillStyle(terminalCyan, 0.8);
-    for (let i = 0; i < 2; i++) {
-      g.fillRect(
-        bWidth - Math.round(13 * s),
-        smallScreenY + Math.round(3 * s) + i * Math.round(3 * s),
-        Math.round(6 * s),
-        Math.round(1.5 * s)
-      );
-    }
-    g.fillStyle(terminalRed, 0.8);
-    for (let i = 2; i < 4; i++) {
-      g.fillRect(
-        bWidth - Math.round(13 * s),
-        smallScreenY + Math.round(3 * s) + i * Math.round(3 * s),
-        Math.round(5 * s),
-        Math.round(1.5 * s)
-      );
-    }
-
-    // Door (modern glass style)
-    const doorWidth = Math.round(18 * s);
-    const doorHeight = Math.round(24 * s);
+    // Elegant glass door (centered, wider)
+    const doorWidth = Math.round(24 * s);
+    const doorHeight = Math.round(28 * s);
     const doorX = (bWidth - doorWidth) / 2 + Math.round(2 * s);
 
-    // Door frame (dark gray)
+    // Door frame (sleek dark)
     g.fillStyle(terminalGray);
     g.fillRect(
-      doorX - Math.round(2 * s),
-      canvasHeight - doorHeight - Math.round(2 * s),
-      doorWidth + Math.round(4 * s),
-      doorHeight + Math.round(2 * s)
+      doorX - Math.round(3 * s),
+      canvasHeight - doorHeight - Math.round(3 * s),
+      doorWidth + Math.round(6 * s),
+      doorHeight + Math.round(3 * s)
     );
 
     // Door (dark glass)
     g.fillStyle(terminalDark);
     g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
 
-    // Door glass with green tint
-    g.fillStyle(terminalGreen, 0.15);
+    // Door glass panels (split design)
+    g.fillStyle(terminalGreen, 0.1);
     g.fillRect(
       doorX + Math.round(2 * s),
       canvasHeight - doorHeight + Math.round(2 * s),
-      doorWidth - Math.round(4 * s),
+      Math.round(9 * s),
+      doorHeight - Math.round(4 * s)
+    );
+    g.fillRect(
+      doorX + Math.round(13 * s),
+      canvasHeight - doorHeight + Math.round(2 * s),
+      Math.round(9 * s),
       doorHeight - Math.round(4 * s)
     );
 
-    // Door reflection
-    g.fillStyle(terminalCyan, 0.2);
+    // Door reflections
+    g.fillStyle(terminalCyan, 0.15);
     g.fillRect(
       doorX + Math.round(3 * s),
       canvasHeight - doorHeight + Math.round(3 * s),
-      Math.round(4 * s),
-      Math.round(8 * s)
-    );
-
-    // Door handle
-    g.fillStyle(terminalGray);
-    g.fillRect(
-      doorX + doorWidth - Math.round(5 * s),
-      canvasHeight - doorHeight / 2,
       Math.round(3 * s),
-      Math.round(4 * s)
-    );
-
-    // Floor indicator lights (running LEDs)
-    g.fillStyle(terminalGreen);
-    g.fillCircle(doorX - Math.round(4 * s), canvasHeight - Math.round(2 * s), Math.round(1.5 * s));
-    g.fillStyle(terminalCyan);
-    g.fillCircle(
-      doorX + doorWidth + Math.round(4 * s),
-      canvasHeight - Math.round(2 * s),
-      Math.round(1.5 * s)
-    );
-
-    // Vertical accent lines on sides (tech aesthetic)
-    g.fillStyle(terminalGreen, 0.4);
-    g.fillRect(
-      Math.round(6 * s),
-      canvasHeight - bHeight + Math.round(8 * s),
-      Math.round(1 * s),
-      bHeight - Math.round(16 * s)
-    );
-    g.fillRect(
-      bWidth - Math.round(3 * s),
-      canvasHeight - bHeight + Math.round(8 * s),
-      Math.round(1 * s),
-      bHeight - Math.round(16 * s)
-    );
-
-    // Antenna/satellite on roof
-    g.fillStyle(terminalGray);
-    g.fillRect(
-      bWidth - Math.round(14 * s),
-      canvasHeight - bHeight - Math.round(18 * s),
-      Math.round(2 * s),
       Math.round(10 * s)
     );
+    g.fillRect(
+      doorX + Math.round(14 * s),
+      canvasHeight - doorHeight + Math.round(3 * s),
+      Math.round(3 * s),
+      Math.round(10 * s)
+    );
+
+    // Door handles (both sides)
+    g.fillStyle(terminalGold);
+    g.fillRect(
+      doorX + Math.round(8 * s),
+      canvasHeight - doorHeight / 2 - Math.round(2 * s),
+      Math.round(2 * s),
+      Math.round(6 * s)
+    );
+    g.fillRect(
+      doorX + Math.round(14 * s),
+      canvasHeight - doorHeight / 2 - Math.round(2 * s),
+      Math.round(2 * s),
+      Math.round(6 * s)
+    );
+
+    // LED strip at base of building
+    for (let i = 0; i < 16; i++) {
+      const ledColor = i % 3 === 0 ? terminalCyan : terminalGreen;
+      g.fillStyle(ledColor, 0.8);
+      g.fillCircle(
+        Math.round(12 * s) + i * Math.round(5 * s),
+        canvasHeight - Math.round(2 * s),
+        Math.round(1.5 * s)
+      );
+    }
+
+    // Vertical LED accent lines on sides
+    g.fillStyle(terminalGreen, 0.5);
+    g.fillRect(
+      Math.round(8 * s),
+      canvasHeight - bHeight + Math.round(10 * s),
+      Math.round(1.5 * s),
+      bHeight - Math.round(18 * s)
+    );
+    g.fillRect(
+      bWidth - Math.round(5 * s),
+      canvasHeight - bHeight + Math.round(10 * s),
+      Math.round(1.5 * s),
+      bHeight - Math.round(18 * s)
+    );
+
+    // Cyan accent lines
+    g.fillStyle(terminalCyan, 0.4);
+    g.fillRect(
+      Math.round(10 * s),
+      canvasHeight - bHeight + Math.round(10 * s),
+      Math.round(1 * s),
+      bHeight - Math.round(18 * s)
+    );
+    g.fillRect(
+      bWidth - Math.round(7 * s),
+      canvasHeight - bHeight + Math.round(10 * s),
+      Math.round(1 * s),
+      bHeight - Math.round(18 * s)
+    );
+
+    // Rooftop antenna array (more elaborate)
+    // Main antenna
+    g.fillStyle(terminalGray);
+    g.fillRect(
+      bWidth - Math.round(18 * s),
+      canvasHeight - bHeight - Math.round(24 * s),
+      Math.round(2 * s),
+      Math.round(16 * s)
+    );
     g.fillStyle(terminalCyan);
     g.fillCircle(
-      bWidth - Math.round(13 * s),
-      canvasHeight - bHeight - Math.round(20 * s),
+      bWidth - Math.round(17 * s),
+      canvasHeight - bHeight - Math.round(26 * s),
       Math.round(3 * s)
     );
     g.fillStyle(terminalCyan, 0.3);
     g.fillCircle(
-      bWidth - Math.round(13 * s),
-      canvasHeight - bHeight - Math.round(20 * s),
+      bWidth - Math.round(17 * s),
+      canvasHeight - bHeight - Math.round(26 * s),
       Math.round(5 * s)
+    );
+
+    // Secondary antenna
+    g.fillStyle(terminalGray);
+    g.fillRect(
+      Math.round(18 * s),
+      canvasHeight - bHeight - Math.round(20 * s),
+      Math.round(2 * s),
+      Math.round(12 * s)
+    );
+    g.fillStyle(terminalGreen);
+    g.fillCircle(
+      Math.round(19 * s),
+      canvasHeight - bHeight - Math.round(22 * s),
+      Math.round(2.5 * s)
+    );
+    g.fillStyle(terminalGreen, 0.3);
+    g.fillCircle(
+      Math.round(19 * s),
+      canvasHeight - bHeight - Math.round(22 * s),
+      Math.round(4 * s)
+    );
+
+    // Satellite dish
+    g.fillStyle(terminalGray);
+    g.fillRect(
+      bWidth / 2 - Math.round(6 * s),
+      canvasHeight - bHeight - Math.round(16 * s),
+      Math.round(12 * s),
+      Math.round(2 * s)
+    );
+    g.fillRect(
+      bWidth / 2 - Math.round(1 * s),
+      canvasHeight - bHeight - Math.round(18 * s),
+      Math.round(2 * s),
+      Math.round(4 * s)
     );
 
     g.generateTexture("terminal", canvasWidth, canvasHeight);

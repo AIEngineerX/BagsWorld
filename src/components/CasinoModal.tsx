@@ -857,9 +857,14 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full" />
               </div>
               <div>
-                <h2 className="font-pixel text-lg sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 tracking-wider">
-                  BAGSWORLD CASINO
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-pixel text-lg sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 tracking-wider">
+                    BAGSWORLD CASINO
+                  </h2>
+                  <span className="font-mono text-[8px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded">
+                    BETA
+                  </span>
+                </div>
                 <p className="text-purple-400/70 text-xs sm:text-sm mt-1 flex items-center gap-2">
                   <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                   Play to win SOL rewards
