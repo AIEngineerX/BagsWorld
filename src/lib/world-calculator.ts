@@ -319,6 +319,27 @@ function getProfileUrl(provider: string, username: string): string {
   }
 }
 
+// Landmark building mint for BagsWorld HQ
+const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
+
+// Check if token/building is a landmark (fixed position, never decays)
+function isLandmark(token: { mint: string; symbol: string }): {
+  type: "pokecenter" | "dojo" | "casino" | "terminal" | "treasury" | "hq" | null;
+  isPermanent: boolean;
+} {
+  const { mint, symbol } = token;
+  if (mint === BAGSHQ_MINT || symbol === "BAGSWORLD") return { type: "hq", isPermanent: true };
+  if (symbol === "POKECENTER" || mint.includes("PokeCenter"))
+    return { type: "pokecenter", isPermanent: true };
+  if (symbol === "DOJO" || mint.includes("TradingGym")) return { type: "dojo", isPermanent: true };
+  if (symbol === "CASINO" || mint.includes("Casino")) return { type: "casino", isPermanent: true };
+  if (symbol === "TERMINAL" || mint.includes("TradingTerminal"))
+    return { type: "terminal", isPermanent: true };
+  if (mint.startsWith("Treasury")) return { type: "treasury", isPermanent: true };
+  if (mint.startsWith("Starter")) return { type: null, isPermanent: true };
+  return { type: null, isPermanent: false };
+}
+
 // Special character configuration - consolidates flags, positions, zones, and profile URLs
 const SPECIAL_CHARACTERS: Record<
   string,
@@ -439,15 +460,8 @@ export function transformTokenToBuilding(
   index: number,
   existingBuilding?: GameBuilding
 ): GameBuilding {
-  // Special landmark buildings get fixed positions
-  const isPokeCenter = token.symbol === "POKECENTER" || token.mint.includes("PokeCenter");
-  const isTradingGym = token.symbol === "DOJO" || token.mint.includes("TradingGym");
-  const isCasino = token.symbol === "CASINO" || token.mint.includes("Casino");
-  const isTradingTerminal = token.symbol === "TERMINAL" || token.mint.includes("TradingTerminal");
-  const isTreasuryHub = token.mint.startsWith("Treasury");
-  // BagsWorld HQ - the floating headquarters in the sky (uses real token data)
-  const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
-  const isBagsWorldHQ = token.mint === BAGSHQ_MINT || token.symbol === "BAGSWORLD";
+  const landmark = isLandmark(token);
+  const isBagsWorldHQ = landmark.type === "hq";
 
   // Always clear HQ from position cache to ensure it uses sky position
   if (isBagsWorldHQ) {
@@ -466,59 +480,41 @@ export function transformTokenToBuilding(
     // BagsWorld HQ ALWAYS gets sky position
     position = { x: Math.round(WORLD_WIDTH / 2), y: skyY };
   } else if (existingBuilding) {
-    // Use existing position for other buildings
     position = { x: existingBuilding.x, y: existingBuilding.y };
-  } else if (isCasino) {
-    // Casino: BagsCity far left, Vegas-style landmark
+  } else if (landmark.type === "casino") {
     position = { x: Math.round(50 * SCALE), y: landmarkY };
-  } else if (isTradingGym) {
-    // Trading Dojo: BagsCity center-left, spaced from Casino
+  } else if (landmark.type === "dojo") {
     position = { x: Math.round(380 * SCALE), y: landmarkY };
-  } else if (isTradingTerminal) {
-    // Trading Terminal: Right of center in BagsCity
+  } else if (landmark.type === "terminal") {
     position = { x: Math.round(520 * SCALE), y: landmarkY };
-  } else if (isPokeCenter) {
-    // PokeCenter: Park side (center-right)
+  } else if (landmark.type === "pokecenter") {
     position = { x: Math.round(280 * SCALE), y: landmarkY };
-  } else if (isTreasuryHub) {
-    // Treasury: Center position
+  } else if (landmark.type === "treasury") {
     position = { x: WORLD_WIDTH / 2, y: landmarkY };
   } else {
     position = generateBuildingPosition(index, MAX_BUILDINGS);
   }
 
-  // Check if this is a real token (not a starter/placeholder/treasury)
+  // Determine token URL based on type
   const isStarterToken = token.mint.startsWith("Starter");
-  const isTreasuryBuilding = token.mint.startsWith("Treasury");
-
-  // Treasury links to Solscan, real tokens link to Bags.fm, starters have no link
   let tokenUrl: string | undefined;
-  if (isTreasuryBuilding) {
-    // Link to Solscan so users can verify the treasury wallet
+  if (landmark.type === "treasury") {
     tokenUrl = `https://solscan.io/account/${token.creator}`;
   } else if (!isStarterToken) {
     tokenUrl = `https://bags.fm/${token.mint}`;
   }
 
-  // Calculate health with decay system (uses previous health for smooth transitions)
-  // Treasury links to Solscan, real tokens link to Bags.fm, starters have no link
-  const isPermanentBuilding =
-    isTreasuryHub || isStarterToken || isBagsWorldHQ || isPokeCenter || isTradingGym || isCasino || isTradingTerminal;
   const previousHealth = existingBuilding?.health ?? 50;
   const { health: newHealth, status } = calculateBuildingHealth(
     token.volume24h,
     token.marketCap,
     token.change24h,
     previousHealth,
-    isPermanentBuilding,
+    landmark.isPermanent,
     token.healthOverride
   );
 
-  // Assign zones:
-  // - BagsWorld HQ has NO zone - floats in the sky visible from both zones
-  // - Trading Dojo and Casino go to BagsCity (trending)
-  // - User-created buildings are distributed between Park (main_city) and BagsCity (trending)
-  //   based on a hash of their mint address for deterministic, even distribution
+  // Assign zones based on landmark type or hash of mint for user buildings
   const getZoneFromMint = (mint: string): "main_city" | "trending" => {
     let hash = 0;
     for (let i = 0; i < mint.length; i++) {
@@ -530,9 +526,9 @@ export function transformTokenToBuilding(
 
   const zone = isBagsWorldHQ
     ? undefined
-    : isTradingGym || isCasino || isTradingTerminal
+    : landmark.type === "dojo" || landmark.type === "casino" || landmark.type === "terminal"
       ? ("trending" as const)
-      : isPokeCenter || isTreasuryHub
+      : landmark.type === "pokecenter" || landmark.type === "treasury"
         ? ("main_city" as const)
         : getZoneFromMint(token.mint);
 
@@ -561,9 +557,9 @@ export function transformTokenToBuilding(
     change24h: token.change24h,
     tokenUrl,
     zone,
-    isFloating: isBagsWorldHQ, // Only HQ floats
-    isPermanent: isPermanentBuilding, // Landmark buildings never decay
-    styleOverride: token.styleOverride, // Admin override for building style
+    isFloating: isBagsWorldHQ,
+    isPermanent: landmark.isPermanent,
+    styleOverride: token.styleOverride,
   };
 }
 
@@ -662,32 +658,9 @@ export function buildWorldState(
   cleanupBuildingPositionCache(activeMints);
 
   // Assign cached positions (buildings keep their position even when rankings change)
-  // EXCEPT for landmark/permanent buildings which have hardcoded fixed positions
-  const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
-
-  // Helper to check if a building is a landmark (hardcoded position - NEVER move these)
-  const isLandmarkBuilding = (b: GameBuilding): boolean => {
-    // BagsWorld HQ
-    if (b.isFloating || b.id === BAGSHQ_MINT || b.symbol === "BAGSWORLD") return true;
-    // PokeCenter
-    if (b.symbol === "POKECENTER" || b.symbol === "HEAL" || b.id.includes("PokeCenter"))
-      return true;
-    // Trading Dojo
-    if (b.symbol === "DOJO" || b.id.includes("TradingGym")) return true;
-    // Casino
-    if (b.symbol === "CASINO" || b.id.includes("Casino")) return true;
-    // Treasury
-    if (b.id.startsWith("Treasury")) return true;
-    // Starter buildings
-    if (b.id.startsWith("Starter")) return true;
-    // Permanent flag
-    if (b.isPermanent) return true;
-    return false;
-  };
-
   const buildings = filteredBuildings.map((building) => {
-    // NEVER move landmark buildings - they use their hardcoded fixed positions
-    if (isLandmarkBuilding(building)) {
+    // Landmark/permanent buildings use fixed positions
+    if (building.isPermanent || building.isFloating) {
       return building;
     }
     return {

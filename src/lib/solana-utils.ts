@@ -120,7 +120,10 @@ export function formatSolCompact(sol: number): string {
  * @returns Number in SOL
  */
 export function parseSolString(str: string): number {
-  const cleaned = str.replace(/\s*SOL\s*/i, "").trim().toUpperCase();
+  const cleaned = str
+    .replace(/\s*SOL\s*/i, "")
+    .trim()
+    .toUpperCase();
 
   if (cleaned.endsWith("M")) {
     return parseFloat(cleaned.slice(0, -1)) * 1_000_000;

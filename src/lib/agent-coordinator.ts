@@ -103,14 +103,7 @@ function cleanupExpiredEvents(): void {
   const cutoff = Date.now() - EVENT_TTL_MS;
   const beforeCount = state.processedEvents.length;
 
-  state.processedEvents = state.processedEvents.filter(
-    (event) => event.timestamp > cutoff
-  );
-
-  const removedCount = beforeCount - state.processedEvents.length;
-  if (removedCount > 0) {
-    console.log(`[Agent Coordinator] Cleaned up ${removedCount} expired events`);
-  }
+  state.processedEvents = state.processedEvents.filter((event) => event.timestamp > cutoff);
 }
 
 // ============================================================================
@@ -137,8 +130,6 @@ export function startCoordinator(): void {
     // Run immediate cleanup on start
     cleanupExpiredEvents();
   }
-
-  console.log("[Agent Coordinator] Started - agents can now communicate");
 }
 
 /**
@@ -152,8 +143,6 @@ export function stopCoordinator(): void {
     clearInterval(cleanupIntervalId);
     cleanupIntervalId = null;
   }
-
-  console.log("[Agent Coordinator] Stopped");
 }
 
 /**
@@ -189,8 +178,6 @@ export async function emitEvent(
   state.stats.eventsByType[type] = (state.stats.eventsByType[type] || 0) + 1;
   state.stats.eventsBySource[source] = (state.stats.eventsBySource[source] || 0) + 1;
   state.stats.lastEventTime = Date.now();
-
-  console.log(`[Agent Coordinator] Event: ${type} from ${source} (${priority})`);
 
   // Process immediately if running
   if (state.isRunning) {
@@ -256,14 +243,10 @@ export function subscribe(
   };
 
   state.subscriptions.push(subscription);
-  console.log(
-    `[Agent Coordinator] New subscription: ${subscription.id} for ${types === "*" ? "all events" : types.join(", ")}`
-  );
 
   // Return unsubscribe function
   return () => {
     state.subscriptions = state.subscriptions.filter((s) => s.id !== subscription.id);
-    console.log(`[Agent Coordinator] Unsubscribed: ${subscription.id}`);
   };
 }
 
@@ -545,8 +528,6 @@ function browserDispatchHandler(event: AgentEvent): void {
 export function initBuiltInHandlers(): void {
   // Subscribe to all high/urgent events for browser dispatch
   subscribe("*", browserDispatchHandler, ["high", "urgent"]);
-
-  console.log("[Agent Coordinator] Built-in handlers initialized");
 }
 
 // Auto-start in non-test environments

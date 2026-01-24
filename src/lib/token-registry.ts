@@ -104,55 +104,24 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
   inFlightFetch = (async () => {
     try {
       const response = await fetch("/api/global-tokens");
-      if (!response.ok) {
-        console.error(
-          "[TokenRegistry] Failed to fetch global tokens:",
-          response.status,
-          response.statusText
-        );
-        return globalTokensCache?.tokens || [];
-      }
+      if (!response.ok) return globalTokensCache?.tokens || [];
 
       const data = await response.json();
-      console.log(
-        `[TokenRegistry] Global tokens response: configured=${data.configured}, count=${data.count || data.tokens?.length || 0}`
-      );
-
-      if (!data.configured) {
-        console.log("[TokenRegistry] Database not configured");
+      if (!data.configured || !data.tokens || !Array.isArray(data.tokens)) {
         return [];
       }
 
-      if (!data.tokens || !Array.isArray(data.tokens)) {
-        console.log("[TokenRegistry] No tokens array in response");
-        return [];
-      }
-
-      // Convert to LaunchedToken format with defensive parsing
       const tokens: LaunchedToken[] = data.tokens.map((t: any) => {
-        // Parse createdAt safely
-        let createdAt = Date.now();
-        if (t.created_at) {
-          const parsed = new Date(t.created_at).getTime();
-          if (!isNaN(parsed)) {
-            createdAt = parsed;
-          }
-        }
-
-        // Parse fee_shares - might come as string from some DB drivers
+        const createdAt = t.created_at ? new Date(t.created_at).getTime() : Date.now();
         let feeShares: Array<{ provider: string; username: string; bps: number }> = [];
         if (Array.isArray(t.fee_shares)) {
           feeShares = t.fee_shares;
         } else if (typeof t.fee_shares === "string" && t.fee_shares.length > 2) {
-          // fee_shares came back as a JSON string, parse it
           try {
             const parsed = JSON.parse(t.fee_shares);
             feeShares = Array.isArray(parsed) ? parsed : [];
-          } catch (e) {
-            console.error(
-              `[TokenRegistry] Failed to parse fee_shares for ${t.symbol}:`,
-              t.fee_shares
-            );
+          } catch {
+            // Invalid fee_shares JSON
           }
         }
 
@@ -163,7 +132,7 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
           description: t.description,
           imageUrl: t.image_url,
           creator: t.creator_wallet,
-          createdAt,
+          createdAt: isNaN(createdAt) ? Date.now() : createdAt,
           feeShares,
           lifetimeFees: t.lifetime_fees,
           marketCap: t.market_cap,
@@ -176,18 +145,6 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
         };
       });
 
-      console.log(`[TokenRegistry] Parsed ${tokens.length} global tokens`);
-      // Debug: Log fee shares for each token
-      tokens.forEach((t) => {
-        if (t.feeShares && t.feeShares.length > 0) {
-          console.log(
-            `[TokenRegistry] ${t.symbol} fee shares:`,
-            t.feeShares.map((s) => `${s.username}@${s.provider}:${s.bps}bps`).join(", ")
-          );
-        }
-      });
-
-      // Update cache
       globalTokensCache = { tokens, timestamp: Date.now() };
 
       return tokens;
@@ -203,45 +160,26 @@ export async function fetchGlobalTokens(): Promise<LaunchedToken[]> {
   return inFlightFetch;
 }
 
-// Save token to global database
 export async function saveTokenGlobally(token: LaunchedToken): Promise<boolean> {
   try {
-    const payload = {
-      mint: token.mint,
-      name: token.name,
-      symbol: token.symbol,
-      description: token.description,
-      image_url: token.imageUrl,
-      creator_wallet: token.creator,
-      fee_shares: token.feeShares,
-    };
-
-    console.log(
-      `[TokenRegistry] Saving token globally: ${token.symbol} (${token.mint.slice(0, 8)}...) by ${token.creator?.slice(0, 8)}...`
-    );
-    console.log(`[TokenRegistry] Fee shares count: ${token.feeShares?.length || 0}`);
-
     const response = await fetch("/api/global-tokens", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        mint: token.mint,
+        name: token.name,
+        symbol: token.symbol,
+        description: token.description,
+        image_url: token.imageUrl,
+        creator_wallet: token.creator,
+        fee_shares: token.feeShares,
+      }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`[TokenRegistry] Failed to save token globally: ${response.status}`, errorData);
-      return false;
-    }
-
-    const result = await response.json();
-    console.log(`[TokenRegistry] Token saved globally: ${result.success ? "success" : "failed"}`);
-
-    // Invalidate cache so next fetch gets fresh data
+    if (!response.ok) return false;
     globalTokensCache = null;
-
     return true;
-  } catch (error) {
-    console.error("[TokenRegistry] Error saving token globally:", error);
+  } catch {
     return false;
   }
 }

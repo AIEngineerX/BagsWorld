@@ -735,22 +735,12 @@ export async function startConversation(
 ): Promise<Conversation | null> {
   // Check cooldown
   const now = Date.now();
-  if (state.activeConversation?.isActive) {
-    console.log("[Dialogue] Conversation already active, skipping");
-    return null;
-  }
-
-  if (now - state.lastConversationTime < MIN_CONVERSATION_GAP) {
-    console.log("[Dialogue] Cooldown active, skipping");
-    return null;
-  }
+  if (state.activeConversation?.isActive) return null;
+  if (now - state.lastConversationTime < MIN_CONVERSATION_GAP) return null;
 
   // Select participants if not provided
   const selectedParticipants = participants || selectParticipants(topic);
-  if (selectedParticipants.length < 2) {
-    console.log("[Dialogue] Not enough participants");
-    return null;
-  }
+  if (selectedParticipants.length < 2) return null;
 
   // Create conversation
   const conversation: Conversation = {
@@ -765,8 +755,6 @@ export async function startConversation(
 
   state.activeConversation = conversation;
   state.lastConversationTime = now;
-
-  console.log(`[Dialogue] Starting conversation: ${topic} with ${selectedParticipants.join(", ")}`);
 
   // Generate conversation lines
   await generateConversationLines(conversation, context);
@@ -789,7 +777,6 @@ async function generateConversationLines(
   const intelligentLines = await fetchIntelligentDialogue(participants, topic, context, lineCount);
 
   if (intelligentLines && intelligentLines.length > 0) {
-    console.log("[Dialogue] Using intelligent Claude-powered dialogue with real data");
     intelligentLines.forEach((line, i) => {
       conversation.lines.push({
         characterId: line.characterId,
@@ -804,7 +791,6 @@ async function generateConversationLines(
   }
 
   // Fallback to rule-based generation with dynamic turn-taking
-  console.log("[Dialogue] Falling back to rule-based dialogue with dynamic turns");
   const previousSpeakers: string[] = [];
 
   for (let i = 0; i < lineCount; i++) {
@@ -881,11 +867,6 @@ async function fetchIntelligentDialogue(
     const data = await response.json();
 
     if (data.success && data.conversation) {
-      console.log("[Dialogue] Got intelligent dialogue with memory context:", {
-        dataSnapshot: data.dataSnapshot,
-        hadMemory: !!memoryContext,
-        previousTopics: memory.recentTopics.slice(0, 3),
-      });
       return data.conversation;
     }
   } catch (error) {
@@ -933,9 +914,7 @@ export function endConversation(): void {
       state.conversationHistory = state.conversationHistory.slice(0, 20);
     }
 
-    const participants = state.activeConversation.participants;
     state.activeConversation = null;
-    console.log(`[Dialogue] Conversation ended, memory updated for ${participants.join("-")}`);
   }
 }
 
@@ -1066,8 +1045,6 @@ export function startScheduledConversations(intervalMs: number = 60000): void {
 
     await startConversation({ type: "scheduled", interval: intervalMs }, topic);
   }, intervalMs);
-
-  console.log("[Dialogue] Scheduled conversations started");
 }
 
 /**
@@ -1077,7 +1054,6 @@ export function stopScheduledConversations(): void {
   if (scheduledInterval) {
     clearInterval(scheduledInterval);
     scheduledInterval = null;
-    console.log("[Dialogue] Scheduled conversations stopped");
   }
 }
 
@@ -1105,11 +1081,8 @@ export function initDialogueSystem(): void {
 
   // Trigger initial conversation quickly (3 seconds after load)
   setTimeout(() => {
-    console.log("[Dialogue] Triggering initial conversation...");
     startConversation({ type: "scheduled", interval: 15000 }, "token_launch");
   }, 3000);
-
-  console.log("[Dialogue] System initialized");
 }
 
 /**
@@ -1144,5 +1117,4 @@ export function getMemoryForParticipants(participants: string[]): ConversationMe
 // Clear all conversation memory (for testing/reset)
 export function clearConversationMemory(): void {
   conversationMemory.clear();
-  console.log("[Dialogue] Conversation memory cleared");
 }

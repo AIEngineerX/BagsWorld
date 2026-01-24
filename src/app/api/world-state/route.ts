@@ -519,10 +519,6 @@ function generateEvents(
               timestamp: Date.now() - Math.random() * 3600000,
               data: {
                 tokenName: token.name,
-                tokenSymbol: token.symbol,
-                creator: token.symbol, // Use symbol as "creator" for display
-                milestone: `${formatSol(threshold)} lifetime fees`,
-                value: threshold,
                 amount: threshold,
               },
             });
@@ -820,132 +816,83 @@ export async function POST(request: NextRequest) {
         .join(", ")
     );
 
-    // ALWAYS add Toly as a permanent Solana guide character
-    // Toly (Anatoly Yakovenko) is the co-founder of Solana
-    const toly: FeeEarner = {
-      rank: 0, // Special rank
-      username: "toly",
-      providerUsername: "aeyakovenko",
-      provider: "solana" as FeeEarner["provider"],
-      wallet: "toly-solana-permanent",
-      avatarUrl: undefined, // Will use special Toly sprite
-      lifetimeEarnings: 65000, // ~65k TPS on Solana ;)
-      earnings24h: 0,
-      change24h: 0,
-      tokenCount: 0,
-      topToken: undefined,
-      isToly: true, // Special flag for the game to recognize
-    } as FeeEarner & { isToly: boolean };
+    // Add special characters (permanent NPCs) to earners
+    // Order: shaw, cj, scout, dev, finn, ash, toly (reverse so toly ends up first after unshift)
+    const specialChars = [
+      {
+        username: "Shaw",
+        providerUsername: "shawmakesmagic",
+        provider: "twitter",
+        wallet: "shaw-elizaos-permanent",
+        lifetimeEarnings: 17000,
+        flag: "isShaw",
+      },
+      {
+        username: "CJ",
+        providerUsername: "cj_grove",
+        provider: "twitter",
+        wallet: "cj-grove-street-permanent",
+        lifetimeEarnings: 1992,
+        flag: "isCJ",
+      },
+      {
+        username: "Neo",
+        providerUsername: "TheOne",
+        provider: "twitter",
+        wallet: "scout-agent-permanent",
+        lifetimeEarnings: 1999,
+        flag: "isScout",
+      },
+      {
+        username: "The Dev",
+        providerUsername: "DaddyGhost",
+        provider: "twitter",
+        wallet: "daddyghost-dev-permanent",
+        lifetimeEarnings: 420690,
+        flag: "isDev",
+      },
+      {
+        username: "Finn",
+        providerUsername: "finnbags",
+        provider: "twitter",
+        wallet: "finnbags-ceo-permanent",
+        lifetimeEarnings: 1000000000,
+        flag: "isFinn",
+      },
+      {
+        username: "Ash",
+        providerUsername: "ash_ketchum",
+        provider: "pokemon",
+        wallet: "ash-ketchum-permanent",
+        lifetimeEarnings: 151,
+        flag: "isAsh",
+      },
+      {
+        username: "toly",
+        providerUsername: "aeyakovenko",
+        provider: "solana",
+        wallet: "toly-solana-permanent",
+        lifetimeEarnings: 65000,
+        flag: "isToly",
+      },
+    ] as const;
 
-    // ALWAYS add Ash as a permanent ecosystem guide character
-    // Ash explains how BagsWorld works with Pokemon-themed analogies
-    const ash: FeeEarner = {
-      rank: 0, // Special rank
-      username: "Ash",
-      providerUsername: "ash_ketchum",
-      provider: "pokemon" as FeeEarner["provider"],
-      wallet: "ash-ketchum-permanent",
-      avatarUrl: undefined, // Will use special Ash sprite
-      lifetimeEarnings: 151, // Original 151 Pokemon ;)
-      earnings24h: 0,
-      change24h: 0,
-      tokenCount: 0,
-      topToken: undefined,
-      isAsh: true, // Special flag for the game to recognize
-    } as FeeEarner & { isAsh: boolean };
-
-    // ALWAYS add Finn as the Bags.fm founder guide
-    // Finn (@finnbags) is the CEO of Bags.fm
-    const finn: FeeEarner = {
-      rank: 0, // Special rank
-      username: "Finn",
-      providerUsername: "finnbags",
-      provider: "twitter" as FeeEarner["provider"],
-      wallet: "finnbags-ceo-permanent",
-      avatarUrl: undefined, // Will use special Finn sprite
-      lifetimeEarnings: 1000000000, // $1B+ volume on Bags.fm!
-      earnings24h: 0,
-      change24h: 0,
-      tokenCount: 0,
-      topToken: undefined,
-      isFinn: true, // Special flag for the game to recognize
-    } as FeeEarner & { isFinn: boolean };
-
-    // ALWAYS add The Dev (DaddyGhost) as the trading agent character
-    // DaddyGhost (@DaddyGhost) is the developer who built BagsWorld
-    const dev: FeeEarner = {
-      rank: 0, // Special rank
-      username: "The Dev",
-      providerUsername: "DaddyGhost",
-      provider: "twitter" as FeeEarner["provider"],
-      wallet: "daddyghost-dev-permanent",
-      avatarUrl: undefined, // Will use special dev sprite
-      lifetimeEarnings: 420690, // Trencher numbers
-      earnings24h: 0,
-      change24h: 0,
-      tokenCount: 0,
-      topToken: undefined,
-      isDev: true, // Special flag for the game to recognize
-    } as FeeEarner & { isDev: boolean };
-
-    // ALWAYS add Neo as the Scout Agent character
-    // Neo sees the blockchain like he sees The Matrix - scanning for new launches
-    const scout: FeeEarner = {
-      rank: 0, // Special rank
-      username: "Neo",
-      providerUsername: "TheOne",
-      provider: "twitter" as FeeEarner["provider"],
-      wallet: "scout-agent-permanent",
-      avatarUrl: undefined, // Will use special Neo sprite
-      lifetimeEarnings: 1999, // The Matrix release year
-      earnings24h: 0,
-      change24h: 0,
-      tokenCount: 0,
-      topToken: undefined,
-      isScout: true, // Special flag for the game to recognize
-    } as FeeEarner & { isScout: boolean };
-
-    // ALWAYS add CJ as the hood rat character in BagsCity
-    // CJ from Grove Street, keeps it real about on-chain activity
-    const cj: FeeEarner = {
-      rank: 0, // Special rank
-      username: "CJ",
-      providerUsername: "cj_grove",
-      provider: "twitter" as FeeEarner["provider"],
-      wallet: "cj-grove-street-permanent",
-      avatarUrl: undefined, // Will use special CJ sprite
-      lifetimeEarnings: 1992, // GTA SA release year... actually 2004, but keeping hood vibes
-      earnings24h: 0,
-      change24h: 0,
-      tokenCount: 0,
-      topToken: undefined,
-      isCJ: true, // Special flag for the game to recognize
-    } as FeeEarner & { isCJ: boolean };
-
-    // ALWAYS add Shaw as the ElizaOS creator character in the Park
-    // Shaw (@shawmakesmagic) created ElizaOS, the most popular AI agent framework
-    const shaw: FeeEarner = {
-      rank: 0, // Special rank
-      username: "Shaw",
-      providerUsername: "shawmakesmagic",
-      provider: "twitter" as FeeEarner["provider"],
-      wallet: "shaw-elizaos-permanent",
-      avatarUrl: undefined, // Will use special Shaw sprite
-      lifetimeEarnings: 17000, // 17k GitHub stars on ElizaOS
-      earnings24h: 0,
-      change24h: 0,
-      tokenCount: 0,
-      topToken: undefined,
-      isShaw: true, // Special flag for the game to recognize
-    } as FeeEarner & { isShaw: boolean };
-
-    earners.unshift(shaw); // Shaw seventh
-    earners.unshift(cj); // CJ sixth
-    earners.unshift(scout); // Neo fifth
-    earners.unshift(dev); // The Dev fourth
-    earners.unshift(finn); // Finn third
-    earners.unshift(ash); // Ash second
-    earners.unshift(toly); // Toly always first
+    for (const char of specialChars) {
+      earners.unshift({
+        rank: 0,
+        username: char.username,
+        providerUsername: char.providerUsername,
+        provider: char.provider as FeeEarner["provider"],
+        wallet: char.wallet,
+        avatarUrl: undefined,
+        lifetimeEarnings: char.lifetimeEarnings,
+        earnings24h: 0,
+        change24h: 0,
+        tokenCount: 0,
+        topToken: undefined,
+        [char.flag]: true,
+      } as FeeEarner);
+    }
 
     // Get weather (non-blocking) and time
     const realWeather = getWeatherNonBlocking();
