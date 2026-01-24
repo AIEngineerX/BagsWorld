@@ -107,6 +107,15 @@ export function calculateBuildingLevel(marketCap: number): number {
   return 1;
 }
 
+// Determine building status from health value
+function getStatusFromHealth(health: number): BuildingStatus {
+  const { thresholds } = ECOSYSTEM_CONFIG.buildings.decay;
+  if (health <= thresholds.dormant) return "dormant";
+  if (health <= thresholds.critical) return "critical";
+  if (health <= thresholds.warning) return "warning";
+  return "active";
+}
+
 export function calculateBuildingHealth(
   volume24h: number,
   marketCap: number,
@@ -115,21 +124,12 @@ export function calculateBuildingHealth(
   isPermanent: boolean = false,
   healthOverride?: number | null
 ): { health: number; status: BuildingStatus } {
-  // If admin override exists, use it directly
-  if (healthOverride !== null && healthOverride !== undefined) {
-    const config = ECOSYSTEM_CONFIG.buildings.decay;
-    let status: BuildingStatus = "active";
-    if (healthOverride <= config.thresholds.dormant) {
-      status = "dormant";
-    } else if (healthOverride <= config.thresholds.critical) {
-      status = "critical";
-    } else if (healthOverride <= config.thresholds.warning) {
-      status = "warning";
-    }
-    return { health: healthOverride, status };
+  // Admin override - use directly
+  if (healthOverride != null) {
+    return { health: healthOverride, status: getStatusFromHealth(healthOverride) };
   }
 
-  // Permanent buildings (HQ, Treasury, landmarks) always healthy
+  // Permanent buildings always healthy
   if (isPermanent) {
     return { health: 100, status: "active" };
   }
@@ -158,19 +158,8 @@ export function calculateBuildingHealth(
   }
 
   // Apply adjustment to previous health
-  const newHealth = Math.max(0, Math.min(100, previousHealth + adjustment));
-
-  // Determine status based on health thresholds
-  let status: BuildingStatus = "active";
-  if (newHealth <= config.thresholds.dormant) {
-    status = "dormant";
-  } else if (newHealth <= config.thresholds.critical) {
-    status = "critical";
-  } else if (newHealth <= config.thresholds.warning) {
-    status = "warning";
-  }
-
-  return { health: Math.round(newHealth), status };
+  const newHealth = Math.round(Math.max(0, Math.min(100, previousHealth + adjustment)));
+  return { health: newHealth, status: getStatusFromHealth(newHealth) };
 }
 
 export function calculateCharacterMood(

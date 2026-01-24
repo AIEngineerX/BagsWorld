@@ -19,6 +19,47 @@ function isValidSolanaAddress(address: string): boolean {
 }
 
 /**
+ * Get SQL connection for Neon database
+ */
+function getNeonSQL() {
+  const moduleName = "@netlify/neon";
+  // eslint-disable-next-line
+  const { neon } = require(moduleName);
+  return neon();
+}
+
+/**
+ * Validate mint and check database, returns error response or null if valid
+ */
+function validateMintAndDb(mint: string): NextResponse | null {
+  if (!mint || !isValidSolanaAddress(mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+  if (!isNeonConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+  return null;
+}
+
+/**
+ * Validate a nullable number is within range
+ */
+function validateNullableRange(
+  value: number | null,
+  min: number,
+  max: number,
+  fieldName: string
+): NextResponse | null {
+  if (value !== null && (typeof value !== "number" || value < min || value > max)) {
+    return NextResponse.json(
+      { error: `${fieldName} must be null or a number between ${min} and ${max}` },
+      { status: 400 }
+    );
+  }
+  return null;
+}
+
+/**
  * Verify admin access via session token
  * Requires: Authorization: Bearer <sessionToken>
  * Returns the admin wallet address if valid, null otherwise
@@ -405,45 +446,16 @@ async function handleSetVerified(data: { mint: string; verified: boolean }) {
 
 // Handle level override for buildings
 async function handleSetLevelOverride(data: { mint: string; level: number | null }) {
-  // Validate mint address
-  if (!data.mint || !isValidSolanaAddress(data.mint)) {
-    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
-  }
-
-  // Validate level is null or a valid level (1-5)
-  if (data.level !== null && (typeof data.level !== "number" || data.level < 1 || data.level > 5)) {
-    return NextResponse.json(
-      { error: "Level must be null or a number between 1 and 5" },
-      { status: 400 }
-    );
-  }
-
-  if (!isNeonConfigured()) {
-    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-  }
+  const validationError =
+    validateMintAndDb(data.mint) || validateNullableRange(data.level, 1, 5, "Level");
+  if (validationError) return validationError;
 
   try {
-    const moduleName = "@netlify/neon";
-    // eslint-disable-next-line
-    const { neon } = require(moduleName);
-    const sql = neon();
-
-    // Check if level_override column exists, if not, add it
-    try {
-      await sql`
-        ALTER TABLE tokens ADD COLUMN IF NOT EXISTS level_override INTEGER DEFAULT NULL
-      `;
-    } catch (e) {
-      // Column might already exist
-    }
-
+    const sql = getNeonSQL();
     await sql`
-      UPDATE tokens SET
-        level_override = ${data.level},
-        last_updated = NOW()
+      UPDATE tokens SET level_override = ${data.level}, last_updated = NOW()
       WHERE mint = ${data.mint}
     `;
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Set level override error:", error);
@@ -453,43 +465,18 @@ async function handleSetLevelOverride(data: { mint: string; level: number | null
 
 // Handle set building position
 async function handleSetPosition(data: { mint: string; x: number | null; y: number | null }) {
-  // Validate mint address
-  if (!data.mint || !isValidSolanaAddress(data.mint)) {
-    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
-  }
-
-  // Validate position values
-  if (data.x !== null && (typeof data.x !== "number" || data.x < 0 || data.x > 1280)) {
-    return NextResponse.json(
-      { error: "X position must be null or a number between 0 and 1280" },
-      { status: 400 }
-    );
-  }
-  if (data.y !== null && (typeof data.y !== "number" || data.y < 0 || data.y > 960)) {
-    return NextResponse.json(
-      { error: "Y position must be null or a number between 0 and 960" },
-      { status: 400 }
-    );
-  }
-
-  if (!isNeonConfigured()) {
-    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-  }
+  const validationError =
+    validateMintAndDb(data.mint) ||
+    validateNullableRange(data.x, 0, 1280, "X position") ||
+    validateNullableRange(data.y, 0, 960, "Y position");
+  if (validationError) return validationError;
 
   try {
-    const moduleName = "@netlify/neon";
-    // eslint-disable-next-line
-    const { neon } = require(moduleName);
-    const sql = neon();
-
+    const sql = getNeonSQL();
     await sql`
-      UPDATE tokens SET
-        position_x = ${data.x},
-        position_y = ${data.y},
-        last_updated = NOW()
+      UPDATE tokens SET position_x = ${data.x}, position_y = ${data.y}, last_updated = NOW()
       WHERE mint = ${data.mint}
     `;
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Set position error:", error);
@@ -499,36 +486,16 @@ async function handleSetPosition(data: { mint: string; x: number | null; y: numb
 
 // Handle set building style
 async function handleSetStyle(data: { mint: string; style: number | null }) {
-  // Validate mint address
-  if (!data.mint || !isValidSolanaAddress(data.mint)) {
-    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
-  }
-
-  // Validate style value
-  if (data.style !== null && (typeof data.style !== "number" || data.style < 0 || data.style > 3)) {
-    return NextResponse.json(
-      { error: "Style must be null or a number between 0 and 3" },
-      { status: 400 }
-    );
-  }
-
-  if (!isNeonConfigured()) {
-    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-  }
+  const validationError =
+    validateMintAndDb(data.mint) || validateNullableRange(data.style, 0, 3, "Style");
+  if (validationError) return validationError;
 
   try {
-    const moduleName = "@netlify/neon";
-    // eslint-disable-next-line
-    const { neon } = require(moduleName);
-    const sql = neon();
-
+    const sql = getNeonSQL();
     await sql`
-      UPDATE tokens SET
-        style_override = ${data.style},
-        last_updated = NOW()
+      UPDATE tokens SET style_override = ${data.style}, last_updated = NOW()
       WHERE mint = ${data.mint}
     `;
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Set style error:", error);
@@ -538,39 +505,16 @@ async function handleSetStyle(data: { mint: string; style: number | null }) {
 
 // Handle set building health override
 async function handleSetHealth(data: { mint: string; health: number | null }) {
-  // Validate mint address
-  if (!data.mint || !isValidSolanaAddress(data.mint)) {
-    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
-  }
-
-  // Validate health value
-  if (
-    data.health !== null &&
-    (typeof data.health !== "number" || data.health < 0 || data.health > 100)
-  ) {
-    return NextResponse.json(
-      { error: "Health must be null or a number between 0 and 100" },
-      { status: 400 }
-    );
-  }
-
-  if (!isNeonConfigured()) {
-    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-  }
+  const validationError =
+    validateMintAndDb(data.mint) || validateNullableRange(data.health, 0, 100, "Health");
+  if (validationError) return validationError;
 
   try {
-    const moduleName = "@netlify/neon";
-    // eslint-disable-next-line
-    const { neon } = require(moduleName);
-    const sql = neon();
-
+    const sql = getNeonSQL();
     await sql`
-      UPDATE tokens SET
-        health_override = ${data.health},
-        last_updated = NOW()
+      UPDATE tokens SET health_override = ${data.health}, last_updated = NOW()
       WHERE mint = ${data.mint}
     `;
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Set health error:", error);

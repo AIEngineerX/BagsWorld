@@ -239,84 +239,56 @@ export function AdminConsole() {
     }
   };
 
-  const handleSetLevelOverride = async (token: GlobalToken, level: number | null) => {
-    const success = await adminAction("set_level_override", {
-      mint: token.mint,
-      level,
-    });
+  // Generic token update helper
+  const updateToken = async (
+    token: GlobalToken,
+    action: string,
+    data: Record<string, unknown>,
+    updates: Partial<GlobalToken>,
+    logMessage: string
+  ) => {
+    const success = await adminAction(action, { mint: token.mint, ...data });
     if (success) {
       setGlobalTokens((prev) =>
-        prev.map((t) => (t.mint === token.mint ? { ...t, level_override: level } : t))
+        prev.map((t) => (t.mint === token.mint ? { ...t, ...updates } : t))
       );
-      addLog(`Set level ${level === null ? "auto" : level} for $${token.symbol}`, "success");
+      addLog(logMessage, "success");
     }
+    return success;
   };
 
-  const handleSetPosition = async (token: GlobalToken, x: number | null, y: number | null) => {
-    const success = await adminAction("set_position", {
-      mint: token.mint,
-      x,
-      y,
-    });
-    if (success) {
-      setGlobalTokens((prev) =>
-        prev.map((t) => (t.mint === token.mint ? { ...t, position_x: x, position_y: y } : t))
-      );
-      addLog(
-        `Set position ${x === null ? "auto" : `(${x}, ${y})`} for $${token.symbol}`,
-        "success"
-      );
-    }
-  };
+  const handleSetLevelOverride = (token: GlobalToken, level: number | null) =>
+    updateToken(token, "set_level_override", { level }, { level_override: level },
+      `Set level ${level ?? "auto"} for $${token.symbol}`);
 
-  const handleSetStyle = async (token: GlobalToken, style: number | null) => {
-    const success = await adminAction("set_style", {
-      mint: token.mint,
-      style,
-    });
-    if (success) {
-      setGlobalTokens((prev) =>
-        prev.map((t) => (t.mint === token.mint ? { ...t, style_override: style } : t))
-      );
-      addLog(`Set style ${style === null ? "auto" : style} for $${token.symbol}`, "success");
-    }
-  };
+  const handleSetPosition = (token: GlobalToken, x: number | null, y: number | null) =>
+    updateToken(token, "set_position", { x, y }, { position_x: x, position_y: y },
+      `Set position ${x === null ? "auto" : `(${x}, ${y})`} for $${token.symbol}`);
 
-  const handleSetHealth = async (token: GlobalToken, health: number | null) => {
-    const success = await adminAction("set_health", {
-      mint: token.mint,
-      health,
-    });
-    if (success) {
-      setGlobalTokens((prev) =>
-        prev.map((t) => (t.mint === token.mint ? { ...t, health_override: health } : t))
-      );
-      addLog(`Set health ${health === null ? "auto" : health} for $${token.symbol}`, "success");
-    }
-  };
+  const handleSetStyle = (token: GlobalToken, style: number | null) =>
+    updateToken(token, "set_style", { style }, { style_override: style },
+      `Set style ${style ?? "auto"} for $${token.symbol}`);
+
+  const handleSetHealth = (token: GlobalToken, health: number | null) =>
+    updateToken(token, "set_health", { health }, { health_override: health },
+      `Set health ${health ?? "auto"} for $${token.symbol}`);
 
   const getHealthStatus = (health: number | null | undefined): string => {
-    if (health === null || health === undefined) return "auto";
+    if (health == null) return "auto";
     if (health <= 10) return "dormant";
     if (health <= 25) return "critical";
     if (health <= 50) return "warning";
     return "active";
   };
 
-  const getHealthStatusColor = (status: string): string => {
-    switch (status) {
-      case "active":
-        return "text-green-400";
-      case "warning":
-        return "text-yellow-400";
-      case "critical":
-        return "text-orange-400";
-      case "dormant":
-        return "text-red-400";
-      default:
-        return "text-gray-400";
-    }
+  const healthStatusColors: Record<string, string> = {
+    active: "text-green-400",
+    warning: "text-yellow-400",
+    critical: "text-orange-400",
+    dormant: "text-red-400",
   };
+
+  const getHealthStatusColor = (status: string) => healthStatusColors[status] ?? "text-gray-400";
 
   const handleAddToken = async () => {
     if (!newTokenMint.trim()) return;
