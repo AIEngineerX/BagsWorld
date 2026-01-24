@@ -354,9 +354,7 @@ async function fetchHistoricalCandles(
 ): Promise<PriceCandle[]> {
   try {
     // Try DexScreener for historical data
-    const response = await fetch(
-      `https://api.dexscreener.com/latest/dex/tokens/${tokenMint}`
-    );
+    const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenMint}`);
 
     if (!response.ok) {
       return generateSyntheticCandles(tokenSymbol);
@@ -391,14 +389,14 @@ function generateCandlesFromPair(pair: any): PriceCandle[] {
 
   for (let i = 0; i < 60; i++) {
     const changePercent = (Math.random() - 0.5) * volatility * 2;
-    const trendBias = (priceChange24h / 100) / 60; // Gradual trend
+    const trendBias = priceChange24h / 100 / 60; // Gradual trend
 
     const open = price;
     const change = price * (changePercent + trendBias);
     const close = price + change;
     const high = Math.max(open, close) * (1 + Math.random() * 0.02);
     const low = Math.min(open, close) * (1 - Math.random() * 0.02);
-    const volume = (pair.volume?.h24 || 10000) / 60 * (0.5 + Math.random());
+    const volume = ((pair.volume?.h24 || 10000) / 60) * (0.5 + Math.random());
 
     candles.push({
       timestamp: Date.now() - (60 - i) * 3600000,
@@ -672,8 +670,7 @@ function makeOpponentDecision(
 
   // Buy logic
   if (!hasPosition || session.opponentPosition.tokenAmount * currentPrice < session.opponentSol) {
-    const buySignal =
-      technicalSignal > 0.1 * (1 - traits.riskTolerance) && momentum > -0.05;
+    const buySignal = technicalSignal > 0.1 * (1 - traits.riskTolerance) && momentum > -0.05;
 
     if (buySignal && session.opponentSol > 0.5) {
       const buyAmount = session.opponentSol * traits.riskTolerance * (0.3 + Math.random() * 0.4);
@@ -849,7 +846,10 @@ function buildCoachingPrompt(session: SparSession, opponent: DojoOpponent): stri
   const winner = session.winner;
 
   const playerTradesSummary = session.playerTrades
-    .map((t, i) => `${i + 1}. ${t.type.toUpperCase()} at ${t.price.toFixed(6)} (candle ${t.candleIndex})`)
+    .map(
+      (t, i) =>
+        `${i + 1}. ${t.type.toUpperCase()} at ${t.price.toFixed(6)} (candle ${t.candleIndex})`
+    )
     .join("\n");
 
   return `You just finished a trading spar against a student. Review their performance.
@@ -889,10 +889,7 @@ function parseCoachingResponse(
   };
 }
 
-function generateFallbackCoaching(
-  session: SparSession,
-  opponent: DojoOpponent
-): CoachingFeedback {
+function generateFallbackCoaching(session: SparSession, opponent: DojoOpponent): CoachingFeedback {
   const playerPnl = session.playerPnlPercent || 0;
   const winner = session.winner;
 
@@ -901,19 +898,24 @@ function generateFallbackCoaching(
 
   if (winner === "player" && playerPnl > 20) {
     grade = "A";
-    message = "Solid performance. You read the price action well and managed risk. Keep that discipline.";
+    message =
+      "Solid performance. You read the price action well and managed risk. Keep that discipline.";
   } else if (winner === "player") {
     grade = "B";
-    message = "You won, but the margin was thin. Work on position sizing and conviction in your entries.";
+    message =
+      "You won, but the margin was thin. Work on position sizing and conviction in your entries.";
   } else if (winner === "draw") {
     grade = "C";
-    message = "A draw means neither of us dominated. You need to find an edge. Study the setups more carefully.";
+    message =
+      "A draw means neither of us dominated. You need to find an edge. Study the setups more carefully.";
   } else if (playerPnl > -10) {
     grade = "C";
-    message = "You lost but limited the damage. Review your entry points. You were late on most trades.";
+    message =
+      "You lost but limited the damage. Review your entry points. You were late on most trades.";
   } else if (playerPnl > -25) {
     grade = "D";
-    message = "Poor risk management. You held losers too long and cut winners too early. Classic mistake.";
+    message =
+      "Poor risk management. You held losers too long and cut winners too early. Classic mistake.";
   } else {
     grade = "F";
     message = "That was rough. Go back to basics. Paper trade more before challenging me again.";

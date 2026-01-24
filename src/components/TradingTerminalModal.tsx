@@ -140,7 +140,9 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
   const [tradeAmount, setTradeAmount] = useState("");
   const [slippageBps, setSlippageBps] = useState(100); // 1% default
   const [showSlippageSettings, setShowSlippageSettings] = useState(false);
-  const [txStatus, setTxStatus] = useState<"idle" | "quoting" | "signing" | "confirming" | "success" | "error">("idle");
+  const [txStatus, setTxStatus] = useState<
+    "idle" | "quoting" | "signing" | "confirming" | "success" | "error"
+  >("idle");
   const [txSignature, setTxSignature] = useState<string | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
 
@@ -177,7 +179,11 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
   });
 
   // Jupiter quote
-  const { data: jupiterQuote, isLoading: quoteLoading, refetch: refetchQuote } = useQuery({
+  const {
+    data: jupiterQuote,
+    isLoading: quoteLoading,
+    refetch: refetchQuote,
+  } = useQuery({
     queryKey: ["jupiter-quote", selectedToken?.mint, tradeAmount, tradeMode, slippageBps],
     queryFn: async (): Promise<JupiterQuote | null> => {
       if (!selectedToken || !tradeAmount || parseFloat(tradeAmount) <= 0) return null;
@@ -406,42 +412,45 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
   }, []);
 
   // Search for tokens (supports both name search and direct CA paste)
-  const handleSearch = useCallback(async (query: string) => {
-    const trimmedQuery = query.trim();
+  const handleSearch = useCallback(
+    async (query: string) => {
+      const trimmedQuery = query.trim();
 
-    if (trimmedQuery.length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-
-    // Check if it's a contract address
-    if (isSolanaAddress(trimmedQuery)) {
-      const token = await fetchTokenByAddress(trimmedQuery);
-      if (token) {
-        setSearchResults([token]);
-        // Auto-select the token if it's a direct CA paste
-        setSelectedToken(token);
-        setTradeAmount("");
-      } else {
+      if (trimmedQuery.length < 2) {
         setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+
+      // Check if it's a contract address
+      if (isSolanaAddress(trimmedQuery)) {
+        const token = await fetchTokenByAddress(trimmedQuery);
+        if (token) {
+          setSearchResults([token]);
+          // Auto-select the token if it's a direct CA paste
+          setSelectedToken(token);
+          setTradeAmount("");
+        } else {
+          setSearchResults([]);
+        }
+        setIsSearching(false);
+        return;
+      }
+
+      // Otherwise, do a regular name/symbol search
+      const res = await fetch(
+        `/api/trading-terminal?action=search&query=${encodeURIComponent(trimmedQuery)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data.tokens || []);
       }
       setIsSearching(false);
-      return;
-    }
-
-    // Otherwise, do a regular name/symbol search
-    const res = await fetch(
-      `/api/trading-terminal?action=search&query=${encodeURIComponent(trimmedQuery)}`
-    );
-    if (res.ok) {
-      const data = await res.json();
-      setSearchResults(data.tokens || []);
-    }
-    setIsSearching(false);
-  }, [fetchTokenByAddress]);
+    },
+    [fetchTokenByAddress]
+  );
 
   // Debounced search
   useEffect(() => {
@@ -711,14 +720,14 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
   return (
     <div
       className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-2 sm:p-4"
-      style={{ pointerEvents: 'auto' }}
+      style={{ pointerEvents: "auto" }}
       onClick={handleBackdropClick}
       onMouseDown={stopAllPropagation}
       onPointerDown={stopAllPropagation}
     >
       <div
         className="bg-[#0a0a0f] border border-[#1e293b] rounded-lg max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col"
-        style={{ pointerEvents: 'auto' }}
+        style={{ pointerEvents: "auto" }}
         onClick={stopAllPropagation}
         onMouseDown={stopAllPropagation}
         onPointerDown={stopAllPropagation}
@@ -743,13 +752,16 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-pixel text-[#e2e8f0] text-sm tracking-wide">TRADING TERMINAL</h2>
+                <h2 className="font-pixel text-[#e2e8f0] text-sm tracking-wide">
+                  TRADING TERMINAL
+                </h2>
                 <span className="font-mono text-[8px] px-1.5 py-0.5 bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]/30 rounded">
                   BETA
                 </span>
               </div>
               <p className="font-mono text-[#64748b] text-[10px]">
-                {connected ? `${(solBalance || 0).toFixed(4)} SOL` : "Connect wallet"} | {tokensData?.total || 0} tokens
+                {connected ? `${(solBalance || 0).toFixed(4)} SOL` : "Connect wallet"} |{" "}
+                {tokensData?.total || 0} tokens
               </p>
             </div>
           </div>
@@ -876,12 +888,20 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {tokenDetail?.imageUrl && (
-                          <img src={tokenDetail.imageUrl} alt={selectedToken.symbol} className="w-8 h-8 rounded-full" />
+                          <img
+                            src={tokenDetail.imageUrl}
+                            alt={selectedToken.symbol}
+                            className="w-8 h-8 rounded-full"
+                          />
                         )}
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-pixel text-[#e2e8f0] text-sm">${selectedToken.symbol}</span>
-                            <span className="font-mono text-[#64748b] text-xs truncate max-w-[120px]">{selectedToken.name}</span>
+                            <span className="font-pixel text-[#e2e8f0] text-sm">
+                              ${selectedToken.symbol}
+                            </span>
+                            <span className="font-mono text-[#64748b] text-xs truncate max-w-[120px]">
+                              {selectedToken.name}
+                            </span>
                             {tokenDetail?.dexId && (
                               <span className="font-mono text-[8px] px-1.5 py-0.5 bg-[#1e293b] text-[#64748b] rounded">
                                 {tokenDetail.dexId.toUpperCase()}
@@ -889,21 +909,35 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                             )}
                           </div>
                           <div className="flex items-center gap-3 mt-1">
-                            <span className="font-mono text-[#e2e8f0] text-lg">{formatPrice(tokenDetail?.price || selectedToken.price)}</span>
+                            <span className="font-mono text-[#e2e8f0] text-lg">
+                              {formatPrice(tokenDetail?.price || selectedToken.price)}
+                            </span>
                             {/* Price changes row */}
                             <div className="flex items-center gap-2">
                               {tokenDetail?.change5m !== undefined && (
-                                <span className={`font-mono text-[9px] px-1 py-0.5 rounded ${tokenDetail.change5m >= 0 ? "bg-[#22c55e]/10 text-[#22c55e]" : "bg-[#ef4444]/10 text-[#ef4444]"}`}>
-                                  5m: {tokenDetail.change5m >= 0 ? "+" : ""}{tokenDetail.change5m.toFixed(1)}%
+                                <span
+                                  className={`font-mono text-[9px] px-1 py-0.5 rounded ${tokenDetail.change5m >= 0 ? "bg-[#22c55e]/10 text-[#22c55e]" : "bg-[#ef4444]/10 text-[#ef4444]"}`}
+                                >
+                                  5m: {tokenDetail.change5m >= 0 ? "+" : ""}
+                                  {tokenDetail.change5m.toFixed(1)}%
                                 </span>
                               )}
                               {tokenDetail?.change1h !== undefined && (
-                                <span className={`font-mono text-[9px] px-1 py-0.5 rounded ${tokenDetail.change1h >= 0 ? "bg-[#22c55e]/10 text-[#22c55e]" : "bg-[#ef4444]/10 text-[#ef4444]"}`}>
-                                  1h: {tokenDetail.change1h >= 0 ? "+" : ""}{tokenDetail.change1h.toFixed(1)}%
+                                <span
+                                  className={`font-mono text-[9px] px-1 py-0.5 rounded ${tokenDetail.change1h >= 0 ? "bg-[#22c55e]/10 text-[#22c55e]" : "bg-[#ef4444]/10 text-[#ef4444]"}`}
+                                >
+                                  1h: {tokenDetail.change1h >= 0 ? "+" : ""}
+                                  {tokenDetail.change1h.toFixed(1)}%
                                 </span>
                               )}
-                              <span className={`font-mono text-[9px] px-1 py-0.5 rounded ${(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "bg-[#22c55e]/10 text-[#22c55e]" : "bg-[#ef4444]/10 text-[#ef4444]"}`}>
-                                24h: {(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "+" : ""}{(tokenDetail?.change24h || selectedToken.change24h).toFixed(1)}%
+                              <span
+                                className={`font-mono text-[9px] px-1 py-0.5 rounded ${(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "bg-[#22c55e]/10 text-[#22c55e]" : "bg-[#ef4444]/10 text-[#ef4444]"}`}
+                              >
+                                24h:{" "}
+                                {(tokenDetail?.change24h || selectedToken.change24h) >= 0
+                                  ? "+"
+                                  : ""}
+                                {(tokenDetail?.change24h || selectedToken.change24h).toFixed(1)}%
                               </span>
                             </div>
                           </div>
@@ -912,7 +946,9 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                       {connected && tokenBalance !== undefined && tokenBalance > 0 && (
                         <div className="text-right bg-[#06b6d4]/10 border border-[#06b6d4]/30 rounded px-3 py-1.5">
                           <p className="font-mono text-[#06b6d4] text-[9px]">YOUR BALANCE</p>
-                          <p className="font-mono text-[#e2e8f0] text-sm">{tokenBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })}</p>
+                          <p className="font-mono text-[#e2e8f0] text-sm">
+                            {tokenBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -921,28 +957,38 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                     <div className="flex items-center gap-3 mt-2 flex-wrap">
                       <div className="bg-[#1e293b]/50 rounded px-2 py-1">
                         <p className="font-mono text-[#64748b] text-[8px]">MCAP</p>
-                        <p className="font-mono text-[#e2e8f0] text-[11px]">{formatMarketCap(tokenDetail?.marketCap || selectedToken.marketCap)}</p>
+                        <p className="font-mono text-[#e2e8f0] text-[11px]">
+                          {formatMarketCap(tokenDetail?.marketCap || selectedToken.marketCap)}
+                        </p>
                       </div>
                       {tokenDetail?.fdv && tokenDetail.fdv !== tokenDetail.marketCap && (
                         <div className="bg-[#1e293b]/50 rounded px-2 py-1">
                           <p className="font-mono text-[#64748b] text-[8px]">FDV</p>
-                          <p className="font-mono text-[#e2e8f0] text-[11px]">{formatMarketCap(tokenDetail.fdv)}</p>
+                          <p className="font-mono text-[#e2e8f0] text-[11px]">
+                            {formatMarketCap(tokenDetail.fdv)}
+                          </p>
                         </div>
                       )}
                       {tokenDetail?.liquidity !== undefined && tokenDetail.liquidity > 0 && (
                         <div className="bg-[#1e293b]/50 rounded px-2 py-1">
                           <p className="font-mono text-[#64748b] text-[8px]">LIQUIDITY</p>
-                          <p className="font-mono text-[#22c55e] text-[11px]">{formatMarketCap(tokenDetail.liquidity)}</p>
+                          <p className="font-mono text-[#22c55e] text-[11px]">
+                            {formatMarketCap(tokenDetail.liquidity)}
+                          </p>
                         </div>
                       )}
                       <div className="bg-[#1e293b]/50 rounded px-2 py-1">
                         <p className="font-mono text-[#64748b] text-[8px]">24H VOL</p>
-                        <p className="font-mono text-[#e2e8f0] text-[11px]">{formatMarketCap(tokenDetail?.volume24h || selectedToken.volume24h)}</p>
+                        <p className="font-mono text-[#e2e8f0] text-[11px]">
+                          {formatMarketCap(tokenDetail?.volume24h || selectedToken.volume24h)}
+                        </p>
                       </div>
                       {tokenDetail?.volume1h !== undefined && tokenDetail.volume1h > 0 && (
                         <div className="bg-[#1e293b]/50 rounded px-2 py-1">
                           <p className="font-mono text-[#64748b] text-[8px]">1H VOL</p>
-                          <p className="font-mono text-[#e2e8f0] text-[11px]">{formatMarketCap(tokenDetail.volume1h)}</p>
+                          <p className="font-mono text-[#e2e8f0] text-[11px]">
+                            {formatMarketCap(tokenDetail.volume1h)}
+                          </p>
                         </div>
                       )}
                       {tokenDetail?.txns24h && (
@@ -958,7 +1004,9 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                       {tokenDetail?.holders !== undefined && tokenDetail.holders > 0 && (
                         <div className="bg-[#1e293b]/50 rounded px-2 py-1">
                           <p className="font-mono text-[#64748b] text-[8px]">HOLDERS</p>
-                          <p className="font-mono text-[#e2e8f0] text-[11px]">{tokenDetail.holders.toLocaleString()}</p>
+                          <p className="font-mono text-[#e2e8f0] text-[11px]">
+                            {tokenDetail.holders.toLocaleString()}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -999,7 +1047,9 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                 ) : (
                   <div className="px-4 py-6 border-b border-[#1e293b] bg-[#12121a] text-center">
                     <p className="font-mono text-[#64748b] text-sm">Select a token to view chart</p>
-                    <p className="font-mono text-[#475569] text-xs mt-1">Or paste a contract address in the search box</p>
+                    <p className="font-mono text-[#475569] text-xs mt-1">
+                      Or paste a contract address in the search box
+                    </p>
                   </div>
                 )}
 
@@ -1024,26 +1074,35 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                           </div>
                         </div>
                       ) : (
-                        <div className="relative w-full h-72" style={{ minHeight: '288px' }}>
+                        <div className="relative w-full h-72" style={{ minHeight: "288px" }}>
                           {/* Price/MC Overlay */}
                           <div className="absolute top-2 left-2 z-10 flex items-center gap-3 bg-[#0a0a0f]/90 backdrop-blur-sm rounded px-3 py-2 border border-[#1e293b]">
                             <div>
                               <p className="font-mono text-[#e2e8f0] text-lg font-bold">
                                 {formatPrice(tokenDetail?.price || selectedToken.price)}
                               </p>
-                              <p className={`font-mono text-[10px] ${(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
-                                {(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "+" : ""}
-                                {(tokenDetail?.change24h || selectedToken.change24h).toFixed(2)}% 24h
+                              <p
+                                className={`font-mono text-[10px] ${(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                              >
+                                {(tokenDetail?.change24h || selectedToken.change24h) >= 0
+                                  ? "+"
+                                  : ""}
+                                {(tokenDetail?.change24h || selectedToken.change24h).toFixed(2)}%
+                                24h
                               </p>
                             </div>
                             <div className="border-l border-[#1e293b] pl-3">
                               <p className="font-mono text-[#64748b] text-[9px]">MC</p>
-                              <p className="font-mono text-[#e2e8f0] text-sm">{formatMarketCap(tokenDetail?.marketCap || selectedToken.marketCap)}</p>
+                              <p className="font-mono text-[#e2e8f0] text-sm">
+                                {formatMarketCap(tokenDetail?.marketCap || selectedToken.marketCap)}
+                              </p>
                             </div>
                             {tokenDetail?.liquidity !== undefined && tokenDetail.liquidity > 0 && (
                               <div className="border-l border-[#1e293b] pl-3">
                                 <p className="font-mono text-[#64748b] text-[9px]">LIQ</p>
-                                <p className="font-mono text-[#22c55e] text-sm">{formatMarketCap(tokenDetail.liquidity)}</p>
+                                <p className="font-mono text-[#22c55e] text-sm">
+                                  {formatMarketCap(tokenDetail.liquidity)}
+                                </p>
                               </div>
                             )}
                           </div>
@@ -1117,10 +1176,10 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                               {tradeMode === "buy" ? "PAY (SOL)" : `SELL (${selectedToken.symbol})`}
                             </label>
                             <span className="font-mono text-[#64748b] text-[10px]">
-                              Balance: {tradeMode === "buy"
+                              Balance:{" "}
+                              {tradeMode === "buy"
                                 ? `${(solBalance || 0).toFixed(4)} SOL`
-                                : `${(tokenBalance || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}`
-                              }
+                                : `${(tokenBalance || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}`}
                             </span>
                           </div>
                           <input
@@ -1181,21 +1240,22 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                                 <p className="font-mono text-[#e2e8f0] text-lg">
                                   {tradeMode === "buy"
                                     ? formatOutputAmount(jupiterQuote.outAmount, 6)
-                                    : formatOutputAmount(jupiterQuote.outAmount, 9)
-                                  }
+                                    : formatOutputAmount(jupiterQuote.outAmount, 9)}
                                   <span className="text-[#64748b] text-sm ml-2">
                                     {tradeMode === "buy" ? selectedToken.symbol : "SOL"}
                                   </span>
                                 </p>
                                 <div className="flex items-center justify-between mt-2 text-[10px]">
                                   <span className="font-mono text-[#64748b]">Price Impact</span>
-                                  <span className={`font-mono ${
-                                    parseFloat(jupiterQuote.priceImpactPct) > 1
-                                      ? "text-[#ef4444]"
-                                      : parseFloat(jupiterQuote.priceImpactPct) > 0.5
-                                        ? "text-[#fbbf24]"
-                                        : "text-[#22c55e]"
-                                  }`}>
+                                  <span
+                                    className={`font-mono ${
+                                      parseFloat(jupiterQuote.priceImpactPct) > 1
+                                        ? "text-[#ef4444]"
+                                        : parseFloat(jupiterQuote.priceImpactPct) > 0.5
+                                          ? "text-[#fbbf24]"
+                                          : "text-[#22c55e]"
+                                    }`}
+                                  >
                                     {parseFloat(jupiterQuote.priceImpactPct).toFixed(2)}%
                                   </span>
                                 </div>
@@ -1203,13 +1263,17 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                                   <div className="flex items-center justify-between mt-1 text-[10px]">
                                     <span className="font-mono text-[#64748b]">Route</span>
                                     <span className="font-mono text-[#64748b]">
-                                      {jupiterQuote.routePlan.map(r => r.swapInfo.label).join(" → ")}
+                                      {jupiterQuote.routePlan
+                                        .map((r) => r.swapInfo.label)
+                                        .join(" → ")}
                                     </span>
                                   </div>
                                 )}
                               </>
                             ) : !quoteLoading ? (
-                              <p className="font-mono text-[#64748b] text-sm">Enter amount to see quote</p>
+                              <p className="font-mono text-[#64748b] text-sm">
+                                Enter amount to see quote
+                              </p>
                             ) : null}
                           </div>
                         )}
@@ -1227,7 +1291,12 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                               viewBox="0 0 24 24"
                               stroke="currentColor"
                             >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
                             </svg>
                           </button>
                           {showSlippageSettings && (
@@ -1251,34 +1320,78 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
 
                         {/* Transaction Status */}
                         {txStatus !== "idle" && (
-                          <div className={`rounded-lg p-3 border ${
-                            txStatus === "success"
-                              ? "bg-[#22c55e]/10 border-[#22c55e]/30"
-                              : txStatus === "error"
-                                ? "bg-[#ef4444]/10 border-[#ef4444]/30"
-                                : "bg-[#06b6d4]/10 border-[#06b6d4]/30"
-                          }`}>
+                          <div
+                            className={`rounded-lg p-3 border ${
+                              txStatus === "success"
+                                ? "bg-[#22c55e]/10 border-[#22c55e]/30"
+                                : txStatus === "error"
+                                  ? "bg-[#ef4444]/10 border-[#ef4444]/30"
+                                  : "bg-[#06b6d4]/10 border-[#06b6d4]/30"
+                            }`}
+                          >
                             <div className="flex items-center gap-2">
-                              {(txStatus === "quoting" || txStatus === "signing" || txStatus === "confirming") && (
-                                <svg className="w-4 h-4 animate-spin text-[#06b6d4]" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                              {(txStatus === "quoting" ||
+                                txStatus === "signing" ||
+                                txStatus === "confirming") && (
+                                <svg
+                                  className="w-4 h-4 animate-spin text-[#06b6d4]"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  />
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  />
                                 </svg>
                               )}
                               {txStatus === "success" && (
-                                <svg className="w-4 h-4 text-[#22c55e]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                <svg
+                                  className="w-4 h-4 text-[#22c55e]"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 13l4 4L19 7"
+                                  />
                                 </svg>
                               )}
                               {txStatus === "error" && (
-                                <svg className="w-4 h-4 text-[#ef4444]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                <svg
+                                  className="w-4 h-4 text-[#ef4444]"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
                                 </svg>
                               )}
-                              <span className={`font-mono text-[10px] ${
-                                txStatus === "success" ? "text-[#22c55e]" :
-                                txStatus === "error" ? "text-[#ef4444]" : "text-[#06b6d4]"
-                              }`}>
+                              <span
+                                className={`font-mono text-[10px] ${
+                                  txStatus === "success"
+                                    ? "text-[#22c55e]"
+                                    : txStatus === "error"
+                                      ? "text-[#ef4444]"
+                                      : "text-[#06b6d4]"
+                                }`}
+                              >
                                 {txStatus === "quoting" && "Getting quote..."}
                                 {txStatus === "signing" && "Sign in wallet..."}
                                 {txStatus === "confirming" && "Confirming..."}
@@ -1329,8 +1442,7 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                               ? "PROCESSING..."
                               : tradeMode === "buy"
                                 ? `BUY ${selectedToken.symbol}`
-                                : `SELL ${selectedToken.symbol}`
-                            }
+                                : `SELL ${selectedToken.symbol}`}
                           </button>
                         )}
 
@@ -1373,7 +1485,9 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
               <div className="flex-1 overflow-y-auto p-4">
                 {!selectedToken ? (
                   <div className="h-full flex items-center justify-center">
-                    <p className="font-mono text-[#64748b] text-sm">Select a token to view trades</p>
+                    <p className="font-mono text-[#64748b] text-sm">
+                      Select a token to view trades
+                    </p>
                   </div>
                 ) : tokenTradesLoading ? (
                   <div className="h-full flex items-center justify-center">
@@ -1384,7 +1498,9 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                     <div className="bg-[#12121a] border border-[#1e293b] rounded-lg p-3 mb-4">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 bg-[#22c55e] rounded-full animate-pulse" />
-                        <span className="font-mono text-[#64748b] text-[10px]">LIVE TRADES FOR ${selectedToken.symbol}</span>
+                        <span className="font-mono text-[#64748b] text-[10px]">
+                          LIVE TRADES FOR ${selectedToken.symbol}
+                        </span>
                       </div>
                     </div>
                     {(tokenTradesData?.trades || []).length === 0 ? (
@@ -1408,13 +1524,19 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                               trade.type === "buy" ? "bg-[#22c55e]/5" : "bg-[#ef4444]/5"
                             }`}
                           >
-                            <span className={trade.type === "buy" ? "text-[#22c55e]" : "text-[#ef4444]"}>
+                            <span
+                              className={trade.type === "buy" ? "text-[#22c55e]" : "text-[#ef4444]"}
+                            >
                               {trade.type.toUpperCase()}
                             </span>
                             <span className="text-[#e2e8f0]">${trade.totalUsd.toFixed(2)}</span>
                             <span className="text-[#64748b]">{formatPrice(trade.priceUsd)}</span>
-                            <span className="text-[#64748b] truncate">{shortenAddress(trade.maker)}</span>
-                            <span className="text-[#64748b] text-right">{formatTime(trade.timestamp)}</span>
+                            <span className="text-[#64748b] truncate">
+                              {shortenAddress(trade.maker)}
+                            </span>
+                            <span className="text-[#64748b] text-right">
+                              {formatTime(trade.timestamp)}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -1429,7 +1551,9 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
               <div className="flex-1 overflow-y-auto p-4">
                 {!selectedToken ? (
                   <div className="h-full flex items-center justify-center">
-                    <p className="font-mono text-[#64748b] text-sm">Select a token to view holders</p>
+                    <p className="font-mono text-[#64748b] text-sm">
+                      Select a token to view holders
+                    </p>
                   </div>
                 ) : tokenHoldersLoading ? (
                   <div className="h-full flex items-center justify-center">
@@ -1445,7 +1569,9 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                     </div>
                     {(tokenHoldersData?.holders || []).length === 0 ? (
                       <div className="text-center py-10">
-                        <p className="font-mono text-[#64748b] text-sm">Holder data not available</p>
+                        <p className="font-mono text-[#64748b] text-sm">
+                          Holder data not available
+                        </p>
                         <p className="font-mono text-[#475569] text-xs mt-1">
                           Try checking on{" "}
                           <a
@@ -1497,7 +1623,10 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                                   {shortenAddress(holder.address)}
                                 </a>
                                 <p className="font-mono text-[#475569] text-[10px]">
-                                  {holder.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })} tokens
+                                  {holder.balance.toLocaleString(undefined, {
+                                    maximumFractionDigits: 2,
+                                  })}{" "}
+                                  tokens
                                 </p>
                               </div>
                               <div className="text-right">
@@ -1528,10 +1657,16 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                     <div className="bg-[#12121a] border border-[#1e293b] rounded-lg p-4">
                       <div className="flex items-center gap-3 mb-4">
                         {tokenDetail?.imageUrl && (
-                          <img src={tokenDetail.imageUrl} alt={selectedToken.symbol} className="w-12 h-12 rounded-full" />
+                          <img
+                            src={tokenDetail.imageUrl}
+                            alt={selectedToken.symbol}
+                            className="w-12 h-12 rounded-full"
+                          />
                         )}
                         <div>
-                          <h3 className="font-pixel text-[#e2e8f0] text-lg">${selectedToken.symbol}</h3>
+                          <h3 className="font-pixel text-[#e2e8f0] text-lg">
+                            ${selectedToken.symbol}
+                          </h3>
                           <p className="font-mono text-[#64748b] text-sm">{selectedToken.name}</p>
                         </div>
                       </div>
@@ -1539,13 +1674,25 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">CONTRACT ADDRESS</p>
                           <div className="flex items-center gap-2">
-                            <p className="font-mono text-[#e2e8f0] text-xs truncate">{selectedToken.mint}</p>
+                            <p className="font-mono text-[#e2e8f0] text-xs truncate">
+                              {selectedToken.mint}
+                            </p>
                             <button
                               onClick={() => navigator.clipboard.writeText(selectedToken.mint)}
                               className="text-[#64748b] hover:text-[#e2e8f0]"
                             >
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                />
                               </svg>
                             </button>
                           </div>
@@ -1553,7 +1700,9 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                         {tokenDetail?.pairAddress && (
                           <div>
                             <p className="font-mono text-[#64748b] text-[10px]">PAIR ADDRESS</p>
-                            <p className="font-mono text-[#e2e8f0] text-xs truncate">{tokenDetail.pairAddress}</p>
+                            <p className="font-mono text-[#e2e8f0] text-xs truncate">
+                              {tokenDetail.pairAddress}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -1565,28 +1714,42 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">PRICE</p>
-                          <p className="font-mono text-[#e2e8f0] text-sm">{formatPrice(tokenDetail?.price || selectedToken.price)}</p>
+                          <p className="font-mono text-[#e2e8f0] text-sm">
+                            {formatPrice(tokenDetail?.price || selectedToken.price)}
+                          </p>
                         </div>
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">MARKET CAP</p>
-                          <p className="font-mono text-[#e2e8f0] text-sm">{formatMarketCap(tokenDetail?.marketCap || selectedToken.marketCap)}</p>
+                          <p className="font-mono text-[#e2e8f0] text-sm">
+                            {formatMarketCap(tokenDetail?.marketCap || selectedToken.marketCap)}
+                          </p>
                         </div>
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">FDV</p>
-                          <p className="font-mono text-[#e2e8f0] text-sm">{formatMarketCap(tokenDetail?.fdv || tokenDetail?.marketCap || selectedToken.marketCap)}</p>
+                          <p className="font-mono text-[#e2e8f0] text-sm">
+                            {formatMarketCap(
+                              tokenDetail?.fdv || tokenDetail?.marketCap || selectedToken.marketCap
+                            )}
+                          </p>
                         </div>
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">LIQUIDITY</p>
-                          <p className="font-mono text-[#22c55e] text-sm">{formatMarketCap(tokenDetail?.liquidity || 0)}</p>
+                          <p className="font-mono text-[#22c55e] text-sm">
+                            {formatMarketCap(tokenDetail?.liquidity || 0)}
+                          </p>
                         </div>
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">24H VOLUME</p>
-                          <p className="font-mono text-[#e2e8f0] text-sm">{formatMarketCap(tokenDetail?.volume24h || selectedToken.volume24h)}</p>
+                          <p className="font-mono text-[#e2e8f0] text-sm">
+                            {formatMarketCap(tokenDetail?.volume24h || selectedToken.volume24h)}
+                          </p>
                         </div>
                         {tokenDetail?.priceNative && (
                           <div>
                             <p className="font-mono text-[#64748b] text-[10px]">PRICE (SOL)</p>
-                            <p className="font-mono text-[#e2e8f0] text-sm">{parseFloat(tokenDetail.priceNative).toFixed(10)}</p>
+                            <p className="font-mono text-[#e2e8f0] text-sm">
+                              {parseFloat(tokenDetail.priceNative).toFixed(10)}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -1598,26 +1761,38 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                       <div className="grid grid-cols-4 gap-4">
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">5 MIN</p>
-                          <p className={`font-mono text-sm ${(tokenDetail?.change5m || 0) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
-                            {(tokenDetail?.change5m || 0) >= 0 ? "+" : ""}{(tokenDetail?.change5m || 0).toFixed(2)}%
+                          <p
+                            className={`font-mono text-sm ${(tokenDetail?.change5m || 0) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                          >
+                            {(tokenDetail?.change5m || 0) >= 0 ? "+" : ""}
+                            {(tokenDetail?.change5m || 0).toFixed(2)}%
                           </p>
                         </div>
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">1 HOUR</p>
-                          <p className={`font-mono text-sm ${(tokenDetail?.change1h || 0) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
-                            {(tokenDetail?.change1h || 0) >= 0 ? "+" : ""}{(tokenDetail?.change1h || 0).toFixed(2)}%
+                          <p
+                            className={`font-mono text-sm ${(tokenDetail?.change1h || 0) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                          >
+                            {(tokenDetail?.change1h || 0) >= 0 ? "+" : ""}
+                            {(tokenDetail?.change1h || 0).toFixed(2)}%
                           </p>
                         </div>
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">6 HOURS</p>
-                          <p className={`font-mono text-sm ${(tokenDetail?.change6h || 0) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
-                            {(tokenDetail?.change6h || 0) >= 0 ? "+" : ""}{(tokenDetail?.change6h || 0).toFixed(2)}%
+                          <p
+                            className={`font-mono text-sm ${(tokenDetail?.change6h || 0) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                          >
+                            {(tokenDetail?.change6h || 0) >= 0 ? "+" : ""}
+                            {(tokenDetail?.change6h || 0).toFixed(2)}%
                           </p>
                         </div>
                         <div>
                           <p className="font-mono text-[#64748b] text-[10px]">24 HOURS</p>
-                          <p className={`font-mono text-sm ${(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
-                            {(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "+" : ""}{(tokenDetail?.change24h || selectedToken.change24h).toFixed(2)}%
+                          <p
+                            className={`font-mono text-sm ${(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                          >
+                            {(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "+" : ""}
+                            {(tokenDetail?.change24h || selectedToken.change24h).toFixed(2)}%
                           </p>
                         </div>
                       </div>
@@ -1626,20 +1801,30 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                     {/* Trading Activity */}
                     {tokenDetail?.txns24h && (
                       <div className="bg-[#12121a] border border-[#1e293b] rounded-lg p-4">
-                        <h4 className="font-pixel text-[#e2e8f0] text-sm mb-3">24H TRADING ACTIVITY</h4>
+                        <h4 className="font-pixel text-[#e2e8f0] text-sm mb-3">
+                          24H TRADING ACTIVITY
+                        </h4>
                         <div className="grid grid-cols-3 gap-4">
                           <div>
                             <p className="font-mono text-[#64748b] text-[10px]">BUYS</p>
-                            <p className="font-mono text-[#22c55e] text-lg">{tokenDetail.txns24h.buys.toLocaleString()}</p>
+                            <p className="font-mono text-[#22c55e] text-lg">
+                              {tokenDetail.txns24h.buys.toLocaleString()}
+                            </p>
                           </div>
                           <div>
                             <p className="font-mono text-[#64748b] text-[10px]">SELLS</p>
-                            <p className="font-mono text-[#ef4444] text-lg">{tokenDetail.txns24h.sells.toLocaleString()}</p>
+                            <p className="font-mono text-[#ef4444] text-lg">
+                              {tokenDetail.txns24h.sells.toLocaleString()}
+                            </p>
                           </div>
                           <div>
                             <p className="font-mono text-[#64748b] text-[10px]">BUY/SELL RATIO</p>
-                            <p className={`font-mono text-lg ${tokenDetail.txns24h.buys >= tokenDetail.txns24h.sells ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
-                              {tokenDetail.txns24h.sells > 0 ? (tokenDetail.txns24h.buys / tokenDetail.txns24h.sells).toFixed(2) : "∞"}
+                            <p
+                              className={`font-mono text-lg ${tokenDetail.txns24h.buys >= tokenDetail.txns24h.sells ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                            >
+                              {tokenDetail.txns24h.sells > 0
+                                ? (tokenDetail.txns24h.buys / tokenDetail.txns24h.sells).toFixed(2)
+                                : "∞"}
                             </p>
                           </div>
                         </div>
@@ -1793,7 +1978,6 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                 )}
               </div>
             )}
-
           </div>
         </div>
 

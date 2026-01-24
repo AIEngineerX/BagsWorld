@@ -49,9 +49,7 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
 
   const fetchLiveTokens = async () => {
     try {
-      const res = await fetch(
-        "https://api.dexscreener.com/latest/dex/search?q=BAGS"
-      );
+      const res = await fetch("https://api.dexscreener.com/latest/dex/search?q=BAGS");
       if (res.ok) {
         const data = await res.json();
         const tokens = (data.pairs || [])
@@ -178,9 +176,7 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="font-mono text-white text-lg tracking-tight">TRADING DOJO</h2>
-              <p className="font-mono text-gray-500 text-xs mt-1">
-                Adversarial AI Sparring
-              </p>
+              <p className="font-mono text-gray-500 text-xs mt-1">Adversarial AI Sparring</p>
             </div>
             <div className="flex items-center gap-4">
               {/* Belt Display */}
@@ -285,9 +281,7 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                                 LV.{opponent.difficulty}
                               </span>
                             </div>
-                            <p className="font-mono text-xs text-gray-500 mt-1">
-                              {opponent.style}
-                            </p>
+                            <p className="font-mono text-xs text-gray-500 mt-1">{opponent.style}</p>
                             <p className="font-mono text-xs text-gray-600 mt-2 leading-relaxed">
                               {opponent.description}
                             </p>
@@ -409,9 +403,7 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                   </div>
                   <div className="text-right">
                     <p className="font-mono text-gray-500 text-xs">CANDLE</p>
-                    <p className="font-mono text-gray-400">
-                      {session.currentCandleIndex + 1}
-                    </p>
+                    <p className="font-mono text-gray-400">{session.currentCandleIndex + 1}</p>
                   </div>
                 </div>
 
@@ -523,8 +515,7 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                       <button
                         onClick={handleBuy}
                         disabled={
-                          parseFloat(buyAmount) <= 0 ||
-                          parseFloat(buyAmount) > session.playerSol
+                          parseFloat(buyAmount) <= 0 || parseFloat(buyAmount) > session.playerSol
                         }
                         className="px-4 py-1 bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-mono text-sm rounded transition-colors"
                       >
@@ -668,7 +659,9 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
                 {coaching ? (
                   <div>
                     <div className="flex items-center gap-3 mb-3">
-                      <span className={`font-mono text-4xl ${getGradeColor(coaching.overallGrade)}`}>
+                      <span
+                        className={`font-mono text-4xl ${getGradeColor(coaching.overallGrade)}`}
+                      >
                         {coaching.overallGrade}
                       </span>
                       <div

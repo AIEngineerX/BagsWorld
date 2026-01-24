@@ -809,8 +809,7 @@ async function generateConversationLines(
 
   for (let i = 0; i < lineCount; i++) {
     // Use dynamic turn-taking based on relevance scores
-    const lastMessage =
-      conversation.lines[conversation.lines.length - 1]?.message || topic;
+    const lastMessage = conversation.lines[conversation.lines.length - 1]?.message || topic;
     const speaker =
       i === 0
         ? participants[Math.floor(Math.random() * participants.length)] // Random first speaker
