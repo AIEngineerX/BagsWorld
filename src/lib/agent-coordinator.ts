@@ -324,11 +324,16 @@ function generateAnnouncement(event: AgentEvent): string {
     }
 
     case "creator_milestone": {
-      const { creator, milestone, value } = event.data as {
-        creator: string;
-        milestone: string;
-        value: number;
+      const data = event.data as {
+        creator?: string;
+        tokenSymbol?: string;
+        milestone?: string;
+        value?: number;
+        amount?: number;
       };
+      const creator = data.creator || data.tokenSymbol || "Token";
+      const milestone = data.milestone || "milestone";
+      const value = data.value ?? data.amount ?? 0;
       return `${creator} hit ${milestone}: ${formatSol(value)}!`;
     }
 
