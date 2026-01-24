@@ -167,7 +167,7 @@ const MIN_SLOT_SPACING = Math.round(100 * SCALE); // Minimum gap between buildin
 const LANDMARK_X_POSITIONS = [
   Math.round(50 * SCALE), // Casino (80) - far left
   Math.round(280 * SCALE), // PokeCenter (448)
-  Math.round(380 * SCALE), // TradingGym (608) - spaced from casino
+  Math.round(380 * SCALE), // TradingDojo (608) - spaced from casino
   WORLD_WIDTH / 2, // HQ/Treasury (640)
 ];
 const LANDMARK_CLEARANCE = 80; // Pixels to stay clear of landmarks
@@ -413,7 +413,7 @@ export function transformTokenToBuilding(
 ): GameBuilding {
   // Special landmark buildings get fixed positions
   const isPokeCenter = token.symbol === "POKECENTER" || token.mint.includes("PokeCenter");
-  const isTradingGym = token.symbol === "GYM" || token.mint.includes("TradingGym");
+  const isTradingGym = token.symbol === "DOJO" || token.mint.includes("TradingGym");
   const isCasino = token.symbol === "CASINO" || token.mint.includes("Casino");
   const isTradingTerminal = token.symbol === "TERMINAL" || token.mint.includes("TradingTerminal");
   const isTreasuryHub = token.mint.startsWith("Treasury");
@@ -442,7 +442,7 @@ export function transformTokenToBuilding(
     // Casino: BagsCity far left, Vegas-style landmark
     position = { x: Math.round(50 * SCALE), y: landmarkY };
   } else if (isTradingGym) {
-    // Trading Gym: BagsCity center-left, spaced from Casino
+    // Trading Dojo: BagsCity center-left, spaced from Casino
     position = { x: Math.round(380 * SCALE), y: landmarkY };
   } else if (isTradingTerminal) {
     // Trading Terminal: Right of center in BagsCity
@@ -476,7 +476,7 @@ export function transformTokenToBuilding(
 
   // Assign zones:
   // - BagsWorld HQ has NO zone - floats in the sky visible from both zones
-  // - Trading Gym and Casino go to BagsCity (trending)
+  // - Trading Dojo and Casino go to BagsCity (trending)
   // - User-created buildings are distributed between Park (main_city) and BagsCity (trending)
   //   based on a hash of their mint address for deterministic, even distribution
   const getZoneFromMint = (mint: string): "main_city" | "trending" => {
@@ -632,8 +632,8 @@ export function buildWorldState(
     // PokeCenter
     if (b.symbol === "POKECENTER" || b.symbol === "HEAL" || b.id.includes("PokeCenter"))
       return true;
-    // Trading Gym
-    if (b.symbol === "GYM" || b.id.includes("TradingGym")) return true;
+    // Trading Dojo
+    if (b.symbol === "DOJO" || b.id.includes("TradingGym")) return true;
     // Casino
     if (b.symbol === "CASINO" || b.id.includes("Casino")) return true;
     // Treasury
