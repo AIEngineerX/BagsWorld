@@ -8,6 +8,7 @@ import { buildWorldState, type BagsHealthMetrics } from "@/lib/world-calculator"
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
 import { emitEvent, startCoordinator, type AgentEventType } from "@/lib/agent-coordinator";
+import { getGlobalTokens, isNeonConfigured, type GlobalToken } from "@/lib/neon";
 
 // Bags SDK types
 interface TokenLaunchCreator {
@@ -254,6 +255,9 @@ interface RegisteredToken {
   }>;
   // Admin controls
   levelOverride?: number | null;
+  positionOverride?: { x: number; y: number } | null;
+  styleOverride?: number | null;
+  healthOverride?: number | null;
 }
 
 // Build FeeEarner from SDK creator data
@@ -388,6 +392,9 @@ async function enrichTokenWithSDK(
     creator: token.creator,
     levelOverride: isPermanentBuilding ? 5 : token.levelOverride, // Permanent buildings show max level
     isPermanent: isPermanentBuilding, // Mark as non-real token (UI landmark)
+    positionOverride: token.positionOverride,
+    styleOverride: token.styleOverride,
+    healthOverride: token.healthOverride,
   };
 
   return { tokenInfo, creators, claimEvents, claimEvents24h };
@@ -593,10 +600,41 @@ async function emitEventsToCoordinator(events: GameEvent[]): Promise<void> {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const registeredTokens: RegisteredToken[] = body.tokens || [];
+    let registeredTokens: RegisteredToken[] = body.tokens || [];
 
     const now = Date.now();
     const sdk = await getBagsSDK();
+
+    // Fetch global tokens from Neon to merge admin overrides
+    if (isNeonConfigured()) {
+      try {
+        const globalTokens = await getGlobalTokens();
+        const globalTokenMap = new Map<string, GlobalToken>();
+        for (const gt of globalTokens) {
+          globalTokenMap.set(gt.mint, gt);
+        }
+
+        // Merge admin overrides from global tokens into registered tokens
+        registeredTokens = registeredTokens.map((token) => {
+          const globalToken = globalTokenMap.get(token.mint);
+          if (globalToken) {
+            return {
+              ...token,
+              levelOverride: globalToken.level_override ?? token.levelOverride,
+              positionOverride:
+                globalToken.position_x != null && globalToken.position_y != null
+                  ? { x: globalToken.position_x, y: globalToken.position_y }
+                  : token.positionOverride,
+              styleOverride: globalToken.style_override ?? token.styleOverride,
+              healthOverride: globalToken.health_override ?? token.healthOverride,
+            };
+          }
+          return token;
+        });
+      } catch (err) {
+        console.warn("[WorldState] Failed to fetch global tokens for overrides:", err);
+      }
+    }
 
     // ALWAYS include Treasury building and PokeCenter (permanent landmarks)
     // Then add any user tokens
