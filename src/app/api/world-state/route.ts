@@ -435,12 +435,12 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
   {
-    mint: "StarterTradingGym11111111111111111111111111",
-    name: "Trading Gym",
-    symbol: "GYM",
+    mint: "StarterTradingDojo1111111111111111111111111",
+    name: "Trading Dojo",
+    symbol: "DOJO",
     description:
-      "The AI Trading Arena! Watch agents battle with predictions and compete for the top rank. Enter to spectate!",
-    imageUrl: "/assets/buildings/tradinggym.png",
+      "Train your trading skills! Spar against AI opponents using real historical price data. Earn belts and climb the ranks!",
+    imageUrl: "/assets/buildings/tradingdojo.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
