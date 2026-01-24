@@ -297,6 +297,26 @@ export class WorldScene extends Phaser.Scene {
     // Mark transition in progress
     this.isTransitioning = true;
 
+    // CLEANUP: Kill any existing transition tweens to prevent accumulation
+    this.decorations.forEach(d => this.tweens.killTweensOf(d));
+    this.animals.forEach(a => this.tweens.killTweensOf(a.sprite));
+    this.trendingElements.forEach(el => this.tweens.killTweensOf(el));
+    this.billboardTexts.forEach(t => this.tweens.killTweensOf(t));
+    this.skylineSprites.forEach(s => this.tweens.killTweensOf(s));
+    if (this.tickerText) this.tweens.killTweensOf(this.tickerText);
+    this.buildingSprites.forEach(container => this.tweens.killTweensOf(container));
+    this.characterSprites.forEach(sprite => this.tweens.killTweensOf(sprite));
+
+    // Reset decoration/animal positions to originals before transition
+    this.decorations.forEach(d => {
+      const origX = this.originalPositions.get(d);
+      if (origX !== undefined) (d as any).x = origX;
+    });
+    this.animals.forEach(a => {
+      const origX = this.originalPositions.get(a.sprite);
+      if (origX !== undefined) (a.sprite as any).x = origX;
+    });
+
     // Determine slide direction: BagsCity is "to the right" of Park
     const isGoingRight = newZone === "trending";
     const duration = 600; // Smooth, cinematic transition
@@ -421,6 +441,13 @@ export class WorldScene extends Phaser.Scene {
       // Clear old building/character sprite maps
       this.buildingSprites.clear();
       this.characterSprites.clear();
+
+      // CRITICAL: Immediately recreate sprites from existing worldState
+      // Without this, sprites stay destroyed until next React Query poll (up to 60s)
+      if (this.worldState) {
+        this.updateCharacters(this.worldState.population);
+        this.updateBuildings(this.worldState.buildings);
+      }
 
       // Mark transition complete
       this.isTransitioning = false;
