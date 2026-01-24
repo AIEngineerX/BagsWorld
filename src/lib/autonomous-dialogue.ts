@@ -86,6 +86,13 @@ let state: DialogueState = {
 // Conversation memory storage
 const conversationMemory: Map<string, ConversationMemory> = new Map();
 
+// Track recent participant pairs to ensure variety (FIX #1: Participant Cooldown)
+const recentParticipantPairs: Array<{ key: string; timestamp: number }> = [];
+const PARTICIPANT_COOLDOWN_MS = 180000; // 3 minutes before same pair can talk again
+
+// Topic refresh cooldown (FIX #2: Allow topics to feel "fresh" again)
+const TOPIC_REFRESH_COOLDOWN_MS = 120000; // 2 minutes before topic can be "new" again
+
 // ============================================================================
 // CONVERSATION MEMORY
 // ============================================================================
@@ -124,17 +131,37 @@ function getConversationMemory(participants: string[]): ConversationMemory {
  */
 function updateConversationMemory(conversation: Conversation): void {
   const memory = getConversationMemory(conversation.participants);
+  const now = Date.now();
 
-  // Update recent topics (keep last 5)
-  if (!memory.recentTopics.includes(conversation.topic)) {
-    memory.recentTopics.unshift(conversation.topic);
-    if (memory.recentTopics.length > 5) {
-      memory.recentTopics.pop();
-    }
-  }
+  // FIX #2: Allow topics to refresh after cooldown
+  // Remove topics that are older than the refresh cooldown
+  const topicTimestamps = (memory.sharedContext.topicTimestamps as Record<string, number>) || {};
+  const freshTopics = memory.recentTopics.filter((topic) => {
+    const timestamp = topicTimestamps[topic] || 0;
+    return now - timestamp < TOPIC_REFRESH_COOLDOWN_MS;
+  });
 
-  memory.lastInteraction = Date.now();
+  // Add current topic with fresh timestamp (always add, even if discussed before)
+  freshTopics.unshift(conversation.topic);
+  topicTimestamps[conversation.topic] = now;
+
+  // Keep only last 5 unique topics
+  memory.recentTopics = [...new Set(freshTopics)].slice(0, 5);
+  memory.sharedContext.topicTimestamps = topicTimestamps;
+
+  memory.lastInteraction = now;
   memory.messageCount += conversation.lines.length;
+
+  // FIX #1: Track this participant pair for cooldown
+  const pairKey = getParticipantKey(conversation.participants);
+  recentParticipantPairs.push({ key: pairKey, timestamp: now });
+  // Clean up old entries
+  while (
+    recentParticipantPairs.length > 0 &&
+    now - recentParticipantPairs[0].timestamp > PARTICIPANT_COOLDOWN_MS
+  ) {
+    recentParticipantPairs.shift();
+  }
 
   // Analyze sentiment from conversation
   const positiveWords = ["great", "good", "love", "amazing", "bullish", "pumping", "wagmi", "lfg"];
@@ -208,7 +235,7 @@ function buildMemoryContext(participants: string[]): string {
 // Conversation settings - TUNED FOR VISIBILITY
 const MIN_CONVERSATION_GAP = 8000; // 8 seconds between conversations (faster!)
 const MAX_CONVERSATION_LINES = 5; // Max lines per conversation
-const LINE_DISPLAY_DURATION = 4000; // How long each line shows (4 seconds - snappier)
+const LINE_DISPLAY_DURATION = 3500; // How long each line shows (matches bubble duration)
 const CONVERSATION_COOLDOWN = 10000; // 10 seconds after conversation ends
 
 // Character relationships (who tends to talk to whom)
@@ -655,7 +682,20 @@ function getTopicResponses(
 // ============================================================================
 
 /**
+ * Check if a participant combination is on cooldown
+ */
+function isParticipantPairOnCooldown(participants: string[]): boolean {
+  const pairKey = getParticipantKey(participants);
+  const now = Date.now();
+
+  return recentParticipantPairs.some(
+    (entry) => entry.key === pairKey && now - entry.timestamp < PARTICIPANT_COOLDOWN_MS
+  );
+}
+
+/**
  * Select participants for a conversation based on topic
+ * FIX #1: Avoid recently used participant pairs
  */
 function selectParticipants(topic: string, excludeIds: string[] = []): string[] {
   // Get characters interested in this topic
@@ -666,7 +706,20 @@ function selectParticipants(topic: string, excludeIds: string[] = []): string[] 
   const available = interested.filter((id) => !excludeIds.includes(id));
   const count = Math.min(available.length, Math.random() > 0.5 ? 3 : 2);
 
-  // Shuffle and take
+  // Try up to 5 times to find a non-cooldown pair
+  for (let attempt = 0; attempt < 5; attempt++) {
+    // Shuffle and take
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
+    const candidates = shuffled.slice(0, count);
+
+    // Check if this combination is on cooldown
+    if (!isParticipantPairOnCooldown(candidates)) {
+      return candidates;
+    }
+  }
+
+  // If all attempts failed, just return any valid combination
+  // (better to have some conversation than none)
   const shuffled = available.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
@@ -998,7 +1051,18 @@ export function startScheduledConversations(intervalMs: number = 60000): void {
     // 40% chance of random conversation (reduced for API cost)
     if (Math.random() > 0.4) return;
 
-    const topics = ["general", "world_health", "token_launch", "price_pump"];
+    const topics = [
+      "general",
+      "world_health",
+      "token_launch",
+      "price_pump",
+      "fee_claim",
+      "distribution",
+      "whale_alert",
+      "price_dump",
+      "agent_event",
+      "market_update",
+    ];
     const topic = topics[Math.floor(Math.random() * topics.length)];
 
     await startConversation({ type: "scheduled", interval: intervalMs }, topic);

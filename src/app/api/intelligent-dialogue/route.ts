@@ -557,10 +557,20 @@ function generateFallbackConversation(
     },
   };
 
+  // Shuffle participants for random speaker order
+  const shuffledParticipants = [...participants].sort(() => Math.random() - 0.5);
+  const usedMessages = new Set<string>(); // Track used messages to avoid repetition
+
   for (let i = 0; i < lineCount; i++) {
-    const speakerId = participants[i % participants.length];
+    const speakerId = shuffledParticipants[i % shuffledParticipants.length];
     const charOpeners = openers[speakerId] || openers["bags-bot"];
-    const message = charOpeners[topic] || charOpeners.general || "interesting developments...";
+    let message = charOpeners[topic] || charOpeners.general || "interesting developments...";
+
+    // If we've used this exact message, try to get a different one
+    if (usedMessages.has(message) && charOpeners.general && charOpeners.general !== message) {
+      message = charOpeners.general;
+    }
+    usedMessages.add(message);
 
     lines.push({
       characterId: speakerId,
