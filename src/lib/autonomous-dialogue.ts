@@ -62,6 +62,16 @@ export interface CharacterOpinion {
   lastInteraction: number;
 }
 
+// Conversation memory - tracks history between agent pairs
+export interface ConversationMemory {
+  participantKey: string; // Sorted participant IDs joined (e.g., "finn-neo")
+  recentTopics: string[];
+  lastInteraction: number;
+  messageCount: number;
+  sharedContext: Record<string, unknown>;
+  sentiment: "positive" | "neutral" | "negative";
+}
+
 // ============================================================================
 // STATE
 // ============================================================================
@@ -72,6 +82,128 @@ let state: DialogueState = {
   lastConversationTime: 0,
   characterMoods: new Map(),
 };
+
+// Conversation memory storage
+const conversationMemory: Map<string, ConversationMemory> = new Map();
+
+// ============================================================================
+// CONVERSATION MEMORY
+// ============================================================================
+
+/**
+ * Generate a unique key for a participant group
+ */
+function getParticipantKey(participants: string[]): string {
+  return [...participants].sort().join("-");
+}
+
+/**
+ * Get or create memory for a participant group
+ */
+function getConversationMemory(participants: string[]): ConversationMemory {
+  const key = getParticipantKey(participants);
+  let memory = conversationMemory.get(key);
+
+  if (!memory) {
+    memory = {
+      participantKey: key,
+      recentTopics: [],
+      lastInteraction: 0,
+      messageCount: 0,
+      sharedContext: {},
+      sentiment: "neutral",
+    };
+    conversationMemory.set(key, memory);
+  }
+
+  return memory;
+}
+
+/**
+ * Update memory after a conversation
+ */
+function updateConversationMemory(conversation: Conversation): void {
+  const memory = getConversationMemory(conversation.participants);
+
+  // Update recent topics (keep last 5)
+  if (!memory.recentTopics.includes(conversation.topic)) {
+    memory.recentTopics.unshift(conversation.topic);
+    if (memory.recentTopics.length > 5) {
+      memory.recentTopics.pop();
+    }
+  }
+
+  memory.lastInteraction = Date.now();
+  memory.messageCount += conversation.lines.length;
+
+  // Analyze sentiment from conversation
+  const positiveWords = ["great", "good", "love", "amazing", "bullish", "pumping", "wagmi", "lfg"];
+  const negativeWords = ["bad", "terrible", "bearish", "dumping", "ngmi", "rug", "down"];
+
+  let positiveCount = 0;
+  let negativeCount = 0;
+
+  for (const line of conversation.lines) {
+    const lowerMsg = line.message.toLowerCase();
+    positiveCount += positiveWords.filter((w) => lowerMsg.includes(w)).length;
+    negativeCount += negativeWords.filter((w) => lowerMsg.includes(w)).length;
+  }
+
+  memory.sentiment =
+    positiveCount > negativeCount
+      ? "positive"
+      : negativeCount > positiveCount
+        ? "negative"
+        : "neutral";
+
+  // Store any token/amount context for future reference
+  const lastLine = conversation.lines[conversation.lines.length - 1];
+  if (lastLine?.message) {
+    const tokenMatch = lastLine.message.match(/\$([A-Z]+)/);
+    if (tokenMatch) {
+      memory.sharedContext.lastToken = tokenMatch[1];
+    }
+  }
+}
+
+/**
+ * Get time since last interaction as human-readable string
+ */
+function timeSinceInteraction(memory: ConversationMemory): string {
+  if (memory.lastInteraction === 0) return "never";
+
+  const diff = Date.now() - memory.lastInteraction;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) return `${hours}h ago`;
+  if (minutes > 0) return `${minutes}m ago`;
+  return "just now";
+}
+
+/**
+ * Build memory context string for dialogue generation
+ */
+function buildMemoryContext(participants: string[]): string {
+  const memory = getConversationMemory(participants);
+
+  if (memory.lastInteraction === 0) {
+    return ""; // No prior interaction
+  }
+
+  let context = "\n\n=== CONVERSATION MEMORY ===\n";
+  context += `Last talked: ${timeSinceInteraction(memory)}\n`;
+  context += `Previous topics: ${memory.recentTopics.slice(0, 3).join(", ") || "none"}\n`;
+  context += `Overall vibe: ${memory.sentiment}\n`;
+
+  if (memory.sharedContext.lastToken) {
+    context += `Recently discussed token: $${memory.sharedContext.lastToken}\n`;
+  }
+
+  context += "Use this context to make the conversation feel continuous.\n";
+
+  return context;
+}
 
 // Conversation settings - TUNED FOR VISIBILITY
 const MIN_CONVERSATION_GAP = 8000; // 8 seconds between conversations (faster!)
@@ -101,6 +233,101 @@ const CONVERSATION_TOPICS = {
   price_dump: ["ghost", "neo", "ash", "cj"],
   agent_event: ["shaw", "neo", "ghost"], // Shaw for agent-related events
 };
+
+// Character expertise areas for relevance scoring
+const CHARACTER_EXPERTISE: Record<string, string[]> = {
+  finn: ["launch", "creator", "bags", "build", "ship", "fee", "earn"],
+  ghost: ["chain", "verify", "distribution", "reward", "pool", "claim", "technical"],
+  neo: ["scan", "pattern", "alpha", "whale", "pump", "dump", "matrix", "code"],
+  ash: ["train", "pokemon", "evolve", "league", "new", "help", "guide"],
+  "bags-bot": ["gm", "vibe", "wagmi", "fren", "bullish", "market"],
+  cj: ["street", "trench", "game", "survive", "real", "homie"],
+  shaw: ["agent", "elizaos", "plugin", "character", "multi-agent", "framework", "architecture"],
+};
+
+// ============================================================================
+// DYNAMIC TURN-TAKING
+// ============================================================================
+
+/**
+ * Calculate relevance score for a speaker based on context
+ */
+function calculateRelevanceScore(
+  agentId: string,
+  topic: string,
+  lastMessage: string,
+  previousSpeakers: string[]
+): number {
+  let score = 0;
+  const lowerMessage = lastMessage.toLowerCase();
+
+  // Topic expertise match (30 points)
+  const topicAgents = CONVERSATION_TOPICS[topic as keyof typeof CONVERSATION_TOPICS] || [];
+  if (topicAgents.includes(agentId)) {
+    score += 30;
+  }
+
+  // Keyword expertise match (20 points)
+  const expertise = CHARACTER_EXPERTISE[agentId] || [];
+  const expertiseMatches = expertise.filter((word) => lowerMessage.includes(word)).length;
+  score += Math.min(expertiseMatches * 10, 20);
+
+  // Was mentioned in last message (50 points)
+  const character = characters[agentId];
+  if (character && lowerMessage.includes(character.name.toLowerCase())) {
+    score += 50;
+  }
+  if (lowerMessage.includes(`@${agentId}`)) {
+    score += 50;
+  }
+
+  // Character affinity with recent speakers (15 points)
+  const lastSpeaker = previousSpeakers[previousSpeakers.length - 1];
+  if (lastSpeaker && CHARACTER_AFFINITIES[lastSpeaker]?.includes(agentId)) {
+    score += 15;
+  }
+
+  // Penalize if spoke recently (reduce repetition)
+  const recentSpeakCount = previousSpeakers.slice(-3).filter((s) => s === agentId).length;
+  score -= recentSpeakCount * 20;
+
+  // Add randomness (0-15 points) for natural variation
+  score += Math.random() * 15;
+
+  return Math.max(0, score);
+}
+
+/**
+ * Select next speaker based on relevance scores
+ */
+function selectNextSpeaker(
+  participants: string[],
+  topic: string,
+  lastMessage: string,
+  previousSpeakers: string[]
+): string {
+  const lastSpeaker = previousSpeakers[previousSpeakers.length - 1];
+
+  // Score all participants except the last speaker
+  const candidates = participants
+    .filter((p) => p !== lastSpeaker)
+    .map((p) => ({
+      id: p,
+      score: calculateRelevanceScore(p, topic, lastMessage, previousSpeakers),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  // Weighted random selection favoring higher scores
+  // 60% chance for top candidate, 30% for second, 10% for others
+  const rand = Math.random();
+  if (candidates.length >= 2) {
+    if (rand < 0.6) return candidates[0].id;
+    if (rand < 0.9) return candidates[1].id;
+    return candidates[Math.floor(Math.random() * candidates.length)].id;
+  }
+
+  return candidates[0]?.id || participants[0];
+}
 
 // ============================================================================
 // DIALOGUE GENERATION
@@ -523,31 +750,29 @@ async function generateConversationLines(
     return;
   }
 
-  // Fallback to rule-based generation
-  console.log("[Dialogue] Falling back to rule-based dialogue");
+  // Fallback to rule-based generation with dynamic turn-taking
+  console.log("[Dialogue] Falling back to rule-based dialogue with dynamic turns");
+  const previousSpeakers: string[] = [];
+
   for (let i = 0; i < lineCount; i++) {
-    // Alternate speakers, with some randomness
-    const speakerIndex = i % participants.length;
+    // Use dynamic turn-taking based on relevance scores
+    const lastMessage =
+      conversation.lines[conversation.lines.length - 1]?.message || topic;
     const speaker =
-      Math.random() > 0.2
-        ? participants[speakerIndex]
-        : participants[Math.floor(Math.random() * participants.length)];
+      i === 0
+        ? participants[Math.floor(Math.random() * participants.length)] // Random first speaker
+        : selectNextSpeaker(participants, topic, lastMessage, previousSpeakers);
 
-    // Don't let same person speak twice in a row
-    const lastSpeaker = conversation.lines[conversation.lines.length - 1]?.characterId;
-    const actualSpeaker =
-      speaker === lastSpeaker && participants.length > 1
-        ? participants.find((p) => p !== speaker) || speaker
-        : speaker;
+    previousSpeakers.push(speaker);
 
-    const message = generateRuleBasedLine(actualSpeaker, topic, context, conversation.lines);
+    const message = generateRuleBasedLine(speaker, topic, context, conversation.lines);
 
     const line: DialogueLine = {
-      characterId: actualSpeaker,
-      characterName: characterMeta[actualSpeaker]?.displayName || actualSpeaker,
+      characterId: speaker,
+      characterName: characterMeta[speaker]?.displayName || speaker,
       message,
       timestamp: Date.now() + i * LINE_DISPLAY_DURATION,
-      replyTo: lastSpeaker,
+      replyTo: previousSpeakers[previousSpeakers.length - 2],
       emotion: getEmotionFromTopic(topic),
     };
 
@@ -557,6 +782,7 @@ async function generateConversationLines(
 
 /**
  * Fetch intelligent dialogue from API (Claude + real Bags.fm data)
+ * Now includes conversation memory for continuity
  */
 async function fetchIntelligentDialogue(
   participants: string[],
@@ -568,6 +794,10 @@ async function fetchIntelligentDialogue(
   if (typeof window === "undefined") {
     return null;
   }
+
+  // Get conversation memory for context
+  const memory = getConversationMemory(participants);
+  const memoryContext = buildMemoryContext(participants);
 
   try {
     const response = await fetch("/api/intelligent-dialogue", {
@@ -581,6 +811,11 @@ async function fetchIntelligentDialogue(
           amount: context.amount,
           change: context.change,
           username: context.username,
+          // Include memory context
+          memoryContext: memoryContext || undefined,
+          previousTopics: memory.recentTopics.slice(0, 3),
+          relationshipSentiment: memory.sentiment,
+          lastToken: memory.sharedContext.lastToken,
         },
         lineCount,
       }),
@@ -594,7 +829,11 @@ async function fetchIntelligentDialogue(
     const data = await response.json();
 
     if (data.success && data.conversation) {
-      console.log("[Dialogue] Got intelligent dialogue, data snapshot:", data.dataSnapshot);
+      console.log("[Dialogue] Got intelligent dialogue with memory context:", {
+        dataSnapshot: data.dataSnapshot,
+        hadMemory: !!memoryContext,
+        previousTopics: memory.recentTopics.slice(0, 3),
+      });
       return data.conversation;
     }
   } catch (error) {
@@ -631,6 +870,10 @@ export function endConversation(): void {
   if (state.activeConversation) {
     state.activeConversation.isActive = false;
     state.activeConversation.endTime = Date.now();
+
+    // Save to conversation memory for future reference
+    updateConversationMemory(state.activeConversation);
+
     state.conversationHistory.unshift(state.activeConversation);
 
     // Keep only last 20 conversations
@@ -638,8 +881,9 @@ export function endConversation(): void {
       state.conversationHistory = state.conversationHistory.slice(0, 20);
     }
 
+    const participants = state.activeConversation.participants;
     state.activeConversation = null;
-    console.log("[Dialogue] Conversation ended");
+    console.log(`[Dialogue] Conversation ended, memory updated for ${participants.join("-")}`);
   }
 }
 
@@ -822,4 +1066,20 @@ export function cleanupDialogueSystem(): void {
 // Export state getter for debugging
 export function getDialogueState(): DialogueState {
   return { ...state };
+}
+
+// Export memory getter for debugging
+export function getConversationMemoryState(): Map<string, ConversationMemory> {
+  return new Map(conversationMemory);
+}
+
+// Get memory for specific participant group
+export function getMemoryForParticipants(participants: string[]): ConversationMemory {
+  return getConversationMemory(participants);
+}
+
+// Clear all conversation memory (for testing/reset)
+export function clearConversationMemory(): void {
+  conversationMemory.clear();
+  console.log("[Dialogue] Conversation memory cleared");
 }
