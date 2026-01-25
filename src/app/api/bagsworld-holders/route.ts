@@ -10,15 +10,18 @@ const CACHE_TTL = 5 * 60 * 1000;
 let cachedHolders: { data: TokenHolder[]; timestamp: number } | null = null;
 
 export interface TokenHolder {
-  address: string;        // Owner wallet address
-  tokenAccount?: string;  // Token account address (for reference)
-  balance: number;        // Human-readable balance
+  address: string; // Owner wallet address
+  tokenAccount?: string; // Token account address (for reference)
+  balance: number; // Human-readable balance
   percentage: number;
   rank: number;
 }
 
 // Resolve token account to owner wallet using RPC
-async function resolveTokenAccountOwner(rpcUrl: string, tokenAccount: string): Promise<string | null> {
+async function resolveTokenAccountOwner(
+  rpcUrl: string,
+  tokenAccount: string
+): Promise<string | null> {
   try {
     const response = await fetch(rpcUrl, {
       method: "POST",
@@ -71,7 +74,11 @@ async function getTokenSupply(rpcUrl: string): Promise<number> {
 
 export async function GET(): Promise<NextResponse> {
   // Check cache first - but only if it has data (don't cache empty results)
-  if (cachedHolders && cachedHolders.data.length > 0 && Date.now() - cachedHolders.timestamp < CACHE_TTL) {
+  if (
+    cachedHolders &&
+    cachedHolders.data.length > 0 &&
+    Date.now() - cachedHolders.timestamp < CACHE_TTL
+  ) {
     return NextResponse.json({
       holders: cachedHolders.data,
       cached: true,
@@ -177,11 +184,36 @@ export async function GET(): Promise<NextResponse> {
   if (holders.length === 0) {
     console.log("[BagsWorld Holders] Using placeholder data - API unavailable");
     const placeholderHolders: TokenHolder[] = [
-      { address: "BaGs1WhaLeHoLderxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 12500000, percentage: 28.5, rank: 1 },
-      { address: "BaGs2BiGHoLderxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 6200000, percentage: 14.2, rank: 2 },
-      { address: "BaGs3HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 3800000, percentage: 8.7, rank: 3 },
-      { address: "BaGs4HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 2100000, percentage: 4.8, rank: 4 },
-      { address: "BaGs5HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 1400000, percentage: 3.2, rank: 5 },
+      {
+        address: "BaGs1WhaLeHoLderxxxxxxxxxxxxxxxxxxxxxxxxx",
+        balance: 12500000,
+        percentage: 28.5,
+        rank: 1,
+      },
+      {
+        address: "BaGs2BiGHoLderxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        balance: 6200000,
+        percentage: 14.2,
+        rank: 2,
+      },
+      {
+        address: "BaGs3HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        balance: 3800000,
+        percentage: 8.7,
+        rank: 3,
+      },
+      {
+        address: "BaGs4HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        balance: 2100000,
+        percentage: 4.8,
+        rank: 4,
+      },
+      {
+        address: "BaGs5HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        balance: 1400000,
+        percentage: 3.2,
+        rank: 5,
+      },
     ];
     cachedHolders = { data: placeholderHolders, timestamp: Date.now() };
     return NextResponse.json({

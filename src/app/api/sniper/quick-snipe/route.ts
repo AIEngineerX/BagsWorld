@@ -63,7 +63,10 @@ export async function POST(request: Request) {
   }
 
   if (!slippageBps || slippageBps < 10 || slippageBps > 5000) {
-    return NextResponse.json({ error: "Slippage must be between 0.1% (10 bps) and 50% (5000 bps)" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Slippage must be between 0.1% (10 bps) and 50% (5000 bps)" },
+      { status: 400 }
+    );
   }
 
   // Convert SOL to lamports
@@ -71,12 +74,7 @@ export async function POST(request: Request) {
 
   if (action === "quote") {
     // Get quote for the snipe
-    const quote = await api.getTradeQuote(
-      SOL_MINT,
-      tokenMint,
-      amountLamports,
-      slippageBps
-    );
+    const quote = await api.getTradeQuote(SOL_MINT, tokenMint, amountLamports, slippageBps);
 
     // Calculate output amounts
     const outputAmount = parseFloat(quote.outAmount);
@@ -91,7 +89,7 @@ export async function POST(request: Request) {
       minOutputAmount: minOutputAmount / 1_000_000_000,
       priceImpact,
       slippageBps,
-      route: quote.routePlan.map(r => r.venue).join(" -> "),
+      route: quote.routePlan.map((r) => r.venue).join(" -> "),
     };
 
     return NextResponse.json({
@@ -109,12 +107,7 @@ export async function POST(request: Request) {
     }
 
     // First get the quote
-    const quote = await api.getTradeQuote(
-      SOL_MINT,
-      tokenMint,
-      amountLamports,
-      slippageBps
-    );
+    const quote = await api.getTradeQuote(SOL_MINT, tokenMint, amountLamports, slippageBps);
 
     // Then create the swap transaction
     const swapResult = await api.createSwapTransaction(quote, swapBody.userPublicKey);

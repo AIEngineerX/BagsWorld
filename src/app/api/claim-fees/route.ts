@@ -71,7 +71,10 @@ async function handleGetPositions(api: BagsApiClient, wallet: string): Promise<N
     const enrichedPositions = await enrichPositionsWithTokenData(positions);
 
     // Calculate total claimable
-    const totalClaimable = enrichedPositions.reduce((sum, p) => sum + (p.claimableDisplayAmount ?? 0), 0);
+    const totalClaimable = enrichedPositions.reduce(
+      (sum, p) => sum + (p.claimableDisplayAmount ?? 0),
+      0
+    );
 
     return NextResponse.json({
       success: true,
@@ -88,20 +91,22 @@ async function handleGetPositions(api: BagsApiClient, wallet: string): Promise<N
 }
 
 // Enrich positions with token name, symbol, and logo from DexScreener + Helius fallback
-async function enrichPositionsWithTokenData(positions: Array<{
-  baseMint: string;
-  quoteMint: string;
-  virtualPool: string;
-  isMigrated: boolean;
-  totalClaimableLamportsUserShare: number;
-  claimableDisplayAmount: number;
-  userBps: number;
-}>) {
+async function enrichPositionsWithTokenData(
+  positions: Array<{
+    baseMint: string;
+    quoteMint: string;
+    virtualPool: string;
+    isMigrated: boolean;
+    totalClaimableLamportsUserShare: number;
+    claimableDisplayAmount: number;
+    userBps: number;
+  }>
+) {
   if (positions.length === 0) return positions;
 
   try {
     // Get unique baseMint addresses
-    const mints = [...new Set(positions.map(p => p.baseMint).filter(Boolean))];
+    const mints = [...new Set(positions.map((p) => p.baseMint).filter(Boolean))];
 
     if (mints.length === 0) return positions;
 
@@ -125,7 +130,7 @@ async function enrichPositionsWithTokenData(positions: Array<{
     }
 
     // Step 2: For any mints not found on DexScreener, try Helius DAS API
-    const missingMints = mints.filter(m => !tokenMap.has(m));
+    const missingMints = mints.filter((m) => !tokenMap.has(m));
     if (missingMints.length > 0) {
       const heliusData = await fetchTokenMetadataFromHelius(missingMints);
       for (const [mint, data] of heliusData) {
@@ -136,7 +141,7 @@ async function enrichPositionsWithTokenData(positions: Array<{
     }
 
     // Enrich positions with token data
-    return positions.map(position => ({
+    return positions.map((position) => ({
       ...position,
       tokenName: tokenMap.get(position.baseMint)?.name,
       tokenSymbol: tokenMap.get(position.baseMint)?.symbol,
