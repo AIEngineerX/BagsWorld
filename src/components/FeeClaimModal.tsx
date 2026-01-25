@@ -162,7 +162,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
 
   const selectedTotal = positions
     .filter((p) => selectedPositions.has(p.virtualPool))
-    .reduce((sum, p) => sum + p.claimableDisplayAmount, 0);
+    .reduce((sum, p) => sum + (p.claimableDisplayAmount ?? 0), 0);
 
   // Check if connected wallet matches the X-linked wallet
   const walletMatches = !linkedWallet || (publicKey && publicKey.toBase58() === linkedWallet);
@@ -477,24 +477,41 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <div
-                          className={`w-3 h-3 border-2 ${
+                          className={`w-3 h-3 border-2 flex-shrink-0 ${
                             selectedPositions.has(position.virtualPool)
                               ? "border-bags-gold bg-bags-gold"
                               : "border-gray-500"
                           }`}
                         />
+                        {position.tokenLogoUrl ? (
+                          <img
+                            src={position.tokenLogoUrl}
+                            alt={position.tokenSymbol || "Token"}
+                            className="w-6 h-6 rounded-sm flex-shrink-0"
+                            onError={(e) => {
+                              // Hide broken images
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-6 h-6 bg-bags-gold/20 rounded-sm flex items-center justify-center flex-shrink-0">
+                            <span className="font-pixel text-[8px] text-bags-gold">
+                              {position.tokenSymbol?.slice(0, 2) || "??"}
+                            </span>
+                          </div>
+                        )}
                         <div>
                           <p className="font-pixel text-[10px] text-white">
-                            {position.baseMint.slice(0, 8)}...
+                            ${position.tokenSymbol || position.baseMint?.slice(0, 6) || "Unknown"}
                           </p>
                           <p className="font-pixel text-[8px] text-gray-400">
-                            Your share: {(position.userBps / 100).toFixed(1)}%
+                            Your share: {((position.userBps ?? 0) / 100).toFixed(1)}%
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-pixel text-[10px] text-bags-green">
-                          {position.claimableDisplayAmount.toFixed(4)} SOL
+                          {(position.claimableDisplayAmount ?? 0).toFixed(4)} SOL
                         </p>
                         {position.isMigrated && (
                           <p className="font-pixel text-[6px] text-blue-400">MIGRATED</p>

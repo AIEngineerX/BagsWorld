@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import type { BagsApiClient } from "@/lib/bags-api";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { getTokensByMints } from "@/lib/dexscreener-api";
 
 interface ClaimRequestBody {
   action: "get-positions" | "generate-claim-tx" | "lookup-by-x";
@@ -66,12 +67,15 @@ async function handleGetPositions(api: BagsApiClient, wallet: string): Promise<N
   try {
     const positions = await api.getClaimablePositions(wallet);
 
+    // Enrich positions with token metadata from DexScreener
+    const enrichedPositions = await enrichPositionsWithTokenData(positions);
+
     // Calculate total claimable
-    const totalClaimable = positions.reduce((sum, p) => sum + p.claimableDisplayAmount, 0);
+    const totalClaimable = enrichedPositions.reduce((sum, p) => sum + (p.claimableDisplayAmount ?? 0), 0);
 
     return NextResponse.json({
       success: true,
-      positions,
+      positions: enrichedPositions,
       totalClaimable,
     });
   } catch (error) {
@@ -81,6 +85,116 @@ async function handleGetPositions(api: BagsApiClient, wallet: string): Promise<N
       { status: 500 }
     );
   }
+}
+
+// Enrich positions with token name, symbol, and logo from DexScreener + Helius fallback
+async function enrichPositionsWithTokenData(positions: Array<{
+  baseMint: string;
+  quoteMint: string;
+  virtualPool: string;
+  isMigrated: boolean;
+  totalClaimableLamportsUserShare: number;
+  claimableDisplayAmount: number;
+  userBps: number;
+}>) {
+  if (positions.length === 0) return positions;
+
+  try {
+    // Get unique baseMint addresses
+    const mints = [...new Set(positions.map(p => p.baseMint).filter(Boolean))];
+
+    if (mints.length === 0) return positions;
+
+    // Create a map of mint -> token info
+    const tokenMap = new Map<string, { name: string; symbol: string; logoUrl?: string }>();
+
+    // Step 1: Try DexScreener first (supports up to 30 at once)
+    try {
+      const tokenPairs = await getTokensByMints(mints.slice(0, 30));
+      for (const pair of tokenPairs) {
+        if (pair?.baseToken?.address) {
+          tokenMap.set(pair.baseToken.address, {
+            name: pair.baseToken.name || "Unknown",
+            symbol: pair.baseToken.symbol || "???",
+            logoUrl: pair.info?.imageUrl,
+          });
+        }
+      }
+    } catch (dexError) {
+      console.error("DexScreener fetch error:", dexError);
+    }
+
+    // Step 2: For any mints not found on DexScreener, try Helius DAS API
+    const missingMints = mints.filter(m => !tokenMap.has(m));
+    if (missingMints.length > 0) {
+      const heliusData = await fetchTokenMetadataFromHelius(missingMints);
+      for (const [mint, data] of heliusData) {
+        if (!tokenMap.has(mint)) {
+          tokenMap.set(mint, data);
+        }
+      }
+    }
+
+    // Enrich positions with token data
+    return positions.map(position => ({
+      ...position,
+      tokenName: tokenMap.get(position.baseMint)?.name,
+      tokenSymbol: tokenMap.get(position.baseMint)?.symbol,
+      tokenLogoUrl: tokenMap.get(position.baseMint)?.logoUrl,
+    }));
+  } catch (error) {
+    console.error("Error enriching positions with token data:", error);
+    // Return positions without enrichment on error
+    return positions;
+  }
+}
+
+// Fetch token metadata from Helius DAS API (fallback for tokens not on DexScreener)
+async function fetchTokenMetadataFromHelius(
+  mints: string[]
+): Promise<Map<string, { name: string; symbol: string; logoUrl?: string }>> {
+  const result = new Map<string, { name: string; symbol: string; logoUrl?: string }>();
+
+  const rpcUrl = process.env.SOLANA_RPC_URL;
+  if (!rpcUrl || !rpcUrl.includes("helius")) {
+    return result; // Only works with Helius RPC
+  }
+
+  try {
+    // Helius DAS API - getAssetBatch
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "claim-fees-metadata",
+        method: "getAssetBatch",
+        params: {
+          ids: mints,
+        },
+      }),
+    });
+
+    if (!response.ok) return result;
+
+    const data = await response.json();
+    const assets = data.result || [];
+
+    for (const asset of assets) {
+      if (asset?.id && asset?.content?.metadata) {
+        const metadata = asset.content.metadata;
+        result.set(asset.id, {
+          name: metadata.name || "Unknown",
+          symbol: metadata.symbol || "???",
+          logoUrl: asset.content?.links?.image || asset.content?.files?.[0]?.uri,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Helius DAS API error:", error);
+  }
+
+  return result;
 }
 
 async function handleGenerateClaimTx(
