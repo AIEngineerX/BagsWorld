@@ -5,6 +5,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Install curl for healthchecks (wget not available in slim alpine)
+RUN apk add --no-cache curl
+
 # Create non-root user
 RUN addgroup -g 1001 -S bagsworld && \
     adduser -S bagsworld -u 1001 -G bagsworld
@@ -30,9 +33,9 @@ ENV NODE_ENV=production
 ENV PORT=3001
 ENV HOST=0.0.0.0
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/health || exit 1
+# Health check using curl
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
 
 # Expose port
 EXPOSE 3001
