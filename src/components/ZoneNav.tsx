@@ -3,7 +3,7 @@
 import { useGameStore } from "@/lib/store";
 import { ZONES, ZoneType } from "@/lib/types";
 
-const ZONE_ORDER: ZoneType[] = ["main_city", "trending", "academy", "ballers"];
+const ZONE_ORDER: ZoneType[] = ["main_city", "trending", "academy", "ballers", "founders"];
 
 export function ZoneNav() {
   const { currentZone, setZone } = useGameStore();
@@ -25,6 +25,7 @@ export function ZoneNav() {
         const isTrending = zoneId === "trending";
         const isAcademy = zoneId === "academy";
         const isBallers = zoneId === "ballers";
+        const isFounders = zoneId === "founders";
 
         return (
           <button
@@ -42,6 +43,7 @@ export function ZoneNav() {
               ${isTrending && !isActive ? "border-bags-gold/50 text-bags-gold" : ""}
               ${isAcademy && !isActive ? "border-blue-500/50 text-blue-400" : ""}
               ${isBallers && !isActive ? "border-yellow-400/50 text-yellow-400" : ""}
+              ${isFounders && !isActive ? "border-amber-500/50 text-amber-400" : ""}
             `}
             title={zone.description}
           >

@@ -367,6 +367,8 @@ export class WorldScene extends Phaser.Scene {
       oldElements.push(...this.academyBuildings);
     } else if (this.currentZone === "ballers") {
       oldElements.push(...this.ballersElements);
+    } else if (this.currentZone === "founders") {
+      oldElements.push(...this.foundersElements);
     } else {
       // Main city decorations
       this.decorations.forEach((d) => oldElements.push(d));
@@ -450,6 +452,8 @@ export class WorldScene extends Phaser.Scene {
         this.academyBuildings.forEach((s) => s.setVisible(false));
       } else if (this.currentZone === "ballers") {
         this.ballersElements.forEach((el) => (el as any).setVisible(false));
+      } else if (this.currentZone === "founders") {
+        this.foundersElements.forEach((el) => (el as any).setVisible(false));
       }
 
       // Update zone and set up new content
@@ -575,6 +579,24 @@ export class WorldScene extends Phaser.Scene {
           });
         }
       });
+    } else if (zone === "founders") {
+      this.setupFoundersZone();
+
+      // Offset all new Founder's Corner elements and animate them in
+      const newElements = [...this.foundersElements].filter(Boolean);
+
+      newElements.forEach((el) => {
+        if ((el as any).x !== undefined) {
+          const targetX = (el as any).x;
+          (el as any).x = targetX + offsetX;
+          this.tweens.add({
+            targets: el,
+            x: targetX,
+            duration,
+            ease: "Cubic.easeOut",
+          });
+        }
+      });
     } else {
       this.setupMainCityZone();
 
@@ -628,6 +650,9 @@ export class WorldScene extends Phaser.Scene {
     } else if (this.currentZone === "ballers") {
       // Hide ballers elements
       this.ballersElements.forEach((el) => (el as any).setVisible(false));
+    } else if (this.currentZone === "founders") {
+      // Hide founders elements
+      this.foundersElements.forEach((el) => (el as any).setVisible(false));
     } else if (this.currentZone === "main_city") {
       // Main city uses shared decorations, don't destroy them
       // Just hide them
@@ -1451,12 +1476,11 @@ export class WorldScene extends Phaser.Scene {
       this.foundersPopup = null;
     }
 
-    // Draw magical twilight sky for Academy (instead of normal sky)
-    this.drawAcademyTwilightSky();
+    // Use NORMAL persistent sky (follows day/night cycle like other zones)
+    this.restoreNormalSky();
 
-    // Show grass ground for academy quad
-    this.ground.setVisible(true);
-    this.ground.setTexture("grass");
+    // Academy has its own custom ground (set in createAcademyBackground)
+    // Don't show grass here - let the background method handle it
 
     // Force recreation to pick up any changes - destroy old elements first
     if (this.academyZoneCreated) {
@@ -1475,10 +1499,6 @@ export class WorldScene extends Phaser.Scene {
         }
       });
       this.academyBuildings = [];
-
-      // Reset twilight sky and moon references
-      this.academyTwilightSky = null;
-      this.academyMoon = null;
     }
 
     // Always create fresh elements
@@ -1489,170 +1509,75 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createAcademyBackground(): void {
-    // Clean Bags.FM tech campus background
-    // No blurry shapes - just clean pixel-art style elements
+    // Academy zone uses normal persistent sky (day/night cycle)
+    // Custom ground: tech-style concrete with green accents (different from Park's grass)
 
-    // Back wall - clean dark gradient feel (single solid color)
-    const wallY = Math.round(430 * SCALE);
-    const wall = this.add.rectangle(
+    // Hide the grass - Academy has its own ground
+    this.ground.setVisible(false);
+
+    // Concrete/tech floor base
+    const floorY = Math.round(540 * SCALE);
+    const floor = this.add.rectangle(
       GAME_WIDTH / 2,
-      wallY,
+      floorY + Math.round(90 * SCALE),
       GAME_WIDTH,
-      Math.round(200 * SCALE),
-      0x1a1f2e
+      Math.round(180 * SCALE),
+      0x1a1f2e // Dark slate blue-gray
     );
-    wall.setDepth(-1);
-    this.academyElements.push(wall);
+    floor.setDepth(0);
+    this.academyElements.push(floor);
 
-    // Grid lines on wall (tech aesthetic)
-    for (let x = 0; x < GAME_WIDTH; x += Math.round(100 * SCALE)) {
+    // Lighter concrete path area
+    const pathY = Math.round(570 * SCALE);
+    const path = this.add.rectangle(
+      GAME_WIDTH / 2,
+      pathY,
+      GAME_WIDTH,
+      Math.round(50 * SCALE),
+      0x2d3748 // Slightly lighter gray
+    );
+    path.setDepth(0);
+    this.academyElements.push(path);
+
+    // Green accent line at top of path (Bags.FM brand)
+    const accentLine = this.add.rectangle(
+      GAME_WIDTH / 2,
+      pathY - Math.round(25 * SCALE),
+      GAME_WIDTH,
+      Math.round(3 * SCALE),
+      0x4ade80
+    );
+    accentLine.setDepth(1);
+    this.academyElements.push(accentLine);
+
+    // Subtle grid pattern on floor (tech aesthetic)
+    for (let x = 0; x < GAME_WIDTH; x += Math.round(120 * SCALE)) {
       const gridLine = this.add.rectangle(
         x,
-        wallY,
-        Math.round(1 * SCALE),
-        Math.round(200 * SCALE),
+        floorY + Math.round(90 * SCALE),
+        Math.round(2 * SCALE),
+        Math.round(180 * SCALE),
         0x4ade80,
         0.1
       );
-      gridLine.setDepth(-1);
+      gridLine.setDepth(0);
       this.academyElements.push(gridLine);
     }
-
-    // Horizontal grid lines
-    for (let y = Math.round(350 * SCALE); y < Math.round(530 * SCALE); y += Math.round(50 * SCALE)) {
-      const hLine = this.add.rectangle(
-        GAME_WIDTH / 2,
-        y,
-        GAME_WIDTH,
-        Math.round(1 * SCALE),
-        0x4ade80,
-        0.08
-      );
-      hLine.setDepth(-1);
-      this.academyElements.push(hLine);
-    }
-
-    // Bags.FM brand accent bar at top of wall
-    const accentBar = this.add.rectangle(
-      GAME_WIDTH / 2,
-      Math.round(330 * SCALE),
-      GAME_WIDTH,
-      Math.round(4 * SCALE),
-      0x4ade80
-    );
-    accentBar.setDepth(-1);
-    this.academyElements.push(accentBar);
-
-    // Glow under accent bar
-    const accentGlow = this.add.rectangle(
-      GAME_WIDTH / 2,
-      Math.round(340 * SCALE),
-      GAME_WIDTH,
-      Math.round(20 * SCALE),
-      0x4ade80,
-      0.15
-    );
-    accentGlow.setDepth(-1);
-    this.academyElements.push(accentGlow);
   }
 
   private createAcademyBuildings(): void {
-    // Academy campus buildings - sprite-based Hogwarts-style architecture
-    // Each building uses generated textures from BootScene (academy_0 through academy_7)
-    // All buildings positioned flush to ground at Y = 550 * SCALE
-
-    const groundY = Math.round(550 * SCALE);
-
-    // Building configurations: texture index, x position, label, scale
-    const buildings = [
-      { texture: 0, x: 100, label: "CLOCK TOWER", char: "Finn" },     // Main Hall - Dean
-      { texture: 1, x: 230, label: "LIBRARY", char: "Ramo" },         // Engineering - CTO
-      { texture: 2, x: 360, label: "ART STUDIO", char: "Sincara" },   // Design Studio
-      { texture: 3, x: 490, label: "OBSERVATORY", char: "Alaa" },     // R&D Lab - Skunk Works
-      { texture: 4, x: 620, label: "GREENHOUSE", char: "Stuu" },      // Student Services
-      { texture: 5, x: 750, label: "STAGE", char: "Sam" },            // Marketing Hall
-      { texture: 6, x: 880, label: "WELCOME", char: "Carlo" },        // Welcome Center
-      { texture: 7, x: 1010, label: "BNN TOWER", char: "BNN" },       // Media Center
-    ];
-
-    buildings.forEach((b, index) => {
-      const bx = Math.round(b.x * SCALE);
-
-      // Create container for building + label
-      const container = this.add.container(bx, groundY);
-
-      // Main building sprite
-      const buildingSprite = this.add.sprite(0, 0, `academy_${b.texture}`);
-      buildingSprite.setOrigin(0.5, 1); // Flush to ground
-      container.add(buildingSprite);
-
-      // Building label background
-      const labelBg = this.add.rectangle(0, 15, 70, 14, 0x000000, 0.8);
-      labelBg.setStrokeStyle(1, 0x4ade80);
-      container.add(labelBg);
-
-      // Building label text
-      const labelText = this.add.text(0, 15, b.label, {
-        fontFamily: "monospace",
-        fontSize: "9px",
-        color: "#4ade80",
-      });
-      labelText.setOrigin(0.5, 0.5);
-      container.add(labelText);
-
-      // Depth sorting - buildings further right appear behind
-      container.setDepth(5 - index / 10);
-
-      this.academyBuildings.push(buildingSprite);
-      this.academyElements.push(container);
-    });
-
-    // "BAGS ACADEMY" title banner (clean tech style, no gate)
-    const titleX = GAME_WIDTH / 2;
-    const titleY = Math.round(320 * SCALE);
-
-    // Tech-style title background
-    const titleBg = this.add.rectangle(titleX, titleY, Math.round(280 * SCALE), Math.round(50 * SCALE), 0x0a0f14, 0.95);
-    titleBg.setStrokeStyle(2, 0x4ade80);
-    titleBg.setDepth(6);
-    this.academyElements.push(titleBg);
-
-    // Accent line on top of title
-    const titleAccent = this.add.rectangle(titleX, titleY - Math.round(25 * SCALE), Math.round(280 * SCALE), Math.round(3 * SCALE), 0x4ade80);
-    titleAccent.setDepth(6);
-    this.academyElements.push(titleAccent);
-
-    const academyTitle = this.add.text(titleX, titleY - Math.round(8 * SCALE), "BAGS ACADEMY", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(18 * SCALE)}px`,
-      color: "#4ade80",
-      stroke: "#000000",
-      strokeThickness: 2,
-    });
-    academyTitle.setOrigin(0.5, 0.5);
-    academyTitle.setDepth(7);
-    this.academyElements.push(academyTitle);
-
-    const subtitle = this.add.text(titleX, titleY + Math.round(12 * SCALE), "Learn from the Bags.fm Team", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(9 * SCALE)}px`,
-      color: "#9ca3af",
-    });
-    subtitle.setOrigin(0.5, 0.5);
-    subtitle.setDepth(7);
-    this.academyElements.push(subtitle);
-
-    // Sniper Tower - positioned to the right of other buildings
+    // Academy zone - ONLY the Sniper Tower (centered)
     this.createSniperTowerBuilding();
   }
 
   private createSniperTowerBuilding(): void {
-    const groundY = Math.round(550 * SCALE);
-    const towerX = Math.round(1140 * SCALE);
+    const groundY = Math.round(555 * SCALE);
+    const towerX = GAME_WIDTH / 2; // Centered in the zone
 
-    // Main tower sprite
+    // Main tower sprite - scaled up for visibility
     const sniperTower = this.add.sprite(towerX, groundY, "sniper_tower");
     sniperTower.setOrigin(0.5, 1);
+    sniperTower.setScale(1.2); // Make it larger for better visibility
     sniperTower.setDepth(5);
     sniperTower.setInteractive({ useHandCursor: true });
 
@@ -1793,86 +1718,15 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createAcademyDecorations(): void {
-    const groundY = Math.round(550 * SCALE);
+    // Academy zone decorations - tech/radar theme
+    const groundY = Math.round(555 * SCALE);
 
-    // === BAGS.FM STYLE GROUND (tech campus aesthetic) ===
-    // Hide default grass
-    this.ground.setVisible(false);
-
-    // Dark tech floor
-    const floor = this.add.rectangle(
-      GAME_WIDTH / 2,
-      Math.round(520 * SCALE),
-      GAME_WIDTH,
-      Math.round(200 * SCALE),
-      0x0f1419
-    );
-    floor.setDepth(0);
-    this.academyElements.push(floor);
-
-    // Main walkway - dark asphalt style
-    const pathY = Math.round(570 * SCALE);
-    const pathH = Math.round(55 * SCALE);
-
-    const mainPath = this.add.rectangle(GAME_WIDTH / 2, pathY, GAME_WIDTH, pathH, 0x1a1f2e);
-    mainPath.setDepth(0);
-    this.academyElements.push(mainPath);
-
-    // Neon green accent line (top of path) - Bags.FM style
-    const topAccent = this.add.rectangle(
-      GAME_WIDTH / 2,
-      pathY - pathH / 2,
-      GAME_WIDTH,
-      Math.round(3 * SCALE),
-      0x4ade80
-    );
-    topAccent.setDepth(1);
-    this.academyElements.push(topAccent);
-
-    // Subtle glow under accent
-    const topGlow = this.add.rectangle(
-      GAME_WIDTH / 2,
-      pathY - pathH / 2 + Math.round(8 * SCALE),
-      GAME_WIDTH,
-      Math.round(12 * SCALE),
-      0x4ade80,
-      0.1
-    );
-    topGlow.setDepth(0);
-    this.academyElements.push(topGlow);
-
-    // Bottom edge line
-    const bottomEdge = this.add.rectangle(
-      GAME_WIDTH / 2,
-      pathY + pathH / 2,
-      GAME_WIDTH,
-      Math.round(2 * SCALE),
-      0x374151
-    );
-    bottomEdge.setDepth(1);
-    this.academyElements.push(bottomEdge);
-
-    // Dashed center line (tech style)
-    for (let x = Math.round(50 * SCALE); x < GAME_WIDTH; x += Math.round(80 * SCALE)) {
-      const dash = this.add.rectangle(
-        x,
-        pathY,
-        Math.round(40 * SCALE),
-        Math.round(3 * SCALE),
-        0x4ade80,
-        0.3
-      );
-      dash.setDepth(1);
-      this.academyElements.push(dash);
-    }
-
-    // === STREET LAMPS ===
+    // Street lamps with green glow (fewer than Park, tech style)
     const lampPositions = [
-      Math.round(165 * SCALE),
-      Math.round(425 * SCALE),
-      Math.round(685 * SCALE),
-      Math.round(945 * SCALE),
-      Math.round(1100 * SCALE),
+      Math.round(200 * SCALE),
+      Math.round(500 * SCALE),
+      Math.round(780 * SCALE),
+      Math.round(1080 * SCALE),
     ];
 
     lampPositions.forEach((lx) => {
@@ -1885,48 +1739,39 @@ export class WorldScene extends Phaser.Scene {
       const lampGlow = this.add.rectangle(
         lx,
         groundY + Math.round(5 * SCALE),
-        Math.round(40 * SCALE),
-        Math.round(10 * SCALE),
+        Math.round(50 * SCALE),
+        Math.round(15 * SCALE),
         0x4ade80,
-        0.2
+        0.15
       );
       lampGlow.setDepth(0);
       this.academyElements.push(lampGlow);
     });
 
-    // === TECH FLOOR PANELS (pixel-art rectangles only) ===
-    const panelPositions = [
-      Math.round(165 * SCALE),
-      Math.round(295 * SCALE),
-      Math.round(555 * SCALE),
-      Math.round(815 * SCALE),
-      Math.round(1075 * SCALE),
-    ];
+    // Zone title at top
+    const titleY = Math.round(380 * SCALE);
+    const titleBg = this.add.rectangle(
+      GAME_WIDTH / 2,
+      titleY,
+      Math.round(200 * SCALE),
+      Math.round(40 * SCALE),
+      0x0a0f14,
+      0.9
+    );
+    titleBg.setStrokeStyle(2, 0x4ade80);
+    titleBg.setDepth(6);
+    this.academyElements.push(titleBg);
 
-    panelPositions.forEach((px) => {
-      // Floor panel (square, pixel-art)
-      const panel = this.add.rectangle(
-        px,
-        groundY - Math.round(5 * SCALE),
-        Math.round(60 * SCALE),
-        Math.round(8 * SCALE),
-        0x1f2937
-      );
-      panel.setDepth(1);
-      this.academyElements.push(panel);
-
-      // Panel accent
-      const panelAccent = this.add.rectangle(
-        px,
-        groundY - Math.round(5 * SCALE),
-        Math.round(56 * SCALE),
-        Math.round(4 * SCALE),
-        0x4ade80,
-        0.3
-      );
-      panelAccent.setDepth(1);
-      this.academyElements.push(panelAccent);
+    const titleText = this.add.text(GAME_WIDTH / 2, titleY, "SNIPER ZONE", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(16 * SCALE)}px`,
+      color: "#4ade80",
+      stroke: "#000000",
+      strokeThickness: 2,
     });
+    titleText.setOrigin(0.5, 0.5);
+    titleText.setDepth(7);
+    this.academyElements.push(titleText);
   }
 
   /**
