@@ -1786,11 +1786,11 @@ export class WorldScene extends Phaser.Scene {
 
   /**
    * Setup Ballers Valley zone - exclusive area for top BagsWorld token holders
-   * Features luxury estate aesthetic with gold accents and premium landscaping
-   * Always displays golden hour (sunset) sky for VIP ambiance
+   * Features luxury Bel Air estate aesthetic with premium landscaping
+   * Sky layer remains persistent (not modified per-zone)
    */
   private setupBallersZone(): void {
-    // Hide park decorations and animals
+    // Hide park decorations and animals (they belong to main_city)
     this.decorations.forEach((d) => d.setVisible(false));
     this.animals.forEach((a) => a.sprite.setVisible(false));
 
@@ -1799,12 +1799,20 @@ export class WorldScene extends Phaser.Scene {
       this.fountainWater.setVisible(false);
     }
 
+    // IMPORTANT: Hide other zone elements (prevents visual overlap)
+    this.trendingElements.forEach((el) => (el as any).setVisible(false));
+    this.skylineSprites.forEach((s) => s.setVisible(false));
+    this.billboardTexts.forEach((t) => t.setVisible(false));
+    if (this.tickerText) this.tickerText.setVisible(false);
+    this.academyElements.forEach((el) => (el as any).setVisible(false));
+    this.academyBuildings.forEach((s) => s.setVisible(false));
+
+    // Restore normal sky (persistent layer - not modified per-zone)
+    this.restoreNormalSky();
+
     // Show grass ground for luxury estate
     this.ground.setVisible(true);
     this.ground.setTexture("grass");
-
-    // Apply golden hour sky for VIP zone (always sunset)
-    this.drawBallersGoldenSky();
 
     // Only create elements once, then just show them
     if (!this.ballersZoneCreated) {
@@ -1817,255 +1825,136 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * Create Ballers Valley decorations - luxury estate environment
-   * Uses same groundY (550) and pathY (565) as Academy zone for consistency
+   * Create Ballers Valley decorations - Bel Air estate environment
+   * Uses same groundY (550) and pathY (565) as other zones for consistency
+   * Follows pixel art style: chunky blocks, palette colors, dithering patterns
    */
   private createBallersDecorations(): void {
     const centerX = GAME_WIDTH / 2;
     const groundY = Math.round(550 * SCALE); // Same as other zones - building bottom Y
     const pathY = Math.round(565 * SCALE); // Same as Academy zone
 
-    // === GROUND LAYER (depth 0) ===
-    // Premium marble/stone pathway - covers walking area like Academy
+    // === GROUND LAYER (depth 0) - Gravel driveway ===
+    // Main driveway - gray stone like sidewalk (matches existing path texture)
     const pathH = Math.round(50 * SCALE);
-    const mainPath = this.add.rectangle(GAME_WIDTH / 2, pathY, GAME_WIDTH, pathH, 0x78716c); // Warm stone gray
+    const mainPath = this.add.rectangle(GAME_WIDTH / 2, pathY, GAME_WIDTH, pathH, 0x4b5563); // midGray from palette
     mainPath.setDepth(0);
     this.ballersElements.push(mainPath);
 
-    // Gold trim on path edges (premium feel)
-    const topEdge = this.add.rectangle(GAME_WIDTH / 2, pathY - pathH / 2, GAME_WIDTH, Math.round(4 * SCALE), 0xfbbf24);
+    // Driveway border edges (darker gray)
+    const topEdge = this.add.rectangle(GAME_WIDTH / 2, pathY - pathH / 2, GAME_WIDTH, Math.round(3 * SCALE), 0x374151); // gray
     topEdge.setDepth(0);
     this.ballersElements.push(topEdge);
 
-    const bottomEdge = this.add.rectangle(GAME_WIDTH / 2, pathY + pathH / 2, GAME_WIDTH, Math.round(4 * SCALE), 0xfbbf24);
+    const bottomEdge = this.add.rectangle(GAME_WIDTH / 2, pathY + pathH / 2, GAME_WIDTH, Math.round(3 * SCALE), 0x1f2937); // darkGray
     bottomEdge.setDepth(0);
     this.ballersElements.push(bottomEdge);
 
-    // Red carpet strip down center of path
-    const carpet = this.add.rectangle(centerX, pathY, Math.round(80 * SCALE), pathH - Math.round(8 * SCALE), 0x991b1b);
-    carpet.setDepth(0);
-    this.ballersElements.push(carpet);
-
-    // Carpet gold trim
-    const carpetTrimL = this.add.rectangle(centerX - Math.round(40 * SCALE), pathY, Math.round(3 * SCALE), pathH - Math.round(8 * SCALE), 0xfbbf24);
-    carpetTrimL.setDepth(0);
-    this.ballersElements.push(carpetTrimL);
-    const carpetTrimR = this.add.rectangle(centerX + Math.round(40 * SCALE), pathY, Math.round(3 * SCALE), pathH - Math.round(8 * SCALE), 0xfbbf24);
-    carpetTrimR.setDepth(0);
-    this.ballersElements.push(carpetTrimR);
-
-    // === ENTRANCE GATE (behind buildings) ===
-    const gateY = Math.round(420 * SCALE);
-    const gateSpacing = Math.round(280 * SCALE);
-
-    // Iron gate pillars (stone base + gold cap)
-    [-1, 1].forEach((side) => {
-      const px = centerX + side * gateSpacing;
-      // Stone pillar base
-      const pillarBase = this.add.rectangle(px, gateY, Math.round(24 * SCALE), Math.round(100 * SCALE), 0x57534e);
-      pillarBase.setOrigin(0.5, 1);
-      pillarBase.setDepth(1);
-      this.ballersElements.push(pillarBase);
-      // Gold cap
-      const pillarCap = this.add.rectangle(px, gateY - Math.round(100 * SCALE), Math.round(32 * SCALE), Math.round(12 * SCALE), 0xfbbf24);
-      pillarCap.setDepth(1);
-      this.ballersElements.push(pillarCap);
-      // Gold ball finial
-      const finial = this.add.circle(px, gateY - Math.round(115 * SCALE), Math.round(8 * SCALE), 0xfbbf24);
-      finial.setDepth(1);
-      this.ballersElements.push(finial);
-    });
-
-    // Iron gate arch between pillars
-    const archBar = this.add.rectangle(centerX, gateY - Math.round(90 * SCALE), gateSpacing * 2 - Math.round(24 * SCALE), Math.round(6 * SCALE), 0x292524);
-    archBar.setDepth(1);
-    this.ballersElements.push(archBar);
-
-    // Gate decorative spikes
-    for (let i = -4; i <= 4; i++) {
-      if (i === 0) continue; // Skip center
-      const spikeX = centerX + i * Math.round(50 * SCALE);
-      const spike = this.add.triangle(spikeX, gateY - Math.round(95 * SCALE), 0, 10, 5, 0, 10, 10, 0x292524);
-      spike.setScale(SCALE);
-      spike.setDepth(1);
-      this.ballersElements.push(spike);
+    // Dithering pattern for gravel texture (matches building dithering style)
+    for (let px = Math.round(20 * SCALE); px < GAME_WIDTH - Math.round(20 * SCALE); px += Math.round(16 * SCALE)) {
+      for (let row = 0; row < 2; row++) {
+        const ditherY = pathY - Math.round(15 * SCALE) + row * Math.round(18 * SCALE);
+        const offset = row % 2 === 0 ? 0 : Math.round(8 * SCALE);
+        const dither = this.add.rectangle(px + offset, ditherY, Math.round(4 * SCALE), Math.round(4 * SCALE), 0x374151);
+        dither.setDepth(0);
+        this.ballersElements.push(dither);
+      }
     }
 
-    // === BANNER ===
-    const bannerY = Math.round(340 * SCALE);
-    // Banner background
-    const bannerBg = this.add.rectangle(centerX, bannerY, Math.round(260 * SCALE), Math.round(36 * SCALE), 0x1c1917);
-    bannerBg.setDepth(2);
-    this.ballersElements.push(bannerBg);
-    // Banner gold border
-    const bannerBorder = this.add.rectangle(centerX, bannerY, Math.round(264 * SCALE), Math.round(40 * SCALE), 0xfbbf24);
-    bannerBorder.setDepth(1);
-    this.ballersElements.push(bannerBorder);
+    // === FOUNTAIN (simplified - rectangular pixel style) ===
+    const fountainX = Math.round(400 * SCALE); // Centered on #1 whale mansion
+    const fountainY = Math.round(490 * SCALE);
 
-    // "BALLERS VALLEY" title
-    const title = this.add.text(centerX, bannerY - Math.round(3 * SCALE), "BALLERS VALLEY", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(14 * SCALE)}px`,
-      color: "#fbbf24",
-      stroke: "#000000",
-      strokeThickness: Math.round(2 * SCALE),
-    });
-    title.setOrigin(0.5, 0.5);
-    title.setDepth(3);
-    this.ballersElements.push(title);
-
-    // Subtitle
-    const subtitle = this.add.text(centerX, bannerY + Math.round(12 * SCALE), "Top $BagsWorld Holders", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(7 * SCALE)}px`,
-      color: "#a8a29e",
-    });
-    subtitle.setOrigin(0.5, 0.5);
-    subtitle.setDepth(3);
-    this.ballersElements.push(subtitle);
-
-    // === MAIN FOUNTAIN (positioned in front of #1 WHALE mansion at 400) ===
-    // The #1 mansion is at x=400, so fountain goes in front of it
-    const fountainX = Math.round(400 * SCALE);  // Centered on #1 whale mansion
-    const fountainY = Math.round(490 * SCALE);  // In grass area between banner and path
-
-    // Fountain stone base (larger and grander for VIP zone)
-    const fountainBase = this.add.circle(fountainX, fountainY, Math.round(40 * SCALE), 0x78716c);
+    // Fountain base (rectangular, gray stone)
+    const fountainBase = this.add.rectangle(fountainX, fountainY, Math.round(60 * SCALE), Math.round(30 * SCALE), 0x374151);
     fountainBase.setDepth(1);
     this.ballersElements.push(fountainBase);
-    // Gold rim (premium touch)
-    const fountainGoldRim = this.add.circle(fountainX, fountainY, Math.round(36 * SCALE), 0xfbbf24);
-    fountainGoldRim.setDepth(1);
-    this.ballersElements.push(fountainGoldRim);
-    // Fountain inner rim
-    const fountainRim = this.add.circle(fountainX, fountainY, Math.round(32 * SCALE), 0x57534e);
+    // Fountain rim
+    const fountainRim = this.add.rectangle(fountainX, fountainY - Math.round(2 * SCALE), Math.round(52 * SCALE), Math.round(22 * SCALE), 0x4b5563);
     fountainRim.setDepth(1);
     this.ballersElements.push(fountainRim);
-    // Water
-    const fountainWater = this.add.circle(fountainX, fountainY, Math.round(28 * SCALE), 0x3b82f6);
+    // Water (blue from palette)
+    const fountainWater = this.add.rectangle(fountainX, fountainY - Math.round(4 * SCALE), Math.round(44 * SCALE), Math.round(16 * SCALE), 0x3b82f6);
     fountainWater.setDepth(2);
     this.ballersElements.push(fountainWater);
-    // Water shimmer effect
-    const waterShimmer = this.add.circle(fountainX - Math.round(10 * SCALE), fountainY - Math.round(8 * SCALE), Math.round(8 * SCALE), 0x60a5fa, 0.5);
-    waterShimmer.setDepth(2);
-    this.ballersElements.push(waterShimmer);
-    // Gold center statue/pillar
-    const pillar = this.add.rectangle(fountainX, fountainY - Math.round(18 * SCALE), Math.round(10 * SCALE), Math.round(35 * SCALE), 0xfbbf24);
+    // Water highlight
+    const waterHighlight = this.add.rectangle(fountainX - Math.round(12 * SCALE), fountainY - Math.round(6 * SCALE), Math.round(8 * SCALE), Math.round(6 * SCALE), 0x60a5fa, 0.5);
+    waterHighlight.setDepth(2);
+    this.ballersElements.push(waterHighlight);
+    // Center pillar (simple rectangle)
+    const pillar = this.add.rectangle(fountainX, fountainY - Math.round(20 * SCALE), Math.round(8 * SCALE), Math.round(30 * SCALE), 0x6b7280);
     pillar.setOrigin(0.5, 1);
     pillar.setDepth(3);
     this.ballersElements.push(pillar);
-    // Gold crown ornament on top
-    const crownBase = this.add.rectangle(fountainX, fountainY - Math.round(35 * SCALE), Math.round(14 * SCALE), Math.round(6 * SCALE), 0xf59e0b);
-    crownBase.setDepth(3);
-    this.ballersElements.push(crownBase);
-    // Crown points
-    [-1, 0, 1].forEach((offset) => {
-      const crownPoint = this.add.triangle(
-        fountainX + offset * Math.round(4 * SCALE),
-        fountainY - Math.round(42 * SCALE),
-        0, 8, 4, 0, 8, 8,
-        0xfbbf24
-      );
-      crownPoint.setScale(SCALE);
-      crownPoint.setDepth(3);
-      this.ballersElements.push(crownPoint);
-    });
+    // Pillar top cap
+    const pillarCap = this.add.rectangle(fountainX, fountainY - Math.round(32 * SCALE), Math.round(12 * SCALE), Math.round(6 * SCALE), 0x9ca3af);
+    pillarCap.setDepth(3);
+    this.ballersElements.push(pillarCap);
 
-    // === MANICURED HEDGES/TOPIARIES (at groundY, between mansions) ===
+    // === HEDGES (rectangular pixel style - no circles) ===
     // Mansion positions: #1=400, #2=200, #3=600, #4=80, #5=720 (unscaled)
-    // Place hedges in gaps between mansion positions
     const hedgePositions = [
-      Math.round(140 * SCALE),  // Between #4 (80) and #2 (200)
-      Math.round(300 * SCALE),  // Between #2 (200) and #1 (400)
-      Math.round(500 * SCALE),  // Between #1 (400) and #3 (600)
-      Math.round(660 * SCALE),  // Between #3 (600) and #5 (720)
+      Math.round(140 * SCALE),
+      Math.round(300 * SCALE),
+      Math.round(500 * SCALE),
+      Math.round(660 * SCALE),
     ];
 
     hedgePositions.forEach((hx) => {
-      // Hedge base (rectangular topiary)
-      const hedge = this.add.rectangle(hx, groundY, Math.round(35 * SCALE), Math.round(45 * SCALE), 0x166534);
+      // Hedge body (rectangular - darkGreen from palette)
+      const hedge = this.add.rectangle(hx, groundY, Math.round(30 * SCALE), Math.round(40 * SCALE), 0x166534);
       hedge.setOrigin(0.5, 1);
       hedge.setDepth(1);
       this.ballersElements.push(hedge);
-      // Hedge top (rounded ball shape)
-      const hedgeTop = this.add.circle(hx, groundY - Math.round(45 * SCALE), Math.round(20 * SCALE), 0x22c55e);
+      // Hedge top (slightly lighter, stepped look)
+      const hedgeTop = this.add.rectangle(hx, groundY - Math.round(40 * SCALE), Math.round(26 * SCALE), Math.round(16 * SCALE), 0x22c55e);
+      hedgeTop.setOrigin(0.5, 1);
       hedgeTop.setDepth(1);
       this.ballersElements.push(hedgeTop);
-      // Hedge highlight
-      const hedgeHighlight = this.add.circle(hx - Math.round(6 * SCALE), groundY - Math.round(50 * SCALE), Math.round(7 * SCALE), 0x4ade80, 0.5);
+      // Highlight edge (left side)
+      const hedgeHighlight = this.add.rectangle(hx - Math.round(11 * SCALE), groundY - Math.round(20 * SCALE), Math.round(4 * SCALE), Math.round(40 * SCALE), 0x4ade80, 0.4);
       hedgeHighlight.setDepth(1);
       this.ballersElements.push(hedgeHighlight);
     });
 
-    // === SMALL FOUNTAINS between outer mansions ===
-    // Place decorative fountains in the larger gaps
-    const smallFountainPositions = [
-      Math.round(40 * SCALE),   // Left edge before #4
-      Math.round(760 * SCALE),  // Right edge after #5
-    ];
-
-    smallFountainPositions.forEach((fx) => {
-      // Small fountain base
-      const fBase = this.add.circle(fx, groundY - Math.round(10 * SCALE), Math.round(18 * SCALE), 0x78716c);
-      fBase.setDepth(1);
-      this.ballersElements.push(fBase);
-      // Water
-      const fWater = this.add.circle(fx, groundY - Math.round(10 * SCALE), Math.round(14 * SCALE), 0x3b82f6);
-      fWater.setDepth(1);
-      this.ballersElements.push(fWater);
-      // Gold spout
-      const fSpout = this.add.rectangle(fx, groundY - Math.round(20 * SCALE), Math.round(4 * SCALE), Math.round(15 * SCALE), 0xfbbf24);
-      fSpout.setOrigin(0.5, 1);
-      fSpout.setDepth(2);
-      this.ballersElements.push(fSpout);
-    });
-
-    // === LUXURY LAMP POSTS (gold-tinted street lamps) ===
-    // Position lamps to flank the mansion row without overlapping
+    // === LAMP POSTS (use existing sprite, no tint) ===
     const lampPositions = [
-      Math.round(120 * SCALE),  // Near #4
-      Math.round(260 * SCALE),  // Between #2 and #4
-      Math.round(340 * SCALE),  // Near #1 left
-      Math.round(460 * SCALE),  // Near #1 right
-      Math.round(560 * SCALE),  // Between #1 and #3
-      Math.round(680 * SCALE),  // Near #3/#5
+      Math.round(140 * SCALE),
+      Math.round(300 * SCALE),
+      Math.round(500 * SCALE),
+      Math.round(660 * SCALE),
     ];
 
     lampPositions.forEach((lx) => {
       const lamp = this.add.sprite(lx, groundY, "street_lamp");
       lamp.setOrigin(0.5, 1);
       lamp.setDepth(3);
-      lamp.setTint(0xfbbf24); // Gold tint for luxury feel
+      // No tint - use natural lamp color to match other zones
       this.ballersElements.push(lamp);
     });
 
-    // Decorative gold particles (sparkles)
-    const sparklePositions = [
-      { x: 100, y: 350 },
-      { x: 300, y: 380 },
-      { x: 500, y: 340 },
-      { x: 700, y: 370 },
-      { x: 250, y: 450 },
-      { x: 550, y: 440 },
+    // === DECORATIVE PLANTERS at edges ===
+    const planterPositions = [
+      Math.round(40 * SCALE),
+      Math.round(760 * SCALE),
     ];
 
-    sparklePositions.forEach((pos) => {
-      const sx = Math.round(pos.x * SCALE);
-      const sy = Math.round(pos.y * SCALE);
-
-      const sparkle = this.add.circle(sx, sy, Math.round(3 * SCALE), 0xfbbf24, 0.6);
-      sparkle.setDepth(1);
-      this.ballersElements.push(sparkle);
-
-      // Sparkle animation
-      this.tweens.add({
-        targets: sparkle,
-        alpha: { from: 0.6, to: 0.2 },
-        scale: { from: 1, to: 0.7 },
-        duration: 1500 + Math.random() * 1000,
-        yoyo: true,
-        repeat: -1,
-      });
+    planterPositions.forEach((px) => {
+      // Planter box (rectangular, brown)
+      const planter = this.add.rectangle(px, groundY, Math.round(24 * SCALE), Math.round(20 * SCALE), 0x78350f);
+      planter.setOrigin(0.5, 1);
+      planter.setDepth(1);
+      this.ballersElements.push(planter);
+      // Plant (green rectangle)
+      const plant = this.add.rectangle(px, groundY - Math.round(20 * SCALE), Math.round(18 * SCALE), Math.round(25 * SCALE), 0x166534);
+      plant.setOrigin(0.5, 1);
+      plant.setDepth(1);
+      this.ballersElements.push(plant);
+      // Plant highlight
+      const plantTop = this.add.rectangle(px, groundY - Math.round(38 * SCALE), Math.round(14 * SCALE), Math.round(10 * SCALE), 0x22c55e);
+      plantTop.setOrigin(0.5, 1);
+      plantTop.setDepth(1);
+      this.ballersElements.push(plantTop);
     });
   }
 
