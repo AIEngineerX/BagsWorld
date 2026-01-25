@@ -37,7 +37,8 @@ type DialogueStyle = 'casual' | 'formal' | 'debate' | 'collaborative';
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173'];
-const MAX_CONVERSATION_LENGTH = 50;
+// Reduced from 50 to 8 for token efficiency (~80% savings on conversation context)
+const MAX_CONVERSATION_LENGTH = 8;
 
 const DATABASE_URL = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL;
 
@@ -140,6 +141,13 @@ function createMockState(): State {
   return {} as State;
 }
 
+// Cache for world state (refreshes every 60 seconds)
+let worldStateCache: { data: string | null; expires: number } = { data: null, expires: 0 };
+const WORLD_STATE_CACHE_TTL = 60000; // 1 minute
+
+// Pattern to detect if user is asking about other agents
+const AGENT_MENTION_PATTERN = /\b(toly|finn|ash|ghost|neo|cj|shaw|bags.?bot|who|which agent|talk to|ask)\b/i;
+
 async function buildConversationContext(
   character: Character,
   userMessage: string
@@ -152,19 +160,30 @@ async function buildConversationContext(
     messages: [],
   };
 
-  const worldResult = await worldStateProvider.get(runtime, memory, state);
-  if (worldResult?.text) {
-    context.worldState = worldResult.text;
+  // Use cached world state if available (saves API calls + tokens)
+  const now = Date.now();
+  if (worldStateCache.data && now < worldStateCache.expires) {
+    context.worldState = worldStateCache.data;
+  } else {
+    const worldResult = await worldStateProvider.get(runtime, memory, state);
+    if (worldResult?.text) {
+      context.worldState = worldResult.text;
+      worldStateCache = { data: worldResult.text, expires: now + WORLD_STATE_CACHE_TTL };
+    }
   }
 
-  const tokenResult = await tokenDataProvider.get(runtime, memory, state);
-  if (tokenResult?.text) {
-    context.tokenData = tokenResult.text;
-  }
+  // Skip token data for now - rarely needed and adds tokens
+  // const tokenResult = await tokenDataProvider.get(runtime, memory, state);
+  // if (tokenResult?.text) {
+  //   context.tokenData = tokenResult.text;
+  // }
 
-  const agentResult = await agentContextProvider.get(runtime, memory, state);
-  if (agentResult?.text) {
-    context.agentContext = agentResult.text;
+  // Only include agent context when user mentions other agents (~400 tokens saved)
+  if (AGENT_MENTION_PATTERN.test(userMessage)) {
+    const agentResult = await agentContextProvider.get(runtime, memory, state);
+    if (agentResult?.text) {
+      context.agentContext = agentResult.text;
+    }
   }
 
   return context;
@@ -634,12 +653,14 @@ app.post('/api/dialogue', async (req, res) => {
   );
 
   const llmService = getLLMService();
+  // Use Haiku for dialogue - 10x cheaper than Sonnet, fast enough for multi-agent chat
+  // Reduced from 2000 to 500 max tokens for dialogue (plenty for 4 turns)
   const llmResponse = await llmService.generateWithSystemPrompt(
     systemPrompt,
     userPrompt,
     [],
-    undefined,
-    2000
+    'claude-3-5-haiku-20241022',
+    500
   );
 
   const result = parseDialogueResponse(llmResponse.text, dialogueParticipants);

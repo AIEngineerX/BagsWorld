@@ -86,7 +86,8 @@ const AGENT_GROUPS = [
 ];
 
 // How long to wait before fetching next dialogue (in ms)
-const REFRESH_DELAY = 45000; // 45 seconds between dialogues
+// Increased from 45s to 2 min to reduce API costs (~62% savings)
+const REFRESH_DELAY = 120000; // 2 minutes between dialogues
 
 export function AgentDialogue() {
   const [dialogue, setDialogue] = useState<DialogueData | null>(null);
@@ -138,7 +139,7 @@ export function AgentDialogue() {
         body: JSON.stringify({
           participants,
           topic,
-          turns: 6,
+          turns: 4, // Reduced from 6 to save tokens
         }),
       });
 

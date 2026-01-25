@@ -390,7 +390,8 @@ describe('LLMService', () => {
         }),
       });
 
-      await service.generateResponse(customModelChar, 'Hello', []);
+      // Use a complex message to avoid Haiku model selection for simple queries
+      await service.generateResponse(customModelChar, 'Can you explain the Solana architecture in detail?', []);
 
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(callBody.model).toBe('claude-3-opus-20240229');
@@ -408,10 +409,30 @@ describe('LLMService', () => {
         }),
       });
 
-      await service.generateResponse(mockCharacter, 'Hello', []);
+      // Use a complex message to avoid Haiku model selection for simple queries
+      await service.generateResponse(mockCharacter, 'Can you explain the Solana architecture in detail?', []);
 
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(callBody.model).toBe('claude-sonnet-4-20250514');
+    });
+
+    it('uses Haiku for simple greeting queries', async () => {
+      const service = new LLMService();
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          content: [{ type: 'text', text: 'gm ser!' }],
+          model: 'claude-3-5-haiku-20241022',
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      });
+
+      await service.generateResponse(mockCharacter, 'gm', []);
+
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(callBody.model).toBe('claude-3-5-haiku-20241022');
+      expect(callBody.max_tokens).toBe(150); // Reduced for simple queries
     });
   });
 
