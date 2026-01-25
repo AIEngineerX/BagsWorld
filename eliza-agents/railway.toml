@@ -20,8 +20,8 @@ restartPolicyMaxRetries = 3
 
 [env]
 NODE_ENV = "production"
-PORT = "3001"
 HOST = "0.0.0.0"
+# PORT is set automatically by Railway - don't override it
 # Set via Railway dashboard:
 # - DATABASE_URL (or NEON_DATABASE_URL)
 # - ANTHROPIC_API_KEY (required for chat)
