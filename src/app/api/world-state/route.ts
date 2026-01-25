@@ -211,17 +211,17 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
     console.warn("[WorldState] Failed to fetch BagsWorld holders:", err);
   }
 
-  // If we still have no holders, use mock data for development
-  console.log("[WorldState] Using mock holders for development");
-  const mockHolders: BagsWorldHolder[] = [
-    { address: "WHALE1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 10000000, percentage: 25, rank: 1 },
-    { address: "WHALE2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 5000000, percentage: 12.5, rank: 2 },
-    { address: "WHALE3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 3000000, percentage: 7.5, rank: 3 },
-    { address: "WHALE4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 2000000, percentage: 5, rank: 4 },
-    { address: "WHALE5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 1000000, percentage: 2.5, rank: 5 },
+  // If we still have no holders, use placeholder data for development
+  console.log("[WorldState] Using placeholder holders - API unavailable");
+  const placeholderHolders: BagsWorldHolder[] = [
+    { address: "BaGs1WhaLeHoLderxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 12500000, percentage: 28.5, rank: 1 },
+    { address: "BaGs2BiGHoLderxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 6200000, percentage: 14.2, rank: 2 },
+    { address: "BaGs3HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 3800000, percentage: 8.7, rank: 3 },
+    { address: "BaGs4HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 2100000, percentage: 4.8, rank: 4 },
+    { address: "BaGs5HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 1400000, percentage: 3.2, rank: 5 },
   ];
-  holdersCache = { data: mockHolders, timestamp: now };
-  return mockHolders;
+  holdersCache = { data: placeholderHolders, timestamp: now };
+  return placeholderHolders;
 }
 
 // Background weather fetch (non-blocking)

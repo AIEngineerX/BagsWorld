@@ -9,6 +9,7 @@ import type {
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { SpeechBubbleManager } from "@/lib/speech-bubble-manager";
 import { getCurrentLine, getActiveConversation } from "@/lib/autonomous-dialogue";
+import { useGameStore } from "@/lib/store";
 
 // Scale factor for higher resolution (must match BootScene)
 const SCALE = 1.6;
@@ -68,9 +69,12 @@ export class WorldScene extends Phaser.Scene {
   private mainCityElements: Phaser.GameObjects.GameObject[] = [];
   private academyElements: Phaser.GameObjects.GameObject[] = []; // Academy zone elements
   private ballersElements: Phaser.GameObjects.GameObject[] = []; // Ballers Valley zone elements
+  private foundersElements: Phaser.GameObjects.GameObject[] = []; // Founder's Corner zone elements
   private trendingZoneCreated = false; // Cache trending zone elements
   private academyZoneCreated = false; // Cache academy zone elements
   private ballersZoneCreated = false; // Cache ballers zone elements
+  private foundersZoneCreated = false; // Cache founders zone elements
+  private foundersPopup: Phaser.GameObjects.Container | null = null; // Popup modal for building info
   private ballersGoldenSky: Phaser.GameObjects.Graphics | null = null; // Golden hour sky for Ballers Valley
   private academyTwilightSky: Phaser.GameObjects.Graphics | null = null; // Magical twilight sky for Academy
   private academyMoon: Phaser.GameObjects.Arc | null = null; // Moon for Academy zone
@@ -339,9 +343,9 @@ export class WorldScene extends Phaser.Scene {
       if (origX !== undefined) (a.sprite as any).x = origX;
     });
 
-    // Determine slide direction: Park -> BagsCity -> Academy -> Ballers Valley (left to right)
-    // Zone order: main_city (0) -> trending (1) -> academy (2) -> ballers (3)
-    const zoneOrder: Record<ZoneType, number> = { main_city: 0, trending: 1, academy: 2, ballers: 3 };
+    // Determine slide direction: Park -> BagsCity -> Academy -> Ballers Valley -> Founder's Corner (left to right)
+    // Zone order: main_city (0) -> trending (1) -> academy (2) -> ballers (3) -> founders (4)
+    const zoneOrder: Record<ZoneType, number> = { main_city: 0, trending: 1, academy: 2, ballers: 3, founders: 4 };
     const isGoingRight = zoneOrder[newZone] > zoneOrder[this.currentZone];
     const duration = 600; // Smooth, cinematic transition
     const slideDistance = Math.round(850 * SCALE); // Slightly more than screen width for full slide (scaled)
@@ -457,6 +461,7 @@ export class WorldScene extends Phaser.Scene {
         trending: "concrete",
         academy: "grass", // Academy has grass quad
         ballers: "grass", // Ballers Valley has premium grass (luxury estate feel)
+        founders: "founders_ground", // Founder's Corner has warm workshop flooring
       };
       this.ground.setTexture(groundTextures[newZone]);
 
@@ -652,6 +657,9 @@ export class WorldScene extends Phaser.Scene {
       case "ballers":
         this.setupBallersZone();
         break;
+      case "founders":
+        this.setupFoundersZone();
+        break;
       case "main_city":
       default:
         this.setupMainCityZone();
@@ -667,6 +675,20 @@ export class WorldScene extends Phaser.Scene {
     // Show fountain water spray
     if (this.fountainWater) {
       this.fountainWater.setVisible(true);
+    }
+
+    // Hide other zone elements
+    this.trendingElements.forEach((el) => (el as any).setVisible(false));
+    this.skylineSprites.forEach((s) => s.setVisible(false));
+    this.billboardTexts.forEach((t) => t.setVisible(false));
+    if (this.tickerText) this.tickerText.setVisible(false);
+    this.academyElements.forEach((el) => (el as any).setVisible(false));
+    this.academyBuildings.forEach((s) => s.setVisible(false));
+    this.ballersElements.forEach((el) => (el as any).setVisible(false));
+    this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
     }
 
     // Show and reset grass ground
@@ -689,6 +711,16 @@ export class WorldScene extends Phaser.Scene {
 
     // Restore normal sky (in case coming from Ballers Valley)
     this.restoreNormalSky();
+
+    // Hide other zone elements
+    this.academyElements.forEach((el) => (el as any).setVisible(false));
+    this.academyBuildings.forEach((s) => s.setVisible(false));
+    this.ballersElements.forEach((el) => (el as any).setVisible(false));
+    this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
+    }
 
     // Hide the grass ground completely - city has its own pavement
     this.ground.setVisible(false);
@@ -1412,6 +1444,13 @@ export class WorldScene extends Phaser.Scene {
     // Hide ballers zone elements
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
 
+    // Hide founders zone elements
+    this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
+    }
+
     // Draw magical twilight sky for Academy (instead of normal sky)
     this.drawAcademyTwilightSky();
 
@@ -1419,134 +1458,102 @@ export class WorldScene extends Phaser.Scene {
     this.ground.setVisible(true);
     this.ground.setTexture("grass");
 
-    // Only create elements once, then just show them
-    if (!this.academyZoneCreated) {
-      this.createAcademyBackground();
-      this.createAcademyBuildings();
-      this.createAcademyDecorations();
-      this.academyZoneCreated = true;
-    } else {
-      // Subsequent times - just show existing elements
-      this.academyElements.forEach((el) => (el as any).setVisible(true));
-      this.academyBuildings.forEach((s) => s.setVisible(true));
+    // Force recreation to pick up any changes - destroy old elements first
+    if (this.academyZoneCreated) {
+      // Destroy all existing academy elements
+      this.academyElements.forEach((el) => {
+        if (el && typeof (el as any).destroy === "function") {
+          (el as any).destroy();
+        }
+      });
+      this.academyElements = [];
+
+      // Destroy academy buildings
+      this.academyBuildings.forEach((s) => {
+        if (s && typeof (s as any).destroy === "function") {
+          (s as any).destroy();
+        }
+      });
+      this.academyBuildings = [];
+
+      // Reset twilight sky and moon references
+      this.academyTwilightSky = null;
+      this.academyMoon = null;
     }
+
+    // Always create fresh elements
+    this.createAcademyBackground();
+    this.createAcademyBuildings();
+    this.createAcademyDecorations();
+    this.academyZoneCreated = true;
   }
 
   private createAcademyBackground(): void {
-    // Create unique Academy background - ivy-covered stone walls aesthetic
-    // Back layer - distant castle-like structures (darker, atmospheric)
-    const backPositions = [
-      { x: Math.round(100 * SCALE), y: Math.round(200 * SCALE), scale: 0.6 },
-      { x: Math.round(300 * SCALE), y: Math.round(190 * SCALE), scale: 0.55 },
-      { x: Math.round(500 * SCALE), y: Math.round(195 * SCALE), scale: 0.65 },
-      { x: Math.round(700 * SCALE), y: Math.round(200 * SCALE), scale: 0.58 },
-      { x: Math.round(900 * SCALE), y: Math.round(185 * SCALE), scale: 0.62 },
-      { x: Math.round(1100 * SCALE), y: Math.round(195 * SCALE), scale: 0.6 },
-    ];
+    // Clean Bags.FM tech campus background
+    // No blurry shapes - just clean pixel-art style elements
 
-    // Create distant tower silhouettes
-    backPositions.forEach((pos, i) => {
-      // Tower base - stone gray
-      const towerWidth = Math.round((40 + (i % 3) * 10) * SCALE * pos.scale);
-      const towerHeight = Math.round((120 + (i % 4) * 20) * SCALE * pos.scale);
-
-      const tower = this.add.rectangle(
-        pos.x,
-        pos.y + towerHeight / 2,
-        towerWidth,
-        towerHeight,
-        0x374151,
-        0.4
-      );
-      tower.setDepth(-2);
-      this.academyElements.push(tower);
-
-      // Tower roof/spire
-      const spireHeight = Math.round(40 * SCALE * pos.scale);
-      const spire = this.add.triangle(
-        pos.x,
-        pos.y - spireHeight / 2,
-        0, spireHeight,
-        towerWidth / 2, 0,
-        towerWidth, spireHeight,
-        0x1e3a8a,
-        0.4
-      );
-      spire.setDepth(-2);
-      this.academyElements.push(spire);
-    });
-
-    // Mid-ground trees (silhouettes)
-    const treePositions = [
-      Math.round(50 * SCALE),
-      Math.round(200 * SCALE),
-      Math.round(400 * SCALE),
-      Math.round(600 * SCALE),
-      Math.round(800 * SCALE),
-      Math.round(1000 * SCALE),
-      Math.round(1200 * SCALE),
-    ];
-
-    treePositions.forEach((x) => {
-      const treeY = Math.round(350 * SCALE);
-
-      // Tree trunk
-      const trunk = this.add.rectangle(
-        x,
-        treeY + Math.round(30 * SCALE),
-        Math.round(15 * SCALE),
-        Math.round(60 * SCALE),
-        0x3f2d1e,
-        0.5
-      );
-      trunk.setDepth(-1);
-      this.academyElements.push(trunk);
-
-      // Tree foliage (layered circles)
-      const foliage1 = this.add.circle(x, treeY - Math.round(10 * SCALE), Math.round(35 * SCALE), 0x166534, 0.5);
-      foliage1.setDepth(-1);
-      this.academyElements.push(foliage1);
-
-      const foliage2 = this.add.circle(x - Math.round(15 * SCALE), treeY, Math.round(28 * SCALE), 0x14532d, 0.5);
-      foliage2.setDepth(-1);
-      this.academyElements.push(foliage2);
-
-      const foliage3 = this.add.circle(x + Math.round(15 * SCALE), treeY, Math.round(28 * SCALE), 0x15803d, 0.5);
-      foliage3.setDepth(-1);
-      this.academyElements.push(foliage3);
-    });
-
-    // Stone wall backdrop (behind the buildings)
-    const wallY = Math.round(420 * SCALE);
+    // Back wall - clean dark gradient feel (single solid color)
+    const wallY = Math.round(430 * SCALE);
     const wall = this.add.rectangle(
       GAME_WIDTH / 2,
       wallY,
-      GAME_WIDTH + Math.round(100 * SCALE),
-      Math.round(150 * SCALE),
-      0x4b5563,
-      0.3
+      GAME_WIDTH,
+      Math.round(200 * SCALE),
+      0x1a1f2e
     );
     wall.setDepth(-1);
     this.academyElements.push(wall);
 
-    // Wall texture (stone blocks pattern)
-    for (let x = 0; x < GAME_WIDTH; x += Math.round(80 * SCALE)) {
-      for (let row = 0; row < 2; row++) {
-        const blockY = wallY - Math.round(50 * SCALE) + row * Math.round(50 * SCALE);
-        const offset = row % 2 === 0 ? 0 : Math.round(40 * SCALE);
-        const block = this.add.rectangle(
-          x + offset,
-          blockY,
-          Math.round(75 * SCALE),
-          Math.round(45 * SCALE),
-          0x374151,
-          0.25
-        );
-        block.setStrokeStyle(1, 0x1f2937, 0.3);
-        block.setDepth(-1);
-        this.academyElements.push(block);
-      }
+    // Grid lines on wall (tech aesthetic)
+    for (let x = 0; x < GAME_WIDTH; x += Math.round(100 * SCALE)) {
+      const gridLine = this.add.rectangle(
+        x,
+        wallY,
+        Math.round(1 * SCALE),
+        Math.round(200 * SCALE),
+        0x4ade80,
+        0.1
+      );
+      gridLine.setDepth(-1);
+      this.academyElements.push(gridLine);
     }
+
+    // Horizontal grid lines
+    for (let y = Math.round(350 * SCALE); y < Math.round(530 * SCALE); y += Math.round(50 * SCALE)) {
+      const hLine = this.add.rectangle(
+        GAME_WIDTH / 2,
+        y,
+        GAME_WIDTH,
+        Math.round(1 * SCALE),
+        0x4ade80,
+        0.08
+      );
+      hLine.setDepth(-1);
+      this.academyElements.push(hLine);
+    }
+
+    // Bags.FM brand accent bar at top of wall
+    const accentBar = this.add.rectangle(
+      GAME_WIDTH / 2,
+      Math.round(330 * SCALE),
+      GAME_WIDTH,
+      Math.round(4 * SCALE),
+      0x4ade80
+    );
+    accentBar.setDepth(-1);
+    this.academyElements.push(accentBar);
+
+    // Glow under accent bar
+    const accentGlow = this.add.rectangle(
+      GAME_WIDTH / 2,
+      Math.round(340 * SCALE),
+      GAME_WIDTH,
+      Math.round(20 * SCALE),
+      0x4ade80,
+      0.15
+    );
+    accentGlow.setDepth(-1);
+    this.academyElements.push(accentGlow);
   }
 
   private createAcademyBuildings(): void {
@@ -1600,24 +1607,24 @@ export class WorldScene extends Phaser.Scene {
       this.academyElements.push(container);
     });
 
-    // Academy entrance gate at center top
-    const gateX = GAME_WIDTH / 2;
-    const gateY = Math.round(380 * SCALE);
+    // "BAGS ACADEMY" title banner (clean tech style, no gate)
+    const titleX = GAME_WIDTH / 2;
+    const titleY = Math.round(320 * SCALE);
 
-    const gateSprite = this.add.sprite(gateX, gateY, "academy_gate");
-    gateSprite.setOrigin(0.5, 1);
-    gateSprite.setDepth(2);
-    this.academyElements.push(gateSprite);
-
-    // "BAGS ACADEMY" title above gate
-    const titleBg = this.add.rectangle(gateX, gateY - Math.round(90 * SCALE), Math.round(220 * SCALE), Math.round(35 * SCALE), 0x1f2937);
+    // Tech-style title background
+    const titleBg = this.add.rectangle(titleX, titleY, Math.round(280 * SCALE), Math.round(50 * SCALE), 0x0a0f14, 0.95);
     titleBg.setStrokeStyle(2, 0x4ade80);
     titleBg.setDepth(6);
     this.academyElements.push(titleBg);
 
-    const academyTitle = this.add.text(gateX, gateY - Math.round(93 * SCALE), "BAGS ACADEMY", {
+    // Accent line on top of title
+    const titleAccent = this.add.rectangle(titleX, titleY - Math.round(25 * SCALE), Math.round(280 * SCALE), Math.round(3 * SCALE), 0x4ade80);
+    titleAccent.setDepth(6);
+    this.academyElements.push(titleAccent);
+
+    const academyTitle = this.add.text(titleX, titleY - Math.round(8 * SCALE), "BAGS ACADEMY", {
       fontFamily: "monospace",
-      fontSize: `${Math.round(16 * SCALE)}px`,
+      fontSize: `${Math.round(18 * SCALE)}px`,
       color: "#4ade80",
       stroke: "#000000",
       strokeThickness: 2,
@@ -1626,58 +1633,246 @@ export class WorldScene extends Phaser.Scene {
     academyTitle.setDepth(7);
     this.academyElements.push(academyTitle);
 
-    const subtitle = this.add.text(gateX, gateY - Math.round(75 * SCALE), "Learn from the Bags.fm Team", {
+    const subtitle = this.add.text(titleX, titleY + Math.round(12 * SCALE), "Learn from the Bags.fm Team", {
       fontFamily: "monospace",
-      fontSize: `${Math.round(7 * SCALE)}px`,
+      fontSize: `${Math.round(9 * SCALE)}px`,
       color: "#9ca3af",
     });
     subtitle.setOrigin(0.5, 0.5);
     subtitle.setDepth(7);
     this.academyElements.push(subtitle);
+
+    // Sniper Tower - positioned to the right of other buildings
+    this.createSniperTowerBuilding();
+  }
+
+  private createSniperTowerBuilding(): void {
+    const groundY = Math.round(550 * SCALE);
+    const towerX = Math.round(1140 * SCALE);
+
+    // Main tower sprite
+    const sniperTower = this.add.sprite(towerX, groundY, "sniper_tower");
+    sniperTower.setOrigin(0.5, 1);
+    sniperTower.setDepth(5);
+    sniperTower.setInteractive({ useHandCursor: true });
+
+    // Click handler - open Sniper Tower modal
+    sniperTower.on("pointerdown", () => {
+      useGameStore.getState().openSniperTower();
+    });
+
+    // Hover effect
+    sniperTower.on("pointerover", () => {
+      sniperTower.setTint(0x88ff88);
+    });
+    sniperTower.on("pointerout", () => {
+      sniperTower.clearTint();
+    });
+
+    this.academyBuildings.push(sniperTower);
+    this.academyElements.push(sniperTower);
+
+    // Label background
+    const labelBg = this.add.rectangle(towerX, groundY + Math.round(15 * SCALE), Math.round(80 * SCALE), Math.round(16 * SCALE), 0x000000, 0.9);
+    labelBg.setStrokeStyle(1, 0x4ade80);
+    labelBg.setDepth(6);
+    this.academyElements.push(labelBg);
+
+    // Label text
+    const labelText = this.add.text(towerX, groundY + Math.round(15 * SCALE), "SNIPER TOWER", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#4ade80",
+    });
+    labelText.setOrigin(0.5, 0.5);
+    labelText.setDepth(7);
+    this.academyElements.push(labelText);
+
+    // Sub-label
+    const subLabel = this.add.text(towerX, groundY + Math.round(28 * SCALE), "All Bags.fm Tokens", {
+      fontFamily: "monospace",
+      fontSize: "7px",
+      color: "#9ca3af",
+    });
+    subLabel.setOrigin(0.5, 0.5);
+    subLabel.setDepth(7);
+    this.academyElements.push(subLabel);
+
+    // Radar sweep animation (rotating beam)
+    this.createRadarSweepAnimation(towerX, groundY - Math.round(160 * SCALE));
+
+    // Beacon blinking animation
+    this.tweens.add({
+      targets: sniperTower,
+      alpha: { from: 1, to: 0.9 },
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  private createRadarSweepAnimation(x: number, y: number): void {
+    // Create radar sweep beam (triangle)
+    const beam = this.add.graphics();
+    beam.setPosition(x, y);
+    beam.setDepth(6);
+
+    // Draw the beam
+    const drawBeam = () => {
+      beam.clear();
+      beam.fillStyle(0x4ade80, 0.3);
+      beam.beginPath();
+      beam.moveTo(0, 0);
+      beam.lineTo(-Math.round(35 * SCALE), Math.round(50 * SCALE));
+      beam.lineTo(Math.round(35 * SCALE), Math.round(50 * SCALE));
+      beam.closePath();
+      beam.fill();
+
+      // Inner brighter beam
+      beam.fillStyle(0x4ade80, 0.5);
+      beam.beginPath();
+      beam.moveTo(0, 0);
+      beam.lineTo(-Math.round(15 * SCALE), Math.round(40 * SCALE));
+      beam.lineTo(Math.round(15 * SCALE), Math.round(40 * SCALE));
+      beam.closePath();
+      beam.fill();
+    };
+
+    drawBeam();
+
+    // Rotate the beam continuously
+    this.tweens.add({
+      targets: beam,
+      angle: 360,
+      duration: 3000,
+      repeat: -1,
+      ease: "Linear",
+    });
+
+    this.academyElements.push(beam);
+
+    // Add scanning dots (particles)
+    const particles: Phaser.GameObjects.Arc[] = [];
+    for (let i = 0; i < 3; i++) {
+      const particle = this.add.circle(
+        x + (Math.random() - 0.5) * Math.round(60 * SCALE),
+        y + Math.round(30 * SCALE) + Math.random() * Math.round(30 * SCALE),
+        Math.round(3 * SCALE),
+        0x4ade80,
+        0.7
+      );
+      particle.setDepth(6);
+      particles.push(particle);
+      this.academyElements.push(particle);
+
+      // Fade in/out animation
+      this.tweens.add({
+        targets: particle,
+        alpha: { from: 0, to: 0.8 },
+        scale: { from: 0.5, to: 1.2 },
+        duration: 800 + i * 200,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+        delay: i * 300,
+      });
+
+      // Move around
+      this.tweens.add({
+        targets: particle,
+        x: x + (Math.random() - 0.5) * Math.round(80 * SCALE),
+        y: y + Math.round(20 * SCALE) + Math.random() * Math.round(40 * SCALE),
+        duration: 1500 + i * 300,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+        delay: i * 500,
+      });
+    }
   }
 
   private createAcademyDecorations(): void {
     const groundY = Math.round(550 * SCALE);
 
-    // Campus cobblestone path - covers the walking area
-    const pathY = Math.round(565 * SCALE);
-    const pathH = Math.round(50 * SCALE);
+    // === BAGS.FM STYLE GROUND (tech campus aesthetic) ===
+    // Hide default grass
+    this.ground.setVisible(false);
 
-    // Main cobblestone path
-    const mainPath = this.add.rectangle(GAME_WIDTH / 2, pathY, GAME_WIDTH, pathH, 0x4b5563);
+    // Dark tech floor
+    const floor = this.add.rectangle(
+      GAME_WIDTH / 2,
+      Math.round(520 * SCALE),
+      GAME_WIDTH,
+      Math.round(200 * SCALE),
+      0x0f1419
+    );
+    floor.setDepth(0);
+    this.academyElements.push(floor);
+
+    // Main walkway - dark asphalt style
+    const pathY = Math.round(570 * SCALE);
+    const pathH = Math.round(55 * SCALE);
+
+    const mainPath = this.add.rectangle(GAME_WIDTH / 2, pathY, GAME_WIDTH, pathH, 0x1a1f2e);
     mainPath.setDepth(0);
     this.academyElements.push(mainPath);
 
-    // Path border lines (stone edges)
-    const topEdge = this.add.rectangle(GAME_WIDTH / 2, pathY - pathH / 2, GAME_WIDTH, Math.round(3 * SCALE), 0x6b7280);
-    topEdge.setDepth(0);
-    this.academyElements.push(topEdge);
+    // Neon green accent line (top of path) - Bags.FM style
+    const topAccent = this.add.rectangle(
+      GAME_WIDTH / 2,
+      pathY - pathH / 2,
+      GAME_WIDTH,
+      Math.round(3 * SCALE),
+      0x4ade80
+    );
+    topAccent.setDepth(1);
+    this.academyElements.push(topAccent);
 
-    const bottomEdge = this.add.rectangle(GAME_WIDTH / 2, pathY + pathH / 2, GAME_WIDTH, Math.round(3 * SCALE), 0x374151);
-    bottomEdge.setDepth(0);
+    // Subtle glow under accent
+    const topGlow = this.add.rectangle(
+      GAME_WIDTH / 2,
+      pathY - pathH / 2 + Math.round(8 * SCALE),
+      GAME_WIDTH,
+      Math.round(12 * SCALE),
+      0x4ade80,
+      0.1
+    );
+    topGlow.setDepth(0);
+    this.academyElements.push(topGlow);
+
+    // Bottom edge line
+    const bottomEdge = this.add.rectangle(
+      GAME_WIDTH / 2,
+      pathY + pathH / 2,
+      GAME_WIDTH,
+      Math.round(2 * SCALE),
+      0x374151
+    );
+    bottomEdge.setDepth(1);
     this.academyElements.push(bottomEdge);
 
-    // Cobblestone pattern
-    for (let x = Math.round(30 * SCALE); x < GAME_WIDTH - Math.round(30 * SCALE); x += Math.round(40 * SCALE)) {
-      for (let row = 0; row < 2; row++) {
-        const stoneY = pathY - Math.round(15 * SCALE) + row * Math.round(20 * SCALE);
-        const offset = row % 2 === 0 ? 0 : Math.round(20 * SCALE);
-        const stone = this.add.rectangle(x + offset, stoneY, Math.round(35 * SCALE), Math.round(15 * SCALE), 0x374151);
-        stone.setStrokeStyle(1, 0x1f2937);
-        stone.setDepth(0);
-        this.academyElements.push(stone);
-      }
+    // Dashed center line (tech style)
+    for (let x = Math.round(50 * SCALE); x < GAME_WIDTH; x += Math.round(80 * SCALE)) {
+      const dash = this.add.rectangle(
+        x,
+        pathY,
+        Math.round(40 * SCALE),
+        Math.round(3 * SCALE),
+        0x4ade80,
+        0.3
+      );
+      dash.setDepth(1);
+      this.academyElements.push(dash);
     }
 
-    // Street lamps using existing sprite
+    // === STREET LAMPS ===
     const lampPositions = [
       Math.round(165 * SCALE),
-      Math.round(295 * SCALE),
       Math.round(425 * SCALE),
-      Math.round(555 * SCALE),
       Math.round(685 * SCALE),
-      Math.round(815 * SCALE),
       Math.round(945 * SCALE),
+      Math.round(1100 * SCALE),
     ];
 
     lampPositions.forEach((lx) => {
@@ -1685,102 +1880,52 @@ export class WorldScene extends Phaser.Scene {
       lamp.setOrigin(0.5, 1);
       lamp.setDepth(3);
       this.academyElements.push(lamp);
+
+      // Green glow under lamp
+      const lampGlow = this.add.rectangle(
+        lx,
+        groundY + Math.round(5 * SCALE),
+        Math.round(40 * SCALE),
+        Math.round(10 * SCALE),
+        0x4ade80,
+        0.2
+      );
+      lampGlow.setDepth(0);
+      this.academyElements.push(lampGlow);
     });
 
-    // Fountain in front of gate
-    const fountainX = GAME_WIDTH / 2;
-    const fountainY = Math.round(480 * SCALE);
-
-    // Fountain base (stone)
-    const fountainBase = this.add.circle(fountainX, fountainY, Math.round(40 * SCALE), 0x6b7280);
-    fountainBase.setDepth(1);
-    this.academyElements.push(fountainBase);
-
-    // Fountain inner rim
-    const fountainRim = this.add.circle(fountainX, fountainY, Math.round(35 * SCALE), 0x4b5563);
-    fountainRim.setDepth(1);
-    this.academyElements.push(fountainRim);
-
-    // Water
-    const fountainWater = this.add.circle(fountainX, fountainY, Math.round(30 * SCALE), 0x3b82f6);
-    fountainWater.setDepth(2);
-    this.academyElements.push(fountainWater);
-
-    // Water shimmer effect
-    const waterShimmer = this.add.circle(fountainX - Math.round(10 * SCALE), fountainY - Math.round(8 * SCALE), Math.round(8 * SCALE), 0x60a5fa, 0.5);
-    waterShimmer.setDepth(2);
-    this.academyElements.push(waterShimmer);
-
-    // Central pillar
-    const pillar = this.add.rectangle(fountainX, fountainY - Math.round(20 * SCALE), Math.round(12 * SCALE), Math.round(35 * SCALE), 0x9ca3af);
-    pillar.setOrigin(0.5, 1);
-    pillar.setDepth(3);
-    this.academyElements.push(pillar);
-
-    // Pillar top ornament (gold ball)
-    const ornament = this.add.circle(fountainX, fountainY - Math.round(38 * SCALE), Math.round(6 * SCALE), 0xfbbf24);
-    ornament.setDepth(3);
-    this.academyElements.push(ornament);
-
-    // Water animation (gentle pulse)
-    this.tweens.add({
-      targets: [fountainWater, waterShimmer],
-      alpha: { from: 1, to: 0.7 },
-      duration: 1500,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
-
-    // Decorative hedges between buildings
-    const hedgePositions = [
+    // === TECH FLOOR PANELS (pixel-art rectangles only) ===
+    const panelPositions = [
       Math.round(165 * SCALE),
       Math.round(295 * SCALE),
-      Math.round(425 * SCALE),
       Math.round(555 * SCALE),
-      Math.round(685 * SCALE),
       Math.round(815 * SCALE),
-      Math.round(945 * SCALE),
+      Math.round(1075 * SCALE),
     ];
 
-    hedgePositions.forEach((hx) => {
-      // Hedge base
-      const hedgeBase = this.add.rectangle(hx, groundY, Math.round(50 * SCALE), Math.round(30 * SCALE), 0x166534);
-      hedgeBase.setOrigin(0.5, 1);
-      hedgeBase.setDepth(1);
-      this.academyElements.push(hedgeBase);
+    panelPositions.forEach((px) => {
+      // Floor panel (square, pixel-art)
+      const panel = this.add.rectangle(
+        px,
+        groundY - Math.round(5 * SCALE),
+        Math.round(60 * SCALE),
+        Math.round(8 * SCALE),
+        0x1f2937
+      );
+      panel.setDepth(1);
+      this.academyElements.push(panel);
 
-      // Hedge top (rounded)
-      const hedgeTop = this.add.circle(hx, groundY - Math.round(30 * SCALE), Math.round(25 * SCALE), 0x22c55e);
-      hedgeTop.setDepth(1);
-      this.academyElements.push(hedgeTop);
-
-      // Hedge highlight
-      const hedgeHighlight = this.add.circle(hx - Math.round(8 * SCALE), groundY - Math.round(35 * SCALE), Math.round(10 * SCALE), 0x4ade80, 0.5);
-      hedgeHighlight.setDepth(1);
-      this.academyElements.push(hedgeHighlight);
-    });
-
-    // Benches near fountain
-    const benchPositions = [
-      { x: fountainX - Math.round(100 * SCALE), y: fountainY + Math.round(20 * SCALE) },
-      { x: fountainX + Math.round(100 * SCALE), y: fountainY + Math.round(20 * SCALE) },
-    ];
-
-    benchPositions.forEach((pos) => {
-      // Bench seat
-      const seat = this.add.rectangle(pos.x, pos.y, Math.round(50 * SCALE), Math.round(8 * SCALE), 0x8b4513);
-      seat.setDepth(2);
-      this.academyElements.push(seat);
-
-      // Bench legs
-      const leftLeg = this.add.rectangle(pos.x - Math.round(18 * SCALE), pos.y + Math.round(10 * SCALE), Math.round(5 * SCALE), Math.round(12 * SCALE), 0x5c4033);
-      leftLeg.setDepth(2);
-      this.academyElements.push(leftLeg);
-
-      const rightLeg = this.add.rectangle(pos.x + Math.round(18 * SCALE), pos.y + Math.round(10 * SCALE), Math.round(5 * SCALE), Math.round(12 * SCALE), 0x5c4033);
-      rightLeg.setDepth(2);
-      this.academyElements.push(rightLeg);
+      // Panel accent
+      const panelAccent = this.add.rectangle(
+        px,
+        groundY - Math.round(5 * SCALE),
+        Math.round(56 * SCALE),
+        Math.round(4 * SCALE),
+        0x4ade80,
+        0.3
+      );
+      panelAccent.setDepth(1);
+      this.academyElements.push(panelAccent);
     });
   }
 
@@ -1806,13 +1951,17 @@ export class WorldScene extends Phaser.Scene {
     if (this.tickerText) this.tickerText.setVisible(false);
     this.academyElements.forEach((el) => (el as any).setVisible(false));
     this.academyBuildings.forEach((s) => s.setVisible(false));
+    this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
+    }
 
     // Restore normal sky (persistent layer - not modified per-zone)
     this.restoreNormalSky();
 
-    // Show grass ground for luxury estate
-    this.ground.setVisible(true);
-    this.ground.setTexture("grass");
+    // Hide default grass - we draw custom luxury ground
+    this.ground.setVisible(false);
 
     // Only create elements once, then just show them
     if (!this.ballersZoneCreated) {
@@ -1825,137 +1974,661 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * Create Ballers Valley decorations - Bel Air estate environment
-   * Uses same groundY (550) and pathY (565) as other zones for consistency
-   * Follows pixel art style: chunky blocks, palette colors, dithering patterns
+   * Create Ballers Valley decorations - Luxury Bel Air estate environment
+   * Uses proper BagsWorld pixel art textures from BootScene
    */
   private createBallersDecorations(): void {
     const centerX = GAME_WIDTH / 2;
-    const groundY = Math.round(550 * SCALE); // Same as other zones - building bottom Y
-    const pathY = Math.round(565 * SCALE); // Same as Academy zone
+    const groundY = Math.round(550 * SCALE);
+    const pathY = Math.round(565 * SCALE);
 
-    // === GROUND LAYER (depth 0) - Gravel driveway ===
-    // Main driveway - gray stone like sidewalk (matches existing path texture)
-    const pathH = Math.round(50 * SCALE);
-    const mainPath = this.add.rectangle(GAME_WIDTH / 2, pathY, GAME_WIDTH, pathH, 0x4b5563); // midGray from palette
-    mainPath.setDepth(0);
-    this.ballersElements.push(mainPath);
-
-    // Driveway border edges (darker gray)
-    const topEdge = this.add.rectangle(GAME_WIDTH / 2, pathY - pathH / 2, GAME_WIDTH, Math.round(3 * SCALE), 0x374151); // gray
-    topEdge.setDepth(0);
-    this.ballersElements.push(topEdge);
-
-    const bottomEdge = this.add.rectangle(GAME_WIDTH / 2, pathY + pathH / 2, GAME_WIDTH, Math.round(3 * SCALE), 0x1f2937); // darkGray
-    bottomEdge.setDepth(0);
-    this.ballersElements.push(bottomEdge);
-
-    // Dithering pattern for gravel texture (matches building dithering style)
-    for (let px = Math.round(20 * SCALE); px < GAME_WIDTH - Math.round(20 * SCALE); px += Math.round(16 * SCALE)) {
-      for (let row = 0; row < 2; row++) {
-        const ditherY = pathY - Math.round(15 * SCALE) + row * Math.round(18 * SCALE);
-        const offset = row % 2 === 0 ? 0 : Math.round(8 * SCALE);
-        const dither = this.add.rectangle(px + offset, ditherY, Math.round(4 * SCALE), Math.round(4 * SCALE), 0x374151);
-        dither.setDepth(0);
-        this.ballersElements.push(dither);
-      }
-    }
-
-    // === FOUNTAIN (simplified - rectangular pixel style) ===
-    const fountainX = Math.round(400 * SCALE); // Centered on #1 whale mansion
-    const fountainY = Math.round(490 * SCALE);
-
-    // Fountain base (rectangular, gray stone)
-    const fountainBase = this.add.rectangle(fountainX, fountainY, Math.round(60 * SCALE), Math.round(30 * SCALE), 0x374151);
-    fountainBase.setDepth(1);
-    this.ballersElements.push(fountainBase);
-    // Fountain rim
-    const fountainRim = this.add.rectangle(fountainX, fountainY - Math.round(2 * SCALE), Math.round(52 * SCALE), Math.round(22 * SCALE), 0x4b5563);
-    fountainRim.setDepth(1);
-    this.ballersElements.push(fountainRim);
-    // Water (blue from palette)
-    const fountainWater = this.add.rectangle(fountainX, fountainY - Math.round(4 * SCALE), Math.round(44 * SCALE), Math.round(16 * SCALE), 0x3b82f6);
-    fountainWater.setDepth(2);
-    this.ballersElements.push(fountainWater);
-    // Water highlight
-    const waterHighlight = this.add.rectangle(fountainX - Math.round(12 * SCALE), fountainY - Math.round(6 * SCALE), Math.round(8 * SCALE), Math.round(6 * SCALE), 0x60a5fa, 0.5);
-    waterHighlight.setDepth(2);
-    this.ballersElements.push(waterHighlight);
-    // Center pillar (simple rectangle)
-    const pillar = this.add.rectangle(fountainX, fountainY - Math.round(20 * SCALE), Math.round(8 * SCALE), Math.round(30 * SCALE), 0x6b7280);
-    pillar.setOrigin(0.5, 1);
-    pillar.setDepth(3);
-    this.ballersElements.push(pillar);
-    // Pillar top cap
-    const pillarCap = this.add.rectangle(fountainX, fountainY - Math.round(32 * SCALE), Math.round(12 * SCALE), Math.round(6 * SCALE), 0x9ca3af);
-    pillarCap.setDepth(3);
-    this.ballersElements.push(pillarCap);
-
-    // === HEDGES (rectangular pixel style - no circles) ===
-    // Mansion positions: #1=400, #2=200, #3=600, #4=80, #5=720 (unscaled)
-    const hedgePositions = [
-      Math.round(140 * SCALE),
-      Math.round(300 * SCALE),
+    // === LUXURY LAWN (tileSprite using generated texture) ===
+    const lawnTile = this.add.tileSprite(
+      GAME_WIDTH / 2,
       Math.round(500 * SCALE),
-      Math.round(660 * SCALE),
+      GAME_WIDTH,
+      Math.round(140 * SCALE),
+      "luxury_lawn"
+    );
+    lawnTile.setDepth(-1);
+    this.ballersElements.push(lawnTile);
+
+    // === MARBLE PATHWAY (tileSprite using generated texture) ===
+    const marbleTile = this.add.tileSprite(
+      GAME_WIDTH / 2,
+      pathY,
+      GAME_WIDTH,
+      Math.round(55 * SCALE),
+      "marble_path"
+    );
+    marbleTile.setDepth(0);
+    this.ballersElements.push(marbleTile);
+
+    // Gold trim borders on pathway
+    const goldTrimTop = this.add.rectangle(
+      GAME_WIDTH / 2,
+      pathY - Math.round(27 * SCALE),
+      GAME_WIDTH,
+      Math.round(4 * SCALE),
+      0xd4a017
+    );
+    goldTrimTop.setDepth(1);
+    this.ballersElements.push(goldTrimTop);
+
+    const goldTrimBottom = this.add.rectangle(
+      GAME_WIDTH / 2,
+      pathY + Math.round(27 * SCALE),
+      GAME_WIDTH,
+      Math.round(4 * SCALE),
+      0xd4a017
+    );
+    goldTrimBottom.setDepth(1);
+    this.ballersElements.push(goldTrimBottom);
+
+    // === ORNATE GOLDEN FOUNTAIN (sprite texture) ===
+    const fountain = this.add.sprite(centerX, groundY - Math.round(5 * SCALE), "gold_fountain");
+    fountain.setOrigin(0.5, 1);
+    fountain.setDepth(2);
+    this.ballersElements.push(fountain);
+
+    // === TOPIARIES (sprite textures) ===
+    const topiaryPositions = [
+      { x: Math.round(100 * SCALE), scale: 1.0 },
+      { x: Math.round(260 * SCALE), scale: 0.85 },
+      { x: Math.round(540 * SCALE), scale: 0.85 },
+      { x: Math.round(700 * SCALE), scale: 1.0 },
     ];
 
-    hedgePositions.forEach((hx) => {
-      // Hedge body (rectangular - darkGreen from palette)
-      const hedge = this.add.rectangle(hx, groundY, Math.round(30 * SCALE), Math.round(40 * SCALE), 0x166534);
-      hedge.setOrigin(0.5, 1);
-      hedge.setDepth(1);
-      this.ballersElements.push(hedge);
-      // Hedge top (slightly lighter, stepped look)
-      const hedgeTop = this.add.rectangle(hx, groundY - Math.round(40 * SCALE), Math.round(26 * SCALE), Math.round(16 * SCALE), 0x22c55e);
-      hedgeTop.setOrigin(0.5, 1);
-      hedgeTop.setDepth(1);
-      this.ballersElements.push(hedgeTop);
-      // Highlight edge (left side)
-      const hedgeHighlight = this.add.rectangle(hx - Math.round(11 * SCALE), groundY - Math.round(20 * SCALE), Math.round(4 * SCALE), Math.round(40 * SCALE), 0x4ade80, 0.4);
-      hedgeHighlight.setDepth(1);
-      this.ballersElements.push(hedgeHighlight);
+    topiaryPositions.forEach(({ x, scale }) => {
+      const topiary = this.add.sprite(x, groundY, "topiary");
+      topiary.setOrigin(0.5, 1);
+      topiary.setScale(scale);
+      topiary.setDepth(2);
+      this.ballersElements.push(topiary);
     });
 
-    // === LAMP POSTS (use existing sprite, no tint) ===
+    // === GOLD LAMP POSTS (sprite textures) ===
     const lampPositions = [
-      Math.round(140 * SCALE),
-      Math.round(300 * SCALE),
-      Math.round(500 * SCALE),
-      Math.round(660 * SCALE),
+      Math.round(50 * SCALE),
+      Math.round(180 * SCALE),
+      Math.round(620 * SCALE),
+      Math.round(750 * SCALE),
     ];
 
     lampPositions.forEach((lx) => {
-      const lamp = this.add.sprite(lx, groundY, "street_lamp");
+      const lamp = this.add.sprite(lx, groundY, "gold_lamp");
       lamp.setOrigin(0.5, 1);
       lamp.setDepth(3);
-      // No tint - use natural lamp color to match other zones
       this.ballersElements.push(lamp);
     });
 
-    // === DECORATIVE PLANTERS at edges ===
-    const planterPositions = [
-      Math.round(40 * SCALE),
-      Math.round(760 * SCALE),
+    // === IRON GATES (sprite textures) ===
+    // Left gate
+    const leftGate = this.add.sprite(Math.round(30 * SCALE), groundY, "iron_gate");
+    leftGate.setOrigin(0.5, 1);
+    leftGate.setDepth(4);
+    this.ballersElements.push(leftGate);
+
+    // Right gate (flipped)
+    const rightGate = this.add.sprite(GAME_WIDTH - Math.round(30 * SCALE), groundY, "iron_gate");
+    rightGate.setOrigin(0.5, 1);
+    rightGate.setFlipX(true);
+    rightGate.setDepth(4);
+    this.ballersElements.push(rightGate);
+
+    // === GOLD URNS/STATUES (sprite textures) ===
+    const urnPositions = [
+      Math.round(340 * SCALE),
+      Math.round(460 * SCALE),
     ];
 
-    planterPositions.forEach((px) => {
-      // Planter box (rectangular, brown)
-      const planter = this.add.rectangle(px, groundY, Math.round(24 * SCALE), Math.round(20 * SCALE), 0x78350f);
-      planter.setOrigin(0.5, 1);
-      planter.setDepth(1);
-      this.ballersElements.push(planter);
-      // Plant (green rectangle)
-      const plant = this.add.rectangle(px, groundY - Math.round(20 * SCALE), Math.round(18 * SCALE), Math.round(25 * SCALE), 0x166534);
-      plant.setOrigin(0.5, 1);
-      plant.setDepth(1);
-      this.ballersElements.push(plant);
-      // Plant highlight
-      const plantTop = this.add.rectangle(px, groundY - Math.round(38 * SCALE), Math.round(14 * SCALE), Math.round(10 * SCALE), 0x22c55e);
-      plantTop.setOrigin(0.5, 1);
-      plantTop.setDepth(1);
-      this.ballersElements.push(plantTop);
+    urnPositions.forEach((ux) => {
+      const urn = this.add.sprite(ux, groundY, "gold_urn");
+      urn.setOrigin(0.5, 1);
+      urn.setDepth(2);
+      this.ballersElements.push(urn);
     });
+
+    // === RED CARPET (sprite texture) ===
+    const carpet = this.add.sprite(centerX, groundY + Math.round(15 * SCALE), "red_carpet");
+    carpet.setOrigin(0.5, 1);
+    carpet.setDepth(1);
+    this.ballersElements.push(carpet);
+
+    // === ADDITIONAL DECORATIVE HEDGES (using existing bush texture with tint) ===
+    const hedgePositions = [
+      Math.round(150 * SCALE),
+      Math.round(650 * SCALE),
+    ];
+
+    hedgePositions.forEach((hx) => {
+      const hedge = this.add.sprite(hx, groundY - Math.round(5 * SCALE), "bush");
+      hedge.setOrigin(0.5, 1);
+      hedge.setScale(1.3);
+      hedge.setTint(0x145214); // Darker green for manicured look
+      hedge.setDepth(2);
+      this.ballersElements.push(hedge);
+    });
+
+    // === DECORATIVE FLOWERS along pathway ===
+    const flowerPositions = [
+      Math.round(120 * SCALE),
+      Math.round(220 * SCALE),
+      Math.round(580 * SCALE),
+      Math.round(680 * SCALE),
+    ];
+
+    flowerPositions.forEach((fx) => {
+      const flower = this.add.sprite(fx, groundY - Math.round(3 * SCALE), "flower");
+      flower.setOrigin(0.5, 1);
+      flower.setTint(0xffd700); // Gold flowers for luxury feel
+      flower.setDepth(2);
+      this.ballersElements.push(flower);
+    });
+
+    // === LUXURY SUPERCAR parked outside #1 WHALE mansion ===
+    // Position slightly right of center, on the pathway
+    const supercar = this.add.sprite(
+      centerX + Math.round(80 * SCALE),
+      pathY + Math.round(5 * SCALE),
+      "supercar"
+    );
+    supercar.setOrigin(0.5, 1);
+    supercar.setDepth(3);
+    supercar.setFlipX(true); // Face toward the mansion
+    this.ballersElements.push(supercar);
+
+    // Add a subtle glow/reflection under the car for extra luxury feel
+    const carGlow = this.add.ellipse(
+      centerX + Math.round(80 * SCALE),
+      pathY + Math.round(12 * SCALE),
+      Math.round(70 * SCALE),
+      Math.round(12 * SCALE),
+      0xffd700,
+      0.15
+    );
+    carGlow.setDepth(2);
+    this.ballersElements.push(carGlow);
+  }
+
+  /**
+   * Setup Founder's Corner zone - educational hub for DexScreener prep
+   * Features cozy workshop aesthetic with clickable buildings for info popups
+   */
+  private setupFoundersZone(): void {
+    // Hide park decorations and animals (they belong to main_city)
+    this.decorations.forEach((d) => d.setVisible(false));
+    this.animals.forEach((a) => a.sprite.setVisible(false));
+
+    // Hide fountain water spray
+    if (this.fountainWater) {
+      this.fountainWater.setVisible(false);
+    }
+
+    // IMPORTANT: Hide other zone elements (prevents visual overlap)
+    this.trendingElements.forEach((el) => (el as any).setVisible(false));
+    this.skylineSprites.forEach((s) => s.setVisible(false));
+    this.billboardTexts.forEach((t) => t.setVisible(false));
+    if (this.tickerText) this.tickerText.setVisible(false);
+    this.academyElements.forEach((el) => (el as any).setVisible(false));
+    this.academyBuildings.forEach((s) => s.setVisible(false));
+    this.ballersElements.forEach((el) => (el as any).setVisible(false));
+
+    // Restore normal sky (persistent layer)
+    this.restoreNormalSky();
+
+    // Swap ground texture to cobblestone
+    this.ground.setVisible(true);
+    this.ground.setTexture("founders_ground");
+
+    // Only create elements once, then just show them
+    if (!this.foundersZoneCreated) {
+      this.createFoundersDecorations();
+      this.foundersZoneCreated = true;
+    } else {
+      // Subsequent times - just show existing elements
+      this.foundersElements.forEach((el) => (el as any).setVisible(true));
+    }
+  }
+
+  /**
+   * Create Founder's Corner decorations - cozy workshop environment
+   * Includes 3 clickable buildings with educational popups
+   */
+  private createFoundersDecorations(): void {
+    const s = SCALE;
+    const grassTop = Math.round(455 * s);
+    const pathLevel = Math.round(555 * s);
+    const groundY = Math.round(550 * s);
+
+    // === BACKGROUND TREES (depth 2) ===
+    const treePositions = [
+      { x: 80, yOffset: 0 },
+      { x: 200, yOffset: 5 },
+      { x: 520, yOffset: -3 },
+      { x: 680, yOffset: 8 },
+      { x: 780, yOffset: 2 },
+    ];
+
+    treePositions.forEach((pos) => {
+      const tree = this.add.sprite(Math.round(pos.x * s), grassTop + pos.yOffset, "tree");
+      tree.setOrigin(0.5, 1);
+      tree.setDepth(2);
+      tree.setScale(0.9 + Math.random() * 0.3);
+      this.foundersElements.push(tree);
+
+      // Subtle sway animation for trees
+      this.tweens.add({
+        targets: tree,
+        angle: { from: -2, to: 2 },
+        duration: 2000 + Math.random() * 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === HEDGES (depth 2) ===
+    const hedgePositions = [
+      { x: 140, yOffset: 25 },
+      { x: 340, yOffset: 22 },
+      { x: 460, yOffset: 27 },
+      { x: 600, yOffset: 24 },
+    ];
+
+    hedgePositions.forEach((pos) => {
+      const hedge = this.add.sprite(Math.round(pos.x * s), grassTop + pos.yOffset, "bush");
+      hedge.setOrigin(0.5, 1);
+      hedge.setDepth(2);
+      hedge.setScale(0.8 + Math.random() * 0.2);
+      this.foundersElements.push(hedge);
+    });
+
+    // === FLOWERS (depth 2) ===
+    const flowerPositions = [130, 260, 380, 540, 650];
+    flowerPositions.forEach((fx) => {
+      const flower = this.add.sprite(Math.round(fx * s), grassTop + Math.round(32 * s), "flower");
+      flower.setOrigin(0.5, 1);
+      flower.setDepth(2);
+      flower.setScale(0.8 + Math.random() * 0.3);
+      this.foundersElements.push(flower);
+
+      // Gentle sway animation
+      this.tweens.add({
+        targets: flower,
+        angle: { from: -3, to: 3 },
+        duration: 1500 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === BUILDINGS (depth 5+) - Clickable with info popups ===
+    const buildings = [
+      { texture: "founders_0", x: 250, label: "DEXSCREENER\nWORKSHOP", type: "workshop" },
+      { texture: "founders_1", x: 450, label: "ART\nSTUDIO", type: "studio" },
+      { texture: "founders_2", x: 650, label: "SOCIAL\nHUB", type: "social" },
+    ];
+
+    buildings.forEach((b, i) => {
+      const bx = Math.round(b.x * s);
+      const sprite = this.add.sprite(bx, pathLevel, b.texture);
+      sprite.setOrigin(0.5, 1);
+      sprite.setDepth(5 - i / 10);
+
+      // Make building interactive
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on("pointerdown", () => this.showFoundersPopup(b.type));
+      sprite.on("pointerover", () => {
+        sprite.setTint(0xdddddd);
+        this.tweens.add({
+          targets: sprite,
+          scaleX: 1.02,
+          scaleY: 1.02,
+          duration: 100,
+          ease: "Power2",
+        });
+      });
+      sprite.on("pointerout", () => {
+        sprite.clearTint();
+        this.tweens.add({
+          targets: sprite,
+          scaleX: 1,
+          scaleY: 1,
+          duration: 100,
+          ease: "Power2",
+        });
+      });
+
+      this.foundersElements.push(sprite);
+
+      // Building label with background
+      const labelBg = this.add.rectangle(bx, pathLevel + Math.round(18 * s), Math.round(70 * s), Math.round(24 * s), 0x000000, 0.7);
+      labelBg.setDepth(6);
+      labelBg.setStrokeStyle(1, 0x4ade80);
+      this.foundersElements.push(labelBg);
+
+      const label = this.add.text(bx, pathLevel + Math.round(18 * s), b.label, {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(8 * s)}px`,
+        color: "#4ade80",
+        align: "center",
+      });
+      label.setOrigin(0.5, 0.5);
+      label.setDepth(7);
+      this.foundersElements.push(label);
+    });
+
+    // === LANTERNS (depth 3) ===
+    const lanternPositions = [170, 350, 550, 730];
+    lanternPositions.forEach((lx) => {
+      const lantern = this.add.sprite(Math.round(lx * s), pathLevel, "founders_lantern");
+      lantern.setOrigin(0.5, 1);
+      lantern.setDepth(3);
+      this.foundersElements.push(lantern);
+
+      // Warm glow effect under lantern
+      const glow = this.add.ellipse(
+        Math.round(lx * s),
+        pathLevel + Math.round(5 * s),
+        Math.round(50 * s),
+        Math.round(15 * s),
+        0xfbbf24,
+        0.2
+      );
+      glow.setDepth(1);
+      this.foundersElements.push(glow);
+
+      // Pulsing glow animation
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.15, to: 0.25 },
+        duration: 1500 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === BENCHES (depth 3) ===
+    const benchPositions = [280, 500];
+    benchPositions.forEach((bx) => {
+      const bench = this.add.sprite(Math.round(bx * s), pathLevel - Math.round(5 * s), "bench");
+      bench.setOrigin(0.5, 1);
+      bench.setDepth(3);
+      this.foundersElements.push(bench);
+    });
+
+    // === WORKBENCHES (depth 3) ===
+    const workbenchPositions = [150, 580];
+    workbenchPositions.forEach((wx) => {
+      const workbench = this.add.sprite(Math.round(wx * s), grassTop + Math.round(30 * s), "founders_workbench");
+      workbench.setOrigin(0.5, 1);
+      workbench.setDepth(3);
+      this.foundersElements.push(workbench);
+    });
+
+    // === EASELS (depth 3) ===
+    const easelPositions = [300, 480];
+    easelPositions.forEach((ex) => {
+      const easel = this.add.sprite(Math.round(ex * s), grassTop + Math.round(25 * s), "founders_easel");
+      easel.setOrigin(0.5, 1);
+      easel.setDepth(3);
+      this.foundersElements.push(easel);
+    });
+
+    // === CRATES (depth 4) ===
+    const cratePositions = [100, 400, 720];
+    cratePositions.forEach((cx) => {
+      const crate = this.add.sprite(Math.round(cx * s), pathLevel + Math.round(5 * s), "founders_crate");
+      crate.setOrigin(0.5, 1);
+      crate.setDepth(4);
+      this.foundersElements.push(crate);
+    });
+
+    // === CHALKBOARD WELCOME SIGN (centered, depth 2) ===
+    const chalkboard = this.add.sprite(GAME_WIDTH / 2, grassTop - Math.round(10 * s), "founders_chalkboard");
+    chalkboard.setOrigin(0.5, 1);
+    chalkboard.setDepth(2);
+    this.foundersElements.push(chalkboard);
+
+    // === ZONE TITLE (depth 10) ===
+    const title = this.add.text(GAME_WIDTH / 2, Math.round(80 * s), "FOUNDER'S CORNER", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(20 * s)}px`,
+      color: "#fbbf24",
+      stroke: "#000000",
+      strokeThickness: 4,
+    });
+    title.setOrigin(0.5);
+    title.setDepth(10);
+    this.foundersElements.push(title);
+
+    // Subtitle
+    const subtitle = this.add.text(GAME_WIDTH / 2, Math.round(105 * s), "Learn to Launch Tokens", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(10 * s)}px`,
+      color: "#4ade80",
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    subtitle.setOrigin(0.5);
+    subtitle.setDepth(10);
+    this.foundersElements.push(subtitle);
+  }
+
+  /**
+   * Show Founder's Corner popup with building-specific educational content
+   */
+  private showFoundersPopup(type: string): void {
+    // Don't open if popup already exists
+    if (this.foundersPopup) return;
+
+    const s = SCALE;
+    const centerX = GAME_WIDTH / 2;
+    const centerY = Math.round(320 * s);
+
+    // Create container for popup
+    this.foundersPopup = this.add.container(0, 0);
+    this.foundersPopup.setDepth(100);
+
+    // Dark overlay (covers entire screen)
+    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_WIDTH / 2, GAME_WIDTH * 2, GAME_WIDTH * 2, 0x000000, 0.75);
+    overlay.setInteractive();
+    overlay.on("pointerdown", () => this.hideFoundersPopup());
+    this.foundersPopup.add(overlay);
+
+    // Panel dimensions based on content type
+    const panelW = Math.round(320 * s);
+    const panelH = Math.round(280 * s);
+
+    // Panel background
+    const panelBg = this.add.rectangle(centerX, centerY, panelW + Math.round(6 * s), panelH + Math.round(6 * s), 0x000000);
+    this.foundersPopup.add(panelBg);
+
+    const panel = this.add.rectangle(centerX, centerY, panelW, panelH, 0x1f2937);
+    panel.setStrokeStyle(3, 0x4ade80);
+    this.foundersPopup.add(panel);
+
+    // Get content based on building type
+    const content = this.getFoundersPopupContent(type);
+
+    // Title
+    const titleText = this.add.text(centerX, centerY - panelH / 2 + Math.round(25 * s), content.title, {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#fbbf24",
+      fontStyle: "bold",
+    });
+    titleText.setOrigin(0.5);
+    this.foundersPopup.add(titleText);
+
+    // Divider line
+    const divider = this.add.rectangle(
+      centerX,
+      centerY - panelH / 2 + Math.round(45 * s),
+      panelW - Math.round(40 * s),
+      Math.round(2 * s),
+      0x4ade80
+    );
+    this.foundersPopup.add(divider);
+
+    // Content text
+    const contentText = this.add.text(centerX, centerY + Math.round(10 * s), content.body, {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(9 * s)}px`,
+      color: "#ffffff",
+      align: "left",
+      lineSpacing: 6,
+      wordWrap: { width: panelW - Math.round(40 * s) },
+    });
+    contentText.setOrigin(0.5, 0.5);
+    this.foundersPopup.add(contentText);
+
+    // Close button
+    const closeBtnBg = this.add.rectangle(
+      centerX + panelW / 2 - Math.round(20 * s),
+      centerY - panelH / 2 + Math.round(20 * s),
+      Math.round(24 * s),
+      Math.round(24 * s),
+      0x374151
+    );
+    closeBtnBg.setInteractive({ useHandCursor: true });
+    closeBtnBg.on("pointerdown", () => this.hideFoundersPopup());
+    closeBtnBg.on("pointerover", () => closeBtnBg.setFillStyle(0x4b5563));
+    closeBtnBg.on("pointerout", () => closeBtnBg.setFillStyle(0x374151));
+    this.foundersPopup.add(closeBtnBg);
+
+    const closeBtn = this.add.text(
+      centerX + panelW / 2 - Math.round(20 * s),
+      centerY - panelH / 2 + Math.round(20 * s),
+      "X",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(12 * s)}px`,
+        color: "#ef4444",
+        fontStyle: "bold",
+      }
+    );
+    closeBtn.setOrigin(0.5);
+    this.foundersPopup.add(closeBtn);
+
+    // Footer hint
+    const footerText = this.add.text(
+      centerX,
+      centerY + panelH / 2 - Math.round(20 * s),
+      "Click anywhere to close",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(7 * s)}px`,
+        color: "#6b7280",
+      }
+    );
+    footerText.setOrigin(0.5);
+    this.foundersPopup.add(footerText);
+
+    // Entrance animation
+    this.foundersPopup.setAlpha(0);
+    this.tweens.add({
+      targets: this.foundersPopup,
+      alpha: 1,
+      duration: 200,
+      ease: "Power2",
+    });
+  }
+
+  /**
+   * Hide Founder's Corner popup
+   */
+  private hideFoundersPopup(): void {
+    if (!this.foundersPopup) return;
+
+    this.tweens.add({
+      targets: this.foundersPopup,
+      alpha: 0,
+      duration: 150,
+      ease: "Power2",
+      onComplete: () => {
+        if (this.foundersPopup) {
+          this.foundersPopup.destroy();
+          this.foundersPopup = null;
+        }
+      },
+    });
+  }
+
+  /**
+   * Get content for Founder's Corner popup based on building type
+   */
+  private getFoundersPopupContent(type: string): { title: string; body: string } {
+    switch (type) {
+      case "workshop":
+        return {
+          title: "DEXSCREENER ENHANCED TOKEN INFO",
+          body: `COST: $299 USD
+PAYMENT: Crypto or Credit Card
+PROCESSING: Usually minutes (up to 12 hours)
+
+REQUIREMENTS CHECKLIST:
+✓ Token Logo (square, 512x512px recommended)
+✓ Token Header (3:1 ratio, 600x200px min)
+✓ Website URL (required)
+✓ Twitter/X handle (required)
+○ Telegram group (optional)
+○ Discord server (optional)
+
+TIP: Have all assets ready before ordering!`,
+        };
+
+      case "studio":
+        return {
+          title: "VISUAL ASSETS GUIDE",
+          body: `TOKEN LOGO REQUIREMENTS:
+• Format: PNG, JPG, WEBP, or GIF
+• Aspect Ratio: 1:1 (square)
+• Recommended Size: 512x512px or higher
+• Minimum Size: 100px width
+• DexScreener handles compression
+
+TOKEN HEADER/BANNER:
+• Format: PNG, JPG, WEBP, or GIF
+• Aspect Ratio: 3:1 (wide rectangle)
+• Recommended Size: 600x200px or 1500x500px
+• Minimum Width: 600px
+
+TIP: High-res images look better on all devices!`,
+        };
+
+      case "social":
+        return {
+          title: "SOCIAL LINKS REQUIREMENTS",
+          body: `REQUIRED LINKS:
+✓ Website URL
+  Example: https://yourtoken.com
+
+✓ Twitter/X Handle
+  Example: @yourtoken
+
+RECOMMENDED (Optional but helps trust):
+○ Telegram Group
+  Example: t.me/yourtoken
+
+○ Discord Server
+  Example: discord.gg/yourtoken
+
+WHY IT MATTERS:
+Active social presence builds community trust.
+Verified socials show legitimacy to traders.
+More links = more ways for users to connect!`,
+        };
+
+      default:
+        return {
+          title: "FOUNDER'S CORNER",
+          body: "Click on a building to learn more about launching your token!",
+        };
+    }
   }
 
   // Handle AI behavior commands for characters
@@ -4631,7 +5304,7 @@ export class WorldScene extends Phaser.Scene {
     const isTradingTerminal =
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
     const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
-    const isMansion = building.isMansion || building.symbol === "MANSION";
+    const isMansion = building.isMansion;
 
     // Determine building style from mint address (deterministic - same token always gets same style)
     // Each level has 4 styles (0-3)
@@ -4764,60 +5437,8 @@ export class WorldScene extends Phaser.Scene {
         });
       }
 
-      // Rank badge background
-      const badgeY = -150 * (building.mansionScale || 1.2);
-      const badgeBg = this.add.rectangle(0, badgeY, isWhale ? 100 : 50, 24, 0x1f2937);
-      badgeBg.setStrokeStyle(2, 0xfbbf24);
-      container.add(badgeBg);
-
-      // Rank badge text
-      const rankText = isWhale ? "#1 WHALE" : `#${building.holderRank || "?"}`;
-      const rankBadge = this.add.text(0, badgeY, rankText, {
-        fontFamily: "monospace",
-        fontSize: isWhale ? "14px" : "16px",
-        color: "#fbbf24",
-        stroke: "#000000",
-        strokeThickness: 2,
-      });
-      rankBadge.setOrigin(0.5, 0.5);
-      container.add(rankBadge);
-
-      // Truncated wallet address
-      const truncAddr = building.holderAddress
-        ? `${building.holderAddress.slice(0, 4)}...${building.holderAddress.slice(-4)}`
-        : "????...????";
-      const addrText = this.add.text(0, badgeY + 18, truncAddr, {
-        fontFamily: "monospace",
-        fontSize: "9px",
-        color: "#9ca3af",
-      });
-      addrText.setOrigin(0.5, 0.5);
-      container.add(addrText);
-
-      // Holdings amount (formatted)
-      const formatHoldings = (balance: number | undefined): string => {
-        if (!balance) return "0";
-        if (balance >= 1000000) return `${(balance / 1000000).toFixed(1)}M`;
-        if (balance >= 1000) return `${(balance / 1000).toFixed(1)}K`;
-        return balance.toFixed(0);
-      };
-      const holdingsText = this.add.text(0, badgeY + 32, `${formatHoldings(building.holderBalance)} $BAGS`, {
-        fontFamily: "monospace",
-        fontSize: "10px",
-        color: "#fbbf24",
-      });
-      holdingsText.setOrigin(0.5, 0.5);
-      container.add(holdingsText);
-
-      // Subtle badge pulse (more dramatic for #1)
-      this.tweens.add({
-        targets: [badgeBg, rankBadge],
-        scale: { from: 1, to: isWhale ? 1.15 : 1.08 },
-        duration: isWhale ? 1200 : 1500,
-        ease: "Sine.easeInOut",
-        yoyo: true,
-        repeat: -1,
-      });
+      // Make mansion interactive (clickable cursor)
+      sprite.setInteractive({ useHandCursor: true });
     }
 
     // Add pulsing glow animation for Trading Terminal
@@ -4889,23 +5510,29 @@ export class WorldScene extends Phaser.Scene {
       });
     }
 
-    // Label with background - HQ gets gold styling
+    // Label with background - HQ and Mansions get gold styling
     const isHQBuilding = building.isFloating || building.symbol === "BAGSWORLD";
+    const isMansionLandmark = building.isMansion && building.isPermanent;
+    const isGoldLabel = isHQBuilding || isMansionLandmark;
+
+    // Determine label text: HQ shows "$BagsWorld", mansions show their landmark name, others show symbol
+    const labelText = isHQBuilding ? "$BagsWorld" : isMansionLandmark ? building.name : building.symbol;
+    const labelWidth = isHQBuilding ? 85 : isMansionLandmark ? 95 : 50;
+
     const labelBg = this.add.rectangle(
       0,
-      isHQBuilding ? 20 : 12,
-      isHQBuilding ? 85 : 50,
-      isHQBuilding ? 16 : 14,
+      isGoldLabel ? 20 : 12,
+      labelWidth,
+      isGoldLabel ? 16 : 14,
       0x000000,
       0.8
     );
-    labelBg.setStrokeStyle(isHQBuilding ? 2 : 1, isHQBuilding ? 0xffd700 : 0x4ade80);
+    labelBg.setStrokeStyle(isGoldLabel ? 2 : 1, isGoldLabel ? 0xffd700 : 0x4ade80);
     container.add(labelBg);
-    const labelText = isHQBuilding ? "$BagsWorld" : building.symbol;
-    const label = this.add.text(0, isHQBuilding ? 20 : 12, labelText, {
+    const label = this.add.text(0, isGoldLabel ? 20 : 12, labelText, {
       fontFamily: "monospace",
-      fontSize: isHQBuilding ? "11px" : "9px",
-      color: isHQBuilding ? "#ffd700" : "#4ade80",
+      fontSize: isGoldLabel ? "11px" : "9px",
+      color: isGoldLabel ? "#ffd700" : "#4ade80",
     });
     label.setOrigin(0.5, 0.5);
     container.add(label);
@@ -4940,14 +5567,13 @@ export class WorldScene extends Phaser.Scene {
       const isStarterBuilding = building.id.startsWith("Starter");
       const isTreasuryBuilding = building.id.startsWith("Treasury");
       const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
-      const isMansionBuilding = building.isMansion || building.symbol === "MANSION";
+      const isMansionBuilding = building.isMansion;
 
       if (isMansionBuilding) {
-        // Mansion shows holder info popup
+        // Mansion click - show holder info popup (modal handles Solscan link)
         window.dispatchEvent(
           new CustomEvent("bagsworld-mansion-click", {
             detail: {
-              buildingId: building.id,
               name: building.name,
               holderRank: building.holderRank,
               holderAddress: building.holderAddress,

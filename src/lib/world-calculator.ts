@@ -584,7 +584,7 @@ export function transformTokenToBuilding(
   };
 
   const zone = isBagsWorldHQ
-    ? undefined
+    ? undefined // HQ appears in all zones as the main landmark
     : landmark.type === "dojo" || landmark.type === "casino" || landmark.type === "terminal"
       ? ("trending" as const)
       : landmark.type === "pokecenter" || landmark.type === "treasury"
@@ -670,19 +670,30 @@ const BALLERS_POSITIONS = [
 // BagsWorld token mint for mansions
 const BAGSWORLD_TOKEN_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
 
+// Unique landmark names for Ballers Valley mansions (by rank, matching actual building colors)
+const MANSION_LANDMARKS = [
+  { name: "Grand Palace", symbol: "PALACE" },       // #1 - Blue & Gold domed palace (center)
+  { name: "Obsidian Tower", symbol: "OBSIDIAN" },   // #2 - Black & Gold Victorian tower
+  { name: "Amethyst Chateau", symbol: "AMETHYST" }, // #3 - Purple French chateau with turrets
+  { name: "Platinum Estate", symbol: "PLATINUM" },  // #4 - Gray/Silver Art Deco modern
+  { name: "Emerald Manor", symbol: "EMERALD" },     // #5 - Green Colonial manor
+];
+
 /**
  * Create mansion buildings for top BagsWorld token holders
  * Positions are rank-based: #1 WHALE in center (largest), #2-3 flanking, #4-5 on edges
+ * Mansions are permanent landmarks like BagsWorld HQ and Rewards Center
  */
 export function createMansionBuildings(holders: BagsWorldHolder[]): GameBuilding[] {
   return holders.slice(0, 5).map((holder, index) => {
     const position = BALLERS_POSITIONS[index];
+    const landmark = MANSION_LANDMARKS[index];
 
     return {
-      id: `mansion_${holder.address}`,
+      id: `mansion_${landmark.symbol.toLowerCase()}`,
       tokenMint: BAGSWORLD_TOKEN_MINT,
-      name: holder.rank === 1 ? "WHALE MANSION" : `Mansion #${holder.rank}`,
-      symbol: "MANSION",
+      name: landmark.name,
+      symbol: landmark.symbol,
       x: position.x,
       y: position.y,
       level: 6, // Special mansion level (above normal max of 5)
@@ -692,11 +703,11 @@ export function createMansionBuildings(holders: BagsWorldHolder[]): GameBuilding
       ownerId: holder.address,
       zone: "ballers" as const,
       isMansion: true,
+      isPermanent: true, // Permanent landmarks like BagsWorld HQ
       holderRank: holder.rank,
       holderAddress: holder.address,
       holderBalance: holder.balance,
       mansionScale: position.scale, // Rank-based scaling (#1 is 1.5x, #2-3 are 1.3x, etc.)
-      isPermanent: false, // Can change based on holder rankings
       tokenUrl: `https://solscan.io/account/${holder.address}`,
     };
   });
