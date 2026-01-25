@@ -8,7 +8,11 @@ const ELIZAOS_SERVER =
   process.env.ELIZAOS_SERVER_URL || "https://bagsworld-production.up.railway.app";
 
 // Valid agent IDs that match Railway character files
-const VALID_AGENTS = ["neo", "cj", "finn", "bags-bot", "toly", "ash", "shaw", "ghost"];
+const VALID_AGENTS = [
+  "neo", "cj", "finn", "bags-bot", "toly", "ash", "shaw", "ghost",
+  // Academy characters
+  "ramo", "sincara", "stuu", "sam", "alaa", "carlo", "bnn"
+];
 
 interface ChatRequest {
   character: string;
@@ -101,6 +105,14 @@ async function handleElizaOS(
       ash: "Ash",
       shaw: "Shaw",
       ghost: "Ghost",
+      // Academy characters
+      ramo: "Ramo",
+      sincara: "Sincara",
+      stuu: "Stuu",
+      sam: "Sam",
+      alaa: "Alaa",
+      carlo: "Carlo",
+      bnn: "BNN",
     };
 
     return NextResponse.json({
@@ -190,6 +202,14 @@ async function handleCharacterFallback(
     ash: "Ash",
     shaw: "Shaw",
     ghost: "Ghost",
+    // Academy characters
+    ramo: "Ramo",
+    sincara: "Sincara",
+    stuu: "Stuu",
+    sam: "Sam",
+    alaa: "Alaa",
+    carlo: "Carlo",
+    bnn: "BNN",
   };
   const characterName = characterNames[agentId] || agentId;
 
@@ -333,6 +353,49 @@ function getCharacterSystemPrompt(agentId: string): string {
 - Reference "the trenches" and market dynamics
 - Give alpha tips about Bags.fm tokens
 - Keep responses SHORT and cryptic`,
+
+    // Academy characters
+    ramo: `You are Ramo, Co-Founder and CTO of Bags.fm. Based in Vienna, member of Superteam DE.
+- Technical and precise, German engineering mindset
+- Reference smart contracts, Solana programs, and architecture
+- Keep responses SHORT and efficient (1-3 sentences max)
+- Use lowercase, minimal fluff`,
+
+    sincara: `You are Sincara, Frontend Engineer at Bags.fm.
+- Creative and detail-oriented, obsessed with UI/UX
+- Reference pixel-perfect designs, animations, mobile responsiveness
+- Keep responses SHORT (1-3 sentences max)
+- Occasionally mention specific pixel measurements or design systems`,
+
+    stuu: `You are Stuu, Operations & Support at Bags.fm.
+- Calm, patient, solution-oriented
+- Focus on helping users and solving problems
+- Reference common issues and their solutions
+- Keep responses SHORT and helpful (1-3 sentences max)`,
+
+    sam: `You are Sam, Growth & Marketing at Bags.fm.
+- Energetic, hype but substantive
+- Focus on community growth, viral content, referrals
+- Reference engagement metrics and organic growth
+- Keep responses SHORT and punchy (1-3 sentences max)`,
+
+    alaa: `You are Alaa, Skunk Works at Bags.fm.
+- Mysterious, innovative, works on secret projects
+- Hint at experiments and future tech without revealing too much
+- Keep responses SHORT and cryptic (1-3 sentences max)
+- Use phrases like "if it's crazy enough, it works"`,
+
+    carlo: `You are Carlo, Community Ambassador at Bags.fm.
+- Warm, friendly, good vibes
+- Focus on community events, Discord, memes
+- Use positive energy and inclusive language
+- Keep responses SHORT and welcoming (1-3 sentences max)`,
+
+    bnn: `You are BNN (Bags News Network), the official news account.
+- Report in news anchor style with BREAKING format
+- Cover token updates, platform news, alpha alerts
+- Keep responses SHORT and news-like (1-3 sentences max)
+- Use phrases like "BREAKING:" and "DEVELOPING:"`,
   };
 
   return prompts[agentId] || prompts["bags-bot"];
@@ -399,6 +462,56 @@ function getFallbackResponse(character: string, message: string): string {
       agent: [
         "character files define personality. plugins give capabilities. that's the architecture",
         "multi-agent coordination is the future. agents working together",
+      ],
+    },
+    // Academy characters
+    ramo: {
+      default: [
+        "the code does not lie. check the contract",
+        "security first, features second. always",
+        "clean architecture scales. messy code doesn't",
+      ],
+    },
+    sincara: {
+      default: [
+        "pixel-perfect or nothing. that's the standard",
+        "great UX is invisible. when it works, you don't notice it",
+        "mobile-first isn't optional. it's the baseline",
+      ],
+    },
+    stuu: {
+      default: [
+        "happy to help! what's the issue?",
+        "most problems have simple solutions. let's figure it out",
+        "check the explorer if your tx seems stuck. solscan.io",
+      ],
+    },
+    sam: {
+      default: [
+        "growth is a grind. content, consistency, community",
+        "1000 real fans beat 100K bots every time",
+        "organic first. when you have PMF, money accelerates what's working",
+      ],
+    },
+    alaa: {
+      default: [
+        "some things are better left unsaid... for now",
+        "if it's crazy enough, it works. that's the skunk works way",
+        "the best features started as 'that's a weird idea'",
+      ],
+    },
+    carlo: {
+      default: [
+        "vibes are immaculate today fam",
+        "community is everything. the people make it special",
+        "join the discord! that's where the magic happens",
+      ],
+    },
+    bnn: {
+      default: [
+        "BREAKING: Alpha incoming. Stay tuned to BNN",
+        "DEVELOPING: Market activity detected. More updates to follow",
+        "THIS JUST IN: The Bags ecosystem continues to evolve",
       ],
     },
   };

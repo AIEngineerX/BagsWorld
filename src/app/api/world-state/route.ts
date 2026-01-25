@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import type { WorldState, FeeEarner, TokenInfo, GameEvent, ClaimEvent } from "@/lib/types";
-import { buildWorldState, type BagsHealthMetrics } from "@/lib/world-calculator";
+import { buildWorldState, type BagsHealthMetrics, type BagsWorldHolder } from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
 import { emitEvent, startCoordinator, type AgentEventType } from "@/lib/agent-coordinator";
@@ -164,6 +164,45 @@ async function fetchTokenPrices(mints: string[]): Promise<Map<string, PriceData>
     // Return cached data if available, even if stale
     return priceCache?.data || new Map();
   }
+}
+
+// Cache for BagsWorld top holders (5 minutes)
+let holdersCache: { data: BagsWorldHolder[]; timestamp: number } | null = null;
+const HOLDERS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Fetch top BagsWorld token holders for Ballers Valley
+async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
+  const now = Date.now();
+
+  // Return cached data if fresh
+  if (holdersCache && now - holdersCache.timestamp < HOLDERS_CACHE_DURATION) {
+    return holdersCache.data;
+  }
+
+  try {
+    // Get the base URL for internal API calls
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NETLIFY
+        ? process.env.URL || "http://localhost:3000"
+        : "http://localhost:3000";
+
+    const response = await fetch(`${baseUrl}/api/bagsworld-holders`, {
+      next: { revalidate: 300 },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const holders: BagsWorldHolder[] = (data.holders || []).slice(0, 5);
+      holdersCache = { data: holders, timestamp: now };
+      return holders;
+    }
+  } catch (err) {
+    console.warn("[WorldState] Failed to fetch BagsWorld holders:", err);
+  }
+
+  // Return cached data even if stale, or empty array
+  return holdersCache?.data || [];
 }
 
 // Background weather fetch (non-blocking)
@@ -817,8 +856,66 @@ export async function POST(request: NextRequest) {
     );
 
     // Add special characters (permanent NPCs) to earners
-    // Order: shaw, cj, scout, dev, finn, ash, toly (reverse so toly ends up first after unshift)
+    // Order matters: characters added last via unshift appear first in the list
     const specialChars = [
+      // Academy Zone - Bags.fm Team (added first, so they appear after core chars)
+      {
+        username: "BNN",
+        providerUsername: "BNNBags",
+        provider: "twitter",
+        wallet: "bnn-news-permanent",
+        lifetimeEarnings: 24,
+        flag: "isBNN",
+      },
+      {
+        username: "Carlo",
+        providerUsername: "carlobags",
+        provider: "twitter",
+        wallet: "carlo-ambassador-permanent",
+        lifetimeEarnings: 100,
+        flag: "isCarlo",
+      },
+      {
+        username: "Alaa",
+        providerUsername: "alaadotsol",
+        provider: "twitter",
+        wallet: "alaa-skunkworks-permanent",
+        lifetimeEarnings: 42,
+        flag: "isAlaa",
+      },
+      {
+        username: "Sam",
+        providerUsername: "Sambags12",
+        provider: "twitter",
+        wallet: "sam-growth-permanent",
+        lifetimeEarnings: 500,
+        flag: "isSam",
+      },
+      {
+        username: "Stuu",
+        providerUsername: "StuuBags",
+        provider: "twitter",
+        wallet: "stuu-ops-permanent",
+        lifetimeEarnings: 200,
+        flag: "isStuu",
+      },
+      {
+        username: "Sincara",
+        providerUsername: "sincara_bags",
+        provider: "twitter",
+        wallet: "sincara-frontend-permanent",
+        lifetimeEarnings: 8080,
+        flag: "isSincara",
+      },
+      {
+        username: "Ramo",
+        providerUsername: "ramyobags",
+        provider: "twitter",
+        wallet: "ramo-cto-permanent",
+        lifetimeEarnings: 500000,
+        flag: "isRamo",
+      },
+      // Core Characters
       {
         username: "Shaw",
         providerUsername: "shawmakesmagic",
@@ -898,6 +995,9 @@ export async function POST(request: NextRequest) {
     const realWeather = getWeatherNonBlocking();
     const timeInfo = getESTTimeInfo();
 
+    // Fetch top BagsWorld token holders for Ballers Valley mansions
+    const bagsWorldHolders = await fetchBagsWorldHolders();
+
     // Calculate Bags.fm health metrics from real on-chain data
     // 1. Total 24h claim volume (claims are in lamports from SDK, convert to SOL)
     const claimVolume24h = lamportsToSol(allClaimEvents24h.reduce((sum, e) => sum + e.amount, 0));
@@ -912,8 +1012,8 @@ export async function POST(request: NextRequest) {
       activeTokenCount,
     };
 
-    // Build world state with Bags.fm metrics
-    const worldState = buildWorldState(earners, tokens, previousState ?? undefined, bagsMetrics);
+    // Build world state with Bags.fm metrics and top holders for Ballers Valley
+    const worldState = buildWorldState(earners, tokens, previousState ?? undefined, bagsMetrics, bagsWorldHolders);
 
     worldState.weather = realWeather;
     (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;
