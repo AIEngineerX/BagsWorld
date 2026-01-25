@@ -92,46 +92,21 @@ export async function GET(): Promise<NextResponse> {
   }
 
   const holders: TokenHolder[] = [];
-  const rpcUrl = process.env.SOLANA_RPC_URL;
 
-  // Try SolanaFM API first (most reliable for holder data with owner addresses)
-  try {
-    const solanaFmResponse = await fetch(
-      `https://api.solana.fm/v1/tokens/${BAGSWORLD_MINT}/holders?page=1&pageSize=5`,
-      {
-        headers: { Accept: "application/json" },
-        next: { revalidate: 300 },
-      }
-    );
+  // RPC priority: Helius (env) > NEXT_PUBLIC RPC > Solana mainnet (rate limited)
+  const rpcUrls = [
+    process.env.SOLANA_RPC_URL,
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
+    "https://api.mainnet-beta.solana.com", // Fallback, often rate limited
+  ].filter(Boolean) as string[];
 
-    if (solanaFmResponse.ok) {
-      const data = await solanaFmResponse.json();
-      const holderList = data.result || data.data || [];
+  // Try each RPC until one works
+  for (const rpcUrl of rpcUrls) {
+    if (holders.length > 0) break; // Already got data from previous RPC
 
-      let rank = 1;
-      for (const holder of holderList.slice(0, 5)) {
-        const address = holder.owner || holder.address || "";
-        const rawBalance = parseFloat(holder.amount) || parseFloat(holder.balance) || 0;
-        const balance = rawBalance / DECIMAL_DIVISOR;
-        const percentage = parseFloat(holder.percentage) || 0;
-
-        if (address) {
-          holders.push({
-            address,
-            balance,
-            percentage,
-            rank: rank++,
-          });
-        }
-      }
-    }
-  } catch (err) {
-    console.warn("[Holders] SolanaFM API failed:", err);
-  }
-
-  // If SolanaFM failed, use Helius RPC with owner resolution
-  if (holders.length === 0 && rpcUrl) {
     try {
+      console.log(`[Holders] Trying RPC: ${rpcUrl.substring(0, 40)}...`);
+
       // Get largest token accounts
       const rpcResponse = await fetch(rpcUrl, {
         method: "POST",
@@ -146,7 +121,18 @@ export async function GET(): Promise<NextResponse> {
 
       if (rpcResponse.ok) {
         const rpcData = await rpcResponse.json();
+
+        // Check for RPC errors (rate limits, etc)
+        if (rpcData.error) {
+          console.warn(`[Holders] RPC error from ${rpcUrl.substring(0, 30)}:`, rpcData.error.message);
+          continue;
+        }
+
         const accounts = rpcData.result?.value || [];
+        if (accounts.length === 0) {
+          console.warn(`[Holders] No accounts returned from ${rpcUrl.substring(0, 30)}`);
+          continue;
+        }
 
         // Get total supply for percentage calculation
         const totalSupply = await getTokenSupply(rpcUrl);
@@ -174,9 +160,11 @@ export async function GET(): Promise<NextResponse> {
             rank: rank++,
           });
         }
+
+        console.log(`[Holders] Successfully got ${holders.length} holders from ${rpcUrl.substring(0, 30)}`);
       }
     } catch (err) {
-      console.warn("[Holders] Helius RPC failed:", err);
+      console.warn(`[Holders] RPC failed (${rpcUrl.substring(0, 30)}):`, err);
     }
   }
 
