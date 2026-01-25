@@ -1,9 +1,12 @@
-// API Route: Agent Chat - ALL agents route through ElizaOS runtime on Railway
-// ElizaOS provides memory persistence, character files, and multi-agent coordination
+// API Route: Agent Chat - Routes through local eliza-agents or Railway ElizaOS
+// Provides memory persistence, character files, and multi-agent coordination
 
 import { NextRequest, NextResponse } from "next/server";
 
-// ElizaOS server URL - Railway deployment
+// Local agents server (eliza-agents in this repo)
+const LOCAL_AGENTS_URL = process.env.AGENTS_API_URL || "http://localhost:3001";
+
+// Railway ElizaOS server (fallback)
 const ELIZAOS_SERVER =
   process.env.ELIZAOS_SERVER_URL || "https://bagsworld-production.up.railway.app";
 
@@ -58,7 +61,27 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Handle ALL agents through ElizaOS runtime on Railway
+// Format character name nicely
+const characterNames: Record<string, string> = {
+  neo: "Neo",
+  cj: "CJ",
+  finn: "Finn",
+  "bags-bot": "Bags Bot",
+  toly: "Toly",
+  ash: "Ash",
+  shaw: "Shaw",
+  ghost: "Ghost",
+  // Academy characters
+  ramo: "Ramo",
+  sincara: "Sincara",
+  stuu: "Stuu",
+  sam: "Sam",
+  alaa: "Alaa",
+  carlo: "Carlo",
+  bnn: "BNN",
+};
+
+// Try local agents server first, then Railway, then fallback
 async function handleElizaOS(
   agentId: string,
   message: string,
@@ -66,25 +89,47 @@ async function handleElizaOS(
   roomId?: string,
   worldState?: any
 ): Promise<NextResponse> {
+  const sessionId = `${agentId}-${userId || "anonymous"}-${Date.now()}`;
+
+  // Try local eliza-agents first (if running)
   try {
-    // Route to Railway ElizaOS server
+    const localEndpoint = `${LOCAL_AGENTS_URL}/api/agents/${agentId}/chat`;
+    console.log(`[Agents] Trying local: ${localEndpoint}`);
+
+    const localResponse = await fetch(localEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, sessionId }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (localResponse.ok) {
+      const data = await localResponse.json();
+      return NextResponse.json({
+        character: data.agentName || characterNames[agentId] || agentId,
+        response: data.response,
+        source: "local-agents",
+        agentId: data.agentId || agentId,
+      });
+    }
+  } catch {
+    console.log(`[Agents] Local unavailable, trying Railway...`);
+  }
+
+  // Try Railway ElizaOS server
+  try {
     const endpoint = `${ELIZAOS_SERVER}/api/agents/${agentId}/chat`;
     console.log(`[ElizaOS] Calling ${agentId} at ${endpoint}`);
 
-    const sessionId = `${agentId}-${userId || "anonymous"}-${Date.now()}`;
-
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
         sessionId,
         conversationHistory: [],
         worldState,
       }),
-      // 15 second timeout for AI responses
       signal: AbortSignal.timeout(15000),
     });
 
@@ -95,26 +140,6 @@ async function handleElizaOS(
 
     const data = await response.json();
 
-    // Format character name nicely
-    const characterNames: Record<string, string> = {
-      neo: "Neo",
-      cj: "CJ",
-      finn: "Finn",
-      "bags-bot": "Bags Bot",
-      toly: "Toly",
-      ash: "Ash",
-      shaw: "Shaw",
-      ghost: "Ghost",
-      // Academy characters
-      ramo: "Ramo",
-      sincara: "Sincara",
-      stuu: "Stuu",
-      sam: "Sam",
-      alaa: "Alaa",
-      carlo: "Carlo",
-      bnn: "BNN",
-    };
-
     return NextResponse.json({
       character: data.agentName || characterNames[agentId] || agentId,
       response: data.response,
@@ -124,8 +149,6 @@ async function handleElizaOS(
     });
   } catch (error: any) {
     console.warn(`[ElizaOS] ${agentId} unavailable, using fallback:`, error.message);
-
-    // Fallback to direct Claude API
     return handleCharacterFallback(agentId, message, worldState);
   }
 }
@@ -192,32 +215,13 @@ async function handleCharacterFallback(
 ): Promise<NextResponse> {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-  // Format character name nicely
-  const characterNames: Record<string, string> = {
-    neo: "Neo",
-    cj: "CJ",
-    finn: "Finn",
-    "bags-bot": "Bags Bot",
-    toly: "Toly",
-    ash: "Ash",
-    shaw: "Shaw",
-    ghost: "Ghost",
-    // Academy characters
-    ramo: "Ramo",
-    sincara: "Sincara",
-    stuu: "Stuu",
-    sam: "Sam",
-    alaa: "Alaa",
-    carlo: "Carlo",
-    bnn: "BNN",
-  };
+  // Use shared characterNames (defined at module level)
   const characterName = characterNames[agentId] || agentId;
 
   // For bags-bot, parse commands first
   const actions = agentId === "bags-bot" ? parseBotCommands(message) : [];
 
   if (!ANTHROPIC_API_KEY) {
-    // Generate appropriate response for actions
     let responseText = getFallbackResponse(agentId, message);
     if (actions.length > 0) {
       const actionDescriptions = actions
@@ -239,7 +243,6 @@ async function handleCharacterFallback(
   }
 
   try {
-    // Get character-specific system prompt
     const systemPrompt = getCharacterSystemPrompt(agentId);
     const contextPrompt = worldState
       ? `\n\nCURRENT WORLD STATE:\nHealth: ${worldState.health}%\nWeather: ${worldState.weather}\n`
@@ -267,7 +270,6 @@ async function handleCharacterFallback(
     const data = await response.json();
     let responseText = data.content?.[0]?.text || getFallbackResponse(agentId, message);
 
-    // If there are actions, append acknowledgment
     if (actions.length > 0) {
       const actionDescriptions = actions
         .map((a) => {
@@ -287,7 +289,6 @@ async function handleCharacterFallback(
     });
   } catch (error) {
     console.error(`[agent-chat] ${agentId} fallback error:`, error);
-    // Still execute actions even on error
     let responseText = getFallbackResponse(agentId, message);
     if (actions.length > 0) {
       const actionDescriptions = actions
