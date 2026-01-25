@@ -347,7 +347,7 @@ const SPECIAL_CHARACTERS: Record<
     flag: string;
     wallet: string;
     x: number;
-    zone: "main_city" | "trending" | "academy";
+    zone: "main_city" | "trending" | "academy" | "ballers" | "founders";
     profileUrl?: string;
   }
 > = {
@@ -448,6 +448,13 @@ const SPECIAL_CHARACTERS: Record<
     zone: "academy",
     profileUrl: "https://x.com/BNNBags",
   },
+  // Founder's Corner Zone - Token Launch Guides
+  professorOak: {
+    flag: "isProfessorOak",
+    wallet: "professor-oak-permanent",
+    x: Math.round(400 * SCALE), // Center of Founder's Corner (near workshop)
+    zone: "founders",
+  },
 };
 
 export function transformFeeEarnerToCharacter(
@@ -481,6 +488,8 @@ export function transformFeeEarnerToCharacter(
     isAlaa: e.isAlaa || earner.wallet === SPECIAL_CHARACTERS.alaa.wallet,
     isCarlo: e.isCarlo || earner.wallet === SPECIAL_CHARACTERS.carlo.wallet,
     isBNN: e.isBNN || earner.wallet === SPECIAL_CHARACTERS.bnn.wallet,
+    // Founder's Corner Zone
+    isProfessorOak: e.isProfessorOak || earner.wallet === SPECIAL_CHARACTERS.professorOak.wallet,
   };
 
   // Determine position
@@ -494,6 +503,23 @@ export function transformFeeEarnerToCharacter(
   const profileUrl =
     specialCfg?.profileUrl ??
     (isSpecial ? undefined : getProfileUrl(earner.provider, earner.username));
+
+  // Distribute regular fee earners across all zones based on wallet hash
+  const getZoneForFeeEarner = (wallet: string): "main_city" | "trending" | "academy" | "ballers" | "founders" => {
+    let hash = 0;
+    for (let i = 0; i < wallet.length; i++) {
+      hash = (hash << 5) - hash + wallet.charCodeAt(i);
+      hash = hash & hash;
+    }
+    const zones: Array<"main_city" | "trending" | "academy" | "ballers" | "founders"> = [
+      "main_city",
+      "trending",
+      "academy",
+      "ballers",
+      "founders",
+    ];
+    return zones[Math.abs(hash) % zones.length];
+  };
 
   return {
     id: earner.wallet,
@@ -509,7 +535,7 @@ export function transformFeeEarnerToCharacter(
     isMoving: !isSpecial && Math.random() > 0.7,
     buildingId: earner.topToken?.mint,
     profileUrl,
-    zone: specialCfg?.zone ?? "main_city",
+    zone: specialCfg?.zone ?? getZoneForFeeEarner(earner.wallet),
     ...flags,
   };
 }

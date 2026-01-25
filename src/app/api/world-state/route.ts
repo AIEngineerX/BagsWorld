@@ -991,6 +991,15 @@ export async function POST(request: NextRequest) {
         lifetimeEarnings: 65000,
         flag: "isToly",
       },
+      // Founder's Corner Zone
+      {
+        username: "Professor Oak",
+        providerUsername: "ProfessorOak",
+        provider: "pokemon",
+        wallet: "professor-oak-permanent",
+        lifetimeEarnings: 151,
+        flag: "isProfessorOak",
+      },
     ] as const;
 
     for (const char of specialChars) {
