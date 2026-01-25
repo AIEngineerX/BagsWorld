@@ -16,13 +16,6 @@ import { DevChat } from "@/components/DevChat";
 import { NeoChat } from "@/components/NeoChat";
 import { CJChat } from "@/components/CJChat";
 import { ShawChat } from "@/components/ShawChat";
-import { RamoChat } from "@/components/RamoChat";
-import { SincaraChat } from "@/components/SincaraChat";
-import { StuuChat } from "@/components/StuuChat";
-import { SamChat } from "@/components/SamChat";
-import { AlaaChat } from "@/components/AlaaChat";
-import { CarloChat } from "@/components/CarloChat";
-import { BNNChat } from "@/components/BNNChat";
 import { AgentDashboard } from "@/components/AgentDashboard";
 import { AdminConsole } from "@/components/AdminConsole";
 import { YourBuildings } from "@/components/YourBuildings";
@@ -47,7 +40,6 @@ import { CasinoModal } from "@/components/CasinoModal";
 import { CasinoAdmin } from "@/components/CasinoAdmin";
 import { LauncherHub } from "@/components/LauncherHub";
 import { TradingTerminalModal } from "@/components/TradingTerminalModal";
-import { MansionModal } from "@/components/MansionModal";
 import { MiniMap } from "@/components/MiniMap";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import {
@@ -97,12 +89,6 @@ export default function Home() {
   const [showLauncherHub, setShowLauncherHub] = useState(false);
   const [showCasinoAdmin, setShowCasinoAdmin] = useState(false);
   const [showTradingTerminal, setShowTradingTerminal] = useState(false);
-  const [showMansionModal, setShowMansionModal] = useState(false);
-  const [mansionData, setMansionData] = useState<{
-    holderRank?: number;
-    holderAddress?: string;
-    holderBalance?: number;
-  } | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"leaderboard" | "agents">("agents");
@@ -136,17 +122,6 @@ export default function Home() {
       setShowTradingTerminal(true);
     };
 
-    const handleMansionClick = (
-      event: CustomEvent<{
-        holderRank?: number;
-        holderAddress?: string;
-        holderBalance?: number;
-      }>
-    ) => {
-      setMansionData(event.detail);
-      setShowMansionModal(true);
-    };
-
     // Handle AI action button events
     const handleLaunchClick = () => {
       setShowLaunchModal(true);
@@ -165,7 +140,6 @@ export default function Home() {
       "bagsworld-terminal-click",
       handleTradingTerminalClick as EventListener
     );
-    window.addEventListener("bagsworld-mansion-click", handleMansionClick as EventListener);
     window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
     window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     return () => {
@@ -184,7 +158,6 @@ export default function Home() {
         "bagsworld-terminal-click",
         handleTradingTerminalClick as EventListener
       );
-      window.removeEventListener("bagsworld-mansion-click", handleMansionClick as EventListener);
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     };
@@ -369,14 +342,6 @@ export default function Home() {
           <NeoChat />
           <CJChat />
           <ShawChat />
-          {/* Academy Characters */}
-          <RamoChat />
-          <SincaraChat />
-          <StuuChat />
-          <SamChat />
-          <AlaaChat />
-          <CarloChat />
-          <BNNChat />
           <AgentDashboard />
           <AdminConsole />
 
@@ -550,19 +515,6 @@ export default function Home() {
       {/* Trading Terminal Modal - professional trading terminal with charts */}
       {showTradingTerminal && (
         <TradingTerminalModal onClose={() => setShowTradingTerminal(false)} />
-      )}
-
-      {/* Mansion Modal - shows top holder info for Ballers Valley mansions */}
-      {showMansionModal && mansionData && (
-        <MansionModal
-          onClose={() => {
-            setShowMansionModal(false);
-            setMansionData(null);
-          }}
-          holderRank={mansionData.holderRank}
-          holderAddress={mansionData.holderAddress}
-          holderBalance={mansionData.holderBalance}
-        />
       )}
 
       {/* Fee Claim Modal - can be opened from PokeCenter or AI action buttons */}
