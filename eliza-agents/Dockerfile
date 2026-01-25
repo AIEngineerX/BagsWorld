@@ -30,12 +30,10 @@ USER bagsworld
 
 # Environment variables
 ENV NODE_ENV=production
-ENV PORT=3001
 ENV HOST=0.0.0.0
 
-# Health check using curl
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
+# Note: PORT is set by Railway dynamically, don't hardcode it
+# Railway handles healthchecks via railway.toml, not Docker HEALTHCHECK
 
 # Expose port
 EXPOSE 3001
