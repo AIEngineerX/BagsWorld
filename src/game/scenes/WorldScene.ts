@@ -343,9 +343,9 @@ export class WorldScene extends Phaser.Scene {
       if (origX !== undefined) (a.sprite as any).x = origX;
     });
 
-    // Determine slide direction: Park -> BagsCity -> Academy -> Ballers Valley -> Founder's Corner (left to right)
-    // Zone order: main_city (0) -> trending (1) -> academy (2) -> ballers (3) -> founders (4)
-    const zoneOrder: Record<ZoneType, number> = { main_city: 0, trending: 1, academy: 2, ballers: 3, founders: 4 };
+    // Determine slide direction: Park -> BagsCity -> Ballers Valley -> Founder's Corner (left to right)
+    // Zone order: main_city (0) -> trending (1) -> ballers (2) -> founders (3)
+    const zoneOrder: Record<ZoneType, number> = { main_city: 0, trending: 1, ballers: 2, founders: 3 };
     const isGoingRight = zoneOrder[newZone] > zoneOrder[this.currentZone];
     const duration = 600; // Smooth, cinematic transition
     const slideDistance = Math.round(850 * SCALE); // Slightly more than screen width for full slide (scaled)
@@ -362,9 +362,6 @@ export class WorldScene extends Phaser.Scene {
       oldElements.push(...this.billboardTexts);
       if (this.tickerText) oldElements.push(this.tickerText);
       oldElements.push(...this.skylineSprites);
-    } else if (this.currentZone === "academy") {
-      oldElements.push(...this.academyElements);
-      oldElements.push(...this.academyBuildings);
     } else if (this.currentZone === "ballers") {
       oldElements.push(...this.ballersElements);
     } else if (this.currentZone === "founders") {
@@ -447,9 +444,6 @@ export class WorldScene extends Phaser.Scene {
         }
         // Stop traffic timers
         this.clearTrafficTimers();
-      } else if (this.currentZone === "academy") {
-        this.academyElements.forEach((el) => (el as any).setVisible(false));
-        this.academyBuildings.forEach((s) => s.setVisible(false));
       } else if (this.currentZone === "ballers") {
         this.ballersElements.forEach((el) => (el as any).setVisible(false));
       } else if (this.currentZone === "founders") {
@@ -463,7 +457,6 @@ export class WorldScene extends Phaser.Scene {
       const groundTextures: Record<ZoneType, string> = {
         main_city: "grass",
         trending: "concrete",
-        academy: "grass", // Academy has grass quad
         ballers: "grass", // Ballers Valley has premium grass (luxury estate feel)
         founders: "founders_ground", // Founder's Corner has warm workshop flooring
       };
@@ -484,9 +477,6 @@ export class WorldScene extends Phaser.Scene {
           this.skylineSprites.includes(el as any) ||
           this.billboardTexts.includes(el as any) ||
           el === this.tickerText;
-        const isAcademyElement =
-          this.academyElements.includes(el) ||
-          this.academyBuildings.includes(el as any);
         const isBallersElement = this.ballersElements.includes(el);
         const isFoundersElement = this.foundersElements.includes(el);
 
@@ -494,7 +484,6 @@ export class WorldScene extends Phaser.Scene {
           !isDecoration &&
           !isAnimal &&
           !isTrendingElement &&
-          !isAcademyElement &&
           !isBallersElement &&
           !isFoundersElement &&
           el &&
@@ -534,34 +523,6 @@ export class WorldScene extends Phaser.Scene {
         ...this.billboardTexts,
         this.tickerText,
         ...this.skylineSprites,
-      ].filter(Boolean);
-
-      newElements.forEach((el) => {
-        if ((el as any).x !== undefined) {
-          const targetX = (el as any).x;
-          (el as any).x = targetX + offsetX;
-          this.tweens.add({
-            targets: el,
-            x: targetX,
-            duration,
-            ease: "Cubic.easeOut",
-          });
-        }
-      });
-    } else if (zone === "academy") {
-      this.setupAcademyZone();
-
-      // IMPORTANT: Explicitly hide trending zone elements when entering Academy
-      // This ensures skyline is hidden even if timing issues occur
-      this.skylineSprites.forEach((s) => s.setVisible(false));
-      this.trendingElements.forEach((el) => (el as any).setVisible(false));
-      this.billboardTexts.forEach((t) => t.setVisible(false));
-      if (this.tickerText) this.tickerText.setVisible(false);
-
-      // Offset all new Academy elements and animate them in
-      const newElements = [
-        ...this.academyElements,
-        ...this.academyBuildings,
       ].filter(Boolean);
 
       newElements.forEach((el) => {
@@ -658,10 +619,6 @@ export class WorldScene extends Phaser.Scene {
         this.tickerTimer = null;
       }
       this.skylineSprites.forEach((s) => s.setVisible(false));
-    } else if (this.currentZone === "academy") {
-      // Hide academy elements
-      this.academyElements.forEach((el) => (el as any).setVisible(false));
-      this.academyBuildings.forEach((s) => s.setVisible(false));
     } else if (this.currentZone === "ballers") {
       // Hide ballers elements
       this.ballersElements.forEach((el) => (el as any).setVisible(false));
@@ -690,9 +647,6 @@ export class WorldScene extends Phaser.Scene {
     switch (zone) {
       case "trending":
         this.setupTrendingZone();
-        break;
-      case "academy":
-        this.setupAcademyZone();
         break;
       case "ballers":
         this.setupBallersZone();
@@ -775,9 +729,18 @@ export class WorldScene extends Phaser.Scene {
       this.createTrendingTicker();
       this.trendingZoneCreated = true;
     } else {
-      // Subsequent times - just show existing elements
+      // Subsequent times - recreate elements since they may have been moved offscreen
+      // Clear existing arrays
+      this.skylineSprites.forEach((s) => s.destroy());
+      this.skylineSprites = [];
+      // Remove skyline from trendingElements (they're also in there)
+      this.trendingElements = this.trendingElements.filter(
+        (el) => !(el as any).texture?.key?.includes("skyline")
+      );
+      // Recreate skyline fresh
+      this.createTrendingSkyline();
+      // Show all trending elements
       this.trendingElements.forEach((el) => (el as any).setVisible(true));
-      this.skylineSprites.forEach((s) => s.setVisible(true));
       this.billboardTexts.forEach((t) => t.setVisible(true));
       if (this.tickerText) this.tickerText.setVisible(true);
     }
@@ -1459,326 +1422,6 @@ export class WorldScene extends Phaser.Scene {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
     if (num >= 1000) return (num / 1000).toFixed(1) + "K";
     return num.toFixed(0);
-  }
-
-  // ============================================
-  // ACADEMY ZONE - BAGS.FM TEAM CAMPUS
-  // ============================================
-
-  private setupAcademyZone(): void {
-    // Hide park decorations and animals (they belong to main_city)
-    this.decorations.forEach((d) => d.setVisible(false));
-    this.animals.forEach((a) => a.sprite.setVisible(false));
-
-    // Hide fountain water spray
-    if (this.fountainWater) {
-      this.fountainWater.setVisible(false);
-    }
-
-    // IMPORTANT: Hide other zone elements (prevents visual overlap)
-    this.trendingElements.forEach((el) => (el as any).setVisible(false));
-    this.skylineSprites.forEach((s) => s.setVisible(false));
-    this.billboardTexts.forEach((t) => t.setVisible(false));
-    if (this.tickerText) this.tickerText.setVisible(false);
-    this.ballersElements.forEach((el) => (el as any).setVisible(false));
-    this.foundersElements.forEach((el) => (el as any).setVisible(false));
-    if (this.foundersPopup) {
-      this.foundersPopup.destroy();
-      this.foundersPopup = null;
-    }
-
-    // Restore normal sky (persistent layer)
-    this.restoreNormalSky();
-
-    // Use dark grass variant for tech zone feel
-    this.ground.setVisible(true);
-    this.ground.setTexture("grass_dark");
-
-    // Check if elements were destroyed - reset and recreate if needed
-    const elementsValid = this.academyElements.length > 0 &&
-      this.academyElements.every((el) => (el as any).active !== false);
-
-    if (!elementsValid && this.academyZoneCreated) {
-      this.academyElements = [];
-      this.academyBuildings = [];
-      this.academyZoneCreated = false;
-    }
-
-    // Only create elements once, then just show them
-    if (!this.academyZoneCreated) {
-      this.createAcademyDecorations();
-      this.academyZoneCreated = true;
-    } else {
-      this.academyElements.forEach((el) => (el as any).setVisible(true));
-      this.academyBuildings.forEach((s) => s.setVisible(true));
-    }
-  }
-
-  /**
-   * Create Academy zone decorations - tech campus environment
-   * Includes Sniper Tower (center), Academy buildings, and campus decorations
-   */
-  private createAcademyDecorations(): void {
-    const s = SCALE;
-    const grassTop = Math.round(455 * s);
-    const pathLevel = Math.round(555 * s);
-
-    // === BACKGROUND TREES (depth 2) ===
-    const treePositions = [
-      { x: 60, yOffset: 0 },
-      { x: 180, yOffset: 5 },
-      { x: 720, yOffset: -3 },
-      { x: 850, yOffset: 8 },
-    ];
-
-    treePositions.forEach((pos) => {
-      const tree = this.add.sprite(Math.round(pos.x * s), grassTop + pos.yOffset, "tree");
-      tree.setOrigin(0.5, 1);
-      tree.setDepth(2);
-      tree.setScale(0.9 + Math.random() * 0.3);
-      this.academyElements.push(tree);
-
-      // Subtle sway animation
-      this.tweens.add({
-        targets: tree,
-        angle: { from: -2, to: 2 },
-        duration: 2000 + Math.random() * 1000,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    });
-
-    // === HEDGES (depth 2) ===
-    const hedgePositions = [
-      { x: 120, yOffset: 25 },
-      { x: 280, yOffset: 22 },
-      { x: 600, yOffset: 27 },
-      { x: 780, yOffset: 24 },
-    ];
-
-    hedgePositions.forEach((pos) => {
-      const hedge = this.add.sprite(Math.round(pos.x * s), grassTop + pos.yOffset, "bush");
-      hedge.setOrigin(0.5, 1);
-      hedge.setDepth(2);
-      hedge.setScale(0.8 + Math.random() * 0.2);
-      this.academyElements.push(hedge);
-    });
-
-    // === ACADEMY BUILDINGS (depth 5) ===
-    // Left side building - use existing building texture
-    const leftBuilding = this.add.sprite(Math.round(200 * s), pathLevel, "building_3_0");
-    leftBuilding.setOrigin(0.5, 1);
-    leftBuilding.setDepth(5);
-    this.academyElements.push(leftBuilding);
-    this.academyBuildings.push(leftBuilding);
-
-    // Right side building - use existing building texture
-    const rightBuilding = this.add.sprite(Math.round(700 * s), pathLevel, "building_3_1");
-    rightBuilding.setOrigin(0.5, 1);
-    rightBuilding.setDepth(5);
-    this.academyElements.push(rightBuilding);
-    this.academyBuildings.push(rightBuilding);
-
-    // === SNIPER TOWER (center, main feature) ===
-    const towerX = GAME_WIDTH / 2;
-    const sniperTower = this.add.sprite(towerX, pathLevel, "sniper_tower");
-    sniperTower.setOrigin(0.5, 1);
-    sniperTower.setDepth(5);
-    sniperTower.setInteractive({ useHandCursor: true });
-
-    // Click handler - open Sniper Tower modal
-    sniperTower.on("pointerdown", () => {
-      useGameStore.getState().openSniperTower();
-    });
-
-    // Hover effect
-    sniperTower.on("pointerover", () => {
-      sniperTower.setTint(0x88ff88);
-      this.tweens.add({
-        targets: sniperTower,
-        scaleX: 1.02,
-        scaleY: 1.02,
-        duration: 100,
-        ease: "Power2",
-      });
-    });
-    sniperTower.on("pointerout", () => {
-      sniperTower.clearTint();
-      this.tweens.add({
-        targets: sniperTower,
-        scaleX: 1,
-        scaleY: 1,
-        duration: 100,
-        ease: "Power2",
-      });
-    });
-
-    this.academyBuildings.push(sniperTower);
-    this.academyElements.push(sniperTower);
-
-    // Sniper Tower label
-    const labelBg = this.add.rectangle(
-      towerX,
-      pathLevel + Math.round(18 * s),
-      Math.round(90 * s),
-      Math.round(24 * s),
-      0x000000,
-      0.8
-    );
-    labelBg.setStrokeStyle(2, 0x4ade80);
-    labelBg.setDepth(6);
-    this.academyElements.push(labelBg);
-
-    const labelText = this.add.text(towerX, pathLevel + Math.round(12 * s), "SNIPER TOWER", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(9 * s)}px`,
-      color: "#4ade80",
-    });
-    labelText.setOrigin(0.5, 0.5);
-    labelText.setDepth(7);
-    this.academyElements.push(labelText);
-
-    const subLabel = this.add.text(towerX, pathLevel + Math.round(24 * s), "All Bags.fm Tokens", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(7 * s)}px`,
-      color: "#9ca3af",
-    });
-    subLabel.setOrigin(0.5, 0.5);
-    subLabel.setDepth(7);
-    this.academyElements.push(subLabel);
-
-    // Radar sweep animation
-    this.createRadarSweepAnimation(towerX, pathLevel - Math.round(140 * s));
-
-    // === STREET LAMPS (depth 3) ===
-    const lampPositions = [150, 350, 550, 750];
-    lampPositions.forEach((lx) => {
-      const lamp = this.add.sprite(Math.round(lx * s), pathLevel, "street_lamp");
-      lamp.setOrigin(0.5, 1);
-      lamp.setDepth(3);
-      this.academyElements.push(lamp);
-
-      // Green glow under lamp
-      const lampGlow = this.add.ellipse(
-        Math.round(lx * s),
-        pathLevel + Math.round(5 * s),
-        Math.round(50 * s),
-        Math.round(15 * s),
-        0x4ade80,
-        0.2
-      );
-      lampGlow.setDepth(1);
-      this.academyElements.push(lampGlow);
-
-      // Pulsing glow animation
-      this.tweens.add({
-        targets: lampGlow,
-        alpha: 0.35,
-        duration: 1500 + Math.random() * 500,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    });
-
-    // === FLOWERS (depth 2) ===
-    const flowerPositions = [100, 240, 380, 520, 660, 800];
-    flowerPositions.forEach((fx) => {
-      const flower = this.add.sprite(Math.round(fx * s), grassTop + Math.round(32 * s), "flower");
-      flower.setOrigin(0.5, 1);
-      flower.setDepth(2);
-      flower.setScale(0.8 + Math.random() * 0.3);
-      this.academyElements.push(flower);
-
-      // Gentle sway animation
-      this.tweens.add({
-        targets: flower,
-        angle: { from: -3, to: 3 },
-        duration: 1500 + Math.random() * 500,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    });
-  }
-
-  private createRadarSweepAnimation(x: number, y: number): void {
-    // Create radar sweep beam (triangle)
-    const beam = this.add.graphics();
-    beam.setPosition(x, y);
-    beam.setDepth(6);
-
-    // Draw the beam
-    const drawBeam = () => {
-      beam.clear();
-      beam.fillStyle(0x4ade80, 0.3);
-      beam.beginPath();
-      beam.moveTo(0, 0);
-      beam.lineTo(-Math.round(35 * SCALE), Math.round(50 * SCALE));
-      beam.lineTo(Math.round(35 * SCALE), Math.round(50 * SCALE));
-      beam.closePath();
-      beam.fill();
-
-      // Inner brighter beam
-      beam.fillStyle(0x4ade80, 0.5);
-      beam.beginPath();
-      beam.moveTo(0, 0);
-      beam.lineTo(-Math.round(15 * SCALE), Math.round(40 * SCALE));
-      beam.lineTo(Math.round(15 * SCALE), Math.round(40 * SCALE));
-      beam.closePath();
-      beam.fill();
-    };
-
-    drawBeam();
-
-    // Rotate the beam continuously
-    this.tweens.add({
-      targets: beam,
-      angle: 360,
-      duration: 3000,
-      repeat: -1,
-      ease: "Linear",
-    });
-
-    this.academyElements.push(beam);
-
-    // Add scanning dots (particles)
-    for (let i = 0; i < 3; i++) {
-      const particle = this.add.circle(
-        x + (Math.random() - 0.5) * Math.round(60 * SCALE),
-        y + Math.round(30 * SCALE) + Math.random() * Math.round(30 * SCALE),
-        Math.round(3 * SCALE),
-        0x4ade80,
-        0.7
-      );
-      particle.setDepth(6);
-      this.academyElements.push(particle);
-
-      // Fade in/out animation
-      this.tweens.add({
-        targets: particle,
-        alpha: { from: 0, to: 0.8 },
-        scale: { from: 0.5, to: 1.2 },
-        duration: 800 + i * 200,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-        delay: i * 300,
-      });
-
-      // Move around
-      this.tweens.add({
-        targets: particle,
-        x: x + (Math.random() - 0.5) * Math.round(80 * SCALE),
-        y: y + Math.round(20 * SCALE) + Math.random() * Math.round(40 * SCALE),
-        duration: 1500 + i * 300,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-        delay: i * 500,
-      });
-    }
   }
 
   /**
@@ -2811,8 +2454,7 @@ More links = more ways for users to connect!`,
 
   private updateSkyForTime(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
     // Don't update sky if we're in Ballers Valley (always golden hour there)
-    // or Academy (always magical twilight there)
-    if (this.currentZone === "ballers" || this.currentZone === "academy") {
+    if (this.currentZone === "ballers") {
       return;
     }
 

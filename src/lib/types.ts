@@ -1,5 +1,5 @@
 // Zone Types
-export type ZoneType = "main_city" | "trending" | "academy" | "ballers" | "founders";
+export type ZoneType = "main_city" | "trending" | "ballers" | "founders";
 
 export interface ZoneInfo {
   id: ZoneType;
@@ -20,12 +20,6 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
     name: "BagsCity",
     description: "Downtown district with hot tokens",
     icon: "[B]",
-  },
-  academy: {
-    id: "academy",
-    name: "Academy",
-    description: "Learn from the Bags.fm team",
-    icon: "[A]",
   },
   ballers: {
     id: "ballers",
