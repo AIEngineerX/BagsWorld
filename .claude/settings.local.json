@@ -64,9 +64,7 @@
       "Bash(git checkout:*)",
       "Bash(npm install)",
       "Bash(timeout 5 npx tsx:*)",
-      "Bash(npm install:*)",
-      "Bash(npx eslint:*)",
-      "Bash(timeout:*)"
+      "Bash(npm install:*)"
     ]
   }
 }

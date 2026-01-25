@@ -1,5 +1,5 @@
 // Zone Types
-export type ZoneType = "main_city" | "trending" | "academy" | "ballers";
+export type ZoneType = "main_city" | "trending";
 
 export interface ZoneInfo {
   id: ZoneType;
@@ -20,18 +20,6 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
     name: "BagsCity",
     description: "Downtown district with hot tokens",
     icon: "[B]",
-  },
-  academy: {
-    id: "academy",
-    name: "Academy",
-    description: "Learn from the Bags.fm team",
-    icon: "[A]",
-  },
-  ballers: {
-    id: "ballers",
-    name: "Ballers Valley",
-    description: "Exclusive mansions for top $BagsWorld holders",
-    icon: "[V]",
   },
 };
 
@@ -56,14 +44,6 @@ export interface FeeEarner {
   isScout?: boolean; // Special flag for Scout Agent character
   isCJ?: boolean; // Special flag for CJ character
   isShaw?: boolean; // Special flag for Shaw (ElizaOS creator) character
-  // Bags.fm Team (Academy Zone)
-  isRamo?: boolean; // Special flag for Ramo (Co-Founder & CTO) character
-  isSincara?: boolean; // Special flag for Sincara (Frontend Engineer) character
-  isStuu?: boolean; // Special flag for Stuu (Operations) character
-  isSam?: boolean; // Special flag for Sam (Growth) character
-  isAlaa?: boolean; // Special flag for Alaa (Skunk Works) character
-  isCarlo?: boolean; // Special flag for Carlo (Ambassador) character
-  isBNN?: boolean; // Special flag for BNN (News Bot) character
 }
 
 export interface TokenInfo {
@@ -180,14 +160,6 @@ export interface GameCharacter {
   isScout?: boolean; // Special flag for Scout Agent (Neo) - BagsCity
   isCJ?: boolean; // Special flag for CJ character - BagsCity
   isShaw?: boolean; // Special flag for Shaw (ElizaOS creator) - Park
-  // Bags.fm Team (Academy Zone)
-  isRamo?: boolean; // Special flag for Ramo (Co-Founder & CTO) - Academy
-  isSincara?: boolean; // Special flag for Sincara (Frontend Engineer) - Academy
-  isStuu?: boolean; // Special flag for Stuu (Operations) - Academy
-  isSam?: boolean; // Special flag for Sam (Growth) - Academy
-  isAlaa?: boolean; // Special flag for Alaa (Skunk Works) - Academy
-  isCarlo?: boolean; // Special flag for Carlo (Ambassador) - Academy
-  isBNN?: boolean; // Special flag for BNN (News Bot) - Academy
 }
 
 export interface GameBuilding {
@@ -197,7 +169,7 @@ export interface GameBuilding {
   symbol: string;
   x: number;
   y: number;
-  level: number; // 1-5 based on market cap, 6 for mansions
+  level: number; // 1-5 based on market cap
   health: number; // 0-100 based on recent performance
   status?: BuildingStatus; // Decay status for visual effects
   glowing: boolean;
@@ -210,12 +182,6 @@ export interface GameBuilding {
   isFloating?: boolean; // Special floating building (BagsWorld HQ)
   isPermanent?: boolean; // Landmark building (Treasury, etc.) - not a real token
   styleOverride?: number | null; // Admin override for building style (0-3)
-  // Mansion fields (Ballers Valley)
-  isMansion?: boolean; // True for top holder mansions
-  holderRank?: number; // 1-5 for top holders
-  holderAddress?: string; // Wallet address of the holder
-  holderBalance?: number; // Token balance held
-  mansionScale?: number; // Scale multiplier for mansion display (1.5 for #1, 1.3 for #2-3, etc.)
 }
 
 export type GameEventType =
