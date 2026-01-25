@@ -3,7 +3,7 @@
 import { useGameStore } from "@/lib/store";
 import { ZONES, ZoneType } from "@/lib/types";
 
-const ZONE_ORDER: ZoneType[] = ["main_city", "trending", "academy", "ballers", "founders"];
+const ZONE_ORDER: ZoneType[] = ["main_city", "trending", "ballers", "founders"];
 
 export function ZoneNav() {
   const { currentZone, setZone } = useGameStore();
@@ -23,7 +23,6 @@ export function ZoneNav() {
         const zone = ZONES[zoneId];
         const isActive = currentZone === zoneId;
         const isTrending = zoneId === "trending";
-        const isAcademy = zoneId === "academy";
         const isBallers = zoneId === "ballers";
         const isFounders = zoneId === "founders";
 
@@ -41,7 +40,6 @@ export function ZoneNav() {
                   : "text-gray-400 hover:text-bags-green hover:bg-bags-green/10 border-gray-600 hover:border-bags-green/50"
               }
               ${isTrending && !isActive ? "border-bags-gold/50 text-bags-gold" : ""}
-              ${isAcademy && !isActive ? "border-blue-500/50 text-blue-400" : ""}
               ${isBallers && !isActive ? "border-yellow-400/50 text-yellow-400" : ""}
               ${isFounders && !isActive ? "border-amber-500/50 text-amber-400" : ""}
             `}

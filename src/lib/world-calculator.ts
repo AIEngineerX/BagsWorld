@@ -347,7 +347,7 @@ const SPECIAL_CHARACTERS: Record<
     flag: string;
     wallet: string;
     x: number;
-    zone: "main_city" | "trending" | "academy" | "ballers" | "founders";
+    zone: "main_city" | "trending" | "ballers" | "founders";
     profileUrl?: string;
   }
 > = {
@@ -367,8 +367,8 @@ const SPECIAL_CHARACTERS: Record<
   finn: {
     flag: "isFinn",
     wallet: "finnbags-ceo-permanent",
-    x: Math.round(100 * SCALE), // Clock Tower building (Dean's office)
-    zone: "academy",
+    x: Math.round(100 * SCALE),
+    zone: "main_city", // Moved from Academy to Park
     profileUrl: "https://x.com/finnbags",
   },
   dev: {
@@ -397,55 +397,54 @@ const SPECIAL_CHARACTERS: Record<
     zone: "main_city", // Shaw stays in Park with other AI agents
     profileUrl: "https://x.com/shawmakesmagic",
   },
-  // Academy Zone - Bags.fm Team (positions aligned with building locations)
-  // Buildings: 100, 230, 360, 490, 620, 750, 880, 1010 (unscaled)
+  // Bags.fm Team - moved to main_city (was Academy)
   ramo: {
     flag: "isRamo",
     wallet: "ramo-cto-permanent",
-    x: Math.round(230 * SCALE), // Library building
-    zone: "academy",
+    x: Math.round(230 * SCALE),
+    zone: "main_city",
     profileUrl: "https://x.com/ramyobags",
   },
   sincara: {
     flag: "isSincara",
     wallet: "sincara-frontend-permanent",
-    x: Math.round(360 * SCALE), // Art Studio building
-    zone: "academy",
+    x: Math.round(360 * SCALE),
+    zone: "main_city",
     profileUrl: "https://x.com/sincara_bags",
   },
   stuu: {
     flag: "isStuu",
     wallet: "stuu-ops-permanent",
-    x: Math.round(620 * SCALE), // Greenhouse building
-    zone: "academy",
+    x: Math.round(620 * SCALE),
+    zone: "main_city",
     profileUrl: "https://x.com/StuuBags",
   },
   sam: {
     flag: "isSam",
     wallet: "sam-growth-permanent",
-    x: Math.round(750 * SCALE), // Stage building
-    zone: "academy",
+    x: Math.round(750 * SCALE),
+    zone: "main_city",
     profileUrl: "https://x.com/Sambags12",
   },
   alaa: {
     flag: "isAlaa",
     wallet: "alaa-skunkworks-permanent",
-    x: Math.round(490 * SCALE), // Observatory building
-    zone: "academy",
+    x: Math.round(490 * SCALE),
+    zone: "main_city",
     profileUrl: "https://x.com/alaadotsol",
   },
   carlo: {
     flag: "isCarlo",
     wallet: "carlo-ambassador-permanent",
-    x: Math.round(880 * SCALE), // Welcome Hall building
-    zone: "academy",
+    x: Math.round(880 * SCALE),
+    zone: "main_city",
     profileUrl: "https://x.com/carlobags",
   },
   bnn: {
     flag: "isBNN",
     wallet: "bnn-news-permanent",
-    x: Math.round(1010 * SCALE), // BNN Tower building
-    zone: "academy",
+    x: Math.round(1010 * SCALE),
+    zone: "main_city",
     profileUrl: "https://x.com/BNNBags",
   },
   // Founder's Corner Zone - Token Launch Guides
@@ -505,16 +504,15 @@ export function transformFeeEarnerToCharacter(
     (isSpecial ? undefined : getProfileUrl(earner.provider, earner.username));
 
   // Distribute regular fee earners across all zones based on wallet hash
-  const getZoneForFeeEarner = (wallet: string): "main_city" | "trending" | "academy" | "ballers" | "founders" => {
+  const getZoneForFeeEarner = (wallet: string): "main_city" | "trending" | "ballers" | "founders" => {
     let hash = 0;
     for (let i = 0; i < wallet.length; i++) {
       hash = (hash << 5) - hash + wallet.charCodeAt(i);
       hash = hash & hash;
     }
-    const zones: Array<"main_city" | "trending" | "academy" | "ballers" | "founders"> = [
+    const zones: Array<"main_city" | "trending" | "ballers" | "founders"> = [
       "main_city",
       "trending",
-      "academy",
       "ballers",
       "founders",
     ];
