@@ -707,43 +707,49 @@ app.get('/api/world-state', async (req, res) => {
 async function initializeDatabase(): Promise<void> {
   if (!sql) return;
 
-  await sql`
-    CREATE TABLE IF NOT EXISTS conversation_messages (
-      id UUID PRIMARY KEY,
-      session_id UUID NOT NULL,
-      agent_id VARCHAR(50) NOT NULL,
-      role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
-      content TEXT NOT NULL,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    )
-  `;
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS conversation_messages (
+        id UUID PRIMARY KEY,
+        session_id UUID NOT NULL,
+        agent_id VARCHAR(50) NOT NULL,
+        role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
+        content TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
 
-  await sql`
-    CREATE INDEX IF NOT EXISTS idx_conv_session_agent
-    ON conversation_messages(session_id, agent_id)
-  `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_conv_session_agent
+      ON conversation_messages(session_id, agent_id)
+    `;
 
-  await sql`
-    CREATE INDEX IF NOT EXISTS idx_conv_created
-    ON conversation_messages(created_at)
-  `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_conv_created
+      ON conversation_messages(created_at)
+    `;
 
-  await sql`
-    CREATE TABLE IF NOT EXISTS agent_sessions (
-      id UUID PRIMARY KEY,
-      agent_id VARCHAR(50) NOT NULL,
-      user_identifier VARCHAR(255),
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-      last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    )
-  `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS agent_sessions (
+        id UUID PRIMARY KEY,
+        agent_id VARCHAR(50) NOT NULL,
+        user_identifier VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
 
-  await sql`
-    CREATE INDEX IF NOT EXISTS idx_sessions_agent
-    ON agent_sessions(agent_id)
-  `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_sessions_agent
+      ON agent_sessions(agent_id)
+    `;
 
-  console.log('[Database] Schema initialized');
+    console.log('[Database] Schema initialized');
+  } catch (err: any) {
+    console.error('[Database] Failed to initialize schema:', err.message);
+    console.warn('[Database] Server will continue without database persistence');
+    // Don't crash - server can run without database (in-memory only)
+  }
 }
 
 async function main(): Promise<void> {
