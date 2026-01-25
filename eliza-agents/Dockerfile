@@ -1,5 +1,5 @@
 # BagsWorld Agents Server Dockerfile
-# Runs TypeScript directly with tsx for simplicity
+# Uses tsx to run TypeScript directly for simpler deployment
 
 FROM node:20-alpine
 
@@ -11,12 +11,12 @@ RUN addgroup -g 1001 -S bagsworld && \
 
 # Copy package files
 COPY package*.json ./
+COPY tsconfig.json ./
 
-# Install all dependencies (tsx needed at runtime)
-RUN npm ci && npm cache clean --force
+# Install all dependencies (including tsx for runtime TypeScript execution)
+RUN npm install && npm cache clean --force
 
 # Copy source code
-COPY tsconfig.json ./
 COPY src ./src
 
 # Set ownership
@@ -38,4 +38,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 3001
 
 # Start server with tsx (runs TypeScript directly)
-CMD ["npx", "tsx", "src/standalone-server.ts"]
+CMD ["npx", "tsx", "src/server.ts"]

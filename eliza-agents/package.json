@@ -1,35 +1,42 @@
 {
-  "name": "bagsworld-eliza-agents",
+  "name": "bagsworld-agents",
   "version": "1.0.0",
-  "description": "ElizaOS autonomous agents for BagsWorld - Neo, CJ, Finn, Ash, Toly, Shaw, Ghost, and Bags Bot",
+  "description": "BagsWorld AI agents - Toly, Finn, Ash, Ghost, Neo, CJ, Shaw, and Bags Bot",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "start": "node dist/standalone-server.js",
-    "start:dev": "tsx src/standalone-server.ts",
-    "dev": "tsx --watch src/standalone-server.ts",
     "build": "tsc",
-    "db:migrate": "tsx src/db/migrate.ts",
-    "test": "vitest",
-    "telegram:setup": "curl -X GET http://localhost:3001/api/telegram/setup"
+    "dev": "tsc --watch",
+    "start": "node dist/server.js",
+    "start:dev": "tsx src/server.ts",
+    "test": "vitest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
-    "@neondatabase/serverless": "^1.0.0",
+    "@neondatabase/serverless": "^0.10.4",
+    "express": "^4.21.2",
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "uuid": "^9.0.0"
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
+    "@types/uuid": "^10.0.0",
     "@types/node": "^20.0.0",
-    "@types/uuid": "^9.0.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.0.0",
-    "vitest": "^1.0.0"
+    "typescript": "^5.7.3",
+    "tsx": "^4.19.2",
+    "vitest": "^3.0.4"
   },
   "engines": {
     "node": ">=20.0.0"
-  }
+  },
+  "keywords": [
+    "bagsworld",
+    "solana",
+    "bags.fm",
+    "ai-agents",
+    "multi-agent"
+  ],
+  "author": "BagsWorld",
+  "license": "MIT"
 }
