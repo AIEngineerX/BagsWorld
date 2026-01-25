@@ -12,9 +12,22 @@ const ELIZAOS_SERVER =
 
 // Valid agent IDs that match Railway character files
 const VALID_AGENTS = [
-  "neo", "cj", "finn", "bags-bot", "toly", "ash", "shaw", "ghost",
+  "neo",
+  "cj",
+  "finn",
+  "bags-bot",
+  "toly",
+  "ash",
+  "shaw",
+  "ghost",
   // Academy characters
-  "ramo", "sincara", "stuu", "sam", "alaa", "carlo", "bnn"
+  "ramo",
+  "sincara",
+  "stuu",
+  "sam",
+  "alaa",
+  "carlo",
+  "bnn",
 ];
 
 interface ChatRequest {

@@ -4,7 +4,17 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 
 const AGENTS_API_URL = process.env.AGENTS_API_URL || "http://localhost:3001";
 
-type CharacterId = "toly" | "finn" | "ash" | "ghost" | "neo" | "cj" | "shaw" | "bags-bot" | "bagsbot" | "dev";
+type CharacterId =
+  | "toly"
+  | "finn"
+  | "ash"
+  | "ghost"
+  | "neo"
+  | "cj"
+  | "shaw"
+  | "bags-bot"
+  | "bagsbot"
+  | "dev";
 
 interface CharacterChatRequest {
   character: CharacterId;
@@ -68,7 +78,7 @@ export async function POST(request: Request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage,
-          sessionId: conversationId,  // eliza-agents uses sessionId
+          sessionId: conversationId, // eliza-agents uses sessionId
         }),
       });
 
@@ -77,7 +87,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
           message: data.response,
           character: displayName,
-          conversationId: data.sessionId,  // map sessionId back to conversationId
+          conversationId: data.sessionId, // map sessionId back to conversationId
         });
       }
 
@@ -205,27 +215,44 @@ function getFallbackResponse(character: string, userMessage: string): string {
   const charFallbacks = fallbacks[charKey] || fallbacks.finn;
 
   // Match intent
-  if (lowerMsg.includes("hi") || lowerMsg.includes("hello") || lowerMsg.includes("gm") || lowerMsg.includes("hey")) {
+  if (
+    lowerMsg.includes("hi") ||
+    lowerMsg.includes("hello") ||
+    lowerMsg.includes("gm") ||
+    lowerMsg.includes("hey")
+  ) {
     const greetings = charFallbacks.greeting;
     return greetings[Math.floor(Math.random() * greetings.length)];
   }
 
-  if (charKey === "toly" && (lowerMsg.includes("solana") || lowerMsg.includes("sol") || lowerMsg.includes("blockchain"))) {
+  if (
+    charKey === "toly" &&
+    (lowerMsg.includes("solana") || lowerMsg.includes("sol") || lowerMsg.includes("blockchain"))
+  ) {
     const solana = charFallbacks.solana;
     if (solana) return solana[Math.floor(Math.random() * solana.length)];
   }
 
-  if (charKey === "ash" && (lowerMsg.includes("fee") || lowerMsg.includes("earn") || lowerMsg.includes("money"))) {
+  if (
+    charKey === "ash" &&
+    (lowerMsg.includes("fee") || lowerMsg.includes("earn") || lowerMsg.includes("money"))
+  ) {
     const fees = charFallbacks.fees;
     if (fees) return fees[Math.floor(Math.random() * fees.length)];
   }
 
-  if (charKey === "finn" && (lowerMsg.includes("bags") || lowerMsg.includes("launch") || lowerMsg.includes("token"))) {
+  if (
+    charKey === "finn" &&
+    (lowerMsg.includes("bags") || lowerMsg.includes("launch") || lowerMsg.includes("token"))
+  ) {
     const bags = charFallbacks.bags;
     if (bags) return bags[Math.floor(Math.random() * bags.length)];
   }
 
-  if (charKey === "ghost" && (lowerMsg.includes("trade") || lowerMsg.includes("buy") || lowerMsg.includes("sell"))) {
+  if (
+    charKey === "ghost" &&
+    (lowerMsg.includes("trade") || lowerMsg.includes("buy") || lowerMsg.includes("sell"))
+  ) {
     const trading = charFallbacks.trading;
     if (trading) return trading[Math.floor(Math.random() * trading.length)];
   }

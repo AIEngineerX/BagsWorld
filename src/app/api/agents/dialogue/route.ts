@@ -259,6 +259,8 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("[Dialogue API] Error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[Dialogue API] Error message:", errorMessage);
 
     if (error instanceof Error) {
       if (error.message.includes("Claude API")) {
@@ -266,7 +268,10 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ error: "Failed to generate dialogue" }, { status: 500 });
+    return NextResponse.json(
+      { error: `Failed to generate dialogue: ${errorMessage}` },
+      { status: 500 }
+    );
   }
 }
 

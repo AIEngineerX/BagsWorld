@@ -70,7 +70,7 @@ async function fetchRecentLaunches(): Promise<SniperNewLaunch[]> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({ query }),
   });
@@ -179,9 +179,7 @@ export async function GET(request: Request) {
     const launches = await fetchRecentLaunches();
 
     // Enrich with metadata (limit to avoid rate limiting)
-    const enrichedLaunches = await Promise.all(
-      launches.slice(0, 10).map(enrichLaunchWithMetadata)
-    );
+    const enrichedLaunches = await Promise.all(launches.slice(0, 10).map(enrichLaunchWithMetadata));
 
     return NextResponse.json({
       success: true,
@@ -241,7 +239,7 @@ export async function GET(request: Request) {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
+      Connection: "keep-alive",
     },
   });
 }
