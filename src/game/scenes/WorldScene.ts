@@ -66,7 +66,15 @@ export class WorldScene extends Phaser.Scene {
   private isTransitioning = false; // Prevent overlapping transitions
   private trendingElements: Phaser.GameObjects.GameObject[] = [];
   private mainCityElements: Phaser.GameObjects.GameObject[] = [];
+  private academyElements: Phaser.GameObjects.GameObject[] = []; // Academy zone elements
+  private ballersElements: Phaser.GameObjects.GameObject[] = []; // Ballers Valley zone elements
   private trendingZoneCreated = false; // Cache trending zone elements
+  private academyZoneCreated = false; // Cache academy zone elements
+  private ballersZoneCreated = false; // Cache ballers zone elements
+  private ballersGoldenSky: Phaser.GameObjects.Graphics | null = null; // Golden hour sky for Ballers Valley
+  private academyTwilightSky: Phaser.GameObjects.Graphics | null = null; // Magical twilight sky for Academy
+  private academyMoon: Phaser.GameObjects.Arc | null = null; // Moon for Academy zone
+  private academyStars: Phaser.GameObjects.Arc[] = []; // Extra bright stars for Academy
   private boundZoneChange: ((e: Event) => void) | null = null;
   private zoneGround: Phaser.GameObjects.TileSprite | null = null;
   private zonePath: Phaser.GameObjects.TileSprite | null = null;
@@ -75,6 +83,7 @@ export class WorldScene extends Phaser.Scene {
   private tickerOffset = 0;
   private tickerTimer: Phaser.Time.TimerEvent | null = null;
   private skylineSprites: Phaser.GameObjects.Sprite[] = [];
+  private academyBuildings: Phaser.GameObjects.Sprite[] = []; // Academy building sprites
   private billboardTimer: Phaser.Time.TimerEvent | null = null;
   private trafficTimers: Phaser.Time.TimerEvent[] = [];
   private originalPositions: Map<Phaser.GameObjects.GameObject, number> = new Map(); // Store original X positions
@@ -330,8 +339,10 @@ export class WorldScene extends Phaser.Scene {
       if (origX !== undefined) (a.sprite as any).x = origX;
     });
 
-    // Determine slide direction: BagsCity is "to the right" of Park
-    const isGoingRight = newZone === "trending";
+    // Determine slide direction: Park -> BagsCity -> Academy -> Ballers Valley (left to right)
+    // Zone order: main_city (0) -> trending (1) -> academy (2) -> ballers (3)
+    const zoneOrder: Record<ZoneType, number> = { main_city: 0, trending: 1, academy: 2, ballers: 3 };
+    const isGoingRight = zoneOrder[newZone] > zoneOrder[this.currentZone];
     const duration = 600; // Smooth, cinematic transition
     const slideDistance = Math.round(850 * SCALE); // Slightly more than screen width for full slide (scaled)
 
@@ -347,6 +358,11 @@ export class WorldScene extends Phaser.Scene {
       oldElements.push(...this.billboardTexts);
       if (this.tickerText) oldElements.push(this.tickerText);
       oldElements.push(...this.skylineSprites);
+    } else if (this.currentZone === "academy") {
+      oldElements.push(...this.academyElements);
+      oldElements.push(...this.academyBuildings);
+    } else if (this.currentZone === "ballers") {
+      oldElements.push(...this.ballersElements);
     } else {
       // Main city decorations
       this.decorations.forEach((d) => oldElements.push(d));
@@ -425,13 +441,24 @@ export class WorldScene extends Phaser.Scene {
         }
         // Stop traffic timers
         this.clearTrafficTimers();
+      } else if (this.currentZone === "academy") {
+        this.academyElements.forEach((el) => (el as any).setVisible(false));
+        this.academyBuildings.forEach((s) => s.setVisible(false));
+      } else if (this.currentZone === "ballers") {
+        this.ballersElements.forEach((el) => (el as any).setVisible(false));
       }
 
       // Update zone and set up new content
       this.currentZone = newZone;
 
-      // Change ground texture
-      this.ground.setTexture(newZone === "trending" ? "concrete" : "grass");
+      // Change ground texture based on zone
+      const groundTextures: Record<ZoneType, string> = {
+        main_city: "grass",
+        trending: "concrete",
+        academy: "grass", // Academy has grass quad
+        ballers: "grass", // Ballers Valley has premium grass (luxury estate feel)
+      };
+      this.ground.setTexture(groundTextures[newZone]);
 
       // Setup new zone content (will be positioned off-screen initially)
       this.setupZoneOffscreen(newZone, slideInOffset);
@@ -504,6 +531,45 @@ export class WorldScene extends Phaser.Scene {
           });
         }
       });
+    } else if (zone === "academy") {
+      this.setupAcademyZone();
+
+      // Offset all new Academy elements and animate them in
+      const newElements = [
+        ...this.academyElements,
+        ...this.academyBuildings,
+      ].filter(Boolean);
+
+      newElements.forEach((el) => {
+        if ((el as any).x !== undefined) {
+          const targetX = (el as any).x;
+          (el as any).x = targetX + offsetX;
+          this.tweens.add({
+            targets: el,
+            x: targetX,
+            duration,
+            ease: "Cubic.easeOut",
+          });
+        }
+      });
+    } else if (zone === "ballers") {
+      this.setupBallersZone();
+
+      // Offset all new Ballers Valley elements and animate them in
+      const newElements = [...this.ballersElements].filter(Boolean);
+
+      newElements.forEach((el) => {
+        if ((el as any).x !== undefined) {
+          const targetX = (el as any).x;
+          (el as any).x = targetX + offsetX;
+          this.tweens.add({
+            targets: el,
+            x: targetX,
+            duration,
+            ease: "Cubic.easeOut",
+          });
+        }
+      });
     } else {
       this.setupMainCityZone();
 
@@ -550,6 +616,13 @@ export class WorldScene extends Phaser.Scene {
         this.tickerTimer = null;
       }
       this.skylineSprites.forEach((s) => s.setVisible(false));
+    } else if (this.currentZone === "academy") {
+      // Hide academy elements
+      this.academyElements.forEach((el) => (el as any).setVisible(false));
+      this.academyBuildings.forEach((s) => s.setVisible(false));
+    } else if (this.currentZone === "ballers") {
+      // Hide ballers elements
+      this.ballersElements.forEach((el) => (el as any).setVisible(false));
     } else if (this.currentZone === "main_city") {
       // Main city uses shared decorations, don't destroy them
       // Just hide them
@@ -573,6 +646,12 @@ export class WorldScene extends Phaser.Scene {
       case "trending":
         this.setupTrendingZone();
         break;
+      case "academy":
+        this.setupAcademyZone();
+        break;
+      case "ballers":
+        this.setupBallersZone();
+        break;
       case "main_city":
       default:
         this.setupMainCityZone();
@@ -593,6 +672,9 @@ export class WorldScene extends Phaser.Scene {
     // Show and reset grass ground
     this.ground.setVisible(true);
     this.ground.setTexture("grass");
+
+    // Restore normal sky (in case coming from Ballers Valley)
+    this.restoreNormalSky();
   }
 
   private setupTrendingZone(): void {
@@ -604,6 +686,9 @@ export class WorldScene extends Phaser.Scene {
     if (this.fountainWater) {
       this.fountainWater.setVisible(false);
     }
+
+    // Restore normal sky (in case coming from Ballers Valley)
+    this.restoreNormalSky();
 
     // Hide the grass ground completely - city has its own pavement
     this.ground.setVisible(false);
@@ -1303,6 +1388,687 @@ export class WorldScene extends Phaser.Scene {
     if (num >= 1000) return (num / 1000).toFixed(1) + "K";
     return num.toFixed(0);
   }
+
+  // ============================================
+  // ACADEMY ZONE - BAGS.FM TEAM CAMPUS
+  // ============================================
+
+  private setupAcademyZone(): void {
+    // Hide park decorations and animals (they belong to main_city)
+    this.decorations.forEach((d) => d.setVisible(false));
+    this.animals.forEach((a) => a.sprite.setVisible(false));
+
+    // Hide fountain water spray
+    if (this.fountainWater) {
+      this.fountainWater.setVisible(false);
+    }
+
+    // IMPORTANT: Hide trending zone elements (skyline, billboards, etc.)
+    this.trendingElements.forEach((el) => (el as any).setVisible(false));
+    this.skylineSprites.forEach((s) => s.setVisible(false));
+    this.billboardTexts.forEach((t) => t.setVisible(false));
+    if (this.tickerText) this.tickerText.setVisible(false);
+
+    // Hide ballers zone elements
+    this.ballersElements.forEach((el) => (el as any).setVisible(false));
+
+    // Draw magical twilight sky for Academy (instead of normal sky)
+    this.drawAcademyTwilightSky();
+
+    // Show grass ground for academy quad
+    this.ground.setVisible(true);
+    this.ground.setTexture("grass");
+
+    // Only create elements once, then just show them
+    if (!this.academyZoneCreated) {
+      this.createAcademyBackground();
+      this.createAcademyBuildings();
+      this.createAcademyDecorations();
+      this.academyZoneCreated = true;
+    } else {
+      // Subsequent times - just show existing elements
+      this.academyElements.forEach((el) => (el as any).setVisible(true));
+      this.academyBuildings.forEach((s) => s.setVisible(true));
+    }
+  }
+
+  private createAcademyBackground(): void {
+    // Create unique Academy background - ivy-covered stone walls aesthetic
+    // Back layer - distant castle-like structures (darker, atmospheric)
+    const backPositions = [
+      { x: Math.round(100 * SCALE), y: Math.round(200 * SCALE), scale: 0.6 },
+      { x: Math.round(300 * SCALE), y: Math.round(190 * SCALE), scale: 0.55 },
+      { x: Math.round(500 * SCALE), y: Math.round(195 * SCALE), scale: 0.65 },
+      { x: Math.round(700 * SCALE), y: Math.round(200 * SCALE), scale: 0.58 },
+      { x: Math.round(900 * SCALE), y: Math.round(185 * SCALE), scale: 0.62 },
+      { x: Math.round(1100 * SCALE), y: Math.round(195 * SCALE), scale: 0.6 },
+    ];
+
+    // Create distant tower silhouettes
+    backPositions.forEach((pos, i) => {
+      // Tower base - stone gray
+      const towerWidth = Math.round((40 + (i % 3) * 10) * SCALE * pos.scale);
+      const towerHeight = Math.round((120 + (i % 4) * 20) * SCALE * pos.scale);
+
+      const tower = this.add.rectangle(
+        pos.x,
+        pos.y + towerHeight / 2,
+        towerWidth,
+        towerHeight,
+        0x374151,
+        0.4
+      );
+      tower.setDepth(-2);
+      this.academyElements.push(tower);
+
+      // Tower roof/spire
+      const spireHeight = Math.round(40 * SCALE * pos.scale);
+      const spire = this.add.triangle(
+        pos.x,
+        pos.y - spireHeight / 2,
+        0, spireHeight,
+        towerWidth / 2, 0,
+        towerWidth, spireHeight,
+        0x1e3a8a,
+        0.4
+      );
+      spire.setDepth(-2);
+      this.academyElements.push(spire);
+    });
+
+    // Mid-ground trees (silhouettes)
+    const treePositions = [
+      Math.round(50 * SCALE),
+      Math.round(200 * SCALE),
+      Math.round(400 * SCALE),
+      Math.round(600 * SCALE),
+      Math.round(800 * SCALE),
+      Math.round(1000 * SCALE),
+      Math.round(1200 * SCALE),
+    ];
+
+    treePositions.forEach((x) => {
+      const treeY = Math.round(350 * SCALE);
+
+      // Tree trunk
+      const trunk = this.add.rectangle(
+        x,
+        treeY + Math.round(30 * SCALE),
+        Math.round(15 * SCALE),
+        Math.round(60 * SCALE),
+        0x3f2d1e,
+        0.5
+      );
+      trunk.setDepth(-1);
+      this.academyElements.push(trunk);
+
+      // Tree foliage (layered circles)
+      const foliage1 = this.add.circle(x, treeY - Math.round(10 * SCALE), Math.round(35 * SCALE), 0x166534, 0.5);
+      foliage1.setDepth(-1);
+      this.academyElements.push(foliage1);
+
+      const foliage2 = this.add.circle(x - Math.round(15 * SCALE), treeY, Math.round(28 * SCALE), 0x14532d, 0.5);
+      foliage2.setDepth(-1);
+      this.academyElements.push(foliage2);
+
+      const foliage3 = this.add.circle(x + Math.round(15 * SCALE), treeY, Math.round(28 * SCALE), 0x15803d, 0.5);
+      foliage3.setDepth(-1);
+      this.academyElements.push(foliage3);
+    });
+
+    // Stone wall backdrop (behind the buildings)
+    const wallY = Math.round(420 * SCALE);
+    const wall = this.add.rectangle(
+      GAME_WIDTH / 2,
+      wallY,
+      GAME_WIDTH + Math.round(100 * SCALE),
+      Math.round(150 * SCALE),
+      0x4b5563,
+      0.3
+    );
+    wall.setDepth(-1);
+    this.academyElements.push(wall);
+
+    // Wall texture (stone blocks pattern)
+    for (let x = 0; x < GAME_WIDTH; x += Math.round(80 * SCALE)) {
+      for (let row = 0; row < 2; row++) {
+        const blockY = wallY - Math.round(50 * SCALE) + row * Math.round(50 * SCALE);
+        const offset = row % 2 === 0 ? 0 : Math.round(40 * SCALE);
+        const block = this.add.rectangle(
+          x + offset,
+          blockY,
+          Math.round(75 * SCALE),
+          Math.round(45 * SCALE),
+          0x374151,
+          0.25
+        );
+        block.setStrokeStyle(1, 0x1f2937, 0.3);
+        block.setDepth(-1);
+        this.academyElements.push(block);
+      }
+    }
+  }
+
+  private createAcademyBuildings(): void {
+    // Academy campus buildings - sprite-based Hogwarts-style architecture
+    // Each building uses generated textures from BootScene (academy_0 through academy_7)
+    // All buildings positioned flush to ground at Y = 550 * SCALE
+
+    const groundY = Math.round(550 * SCALE);
+
+    // Building configurations: texture index, x position, label, scale
+    const buildings = [
+      { texture: 0, x: 100, label: "CLOCK TOWER", char: "Finn" },     // Main Hall - Dean
+      { texture: 1, x: 230, label: "LIBRARY", char: "Ramo" },         // Engineering - CTO
+      { texture: 2, x: 360, label: "ART STUDIO", char: "Sincara" },   // Design Studio
+      { texture: 3, x: 490, label: "OBSERVATORY", char: "Alaa" },     // R&D Lab - Skunk Works
+      { texture: 4, x: 620, label: "GREENHOUSE", char: "Stuu" },      // Student Services
+      { texture: 5, x: 750, label: "STAGE", char: "Sam" },            // Marketing Hall
+      { texture: 6, x: 880, label: "WELCOME", char: "Carlo" },        // Welcome Center
+      { texture: 7, x: 1010, label: "BNN TOWER", char: "BNN" },       // Media Center
+    ];
+
+    buildings.forEach((b, index) => {
+      const bx = Math.round(b.x * SCALE);
+
+      // Create container for building + label
+      const container = this.add.container(bx, groundY);
+
+      // Main building sprite
+      const buildingSprite = this.add.sprite(0, 0, `academy_${b.texture}`);
+      buildingSprite.setOrigin(0.5, 1); // Flush to ground
+      container.add(buildingSprite);
+
+      // Building label background
+      const labelBg = this.add.rectangle(0, 15, 70, 14, 0x000000, 0.8);
+      labelBg.setStrokeStyle(1, 0x4ade80);
+      container.add(labelBg);
+
+      // Building label text
+      const labelText = this.add.text(0, 15, b.label, {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#4ade80",
+      });
+      labelText.setOrigin(0.5, 0.5);
+      container.add(labelText);
+
+      // Depth sorting - buildings further right appear behind
+      container.setDepth(5 - index / 10);
+
+      this.academyBuildings.push(buildingSprite);
+      this.academyElements.push(container);
+    });
+
+    // Academy entrance gate at center top
+    const gateX = GAME_WIDTH / 2;
+    const gateY = Math.round(380 * SCALE);
+
+    const gateSprite = this.add.sprite(gateX, gateY, "academy_gate");
+    gateSprite.setOrigin(0.5, 1);
+    gateSprite.setDepth(2);
+    this.academyElements.push(gateSprite);
+
+    // "BAGS ACADEMY" title above gate
+    const titleBg = this.add.rectangle(gateX, gateY - Math.round(90 * SCALE), Math.round(220 * SCALE), Math.round(35 * SCALE), 0x1f2937);
+    titleBg.setStrokeStyle(2, 0x4ade80);
+    titleBg.setDepth(6);
+    this.academyElements.push(titleBg);
+
+    const academyTitle = this.add.text(gateX, gateY - Math.round(93 * SCALE), "BAGS ACADEMY", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(16 * SCALE)}px`,
+      color: "#4ade80",
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    academyTitle.setOrigin(0.5, 0.5);
+    academyTitle.setDepth(7);
+    this.academyElements.push(academyTitle);
+
+    const subtitle = this.add.text(gateX, gateY - Math.round(75 * SCALE), "Learn from the Bags.fm Team", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(7 * SCALE)}px`,
+      color: "#9ca3af",
+    });
+    subtitle.setOrigin(0.5, 0.5);
+    subtitle.setDepth(7);
+    this.academyElements.push(subtitle);
+  }
+
+  private createAcademyDecorations(): void {
+    const groundY = Math.round(550 * SCALE);
+
+    // Campus cobblestone path - covers the walking area
+    const pathY = Math.round(565 * SCALE);
+    const pathH = Math.round(50 * SCALE);
+
+    // Main cobblestone path
+    const mainPath = this.add.rectangle(GAME_WIDTH / 2, pathY, GAME_WIDTH, pathH, 0x4b5563);
+    mainPath.setDepth(0);
+    this.academyElements.push(mainPath);
+
+    // Path border lines (stone edges)
+    const topEdge = this.add.rectangle(GAME_WIDTH / 2, pathY - pathH / 2, GAME_WIDTH, Math.round(3 * SCALE), 0x6b7280);
+    topEdge.setDepth(0);
+    this.academyElements.push(topEdge);
+
+    const bottomEdge = this.add.rectangle(GAME_WIDTH / 2, pathY + pathH / 2, GAME_WIDTH, Math.round(3 * SCALE), 0x374151);
+    bottomEdge.setDepth(0);
+    this.academyElements.push(bottomEdge);
+
+    // Cobblestone pattern
+    for (let x = Math.round(30 * SCALE); x < GAME_WIDTH - Math.round(30 * SCALE); x += Math.round(40 * SCALE)) {
+      for (let row = 0; row < 2; row++) {
+        const stoneY = pathY - Math.round(15 * SCALE) + row * Math.round(20 * SCALE);
+        const offset = row % 2 === 0 ? 0 : Math.round(20 * SCALE);
+        const stone = this.add.rectangle(x + offset, stoneY, Math.round(35 * SCALE), Math.round(15 * SCALE), 0x374151);
+        stone.setStrokeStyle(1, 0x1f2937);
+        stone.setDepth(0);
+        this.academyElements.push(stone);
+      }
+    }
+
+    // Street lamps using existing sprite
+    const lampPositions = [
+      Math.round(165 * SCALE),
+      Math.round(295 * SCALE),
+      Math.round(425 * SCALE),
+      Math.round(555 * SCALE),
+      Math.round(685 * SCALE),
+      Math.round(815 * SCALE),
+      Math.round(945 * SCALE),
+    ];
+
+    lampPositions.forEach((lx) => {
+      const lamp = this.add.sprite(lx, groundY, "street_lamp");
+      lamp.setOrigin(0.5, 1);
+      lamp.setDepth(3);
+      this.academyElements.push(lamp);
+    });
+
+    // Fountain in front of gate
+    const fountainX = GAME_WIDTH / 2;
+    const fountainY = Math.round(480 * SCALE);
+
+    // Fountain base (stone)
+    const fountainBase = this.add.circle(fountainX, fountainY, Math.round(40 * SCALE), 0x6b7280);
+    fountainBase.setDepth(1);
+    this.academyElements.push(fountainBase);
+
+    // Fountain inner rim
+    const fountainRim = this.add.circle(fountainX, fountainY, Math.round(35 * SCALE), 0x4b5563);
+    fountainRim.setDepth(1);
+    this.academyElements.push(fountainRim);
+
+    // Water
+    const fountainWater = this.add.circle(fountainX, fountainY, Math.round(30 * SCALE), 0x3b82f6);
+    fountainWater.setDepth(2);
+    this.academyElements.push(fountainWater);
+
+    // Water shimmer effect
+    const waterShimmer = this.add.circle(fountainX - Math.round(10 * SCALE), fountainY - Math.round(8 * SCALE), Math.round(8 * SCALE), 0x60a5fa, 0.5);
+    waterShimmer.setDepth(2);
+    this.academyElements.push(waterShimmer);
+
+    // Central pillar
+    const pillar = this.add.rectangle(fountainX, fountainY - Math.round(20 * SCALE), Math.round(12 * SCALE), Math.round(35 * SCALE), 0x9ca3af);
+    pillar.setOrigin(0.5, 1);
+    pillar.setDepth(3);
+    this.academyElements.push(pillar);
+
+    // Pillar top ornament (gold ball)
+    const ornament = this.add.circle(fountainX, fountainY - Math.round(38 * SCALE), Math.round(6 * SCALE), 0xfbbf24);
+    ornament.setDepth(3);
+    this.academyElements.push(ornament);
+
+    // Water animation (gentle pulse)
+    this.tweens.add({
+      targets: [fountainWater, waterShimmer],
+      alpha: { from: 1, to: 0.7 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Decorative hedges between buildings
+    const hedgePositions = [
+      Math.round(165 * SCALE),
+      Math.round(295 * SCALE),
+      Math.round(425 * SCALE),
+      Math.round(555 * SCALE),
+      Math.round(685 * SCALE),
+      Math.round(815 * SCALE),
+      Math.round(945 * SCALE),
+    ];
+
+    hedgePositions.forEach((hx) => {
+      // Hedge base
+      const hedgeBase = this.add.rectangle(hx, groundY, Math.round(50 * SCALE), Math.round(30 * SCALE), 0x166534);
+      hedgeBase.setOrigin(0.5, 1);
+      hedgeBase.setDepth(1);
+      this.academyElements.push(hedgeBase);
+
+      // Hedge top (rounded)
+      const hedgeTop = this.add.circle(hx, groundY - Math.round(30 * SCALE), Math.round(25 * SCALE), 0x22c55e);
+      hedgeTop.setDepth(1);
+      this.academyElements.push(hedgeTop);
+
+      // Hedge highlight
+      const hedgeHighlight = this.add.circle(hx - Math.round(8 * SCALE), groundY - Math.round(35 * SCALE), Math.round(10 * SCALE), 0x4ade80, 0.5);
+      hedgeHighlight.setDepth(1);
+      this.academyElements.push(hedgeHighlight);
+    });
+
+    // Benches near fountain
+    const benchPositions = [
+      { x: fountainX - Math.round(100 * SCALE), y: fountainY + Math.round(20 * SCALE) },
+      { x: fountainX + Math.round(100 * SCALE), y: fountainY + Math.round(20 * SCALE) },
+    ];
+
+    benchPositions.forEach((pos) => {
+      // Bench seat
+      const seat = this.add.rectangle(pos.x, pos.y, Math.round(50 * SCALE), Math.round(8 * SCALE), 0x8b4513);
+      seat.setDepth(2);
+      this.academyElements.push(seat);
+
+      // Bench legs
+      const leftLeg = this.add.rectangle(pos.x - Math.round(18 * SCALE), pos.y + Math.round(10 * SCALE), Math.round(5 * SCALE), Math.round(12 * SCALE), 0x5c4033);
+      leftLeg.setDepth(2);
+      this.academyElements.push(leftLeg);
+
+      const rightLeg = this.add.rectangle(pos.x + Math.round(18 * SCALE), pos.y + Math.round(10 * SCALE), Math.round(5 * SCALE), Math.round(12 * SCALE), 0x5c4033);
+      rightLeg.setDepth(2);
+      this.academyElements.push(rightLeg);
+    });
+  }
+
+  /**
+   * Setup Ballers Valley zone - exclusive area for top BagsWorld token holders
+   * Features luxury estate aesthetic with gold accents and premium landscaping
+   * Always displays golden hour (sunset) sky for VIP ambiance
+   */
+  private setupBallersZone(): void {
+    // Hide park decorations and animals
+    this.decorations.forEach((d) => d.setVisible(false));
+    this.animals.forEach((a) => a.sprite.setVisible(false));
+
+    // Hide fountain water spray
+    if (this.fountainWater) {
+      this.fountainWater.setVisible(false);
+    }
+
+    // Show grass ground for luxury estate
+    this.ground.setVisible(true);
+    this.ground.setTexture("grass");
+
+    // Apply golden hour sky for VIP zone (always sunset)
+    this.drawBallersGoldenSky();
+
+    // Only create elements once, then just show them
+    if (!this.ballersZoneCreated) {
+      this.createBallersDecorations();
+      this.ballersZoneCreated = true;
+    } else {
+      // Subsequent times - just show existing elements
+      this.ballersElements.forEach((el) => (el as any).setVisible(true));
+    }
+  }
+
+  /**
+   * Create Ballers Valley decorations - luxury estate environment
+   * Uses same groundY (550) and pathY (565) as Academy zone for consistency
+   */
+  private createBallersDecorations(): void {
+    const centerX = GAME_WIDTH / 2;
+    const groundY = Math.round(550 * SCALE); // Same as other zones - building bottom Y
+    const pathY = Math.round(565 * SCALE); // Same as Academy zone
+
+    // === GROUND LAYER (depth 0) ===
+    // Premium marble/stone pathway - covers walking area like Academy
+    const pathH = Math.round(50 * SCALE);
+    const mainPath = this.add.rectangle(GAME_WIDTH / 2, pathY, GAME_WIDTH, pathH, 0x78716c); // Warm stone gray
+    mainPath.setDepth(0);
+    this.ballersElements.push(mainPath);
+
+    // Gold trim on path edges (premium feel)
+    const topEdge = this.add.rectangle(GAME_WIDTH / 2, pathY - pathH / 2, GAME_WIDTH, Math.round(4 * SCALE), 0xfbbf24);
+    topEdge.setDepth(0);
+    this.ballersElements.push(topEdge);
+
+    const bottomEdge = this.add.rectangle(GAME_WIDTH / 2, pathY + pathH / 2, GAME_WIDTH, Math.round(4 * SCALE), 0xfbbf24);
+    bottomEdge.setDepth(0);
+    this.ballersElements.push(bottomEdge);
+
+    // Red carpet strip down center of path
+    const carpet = this.add.rectangle(centerX, pathY, Math.round(80 * SCALE), pathH - Math.round(8 * SCALE), 0x991b1b);
+    carpet.setDepth(0);
+    this.ballersElements.push(carpet);
+
+    // Carpet gold trim
+    const carpetTrimL = this.add.rectangle(centerX - Math.round(40 * SCALE), pathY, Math.round(3 * SCALE), pathH - Math.round(8 * SCALE), 0xfbbf24);
+    carpetTrimL.setDepth(0);
+    this.ballersElements.push(carpetTrimL);
+    const carpetTrimR = this.add.rectangle(centerX + Math.round(40 * SCALE), pathY, Math.round(3 * SCALE), pathH - Math.round(8 * SCALE), 0xfbbf24);
+    carpetTrimR.setDepth(0);
+    this.ballersElements.push(carpetTrimR);
+
+    // === ENTRANCE GATE (behind buildings) ===
+    const gateY = Math.round(420 * SCALE);
+    const gateSpacing = Math.round(280 * SCALE);
+
+    // Iron gate pillars (stone base + gold cap)
+    [-1, 1].forEach((side) => {
+      const px = centerX + side * gateSpacing;
+      // Stone pillar base
+      const pillarBase = this.add.rectangle(px, gateY, Math.round(24 * SCALE), Math.round(100 * SCALE), 0x57534e);
+      pillarBase.setOrigin(0.5, 1);
+      pillarBase.setDepth(1);
+      this.ballersElements.push(pillarBase);
+      // Gold cap
+      const pillarCap = this.add.rectangle(px, gateY - Math.round(100 * SCALE), Math.round(32 * SCALE), Math.round(12 * SCALE), 0xfbbf24);
+      pillarCap.setDepth(1);
+      this.ballersElements.push(pillarCap);
+      // Gold ball finial
+      const finial = this.add.circle(px, gateY - Math.round(115 * SCALE), Math.round(8 * SCALE), 0xfbbf24);
+      finial.setDepth(1);
+      this.ballersElements.push(finial);
+    });
+
+    // Iron gate arch between pillars
+    const archBar = this.add.rectangle(centerX, gateY - Math.round(90 * SCALE), gateSpacing * 2 - Math.round(24 * SCALE), Math.round(6 * SCALE), 0x292524);
+    archBar.setDepth(1);
+    this.ballersElements.push(archBar);
+
+    // Gate decorative spikes
+    for (let i = -4; i <= 4; i++) {
+      if (i === 0) continue; // Skip center
+      const spikeX = centerX + i * Math.round(50 * SCALE);
+      const spike = this.add.triangle(spikeX, gateY - Math.round(95 * SCALE), 0, 10, 5, 0, 10, 10, 0x292524);
+      spike.setScale(SCALE);
+      spike.setDepth(1);
+      this.ballersElements.push(spike);
+    }
+
+    // === BANNER ===
+    const bannerY = Math.round(340 * SCALE);
+    // Banner background
+    const bannerBg = this.add.rectangle(centerX, bannerY, Math.round(260 * SCALE), Math.round(36 * SCALE), 0x1c1917);
+    bannerBg.setDepth(2);
+    this.ballersElements.push(bannerBg);
+    // Banner gold border
+    const bannerBorder = this.add.rectangle(centerX, bannerY, Math.round(264 * SCALE), Math.round(40 * SCALE), 0xfbbf24);
+    bannerBorder.setDepth(1);
+    this.ballersElements.push(bannerBorder);
+
+    // "BALLERS VALLEY" title
+    const title = this.add.text(centerX, bannerY - Math.round(3 * SCALE), "BALLERS VALLEY", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(14 * SCALE)}px`,
+      color: "#fbbf24",
+      stroke: "#000000",
+      strokeThickness: Math.round(2 * SCALE),
+    });
+    title.setOrigin(0.5, 0.5);
+    title.setDepth(3);
+    this.ballersElements.push(title);
+
+    // Subtitle
+    const subtitle = this.add.text(centerX, bannerY + Math.round(12 * SCALE), "Top $BagsWorld Holders", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(7 * SCALE)}px`,
+      color: "#a8a29e",
+    });
+    subtitle.setOrigin(0.5, 0.5);
+    subtitle.setDepth(3);
+    this.ballersElements.push(subtitle);
+
+    // === MAIN FOUNTAIN (positioned in front of #1 WHALE mansion at 400) ===
+    // The #1 mansion is at x=400, so fountain goes in front of it
+    const fountainX = Math.round(400 * SCALE);  // Centered on #1 whale mansion
+    const fountainY = Math.round(490 * SCALE);  // In grass area between banner and path
+
+    // Fountain stone base (larger and grander for VIP zone)
+    const fountainBase = this.add.circle(fountainX, fountainY, Math.round(40 * SCALE), 0x78716c);
+    fountainBase.setDepth(1);
+    this.ballersElements.push(fountainBase);
+    // Gold rim (premium touch)
+    const fountainGoldRim = this.add.circle(fountainX, fountainY, Math.round(36 * SCALE), 0xfbbf24);
+    fountainGoldRim.setDepth(1);
+    this.ballersElements.push(fountainGoldRim);
+    // Fountain inner rim
+    const fountainRim = this.add.circle(fountainX, fountainY, Math.round(32 * SCALE), 0x57534e);
+    fountainRim.setDepth(1);
+    this.ballersElements.push(fountainRim);
+    // Water
+    const fountainWater = this.add.circle(fountainX, fountainY, Math.round(28 * SCALE), 0x3b82f6);
+    fountainWater.setDepth(2);
+    this.ballersElements.push(fountainWater);
+    // Water shimmer effect
+    const waterShimmer = this.add.circle(fountainX - Math.round(10 * SCALE), fountainY - Math.round(8 * SCALE), Math.round(8 * SCALE), 0x60a5fa, 0.5);
+    waterShimmer.setDepth(2);
+    this.ballersElements.push(waterShimmer);
+    // Gold center statue/pillar
+    const pillar = this.add.rectangle(fountainX, fountainY - Math.round(18 * SCALE), Math.round(10 * SCALE), Math.round(35 * SCALE), 0xfbbf24);
+    pillar.setOrigin(0.5, 1);
+    pillar.setDepth(3);
+    this.ballersElements.push(pillar);
+    // Gold crown ornament on top
+    const crownBase = this.add.rectangle(fountainX, fountainY - Math.round(35 * SCALE), Math.round(14 * SCALE), Math.round(6 * SCALE), 0xf59e0b);
+    crownBase.setDepth(3);
+    this.ballersElements.push(crownBase);
+    // Crown points
+    [-1, 0, 1].forEach((offset) => {
+      const crownPoint = this.add.triangle(
+        fountainX + offset * Math.round(4 * SCALE),
+        fountainY - Math.round(42 * SCALE),
+        0, 8, 4, 0, 8, 8,
+        0xfbbf24
+      );
+      crownPoint.setScale(SCALE);
+      crownPoint.setDepth(3);
+      this.ballersElements.push(crownPoint);
+    });
+
+    // === MANICURED HEDGES/TOPIARIES (at groundY, between mansions) ===
+    // Mansion positions: #1=400, #2=200, #3=600, #4=80, #5=720 (unscaled)
+    // Place hedges in gaps between mansion positions
+    const hedgePositions = [
+      Math.round(140 * SCALE),  // Between #4 (80) and #2 (200)
+      Math.round(300 * SCALE),  // Between #2 (200) and #1 (400)
+      Math.round(500 * SCALE),  // Between #1 (400) and #3 (600)
+      Math.round(660 * SCALE),  // Between #3 (600) and #5 (720)
+    ];
+
+    hedgePositions.forEach((hx) => {
+      // Hedge base (rectangular topiary)
+      const hedge = this.add.rectangle(hx, groundY, Math.round(35 * SCALE), Math.round(45 * SCALE), 0x166534);
+      hedge.setOrigin(0.5, 1);
+      hedge.setDepth(1);
+      this.ballersElements.push(hedge);
+      // Hedge top (rounded ball shape)
+      const hedgeTop = this.add.circle(hx, groundY - Math.round(45 * SCALE), Math.round(20 * SCALE), 0x22c55e);
+      hedgeTop.setDepth(1);
+      this.ballersElements.push(hedgeTop);
+      // Hedge highlight
+      const hedgeHighlight = this.add.circle(hx - Math.round(6 * SCALE), groundY - Math.round(50 * SCALE), Math.round(7 * SCALE), 0x4ade80, 0.5);
+      hedgeHighlight.setDepth(1);
+      this.ballersElements.push(hedgeHighlight);
+    });
+
+    // === SMALL FOUNTAINS between outer mansions ===
+    // Place decorative fountains in the larger gaps
+    const smallFountainPositions = [
+      Math.round(40 * SCALE),   // Left edge before #4
+      Math.round(760 * SCALE),  // Right edge after #5
+    ];
+
+    smallFountainPositions.forEach((fx) => {
+      // Small fountain base
+      const fBase = this.add.circle(fx, groundY - Math.round(10 * SCALE), Math.round(18 * SCALE), 0x78716c);
+      fBase.setDepth(1);
+      this.ballersElements.push(fBase);
+      // Water
+      const fWater = this.add.circle(fx, groundY - Math.round(10 * SCALE), Math.round(14 * SCALE), 0x3b82f6);
+      fWater.setDepth(1);
+      this.ballersElements.push(fWater);
+      // Gold spout
+      const fSpout = this.add.rectangle(fx, groundY - Math.round(20 * SCALE), Math.round(4 * SCALE), Math.round(15 * SCALE), 0xfbbf24);
+      fSpout.setOrigin(0.5, 1);
+      fSpout.setDepth(2);
+      this.ballersElements.push(fSpout);
+    });
+
+    // === LUXURY LAMP POSTS (gold-tinted street lamps) ===
+    // Position lamps to flank the mansion row without overlapping
+    const lampPositions = [
+      Math.round(120 * SCALE),  // Near #4
+      Math.round(260 * SCALE),  // Between #2 and #4
+      Math.round(340 * SCALE),  // Near #1 left
+      Math.round(460 * SCALE),  // Near #1 right
+      Math.round(560 * SCALE),  // Between #1 and #3
+      Math.round(680 * SCALE),  // Near #3/#5
+    ];
+
+    lampPositions.forEach((lx) => {
+      const lamp = this.add.sprite(lx, groundY, "street_lamp");
+      lamp.setOrigin(0.5, 1);
+      lamp.setDepth(3);
+      lamp.setTint(0xfbbf24); // Gold tint for luxury feel
+      this.ballersElements.push(lamp);
+    });
+
+    // Decorative gold particles (sparkles)
+    const sparklePositions = [
+      { x: 100, y: 350 },
+      { x: 300, y: 380 },
+      { x: 500, y: 340 },
+      { x: 700, y: 370 },
+      { x: 250, y: 450 },
+      { x: 550, y: 440 },
+    ];
+
+    sparklePositions.forEach((pos) => {
+      const sx = Math.round(pos.x * SCALE);
+      const sy = Math.round(pos.y * SCALE);
+
+      const sparkle = this.add.circle(sx, sy, Math.round(3 * SCALE), 0xfbbf24, 0.6);
+      sparkle.setDepth(1);
+      this.ballersElements.push(sparkle);
+
+      // Sparkle animation
+      this.tweens.add({
+        targets: sparkle,
+        alpha: { from: 0.6, to: 0.2 },
+        scale: { from: 1, to: 0.7 },
+        duration: 1500 + Math.random() * 1000,
+        yoyo: true,
+        repeat: -1,
+      });
+    });
+  }
+
   // Handle AI behavior commands for characters
   private handleBehaviorCommand(event: CustomEvent): void {
     const command = event.detail;
@@ -1630,6 +2396,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateSkyForTime(timeInfo: { isNight: boolean; isDusk: boolean; isDawn: boolean }): void {
+    // Don't update sky if we're in Ballers Valley (always golden hour there)
+    // or Academy (always magical twilight there)
+    if (this.currentZone === "ballers" || this.currentZone === "academy") {
+      return;
+    }
+
     const isNightOrDusk = timeInfo.isNight || timeInfo.isDusk;
 
     // Update sky gradient
@@ -1642,6 +2414,253 @@ export class WorldScene extends Phaser.Scene {
         targets: star,
         alpha: targetAlpha,
         duration: 2000,
+        ease: "Sine.easeInOut",
+      });
+    });
+  }
+
+  /**
+   * Draw the golden hour (sunset) sky for Ballers Valley
+   * Creates a warm orange-to-peach gradient that gives the VIP zone
+   * an exclusive, luxurious feel - always sunset, never changes
+   */
+  private drawBallersGoldenSky(): void {
+    // Create the golden sky graphics object if it doesn't exist
+    if (!this.ballersGoldenSky) {
+      this.ballersGoldenSky = this.add.graphics();
+      this.ballersGoldenSky.setDepth(-2); // Same depth as main sky
+      this.ballersElements.push(this.ballersGoldenSky);
+    }
+
+    this.ballersGoldenSky.clear();
+
+    // Golden hour sunset gradient - warm orange top to soft peach bottom
+    // Top colors (warm orange)
+    const topLeft = 0xf97316;  // Tailwind orange-500
+    const topRight = 0xfb923c; // Tailwind orange-400
+    // Bottom colors (soft peach/gold)
+    const bottomLeft = 0xfed7aa;  // Tailwind orange-200
+    const bottomRight = 0xfcd34d; // Tailwind amber-300
+
+    this.ballersGoldenSky.fillGradientStyle(
+      topLeft,
+      topRight,
+      bottomLeft,
+      bottomRight,
+      1 // Full opacity
+    );
+    this.ballersGoldenSky.fillRect(0, 0, GAME_WIDTH, Math.round(430 * SCALE));
+    this.ballersGoldenSky.setVisible(true);
+
+    // Hide the main sky gradient when showing golden sky
+    if (this.skyGradient) {
+      this.skyGradient.setVisible(false);
+    }
+
+    // Dim stars in golden hour (sunset still has some stars starting to show)
+    this.stars.forEach((star) => {
+      this.tweens.add({
+        targets: star,
+        alpha: 0.15, // Very faint stars
+        duration: 500,
+        ease: "Sine.easeInOut",
+      });
+    });
+  }
+
+  /**
+   * Restore the normal sky when leaving Ballers Valley
+   * Shows the main sky gradient and updates it based on current time
+   */
+  private restoreNormalSky(): void {
+    // Hide the golden sky
+    if (this.ballersGoldenSky) {
+      this.ballersGoldenSky.setVisible(false);
+    }
+
+    // Hide the academy twilight sky
+    if (this.academyTwilightSky) {
+      this.academyTwilightSky.setVisible(false);
+    }
+    if (this.academyMoon) {
+      this.academyMoon.setVisible(false);
+    }
+    this.academyStars.forEach((star) => star.setVisible(false));
+
+    // Show the main sky gradient
+    if (this.skyGradient) {
+      this.skyGradient.setVisible(true);
+    }
+
+    // Stars will be updated on next time update cycle
+  }
+
+  /**
+   * Draw the magical twilight sky for Academy zone
+   * Creates a mystical purple-to-indigo gradient that gives the Academy
+   * a Hogwarts-like magical atmosphere - always twilight, with bright stars and moon
+   */
+  private drawAcademyTwilightSky(): void {
+    // Create the twilight sky graphics object if it doesn't exist
+    if (!this.academyTwilightSky) {
+      this.academyTwilightSky = this.add.graphics();
+      this.academyTwilightSky.setDepth(-2);
+      this.academyElements.push(this.academyTwilightSky);
+    }
+
+    this.academyTwilightSky.clear();
+
+    // Magical twilight gradient - deep purple top to mystical indigo bottom
+    // Top colors (deep space purple)
+    const topLeft = 0x1e1b4b;   // Very dark indigo
+    const topRight = 0x312e81;  // Deep indigo
+    // Bottom colors (twilight purple-blue)
+    const bottomLeft = 0x4c1d95;  // Violet-purple
+    const bottomRight = 0x5b21b6; // Rich purple
+
+    this.academyTwilightSky.fillGradientStyle(
+      topLeft,
+      topRight,
+      bottomLeft,
+      bottomRight,
+      1
+    );
+    this.academyTwilightSky.fillRect(0, 0, GAME_WIDTH, Math.round(430 * SCALE));
+    this.academyTwilightSky.setVisible(true);
+
+    // Hide the main sky gradient when showing twilight sky
+    if (this.skyGradient) {
+      this.skyGradient.setVisible(false);
+    }
+    if (this.ballersGoldenSky) {
+      this.ballersGoldenSky.setVisible(false);
+    }
+
+    // Create crescent moon if it doesn't exist
+    if (!this.academyMoon) {
+      const moonX = GAME_WIDTH - Math.round(120 * SCALE);
+      const moonY = Math.round(80 * SCALE);
+      const moonRadius = Math.round(35 * SCALE);
+
+      // Main moon glow (outer)
+      const moonGlow = this.add.circle(moonX, moonY, moonRadius + Math.round(15 * SCALE), 0xfef3c7, 0.15);
+      moonGlow.setDepth(-1.9);
+      this.academyElements.push(moonGlow);
+
+      // Moon body
+      this.academyMoon = this.add.circle(moonX, moonY, moonRadius, 0xfef9c3); // Pale yellow
+      this.academyMoon.setDepth(-1.8);
+      this.academyElements.push(this.academyMoon);
+
+      // Crescent shadow (to make it look like crescent moon)
+      const crescentShadow = this.add.circle(
+        moonX + Math.round(12 * SCALE),
+        moonY - Math.round(5 * SCALE),
+        moonRadius - Math.round(5 * SCALE),
+        0x1e1b4b // Same as sky top color
+      );
+      crescentShadow.setDepth(-1.7);
+      this.academyElements.push(crescentShadow);
+
+      // Subtle moon surface details
+      const crater1 = this.add.circle(moonX - Math.round(8 * SCALE), moonY + Math.round(5 * SCALE), Math.round(4 * SCALE), 0xfde68a, 0.3);
+      crater1.setDepth(-1.75);
+      this.academyElements.push(crater1);
+
+      const crater2 = this.add.circle(moonX - Math.round(12 * SCALE), moonY - Math.round(8 * SCALE), Math.round(3 * SCALE), 0xfde68a, 0.25);
+      crater2.setDepth(-1.75);
+      this.academyElements.push(crater2);
+
+      // Add gentle pulsing glow animation to moon
+      this.tweens.add({
+        targets: moonGlow,
+        alpha: 0.25,
+        duration: 3000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+    this.academyMoon.setVisible(true);
+
+    // Create extra bright stars for Academy if they don't exist
+    if (this.academyStars.length === 0) {
+      // Bright constellation stars
+      const starPositions = [
+        { x: 100, y: 50, size: 3, alpha: 0.9 },
+        { x: 180, y: 120, size: 2.5, alpha: 0.85 },
+        { x: 250, y: 70, size: 2, alpha: 0.8 },
+        { x: 320, y: 150, size: 2.5, alpha: 0.85 },
+        { x: 400, y: 60, size: 3, alpha: 0.9 },
+        { x: 480, y: 130, size: 2, alpha: 0.8 },
+        { x: 550, y: 80, size: 2.5, alpha: 0.85 },
+        { x: 620, y: 140, size: 2, alpha: 0.8 },
+        { x: 700, y: 55, size: 3, alpha: 0.9 },
+        { x: 760, y: 110, size: 2.5, alpha: 0.85 },
+        { x: 150, y: 180, size: 2, alpha: 0.75 },
+        { x: 350, y: 200, size: 2, alpha: 0.75 },
+        { x: 580, y: 190, size: 2, alpha: 0.75 },
+        { x: 220, y: 30, size: 2.5, alpha: 0.85 },
+        { x: 450, y: 25, size: 2, alpha: 0.8 },
+        { x: 680, y: 35, size: 2.5, alpha: 0.85 },
+      ];
+
+      starPositions.forEach((pos) => {
+        const star = this.add.circle(
+          Math.round(pos.x * SCALE),
+          Math.round(pos.y * SCALE),
+          Math.round(pos.size * SCALE),
+          0xffffff,
+          pos.alpha
+        );
+        star.setDepth(-1.5);
+        this.academyStars.push(star);
+        this.academyElements.push(star);
+
+        // Add twinkling animation with varying speeds
+        this.tweens.add({
+          targets: star,
+          alpha: pos.alpha * 0.4,
+          duration: 800 + Math.random() * 1500,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      });
+
+      // Add some smaller background stars
+      for (let i = 0; i < 40; i++) {
+        const star = this.add.circle(
+          Math.random() * GAME_WIDTH,
+          Math.random() * Math.round(250 * SCALE),
+          Math.round((0.8 + Math.random() * 1.2) * SCALE),
+          0xc4b5fd, // Soft purple-white stars
+          0.4 + Math.random() * 0.3
+        );
+        star.setDepth(-1.6);
+        this.academyStars.push(star);
+        this.academyElements.push(star);
+
+        this.tweens.add({
+          targets: star,
+          alpha: 0.2,
+          duration: 1000 + Math.random() * 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      }
+    }
+
+    // Show all academy stars
+    this.academyStars.forEach((star) => star.setVisible(true));
+
+    // Dim main stars in twilight
+    this.stars.forEach((star) => {
+      this.tweens.add({
+        targets: star,
+        alpha: 0.1,
+        duration: 500,
         ease: "Sine.easeInOut",
       });
     });
@@ -3129,7 +4148,7 @@ export class WorldScene extends Phaser.Scene {
       const shouldShow = zoneCharacterIds.has(id);
       sprite.setVisible(shouldShow);
 
-      // Handle associated glow sprites (including Shaw)
+      // Handle associated glow sprites (including Shaw and Academy characters)
       const glowKeys = [
         "tolyGlow",
         "ashGlow",
@@ -3138,6 +4157,14 @@ export class WorldScene extends Phaser.Scene {
         "scoutGlow",
         "cjGlow",
         "shawGlow",
+        // Academy character glows
+        "ramoGlow",
+        "sincaraGlow",
+        "stuuGlow",
+        "samGlow",
+        "alaaGlow",
+        "carloGlow",
+        "bnnGlow",
       ];
       glowKeys.forEach((key) => {
         const glow = (sprite as any)[key];
@@ -3150,7 +4177,7 @@ export class WorldScene extends Phaser.Scene {
     // Remove old characters and their associated glow sprites
     this.characterSprites.forEach((sprite, id) => {
       if (!currentIds.has(id)) {
-        // Clean up associated glow sprites before destroying
+        // Clean up associated glow sprites before destroying (including Academy characters)
         const glowKeys = [
           "tolyGlow",
           "ashGlow",
@@ -3159,6 +4186,14 @@ export class WorldScene extends Phaser.Scene {
           "scoutGlow",
           "cjGlow",
           "shawGlow",
+          // Academy character glows
+          "ramoGlow",
+          "sincaraGlow",
+          "stuuGlow",
+          "samGlow",
+          "alaaGlow",
+          "carloGlow",
+          "bnnGlow",
         ];
         glowKeys.forEach((key) => {
           const glow = (sprite as any)[key];
@@ -3214,7 +4249,7 @@ export class WorldScene extends Phaser.Scene {
     character: GameCharacter,
     sprite: Phaser.GameObjects.Sprite
   ): void {
-    // Update special character glow positions if they exist
+    // Update special character glow positions if they exist (including Academy characters)
     const glowKeys = [
       "tolyGlow",
       "ashGlow",
@@ -3223,6 +4258,14 @@ export class WorldScene extends Phaser.Scene {
       "scoutGlow",
       "cjGlow",
       "shawGlow",
+      // Academy character glows
+      "ramoGlow",
+      "sincaraGlow",
+      "stuuGlow",
+      "samGlow",
+      "alaaGlow",
+      "carloGlow",
+      "bnnGlow",
     ];
     glowKeys.forEach((key) => {
       const glow = (sprite as any)[key];
@@ -3232,7 +4275,7 @@ export class WorldScene extends Phaser.Scene {
       }
     });
 
-    // Update texture based on mood (skip for special characters)
+    // Update texture based on mood (skip for special characters including Academy)
     const isToly = character.isToly === true;
     const isAsh = character.isAsh === true;
     const isFinn = character.isFinn === true;
@@ -3240,7 +4283,16 @@ export class WorldScene extends Phaser.Scene {
     const isScout = character.isScout === true;
     const isCJ = character.isCJ === true;
     const isShaw = character.isShaw === true;
-    if (!isToly && !isAsh && !isFinn && !isDev && !isScout && !isCJ && !isShaw) {
+    // Academy characters
+    const isRamo = character.isRamo === true;
+    const isSincara = character.isSincara === true;
+    const isStuu = character.isStuu === true;
+    const isSam = character.isSam === true;
+    const isAlaa = character.isAlaa === true;
+    const isCarlo = character.isCarlo === true;
+    const isBNN = character.isBNN === true;
+    const isAcademyChar = isRamo || isSincara || isStuu || isSam || isAlaa || isCarlo || isBNN;
+    if (!isToly && !isAsh && !isFinn && !isDev && !isScout && !isCJ && !isShaw && !isAcademyChar) {
       const variant = this.characterVariants.get(character.id) ?? 0;
       const expectedTexture = this.getCharacterTexture(character.mood, variant);
       if (sprite.texture.key !== expectedTexture) {
@@ -3258,7 +4310,16 @@ export class WorldScene extends Phaser.Scene {
     const isScout = character.isScout === true;
     const isCJ = character.isCJ === true;
     const isShaw = character.isShaw === true;
-    const isSpecial = isToly || isAsh || isFinn || isDev || isScout || isCJ || isShaw;
+    // Academy characters
+    const isRamo = character.isRamo === true;
+    const isSincara = character.isSincara === true;
+    const isStuu = character.isStuu === true;
+    const isSam = character.isSam === true;
+    const isAlaa = character.isAlaa === true;
+    const isCarlo = character.isCarlo === true;
+    const isBNN = character.isBNN === true;
+    const isAcademyChar = isRamo || isSincara || isStuu || isSam || isAlaa || isCarlo || isBNN;
+    const isSpecial = isToly || isAsh || isFinn || isDev || isScout || isCJ || isShaw || isAcademyChar;
     const variant = index % 9;
     this.characterVariants.set(character.id, variant);
 
@@ -3276,7 +4337,21 @@ export class WorldScene extends Phaser.Scene {
                 ? "cj"
                 : isShaw
                   ? "shaw"
-                  : this.getCharacterTexture(character.mood, variant);
+                  : isRamo
+                    ? "ramo"
+                    : isSincara
+                      ? "sincara"
+                      : isStuu
+                        ? "stuu"
+                        : isSam
+                          ? "sam"
+                          : isAlaa
+                            ? "alaa"
+                            : isCarlo
+                              ? "carlo"
+                              : isBNN
+                                ? "bnn"
+                                : this.getCharacterTexture(character.mood, variant);
     const sprite = this.add.sprite(character.x, character.y, textureKey);
     sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
     sprite.setInteractive();
@@ -3299,6 +4374,20 @@ export class WorldScene extends Phaser.Scene {
         this.showCJTooltip(sprite!);
       } else if (isShaw) {
         this.showShawTooltip(sprite!);
+      } else if (isRamo) {
+        this.showRamoTooltip(sprite!);
+      } else if (isSincara) {
+        this.showSincaraTooltip(sprite!);
+      } else if (isStuu) {
+        this.showStuuTooltip(sprite!);
+      } else if (isSam) {
+        this.showSamTooltip(sprite!);
+      } else if (isAlaa) {
+        this.showAlaaTooltip(sprite!);
+      } else if (isCarlo) {
+        this.showCarloTooltip(sprite!);
+      } else if (isBNN) {
+        this.showBNNTooltip(sprite!);
       } else {
         this.showCharacterTooltip(character, sprite!);
       }
@@ -3331,6 +4420,27 @@ export class WorldScene extends Phaser.Scene {
       } else if (isShaw) {
         // Shaw opens the ElizaOS creator chat
         window.dispatchEvent(new CustomEvent("bagsworld-shaw-click"));
+      } else if (isRamo) {
+        // Ramo opens the CTO chat
+        window.dispatchEvent(new CustomEvent("bagsworld-ramo-click"));
+      } else if (isSincara) {
+        // Sincara opens the frontend engineer chat
+        window.dispatchEvent(new CustomEvent("bagsworld-sincara-click"));
+      } else if (isStuu) {
+        // Stuu opens the operations chat
+        window.dispatchEvent(new CustomEvent("bagsworld-stuu-click"));
+      } else if (isSam) {
+        // Sam opens the growth chat
+        window.dispatchEvent(new CustomEvent("bagsworld-sam-click"));
+      } else if (isAlaa) {
+        // Alaa opens the skunk works chat
+        window.dispatchEvent(new CustomEvent("bagsworld-alaa-click"));
+      } else if (isCarlo) {
+        // Carlo opens the community chat
+        window.dispatchEvent(new CustomEvent("bagsworld-carlo-click"));
+      } else if (isBNN) {
+        // BNN opens the news network chat
+        window.dispatchEvent(new CustomEvent("bagsworld-bnn-click"));
       } else if (character.profileUrl) {
         // Open profile page in new tab
         window.open(character.profileUrl, "_blank");
@@ -3365,6 +4475,14 @@ export class WorldScene extends Phaser.Scene {
       },
       { active: isCJ, key: "cjGlow", tint: 0xf97316, duration: 1200 },
       { active: isShaw, key: "shawGlow", tint: 0xff5800, duration: 1000 },
+      // Academy character glows
+      { active: isRamo, key: "ramoGlow", tint: 0x3b82f6, duration: 1100 }, // Blue - technical
+      { active: isSincara, key: "sincaraGlow", tint: 0xec4899, duration: 1300 }, // Pink - creative
+      { active: isStuu, key: "stuuGlow", tint: 0x22c55e, duration: 1000 }, // Green - support
+      { active: isSam, key: "samGlow", tint: 0xfbbf24, duration: 900 }, // Yellow - marketing energy
+      { active: isAlaa, key: "alaaGlow", tint: 0x6366f1, alpha: 0.5, targetAlpha: 0.8, duration: 700 }, // Indigo - mysterious
+      { active: isCarlo, key: "carloGlow", tint: 0xf97316, duration: 1100 }, // Orange - community warmth
+      { active: isBNN, key: "bnnGlow", tint: 0x06b6d4, duration: 800 }, // Cyan - news/info
     ];
 
     for (const cfg of glowConfigs) {
@@ -3387,7 +4505,10 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Store character type flags on sprite for speech bubble system
-    Object.assign(sprite, { isToly, isAsh, isFinn, isDev, isScout, isCJ, isShaw });
+    Object.assign(sprite, {
+      isToly, isAsh, isFinn, isDev, isScout, isCJ, isShaw,
+      isRamo, isSincara, isStuu, isSam, isAlaa, isCarlo, isBNN
+    });
 
     this.characterSprites.set(character.id, sprite);
   }
@@ -3614,13 +4735,14 @@ export class WorldScene extends Phaser.Scene {
       container.add(shadow);
     }
 
-    // Use special texture for PokeCenter/TradingGym/Casino/Terminal/HQ, otherwise use level-based building with style
+    // Use special texture for PokeCenter/TradingGym/Casino/Terminal/HQ/Mansions, otherwise use level-based building with style
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
     const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
     const isTradingTerminal =
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
     const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
+    const isMansion = building.isMansion || building.symbol === "MANSION";
 
     // Determine building style from mint address (deterministic - same token always gets same style)
     // Each level has 4 styles (0-3)
@@ -3634,34 +4756,43 @@ export class WorldScene extends Phaser.Scene {
       return Math.abs(hash) % 4;
     };
 
+    // For mansions, use holderRank to determine style (0-4)
+    const mansionStyleIndex = isMansion ? Math.min((building.holderRank || 1) - 1, 4) : 0;
+
     const styleIndex = getBuildingStyle(building.id);
     const buildingTexture = isBagsWorldHQ
       ? "bagshq"
-      : isPokeCenter
-        ? "pokecenter"
-        : isTradingGym
-          ? "tradinggym"
-          : isCasino
-            ? "casino"
-            : isTradingTerminal
-              ? "terminal"
-              : `building_${building.level}_${styleIndex}`;
+      : isMansion
+        ? `mansion_${mansionStyleIndex}`
+        : isPokeCenter
+          ? "pokecenter"
+          : isTradingGym
+            ? "tradinggym"
+            : isCasino
+              ? "casino"
+              : isTradingTerminal
+                ? "terminal"
+                : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
-    // HQ is larger and floating
+    // HQ is larger and floating, mansions use rank-based scaling from building data
     const hqScale = 1.5;
+    // Mansions use mansionScale from world-calculator (1.5 for #1, 1.3 for #2-3, 1.15 for #4-5)
+    const mansionScale = building.mansionScale || 1.2;
     sprite.setScale(
       isBagsWorldHQ
         ? hqScale
-        : isPokeCenter
-          ? 1.0
-          : isTradingGym
+        : isMansion
+          ? mansionScale
+          : isPokeCenter
             ? 1.0
-            : isCasino
+            : isTradingGym
               ? 1.0
-              : isTradingTerminal
+              : isCasino
                 ? 1.0
-                : buildingScale
+                : isTradingTerminal
+                  ? 1.0
+                  : buildingScale
     );
     container.add(sprite);
 
@@ -3693,6 +4824,107 @@ export class WorldScene extends Phaser.Scene {
         alpha: 0.25,
         scale: 1.4,
         duration: 2000,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+
+    // Add gold glow, rank badge, and holder info for Mansions (Ballers Valley)
+    if (isMansion) {
+      const isWhale = building.holderRank === 1;
+      const glowScale = isWhale ? 1.8 : 1.4;
+      const glowAlpha = isWhale ? 0.3 : 0.2;
+      const glowY = isWhale ? -100 : -80;
+
+      // Gold glow effect (larger and brighter for #1 WHALE)
+      const mansionGlow = this.add.sprite(0, glowY, "glow");
+      mansionGlow.setScale(glowScale);
+      mansionGlow.setAlpha(glowAlpha);
+      mansionGlow.setTint(0xfbbf24); // Gold
+      container.addAt(mansionGlow, 0); // Add behind sprite
+
+      // Pulsing glow animation (more dramatic for #1)
+      this.tweens.add({
+        targets: mansionGlow,
+        alpha: isWhale ? 0.5 : 0.35,
+        scale: glowScale + (isWhale ? 0.4 : 0.2),
+        duration: isWhale ? 2000 : 2500,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+      });
+
+      // #1 WHALE gets a secondary sparkle glow
+      if (isWhale) {
+        const sparkleGlow = this.add.sprite(0, glowY + 20, "glow");
+        sparkleGlow.setScale(1.0);
+        sparkleGlow.setAlpha(0.15);
+        sparkleGlow.setTint(0xfcd34d); // Brighter gold/amber
+        container.addAt(sparkleGlow, 0);
+
+        this.tweens.add({
+          targets: sparkleGlow,
+          alpha: 0.3,
+          scale: 1.3,
+          duration: 1500,
+          ease: "Sine.easeInOut",
+          yoyo: true,
+          repeat: -1,
+          delay: 500, // Offset for layered effect
+        });
+      }
+
+      // Rank badge background
+      const badgeY = -150 * (building.mansionScale || 1.2);
+      const badgeBg = this.add.rectangle(0, badgeY, isWhale ? 100 : 50, 24, 0x1f2937);
+      badgeBg.setStrokeStyle(2, 0xfbbf24);
+      container.add(badgeBg);
+
+      // Rank badge text
+      const rankText = isWhale ? "#1 WHALE" : `#${building.holderRank || "?"}`;
+      const rankBadge = this.add.text(0, badgeY, rankText, {
+        fontFamily: "monospace",
+        fontSize: isWhale ? "14px" : "16px",
+        color: "#fbbf24",
+        stroke: "#000000",
+        strokeThickness: 2,
+      });
+      rankBadge.setOrigin(0.5, 0.5);
+      container.add(rankBadge);
+
+      // Truncated wallet address
+      const truncAddr = building.holderAddress
+        ? `${building.holderAddress.slice(0, 4)}...${building.holderAddress.slice(-4)}`
+        : "????...????";
+      const addrText = this.add.text(0, badgeY + 18, truncAddr, {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#9ca3af",
+      });
+      addrText.setOrigin(0.5, 0.5);
+      container.add(addrText);
+
+      // Holdings amount (formatted)
+      const formatHoldings = (balance: number | undefined): string => {
+        if (!balance) return "0";
+        if (balance >= 1000000) return `${(balance / 1000000).toFixed(1)}M`;
+        if (balance >= 1000) return `${(balance / 1000).toFixed(1)}K`;
+        return balance.toFixed(0);
+      };
+      const holdingsText = this.add.text(0, badgeY + 32, `${formatHoldings(building.holderBalance)} $BAGS`, {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#fbbf24",
+      });
+      holdingsText.setOrigin(0.5, 0.5);
+      container.add(holdingsText);
+
+      // Subtle badge pulse (more dramatic for #1)
+      this.tweens.add({
+        targets: [badgeBg, rankBadge],
+        scale: { from: 1, to: isWhale ? 1.15 : 1.08 },
+        duration: isWhale ? 1200 : 1500,
         ease: "Sine.easeInOut",
         yoyo: true,
         repeat: -1,
@@ -3819,8 +5051,22 @@ export class WorldScene extends Phaser.Scene {
       const isStarterBuilding = building.id.startsWith("Starter");
       const isTreasuryBuilding = building.id.startsWith("Treasury");
       const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
+      const isMansionBuilding = building.isMansion || building.symbol === "MANSION";
 
-      if (isPokeCenter) {
+      if (isMansionBuilding) {
+        // Mansion shows holder info popup
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-mansion-click", {
+            detail: {
+              buildingId: building.id,
+              name: building.name,
+              holderRank: building.holderRank,
+              holderAddress: building.holderAddress,
+              holderBalance: building.holderBalance,
+            },
+          })
+        );
+      } else if (isPokeCenter) {
         // PokeCenter opens the auto-claim hub modal
         window.dispatchEvent(
           new CustomEvent("bagsworld-pokecenter-click", {
@@ -4234,6 +5480,294 @@ export class WorldScene extends Phaser.Scene {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#ff5800",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  // Academy Character Tooltips
+  private showRamoTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x0a1628, 0.95);
+    bg.setStrokeStyle(2, 0x3b82f6); // Blue border
+
+    const nameText = this.add.text(0, -22, "🔧 Ramo", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#3b82f6",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "CTO • @ramyobags", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "the code does not lie", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#3b82f6",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showSincaraTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x1f0a1f, 0.95);
+    bg.setStrokeStyle(2, 0xec4899); // Pink border
+
+    const nameText = this.add.text(0, -22, "🎨 Sincara", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#ec4899",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Frontend Engineer • @sincara_bags", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "pixel-perfect or nothing", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#ec4899",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showStuuTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x0a1f0a, 0.95);
+    bg.setStrokeStyle(2, 0x22c55e); // Green border
+
+    const nameText = this.add.text(0, -22, "🎧 Stuu", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#22c55e",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Operations & Support • @StuuBags", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "happy users, happy life", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#22c55e",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showSamTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x1f1a0a, 0.95);
+    bg.setStrokeStyle(2, 0xfbbf24); // Yellow border
+
+    const nameText = this.add.text(0, -22, "📣 Sam", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#fbbf24",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Growth & Marketing • @Sambags12", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "make noise that converts", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#fbbf24",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showAlaaTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x0f0a1f, 0.95);
+    bg.setStrokeStyle(2, 0x6366f1); // Indigo border
+
+    const nameText = this.add.text(0, -22, "🦨 Alaa", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#6366f1",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Skunk Works • @alaadotsol", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "if it's crazy enough, it works", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#6366f1",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showCarloTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x1f0f0a, 0.95);
+    bg.setStrokeStyle(2, 0xf97316); // Orange border
+
+    const nameText = this.add.text(0, -22, "🤝 Carlo", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#f97316",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Community Ambassador • @carlobags", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "vibes are everything", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#f97316",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showBNNTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 180, 78, 0x0a1a1f, 0.95);
+    bg.setStrokeStyle(2, 0x06b6d4); // Cyan border
+
+    const nameText = this.add.text(0, -22, "📰 BNN", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#06b6d4",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "Bags News Network • @BNNBags", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, "breaking: alpha incoming", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#06b6d4",
     });
     clickText.setOrigin(0.5, 0.5);
 
