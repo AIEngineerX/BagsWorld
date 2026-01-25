@@ -2,6 +2,7 @@
 
 interface MansionModalProps {
   onClose: () => void;
+  name?: string;
   holderRank?: number;
   holderAddress?: string;
   holderBalance?: number;
@@ -9,6 +10,7 @@ interface MansionModalProps {
 
 export function MansionModal({
   onClose,
+  name,
   holderRank,
   holderAddress,
   holderBalance,
@@ -19,10 +21,13 @@ export function MansionModal({
     }
   };
 
-  // Truncate address for display
-  const truncatedAddress = holderAddress
-    ? `${holderAddress.slice(0, 4)}...${holderAddress.slice(-4)}`
-    : "Unknown";
+  // Truncate address for display (show "Unclaimed" for placeholders)
+  const isPlaceholder = holderAddress?.includes("xxxx");
+  const truncatedAddress = !holderAddress
+    ? "Unknown"
+    : isPlaceholder
+      ? "Unclaimed"
+      : `${holderAddress.slice(0, 4)}...${holderAddress.slice(-4)}`;
 
   // Format balance
   const formattedBalance = holderBalance
@@ -64,7 +69,7 @@ export function MansionModal({
               <span className="font-pixel text-lg sm:text-xl text-white">#{holderRank || "?"}</span>
             </div>
             <div>
-              <h2 className="font-pixel text-white text-xs sm:text-sm">MANSION #{holderRank}</h2>
+              <h2 className="font-pixel text-white text-xs sm:text-sm">{name || `MANSION #${holderRank}`}</h2>
               <p className="font-pixel text-yellow-200 text-[7px] sm:text-[8px]">
                 {getRankTitle(holderRank)} of $BagsWorld
               </p>
@@ -118,8 +123,8 @@ export function MansionModal({
             </p>
           </div>
 
-          {/* View on Solscan */}
-          {holderAddress && (
+          {/* View on Solscan - only show for real addresses */}
+          {holderAddress && !holderAddress.includes("xxxx") && (
             <a
               href={`https://solscan.io/account/${holderAddress}`}
               target="_blank"

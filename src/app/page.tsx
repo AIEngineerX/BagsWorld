@@ -49,6 +49,8 @@ import { LauncherHub } from "@/components/LauncherHub";
 import { TradingTerminalModal } from "@/components/TradingTerminalModal";
 import { MansionModal } from "@/components/MansionModal";
 import { MiniMap } from "@/components/MiniMap";
+import { SniperTower } from "@/components/SniperTower";
+import { useGameStore } from "@/lib/store";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import {
   initDialogueEventBridge,
@@ -65,6 +67,12 @@ import { AgentActivityIndicator } from "@/components/AgentActivityIndicator";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 const CASINO_ADMIN_WALLET = "7BAHgz9Q2ubiTaVo9sCy5AdDvNMiJaK8FebGHTM3PEwm";
+
+// Sniper Tower wrapper that connects to the game store
+function SniperTowerWrapper() {
+  const { isSniperTowerOpen, closeSniperTower } = useGameStore();
+  return <SniperTower isOpen={isSniperTowerOpen} onClose={closeSniperTower} />;
+}
 
 interface BuildingClickData {
   mint: string;
@@ -99,6 +107,7 @@ export default function Home() {
   const [showTradingTerminal, setShowTradingTerminal] = useState(false);
   const [showMansionModal, setShowMansionModal] = useState(false);
   const [mansionData, setMansionData] = useState<{
+    name?: string;
     holderRank?: number;
     holderAddress?: string;
     holderBalance?: number;
@@ -138,6 +147,7 @@ export default function Home() {
 
     const handleMansionClick = (
       event: CustomEvent<{
+        name?: string;
         holderRank?: number;
         holderAddress?: string;
         holderBalance?: number;
@@ -559,6 +569,7 @@ export default function Home() {
             setShowMansionModal(false);
             setMansionData(null);
           }}
+          name={mansionData.name}
           holderRank={mansionData.holderRank}
           holderAddress={mansionData.holderAddress}
           holderBalance={mansionData.holderBalance}
@@ -587,6 +598,9 @@ export default function Home() {
 
       {/* Casino Admin - secret panel (Ctrl+Shift+R) */}
       {showCasinoAdmin && <CasinoAdmin onClose={() => setShowCasinoAdmin(false)} />}
+
+      {/* Sniper Tower - All Bags.fm tokens in Academy zone */}
+      <SniperTowerWrapper />
     </main>
   );
 }

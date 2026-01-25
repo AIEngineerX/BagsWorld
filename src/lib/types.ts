@@ -1,5 +1,5 @@
 // Zone Types
-export type ZoneType = "main_city" | "trending" | "academy" | "ballers";
+export type ZoneType = "main_city" | "trending" | "academy" | "ballers" | "founders";
 
 export interface ZoneInfo {
   id: ZoneType;
@@ -32,6 +32,12 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
     name: "Ballers Valley",
     description: "Exclusive mansions for top $BagsWorld holders",
     icon: "[V]",
+  },
+  founders: {
+    id: "founders",
+    name: "Founder's Corner",
+    description: "Learn to launch tokens - DexScreener prep station",
+    icon: "[F]",
   },
 };
 
@@ -281,6 +287,69 @@ export interface TokenSafety {
   warnings: string[];
 }
 
+// Sniper Tower Types (All Bags.fm tokens via Bitquery)
+
+// The UpdateAuthority that identifies all Bags.fm tokens
+export const BAGS_UPDATE_AUTHORITY = "BAGSB9TpGrZxQbEsrEznv5jXXdwyP6AXerN8aVRiAmcv";
+export const METEORA_DBC_PROGRAM = "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN";
+
+export interface SniperToken {
+  mint: string;
+  name: string;
+  symbol: string;
+  imageUrl?: string;
+  price: number;
+  priceUsd: number;
+  marketCap: number;
+  volume24h: number;
+  change24h: number;
+  createdAt: number;
+  ageSeconds: number;
+  liquidity: number;
+  txCount24h: number;
+  buyCount24h: number;
+  sellCount24h: number;
+  holders: number;
+  isNewLaunch: boolean; // True if launched within last hour
+}
+
+export interface SniperNewLaunch {
+  mint: string;
+  name: string;
+  symbol: string;
+  imageUrl?: string;
+  createdAt: number;
+  ageSeconds: number;
+  initialPrice: number;
+  currentPrice: number;
+  priceChange: number;
+  liquidity: number;
+  creator: string;
+  signature: string; // Transaction signature of the launch
+}
+
+export interface SniperQuote {
+  inputMint: string;
+  outputMint: string;
+  inputAmount: number;
+  outputAmount: number;
+  minOutputAmount: number;
+  priceImpact: number;
+  slippageBps: number;
+  route: string;
+}
+
+export type SniperSortField = "marketCap" | "volume24h" | "change24h" | "createdAt" | "price" | "liquidity";
+export type SniperSortDirection = "asc" | "desc";
+
+export interface SniperFilters {
+  minMarketCap?: number;
+  maxMarketCap?: number;
+  minVolume?: number;
+  maxAge?: number; // In seconds
+  hideRugRisk?: boolean;
+}
+
 // Store types
 export interface GameStore {
   worldState: WorldState | null;
@@ -289,10 +358,13 @@ export interface GameStore {
   selectedCharacter: GameCharacter | null;
   selectedBuilding: GameBuilding | null;
   currentZone: ZoneType;
+  isSniperTowerOpen: boolean;
   setWorldState: (state: WorldState) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   selectCharacter: (character: GameCharacter | null) => void;
   selectBuilding: (building: GameBuilding | null) => void;
   setZone: (zone: ZoneType) => void;
+  openSniperTower: () => void;
+  closeSniperTower: () => void;
 }

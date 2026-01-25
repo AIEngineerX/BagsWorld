@@ -210,8 +210,14 @@ export class BootScene extends Phaser.Scene {
     // Generate Ballers Valley mansions (for top BagsWorld token holders)
     this.generateMansions();
 
+    // Generate Ballers Valley luxury props (gold fountain, lamps, topiaries, etc.)
+    this.generateBallersProps();
+
     // Generate Academy zone buildings (Hogwarts-style campus)
     this.generateAcademyBuildings();
+
+    // Generate Sniper Tower for Academy zone
+    this.generateSniperTower();
 
     // Generate diverse character variants
     this.generateDiverseCharacters();
@@ -236,6 +242,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate Launch Pad zone assets (NYC Times Square style)
     this.generateLaunchPadAssets();
+
+    // Generate Founder's Corner zone assets (cozy workshop/educational hub)
+    this.generateFoundersAssets();
   }
 
   private generateGrass(): void {
@@ -3360,10 +3369,10 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(dormerX + Math.round(4 * s), dormerY + Math.round(12 * s), Math.round(10 * s), Math.round(10 * s));
 
     // TWO CHIMNEYS (symmetrical)
-    g.fillStyle(PALETTE.brick);
+    g.fillStyle(0xa0522d);
     g.fillRect(mainX + Math.round(10 * s), mainY - roofH - Math.round(15 * s), Math.round(6 * s), Math.round(20 * s));
     g.fillRect(mainX + mainW - Math.round(16 * s), mainY - roofH - Math.round(15 * s), Math.round(6 * s), Math.round(20 * s));
-    g.fillStyle(darken(PALETTE.brick, 0.2));
+    g.fillStyle(darken(0xa0522d, 0.2));
     g.fillRect(mainX + Math.round(10 * s), mainY - roofH - Math.round(15 * s), Math.round(6 * s), Math.round(2 * s));
     g.fillRect(mainX + mainW - Math.round(16 * s), mainY - roofH - Math.round(15 * s), Math.round(6 * s), Math.round(2 * s));
 
@@ -3421,6 +3430,386 @@ export class BootScene extends Phaser.Scene {
 
     g.generateTexture("mansion_4", canvasWidth, canvasHeight);
     g.destroy();
+  }
+
+  /**
+   * Generate Ballers Valley luxury props - High-end decorations for the VIP zone
+   * Includes: manicured lawn, marble path, gold fountain, gold lamps, topiaries, gates, urns
+   */
+  private generateBallersProps(): void {
+    const s = SCALE;
+
+    // === LUXURY MANICURED LAWN (tileable) ===
+    const lawnSize = Math.round(32 * s);
+    const lawn = this.make.graphics({ x: 0, y: 0 });
+    // Deep rich green base
+    lawn.fillStyle(0x0d4a0d);
+    lawn.fillRect(0, 0, lawnSize, lawnSize);
+    // Stripe pattern (golf course look)
+    lawn.fillStyle(0x115511, 0.4);
+    lawn.fillRect(0, 0, lawnSize / 2, lawnSize);
+    // Subtle grass texture
+    lawn.fillStyle(0x166616);
+    for (let i = 0; i < 6; i++) {
+      const x = Math.floor(Math.random() * (lawnSize - 4));
+      const y = Math.floor(Math.random() * (lawnSize - 6));
+      lawn.fillRect(x, y, Math.round(2 * s), Math.round(4 * s));
+    }
+    // Highlight blades
+    lawn.fillStyle(0x1a7a1a);
+    for (let i = 0; i < 4; i++) {
+      const x = Math.floor(Math.random() * (lawnSize - 3));
+      const y = Math.floor(Math.random() * (lawnSize - 5));
+      lawn.fillRect(x, y, Math.round(1 * s), Math.round(3 * s));
+    }
+    lawn.generateTexture("luxury_lawn", lawnSize, lawnSize);
+    lawn.destroy();
+
+    // === MARBLE PATH TILE (tileable) ===
+    const marbleSize = Math.round(32 * s);
+    const marble = this.make.graphics({ x: 0, y: 0 });
+    // Cream marble base
+    marble.fillStyle(0xf5f0e6);
+    marble.fillRect(0, 0, marbleSize, marbleSize);
+    // Tile grid lines
+    marble.fillStyle(0xe8e0d0);
+    marble.fillRect(0, 0, marbleSize, Math.round(2 * s));
+    marble.fillRect(0, 0, Math.round(2 * s), marbleSize);
+    // Subtle marble veining
+    marble.fillStyle(0xebe5da, 0.6);
+    marble.fillRect(Math.round(8 * s), Math.round(4 * s), Math.round(12 * s), Math.round(2 * s));
+    marble.fillRect(Math.round(4 * s), Math.round(16 * s), Math.round(8 * s), Math.round(2 * s));
+    // Gold inlay accent
+    marble.fillStyle(0xd4a017);
+    marble.fillRect(marbleSize - Math.round(4 * s), marbleSize - Math.round(4 * s), Math.round(4 * s), Math.round(4 * s));
+    marble.generateTexture("marble_path", marbleSize, marbleSize);
+    marble.destroy();
+
+    // === GOLD FOUNTAIN (ornate) ===
+    const fountainW = Math.round(50 * s);
+    const fountainH = Math.round(55 * s);
+    const gf = this.make.graphics({ x: 0, y: 0 });
+    // Outer marble basin
+    gf.fillStyle(0xe8e4dc);
+    gf.fillRect(Math.round(3 * s), Math.round(40 * s), Math.round(44 * s), Math.round(12 * s));
+    // Basin shadow
+    gf.fillStyle(0xd4cfc4);
+    gf.fillRect(Math.round(5 * s), Math.round(48 * s), Math.round(40 * s), Math.round(4 * s));
+    // Gold basin rim
+    gf.fillStyle(0xd4a017);
+    gf.fillRect(Math.round(2 * s), Math.round(38 * s), Math.round(46 * s), Math.round(4 * s));
+    gf.fillStyle(0xffd700);
+    gf.fillRect(Math.round(4 * s), Math.round(38 * s), Math.round(42 * s), Math.round(2 * s));
+    // Water pool
+    gf.fillStyle(0x4fc3f7);
+    gf.fillRect(Math.round(8 * s), Math.round(42 * s), Math.round(34 * s), Math.round(8 * s));
+    // Water shimmer
+    gf.fillStyle(0x81d4fa, 0.6);
+    gf.fillRect(Math.round(12 * s), Math.round(44 * s), Math.round(10 * s), Math.round(3 * s));
+    // Middle tier (gold)
+    gf.fillStyle(0xb8860b);
+    gf.fillRect(Math.round(16 * s), Math.round(28 * s), Math.round(18 * s), Math.round(12 * s));
+    gf.fillStyle(0xd4a017);
+    gf.fillRect(Math.round(18 * s), Math.round(28 * s), Math.round(14 * s), Math.round(10 * s));
+    // Middle tier highlight
+    gf.fillStyle(0xffd700);
+    gf.fillRect(Math.round(18 * s), Math.round(28 * s), Math.round(4 * s), Math.round(8 * s));
+    // Gold band
+    gf.fillStyle(0xffd700);
+    gf.fillRect(Math.round(14 * s), Math.round(26 * s), Math.round(22 * s), Math.round(3 * s));
+    // Top pillar
+    gf.fillStyle(0xd4a017);
+    gf.fillRect(Math.round(21 * s), Math.round(12 * s), Math.round(8 * s), Math.round(16 * s));
+    gf.fillStyle(0xffd700);
+    gf.fillRect(Math.round(22 * s), Math.round(12 * s), Math.round(3 * s), Math.round(14 * s));
+    // Crown/finial
+    gf.fillStyle(0xffd700);
+    gf.fillRect(Math.round(19 * s), Math.round(8 * s), Math.round(12 * s), Math.round(5 * s));
+    // Spire
+    gf.fillStyle(0xffd700);
+    gf.fillTriangle(
+      Math.round(25 * s), Math.round(2 * s),
+      Math.round(21 * s), Math.round(9 * s),
+      Math.round(29 * s), Math.round(9 * s)
+    );
+    // Spire highlight
+    gf.fillStyle(0xffec8b);
+    gf.fillRect(Math.round(24 * s), Math.round(4 * s), Math.round(2 * s), Math.round(4 * s));
+    gf.generateTexture("gold_fountain", fountainW, fountainH);
+    gf.destroy();
+
+    // === GOLD LAMP POST ===
+    const lampW = Math.round(24 * s);
+    const lampH = Math.round(70 * s);
+    const gl = this.make.graphics({ x: 0, y: 0 });
+    // Base
+    gl.fillStyle(0xb8860b);
+    gl.fillRect(Math.round(6 * s), Math.round(60 * s), Math.round(12 * s), Math.round(10 * s));
+    gl.fillStyle(0xd4a017);
+    gl.fillRect(Math.round(7 * s), Math.round(62 * s), Math.round(10 * s), Math.round(6 * s));
+    // Pole
+    gl.fillStyle(0xb8860b);
+    gl.fillRect(Math.round(10 * s), Math.round(20 * s), Math.round(4 * s), Math.round(42 * s));
+    gl.fillStyle(0xd4a017);
+    gl.fillRect(Math.round(11 * s), Math.round(20 * s), Math.round(2 * s), Math.round(40 * s));
+    // Decorative rings on pole
+    gl.fillStyle(0xffd700);
+    gl.fillRect(Math.round(9 * s), Math.round(35 * s), Math.round(6 * s), Math.round(3 * s));
+    gl.fillRect(Math.round(9 * s), Math.round(50 * s), Math.round(6 * s), Math.round(3 * s));
+    // Lamp housing
+    gl.fillStyle(0xb8860b);
+    gl.fillRect(Math.round(5 * s), Math.round(10 * s), Math.round(14 * s), Math.round(12 * s));
+    gl.fillStyle(0xd4a017);
+    gl.fillRect(Math.round(6 * s), Math.round(11 * s), Math.round(12 * s), Math.round(10 * s));
+    // Glass/light
+    gl.fillStyle(0xfffacd);
+    gl.fillRect(Math.round(8 * s), Math.round(13 * s), Math.round(8 * s), Math.round(6 * s));
+    // Glow effect
+    gl.fillStyle(0xfff8dc, 0.3);
+    gl.fillRect(Math.round(4 * s), Math.round(8 * s), Math.round(16 * s), Math.round(16 * s));
+    gl.fillStyle(0xfff8dc, 0.15);
+    gl.fillRect(Math.round(2 * s), Math.round(6 * s), Math.round(20 * s), Math.round(20 * s));
+    // Top finial
+    gl.fillStyle(0xffd700);
+    gl.fillRect(Math.round(10 * s), Math.round(4 * s), Math.round(4 * s), Math.round(7 * s));
+    gl.fillCircle(Math.round(12 * s), Math.round(3 * s), Math.round(3 * s));
+    gl.generateTexture("gold_lamp", lampW, lampH);
+    gl.destroy();
+
+    // === TOPIARY (cone-shaped hedge in gold pot) ===
+    const topiaryW = Math.round(32 * s);
+    const topiaryH = Math.round(60 * s);
+    const tp = this.make.graphics({ x: 0, y: 0 });
+    // Gold pot
+    tp.fillStyle(0xb8860b);
+    tp.fillRect(Math.round(8 * s), Math.round(48 * s), Math.round(16 * s), Math.round(12 * s));
+    tp.fillStyle(0xd4a017);
+    tp.fillRect(Math.round(9 * s), Math.round(50 * s), Math.round(14 * s), Math.round(8 * s));
+    // Pot rim
+    tp.fillStyle(0xffd700);
+    tp.fillRect(Math.round(6 * s), Math.round(46 * s), Math.round(20 * s), Math.round(4 * s));
+    // Pot highlight
+    tp.fillStyle(0xffec8b);
+    tp.fillRect(Math.round(10 * s), Math.round(50 * s), Math.round(4 * s), Math.round(6 * s));
+    // Cone-shaped hedge (layered for depth)
+    // Bottom layer (widest)
+    tp.fillStyle(0x145214);
+    tp.fillRect(Math.round(6 * s), Math.round(38 * s), Math.round(20 * s), Math.round(10 * s));
+    // Second layer
+    tp.fillStyle(0x166534);
+    tp.fillRect(Math.round(8 * s), Math.round(28 * s), Math.round(16 * s), Math.round(12 * s));
+    // Third layer
+    tp.fillStyle(0x1a7a1a);
+    tp.fillRect(Math.round(10 * s), Math.round(18 * s), Math.round(12 * s), Math.round(12 * s));
+    // Fourth layer
+    tp.fillStyle(0x22c55e);
+    tp.fillRect(Math.round(12 * s), Math.round(10 * s), Math.round(8 * s), Math.round(10 * s));
+    // Top
+    tp.fillStyle(0x4ade80);
+    tp.fillRect(Math.round(14 * s), Math.round(4 * s), Math.round(4 * s), Math.round(8 * s));
+    // Left edge highlight
+    tp.fillStyle(0x22c55e, 0.5);
+    tp.fillRect(Math.round(6 * s), Math.round(28 * s), Math.round(3 * s), Math.round(18 * s));
+    // Right edge shadow
+    tp.fillStyle(0x0d3d0d, 0.4);
+    tp.fillRect(Math.round(23 * s), Math.round(28 * s), Math.round(3 * s), Math.round(18 * s));
+    tp.generateTexture("topiary", topiaryW, topiaryH);
+    tp.destroy();
+
+    // === IRON GATE ===
+    const gateW = Math.round(50 * s);
+    const gateH = Math.round(70 * s);
+    const gate = this.make.graphics({ x: 0, y: 0 });
+    // Stone pillar
+    gate.fillStyle(0x4a4a4a);
+    gate.fillRect(Math.round(2 * s), Math.round(15 * s), Math.round(14 * s), Math.round(55 * s));
+    gate.fillStyle(0x5a5a5a);
+    gate.fillRect(Math.round(4 * s), Math.round(17 * s), Math.round(10 * s), Math.round(51 * s));
+    // Pillar highlight
+    gate.fillStyle(0x6a6a6a);
+    gate.fillRect(Math.round(4 * s), Math.round(17 * s), Math.round(3 * s), Math.round(48 * s));
+    // Gold ball on top
+    gate.fillStyle(0xd4a017);
+    gate.fillCircle(Math.round(9 * s), Math.round(12 * s), Math.round(6 * s));
+    gate.fillStyle(0xffd700);
+    gate.fillCircle(Math.round(8 * s), Math.round(10 * s), Math.round(3 * s));
+    // Iron bars
+    gate.fillStyle(0x1a1a1a);
+    gate.fillRect(Math.round(18 * s), Math.round(20 * s), Math.round(3 * s), Math.round(45 * s));
+    gate.fillRect(Math.round(28 * s), Math.round(20 * s), Math.round(3 * s), Math.round(45 * s));
+    gate.fillRect(Math.round(38 * s), Math.round(20 * s), Math.round(3 * s), Math.round(45 * s));
+    // Horizontal bars
+    gate.fillStyle(0x2a2a2a);
+    gate.fillRect(Math.round(16 * s), Math.round(25 * s), Math.round(28 * s), Math.round(3 * s));
+    gate.fillRect(Math.round(16 * s), Math.round(55 * s), Math.round(28 * s), Math.round(3 * s));
+    // Gold accent on gate
+    gate.fillStyle(0xd4a017);
+    gate.fillRect(Math.round(24 * s), Math.round(35 * s), Math.round(10 * s), Math.round(8 * s));
+    gate.fillStyle(0xffd700);
+    gate.fillRect(Math.round(26 * s), Math.round(37 * s), Math.round(6 * s), Math.round(4 * s));
+    // Spear points on top
+    gate.fillStyle(0x1a1a1a);
+    gate.fillTriangle(
+      Math.round(19.5 * s), Math.round(15 * s),
+      Math.round(17 * s), Math.round(22 * s),
+      Math.round(22 * s), Math.round(22 * s)
+    );
+    gate.fillTriangle(
+      Math.round(29.5 * s), Math.round(15 * s),
+      Math.round(27 * s), Math.round(22 * s),
+      Math.round(32 * s), Math.round(22 * s)
+    );
+    gate.fillTriangle(
+      Math.round(39.5 * s), Math.round(15 * s),
+      Math.round(37 * s), Math.round(22 * s),
+      Math.round(42 * s), Math.round(22 * s)
+    );
+    gate.generateTexture("iron_gate", gateW, gateH);
+    gate.destroy();
+
+    // === GOLD URN/STATUE ===
+    const urnW = Math.round(24 * s);
+    const urnH = Math.round(50 * s);
+    const urn = this.make.graphics({ x: 0, y: 0 });
+    // Marble pedestal
+    urn.fillStyle(0xe8e4dc);
+    urn.fillRect(Math.round(4 * s), Math.round(38 * s), Math.round(16 * s), Math.round(12 * s));
+    urn.fillStyle(0xd4cfc4);
+    urn.fillRect(Math.round(6 * s), Math.round(44 * s), Math.round(12 * s), Math.round(6 * s));
+    // Pedestal gold band
+    urn.fillStyle(0xffd700);
+    urn.fillRect(Math.round(3 * s), Math.round(36 * s), Math.round(18 * s), Math.round(3 * s));
+    // Urn base
+    urn.fillStyle(0xb8860b);
+    urn.fillRect(Math.round(8 * s), Math.round(28 * s), Math.round(8 * s), Math.round(10 * s));
+    // Urn body (wider)
+    urn.fillStyle(0xd4a017);
+    urn.fillRect(Math.round(5 * s), Math.round(16 * s), Math.round(14 * s), Math.round(14 * s));
+    urn.fillStyle(0xffd700);
+    urn.fillRect(Math.round(6 * s), Math.round(18 * s), Math.round(6 * s), Math.round(10 * s));
+    // Urn neck
+    urn.fillStyle(0xb8860b);
+    urn.fillRect(Math.round(8 * s), Math.round(10 * s), Math.round(8 * s), Math.round(8 * s));
+    // Urn rim
+    urn.fillStyle(0xffd700);
+    urn.fillRect(Math.round(6 * s), Math.round(8 * s), Math.round(12 * s), Math.round(4 * s));
+    // Handles
+    urn.fillStyle(0xd4a017);
+    urn.fillRect(Math.round(2 * s), Math.round(18 * s), Math.round(4 * s), Math.round(8 * s));
+    urn.fillRect(Math.round(18 * s), Math.round(18 * s), Math.round(4 * s), Math.round(8 * s));
+    urn.generateTexture("gold_urn", urnW, urnH);
+    urn.destroy();
+
+    // === RED CARPET ===
+    const carpetW = Math.round(60 * s);
+    const carpetH = Math.round(40 * s);
+    const carpet = this.make.graphics({ x: 0, y: 0 });
+    // Gold border
+    carpet.fillStyle(0xd4a017);
+    carpet.fillRect(0, 0, carpetW, carpetH);
+    // Dark red carpet
+    carpet.fillStyle(0x8b0000);
+    carpet.fillRect(Math.round(3 * s), Math.round(3 * s), carpetW - Math.round(6 * s), carpetH - Math.round(6 * s));
+    // Lighter red highlight stripe
+    carpet.fillStyle(0xb22222, 0.5);
+    carpet.fillRect(Math.round(10 * s), Math.round(8 * s), carpetW - Math.round(20 * s), Math.round(4 * s));
+    carpet.fillRect(Math.round(10 * s), carpetH - Math.round(12 * s), carpetW - Math.round(20 * s), Math.round(4 * s));
+    // Gold inner trim
+    carpet.fillStyle(0xffd700);
+    carpet.fillRect(Math.round(6 * s), Math.round(6 * s), carpetW - Math.round(12 * s), Math.round(2 * s));
+    carpet.fillRect(Math.round(6 * s), carpetH - Math.round(8 * s), carpetW - Math.round(12 * s), Math.round(2 * s));
+    // Carpet pattern (diamond shapes)
+    carpet.fillStyle(0x9b1c1c, 0.4);
+    for (let i = 0; i < 3; i++) {
+      const dx = Math.round((15 + i * 15) * s);
+      carpet.fillRect(dx, Math.round(15 * s), Math.round(6 * s), Math.round(10 * s));
+    }
+    carpet.generateTexture("red_carpet", carpetW, carpetH);
+    carpet.destroy();
+
+    // === LUXURY SUPERCAR (Lamborghini-style) ===
+    const carW = Math.round(60 * s);
+    const carH = Math.round(28 * s);
+    const supercar = this.make.graphics({ x: 0, y: 0 });
+
+    // Shadow underneath
+    supercar.fillStyle(0x000000, 0.4);
+    supercar.fillRect(Math.round(6 * s), Math.round(22 * s), Math.round(48 * s), Math.round(6 * s));
+
+    // Low sleek body (gold/yellow Lambo style)
+    supercar.fillStyle(0xd4a017); // Dark gold base
+    supercar.fillRect(Math.round(4 * s), Math.round(12 * s), Math.round(52 * s), Math.round(10 * s));
+
+    // Body highlight (top)
+    supercar.fillStyle(0xffd700); // Bright gold
+    supercar.fillRect(Math.round(6 * s), Math.round(12 * s), Math.round(48 * s), Math.round(3 * s));
+
+    // Sloped hood (front wedge shape)
+    supercar.fillStyle(0xd4a017);
+    supercar.fillRect(Math.round(44 * s), Math.round(14 * s), Math.round(14 * s), Math.round(6 * s));
+    supercar.fillStyle(0xffd700);
+    supercar.fillRect(Math.round(46 * s), Math.round(14 * s), Math.round(10 * s), Math.round(2 * s));
+
+    // Low cabin/roof (very sleek)
+    supercar.fillStyle(0xb8860b); // Darker gold
+    supercar.fillRect(Math.round(16 * s), Math.round(6 * s), Math.round(22 * s), Math.round(7 * s));
+
+    // Angular windshield
+    supercar.fillStyle(0x1e3a5f, 0.9); // Dark tinted glass
+    supercar.fillRect(Math.round(32 * s), Math.round(7 * s), Math.round(8 * s), Math.round(5 * s));
+    // Side window
+    supercar.fillStyle(0x1e3a5f, 0.9);
+    supercar.fillRect(Math.round(20 * s), Math.round(7 * s), Math.round(10 * s), Math.round(5 * s));
+
+    // Rear spoiler
+    supercar.fillStyle(0x1a1a1a);
+    supercar.fillRect(Math.round(2 * s), Math.round(8 * s), Math.round(4 * s), Math.round(2 * s));
+    supercar.fillRect(Math.round(4 * s), Math.round(6 * s), Math.round(8 * s), Math.round(3 * s));
+
+    // Air intakes (side scoops)
+    supercar.fillStyle(0x1a1a1a);
+    supercar.fillRect(Math.round(12 * s), Math.round(16 * s), Math.round(6 * s), Math.round(4 * s));
+    supercar.fillRect(Math.round(40 * s), Math.round(16 * s), Math.round(6 * s), Math.round(4 * s));
+
+    // Wheels (larger, sportier)
+    supercar.fillStyle(0x1a1a1a);
+    supercar.fillCircle(Math.round(14 * s), Math.round(20 * s), Math.round(6 * s));
+    supercar.fillCircle(Math.round(46 * s), Math.round(20 * s), Math.round(6 * s));
+
+    // Gold rims (luxury detail)
+    supercar.fillStyle(0xffd700);
+    supercar.fillCircle(Math.round(14 * s), Math.round(20 * s), Math.round(3 * s));
+    supercar.fillCircle(Math.round(46 * s), Math.round(20 * s), Math.round(3 * s));
+
+    // Rim centers
+    supercar.fillStyle(0xd4a017);
+    supercar.fillCircle(Math.round(14 * s), Math.round(20 * s), Math.round(1.5 * s));
+    supercar.fillCircle(Math.round(46 * s), Math.round(20 * s), Math.round(1.5 * s));
+
+    // Headlights (angular, aggressive)
+    supercar.fillStyle(0xfef3c7);
+    supercar.fillRect(Math.round(54 * s), Math.round(15 * s), Math.round(3 * s), Math.round(3 * s));
+    // Headlight glow
+    supercar.fillStyle(0xffffff, 0.4);
+    supercar.fillRect(Math.round(53 * s), Math.round(14 * s), Math.round(5 * s), Math.round(5 * s));
+
+    // Taillights (LED strip style)
+    supercar.fillStyle(0xef4444);
+    supercar.fillRect(Math.round(2 * s), Math.round(14 * s), Math.round(2 * s), Math.round(6 * s));
+    supercar.fillStyle(0xfca5a5, 0.5);
+    supercar.fillRect(Math.round(2 * s), Math.round(15 * s), Math.round(3 * s), Math.round(4 * s));
+
+    // Body line detail (adds depth)
+    supercar.fillStyle(0xb8860b, 0.6);
+    supercar.fillRect(Math.round(8 * s), Math.round(18 * s), Math.round(36 * s), Math.round(1 * s));
+
+    // Chrome exhaust tips
+    supercar.fillStyle(0x9ca3af);
+    supercar.fillRect(Math.round(4 * s), Math.round(19 * s), Math.round(3 * s), Math.round(2 * s));
+    supercar.fillRect(Math.round(4 * s), Math.round(21 * s), Math.round(3 * s), Math.round(1 * s));
+
+    supercar.generateTexture("supercar", carW, carH);
+    supercar.destroy();
   }
 
   /**
@@ -3897,6 +4286,257 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(Math.round(28 * s), canvasHeight - Math.round(30 * s), canvasWidth - Math.round(56 * s), Math.round(3 * s));
 
     g.generateTexture("academy_gate", canvasWidth, canvasHeight);
+    g.destroy();
+  }
+
+  /**
+   * Generate the Sniper Tower for the Academy zone
+   * A tall radar tower with scanning equipment for sniping new token launches
+   */
+  private generateSniperTower(): void {
+    const s = SCALE;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasWidth = Math.round(80 * s);
+    const canvasHeight = Math.round(200 * s);
+
+    // Tower colors (dark tech aesthetic)
+    const towerDark = 0x0c0c14;
+    const towerMid = 0x161622;
+    const towerLight = 0x1f1f32;
+    const towerAccent = PALETTE.bagsGreen;
+    const towerCyan = PALETTE.cyan;
+    const towerGold = PALETTE.gold;
+
+    // Tower dimensions
+    const towerWidth = Math.round(50 * s);
+    const towerHeight = Math.round(160 * s);
+    const towerX = (canvasWidth - towerWidth) / 2;
+    const baseY = canvasHeight;
+
+    // === TOWER BASE (cylindrical stone foundation) ===
+    // Shadow
+    g.fillStyle(PALETTE.void, 0.5);
+    g.fillRect(
+      towerX + Math.round(4 * s),
+      baseY - Math.round(20 * s),
+      towerWidth - Math.round(4 * s),
+      Math.round(20 * s)
+    );
+
+    // Stone foundation
+    g.fillStyle(PALETTE.gray);
+    g.fillRect(towerX - Math.round(5 * s), baseY - Math.round(25 * s), towerWidth + Math.round(10 * s), Math.round(25 * s));
+    g.fillStyle(lighten(PALETTE.gray, 0.1));
+    g.fillRect(towerX - Math.round(5 * s), baseY - Math.round(25 * s), Math.round(5 * s), Math.round(25 * s));
+    g.fillStyle(darken(PALETTE.gray, 0.2));
+    g.fillRect(towerX + towerWidth, baseY - Math.round(25 * s), Math.round(5 * s), Math.round(25 * s));
+
+    // === MAIN TOWER SHAFT ===
+    // Main body
+    g.fillStyle(towerDark);
+    g.fillRect(towerX, baseY - towerHeight, towerWidth, towerHeight - Math.round(25 * s));
+
+    // Left edge highlight
+    g.fillStyle(towerMid);
+    g.fillRect(towerX, baseY - towerHeight, Math.round(6 * s), towerHeight - Math.round(25 * s));
+
+    // Right edge shadow
+    g.fillStyle(0x060608);
+    g.fillRect(towerX + towerWidth - Math.round(6 * s), baseY - towerHeight, Math.round(6 * s), towerHeight - Math.round(25 * s));
+
+    // Horizontal tech lines (every 20px)
+    g.fillStyle(towerLight);
+    for (let i = 0; i < 6; i++) {
+      const lineY = baseY - Math.round(40 * s) - i * Math.round(22 * s);
+      g.fillRect(towerX + Math.round(6 * s), lineY, towerWidth - Math.round(12 * s), Math.round(2 * s));
+    }
+
+    // === OBSERVATION WINDOWS (3 levels) ===
+    const windowWidth = Math.round(16 * s);
+    const windowHeight = Math.round(10 * s);
+    const windowX = towerX + (towerWidth - windowWidth) / 2;
+
+    for (let i = 0; i < 3; i++) {
+      const windowY = baseY - Math.round(55 * s) - i * Math.round(35 * s);
+
+      // Window glow aura
+      g.fillStyle(towerCyan, 0.25);
+      g.fillRect(
+        windowX - Math.round(3 * s),
+        windowY - Math.round(2 * s),
+        windowWidth + Math.round(6 * s),
+        windowHeight + Math.round(4 * s)
+      );
+
+      // Window bezel
+      g.fillStyle(towerLight);
+      g.fillRect(
+        windowX - Math.round(2 * s),
+        windowY - Math.round(1 * s),
+        windowWidth + Math.round(4 * s),
+        windowHeight + Math.round(2 * s)
+      );
+
+      // Window glass
+      g.fillStyle(towerCyan);
+      g.fillRect(windowX, windowY, windowWidth, windowHeight);
+
+      // Window highlight
+      g.fillStyle(lighten(towerCyan, 0.4));
+      g.fillRect(windowX, windowY, Math.round(3 * s), Math.round(3 * s));
+
+      // Scanline effect
+      g.fillStyle(towerDark, 0.3);
+      g.fillRect(windowX, windowY + Math.round(3 * s), windowWidth, Math.round(1 * s));
+      g.fillRect(windowX, windowY + Math.round(6 * s), windowWidth, Math.round(1 * s));
+    }
+
+    // === RADAR DOME (top) ===
+    const domeY = baseY - towerHeight - Math.round(10 * s);
+    const domeRadius = Math.round(22 * s);
+
+    // Dome glow
+    g.fillStyle(towerAccent, 0.15);
+    g.fillCircle(towerX + towerWidth / 2, domeY, domeRadius + Math.round(8 * s));
+
+    // Dome body
+    g.fillStyle(towerMid);
+    g.fillCircle(towerX + towerWidth / 2, domeY, domeRadius);
+
+    // Dome highlight (left side)
+    g.fillStyle(towerLight);
+    g.fillCircle(towerX + towerWidth / 2 - Math.round(6 * s), domeY - Math.round(4 * s), Math.round(10 * s));
+
+    // Dome dark side (right)
+    g.fillStyle(towerDark);
+    g.fillCircle(towerX + towerWidth / 2 + Math.round(8 * s), domeY + Math.round(4 * s), Math.round(8 * s));
+
+    // Dome ring
+    g.fillStyle(towerAccent);
+    g.fillRect(towerX, domeY - Math.round(2 * s), towerWidth, Math.round(4 * s));
+
+    // === RADAR ANTENNA (on top of dome) ===
+    const antennaX = towerX + towerWidth / 2;
+    const antennaBaseY = domeY - domeRadius + Math.round(4 * s);
+
+    // Antenna pole
+    g.fillStyle(towerLight);
+    g.fillRect(antennaX - Math.round(2 * s), antennaBaseY - Math.round(30 * s), Math.round(4 * s), Math.round(30 * s));
+
+    // Antenna dish mount
+    g.fillStyle(towerMid);
+    g.fillRect(antennaX - Math.round(4 * s), antennaBaseY - Math.round(35 * s), Math.round(8 * s), Math.round(8 * s));
+
+    // Radar dish (pointed)
+    g.fillStyle(towerAccent);
+    g.beginPath();
+    g.moveTo(antennaX, antennaBaseY - Math.round(55 * s));
+    g.lineTo(antennaX - Math.round(12 * s), antennaBaseY - Math.round(35 * s));
+    g.lineTo(antennaX + Math.round(12 * s), antennaBaseY - Math.round(35 * s));
+    g.closePath();
+    g.fill();
+
+    // Dish inner
+    g.fillStyle(lighten(towerAccent, 0.3));
+    g.beginPath();
+    g.moveTo(antennaX, antennaBaseY - Math.round(50 * s));
+    g.lineTo(antennaX - Math.round(6 * s), antennaBaseY - Math.round(38 * s));
+    g.lineTo(antennaX + Math.round(6 * s), antennaBaseY - Math.round(38 * s));
+    g.closePath();
+    g.fill();
+
+    // Tip beacon
+    g.fillStyle(PALETTE.brightRed);
+    g.fillCircle(antennaX, antennaBaseY - Math.round(55 * s), Math.round(3 * s));
+    g.fillStyle(PALETTE.brightRed, 0.4);
+    g.fillCircle(antennaX, antennaBaseY - Math.round(55 * s), Math.round(6 * s));
+
+    // === GREEN ACCENT LIGHTS (down the tower) ===
+    g.fillStyle(towerAccent);
+    for (let i = 0; i < 4; i++) {
+      const lightY = baseY - Math.round(70 * s) - i * Math.round(30 * s);
+      // Left light
+      g.fillRect(towerX + Math.round(2 * s), lightY, Math.round(4 * s), Math.round(4 * s));
+      // Right light
+      g.fillRect(towerX + towerWidth - Math.round(6 * s), lightY, Math.round(4 * s), Math.round(4 * s));
+      // Light glow
+      g.fillStyle(towerAccent, 0.3);
+      g.fillCircle(towerX + Math.round(4 * s), lightY + Math.round(2 * s), Math.round(6 * s));
+      g.fillCircle(towerX + towerWidth - Math.round(4 * s), lightY + Math.round(2 * s), Math.round(6 * s));
+      g.fillStyle(towerAccent);
+    }
+
+    // === "SNIPER" SIGN ===
+    const signWidth = Math.round(44 * s);
+    const signHeight = Math.round(14 * s);
+    const signX = towerX + (towerWidth - signWidth) / 2;
+    const signY = baseY - Math.round(30 * s);
+
+    // Sign background
+    g.fillStyle(towerDark);
+    g.fillRect(signX, signY, signWidth, signHeight);
+
+    // Sign border
+    g.fillStyle(towerGold);
+    g.fillRect(signX, signY, signWidth, Math.round(1 * s));
+    g.fillRect(signX, signY + signHeight - Math.round(1 * s), signWidth, Math.round(1 * s));
+    g.fillRect(signX, signY, Math.round(1 * s), signHeight);
+    g.fillRect(signX + signWidth - Math.round(1 * s), signY, Math.round(1 * s), signHeight);
+
+    // "SNIPER" text in pixels
+    g.fillStyle(towerAccent);
+    const textY = signY + Math.round(3 * s);
+    const letterSpacing = Math.round(7 * s);
+    let letterX = signX + Math.round(3 * s);
+
+    // S
+    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(5 * s), Math.round(2 * s));
+    g.fillRect(letterX + Math.round(3 * s), textY + Math.round(4 * s), Math.round(2 * s), Math.round(3 * s));
+    g.fillRect(letterX, textY + Math.round(6 * s), Math.round(5 * s), Math.round(2 * s));
+    letterX += letterSpacing;
+
+    // N
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX + Math.round(3 * s), textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX + Math.round(2 * s), textY + Math.round(2 * s), Math.round(1 * s), Math.round(2 * s));
+    letterX += letterSpacing;
+
+    // I
+    g.fillRect(letterX, textY, Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(letterX + Math.round(1 * s), textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY + Math.round(6 * s), Math.round(4 * s), Math.round(2 * s));
+    letterX += Math.round(5 * s);
+
+    // P
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
+    g.fillRect(letterX + Math.round(3 * s), textY, Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(5 * s), Math.round(2 * s));
+    letterX += letterSpacing;
+
+    // E
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
+    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(letterX, textY + Math.round(6 * s), Math.round(5 * s), Math.round(2 * s));
+    letterX += letterSpacing;
+
+    // R
+    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
+    g.fillRect(letterX + Math.round(3 * s), textY, Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(letterX + Math.round(3 * s), textY + Math.round(5 * s), Math.round(2 * s), Math.round(3 * s));
+
+    // === GROUND GLOW (scanning beam base) ===
+    g.fillStyle(towerAccent, 0.15);
+    g.fillCircle(towerX + towerWidth / 2, baseY - Math.round(5 * s), Math.round(35 * s));
+    g.fillStyle(towerAccent, 0.08);
+    g.fillCircle(towerX + towerWidth / 2, baseY - Math.round(5 * s), Math.round(50 * s));
+
+    g.generateTexture("sniper_tower", canvasWidth, canvasHeight);
     g.destroy();
   }
 
@@ -6705,6 +7345,816 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(Math.round(17 * s), Math.round(8 * s), Math.round(1 * s), Math.round(1 * s));
 
     g.generateTexture("bnn", size, size);
+    g.destroy();
+  }
+
+  // ========================================
+  // FOUNDER'S CORNER ZONE ASSETS
+  // Cozy workshop/educational hub for DexScreener prep
+  // ========================================
+
+  private generateFoundersAssets(): void {
+    this.generateFoundersGround();
+    this.generateFoundersBuildings();
+    this.generateFoundersProps();
+  }
+
+  private generateFoundersGround(): void {
+    const s = SCALE;
+    const size = Math.round(32 * s);
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Base cobblestone color (warm gray-brown)
+    g.fillStyle(0x78716c);
+    g.fillRect(0, 0, size, size);
+
+    // Stone pattern - 2x2 grid of individual stones with gaps
+    const stoneSize = Math.round(14 * s);
+    const gap = Math.round(2 * s);
+    const stones = [
+      { x: gap, y: gap, color: 0x6b7280 },
+      { x: stoneSize + gap * 2, y: gap, color: 0x57534e },
+      { x: gap, y: stoneSize + gap * 2, color: 0x57534e },
+      { x: stoneSize + gap * 2, y: stoneSize + gap * 2, color: 0x6b7280 },
+    ];
+
+    stones.forEach((stone) => {
+      // Stone base
+      g.fillStyle(stone.color);
+      g.fillRect(stone.x, stone.y, stoneSize, stoneSize);
+
+      // Stone highlight (top-left edges)
+      g.fillStyle(lighten(stone.color, 0.15));
+      g.fillRect(stone.x, stone.y, stoneSize, Math.round(2 * s));
+      g.fillRect(stone.x, stone.y, Math.round(2 * s), stoneSize);
+
+      // Stone shadow (bottom-right edges)
+      g.fillStyle(darken(stone.color, 0.2));
+      g.fillRect(stone.x, stone.y + stoneSize - Math.round(2 * s), stoneSize, Math.round(2 * s));
+      g.fillRect(stone.x + stoneSize - Math.round(2 * s), stone.y, Math.round(2 * s), stoneSize);
+    });
+
+    // Occasional moss/grass detail in gaps
+    g.fillStyle(0x4d7c0f);
+    g.fillRect(Math.round(15 * s), Math.round(1 * s), Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(Math.round(1 * s), Math.round(15 * s), Math.round(1 * s), Math.round(2 * s));
+
+    // Warm accent - tiny flower peeking through
+    g.fillStyle(0xfbbf24);
+    g.fillRect(Math.round(26 * s), Math.round(5 * s), Math.round(2 * s), Math.round(2 * s));
+
+    g.generateTexture("founders_ground", size, size);
+    g.destroy();
+  }
+
+  private generateFoundersBuildings(): void {
+    const s = SCALE;
+
+    // Building 0: DexScreener Workshop (main educational building)
+    this.generateFoundersWorkshop(s);
+
+    // Building 1: Art Studio (logo/banner assets)
+    this.generateFoundersStudio(s);
+
+    // Building 2: Social Hub (social links building)
+    this.generateFoundersSocialHub(s);
+  }
+
+  private generateFoundersWorkshop(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasW = Math.round(80 * s);
+    const canvasH = Math.round(140 * s);
+    const bWidth = Math.round(65 * s);
+    const bHeight = Math.round(90 * s);
+    const baseX = Math.round(7 * s);
+    const baseY = canvasH - bHeight;
+
+    // Colors
+    const woodBase = 0x8b4513;  // SaddleBrown
+    const woodLight = lighten(woodBase, 0.15);
+    const woodDark = darken(woodBase, 0.2);
+    const roofColor = 0x5c3317;  // Dark brown roof
+    const accent = PALETTE.bagsGreen;  // DexScreener green
+
+    // Drop shadow
+    g.fillStyle(PALETTE.void, 0.5);
+    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
+
+    // Main body
+    g.fillStyle(woodBase);
+    g.fillRect(baseX, baseY, bWidth, bHeight);
+
+    // 3D depth: Light left edge
+    g.fillStyle(woodLight);
+    g.fillRect(baseX, baseY, Math.round(5 * s), bHeight);
+
+    // 3D depth: Dark right edge
+    g.fillStyle(woodDark);
+    g.fillRect(baseX + bWidth - Math.round(5 * s), baseY, Math.round(5 * s), bHeight);
+
+    // Dithering texture on walls
+    g.fillStyle(darken(woodBase, 0.08));
+    for (let py = 0; py < bHeight; py += Math.round(6 * s)) {
+      for (let px = Math.round(6 * s); px < bWidth - Math.round(6 * s); px += Math.round(10 * s)) {
+        if ((Math.floor(py / Math.round(6 * s)) + Math.floor(px / Math.round(10 * s))) % 2 === 0) {
+          g.fillRect(baseX + px, baseY + py, Math.round(8 * s), Math.round(4 * s));
+        }
+      }
+    }
+
+    // Horizontal wood plank lines
+    g.fillStyle(woodDark);
+    for (let py = Math.round(15 * s); py < bHeight; py += Math.round(18 * s)) {
+      g.fillRect(baseX + Math.round(5 * s), baseY + py, bWidth - Math.round(10 * s), Math.round(1 * s));
+    }
+
+    // Pointed roof
+    const roofPeakY = baseY - Math.round(35 * s);
+    const roofLeftX = baseX - Math.round(5 * s);
+    const roofRightX = baseX + bWidth + Math.round(5 * s);
+    const roofCenterX = baseX + bWidth / 2;
+
+    g.fillStyle(roofColor);
+    g.fillTriangle(roofLeftX, baseY, roofCenterX, roofPeakY, roofRightX, baseY);
+
+    // Roof highlight (left slope)
+    g.fillStyle(lighten(roofColor, 0.15));
+    g.fillTriangle(roofLeftX, baseY, roofCenterX, roofPeakY, roofCenterX, baseY);
+
+    // Roof ridge cap
+    g.fillStyle(0x78350f);
+    g.fillRect(roofCenterX - Math.round(3 * s), roofPeakY - Math.round(2 * s), Math.round(6 * s), Math.round(8 * s));
+
+    // Chimney
+    const chimneyX = baseX + bWidth - Math.round(18 * s);
+    const chimneyY = roofPeakY + Math.round(10 * s);
+    g.fillStyle(0x78716c);
+    g.fillRect(chimneyX, chimneyY, Math.round(10 * s), Math.round(25 * s));
+    g.fillStyle(lighten(0x78716c, 0.1));
+    g.fillRect(chimneyX, chimneyY, Math.round(2 * s), Math.round(25 * s));
+    // Chimney cap
+    g.fillStyle(0x57534e);
+    g.fillRect(chimneyX - Math.round(2 * s), chimneyY - Math.round(3 * s), Math.round(14 * s), Math.round(4 * s));
+
+    // Large chalkboard sign on facade (DexScreener info)
+    const signX = baseX + Math.round(10 * s);
+    const signY = baseY + Math.round(8 * s);
+    const signW = bWidth - Math.round(20 * s);
+    const signH = Math.round(28 * s);
+    // Sign frame
+    g.fillStyle(0x451a03);
+    g.fillRect(signX - Math.round(3 * s), signY - Math.round(3 * s), signW + Math.round(6 * s), signH + Math.round(6 * s));
+    // Chalkboard background
+    g.fillStyle(0x1f2937);
+    g.fillRect(signX, signY, signW, signH);
+    // Chalk text representation (green lines for DexScreener theme)
+    g.fillStyle(accent, 0.9);
+    g.fillRect(signX + Math.round(5 * s), signY + Math.round(5 * s), signW - Math.round(10 * s), Math.round(3 * s));
+    g.fillRect(signX + Math.round(5 * s), signY + Math.round(12 * s), signW - Math.round(15 * s), Math.round(2 * s));
+    g.fillRect(signX + Math.round(5 * s), signY + Math.round(18 * s), signW - Math.round(12 * s), Math.round(2 * s));
+    // Checkmarks
+    g.fillStyle(accent);
+    g.fillRect(signX + Math.round(3 * s), signY + Math.round(12 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(signX + Math.round(3 * s), signY + Math.round(18 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Windows (2x2 grid with warm glow)
+    const windowColor = 0xfbbf24;  // Amber glow
+    for (let wy = 0; wy < 2; wy++) {
+      for (let wx = 0; wx < 2; wx++) {
+        const winX = baseX + Math.round(12 * s) + wx * Math.round(22 * s);
+        const winY = baseY + Math.round(45 * s) + wy * Math.round(22 * s);
+        const winW = Math.round(12 * s);
+        const winH = Math.round(16 * s);
+
+        // Window frame (dark wood)
+        g.fillStyle(0x451a03);
+        g.fillRect(winX - Math.round(2 * s), winY - Math.round(2 * s), winW + Math.round(4 * s), winH + Math.round(4 * s));
+
+        // Glow aura
+        g.fillStyle(windowColor, 0.3);
+        g.fillRect(winX - Math.round(1 * s), winY - Math.round(1 * s), winW + Math.round(2 * s), winH + Math.round(2 * s));
+
+        // Window glass
+        g.fillStyle(windowColor, 0.8);
+        g.fillRect(winX, winY, winW, winH);
+
+        // Window highlight corner
+        g.fillStyle(lighten(windowColor, 0.4));
+        g.fillRect(winX, winY, Math.round(3 * s), Math.round(4 * s));
+
+        // Window cross frame
+        g.fillStyle(woodDark);
+        g.fillRect(winX + winW / 2 - Math.round(1 * s), winY, Math.round(2 * s), winH);
+        g.fillRect(winX, winY + winH / 2 - Math.round(1 * s), winW, Math.round(2 * s));
+      }
+    }
+
+    // Door (center-bottom, welcoming double door)
+    const doorW = Math.round(18 * s);
+    const doorH = Math.round(28 * s);
+    const doorX = baseX + bWidth / 2 - doorW / 2;
+    const doorY = canvasH - doorH;
+
+    // Door frame
+    g.fillStyle(0x451a03);
+    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(5 * s), doorW + Math.round(6 * s), doorH + Math.round(5 * s));
+
+    // Door arch top
+    g.fillCircle(doorX + doorW / 2, doorY - Math.round(2 * s), doorW / 2 + Math.round(3 * s));
+    g.fillStyle(woodDark);
+    g.fillCircle(doorX + doorW / 2, doorY - Math.round(2 * s), doorW / 2);
+
+    // Double doors
+    g.fillStyle(0x5c3317);
+    g.fillRect(doorX, doorY, doorW / 2 - Math.round(1 * s), doorH);
+    g.fillRect(doorX + doorW / 2 + Math.round(1 * s), doorY, doorW / 2 - Math.round(1 * s), doorH);
+
+    // Door panels
+    g.fillStyle(darken(0x5c3317, 0.15));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(3 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(16 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(doorX + doorW / 2 + Math.round(2 * s), doorY + Math.round(3 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(doorX + doorW / 2 + Math.round(2 * s), doorY + Math.round(16 * s), Math.round(5 * s), Math.round(10 * s));
+
+    // Door handles
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(doorX + doorW / 2 - Math.round(4 * s), doorY + Math.round(14 * s), Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(doorX + doorW / 2 + Math.round(2 * s), doorY + Math.round(14 * s), Math.round(2 * s), Math.round(4 * s));
+
+    // Welcome mat
+    g.fillStyle(0x78350f);
+    g.fillRect(doorX - Math.round(4 * s), canvasH - Math.round(3 * s), doorW + Math.round(8 * s), Math.round(3 * s));
+
+    // Hanging sign "LEARN" above door
+    const hangSignY = doorY - Math.round(15 * s);
+    g.fillStyle(0x451a03);
+    g.fillRect(doorX + Math.round(2 * s), hangSignY, doorW - Math.round(4 * s), Math.round(10 * s));
+    g.fillStyle(accent);
+    g.fillRect(doorX + Math.round(4 * s), hangSignY + Math.round(2 * s), doorW - Math.round(8 * s), Math.round(6 * s));
+    // Hanging chains
+    g.fillStyle(0x6b7280);
+    g.fillRect(doorX + Math.round(4 * s), hangSignY - Math.round(5 * s), Math.round(2 * s), Math.round(5 * s));
+    g.fillRect(doorX + doorW - Math.round(6 * s), hangSignY - Math.round(5 * s), Math.round(2 * s), Math.round(5 * s));
+
+    g.generateTexture("founders_0", canvasW, canvasH);
+    g.destroy();
+  }
+
+  private generateFoundersStudio(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasW = Math.round(75 * s);
+    const canvasH = Math.round(130 * s);
+    const bWidth = Math.round(60 * s);
+    const bHeight = Math.round(80 * s);
+    const baseX = Math.round(7 * s);
+    const baseY = canvasH - bHeight;
+
+    // Colors - Art studio theme (warmer brown with gold accents)
+    const woodBase = 0xa0522d;  // Sienna
+    const woodLight = lighten(woodBase, 0.15);
+    const woodDark = darken(woodBase, 0.2);
+    const roofColor = 0x6b4423;
+    const accent = PALETTE.gold;
+
+    // Drop shadow
+    g.fillStyle(PALETTE.void, 0.5);
+    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
+
+    // Main body
+    g.fillStyle(woodBase);
+    g.fillRect(baseX, baseY, bWidth, bHeight);
+
+    // 3D depth
+    g.fillStyle(woodLight);
+    g.fillRect(baseX, baseY, Math.round(5 * s), bHeight);
+    g.fillStyle(woodDark);
+    g.fillRect(baseX + bWidth - Math.round(5 * s), baseY, Math.round(5 * s), bHeight);
+
+    // Dithering
+    g.fillStyle(darken(woodBase, 0.08));
+    for (let py = 0; py < bHeight; py += Math.round(6 * s)) {
+      for (let px = Math.round(6 * s); px < bWidth - Math.round(6 * s); px += Math.round(10 * s)) {
+        if ((Math.floor(py / Math.round(6 * s)) + Math.floor(px / Math.round(10 * s))) % 2 === 0) {
+          g.fillRect(baseX + px, baseY + py, Math.round(8 * s), Math.round(4 * s));
+        }
+      }
+    }
+
+    // Gambrel roof (barn-style, good for art studio)
+    const roofPeakY = baseY - Math.round(30 * s);
+    const roofMidY = baseY - Math.round(12 * s);
+    const roofLeftX = baseX - Math.round(4 * s);
+    const roofRightX = baseX + bWidth + Math.round(4 * s);
+    const roofCenterX = baseX + bWidth / 2;
+
+    // Lower roof slopes
+    g.fillStyle(roofColor);
+    g.fillTriangle(roofLeftX, baseY, roofLeftX, roofMidY, roofCenterX - Math.round(5 * s), roofMidY);
+    g.fillTriangle(roofRightX, baseY, roofRightX, roofMidY, roofCenterX + Math.round(5 * s), roofMidY);
+    g.fillRect(roofLeftX, roofMidY, roofRightX - roofLeftX, baseY - roofMidY);
+
+    // Upper roof peak
+    g.fillStyle(lighten(roofColor, 0.1));
+    g.fillTriangle(roofCenterX - Math.round(20 * s), roofMidY, roofCenterX, roofPeakY, roofCenterX + Math.round(20 * s), roofMidY);
+
+    // Roof edge trim
+    g.fillStyle(0x78350f);
+    g.fillRect(roofLeftX, roofMidY - Math.round(2 * s), roofRightX - roofLeftX, Math.round(3 * s));
+
+    // Large skylight window in roof (for natural light in studio)
+    const skylightX = roofCenterX - Math.round(12 * s);
+    const skylightY = roofMidY - Math.round(18 * s);
+    g.fillStyle(0x451a03);
+    g.fillRect(skylightX - Math.round(2 * s), skylightY - Math.round(2 * s), Math.round(28 * s), Math.round(18 * s));
+    g.fillStyle(0x87ceeb, 0.7);
+    g.fillRect(skylightX, skylightY, Math.round(24 * s), Math.round(14 * s));
+    g.fillStyle(0xffffff, 0.3);
+    g.fillRect(skylightX, skylightY, Math.round(8 * s), Math.round(5 * s));
+
+    // Easel display on facade (showing canvas shapes)
+    const easelX = baseX + Math.round(8 * s);
+    const easelY = baseY + Math.round(10 * s);
+    // Easel frame
+    g.fillStyle(0x451a03);
+    g.fillRect(easelX, easelY, Math.round(20 * s), Math.round(25 * s));
+    // Canvas on easel - showing square (logo) and rectangle (banner)
+    g.fillStyle(0xfef3c7);
+    g.fillRect(easelX + Math.round(3 * s), easelY + Math.round(3 * s), Math.round(14 * s), Math.round(14 * s));
+    // Square indicator (1:1)
+    g.fillStyle(accent);
+    g.fillRect(easelX + Math.round(5 * s), easelY + Math.round(5 * s), Math.round(10 * s), Math.round(10 * s));
+    // "1:1" text representation
+    g.fillStyle(0x000000);
+    g.fillRect(easelX + Math.round(8 * s), easelY + Math.round(8 * s), Math.round(4 * s), Math.round(4 * s));
+
+    // Second display showing 3:1 banner
+    const bannerX = baseX + Math.round(32 * s);
+    g.fillStyle(0x451a03);
+    g.fillRect(bannerX, easelY, Math.round(22 * s), Math.round(12 * s));
+    g.fillStyle(0xfef3c7);
+    g.fillRect(bannerX + Math.round(2 * s), easelY + Math.round(2 * s), Math.round(18 * s), Math.round(8 * s));
+    g.fillStyle(PALETTE.sky);
+    g.fillRect(bannerX + Math.round(3 * s), easelY + Math.round(3 * s), Math.round(16 * s), Math.round(6 * s));
+
+    // Windows
+    const windowColor = 0xfbbf24;
+    for (let wx = 0; wx < 2; wx++) {
+      const winX = baseX + Math.round(10 * s) + wx * Math.round(25 * s);
+      const winY = baseY + Math.round(45 * s);
+      const winW = Math.round(15 * s);
+      const winH = Math.round(18 * s);
+
+      g.fillStyle(0x451a03);
+      g.fillRect(winX - Math.round(2 * s), winY - Math.round(2 * s), winW + Math.round(4 * s), winH + Math.round(4 * s));
+      g.fillStyle(windowColor, 0.3);
+      g.fillRect(winX - Math.round(1 * s), winY - Math.round(1 * s), winW + Math.round(2 * s), winH + Math.round(2 * s));
+      g.fillStyle(windowColor, 0.8);
+      g.fillRect(winX, winY, winW, winH);
+      g.fillStyle(lighten(windowColor, 0.4));
+      g.fillRect(winX, winY, Math.round(4 * s), Math.round(5 * s));
+      // Cross frame
+      g.fillStyle(woodDark);
+      g.fillRect(winX + winW / 2 - Math.round(1 * s), winY, Math.round(2 * s), winH);
+      g.fillRect(winX, winY + winH / 2 - Math.round(1 * s), winW, Math.round(2 * s));
+    }
+
+    // Door
+    const doorW = Math.round(14 * s);
+    const doorH = Math.round(24 * s);
+    const doorX = baseX + bWidth / 2 - doorW / 2;
+    const doorY = canvasH - doorH;
+
+    g.fillStyle(0x451a03);
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(3 * s), doorW + Math.round(4 * s), doorH + Math.round(3 * s));
+    g.fillStyle(0x5c3317);
+    g.fillRect(doorX, doorY, doorW, doorH);
+    g.fillStyle(darken(0x5c3317, 0.15));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(3 * s), doorW - Math.round(4 * s), Math.round(8 * s));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(14 * s), doorW - Math.round(4 * s), Math.round(8 * s));
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(doorX + doorW - Math.round(4 * s), doorY + Math.round(12 * s), Math.round(2 * s), Math.round(3 * s));
+
+    // "ASSETS" sign above door
+    const signY = doorY - Math.round(12 * s);
+    g.fillStyle(0x451a03);
+    g.fillRect(doorX - Math.round(4 * s), signY, doorW + Math.round(8 * s), Math.round(9 * s));
+    g.fillStyle(accent);
+    g.fillRect(doorX - Math.round(2 * s), signY + Math.round(2 * s), doorW + Math.round(4 * s), Math.round(5 * s));
+
+    // Paint splashes on building exterior (artistic touch)
+    g.fillStyle(0xef4444, 0.7);  // Red splash
+    g.fillCircle(baseX + Math.round(8 * s), baseY + Math.round(70 * s), Math.round(3 * s));
+    g.fillStyle(0x3b82f6, 0.7);  // Blue splash
+    g.fillCircle(baseX + bWidth - Math.round(10 * s), baseY + Math.round(65 * s), Math.round(4 * s));
+    g.fillStyle(0x22c55e, 0.7);  // Green splash
+    g.fillCircle(baseX + Math.round(15 * s), baseY + Math.round(75 * s), Math.round(2 * s));
+
+    g.generateTexture("founders_1", canvasW, canvasH);
+    g.destroy();
+  }
+
+  private generateFoundersSocialHub(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasW = Math.round(70 * s);
+    const canvasH = Math.round(125 * s);
+    const bWidth = Math.round(55 * s);
+    const bHeight = Math.round(75 * s);
+    const baseX = Math.round(7 * s);
+    const baseY = canvasH - bHeight;
+
+    // Colors - Community/social theme (rustic brown with blue accents)
+    const woodBase = 0x6b4423;
+    const woodLight = lighten(woodBase, 0.15);
+    const woodDark = darken(woodBase, 0.2);
+    const roofColor = 0x5c3317;
+    const accent = PALETTE.lightBlue;
+
+    // Drop shadow
+    g.fillStyle(PALETTE.void, 0.5);
+    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
+
+    // Main body
+    g.fillStyle(woodBase);
+    g.fillRect(baseX, baseY, bWidth, bHeight);
+
+    // 3D depth
+    g.fillStyle(woodLight);
+    g.fillRect(baseX, baseY, Math.round(5 * s), bHeight);
+    g.fillStyle(woodDark);
+    g.fillRect(baseX + bWidth - Math.round(5 * s), baseY, Math.round(5 * s), bHeight);
+
+    // Dithering
+    g.fillStyle(darken(woodBase, 0.08));
+    for (let py = 0; py < bHeight; py += Math.round(6 * s)) {
+      for (let px = Math.round(6 * s); px < bWidth - Math.round(6 * s); px += Math.round(10 * s)) {
+        if ((Math.floor(py / Math.round(6 * s)) + Math.floor(px / Math.round(10 * s))) % 2 === 0) {
+          g.fillRect(baseX + px, baseY + py, Math.round(8 * s), Math.round(4 * s));
+        }
+      }
+    }
+
+    // Flat roof with parapet
+    const roofY = baseY - Math.round(8 * s);
+    g.fillStyle(roofColor);
+    g.fillRect(baseX - Math.round(3 * s), roofY, bWidth + Math.round(6 * s), Math.round(10 * s));
+    // Parapet crenellations
+    g.fillStyle(lighten(roofColor, 0.1));
+    for (let i = 0; i < 5; i++) {
+      g.fillRect(baseX - Math.round(2 * s) + i * Math.round(12 * s), roofY - Math.round(6 * s), Math.round(8 * s), Math.round(6 * s));
+    }
+
+    // Large bulletin board on facade
+    const boardX = baseX + Math.round(6 * s);
+    const boardY = baseY + Math.round(8 * s);
+    const boardW = bWidth - Math.round(12 * s);
+    const boardH = Math.round(30 * s);
+
+    // Cork board frame
+    g.fillStyle(0x451a03);
+    g.fillRect(boardX - Math.round(3 * s), boardY - Math.round(3 * s), boardW + Math.round(6 * s), boardH + Math.round(6 * s));
+    // Cork surface
+    g.fillStyle(0xd2b48c);
+    g.fillRect(boardX, boardY, boardW, boardH);
+    // Cork texture
+    g.fillStyle(darken(0xd2b48c, 0.1));
+    for (let py = 0; py < boardH; py += Math.round(4 * s)) {
+      for (let px = 0; px < boardW; px += Math.round(6 * s)) {
+        if ((py + px) % Math.round(8 * s) === 0) {
+          g.fillRect(boardX + px, boardY + py, Math.round(3 * s), Math.round(3 * s));
+        }
+      }
+    }
+
+    // Pinned notes on bulletin board
+    // Twitter/X note (blue)
+    g.fillStyle(0x1da1f2);
+    g.fillRect(boardX + Math.round(4 * s), boardY + Math.round(4 * s), Math.round(12 * s), Math.round(10 * s));
+    g.fillStyle(0xffffff);
+    g.fillRect(boardX + Math.round(6 * s), boardY + Math.round(7 * s), Math.round(8 * s), Math.round(1 * s));
+    g.fillRect(boardX + Math.round(6 * s), boardY + Math.round(10 * s), Math.round(6 * s), Math.round(1 * s));
+
+    // Website note (green)
+    g.fillStyle(PALETTE.bagsGreen);
+    g.fillRect(boardX + Math.round(20 * s), boardY + Math.round(6 * s), Math.round(12 * s), Math.round(10 * s));
+    g.fillStyle(0xffffff);
+    g.fillRect(boardX + Math.round(22 * s), boardY + Math.round(9 * s), Math.round(8 * s), Math.round(1 * s));
+    g.fillRect(boardX + Math.round(22 * s), boardY + Math.round(12 * s), Math.round(5 * s), Math.round(1 * s));
+
+    // Telegram note (blue)
+    g.fillStyle(0x0088cc);
+    g.fillRect(boardX + Math.round(8 * s), boardY + Math.round(18 * s), Math.round(10 * s), Math.round(8 * s));
+    // Discord note (purple)
+    g.fillStyle(0x5865f2);
+    g.fillRect(boardX + Math.round(22 * s), boardY + Math.round(18 * s), Math.round(10 * s), Math.round(8 * s));
+
+    // Push pins
+    g.fillStyle(0xef4444);
+    g.fillCircle(boardX + Math.round(10 * s), boardY + Math.round(4 * s), Math.round(2 * s));
+    g.fillStyle(0xfbbf24);
+    g.fillCircle(boardX + Math.round(26 * s), boardY + Math.round(6 * s), Math.round(2 * s));
+    g.fillStyle(0x22c55e);
+    g.fillCircle(boardX + Math.round(13 * s), boardY + Math.round(18 * s), Math.round(2 * s));
+    g.fillStyle(0xa855f7);
+    g.fillCircle(boardX + Math.round(27 * s), boardY + Math.round(18 * s), Math.round(2 * s));
+
+    // Windows
+    const windowColor = 0xfbbf24;
+    for (let wx = 0; wx < 2; wx++) {
+      const winX = baseX + Math.round(8 * s) + wx * Math.round(22 * s);
+      const winY = baseY + Math.round(45 * s);
+      const winW = Math.round(12 * s);
+      const winH = Math.round(16 * s);
+
+      g.fillStyle(0x451a03);
+      g.fillRect(winX - Math.round(2 * s), winY - Math.round(2 * s), winW + Math.round(4 * s), winH + Math.round(4 * s));
+      g.fillStyle(windowColor, 0.3);
+      g.fillRect(winX - Math.round(1 * s), winY - Math.round(1 * s), winW + Math.round(2 * s), winH + Math.round(2 * s));
+      g.fillStyle(windowColor, 0.8);
+      g.fillRect(winX, winY, winW, winH);
+      g.fillStyle(lighten(windowColor, 0.4));
+      g.fillRect(winX, winY, Math.round(3 * s), Math.round(4 * s));
+      g.fillStyle(woodDark);
+      g.fillRect(winX + winW / 2 - Math.round(1 * s), winY, Math.round(2 * s), winH);
+    }
+
+    // Door
+    const doorW = Math.round(14 * s);
+    const doorH = Math.round(22 * s);
+    const doorX = baseX + bWidth / 2 - doorW / 2;
+    const doorY = canvasH - doorH;
+
+    g.fillStyle(0x451a03);
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(3 * s), doorW + Math.round(4 * s), doorH + Math.round(3 * s));
+    g.fillStyle(0x5c3317);
+    g.fillRect(doorX, doorY, doorW, doorH);
+    g.fillStyle(darken(0x5c3317, 0.15));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(3 * s), doorW - Math.round(4 * s), Math.round(7 * s));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(13 * s), doorW - Math.round(4 * s), Math.round(7 * s));
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(doorX + doorW - Math.round(4 * s), doorY + Math.round(10 * s), Math.round(2 * s), Math.round(3 * s));
+
+    // "CONNECT" sign
+    const signY = doorY - Math.round(10 * s);
+    g.fillStyle(0x451a03);
+    g.fillRect(doorX - Math.round(6 * s), signY, doorW + Math.round(12 * s), Math.round(8 * s));
+    g.fillStyle(accent);
+    g.fillRect(doorX - Math.round(4 * s), signY + Math.round(2 * s), doorW + Math.round(8 * s), Math.round(4 * s));
+
+    // Network connection lines decorating the building
+    g.fillStyle(accent, 0.5);
+    // Vertical line on left
+    g.fillRect(baseX + Math.round(3 * s), baseY + Math.round(40 * s), Math.round(1 * s), Math.round(30 * s));
+    // Horizontal line to window
+    g.fillRect(baseX + Math.round(3 * s), baseY + Math.round(50 * s), Math.round(5 * s), Math.round(1 * s));
+    // Vertical line on right
+    g.fillRect(baseX + bWidth - Math.round(4 * s), baseY + Math.round(42 * s), Math.round(1 * s), Math.round(28 * s));
+    // Connection nodes
+    g.fillStyle(accent);
+    g.fillCircle(baseX + Math.round(3 * s), baseY + Math.round(50 * s), Math.round(2 * s));
+    g.fillCircle(baseX + bWidth - Math.round(4 * s), baseY + Math.round(55 * s), Math.round(2 * s));
+
+    g.generateTexture("founders_2", canvasW, canvasH);
+    g.destroy();
+  }
+
+  private generateFoundersProps(): void {
+    const s = SCALE;
+
+    // Workbench
+    this.generateFoundersWorkbench(s);
+
+    // Easel
+    this.generateFoundersEasel(s);
+
+    // Lantern (warm amber)
+    this.generateFoundersLantern(s);
+
+    // Wooden crate
+    this.generateFoundersCrate(s);
+
+    // Chalkboard sign
+    this.generateFoundersChalkboardSign(s);
+  }
+
+  private generateFoundersWorkbench(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const width = Math.round(40 * s);
+    const height = Math.round(30 * s);
+
+    // Legs
+    g.fillStyle(0x5c3317);
+    g.fillRect(Math.round(3 * s), Math.round(18 * s), Math.round(5 * s), Math.round(12 * s));
+    g.fillRect(width - Math.round(8 * s), Math.round(18 * s), Math.round(5 * s), Math.round(12 * s));
+
+    // Table top
+    g.fillStyle(0x8b4513);
+    g.fillRect(0, Math.round(12 * s), width, Math.round(8 * s));
+    // Top highlight
+    g.fillStyle(lighten(0x8b4513, 0.15));
+    g.fillRect(0, Math.round(12 * s), width, Math.round(2 * s));
+    // Wood grain lines
+    g.fillStyle(darken(0x8b4513, 0.1));
+    g.fillRect(Math.round(5 * s), Math.round(14 * s), Math.round(30 * s), Math.round(1 * s));
+    g.fillRect(Math.round(8 * s), Math.round(17 * s), Math.round(25 * s), Math.round(1 * s));
+
+    // Tools on workbench
+    // Hammer
+    g.fillStyle(0x78716c);
+    g.fillRect(Math.round(8 * s), Math.round(8 * s), Math.round(3 * s), Math.round(6 * s));
+    g.fillStyle(0x5c3317);
+    g.fillRect(Math.round(8 * s), Math.round(6 * s), Math.round(8 * s), Math.round(3 * s));
+
+    // Blueprint roll
+    g.fillStyle(0x60a5fa);
+    g.fillRect(Math.round(20 * s), Math.round(8 * s), Math.round(12 * s), Math.round(5 * s));
+    g.fillStyle(lighten(0x60a5fa, 0.2));
+    g.fillRect(Math.round(20 * s), Math.round(8 * s), Math.round(12 * s), Math.round(1 * s));
+
+    // Small box/container
+    g.fillStyle(0x78350f);
+    g.fillRect(Math.round(5 * s), Math.round(0 * s), Math.round(8 * s), Math.round(8 * s));
+    g.fillStyle(lighten(0x78350f, 0.1));
+    g.fillRect(Math.round(5 * s), Math.round(0 * s), Math.round(8 * s), Math.round(2 * s));
+
+    g.generateTexture("founders_workbench", width, height);
+    g.destroy();
+  }
+
+  private generateFoundersEasel(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const width = Math.round(28 * s);
+    const height = Math.round(45 * s);
+
+    // Easel legs (A-frame)
+    g.fillStyle(0x5c3317);
+    // Left leg
+    g.fillRect(Math.round(4 * s), Math.round(10 * s), Math.round(3 * s), Math.round(35 * s));
+    // Right leg
+    g.fillRect(width - Math.round(7 * s), Math.round(10 * s), Math.round(3 * s), Math.round(35 * s));
+    // Back leg (partially visible)
+    g.fillStyle(darken(0x5c3317, 0.2));
+    g.fillRect(Math.round(12 * s), Math.round(15 * s), Math.round(3 * s), Math.round(30 * s));
+
+    // Cross bar
+    g.fillStyle(0x5c3317);
+    g.fillRect(Math.round(4 * s), Math.round(30 * s), width - Math.round(8 * s), Math.round(3 * s));
+
+    // Canvas holder ledge
+    g.fillStyle(0x78350f);
+    g.fillRect(Math.round(2 * s), Math.round(25 * s), width - Math.round(4 * s), Math.round(4 * s));
+
+    // Canvas on easel
+    g.fillStyle(0xfef3c7);
+    g.fillRect(Math.round(5 * s), Math.round(3 * s), Math.round(18 * s), Math.round(22 * s));
+    // Canvas frame
+    g.fillStyle(0x78350f);
+    g.fillRect(Math.round(5 * s), Math.round(3 * s), Math.round(18 * s), Math.round(2 * s));
+    g.fillRect(Math.round(5 * s), Math.round(23 * s), Math.round(18 * s), Math.round(2 * s));
+    g.fillRect(Math.round(5 * s), Math.round(3 * s), Math.round(2 * s), Math.round(22 * s));
+    g.fillRect(Math.round(21 * s), Math.round(3 * s), Math.round(2 * s), Math.round(22 * s));
+
+    // Simple artwork on canvas (abstract shapes)
+    g.fillStyle(PALETTE.bagsGreen);
+    g.fillRect(Math.round(9 * s), Math.round(7 * s), Math.round(10 * s), Math.round(8 * s));
+    g.fillStyle(PALETTE.gold);
+    g.fillCircle(Math.round(14 * s), Math.round(16 * s), Math.round(4 * s));
+
+    g.generateTexture("founders_easel", width, height);
+    g.destroy();
+  }
+
+  private generateFoundersLantern(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const width = Math.round(16 * s);
+    const height = Math.round(50 * s);
+
+    // Pole
+    g.fillStyle(0x451a03);
+    g.fillRect(Math.round(6 * s), Math.round(15 * s), Math.round(4 * s), Math.round(35 * s));
+    // Pole highlight
+    g.fillStyle(lighten(0x451a03, 0.1));
+    g.fillRect(Math.round(6 * s), Math.round(15 * s), Math.round(1 * s), Math.round(35 * s));
+
+    // Lantern housing
+    g.fillStyle(0x78350f);
+    g.fillRect(Math.round(2 * s), Math.round(5 * s), Math.round(12 * s), Math.round(12 * s));
+    // Housing top
+    g.fillStyle(0x5c3317);
+    g.fillRect(Math.round(1 * s), Math.round(3 * s), Math.round(14 * s), Math.round(3 * s));
+    // Housing cap (pointed)
+    g.fillTriangle(
+      Math.round(1 * s), Math.round(3 * s),
+      Math.round(8 * s), Math.round(-2 * s),
+      Math.round(15 * s), Math.round(3 * s)
+    );
+
+    // Glass panels (warm amber glow)
+    g.fillStyle(0xfbbf24, 0.8);
+    g.fillRect(Math.round(4 * s), Math.round(7 * s), Math.round(8 * s), Math.round(8 * s));
+    // Bright center
+    g.fillStyle(0xfde047);
+    g.fillRect(Math.round(6 * s), Math.round(9 * s), Math.round(4 * s), Math.round(4 * s));
+
+    // Glow effect (semi-transparent)
+    g.fillStyle(0xfbbf24, 0.3);
+    g.fillCircle(Math.round(8 * s), Math.round(11 * s), Math.round(10 * s));
+
+    // Hanging hook at top
+    g.fillStyle(0x78716c);
+    g.fillRect(Math.round(7 * s), Math.round(-3 * s), Math.round(2 * s), Math.round(3 * s));
+
+    // Base decoration
+    g.fillStyle(0x5c3317);
+    g.fillRect(Math.round(4 * s), Math.round(48 * s), Math.round(8 * s), Math.round(2 * s));
+
+    g.generateTexture("founders_lantern", width, height);
+    g.destroy();
+  }
+
+  private generateFoundersCrate(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const width = Math.round(20 * s);
+    const height = Math.round(18 * s);
+
+    // Main crate body
+    g.fillStyle(0x8b4513);
+    g.fillRect(0, Math.round(2 * s), width, height - Math.round(2 * s));
+
+    // 3D depth
+    g.fillStyle(lighten(0x8b4513, 0.15));
+    g.fillRect(0, Math.round(2 * s), Math.round(3 * s), height - Math.round(2 * s));
+    g.fillStyle(darken(0x8b4513, 0.2));
+    g.fillRect(width - Math.round(3 * s), Math.round(2 * s), Math.round(3 * s), height - Math.round(2 * s));
+
+    // Top surface
+    g.fillStyle(lighten(0x8b4513, 0.1));
+    g.fillRect(0, 0, width, Math.round(4 * s));
+
+    // Wood plank lines
+    g.fillStyle(darken(0x8b4513, 0.15));
+    g.fillRect(0, Math.round(6 * s), width, Math.round(1 * s));
+    g.fillRect(0, Math.round(11 * s), width, Math.round(1 * s));
+
+    // Metal corner brackets
+    g.fillStyle(0x6b7280);
+    // Top left
+    g.fillRect(0, Math.round(2 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(0, Math.round(2 * s), Math.round(2 * s), Math.round(5 * s));
+    // Top right
+    g.fillRect(width - Math.round(4 * s), Math.round(2 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(width - Math.round(2 * s), Math.round(2 * s), Math.round(2 * s), Math.round(5 * s));
+    // Bottom left
+    g.fillRect(0, height - Math.round(4 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(0, height - Math.round(7 * s), Math.round(2 * s), Math.round(5 * s));
+    // Bottom right
+    g.fillRect(width - Math.round(4 * s), height - Math.round(4 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(width - Math.round(2 * s), height - Math.round(7 * s), Math.round(2 * s), Math.round(5 * s));
+
+    g.generateTexture("founders_crate", width, height);
+    g.destroy();
+  }
+
+  private generateFoundersChalkboardSign(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const width = Math.round(50 * s);
+    const height = Math.round(40 * s);
+
+    // Sign posts (A-frame)
+    g.fillStyle(0x5c3317);
+    g.fillRect(Math.round(5 * s), Math.round(5 * s), Math.round(4 * s), Math.round(35 * s));
+    g.fillRect(width - Math.round(9 * s), Math.round(5 * s), Math.round(4 * s), Math.round(35 * s));
+
+    // Cross bar at top
+    g.fillStyle(0x78350f);
+    g.fillRect(Math.round(3 * s), Math.round(3 * s), width - Math.round(6 * s), Math.round(4 * s));
+
+    // Chalkboard panel
+    g.fillStyle(0x1f2937);
+    g.fillRect(Math.round(8 * s), Math.round(8 * s), width - Math.round(16 * s), Math.round(24 * s));
+
+    // Chalkboard frame
+    g.fillStyle(0x451a03);
+    g.fillRect(Math.round(8 * s), Math.round(8 * s), width - Math.round(16 * s), Math.round(2 * s));
+    g.fillRect(Math.round(8 * s), Math.round(30 * s), width - Math.round(16 * s), Math.round(2 * s));
+    g.fillRect(Math.round(8 * s), Math.round(8 * s), Math.round(2 * s), Math.round(24 * s));
+    g.fillRect(width - Math.round(10 * s), Math.round(8 * s), Math.round(2 * s), Math.round(24 * s));
+
+    // Chalk text "WELCOME FOUNDERS"
+    g.fillStyle(0xffffff, 0.9);
+    // "WELCOME" (simplified as rectangle lines)
+    g.fillRect(Math.round(12 * s), Math.round(12 * s), Math.round(26 * s), Math.round(3 * s));
+    // "FOUNDERS"
+    g.fillRect(Math.round(14 * s), Math.round(18 * s), Math.round(22 * s), Math.round(3 * s));
+    // Decorative underline
+    g.fillStyle(PALETTE.bagsGreen, 0.8);
+    g.fillRect(Math.round(12 * s), Math.round(24 * s), Math.round(26 * s), Math.round(2 * s));
+
+    // Chalk dust effect
+    g.fillStyle(0xffffff, 0.3);
+    g.fillRect(Math.round(15 * s), Math.round(28 * s), Math.round(3 * s), Math.round(1 * s));
+    g.fillRect(Math.round(25 * s), Math.round(27 * s), Math.round(2 * s), Math.round(1 * s));
+
+    g.generateTexture("founders_chalkboard", width, height);
     g.destroy();
   }
 }
