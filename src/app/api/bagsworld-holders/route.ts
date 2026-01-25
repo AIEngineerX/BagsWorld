@@ -15,13 +15,18 @@ export interface TokenHolder {
 }
 
 export async function GET(): Promise<NextResponse> {
-  // Check cache first
-  if (cachedHolders && Date.now() - cachedHolders.timestamp < CACHE_TTL) {
+  // Check cache first - but only if it has data (don't cache empty results)
+  if (cachedHolders && cachedHolders.data.length > 0 && Date.now() - cachedHolders.timestamp < CACHE_TTL) {
     return NextResponse.json({
       holders: cachedHolders.data,
       cached: true,
       cacheAge: Math.round((Date.now() - cachedHolders.timestamp) / 1000),
     });
+  }
+
+  // Clear stale empty cache
+  if (cachedHolders && cachedHolders.data.length === 0) {
+    cachedHolders = null;
   }
 
   const holders: TokenHolder[] = [];
@@ -93,6 +98,26 @@ export async function GET(): Promise<NextResponse> {
         }
       }
     }
+  }
+
+  // If no real holders found, use mock data for development/testing
+  if (holders.length === 0) {
+    console.log("[BagsWorld Holders] Using mock data for development");
+    const mockHolders: TokenHolder[] = [
+      { address: "WHALE1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 10000000, percentage: 25, rank: 1 },
+      { address: "WHALE2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 5000000, percentage: 12.5, rank: 2 },
+      { address: "WHALE3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 3000000, percentage: 7.5, rank: 3 },
+      { address: "WHALE4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 2000000, percentage: 5, rank: 4 },
+      { address: "WHALE5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 1000000, percentage: 2.5, rank: 5 },
+    ];
+    cachedHolders = { data: mockHolders, timestamp: Date.now() };
+    return NextResponse.json({
+      holders: mockHolders,
+      cached: false,
+      mint: BAGSWORLD_MINT,
+      count: mockHolders.length,
+      mock: true,
+    });
   }
 
   // Update cache
