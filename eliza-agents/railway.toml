@@ -6,9 +6,10 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Health check
+# Health check - increased timeout for npm/tsx startup
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 60
+startCommand = "npx tsx src/server.ts"
 
 # Number of replicas
 numReplicas = 1
