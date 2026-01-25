@@ -108,7 +108,7 @@ Current world state:
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-3-5-haiku-20241022",
+      model: "claude-3-haiku-20240307",
       max_tokens: 200,
       system: systemPrompt,
       messages,
@@ -326,7 +326,7 @@ Generate a short, in-character response about what's happening in the world. For
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-3-5-haiku-20241022",
+      model: "claude-3-haiku-20240307",
       max_tokens: 150,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
