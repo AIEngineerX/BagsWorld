@@ -2875,10 +2875,11 @@ export class BootScene extends Phaser.Scene {
    */
   private generateMansions(): void {
     const s = SCALE;
-    const canvasWidth = Math.round(90 * s);
-    const canvasHeight = Math.round(180 * s);
+    // Larger canvas for more detail
+    const canvasWidth = Math.round(120 * s);
+    const canvasHeight = Math.round(200 * s);
 
-    // Each mansion has unique architecture, not just color variations
+    // Each mansion has unique architecture with luxury details
     this.generateMansion0_GrandPalace(s, canvasWidth, canvasHeight);
     this.generateMansion1_VictorianTower(s, canvasWidth, canvasHeight);
     this.generateMansion2_FrenchChateau(s, canvasWidth, canvasHeight);
@@ -2886,547 +2887,1398 @@ export class BootScene extends Phaser.Scene {
     this.generateMansion4_ColonialManor(s, canvasWidth, canvasHeight);
   }
 
-  // MANSION 0: Grand Palace - Central dome with symmetrical wings (most prestigious)
+  // MANSION 0: Grand Palace - Opulent royal palace with golden dome (TOP HOLDER)
   private generateMansion0_GrandPalace(s: number, canvasWidth: number, canvasHeight: number): void {
     const g = this.make.graphics({ x: 0, y: 0 });
-    const style = { base: PALETTE.navy, roof: PALETTE.gold, trim: PALETTE.gold, window: PALETTE.bagsGreen, column: PALETTE.cream };
+    const style = {
+      base: 0x1e3a5f,        // Deep royal blue
+      baseLight: 0x2d4a6f,
+      baseDark: 0x0f2744,
+      roof: 0xffd700,        // Pure gold
+      roofLight: 0xffec8b,
+      trim: 0xffd700,
+      window: 0x7fff00,      // Bright chartreuse glow
+      windowGlow: 0x00ff41,
+      column: 0xfaf0e6,      // Linen white
+      columnLight: 0xffffff,
+    };
     const centerX = canvasWidth / 2;
-    const groundY = canvasHeight;
+    const groundY = canvasHeight - Math.round(8 * s); // Leave room for foundation
 
-    // Main central body
-    const mainW = Math.round(40 * s);
-    const mainH = Math.round(80 * s);
+    // === FOUNDATION/BASE with steps ===
+    g.fillStyle(0x4a4a4a);
+    g.fillRect(Math.round(8 * s), groundY, canvasWidth - Math.round(16 * s), Math.round(8 * s));
+    g.fillStyle(0x5a5a5a);
+    g.fillRect(Math.round(12 * s), groundY - Math.round(4 * s), canvasWidth - Math.round(24 * s), Math.round(4 * s));
+    g.fillStyle(0x6a6a6a);
+    g.fillRect(Math.round(16 * s), groundY - Math.round(8 * s), canvasWidth - Math.round(32 * s), Math.round(4 * s));
+
+    // === MAIN CENTRAL BODY ===
+    const mainW = Math.round(50 * s);
+    const mainH = Math.round(90 * s);
     const mainX = centerX - mainW / 2;
-    const mainY = groundY - mainH;
+    const mainY = groundY - Math.round(8 * s) - mainH;
 
     // Drop shadow
-    g.fillStyle(PALETTE.void, 0.4);
-    g.fillRect(mainX + Math.round(4 * s), mainY + Math.round(6 * s), mainW, mainH);
+    g.fillStyle(0x000000, 0.5);
+    g.fillRect(mainX + Math.round(5 * s), mainY + Math.round(8 * s), mainW, mainH);
 
-    // Central body
+    // Main body with gradient effect (multiple layers)
     g.fillStyle(style.base);
     g.fillRect(mainX, mainY, mainW, mainH);
-    g.fillStyle(lighten(style.base, 0.15));
-    g.fillRect(mainX, mainY, Math.round(4 * s), mainH);
+    // Light edge (left)
+    g.fillStyle(style.baseLight);
+    g.fillRect(mainX, mainY, Math.round(5 * s), mainH);
+    // Dark edge (right)
+    g.fillStyle(style.baseDark);
+    g.fillRect(mainX + mainW - Math.round(5 * s), mainY, Math.round(5 * s), mainH);
 
-    // LEFT WING - shorter, wider
-    const wingW = Math.round(22 * s);
-    const wingH = Math.round(55 * s);
-    const leftWingX = mainX - wingW + Math.round(2 * s);
-    const wingY = groundY - wingH;
-    g.fillStyle(PALETTE.void, 0.3);
-    g.fillRect(leftWingX + Math.round(3 * s), wingY + Math.round(4 * s), wingW, wingH);
+    // Dithering texture on walls
+    g.fillStyle(style.baseLight, 0.15);
+    for (let py = 0; py < mainH; py += Math.round(4 * s)) {
+      for (let px = 0; px < mainW; px += Math.round(8 * s)) {
+        if ((py / Math.round(4 * s) + px / Math.round(8 * s)) % 2 === 0) {
+          g.fillRect(mainX + px, mainY + py, Math.round(2 * s), Math.round(2 * s));
+        }
+      }
+    }
+
+    // === LEFT WING ===
+    const wingW = Math.round(28 * s);
+    const wingH = Math.round(65 * s);
+    const leftWingX = mainX - wingW + Math.round(4 * s);
+    const wingY = groundY - Math.round(8 * s) - wingH;
+
+    g.fillStyle(0x000000, 0.4);
+    g.fillRect(leftWingX + Math.round(4 * s), wingY + Math.round(6 * s), wingW, wingH);
     g.fillStyle(style.base);
     g.fillRect(leftWingX, wingY, wingW, wingH);
-    g.fillStyle(lighten(style.base, 0.1));
-    g.fillRect(leftWingX, wingY, Math.round(3 * s), wingH);
-    // Wing roof (flat with balustrade)
+    g.fillStyle(style.baseLight);
+    g.fillRect(leftWingX, wingY, Math.round(4 * s), wingH);
+
+    // Wing roof with balustrade
     g.fillStyle(style.roof);
-    g.fillRect(leftWingX - Math.round(2 * s), wingY - Math.round(6 * s), wingW + Math.round(4 * s), Math.round(6 * s));
-    // Wing windows (2 columns, 2 rows)
+    g.fillRect(leftWingX - Math.round(3 * s), wingY - Math.round(8 * s), wingW + Math.round(6 * s), Math.round(8 * s));
+    g.fillStyle(style.roofLight);
+    g.fillRect(leftWingX - Math.round(3 * s), wingY - Math.round(8 * s), wingW + Math.round(6 * s), Math.round(2 * s));
+    // Balustrade posts
+    for (let p = 0; p < 5; p++) {
+      const px = leftWingX + Math.round(3 * s) + p * Math.round(6 * s);
+      g.fillStyle(style.column);
+      g.fillRect(px, wingY - Math.round(14 * s), Math.round(3 * s), Math.round(6 * s));
+    }
+    g.fillStyle(style.column);
+    g.fillRect(leftWingX, wingY - Math.round(16 * s), wingW, Math.round(2 * s));
+
+    // Wing windows with GLOW effect
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 2; col++) {
-        const wx = leftWingX + Math.round(4 * s) + col * Math.round(10 * s);
-        const wy = wingY + Math.round(10 * s) + row * Math.round(22 * s);
-        g.fillStyle(style.window, 0.3);
-        g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(8 * s), Math.round(14 * s));
+        const wx = leftWingX + Math.round(5 * s) + col * Math.round(12 * s);
+        const wy = wingY + Math.round(12 * s) + row * Math.round(26 * s);
+        // Outer glow
+        g.fillStyle(style.windowGlow, 0.25);
+        g.fillRect(wx - Math.round(3 * s), wy - Math.round(3 * s), Math.round(14 * s), Math.round(22 * s));
+        // Inner glow
+        g.fillStyle(style.windowGlow, 0.4);
+        g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(10 * s), Math.round(18 * s));
+        // Window pane
         g.fillStyle(style.window);
-        g.fillRect(wx, wy, Math.round(6 * s), Math.round(12 * s));
+        g.fillRect(wx, wy, Math.round(8 * s), Math.round(16 * s));
+        // Mullions (cross pattern)
+        g.fillStyle(style.column);
+        g.fillRect(wx + Math.round(3.5 * s), wy, Math.round(1 * s), Math.round(16 * s));
+        g.fillRect(wx, wy + Math.round(7.5 * s), Math.round(8 * s), Math.round(1 * s));
+        // Arched top
+        g.fillStyle(style.window);
+        g.fillCircle(wx + Math.round(4 * s), wy, Math.round(4 * s));
       }
     }
 
-    // RIGHT WING - mirror of left
-    const rightWingX = mainX + mainW - Math.round(2 * s);
-    g.fillStyle(PALETTE.void, 0.3);
-    g.fillRect(rightWingX + Math.round(3 * s), wingY + Math.round(4 * s), wingW, wingH);
+    // === RIGHT WING (mirror) ===
+    const rightWingX = mainX + mainW - Math.round(4 * s);
+    g.fillStyle(0x000000, 0.4);
+    g.fillRect(rightWingX + Math.round(4 * s), wingY + Math.round(6 * s), wingW, wingH);
     g.fillStyle(style.base);
     g.fillRect(rightWingX, wingY, wingW, wingH);
-    g.fillStyle(darken(style.base, 0.15));
-    g.fillRect(rightWingX + wingW - Math.round(3 * s), wingY, Math.round(3 * s), wingH);
+    g.fillStyle(style.baseDark);
+    g.fillRect(rightWingX + wingW - Math.round(4 * s), wingY, Math.round(4 * s), wingH);
+
+    // Right wing roof with balustrade
     g.fillStyle(style.roof);
-    g.fillRect(rightWingX - Math.round(2 * s), wingY - Math.round(6 * s), wingW + Math.round(4 * s), Math.round(6 * s));
+    g.fillRect(rightWingX - Math.round(3 * s), wingY - Math.round(8 * s), wingW + Math.round(6 * s), Math.round(8 * s));
+    g.fillStyle(style.roofLight);
+    g.fillRect(rightWingX - Math.round(3 * s), wingY - Math.round(8 * s), wingW + Math.round(6 * s), Math.round(2 * s));
+    for (let p = 0; p < 5; p++) {
+      const px = rightWingX + Math.round(3 * s) + p * Math.round(6 * s);
+      g.fillStyle(style.column);
+      g.fillRect(px, wingY - Math.round(14 * s), Math.round(3 * s), Math.round(6 * s));
+    }
+    g.fillStyle(style.column);
+    g.fillRect(rightWingX, wingY - Math.round(16 * s), wingW, Math.round(2 * s));
+
+    // Right wing windows
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 2; col++) {
-        const wx = rightWingX + Math.round(4 * s) + col * Math.round(10 * s);
-        const wy = wingY + Math.round(10 * s) + row * Math.round(22 * s);
-        g.fillStyle(style.window, 0.3);
-        g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(8 * s), Math.round(14 * s));
+        const wx = rightWingX + Math.round(5 * s) + col * Math.round(12 * s);
+        const wy = wingY + Math.round(12 * s) + row * Math.round(26 * s);
+        g.fillStyle(style.windowGlow, 0.25);
+        g.fillRect(wx - Math.round(3 * s), wy - Math.round(3 * s), Math.round(14 * s), Math.round(22 * s));
+        g.fillStyle(style.windowGlow, 0.4);
+        g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(10 * s), Math.round(18 * s));
         g.fillStyle(style.window);
-        g.fillRect(wx, wy, Math.round(6 * s), Math.round(12 * s));
+        g.fillRect(wx, wy, Math.round(8 * s), Math.round(16 * s));
+        g.fillStyle(style.column);
+        g.fillRect(wx + Math.round(3.5 * s), wy, Math.round(1 * s), Math.round(16 * s));
+        g.fillRect(wx, wy + Math.round(7.5 * s), Math.round(8 * s), Math.round(1 * s));
+        g.fillStyle(style.window);
+        g.fillCircle(wx + Math.round(4 * s), wy, Math.round(4 * s));
       }
     }
 
-    // GRAND DOME on central body
-    const domeR = Math.round(20 * s);
-    const domeY = mainY - Math.round(8 * s);
+    // === GRAND GOLDEN DOME ===
+    const domeR = Math.round(26 * s);
+    const domeY = mainY - Math.round(12 * s);
+
+    // Dome drum (base)
+    g.fillStyle(style.column);
+    g.fillRect(centerX - Math.round(24 * s), domeY - Math.round(4 * s), Math.round(48 * s), Math.round(12 * s));
+    // Drum columns
+    for (let dc = 0; dc < 8; dc++) {
+      const dcx = centerX - Math.round(22 * s) + dc * Math.round(6 * s);
+      g.fillStyle(style.columnLight);
+      g.fillRect(dcx, domeY - Math.round(2 * s), Math.round(2 * s), Math.round(10 * s));
+    }
+
+    // Main dome
     g.fillStyle(style.roof);
     g.fillCircle(centerX, domeY, domeR);
-    g.fillStyle(lighten(style.roof, 0.25));
-    g.fillCircle(centerX - Math.round(5 * s), domeY - Math.round(5 * s), Math.round(8 * s));
-    // Dome base/drum
-    g.fillStyle(style.column);
-    g.fillRect(centerX - Math.round(18 * s), domeY - Math.round(2 * s), Math.round(36 * s), Math.round(8 * s));
-    // Finial on dome
-    g.fillStyle(style.trim);
-    g.fillRect(centerX - Math.round(1 * s), domeY - domeR - Math.round(10 * s), Math.round(2 * s), Math.round(10 * s));
-    g.fillCircle(centerX, domeY - domeR - Math.round(12 * s), Math.round(3 * s));
+    // Dome highlight (shiny reflection)
+    g.fillStyle(style.roofLight, 0.7);
+    g.fillCircle(centerX - Math.round(8 * s), domeY - Math.round(8 * s), Math.round(12 * s));
+    g.fillStyle(0xffffff, 0.4);
+    g.fillCircle(centerX - Math.round(10 * s), domeY - Math.round(10 * s), Math.round(6 * s));
+    // Dome ribs (decorative lines)
+    g.fillStyle(darken(style.roof, 0.15));
+    for (let r = 0; r < 6; r++) {
+      const angle = (r / 6) * Math.PI;
+      const rx = Math.cos(angle) * domeR * 0.9;
+      g.fillRect(centerX + rx - Math.round(1 * s), domeY - domeR + Math.round(5 * s), Math.round(2 * s), domeR * 2 - Math.round(10 * s));
+    }
 
-    // Main cornice
+    // FINIAL (ornate gold spire on top)
     g.fillStyle(style.trim);
-    g.fillRect(mainX - Math.round(2 * s), mainY - Math.round(4 * s), mainW + Math.round(4 * s), Math.round(6 * s));
+    g.fillRect(centerX - Math.round(2 * s), domeY - domeR - Math.round(18 * s), Math.round(4 * s), Math.round(18 * s));
+    g.fillStyle(style.roofLight);
+    g.fillCircle(centerX, domeY - domeR - Math.round(22 * s), Math.round(5 * s));
+    g.fillStyle(style.trim);
+    g.fillCircle(centerX, domeY - domeR - Math.round(22 * s), Math.round(3 * s));
+    // Cross on top
+    g.fillRect(centerX - Math.round(4 * s), domeY - domeR - Math.round(30 * s), Math.round(8 * s), Math.round(3 * s));
+    g.fillRect(centerX - Math.round(1.5 * s), domeY - domeR - Math.round(36 * s), Math.round(3 * s), Math.round(12 * s));
 
-    // Main body windows (3 columns, 3 rows)
+    // === ORNATE CORNICE ===
+    g.fillStyle(style.trim);
+    g.fillRect(mainX - Math.round(4 * s), mainY - Math.round(6 * s), mainW + Math.round(8 * s), Math.round(8 * s));
+    g.fillStyle(style.roofLight);
+    g.fillRect(mainX - Math.round(4 * s), mainY - Math.round(6 * s), mainW + Math.round(8 * s), Math.round(2 * s));
+    // Dentil molding
+    for (let d = 0; d < 12; d++) {
+      g.fillStyle(style.column);
+      g.fillRect(mainX + Math.round(2 * s) + d * Math.round(4 * s), mainY + Math.round(2 * s), Math.round(2 * s), Math.round(4 * s));
+    }
+
+    // === MAIN BODY WINDOWS with chandelier glow ===
     for (let row = 0; row < 3; row++) {
       for (let col = 0; col < 3; col++) {
-        const wx = mainX + Math.round(5 * s) + col * Math.round(12 * s);
-        const wy = mainY + Math.round(10 * s) + row * Math.round(24 * s);
-        g.fillStyle(style.window, 0.3);
-        g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(9 * s), Math.round(16 * s));
+        const wx = mainX + Math.round(7 * s) + col * Math.round(14 * s);
+        const wy = mainY + Math.round(14 * s) + row * Math.round(26 * s);
+        // Outer glow
+        g.fillStyle(style.windowGlow, 0.3);
+        g.fillRect(wx - Math.round(4 * s), wy - Math.round(4 * s), Math.round(18 * s), Math.round(26 * s));
+        // Inner glow
+        g.fillStyle(style.windowGlow, 0.5);
+        g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), Math.round(14 * s), Math.round(22 * s));
+        // Window frame (gold)
+        g.fillStyle(style.trim);
+        g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(12 * s), Math.round(20 * s));
+        // Window pane
         g.fillStyle(style.window);
-        g.fillRect(wx, wy, Math.round(7 * s), Math.round(14 * s));
-        g.fillCircle(wx + Math.round(3.5 * s), wy, Math.round(3.5 * s));
+        g.fillRect(wx, wy, Math.round(10 * s), Math.round(18 * s));
+        // Arched top
+        g.fillCircle(wx + Math.round(5 * s), wy, Math.round(5 * s));
+        // Mullions
+        g.fillStyle(style.column);
+        g.fillRect(wx + Math.round(4.5 * s), wy, Math.round(1 * s), Math.round(18 * s));
+        g.fillRect(wx, wy + Math.round(8.5 * s), Math.round(10 * s), Math.round(1 * s));
+        // Chandelier sparkle in center window (middle row)
+        if (row === 1 && col === 1) {
+          g.fillStyle(0xffffff, 0.9);
+          g.fillCircle(wx + Math.round(5 * s), wy + Math.round(6 * s), Math.round(2 * s));
+          g.fillStyle(style.windowGlow, 0.7);
+          g.fillCircle(wx + Math.round(5 * s), wy + Math.round(6 * s), Math.round(4 * s));
+        }
+        // Decorative pediment above each window
+        g.fillStyle(style.trim);
+        g.fillTriangle(
+          wx - Math.round(2 * s), wy - Math.round(2 * s),
+          wx + Math.round(12 * s), wy - Math.round(2 * s),
+          wx + Math.round(5 * s), wy - Math.round(8 * s)
+        );
       }
     }
 
-    // Grand entrance (central arched door)
-    const doorW = Math.round(14 * s);
-    const doorH = Math.round(24 * s);
+    // === GRAND ENTRANCE with columns ===
+    const doorW = Math.round(18 * s);
+    const doorH = Math.round(30 * s);
     const doorX = centerX - doorW / 2;
-    const doorY = groundY - doorH;
+    const doorY = groundY - Math.round(8 * s) - doorH;
+
+    // Entrance portico roof
+    g.fillStyle(style.roof);
+    g.fillRect(doorX - Math.round(12 * s), doorY - Math.round(10 * s), doorW + Math.round(24 * s), Math.round(8 * s));
+    g.fillStyle(style.roofLight);
+    g.fillRect(doorX - Math.round(12 * s), doorY - Math.round(10 * s), doorW + Math.round(24 * s), Math.round(2 * s));
+    // Triangular pediment
     g.fillStyle(style.trim);
-    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(3 * s), doorW + Math.round(6 * s), doorH + Math.round(3 * s));
-    g.fillCircle(centerX, doorY - Math.round(3 * s), doorW / 2 + Math.round(3 * s));
-    g.fillStyle(PALETTE.void);
+    g.fillTriangle(
+      doorX - Math.round(14 * s), doorY - Math.round(10 * s),
+      doorX + doorW + Math.round(14 * s), doorY - Math.round(10 * s),
+      centerX, doorY - Math.round(26 * s)
+    );
+    g.fillStyle(style.roofLight);
+    g.fillTriangle(
+      doorX - Math.round(10 * s), doorY - Math.round(10 * s),
+      doorX + doorW + Math.round(10 * s), doorY - Math.round(10 * s),
+      centerX, doorY - Math.round(20 * s)
+    );
+
+    // Grand columns (4 fluted columns)
+    for (let c = 0; c < 4; c++) {
+      const cx = doorX - Math.round(8 * s) + c * Math.round(12 * s);
+      g.fillStyle(style.column);
+      g.fillRect(cx, doorY - Math.round(2 * s), Math.round(5 * s), doorH + Math.round(2 * s));
+      // Column fluting (grooves)
+      g.fillStyle(style.columnLight);
+      g.fillRect(cx + Math.round(1 * s), doorY, Math.round(1 * s), doorH);
+      g.fillStyle(0xcccccc);
+      g.fillRect(cx + Math.round(3 * s), doorY, Math.round(1 * s), doorH);
+      // Capital
+      g.fillStyle(style.trim);
+      g.fillRect(cx - Math.round(1 * s), doorY - Math.round(6 * s), Math.round(7 * s), Math.round(4 * s));
+      // Base
+      g.fillRect(cx - Math.round(1 * s), doorY + doorH - Math.round(3 * s), Math.round(7 * s), Math.round(3 * s));
+    }
+
+    // Door arch
+    g.fillStyle(style.trim);
+    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(4 * s), doorW + Math.round(8 * s), doorH + Math.round(4 * s));
+    g.fillCircle(centerX, doorY - Math.round(4 * s), doorW / 2 + Math.round(4 * s));
+    // Door opening
+    g.fillStyle(0x0a0a0a);
     g.fillRect(doorX, doorY, doorW, doorH);
     g.fillCircle(centerX, doorY, doorW / 2);
-    g.fillStyle(PALETTE.darkBrown);
-    g.fillRect(doorX + Math.round(1 * s), doorY + Math.round(3 * s), doorW / 2 - Math.round(2 * s), doorH - Math.round(3 * s));
-    g.fillRect(doorX + doorW / 2 + Math.round(1 * s), doorY + Math.round(3 * s), doorW / 2 - Math.round(2 * s), doorH - Math.round(3 * s));
+    // Ornate door panels
+    g.fillStyle(0x3d2817);
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(4 * s), doorW / 2 - Math.round(3 * s), doorH - Math.round(4 * s));
+    g.fillRect(doorX + doorW / 2 + Math.round(1 * s), doorY + Math.round(4 * s), doorW / 2 - Math.round(3 * s), doorH - Math.round(4 * s));
+    // Door knockers (gold circles)
+    g.fillStyle(style.trim);
+    g.fillCircle(doorX + Math.round(6 * s), doorY + Math.round(16 * s), Math.round(2 * s));
+    g.fillCircle(doorX + doorW - Math.round(6 * s), doorY + Math.round(16 * s), Math.round(2 * s));
+    // Fanlight window above door
+    g.fillStyle(style.window, 0.7);
+    g.fillCircle(centerX, doorY - Math.round(2 * s), doorW / 2 - Math.round(2 * s));
+    // Fanlight muntins
+    for (let m = 0; m < 5; m++) {
+      const angle = (m / 5) * Math.PI;
+      const mx = Math.cos(angle) * (doorW / 2 - Math.round(4 * s));
+      const my = Math.sin(angle) * (doorW / 2 - Math.round(4 * s));
+      g.fillStyle(style.column);
+      g.fillRect(centerX - Math.round(0.5 * s), doorY - Math.round(2 * s), Math.round(1 * s), -(doorW / 2 - Math.round(4 * s)));
+    }
 
     g.generateTexture("mansion_0", canvasWidth, canvasHeight);
     g.destroy();
   }
 
-  // MANSION 1: Victorian with corner tower
+  // MANSION 1: Obsidian Tower - Dark Gothic Victorian with dramatic spires (#2 HOLDER)
   private generateMansion1_VictorianTower(s: number, canvasWidth: number, canvasHeight: number): void {
     const g = this.make.graphics({ x: 0, y: 0 });
-    const style = { base: PALETTE.night, roof: PALETTE.amber, trim: PALETTE.gold, window: PALETTE.gold, column: PALETTE.cream };
-    const groundY = canvasHeight;
+    const style = {
+      base: 0x1a1a2e,        // Dark obsidian
+      baseLight: 0x2a2a4e,
+      baseDark: 0x0a0a1e,
+      roof: 0x2d2d2d,        // Dark slate
+      roofLight: 0x4a4a4a,
+      trim: 0xffd700,        // Gold accents
+      trimLight: 0xffec8b,
+      window: 0xffb347,      // Warm amber glow
+      windowGlow: 0xff8c00,
+      stainedGlass: 0xff4500, // Orange-red accent
+    };
+    const centerX = canvasWidth / 2;
+    const groundY = canvasHeight - Math.round(6 * s);
 
-    // Main body (asymmetric - tower on left)
-    const mainW = Math.round(50 * s);
-    const mainH = Math.round(70 * s);
-    const mainX = Math.round(25 * s);
+    // === FOUNDATION ===
+    g.fillStyle(0x2a2a2a);
+    g.fillRect(Math.round(10 * s), groundY, canvasWidth - Math.round(20 * s), Math.round(6 * s));
+
+    // === MAIN BODY (asymmetric Gothic) ===
+    const mainW = Math.round(60 * s);
+    const mainH = Math.round(80 * s);
+    const mainX = Math.round(35 * s);
     const mainY = groundY - mainH;
 
     // Shadow
-    g.fillStyle(PALETTE.void, 0.4);
-    g.fillRect(mainX + Math.round(4 * s), mainY + Math.round(6 * s), mainW, mainH);
+    g.fillStyle(0x000000, 0.5);
+    g.fillRect(mainX + Math.round(5 * s), mainY + Math.round(8 * s), mainW, mainH);
 
-    // Main body
+    // Main body with texture
     g.fillStyle(style.base);
     g.fillRect(mainX, mainY, mainW, mainH);
-    g.fillStyle(lighten(style.base, 0.12));
-    g.fillRect(mainX, mainY, Math.round(4 * s), mainH);
+    g.fillStyle(style.baseLight);
+    g.fillRect(mainX, mainY, Math.round(5 * s), mainH);
+    g.fillStyle(style.baseDark);
+    g.fillRect(mainX + mainW - Math.round(5 * s), mainY, Math.round(5 * s), mainH);
 
-    // Steep Victorian roof (gabled)
-    const roofPeakY = mainY - Math.round(30 * s);
-    g.fillStyle(style.roof);
-    g.fillTriangle(mainX - Math.round(4 * s), mainY, mainX + mainW + Math.round(4 * s), mainY, mainX + mainW / 2, roofPeakY);
-    g.fillStyle(lighten(style.roof, 0.2));
-    g.fillTriangle(mainX + Math.round(10 * s), mainY - Math.round(2 * s), mainX + mainW / 2, mainY - Math.round(2 * s), mainX + mainW / 2, roofPeakY + Math.round(5 * s));
-
-    // CORNER TOWER (left side, taller)
-    const towerW = Math.round(20 * s);
-    const towerH = Math.round(100 * s);
-    const towerX = mainX - Math.round(5 * s);
-    const towerY = groundY - towerH;
-
-    g.fillStyle(PALETTE.void, 0.35);
-    g.fillRect(towerX + Math.round(3 * s), towerY + Math.round(5 * s), towerW, towerH);
-    g.fillStyle(style.base);
-    g.fillRect(towerX, towerY, towerW, towerH);
-    g.fillStyle(lighten(style.base, 0.15));
-    g.fillRect(towerX, towerY, Math.round(3 * s), towerH);
-
-    // Conical tower roof (witch's hat style)
-    const towerRoofH = Math.round(35 * s);
-    g.fillStyle(style.roof);
-    g.fillTriangle(towerX - Math.round(3 * s), towerY, towerX + towerW + Math.round(3 * s), towerY, towerX + towerW / 2, towerY - towerRoofH);
-    g.fillStyle(lighten(style.roof, 0.2));
-    g.fillTriangle(towerX + Math.round(3 * s), towerY - Math.round(2 * s), towerX + towerW / 2, towerY - Math.round(2 * s), towerX + towerW / 2, towerY - towerRoofH + Math.round(5 * s));
-    // Finial
-    g.fillStyle(style.trim);
-    g.fillRect(towerX + towerW / 2 - Math.round(1 * s), towerY - towerRoofH - Math.round(8 * s), Math.round(2 * s), Math.round(8 * s));
-    g.fillCircle(towerX + towerW / 2, towerY - towerRoofH - Math.round(10 * s), Math.round(2.5 * s));
-
-    // Tower windows (stacked, arched)
-    for (let i = 0; i < 4; i++) {
-      const wy = towerY + Math.round(10 * s) + i * Math.round(22 * s);
-      g.fillStyle(style.window, 0.3);
-      g.fillRect(towerX + Math.round(5 * s), wy, Math.round(10 * s), Math.round(14 * s));
-      g.fillStyle(style.window);
-      g.fillRect(towerX + Math.round(6 * s), wy + Math.round(1 * s), Math.round(8 * s), Math.round(12 * s));
-      g.fillCircle(towerX + Math.round(10 * s), wy + Math.round(1 * s), Math.round(4 * s));
-    }
-
-    // Main body windows (2 columns, 2 rows, to the right of tower)
-    for (let row = 0; row < 2; row++) {
-      for (let col = 0; col < 2; col++) {
-        const wx = mainX + Math.round(20 * s) + col * Math.round(14 * s);
-        const wy = mainY + Math.round(12 * s) + row * Math.round(28 * s);
-        g.fillStyle(style.window, 0.25);
-        g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(10 * s), Math.round(18 * s));
-        g.fillStyle(style.window);
-        g.fillRect(wx, wy, Math.round(8 * s), Math.round(16 * s));
-        // Decorative top
-        g.fillStyle(style.trim);
-        g.fillRect(wx - Math.round(2 * s), wy - Math.round(3 * s), Math.round(12 * s), Math.round(3 * s));
+    // Stone block pattern
+    g.fillStyle(style.baseLight, 0.1);
+    for (let row = 0; row < mainH / Math.round(8 * s); row++) {
+      const offset = row % 2 === 0 ? 0 : Math.round(6 * s);
+      for (let col = 0; col < mainW / Math.round(12 * s) + 1; col++) {
+        g.fillRect(mainX + offset + col * Math.round(12 * s), mainY + row * Math.round(8 * s), Math.round(11 * s), Math.round(7 * s));
       }
     }
 
-    // Decorative gable trim
-    g.fillStyle(style.trim);
-    g.fillRect(mainX + mainW / 2 - Math.round(8 * s), roofPeakY + Math.round(5 * s), Math.round(16 * s), Math.round(12 * s));
-    g.fillStyle(style.window);
-    g.fillCircle(mainX + mainW / 2, roofPeakY + Math.round(10 * s), Math.round(4 * s));
-
-    // Front porch (right side)
-    const porchX = mainX + Math.round(30 * s);
-    const porchY = groundY - Math.round(30 * s);
+    // === STEEP GOTHIC ROOF ===
+    const roofPeakY = mainY - Math.round(45 * s);
     g.fillStyle(style.roof);
-    g.fillRect(porchX - Math.round(3 * s), porchY, Math.round(26 * s), Math.round(4 * s));
-    // Porch posts
-    g.fillStyle(style.column);
-    g.fillRect(porchX, porchY, Math.round(3 * s), Math.round(30 * s));
-    g.fillRect(porchX + Math.round(18 * s), porchY, Math.round(3 * s), Math.round(30 * s));
+    g.fillTriangle(mainX - Math.round(6 * s), mainY, mainX + mainW + Math.round(6 * s), mainY, mainX + mainW / 2, roofPeakY);
+    // Roof highlight
+    g.fillStyle(style.roofLight);
+    g.fillTriangle(mainX + Math.round(15 * s), mainY - Math.round(3 * s), mainX + mainW / 2, mainY - Math.round(3 * s), mainX + mainW / 2, roofPeakY + Math.round(8 * s));
+    // Roof tiles pattern
+    for (let rt = 0; rt < 8; rt++) {
+      const tileY = mainY - Math.round(8 * s) - rt * Math.round(5 * s);
+      g.fillStyle(rt % 2 === 0 ? style.roof : style.roofLight, 0.3);
+      const tileW = mainW - rt * Math.round(6 * s);
+      g.fillRect(mainX + rt * Math.round(3 * s), tileY, tileW, Math.round(5 * s));
+    }
 
+    // === DRAMATIC CORNER TOWER ===
+    const towerW = Math.round(28 * s);
+    const towerH = Math.round(120 * s);
+    const towerX = mainX - Math.round(10 * s);
+    const towerY = groundY - towerH;
+
+    g.fillStyle(0x000000, 0.45);
+    g.fillRect(towerX + Math.round(4 * s), towerY + Math.round(6 * s), towerW, towerH);
+    g.fillStyle(style.base);
+    g.fillRect(towerX, towerY, towerW, towerH);
+    g.fillStyle(style.baseLight);
+    g.fillRect(towerX, towerY, Math.round(4 * s), towerH);
+
+    // Stone pattern on tower
+    g.fillStyle(style.baseLight, 0.08);
+    for (let row = 0; row < towerH / Math.round(6 * s); row++) {
+      const offset = row % 2 === 0 ? 0 : Math.round(4 * s);
+      for (let col = 0; col < 4; col++) {
+        g.fillRect(towerX + offset + col * Math.round(7 * s), towerY + row * Math.round(6 * s), Math.round(6 * s), Math.round(5 * s));
+      }
+    }
+
+    // WITCH'S HAT SPIRE (dramatic conical roof)
+    const spireH = Math.round(50 * s);
+    g.fillStyle(style.roof);
+    g.fillTriangle(towerX - Math.round(5 * s), towerY, towerX + towerW + Math.round(5 * s), towerY, towerX + towerW / 2, towerY - spireH);
+    g.fillStyle(style.roofLight);
+    g.fillTriangle(towerX + Math.round(5 * s), towerY - Math.round(3 * s), towerX + towerW / 2, towerY - Math.round(3 * s), towerX + towerW / 2, towerY - spireH + Math.round(8 * s));
+
+    // GOLD FINIAL with ornate detail
+    const finialX = towerX + towerW / 2;
+    g.fillStyle(style.trim);
+    g.fillRect(finialX - Math.round(2 * s), towerY - spireH - Math.round(15 * s), Math.round(4 * s), Math.round(15 * s));
+    g.fillStyle(style.trimLight);
+    g.fillCircle(finialX, towerY - spireH - Math.round(18 * s), Math.round(4 * s));
+    g.fillStyle(style.trim);
+    g.fillCircle(finialX, towerY - spireH - Math.round(18 * s), Math.round(2 * s));
+    // Lightning rod
+    g.fillRect(finialX - Math.round(0.5 * s), towerY - spireH - Math.round(28 * s), Math.round(1 * s), Math.round(10 * s));
+
+    // === TOWER WINDOWS (Gothic arched with stained glass) ===
+    for (let i = 0; i < 5; i++) {
+      const wy = towerY + Math.round(12 * s) + i * Math.round(22 * s);
+      const ww = Math.round(12 * s);
+      const wh = Math.round(16 * s);
+      const wx = towerX + towerW / 2 - ww / 2;
+
+      // Window glow
+      g.fillStyle(style.windowGlow, 0.4);
+      g.fillRect(wx - Math.round(3 * s), wy - Math.round(3 * s), ww + Math.round(6 * s), wh + Math.round(6 * s));
+      // Stone frame
+      g.fillStyle(style.baseLight);
+      g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), ww + Math.round(2 * s), wh + Math.round(2 * s));
+      // Pointed arch top
+      g.fillTriangle(wx - Math.round(1 * s), wy, wx + ww + Math.round(1 * s), wy, wx + ww / 2, wy - Math.round(8 * s));
+      // Window glass
+      g.fillStyle(style.window);
+      g.fillRect(wx, wy, ww, wh);
+      g.fillTriangle(wx, wy, wx + ww, wy, wx + ww / 2, wy - Math.round(7 * s));
+      // Gothic tracery (Y-shape)
+      g.fillStyle(style.baseDark);
+      g.fillRect(wx + ww / 2 - Math.round(0.5 * s), wy, Math.round(1 * s), wh);
+      g.fillRect(wx, wy + Math.round(6 * s), ww, Math.round(1 * s));
+      // Stained glass accent (every other window)
+      if (i % 2 === 0) {
+        g.fillStyle(style.stainedGlass, 0.6);
+        g.fillCircle(wx + ww / 2, wy - Math.round(3 * s), Math.round(3 * s));
+      }
+    }
+
+    // === MAIN BUILDING WINDOWS ===
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 2; col++) {
+        const wx = mainX + Math.round(25 * s) + col * Math.round(18 * s);
+        const wy = mainY + Math.round(15 * s) + row * Math.round(32 * s);
+        // Glow
+        g.fillStyle(style.windowGlow, 0.35);
+        g.fillRect(wx - Math.round(4 * s), wy - Math.round(4 * s), Math.round(20 * s), Math.round(28 * s));
+        // Frame
+        g.fillStyle(style.trim);
+        g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), Math.round(16 * s), Math.round(24 * s));
+        // Glass
+        g.fillStyle(style.window);
+        g.fillRect(wx, wy, Math.round(12 * s), Math.round(20 * s));
+        // Gothic arch
+        g.fillTriangle(wx, wy, wx + Math.round(12 * s), wy, wx + Math.round(6 * s), wy - Math.round(8 * s));
+        // Mullions
+        g.fillStyle(style.baseDark);
+        g.fillRect(wx + Math.round(5.5 * s), wy, Math.round(1 * s), Math.round(20 * s));
+        g.fillRect(wx, wy + Math.round(9.5 * s), Math.round(12 * s), Math.round(1 * s));
+        // Decorative header
+        g.fillStyle(style.trim);
+        g.fillRect(wx - Math.round(3 * s), wy - Math.round(10 * s), Math.round(18 * s), Math.round(4 * s));
+      }
+    }
+
+    // === GABLE ROSE WINDOW ===
+    const roseX = mainX + mainW / 2;
+    const roseY = roofPeakY + Math.round(18 * s);
+    g.fillStyle(style.trim);
+    g.fillCircle(roseX, roseY, Math.round(12 * s));
+    g.fillStyle(style.windowGlow, 0.5);
+    g.fillCircle(roseX, roseY, Math.round(10 * s));
+    g.fillStyle(style.window);
+    g.fillCircle(roseX, roseY, Math.round(8 * s));
+    g.fillStyle(style.stainedGlass, 0.7);
+    g.fillCircle(roseX, roseY, Math.round(4 * s));
+    // Tracery spokes
+    g.fillStyle(style.baseDark);
+    for (let sp = 0; sp < 8; sp++) {
+      const angle = (sp / 8) * Math.PI * 2;
+      const dx = Math.cos(angle) * Math.round(8 * s);
+      const dy = Math.sin(angle) * Math.round(8 * s);
+      g.fillRect(roseX - Math.round(0.5 * s), roseY - Math.round(0.5 * s), dx, Math.round(1 * s));
+    }
+
+    // === GARGOYLES (decorative projections) ===
+    // Left gargoyle
+    g.fillStyle(style.baseLight);
+    g.fillRect(mainX - Math.round(4 * s), mainY + Math.round(10 * s), Math.round(6 * s), Math.round(8 * s));
+    g.fillRect(mainX - Math.round(8 * s), mainY + Math.round(12 * s), Math.round(4 * s), Math.round(4 * s));
+    // Right gargoyle
+    g.fillRect(mainX + mainW - Math.round(2 * s), mainY + Math.round(10 * s), Math.round(6 * s), Math.round(8 * s));
+    g.fillRect(mainX + mainW + Math.round(2 * s), mainY + Math.round(12 * s), Math.round(4 * s), Math.round(4 * s));
+
+    // === FRONT PORCH WITH COLUMNS ===
+    const porchX = mainX + Math.round(38 * s);
+    const porchW = Math.round(28 * s);
+    const porchY = groundY - Math.round(35 * s);
+
+    // Porch roof
+    g.fillStyle(style.roof);
+    g.fillRect(porchX - Math.round(4 * s), porchY - Math.round(4 * s), porchW + Math.round(8 * s), Math.round(6 * s));
+    g.fillStyle(style.trim);
+    g.fillTriangle(porchX - Math.round(6 * s), porchY - Math.round(4 * s), porchX + porchW + Math.round(6 * s), porchY - Math.round(4 * s), porchX + porchW / 2, porchY - Math.round(16 * s));
+
+    // Gothic columns
+    for (let c = 0; c < 2; c++) {
+      const cx = porchX + Math.round(2 * s) + c * Math.round(22 * s);
+      g.fillStyle(style.baseLight);
+      g.fillRect(cx, porchY, Math.round(4 * s), Math.round(35 * s));
+      // Carved details
+      g.fillStyle(style.baseDark);
+      g.fillRect(cx + Math.round(1 * s), porchY + Math.round(5 * s), Math.round(2 * s), Math.round(25 * s));
+    }
+
+    // === ORNATE DOOR ===
+    const doorW = Math.round(14 * s);
+    const doorH = Math.round(28 * s);
+    const doorX = porchX + porchW / 2 - doorW / 2;
+    const doorY = groundY - doorH;
+
+    // Door frame
+    g.fillStyle(style.trim);
+    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(10 * s), doorW + Math.round(6 * s), doorH + Math.round(10 * s));
+    // Pointed arch
+    g.fillTriangle(doorX - Math.round(3 * s), doorY, doorX + doorW + Math.round(3 * s), doorY, doorX + doorW / 2, doorY - Math.round(12 * s));
     // Door
-    const doorX = mainX + Math.round(35 * s);
-    const doorY = groundY - Math.round(22 * s);
-    g.fillStyle(PALETTE.void);
-    g.fillRect(doorX, doorY, Math.round(10 * s), Math.round(22 * s));
-    g.fillStyle(PALETTE.darkBrown);
-    g.fillRect(doorX + Math.round(1 * s), doorY + Math.round(2 * s), Math.round(8 * s), Math.round(19 * s));
+    g.fillStyle(0x1a0a0a);
+    g.fillRect(doorX, doorY, doorW, doorH);
+    g.fillTriangle(doorX, doorY, doorX + doorW, doorY, doorX + doorW / 2, doorY - Math.round(10 * s));
+    // Door panels
+    g.fillStyle(0x2a1a1a);
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(4 * s), doorW / 2 - Math.round(3 * s), Math.round(20 * s));
+    g.fillRect(doorX + doorW / 2 + Math.round(1 * s), doorY + Math.round(4 * s), doorW / 2 - Math.round(3 * s), Math.round(20 * s));
+    // Gold knocker
+    g.fillStyle(style.trim);
+    g.fillCircle(doorX + doorW / 2, doorY + Math.round(14 * s), Math.round(3 * s));
+    g.fillCircle(doorX + doorW / 2, doorY + Math.round(14 * s), Math.round(1.5 * s));
+
+    // === SECONDARY SPIRE on main roof ===
+    const spire2X = mainX + mainW / 2;
+    const spire2Y = roofPeakY;
+    g.fillStyle(style.roof);
+    g.fillRect(spire2X - Math.round(4 * s), spire2Y, Math.round(8 * s), Math.round(-12 * s));
+    g.fillTriangle(spire2X - Math.round(6 * s), spire2Y - Math.round(12 * s), spire2X + Math.round(6 * s), spire2Y - Math.round(12 * s), spire2X, spire2Y - Math.round(25 * s));
+    g.fillStyle(style.trim);
+    g.fillCircle(spire2X, spire2Y - Math.round(28 * s), Math.round(3 * s));
 
     g.generateTexture("mansion_1", canvasWidth, canvasHeight);
     g.destroy();
   }
 
-  // MANSION 2: French Chateau with steep roof and turrets
+  // MANSION 2: Amethyst Chateau - Elegant French Baroque with crystal accents (#3 HOLDER)
   private generateMansion2_FrenchChateau(s: number, canvasWidth: number, canvasHeight: number): void {
     const g = this.make.graphics({ x: 0, y: 0 });
-    const style = { base: PALETTE.deepPurple, roof: PALETTE.lavender, trim: PALETTE.violet, window: PALETTE.lavender, column: PALETTE.silver };
+    const style = {
+      base: 0x4a1a6b,        // Rich purple
+      baseLight: 0x6a2a8b,
+      baseDark: 0x2a0a4b,
+      roof: 0x9370db,        // Medium purple (lavender)
+      roofLight: 0xb19cd9,
+      roofDark: 0x7b68ee,
+      trim: 0xdda0dd,        // Plum/pink trim
+      trimLight: 0xeeccff,
+      window: 0xe6e6fa,      // Lavender glow
+      windowGlow: 0xda70d6,  // Orchid glow
+      crystal: 0xff69b4,     // Hot pink crystals
+      crystalLight: 0xffb6c1,
+      column: 0xc0c0c0,      // Silver
+    };
     const centerX = canvasWidth / 2;
-    const groundY = canvasHeight;
+    const groundY = canvasHeight - Math.round(6 * s);
 
-    // Main body
-    const mainW = Math.round(55 * s);
-    const mainH = Math.round(60 * s);
+    // === FOUNDATION ===
+    g.fillStyle(0x4a4a5a);
+    g.fillRect(Math.round(8 * s), groundY, canvasWidth - Math.round(16 * s), Math.round(6 * s));
+
+    // === MAIN BODY ===
+    const mainW = Math.round(70 * s);
+    const mainH = Math.round(70 * s);
     const mainX = centerX - mainW / 2;
     const mainY = groundY - mainH;
 
-    g.fillStyle(PALETTE.void, 0.4);
-    g.fillRect(mainX + Math.round(4 * s), mainY + Math.round(5 * s), mainW, mainH);
+    g.fillStyle(0x000000, 0.45);
+    g.fillRect(mainX + Math.round(5 * s), mainY + Math.round(6 * s), mainW, mainH);
     g.fillStyle(style.base);
     g.fillRect(mainX, mainY, mainW, mainH);
-    g.fillStyle(lighten(style.base, 0.12));
-    g.fillRect(mainX, mainY, Math.round(3 * s), mainH);
+    g.fillStyle(style.baseLight);
+    g.fillRect(mainX, mainY, Math.round(5 * s), mainH);
+    g.fillStyle(style.baseDark);
+    g.fillRect(mainX + mainW - Math.round(5 * s), mainY, Math.round(5 * s), mainH);
 
-    // STEEP French roof (Mansard with dormers)
-    const roofH = Math.round(40 * s);
+    // Decorative horizontal bands
+    g.fillStyle(style.trim, 0.4);
+    g.fillRect(mainX, mainY + Math.round(22 * s), mainW, Math.round(3 * s));
+    g.fillRect(mainX, mainY + mainH - Math.round(8 * s), mainW, Math.round(3 * s));
+
+    // === STEEP MANSARD ROOF ===
+    const roofH = Math.round(50 * s);
+    // Lower steep section (curved appearance via stacking)
     g.fillStyle(style.roof);
-    // Lower steep section
-    g.fillRect(mainX - Math.round(4 * s), mainY - roofH, mainW + Math.round(8 * s), roofH);
-    // Upper flat section
-    g.fillStyle(darken(style.roof, 0.15));
-    g.fillRect(mainX, mainY - roofH - Math.round(8 * s), mainW, Math.round(10 * s));
-    g.fillStyle(lighten(style.roof, 0.15));
-    g.fillRect(mainX - Math.round(4 * s), mainY - roofH, mainW + Math.round(8 * s), Math.round(4 * s));
+    g.fillRect(mainX - Math.round(6 * s), mainY - roofH, mainW + Math.round(12 * s), roofH);
+    // Curved roof effect
+    for (let r = 0; r < 5; r++) {
+      const ry = mainY - roofH + r * Math.round(10 * s);
+      const rw = mainW + Math.round(12 * s) - r * Math.round(2 * s);
+      const rx = mainX - Math.round(6 * s) + r * Math.round(1 * s);
+      g.fillStyle(r % 2 === 0 ? style.roof : style.roofLight, 0.5);
+      g.fillRect(rx, ry, rw, Math.round(10 * s));
+    }
+    // Flat top section
+    g.fillStyle(style.roofDark);
+    g.fillRect(mainX + Math.round(5 * s), mainY - roofH - Math.round(12 * s), mainW - Math.round(10 * s), Math.round(14 * s));
+    // Roof edge highlight
+    g.fillStyle(style.trimLight);
+    g.fillRect(mainX - Math.round(6 * s), mainY - roofH, mainW + Math.round(12 * s), Math.round(3 * s));
 
-    // DORMERS (3 tall pointed dormers)
+    // === ORNATE DORMERS (3 with golden frames) ===
     for (let d = 0; d < 3; d++) {
-      const dx = mainX + Math.round(6 * s) + d * Math.round(18 * s);
-      const dy = mainY - roofH + Math.round(8 * s);
+      const dx = mainX + Math.round(10 * s) + d * Math.round(22 * s);
+      const dy = mainY - roofH + Math.round(10 * s);
+      const dw = Math.round(18 * s);
+      const dh = Math.round(35 * s);
 
+      // Dormer body
       g.fillStyle(style.base);
-      g.fillRect(dx, dy, Math.round(14 * s), Math.round(28 * s));
-      // Steep dormer roof
+      g.fillRect(dx, dy, dw, dh);
+      // Dormer roof (curved top)
       g.fillStyle(style.roof);
-      g.fillTriangle(dx - Math.round(2 * s), dy, dx + Math.round(16 * s), dy, dx + Math.round(7 * s), dy - Math.round(18 * s));
-      // Dormer window
-      g.fillStyle(style.window, 0.3);
-      g.fillRect(dx + Math.round(3 * s), dy + Math.round(4 * s), Math.round(8 * s), Math.round(20 * s));
-      g.fillStyle(style.window);
-      g.fillRect(dx + Math.round(4 * s), dy + Math.round(5 * s), Math.round(6 * s), Math.round(18 * s));
-      // Window divider
-      g.fillStyle(darken(style.base, 0.3));
-      g.fillRect(dx + Math.round(6.5 * s), dy + Math.round(5 * s), Math.round(1 * s), Math.round(18 * s));
-    }
-
-    // CORNER TURRETS (small round towers)
-    const turretR = Math.round(8 * s);
-    const turretH = Math.round(45 * s);
-    // Left turret
-    g.fillStyle(style.base);
-    g.fillCircle(mainX, mainY + Math.round(15 * s), turretR);
-    g.fillRect(mainX - turretR, mainY + Math.round(15 * s), turretR * 2, turretH);
-    g.fillStyle(style.roof);
-    g.fillTriangle(mainX - turretR - Math.round(2 * s), mainY + Math.round(15 * s), mainX + turretR + Math.round(2 * s), mainY + Math.round(15 * s), mainX, mainY - Math.round(10 * s));
-    // Right turret
-    g.fillStyle(style.base);
-    g.fillCircle(mainX + mainW, mainY + Math.round(15 * s), turretR);
-    g.fillRect(mainX + mainW - turretR, mainY + Math.round(15 * s), turretR * 2, turretH);
-    g.fillStyle(style.roof);
-    g.fillTriangle(mainX + mainW - turretR - Math.round(2 * s), mainY + Math.round(15 * s), mainX + mainW + turretR + Math.round(2 * s), mainY + Math.round(15 * s), mainX + mainW, mainY - Math.round(10 * s));
-
-    // Turret windows
-    g.fillStyle(style.window);
-    g.fillRect(mainX - Math.round(3 * s), mainY + Math.round(25 * s), Math.round(6 * s), Math.round(10 * s));
-    g.fillRect(mainX + mainW - Math.round(3 * s), mainY + Math.round(25 * s), Math.round(6 * s), Math.round(10 * s));
-
-    // Main floor windows (4 tall French windows)
-    for (let w = 0; w < 4; w++) {
-      const wx = mainX + Math.round(8 * s) + w * Math.round(12 * s);
-      const wy = mainY + Math.round(10 * s);
-      g.fillStyle(style.window, 0.25);
-      g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(9 * s), Math.round(35 * s));
-      g.fillStyle(style.window);
-      g.fillRect(wx, wy, Math.round(7 * s), Math.round(33 * s));
-      // Balcony rail
+      g.fillCircle(dx + dw / 2, dy, dw / 2);
+      g.fillTriangle(dx - Math.round(3 * s), dy, dx + dw + Math.round(3 * s), dy, dx + dw / 2, dy - Math.round(22 * s));
+      // Dormer finial
       g.fillStyle(style.trim);
-      g.fillRect(wx - Math.round(2 * s), wy + Math.round(33 * s), Math.round(11 * s), Math.round(3 * s));
+      g.fillCircle(dx + dw / 2, dy - Math.round(24 * s), Math.round(3 * s));
+      g.fillRect(dx + dw / 2 - Math.round(1 * s), dy - Math.round(28 * s), Math.round(2 * s), Math.round(6 * s));
+
+      // Dormer window with glow
+      const dwx = dx + Math.round(3 * s);
+      const dwy = dy + Math.round(5 * s);
+      g.fillStyle(style.windowGlow, 0.4);
+      g.fillRect(dwx - Math.round(2 * s), dwy - Math.round(2 * s), Math.round(16 * s), Math.round(28 * s));
+      g.fillStyle(style.trim);
+      g.fillRect(dwx - Math.round(1 * s), dwy - Math.round(1 * s), Math.round(14 * s), Math.round(26 * s));
+      g.fillStyle(style.window);
+      g.fillRect(dwx, dwy, Math.round(12 * s), Math.round(24 * s));
+      // Arched top
+      g.fillCircle(dwx + Math.round(6 * s), dwy, Math.round(6 * s));
+      // Mullions
+      g.fillStyle(style.column);
+      g.fillRect(dwx + Math.round(5.5 * s), dwy, Math.round(1 * s), Math.round(24 * s));
+      g.fillRect(dwx, dwy + Math.round(11.5 * s), Math.round(12 * s), Math.round(1 * s));
     }
 
-    // Grand entrance (double door with arch)
-    const doorW = Math.round(16 * s);
-    const doorH = Math.round(26 * s);
+    // === CORNER TURRETS (elegant round towers) ===
+    const turretR = Math.round(12 * s);
+    const turretH = Math.round(60 * s);
+
+    // Left turret
+    const ltX = mainX - Math.round(4 * s);
+    const ltY = mainY + Math.round(10 * s);
+    g.fillStyle(style.base);
+    g.fillCircle(ltX, ltY, turretR);
+    g.fillRect(ltX - turretR, ltY, turretR * 2, turretH);
+    g.fillStyle(style.baseLight);
+    g.fillRect(ltX - turretR, ltY, Math.round(4 * s), turretH);
+    // Turret roof (conical)
+    g.fillStyle(style.roof);
+    g.fillTriangle(ltX - turretR - Math.round(3 * s), ltY, ltX + turretR + Math.round(3 * s), ltY, ltX, ltY - Math.round(30 * s));
+    g.fillStyle(style.roofLight);
+    g.fillTriangle(ltX - Math.round(6 * s), ltY - Math.round(2 * s), ltX, ltY - Math.round(2 * s), ltX, ltY - Math.round(28 * s));
+    // Turret finial with crystal
+    g.fillStyle(style.trim);
+    g.fillRect(ltX - Math.round(1.5 * s), ltY - Math.round(40 * s), Math.round(3 * s), Math.round(12 * s));
+    g.fillStyle(style.crystal);
+    g.fillCircle(ltX, ltY - Math.round(44 * s), Math.round(4 * s));
+    g.fillStyle(style.crystalLight, 0.7);
+    g.fillCircle(ltX - Math.round(1 * s), ltY - Math.round(45 * s), Math.round(2 * s));
+    // Turret windows
+    for (let tw = 0; tw < 2; tw++) {
+      const twy = ltY + Math.round(10 * s) + tw * Math.round(22 * s);
+      g.fillStyle(style.windowGlow, 0.3);
+      g.fillCircle(ltX, twy + Math.round(5 * s), Math.round(7 * s));
+      g.fillStyle(style.window);
+      g.fillRect(ltX - Math.round(5 * s), twy, Math.round(10 * s), Math.round(14 * s));
+    }
+
+    // Right turret (mirror)
+    const rtX = mainX + mainW + Math.round(4 * s);
+    g.fillStyle(style.base);
+    g.fillCircle(rtX, ltY, turretR);
+    g.fillRect(rtX - turretR, ltY, turretR * 2, turretH);
+    g.fillStyle(style.baseDark);
+    g.fillRect(rtX + turretR - Math.round(4 * s), ltY, Math.round(4 * s), turretH);
+    g.fillStyle(style.roof);
+    g.fillTriangle(rtX - turretR - Math.round(3 * s), ltY, rtX + turretR + Math.round(3 * s), ltY, rtX, ltY - Math.round(30 * s));
+    g.fillStyle(style.trim);
+    g.fillRect(rtX - Math.round(1.5 * s), ltY - Math.round(40 * s), Math.round(3 * s), Math.round(12 * s));
+    g.fillStyle(style.crystal);
+    g.fillCircle(rtX, ltY - Math.round(44 * s), Math.round(4 * s));
+    g.fillStyle(style.crystalLight, 0.7);
+    g.fillCircle(rtX - Math.round(1 * s), ltY - Math.round(45 * s), Math.round(2 * s));
+    for (let tw = 0; tw < 2; tw++) {
+      const twy = ltY + Math.round(10 * s) + tw * Math.round(22 * s);
+      g.fillStyle(style.windowGlow, 0.3);
+      g.fillCircle(rtX, twy + Math.round(5 * s), Math.round(7 * s));
+      g.fillStyle(style.window);
+      g.fillRect(rtX - Math.round(5 * s), twy, Math.round(10 * s), Math.round(14 * s));
+    }
+
+    // === MAIN FLOOR WINDOWS (tall French windows with balconies) ===
+    for (let w = 0; w < 5; w++) {
+      const wx = mainX + Math.round(8 * s) + w * Math.round(13 * s);
+      const wy = mainY + Math.round(8 * s);
+      const ww = Math.round(10 * s);
+      const wh = Math.round(45 * s);
+
+      // Window glow
+      g.fillStyle(style.windowGlow, 0.35);
+      g.fillRect(wx - Math.round(3 * s), wy - Math.round(3 * s), ww + Math.round(6 * s), wh + Math.round(6 * s));
+      // Frame
+      g.fillStyle(style.trim);
+      g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), ww + Math.round(2 * s), wh + Math.round(2 * s));
+      // Glass
+      g.fillStyle(style.window);
+      g.fillRect(wx, wy, ww, wh);
+      // Arched top
+      g.fillCircle(wx + ww / 2, wy, ww / 2);
+      // Mullions (French style)
+      g.fillStyle(style.column);
+      g.fillRect(wx + ww / 2 - Math.round(0.5 * s), wy, Math.round(1 * s), wh);
+      for (let m = 0; m < 4; m++) {
+        g.fillRect(wx, wy + Math.round(10 * s) + m * Math.round(10 * s), ww, Math.round(1 * s));
+      }
+      // Decorative header
+      g.fillStyle(style.trimLight);
+      g.fillRect(wx - Math.round(2 * s), wy - Math.round(6 * s), ww + Math.round(4 * s), Math.round(4 * s));
+
+      // Balcony (on center 3 windows)
+      if (w >= 1 && w <= 3) {
+        g.fillStyle(style.column);
+        g.fillRect(wx - Math.round(3 * s), wy + wh - Math.round(2 * s), ww + Math.round(6 * s), Math.round(4 * s));
+        // Balcony rails
+        g.fillStyle(style.trim);
+        g.fillRect(wx - Math.round(4 * s), wy + wh - Math.round(8 * s), Math.round(2 * s), Math.round(8 * s));
+        g.fillRect(wx + ww + Math.round(2 * s), wy + wh - Math.round(8 * s), Math.round(2 * s), Math.round(8 * s));
+        g.fillRect(wx - Math.round(4 * s), wy + wh - Math.round(8 * s), ww + Math.round(8 * s), Math.round(2 * s));
+        // Rail balusters
+        for (let b = 0; b < 4; b++) {
+          g.fillRect(wx + Math.round(1 * s) + b * Math.round(3 * s), wy + wh - Math.round(6 * s), Math.round(1 * s), Math.round(4 * s));
+        }
+      }
+    }
+
+    // === GRAND ENTRANCE (French baroque style) ===
+    const doorW = Math.round(20 * s);
+    const doorH = Math.round(32 * s);
     const doorX = centerX - doorW / 2;
     const doorY = groundY - doorH;
-    g.fillStyle(style.trim);
-    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(8 * s), doorW + Math.round(8 * s), doorH + Math.round(8 * s));
-    g.fillStyle(PALETTE.void);
-    g.fillRect(doorX, doorY, doorW, doorH);
-    g.fillStyle(PALETTE.darkBrown);
-    g.fillRect(doorX + Math.round(1 * s), doorY + Math.round(2 * s), doorW / 2 - Math.round(2 * s), doorH - Math.round(2 * s));
-    g.fillRect(doorX + doorW / 2 + Math.round(1 * s), doorY + Math.round(2 * s), doorW / 2 - Math.round(2 * s), doorH - Math.round(2 * s));
-    // Decorative pediment above door
+
+    // Entrance portico
     g.fillStyle(style.roof);
-    g.fillTriangle(doorX - Math.round(6 * s), doorY - Math.round(8 * s), doorX + doorW + Math.round(6 * s), doorY - Math.round(8 * s), centerX, doorY - Math.round(20 * s));
+    g.fillRect(doorX - Math.round(10 * s), doorY - Math.round(8 * s), doorW + Math.round(20 * s), Math.round(6 * s));
+    // Curved pediment
+    g.fillStyle(style.trim);
+    g.fillCircle(centerX, doorY - Math.round(8 * s), Math.round(18 * s));
+    g.fillStyle(style.base);
+    g.fillCircle(centerX, doorY - Math.round(4 * s), Math.round(14 * s));
+    // Decorative crest in pediment
+    g.fillStyle(style.crystal);
+    g.fillCircle(centerX, doorY - Math.round(16 * s), Math.round(6 * s));
+    g.fillStyle(style.crystalLight);
+    g.fillCircle(centerX - Math.round(2 * s), doorY - Math.round(18 * s), Math.round(3 * s));
+
+    // Door frame
+    g.fillStyle(style.trim);
+    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(4 * s), doorW + Math.round(8 * s), doorH + Math.round(4 * s));
+    // Door
+    g.fillStyle(0x2a1a3a);
+    g.fillRect(doorX, doorY, doorW, doorH);
+    // Door panels
+    g.fillStyle(0x3a2a4a);
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(4 * s), doorW / 2 - Math.round(3 * s), doorH - Math.round(4 * s));
+    g.fillRect(doorX + doorW / 2 + Math.round(1 * s), doorY + Math.round(4 * s), doorW / 2 - Math.round(3 * s), doorH - Math.round(4 * s));
+    // Crystal door handles
+    g.fillStyle(style.crystal);
+    g.fillCircle(doorX + Math.round(7 * s), doorY + Math.round(18 * s), Math.round(2 * s));
+    g.fillCircle(doorX + doorW - Math.round(7 * s), doorY + Math.round(18 * s), Math.round(2 * s));
+    // Transom window
+    g.fillStyle(style.windowGlow, 0.5);
+    g.fillRect(doorX + Math.round(2 * s), doorY - Math.round(2 * s), doorW - Math.round(4 * s), Math.round(6 * s));
+
+    // Flanking columns
+    for (let c = 0; c < 2; c++) {
+      const cx = doorX - Math.round(8 * s) + c * (doorW + Math.round(12 * s));
+      g.fillStyle(style.column);
+      g.fillRect(cx, doorY - Math.round(4 * s), Math.round(4 * s), doorH + Math.round(4 * s));
+      // Column highlight
+      g.fillStyle(0xffffff, 0.5);
+      g.fillRect(cx + Math.round(1 * s), doorY, Math.round(1 * s), doorH);
+    }
+
+    // === ROOFTOP BALUSTRADE ===
+    const balY = mainY - roofH - Math.round(12 * s);
+    g.fillStyle(style.column);
+    g.fillRect(mainX + Math.round(5 * s), balY, mainW - Math.round(10 * s), Math.round(3 * s));
+    for (let b = 0; b < 10; b++) {
+      g.fillRect(mainX + Math.round(8 * s) + b * Math.round(6 * s), balY - Math.round(6 * s), Math.round(2 * s), Math.round(6 * s));
+    }
+    g.fillRect(mainX + Math.round(5 * s), balY - Math.round(8 * s), mainW - Math.round(10 * s), Math.round(2 * s));
+
+    // === DECORATIVE URNS on corners ===
+    g.fillStyle(style.trim);
+    g.fillRect(mainX + Math.round(6 * s), balY - Math.round(14 * s), Math.round(6 * s), Math.round(6 * s));
+    g.fillRect(mainX + mainW - Math.round(12 * s), balY - Math.round(14 * s), Math.round(6 * s), Math.round(6 * s));
+    g.fillStyle(style.crystal);
+    g.fillCircle(mainX + Math.round(9 * s), balY - Math.round(18 * s), Math.round(4 * s));
+    g.fillCircle(mainX + mainW - Math.round(9 * s), balY - Math.round(18 * s), Math.round(4 * s));
 
     g.generateTexture("mansion_2", canvasWidth, canvasHeight);
     g.destroy();
   }
 
-  // MANSION 3: Art Deco/Modern Estate with geometric shapes
+  // MANSION 3: Platinum Estate - Art Deco skyscraper-style with dramatic sunburst crown
   private generateMansion3_ArtDecoEstate(s: number, canvasWidth: number, canvasHeight: number): void {
     const g = this.make.graphics({ x: 0, y: 0 });
-    const style = { base: PALETTE.gray, roof: PALETTE.lightGray, trim: PALETTE.silver, window: PALETTE.lightBlue, column: PALETTE.white };
+    // Art Deco palette: Platinum silver with gold accents
+    const style = {
+      base: 0x2a2a35,           // Dark charcoal
+      baseLight: 0x3a3a45,
+      baseDark: 0x1a1a25,
+      silver: 0xc0c0c0,         // Platinum silver
+      silverLight: 0xe8e8e8,
+      gold: 0xd4af37,           // Art Deco gold
+      goldBright: 0xffd700,
+      window: 0x00d4ff,         // Electric blue
+      windowGlow: 0x00ffff,
+    };
     const centerX = canvasWidth / 2;
-    const groundY = canvasHeight;
+    const groundY = canvasHeight - Math.round(8 * s);
 
-    // STEPPED FACADE - 3 blocks of different heights
-    // Center block (tallest)
-    const centerW = Math.round(30 * s);
-    const centerH = Math.round(90 * s);
-    const centerBlockX = centerX - centerW / 2;
-    const centerY = groundY - centerH;
+    // === FOUNDATION with geometric steps ===
+    g.fillStyle(0x1a1a1a);
+    g.fillRect(Math.round(5 * s), groundY, canvasWidth - Math.round(10 * s), Math.round(8 * s));
+    g.fillStyle(style.silver);
+    g.fillRect(Math.round(8 * s), groundY - Math.round(3 * s), canvasWidth - Math.round(16 * s), Math.round(4 * s));
+    g.fillStyle(style.gold);
+    g.fillRect(Math.round(10 * s), groundY - Math.round(4 * s), canvasWidth - Math.round(20 * s), Math.round(1 * s));
 
-    g.fillStyle(PALETTE.void, 0.35);
-    g.fillRect(centerBlockX + Math.round(4 * s), centerY + Math.round(5 * s), centerW, centerH);
+    // === STEPPED ZIGGURAT TOWER (Center) ===
+    const towerW = Math.round(45 * s);
+    const towerH = Math.round(110 * s);
+    const towerX = centerX - towerW / 2;
+    const towerY = groundY - towerH;
+
+    // Shadow
+    g.fillStyle(0x000000, 0.5);
+    g.fillRect(towerX + Math.round(5 * s), towerY + Math.round(8 * s), towerW, towerH);
+
+    // Main tower body
     g.fillStyle(style.base);
-    g.fillRect(centerBlockX, centerY, centerW, centerH);
+    g.fillRect(towerX, towerY, towerW, towerH);
+    // Light edge
+    g.fillStyle(style.baseLight);
+    g.fillRect(towerX, towerY, Math.round(4 * s), towerH);
+    // Dark edge
+    g.fillStyle(style.baseDark);
+    g.fillRect(towerX + towerW - Math.round(4 * s), towerY, Math.round(4 * s), towerH);
 
-    // Left block (medium)
-    const sideW = Math.round(22 * s);
-    const leftH = Math.round(65 * s);
-    const leftX = centerBlockX - sideW + Math.round(3 * s);
-    const leftY = groundY - leftH;
-    g.fillStyle(PALETTE.void, 0.3);
-    g.fillRect(leftX + Math.round(3 * s), leftY + Math.round(4 * s), sideW, leftH);
-    g.fillStyle(lighten(style.base, 0.08));
-    g.fillRect(leftX, leftY, sideW, leftH);
+    // Vertical fluting pattern on tower
+    g.fillStyle(style.baseLight, 0.3);
+    for (let i = 0; i < 8; i++) {
+      const fx = towerX + Math.round(5 * s) + i * Math.round(5 * s);
+      g.fillRect(fx, towerY + Math.round(10 * s), Math.round(2 * s), towerH - Math.round(20 * s));
+    }
 
-    // Right block (shortest)
-    const rightH = Math.round(50 * s);
-    const rightX = centerBlockX + centerW - Math.round(3 * s);
+    // === SUNBURST CROWN (iconic Art Deco) ===
+    const crownY = towerY - Math.round(35 * s);
+    // Stepped back element
+    g.fillStyle(style.silver);
+    g.fillRect(centerX - Math.round(28 * s), towerY - Math.round(8 * s), Math.round(56 * s), Math.round(10 * s));
+    g.fillRect(centerX - Math.round(22 * s), towerY - Math.round(18 * s), Math.round(44 * s), Math.round(12 * s));
+    g.fillRect(centerX - Math.round(16 * s), towerY - Math.round(28 * s), Math.round(32 * s), Math.round(12 * s));
+
+    // SUNBURST RAYS
+    g.fillStyle(style.goldBright);
+    // Central tall ray
+    g.fillRect(centerX - Math.round(3 * s), crownY - Math.round(25 * s), Math.round(6 * s), Math.round(30 * s));
+    // Side rays (getting shorter)
+    for (let ray = 1; ray <= 4; ray++) {
+      const rayH = Math.round((25 - ray * 4) * s);
+      const rayOffset = ray * Math.round(6 * s);
+      g.fillRect(centerX - Math.round(2 * s) - rayOffset, crownY - rayH, Math.round(3 * s), rayH + Math.round(5 * s));
+      g.fillRect(centerX - Math.round(1 * s) + rayOffset, crownY - rayH, Math.round(3 * s), rayH + Math.round(5 * s));
+    }
+
+    // Sunburst center medallion
+    g.fillStyle(style.gold);
+    g.fillCircle(centerX, crownY + Math.round(2 * s), Math.round(10 * s));
+    g.fillStyle(style.goldBright);
+    g.fillCircle(centerX, crownY + Math.round(2 * s), Math.round(7 * s));
+    g.fillStyle(style.windowGlow, 0.7);
+    g.fillCircle(centerX, crownY + Math.round(2 * s), Math.round(4 * s));
+
+    // === LEFT WING (stepped) ===
+    const wingW = Math.round(30 * s);
+    const wingH = Math.round(75 * s);
+    const leftX = towerX - wingW + Math.round(6 * s);
+    const leftY = groundY - wingH;
+
+    g.fillStyle(0x000000, 0.4);
+    g.fillRect(leftX + Math.round(4 * s), leftY + Math.round(6 * s), wingW, wingH);
+    g.fillStyle(style.base);
+    g.fillRect(leftX, leftY, wingW, wingH);
+    g.fillStyle(style.baseLight);
+    g.fillRect(leftX, leftY, Math.round(4 * s), wingH);
+
+    // Left wing stepped top
+    g.fillStyle(style.silver);
+    g.fillRect(leftX - Math.round(2 * s), leftY - Math.round(5 * s), wingW + Math.round(4 * s), Math.round(6 * s));
+    g.fillStyle(style.gold);
+    g.fillRect(leftX, leftY - Math.round(6 * s), wingW, Math.round(2 * s));
+
+    // === RIGHT WING (stepped) ===
+    const rightX = towerX + towerW - Math.round(6 * s);
+    const rightH = Math.round(60 * s);
     const rightY = groundY - rightH;
-    g.fillStyle(PALETTE.void, 0.3);
-    g.fillRect(rightX + Math.round(3 * s), rightY + Math.round(4 * s), sideW, rightH);
-    g.fillStyle(darken(style.base, 0.08));
-    g.fillRect(rightX, rightY, sideW, rightH);
 
-    // FLAT ROOFS with geometric trim
-    g.fillStyle(style.trim);
-    g.fillRect(centerBlockX - Math.round(2 * s), centerY - Math.round(4 * s), centerW + Math.round(4 * s), Math.round(6 * s));
-    g.fillRect(leftX - Math.round(1 * s), leftY - Math.round(3 * s), sideW + Math.round(2 * s), Math.round(5 * s));
-    g.fillRect(rightX - Math.round(1 * s), rightY - Math.round(3 * s), sideW + Math.round(2 * s), Math.round(5 * s));
+    g.fillStyle(0x000000, 0.4);
+    g.fillRect(rightX + Math.round(4 * s), rightY + Math.round(6 * s), wingW, rightH);
+    g.fillStyle(style.base);
+    g.fillRect(rightX, rightY, wingW, rightH);
+    g.fillStyle(style.baseDark);
+    g.fillRect(rightX + wingW - Math.round(4 * s), rightY, Math.round(4 * s), rightH);
 
-    // ART DECO SPIRE on center
-    const spireW = Math.round(10 * s);
-    const spireH = Math.round(25 * s);
-    g.fillStyle(style.trim);
-    g.fillRect(centerX - spireW / 2, centerY - Math.round(4 * s) - spireH, spireW, spireH);
-    // Stepped top
-    g.fillRect(centerX - Math.round(7 * s), centerY - Math.round(4 * s) - spireH, Math.round(14 * s), Math.round(4 * s));
-    g.fillRect(centerX - Math.round(4 * s), centerY - Math.round(4 * s) - spireH - Math.round(6 * s), Math.round(8 * s), Math.round(6 * s));
-    g.fillStyle(style.window);
-    g.fillRect(centerX - Math.round(2 * s), centerY - Math.round(4 * s) - spireH + Math.round(6 * s), Math.round(4 * s), Math.round(12 * s));
+    // Right wing stepped top
+    g.fillStyle(style.silver);
+    g.fillRect(rightX - Math.round(2 * s), rightY - Math.round(5 * s), wingW + Math.round(4 * s), Math.round(6 * s));
+    g.fillStyle(style.gold);
+    g.fillRect(rightX, rightY - Math.round(6 * s), wingW, Math.round(2 * s));
 
-    // GEOMETRIC WINDOWS - vertical bands
-    // Center block - 2 tall window strips
-    for (let col = 0; col < 2; col++) {
-      const wx = centerBlockX + Math.round(5 * s) + col * Math.round(15 * s);
-      g.fillStyle(style.window, 0.3);
-      g.fillRect(wx - Math.round(1 * s), centerY + Math.round(10 * s), Math.round(10 * s), Math.round(70 * s));
-      g.fillStyle(style.window);
-      g.fillRect(wx, centerY + Math.round(12 * s), Math.round(8 * s), Math.round(66 * s));
-      // Horizontal dividers
-      for (let d = 0; d < 4; d++) {
-        g.fillStyle(style.trim);
-        g.fillRect(wx, centerY + Math.round(12 * s) + d * Math.round(18 * s), Math.round(8 * s), Math.round(2 * s));
+    // === CHEVRON BANDS (Art Deco motif) ===
+    g.fillStyle(style.gold, 0.8);
+    for (let band = 0; band < 3; band++) {
+      const bandY = towerY + Math.round(20 * s) + band * Math.round(30 * s);
+      // Left chevron
+      g.fillTriangle(
+        towerX, bandY + Math.round(6 * s),
+        towerX + Math.round(20 * s), bandY,
+        towerX + Math.round(20 * s), bandY + Math.round(6 * s)
+      );
+      // Right chevron
+      g.fillTriangle(
+        towerX + towerW, bandY + Math.round(6 * s),
+        towerX + towerW - Math.round(20 * s), bandY,
+        towerX + towerW - Math.round(20 * s), bandY + Math.round(6 * s)
+      );
+    }
+
+    // === GEOMETRIC WINDOWS with glow ===
+    // Tower windows (3 vertical columns)
+    for (let col = 0; col < 3; col++) {
+      const wx = towerX + Math.round(8 * s) + col * Math.round(14 * s);
+      for (let row = 0; row < 5; row++) {
+        const wy = towerY + Math.round(40 * s) + row * Math.round(14 * s);
+        // Outer glow
+        g.fillStyle(style.windowGlow, 0.25);
+        g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), Math.round(12 * s), Math.round(12 * s));
+        // Window
+        g.fillStyle(style.window);
+        g.fillRect(wx, wy, Math.round(8 * s), Math.round(8 * s));
+        // Geometric divider (cross)
+        g.fillStyle(style.silver);
+        g.fillRect(wx + Math.round(3.5 * s), wy, Math.round(1 * s), Math.round(8 * s));
+        g.fillRect(wx, wy + Math.round(3.5 * s), Math.round(8 * s), Math.round(1 * s));
+        // Corner highlight
+        g.fillStyle(style.windowGlow, 0.6);
+        g.fillRect(wx, wy, Math.round(2 * s), Math.round(2 * s));
       }
     }
 
-    // Left block windows (single column)
-    g.fillStyle(style.window, 0.3);
-    g.fillRect(leftX + Math.round(6 * s), leftY + Math.round(8 * s), Math.round(10 * s), Math.round(45 * s));
-    g.fillStyle(style.window);
-    g.fillRect(leftX + Math.round(7 * s), leftY + Math.round(10 * s), Math.round(8 * s), Math.round(41 * s));
-
-    // Right block windows (single column)
-    g.fillStyle(style.window, 0.3);
-    g.fillRect(rightX + Math.round(6 * s), rightY + Math.round(8 * s), Math.round(10 * s), Math.round(30 * s));
-    g.fillStyle(style.window);
-    g.fillRect(rightX + Math.round(7 * s), rightY + Math.round(10 * s), Math.round(8 * s), Math.round(26 * s));
-
-    // HORIZONTAL SPEED LINES (Art Deco motif)
-    g.fillStyle(style.trim, 0.7);
-    for (let line = 0; line < 3; line++) {
-      const ly = centerY + Math.round(25 * s) + line * Math.round(25 * s);
-      g.fillRect(leftX, ly, Math.round(70 * s), Math.round(2 * s));
+    // Left wing windows (2 columns)
+    for (let col = 0; col < 2; col++) {
+      const wx = leftX + Math.round(6 * s) + col * Math.round(12 * s);
+      for (let row = 0; row < 4; row++) {
+        const wy = leftY + Math.round(10 * s) + row * Math.round(16 * s);
+        g.fillStyle(style.windowGlow, 0.2);
+        g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(10 * s), Math.round(14 * s));
+        g.fillStyle(style.window);
+        g.fillRect(wx, wy, Math.round(8 * s), Math.round(12 * s));
+        g.fillStyle(style.silver);
+        g.fillRect(wx + Math.round(3.5 * s), wy, Math.round(1 * s), Math.round(12 * s));
+      }
     }
 
-    // Modern geometric entrance
-    const doorW = Math.round(12 * s);
-    const doorH = Math.round(22 * s);
+    // Right wing windows (2 columns)
+    for (let col = 0; col < 2; col++) {
+      const wx = rightX + Math.round(6 * s) + col * Math.round(12 * s);
+      for (let row = 0; row < 3; row++) {
+        const wy = rightY + Math.round(10 * s) + row * Math.round(16 * s);
+        g.fillStyle(style.windowGlow, 0.2);
+        g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(10 * s), Math.round(14 * s));
+        g.fillStyle(style.window);
+        g.fillRect(wx, wy, Math.round(8 * s), Math.round(12 * s));
+        g.fillStyle(style.silver);
+        g.fillRect(wx + Math.round(3.5 * s), wy, Math.round(1 * s), Math.round(12 * s));
+      }
+    }
+
+    // === GRAND GEOMETRIC ENTRANCE ===
+    const doorW = Math.round(18 * s);
+    const doorH = Math.round(30 * s);
     const doorX = centerX - doorW / 2;
     const doorY = groundY - doorH;
-    g.fillStyle(style.trim);
-    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(6 * s), doorW + Math.round(8 * s), doorH + Math.round(6 * s));
-    g.fillStyle(PALETTE.void);
+
+    // Door frame with stepped Art Deco surround
+    g.fillStyle(style.silver);
+    g.fillRect(doorX - Math.round(8 * s), doorY - Math.round(12 * s), doorW + Math.round(16 * s), doorH + Math.round(12 * s));
+    g.fillStyle(style.gold);
+    g.fillRect(doorX - Math.round(6 * s), doorY - Math.round(10 * s), doorW + Math.round(12 * s), doorH + Math.round(10 * s));
+    g.fillStyle(style.baseDark);
+    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(8 * s), doorW + Math.round(8 * s), doorH + Math.round(8 * s));
+
+    // Door
+    g.fillStyle(0x0a0a0a);
     g.fillRect(doorX, doorY, doorW, doorH);
+    // Door glass panels
+    g.fillStyle(style.window, 0.7);
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(2 * s), Math.round(6 * s), Math.round(20 * s));
+    g.fillRect(doorX + Math.round(10 * s), doorY + Math.round(2 * s), Math.round(6 * s), Math.round(20 * s));
+    // Transom with sunburst pattern
+    g.fillStyle(style.goldBright);
+    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(8 * s), doorW + Math.round(8 * s), Math.round(8 * s));
     g.fillStyle(style.window);
-    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(2 * s), doorW - Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(6 * s), doorW + Math.round(4 * s), Math.round(5 * s));
+    // Mini sunburst in transom
+    g.fillStyle(style.gold);
+    for (let r = 0; r < 5; r++) {
+      const rx = centerX - Math.round(8 * s) + r * Math.round(4 * s);
+      g.fillRect(rx, doorY - Math.round(6 * s), Math.round(1 * s), Math.round(5 * s));
+    }
+
+    // Door handle
+    g.fillStyle(style.goldBright);
+    g.fillRect(doorX + doorW - Math.round(4 * s), doorY + Math.round(14 * s), Math.round(2 * s), Math.round(4 * s));
+
+    // === DECORATIVE EAGLES (Art Deco motif) ===
+    // Stylized eagle shapes on wings
+    g.fillStyle(style.gold);
+    // Left eagle
+    g.fillTriangle(
+      leftX + Math.round(15 * s), leftY + Math.round(5 * s),
+      leftX + Math.round(8 * s), leftY - Math.round(2 * s),
+      leftX + Math.round(22 * s), leftY - Math.round(2 * s)
+    );
+    // Right eagle
+    g.fillTriangle(
+      rightX + Math.round(15 * s), rightY + Math.round(5 * s),
+      rightX + Math.round(8 * s), rightY - Math.round(2 * s),
+      rightX + Math.round(22 * s), rightY - Math.round(2 * s)
+    );
 
     g.generateTexture("mansion_3", canvasWidth, canvasHeight);
     g.destroy();
   }
 
-  // MANSION 4: Colonial Manor with wide portico
+  // MANSION 4: Emerald Manor - Georgian Colonial masterpiece with grand portico and gardens
   private generateMansion4_ColonialManor(s: number, canvasWidth: number, canvasHeight: number): void {
     const g = this.make.graphics({ x: 0, y: 0 });
-    const style = { base: PALETTE.darkGreen, roof: PALETTE.forest, trim: PALETTE.bagsGreen, window: PALETTE.mint, column: PALETTE.cream };
+    // Emerald/garden theme with cream accents
+    const style = {
+      base: 0xf5f5dc,           // Cream/beige walls
+      baseLight: 0xfdfdf5,
+      baseDark: 0xe8e8d0,
+      roof: 0x1a3d1a,           // Deep forest green
+      roofLight: 0x2d5a2d,
+      trim: 0x228b22,           // Emerald green
+      trimLight: 0x32cd32,
+      window: 0x98fb98,         // Pale green glow
+      windowGlow: 0x00ff7f,
+      column: 0xffffff,         // Pure white columns
+      columnShade: 0xe8e8e8,
+      shutter: 0x0d4a0d,        // Dark green shutters
+      brick: 0x8b4513,          // Brick chimneys
+    };
     const centerX = canvasWidth / 2;
-    const groundY = canvasHeight;
+    const groundY = canvasHeight - Math.round(8 * s);
 
-    // Wide, low main body
-    const mainW = Math.round(70 * s);
-    const mainH = Math.round(55 * s);
+    // === GARDEN FOUNDATION/TERRACE ===
+    g.fillStyle(0x4a4a4a);
+    g.fillRect(Math.round(3 * s), groundY, canvasWidth - Math.round(6 * s), Math.round(8 * s));
+    // Stone terrace
+    g.fillStyle(0x9ca3af);
+    g.fillRect(Math.round(5 * s), groundY - Math.round(4 * s), canvasWidth - Math.round(10 * s), Math.round(5 * s));
+    // Garden grass strip
+    g.fillStyle(0x228b22);
+    g.fillRect(Math.round(3 * s), groundY - Math.round(2 * s), Math.round(12 * s), Math.round(3 * s));
+    g.fillRect(canvasWidth - Math.round(15 * s), groundY - Math.round(2 * s), Math.round(12 * s), Math.round(3 * s));
+
+    // === TOPIARIES (garden elements) ===
+    // Left topiary ball
+    g.fillStyle(0x0d4a0d);
+    g.fillCircle(Math.round(12 * s), groundY - Math.round(12 * s), Math.round(8 * s));
+    g.fillStyle(0x115511);
+    g.fillCircle(Math.round(12 * s), groundY - Math.round(14 * s), Math.round(5 * s));
+    g.fillStyle(0x5c4033); // Pot
+    g.fillRect(Math.round(8 * s), groundY - Math.round(4 * s), Math.round(8 * s), Math.round(5 * s));
+    // Right topiary ball
+    g.fillStyle(0x0d4a0d);
+    g.fillCircle(canvasWidth - Math.round(12 * s), groundY - Math.round(12 * s), Math.round(8 * s));
+    g.fillStyle(0x115511);
+    g.fillCircle(canvasWidth - Math.round(12 * s), groundY - Math.round(14 * s), Math.round(5 * s));
+    g.fillStyle(0x5c4033);
+    g.fillRect(canvasWidth - Math.round(16 * s), groundY - Math.round(4 * s), Math.round(8 * s), Math.round(5 * s));
+
+    // === MAIN HOUSE BODY (wide Georgian) ===
+    const mainW = Math.round(80 * s);
+    const mainH = Math.round(70 * s);
     const mainX = centerX - mainW / 2;
     const mainY = groundY - mainH;
 
-    g.fillStyle(PALETTE.void, 0.4);
-    g.fillRect(mainX + Math.round(4 * s), mainY + Math.round(5 * s), mainW, mainH);
+    // Shadow
+    g.fillStyle(0x000000, 0.4);
+    g.fillRect(mainX + Math.round(5 * s), mainY + Math.round(8 * s), mainW, mainH);
+
+    // Main body cream walls
     g.fillStyle(style.base);
     g.fillRect(mainX, mainY, mainW, mainH);
-    g.fillStyle(lighten(style.base, 0.12));
-    g.fillRect(mainX, mainY, Math.round(4 * s), mainH);
+    // Light edge
+    g.fillStyle(style.baseLight);
+    g.fillRect(mainX, mainY, Math.round(5 * s), mainH);
+    // Dark edge
+    g.fillStyle(style.baseDark);
+    g.fillRect(mainX + mainW - Math.round(5 * s), mainY, Math.round(5 * s), mainH);
 
-    // LOW HIPPED ROOF
-    const roofH = Math.round(22 * s);
+    // Horizontal trim bands (Georgian style)
+    g.fillStyle(style.trim);
+    g.fillRect(mainX, mainY + Math.round(25 * s), mainW, Math.round(3 * s)); // Floor line
+    g.fillRect(mainX, mainY + Math.round(50 * s), mainW, Math.round(2 * s)); // Second floor line
+
+    // Quoin corners (stone block pattern)
+    g.fillStyle(0xd3d3d3);
+    for (let q = 0; q < 6; q++) {
+      const qy = mainY + Math.round(5 * s) + q * Math.round(11 * s);
+      g.fillRect(mainX, qy, Math.round(6 * s), Math.round(8 * s));
+      g.fillRect(mainX + mainW - Math.round(6 * s), qy, Math.round(6 * s), Math.round(8 * s));
+    }
+
+    // === GRAND HIPPED ROOF ===
+    const roofH = Math.round(28 * s);
     g.fillStyle(style.roof);
-    // Main roof shape - trapezoid
-    g.fillRect(mainX - Math.round(6 * s), mainY - roofH, mainW + Math.round(12 * s), roofH);
+    g.fillRect(mainX - Math.round(8 * s), mainY - roofH, mainW + Math.round(16 * s), roofH);
     // Sloped edges
-    g.fillStyle(darken(style.roof, 0.15));
-    g.fillTriangle(mainX - Math.round(6 * s), mainY, mainX - Math.round(6 * s), mainY - roofH, mainX + Math.round(10 * s), mainY - roofH);
-    g.fillTriangle(mainX + mainW + Math.round(6 * s), mainY, mainX + mainW + Math.round(6 * s), mainY - roofH, mainX + mainW - Math.round(10 * s), mainY - roofH);
-    g.fillStyle(lighten(style.roof, 0.15));
-    g.fillRect(mainX - Math.round(6 * s), mainY - roofH, mainW + Math.round(12 * s), Math.round(3 * s));
+    g.fillStyle(darken(style.roof, 0.2));
+    g.fillTriangle(mainX - Math.round(8 * s), mainY, mainX - Math.round(8 * s), mainY - roofH, mainX + Math.round(15 * s), mainY - roofH);
+    g.fillTriangle(mainX + mainW + Math.round(8 * s), mainY, mainX + mainW + Math.round(8 * s), mainY - roofH, mainX + mainW - Math.round(15 * s), mainY - roofH);
+    // Roof highlight
+    g.fillStyle(style.roofLight);
+    g.fillRect(mainX - Math.round(8 * s), mainY - roofH, mainW + Math.round(16 * s), Math.round(4 * s));
+    // Roof trim
+    g.fillStyle(style.column);
+    g.fillRect(mainX - Math.round(10 * s), mainY - Math.round(2 * s), mainW + Math.round(20 * s), Math.round(4 * s));
 
-    // CENTRAL DORMER
-    const dormerW = Math.round(18 * s);
-    const dormerH = Math.round(20 * s);
-    const dormerX = centerX - dormerW / 2;
-    const dormerY = mainY - roofH - dormerH + Math.round(8 * s);
-    g.fillStyle(style.base);
-    g.fillRect(dormerX, dormerY + Math.round(8 * s), dormerW, dormerH - Math.round(6 * s));
-    g.fillStyle(style.roof);
-    g.fillTriangle(dormerX - Math.round(3 * s), dormerY + Math.round(8 * s), dormerX + dormerW + Math.round(3 * s), dormerY + Math.round(8 * s), centerX, dormerY - Math.round(5 * s));
-    // Dormer window
-    g.fillStyle(style.window);
-    g.fillRect(dormerX + Math.round(4 * s), dormerY + Math.round(12 * s), Math.round(10 * s), Math.round(10 * s));
-
-    // TWO CHIMNEYS (symmetrical)
-    g.fillStyle(0xa0522d);
-    g.fillRect(mainX + Math.round(10 * s), mainY - roofH - Math.round(15 * s), Math.round(6 * s), Math.round(20 * s));
-    g.fillRect(mainX + mainW - Math.round(16 * s), mainY - roofH - Math.round(15 * s), Math.round(6 * s), Math.round(20 * s));
-    g.fillStyle(darken(0xa0522d, 0.2));
-    g.fillRect(mainX + Math.round(10 * s), mainY - roofH - Math.round(15 * s), Math.round(6 * s), Math.round(2 * s));
-    g.fillRect(mainX + mainW - Math.round(16 * s), mainY - roofH - Math.round(15 * s), Math.round(6 * s), Math.round(2 * s));
-
-    // WIDE COLUMNED PORTICO (full width)
-    const porticoY = mainY + Math.round(20 * s);
-    g.fillStyle(style.roof);
-    g.fillRect(mainX - Math.round(3 * s), porticoY - Math.round(4 * s), mainW + Math.round(6 * s), Math.round(6 * s));
-
-    // 6 evenly spaced columns
-    const colCount = 6;
-    const colSpacing = (mainW - Math.round(10 * s)) / (colCount - 1);
-    for (let c = 0; c < colCount; c++) {
-      const cx = mainX + Math.round(5 * s) + c * colSpacing;
-      g.fillStyle(style.column);
-      g.fillRect(cx, porticoY, Math.round(4 * s), mainH - Math.round(20 * s));
-      g.fillStyle(PALETTE.white);
-      g.fillRect(cx, porticoY, Math.round(1 * s), mainH - Math.round(20 * s));
-      // Capital
-      g.fillStyle(style.trim);
-      g.fillRect(cx - Math.round(1 * s), porticoY - Math.round(2 * s), Math.round(6 * s), Math.round(3 * s));
-    }
-
-    // Windows above portico (5 symmetrical)
-    for (let w = 0; w < 5; w++) {
-      const wx = mainX + Math.round(8 * s) + w * Math.round(13 * s);
-      const wy = mainY + Math.round(5 * s);
-      g.fillStyle(style.window, 0.25);
-      g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(9 * s), Math.round(12 * s));
+    // === THREE DORMERS ===
+    const dormerW = Math.round(14 * s);
+    const dormerH = Math.round(16 * s);
+    for (let d = 0; d < 3; d++) {
+      const dormerX = mainX + Math.round(15 * s) + d * Math.round(28 * s);
+      const dormerY = mainY - roofH - dormerH + Math.round(10 * s);
+      // Dormer body
+      g.fillStyle(style.base);
+      g.fillRect(dormerX, dormerY + Math.round(6 * s), dormerW, dormerH - Math.round(4 * s));
+      // Dormer roof (pediment)
+      g.fillStyle(style.roof);
+      g.fillTriangle(dormerX - Math.round(2 * s), dormerY + Math.round(6 * s), dormerX + dormerW + Math.round(2 * s), dormerY + Math.round(6 * s), dormerX + dormerW / 2, dormerY - Math.round(6 * s));
+      // Dormer window with glow
+      g.fillStyle(style.windowGlow, 0.3);
+      g.fillRect(dormerX + Math.round(2 * s), dormerY + Math.round(8 * s), Math.round(10 * s), Math.round(10 * s));
       g.fillStyle(style.window);
-      g.fillRect(wx, wy, Math.round(7 * s), Math.round(10 * s));
-      // Shutters
-      g.fillStyle(darken(style.base, 0.2));
-      g.fillRect(wx - Math.round(3 * s), wy, Math.round(2 * s), Math.round(10 * s));
-      g.fillRect(wx + Math.round(8 * s), wy, Math.round(2 * s), Math.round(10 * s));
+      g.fillRect(dormerX + Math.round(3 * s), dormerY + Math.round(9 * s), Math.round(8 * s), Math.round(8 * s));
+      // Window mullion
+      g.fillStyle(style.column);
+      g.fillRect(dormerX + Math.round(6.5 * s), dormerY + Math.round(9 * s), Math.round(1 * s), Math.round(8 * s));
     }
 
-    // CENTRAL DOOR (under portico, wider colonial style)
-    const doorW = Math.round(14 * s);
-    const doorH = Math.round(28 * s);
+    // === GRAND CHIMNEYS (symmetrical, detailed) ===
+    for (let ch = 0; ch < 2; ch++) {
+      const chimX = ch === 0 ? mainX + Math.round(8 * s) : mainX + mainW - Math.round(14 * s);
+      const chimY = mainY - roofH - Math.round(22 * s);
+      // Chimney body
+      g.fillStyle(style.brick);
+      g.fillRect(chimX, chimY, Math.round(6 * s), Math.round(28 * s));
+      // Chimney cap
+      g.fillStyle(darken(style.brick, 0.15));
+      g.fillRect(chimX - Math.round(1 * s), chimY, Math.round(8 * s), Math.round(3 * s));
+      // Chimney band
+      g.fillStyle(lighten(style.brick, 0.15));
+      g.fillRect(chimX, chimY + Math.round(8 * s), Math.round(6 * s), Math.round(2 * s));
+    }
+
+    // === GRAND CENTRAL PORTICO with pediment ===
+    const porticoW = Math.round(40 * s);
+    const porticoH = Math.round(50 * s);
+    const porticoX = centerX - porticoW / 2;
+    const porticoY = groundY - porticoH;
+
+    // Portico roof/pediment
+    g.fillStyle(style.roof);
+    g.fillRect(porticoX - Math.round(4 * s), porticoY - Math.round(6 * s), porticoW + Math.round(8 * s), Math.round(8 * s));
+    // Triangular pediment
+    g.fillTriangle(
+      porticoX - Math.round(6 * s), porticoY - Math.round(6 * s),
+      porticoX + porticoW + Math.round(6 * s), porticoY - Math.round(6 * s),
+      centerX, porticoY - Math.round(22 * s)
+    );
+    // Pediment highlight
+    g.fillStyle(style.roofLight);
+    g.fillRect(porticoX - Math.round(4 * s), porticoY - Math.round(6 * s), porticoW + Math.round(8 * s), Math.round(2 * s));
+    // Pediment trim (tympanum)
+    g.fillStyle(style.base);
+    g.fillTriangle(
+      porticoX - Math.round(2 * s), porticoY - Math.round(4 * s),
+      porticoX + porticoW + Math.round(2 * s), porticoY - Math.round(4 * s),
+      centerX, porticoY - Math.round(18 * s)
+    );
+    // Decorative medallion in pediment
+    g.fillStyle(style.trim);
+    g.fillCircle(centerX, porticoY - Math.round(12 * s), Math.round(5 * s));
+    g.fillStyle(style.trimLight);
+    g.fillCircle(centerX, porticoY - Math.round(12 * s), Math.round(3 * s));
+
+    // === FOUR GRAND CORINTHIAN COLUMNS ===
+    const colCount = 4;
+    const colSpacing = (porticoW - Math.round(12 * s)) / (colCount - 1);
+    for (let c = 0; c < colCount; c++) {
+      const cx = porticoX + Math.round(6 * s) + c * colSpacing;
+      const colH = porticoH - Math.round(8 * s);
+
+      // Column base (plinth)
+      g.fillStyle(style.columnShade);
+      g.fillRect(cx - Math.round(2 * s), groundY - Math.round(6 * s), Math.round(8 * s), Math.round(6 * s));
+
+      // Column shaft with fluting
+      g.fillStyle(style.column);
+      g.fillRect(cx, porticoY, Math.round(4 * s), colH);
+      // Column highlight (light side)
+      g.fillStyle(0xffffff);
+      g.fillRect(cx, porticoY, Math.round(1 * s), colH);
+      // Column shadow (dark side)
+      g.fillStyle(style.columnShade);
+      g.fillRect(cx + Math.round(3 * s), porticoY, Math.round(1 * s), colH);
+
+      // Fluting detail
+      g.fillStyle(style.columnShade, 0.3);
+      g.fillRect(cx + Math.round(1.5 * s), porticoY + Math.round(4 * s), Math.round(1 * s), colH - Math.round(10 * s));
+
+      // Capital (Corinthian style)
+      g.fillStyle(style.column);
+      g.fillRect(cx - Math.round(2 * s), porticoY - Math.round(4 * s), Math.round(8 * s), Math.round(5 * s));
+      g.fillStyle(style.trim);
+      g.fillRect(cx - Math.round(3 * s), porticoY - Math.round(5 * s), Math.round(10 * s), Math.round(2 * s));
+      // Acanthus leaf detail
+      g.fillStyle(style.trimLight);
+      g.fillRect(cx - Math.round(1 * s), porticoY - Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
+      g.fillRect(cx + Math.round(3 * s), porticoY - Math.round(3 * s), Math.round(2 * s), Math.round(3 * s));
+    }
+
+    // === WINDOWS (Georgian 6-over-6 sash style) ===
+    // Second floor windows (5 total)
+    for (let w = 0; w < 5; w++) {
+      const wx = mainX + Math.round(10 * s) + w * Math.round(14 * s);
+      const wy = mainY + Math.round(6 * s);
+      // Skip center windows (behind pediment)
+      if (w === 2) continue;
+      // Window glow
+      g.fillStyle(style.windowGlow, 0.25);
+      g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), Math.round(12 * s), Math.round(18 * s));
+      // Window frame
+      g.fillStyle(style.column);
+      g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(10 * s), Math.round(16 * s));
+      // Window glass
+      g.fillStyle(style.window);
+      g.fillRect(wx, wy, Math.round(8 * s), Math.round(14 * s));
+      // Mullions (6-over-6 pattern)
+      g.fillStyle(style.column);
+      g.fillRect(wx + Math.round(3.5 * s), wy, Math.round(1 * s), Math.round(14 * s)); // Vertical
+      g.fillRect(wx, wy + Math.round(6.5 * s), Math.round(8 * s), Math.round(1 * s)); // Horizontal
+      // Sash dividers
+      for (let div = 0; div < 2; div++) {
+        g.fillRect(wx, wy + Math.round(2 * s) + div * Math.round(4 * s), Math.round(8 * s), Math.round(0.5 * s));
+        g.fillRect(wx, wy + Math.round(9 * s) + div * Math.round(3 * s), Math.round(8 * s), Math.round(0.5 * s));
+      }
+      // Shutters
+      g.fillStyle(style.shutter);
+      g.fillRect(wx - Math.round(4 * s), wy, Math.round(3 * s), Math.round(14 * s));
+      g.fillRect(wx + Math.round(9 * s), wy, Math.round(3 * s), Math.round(14 * s));
+      // Shutter slats
+      g.fillStyle(lighten(style.shutter, 0.15));
+      for (let slat = 0; slat < 5; slat++) {
+        g.fillRect(wx - Math.round(4 * s), wy + Math.round(2 * s) + slat * Math.round(3 * s), Math.round(3 * s), Math.round(1 * s));
+        g.fillRect(wx + Math.round(9 * s), wy + Math.round(2 * s) + slat * Math.round(3 * s), Math.round(3 * s), Math.round(1 * s));
+      }
+    }
+
+    // First floor windows (4 total, flanking door)
+    for (let w = 0; w < 4; w++) {
+      // Skip middle two (door area)
+      if (w === 1 || w === 2) continue;
+      const wx = mainX + Math.round(10 * s) + w * Math.round(18 * s);
+      const wy = mainY + Math.round(32 * s);
+      // Window glow
+      g.fillStyle(style.windowGlow, 0.25);
+      g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), Math.round(14 * s), Math.round(20 * s));
+      // Window frame
+      g.fillStyle(style.column);
+      g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), Math.round(12 * s), Math.round(18 * s));
+      // Window glass
+      g.fillStyle(style.window);
+      g.fillRect(wx, wy, Math.round(10 * s), Math.round(16 * s));
+      // Mullions
+      g.fillStyle(style.column);
+      g.fillRect(wx + Math.round(4.5 * s), wy, Math.round(1 * s), Math.round(16 * s));
+      g.fillRect(wx, wy + Math.round(7.5 * s), Math.round(10 * s), Math.round(1 * s));
+      // Shutters
+      g.fillStyle(style.shutter);
+      g.fillRect(wx - Math.round(5 * s), wy, Math.round(4 * s), Math.round(16 * s));
+      g.fillRect(wx + Math.round(11 * s), wy, Math.round(4 * s), Math.round(16 * s));
+    }
+
+    // === GRAND ENTRANCE DOOR (Georgian style with fanlight) ===
+    const doorW = Math.round(16 * s);
+    const doorH = Math.round(32 * s);
     const doorX = centerX - doorW / 2;
     const doorY = groundY - doorH;
+
+    // Door frame surround
+    g.fillStyle(style.column);
+    g.fillRect(doorX - Math.round(5 * s), doorY - Math.round(14 * s), doorW + Math.round(10 * s), doorH + Math.round(14 * s));
+    // Frame trim
     g.fillStyle(style.trim);
-    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(4 * s), doorW + Math.round(6 * s), doorH + Math.round(4 * s));
-    g.fillStyle(PALETTE.void);
+    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(12 * s), doorW + Math.round(8 * s), doorH + Math.round(12 * s));
+
+    // Fanlight (semi-circular transom)
+    g.fillStyle(style.windowGlow, 0.4);
+    g.fillCircle(centerX, doorY - Math.round(2 * s), Math.round(10 * s));
+    g.fillStyle(style.window);
+    g.fillCircle(centerX, doorY - Math.round(2 * s), Math.round(8 * s));
+    // Fanlight spokes
+    g.fillStyle(style.column);
+    for (let spoke = 0; spoke < 7; spoke++) {
+      const angle = (Math.PI / 8) + spoke * (Math.PI / 7);
+      const x1 = centerX;
+      const y1 = doorY - Math.round(2 * s);
+      const x2 = centerX + Math.cos(angle) * Math.round(8 * s);
+      const y2 = (doorY - Math.round(2 * s)) - Math.sin(angle) * Math.round(8 * s);
+      // Draw spoke as thin rectangle
+      g.fillRect(x1, y1 - Math.round(8 * s), Math.round(1 * s), Math.round(8 * s));
+    }
+    // Cover bottom half of fanlight circle
+    g.fillStyle(style.trim);
+    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(2 * s), doorW + Math.round(8 * s), Math.round(4 * s));
+
+    // Door panels
+    g.fillStyle(0x1a1a1a);
     g.fillRect(doorX, doorY, doorW, doorH);
-    g.fillStyle(PALETTE.darkBrown);
-    g.fillRect(doorX + Math.round(1 * s), doorY + Math.round(2 * s), doorW - Math.round(2 * s), doorH - Math.round(2 * s));
+    g.fillStyle(style.shutter);
+    g.fillRect(doorX + Math.round(1 * s), doorY + Math.round(2 * s), doorW - Math.round(2 * s), doorH - Math.round(4 * s));
+    // Door panel details
+    g.fillStyle(lighten(style.shutter, 0.1));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(4 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(doorX + Math.round(9 * s), doorY + Math.round(4 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(18 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(doorX + Math.round(9 * s), doorY + Math.round(18 * s), Math.round(5 * s), Math.round(10 * s));
+    // Door knocker
+    g.fillStyle(0xd4af37);
+    g.fillCircle(centerX, doorY + Math.round(14 * s), Math.round(2 * s));
+
     // Sidelights
+    g.fillStyle(style.windowGlow, 0.3);
+    g.fillRect(doorX - Math.round(4 * s), doorY + Math.round(4 * s), Math.round(3 * s), Math.round(24 * s));
+    g.fillRect(doorX + doorW + Math.round(1 * s), doorY + Math.round(4 * s), Math.round(3 * s), Math.round(24 * s));
     g.fillStyle(style.window);
-    g.fillRect(doorX - Math.round(2 * s), doorY + Math.round(4 * s), Math.round(2 * s), Math.round(20 * s));
-    g.fillRect(doorX + doorW, doorY + Math.round(4 * s), Math.round(2 * s), Math.round(20 * s));
-    // Transom
-    g.fillStyle(style.window);
-    g.fillRect(doorX, doorY - Math.round(2 * s), doorW, Math.round(4 * s));
+    g.fillRect(doorX - Math.round(3.5 * s), doorY + Math.round(5 * s), Math.round(2 * s), Math.round(22 * s));
+    g.fillRect(doorX + doorW + Math.round(1.5 * s), doorY + Math.round(5 * s), Math.round(2 * s), Math.round(22 * s));
 
     g.generateTexture("mansion_4", canvasWidth, canvasHeight);
     g.destroy();
@@ -4292,251 +5144,148 @@ export class BootScene extends Phaser.Scene {
   /**
    * Generate the Sniper Tower for the Academy zone
    * A tall radar tower with scanning equipment for sniping new token launches
+   * REWRITTEN using exact pattern from generateFoundersWorkshop
    */
   private generateSniperTower(): void {
     const s = SCALE;
     const g = this.make.graphics({ x: 0, y: 0 });
-    const canvasWidth = Math.round(80 * s);
-    const canvasHeight = Math.round(200 * s);
 
-    // Tower colors (dark tech aesthetic)
-    const towerDark = 0x0c0c14;
-    const towerMid = 0x161622;
-    const towerLight = 0x1f1f32;
-    const towerAccent = PALETTE.bagsGreen;
-    const towerCyan = PALETTE.cyan;
-    const towerGold = PALETTE.gold;
+    // Canvas and building dimensions (same pattern as Founders)
+    const canvasW = Math.round(80 * s);
+    const canvasH = Math.round(180 * s);
+    const bWidth = Math.round(50 * s);
+    const bHeight = Math.round(140 * s);
+    const baseX = Math.round((canvasW - bWidth) / 2);
+    const baseY = canvasH - bHeight;  // TOP of building, like Founders
 
-    // Tower dimensions
-    const towerWidth = Math.round(50 * s);
-    const towerHeight = Math.round(160 * s);
-    const towerX = (canvasWidth - towerWidth) / 2;
-    const baseY = canvasHeight;
+    // Colors - high visibility
+    const towerBase = 0x374151;       // Dark gray
+    const towerBody = 0x4b5563;       // Medium gray
+    const towerLight = lighten(towerBody, 0.2);
+    const towerDark = darken(towerBody, 0.2);
+    const accent = PALETTE.bagsGreen; // Green accents
+    const windowColor = PALETTE.cyan; // Cyan windows
 
-    // === TOWER BASE (cylindrical stone foundation) ===
-    // Shadow
+    // === DROP SHADOW (like Founders) ===
     g.fillStyle(PALETTE.void, 0.5);
-    g.fillRect(
-      towerX + Math.round(4 * s),
-      baseY - Math.round(20 * s),
-      towerWidth - Math.round(4 * s),
-      Math.round(20 * s)
-    );
+    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
 
-    // Stone foundation
-    g.fillStyle(PALETTE.gray);
-    g.fillRect(towerX - Math.round(5 * s), baseY - Math.round(25 * s), towerWidth + Math.round(10 * s), Math.round(25 * s));
-    g.fillStyle(lighten(PALETTE.gray, 0.1));
-    g.fillRect(towerX - Math.round(5 * s), baseY - Math.round(25 * s), Math.round(5 * s), Math.round(25 * s));
-    g.fillStyle(darken(PALETTE.gray, 0.2));
-    g.fillRect(towerX + towerWidth, baseY - Math.round(25 * s), Math.round(5 * s), Math.round(25 * s));
+    // === MAIN TOWER BODY ===
+    g.fillStyle(towerBody);
+    g.fillRect(baseX, baseY, bWidth, bHeight);
 
-    // === MAIN TOWER SHAFT ===
-    // Main body
-    g.fillStyle(towerDark);
-    g.fillRect(towerX, baseY - towerHeight, towerWidth, towerHeight - Math.round(25 * s));
-
-    // Left edge highlight
-    g.fillStyle(towerMid);
-    g.fillRect(towerX, baseY - towerHeight, Math.round(6 * s), towerHeight - Math.round(25 * s));
-
-    // Right edge shadow
-    g.fillStyle(0x060608);
-    g.fillRect(towerX + towerWidth - Math.round(6 * s), baseY - towerHeight, Math.round(6 * s), towerHeight - Math.round(25 * s));
-
-    // Horizontal tech lines (every 20px)
+    // 3D depth: Light left edge
     g.fillStyle(towerLight);
-    for (let i = 0; i < 6; i++) {
-      const lineY = baseY - Math.round(40 * s) - i * Math.round(22 * s);
-      g.fillRect(towerX + Math.round(6 * s), lineY, towerWidth - Math.round(12 * s), Math.round(2 * s));
+    g.fillRect(baseX, baseY, Math.round(6 * s), bHeight);
+
+    // 3D depth: Dark right edge
+    g.fillStyle(towerDark);
+    g.fillRect(baseX + bWidth - Math.round(6 * s), baseY, Math.round(6 * s), bHeight);
+
+    // === HORIZONTAL TECH LINES ===
+    g.fillStyle(towerLight);
+    for (let i = 0; i < 7; i++) {
+      const lineY = baseY + Math.round(15 * s) + i * Math.round(18 * s);
+      g.fillRect(baseX + Math.round(8 * s), lineY, bWidth - Math.round(16 * s), Math.round(2 * s));
     }
 
-    // === OBSERVATION WINDOWS (3 levels) ===
-    const windowWidth = Math.round(16 * s);
-    const windowHeight = Math.round(10 * s);
-    const windowX = towerX + (towerWidth - windowWidth) / 2;
+    // === OBSERVATION WINDOWS (4 levels) ===
+    const windowW = Math.round(14 * s);
+    const windowH = Math.round(10 * s);
+    const windowX = baseX + (bWidth - windowW) / 2;
 
-    for (let i = 0; i < 3; i++) {
-      const windowY = baseY - Math.round(55 * s) - i * Math.round(35 * s);
+    for (let i = 0; i < 4; i++) {
+      const windowY = baseY + Math.round(25 * s) + i * Math.round(28 * s);
 
       // Window glow aura
-      g.fillStyle(towerCyan, 0.25);
-      g.fillRect(
-        windowX - Math.round(3 * s),
-        windowY - Math.round(2 * s),
-        windowWidth + Math.round(6 * s),
-        windowHeight + Math.round(4 * s)
-      );
+      g.fillStyle(windowColor, 0.3);
+      g.fillRect(windowX - Math.round(2 * s), windowY - Math.round(2 * s), windowW + Math.round(4 * s), windowH + Math.round(4 * s));
 
-      // Window bezel
+      // Window frame
       g.fillStyle(towerLight);
-      g.fillRect(
-        windowX - Math.round(2 * s),
-        windowY - Math.round(1 * s),
-        windowWidth + Math.round(4 * s),
-        windowHeight + Math.round(2 * s)
-      );
+      g.fillRect(windowX - Math.round(1 * s), windowY - Math.round(1 * s), windowW + Math.round(2 * s), windowH + Math.round(2 * s));
 
       // Window glass
-      g.fillStyle(towerCyan);
-      g.fillRect(windowX, windowY, windowWidth, windowHeight);
+      g.fillStyle(windowColor);
+      g.fillRect(windowX, windowY, windowW, windowH);
 
       // Window highlight
-      g.fillStyle(lighten(towerCyan, 0.4));
+      g.fillStyle(lighten(windowColor, 0.4));
       g.fillRect(windowX, windowY, Math.round(3 * s), Math.round(3 * s));
-
-      // Scanline effect
-      g.fillStyle(towerDark, 0.3);
-      g.fillRect(windowX, windowY + Math.round(3 * s), windowWidth, Math.round(1 * s));
-      g.fillRect(windowX, windowY + Math.round(6 * s), windowWidth, Math.round(1 * s));
     }
 
     // === RADAR DOME (top) ===
-    const domeY = baseY - towerHeight - Math.round(10 * s);
-    const domeRadius = Math.round(22 * s);
+    const domeY = baseY - Math.round(15 * s);
+    const domeRadius = Math.round(18 * s);
+    const centerX = baseX + bWidth / 2;
 
     // Dome glow
-    g.fillStyle(towerAccent, 0.15);
-    g.fillCircle(towerX + towerWidth / 2, domeY, domeRadius + Math.round(8 * s));
+    g.fillStyle(accent, 0.2);
+    g.fillCircle(centerX, domeY, domeRadius + Math.round(5 * s));
 
     // Dome body
-    g.fillStyle(towerMid);
-    g.fillCircle(towerX + towerWidth / 2, domeY, domeRadius);
+    g.fillStyle(towerBody);
+    g.fillCircle(centerX, domeY, domeRadius);
 
-    // Dome highlight (left side)
+    // Dome highlight
     g.fillStyle(towerLight);
-    g.fillCircle(towerX + towerWidth / 2 - Math.round(6 * s), domeY - Math.round(4 * s), Math.round(10 * s));
+    g.fillCircle(centerX - Math.round(5 * s), domeY - Math.round(3 * s), Math.round(8 * s));
 
-    // Dome dark side (right)
-    g.fillStyle(towerDark);
-    g.fillCircle(towerX + towerWidth / 2 + Math.round(8 * s), domeY + Math.round(4 * s), Math.round(8 * s));
+    // Dome ring (green accent)
+    g.fillStyle(accent);
+    g.fillRect(baseX, domeY - Math.round(2 * s), bWidth, Math.round(4 * s));
 
-    // Dome ring
-    g.fillStyle(towerAccent);
-    g.fillRect(towerX, domeY - Math.round(2 * s), towerWidth, Math.round(4 * s));
-
-    // === RADAR ANTENNA (on top of dome) ===
-    const antennaX = towerX + towerWidth / 2;
-    const antennaBaseY = domeY - domeRadius + Math.round(4 * s);
+    // === ANTENNA ON TOP ===
+    const antennaX = centerX;
 
     // Antenna pole
     g.fillStyle(towerLight);
-    g.fillRect(antennaX - Math.round(2 * s), antennaBaseY - Math.round(30 * s), Math.round(4 * s), Math.round(30 * s));
+    g.fillRect(antennaX - Math.round(2 * s), domeY - domeRadius - Math.round(20 * s), Math.round(4 * s), Math.round(20 * s));
 
-    // Antenna dish mount
-    g.fillStyle(towerMid);
-    g.fillRect(antennaX - Math.round(4 * s), antennaBaseY - Math.round(35 * s), Math.round(8 * s), Math.round(8 * s));
-
-    // Radar dish (pointed)
-    g.fillStyle(towerAccent);
-    g.beginPath();
-    g.moveTo(antennaX, antennaBaseY - Math.round(55 * s));
-    g.lineTo(antennaX - Math.round(12 * s), antennaBaseY - Math.round(35 * s));
-    g.lineTo(antennaX + Math.round(12 * s), antennaBaseY - Math.round(35 * s));
-    g.closePath();
-    g.fill();
-
-    // Dish inner
-    g.fillStyle(lighten(towerAccent, 0.3));
-    g.beginPath();
-    g.moveTo(antennaX, antennaBaseY - Math.round(50 * s));
-    g.lineTo(antennaX - Math.round(6 * s), antennaBaseY - Math.round(38 * s));
-    g.lineTo(antennaX + Math.round(6 * s), antennaBaseY - Math.round(38 * s));
-    g.closePath();
-    g.fill();
-
-    // Tip beacon
+    // Antenna tip (red beacon)
+    g.fillStyle(PALETTE.brightRed, 0.5);
+    g.fillCircle(antennaX, domeY - domeRadius - Math.round(22 * s), Math.round(6 * s));
     g.fillStyle(PALETTE.brightRed);
-    g.fillCircle(antennaX, antennaBaseY - Math.round(55 * s), Math.round(3 * s));
-    g.fillStyle(PALETTE.brightRed, 0.4);
-    g.fillCircle(antennaX, antennaBaseY - Math.round(55 * s), Math.round(6 * s));
+    g.fillCircle(antennaX, domeY - domeRadius - Math.round(22 * s), Math.round(3 * s));
 
-    // === GREEN ACCENT LIGHTS (down the tower) ===
-    g.fillStyle(towerAccent);
-    for (let i = 0; i < 4; i++) {
-      const lightY = baseY - Math.round(70 * s) - i * Math.round(30 * s);
+    // === GREEN ACCENT LIGHTS (sides of tower) ===
+    g.fillStyle(accent);
+    for (let i = 0; i < 5; i++) {
+      const lightY = baseY + Math.round(20 * s) + i * Math.round(25 * s);
       // Left light
-      g.fillRect(towerX + Math.round(2 * s), lightY, Math.round(4 * s), Math.round(4 * s));
+      g.fillRect(baseX + Math.round(2 * s), lightY, Math.round(4 * s), Math.round(4 * s));
       // Right light
-      g.fillRect(towerX + towerWidth - Math.round(6 * s), lightY, Math.round(4 * s), Math.round(4 * s));
-      // Light glow
-      g.fillStyle(towerAccent, 0.3);
-      g.fillCircle(towerX + Math.round(4 * s), lightY + Math.round(2 * s), Math.round(6 * s));
-      g.fillCircle(towerX + towerWidth - Math.round(4 * s), lightY + Math.round(2 * s), Math.round(6 * s));
-      g.fillStyle(towerAccent);
+      g.fillRect(baseX + bWidth - Math.round(6 * s), lightY, Math.round(4 * s), Math.round(4 * s));
     }
 
-    // === "SNIPER" SIGN ===
-    const signWidth = Math.round(44 * s);
-    const signHeight = Math.round(14 * s);
-    const signX = towerX + (towerWidth - signWidth) / 2;
-    const signY = baseY - Math.round(30 * s);
+    // === "SNIPER" LABEL AT BASE ===
+    const signW = Math.round(40 * s);
+    const signH = Math.round(12 * s);
+    const signX = baseX + (bWidth - signW) / 2;
+    const signY = baseY + bHeight - Math.round(18 * s);
 
     // Sign background
-    g.fillStyle(towerDark);
-    g.fillRect(signX, signY, signWidth, signHeight);
+    g.fillStyle(towerBase);
+    g.fillRect(signX, signY, signW, signH);
 
-    // Sign border
-    g.fillStyle(towerGold);
-    g.fillRect(signX, signY, signWidth, Math.round(1 * s));
-    g.fillRect(signX, signY + signHeight - Math.round(1 * s), signWidth, Math.round(1 * s));
-    g.fillRect(signX, signY, Math.round(1 * s), signHeight);
-    g.fillRect(signX + signWidth - Math.round(1 * s), signY, Math.round(1 * s), signHeight);
+    // Sign border (gold)
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(signX, signY, signW, Math.round(1 * s));
+    g.fillRect(signX, signY + signH - Math.round(1 * s), signW, Math.round(1 * s));
+    g.fillRect(signX, signY, Math.round(1 * s), signH);
+    g.fillRect(signX + signW - Math.round(1 * s), signY, Math.round(1 * s), signH);
 
-    // "SNIPER" text in pixels
-    g.fillStyle(towerAccent);
-    const textY = signY + Math.round(3 * s);
-    const letterSpacing = Math.round(7 * s);
-    let letterX = signX + Math.round(3 * s);
+    // "SNIPER" text (simplified - just green bar to represent text)
+    g.fillStyle(accent);
+    g.fillRect(signX + Math.round(4 * s), signY + Math.round(4 * s), signW - Math.round(8 * s), Math.round(4 * s));
 
-    // S
-    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
-    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(4 * s));
-    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(5 * s), Math.round(2 * s));
-    g.fillRect(letterX + Math.round(3 * s), textY + Math.round(4 * s), Math.round(2 * s), Math.round(3 * s));
-    g.fillRect(letterX, textY + Math.round(6 * s), Math.round(5 * s), Math.round(2 * s));
-    letterX += letterSpacing;
+    // === STONE FOUNDATION ===
+    g.fillStyle(PALETTE.gray);
+    g.fillRect(baseX - Math.round(5 * s), baseY + bHeight - Math.round(10 * s), bWidth + Math.round(10 * s), Math.round(10 * s));
+    g.fillStyle(lighten(PALETTE.gray, 0.1));
+    g.fillRect(baseX - Math.round(5 * s), baseY + bHeight - Math.round(10 * s), Math.round(4 * s), Math.round(10 * s));
 
-    // N
-    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
-    g.fillRect(letterX + Math.round(3 * s), textY, Math.round(2 * s), Math.round(8 * s));
-    g.fillRect(letterX + Math.round(2 * s), textY + Math.round(2 * s), Math.round(1 * s), Math.round(2 * s));
-    letterX += letterSpacing;
-
-    // I
-    g.fillRect(letterX, textY, Math.round(4 * s), Math.round(2 * s));
-    g.fillRect(letterX + Math.round(1 * s), textY, Math.round(2 * s), Math.round(8 * s));
-    g.fillRect(letterX, textY + Math.round(6 * s), Math.round(4 * s), Math.round(2 * s));
-    letterX += Math.round(5 * s);
-
-    // P
-    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
-    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
-    g.fillRect(letterX + Math.round(3 * s), textY, Math.round(2 * s), Math.round(4 * s));
-    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(5 * s), Math.round(2 * s));
-    letterX += letterSpacing;
-
-    // E
-    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
-    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
-    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(4 * s), Math.round(2 * s));
-    g.fillRect(letterX, textY + Math.round(6 * s), Math.round(5 * s), Math.round(2 * s));
-    letterX += letterSpacing;
-
-    // R
-    g.fillRect(letterX, textY, Math.round(2 * s), Math.round(8 * s));
-    g.fillRect(letterX, textY, Math.round(5 * s), Math.round(2 * s));
-    g.fillRect(letterX + Math.round(3 * s), textY, Math.round(2 * s), Math.round(4 * s));
-    g.fillRect(letterX, textY + Math.round(3 * s), Math.round(4 * s), Math.round(2 * s));
-    g.fillRect(letterX + Math.round(3 * s), textY + Math.round(5 * s), Math.round(2 * s), Math.round(3 * s));
-
-    // === GROUND GLOW (scanning beam base) ===
-    g.fillStyle(towerAccent, 0.15);
-    g.fillCircle(towerX + towerWidth / 2, baseY - Math.round(5 * s), Math.round(35 * s));
-    g.fillStyle(towerAccent, 0.08);
-    g.fillCircle(towerX + towerWidth / 2, baseY - Math.round(5 * s), Math.round(50 * s));
-
-    g.generateTexture("sniper_tower", canvasWidth, canvasHeight);
+    g.generateTexture("sniper_tower", canvasW, canvasH);
     g.destroy();
   }
 
@@ -4622,6 +5371,9 @@ export class BootScene extends Phaser.Scene {
     this.generateAlaaSprite();
     this.generateCarloSprite();
     this.generateBNNSprite();
+
+    // Founder's Corner Zone
+    this.generateProfessorOakSprite();
   }
 
   private generateTolySprite(): void {
@@ -7345,6 +8097,126 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(Math.round(17 * s), Math.round(8 * s), Math.round(1 * s), Math.round(1 * s));
 
     g.generateTexture("bnn", size, size);
+    g.destroy();
+  }
+
+  private generateProfessorOakSprite(): void {
+    // Professor Oak - Classic Pokemon style sprite
+    // Based on original Gen 1/2 sprite: tall gray hair, white lab coat, red shirt
+    const s = SCALE;
+    const size = Math.round(32 * s);
+    const skinTone = 0xf8d8b8; // Pokemon-style light skin
+    const hairGray = 0x9ca3af; // Gray hair
+    const hairDark = 0x6b7280; // Darker gray for shading
+    const labCoat = 0xf8f8f8; // Off-white lab coat
+    const labCoatShadow = 0xd1d5db; // Lab coat shadow
+    const shirtRed = 0x9f1239; // Dark red/maroon shirt
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Amber/wisdom glow behind Professor Oak
+    g.fillStyle(0xfbbf24, 0.12);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(18 * s));
+    g.fillStyle(0xf59e0b, 0.08);
+    g.fillCircle(Math.round(16 * s), Math.round(16 * s), Math.round(22 * s));
+
+    // Shadow on ground
+    g.fillStyle(0x000000, 0.25);
+    g.fillEllipse(Math.round(16 * s), Math.round(30 * s), Math.round(12 * s), Math.round(4 * s));
+
+    // === LEGS (brown pants) ===
+    g.fillStyle(0x6b4423); // Brown pants
+    g.fillRect(Math.round(11 * s), Math.round(23 * s), Math.round(4 * s), Math.round(7 * s));
+    g.fillRect(Math.round(17 * s), Math.round(23 * s), Math.round(4 * s), Math.round(7 * s));
+    // Pants shadow
+    g.fillStyle(0x4a3419);
+    g.fillRect(Math.round(11 * s), Math.round(23 * s), Math.round(1 * s), Math.round(7 * s));
+    g.fillRect(Math.round(17 * s), Math.round(23 * s), Math.round(1 * s), Math.round(7 * s));
+
+    // === SHOES (dark brown) ===
+    g.fillStyle(0x3d2817);
+    g.fillRect(Math.round(10 * s), Math.round(29 * s), Math.round(5 * s), Math.round(3 * s));
+    g.fillRect(Math.round(17 * s), Math.round(29 * s), Math.round(5 * s), Math.round(3 * s));
+
+    // === LAB COAT (main body) ===
+    g.fillStyle(labCoat);
+    g.fillRect(Math.round(8 * s), Math.round(13 * s), Math.round(16 * s), Math.round(12 * s));
+    // Lab coat shadow (left side depth)
+    g.fillStyle(labCoatShadow);
+    g.fillRect(Math.round(8 * s), Math.round(13 * s), Math.round(2 * s), Math.round(12 * s));
+    // Lab coat opening (shows red shirt underneath)
+    g.fillStyle(shirtRed);
+    g.fillRect(Math.round(13 * s), Math.round(13 * s), Math.round(6 * s), Math.round(10 * s));
+    // Lab coat lapel details
+    g.fillStyle(labCoatShadow);
+    g.fillRect(Math.round(12 * s), Math.round(13 * s), Math.round(1 * s), Math.round(8 * s));
+    g.fillRect(Math.round(19 * s), Math.round(13 * s), Math.round(1 * s), Math.round(8 * s));
+
+    // === ARMS (lab coat sleeves) ===
+    g.fillStyle(labCoat);
+    g.fillRect(Math.round(5 * s), Math.round(13 * s), Math.round(4 * s), Math.round(9 * s));
+    g.fillRect(Math.round(23 * s), Math.round(13 * s), Math.round(4 * s), Math.round(9 * s));
+    // Sleeve shadows
+    g.fillStyle(labCoatShadow);
+    g.fillRect(Math.round(5 * s), Math.round(13 * s), Math.round(1 * s), Math.round(9 * s));
+    g.fillRect(Math.round(23 * s), Math.round(13 * s), Math.round(1 * s), Math.round(9 * s));
+
+    // === HANDS ===
+    g.fillStyle(skinTone);
+    g.fillRect(Math.round(5 * s), Math.round(21 * s), Math.round(4 * s), Math.round(3 * s));
+    g.fillRect(Math.round(23 * s), Math.round(21 * s), Math.round(4 * s), Math.round(3 * s));
+
+    // === HEAD ===
+    g.fillStyle(skinTone);
+    g.fillRect(Math.round(10 * s), Math.round(4 * s), Math.round(12 * s), Math.round(10 * s));
+    // Face shadow (left side)
+    g.fillStyle(0xe8c8a8);
+    g.fillRect(Math.round(10 * s), Math.round(4 * s), Math.round(2 * s), Math.round(10 * s));
+
+    // === GRAY HAIR (tall, spiky - classic Oak style) ===
+    // Main hair mass (tall on top)
+    g.fillStyle(hairGray);
+    g.fillRect(Math.round(9 * s), Math.round(-1 * s), Math.round(14 * s), Math.round(7 * s));
+    // Hair spikes on top
+    g.fillRect(Math.round(11 * s), Math.round(-3 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillRect(Math.round(15 * s), Math.round(-4 * s), Math.round(3 * s), Math.round(4 * s));
+    g.fillRect(Math.round(19 * s), Math.round(-2 * s), Math.round(3 * s), Math.round(3 * s));
+    // Hair sides (bushy)
+    g.fillRect(Math.round(7 * s), Math.round(2 * s), Math.round(3 * s), Math.round(6 * s));
+    g.fillRect(Math.round(22 * s), Math.round(2 * s), Math.round(3 * s), Math.round(6 * s));
+    // Hair shading (darker accents)
+    g.fillStyle(hairDark);
+    g.fillRect(Math.round(9 * s), Math.round(0 * s), Math.round(2 * s), Math.round(5 * s));
+    g.fillRect(Math.round(12 * s), Math.round(-2 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(16 * s), Math.round(-3 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(7 * s), Math.round(3 * s), Math.round(1 * s), Math.round(4 * s));
+
+    // === EYES (small, friendly) ===
+    g.fillStyle(0x1f2937);
+    g.fillRect(Math.round(12 * s), Math.round(7 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(18 * s), Math.round(7 * s), Math.round(2 * s), Math.round(2 * s));
+    // Eye highlights
+    g.fillStyle(0xffffff);
+    g.fillRect(Math.round(12 * s), Math.round(7 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(18 * s), Math.round(7 * s), Math.round(1 * s), Math.round(1 * s));
+
+    // === EYEBROWS (gray, bushy) ===
+    g.fillStyle(hairGray);
+    g.fillRect(Math.round(11 * s), Math.round(5 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(Math.round(17 * s), Math.round(5 * s), Math.round(4 * s), Math.round(2 * s));
+
+    // === NOSE ===
+    g.fillStyle(0xe8c8a8);
+    g.fillRect(Math.round(15 * s), Math.round(9 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // === MOUTH (friendly smile) ===
+    g.fillStyle(0x92400e);
+    g.fillRect(Math.round(14 * s), Math.round(12 * s), Math.round(4 * s), Math.round(1 * s));
+
+    // === NECK ===
+    g.fillStyle(skinTone);
+    g.fillRect(Math.round(13 * s), Math.round(13 * s), Math.round(6 * s), Math.round(2 * s));
+
+    g.generateTexture("professorOak", size, size);
     g.destroy();
   }
 

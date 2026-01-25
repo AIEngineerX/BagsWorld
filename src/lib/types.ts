@@ -70,6 +70,8 @@ export interface FeeEarner {
   isAlaa?: boolean; // Special flag for Alaa (Skunk Works) character
   isCarlo?: boolean; // Special flag for Carlo (Ambassador) character
   isBNN?: boolean; // Special flag for BNN (News Bot) character
+  // Founder's Corner Zone
+  isProfessorOak?: boolean; // Special flag for Professor Oak (Token Launch Guide) character
 }
 
 export interface TokenInfo {
@@ -99,6 +101,10 @@ export interface ClaimablePosition {
   totalClaimableLamportsUserShare: number;
   claimableDisplayAmount: number;
   userBps: number;
+  // Token metadata (enriched from DexScreener)
+  tokenName?: string;
+  tokenSymbol?: string;
+  tokenLogoUrl?: string;
 }
 
 export interface ClaimStats {
@@ -194,6 +200,8 @@ export interface GameCharacter {
   isAlaa?: boolean; // Special flag for Alaa (Skunk Works) - Academy
   isCarlo?: boolean; // Special flag for Carlo (Ambassador) - Academy
   isBNN?: boolean; // Special flag for BNN (News Bot) - Academy
+  // Founder's Corner Zone
+  isProfessorOak?: boolean; // Special flag for Professor Oak (Token Launch Guide) - Founder's Corner
 }
 
 export interface GameBuilding {
