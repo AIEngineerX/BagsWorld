@@ -26,6 +26,9 @@ import {
 
 // Convert CharacterDefinition to ElizaOS Character format
 function toElizaCharacter(def: CharacterDefinition): Character {
+  // Generate username from name (lowercase, hyphens for spaces)
+  const username = def.name.toLowerCase().replace(/\s+/g, '-');
+
   // Build the system prompt from the character definition
   const systemPrompt = `You are ${def.name}.
 
@@ -69,6 +72,7 @@ RULES:
 
   return {
     name: def.name,
+    username,
     system: systemPrompt,
     bio: def.bio,
     lore: def.lore,

@@ -475,7 +475,7 @@ User question: ${question}
       professorOak,
       question,
       session.messages.slice(-6),
-      { worldState: context }
+      { messages: [], worldState: context }
     );
 
     return response.text;
