@@ -5,6 +5,9 @@ import { getCharacter } from '../characters/index.js';
 import { getLLMService } from './LLMService.js';
 import { getBagsApiService, type TokenInfo, type CreatorFees } from './BagsApiService.js';
 
+// Bags.fm platform standard fee (fixed, not configurable by creators)
+const BAGS_PLATFORM_FEE_PERCENT = 1;
+
 // Volume thresholds for analysis
 const VOLUME_HIGH = 100000;
 const VOLUME_MEDIUM = 10000;
@@ -124,7 +127,7 @@ export class CreatorTools {
 
     const fees = await api.getCreatorFees(mint);
 
-    const currentFee = 1; // Default assumption, would need actual fee from API
+    const currentFee = BAGS_PLATFORM_FEE_PERCENT; // Bags.fm uses fixed 1% platform-wide
     const volume24h = token.volume24h || 0;
     const lifetimeFees = token.lifetimeFees || 0;
     const unclaimedAmount = fees?.unclaimedFees || 0;

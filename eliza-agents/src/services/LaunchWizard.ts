@@ -196,7 +196,26 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
   },
 };
 
-// Session storage (in production, use Redis or database)
+/**
+ * IN-MEMORY SESSION STORAGE
+ *
+ * LIMITATION: Sessions are stored in memory only. This means:
+ * - Sessions are LOST on server restart
+ * - Sessions are NOT shared across multiple server instances (no horizontal scaling)
+ * - Users will lose progress if the server restarts during their launch flow
+ *
+ * PRODUCTION RECOMMENDATION:
+ * For production deployments, replace this Map with:
+ * - Redis: For multi-instance deployments (recommended for horizontal scaling)
+ * - PostgreSQL: Using the existing Neon DB connection from shared.ts
+ *
+ * MIGRATION APPROACH:
+ * 1. Create a sessions table: (id, user_id, current_step, data JSON, messages JSON, created_at, updated_at)
+ * 2. Replace Map operations with SQL queries
+ * 3. Use the getDatabase() helper from routes/shared.ts
+ *
+ * Current max session age: 24 hours (see SESSION_MAX_AGE_MS)
+ */
 const sessions = new Map<string, LaunchSession>();
 
 export class LaunchWizard {

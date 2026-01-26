@@ -35,7 +35,10 @@ export async function getConversationHistory(
   limit: number = MAX_CONVERSATION_LENGTH
 ): Promise<Message[]> {
   const sql = dbInstance;
-  if (!sql) return [];
+  if (!sql) {
+    console.warn('[shared] getConversationHistory: Database not configured, returning empty history');
+    return [];
+  }
 
   const rows = await sql`
     SELECT role, content
@@ -58,7 +61,10 @@ export async function saveMessage(
   content: string
 ): Promise<void> {
   const sql = dbInstance;
-  if (!sql) return;
+  if (!sql) {
+    console.warn('[shared] saveMessage: Database not configured, message not persisted');
+    return;
+  }
 
   await sql`
     INSERT INTO conversation_messages (id, session_id, agent_id, role, content, created_at)
@@ -68,7 +74,10 @@ export async function saveMessage(
 
 export async function pruneOldMessages(sessionId: string, agentId: string): Promise<void> {
   const sql = dbInstance;
-  if (!sql) return;
+  if (!sql) {
+    console.warn('[shared] pruneOldMessages: Database not configured, skipping prune');
+    return;
+  }
 
   const countResult = await sql`
     SELECT COUNT(*) as count FROM conversation_messages
