@@ -9295,6 +9295,7 @@ export class BootScene extends Phaser.Scene {
     this.generateFoundersGround();
     this.generateFoundersBuildings();
     this.generateFoundersProps();
+    this.generateFoundersPokemon();
   }
 
   private generateFoundersGround(): void {
@@ -10437,5 +10438,200 @@ export class BootScene extends Phaser.Scene {
 
     g.generateTexture("founders_chalkboard", width, height);
     g.destroy();
+  }
+
+  private generateFoundersPokemon(): void {
+    const s = SCALE;
+
+    // === CHARMANDER ===
+    const charmander = this.make.graphics({ x: 0, y: 0 });
+    const cWidth = Math.round(28 * s);
+    const cHeight = Math.round(28 * s);
+
+    // Body (orange)
+    charmander.fillStyle(0xf97316);
+    charmander.fillRect(Math.round(8 * s), Math.round(10 * s), Math.round(12 * s), Math.round(10 * s));
+
+    // Head (orange, larger)
+    charmander.fillStyle(0xfb923c);
+    charmander.fillCircle(Math.round(14 * s), Math.round(8 * s), Math.round(6 * s));
+
+    // Belly (cream/yellow)
+    charmander.fillStyle(0xfef3c7);
+    charmander.fillRect(Math.round(10 * s), Math.round(12 * s), Math.round(8 * s), Math.round(6 * s));
+
+    // Eyes (big, cute)
+    charmander.fillStyle(0x1e3a5f);
+    charmander.fillRect(Math.round(10 * s), Math.round(6 * s), Math.round(3 * s), Math.round(3 * s));
+    charmander.fillRect(Math.round(15 * s), Math.round(6 * s), Math.round(3 * s), Math.round(3 * s));
+    // Eye highlights
+    charmander.fillStyle(0xffffff);
+    charmander.fillRect(Math.round(11 * s), Math.round(6 * s), Math.round(1 * s), Math.round(1 * s));
+    charmander.fillRect(Math.round(16 * s), Math.round(6 * s), Math.round(1 * s), Math.round(1 * s));
+
+    // Mouth (smile)
+    charmander.fillStyle(0x000000);
+    charmander.fillRect(Math.round(12 * s), Math.round(11 * s), Math.round(4 * s), Math.round(1 * s));
+
+    // Arms
+    charmander.fillStyle(0xf97316);
+    charmander.fillRect(Math.round(5 * s), Math.round(12 * s), Math.round(4 * s), Math.round(3 * s));
+    charmander.fillRect(Math.round(19 * s), Math.round(12 * s), Math.round(4 * s), Math.round(3 * s));
+
+    // Legs
+    charmander.fillRect(Math.round(9 * s), Math.round(18 * s), Math.round(4 * s), Math.round(4 * s));
+    charmander.fillRect(Math.round(15 * s), Math.round(18 * s), Math.round(4 * s), Math.round(4 * s));
+
+    // Tail with flame
+    charmander.fillStyle(0xf97316);
+    charmander.fillRect(Math.round(18 * s), Math.round(14 * s), Math.round(6 * s), Math.round(3 * s));
+    charmander.fillRect(Math.round(22 * s), Math.round(12 * s), Math.round(3 * s), Math.round(4 * s));
+    // Flame (yellow-orange-red)
+    charmander.fillStyle(0xfbbf24);
+    charmander.fillRect(Math.round(23 * s), Math.round(8 * s), Math.round(4 * s), Math.round(5 * s));
+    charmander.fillStyle(0xf97316);
+    charmander.fillRect(Math.round(24 * s), Math.round(6 * s), Math.round(2 * s), Math.round(4 * s));
+    charmander.fillStyle(0xef4444);
+    charmander.fillRect(Math.round(24 * s), Math.round(4 * s), Math.round(2 * s), Math.round(3 * s));
+
+    charmander.generateTexture("pokemon_charmander", cWidth, cHeight);
+    charmander.destroy();
+
+    // === SQUIRTLE ===
+    const squirtle = this.make.graphics({ x: 0, y: 0 });
+    const sWidth = Math.round(28 * s);
+    const sHeight = Math.round(28 * s);
+
+    // Shell (brown back)
+    squirtle.fillStyle(0x92400e);
+    squirtle.fillRect(Math.round(7 * s), Math.round(10 * s), Math.round(14 * s), Math.round(12 * s));
+    // Shell pattern (darker center)
+    squirtle.fillStyle(0x78350f);
+    squirtle.fillRect(Math.round(9 * s), Math.round(12 * s), Math.round(10 * s), Math.round(8 * s));
+    // Shell highlight
+    squirtle.fillStyle(0xa16207);
+    squirtle.fillRect(Math.round(8 * s), Math.round(11 * s), Math.round(3 * s), Math.round(2 * s));
+
+    // Body (light blue, front)
+    squirtle.fillStyle(0x7dd3fc);
+    squirtle.fillRect(Math.round(9 * s), Math.round(14 * s), Math.round(10 * s), Math.round(6 * s));
+
+    // Head (blue)
+    squirtle.fillStyle(0x38bdf8);
+    squirtle.fillCircle(Math.round(14 * s), Math.round(8 * s), Math.round(6 * s));
+
+    // Eyes (big, cute)
+    squirtle.fillStyle(0x7c2d12);
+    squirtle.fillRect(Math.round(10 * s), Math.round(6 * s), Math.round(3 * s), Math.round(3 * s));
+    squirtle.fillRect(Math.round(15 * s), Math.round(6 * s), Math.round(3 * s), Math.round(3 * s));
+    // Eye highlights
+    squirtle.fillStyle(0xffffff);
+    squirtle.fillRect(Math.round(11 * s), Math.round(6 * s), Math.round(1 * s), Math.round(1 * s));
+    squirtle.fillRect(Math.round(16 * s), Math.round(6 * s), Math.round(1 * s), Math.round(1 * s));
+
+    // Mouth (smile)
+    squirtle.fillStyle(0x000000);
+    squirtle.fillRect(Math.round(12 * s), Math.round(11 * s), Math.round(4 * s), Math.round(1 * s));
+
+    // Arms (blue)
+    squirtle.fillStyle(0x38bdf8);
+    squirtle.fillRect(Math.round(4 * s), Math.round(14 * s), Math.round(4 * s), Math.round(3 * s));
+    squirtle.fillRect(Math.round(20 * s), Math.round(14 * s), Math.round(4 * s), Math.round(3 * s));
+
+    // Legs
+    squirtle.fillRect(Math.round(9 * s), Math.round(20 * s), Math.round(4 * s), Math.round(4 * s));
+    squirtle.fillRect(Math.round(15 * s), Math.round(20 * s), Math.round(4 * s), Math.round(4 * s));
+
+    // Tail (curled, blue)
+    squirtle.fillStyle(0x38bdf8);
+    squirtle.fillRect(Math.round(19 * s), Math.round(18 * s), Math.round(5 * s), Math.round(3 * s));
+    squirtle.fillRect(Math.round(22 * s), Math.round(15 * s), Math.round(3 * s), Math.round(4 * s));
+    squirtle.fillStyle(0x7dd3fc);
+    squirtle.fillRect(Math.round(23 * s), Math.round(13 * s), Math.round(2 * s), Math.round(3 * s));
+
+    squirtle.generateTexture("pokemon_squirtle", sWidth, sHeight);
+    squirtle.destroy();
+
+    // === BULBASAUR ===
+    const bulbasaur = this.make.graphics({ x: 0, y: 0 });
+    const bWidth = Math.round(32 * s);
+    const bHeight = Math.round(28 * s);
+
+    // Body (teal/green-blue)
+    bulbasaur.fillStyle(0x5eead4);
+    bulbasaur.fillRect(Math.round(6 * s), Math.round(12 * s), Math.round(18 * s), Math.round(10 * s));
+
+    // Spots on body
+    bulbasaur.fillStyle(0x2dd4bf);
+    bulbasaur.fillRect(Math.round(8 * s), Math.round(14 * s), Math.round(3 * s), Math.round(3 * s));
+    bulbasaur.fillRect(Math.round(18 * s), Math.round(15 * s), Math.round(4 * s), Math.round(3 * s));
+    bulbasaur.fillRect(Math.round(12 * s), Math.round(18 * s), Math.round(3 * s), Math.round(2 * s));
+
+    // Bulb on back (green)
+    bulbasaur.fillStyle(0x22c55e);
+    bulbasaur.fillRect(Math.round(10 * s), Math.round(4 * s), Math.round(12 * s), Math.round(10 * s));
+    // Bulb highlight
+    bulbasaur.fillStyle(0x4ade80);
+    bulbasaur.fillRect(Math.round(11 * s), Math.round(5 * s), Math.round(4 * s), Math.round(3 * s));
+    // Bulb darker parts
+    bulbasaur.fillStyle(0x16a34a);
+    bulbasaur.fillRect(Math.round(18 * s), Math.round(6 * s), Math.round(3 * s), Math.round(6 * s));
+    // Leaves/petals
+    bulbasaur.fillStyle(0x15803d);
+    bulbasaur.fillTriangle(
+      Math.round(12 * s), Math.round(4 * s),
+      Math.round(16 * s), Math.round(-2 * s),
+      Math.round(20 * s), Math.round(4 * s)
+    );
+    bulbasaur.fillTriangle(
+      Math.round(8 * s), Math.round(6 * s),
+      Math.round(6 * s), Math.round(0 * s),
+      Math.round(14 * s), Math.round(6 * s)
+    );
+
+    // Head (teal, front-facing)
+    bulbasaur.fillStyle(0x5eead4);
+    bulbasaur.fillRect(Math.round(2 * s), Math.round(14 * s), Math.round(10 * s), Math.round(8 * s));
+
+    // Eyes (red, distinctive)
+    bulbasaur.fillStyle(0xdc2626);
+    bulbasaur.fillRect(Math.round(3 * s), Math.round(15 * s), Math.round(3 * s), Math.round(3 * s));
+    bulbasaur.fillRect(Math.round(8 * s), Math.round(15 * s), Math.round(3 * s), Math.round(3 * s));
+    // Eye highlights
+    bulbasaur.fillStyle(0xffffff);
+    bulbasaur.fillRect(Math.round(4 * s), Math.round(15 * s), Math.round(1 * s), Math.round(1 * s));
+    bulbasaur.fillRect(Math.round(9 * s), Math.round(15 * s), Math.round(1 * s), Math.round(1 * s));
+    // Pupils
+    bulbasaur.fillStyle(0x000000);
+    bulbasaur.fillRect(Math.round(4 * s), Math.round(17 * s), Math.round(1 * s), Math.round(1 * s));
+    bulbasaur.fillRect(Math.round(9 * s), Math.round(17 * s), Math.round(1 * s), Math.round(1 * s));
+
+    // Mouth (wide)
+    bulbasaur.fillStyle(0x2dd4bf);
+    bulbasaur.fillRect(Math.round(4 * s), Math.round(20 * s), Math.round(6 * s), Math.round(2 * s));
+
+    // Ears
+    bulbasaur.fillStyle(0x5eead4);
+    bulbasaur.fillTriangle(
+      Math.round(2 * s), Math.round(14 * s),
+      Math.round(0 * s), Math.round(10 * s),
+      Math.round(5 * s), Math.round(14 * s)
+    );
+    bulbasaur.fillTriangle(
+      Math.round(9 * s), Math.round(14 * s),
+      Math.round(12 * s), Math.round(10 * s),
+      Math.round(12 * s), Math.round(14 * s)
+    );
+
+    // Legs (stubby)
+    bulbasaur.fillStyle(0x5eead4);
+    bulbasaur.fillRect(Math.round(7 * s), Math.round(20 * s), Math.round(4 * s), Math.round(4 * s));
+    bulbasaur.fillRect(Math.round(17 * s), Math.round(20 * s), Math.round(4 * s), Math.round(4 * s));
+    // Back legs (partially visible)
+    bulbasaur.fillRect(Math.round(12 * s), Math.round(21 * s), Math.round(3 * s), Math.round(3 * s));
+    bulbasaur.fillRect(Math.round(21 * s), Math.round(21 * s), Math.round(3 * s), Math.round(3 * s));
+
+    bulbasaur.generateTexture("pokemon_bulbasaur", bWidth, bHeight);
+    bulbasaur.destroy();
   }
 }
