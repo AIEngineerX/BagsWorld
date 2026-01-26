@@ -245,6 +245,9 @@ export class BootScene extends Phaser.Scene {
 
     // Generate Founder's Corner zone assets (cozy workshop/educational hub)
     this.generateFoundersAssets();
+
+    // Generate Tech Labs zone assets (futuristic R&D headquarters)
+    this.generateLabsAssets();
   }
 
   private generateGrass(): void {
@@ -10770,5 +10773,687 @@ export class BootScene extends Phaser.Scene {
 
     bulbasaur.generateTexture("pokemon_bulbasaur", bWidth, bHeight);
     bulbasaur.destroy();
+  }
+
+  // ============================================================================
+  // TECH LABS ZONE ASSETS
+  // Futuristic R&D headquarters - home of the Bags.fm development team
+  // ============================================================================
+
+  private generateLabsAssets(): void {
+    this.generateLabsGround();
+    this.generateLabsBuildings();
+    this.generateLabsProps();
+  }
+
+  private generateLabsGround(): void {
+    const s = SCALE;
+    const size = Math.round(32 * s);
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Base: dark tech floor with metallic tint
+    g.fillStyle(0x1a1a2e);
+    g.fillRect(0, 0, size, size);
+
+    // Grid pattern (tech floor panels)
+    const panelSize = Math.round(15 * s);
+    const gap = Math.round(1 * s);
+
+    // 2x2 panel grid
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 2; col++) {
+        const px = gap + col * (panelSize + gap);
+        const py = gap + row * (panelSize + gap);
+
+        // Panel base
+        g.fillStyle(0x16213e);
+        g.fillRect(px, py, panelSize, panelSize);
+
+        // Panel highlight (top-left edge glow)
+        g.fillStyle(0x22d3ee, 0.3);
+        g.fillRect(px, py, panelSize, Math.round(1 * s));
+        g.fillRect(px, py, Math.round(1 * s), panelSize);
+
+        // Panel shadow (bottom-right)
+        g.fillStyle(0x0a0a0f, 0.5);
+        g.fillRect(px, py + panelSize - Math.round(1 * s), panelSize, Math.round(1 * s));
+        g.fillRect(px + panelSize - Math.round(1 * s), py, Math.round(1 * s), panelSize);
+      }
+    }
+
+    // Circuit trace accent (random tech detail)
+    g.fillStyle(0x06b6d4, 0.4);
+    g.fillRect(Math.round(5 * s), Math.round(16 * s), Math.round(8 * s), Math.round(1 * s));
+    g.fillRect(Math.round(12 * s), Math.round(16 * s), Math.round(1 * s), Math.round(5 * s));
+
+    // Glowing node
+    g.fillStyle(0x22d3ee, 0.6);
+    g.fillRect(Math.round(24 * s), Math.round(8 * s), Math.round(2 * s), Math.round(2 * s));
+
+    g.generateTexture("labs_ground", size, size);
+    g.destroy();
+  }
+
+  private generateLabsBuildings(): void {
+    const s = SCALE;
+
+    // Building 0: Server Room (tall cylindrical server tower)
+    this.generateLabsServerRoom(s);
+
+    // Building 1: Research Lab (dome with antennas)
+    this.generateLabsResearchLab(s);
+
+    // Building 2: Holo Deck (glass cube with holographic elements)
+    this.generateLabsHoloDeck(s);
+  }
+
+  private generateLabsServerRoom(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasW = Math.round(70 * s);
+    const canvasH = Math.round(160 * s);
+    const bWidth = Math.round(55 * s);
+    const bHeight = Math.round(110 * s);
+    const baseX = Math.round(8 * s);
+    const baseY = canvasH - bHeight;
+
+    // Colors
+    const metalBase = 0x374151;
+    const metalLight = lighten(metalBase, 0.15);
+    const metalDark = darken(metalBase, 0.25);
+    const accent = 0x06b6d4; // Cyan
+    const glow = 0x22d3ee;
+
+    // Drop shadow
+    g.fillStyle(PALETTE.void, 0.5);
+    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
+
+    // Main body (metallic server tower)
+    g.fillStyle(metalBase);
+    g.fillRect(baseX, baseY, bWidth, bHeight);
+
+    // 3D depth: Light left edge
+    g.fillStyle(metalLight);
+    g.fillRect(baseX, baseY, Math.round(6 * s), bHeight);
+
+    // 3D depth: Dark right edge
+    g.fillStyle(metalDark);
+    g.fillRect(baseX + bWidth - Math.round(6 * s), baseY, Math.round(6 * s), bHeight);
+
+    // Horizontal server rack lines
+    g.fillStyle(metalDark);
+    for (let i = 1; i < 8; i++) {
+      const lineY = baseY + Math.round(12 * s) * i;
+      g.fillRect(baseX + Math.round(6 * s), lineY, bWidth - Math.round(12 * s), Math.round(2 * s));
+    }
+
+    // Server status lights (blinking indicators)
+    const lightColors = [0x22c55e, 0xfbbf24, 0x22c55e, 0x06b6d4, 0x22c55e, 0xef4444, 0x22c55e];
+    lightColors.forEach((color, i) => {
+      const ly = baseY + Math.round(8 * s) + i * Math.round(12 * s);
+      // LED glow
+      g.fillStyle(color, 0.4);
+      g.fillRect(baseX + Math.round(10 * s), ly, Math.round(8 * s), Math.round(6 * s));
+      // LED core
+      g.fillStyle(color);
+      g.fillRect(baseX + Math.round(12 * s), ly + Math.round(1 * s), Math.round(4 * s), Math.round(4 * s));
+    });
+
+    // Data port indicators (right side)
+    for (let i = 0; i < 7; i++) {
+      const py = baseY + Math.round(8 * s) + i * Math.round(12 * s);
+      g.fillStyle(accent, 0.5);
+      g.fillRect(baseX + bWidth - Math.round(18 * s), py, Math.round(6 * s), Math.round(6 * s));
+      g.fillStyle(glow);
+      g.fillRect(baseX + bWidth - Math.round(16 * s), py + Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
+    }
+
+    // Roof - flat with antenna array
+    const roofY = baseY - Math.round(8 * s);
+    g.fillStyle(metalDark);
+    g.fillRect(baseX - Math.round(3 * s), roofY, bWidth + Math.round(6 * s), Math.round(10 * s));
+    g.fillStyle(metalLight);
+    g.fillRect(baseX - Math.round(3 * s), roofY, bWidth + Math.round(6 * s), Math.round(2 * s));
+
+    // Main antenna
+    const centerX = baseX + bWidth / 2;
+    g.fillStyle(PALETTE.lightGray);
+    g.fillRect(centerX - Math.round(2 * s), roofY - Math.round(30 * s), Math.round(4 * s), Math.round(32 * s));
+
+    // Antenna light (blinking red)
+    g.fillStyle(0xef4444, 0.6);
+    g.fillCircle(centerX, roofY - Math.round(32 * s), Math.round(5 * s));
+    g.fillStyle(0xef4444);
+    g.fillCircle(centerX, roofY - Math.round(32 * s), Math.round(3 * s));
+
+    // Side antennas
+    g.fillStyle(PALETTE.silver);
+    g.fillRect(baseX + Math.round(8 * s), roofY - Math.round(15 * s), Math.round(2 * s), Math.round(17 * s));
+    g.fillRect(baseX + bWidth - Math.round(10 * s), roofY - Math.round(15 * s), Math.round(2 * s), Math.round(17 * s));
+
+    // Door (tech panel door)
+    const doorW = Math.round(18 * s);
+    const doorH = Math.round(26 * s);
+    const doorX = centerX - doorW / 2;
+    const doorY = canvasH - doorH;
+
+    // Door frame (glowing cyan outline)
+    g.fillStyle(accent, 0.5);
+    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(3 * s), doorW + Math.round(6 * s), doorH + Math.round(3 * s));
+
+    // Door panel
+    g.fillStyle(0x1f2937);
+    g.fillRect(doorX, doorY, doorW, doorH);
+
+    // Door glow line
+    g.fillStyle(glow);
+    g.fillRect(doorX + doorW / 2 - Math.round(1 * s), doorY, Math.round(2 * s), doorH);
+
+    // Access panel
+    g.fillStyle(accent);
+    g.fillRect(doorX + doorW - Math.round(6 * s), doorY + Math.round(10 * s), Math.round(4 * s), Math.round(6 * s));
+
+    // "SERVER" label area
+    g.fillStyle(0x1f2937);
+    g.fillRect(baseX + Math.round(8 * s), baseY + bHeight - Math.round(38 * s), bWidth - Math.round(16 * s), Math.round(10 * s));
+    g.fillStyle(accent);
+    g.fillRect(baseX + Math.round(12 * s), baseY + bHeight - Math.round(36 * s), bWidth - Math.round(24 * s), Math.round(6 * s));
+
+    g.generateTexture("labs_0", canvasW, canvasH);
+    g.destroy();
+  }
+
+  private generateLabsResearchLab(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasW = Math.round(80 * s);
+    const canvasH = Math.round(150 * s);
+    const bWidth = Math.round(65 * s);
+    const bHeight = Math.round(85 * s);
+    const baseX = Math.round(8 * s);
+    const baseY = canvasH - bHeight;
+    const centerX = baseX + bWidth / 2;
+
+    // Colors
+    const wallBase = 0x1e3a5f; // Deep tech blue
+    const wallLight = lighten(wallBase, 0.15);
+    const wallDark = darken(wallBase, 0.2);
+    const accent = 0x8b5cf6; // Purple (R&D theme)
+    const glow = 0xa855f7;
+    const windowColor = 0x22d3ee;
+
+    // Drop shadow
+    g.fillStyle(PALETTE.void, 0.5);
+    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
+
+    // Main body
+    g.fillStyle(wallBase);
+    g.fillRect(baseX, baseY, bWidth, bHeight);
+
+    // 3D depth
+    g.fillStyle(wallLight);
+    g.fillRect(baseX, baseY, Math.round(5 * s), bHeight);
+    g.fillStyle(wallDark);
+    g.fillRect(baseX + bWidth - Math.round(5 * s), baseY, Math.round(5 * s), bHeight);
+
+    // Dithering texture
+    g.fillStyle(darken(wallBase, 0.08));
+    for (let py = 0; py < bHeight; py += Math.round(6 * s)) {
+      for (let px = Math.round(6 * s); px < bWidth - Math.round(6 * s); px += Math.round(10 * s)) {
+        if ((Math.floor(py / Math.round(6 * s)) + Math.floor(px / Math.round(10 * s))) % 2 === 0) {
+          g.fillRect(baseX + px, baseY + py, Math.round(8 * s), Math.round(4 * s));
+        }
+      }
+    }
+
+    // Dome roof
+    const domeY = baseY - Math.round(10 * s);
+    g.fillStyle(accent, 0.8);
+    g.fillCircle(centerX, domeY + Math.round(8 * s), Math.round(28 * s));
+    // Dome highlight
+    g.fillStyle(glow, 0.4);
+    g.fillCircle(centerX - Math.round(8 * s), domeY - Math.round(5 * s), Math.round(12 * s));
+    // Dome slit (observatory style)
+    g.fillStyle(wallDark);
+    g.fillRect(centerX - Math.round(2 * s), domeY - Math.round(18 * s), Math.round(4 * s), Math.round(22 * s));
+
+    // Roof base
+    g.fillStyle(wallDark);
+    g.fillRect(baseX - Math.round(3 * s), baseY - Math.round(6 * s), bWidth + Math.round(6 * s), Math.round(8 * s));
+
+    // Windows (hexagonal sci-fi style) - 2 rows
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 2; col++) {
+        const wx = baseX + Math.round(10 * s) + col * Math.round(26 * s);
+        const wy = baseY + Math.round(12 * s) + row * Math.round(28 * s);
+        const winW = Math.round(18 * s);
+        const winH = Math.round(20 * s);
+
+        // Window glow
+        g.fillStyle(windowColor, 0.25);
+        g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), winW + Math.round(4 * s), winH + Math.round(4 * s));
+
+        // Window glass
+        g.fillStyle(windowColor, 0.7);
+        g.fillRect(wx, wy, winW, winH);
+
+        // Window highlight
+        g.fillStyle(lighten(windowColor, 0.4));
+        g.fillRect(wx, wy, Math.round(4 * s), Math.round(5 * s));
+
+        // Tech frame lines
+        g.fillStyle(accent);
+        g.fillRect(wx + winW / 2 - Math.round(1 * s), wy, Math.round(2 * s), winH);
+        g.fillRect(wx, wy + winH / 2 - Math.round(1 * s), winW, Math.round(2 * s));
+      }
+    }
+
+    // Lab equipment through windows (glowing samples)
+    g.fillStyle(0x22c55e, 0.6);
+    g.fillRect(baseX + Math.round(15 * s), baseY + Math.round(22 * s), Math.round(4 * s), Math.round(6 * s));
+    g.fillStyle(0xfbbf24, 0.6);
+    g.fillRect(baseX + Math.round(40 * s), baseY + Math.round(48 * s), Math.round(4 * s), Math.round(6 * s));
+
+    // Door
+    const doorW = Math.round(16 * s);
+    const doorH = Math.round(24 * s);
+    const doorX = centerX - doorW / 2;
+    const doorY = canvasH - doorH;
+
+    // Door frame
+    g.fillStyle(accent);
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(2 * s), doorW + Math.round(4 * s), doorH + Math.round(2 * s));
+
+    // Door panel (sliding)
+    g.fillStyle(0x1f2937);
+    g.fillRect(doorX, doorY, doorW, doorH);
+
+    // Door window
+    g.fillStyle(windowColor, 0.5);
+    g.fillRect(doorX + Math.round(3 * s), doorY + Math.round(3 * s), doorW - Math.round(6 * s), Math.round(10 * s));
+
+    // Bio-hazard symbol area (research lab indicator)
+    g.fillStyle(0x1f2937);
+    g.fillRect(baseX + Math.round(10 * s), baseY + Math.round(68 * s), Math.round(16 * s), Math.round(12 * s));
+    g.fillStyle(glow);
+    g.fillCircle(baseX + Math.round(18 * s), baseY + Math.round(74 * s), Math.round(4 * s));
+
+    g.generateTexture("labs_1", canvasW, canvasH);
+    g.destroy();
+  }
+
+  private generateLabsHoloDeck(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasW = Math.round(85 * s);
+    const canvasH = Math.round(140 * s);
+    const bWidth = Math.round(70 * s);
+    const bHeight = Math.round(75 * s);
+    const baseX = Math.round(8 * s);
+    const baseY = canvasH - bHeight;
+    const centerX = baseX + bWidth / 2;
+
+    // Colors (glass/holographic theme)
+    const glassBase = 0x0ea5e9; // Sky blue
+    const frameColor = 0x374151;
+    const accent = 0x22d3ee; // Cyan
+    const holoGlow = 0x06b6d4;
+
+    // Drop shadow
+    g.fillStyle(PALETTE.void, 0.5);
+    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
+
+    // Main body (glass cube effect)
+    g.fillStyle(glassBase, 0.4);
+    g.fillRect(baseX, baseY, bWidth, bHeight);
+
+    // Frame edges
+    g.fillStyle(frameColor);
+    // Vertical edges
+    g.fillRect(baseX, baseY, Math.round(4 * s), bHeight);
+    g.fillRect(baseX + bWidth - Math.round(4 * s), baseY, Math.round(4 * s), bHeight);
+    // Horizontal edges
+    g.fillRect(baseX, baseY, bWidth, Math.round(4 * s));
+    g.fillRect(baseX, baseY + bHeight - Math.round(4 * s), bWidth, Math.round(4 * s));
+
+    // Grid lines on glass (holodeck pattern)
+    g.fillStyle(accent, 0.3);
+    for (let i = 1; i < 4; i++) {
+      // Horizontal
+      g.fillRect(baseX + Math.round(4 * s), baseY + i * Math.round(18 * s), bWidth - Math.round(8 * s), Math.round(1 * s));
+      // Vertical
+      g.fillRect(baseX + i * Math.round(17 * s), baseY + Math.round(4 * s), Math.round(1 * s), bHeight - Math.round(8 * s));
+    }
+
+    // Holographic projection inside (abstract shape)
+    g.fillStyle(holoGlow, 0.5);
+    g.fillCircle(centerX, baseY + bHeight / 2, Math.round(18 * s));
+    g.fillStyle(accent, 0.7);
+    g.fillCircle(centerX, baseY + bHeight / 2, Math.round(12 * s));
+    // Hologram scan lines
+    g.fillStyle(0xffffff, 0.3);
+    for (let i = -3; i < 4; i++) {
+      g.fillRect(centerX - Math.round(15 * s), baseY + bHeight / 2 + i * Math.round(4 * s), Math.round(30 * s), Math.round(1 * s));
+    }
+
+    // Roof - glass pyramid
+    const roofPeakY = baseY - Math.round(25 * s);
+    // Pyramid faces (translucent)
+    g.fillStyle(glassBase, 0.5);
+    g.fillTriangle(baseX, baseY, centerX, roofPeakY, baseX + bWidth, baseY);
+    // Pyramid edge highlight
+    g.fillStyle(accent, 0.4);
+    g.fillTriangle(baseX, baseY, centerX, roofPeakY, centerX, baseY);
+
+    // Glowing apex
+    g.fillStyle(holoGlow, 0.6);
+    g.fillCircle(centerX, roofPeakY, Math.round(6 * s));
+    g.fillStyle(0xffffff);
+    g.fillCircle(centerX, roofPeakY, Math.round(3 * s));
+
+    // Frame on pyramid
+    g.fillStyle(frameColor);
+    g.fillRect(centerX - Math.round(1 * s), roofPeakY, Math.round(2 * s), baseY - roofPeakY);
+
+    // Door (automatic sliding door)
+    const doorW = Math.round(20 * s);
+    const doorH = Math.round(22 * s);
+    const doorX = centerX - doorW / 2;
+    const doorY = canvasH - doorH;
+
+    // Door frame
+    g.fillStyle(frameColor);
+    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(3 * s), doorW + Math.round(6 * s), doorH + Math.round(3 * s));
+
+    // Door panels (split in middle)
+    g.fillStyle(glassBase, 0.6);
+    g.fillRect(doorX, doorY, doorW / 2 - Math.round(1 * s), doorH);
+    g.fillRect(doorX + doorW / 2 + Math.round(1 * s), doorY, doorW / 2 - Math.round(1 * s), doorH);
+
+    // Door sensor
+    g.fillStyle(0x22c55e);
+    g.fillRect(doorX + doorW / 2 - Math.round(2 * s), doorY - Math.round(6 * s), Math.round(4 * s), Math.round(3 * s));
+
+    // Control panel beside door
+    g.fillStyle(frameColor);
+    g.fillRect(baseX + bWidth - Math.round(12 * s), baseY + bHeight - Math.round(18 * s), Math.round(8 * s), Math.round(12 * s));
+    g.fillStyle(accent, 0.8);
+    g.fillRect(baseX + bWidth - Math.round(10 * s), baseY + bHeight - Math.round(16 * s), Math.round(4 * s), Math.round(8 * s));
+
+    g.generateTexture("labs_2", canvasW, canvasH);
+    g.destroy();
+  }
+
+  private generateLabsProps(): void {
+    const s = SCALE;
+
+    // Prop 0: Holographic Display Stand
+    this.generateLabsHoloDisplay(s);
+
+    // Prop 1: Tech Tree (digital/circuit tree)
+    this.generateLabsTechTree(s);
+
+    // Prop 2: Server Rack (small)
+    this.generateLabsServerRack(s);
+
+    // Prop 3: Data Terminal
+    this.generateLabsDataTerminal(s);
+
+    // Prop 4: Energy Core
+    this.generateLabsEnergyCore(s);
+
+    // Prop 5: Drone Dock
+    this.generateLabsDroneDock(s);
+  }
+
+  private generateLabsHoloDisplay(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const w = Math.round(30 * s);
+    const h = Math.round(50 * s);
+
+    // Base stand
+    g.fillStyle(0x374151);
+    g.fillRect(Math.round(10 * s), h - Math.round(8 * s), Math.round(10 * s), Math.round(8 * s));
+
+    // Pole
+    g.fillStyle(0x4b5563);
+    g.fillRect(Math.round(13 * s), Math.round(15 * s), Math.round(4 * s), h - Math.round(23 * s));
+
+    // Holographic display (floating rectangle)
+    g.fillStyle(0x06b6d4, 0.4);
+    g.fillRect(Math.round(3 * s), Math.round(5 * s), Math.round(24 * s), Math.round(18 * s));
+    g.fillStyle(0x22d3ee, 0.7);
+    g.fillRect(Math.round(5 * s), Math.round(7 * s), Math.round(20 * s), Math.round(14 * s));
+
+    // Display content (data visualization)
+    g.fillStyle(0xffffff, 0.6);
+    g.fillRect(Math.round(7 * s), Math.round(9 * s), Math.round(4 * s), Math.round(8 * s));
+    g.fillRect(Math.round(13 * s), Math.round(11 * s), Math.round(4 * s), Math.round(6 * s));
+    g.fillRect(Math.round(19 * s), Math.round(10 * s), Math.round(4 * s), Math.round(7 * s));
+
+    // Glow effect at base
+    g.fillStyle(0x06b6d4, 0.3);
+    g.fillCircle(Math.round(15 * s), Math.round(15 * s), Math.round(6 * s));
+
+    g.generateTexture("labs_prop_0", w, h);
+    g.destroy();
+  }
+
+  private generateLabsTechTree(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const w = Math.round(40 * s);
+    const h = Math.round(70 * s);
+    const centerX = w / 2;
+
+    // Trunk (metallic/circuit pattern)
+    g.fillStyle(0x4b5563);
+    g.fillRect(centerX - Math.round(3 * s), Math.round(30 * s), Math.round(6 * s), Math.round(40 * s));
+
+    // Circuit lines on trunk
+    g.fillStyle(0x06b6d4);
+    g.fillRect(centerX - Math.round(1 * s), Math.round(35 * s), Math.round(2 * s), Math.round(30 * s));
+
+    // Digital foliage (geometric shapes with glow)
+    const nodePositions = [
+      { x: centerX, y: Math.round(12 * s), size: Math.round(14 * s) },
+      { x: centerX - Math.round(12 * s), y: Math.round(22 * s), size: Math.round(10 * s) },
+      { x: centerX + Math.round(12 * s), y: Math.round(20 * s), size: Math.round(11 * s) },
+      { x: centerX - Math.round(8 * s), y: Math.round(35 * s), size: Math.round(8 * s) },
+      { x: centerX + Math.round(10 * s), y: Math.round(32 * s), size: Math.round(9 * s) },
+    ];
+
+    nodePositions.forEach((node, i) => {
+      // Glow
+      g.fillStyle(0x22d3ee, 0.3);
+      g.fillCircle(node.x, node.y, node.size + Math.round(3 * s));
+      // Node
+      g.fillStyle(i === 0 ? 0x06b6d4 : 0x0891b2);
+      g.fillCircle(node.x, node.y, node.size);
+      // Inner highlight
+      g.fillStyle(0x67e8f9, 0.6);
+      g.fillCircle(node.x - Math.round(2 * s), node.y - Math.round(2 * s), node.size * 0.4);
+    });
+
+    // Connection lines between nodes
+    g.fillStyle(0x06b6d4, 0.5);
+    g.fillRect(centerX - Math.round(1 * s), Math.round(12 * s), Math.round(2 * s), Math.round(18 * s));
+    g.fillRect(centerX - Math.round(12 * s), Math.round(22 * s), Math.round(12 * s), Math.round(2 * s));
+    g.fillRect(centerX, Math.round(20 * s), Math.round(12 * s), Math.round(2 * s));
+
+    // Base planter (tech pot)
+    g.fillStyle(0x374151);
+    g.fillRect(centerX - Math.round(8 * s), h - Math.round(8 * s), Math.round(16 * s), Math.round(8 * s));
+    g.fillStyle(0x06b6d4, 0.4);
+    g.fillRect(centerX - Math.round(6 * s), h - Math.round(6 * s), Math.round(12 * s), Math.round(2 * s));
+
+    g.generateTexture("labs_prop_1", w, h);
+    g.destroy();
+  }
+
+  private generateLabsServerRack(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const w = Math.round(25 * s);
+    const h = Math.round(45 * s);
+
+    // Rack frame
+    g.fillStyle(0x374151);
+    g.fillRect(Math.round(2 * s), Math.round(5 * s), Math.round(21 * s), Math.round(38 * s));
+
+    // Rack front panel
+    g.fillStyle(0x1f2937);
+    g.fillRect(Math.round(4 * s), Math.round(7 * s), Math.round(17 * s), Math.round(34 * s));
+
+    // Server slots with LEDs
+    for (let i = 0; i < 5; i++) {
+      const slotY = Math.round(9 * s) + i * Math.round(6 * s);
+      // Slot
+      g.fillStyle(0x111827);
+      g.fillRect(Math.round(5 * s), slotY, Math.round(15 * s), Math.round(5 * s));
+      // LED
+      const ledColor = i % 2 === 0 ? 0x22c55e : 0x06b6d4;
+      g.fillStyle(ledColor, 0.6);
+      g.fillRect(Math.round(6 * s), slotY + Math.round(1 * s), Math.round(3 * s), Math.round(3 * s));
+      g.fillStyle(ledColor);
+      g.fillRect(Math.round(7 * s), slotY + Math.round(2 * s), Math.round(1 * s), Math.round(1 * s));
+    }
+
+    // Ventilation at top
+    g.fillStyle(0x111827);
+    for (let i = 0; i < 4; i++) {
+      g.fillRect(Math.round(6 * s) + i * Math.round(4 * s), Math.round(38 * s), Math.round(2 * s), Math.round(2 * s));
+    }
+
+    g.generateTexture("labs_prop_2", w, h);
+    g.destroy();
+  }
+
+  private generateLabsDataTerminal(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const w = Math.round(28 * s);
+    const h = Math.round(40 * s);
+
+    // Terminal base
+    g.fillStyle(0x374151);
+    g.fillRect(Math.round(4 * s), h - Math.round(10 * s), Math.round(20 * s), Math.round(10 * s));
+
+    // Stand
+    g.fillStyle(0x4b5563);
+    g.fillRect(Math.round(11 * s), Math.round(18 * s), Math.round(6 * s), Math.round(14 * s));
+
+    // Screen frame
+    g.fillStyle(0x1f2937);
+    g.fillRect(Math.round(2 * s), Math.round(3 * s), Math.round(24 * s), Math.round(18 * s));
+
+    // Screen
+    g.fillStyle(0x0f172a);
+    g.fillRect(Math.round(4 * s), Math.round(5 * s), Math.round(20 * s), Math.round(14 * s));
+
+    // Screen content (terminal text)
+    g.fillStyle(0x22c55e);
+    g.fillRect(Math.round(6 * s), Math.round(7 * s), Math.round(12 * s), Math.round(2 * s));
+    g.fillRect(Math.round(6 * s), Math.round(11 * s), Math.round(8 * s), Math.round(2 * s));
+    g.fillRect(Math.round(6 * s), Math.round(15 * s), Math.round(14 * s), Math.round(2 * s));
+
+    // Blinking cursor
+    g.fillStyle(0x22c55e, 0.8);
+    g.fillRect(Math.round(20 * s), Math.round(15 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Power indicator
+    g.fillStyle(0x06b6d4);
+    g.fillRect(Math.round(22 * s), Math.round(7 * s), Math.round(2 * s), Math.round(2 * s));
+
+    g.generateTexture("labs_prop_3", w, h);
+    g.destroy();
+  }
+
+  private generateLabsEnergyCore(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const w = Math.round(35 * s);
+    const h = Math.round(55 * s);
+    const centerX = w / 2;
+
+    // Base platform
+    g.fillStyle(0x374151);
+    g.fillRect(Math.round(5 * s), h - Math.round(8 * s), Math.round(25 * s), Math.round(8 * s));
+
+    // Energy containment ring
+    g.fillStyle(0x1f2937);
+    g.fillRect(Math.round(8 * s), Math.round(25 * s), Math.round(19 * s), Math.round(22 * s));
+
+    // Outer glow
+    g.fillStyle(0x8b5cf6, 0.3);
+    g.fillCircle(centerX, Math.round(28 * s), Math.round(14 * s));
+
+    // Energy core (pulsing orb)
+    g.fillStyle(0x8b5cf6, 0.6);
+    g.fillCircle(centerX, Math.round(28 * s), Math.round(10 * s));
+    g.fillStyle(0xa855f7);
+    g.fillCircle(centerX, Math.round(28 * s), Math.round(7 * s));
+    g.fillStyle(0xc4b5fd);
+    g.fillCircle(centerX, Math.round(28 * s), Math.round(4 * s));
+    g.fillStyle(0xffffff);
+    g.fillCircle(centerX - Math.round(2 * s), Math.round(26 * s), Math.round(2 * s));
+
+    // Energy beams shooting up
+    g.fillStyle(0x8b5cf6, 0.5);
+    g.fillRect(centerX - Math.round(1 * s), Math.round(5 * s), Math.round(2 * s), Math.round(18 * s));
+    g.fillStyle(0xa855f7, 0.3);
+    g.fillRect(centerX - Math.round(3 * s), Math.round(8 * s), Math.round(6 * s), Math.round(12 * s));
+
+    // Side conduits
+    g.fillStyle(0x4b5563);
+    g.fillRect(Math.round(3 * s), Math.round(20 * s), Math.round(5 * s), Math.round(25 * s));
+    g.fillRect(Math.round(27 * s), Math.round(20 * s), Math.round(5 * s), Math.round(25 * s));
+
+    // Conduit lights
+    g.fillStyle(0x8b5cf6);
+    g.fillRect(Math.round(4 * s), Math.round(25 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillRect(Math.round(4 * s), Math.round(35 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillRect(Math.round(28 * s), Math.round(25 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillRect(Math.round(28 * s), Math.round(35 * s), Math.round(3 * s), Math.round(3 * s));
+
+    g.generateTexture("labs_prop_4", w, h);
+    g.destroy();
+  }
+
+  private generateLabsDroneDock(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const w = Math.round(32 * s);
+    const h = Math.round(35 * s);
+    const centerX = w / 2;
+
+    // Landing pad base
+    g.fillStyle(0x374151);
+    g.fillRect(Math.round(4 * s), h - Math.round(6 * s), Math.round(24 * s), Math.round(6 * s));
+
+    // Pad marking (H pattern)
+    g.fillStyle(0x06b6d4);
+    g.fillRect(Math.round(8 * s), h - Math.round(5 * s), Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(Math.round(22 * s), h - Math.round(5 * s), Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(Math.round(8 * s), h - Math.round(4 * s), Math.round(16 * s), Math.round(2 * s));
+
+    // Drone body
+    g.fillStyle(0x4b5563);
+    g.fillRect(Math.round(10 * s), Math.round(12 * s), Math.round(12 * s), Math.round(8 * s));
+
+    // Drone rotors (4 corners)
+    g.fillStyle(0x6b7280);
+    g.fillCircle(Math.round(8 * s), Math.round(10 * s), Math.round(4 * s));
+    g.fillCircle(Math.round(24 * s), Math.round(10 * s), Math.round(4 * s));
+    g.fillCircle(Math.round(8 * s), Math.round(22 * s), Math.round(4 * s));
+    g.fillCircle(Math.round(24 * s), Math.round(22 * s), Math.round(4 * s));
+
+    // Rotor blur effect
+    g.fillStyle(0x9ca3af, 0.3);
+    g.fillCircle(Math.round(8 * s), Math.round(10 * s), Math.round(6 * s));
+    g.fillCircle(Math.round(24 * s), Math.round(10 * s), Math.round(6 * s));
+
+    // Drone camera/sensor
+    g.fillStyle(0x22c55e);
+    g.fillRect(centerX - Math.round(2 * s), Math.round(18 * s), Math.round(4 * s), Math.round(3 * s));
+
+    // Status light
+    g.fillStyle(0x06b6d4);
+    g.fillRect(centerX - Math.round(1 * s), Math.round(13 * s), Math.round(2 * s), Math.round(2 * s));
+
+    g.generateTexture("labs_prop_5", w, h);
+    g.destroy();
   }
 }

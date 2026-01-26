@@ -14,7 +14,12 @@ interface Position {
 }
 
 // Locations with clean data
-const LOCATIONS = {
+const LOCATIONS: Record<string, { id: string; name: string; desc: string; event: string | null }[]> = {
+  labs: [
+    { id: "server", name: "Server Room", desc: "Core Systems", event: "bagsworld-server-click" },
+    { id: "research", name: "Research Lab", desc: "R&D Projects", event: "bagsworld-research-click" },
+    { id: "holo", name: "Holo Deck", desc: "Team Meetings", event: "bagsworld-holo-click" },
+  ],
   main_city: [
     {
       id: "pokecenter",
@@ -93,7 +98,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
     }
   }, [isDragging, handlePointerMove, handlePointerUp]);
 
-  const locations = LOCATIONS[currentZone === "main_city" ? "main_city" : "trending"];
+  const locations = LOCATIONS[currentZone] || LOCATIONS.main_city;
   const containerStyle: React.CSSProperties =
     position.x >= 0 && position.y >= 0
       ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
@@ -155,6 +160,16 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
 
           {/* Zone Tabs */}
           <div className="flex border-b border-bags-green/10">
+            <button
+              onClick={() => handleZoneChange("labs")}
+              className={`flex-1 py-2.5 font-pixel text-[9px] tracking-wide transition-all ${
+                currentZone === "labs"
+                  ? "text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              LABS
+            </button>
             <button
               onClick={() => handleZoneChange("main_city")}
               className={`flex-1 py-2.5 font-pixel text-[9px] tracking-wide transition-all ${
