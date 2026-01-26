@@ -220,64 +220,71 @@ router.post('/dialogue', async (req: Request, res: Response) => {
     characterDefs.push(char);
   }
 
-  const dialogueInitiator = initiator || dialogueParticipants[0];
-  const validStyle: DialogueStyle = ['casual', 'formal', 'debate', 'collaborative'].includes(style)
-    ? style as DialogueStyle
-    : 'casual';
-  const turnCount = Math.min(Math.max(parseInt(String(maxTurns)) || 6, 2), 20);
+  try {
+    const dialogueInitiator = initiator || dialogueParticipants[0];
+    const validStyle: DialogueStyle = ['casual', 'formal', 'debate', 'collaborative'].includes(style)
+      ? style as DialogueStyle
+      : 'casual';
+    const turnCount = Math.min(Math.max(parseInt(String(maxTurns)) || 6, 2), 20);
 
-  const systemPrompt = buildDialogueSystemPrompt(characterDefs, topic, validStyle);
+    const systemPrompt = buildDialogueSystemPrompt(characterDefs, topic, validStyle);
 
-  let worldContext = '';
-  const firstChar = characterDefs[0];
-  if (firstChar) {
-    const contextResult = await buildConversationContext(firstChar, topic);
-    if (contextResult.worldState) {
-      worldContext = contextResult.worldState;
+    let worldContext = '';
+    const firstChar = characterDefs[0];
+    if (firstChar) {
+      const contextResult = await buildConversationContext(firstChar, topic);
+      if (contextResult.worldState) {
+        worldContext = contextResult.worldState;
+      }
     }
-  }
 
-  const userPrompt = buildDialogueUserPrompt(
-    characterDefs,
-    topic,
-    dialogueInitiator,
-    turnCount,
-    context,
-    worldContext
-  );
-
-  const llmService = getLLMService();
-  // Use default model for dialogue (500 max tokens is plenty for 4 turns)
-  const llmResponse = await llmService.generateWithSystemPrompt(
-    systemPrompt,
-    userPrompt,
-    [],
-    undefined, // Use default model
-    500
-  );
-
-  const result = parseDialogueResponse(llmResponse.text, dialogueParticipants);
-
-  res.json({
-    success: true,
-    dialogue: {
+    const userPrompt = buildDialogueUserPrompt(
+      characterDefs,
       topic,
-      participants: dialogueParticipants.map(p => ({
-        id: p.toLowerCase(),
-        name: getCharacter(p.toLowerCase())?.name || p,
-      })),
-      turns: result.turns.map(turn => ({
-        speaker: turn.speaker,
-        speakerName: getCharacter(turn.speaker.toLowerCase())?.name || turn.speaker,
-        message: turn.message,
-        timestamp: turn.timestamp,
-      })),
-      sentiment: result.sentiment,
-      summary: result.summary,
-    },
-    model: llmResponse.model,
-    usage: llmResponse.usage,
-  });
+      dialogueInitiator,
+      turnCount,
+      context,
+      worldContext
+    );
+
+    const llmService = getLLMService();
+    const llmResponse = await llmService.generateWithSystemPrompt(
+      systemPrompt,
+      userPrompt,
+      [],
+      undefined,
+      500
+    );
+
+    const result = parseDialogueResponse(llmResponse.text, dialogueParticipants);
+
+    res.json({
+      success: true,
+      dialogue: {
+        topic,
+        participants: dialogueParticipants.map(p => ({
+          id: p.toLowerCase(),
+          name: getCharacter(p.toLowerCase())?.name || p,
+        })),
+        turns: result.turns.map(turn => ({
+          speaker: turn.speaker,
+          speakerName: getCharacter(turn.speaker.toLowerCase())?.name || turn.speaker,
+          message: turn.message,
+          timestamp: turn.timestamp,
+        })),
+        sentiment: result.sentiment,
+        summary: result.summary,
+      },
+      model: llmResponse.model,
+      usage: llmResponse.usage,
+    });
+  } catch (err) {
+    console.error('[world] Error in /dialogue:', err);
+    res.status(500).json({
+      error: 'Failed to generate dialogue',
+      message: err instanceof Error ? err.message : 'Unknown error',
+    });
+  }
 });
 
 export default router;

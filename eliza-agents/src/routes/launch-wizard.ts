@@ -85,36 +85,44 @@ router.post('/session/:sessionId/input', async (req: Request, res: Response) => 
     return;
   }
 
-  const result = await LaunchWizard.processInput(sessionId, input);
+  try {
+    const result = await LaunchWizard.processInput(sessionId, input);
 
-  if (!result.success) {
-    res.status(400).json({
-      success: false,
-      error: result.error,
+    if (!result.success) {
+      res.status(400).json({
+        success: false,
+        error: result.error,
+        response: result.response,
+      });
+      return;
+    }
+
+    const guidance = LaunchWizard.getStepGuidance(result.session.currentStep);
+
+    res.json({
+      success: true,
       response: result.response,
+      session: {
+        id: result.session.id,
+        currentStep: result.session.currentStep,
+        data: result.session.data,
+      },
+      guidance: {
+        title: guidance.title,
+        prompt: guidance.prompt,
+        tips: guidance.tips,
+        examples: guidance.examples,
+      },
+      launchReady: result.launchReady,
+      launchData: result.launchData,
     });
-    return;
+  } catch (err) {
+    console.error(`[launch-wizard] Error in /session/${sessionId}/input:`, err);
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to process input',
+    });
   }
-
-  const guidance = LaunchWizard.getStepGuidance(result.session.currentStep);
-
-  res.json({
-    success: true,
-    response: result.response,
-    session: {
-      id: result.session.id,
-      currentStep: result.session.currentStep,
-      data: result.session.data,
-    },
-    guidance: {
-      title: guidance.title,
-      prompt: guidance.prompt,
-      tips: guidance.tips,
-      examples: guidance.examples,
-    },
-    launchReady: result.launchReady,
-    launchData: result.launchData,
-  });
 });
 
 // POST /api/launch-wizard/session/:sessionId/ask - Ask Professor Oak
@@ -139,13 +147,21 @@ router.post('/session/:sessionId/ask', async (req: Request, res: Response) => {
     return;
   }
 
-  const advice = await LaunchWizard.getPersonalizedAdvice(session, question);
+  try {
+    const advice = await LaunchWizard.getPersonalizedAdvice(session, question);
 
-  res.json({
-    success: true,
-    response: advice,
-    agent: 'professor-oak',
-  });
+    res.json({
+      success: true,
+      response: advice,
+      agent: 'professor-oak',
+    });
+  } catch (err) {
+    console.error(`[launch-wizard] Error in /session/${sessionId}/ask:`, err);
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to get advice',
+    });
+  }
 });
 
 // POST /api/launch-wizard/session/:sessionId/complete - Complete launch
