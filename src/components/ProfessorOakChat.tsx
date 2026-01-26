@@ -169,7 +169,7 @@ export function ProfessorOakChat() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          character: "professorOak",
+          character: "professor-oak",
           message: userMsg,
         }),
       });
