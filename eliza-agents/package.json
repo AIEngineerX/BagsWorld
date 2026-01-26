@@ -3,13 +3,11 @@
   "version": "1.0.0",
   "description": "BagsWorld AI agents - Toly, Finn, Ash, Ghost, Neo, CJ, Shaw, and Bags Bot",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/server.js",
-    "start:dev": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/server.ts",
+    "start:dev": "tsx --watch src/server.ts",
     "test": "vitest"
   },
   "dependencies": {
