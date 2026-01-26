@@ -22,10 +22,10 @@ const METEORA_DBC_PROGRAM = "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN";
 // Bitquery API endpoint
 const BITQUERY_API_URL = "https://streaming.bitquery.io/graphql";
 
-// Polling intervals
-const POLL_INTERVAL_LAUNCHES = 30_000; // 30 seconds
-const POLL_INTERVAL_TRADES = 15_000; // 15 seconds
-const POLL_INTERVAL_WHALES = 60_000; // 1 minute
+// Polling intervals (conservative to avoid rate limits)
+const POLL_INTERVAL_LAUNCHES = 120_000; // 2 minutes
+const POLL_INTERVAL_TRADES = 90_000; // 1.5 minutes
+const POLL_INTERVAL_WHALES = 300_000; // 5 minutes
 
 // Thresholds
 const WHALE_THRESHOLD_SOL = 10; // 10+ SOL = whale alert
@@ -292,7 +292,7 @@ query LargeBagsTransfers($since: DateTime!, $minAmountUsd: String!) {
 // ============================================================================
 
 async function fetchRecentLaunches(): Promise<BagsLaunch[]> {
-  const since = new Date(Date.now() - 5 * 60 * 1000).toISOString(); // Last 5 minutes
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // Last 10 minutes
 
   const data = await queryBitquery<{
     Solana: {
@@ -337,7 +337,7 @@ async function fetchRecentLaunches(): Promise<BagsLaunch[]> {
 }
 
 async function fetchRecentTrades(): Promise<BagsTrade[]> {
-  const since = new Date(Date.now() - 2 * 60 * 1000).toISOString(); // Last 2 minutes
+  const since = new Date(Date.now() - 5 * 60 * 1000).toISOString(); // Last 5 minutes
 
   const data = await queryBitquery<{
     Solana: {
@@ -402,7 +402,7 @@ async function fetchRecentTrades(): Promise<BagsTrade[]> {
 }
 
 async function fetchLargeTransfers(): Promise<BagsTransfer[]> {
-  const since = new Date(Date.now() - 5 * 60 * 1000).toISOString(); // Last 5 minutes
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // Last 10 minutes
   const minAmountUsd = String(WHALE_THRESHOLD_SOL * 200); // ~$2000 USD threshold (as string)
 
   const data = await queryBitquery<{
