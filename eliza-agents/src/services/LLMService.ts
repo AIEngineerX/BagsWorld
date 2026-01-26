@@ -152,7 +152,7 @@ RULES:
     // Use Haiku for simple queries (10x cheaper), Sonnet for complex ones
     const isSimple = isSimpleQuery(userMessage);
     const model = isSimple
-      ? (this.provider === 'anthropic' ? 'claude-3-5-haiku-20241022' : 'gpt-4o-mini')
+      ? (this.provider === 'anthropic' ? 'claude-3-5-haiku-latest' : 'gpt-4o-mini')
       : ((character.settings?.model as string) || this.defaultModel);
 
     // Reduce max tokens: 150 for simple, 400 for normal (down from 1024)
