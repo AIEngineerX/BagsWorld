@@ -345,7 +345,12 @@ export class WorldScene extends Phaser.Scene {
 
     // Determine slide direction: Park -> BagsCity -> Ballers Valley -> Founder's Corner (left to right)
     // Zone order: main_city (0) -> trending (1) -> ballers (2) -> founders (3)
-    const zoneOrder: Record<ZoneType, number> = { main_city: 0, trending: 1, ballers: 2, founders: 3 };
+    const zoneOrder: Record<ZoneType, number> = {
+      main_city: 0,
+      trending: 1,
+      ballers: 2,
+      founders: 3,
+    };
     const isGoingRight = zoneOrder[newZone] > zoneOrder[this.currentZone];
     const duration = 600; // Smooth, cinematic transition
     const slideDistance = Math.round(850 * SCALE); // Slightly more than screen width for full slide (scaled)
@@ -1459,7 +1464,8 @@ export class WorldScene extends Phaser.Scene {
     this.ground.setVisible(false);
 
     // Check if elements were destroyed (can happen during transitions)
-    const elementsValid = this.ballersElements.length > 0 &&
+    const elementsValid =
+      this.ballersElements.length > 0 &&
       this.ballersElements.every((el) => (el as any).active !== false);
 
     if (!elementsValid && this.ballersZoneCreated) {
@@ -1581,10 +1587,7 @@ export class WorldScene extends Phaser.Scene {
     this.ballersElements.push(rightGate);
 
     // === GOLD URNS/STATUES (sprite textures) ===
-    const urnPositions = [
-      Math.round(340 * SCALE),
-      Math.round(460 * SCALE),
-    ];
+    const urnPositions = [Math.round(340 * SCALE), Math.round(460 * SCALE)];
 
     urnPositions.forEach((ux) => {
       const urn = this.add.sprite(ux, groundY, "gold_urn");
@@ -1600,10 +1603,7 @@ export class WorldScene extends Phaser.Scene {
     this.ballersElements.push(carpet);
 
     // === ADDITIONAL DECORATIVE HEDGES (using existing bush texture with tint) ===
-    const hedgePositions = [
-      Math.round(150 * SCALE),
-      Math.round(650 * SCALE),
-    ];
+    const hedgePositions = [Math.round(150 * SCALE), Math.round(650 * SCALE)];
 
     hedgePositions.forEach((hx) => {
       const hedge = this.add.sprite(hx, groundY - Math.round(5 * SCALE), "bush");
@@ -1686,7 +1686,8 @@ export class WorldScene extends Phaser.Scene {
     this.ground.setTexture("founders_ground");
 
     // Check if elements were destroyed (can happen during transitions)
-    const elementsValid = this.foundersElements.length > 0 &&
+    const elementsValid =
+      this.foundersElements.length > 0 &&
       this.foundersElements.every((el) => (el as any).active !== false);
 
     if (!elementsValid && this.foundersZoneCreated) {
@@ -1817,7 +1818,14 @@ export class WorldScene extends Phaser.Scene {
       this.foundersElements.push(sprite);
 
       // Building label with background
-      const labelBg = this.add.rectangle(bx, pathLevel + Math.round(18 * s), Math.round(70 * s), Math.round(24 * s), 0x000000, 0.7);
+      const labelBg = this.add.rectangle(
+        bx,
+        pathLevel + Math.round(18 * s),
+        Math.round(70 * s),
+        Math.round(24 * s),
+        0x000000,
+        0.7
+      );
       labelBg.setDepth(6);
       labelBg.setStrokeStyle(1, 0x4ade80);
       this.foundersElements.push(labelBg);
@@ -1876,7 +1884,11 @@ export class WorldScene extends Phaser.Scene {
     // === WORKBENCHES (depth 3) ===
     const workbenchPositions = [150, 580];
     workbenchPositions.forEach((wx) => {
-      const workbench = this.add.sprite(Math.round(wx * s), grassTop + Math.round(30 * s), "founders_workbench");
+      const workbench = this.add.sprite(
+        Math.round(wx * s),
+        grassTop + Math.round(30 * s),
+        "founders_workbench"
+      );
       workbench.setOrigin(0.5, 1);
       workbench.setDepth(3);
       this.foundersElements.push(workbench);
@@ -1885,7 +1897,11 @@ export class WorldScene extends Phaser.Scene {
     // === EASELS (depth 3) ===
     const easelPositions = [300, 480];
     easelPositions.forEach((ex) => {
-      const easel = this.add.sprite(Math.round(ex * s), grassTop + Math.round(25 * s), "founders_easel");
+      const easel = this.add.sprite(
+        Math.round(ex * s),
+        grassTop + Math.round(25 * s),
+        "founders_easel"
+      );
       easel.setOrigin(0.5, 1);
       easel.setDepth(3);
       this.foundersElements.push(easel);
@@ -1894,18 +1910,25 @@ export class WorldScene extends Phaser.Scene {
     // === CRATES (depth 4) ===
     const cratePositions = [100, 400, 720];
     cratePositions.forEach((cx) => {
-      const crate = this.add.sprite(Math.round(cx * s), pathLevel + Math.round(5 * s), "founders_crate");
+      const crate = this.add.sprite(
+        Math.round(cx * s),
+        pathLevel + Math.round(5 * s),
+        "founders_crate"
+      );
       crate.setOrigin(0.5, 1);
       crate.setDepth(4);
       this.foundersElements.push(crate);
     });
 
     // === CHALKBOARD WELCOME SIGN (centered, depth 2) ===
-    const chalkboard = this.add.sprite(GAME_WIDTH / 2, grassTop - Math.round(10 * s), "founders_chalkboard");
+    const chalkboard = this.add.sprite(
+      GAME_WIDTH / 2,
+      grassTop - Math.round(10 * s),
+      "founders_chalkboard"
+    );
     chalkboard.setOrigin(0.5, 1);
     chalkboard.setDepth(2);
     this.foundersElements.push(chalkboard);
-
   }
 
   /**
@@ -1924,7 +1947,14 @@ export class WorldScene extends Phaser.Scene {
     this.foundersPopup.setDepth(100);
 
     // Dark overlay (covers entire screen)
-    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_WIDTH / 2, GAME_WIDTH * 2, GAME_WIDTH * 2, 0x000000, 0.75);
+    const overlay = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_WIDTH / 2,
+      GAME_WIDTH * 2,
+      GAME_WIDTH * 2,
+      0x000000,
+      0.75
+    );
     overlay.setInteractive();
     overlay.on("pointerdown", () => this.hideFoundersPopup());
     this.foundersPopup.add(overlay);
@@ -1934,7 +1964,13 @@ export class WorldScene extends Phaser.Scene {
     const panelH = Math.round(280 * s);
 
     // Panel background
-    const panelBg = this.add.rectangle(centerX, centerY, panelW + Math.round(6 * s), panelH + Math.round(6 * s), 0x000000);
+    const panelBg = this.add.rectangle(
+      centerX,
+      centerY,
+      panelW + Math.round(6 * s),
+      panelH + Math.round(6 * s),
+      0x000000
+    );
     this.foundersPopup.add(panelBg);
 
     const panel = this.add.rectangle(centerX, centerY, panelW, panelH, 0x1f2937);
@@ -1945,12 +1981,17 @@ export class WorldScene extends Phaser.Scene {
     const content = this.getFoundersPopupContent(type);
 
     // Title
-    const titleText = this.add.text(centerX, centerY - panelH / 2 + Math.round(25 * s), content.title, {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(12 * s)}px`,
-      color: "#fbbf24",
-      fontStyle: "bold",
-    });
+    const titleText = this.add.text(
+      centerX,
+      centerY - panelH / 2 + Math.round(25 * s),
+      content.title,
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(12 * s)}px`,
+        color: "#fbbf24",
+        fontStyle: "bold",
+      }
+    );
     titleText.setOrigin(0.5);
     this.foundersPopup.add(titleText);
 
@@ -2492,10 +2533,10 @@ More links = more ways for users to connect!`,
 
     // Golden hour sunset gradient - warm orange top to soft peach bottom
     // Top colors (warm orange)
-    const topLeft = 0xf97316;  // Tailwind orange-500
+    const topLeft = 0xf97316; // Tailwind orange-500
     const topRight = 0xfb923c; // Tailwind orange-400
     // Bottom colors (soft peach/gold)
-    const bottomLeft = 0xfed7aa;  // Tailwind orange-200
+    const bottomLeft = 0xfed7aa; // Tailwind orange-200
     const bottomRight = 0xfcd34d; // Tailwind amber-300
 
     this.ballersGoldenSky.fillGradientStyle(
@@ -2568,19 +2609,13 @@ More links = more ways for users to connect!`,
 
     // Magical twilight gradient - deep purple top to mystical indigo bottom
     // Top colors (deep space purple)
-    const topLeft = 0x1e1b4b;   // Very dark indigo
-    const topRight = 0x312e81;  // Deep indigo
+    const topLeft = 0x1e1b4b; // Very dark indigo
+    const topRight = 0x312e81; // Deep indigo
     // Bottom colors (twilight purple-blue)
-    const bottomLeft = 0x4c1d95;  // Violet-purple
+    const bottomLeft = 0x4c1d95; // Violet-purple
     const bottomRight = 0x5b21b6; // Rich purple
 
-    this.academyTwilightSky.fillGradientStyle(
-      topLeft,
-      topRight,
-      bottomLeft,
-      bottomRight,
-      1
-    );
+    this.academyTwilightSky.fillGradientStyle(topLeft, topRight, bottomLeft, bottomRight, 1);
     this.academyTwilightSky.fillRect(0, 0, GAME_WIDTH, Math.round(430 * SCALE));
     this.academyTwilightSky.setVisible(true);
 
@@ -2599,7 +2634,13 @@ More links = more ways for users to connect!`,
       const moonRadius = Math.round(35 * SCALE);
 
       // Main moon glow (outer)
-      const moonGlow = this.add.circle(moonX, moonY, moonRadius + Math.round(15 * SCALE), 0xfef3c7, 0.15);
+      const moonGlow = this.add.circle(
+        moonX,
+        moonY,
+        moonRadius + Math.round(15 * SCALE),
+        0xfef3c7,
+        0.15
+      );
       moonGlow.setDepth(-1.9);
       this.academyElements.push(moonGlow);
 
@@ -2619,11 +2660,23 @@ More links = more ways for users to connect!`,
       this.academyElements.push(crescentShadow);
 
       // Subtle moon surface details
-      const crater1 = this.add.circle(moonX - Math.round(8 * SCALE), moonY + Math.round(5 * SCALE), Math.round(4 * SCALE), 0xfde68a, 0.3);
+      const crater1 = this.add.circle(
+        moonX - Math.round(8 * SCALE),
+        moonY + Math.round(5 * SCALE),
+        Math.round(4 * SCALE),
+        0xfde68a,
+        0.3
+      );
       crater1.setDepth(-1.75);
       this.academyElements.push(crater1);
 
-      const crater2 = this.add.circle(moonX - Math.round(12 * SCALE), moonY - Math.round(8 * SCALE), Math.round(3 * SCALE), 0xfde68a, 0.25);
+      const crater2 = this.add.circle(
+        moonX - Math.round(12 * SCALE),
+        moonY - Math.round(8 * SCALE),
+        Math.round(3 * SCALE),
+        0xfde68a,
+        0.25
+      );
       crater2.setDepth(-1.75);
       this.academyElements.push(crater2);
 
@@ -4351,10 +4404,20 @@ More links = more ways for users to connect!`,
     const isProfessorOak = character.isProfessorOak === true;
     const isAcademyChar = isRamo || isSincara || isStuu || isSam || isAlaa || isCarlo || isBNN;
     const isFoundersChar = isProfessorOak;
-    if (!isToly && !isAsh && !isFinn && !isDev && !isScout && !isCJ && !isShaw && !isAcademyChar && !isFoundersChar) {
+    if (
+      !isToly &&
+      !isAsh &&
+      !isFinn &&
+      !isDev &&
+      !isScout &&
+      !isCJ &&
+      !isShaw &&
+      !isAcademyChar &&
+      !isFoundersChar
+    ) {
       const variant = this.characterVariants.get(character.id) ?? 0;
       const expectedTexture = this.getCharacterTexture(character.mood, variant);
-      if (sprite.texture.key !== expectedTexture) {
+      if (sprite.texture?.key !== expectedTexture) {
         sprite.setTexture(expectedTexture);
       }
     }
@@ -4381,7 +4444,16 @@ More links = more ways for users to connect!`,
     const isProfessorOak = character.isProfessorOak === true;
     const isAcademyChar = isRamo || isSincara || isStuu || isSam || isAlaa || isCarlo || isBNN;
     const isFoundersChar = isProfessorOak;
-    const isSpecial = isToly || isAsh || isFinn || isDev || isScout || isCJ || isShaw || isAcademyChar || isFoundersChar;
+    const isSpecial =
+      isToly ||
+      isAsh ||
+      isFinn ||
+      isDev ||
+      isScout ||
+      isCJ ||
+      isShaw ||
+      isAcademyChar ||
+      isFoundersChar;
     const variant = index % 9;
     this.characterVariants.set(character.id, variant);
 
@@ -4549,7 +4621,14 @@ More links = more ways for users to connect!`,
       { active: isSincara, key: "sincaraGlow", tint: 0xec4899, duration: 1300 }, // Pink - creative
       { active: isStuu, key: "stuuGlow", tint: 0x22c55e, duration: 1000 }, // Green - support
       { active: isSam, key: "samGlow", tint: 0xfbbf24, duration: 900 }, // Yellow - marketing energy
-      { active: isAlaa, key: "alaaGlow", tint: 0x6366f1, alpha: 0.5, targetAlpha: 0.8, duration: 700 }, // Indigo - mysterious
+      {
+        active: isAlaa,
+        key: "alaaGlow",
+        tint: 0x6366f1,
+        alpha: 0.5,
+        targetAlpha: 0.8,
+        duration: 700,
+      }, // Indigo - mysterious
       { active: isCarlo, key: "carloGlow", tint: 0xf97316, duration: 1100 }, // Orange - community warmth
       { active: isBNN, key: "bnnGlow", tint: 0x06b6d4, duration: 800 }, // Cyan - news/info
       // Founder's Corner character glows
@@ -4577,8 +4656,20 @@ More links = more ways for users to connect!`,
 
     // Store character type flags on sprite for speech bubble system
     Object.assign(sprite, {
-      isToly, isAsh, isFinn, isDev, isScout, isCJ, isShaw,
-      isRamo, isSincara, isStuu, isSam, isAlaa, isCarlo, isBNN
+      isToly,
+      isAsh,
+      isFinn,
+      isDev,
+      isScout,
+      isCJ,
+      isShaw,
+      isRamo,
+      isSincara,
+      isStuu,
+      isSam,
+      isAlaa,
+      isCarlo,
+      isBNN,
     });
 
     this.characterSprites.set(character.id, sprite);
@@ -4774,7 +4865,7 @@ More links = more ways for users to connect!`,
     };
     const updateStyleIndex = getBuildingStyleUpdate(building.id);
     const newTexture = `building_${building.level}_${updateStyleIndex}`;
-    if (sprite.texture.key !== newTexture) {
+    if (sprite.texture?.key !== newTexture) {
       this.tweens.add({
         targets: container,
         scale: 1.15,
@@ -5025,7 +5116,11 @@ More links = more ways for users to connect!`,
     const isGoldLabel = isHQBuilding || isMansionLandmark;
 
     // Determine label text: HQ shows "$BagsWorld", mansions show their landmark name, others show symbol
-    const labelText = isHQBuilding ? "$BagsWorld" : isMansionLandmark ? building.name : building.symbol;
+    const labelText = isHQBuilding
+      ? "$BagsWorld"
+      : isMansionLandmark
+        ? building.name
+        : building.symbol;
     const labelWidth = isHQBuilding ? 85 : isMansionLandmark ? 95 : 50;
 
     const labelBg = this.add.rectangle(
