@@ -653,13 +653,12 @@ app.post('/api/dialogue', async (req, res) => {
   );
 
   const llmService = getLLMService();
-  // Use Haiku for dialogue - 10x cheaper than Sonnet, fast enough for multi-agent chat
-  // Reduced from 2000 to 500 max tokens for dialogue (plenty for 4 turns)
+  // Use default model for dialogue (500 max tokens is plenty for 4 turns)
   const llmResponse = await llmService.generateWithSystemPrompt(
     systemPrompt,
     userPrompt,
     [],
-    'claude-3-5-haiku-latest',
+    undefined, // Use default model
     500
   );
 

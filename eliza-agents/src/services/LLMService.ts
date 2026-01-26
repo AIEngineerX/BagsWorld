@@ -24,22 +24,8 @@ export interface LLMResponse {
 
 type LLMProvider = 'anthropic' | 'openai' | 'none';
 
-// Simple query patterns that can use cheaper Haiku model
-const SIMPLE_QUERY_PATTERNS = [
-  /^(gm|gn|hi|hey|hello|yo|sup|what'?s up)\b/i,
-  /^(thanks|thank you|ty|thx)\b/i,
-  /^(bye|goodbye|cya|later)\b/i,
-  /^(yes|no|ok|okay|sure|cool|nice|lol|lmao)\b/i,
-];
-
-function isSimpleQuery(message: string): boolean {
-  const trimmed = message.trim();
-  // Short messages (< 20 chars) or matching simple patterns
-  if (trimmed.length < 20) {
-    return SIMPLE_QUERY_PATTERNS.some(p => p.test(trimmed));
-  }
-  return false;
-}
+// Default model for all Anthropic requests - use a reliable model ID
+const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
 
 export class LLMService extends Service {
   static readonly serviceType = 'bags_llm';
@@ -149,14 +135,11 @@ RULES:
 
     const systemPrompt = this.buildSystemPrompt(character, context);
 
-    // Use Haiku for simple queries (10x cheaper), Sonnet for complex ones
-    const isSimple = isSimpleQuery(userMessage);
-    const model = isSimple
-      ? (this.provider === 'anthropic' ? 'claude-3-5-haiku-latest' : 'gpt-4o-mini')
-      : ((character.settings?.model as string) || this.defaultModel);
+    // Use character's model or default - no Haiku optimization (model IDs are unreliable)
+    const model = (character.settings?.model as string) || this.defaultModel;
 
-    // Reduce max tokens: 150 for simple, 400 for normal (down from 1024)
-    const maxTokens = isSimple ? 150 : 400;
+    // Cap max tokens for cost savings
+    const maxTokens = 400;
 
     return this.callLLM(systemPrompt, userMessage, conversationHistory, model, maxTokens);
   }
