@@ -210,7 +210,14 @@ function buildContext(worldState: WorldState) {
 
 // Check if this is a special NPC character
 function isSpecialCharacter(id: string): boolean {
-  const specialIds = ["finn", "ghost", "neo", "ash", "toly", "dev", "scout", "cj"];
+  const specialIds = [
+    // Core characters
+    "finn", "ghost", "neo", "ash", "toly", "dev", "scout", "cj", "shaw",
+    // Academy Zone - Bags.fm Team
+    "ramo", "sincara", "stuu", "sam", "alaa", "carlo", "bnn",
+    // Founder's Corner Zone
+    "professoroak", "professor-oak", "professor oak",
+  ];
   const lowerName = id.toLowerCase();
   return (
     specialIds.some((s) => lowerName.includes(s)) ||
@@ -219,19 +226,42 @@ function isSpecialCharacter(id: string): boolean {
     id.includes("Neo") ||
     id.includes("Ash") ||
     id.includes("Toly") ||
-    id.includes("CJ")
+    id.includes("CJ") ||
+    id.includes("Shaw") ||
+    // Academy Zone
+    id.includes("Ramo") ||
+    id.includes("Sincara") ||
+    id.includes("Stuu") ||
+    id.includes("Sam") ||
+    id.includes("Alaa") ||
+    id.includes("Carlo") ||
+    id.includes("BNN") ||
+    // Founder's Corner
+    id.includes("Professor Oak")
   );
 }
 
 // Map character display ID to behavior system ID
 function getCharacterId(id: string): string {
   const lower = id.toLowerCase();
+  // Core characters
   if (lower.includes("finn")) return "finn";
   if (lower.includes("dev") || lower.includes("ghost")) return "ghost";
   if (lower.includes("neo") || lower.includes("scout")) return "neo";
   if (lower.includes("ash")) return "ash";
   if (lower.includes("toly")) return "toly";
   if (lower.includes("cj")) return "cj";
+  if (lower.includes("shaw")) return "shaw";
+  // Academy Zone - Bags.fm Team
+  if (lower.includes("ramo")) return "ramo";
+  if (lower.includes("sincara")) return "sincara";
+  if (lower.includes("stuu")) return "stuu";
+  if (lower.includes("sam")) return "sam";
+  if (lower.includes("alaa")) return "alaa";
+  if (lower.includes("carlo")) return "carlo";
+  if (lower.includes("bnn")) return "bnn";
+  // Founder's Corner Zone
+  if (lower.includes("professor") || lower.includes("oak")) return "professorOak";
   return id;
 }
 
