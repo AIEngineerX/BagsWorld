@@ -148,7 +148,9 @@ export function UnifiedAgentChat({
             <p className={`font-pixel text-[10px] text-${agentInfo.color}-400`}>
               {agentInfo.name.toUpperCase()}
             </p>
-            <p className={`font-pixel text-[8px] text-${agentInfo.color}-600`}>powered by ElizaOS</p>
+            <p className={`font-pixel text-[8px] text-${agentInfo.color}-600`}>
+              powered by ElizaOS
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -246,9 +248,7 @@ export function UnifiedAgentChat({
         <p className={`font-pixel text-[7px] text-${agentInfo.color}-600 text-center`}>
           &quot;{agentInfo.tagline}&quot;
         </p>
-        <p className="font-pixel text-[6px] text-gray-500 text-center mt-1">
-          Powered by ElizaOS
-        </p>
+        <p className="font-pixel text-[6px] text-gray-500 text-center mt-1">Powered by ElizaOS</p>
       </div>
     </div>
   );
