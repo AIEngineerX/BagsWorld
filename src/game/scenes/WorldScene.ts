@@ -2098,15 +2098,10 @@ export class WorldScene extends Phaser.Scene {
     popup.add(iconBgInner);
 
     // Building icon (emoji representation)
-    const iconText = this.add.text(
-      centerX,
-      centerY - panelH / 2 + Math.round(45 * s),
-      theme.icon,
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(20 * s)}px`,
-      }
-    );
+    const iconText = this.add.text(centerX, centerY - panelH / 2 + Math.round(45 * s), theme.icon, {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(20 * s)}px`,
+    });
     iconText.setOrigin(0.5);
     popup.add(iconText);
 
@@ -2175,30 +2170,20 @@ export class WorldScene extends Phaser.Scene {
     tipBg.setStrokeStyle(1, theme.accent, 0.5);
     popup.add(tipBg);
 
-    const tipLabel = this.add.text(
-      centerX - panelW / 2 + Math.round(24 * s),
-      tipY,
-      "PRO TIP",
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(7 * s)}px`,
-        color: theme.titleColor,
-        fontStyle: "bold",
-      }
-    );
+    const tipLabel = this.add.text(centerX - panelW / 2 + Math.round(24 * s), tipY, "PRO TIP", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(7 * s)}px`,
+      color: theme.titleColor,
+      fontStyle: "bold",
+    });
     tipLabel.setOrigin(0, 0.5);
     popup.add(tipLabel);
 
-    const tipText = this.add.text(
-      centerX - panelW / 2 + Math.round(70 * s),
-      tipY,
-      content.tip,
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(7 * s)}px`,
-        color: "#94a3b8",
-      }
-    );
+    const tipText = this.add.text(centerX - panelW / 2 + Math.round(70 * s), tipY, content.tip, {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(7 * s)}px`,
+      color: "#94a3b8",
+    });
     tipText.setOrigin(0, 0.5);
     popup.add(tipText);
 
