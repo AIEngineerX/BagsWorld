@@ -91,35 +91,43 @@ router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
   const sessionId = providedSessionId || uuidv4();
   const normalizedAgentId = agentId.toLowerCase();
 
-  const conversationHistory = await getConversationHistory(sessionId, normalizedAgentId);
+  try {
+    const conversationHistory = await getConversationHistory(sessionId, normalizedAgentId);
 
-  await saveMessage(sessionId, normalizedAgentId, 'user', message);
+    await saveMessage(sessionId, normalizedAgentId, 'user', message);
 
-  const context = await buildConversationContext(character, message);
-  context.messages = conversationHistory;
+    const context = await buildConversationContext(character, message);
+    context.messages = conversationHistory;
 
-  const llmService = getLLMService();
+    const llmService = getLLMService();
 
-  const llmResponse = await llmService.generateResponse(
-    character,
-    message,
-    conversationHistory,
-    context
-  );
+    const llmResponse = await llmService.generateResponse(
+      character,
+      message,
+      conversationHistory,
+      context
+    );
 
-  await saveMessage(sessionId, normalizedAgentId, 'assistant', llmResponse.text);
+    await saveMessage(sessionId, normalizedAgentId, 'assistant', llmResponse.text);
 
-  await pruneOldMessages(sessionId, normalizedAgentId);
+    await pruneOldMessages(sessionId, normalizedAgentId);
 
-  res.json({
-    success: true,
-    agentId: normalizedAgentId,
-    agentName: character.name,
-    response: llmResponse.text,
-    sessionId,
-    model: llmResponse.model,
-    usage: llmResponse.usage,
-  });
+    res.json({
+      success: true,
+      agentId: normalizedAgentId,
+      agentName: character.name,
+      response: llmResponse.text,
+      sessionId,
+      model: llmResponse.model,
+      usage: llmResponse.usage,
+    });
+  } catch (err) {
+    console.error(`[chat] Error in /agents/${agentId}/chat:`, err);
+    res.status(500).json({
+      error: 'Failed to generate response',
+      message: err instanceof Error ? err.message : 'Unknown error',
+    });
+  }
 });
 
 // DELETE /api/sessions/:sessionId - Clear session
