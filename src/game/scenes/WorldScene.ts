@@ -583,6 +583,24 @@ export class WorldScene extends Phaser.Scene {
           });
         }
       });
+    } else if (zone === "labs") {
+      this.setupLabsZone();
+
+      // Offset all new Tech Labs elements and animate them in
+      const newElements = [...this.labsElements].filter(Boolean);
+
+      newElements.forEach((el) => {
+        if ((el as any).x !== undefined) {
+          const targetX = (el as any).x;
+          (el as any).x = targetX + offsetX;
+          this.tweens.add({
+            targets: el,
+            x: targetX,
+            duration,
+            ease: "Cubic.easeOut",
+          });
+        }
+      });
     } else {
       this.setupMainCityZone();
 
