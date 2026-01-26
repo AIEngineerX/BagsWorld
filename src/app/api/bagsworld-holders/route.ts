@@ -129,7 +129,10 @@ export async function GET(): Promise<NextResponse> {
 
         // Check for RPC errors (rate limits, etc)
         if (rpcData.error) {
-          console.warn(`[Holders] RPC error from ${rpcUrl.substring(0, 30)}:`, rpcData.error.message);
+          console.warn(
+            `[Holders] RPC error from ${rpcUrl.substring(0, 30)}:`,
+            rpcData.error.message
+          );
           continue;
         }
 
@@ -157,7 +160,9 @@ export async function GET(): Promise<NextResponse> {
 
           // Skip excluded addresses (pools, burn addresses, etc.)
           if (EXCLUDED_ADDRESSES.has(resolvedAddress)) {
-            console.log(`[Holders] Skipping excluded address: ${resolvedAddress.substring(0, 8)}...`);
+            console.log(
+              `[Holders] Skipping excluded address: ${resolvedAddress.substring(0, 8)}...`
+            );
             continue;
           }
 
@@ -174,7 +179,9 @@ export async function GET(): Promise<NextResponse> {
           });
         }
 
-        console.log(`[Holders] Successfully got ${holders.length} holders from ${rpcUrl.substring(0, 30)}`);
+        console.log(
+          `[Holders] Successfully got ${holders.length} holders from ${rpcUrl.substring(0, 30)}`
+        );
       }
     } catch (err) {
       console.warn(`[Holders] RPC failed (${rpcUrl.substring(0, 30)}):`, err);

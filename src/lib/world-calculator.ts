@@ -504,7 +504,9 @@ export function transformFeeEarnerToCharacter(
     (isSpecial ? undefined : getProfileUrl(earner.provider, earner.username));
 
   // Distribute regular fee earners across all zones based on wallet hash
-  const getZoneForFeeEarner = (wallet: string): "main_city" | "trending" | "ballers" | "founders" => {
+  const getZoneForFeeEarner = (
+    wallet: string
+  ): "main_city" | "trending" | "ballers" | "founders" => {
     let hash = 0;
     for (let i = 0; i < wallet.length; i++) {
       hash = (hash << 5) - hash + wallet.charCodeAt(i);
@@ -684,11 +686,11 @@ export interface BagsWorldHolder {
 // #1 WHALE gets center position (largest), #2-3 flank it, #4-5 on edges
 // Canvas is 1280px wide (800 * 1.6 SCALE), center is 640 (unscaled) or 1024 (scaled)
 const BALLERS_POSITIONS = [
-  { x: Math.round(400 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.5 },   // #1 - CENTER, largest (the whale)
-  { x: Math.round(200 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.3 },   // #2 - left of center
-  { x: Math.round(600 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.3 },   // #3 - right of center
-  { x: Math.round(80 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.15 },    // #4 - far left edge
-  { x: Math.round(720 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.15 },  // #5 - far right edge
+  { x: Math.round(400 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.5 }, // #1 - CENTER, largest (the whale)
+  { x: Math.round(200 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.3 }, // #2 - left of center
+  { x: Math.round(600 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.3 }, // #3 - right of center
+  { x: Math.round(80 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.15 }, // #4 - far left edge
+  { x: Math.round(720 * SCALE), y: SIDEWALK_GROUND_Y, scale: 1.15 }, // #5 - far right edge
 ];
 
 // BagsWorld token mint for mansions
@@ -696,11 +698,11 @@ const BAGSWORLD_TOKEN_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
 
 // Unique landmark names for Ballers Valley mansions (by rank, matching actual building colors)
 const MANSION_LANDMARKS = [
-  { name: "Grand Palace", symbol: "PALACE" },       // #1 - Blue & Gold domed palace (center)
-  { name: "Obsidian Tower", symbol: "OBSIDIAN" },   // #2 - Black & Gold Victorian tower
+  { name: "Grand Palace", symbol: "PALACE" }, // #1 - Blue & Gold domed palace (center)
+  { name: "Obsidian Tower", symbol: "OBSIDIAN" }, // #2 - Black & Gold Victorian tower
   { name: "Amethyst Chateau", symbol: "AMETHYST" }, // #3 - Purple French chateau with turrets
-  { name: "Platinum Estate", symbol: "PLATINUM" },  // #4 - Gray/Silver Art Deco modern
-  { name: "Emerald Manor", symbol: "EMERALD" },     // #5 - Green Colonial manor
+  { name: "Platinum Estate", symbol: "PLATINUM" }, // #4 - Gray/Silver Art Deco modern
+  { name: "Emerald Manor", symbol: "EMERALD" }, // #5 - Green Colonial manor
 ];
 
 /**

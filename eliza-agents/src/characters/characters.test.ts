@@ -9,6 +9,7 @@ import {
   getCharacterIds,
   getCharacterDisplayName,
   isValidCharacterId,
+  // Core characters
   tolyCharacter,
   finnCharacter,
   ashCharacter,
@@ -17,12 +18,21 @@ import {
   cjCharacter,
   shawCharacter,
   bagsBotCharacter,
+  // Academy characters
+  alaaCharacter,
+  bnnCharacter,
+  carloCharacter,
+  ramoCharacter,
+  samCharacter,
+  sincaraCharacter,
+  stuuCharacter,
+  professorOakCharacter,
 } from './index.js';
 
 describe('Character Registry', () => {
   describe('allCharacters array', () => {
-    it('contains all 8 unique characters', () => {
-      expect(allCharacters).toHaveLength(8);
+    it('contains all 16 unique characters', () => {
+      expect(allCharacters).toHaveLength(16);
     });
 
     it('has bagsBotCharacter first (main guide)', () => {
@@ -31,6 +41,7 @@ describe('Character Registry', () => {
 
     it('contains all expected characters', () => {
       const names = allCharacters.map(c => c.name);
+      // Core characters
       expect(names).toContain('Toly');
       expect(names).toContain('Finn');
       expect(names).toContain('Ash');
@@ -39,12 +50,21 @@ describe('Character Registry', () => {
       expect(names).toContain('CJ');
       expect(names).toContain('Shaw');
       expect(names).toContain('Bags Bot');
+      // Academy characters
+      expect(names).toContain('Alaa');
+      expect(names).toContain('BNN');
+      expect(names).toContain('Carlo');
+      expect(names).toContain('Ramo');
+      expect(names).toContain('Sam');
+      expect(names).toContain('Sincara');
+      expect(names).toContain('Stuu');
+      expect(names).toContain('Professor Oak');
     });
   });
 
   describe('characters record', () => {
-    it('has 10 entries (8 characters + 2 aliases)', () => {
-      expect(Object.keys(characters)).toHaveLength(10);
+    it('has 20 entries (16 characters + 4 aliases)', () => {
+      expect(Object.keys(characters)).toHaveLength(20);
     });
 
     it('includes aliases for bagsbot and dev', () => {
@@ -52,6 +72,12 @@ describe('Character Registry', () => {
       expect(characters['bagsbot']).toBe(bagsBotCharacter);
       expect(characters['ghost']).toBe(ghostCharacter);
       expect(characters['dev']).toBe(ghostCharacter);
+    });
+
+    it('includes aliases for professor-oak', () => {
+      expect(characters['professor-oak']).toBe(professorOakCharacter);
+      expect(characters['professoroak']).toBe(professorOakCharacter);
+      expect(characters['oak']).toBe(professorOakCharacter);
     });
   });
 
@@ -86,19 +112,22 @@ describe('Character Registry', () => {
   });
 
   describe('getCharacterIds', () => {
-    it('returns 8 primary character IDs', () => {
+    it('returns 16 primary character IDs', () => {
       const ids = getCharacterIds();
-      expect(ids).toHaveLength(8);
+      expect(ids).toHaveLength(16);
     });
 
     it('excludes aliases', () => {
       const ids = getCharacterIds();
       expect(ids).not.toContain('bagsbot');
       expect(ids).not.toContain('dev');
+      expect(ids).not.toContain('professoroak');
+      expect(ids).not.toContain('oak');
     });
 
     it('includes all primary IDs', () => {
       const ids = getCharacterIds();
+      // Core
       expect(ids).toContain('toly');
       expect(ids).toContain('finn');
       expect(ids).toContain('ash');
@@ -107,6 +136,15 @@ describe('Character Registry', () => {
       expect(ids).toContain('cj');
       expect(ids).toContain('shaw');
       expect(ids).toContain('bags-bot');
+      // Academy
+      expect(ids).toContain('alaa');
+      expect(ids).toContain('bnn');
+      expect(ids).toContain('carlo');
+      expect(ids).toContain('ramo');
+      expect(ids).toContain('sam');
+      expect(ids).toContain('sincara');
+      expect(ids).toContain('stuu');
+      expect(ids).toContain('professor-oak');
     });
   });
 
@@ -252,6 +290,47 @@ describe('Individual Character Exports', () => {
   it('exports bagsBotCharacter', () => {
     expect(bagsBotCharacter).toBeDefined();
     expect(bagsBotCharacter.name).toBe('Bags Bot');
+  });
+
+  // Academy character exports
+  it('exports alaaCharacter', () => {
+    expect(alaaCharacter).toBeDefined();
+    expect(alaaCharacter.name).toBe('Alaa');
+  });
+
+  it('exports bnnCharacter', () => {
+    expect(bnnCharacter).toBeDefined();
+    expect(bnnCharacter.name).toBe('BNN');
+  });
+
+  it('exports carloCharacter', () => {
+    expect(carloCharacter).toBeDefined();
+    expect(carloCharacter.name).toBe('Carlo');
+  });
+
+  it('exports ramoCharacter', () => {
+    expect(ramoCharacter).toBeDefined();
+    expect(ramoCharacter.name).toBe('Ramo');
+  });
+
+  it('exports samCharacter', () => {
+    expect(samCharacter).toBeDefined();
+    expect(samCharacter.name).toBe('Sam');
+  });
+
+  it('exports sincaraCharacter', () => {
+    expect(sincaraCharacter).toBeDefined();
+    expect(sincaraCharacter.name).toBe('Sincara');
+  });
+
+  it('exports stuuCharacter', () => {
+    expect(stuuCharacter).toBeDefined();
+    expect(stuuCharacter.name).toBe('Stuu');
+  });
+
+  it('exports professorOakCharacter', () => {
+    expect(professorOakCharacter).toBeDefined();
+    expect(professorOakCharacter.name).toBe('Professor Oak');
   });
 });
 

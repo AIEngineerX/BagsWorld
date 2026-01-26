@@ -4,7 +4,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import type { WorldState, FeeEarner, TokenInfo, GameEvent, ClaimEvent } from "@/lib/types";
-import { buildWorldState, type BagsHealthMetrics, type BagsWorldHolder } from "@/lib/world-calculator";
+import {
+  buildWorldState,
+  type BagsHealthMetrics,
+  type BagsWorldHolder,
+} from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
 import { emitEvent, startCoordinator, type AgentEventType } from "@/lib/agent-coordinator";
@@ -175,7 +179,11 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
   const now = Date.now();
 
   // Return cached data if fresh AND has data (don't cache empty results)
-  if (holdersCache && holdersCache.data.length > 0 && now - holdersCache.timestamp < HOLDERS_CACHE_DURATION) {
+  if (
+    holdersCache &&
+    holdersCache.data.length > 0 &&
+    now - holdersCache.timestamp < HOLDERS_CACHE_DURATION
+  ) {
     console.log("[WorldState] Using cached holders:", holdersCache.data.length);
     return holdersCache.data;
   }
@@ -196,12 +204,15 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
       const data = await response.json();
       console.log("[WorldState] Raw holders response:", JSON.stringify(data).substring(0, 200));
       const holders: BagsWorldHolder[] = (data.holders || []).slice(0, 5);
-      console.log("[WorldState] Fetched holders:", holders.length, holders.map(h => h.rank));
+      console.log(
+        "[WorldState] Fetched holders:",
+        holders.length,
+        holders.map((h) => h.rank)
+      );
 
       // Check if we got REAL holders (not placeholder data)
-      const isRealData = holders.length > 0 &&
-        holders[0]?.address &&
-        !holders[0].address.includes("xxxx"); // Placeholder addresses contain "xxxx"
+      const isRealData =
+        holders.length > 0 && holders[0]?.address && !holders[0].address.includes("xxxx"); // Placeholder addresses contain "xxxx"
 
       if (isRealData) {
         holdersCache = { data: holders, timestamp: now };
@@ -221,11 +232,36 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
   // If we still have no holders, use placeholder data for development
   console.log("[WorldState] Using placeholder holders - API unavailable");
   const placeholderHolders: BagsWorldHolder[] = [
-    { address: "BaGs1WhaLeHoLderxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 12500000, percentage: 28.5, rank: 1 },
-    { address: "BaGs2BiGHoLderxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 6200000, percentage: 14.2, rank: 2 },
-    { address: "BaGs3HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 3800000, percentage: 8.7, rank: 3 },
-    { address: "BaGs4HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 2100000, percentage: 4.8, rank: 4 },
-    { address: "BaGs5HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 1400000, percentage: 3.2, rank: 5 },
+    {
+      address: "BaGs1WhaLeHoLderxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 12500000,
+      percentage: 28.5,
+      rank: 1,
+    },
+    {
+      address: "BaGs2BiGHoLderxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 6200000,
+      percentage: 14.2,
+      rank: 2,
+    },
+    {
+      address: "BaGs3HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 3800000,
+      percentage: 8.7,
+      rank: 3,
+    },
+    {
+      address: "BaGs4HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 2100000,
+      percentage: 4.8,
+      rank: 4,
+    },
+    {
+      address: "BaGs5HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 1400000,
+      percentage: 3.2,
+      rank: 5,
+    },
   ];
   holdersCache = { data: placeholderHolders, timestamp: now };
   return placeholderHolders;
@@ -1049,7 +1085,13 @@ export async function POST(request: NextRequest) {
     };
 
     // Build world state with Bags.fm metrics and top holders for Ballers Valley
-    const worldState = buildWorldState(earners, tokens, previousState ?? undefined, bagsMetrics, bagsWorldHolders);
+    const worldState = buildWorldState(
+      earners,
+      tokens,
+      previousState ?? undefined,
+      bagsMetrics,
+      bagsWorldHolders
+    );
 
     worldState.weather = realWeather;
     (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;

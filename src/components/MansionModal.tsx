@@ -69,7 +69,9 @@ export function MansionModal({
               <span className="font-pixel text-lg sm:text-xl text-white">#{holderRank || "?"}</span>
             </div>
             <div>
-              <h2 className="font-pixel text-white text-xs sm:text-sm">{name || `MANSION #${holderRank}`}</h2>
+              <h2 className="font-pixel text-white text-xs sm:text-sm">
+                {name || `MANSION #${holderRank}`}
+              </h2>
               <p className="font-pixel text-yellow-200 text-[7px] sm:text-[8px]">
                 {getRankTitle(holderRank)} of $BagsWorld
               </p>

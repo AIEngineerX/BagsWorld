@@ -150,6 +150,19 @@ Neon database auto-configures via `NETLIFY=true` environment variable.
 
 # BagsWorld Zone Creation Specification
 
+## CRITICAL: Park is THE Template
+
+**ALL new zones MUST follow the Park zone pattern.** The Park zone (main_city) is the canonical reference implementation. When creating any new zone:
+
+1. **Start from Park's structure** - Same layer setup, Y-positions, and depth values
+2. **Match Park's element density** - 24 decorations, 7 animals, similar prop counts
+3. **Use Park's Y-positions exactly** - grassTop, pathLevel, groundY, pathY
+4. **Follow Park's visibility pattern** - Toggle with `setVisible()`, don't destroy/recreate
+
+BagsCity is a **special case** with custom ground/road - do NOT use it as a template for standard zones.
+
+---
+
 ## Layer Architecture
 
 ```
@@ -169,21 +182,34 @@ Neon database auto-configures via `NETLIFY=true` environment variable.
 │  - Y = 570 * SCALE, height 40           │
 │  - Characters walk at ~555 * SCALE      │
 ├─────────────────────────────────────────┤
-│  BUILDINGS/PROPS (depth 10+)            │
+│  PROPS (depth 2-4)                      │
+│  - Trees, bushes, lamps, benches        │
+│  - Zone-specific decorations            │
+├─────────────────────────────────────────┤
+│  BUILDINGS (depth 5+)                   │
 │  - Sprites from pre-generated textures  │
 │  - Zone-specific, cached after creation │
+├─────────────────────────────────────────┤
+│  CHARACTERS (depth 10)                  │
+│  - NPCs walking at pathLevel (555)      │
 └─────────────────────────────────────────┘
 ```
 
-### Depth Reference Table
+### Depth Reference Table (CANONICAL)
 
 | Depth | Y Position | Layer | What It Contains |
 |-------|------------|-------|------------------|
-| -2 | 0 to 430 | Sky gradient | Day/night color transition |
-| -1 | 0 to 300 | Stars | Twinkling circles (night only) |
-| 0 | 540 (h:180) | Grass/Ground fill | Zone-specific texture |
+| -2 | 0 to 430 | Sky gradient | Day/night color transition (DO NOT MODIFY) |
+| -1 | 0 to 300 | Stars | Twinkling circles (night only, DO NOT MODIFY) |
+| 0 | 540 (h:180) | Grass/Ground | Zone-specific ground texture |
 | 1 | 570 (h:40) | Path/Sidewalk | Walking surface |
-| 10-15 | Variable | Buildings/Characters | Zone content |
+| 2 | Variable | Trees, bushes, flowers, rocks, fountain | Natural props |
+| 3 | Variable | Lamps, benches, street furniture | Functional props |
+| 4 | Variable | Ground animals, small details | Ambient life |
+| 5+ | Variable | Buildings | Zone structures |
+| 10 | ~555 | Characters | NPCs walking on path |
+| 15 | Variable | Flying animals | Birds, butterflies |
+| 20 | Variable | Fireflies, particles | Ambient effects |
 
 ---
 
@@ -540,9 +566,15 @@ private setupMyZone(): void {
 
 ---
 
-## Park Zone Template (COMPLETE REFERENCE)
+## Park Zone Template (CANONICAL - USE THIS)
 
-Use this as the template when creating new zones. Match element counts and placement patterns.
+**This is THE template for all new zones.** Every new zone MUST match Park's:
+- Y-positions (grassTop, pathLevel, groundY, pathY)
+- Element density (24 decorations, 7 animals minimum)
+- Depth values (props at 2-4, buildings at 5+, characters at 10)
+- Visibility toggle pattern (setVisible, not destroy/recreate)
+
+Match these element counts and placement patterns exactly.
 
 ### Y-Position Reference (CRITICAL)
 
@@ -693,9 +725,9 @@ Depth 20:  Fireflies
 - **Animals:** 7 animated sprites
 - **Particle systems:** 1 (fountain water)
 
-### Creating a New Zone with Similar Density
+### Creating a New Zone with Park-Matching Density
 
-For a new zone to match Park quality:
+**REQUIRED:** Every new zone must match these Park zone minimums:
 1. **Trees/tall props:** 4-6 elements
 2. **Ground cover:** 4-6 bushes/hedges equivalent
 3. **Lighting:** 2-4 lamps or equivalent
@@ -813,9 +845,17 @@ dog.generateTexture("dog", 32, 24);
 
 ---
 
-## BagsCity Zone Template (URBAN REFERENCE)
+## BagsCity Zone (SECONDARY EXAMPLE - Urban Variant)
 
-Use this for city/urban themed zones. Shows how to replace grass with pavement and add dynamic elements.
+**WARNING:** BagsCity is a SPECIAL CASE with custom ground replacement. Do NOT use this as your primary template.
+
+For standard zones, use the **Park Template** above. Only reference BagsCity if you specifically need:
+- Custom pavement/road instead of grass
+- Traffic animations
+- Scrolling data displays
+- Urban/city theming
+
+This section shows how to handle these special cases while still following core layer rules.
 
 ### Key Differences from Park
 | Aspect | Park | BagsCity |
@@ -1083,12 +1123,14 @@ If the zone description says "mansions" then generate ACTUAL MANSION BUILDINGS w
 
 ### Validation Check
 
-Before completing a zone, verify:
-1. [ ] Are there at least 3 detailed buildings?
-2. [ ] Can you identify what each building is?
-3. [ ] Are there props filling the space?
-4. [ ] Does the ground have texture detail?
-5. [ ] Does it visually match Park/BagsCity quality?
+Before completing a zone, verify against the **Park zone** benchmark:
+1. [ ] Are there at least 3 detailed buildings? (Park has multiple)
+2. [ ] Can you identify what each building is? (Not generic rectangles)
+3. [ ] Are there 20+ props filling the space? (Park has 24 decorations)
+4. [ ] Does the ground have texture detail? (Not solid flat color)
+5. [ ] Does it visually match **Park zone quality**?
+6. [ ] Are Y-positions correct? (grassTop=455, pathLevel=555, groundY=540, pathY=570)
+7. [ ] Are depths correct? (props 2-4, buildings 5+, characters 10)
 
 If ANY answer is NO, the zone is incomplete. Continue adding detail.
 
@@ -1115,7 +1157,7 @@ Claude Code is a BUILDER, not a creative director.
 - User asks for fountains → generates gray boxes → claims "matches aesthetic"
 - User asks for luxury theme → generates bare zone → claims "clean design"
 
-The existing zones (Park, BagsCity) are the quality benchmark. New zones must match that level of DETAIL, not just "style."
+The **Park zone** is the quality benchmark. New zones must match Park's level of DETAIL and element density, not just "style."
 
 ### If Unsure
 Ask the user for clarification. Do not make assumptions that reduce detail or complexity.
@@ -1217,6 +1259,8 @@ When creating a new zone:
 
 ## Creating a New Zone Checklist
 
+**IMPORTANT:** This checklist is based on the Park zone template. Follow it exactly.
+
 ### Technical Setup (Files to Modify)
 1. [ ] Add zone type to `src/lib/types.ts` (ZoneType and ZONES)
 2. [ ] Add zone cache variables in WorldScene.ts (`myZoneElements[]`, `myZoneCreated`)
@@ -1224,41 +1268,43 @@ When creating a new zone:
 4. [ ] Create zone setup method in WorldScene.ts (`setupMyZone()`)
 5. [ ] Add zone case to zone switch handler in WorldScene.ts
 
-### Layer Rules (CRITICAL)
+### Layer Rules (CRITICAL - Match Park Zone)
 6. [ ] **Sky (depth -2):** DO NOT TOUCH - it persists automatically
 7. [ ] **Grass (depth 0):** Either `setVisible(false)` or `setTexture("new_texture")`
 8. [ ] **Path (depth 1):** Keep at Y = 570 * SCALE for character walking
-9. [ ] **Buildings (depth 10+):** Use pre-generated textures from BootScene
-10. [ ] **Zone elements:** Push to `myZoneElements[]` array for visibility toggling
+9. [ ] **Props (depth 2-4):** Trees, bushes, lamps, benches, decorations
+10. [ ] **Buildings (depth 5+):** Use pre-generated textures from BootScene
+11. [ ] **Characters (depth 10):** NPCs at pathLevel (555 * SCALE)
+12. [ ] **Zone elements:** Push to `myZoneElements[]` array for visibility toggling
 
 ### Ground Layer
-11. [ ] If hiding grass: Create zone-specific ground graphics at depth 0
-12. [ ] If custom ground texture: Generate in BootScene, swap with `setTexture()`
-13. [ ] Ground must have visible detail (tiles, cracks, patterns) - not solid color
-14. [ ] Character walk path Y-position must stay at ~555 * SCALE
+13. [ ] If hiding grass: Create zone-specific ground graphics at depth 0
+14. [ ] If custom ground texture: Generate in BootScene, swap with `setTexture()`
+15. [ ] Ground must have visible detail (tiles, cracks, patterns) - not solid color
+16. [ ] Character walk path Y-position must stay at ~555 * SCALE
 
-### Content Requirements
-15. [ ] MINIMUM 3 detailed buildings with textures generated in BootScene
-16. [ ] MINIMUM 5 props (lamps, trees, benches, signs, decorations)
-17. [ ] Buildings use: fillRect, fillTriangle, fillCircle with proper layering
-18. [ ] Reference existing generators (generateBuildings, generateMansions) for detail level
+### Content Requirements (Match Park Density)
+17. [ ] MINIMUM 3 detailed buildings with textures generated in BootScene
+18. [ ] MINIMUM 20 props (Park has 24 decorations - match this)
+19. [ ] Buildings use: fillRect, fillTriangle, fillCircle with proper layering
+20. [ ] Reference existing generators (generateBuildings, generateMansions) for detail level
 
 ### Visual Standards
-19. [ ] Day/night compatibility: Zone colors work against both sky gradients
-20. [ ] Pixel style: Hard edges, dithering, no smooth gradients
-21. [ ] 3D depth: Light left edges, dark right edges on buildings
-22. [ ] Window glow: Semi-transparent aura + highlight corner
+21. [ ] Day/night compatibility: Zone colors work against both sky gradients
+22. [ ] Pixel style: Hard edges, dithering, no smooth gradients
+23. [ ] 3D depth: Light left edges, dark right edges on buildings
+24. [ ] Window glow: Semi-transparent aura + highlight corner
 
 ### Zone Switching
-23. [ ] Hide park elements: `decorations.forEach(d => d.setVisible(false))`
-24. [ ] Cache zone: Create elements once, use `zoneCreated` flag
-25. [ ] Toggle visibility: Use `setVisible()` not destroy/recreate
-26. [ ] Characters: Match existing sprite size/style
+25. [ ] Hide park elements: `decorations.forEach(d => d.setVisible(false))`
+26. [ ] Cache zone: Create elements once, use `zoneCreated` flag
+27. [ ] Toggle visibility: Use `setVisible()` not destroy/recreate
+28. [ ] Characters: Match existing sprite size/style
 
 ### Final Validation
-27. [ ] Does this zone match Park/BagsCity quality?
-28. [ ] Test in BOTH day and night sky states
-29. [ ] Verify characters walk correctly on path
+29. [ ] Does this zone match Park zone quality? (Park is the benchmark)
+30. [ ] Test in BOTH day and night sky states
+31. [ ] Verify characters walk correctly on path at Y = 555 * SCALE
 
 ---
 
@@ -1321,9 +1367,10 @@ if (!this.myZoneCreated) {
 
 ---
 
-## Quick Zone Template (COPY THIS)
+## Quick Zone Template (COPY THIS - Based on Park)
 
-Use this template when creating any new zone. Copy and adapt.
+Use this template when creating any new zone. This follows the Park zone pattern exactly.
+Copy and adapt, but DO NOT change the core Y-positions or depth values.
 
 ### Step 1: Add Zone Type (types.ts)
 ```typescript
@@ -1483,7 +1530,7 @@ const groundY = 540 * SCALE;    // Ground layer Y
 
 When requesting a new zone, include:
 ```
-Create a new zone called [NAME]. Follow ZONE_SPEC.md exactly.
+Create a new zone called [NAME]. Follow the Park template in CLAUDE.md exactly.
 
 ZONE CONTENT:
 - Theme: [describe the vibe/purpose]
@@ -1496,7 +1543,7 @@ ZONE CONTENT:
 
 Example:
 ```
-Create a new zone called Ballers Valley. Follow ZONE_SPEC.md exactly.
+Create a new zone called Ballers Valley. Follow the Park template in CLAUDE.md exactly.
 
 ZONE CONTENT:
 - Theme: Luxury district for top $BagsWorld holders

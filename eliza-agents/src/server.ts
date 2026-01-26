@@ -14,6 +14,10 @@ import {
 } from './characters/index.js';
 import { getBagsApiService } from './services/BagsApiService.js';
 import { getLLMService, Message, ConversationContext } from './services/LLMService.js';
+import { AgentCoordinator, getAgentCoordinator } from './services/AgentCoordinator.js';
+import { AutonomousService, getAutonomousService } from './services/AutonomousService.js';
+import { LaunchWizard } from './services/LaunchWizard.js';
+import { CreatorTools } from './services/CreatorTools.js';
 import { worldStateProvider } from './providers/worldState.js';
 import { tokenDataProvider } from './providers/tokenData.js';
 import { agentContextProvider } from './providers/agentContext.js';
@@ -703,6 +707,496 @@ app.get('/api/world-state', async (req, res) => {
   });
 });
 
+// ===== Autonomous Service Endpoints =====
+
+app.get('/api/autonomous/status', (req, res) => {
+  const autonomous = getAutonomousService();
+
+  if (!autonomous) {
+    res.status(503).json({
+      success: false,
+      error: 'Autonomous service not initialized',
+      hint: 'Set ENABLE_AUTONOMOUS=true to enable',
+    });
+    return;
+  }
+
+  const tasks = autonomous.getTaskStatus();
+
+  res.json({
+    success: true,
+    status: 'running',
+    tasks,
+    taskCount: tasks.length,
+  });
+});
+
+app.get('/api/autonomous/alerts', (req, res) => {
+  const autonomous = getAutonomousService();
+
+  if (!autonomous) {
+    res.status(503).json({
+      success: false,
+      error: 'Autonomous service not initialized',
+    });
+    return;
+  }
+
+  const type = req.query.type as string | undefined;
+  const severity = req.query.severity as string | undefined;
+  const unacknowledged = req.query.unacknowledged === 'true';
+  const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+
+  const alerts = autonomous.getAlerts({
+    type: type as any,
+    severity: severity as any,
+    unacknowledgedOnly: unacknowledged,
+    limit,
+  });
+
+  res.json({
+    success: true,
+    alerts,
+    count: alerts.length,
+  });
+});
+
+app.post('/api/autonomous/alerts/:alertId/acknowledge', (req, res) => {
+  const autonomous = getAutonomousService();
+
+  if (!autonomous) {
+    res.status(503).json({
+      success: false,
+      error: 'Autonomous service not initialized',
+    });
+    return;
+  }
+
+  const { alertId } = req.params;
+  autonomous.acknowledgeAlert(alertId);
+
+  res.json({
+    success: true,
+    message: `Alert ${alertId} acknowledged`,
+  });
+});
+
+app.post('/api/autonomous/trigger/:taskName', async (req, res) => {
+  const autonomous = getAutonomousService();
+
+  if (!autonomous) {
+    res.status(503).json({
+      success: false,
+      error: 'Autonomous service not initialized',
+    });
+    return;
+  }
+
+  const { taskName } = req.params;
+  const success = await autonomous.triggerTask(taskName);
+
+  if (success) {
+    res.json({
+      success: true,
+      message: `Task ${taskName} triggered successfully`,
+    });
+  } else {
+    res.status(404).json({
+      success: false,
+      error: `Task not found: ${taskName}`,
+      availableTasks: autonomous.getTaskStatus().map(t => t.name),
+    });
+  }
+});
+
+// ===== Agent Coordination Endpoints =====
+
+app.get('/api/coordination/context/:agentId', (req, res) => {
+  const coordinator = getAgentCoordinator();
+
+  if (!coordinator) {
+    res.status(503).json({
+      success: false,
+      error: 'Agent coordinator not initialized',
+    });
+    return;
+  }
+
+  const { agentId } = req.params;
+  const context = coordinator.buildCoordinationContext(agentId);
+
+  res.json({
+    success: true,
+    agentId,
+    context,
+    hasContext: context.length > 0,
+  });
+});
+
+app.get('/api/coordination/statuses', (req, res) => {
+  const coordinator = getAgentCoordinator();
+
+  if (!coordinator) {
+    res.status(503).json({
+      success: false,
+      error: 'Agent coordinator not initialized',
+    });
+    return;
+  }
+
+  const statuses = coordinator.getAllStatuses();
+
+  res.json({
+    success: true,
+    agents: statuses,
+    count: statuses.length,
+    online: statuses.filter(s => s.status === 'online').length,
+  });
+});
+
+app.get('/api/coordination/messages/:agentId', (req, res) => {
+  const coordinator = getAgentCoordinator();
+
+  if (!coordinator) {
+    res.status(503).json({
+      success: false,
+      error: 'Agent coordinator not initialized',
+    });
+    return;
+  }
+
+  const { agentId } = req.params;
+  const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+  const messages = coordinator.getMessages(agentId, { limit });
+
+  res.json({
+    success: true,
+    agentId,
+    messages,
+    count: messages.length,
+  });
+});
+
+app.post('/api/coordination/broadcast', async (req, res) => {
+  const coordinator = getAgentCoordinator();
+
+  if (!coordinator) {
+    res.status(503).json({
+      success: false,
+      error: 'Agent coordinator not initialized',
+    });
+    return;
+  }
+
+  const { from, type, content, data } = req.body;
+
+  if (!from || !content) {
+    res.status(400).json({
+      success: false,
+      error: 'from and content are required',
+    });
+    return;
+  }
+
+  const messageId = await coordinator.broadcast(from, type || 'update', content, data);
+
+  res.json({
+    success: true,
+    messageId,
+    message: `Broadcast sent from ${from}`,
+  });
+});
+
+app.get('/api/coordination/shared-context', (req, res) => {
+  const coordinator = getAgentCoordinator();
+
+  if (!coordinator) {
+    res.status(503).json({
+      success: false,
+      error: 'Agent coordinator not initialized',
+    });
+    return;
+  }
+
+  const context = coordinator.getAllSharedContext();
+
+  res.json({
+    success: true,
+    context,
+    keys: Object.keys(context),
+  });
+});
+
+// ===== Launch Wizard Endpoints (Professor Oak Guided Launches) =====
+
+app.post('/api/launch-wizard/start', (req, res) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    res.status(400).json({
+      success: false,
+      error: 'userId is required',
+    });
+    return;
+  }
+
+  const session = LaunchWizard.startSession(userId);
+  const guidance = LaunchWizard.getStepGuidance(session.currentStep);
+
+  res.json({
+    success: true,
+    session: {
+      id: session.id,
+      currentStep: session.currentStep,
+      data: session.data,
+    },
+    guidance: {
+      title: guidance.title,
+      message: guidance.oakAdvice,
+      prompt: guidance.prompt,
+      tips: guidance.tips,
+    },
+  });
+});
+
+app.get('/api/launch-wizard/session/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const session = LaunchWizard.getSession(sessionId);
+
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: 'Session not found',
+    });
+    return;
+  }
+
+  const guidance = LaunchWizard.getStepGuidance(session.currentStep);
+
+  res.json({
+    success: true,
+    session: {
+      id: session.id,
+      currentStep: session.currentStep,
+      data: session.data,
+      messages: session.messages,
+    },
+    guidance: {
+      title: guidance.title,
+      message: guidance.oakAdvice,
+      prompt: guidance.prompt,
+      tips: guidance.tips,
+      examples: guidance.examples,
+    },
+  });
+});
+
+app.post('/api/launch-wizard/session/:sessionId/input', async (req, res) => {
+  const { sessionId } = req.params;
+  const { input } = req.body;
+
+  if (!input || typeof input !== 'string') {
+    res.status(400).json({
+      success: false,
+      error: 'input is required and must be a string',
+    });
+    return;
+  }
+
+  const result = await LaunchWizard.processInput(sessionId, input);
+
+  if (!result.success) {
+    res.status(400).json({
+      success: false,
+      error: result.error,
+      response: result.response,
+    });
+    return;
+  }
+
+  const guidance = LaunchWizard.getStepGuidance(result.session.currentStep);
+
+  res.json({
+    success: true,
+    response: result.response,
+    session: {
+      id: result.session.id,
+      currentStep: result.session.currentStep,
+      data: result.session.data,
+    },
+    guidance: {
+      title: guidance.title,
+      prompt: guidance.prompt,
+      tips: guidance.tips,
+      examples: guidance.examples,
+    },
+    launchReady: result.launchReady,
+    launchData: result.launchData,
+  });
+});
+
+app.post('/api/launch-wizard/session/:sessionId/ask', async (req, res) => {
+  const { sessionId } = req.params;
+  const { question } = req.body;
+
+  if (!question || typeof question !== 'string') {
+    res.status(400).json({
+      success: false,
+      error: 'question is required',
+    });
+    return;
+  }
+
+  const session = LaunchWizard.getSession(sessionId);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: 'Session not found',
+    });
+    return;
+  }
+
+  const advice = await LaunchWizard.getPersonalizedAdvice(session, question);
+
+  res.json({
+    success: true,
+    response: advice,
+    agent: 'professor-oak',
+  });
+});
+
+app.post('/api/launch-wizard/session/:sessionId/complete', (req, res) => {
+  const { sessionId } = req.params;
+  const { mint } = req.body;
+
+  if (!mint) {
+    res.status(400).json({
+      success: false,
+      error: 'mint address is required',
+    });
+    return;
+  }
+
+  LaunchWizard.completeSession(sessionId, mint);
+
+  res.json({
+    success: true,
+    message: 'Launch completed! Your token is now live.',
+    mint,
+  });
+});
+
+// ===== Creator Tools Endpoints =====
+
+app.get('/api/creator-tools/analyze/:mint', async (req, res) => {
+  const { mint } = req.params;
+
+  const analysis = await CreatorTools.analyzeToken(mint);
+
+  if (!analysis) {
+    res.status(404).json({
+      success: false,
+      error: 'Token not found',
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    analysis,
+  });
+});
+
+app.get('/api/creator-tools/fee-advice/:mint', async (req, res) => {
+  const { mint } = req.params;
+
+  const advice = await CreatorTools.getFeeAdvice(mint);
+
+  if (!advice) {
+    res.status(404).json({
+      success: false,
+      error: 'Token not found',
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    advice,
+    agent: 'ghost',
+  });
+});
+
+app.get('/api/creator-tools/marketing-advice/:mint', async (req, res) => {
+  const { mint } = req.params;
+  const { twitter, telegram, website } = req.query;
+
+  const advice = await CreatorTools.getMarketingAdvice(mint, {
+    twitter: twitter as string | undefined,
+    telegram: telegram as string | undefined,
+    website: website as string | undefined,
+  });
+
+  if (!advice) {
+    res.status(404).json({
+      success: false,
+      error: 'Token not found',
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    advice,
+    agent: 'sam',
+  });
+});
+
+app.get('/api/creator-tools/community-advice/:mint', async (req, res) => {
+  const { mint } = req.params;
+
+  const advice = await CreatorTools.getCommunityAdvice(mint);
+
+  if (!advice) {
+    res.status(404).json({
+      success: false,
+      error: 'Token not found',
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    advice,
+    agent: 'carlo',
+  });
+});
+
+app.get('/api/creator-tools/full-analysis/:mint', async (req, res) => {
+  const { mint } = req.params;
+  const { twitter, telegram, website } = req.query;
+
+  const analysis = await CreatorTools.getFullAnalysis(mint, {
+    twitter: twitter as string | undefined,
+    telegram: telegram as string | undefined,
+    website: website as string | undefined,
+  });
+
+  if (!analysis.token) {
+    res.status(404).json({
+      success: false,
+      error: 'Token not found',
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    analysis,
+    agents: ['ghost', 'sam', 'carlo'],
+  });
+});
+
 async function initializeDatabase(): Promise<void> {
   if (!sql) return;
 
@@ -751,10 +1245,31 @@ async function initializeDatabase(): Promise<void> {
   }
 }
 
+// Initialize autonomous services
+async function initializeAutonomousServices(): Promise<void> {
+  const mockRuntime = createMockRuntime({ name: 'system' } as Character);
+
+  // Start coordinator first (autonomous service depends on it)
+  await AgentCoordinator.start(mockRuntime);
+  console.log('[Autonomous] Agent coordinator initialized');
+
+  // Start autonomous service
+  const enableAutonomous = process.env.ENABLE_AUTONOMOUS !== 'false';
+  if (enableAutonomous) {
+    await AutonomousService.start(mockRuntime);
+    console.log('[Autonomous] Autonomous service initialized with scheduled tasks');
+  } else {
+    console.log('[Autonomous] Autonomous service disabled (ENABLE_AUTONOMOUS=false)');
+  }
+}
+
 async function main(): Promise<void> {
   console.log('Starting BagsWorld Agents Server...');
 
   await initializeDatabase();
+
+  // Initialize autonomous services
+  await initializeAutonomousServices();
 
   const llmConfigured = !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
   if (!llmConfigured) {
@@ -782,6 +1297,20 @@ async function main(): Promise<void> {
     console.log(`  GET    /api/launches/recent         - Get recent launches`);
     console.log(`  GET    /api/world-health            - Get world health`);
     console.log(`  GET    /api/world-state             - Get world state with context`);
+    console.log(`  GET    /api/autonomous/status       - Get autonomous tasks status`);
+    console.log(`  GET    /api/autonomous/alerts       - Get recent alerts`);
+    console.log(`  POST   /api/autonomous/trigger/:task - Manually trigger a task`);
+    console.log(`  GET    /api/coordination/context    - Get agent coordination context`);
+    console.log(`\nLaunch Wizard (Professor Oak):`);
+    console.log(`  POST   /api/launch-wizard/start     - Start guided launch`);
+    console.log(`  GET    /api/launch-wizard/session/:id - Get session status`);
+    console.log(`  POST   /api/launch-wizard/session/:id/input - Process step input`);
+    console.log(`  POST   /api/launch-wizard/session/:id/ask   - Ask Professor Oak`);
+    console.log(`\nCreator Tools:`);
+    console.log(`  GET    /api/creator-tools/analyze/:mint      - Full token analysis`);
+    console.log(`  GET    /api/creator-tools/fee-advice/:mint   - Fee optimization (Ghost)`);
+    console.log(`  GET    /api/creator-tools/marketing-advice/:mint - Marketing tips (Sam)`);
+    console.log(`  GET    /api/creator-tools/community-advice/:mint - Community help (Carlo)`);
   });
 }
 

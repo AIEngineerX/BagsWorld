@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useSniperTokens, useNewLaunches, useSnipe } from "@/hooks/useSniperTokens";
-import type { SniperToken, SniperNewLaunch, SniperSortField, SniperSortDirection, SniperFilters } from "@/lib/types";
+import type {
+  SniperToken,
+  SniperNewLaunch,
+  SniperSortField,
+  SniperSortDirection,
+  SniperFilters,
+} from "@/lib/types";
 
 interface SniperTowerProps {
   isOpen: boolean;
@@ -40,7 +46,15 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
   const [watchlist, setWatchlist] = useState<string[]>([]);
 
   // Data hooks
-  const { tokens, isLoading: tokensLoading, error: tokensError, total, refresh, loadMore, hasMore } = useSniperTokens({
+  const {
+    tokens,
+    isLoading: tokensLoading,
+    error: tokensError,
+    total,
+    refresh,
+    loadMore,
+    hasMore,
+  } = useSniperTokens({
     sortField,
     sortDirection,
     filters,
@@ -50,7 +64,13 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
 
   const { launches, isConnected: sseConnected, error: sseError, latestLaunch } = useNewLaunches();
 
-  const { getQuote, executeSnipe, isQuoting, isSniping, error: snipeError } = useSnipe({
+  const {
+    getQuote,
+    executeSnipe,
+    isQuoting,
+    isSniping,
+    error: snipeError,
+  } = useSnipe({
     onSuccess: (signature) => {
       setSnipeModal({ isOpen: false, token: null });
       // Could show success toast here
@@ -107,14 +127,17 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
   }, [latestLaunch, activeTab]);
 
   // Handle snipe button click
-  const handleSnipeClick = useCallback((token: SniperToken | SniperNewLaunch) => {
-    if (!connected) {
-      setWalletModalVisible(true);
-      return;
-    }
-    setSnipeModal({ isOpen: true, token });
-    setQuote(null);
-  }, [connected, setWalletModalVisible]);
+  const handleSnipeClick = useCallback(
+    (token: SniperToken | SniperNewLaunch) => {
+      if (!connected) {
+        setWalletModalVisible(true);
+        return;
+      }
+      setSnipeModal({ isOpen: true, token });
+      setQuote(null);
+    },
+    [connected, setWalletModalVisible]
+  );
 
   // Get quote when snipe modal opens or amount changes
   const handleGetQuote = useCallback(async () => {
@@ -180,8 +203,18 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              <svg
+                className="w-6 h-6 text-green-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
               </svg>
             </div>
             <div>
@@ -189,12 +222,19 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
               <p className="text-sm text-gray-400">All Bags.fm tokens in real-time</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-          >
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+            <svg
+              className="w-6 h-6 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -220,9 +260,7 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
             }`}
           >
             New Launches
-            {sseConnected && (
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            )}
+            {sseConnected && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
           </button>
           <button
             onClick={() => setActiveTab("watchlist")}
@@ -250,7 +288,12 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
             </svg>
           </button>
 
@@ -263,7 +306,12 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
             title="Filters"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
             </svg>
           </button>
         </div>
@@ -292,12 +340,32 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
                   className="p-1.5 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600 transition-colors"
                 >
                   {sortDirection === "desc" ? (
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-4 h-4 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   ) : (
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    <svg
+                      className="w-4 h-4 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 15l7-7 7 7"
+                      />
                     </svg>
                   )}
                 </button>
@@ -495,8 +563,18 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
                 onClick={() => setSnipeModal({ isOpen: false, token: null })}
                 className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
               >
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -517,7 +595,9 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
                     className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-green-500"
                     placeholder="0.1"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">SOL</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                    SOL
+                  </span>
                 </div>
                 <div className="flex gap-2 mt-2">
                   {[0.1, 0.25, 0.5, 1].map((amount) => (
@@ -534,7 +614,9 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
 
               {/* Slippage input */}
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Slippage Tolerance</label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Slippage Tolerance
+                </label>
                 <div className="flex gap-2">
                   {[100, 300, 500, 1000].map((bps) => (
                     <button
@@ -607,8 +689,19 @@ export function SniperTower({ isOpen, onClose }: SniperTowerProps) {
                 {isSniping ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
                     </svg>
                     Sniping...
                   </span>
@@ -667,9 +760,16 @@ function TokenList({
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
         <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1}
+            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+          />
         </svg>
-        <p className="text-center max-w-md">{emptyMessage || "No tokens found matching your filters."}</p>
+        <p className="text-center max-w-md">
+          {emptyMessage || "No tokens found matching your filters."}
+        </p>
       </div>
     );
   }
@@ -703,8 +803,18 @@ function TokenList({
                   : "text-gray-600 hover:text-gray-400"
               }`}
             >
-              <svg className="w-5 h-5" fill={watchlist.includes(token.mint) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              <svg
+                className="w-5 h-5"
+                fill={watchlist.includes(token.mint) ? "currentColor" : "none"}
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                />
               </svg>
             </button>
             {token.imageUrl && (
@@ -793,13 +903,26 @@ function NewLaunchesList({
   if (launches.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-        <div className={`w-16 h-16 mb-4 rounded-full border-2 flex items-center justify-center ${isConnected ? "border-green-500" : "border-yellow-500"}`}>
+        <div
+          className={`w-16 h-16 mb-4 rounded-full border-2 flex items-center justify-center ${isConnected ? "border-green-500" : "border-yellow-500"}`}
+        >
           {isConnected ? (
             <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse" />
           ) : (
             <svg className="w-8 h-8 text-yellow-500 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
             </svg>
           )}
         </div>
@@ -807,7 +930,8 @@ function NewLaunchesList({
           {isConnected ? "Listening for new launches..." : "Connecting to live feed..."}
         </p>
         <p className="text-sm text-center max-w-md">
-          New Bags.fm token launches will appear here in real-time. Keep this tab open to catch the latest drops.
+          New Bags.fm token launches will appear here in real-time. Keep this tab open to catch the
+          latest drops.
         </p>
       </div>
     );
@@ -816,10 +940,7 @@ function NewLaunchesList({
   return (
     <div className="divide-y divide-gray-800">
       {launches.map((launch) => (
-        <div
-          key={launch.mint}
-          className="px-6 py-4 hover:bg-gray-800/50 transition-colors"
-        >
+        <div key={launch.mint} className="px-6 py-4 hover:bg-gray-800/50 transition-colors">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -830,8 +951,18 @@ function NewLaunchesList({
                     : "text-gray-600 hover:text-gray-400"
                 }`}
               >
-                <svg className="w-5 h-5" fill={watchlist.includes(launch.mint) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                <svg
+                  className="w-5 h-5"
+                  fill={watchlist.includes(launch.mint) ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                  />
                 </svg>
               </button>
               {launch.imageUrl && (
@@ -867,8 +998,15 @@ function NewLaunchesList({
               {launch.priceChange !== 0 && (
                 <div className="text-right">
                   <p className="text-sm text-gray-400">Change</p>
-                  <p className={launch.priceChange >= 0 ? "text-green-400 font-medium" : "text-red-400 font-medium"}>
-                    {launch.priceChange >= 0 ? "+" : ""}{launch.priceChange.toFixed(2)}%
+                  <p
+                    className={
+                      launch.priceChange >= 0
+                        ? "text-green-400 font-medium"
+                        : "text-red-400 font-medium"
+                    }
+                  >
+                    {launch.priceChange >= 0 ? "+" : ""}
+                    {launch.priceChange.toFixed(2)}%
                   </p>
                 </div>
               )}

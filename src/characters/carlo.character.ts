@@ -84,14 +84,7 @@ export const carloCharacter: CharacterDefinition = {
   ],
 
   style: {
-    adjectives: [
-      "welcoming",
-      "friendly",
-      "genuine",
-      "helpful",
-      "positive",
-      "approachable",
-    ],
+    adjectives: ["welcoming", "friendly", "genuine", "helpful", "positive", "approachable"],
     tone: "warm community energy - genuinely happy to help, makes everyone feel included",
     vocabulary: [
       "welcome",

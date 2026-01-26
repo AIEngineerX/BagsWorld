@@ -79,7 +79,8 @@ const ACADEMY_CHARACTERS = [
     name: "STUU",
     shortName: "St",
     event: "bagsworld-stuu-click",
-    buttonClass: "bg-green-500/10 border-green-500/40 hover:bg-green-500/20 hover:border-green-500/60",
+    buttonClass:
+      "bg-green-500/10 border-green-500/40 hover:bg-green-500/20 hover:border-green-500/60",
     iconClass: "bg-green-500/30 border-green-500/50",
     textClass: "text-green-400",
   },
@@ -88,7 +89,8 @@ const ACADEMY_CHARACTERS = [
     name: "SAM",
     shortName: "Sa",
     event: "bagsworld-sam-click",
-    buttonClass: "bg-yellow-500/10 border-yellow-500/40 hover:bg-yellow-500/20 hover:border-yellow-500/60",
+    buttonClass:
+      "bg-yellow-500/10 border-yellow-500/40 hover:bg-yellow-500/20 hover:border-yellow-500/60",
     iconClass: "bg-yellow-500/30 border-yellow-500/50",
     textClass: "text-yellow-400",
   },
@@ -97,7 +99,8 @@ const ACADEMY_CHARACTERS = [
     name: "ALAA",
     shortName: "Al",
     event: "bagsworld-alaa-click",
-    buttonClass: "bg-indigo-500/10 border-indigo-500/40 hover:bg-indigo-500/20 hover:border-indigo-500/60",
+    buttonClass:
+      "bg-indigo-500/10 border-indigo-500/40 hover:bg-indigo-500/20 hover:border-indigo-500/60",
     iconClass: "bg-indigo-500/30 border-indigo-500/50",
     textClass: "text-indigo-400",
   },
@@ -106,7 +109,8 @@ const ACADEMY_CHARACTERS = [
     name: "CARLO",
     shortName: "C",
     event: "bagsworld-carlo-click",
-    buttonClass: "bg-orange-500/10 border-orange-500/40 hover:bg-orange-500/20 hover:border-orange-500/60",
+    buttonClass:
+      "bg-orange-500/10 border-orange-500/40 hover:bg-orange-500/20 hover:border-orange-500/60",
     iconClass: "bg-orange-500/30 border-orange-500/50",
     textClass: "text-orange-400",
   },

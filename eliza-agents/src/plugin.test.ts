@@ -205,7 +205,7 @@ describe('Plugin exports', () => {
     it('exports allCharacters', () => {
       expect(allCharacters).toBeDefined();
       expect(Array.isArray(allCharacters)).toBe(true);
-      expect(allCharacters.length).toBe(8);
+      expect(allCharacters.length).toBe(16);
     });
 
     it('exports characters record', () => {
