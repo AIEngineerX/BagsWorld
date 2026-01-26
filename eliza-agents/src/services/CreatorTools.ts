@@ -171,7 +171,7 @@ Unclaimed: ${unclaimedAmount.toFixed(4)} SOL`;
         ghost,
         `Analyze this token's fee performance and give brief advice: ${context}`,
         [],
-        {}
+        { messages: [] }
       );
 
       reasoning = response.text;
@@ -265,7 +265,7 @@ Unclaimed: ${unclaimedAmount.toFixed(4)} SOL`;
         sam,
         `Give 3 specific marketing tips for this token: ${token.name} ($${token.symbol}), market cap: $${token.marketCap?.toLocaleString() || 'unknown'}, volume: $${volume24h.toLocaleString()}`,
         [],
-        {}
+        { messages: [] }
       );
 
       // Add Sam's personalized tips to action items
@@ -391,7 +391,7 @@ Unclaimed: ${unclaimedAmount.toFixed(4)} SOL`;
         carlo,
         `Give community building advice for ${token.name} with ${holders} holders and $${volume24h.toLocaleString()} daily volume. Keep it brief and actionable.`,
         [],
-        {}
+        { messages: [] }
       );
 
       // Add Carlo's tips
