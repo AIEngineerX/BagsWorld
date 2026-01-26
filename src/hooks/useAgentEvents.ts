@@ -1,5 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { AgentEventType, EventPriority } from "@/lib/agent-coordinator";
+
+// Event TTL - filter out events older than this (24 hours)
+const EVENT_TTL_MS = 24 * 60 * 60 * 1000;
 
 // ============================================================================
 // TYPES
@@ -46,6 +49,12 @@ export function useAgentEvents(options?: {
   const lastTimestampRef = useRef(0);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Filter out old announcements (older than 24 hours)
+  const filterOldAnnouncements = useCallback((announcements: Announcement[]): Announcement[] => {
+    const cutoff = Date.now() - EVENT_TTL_MS;
+    return announcements.filter((a) => a.timestamp > cutoff);
+  }, []);
+
   // Fetch announcements
   const fetchAnnouncements = useCallback(async () => {
     try {
@@ -60,45 +69,43 @@ export function useAgentEvents(options?: {
       const data = await response.json();
       const newAnnouncements: Announcement[] = data.announcements || [];
 
-      if (newAnnouncements.length > 0) {
-        lastTimestampRef.current = data.lastTimestamp;
+      setState((prev) => {
+        // Merge new announcements, avoiding duplicates
+        const existingIds = new Set(prev.announcements.map((a) => a.id));
+        const uniqueNew = newAnnouncements.filter((a) => !existingIds.has(a.id));
 
-        setState((prev) => {
-          // Merge new announcements, avoiding duplicates
-          const existingIds = new Set(prev.announcements.map((a) => a.id));
-          const uniqueNew = newAnnouncements.filter((a) => !existingIds.has(a.id));
+        // Combine and filter out old events
+        const merged = filterOldAnnouncements(
+          [...uniqueNew, ...prev.announcements]
+        ).slice(0, maxAnnouncements);
 
-          const merged = [...uniqueNew, ...prev.announcements].slice(0, maxAnnouncements);
-          const unreadCount = merged.filter((a) => !a.read).length;
+        const unreadCount = merged.filter((a) => !a.read).length;
 
-          return {
-            ...prev,
-            announcements: merged,
-            unreadCount,
-            isConnected: true,
-            lastUpdate: Date.now(),
-          };
-        });
-
-        // Auto-mark as read if enabled
-        if (autoMarkRead && newAnnouncements.length > 0) {
-          // Mark as read inline to avoid dependency on markAsRead
-          try {
-            await fetch("/api/agent-coordinator", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "mark_read", ids: newAnnouncements.map((a) => a.id) }),
-            });
-          } catch {
-            // Ignore errors for auto-mark
-          }
+        if (newAnnouncements.length > 0) {
+          lastTimestampRef.current = data.lastTimestamp;
         }
-      } else {
-        setState((prev) => ({
+
+        return {
           ...prev,
+          announcements: merged,
+          unreadCount,
           isConnected: true,
           lastUpdate: Date.now(),
-        }));
+        };
+      });
+
+      // Auto-mark as read if enabled
+      if (autoMarkRead && newAnnouncements.length > 0) {
+        // Mark as read inline to avoid dependency on markAsRead
+        try {
+          await fetch("/api/agent-coordinator", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "mark_read", ids: newAnnouncements.map((a) => a.id) }),
+          });
+        } catch {
+          // Ignore errors for auto-mark
+        }
       }
     } catch (error) {
       console.error("[useAgentEvents] Fetch error:", error);
@@ -107,7 +114,7 @@ export function useAgentEvents(options?: {
         isConnected: false,
       }));
     }
-  }, [maxAnnouncements, autoMarkRead]);
+  }, [maxAnnouncements, autoMarkRead, filterOldAnnouncements]);
 
   // Mark announcements as read
   const markAsRead = useCallback(async (ids: string[]) => {
@@ -224,8 +231,13 @@ export function useAgentEvents(options?: {
       const agentEvent = event.detail;
       if (agentEvent?.announcement) {
         setState((prev) => {
+          // Check for duplicate by ID
           const exists = prev.announcements.some((a) => a.id === agentEvent.id);
           if (exists) return prev;
+
+          // Skip if event is too old
+          const cutoff = Date.now() - EVENT_TTL_MS;
+          if (agentEvent.timestamp < cutoff) return prev;
 
           const newAnnouncement: Announcement = {
             id: agentEvent.id,
@@ -236,7 +248,9 @@ export function useAgentEvents(options?: {
             read: false,
           };
 
-          const merged = [newAnnouncement, ...prev.announcements].slice(0, maxAnnouncements);
+          // Filter out old events when merging
+          const filtered = prev.announcements.filter((a) => a.timestamp > cutoff);
+          const merged = [newAnnouncement, ...filtered].slice(0, maxAnnouncements);
 
           return {
             ...prev,

@@ -5,6 +5,14 @@ import type { TokenLaunch } from "./scout-agent";
 import type { AIAction } from "./ai-agent";
 import type { DistributionResult, CreatorRanking } from "./creator-rewards-agent";
 import { formatSol } from "./solana-utils";
+import {
+  isNeonConfigured,
+  initializeAgentFeedTables,
+  hasEventBeenEmitted,
+  recordEmittedEvent,
+  cleanupOldEmittedEvents,
+  getEmittedEventIds,
+} from "./neon";
 
 // ============================================================================
 // EVENT TYPES
@@ -96,14 +104,54 @@ const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Run cleanup every 5 minutes
 
 let cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
 
+// Database initialization state
+let dbInitialized = false;
+let dbInitPromise: Promise<void> | null = null;
+
+// In-memory cache of emitted event IDs (loaded from database on cold start)
+let emittedEventIdsCache: Set<string> = new Set();
+
 /**
  * Remove events older than EVENT_TTL_MS
  */
-function cleanupExpiredEvents(): void {
+async function cleanupExpiredEvents(): Promise<void> {
   const cutoff = Date.now() - EVENT_TTL_MS;
-  const beforeCount = state.processedEvents.length;
 
+  // Clean up in-memory events
   state.processedEvents = state.processedEvents.filter((event) => event.timestamp > cutoff);
+
+  // Clean up database events (fire and forget)
+  if (isNeonConfigured()) {
+    cleanupOldEmittedEvents().catch((err) => {
+      console.error("[Agent Coordinator] Failed to cleanup database events:", err);
+    });
+  }
+}
+
+/**
+ * Initialize database tables and load existing event IDs
+ */
+async function initializeDatabase(): Promise<void> {
+  if (dbInitialized) return;
+  if (dbInitPromise) return dbInitPromise;
+
+  dbInitPromise = (async () => {
+    try {
+      if (isNeonConfigured()) {
+        await initializeAgentFeedTables();
+        // Load existing event IDs from database to prevent duplicates on cold start
+        emittedEventIdsCache = await getEmittedEventIds();
+        console.log(`[Agent Coordinator] Loaded ${emittedEventIdsCache.size} existing event IDs from database`);
+      }
+      dbInitialized = true;
+    } catch (error) {
+      console.error("[Agent Coordinator] Failed to initialize database:", error);
+    } finally {
+      dbInitPromise = null;
+    }
+  })();
+
+  return dbInitPromise;
 }
 
 // ============================================================================
@@ -124,11 +172,18 @@ export function startCoordinator(): void {
   if (state.isRunning) return;
   state.isRunning = true;
 
+  // Initialize database (non-blocking)
+  initializeDatabase().catch((err) => {
+    console.error("[Agent Coordinator] Database init failed:", err);
+  });
+
   // Start periodic cleanup of expired events
   if (!cleanupIntervalId) {
-    cleanupIntervalId = setInterval(cleanupExpiredEvents, CLEANUP_INTERVAL_MS);
+    cleanupIntervalId = setInterval(() => {
+      cleanupExpiredEvents().catch(() => {});
+    }, CLEANUP_INTERVAL_MS);
     // Run immediate cleanup on start
-    cleanupExpiredEvents();
+    cleanupExpiredEvents().catch(() => {});
   }
 }
 
@@ -147,15 +202,34 @@ export function stopCoordinator(): void {
 
 /**
  * Emit an event to the coordinator
+ * Returns null if event was deduplicated (already emitted)
  */
 export async function emitEvent(
   type: AgentEventType,
   source: AgentSource,
   data: Record<string, unknown>,
-  priority: EventPriority = "medium"
-): Promise<AgentEvent> {
+  priority: EventPriority = "medium",
+  eventId?: string // Optional custom event ID for deduplication
+): Promise<AgentEvent | null> {
+  // Use custom ID if provided, otherwise generate one
+  const id = eventId || generateEventId();
+
+  // Check in-memory cache first (fast path)
+  if (emittedEventIdsCache.has(id)) {
+    return null; // Already emitted
+  }
+
+  // Check database for duplicates (if configured and ID was provided)
+  if (eventId && isNeonConfigured()) {
+    const alreadyEmitted = await hasEventBeenEmitted(id);
+    if (alreadyEmitted) {
+      emittedEventIdsCache.add(id); // Cache for future checks
+      return null;
+    }
+  }
+
   const event: AgentEvent = {
-    id: generateEventId(),
+    id,
     type,
     source,
     data,
@@ -166,6 +240,28 @@ export async function emitEvent(
 
   // Generate announcement text for the event
   event.announcement = generateAnnouncement(event);
+
+  // Add to in-memory cache
+  emittedEventIdsCache.add(id);
+
+  // Limit cache size
+  if (emittedEventIdsCache.size > 2000) {
+    const toRemove = Array.from(emittedEventIdsCache).slice(0, 1000);
+    toRemove.forEach((eventId) => emittedEventIdsCache.delete(eventId));
+  }
+
+  // Record to database (fire and forget for performance)
+  if (isNeonConfigured()) {
+    recordEmittedEvent({
+      id,
+      event_type: type,
+      message: event.announcement || "",
+      priority,
+      data,
+    }).catch((err) => {
+      console.error("[Agent Coordinator] Failed to record event to database:", err);
+    });
+  }
 
   // Add to queue
   state.eventQueue.push(event);
@@ -344,55 +440,60 @@ function generateAnnouncement(event: AgentEvent): string {
 
 /**
  * Emit a token launch event (from Scout Agent)
+ * Returns null if event was deduplicated
  */
-export async function emitTokenLaunch(launch: TokenLaunch): Promise<AgentEvent> {
+export async function emitTokenLaunch(launch: TokenLaunch): Promise<AgentEvent | null> {
   const priority: EventPriority = launch.platform === "bags" ? "high" : "medium";
   return emitEvent("token_launch", "scout", launch as unknown as Record<string, unknown>, priority);
 }
 
 /**
  * Emit a price pump event
+ * Returns null if event was deduplicated
  */
 export async function emitPricePump(
   symbol: string,
   change: number,
   price?: number,
   mint?: string
-): Promise<AgentEvent> {
+): Promise<AgentEvent | null> {
   const priority: EventPriority = change >= 50 ? "high" : change >= 20 ? "medium" : "low";
   return emitEvent("token_pump", "price-monitor", { symbol, change, price, mint }, priority);
 }
 
 /**
  * Emit a price dump event
+ * Returns null if event was deduplicated
  */
 export async function emitPriceDump(
   symbol: string,
   change: number,
   price?: number,
   mint?: string
-): Promise<AgentEvent> {
+): Promise<AgentEvent | null> {
   const priority: EventPriority = Math.abs(change) >= 50 ? "high" : "medium";
   return emitEvent("token_dump", "price-monitor", { symbol, change, price, mint }, priority);
 }
 
 /**
  * Emit a fee claim event
+ * Returns null if event was deduplicated
  */
 export async function emitFeeClaim(
   username: string,
   amount: number,
   tokenSymbol?: string,
   mint?: string
-): Promise<AgentEvent> {
+): Promise<AgentEvent | null> {
   const priority: EventPriority = amount >= 1 ? "high" : amount >= 0.1 ? "medium" : "low";
   return emitEvent("fee_claim", "world-state", { username, amount, tokenSymbol, mint }, priority);
 }
 
 /**
  * Emit a distribution event (from Creator Rewards Agent)
+ * Returns null if event was deduplicated
  */
-export async function emitDistribution(result: DistributionResult): Promise<AgentEvent> {
+export async function emitDistribution(result: DistributionResult): Promise<AgentEvent | null> {
   return emitEvent(
     "distribution",
     "creator-rewards",
@@ -403,12 +504,13 @@ export async function emitDistribution(result: DistributionResult): Promise<Agen
 
 /**
  * Emit a world health change event
+ * Returns null if event was deduplicated
  */
 export async function emitWorldHealthChange(
   health: number,
   previousHealth: number,
   status: string
-): Promise<AgentEvent> {
+): Promise<AgentEvent | null> {
   const change = Math.abs(health - previousHealth);
   const priority: EventPriority = change >= 20 ? "high" : change >= 10 ? "medium" : "low";
   return emitEvent(
@@ -421,13 +523,15 @@ export async function emitWorldHealthChange(
 
 /**
  * Emit an AI agent insight
+ * Returns null if event was deduplicated
  */
-export async function emitAgentInsight(message: string, action?: AIAction): Promise<AgentEvent> {
+export async function emitAgentInsight(message: string, action?: AIAction): Promise<AgentEvent | null> {
   return emitEvent("agent_insight", "ai-agent", { message, action }, "low");
 }
 
 /**
  * Emit a whale alert
+ * Returns null if event was deduplicated
  */
 export async function emitWhaleAlert(
   action: "buy" | "sell",
@@ -435,7 +539,7 @@ export async function emitWhaleAlert(
   tokenSymbol: string,
   mint?: string,
   wallet?: string
-): Promise<AgentEvent> {
+): Promise<AgentEvent | null> {
   return emitEvent(
     "whale_alert",
     "price-monitor",

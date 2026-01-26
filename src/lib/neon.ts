@@ -1191,6 +1191,237 @@ export async function getLastWheelSpin(wallet: string): Promise<number | null> {
   }
 }
 
+// ============================================
+// Agent Feed Event Persistence
+// ============================================
+
+export interface EmittedEventRecord {
+  id: string;
+  event_type: string;
+  message: string;
+  priority: string;
+  data: Record<string, unknown>;
+  emitted_at: string;
+}
+
+export interface MilestoneRecord {
+  id: string; // format: {mint}-{threshold}
+  mint: string;
+  threshold: number;
+  token_symbol: string;
+  achieved_at: string;
+}
+
+// Initialize agent feed tables
+export async function initializeAgentFeedTables(): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    // Create emitted_events table for tracking events
+    await sql`
+      CREATE TABLE IF NOT EXISTS emitted_events (
+        id VARCHAR(255) PRIMARY KEY,
+        event_type VARCHAR(50) NOT NULL,
+        message TEXT,
+        priority VARCHAR(20),
+        data JSONB,
+        emitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Create indexes for efficient queries
+    await sql`CREATE INDEX IF NOT EXISTS idx_emitted_events_emitted_at ON emitted_events(emitted_at)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_emitted_events_type ON emitted_events(event_type)`;
+
+    // Create milestone_achievements table
+    await sql`
+      CREATE TABLE IF NOT EXISTS milestone_achievements (
+        id VARCHAR(255) PRIMARY KEY,
+        mint VARCHAR(255) NOT NULL,
+        threshold DECIMAL NOT NULL,
+        token_symbol VARCHAR(50),
+        achieved_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    await sql`CREATE INDEX IF NOT EXISTS idx_milestone_mint ON milestone_achievements(mint)`;
+
+    return true;
+  } catch (error) {
+    console.error("[Neon] Error initializing agent feed tables:", error);
+    return false;
+  }
+}
+
+// Check if an event has already been emitted
+export async function hasEventBeenEmitted(eventId: string): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    const result = await sql`
+      SELECT id FROM emitted_events WHERE id = ${eventId} LIMIT 1
+    `;
+    return (result as unknown[]).length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// Record an emitted event
+export async function recordEmittedEvent(event: {
+  id: string;
+  event_type: string;
+  message: string;
+  priority: string;
+  data: Record<string, unknown>;
+}): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await sql`
+      INSERT INTO emitted_events (id, event_type, message, priority, data)
+      VALUES (${event.id}, ${event.event_type}, ${event.message}, ${event.priority}, ${JSON.stringify(event.data)})
+      ON CONFLICT (id) DO NOTHING
+    `;
+    return true;
+  } catch (error) {
+    console.error("[Neon] Error recording emitted event:", error);
+    return false;
+  }
+}
+
+// Get recent emitted events (for loading on cold start)
+export async function getRecentEmittedEvents(
+  hoursBack: number = 24
+): Promise<EmittedEventRecord[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT id, event_type, message, priority, data, emitted_at
+      FROM emitted_events
+      WHERE emitted_at > NOW() - INTERVAL '${hoursBack} hours'
+      ORDER BY emitted_at DESC
+      LIMIT 100
+    `;
+    return result as EmittedEventRecord[];
+  } catch (error) {
+    console.error("[Neon] Error fetching recent events:", error);
+    return [];
+  }
+}
+
+// Clean up old emitted events (older than 24 hours)
+export async function cleanupOldEmittedEvents(): Promise<number> {
+  const sql = await getSql();
+  if (!sql) return 0;
+
+  try {
+    const result = await sql`
+      DELETE FROM emitted_events
+      WHERE emitted_at < NOW() - INTERVAL '24 hours'
+      RETURNING id
+    `;
+    return (result as unknown[]).length;
+  } catch (error) {
+    console.error("[Neon] Error cleaning up old events:", error);
+    return 0;
+  }
+}
+
+// Check if a milestone has been achieved
+export async function hasMilestoneBeenAchieved(mint: string, threshold: number): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    const milestoneId = `${mint}-${threshold}`;
+    const result = await sql`
+      SELECT id FROM milestone_achievements WHERE id = ${milestoneId} LIMIT 1
+    `;
+    return (result as unknown[]).length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// Record a milestone achievement
+export async function recordMilestoneAchievement(
+  mint: string,
+  threshold: number,
+  tokenSymbol: string
+): Promise<{ isNew: boolean; achievedAt: Date }> {
+  const sql = await getSql();
+  if (!sql) return { isNew: false, achievedAt: new Date() };
+
+  const milestoneId = `${mint}-${threshold}`;
+
+  try {
+    // First check if it exists
+    const existing = await sql`
+      SELECT achieved_at FROM milestone_achievements WHERE id = ${milestoneId} LIMIT 1
+    `;
+
+    if ((existing as unknown[]).length > 0) {
+      // Already achieved
+      const row = (existing as Array<{ achieved_at: string }>)[0];
+      return { isNew: false, achievedAt: new Date(row.achieved_at) };
+    }
+
+    // Record new milestone
+    await sql`
+      INSERT INTO milestone_achievements (id, mint, threshold, token_symbol)
+      VALUES (${milestoneId}, ${mint}, ${threshold}, ${tokenSymbol})
+      ON CONFLICT (id) DO NOTHING
+    `;
+
+    return { isNew: true, achievedAt: new Date() };
+  } catch (error) {
+    console.error("[Neon] Error recording milestone:", error);
+    return { isNew: false, achievedAt: new Date() };
+  }
+}
+
+// Get all milestones for a token
+export async function getTokenMilestones(mint: string): Promise<MilestoneRecord[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT id, mint, threshold, token_symbol, achieved_at
+      FROM milestone_achievements
+      WHERE mint = ${mint}
+      ORDER BY threshold ASC
+    `;
+    return result as MilestoneRecord[];
+  } catch (error) {
+    console.error("[Neon] Error fetching token milestones:", error);
+    return [];
+  }
+}
+
+// Get all emitted event IDs (for deduplication on cold start)
+export async function getEmittedEventIds(): Promise<Set<string>> {
+  const sql = await getSql();
+  if (!sql) return new Set();
+
+  try {
+    const result = await sql`
+      SELECT id FROM emitted_events
+      WHERE emitted_at > NOW() - INTERVAL '24 hours'
+    `;
+    return new Set((result as Array<{ id: string }>).map(r => r.id));
+  } catch (error) {
+    console.error("[Neon] Error fetching emitted event IDs:", error);
+    return new Set();
+  }
+}
+
 // Get casino history for a wallet
 export async function getCasinoHistory(wallet: string): Promise<CasinoHistoryEntry[] | null> {
   const sql = await getSql();

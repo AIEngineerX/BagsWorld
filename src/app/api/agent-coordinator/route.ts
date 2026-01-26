@@ -13,6 +13,14 @@ import {
   type AgentEvent,
 } from "@/lib/agent-coordinator";
 import { connectToCoordinator as connectAIAgent } from "@/lib/ai-agent";
+import {
+  isNeonConfigured,
+  getRecentEmittedEvents,
+  initializeAgentFeedTables,
+} from "@/lib/neon";
+
+// 24 hour TTL for events
+const EVENT_TTL_MS = 24 * 60 * 60 * 1000;
 
 // ============================================================================
 // ANNOUNCEMENT QUEUE
@@ -117,21 +125,32 @@ export async function GET(request: Request) {
     case "announcements": {
       const unreadOnly = searchParams.get("unread") === "true";
       const count = parseInt(searchParams.get("count") || "10");
+      const cutoff = Date.now() - EVENT_TTL_MS;
 
-      let announcements = unreadOnly ? announcementQueue.filter((a) => !a.read) : announcementQueue;
+      // Filter out old events first
+      let announcements = announcementQueue.filter((a) => a.timestamp > cutoff);
+
+      if (unreadOnly) {
+        announcements = announcements.filter((a) => !a.read);
+      }
 
       announcements = announcements.slice(0, count);
 
       return NextResponse.json({
         announcements,
-        totalUnread: announcementQueue.filter((a) => !a.read).length,
+        totalUnread: announcementQueue.filter((a) => !a.read && a.timestamp > cutoff).length,
       });
     }
 
     case "poll": {
       // Long-poll for new announcements (for game client)
       const since = parseInt(searchParams.get("since") || "0");
-      const newAnnouncements = announcementQueue.filter((a) => a.timestamp > since && !a.read);
+      const cutoff = Date.now() - EVENT_TTL_MS;
+
+      // Filter: newer than 'since', not read, and not older than 24 hours
+      const newAnnouncements = announcementQueue.filter(
+        (a) => a.timestamp > since && !a.read && a.timestamp > cutoff
+      );
 
       return NextResponse.json({
         announcements: newAnnouncements,
@@ -231,10 +250,54 @@ async function initializeCoordinator(): Promise<void> {
   initAnnouncementHandler();
   connectAIAgent();
 
+  // Load recent events from database on cold start
+  if (isNeonConfigured()) {
+    try {
+      await initializeAgentFeedTables();
+      const recentEvents = await getRecentEmittedEvents(24);
+
+      // Populate announcement queue with database events
+      for (const event of recentEvents) {
+        const exists = announcementQueue.some((a) => a.id === event.id);
+        if (!exists) {
+          announcementQueue.push({
+            id: event.id,
+            message: event.message,
+            priority: event.priority as EventPriority,
+            timestamp: new Date(event.emitted_at).getTime(),
+            eventType: event.event_type as AgentEventType,
+            read: true, // Mark as read since they're historical
+          });
+        }
+      }
+
+      // Sort by timestamp (newest first)
+      announcementQueue.sort((a, b) => b.timestamp - a.timestamp);
+
+      // Trim to max size
+      if (announcementQueue.length > MAX_ANNOUNCEMENTS) {
+        announcementQueue = announcementQueue.slice(0, MAX_ANNOUNCEMENTS);
+      }
+
+      console.log(`[Agent Coordinator API] Loaded ${recentEvents.length} events from database`);
+    } catch (error) {
+      console.error("[Agent Coordinator API] Failed to load events from database:", error);
+    }
+  }
+
   console.log("[Agent Coordinator API] Auto-initialized");
+}
+
+// Clean up old announcements from the queue (call periodically)
+function cleanupOldAnnouncements(): void {
+  const cutoff = Date.now() - EVENT_TTL_MS;
+  announcementQueue = announcementQueue.filter((a) => a.timestamp > cutoff);
 }
 
 // Initialize when this module loads on the server
 if (typeof window === "undefined") {
   initializeCoordinator();
+
+  // Set up periodic cleanup
+  setInterval(cleanupOldAnnouncements, 5 * 60 * 1000); // Every 5 minutes
 }
