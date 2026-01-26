@@ -141,22 +141,30 @@ router.delete('/sessions/:sessionId', async (req: Request, res: Response) => {
     return;
   }
 
-  if (agentId) {
-    await sql`
-      DELETE FROM conversation_messages
-      WHERE session_id = ${sessionId} AND agent_id = ${agentId as string}
-    `;
-  } else {
-    await sql`
-      DELETE FROM conversation_messages
-      WHERE session_id = ${sessionId}
-    `;
-  }
+  try {
+    if (agentId) {
+      await sql`
+        DELETE FROM conversation_messages
+        WHERE session_id = ${sessionId} AND agent_id = ${agentId as string}
+      `;
+    } else {
+      await sql`
+        DELETE FROM conversation_messages
+        WHERE session_id = ${sessionId}
+      `;
+    }
 
-  res.json({
-    success: true,
-    message: `Session ${sessionId} cleared${agentId ? ` for agent ${agentId}` : ''}`,
-  });
+    res.json({
+      success: true,
+      message: `Session ${sessionId} cleared${agentId ? ` for agent ${agentId}` : ''}`,
+    });
+  } catch (err) {
+    console.error(`[chat] Error in DELETE /sessions/${sessionId}:`, err);
+    res.status(500).json({
+      error: 'Failed to clear session',
+      message: err instanceof Error ? err.message : 'Unknown error',
+    });
+  }
 });
 
 // GET /api/sessions/:sessionId/history - Get conversation history
@@ -170,33 +178,41 @@ router.get('/sessions/:sessionId/history', async (req: Request, res: Response) =
     return;
   }
 
-  const messageLimit = Math.min(parseInt(limit as string) || 50, 100);
+  try {
+    const messageLimit = Math.min(parseInt(limit as string) || 50, 100);
 
-  let messages;
-  if (agentId) {
-    messages = await sql`
-      SELECT id, agent_id, role, content, created_at
-      FROM conversation_messages
-      WHERE session_id = ${sessionId} AND agent_id = ${agentId as string}
-      ORDER BY created_at ASC
-      LIMIT ${messageLimit}
-    `;
-  } else {
-    messages = await sql`
-      SELECT id, agent_id, role, content, created_at
-      FROM conversation_messages
-      WHERE session_id = ${sessionId}
-      ORDER BY created_at ASC
-      LIMIT ${messageLimit}
-    `;
+    let messages;
+    if (agentId) {
+      messages = await sql`
+        SELECT id, agent_id, role, content, created_at
+        FROM conversation_messages
+        WHERE session_id = ${sessionId} AND agent_id = ${agentId as string}
+        ORDER BY created_at ASC
+        LIMIT ${messageLimit}
+      `;
+    } else {
+      messages = await sql`
+        SELECT id, agent_id, role, content, created_at
+        FROM conversation_messages
+        WHERE session_id = ${sessionId}
+        ORDER BY created_at ASC
+        LIMIT ${messageLimit}
+      `;
+    }
+
+    res.json({
+      success: true,
+      sessionId,
+      messages,
+      count: messages.length,
+    });
+  } catch (err) {
+    console.error(`[chat] Error in GET /sessions/${sessionId}/history:`, err);
+    res.status(500).json({
+      error: 'Failed to fetch history',
+      message: err instanceof Error ? err.message : 'Unknown error',
+    });
   }
-
-  res.json({
-    success: true,
-    sessionId,
-    messages,
-    count: messages.length,
-  });
 });
 
 export default router;
