@@ -6,6 +6,7 @@ import {
   generateCharacterPrompt,
   type CharacterDefinition,
 } from "./bags-bot.character";
+import { tolyCharacter } from "./toly.character";
 import { neoCharacter } from "./neo.character";
 import { finnCharacter } from "./finn.character";
 import { ghostCharacter } from "./ghost.character";
@@ -20,9 +21,11 @@ import { samCharacter } from "./sam.character";
 import { alaaCharacter } from "./alaa.character";
 import { carloCharacter } from "./carlo.character";
 import { bnnCharacter } from "./bnn.character";
+import { professorOakCharacter } from "./professor-oak.character";
 
 // Export all characters
 export { bagsBotCharacter } from "./bags-bot.character";
+export { tolyCharacter } from "./toly.character";
 export { neoCharacter } from "./neo.character";
 export { finnCharacter } from "./finn.character";
 export { ghostCharacter } from "./ghost.character";
@@ -37,6 +40,7 @@ export { samCharacter } from "./sam.character";
 export { alaaCharacter } from "./alaa.character";
 export { carloCharacter } from "./carlo.character";
 export { bnnCharacter } from "./bnn.character";
+export { professorOakCharacter } from "./professor-oak.character";
 
 // Export types and utilities
 export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.character";
@@ -44,6 +48,7 @@ export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.ch
 // Character registry by ID
 export const characters: Record<string, CharacterDefinition> = {
   "bags-bot": bagsBotCharacter,
+  toly: tolyCharacter,
   neo: neoCharacter,
   finn: finnCharacter,
   ghost: ghostCharacter,
@@ -58,6 +63,7 @@ export const characters: Record<string, CharacterDefinition> = {
   alaa: alaaCharacter,
   carlo: carloCharacter,
   bnn: bnnCharacter,
+  "professor-oak": professorOakCharacter,
 };
 
 // Get character by ID with fallback
@@ -86,6 +92,12 @@ export const characterMeta: Record<
     role: "World Guide",
     color: "#f59e0b", // amber
     icon: "🤖",
+  },
+  toly: {
+    displayName: "Toly",
+    role: "Solana Co-Founder",
+    color: "#14f195", // solana green
+    icon: "☀️",
   },
   neo: {
     displayName: "Neo",
@@ -175,6 +187,13 @@ export const characterMeta: Record<
     role: "News Network",
     color: "#3b82f6", // news blue
     icon: "📺",
+    zone: "academy",
+  },
+  "professor-oak": {
+    displayName: "Professor Oak",
+    role: "Launch Wizard",
+    color: "#a16207", // oak brown
+    icon: "🧪",
     zone: "academy",
   },
 };
