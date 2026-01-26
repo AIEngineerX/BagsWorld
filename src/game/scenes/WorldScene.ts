@@ -1980,7 +1980,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * Show Founder's Corner popup with building-specific educational content
+   * Show Founder's Corner popup with pixel-art themed educational content
    */
   private showFoundersPopup(type: string): void {
     // Don't open if popup already exists
@@ -1988,133 +1988,306 @@ export class WorldScene extends Phaser.Scene {
 
     const s = SCALE;
     const centerX = GAME_WIDTH / 2;
-    const centerY = Math.round(320 * s);
+    const centerY = Math.round(300 * s);
 
     // Create container for popup
-    this.foundersPopup = this.add.container(0, 0);
-    this.foundersPopup.setDepth(100);
+    const popup = this.add.container(0, 0);
+    this.foundersPopup = popup;
+    popup.setDepth(100);
 
-    // Dark overlay (covers entire screen)
+    // Dark overlay with pixel grid pattern effect
     const overlay = this.add.rectangle(
       GAME_WIDTH / 2,
       GAME_WIDTH / 2,
       GAME_WIDTH * 2,
       GAME_WIDTH * 2,
-      0x000000,
-      0.75
+      0x0a0a0f,
+      0.85
     );
     overlay.setInteractive();
     overlay.on("pointerdown", () => this.hideFoundersPopup());
-    this.foundersPopup.add(overlay);
+    popup.add(overlay);
 
-    // Panel dimensions based on content type
-    const panelW = Math.round(320 * s);
-    const panelH = Math.round(280 * s);
+    // Get content and theme based on building type
+    const content = this.getFoundersPopupContent(type);
+    const theme = this.getFoundersPopupTheme(type);
 
-    // Panel background
-    const panelBg = this.add.rectangle(
+    // Panel dimensions
+    const panelW = Math.round(340 * s);
+    const panelH = Math.round(320 * s);
+    const borderW = Math.round(4 * s);
+
+    // === PIXEL ART BORDER (multi-layer for chunky effect) ===
+    // Outer shadow
+    const shadow = this.add.rectangle(
+      centerX + Math.round(4 * s),
+      centerY + Math.round(4 * s),
+      panelW + borderW * 2,
+      panelH + borderW * 2,
+      0x000000,
+      0.6
+    );
+    popup.add(shadow);
+
+    // Outer border (theme accent color)
+    const outerBorder = this.add.rectangle(
       centerX,
       centerY,
-      panelW + Math.round(6 * s),
-      panelH + Math.round(6 * s),
-      0x000000
+      panelW + borderW * 2,
+      panelH + borderW * 2,
+      theme.accent
     );
-    this.foundersPopup.add(panelBg);
+    popup.add(outerBorder);
 
-    const panel = this.add.rectangle(centerX, centerY, panelW, panelH, 0x1f2937);
-    panel.setStrokeStyle(3, 0x4ade80);
-    this.foundersPopup.add(panel);
-
-    // Get content based on building type
-    const content = this.getFoundersPopupContent(type);
-
-    // Title
-    const titleText = this.add.text(
+    // Inner border (dark)
+    const innerBorder = this.add.rectangle(
       centerX,
-      centerY - panelH / 2 + Math.round(25 * s),
-      content.title,
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(12 * s)}px`,
-        color: "#fbbf24",
-        fontStyle: "bold",
-      }
+      centerY,
+      panelW + borderW,
+      panelH + borderW,
+      0x1a1a2e
     );
-    titleText.setOrigin(0.5);
-    this.foundersPopup.add(titleText);
+    popup.add(innerBorder);
 
-    // Divider line
-    const divider = this.add.rectangle(
+    // Main panel background (gradient effect via layered rectangles)
+    const panelDark = this.add.rectangle(centerX, centerY, panelW, panelH, 0x16213e);
+    popup.add(panelDark);
+
+    // Subtle top highlight for depth
+    const topHighlight = this.add.rectangle(
+      centerX,
+      centerY - panelH / 2 + Math.round(30 * s),
+      panelW - Math.round(8 * s),
+      Math.round(60 * s),
+      0x1a2744,
+      0.5
+    );
+    popup.add(topHighlight);
+
+    // === CORNER DECORATIONS (pixel art style) ===
+    const cornerSize = Math.round(8 * s);
+    const corners = [
+      { x: centerX - panelW / 2 + cornerSize, y: centerY - panelH / 2 + cornerSize },
+      { x: centerX + panelW / 2 - cornerSize, y: centerY - panelH / 2 + cornerSize },
+      { x: centerX - panelW / 2 + cornerSize, y: centerY + panelH / 2 - cornerSize },
+      { x: centerX + panelW / 2 - cornerSize, y: centerY + panelH / 2 - cornerSize },
+    ];
+    corners.forEach((corner) => {
+      const dot = this.add.rectangle(corner.x, corner.y, cornerSize, cornerSize, theme.accent, 0.8);
+      popup.add(dot);
+    });
+
+    // === HEADER SECTION ===
+    // Icon background (pixel circle effect)
+    const iconBgOuter = this.add.rectangle(
       centerX,
       centerY - panelH / 2 + Math.round(45 * s),
-      panelW - Math.round(40 * s),
-      Math.round(2 * s),
-      0x4ade80
+      Math.round(50 * s),
+      Math.round(50 * s),
+      theme.accent
     );
-    this.foundersPopup.add(divider);
+    popup.add(iconBgOuter);
 
-    // Content text
-    const contentText = this.add.text(centerX, centerY + Math.round(10 * s), content.body, {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(9 * s)}px`,
-      color: "#ffffff",
-      align: "left",
-      lineSpacing: 6,
-      wordWrap: { width: panelW - Math.round(40 * s) },
-    });
-    contentText.setOrigin(0.5, 0.5);
-    this.foundersPopup.add(contentText);
-
-    // Close button
-    const closeBtnBg = this.add.rectangle(
-      centerX + panelW / 2 - Math.round(20 * s),
-      centerY - panelH / 2 + Math.round(20 * s),
-      Math.round(24 * s),
-      Math.round(24 * s),
-      0x374151
+    const iconBgInner = this.add.rectangle(
+      centerX,
+      centerY - panelH / 2 + Math.round(45 * s),
+      Math.round(44 * s),
+      Math.round(44 * s),
+      0x1a1a2e
     );
-    closeBtnBg.setInteractive({ useHandCursor: true });
-    closeBtnBg.on("pointerdown", () => this.hideFoundersPopup());
-    closeBtnBg.on("pointerover", () => closeBtnBg.setFillStyle(0x4b5563));
-    closeBtnBg.on("pointerout", () => closeBtnBg.setFillStyle(0x374151));
-    this.foundersPopup.add(closeBtnBg);
+    popup.add(iconBgInner);
 
-    const closeBtn = this.add.text(
-      centerX + panelW / 2 - Math.round(20 * s),
-      centerY - panelH / 2 + Math.round(20 * s),
-      "X",
+    // Building icon (emoji representation)
+    const iconText = this.add.text(
+      centerX,
+      centerY - panelH / 2 + Math.round(45 * s),
+      theme.icon,
       {
         fontFamily: "monospace",
-        fontSize: `${Math.round(12 * s)}px`,
-        color: "#ef4444",
-        fontStyle: "bold",
+        fontSize: `${Math.round(20 * s)}px`,
       }
     );
-    closeBtn.setOrigin(0.5);
-    this.foundersPopup.add(closeBtn);
+    iconText.setOrigin(0.5);
+    popup.add(iconText);
 
-    // Footer hint
-    const footerText = this.add.text(
+    // Title with pixel-style underline
+    const titleY = centerY - panelH / 2 + Math.round(85 * s);
+    const titleText = this.add.text(centerX, titleY, content.title, {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(11 * s)}px`,
+      color: theme.titleColor,
+      fontStyle: "bold",
+    });
+    titleText.setOrigin(0.5);
+    popup.add(titleText);
+
+    // Pixel divider (dashed style)
+    const dividerY = titleY + Math.round(18 * s);
+    for (let i = 0; i < 12; i++) {
+      const dashX = centerX - Math.round(66 * s) + i * Math.round(12 * s);
+      const dash = this.add.rectangle(
+        dashX,
+        dividerY,
+        Math.round(8 * s),
+        Math.round(2 * s),
+        theme.accent,
+        0.7
+      );
+      popup.add(dash);
+    }
+
+    // === CONTENT SECTION ===
+    // Section backgrounds for visual hierarchy
+    const sectionY = centerY + Math.round(15 * s);
+    const sectionBg = this.add.rectangle(
       centerX,
-      centerY + panelH / 2 - Math.round(20 * s),
-      "Click anywhere to close",
+      sectionY,
+      panelW - Math.round(24 * s),
+      Math.round(160 * s),
+      0x0f172a,
+      0.6
+    );
+    sectionBg.setStrokeStyle(1, theme.accent, 0.3);
+    popup.add(sectionBg);
+
+    // Content text
+    const contentText = this.add.text(centerX, sectionY, content.body, {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(8 * s)}px`,
+      color: "#e2e8f0",
+      align: "left",
+      lineSpacing: 5,
+      wordWrap: { width: panelW - Math.round(50 * s) },
+    });
+    contentText.setOrigin(0.5, 0.5);
+    popup.add(contentText);
+
+    // === PRO TIP SECTION ===
+    const tipY = centerY + panelH / 2 - Math.round(45 * s);
+    const tipBg = this.add.rectangle(
+      centerX,
+      tipY,
+      panelW - Math.round(24 * s),
+      Math.round(32 * s),
+      theme.accent,
+      0.15
+    );
+    tipBg.setStrokeStyle(1, theme.accent, 0.5);
+    popup.add(tipBg);
+
+    const tipLabel = this.add.text(
+      centerX - panelW / 2 + Math.round(24 * s),
+      tipY,
+      "PRO TIP",
       {
         fontFamily: "monospace",
         fontSize: `${Math.round(7 * s)}px`,
-        color: "#6b7280",
+        color: theme.titleColor,
+        fontStyle: "bold",
+      }
+    );
+    tipLabel.setOrigin(0, 0.5);
+    popup.add(tipLabel);
+
+    const tipText = this.add.text(
+      centerX - panelW / 2 + Math.round(70 * s),
+      tipY,
+      content.tip,
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(7 * s)}px`,
+        color: "#94a3b8",
+      }
+    );
+    tipText.setOrigin(0, 0.5);
+    popup.add(tipText);
+
+    // === CLOSE BUTTON (pixel style) ===
+    const closeBtnX = centerX + panelW / 2 - Math.round(18 * s);
+    const closeBtnY = centerY - panelH / 2 + Math.round(18 * s);
+
+    // Button pixel border
+    const closeBtnOuter = this.add.rectangle(
+      closeBtnX,
+      closeBtnY,
+      Math.round(24 * s),
+      Math.round(24 * s),
+      0xef4444
+    );
+    popup.add(closeBtnOuter);
+
+    const closeBtnInner = this.add.rectangle(
+      closeBtnX,
+      closeBtnY,
+      Math.round(20 * s),
+      Math.round(20 * s),
+      0x1a1a2e
+    );
+    closeBtnInner.setInteractive({ useHandCursor: true });
+    closeBtnInner.on("pointerdown", () => this.hideFoundersPopup());
+    closeBtnInner.on("pointerover", () => {
+      closeBtnInner.setFillStyle(0x2a2a3e);
+      closeBtnOuter.setFillStyle(0xff6b6b);
+    });
+    closeBtnInner.on("pointerout", () => {
+      closeBtnInner.setFillStyle(0x1a1a2e);
+      closeBtnOuter.setFillStyle(0xef4444);
+    });
+    popup.add(closeBtnInner);
+
+    const closeBtn = this.add.text(closeBtnX, closeBtnY, "X", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(10 * s)}px`,
+      color: "#ef4444",
+      fontStyle: "bold",
+    });
+    closeBtn.setOrigin(0.5);
+    popup.add(closeBtn);
+
+    // === FOOTER ===
+    const footerText = this.add.text(
+      centerX,
+      centerY + panelH / 2 - Math.round(12 * s),
+      "[ Click anywhere to close ]",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(6 * s)}px`,
+        color: "#475569",
       }
     );
     footerText.setOrigin(0.5);
-    this.foundersPopup.add(footerText);
+    popup.add(footerText);
 
-    // Entrance animation
-    this.foundersPopup.setAlpha(0);
+    // === ENTRANCE ANIMATION ===
+    popup.setAlpha(0);
+    popup.setScale(0.9);
     this.tweens.add({
-      targets: this.foundersPopup,
+      targets: popup,
       alpha: 1,
+      scale: 1,
       duration: 200,
-      ease: "Power2",
+      ease: "Back.easeOut",
     });
+  }
+
+  /**
+   * Get theme colors for Founder's popup based on building type
+   */
+  private getFoundersPopupTheme(type: string): {
+    accent: number;
+    titleColor: string;
+    icon: string;
+  } {
+    switch (type) {
+      case "workshop":
+        return { accent: 0x4ade80, titleColor: "#4ade80", icon: "🔧" }; // Green - DexScreener
+      case "studio":
+        return { accent: 0xfbbf24, titleColor: "#fbbf24", icon: "🎨" }; // Gold - Art
+      case "social":
+        return { accent: 0x60a5fa, titleColor: "#60a5fa", icon: "🌐" }; // Blue - Social
+      default:
+        return { accent: 0x4ade80, titleColor: "#4ade80", icon: "📋" };
+    }
   }
 
   /**
@@ -2139,73 +2312,104 @@ export class WorldScene extends Phaser.Scene {
 
   /**
    * Get content for Founder's Corner popup based on building type
+   * Real data from DexScreener marketplace & docs
    */
-  private getFoundersPopupContent(type: string): { title: string; body: string } {
+  private getFoundersPopupContent(type: string): { title: string; body: string; tip: string } {
     switch (type) {
       case "workshop":
         return {
-          title: "DEXSCREENER ENHANCED TOKEN INFO",
-          body: `COST: $299 USD
-PAYMENT: Crypto or Credit Card
-PROCESSING: Usually minutes (up to 12 hours)
+          title: "DEXSCREENER ENHANCED INFO",
+          body: `ORDER AT:
+marketplace.dexscreener.com/product/token-info
 
-REQUIREMENTS CHECKLIST:
-✓ Token Logo (square, 512x512px recommended)
-✓ Token Header (3:1 ratio, 600x200px min)
-✓ Website URL (required)
-✓ Twitter/X handle (required)
-○ Telegram group (optional)
-○ Discord server (optional)
+COST: $299 (crypto or card)
+TIME: Usually <15 min, max 12 hours
 
-TIP: Have all assets ready before ordering!`,
+WHAT YOU GET:
+  + Custom logo & banner on your page
+  + Social links displayed to traders
+  + Project description & roadmap
+  + Locked supply wallets shown
+    (fixes market cap calculation)
+
+WHAT YOU NEED READY:
+  [x] Token already launched on DEX
+  [x] Logo image (square, PNG/JPG)
+  [x] Banner image (3:1 ratio)
+  [x] Website URL (must be live)
+  [x] Twitter with posts (not empty)
+  [ ] TG/Discord links (optional)
+
+You need the wallet that created the
+token to verify ownership.`,
+          tip: "Wait for first 24h of trading before ordering!",
         };
 
       case "studio":
         return {
-          title: "VISUAL ASSETS GUIDE",
-          body: `TOKEN LOGO REQUIREMENTS:
-• Format: PNG, JPG, WEBP, or GIF
-• Aspect Ratio: 1:1 (square)
-• Recommended Size: 512x512px or higher
-• Minimum Size: 100px width
-• DexScreener handles compression
+          title: "IMAGE SPECS (EXACT)",
+          body: `TOKEN LOGO:
+  Ratio..... 1:1 (square)
+  Size...... 512x512px recommended
+  Format.... PNG, JPG, WebP, GIF
+  Style..... Simple, readable at 32px
 
-TOKEN HEADER/BANNER:
-• Format: PNG, JPG, WEBP, or GIF
-• Aspect Ratio: 3:1 (wide rectangle)
-• Recommended Size: 600x200px or 1500x500px
-• Minimum Width: 600px
+  GOOD: Bold icon, 2-3 colors
+  BAD:  Detailed art, tiny text
 
-TIP: High-res images look better on all devices!`,
+TOKEN BANNER/HEADER:
+  Ratio..... 3:1 (wide rectangle)
+  Size...... 1500x500px recommended
+  Minimum... 600x200px
+  Format.... PNG, JPG, WebP, GIF
+
+  GOOD: Token name, clean design
+  BAD:  Walls of text, busy BGs
+
+FREE TOOLS:
+  Canva..... canva.com (templates)
+  Remove BG. remove.bg (transparent)
+  Compress.. tinypng.com (file size)`,
+          tip: "Your Twitter header works as your DS banner!",
         };
 
       case "social":
         return {
-          title: "SOCIAL LINKS REQUIREMENTS",
-          body: `REQUIRED LINKS:
-✓ Website URL
-  Example: https://yourtoken.com
+          title: "SOCIALS SETUP GUIDE",
+          body: `REQUIRED BY DEXSCREENER:
 
-✓ Twitter/X Handle
-  Example: @yourtoken
+1. WEBSITE (must be live)
+   - Use Carrd.co for free 1-pager
+   - Include: about, tokenomics, links
+   - NO "coming soon" pages
 
-RECOMMENDED (Optional but helps trust):
-○ Telegram Group
-  Example: t.me/yourtoken
+2. TWITTER/X (must have posts)
+   - Pin a tweet about your token
+   - Post chart + CA on launch day
+   - Engage with quote tweets
 
-○ Discord Server
-  Example: discord.gg/yourtoken
+OPTIONAL BUT HELPS:
 
-WHY IT MATTERS:
-Active social presence builds community trust.
-Verified socials show legitimacy to traders.
-More links = more ways for users to connect!`,
+3. TELEGRAM GROUP
+   - Create before launch
+   - Pin: CA, chart link, rules
+   - Get 2-3 mods ready
+
+4. DISCORD (if long-term project)
+   - Overkill for most memecoins
+   - Good if you have roadmap
+
+BAGS.FM SPECIFIC:
+Your creator page IS your website.
+Link: bags.fm/[yourname]`,
+          tip: "Set up TG group BEFORE you launch, not after!",
         };
 
       default:
         return {
           title: "FOUNDER'S CORNER",
-          body: "Click on a building to learn more about launching your token!",
+          body: "Click a building to learn more!",
+          tip: "Each building = one step in the process.",
         };
     }
   }
