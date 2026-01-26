@@ -416,14 +416,14 @@ describe('LLMService', () => {
       expect(callBody.model).toBe('claude-sonnet-4-20250514');
     });
 
-    it('uses Haiku for simple greeting queries', async () => {
+    it('uses default model for simple greeting queries', async () => {
       const service = new LLMService();
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           content: [{ type: 'text', text: 'gm ser!' }],
-          model: 'claude-3-5-haiku-latest',
+          model: 'claude-sonnet-4-20250514',
           usage: { input_tokens: 10, output_tokens: 5 },
         }),
       });
@@ -431,8 +431,8 @@ describe('LLMService', () => {
       await service.generateResponse(mockCharacter, 'gm', []);
 
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(callBody.model).toBe('claude-3-5-haiku-latest');
-      expect(callBody.max_tokens).toBe(150); // Reduced for simple queries
+      expect(callBody.model).toBe('claude-sonnet-4-20250514');
+      expect(callBody.max_tokens).toBe(400); // Fixed max tokens
     });
   });
 
