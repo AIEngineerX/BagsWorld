@@ -659,7 +659,7 @@ app.post('/api/dialogue', async (req, res) => {
     systemPrompt,
     userPrompt,
     [],
-    'claude-3-5-haiku-20241022',
+    'claude-3-5-haiku-latest',
     500
   );
 

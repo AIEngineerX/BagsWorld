@@ -423,7 +423,7 @@ describe('LLMService', () => {
         ok: true,
         json: async () => ({
           content: [{ type: 'text', text: 'gm ser!' }],
-          model: 'claude-3-5-haiku-20241022',
+          model: 'claude-3-5-haiku-latest',
           usage: { input_tokens: 10, output_tokens: 5 },
         }),
       });
@@ -431,7 +431,7 @@ describe('LLMService', () => {
       await service.generateResponse(mockCharacter, 'gm', []);
 
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(callBody.model).toBe('claude-3-5-haiku-20241022');
+      expect(callBody.model).toBe('claude-3-5-haiku-latest');
       expect(callBody.max_tokens).toBe(150); // Reduced for simple queries
     });
   });
