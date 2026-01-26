@@ -1,4 +1,4 @@
-import { Service, type IAgentRuntime } from '../types/elizaos.js';
+import { Service, type IAgentRuntime } from "../types/elizaos.js";
 
 export interface TokenInfo {
   mint: string;
@@ -48,6 +48,7 @@ export interface WorldHealthData {
 
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 30000;
+const MAX_CACHE_SIZE = 500;
 
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
@@ -58,7 +59,27 @@ function getCached<T>(key: string): T | null {
 }
 
 function setCache(key: string, data: unknown): void {
+  // Bound cache size by removing oldest entries if over limit
+  if (cache.size >= MAX_CACHE_SIZE) {
+    cleanupCache();
+  }
   cache.set(key, { data, timestamp: Date.now() });
+}
+
+/**
+ * Remove stale cache entries older than TTL
+ * @returns Number of entries removed
+ */
+export function cleanupCache(): number {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [key, entry] of cache) {
+    if (now - entry.timestamp > CACHE_TTL) {
+      cache.delete(key);
+      cleaned++;
+    }
+  }
+  return cleaned;
 }
 
 interface BagsApiConfig {
@@ -68,13 +89,13 @@ interface BagsApiConfig {
 }
 
 function isRuntime(arg: unknown): arg is IAgentRuntime {
-  return arg !== null && typeof arg === 'object' && 'getSetting' in arg;
+  return arg !== null && typeof arg === "object" && "getSetting" in arg;
 }
 
 export class BagsApiService extends Service {
-  static readonly serviceType = 'bags_api';
+  static readonly serviceType = "bags_api";
 
-  readonly capabilityDescription = 'Bags.fm API integration';
+  readonly capabilityDescription = "Bags.fm API integration";
 
   private baseUrl: string;
   private apiKey?: string;
@@ -84,27 +105,34 @@ export class BagsApiService extends Service {
     super(isRuntime(runtimeOrConfig) ? runtimeOrConfig : undefined);
 
     if (isRuntime(runtimeOrConfig)) {
-      this.baseUrl = (runtimeOrConfig.getSetting('BAGS_API_URL') as string) || 'https://public-api-v2.bags.fm/api/v1';
-      this.apiKey = runtimeOrConfig.getSetting('BAGS_API_KEY') as string;
-      this.bagsWorldUrl = (runtimeOrConfig.getSetting('BAGSWORLD_API_URL') as string) || 'http://localhost:3000';
+      this.baseUrl =
+        (runtimeOrConfig.getSetting("BAGS_API_URL") as string) ||
+        "https://public-api-v2.bags.fm/api/v1";
+      this.apiKey = runtimeOrConfig.getSetting("BAGS_API_KEY") as string;
+      this.bagsWorldUrl =
+        (runtimeOrConfig.getSetting("BAGSWORLD_API_URL") as string) || "http://localhost:3000";
     } else if (runtimeOrConfig) {
-      this.baseUrl = runtimeOrConfig.baseUrl || process.env.BAGS_API_URL || 'https://public-api-v2.bags.fm/api/v1';
+      this.baseUrl =
+        runtimeOrConfig.baseUrl ||
+        process.env.BAGS_API_URL ||
+        "https://public-api-v2.bags.fm/api/v1";
       this.apiKey = runtimeOrConfig.apiKey || process.env.BAGS_API_KEY;
-      this.bagsWorldUrl = runtimeOrConfig.bagsWorldUrl || process.env.BAGSWORLD_API_URL || 'http://localhost:3000';
+      this.bagsWorldUrl =
+        runtimeOrConfig.bagsWorldUrl || process.env.BAGSWORLD_API_URL || "http://localhost:3000";
     } else {
-      this.baseUrl = process.env.BAGS_API_URL || 'https://public-api-v2.bags.fm/api/v1';
+      this.baseUrl = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
       this.apiKey = process.env.BAGS_API_KEY;
-      this.bagsWorldUrl = process.env.BAGSWORLD_API_URL || 'http://localhost:3000';
+      this.bagsWorldUrl = process.env.BAGSWORLD_API_URL || "http://localhost:3000";
     }
   }
 
   static async start(runtime: IAgentRuntime): Promise<BagsApiService> {
-    console.log('[BagsApiService] Starting service...');
+    console.log("[BagsApiService] Starting service...");
     const service = new BagsApiService(runtime);
 
     const hasApiKey = !!service.apiKey;
     console.log(`[BagsApiService] Initialized with API URL: ${service.baseUrl}`);
-    console.log(`[BagsApiService] API Key: ${hasApiKey ? 'configured' : 'not configured'}`);
+    console.log(`[BagsApiService] API Key: ${hasApiKey ? "configured" : "not configured"}`);
 
     return service;
   }
@@ -119,11 +147,11 @@ export class BagsApiService extends Service {
     if (cached) return cached;
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
     if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
     const controller = new AbortController();
@@ -140,7 +168,7 @@ export class BagsApiService extends Service {
         throw new Error(`Bags API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json() as T;
+      const data = (await response.json()) as T;
       setCache(cacheKey, data);
       return data;
     } finally {
@@ -173,17 +201,19 @@ export class BagsApiService extends Service {
       const data = await this.fetch<{ creators: TopCreator[] }>(`/creators/top?limit=${limit}`);
       return data.creators || [];
     } catch (error) {
-      console.error('Failed to fetch top creators:', error);
+      console.error("Failed to fetch top creators:", error);
       return [];
     }
   }
 
   async getRecentLaunches(limit: number = 10): Promise<RecentLaunch[]> {
     try {
-      const data = await this.fetch<{ launches: RecentLaunch[] }>(`/token-launch/recent?limit=${limit}`);
+      const data = await this.fetch<{ launches: RecentLaunch[] }>(
+        `/token-launch/recent?limit=${limit}`
+      );
       return data.launches || [];
     } catch (error) {
-      console.error('Failed to fetch recent launches:', error);
+      console.error("Failed to fetch recent launches:", error);
       return [];
     }
   }
@@ -196,21 +226,23 @@ export class BagsApiService extends Service {
       const data = await response.json();
       return {
         health: data.health || 50,
-        weather: data.weather || 'cloudy',
+        weather: data.weather || "cloudy",
         totalVolume24h: data.volume24h || 0,
         totalFees24h: data.fees24h || 0,
         activeTokens: data.activeTokens || 0,
         topCreators: data.topCreators || [],
       };
     } catch (error) {
-      console.error('Failed to fetch world health:', error);
+      console.error("Failed to fetch world health:", error);
       return null;
     }
   }
 
   async searchTokens(query: string): Promise<TokenInfo[]> {
     try {
-      const data = await this.fetch<{ tokens: TokenInfo[] }>(`/tokens/search?q=${encodeURIComponent(query)}`);
+      const data = await this.fetch<{ tokens: TokenInfo[] }>(
+        `/tokens/search?q=${encodeURIComponent(query)}`
+      );
       return data.tokens || [];
     } catch (error) {
       console.error(`Failed to search tokens for "${query}":`, error);
@@ -225,8 +257,10 @@ export class BagsApiService extends Service {
 
 let standaloneInstance: BagsApiService | null = null;
 
-export function getBagsApiService(runtimeOrConfig?: IAgentRuntime | { baseUrl?: string; apiKey?: string }): BagsApiService {
-  if (runtimeOrConfig && 'getService' in runtimeOrConfig) {
+export function getBagsApiService(
+  runtimeOrConfig?: IAgentRuntime | { baseUrl?: string; apiKey?: string }
+): BagsApiService {
+  if (runtimeOrConfig && "getService" in runtimeOrConfig) {
     const runtime = runtimeOrConfig as IAgentRuntime;
     const service = runtime.getService<BagsApiService>(BagsApiService.serviceType);
     if (service) return service;

@@ -1,14 +1,16 @@
 // BagsWorld Agents Standalone Server
 // Express server with full LLM integration and Neon DB persistence
 
-import express from 'express';
-import cors from 'cors';
-import { neon, NeonQueryFunction } from '@neondatabase/serverless';
+import express from "express";
+import cors from "cors";
+import { neon, NeonQueryFunction } from "@neondatabase/serverless";
 
-import { getCharacterIds } from './characters/index.js';
-import { AgentCoordinator } from './services/AgentCoordinator.js';
-import { AutonomousService } from './services/AutonomousService.js';
-import type { Character } from './types/elizaos.js';
+import { getCharacterIds } from "./characters/index.js";
+import { AgentCoordinator } from "./services/AgentCoordinator.js";
+import { AutonomousService } from "./services/AutonomousService.js";
+import { LaunchWizard } from "./services/LaunchWizard.js";
+import { cleanupCache as cleanupApiCache } from "./services/BagsApiService.js";
+import type { Character } from "./types/elizaos.js";
 
 // Import route modules
 import {
@@ -20,77 +22,85 @@ import {
   launchWizardRoutes,
   creatorToolsRoutes,
   setDatabase,
-} from './routes/index.js';
-import { createMockRuntime } from './routes/shared.js';
+} from "./routes/index.js";
+import { createMockRuntime } from "./routes/shared.js";
 
-const PORT = parseInt(process.env.PORT || '3001', 10);
-const HOST = process.env.HOST || '0.0.0.0';
-const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173'];
+const PORT = parseInt(process.env.PORT || "3001", 10);
+const HOST = process.env.HOST || "0.0.0.0";
+const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(",") || [
+  "http://localhost:3000",
+  "http://localhost:5173",
+];
 
-const DATABASE_URL = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL;
+const DATABASE_URL =
+  process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL;
 
 let sql: NeonQueryFunction<false, false> | null = null;
 
 if (DATABASE_URL) {
   sql = neon(DATABASE_URL);
   setDatabase(sql);
-  console.log('[Database] Connected to Neon');
+  console.log("[Database] Connected to Neon");
 } else {
-  console.warn('[Database] No DATABASE_URL - running without persistence');
+  console.warn("[Database] No DATABASE_URL - running without persistence");
 }
 
 const app = express();
 app.use(express.json());
-app.use(cors({
-  origin: CORS_ORIGINS,
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: CORS_ORIGINS,
+    credentials: true,
+  })
+);
 
 // Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
-  res.on('finish', () => {
+  res.on("finish", () => {
     const duration = Date.now() - start;
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`
+    );
   });
   next();
 });
 
 // Health check endpoint
-app.get('/health', async (req, res) => {
+app.get("/health", async (req, res) => {
   const llmConfigured = !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
 
-  let dbStatus = 'not configured';
+  let dbStatus = "not configured";
   if (sql) {
     try {
       await sql`SELECT 1`;
-      dbStatus = 'connected';
+      dbStatus = "connected";
     } catch {
-      dbStatus = 'error';
+      dbStatus = "error";
     }
   }
 
-  const isHealthy = dbStatus !== 'error';
-  const status = isHealthy ? (dbStatus === 'connected' ? 'healthy' : 'degraded') : 'unhealthy';
+  const isHealthy = dbStatus !== "error";
+  const status = isHealthy ? (dbStatus === "connected" ? "healthy" : "degraded") : "unhealthy";
 
   res.status(isHealthy ? 200 : 503).json({
     status,
     timestamp: Date.now(),
-    version: '1.0.0',
+    version: "1.0.0",
     database: dbStatus,
-    llm: llmConfigured ? 'configured' : 'not configured',
+    llm: llmConfigured ? "configured" : "not configured",
     agents: getCharacterIds().length,
   });
 });
 
 // Mount route modules
-app.use('/api', chatRoutes);
-app.use('/api', tokenRoutes);
-app.use('/api', worldRoutes);
-app.use('/api/autonomous', autonomousRoutes);
-app.use('/api/coordination', coordinationRoutes);
-app.use('/api/launch-wizard', launchWizardRoutes);
-app.use('/api/creator-tools', creatorToolsRoutes);
+app.use("/api", chatRoutes);
+app.use("/api", tokenRoutes);
+app.use("/api", worldRoutes);
+app.use("/api/autonomous", autonomousRoutes);
+app.use("/api/coordination", coordinationRoutes);
+app.use("/api/launch-wizard", launchWizardRoutes);
+app.use("/api/creator-tools", creatorToolsRoutes);
 
 // Database initialization
 async function initializeDatabase(): Promise<void> {
@@ -133,48 +143,68 @@ async function initializeDatabase(): Promise<void> {
       ON agent_sessions(agent_id)
     `;
 
-    console.log('[Database] Schema initialized');
+    console.log("[Database] Schema initialized");
   } catch (err: any) {
-    console.error('[Database] Failed to initialize schema:', err.message);
-    console.warn('[Database] Server will continue without database persistence');
+    console.error("[Database] Failed to initialize schema:", err.message);
+    console.warn("[Database] Server will continue without database persistence");
   }
 }
 
 // Initialize autonomous services
 async function initializeAutonomousServices(): Promise<void> {
-  const mockRuntime = createMockRuntime({ name: 'system' } as Character);
+  const mockRuntime = createMockRuntime({ name: "system" } as Character);
 
   // Start coordinator first (autonomous service depends on it)
   await AgentCoordinator.start(mockRuntime);
-  console.log('[Autonomous] Agent coordinator initialized');
+  console.log("[Autonomous] Agent coordinator initialized");
 
   // Start autonomous service
-  const enableAutonomous = process.env.ENABLE_AUTONOMOUS !== 'false';
+  const enableAutonomous = process.env.ENABLE_AUTONOMOUS !== "false";
   if (enableAutonomous) {
     await AutonomousService.start(mockRuntime);
-    console.log('[Autonomous] Autonomous service initialized with scheduled tasks');
+    console.log("[Autonomous] Autonomous service initialized with scheduled tasks");
   } else {
-    console.log('[Autonomous] Autonomous service disabled (ENABLE_AUTONOMOUS=false)');
+    console.log("[Autonomous] Autonomous service disabled (ENABLE_AUTONOMOUS=false)");
   }
+
+  // Start LaunchWizard session cleanup timer (every hour)
+  const SESSION_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+  setInterval(() => {
+    const cleaned = LaunchWizard.cleanupSessions();
+    if (cleaned > 0) {
+      console.log(`[LaunchWizard] Cleaned ${cleaned} expired sessions`);
+    }
+  }, SESSION_CLEANUP_INTERVAL);
+  console.log("[LaunchWizard] Session cleanup timer started (hourly)");
+
+  // Start API cache cleanup timer (every 5 minutes)
+  const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  setInterval(() => {
+    const cleaned = cleanupApiCache();
+    if (cleaned > 0) {
+      console.log(`[BagsApi] Cleaned ${cleaned} stale cache entries`);
+    }
+  }, CACHE_CLEANUP_INTERVAL);
+  console.log("[BagsApi] Cache cleanup timer started (every 5 minutes)");
 }
 
 async function main(): Promise<void> {
-  console.log('Starting BagsWorld Agents Server...');
+  console.log("Starting BagsWorld Agents Server...");
 
   await initializeDatabase();
   await initializeAutonomousServices();
 
   const llmConfigured = !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
   if (!llmConfigured) {
-    console.error('[CRITICAL] No LLM API key configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY');
-    console.error('[CRITICAL] Chat functionality will fail without an LLM API key');
+    console.error("[CRITICAL] No LLM API key configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY");
+    console.error("[CRITICAL] Chat functionality will fail without an LLM API key");
   } else {
-    console.log(`[LLM] Using ${process.env.ANTHROPIC_API_KEY ? 'Anthropic Claude' : 'OpenAI GPT'}`);
+    console.log(`[LLM] Using ${process.env.ANTHROPIC_API_KEY ? "Anthropic Claude" : "OpenAI GPT"}`);
   }
 
   app.listen(PORT, HOST, () => {
     console.log(`\nBagsWorld Agents Server running at http://${HOST}:${PORT}`);
-    console.log(`\nLoaded ${getCharacterIds().length} agents: ${getCharacterIds().join(', ')}`);
+    console.log(`\nLoaded ${getCharacterIds().length} agents: ${getCharacterIds().join(", ")}`);
     console.log(`\nEndpoints:`);
     console.log(`  GET    /health                      - Health check`);
     console.log(`  GET    /api/agents                  - List all agents`);
