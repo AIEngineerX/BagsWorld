@@ -73,7 +73,7 @@ export function AgentFeed({
 
   if (compact) {
     return (
-      <div className={`bg-black/80 border border-gray-700 rounded-lg p-2 ${className}`}>
+      <div className={`bg-black/80 border border-gray-700 rounded-lg p-2 overflow-hidden ${className}`}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-gray-400">AGENT FEED</span>
@@ -97,11 +97,12 @@ export function AgentFeed({
               <div
                 key={a.id}
                 onClick={() => handleAnnouncementClick(a)}
-                className={`text-xs font-mono p-1 rounded border-l-2 cursor-pointer transition-opacity ${
+                className={`text-xs font-mono p-1 rounded border-l-2 cursor-pointer transition-opacity overflow-hidden ${
                   priorityColors[a.priority]
                 } ${a.read ? "opacity-50" : "opacity-100"}`}
               >
-                <span className="text-gray-500">{formatTime(a.timestamp)}</span> {a.message}
+                <span className="text-gray-500">{formatTime(a.timestamp)}</span>{" "}
+                <span className="break-words">{a.message}</span>
               </div>
             ))}
           </div>
@@ -120,7 +121,7 @@ export function AgentFeed({
   }
 
   return (
-    <div className={`bg-black/90 border border-gray-700 rounded-lg ${className}`}>
+    <div className={`bg-black/90 border border-gray-700 rounded-lg overflow-hidden ${className}`}>
       {showHeader && (
         <div className="flex items-center justify-between p-3 border-b border-gray-700">
           <div className="flex items-center gap-3">
@@ -148,7 +149,7 @@ export function AgentFeed({
         </div>
       )}
 
-      <div className="p-3 max-h-96 overflow-y-auto">
+      <div className="p-3 max-h-96 overflow-y-auto overflow-x-hidden">
         {visibleAnnouncements.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500 text-sm">No agent activity yet</p>
@@ -162,23 +163,23 @@ export function AgentFeed({
               <div
                 key={a.id}
                 onClick={() => handleAnnouncementClick(a)}
-                className={`p-2 rounded border-l-4 cursor-pointer transition-all hover:bg-white/5 ${
+                className={`p-2 rounded border-l-4 cursor-pointer transition-all hover:bg-white/5 overflow-hidden ${
                   priorityColors[a.priority]
                 } ${a.read ? "opacity-60" : "opacity-100"}`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-gray-400">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-mono text-gray-400 flex-shrink-0">
                       {priorityIcons[a.priority]}
                     </span>
-                    <span className="text-xs font-mono text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-mono text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded flex-shrink-0">
                       {eventTypeLabels[a.eventType] || a.eventType}
                     </span>
-                    {!a.read && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
+                    {!a.read && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
                   </div>
-                  <span className="text-xs text-gray-500">{formatTime(a.timestamp)}</span>
+                  <span className="text-xs text-gray-500 flex-shrink-0 ml-2">{formatTime(a.timestamp)}</span>
                 </div>
-                <p className="text-sm text-white font-mono">{a.message}</p>
+                <p className="text-sm text-white font-mono break-words overflow-hidden">{a.message}</p>
               </div>
             ))}
           </div>
@@ -242,7 +243,7 @@ export function AgentToast({ className = "" }: AgentToastProps) {
             x
           </button>
         </div>
-        <p className="text-sm text-white font-mono">{latest.message}</p>
+        <p className="text-sm text-white font-mono break-words overflow-hidden">{latest.message}</p>
       </div>
     </div>
   );
