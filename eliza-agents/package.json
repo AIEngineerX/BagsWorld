@@ -1,7 +1,7 @@
 {
   "name": "bagsworld-agents",
   "version": "1.0.0",
-  "description": "BagsWorld AI agents - Toly, Finn, Ash, Ghost, Neo, CJ, Shaw, and Bags Bot",
+  "description": "BagsWorld ElizaOS AI agents - 16 autonomous characters with persistent memory and multi-agent coordination",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
@@ -29,11 +29,14 @@
     "node": ">=20.0.0"
   },
   "keywords": [
+    "elizaos",
     "bagsworld",
     "solana",
     "bags.fm",
     "ai-agents",
-    "multi-agent"
+    "multi-agent",
+    "autonomous-agents",
+    "character-files"
   ],
   "author": "BagsWorld",
   "license": "MIT"

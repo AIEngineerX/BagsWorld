@@ -1,7 +1,7 @@
 {
   "name": "bags-world",
   "version": "1.0.0",
-  "description": "Self-evolving pixel art game powered by Bags.fm on-chain activity",
+  "description": "Self-evolving pixel art game with 16 ElizaOS AI agents, powered by Bags.fm on-chain activity",
   "private": true,
   "scripts": {
     "dev": "next dev",

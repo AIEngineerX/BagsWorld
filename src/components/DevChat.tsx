@@ -444,7 +444,7 @@ export function DevChat() {
           <span className="font-pixel text-sm">👻</span>
           <div>
             <p className="font-pixel text-[10px] text-purple-400">GHOST // THE DEV</p>
-            <p className="font-pixel text-[8px] text-purple-600">powered by sonnet 4</p>
+            <p className="font-pixel text-[8px] text-purple-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

@@ -266,7 +266,7 @@ export function AshChat() {
           <span className="font-pixel text-sm">⚡</span>
           <div>
             <p className="font-pixel text-[10px] text-red-400">ASH // GUIDE</p>
-            <p className="font-pixel text-[8px] text-red-600">powered by sonnet 4</p>
+            <p className="font-pixel text-[8px] text-red-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

@@ -83,15 +83,28 @@ Health is calculated from real Bags.fm data:
 | 4 | $2M - $10M | Modern tower |
 | 5 | $10M+ | Skyscraper |
 
-## AI Characters
+## AI Agents (Powered by ElizaOS)
+
+All 16 agents run on [ElizaOS](https://github.com/elizaOS/eliza) - Shaw's open-source TypeScript framework for autonomous AI agents.
 
 | Character | Role | Specialty |
 |-----------|------|-----------|
 | Toly | Blockchain Expert | Solana technical knowledge |
-| Ash | Ecosystem Guide | Platform mechanics |
-| Finn | Bags.fm CEO | Platform features |
-| The Dev | Trading Agent | Market analysis |
-| Neo | Scout Agent | Launch detection |
+| Ash | Ecosystem Guide | Platform mechanics (Pokemon style) |
+| Finn | Bags.fm Founder & CEO | Platform features, creator economy |
+| Ghost | The Dev (@DaddyGhost) | Creator rewards, on-chain verification |
+| Neo | Scout Agent | Launch detection, blockchain scanning |
+| CJ | Hood Rat | Market commentary (GTA vibes) |
+| Shaw | ElizaOS Creator | Agent architecture, character files |
+| Bags Bot | World Guide | Commands, world features |
+| Professor Oak | Launch Wizard | Token launch guidance |
+| Ramo | CTO | Smart contracts, SDK |
+| Sincara | Frontend Engineer | UI/UX, React |
+| Stuu | Operations | Support, troubleshooting |
+| Sam | Growth | Marketing, community growth |
+| Alaa | Skunk Works | R&D, experimental features |
+| Carlo | Ambassador | Community onboarding |
+| BNN | News Network | Platform announcements |
 
 ## Tech Stack
 
@@ -101,7 +114,7 @@ Health is calculated from real Bags.fm data:
 | Game Engine | Phaser 3 |
 | Blockchain | Solana Web3.js |
 | Trading | Bags.fm SDK |
-| AI | Claude (Anthropic) |
+| AI Agents | ElizaOS + Claude Sonnet 4 |
 | Database | Neon (PostgreSQL) |
 | State | Zustand + TanStack Query |
 | Styling | Tailwind CSS |

@@ -213,8 +213,8 @@ export function TolyChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">⚡</span>
           <div>
-            <p className="font-pixel text-[10px] text-purple-400">TOLY - SOLANA CO-FOUNDER</p>
-            <p className="font-pixel text-[8px] text-gray-400">drag to move</p>
+            <p className="font-pixel text-[10px] text-purple-400">TOLY // SOLANA CO-FOUNDER</p>
+            <p className="font-pixel text-[8px] text-purple-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

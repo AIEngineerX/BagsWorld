@@ -238,7 +238,7 @@ export function FinnbagsChat() {
           <span className="font-pixel text-sm">💼</span>
           <div>
             <p className="font-pixel text-[10px] text-emerald-400">FINN // FOUNDER</p>
-            <p className="font-pixel text-[8px] text-emerald-600">powered by sonnet 4</p>
+            <p className="font-pixel text-[8px] text-emerald-600">powered by ElizaOS</p>
           </div>
         </div>
         <button
