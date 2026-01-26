@@ -1929,6 +1929,54 @@ export class WorldScene extends Phaser.Scene {
     chalkboard.setOrigin(0.5, 1);
     chalkboard.setDepth(2);
     this.foundersElements.push(chalkboard);
+
+    // === POKEMON (depth 4, ground level) ===
+    const pokemonConfigs = [
+      { texture: "pokemon_charmander", x: 120, yOffset: 15, scale: 1.3 },
+      { texture: "pokemon_squirtle", x: 400, yOffset: 12, scale: 1.25 },
+      { texture: "pokemon_bulbasaur", x: 680, yOffset: 10, scale: 1.2 },
+    ];
+
+    pokemonConfigs.forEach((config, index) => {
+      const pokemon = this.add.sprite(
+        Math.round(config.x * s),
+        pathLevel + Math.round(config.yOffset * s),
+        config.texture
+      );
+      pokemon.setOrigin(0.5, 1);
+      pokemon.setScale(config.scale);
+      pokemon.setDepth(4);
+      this.foundersElements.push(pokemon);
+
+      // Idle bounce animation (like other animals)
+      this.tweens.add({
+        targets: pokemon,
+        y: pathLevel + Math.round(config.yOffset * s) - Math.round(3 * s),
+        duration: 600 + index * 100,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+
+      // Occasional hop animation
+      this.time.addEvent({
+        delay: 3000 + index * 1500,
+        callback: () => {
+          if (pokemon.active) {
+            this.tweens.add({
+              targets: pokemon,
+              y: pokemon.y - Math.round(8 * s),
+              scaleX: config.scale * 1.1,
+              scaleY: config.scale * 0.9,
+              duration: 150,
+              yoyo: true,
+              ease: "Quad.easeOut",
+            });
+          }
+        },
+        loop: true,
+      });
+    });
   }
 
   /**
