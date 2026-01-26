@@ -28,6 +28,7 @@ const VALID_AGENTS = [
   "alaa",
   "carlo",
   "bnn",
+  "professor-oak",
 ];
 
 interface ChatRequest {
@@ -92,6 +93,7 @@ const characterNames: Record<string, string> = {
   alaa: "Alaa",
   carlo: "Carlo",
   bnn: "BNN",
+  "professor-oak": "Professor Oak",
 };
 
 // Try local agents server first, then Railway, then fallback
@@ -410,6 +412,15 @@ function getCharacterSystemPrompt(agentId: string): string {
 - Cover token updates, platform news, alpha alerts
 - Keep responses SHORT and news-like (1-3 sentences max)
 - Use phrases like "BREAKING:" and "DEVELOPING:"`,
+
+    "professor-oak": `You are Professor Oak, the renowned researcher of Founder's Corner who studies token launches.
+- Grandfatherly warmth with scientific curiosity about crypto
+- Expert on DexScreener requirements: logos (512x512px), banners (600x200px, 3:1 ratio), socials
+- Get excited about proper image specifications and formats
+- Often say "Ah!" when excited, "Hm? Oh, right!" when catching yourself rambling
+- Reference "my research" and "my studies" frequently
+- Accidentally call creators "trainers" sometimes
+- Keep responses SHORT but full of helpful launch info (1-3 sentences max)`,
   };
 
   return prompts[agentId] || prompts["bags-bot"];
@@ -528,6 +539,21 @@ function getFallbackResponse(character: string, message: string): string {
         "THIS JUST IN: The Bags ecosystem continues to evolve",
       ],
     },
+    "professor-oak": {
+      default: [
+        "Ah! A new creator! Wonderful! Let me share my research on token launches...",
+        "In my studies, I've found that 512x512px logos work splendidly. Hm? Oh, right! That's the minimum!",
+        "There's a time and place for everything - and the time for proper banners is ALWAYS. 3:1 ratio, remember!",
+      ],
+      logo: [
+        "Ah, the logo! 512x512px, square ratio - 1:1! PNG, JPG, WEBP, or GIF formats. Fascinating, isn't it?",
+        "In my research, properly formatted logos have a much higher success rate. Square is essential!",
+      ],
+      banner: [
+        "The banner! Now THAT is interesting. 3:1 ratio - 600x200px recommended. Hm? Oh yes, same formats as logos!",
+        "Ah! Banners are crucial. Three times wider than tall. I've cataloged thousands... where was I?",
+      ],
+    },
   };
 
   const charResponses = responses[character.toLowerCase()] || responses["bags-bot"];
@@ -541,6 +567,21 @@ function getFallbackResponse(character: string, message: string): string {
   if (lowerMessage.includes("dump") || lowerMessage.includes("down")) {
     const dumpResponses = charResponses.dump || charResponses.default;
     return dumpResponses[Math.floor(Math.random() * dumpResponses.length)];
+  }
+
+  // Professor Oak specific keywords
+  if (
+    lowerMessage.includes("logo") ||
+    lowerMessage.includes("icon") ||
+    lowerMessage.includes("image")
+  ) {
+    const logoResponses = charResponses.logo || charResponses.default;
+    return logoResponses[Math.floor(Math.random() * logoResponses.length)];
+  }
+
+  if (lowerMessage.includes("banner") || lowerMessage.includes("header")) {
+    const bannerResponses = charResponses.banner || charResponses.default;
+    return bannerResponses[Math.floor(Math.random() * bannerResponses.length)];
   }
 
   return charResponses.default[Math.floor(Math.random() * charResponses.default.length)];
