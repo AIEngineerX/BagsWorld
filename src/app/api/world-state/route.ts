@@ -16,6 +16,7 @@ import {
   getGlobalTokens,
   isNeonConfigured,
   batchUpdateBuildingHealth,
+  recordMilestoneAchievement,
   type GlobalToken,
 } from "@/lib/neon";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
@@ -581,11 +582,12 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
 ];
 
 // Generate events from claim data and launches
-function generateEvents(
+// Now uses database to track milestones properly
+async function generateEvents(
   claimEvents: ClaimEvent[],
   tokens: TokenInfo[],
   existingEvents: GameEvent[]
-): GameEvent[] {
+): Promise<GameEvent[]> {
   const events: GameEvent[] = [...existingEvents];
   const existingIds = new Set(existingEvents.map((e) => e.id));
 
@@ -610,53 +612,72 @@ function generateEvents(
     }
   });
 
-  // Add fee milestone events
-  tokens.forEach((token) => {
+  // Add fee milestone events - now uses database for persistence
+  for (const token of tokens) {
     if (token.lifetimeFees > 0) {
       const feeThresholds = [1, 5, 10, 50, 100, 500, 1000];
       for (const threshold of feeThresholds) {
         if (token.lifetimeFees >= threshold) {
           const eventId = `milestone-${token.mint}-${threshold}`;
-          if (!existingIds.has(eventId)) {
+
+          // Skip if already in current events
+          if (existingIds.has(eventId)) {
+            break; // Only show the highest achieved milestone not yet displayed
+          }
+
+          // Check database to see if milestone was already achieved
+          if (isNeonConfigured()) {
+            const { isNew, achievedAt } = await recordMilestoneAchievement(
+              token.mint,
+              threshold,
+              token.symbol
+            );
+
+            if (isNew) {
+              // New milestone - use current time (when detected)
+              events.unshift({
+                id: eventId,
+                type: "milestone",
+                message: `${token.symbol} reached ${formatSol(threshold)} in lifetime fees!`,
+                timestamp: Date.now(),
+                data: {
+                  tokenName: token.name,
+                  amount: threshold,
+                  mint: token.mint,
+                },
+              });
+            }
+            // If not new, don't add event (already celebrated)
+          } else {
+            // No database - fall back to in-memory only (won't persist across cold starts)
             events.unshift({
               id: eventId,
               type: "milestone",
               message: `${token.symbol} reached ${formatSol(threshold)} in lifetime fees!`,
-              timestamp: Date.now() - Math.random() * 3600000,
+              timestamp: Date.now(),
               data: {
                 tokenName: token.name,
                 amount: threshold,
+                mint: token.mint,
               },
             });
-            break;
           }
+          break; // Only show highest milestone per token
         }
       }
     }
-  });
+  }
 
   return events.sort((a, b) => b.timestamp - a.timestamp).slice(0, 25);
 }
 
-// Track emitted events to avoid duplicates
-const emittedEventIds = new Set<string>();
-
 // Emit new events to the Agent Coordinator for the Agent Feed
+// Now passes event IDs to coordinator for proper database deduplication
 async function emitEventsToCoordinator(events: GameEvent[]): Promise<void> {
   // Start coordinator if not already running
   startCoordinator();
 
   for (const event of events) {
-    // Skip if already emitted
-    if (emittedEventIds.has(event.id)) continue;
-    emittedEventIds.add(event.id);
-
-    // Limit tracking to last 1000 events
-    if (emittedEventIds.size > 1000) {
-      const toRemove = Array.from(emittedEventIds).slice(0, 500);
-      toRemove.forEach((id) => emittedEventIds.delete(id));
-    }
-
     // Map game event types to coordinator event types
     let coordinatorType: AgentEventType;
     let priority: "low" | "medium" | "high" | "urgent" = "medium";
@@ -687,7 +708,8 @@ async function emitEventsToCoordinator(events: GameEvent[]): Promise<void> {
         priority = "low";
     }
 
-    // Emit to coordinator
+    // Emit to coordinator with event ID for deduplication
+    // The coordinator will check the database to prevent duplicates across cold starts
     try {
       await emitEvent(
         coordinatorType,
@@ -697,7 +719,8 @@ async function emitEventsToCoordinator(events: GameEvent[]): Promise<void> {
           message: event.message,
           originalType: event.type,
         },
-        priority
+        priority,
+        event.id // Pass event ID for deduplication
       );
     } catch (error) {
       console.error("[World State] Failed to emit event to coordinator:", error);
@@ -1126,8 +1149,8 @@ export async function POST(request: NextRequest) {
     worldState.weather = realWeather;
     (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;
 
-    // Generate events
-    worldState.events = generateEvents(allClaimEvents, tokens, previousState?.events || []);
+    // Generate events (now async for database milestone tracking)
+    worldState.events = await generateEvents(allClaimEvents, tokens, previousState?.events || []);
 
     // Add token launch events for new tokens
     tokens.forEach((token) => {
