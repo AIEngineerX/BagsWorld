@@ -5,45 +5,45 @@ import {
   bagsBotCharacter,
   generateCharacterPrompt,
   type CharacterDefinition,
-} from "./bags-bot.character";
-import { tolyCharacter } from "./toly.character";
-import { neoCharacter } from "./neo.character";
-import { finnCharacter } from "./finn.character";
-import { ghostCharacter } from "./ghost.character";
-import { ashCharacter } from "./ash.character";
-import { cjCharacter } from "./cj.character";
-import { shawCharacter } from "./shaw.character";
+} from "./bags-bot.character.ts";
+import { tolyCharacter } from "./toly.character.ts";
+import { neoCharacter } from "./neo.character.ts";
+import { finnCharacter } from "./finn.character.ts";
+import { ghostCharacter } from "./ghost.character.ts";
+import { ashCharacter } from "./ash.character.ts";
+import { cjCharacter } from "./cj.character.ts";
+import { shawCharacter } from "./shaw.character.ts";
 // Academy Zone - Bags.fm Team Characters
-import { ramoCharacter } from "./ramo.character";
-import { sincaraCharacter } from "./sincara.character";
-import { stuuCharacter } from "./stuu.character";
-import { samCharacter } from "./sam.character";
-import { alaaCharacter } from "./alaa.character";
-import { carloCharacter } from "./carlo.character";
-import { bnnCharacter } from "./bnn.character";
-import { professorOakCharacter } from "./professor-oak.character";
+import { ramoCharacter } from "./ramo.character.ts";
+import { sincaraCharacter } from "./sincara.character.ts";
+import { stuuCharacter } from "./stuu.character.ts";
+import { samCharacter } from "./sam.character.ts";
+import { alaaCharacter } from "./alaa.character.ts";
+import { carloCharacter } from "./carlo.character.ts";
+import { bnnCharacter } from "./bnn.character.ts";
+import { professorOakCharacter } from "./professor-oak.character.ts";
 
 // Export all characters
-export { bagsBotCharacter } from "./bags-bot.character";
-export { tolyCharacter } from "./toly.character";
-export { neoCharacter } from "./neo.character";
-export { finnCharacter } from "./finn.character";
-export { ghostCharacter } from "./ghost.character";
-export { ashCharacter } from "./ash.character";
-export { cjCharacter } from "./cj.character";
-export { shawCharacter } from "./shaw.character";
+export { bagsBotCharacter } from "./bags-bot.character.ts";
+export { tolyCharacter } from "./toly.character.ts";
+export { neoCharacter } from "./neo.character.ts";
+export { finnCharacter } from "./finn.character.ts";
+export { ghostCharacter } from "./ghost.character.ts";
+export { ashCharacter } from "./ash.character.ts";
+export { cjCharacter } from "./cj.character.ts";
+export { shawCharacter } from "./shaw.character.ts";
 // Academy Zone - Bags.fm Team Characters
-export { ramoCharacter } from "./ramo.character";
-export { sincaraCharacter } from "./sincara.character";
-export { stuuCharacter } from "./stuu.character";
-export { samCharacter } from "./sam.character";
-export { alaaCharacter } from "./alaa.character";
-export { carloCharacter } from "./carlo.character";
-export { bnnCharacter } from "./bnn.character";
-export { professorOakCharacter } from "./professor-oak.character";
+export { ramoCharacter } from "./ramo.character.ts";
+export { sincaraCharacter } from "./sincara.character.ts";
+export { stuuCharacter } from "./stuu.character.ts";
+export { samCharacter } from "./sam.character.ts";
+export { alaaCharacter } from "./alaa.character.ts";
+export { carloCharacter } from "./carlo.character.ts";
+export { bnnCharacter } from "./bnn.character.ts";
+export { professorOakCharacter } from "./professor-oak.character.ts";
 
 // Export types and utilities
-export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.character";
+export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.character.ts";
 
 // Character registry by ID
 export const characters: Record<string, CharacterDefinition> = {
