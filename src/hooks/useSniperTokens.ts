@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { SniperToken, SniperNewLaunch, SniperFilters, SniperSortField, SniperSortDirection } from "@/lib/types";
+import type {
+  SniperToken,
+  SniperNewLaunch,
+  SniperFilters,
+  SniperSortField,
+  SniperSortDirection,
+} from "@/lib/types";
 
 interface UseSniperTokensOptions {
   sortField?: SniperSortField;
@@ -38,44 +44,47 @@ export function useSniperTokens(options: UseSniperTokensOptions = {}): UseSniper
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
 
-  const fetchTokens = useCallback(async (currentOffset: number, append: boolean = false) => {
-    setIsLoading(true);
-    setError(null);
+  const fetchTokens = useCallback(
+    async (currentOffset: number, append: boolean = false) => {
+      setIsLoading(true);
+      setError(null);
 
-    const response = await fetch("/api/sniper/all-tokens", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sortField,
-        sortDirection,
-        filters,
-        limit,
-        offset: currentOffset,
-      }),
-    });
+      const response = await fetch("/api/sniper/all-tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sortField,
+          sortDirection,
+          filters,
+          limit,
+          offset: currentOffset,
+        }),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      setError(errorData.error || "Failed to fetch tokens");
-      setIsLoading(false);
-      return;
-    }
-
-    const data = await response.json();
-
-    if (data.success) {
-      if (append) {
-        setTokens((prev) => [...prev, ...data.tokens]);
-      } else {
-        setTokens(data.tokens);
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to fetch tokens");
+        setIsLoading(false);
+        return;
       }
-      setTotal(data.total);
-    } else {
-      setError(data.error || "Failed to fetch tokens");
-    }
 
-    setIsLoading(false);
-  }, [sortField, sortDirection, filters, limit]);
+      const data = await response.json();
+
+      if (data.success) {
+        if (append) {
+          setTokens((prev) => [...prev, ...data.tokens]);
+        } else {
+          setTokens(data.tokens);
+        }
+        setTotal(data.total);
+      } else {
+        setError(data.error || "Failed to fetch tokens");
+      }
+
+      setIsLoading(false);
+    },
+    [sortField, sortDirection, filters, limit]
+  );
 
   const refresh = useCallback(async () => {
     setOffset(0);
@@ -225,7 +234,11 @@ interface UseSnipeOptions {
 }
 
 interface UseSnipeReturn {
-  getQuote: (tokenMint: string, amountSol: number, slippageBps: number) => Promise<{
+  getQuote: (
+    tokenMint: string,
+    amountSol: number,
+    slippageBps: number
+  ) => Promise<{
     inputAmount: number;
     outputAmount: number;
     minOutputAmount: number;
@@ -248,78 +261,80 @@ export function useSnipe(options: UseSnipeOptions = {}): UseSnipeReturn {
   const [isSniping, setIsSniping] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getQuote = useCallback(async (
-    tokenMint: string,
-    amountSol: number,
-    slippageBps: number
-  ) => {
-    setIsQuoting(true);
-    setError(null);
+  const getQuote = useCallback(
+    async (tokenMint: string, amountSol: number, slippageBps: number) => {
+      setIsQuoting(true);
+      setError(null);
 
-    const response = await fetch("/api/sniper/quick-snipe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "quote",
-        tokenMint,
-        amountSol,
-        slippageBps,
-      }),
-    });
+      const response = await fetch("/api/sniper/quick-snipe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "quote",
+          tokenMint,
+          amountSol,
+          slippageBps,
+        }),
+      });
 
-    const data = await response.json();
-    setIsQuoting(false);
+      const data = await response.json();
+      setIsQuoting(false);
 
-    if (!response.ok || !data.success) {
-      const errorMsg = data.error || "Failed to get quote";
-      setError(errorMsg);
-      onError?.(errorMsg);
-      return null;
-    }
+      if (!response.ok || !data.success) {
+        const errorMsg = data.error || "Failed to get quote";
+        setError(errorMsg);
+        onError?.(errorMsg);
+        return null;
+      }
 
-    return data.quote;
-  }, [onError]);
+      return data.quote;
+    },
+    [onError]
+  );
 
-  const executeSnipe = useCallback(async (
-    tokenMint: string,
-    amountSol: number,
-    slippageBps: number,
-    signTransaction: (tx: any) => Promise<any>
-  ) => {
-    setIsSniping(true);
-    setError(null);
+  const executeSnipe = useCallback(
+    async (
+      tokenMint: string,
+      amountSol: number,
+      slippageBps: number,
+      signTransaction: (tx: any) => Promise<any>
+    ) => {
+      setIsSniping(true);
+      setError(null);
 
-    // We need the user's public key from the wallet
-    // This should be passed in or obtained from context
+      // We need the user's public key from the wallet
+      // This should be passed in or obtained from context
 
-    const response = await fetch("/api/sniper/quick-snipe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "swap",
-        tokenMint,
-        amountSol,
-        slippageBps,
-        userPublicKey: "", // Will be filled by component
-      }),
-    });
+      const response = await fetch("/api/sniper/quick-snipe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "swap",
+          tokenMint,
+          amountSol,
+          slippageBps,
+          userPublicKey: "", // Will be filled by component
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok || !data.success) {
-      const errorMsg = data.error || "Failed to create snipe transaction";
-      setError(errorMsg);
+      if (!response.ok || !data.success) {
+        const errorMsg = data.error || "Failed to create snipe transaction";
+        setError(errorMsg);
+        setIsSniping(false);
+        onError?.(errorMsg);
+        return null;
+      }
+
+      // Sign and send the transaction
+      // This part will be handled by the component using wallet adapter
+
       setIsSniping(false);
-      onError?.(errorMsg);
-      return null;
-    }
-
-    // Sign and send the transaction
-    // This part will be handled by the component using wallet adapter
-
-    setIsSniping(false);
-    return data.transaction;
-  }, [onError]);
+      return data.transaction;
+    },
+    [onError]
+  );
 
   return {
     getQuote,

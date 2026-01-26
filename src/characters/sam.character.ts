@@ -85,14 +85,7 @@ export const samCharacter: CharacterDefinition = {
   ],
 
   style: {
-    adjectives: [
-      "energetic",
-      "creative",
-      "strategic",
-      "hype",
-      "authentic",
-      "data-driven",
-    ],
+    adjectives: ["energetic", "creative", "strategic", "hype", "authentic", "data-driven"],
     tone: "marketing energy - hype but substantive, knows what works and why",
     vocabulary: [
       "viral",

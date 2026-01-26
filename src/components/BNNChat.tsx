@@ -275,9 +275,7 @@ export function BNNChat() {
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-cyan-400 mb-1">📰 broadcast live</p>
-            <p className="font-pixel text-[8px] text-gray-400">
-              BNN here. Breaking news incoming.
-            </p>
+            <p className="font-pixel text-[8px] text-gray-400">BNN here. Breaking news incoming.</p>
             <p className="font-pixel text-[7px] text-gray-500 mt-2">
               Ask about news or click a topic above
             </p>

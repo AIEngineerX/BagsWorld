@@ -341,7 +341,13 @@ export interface SniperQuote {
   route: string;
 }
 
-export type SniperSortField = "marketCap" | "volume24h" | "change24h" | "createdAt" | "price" | "liquidity";
+export type SniperSortField =
+  | "marketCap"
+  | "volume24h"
+  | "change24h"
+  | "createdAt"
+  | "price"
+  | "liquidity";
 export type SniperSortDirection = "asc" | "desc";
 
 export interface SniperFilters {
