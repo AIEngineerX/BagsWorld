@@ -5,6 +5,11 @@ const BAGSWORLD_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
 const TOKEN_DECIMALS = 6;
 const DECIMAL_DIVISOR = 10 ** TOKEN_DECIMALS; // Pre-computed for efficiency
 
+// Addresses to exclude (liquidity pools, burn addresses, etc.)
+const EXCLUDED_ADDRESSES = new Set([
+  "HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC", // Liquidity pool
+]);
+
 // Cache for holder data (5 minutes)
 const CACHE_TTL = 5 * 60 * 1000;
 let cachedHolders: { data: TokenHolder[]; timestamp: number } | null = null;
@@ -137,23 +142,31 @@ export async function GET(): Promise<NextResponse> {
         // Get total supply for percentage calculation
         const totalSupply = await getTokenSupply(rpcUrl);
 
-        // Resolve each token account to its owner wallet (in parallel)
-        const topAccounts = accounts.slice(0, 5);
+        // Fetch more accounts (10) to have enough after filtering out pools
+        const topAccounts = accounts.slice(0, 10);
         const ownerPromises = topAccounts.map((account: { address: string }) =>
           resolveTokenAccountOwner(rpcUrl, account.address)
         );
         const owners = await Promise.all(ownerPromises);
 
         let rank = 1;
-        for (let i = 0; i < topAccounts.length; i++) {
+        for (let i = 0; i < topAccounts.length && holders.length < 5; i++) {
           const account = topAccounts[i];
           const ownerAddress = owners[i];
+          const resolvedAddress = ownerAddress || account.address;
+
+          // Skip excluded addresses (pools, burn addresses, etc.)
+          if (EXCLUDED_ADDRESSES.has(resolvedAddress)) {
+            console.log(`[Holders] Skipping excluded address: ${resolvedAddress.substring(0, 8)}...`);
+            continue;
+          }
+
           const rawBalance = parseFloat(account.amount) || 0;
           const balance = rawBalance / DECIMAL_DIVISOR;
           const percentage = totalSupply > 0 ? (balance / totalSupply) * 100 : 0;
 
           holders.push({
-            address: ownerAddress || account.address, // Use owner if resolved, fallback to token account
+            address: resolvedAddress,
             tokenAccount: account.address,
             balance,
             percentage: Math.round(percentage * 100) / 100, // Round to 2 decimals
