@@ -133,7 +133,11 @@ export function calculateBuildingHealth(
 ): { health: number; status: BuildingStatus; cyclesApplied: number } {
   // Admin override - use directly
   if (healthOverride != null) {
-    return { health: healthOverride, status: getStatusFromHealth(healthOverride), cyclesApplied: 0 };
+    return {
+      health: healthOverride,
+      status: getStatusFromHealth(healthOverride),
+      cyclesApplied: 0,
+    };
   }
 
   // Permanent buildings always healthy
