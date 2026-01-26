@@ -70,10 +70,12 @@ export class WorldScene extends Phaser.Scene {
   private academyElements: Phaser.GameObjects.GameObject[] = []; // Academy zone elements
   private ballersElements: Phaser.GameObjects.GameObject[] = []; // Ballers Valley zone elements
   private foundersElements: Phaser.GameObjects.GameObject[] = []; // Founder's Corner zone elements
+  private labsElements: Phaser.GameObjects.GameObject[] = []; // Tech Labs zone elements
   private trendingZoneCreated = false; // Cache trending zone elements
   private academyZoneCreated = false; // Cache academy zone elements
   private ballersZoneCreated = false; // Cache ballers zone elements
   private foundersZoneCreated = false; // Cache founders zone elements
+  private labsZoneCreated = false; // Cache labs zone elements
   private foundersPopup: Phaser.GameObjects.Container | null = null; // Popup modal for building info
   private ballersGoldenSky: Phaser.GameObjects.Graphics | null = null; // Golden hour sky for Ballers Valley
   private academyTwilightSky: Phaser.GameObjects.Graphics | null = null; // Magical twilight sky for Academy
@@ -453,6 +455,8 @@ export class WorldScene extends Phaser.Scene {
         this.ballersElements.forEach((el) => (el as any).setVisible(false));
       } else if (this.currentZone === "founders") {
         this.foundersElements.forEach((el) => (el as any).setVisible(false));
+      } else if (this.currentZone === "labs") {
+        this.labsElements.forEach((el) => (el as any).setVisible(false));
       }
 
       // Update zone and set up new content
@@ -460,6 +464,7 @@ export class WorldScene extends Phaser.Scene {
 
       // Change ground texture based on zone
       const groundTextures: Record<ZoneType, string> = {
+        labs: "labs_ground", // Tech Labs has futuristic floor tiles
         main_city: "grass",
         trending: "concrete",
         ballers: "grass", // Ballers Valley has premium grass (luxury estate feel)
@@ -630,6 +635,9 @@ export class WorldScene extends Phaser.Scene {
     } else if (this.currentZone === "founders") {
       // Hide founders elements
       this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    } else if (this.currentZone === "labs") {
+      // Hide labs elements
+      this.labsElements.forEach((el) => (el as any).setVisible(false));
     } else if (this.currentZone === "main_city") {
       // Main city uses shared decorations, don't destroy them
       // Just hide them
@@ -650,6 +658,9 @@ export class WorldScene extends Phaser.Scene {
 
   private setupZone(zone: ZoneType): void {
     switch (zone) {
+      case "labs":
+        this.setupLabsZone();
+        break;
       case "trending":
         this.setupTrendingZone();
         break;
@@ -685,6 +696,7 @@ export class WorldScene extends Phaser.Scene {
     this.academyBuildings.forEach((s) => s.setVisible(false));
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    this.labsElements.forEach((el) => (el as any).setVisible(false));
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;
@@ -716,6 +728,7 @@ export class WorldScene extends Phaser.Scene {
     this.academyBuildings.forEach((s) => s.setVisible(false));
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    this.labsElements.forEach((el) => (el as any).setVisible(false));
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;
@@ -1452,6 +1465,7 @@ export class WorldScene extends Phaser.Scene {
     this.academyElements.forEach((el) => (el as any).setVisible(false));
     this.academyBuildings.forEach((s) => s.setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    this.labsElements.forEach((el) => (el as any).setVisible(false));
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;
@@ -1677,6 +1691,7 @@ export class WorldScene extends Phaser.Scene {
     this.academyElements.forEach((el) => (el as any).setVisible(false));
     this.academyBuildings.forEach((s) => s.setVisible(false));
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
+    this.labsElements.forEach((el) => (el as any).setVisible(false));
 
     // Restore normal sky (persistent layer)
     this.restoreNormalSky();
@@ -2293,6 +2308,309 @@ export class WorldScene extends Phaser.Scene {
         }
       },
     });
+  }
+
+  // ============================================================================
+  // TECH LABS ZONE
+  // Futuristic R&D headquarters - home of the Bags.fm development team
+  // ============================================================================
+
+  /**
+   * Setup Tech Labs zone - futuristic R&D headquarters
+   * Features holographic displays, server rooms, and tech-themed environment
+   */
+  private setupLabsZone(): void {
+    // Hide park decorations and animals (they belong to main_city)
+    this.decorations.forEach((d) => d.setVisible(false));
+    this.animals.forEach((a) => a.sprite.setVisible(false));
+
+    // Hide fountain water spray
+    if (this.fountainWater) {
+      this.fountainWater.setVisible(false);
+    }
+
+    // IMPORTANT: Hide other zone elements (prevents visual overlap)
+    this.trendingElements.forEach((el) => (el as any).setVisible(false));
+    this.skylineSprites.forEach((s) => s.setVisible(false));
+    this.billboardTexts.forEach((t) => t.setVisible(false));
+    if (this.tickerText) this.tickerText.setVisible(false);
+    this.academyElements.forEach((el) => (el as any).setVisible(false));
+    this.academyBuildings.forEach((s) => s.setVisible(false));
+    this.ballersElements.forEach((el) => (el as any).setVisible(false));
+    this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
+    }
+
+    // Create tech-themed twilight sky
+    this.createLabsSky();
+
+    // Swap ground texture to tech floor
+    this.ground.setVisible(true);
+    this.ground.setTexture("labs_ground");
+
+    // Check if elements were destroyed (can happen during transitions)
+    const elementsValid =
+      this.labsElements.length > 0 &&
+      this.labsElements.every((el) => (el as any).active !== false);
+
+    if (!elementsValid && this.labsZoneCreated) {
+      this.labsElements = [];
+      this.labsZoneCreated = false;
+    }
+
+    // Only create elements once, then just show them
+    if (!this.labsZoneCreated) {
+      this.createLabsDecorations();
+      this.labsZoneCreated = true;
+    } else {
+      // Subsequent times - just show existing elements
+      this.labsElements.forEach((el) => (el as any).setVisible(true));
+    }
+  }
+
+  /**
+   * Create futuristic tech sky for Labs zone
+   */
+  private createLabsSky(): void {
+    // Hide normal sky elements
+    this.restoreNormalSky();
+
+    // The labs has a subtle blue-purple tech tint handled by ambient lighting
+    // No special sky modification needed - keep it clean
+  }
+
+  /**
+   * Create Tech Labs decorations - futuristic R&D environment
+   * Includes 3 clickable buildings and tech-themed props
+   */
+  private createLabsDecorations(): void {
+    const s = SCALE;
+    const grassTop = Math.round(455 * s);
+    const pathLevel = Math.round(555 * s);
+
+    // === TECH TREES (depth 2) - Digital/circuit pattern trees ===
+    const treePositions = [
+      { x: 60, yOffset: 0 },
+      { x: 180, yOffset: 5 },
+      { x: 380, yOffset: -3 },
+      { x: 580, yOffset: 8 },
+      { x: 720, yOffset: 2 },
+    ];
+
+    treePositions.forEach((pos) => {
+      const tree = this.add.sprite(Math.round(pos.x * s), grassTop + pos.yOffset, "labs_prop_1");
+      tree.setOrigin(0.5, 1);
+      tree.setDepth(2);
+      tree.setScale(0.9 + Math.random() * 0.3);
+      this.labsElements.push(tree);
+
+      // Subtle pulse animation for tech trees
+      this.tweens.add({
+        targets: tree,
+        alpha: { from: 0.85, to: 1 },
+        duration: 1500 + Math.random() * 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === SERVER RACKS (depth 2) - Small server units ===
+    const serverPositions = [
+      { x: 120, yOffset: 20 },
+      { x: 300, yOffset: 25 },
+      { x: 480, yOffset: 22 },
+      { x: 660, yOffset: 24 },
+    ];
+
+    serverPositions.forEach((pos) => {
+      const server = this.add.sprite(Math.round(pos.x * s), grassTop + pos.yOffset, "labs_prop_2");
+      server.setOrigin(0.5, 1);
+      server.setDepth(2);
+      server.setScale(0.85 + Math.random() * 0.2);
+      this.labsElements.push(server);
+    });
+
+    // === HOLO DISPLAYS (depth 2) ===
+    const holoPositions = [150, 350, 550, 750];
+    holoPositions.forEach((hx) => {
+      const holo = this.add.sprite(Math.round(hx * s), grassTop + Math.round(28 * s), "labs_prop_0");
+      holo.setOrigin(0.5, 1);
+      holo.setDepth(2);
+      holo.setScale(0.8 + Math.random() * 0.3);
+      this.labsElements.push(holo);
+
+      // Floating animation for holo displays
+      this.tweens.add({
+        targets: holo,
+        y: grassTop + Math.round(25 * s),
+        duration: 2000 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === BUILDINGS (depth 5+) - Clickable with info popups ===
+    const buildings = [
+      { texture: "labs_0", x: 200, label: "SERVER\nROOM", type: "server" },
+      { texture: "labs_1", x: 420, label: "RESEARCH\nLAB", type: "research" },
+      { texture: "labs_2", x: 640, label: "HOLO\nDECK", type: "holo" },
+    ];
+
+    buildings.forEach((b, i) => {
+      const bx = Math.round(b.x * s);
+      const sprite = this.add.sprite(bx, pathLevel, b.texture);
+      sprite.setOrigin(0.5, 1);
+      sprite.setDepth(5 - i / 10);
+
+      // Make building interactive
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on("pointerdown", () => this.showLabsPopup(b.type));
+      sprite.on("pointerover", () => {
+        sprite.setTint(0xaaddff);
+        this.tweens.add({
+          targets: sprite,
+          scaleX: 1.02,
+          scaleY: 1.02,
+          duration: 100,
+          ease: "Power2",
+        });
+      });
+      sprite.on("pointerout", () => {
+        sprite.clearTint();
+        this.tweens.add({
+          targets: sprite,
+          scaleX: 1,
+          scaleY: 1,
+          duration: 100,
+          ease: "Power2",
+        });
+      });
+
+      this.labsElements.push(sprite);
+
+      // Building label with tech-styled background
+      const labelBg = this.add.rectangle(
+        bx,
+        pathLevel + Math.round(18 * s),
+        Math.round(70 * s),
+        Math.round(24 * s),
+        0x0a0a0f,
+        0.8
+      );
+      labelBg.setDepth(6);
+      labelBg.setStrokeStyle(1, 0x06b6d4);
+      this.labsElements.push(labelBg);
+
+      const label = this.add.text(bx, pathLevel + Math.round(18 * s), b.label, {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(8 * s)}px`,
+        color: "#22d3ee",
+        align: "center",
+      });
+      label.setOrigin(0.5, 0.5);
+      label.setDepth(7);
+      this.labsElements.push(label);
+    });
+
+    // === DATA TERMINALS (depth 3) ===
+    const terminalPositions = [100, 320, 520, 760];
+    terminalPositions.forEach((tx) => {
+      const terminal = this.add.sprite(Math.round(tx * s), pathLevel, "labs_prop_3");
+      terminal.setOrigin(0.5, 1);
+      terminal.setDepth(3);
+      this.labsElements.push(terminal);
+
+      // Terminal screen flicker effect
+      this.tweens.add({
+        targets: terminal,
+        alpha: { from: 0.9, to: 1 },
+        duration: 100,
+        yoyo: true,
+        repeat: -1,
+        repeatDelay: 2000 + Math.random() * 3000,
+      });
+    });
+
+    // === ENERGY CORES (depth 3) - Ambient energy nodes ===
+    const corePositions = [250, 550];
+    corePositions.forEach((cx) => {
+      const core = this.add.sprite(Math.round(cx * s), grassTop + Math.round(35 * s), "labs_prop_4");
+      core.setOrigin(0.5, 1);
+      core.setDepth(3);
+      this.labsElements.push(core);
+
+      // Pulsing glow effect
+      this.tweens.add({
+        targets: core,
+        scaleX: { from: 0.95, to: 1.05 },
+        scaleY: { from: 0.95, to: 1.05 },
+        alpha: { from: 0.8, to: 1 },
+        duration: 1200,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === DRONE DOCKS (depth 3) ===
+    const dronePositions = [680];
+    dronePositions.forEach((dx) => {
+      const drone = this.add.sprite(Math.round(dx * s), grassTop + Math.round(20 * s), "labs_prop_5");
+      drone.setOrigin(0.5, 1);
+      drone.setDepth(3);
+      this.labsElements.push(drone);
+
+      // Subtle hover animation
+      this.tweens.add({
+        targets: drone,
+        y: grassTop + Math.round(15 * s),
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === FLOOR GLOW EFFECTS (depth 1) - Ambient tech lighting ===
+    const glowPositions = [200, 420, 640];
+    glowPositions.forEach((gx) => {
+      const glow = this.add.ellipse(
+        Math.round(gx * s),
+        pathLevel + Math.round(5 * s),
+        Math.round(80 * s),
+        Math.round(20 * s),
+        0x06b6d4,
+        0.15
+      );
+      glow.setDepth(1);
+      this.labsElements.push(glow);
+
+      // Subtle pulse
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.1, to: 0.2 },
+        scaleX: { from: 0.95, to: 1.05 },
+        duration: 2000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+  }
+
+  /**
+   * Show Labs popup for building info
+   */
+  private showLabsPopup(type: string): void {
+    // Reuse the founders popup system with labs-specific content
+    // For now, dispatch a custom event that can be handled by UI
+    window.dispatchEvent(
+      new CustomEvent(`bagsworld-${type}-click`)
+    );
   }
 
   /**

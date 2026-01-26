@@ -374,7 +374,7 @@ const SPECIAL_CHARACTERS: Record<
     flag: string;
     wallet: string;
     x: number;
-    zone: "main_city" | "trending" | "ballers" | "founders";
+    zone: "labs" | "main_city" | "trending" | "ballers" | "founders";
     profileUrl?: string;
   }
 > = {
@@ -424,54 +424,54 @@ const SPECIAL_CHARACTERS: Record<
     zone: "main_city", // Shaw stays in Park with other AI agents
     profileUrl: "https://x.com/shawmakesmagic",
   },
-  // Bags.fm Team - moved to main_city (was Academy)
+  // Bags.fm Team - Tech Labs zone (R&D headquarters)
   ramo: {
     flag: "isRamo",
     wallet: "ramo-cto-permanent",
-    x: Math.round(230 * SCALE),
-    zone: "main_city",
+    x: Math.round(180 * SCALE),
+    zone: "labs",
     profileUrl: "https://x.com/ramyobags",
   },
   sincara: {
     flag: "isSincara",
     wallet: "sincara-frontend-permanent",
-    x: Math.round(360 * SCALE),
-    zone: "main_city",
+    x: Math.round(320 * SCALE),
+    zone: "labs",
     profileUrl: "https://x.com/sincara_bags",
   },
   stuu: {
     flag: "isStuu",
     wallet: "stuu-ops-permanent",
-    x: Math.round(620 * SCALE),
-    zone: "main_city",
+    x: Math.round(460 * SCALE),
+    zone: "labs",
     profileUrl: "https://x.com/StuuBags",
   },
   sam: {
     flag: "isSam",
     wallet: "sam-growth-permanent",
-    x: Math.round(750 * SCALE),
-    zone: "main_city",
+    x: Math.round(600 * SCALE),
+    zone: "labs",
     profileUrl: "https://x.com/Sambags12",
   },
   alaa: {
     flag: "isAlaa",
     wallet: "alaa-skunkworks-permanent",
-    x: Math.round(490 * SCALE),
-    zone: "main_city",
+    x: Math.round(740 * SCALE),
+    zone: "labs",
     profileUrl: "https://x.com/alaadotsol",
   },
   carlo: {
     flag: "isCarlo",
     wallet: "carlo-ambassador-permanent",
     x: Math.round(880 * SCALE),
-    zone: "main_city",
+    zone: "labs",
     profileUrl: "https://x.com/carlobags",
   },
   bnn: {
     flag: "isBNN",
     wallet: "bnn-news-permanent",
-    x: Math.round(1010 * SCALE),
-    zone: "main_city",
+    x: Math.round(1000 * SCALE),
+    zone: "labs",
     profileUrl: "https://x.com/BNNBags",
   },
   // Founder's Corner Zone - Token Launch Guides

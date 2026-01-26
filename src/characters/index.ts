@@ -9,14 +9,8 @@ import {
 } from "./bags-bot.character.ts";
 
 // ============================================================================
-// PARK ZONE (main_city) - The heart of BagsWorld
+// TECH LABS ZONE (labs) - R&D headquarters of Bags.fm team
 // ============================================================================
-import { tolyCharacter } from "./toly.character.ts";
-import { ashCharacter } from "./ash.character.ts";
-import { finnCharacter } from "./finn.character.ts";
-import { ghostCharacter } from "./ghost.character.ts";
-import { shawCharacter } from "./shaw.character.ts";
-// Bags.fm Team (HQ is in the Park)
 import { ramoCharacter } from "./ramo.character.ts";
 import { sincaraCharacter } from "./sincara.character.ts";
 import { stuuCharacter } from "./stuu.character.ts";
@@ -24,6 +18,15 @@ import { samCharacter } from "./sam.character.ts";
 import { alaaCharacter } from "./alaa.character.ts";
 import { carloCharacter } from "./carlo.character.ts";
 import { bnnCharacter } from "./bnn.character.ts";
+
+// ============================================================================
+// PARK ZONE (main_city) - The heart of BagsWorld
+// ============================================================================
+import { tolyCharacter } from "./toly.character.ts";
+import { ashCharacter } from "./ash.character.ts";
+import { finnCharacter } from "./finn.character.ts";
+import { ghostCharacter } from "./ghost.character.ts";
+import { shawCharacter } from "./shaw.character.ts";
 
 // ============================================================================
 // BAGSCITY ZONE (trending) - Downtown trading district
@@ -43,12 +46,7 @@ import { professorOakCharacter } from "./professor-oak.character.ts";
 // Global
 export { bagsBotCharacter } from "./bags-bot.character.ts";
 
-// Park Zone (main_city)
-export { tolyCharacter } from "./toly.character.ts";
-export { ashCharacter } from "./ash.character.ts";
-export { finnCharacter } from "./finn.character.ts";
-export { ghostCharacter } from "./ghost.character.ts";
-export { shawCharacter } from "./shaw.character.ts";
+// Tech Labs Zone (labs) - Bags.fm Team
 export { ramoCharacter } from "./ramo.character.ts";
 export { sincaraCharacter } from "./sincara.character.ts";
 export { stuuCharacter } from "./stuu.character.ts";
@@ -56,6 +54,13 @@ export { samCharacter } from "./sam.character.ts";
 export { alaaCharacter } from "./alaa.character.ts";
 export { carloCharacter } from "./carlo.character.ts";
 export { bnnCharacter } from "./bnn.character.ts";
+
+// Park Zone (main_city)
+export { tolyCharacter } from "./toly.character.ts";
+export { ashCharacter } from "./ash.character.ts";
+export { finnCharacter } from "./finn.character.ts";
+export { ghostCharacter } from "./ghost.character.ts";
+export { shawCharacter } from "./shaw.character.ts";
 
 // BagsCity Zone (trending)
 export { neoCharacter } from "./neo.character.ts";
@@ -71,14 +76,8 @@ export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.ch
 // CHARACTER REGISTRY - Organized by zone
 // ============================================================================
 
-// Park Zone characters (main_city)
-export const parkCharacters: Record<string, CharacterDefinition> = {
-  toly: tolyCharacter,
-  ash: ashCharacter,
-  finn: finnCharacter,
-  ghost: ghostCharacter,
-  shaw: shawCharacter,
-  // Bags.fm Team
+// Tech Labs Zone characters (labs) - Bags.fm Team
+export const labsCharacters: Record<string, CharacterDefinition> = {
   ramo: ramoCharacter,
   sincara: sincaraCharacter,
   stuu: stuuCharacter,
@@ -86,6 +85,15 @@ export const parkCharacters: Record<string, CharacterDefinition> = {
   alaa: alaaCharacter,
   carlo: carloCharacter,
   bnn: bnnCharacter,
+};
+
+// Park Zone characters (main_city)
+export const parkCharacters: Record<string, CharacterDefinition> = {
+  toly: tolyCharacter,
+  ash: ashCharacter,
+  finn: finnCharacter,
+  ghost: ghostCharacter,
+  shaw: shawCharacter,
 };
 
 // BagsCity Zone characters (trending)
@@ -107,6 +115,7 @@ export const globalCharacters: Record<string, CharacterDefinition> = {
 // Combined registry (all characters)
 export const characters: Record<string, CharacterDefinition> = {
   ...globalCharacters,
+  ...labsCharacters,
   ...parkCharacters,
   ...bagsCityCharacters,
   ...foundersCharacters,
@@ -123,8 +132,10 @@ export function getCharacterIds(): string[] {
 }
 
 // Get characters for a specific zone
-export function getCharactersByZone(zone: "main_city" | "trending" | "founders" | "ballers"): CharacterDefinition[] {
+export function getCharactersByZone(zone: "labs" | "main_city" | "trending" | "founders" | "ballers"): CharacterDefinition[] {
   switch (zone) {
+    case "labs":
+      return Object.values(labsCharacters);
     case "main_city":
       return Object.values(parkCharacters);
     case "trending":
@@ -139,8 +150,10 @@ export function getCharactersByZone(zone: "main_city" | "trending" | "founders" 
 }
 
 // Get character IDs for a specific zone
-export function getCharacterIdsByZone(zone: "main_city" | "trending" | "founders" | "ballers"): string[] {
+export function getCharacterIdsByZone(zone: "labs" | "main_city" | "trending" | "founders" | "ballers"): string[] {
   switch (zone) {
+    case "labs":
+      return Object.keys(labsCharacters);
     case "main_city":
       return Object.keys(parkCharacters);
     case "trending":
@@ -158,7 +171,7 @@ export function getCharacterIdsByZone(zone: "main_city" | "trending" | "founders
 // CHARACTER METADATA - For UI display, organized by zone
 // ============================================================================
 
-export type ZoneType = "main_city" | "trending" | "founders" | "ballers";
+export type ZoneType = "labs" | "main_city" | "trending" | "founders" | "ballers";
 
 export interface CharacterMeta {
   displayName: string;
@@ -176,6 +189,57 @@ export const characterMeta: Record<string, CharacterMeta> = {
     color: "#f59e0b",
     icon: "🤖",
     zone: "main_city",
+  },
+
+  // ========== TECH LABS ZONE (labs) - Bags.fm Team ==========
+  ramo: {
+    displayName: "Ramo",
+    role: "Co-Founder & CTO",
+    color: "#3b82f6",
+    icon: "⚙️",
+    zone: "labs",
+  },
+  sincara: {
+    displayName: "Sincara",
+    role: "Frontend Engineer",
+    color: "#ec4899",
+    icon: "🎨",
+    zone: "labs",
+  },
+  stuu: {
+    displayName: "Stuu",
+    role: "Operations",
+    color: "#22c55e",
+    icon: "📋",
+    zone: "labs",
+  },
+  sam: {
+    displayName: "Sam",
+    role: "Growth",
+    color: "#fbbf24",
+    icon: "📢",
+    zone: "labs",
+  },
+  alaa: {
+    displayName: "Alaa",
+    role: "Skunk Works",
+    color: "#6366f1",
+    icon: "🔬",
+    zone: "labs",
+  },
+  carlo: {
+    displayName: "Carlo",
+    role: "Ambassador",
+    color: "#f97316",
+    icon: "🎒",
+    zone: "labs",
+  },
+  bnn: {
+    displayName: "BNN",
+    role: "News Network",
+    color: "#06b6d4",
+    icon: "📺",
+    zone: "labs",
   },
 
   // ========== PARK ZONE (main_city) ==========
@@ -212,56 +276,6 @@ export const characterMeta: Record<string, CharacterMeta> = {
     role: "ElizaOS Creator",
     color: "#FF5800",
     icon: "🔶",
-    zone: "main_city",
-  },
-  // Bags.fm Team (Park HQ)
-  ramo: {
-    displayName: "Ramo",
-    role: "Co-Founder & CTO",
-    color: "#3b82f6",
-    icon: "⚙️",
-    zone: "main_city",
-  },
-  sincara: {
-    displayName: "Sincara",
-    role: "Frontend Engineer",
-    color: "#ec4899",
-    icon: "🎨",
-    zone: "main_city",
-  },
-  stuu: {
-    displayName: "Stuu",
-    role: "Operations",
-    color: "#22c55e",
-    icon: "📋",
-    zone: "main_city",
-  },
-  sam: {
-    displayName: "Sam",
-    role: "Growth",
-    color: "#fbbf24",
-    icon: "📢",
-    zone: "main_city",
-  },
-  alaa: {
-    displayName: "Alaa",
-    role: "Skunk Works",
-    color: "#6366f1",
-    icon: "🔬",
-    zone: "main_city",
-  },
-  carlo: {
-    displayName: "Carlo",
-    role: "Ambassador",
-    color: "#f97316",
-    icon: "🎒",
-    zone: "main_city",
-  },
-  bnn: {
-    displayName: "BNN",
-    role: "News Network",
-    color: "#06b6d4",
-    icon: "📺",
     zone: "main_city",
   },
 
