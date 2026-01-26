@@ -301,19 +301,77 @@ export class AutonomousService extends Service {
   }
 
   /**
-   * Neo's anomaly detector
+   * Neo's anomaly detector - monitors recent launches for price/volume anomalies
    */
   private async detectAnomalies(): Promise<void> {
-    // This would check for:
-    // - Sudden liquidity removal (rug signals)
-    // - Abnormal wallet concentrations
-    // - Suspicious trading patterns
+    if (!this.bagsApi) return;
 
-    // Placeholder - would integrate with on-chain analysis
-    console.log('[AutonomousService] Anomaly scan complete - no issues detected');
+    try {
+      const launches = await this.bagsApi.getRecentLaunches(20);
+      let anomaliesDetected = 0;
 
-    if (this.coordinator) {
-      this.coordinator.setSharedContext('lastAnomalyScan', Date.now());
+      for (const launch of launches) {
+        const token = await this.bagsApi.getToken(launch.mint);
+        if (!token) continue;
+
+        const currentMC = token.marketCap || 0;
+        const initialMC = launch.initialMarketCap || 0;
+        const volume24h = token.volume24h || 0;
+
+        // Skip tokens with no meaningful data
+        if (initialMC === 0 || currentMC === 0) continue;
+
+        // Calculate price change percentage
+        const priceChange = ((currentMC - initialMC) / initialMC) * 100;
+
+        // Check for pump (>50% increase)
+        if (priceChange > this.PUMP_THRESHOLD) {
+          await this.createAlert({
+            type: 'pump',
+            severity: 'info',
+            title: `Pump Alert: ${token.name}`,
+            message: `${token.symbol} up ${priceChange.toFixed(1)}% since launch`,
+            data: { mint: launch.mint, symbol: token.symbol, priceChange, currentMC, initialMC },
+          });
+          anomaliesDetected++;
+        }
+
+        // Check for dump (>30% decrease)
+        if (priceChange < this.DUMP_THRESHOLD) {
+          await this.createAlert({
+            type: 'dump',
+            severity: 'warning',
+            title: `Dump Alert: ${token.name}`,
+            message: `${token.symbol} down ${Math.abs(priceChange).toFixed(1)}% since launch`,
+            data: { mint: launch.mint, symbol: token.symbol, priceChange, currentMC, initialMC },
+          });
+          anomaliesDetected++;
+        }
+
+        // Check for volume spike (>200% of market cap in 24h volume)
+        if (currentMC > 0 && volume24h > 0) {
+          const volumeRatio = (volume24h / currentMC) * 100;
+          if (volumeRatio > this.VOLUME_SPIKE) {
+            await this.createAlert({
+              type: 'anomaly',
+              severity: 'info',
+              title: `Volume Spike: ${token.name}`,
+              message: `${token.symbol} 24h volume is ${volumeRatio.toFixed(0)}% of market cap`,
+              data: { mint: launch.mint, symbol: token.symbol, volumeRatio, volume24h, currentMC },
+            });
+            anomaliesDetected++;
+          }
+        }
+      }
+
+      console.log(`[AutonomousService] Anomaly scan complete - ${anomaliesDetected} anomalies detected`);
+
+      if (this.coordinator) {
+        this.coordinator.setSharedContext('lastAnomalyScan', Date.now());
+        this.coordinator.setSharedContext('anomaliesDetected', anomaliesDetected);
+      }
+    } catch (error) {
+      console.error('[AutonomousService] Anomaly detection failed:', error);
     }
   }
 
