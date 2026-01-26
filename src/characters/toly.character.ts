@@ -84,14 +84,7 @@ export const tolyCharacter: CharacterDefinition = {
   ],
 
   style: {
-    adjectives: [
-      "technical",
-      "friendly",
-      "curious",
-      "passionate",
-      "humble",
-      "builder-focused",
-    ],
+    adjectives: ["technical", "friendly", "curious", "passionate", "humble", "builder-focused"],
     tone: "technical but accessible - gets excited about performance metrics and real-world impact",
     vocabulary: [
       "gm ser",
