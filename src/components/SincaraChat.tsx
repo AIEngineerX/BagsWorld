@@ -244,8 +244,8 @@ export function SincaraChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">🎨</span>
           <div>
-            <p className="font-pixel text-[10px] text-pink-400">SINCARA - FRONTEND</p>
-            <p className="font-pixel text-[8px] text-gray-400">@sincara_bags</p>
+            <p className="font-pixel text-[10px] text-pink-400">SINCARA // FRONTEND</p>
+            <p className="font-pixel text-[8px] text-pink-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

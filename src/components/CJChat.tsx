@@ -255,8 +255,8 @@ export function CJChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">🔫</span>
           <div>
-            <p className="font-pixel text-[10px] text-orange-400">CJ - GROVE STREET</p>
-            <p className="font-pixel text-[8px] text-gray-400">drag to move</p>
+            <p className="font-pixel text-[10px] text-orange-400">CJ // GROVE STREET</p>
+            <p className="font-pixel text-[8px] text-orange-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

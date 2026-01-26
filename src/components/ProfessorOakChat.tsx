@@ -256,7 +256,7 @@ export function ProfessorOakChat() {
           <span className="font-pixel text-sm">🎓</span>
           <div>
             <p className="font-pixel text-[10px] text-amber-400">PROFESSOR OAK // GUIDE</p>
-            <p className="font-pixel text-[8px] text-amber-600">powered by sonnet 4</p>
+            <p className="font-pixel text-[8px] text-amber-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

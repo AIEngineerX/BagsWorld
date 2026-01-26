@@ -244,8 +244,8 @@ export function BNNChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">📰</span>
           <div>
-            <p className="font-pixel text-[10px] text-cyan-400">BNN - BAGS NEWS</p>
-            <p className="font-pixel text-[8px] text-gray-400">@BNNBags</p>
+            <p className="font-pixel text-[10px] text-cyan-400">BNN // BAGS NEWS</p>
+            <p className="font-pixel text-[8px] text-cyan-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

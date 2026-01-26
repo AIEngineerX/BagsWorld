@@ -244,8 +244,8 @@ export function CarloChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">🤝</span>
           <div>
-            <p className="font-pixel text-[10px] text-orange-400">CARLO - COMMUNITY</p>
-            <p className="font-pixel text-[8px] text-gray-400">@carlobags</p>
+            <p className="font-pixel text-[10px] text-orange-400">CARLO // COMMUNITY</p>
+            <p className="font-pixel text-[8px] text-orange-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

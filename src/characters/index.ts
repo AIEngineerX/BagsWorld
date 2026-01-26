@@ -1,5 +1,5 @@
 // Character registry - all BagsWorld AI characters
-// Each character uses Opus 4.5 for intelligent, personality-driven responses
+// All agents run on ElizaOS framework with Claude Sonnet 4 for intelligent, personality-driven responses
 
 import {
   bagsBotCharacter,

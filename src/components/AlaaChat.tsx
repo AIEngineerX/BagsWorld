@@ -244,8 +244,8 @@ export function AlaaChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">🦨</span>
           <div>
-            <p className="font-pixel text-[10px] text-indigo-400">ALAA - SKUNK WORKS</p>
-            <p className="font-pixel text-[8px] text-gray-400">@alaadotsol</p>
+            <p className="font-pixel text-[10px] text-indigo-400">ALAA // SKUNK WORKS</p>
+            <p className="font-pixel text-[8px] text-indigo-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

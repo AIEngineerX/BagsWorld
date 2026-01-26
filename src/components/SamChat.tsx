@@ -244,8 +244,8 @@ export function SamChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">📣</span>
           <div>
-            <p className="font-pixel text-[10px] text-yellow-400">SAM - GROWTH</p>
-            <p className="font-pixel text-[8px] text-gray-400">@Sambags12</p>
+            <p className="font-pixel text-[10px] text-yellow-400">SAM // GROWTH</p>
+            <p className="font-pixel text-[8px] text-yellow-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

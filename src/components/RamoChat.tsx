@@ -244,8 +244,8 @@ export function RamoChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">🔧</span>
           <div>
-            <p className="font-pixel text-[10px] text-blue-400">RAMO - CTO</p>
-            <p className="font-pixel text-[8px] text-gray-400">@ramyobags</p>
+            <p className="font-pixel text-[10px] text-blue-400">RAMO // CTO</p>
+            <p className="font-pixel text-[8px] text-blue-600">powered by ElizaOS</p>
           </div>
         </div>
         <button

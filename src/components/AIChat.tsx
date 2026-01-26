@@ -238,7 +238,10 @@ export function AIChat() {
               &lt;
             </button>
           )}
-          <p className="font-pixel text-[10px] text-bags-green">BagsWorld Bot</p>
+          <div>
+            <p className="font-pixel text-[10px] text-bags-green">BAGS BOT // WORLD GUIDE</p>
+            <p className="font-pixel text-[8px] text-bags-green/60">powered by ElizaOS</p>
+          </div>
         </div>
         <button
           onClick={() => setIsMinimized(true)}

@@ -257,8 +257,8 @@ export function NeoChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">👁️</span>
           <div>
-            <p className="font-pixel text-[10px] text-green-400">NEO - THE SCOUT</p>
-            <p className="font-pixel text-[8px] text-gray-400">drag to move</p>
+            <p className="font-pixel text-[10px] text-green-400">NEO // THE SCOUT</p>
+            <p className="font-pixel text-[8px] text-green-600">powered by ElizaOS</p>
           </div>
         </div>
         <button
