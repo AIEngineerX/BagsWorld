@@ -18,6 +18,11 @@ import {
   getRecentEmittedEvents,
   initializeAgentFeedTables,
 } from "@/lib/neon";
+import {
+  startLiveFeed,
+  stopLiveFeed,
+  getLiveFeedState,
+} from "@/lib/bags-live-feed";
 
 // 24 hour TTL for events
 const EVENT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -102,11 +107,20 @@ export async function GET(request: Request) {
   switch (action) {
     case "status": {
       const state = getCoordinatorState();
+      const liveFeedState = getLiveFeedState();
       return NextResponse.json({
         isRunning: state.isRunning,
         stats: state.stats,
         subscriptionCount: state.subscriptions.length,
         queueSize: state.eventQueue.length,
+        liveFeed: {
+          isRunning: liveFeedState.isRunning,
+          launchesFound: liveFeedState.launchesFound,
+          tradesFound: liveFeedState.tradesFound,
+          whaleAlertsFound: liveFeedState.whaleAlertsFound,
+          lastLaunchCheck: liveFeedState.lastLaunchCheck,
+          errors: liveFeedState.errors.slice(-5),
+        },
       });
     }
 
@@ -173,12 +187,14 @@ export async function POST(request: Request) {
         startCoordinator();
         initAnnouncementHandler();
         connectAIAgent();
-        return NextResponse.json({ success: true, message: "Coordinator started" });
+        startLiveFeed(); // Start platform-wide Bags.fm monitoring
+        return NextResponse.json({ success: true, message: "Coordinator started with live feed" });
       }
 
       case "stop": {
         stopCoordinator();
-        return NextResponse.json({ success: true, message: "Coordinator stopped" });
+        stopLiveFeed();
+        return NextResponse.json({ success: true, message: "Coordinator and live feed stopped" });
       }
 
       case "emit": {
@@ -249,6 +265,7 @@ async function initializeCoordinator(): Promise<void> {
   startCoordinator();
   initAnnouncementHandler();
   connectAIAgent();
+  startLiveFeed(); // Start platform-wide Bags.fm monitoring
 
   // Load recent events from database on cold start
   if (isNeonConfigured()) {

@@ -16,16 +16,15 @@ interface BitqueryTokenData {
     };
     Price: number;
     PriceInUSD: number;
+    Side: {
+      Type: string;
+    };
   };
   Block: {
     Time: string;
   };
   volume: string;
-  buy_volume: string;
-  sell_volume: string;
   trades: string;
-  buys: string;
-  sells: string;
 }
 
 interface BitqueryResponse {
@@ -58,9 +57,9 @@ async function fetchBagsTokensFromBitquery(): Promise<SniperToken[]> {
   }
 
   // GraphQL query to get all Bags.fm tokens by UpdateAuthority
-  // This aggregates trade data to get volume, price, and transaction counts
+  // Simplified query for Bitquery v2 streaming API
   const query = `
-    query GetBagsFmTokens {
+    query GetBagsFmTokens($since: DateTime!) {
       Solana {
         DEXTradeByTokens(
           where: {
@@ -70,7 +69,7 @@ async function fetchBagsTokensFromBitquery(): Promise<SniperToken[]> {
               }
             }
             Block: {
-              Time: { after: "${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}" }
+              Time: { after: $since }
             }
           }
           orderBy: { descendingByField: "volume" }
@@ -84,22 +83,25 @@ async function fetchBagsTokensFromBitquery(): Promise<SniperToken[]> {
               UpdateAuthority
               Decimals
             }
-            Price(maximum: Block_Time)
-            PriceInUSD(maximum: Block_Time)
+            Price
+            PriceInUSD
+            Side {
+              Type
+            }
           }
           Block {
-            Time(maximum: true)
+            Time
           }
           volume: sum(of: Trade_Side_AmountInUSD)
-          buy_volume: sum(of: Trade_Side_AmountInUSD, selectWhere: { Trade: { Side: { Type: { is: buy } } } })
-          sell_volume: sum(of: Trade_Side_AmountInUSD, selectWhere: { Trade: { Side: { Type: { is: sell } } } })
           trades: count
-          buys: count(selectWhere: { Trade: { Side: { Type: { is: buy } } } })
-          sells: count(selectWhere: { Trade: { Side: { Type: { is: sell } } } })
         }
       }
     }
   `;
+
+  const variables = {
+    since: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  };
 
   const response = await fetch(BITQUERY_GRAPHQL_URL, {
     method: "POST",
@@ -107,7 +109,7 @@ async function fetchBagsTokensFromBitquery(): Promise<SniperToken[]> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, variables }),
   });
 
   if (!response.ok) {
@@ -129,6 +131,23 @@ async function fetchBagsTokensFromBitquery(): Promise<SniperToken[]> {
   // Deduplicate by mint address and transform to SniperToken format
   const tokenMap = new Map<string, SniperToken>();
 
+  // Track buy/sell counts per mint
+  const buyCountMap = new Map<string, number>();
+  const sellCountMap = new Map<string, number>();
+
+  // First pass: count buys and sells per token
+  for (const trade of trades) {
+    const mint = trade.Trade.Currency.MintAddress;
+    const sideType = trade.Trade.Side?.Type?.toLowerCase() || "";
+
+    if (sideType === "buy") {
+      buyCountMap.set(mint, (buyCountMap.get(mint) || 0) + 1);
+    } else if (sideType === "sell") {
+      sellCountMap.set(mint, (sellCountMap.get(mint) || 0) + 1);
+    }
+  }
+
+  // Second pass: build token data
   for (const trade of trades) {
     const mint = trade.Trade.Currency.MintAddress;
 
@@ -136,11 +155,9 @@ async function fetchBagsTokensFromBitquery(): Promise<SniperToken[]> {
     if (tokenMap.has(mint)) continue;
 
     const volume24h = parseFloat(trade.volume) || 0;
-    const buyVolume = parseFloat(trade.buy_volume) || 0;
-    const sellVolume = parseFloat(trade.sell_volume) || 0;
     const trades24h = parseInt(trade.trades) || 0;
-    const buys24h = parseInt(trade.buys) || 0;
-    const sells24h = parseInt(trade.sells) || 0;
+    const buys24h = buyCountMap.get(mint) || 0;
+    const sells24h = sellCountMap.get(mint) || 0;
 
     // Estimate market cap from price and typical supply (1B tokens is common for memecoins)
     // This is an approximation - real market cap would need token supply data
@@ -149,8 +166,8 @@ async function fetchBagsTokensFromBitquery(): Promise<SniperToken[]> {
     const estimatedMarketCap = priceUsd * 1_000_000_000; // Assumes 1B supply
 
     // Calculate price change based on buy/sell ratio (approximation)
-    const totalVolume = buyVolume + sellVolume;
-    const buyPressure = totalVolume > 0 ? (buyVolume / totalVolume - 0.5) * 100 : 0;
+    const totalTrades = buys24h + sells24h;
+    const buyPressure = totalTrades > 0 ? (buys24h / totalTrades - 0.5) * 100 : 0;
     const change24h = buyPressure * 2; // Scale to reasonable percentage
 
     // Parse creation time from block time
