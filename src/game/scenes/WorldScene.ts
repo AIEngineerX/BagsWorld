@@ -2450,6 +2450,7 @@ Use: bags.fm/[yourname]`,
     // Search by special character flags
     for (const [, sprite] of this.characterSprites) {
       const spriteData = sprite as any;
+      // Core characters
       if (characterId === "finn" && spriteData.isFinn) return sprite;
       if (characterId === "ghost" && spriteData.isDev) return sprite;
       if (characterId === "neo" && spriteData.isScout) return sprite;
@@ -2457,6 +2458,16 @@ Use: bags.fm/[yourname]`,
       if (characterId === "toly" && spriteData.isToly) return sprite;
       if (characterId === "cj" && spriteData.isCJ) return sprite;
       if (characterId === "shaw" && spriteData.isShaw) return sprite;
+      // Academy Zone - Bags.fm Team
+      if (characterId === "ramo" && spriteData.isRamo) return sprite;
+      if (characterId === "sincara" && spriteData.isSincara) return sprite;
+      if (characterId === "stuu" && spriteData.isStuu) return sprite;
+      if (characterId === "sam" && spriteData.isSam) return sprite;
+      if (characterId === "alaa" && spriteData.isAlaa) return sprite;
+      if (characterId === "carlo" && spriteData.isCarlo) return sprite;
+      if (characterId === "bnn" && spriteData.isBNN) return sprite;
+      // Founder's Corner Zone
+      if (characterId === "professorOak" && spriteData.isProfessorOak) return sprite;
     }
 
     return null;
@@ -2464,6 +2475,7 @@ Use: bags.fm/[yourname]`,
 
   // Map a character to their behavior system ID
   private getCharacterBehaviorId(character: GameCharacter): string {
+    // Core characters
     if (character.isFinn) return "finn";
     if (character.isDev) return "ghost";
     if (character.isScout) return "neo";
@@ -2471,6 +2483,16 @@ Use: bags.fm/[yourname]`,
     if (character.isToly) return "toly";
     if (character.isCJ) return "cj";
     if (character.isShaw) return "shaw";
+    // Academy Zone - Bags.fm Team
+    if (character.isRamo) return "ramo";
+    if (character.isSincara) return "sincara";
+    if (character.isStuu) return "stuu";
+    if (character.isSam) return "sam";
+    if (character.isAlaa) return "alaa";
+    if (character.isCarlo) return "carlo";
+    if (character.isBNN) return "bnn";
+    // Founder's Corner Zone
+    if (character.isProfessorOak) return "professorOak";
     return character.id;
   }
 
@@ -2506,6 +2528,35 @@ Use: bags.fm/[yourname]`,
     if (character.isShaw && spriteData.shawGlow) {
       spriteData.shawGlow.x = sprite.x;
       spriteData.shawGlow.y = sprite.y;
+    }
+    // Academy Zone - Bags.fm Team
+    if (character.isRamo && spriteData.ramoGlow) {
+      spriteData.ramoGlow.x = sprite.x;
+      spriteData.ramoGlow.y = sprite.y;
+    }
+    if (character.isSincara && spriteData.sincaraGlow) {
+      spriteData.sincaraGlow.x = sprite.x;
+      spriteData.sincaraGlow.y = sprite.y;
+    }
+    if (character.isStuu && spriteData.stuuGlow) {
+      spriteData.stuuGlow.x = sprite.x;
+      spriteData.stuuGlow.y = sprite.y;
+    }
+    if (character.isSam && spriteData.samGlow) {
+      spriteData.samGlow.x = sprite.x;
+      spriteData.samGlow.y = sprite.y;
+    }
+    if (character.isAlaa && spriteData.alaaGlow) {
+      spriteData.alaaGlow.x = sprite.x;
+      spriteData.alaaGlow.y = sprite.y;
+    }
+    if (character.isCarlo && spriteData.carloGlow) {
+      spriteData.carloGlow.x = sprite.x;
+      spriteData.carloGlow.y = sprite.y;
+    }
+    if (character.isBNN && spriteData.bnnGlow) {
+      spriteData.bnnGlow.x = sprite.x;
+      spriteData.bnnGlow.y = sprite.y;
     }
     // Founder's Corner characters
     if (character.isProfessorOak && spriteData.professorOakGlow) {
@@ -4899,6 +4950,7 @@ Use: bags.fm/[yourname]`,
       isAlaa,
       isCarlo,
       isBNN,
+      isProfessorOak,
     });
 
     this.characterSprites.set(character.id, sprite);
