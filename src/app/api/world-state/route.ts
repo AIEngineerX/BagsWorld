@@ -12,7 +12,12 @@ import {
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
 import { emitEvent, startCoordinator, type AgentEventType } from "@/lib/agent-coordinator";
-import { getGlobalTokens, isNeonConfigured, type GlobalToken } from "@/lib/neon";
+import {
+  getGlobalTokens,
+  isNeonConfigured,
+  batchUpdateBuildingHealth,
+  type GlobalToken,
+} from "@/lib/neon";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
 
 // Bags SDK types
@@ -709,11 +714,26 @@ export async function POST(request: NextRequest) {
     const now = Date.now();
     const sdk = await getBagsSDK();
 
+    // Map to store health data from Neon for time-based decay calculation
+    // Key: mint, Value: { currentHealth, healthUpdatedAt }
+    const healthDataMap = new Map<
+      string,
+      { currentHealth: number | null; healthUpdatedAt: Date | null }
+    >();
+
     // Merge admin overrides from Neon global tokens
     if (isNeonConfigured()) {
       try {
         const globalTokens = await getGlobalTokens();
         const globalTokenMap = new Map(globalTokens.map((gt) => [gt.mint, gt]));
+
+        // Extract health data for all global tokens (for time-based decay)
+        globalTokens.forEach((gt) => {
+          healthDataMap.set(gt.mint, {
+            currentHealth: gt.current_health ?? null,
+            healthUpdatedAt: gt.health_updated_at ? new Date(gt.health_updated_at) : null,
+          });
+        });
 
         registeredTokens = registeredTokens.map((token) => {
           const gt = globalTokenMap.get(token.mint);
@@ -763,6 +783,16 @@ export async function POST(request: NextRequest) {
         token.marketCap = prices.marketCap;
         token.volume24h = prices.volume24h;
         token.change24h = prices.change24h;
+      }
+    }
+
+    // Merge health data from database into tokens (for time-based decay)
+    // This allows decay to persist across serverless cold starts
+    for (const token of tokens) {
+      const healthData = healthDataMap.get(token.mint);
+      if (healthData) {
+        token.currentHealth = healthData.currentHealth;
+        token.healthUpdatedAt = healthData.healthUpdatedAt;
       }
     }
 
@@ -1139,6 +1169,34 @@ export async function POST(request: NextRequest) {
       activeTokenCount,
       source: "bags.fm",
     };
+
+    // Persist updated health values back to database (for time-based decay)
+    // Only update buildings where health actually changed
+    if (isNeonConfigured()) {
+      const healthUpdates: Array<{ mint: string; health: number }> = [];
+
+      for (const building of worldState.buildings) {
+        // Skip permanent/floating buildings and starter buildings (no real mint)
+        if (building.isPermanent || building.isFloating) continue;
+        if (building.id.startsWith("Starter") || building.id.startsWith("Treasury")) continue;
+
+        // Get the previous health from database
+        const previousHealthData = healthDataMap.get(building.id);
+        const previousHealth = previousHealthData?.currentHealth ?? 50;
+
+        // Only persist if health changed
+        if (building.health !== previousHealth) {
+          healthUpdates.push({ mint: building.id, health: building.health });
+        }
+      }
+
+      // Batch update health values (fire-and-forget to avoid blocking response)
+      if (healthUpdates.length > 0) {
+        batchUpdateBuildingHealth(healthUpdates).catch((err) => {
+          console.error("[WorldState] Failed to persist building health:", err);
+        });
+      }
+    }
 
     previousState = worldState;
 

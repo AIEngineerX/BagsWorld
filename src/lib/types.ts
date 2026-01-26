@@ -85,6 +85,9 @@ export interface TokenInfo {
   positionOverride?: { x: number; y: number } | null; // Admin override for building position
   styleOverride?: number | null; // Admin override for building style (0-3)
   healthOverride?: number | null; // Admin override for building health (0-100)
+  // Building decay system - persisted health from database
+  currentHealth?: number | null; // Last computed health (0-100), from DB
+  healthUpdatedAt?: Date | null; // Last time health was calculated, for time-based decay
 }
 
 export interface ClaimablePosition {
