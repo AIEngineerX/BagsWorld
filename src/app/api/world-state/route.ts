@@ -166,9 +166,9 @@ async function fetchTokenPrices(mints: string[]): Promise<Map<string, PriceData>
   }
 }
 
-// Cache for BagsWorld top holders (5 minutes)
+// Cache for BagsWorld top holders (2 minutes - shorter for faster sync)
 let holdersCache: { data: BagsWorldHolder[]; timestamp: number } | null = null;
-const HOLDERS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const HOLDERS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 // Fetch top BagsWorld token holders for Ballers Valley
 async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
@@ -189,7 +189,7 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
         : "http://localhost:3000";
 
     const response = await fetch(`${baseUrl}/api/bagsworld-holders`, {
-      next: { revalidate: 300 },
+      cache: "no-store", // Always fetch fresh data
     });
 
     if (response.ok) {
@@ -198,12 +198,19 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
       const holders: BagsWorldHolder[] = (data.holders || []).slice(0, 5);
       console.log("[WorldState] Fetched holders:", holders.length, holders.map(h => h.rank));
 
-      // If we got actual holders, cache and return them
-      if (holders.length > 0) {
+      // Check if we got REAL holders (not placeholder data)
+      const isRealData = holders.length > 0 &&
+        holders[0]?.address &&
+        !holders[0].address.includes("xxxx"); // Placeholder addresses contain "xxxx"
+
+      if (isRealData) {
         holdersCache = { data: holders, timestamp: now };
         return holders;
+      } else {
+        console.log("[WorldState] Got placeholder data from holders API, clearing cache");
+        holdersCache = null; // Clear cache to retry next time
       }
-      // Otherwise fall through to mock data
+      // Fall through to placeholder data
     } else {
       console.warn("[WorldState] Holders API returned:", response.status);
     }
