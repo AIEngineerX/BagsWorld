@@ -56,8 +56,8 @@ function toElizaCharacter(def: CharacterDefinition): Character {
 PERSONALITY:
 ${def.bio.join('\n')}
 
-BACKSTORY:
-${def.lore.slice(0, 3).join('\n')}
+BACKSTORY AND RELATIONSHIPS:
+${def.lore.join('\n')}
 
 YOUR STYLE:
 - Tone: ${def.style.tone}
