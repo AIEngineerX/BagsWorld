@@ -2,27 +2,48 @@
 // Imports CharacterDefinition from main app and converts to ElizaOS Character type
 
 import type { Character } from '../types/elizaos.js';
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 
-// Import all characters from the main app (single source of truth)
-import {
-  bagsBotCharacter as bagsBotDef,
-  tolyCharacter as tolyDef,
-  neoCharacter as neoDef,
-  finnCharacter as finnDef,
-  ghostCharacter as ghostDef,
-  ashCharacter as ashDef,
-  cjCharacter as cjDef,
-  shawCharacter as shawDef,
-  ramoCharacter as ramoDef,
-  sincaraCharacter as sincaraDef,
-  stuuCharacter as stuuDef,
-  samCharacter as samDef,
-  alaaCharacter as alaaDef,
-  carloCharacter as carloDef,
-  bnnCharacter as bnnDef,
-  professorOakCharacter as professorOakDef,
-  type CharacterDefinition,
-} from '../../../src/characters/index.js';
+// Use createRequire to import from parent package (handles CJS/ESM interop)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+
+// Import character definitions from main app
+const charactersPath = resolve(__dirname, '../../../src/characters/index.ts');
+const mainCharacters = require(charactersPath);
+
+// Extract character definitions
+const bagsBotDef = mainCharacters.bagsBotCharacter;
+const tolyDef = mainCharacters.tolyCharacter;
+const neoDef = mainCharacters.neoCharacter;
+const finnDef = mainCharacters.finnCharacter;
+const ghostDef = mainCharacters.ghostCharacter;
+const ashDef = mainCharacters.ashCharacter;
+const cjDef = mainCharacters.cjCharacter;
+const shawDef = mainCharacters.shawCharacter;
+const ramoDef = mainCharacters.ramoCharacter;
+const sincaraDef = mainCharacters.sincaraCharacter;
+const stuuDef = mainCharacters.stuuCharacter;
+const samDef = mainCharacters.samCharacter;
+const alaaDef = mainCharacters.alaaCharacter;
+const carloDef = mainCharacters.carloCharacter;
+const bnnDef = mainCharacters.bnnCharacter;
+const professorOakDef = mainCharacters.professorOakCharacter;
+
+// CharacterDefinition type (inline to avoid import issues)
+interface CharacterDefinition {
+  name: string;
+  bio: string[];
+  lore: string[];
+  style: { tone: string; adjectives: string[]; vocabulary: string[] };
+  quirks: string[];
+  messageExamples: Array<Array<{ user: string; content: string }>>;
+  topics: string[];
+  postExamples: string[];
+}
 
 // Convert CharacterDefinition to ElizaOS Character format
 function toElizaCharacter(def: CharacterDefinition): Character {
