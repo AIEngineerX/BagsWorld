@@ -2012,9 +2012,9 @@ export class WorldScene extends Phaser.Scene {
     const content = this.getFoundersPopupContent(type);
     const theme = this.getFoundersPopupTheme(type);
 
-    // Panel dimensions
-    const panelW = Math.round(340 * s);
-    const panelH = Math.round(320 * s);
+    // Panel dimensions (larger to fit content)
+    const panelW = Math.round(380 * s);
+    const panelH = Math.round(420 * s);
     const borderW = Math.round(4 * s);
 
     // === PIXEL ART BORDER (multi-layer for chunky effect) ===
@@ -2116,10 +2116,10 @@ export class WorldScene extends Phaser.Scene {
     titleText.setOrigin(0.5);
     popup.add(titleText);
 
-    // Pixel divider (dashed style)
+    // Pixel divider (dashed style - wider for larger panel)
     const dividerY = titleY + Math.round(18 * s);
-    for (let i = 0; i < 12; i++) {
-      const dashX = centerX - Math.round(66 * s) + i * Math.round(12 * s);
+    for (let i = 0; i < 14; i++) {
+      const dashX = centerX - Math.round(78 * s) + i * Math.round(12 * s);
       const dash = this.add.rectangle(
         dashX,
         dividerY,
@@ -2132,45 +2132,45 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // === CONTENT SECTION ===
-    // Section backgrounds for visual hierarchy
-    const sectionY = centerY + Math.round(15 * s);
+    // Section backgrounds for visual hierarchy (taller for more content)
+    const sectionY = centerY + Math.round(30 * s);
     const sectionBg = this.add.rectangle(
       centerX,
       sectionY,
       panelW - Math.round(24 * s),
-      Math.round(160 * s),
+      Math.round(230 * s),
       0x0f172a,
       0.6
     );
     sectionBg.setStrokeStyle(1, theme.accent, 0.3);
     popup.add(sectionBg);
 
-    // Content text
+    // Content text (smaller font to fit more)
     const contentText = this.add.text(centerX, sectionY, content.body, {
       fontFamily: "monospace",
-      fontSize: `${Math.round(8 * s)}px`,
+      fontSize: `${Math.round(7 * s)}px`,
       color: "#e2e8f0",
       align: "left",
-      lineSpacing: 5,
-      wordWrap: { width: panelW - Math.round(50 * s) },
+      lineSpacing: 4,
+      wordWrap: { width: panelW - Math.round(40 * s) },
     });
     contentText.setOrigin(0.5, 0.5);
     popup.add(contentText);
 
     // === PRO TIP SECTION ===
-    const tipY = centerY + panelH / 2 - Math.round(45 * s);
+    const tipY = centerY + panelH / 2 - Math.round(40 * s);
     const tipBg = this.add.rectangle(
       centerX,
       tipY,
       panelW - Math.round(24 * s),
-      Math.round(32 * s),
+      Math.round(28 * s),
       theme.accent,
       0.15
     );
     tipBg.setStrokeStyle(1, theme.accent, 0.5);
     popup.add(tipBg);
 
-    const tipLabel = this.add.text(centerX - panelW / 2 + Math.round(24 * s), tipY, "PRO TIP", {
+    const tipLabel = this.add.text(centerX - panelW / 2 + Math.round(24 * s), tipY, "TIP:", {
       fontFamily: "monospace",
       fontSize: `${Math.round(7 * s)}px`,
       color: theme.titleColor,
@@ -2179,9 +2179,9 @@ export class WorldScene extends Phaser.Scene {
     tipLabel.setOrigin(0, 0.5);
     popup.add(tipLabel);
 
-    const tipText = this.add.text(centerX - panelW / 2 + Math.round(70 * s), tipY, content.tip, {
+    const tipText = this.add.text(centerX - panelW / 2 + Math.round(55 * s), tipY, content.tip, {
       fontFamily: "monospace",
-      fontSize: `${Math.round(7 * s)}px`,
+      fontSize: `${Math.round(6.5 * s)}px`,
       color: "#94a3b8",
     });
     tipText.setOrigin(0, 0.5);
@@ -2304,58 +2304,52 @@ export class WorldScene extends Phaser.Scene {
       case "workshop":
         return {
           title: "DEXSCREENER ENHANCED INFO",
-          body: `ORDER AT:
-marketplace.dexscreener.com/product/token-info
-
-COST: $299 (crypto or card)
-TIME: Usually <15 min, max 12 hours
+          body: `ORDER: marketplace.dexscreener.com/product/token-info
+COST:  $299 (crypto or card)
+TIME:  Usually <15 min, max 12 hours
 
 WHAT YOU GET:
-  + Custom logo & banner on your page
-  + Social links displayed to traders
-  + Project description & roadmap
-  + Locked supply wallets shown
-    (fixes market cap calculation)
+ + Custom logo & banner displayed
+ + Social links shown to traders
+ + Project description & roadmap
+ + Locked wallets (fixes mcap)
 
-WHAT YOU NEED READY:
-  [x] Token already launched on DEX
-  [x] Logo image (square, PNG/JPG)
-  [x] Banner image (3:1 ratio)
-  [x] Website URL (must be live)
-  [x] Twitter with posts (not empty)
-  [ ] TG/Discord links (optional)
+CHECKLIST BEFORE ORDERING:
+ [x] Token launched on DEX
+ [x] Logo ready (square PNG/JPG)
+ [x] Banner ready (3:1 ratio)
+ [x] Website live (not "coming soon")
+ [x] Twitter with posts
+ [ ] TG/Discord (optional)
 
-You need the wallet that created the
-token to verify ownership.`,
-          tip: "Wait for first 24h of trading before ordering!",
+IMPORTANT: You need the wallet that
+created the token to verify ownership.`,
+          tip: "Wait 24h after launch before ordering!",
         };
 
       case "studio":
         return {
           title: "IMAGE SPECS (EXACT)",
           body: `TOKEN LOGO:
-  Ratio..... 1:1 (square)
-  Size...... 512x512px recommended
-  Format.... PNG, JPG, WebP, GIF
-  Style..... Simple, readable at 32px
-
-  GOOD: Bold icon, 2-3 colors
-  BAD:  Detailed art, tiny text
+ Ratio:   1:1 (square)
+ Size:    512x512px recommended
+ Format:  PNG, JPG, WebP, GIF
+ Style:   Simple, readable at 32px
+ GOOD: Bold icon, 2-3 colors max
+ BAD:  Detailed art, tiny text
 
 TOKEN BANNER/HEADER:
-  Ratio..... 3:1 (wide rectangle)
-  Size...... 1500x500px recommended
-  Minimum... 600x200px
-  Format.... PNG, JPG, WebP, GIF
-
-  GOOD: Token name, clean design
-  BAD:  Walls of text, busy BGs
+ Ratio:   3:1 (wide rectangle)
+ Size:    1500x500px (min 600x200)
+ Format:  PNG, JPG, WebP, GIF
+ GOOD: Token name, clean design
+ BAD:  Walls of text, busy BGs
 
 FREE TOOLS:
-  Canva..... canva.com (templates)
-  Remove BG. remove.bg (transparent)
-  Compress.. tinypng.com (file size)`,
-          tip: "Your Twitter header works as your DS banner!",
+ canva.com     - templates
+ remove.bg     - transparent bg
+ tinypng.com   - compress files`,
+          tip: "Twitter header = DexScreener banner (same ratio)!",
         };
 
       case "social":
@@ -2364,30 +2358,28 @@ FREE TOOLS:
           body: `REQUIRED BY DEXSCREENER:
 
 1. WEBSITE (must be live)
-   - Use Carrd.co for free 1-pager
-   - Include: about, tokenomics, links
-   - NO "coming soon" pages
+   Use Carrd.co for free 1-pager
+   Include: about, tokenomics, links
+   NO "coming soon" pages
 
 2. TWITTER/X (must have posts)
-   - Pin a tweet about your token
-   - Post chart + CA on launch day
-   - Engage with quote tweets
+   Pin a tweet about your token
+   Post chart + CA on launch day
 
-OPTIONAL BUT HELPS:
+OPTIONAL BUT RECOMMENDED:
 
 3. TELEGRAM GROUP
-   - Create before launch
-   - Pin: CA, chart link, rules
-   - Get 2-3 mods ready
+   Create BEFORE launch
+   Pin: CA, chart link, rules
 
-4. DISCORD (if long-term project)
-   - Overkill for most memecoins
-   - Good if you have roadmap
+4. DISCORD
+   Only if long-term project
+   Overkill for memecoins
 
-BAGS.FM SPECIFIC:
-Your creator page IS your website.
-Link: bags.fm/[yourname]`,
-          tip: "Set up TG group BEFORE you launch, not after!",
+BAGS.FM TIP:
+Your creator page works as website!
+Use: bags.fm/[yourname]`,
+          tip: "Set up TG BEFORE launch, not after!",
         };
 
       default:
