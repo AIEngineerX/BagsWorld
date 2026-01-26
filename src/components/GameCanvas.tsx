@@ -34,13 +34,25 @@ class GameErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
 
   render() {
     if (this.state.hasError) {
+      const errorMessage = this.state.error?.message || "Unknown error";
+      const errorStack = this.state.error?.stack?.split("\n").slice(0, 3).join("\n") || "";
+
       return (
         this.props.fallback || (
           <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
-            <div className="text-center p-4">
+            <div className="text-center p-4 max-w-md">
               <p className="text-lg mb-2">Game failed to load</p>
+              <p className="text-sm text-red-400 mb-2 break-words">{errorMessage}</p>
+              {errorStack && (
+                <pre className="text-xs text-gray-500 mb-4 text-left overflow-auto max-h-20 bg-gray-800 p-2 rounded">
+                  {errorStack}
+                </pre>
+              )}
               <button
-                onClick={() => this.setState({ hasError: false, error: null })}
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                  window.location.reload(); // Full reload to reset Phaser
+                }}
                 className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700"
               >
                 Retry
