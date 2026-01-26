@@ -645,7 +645,8 @@ describe("transformFeeEarnerToCharacter", () => {
     expect(character.username).toBe(baseEarner.providerUsername);
     expect(character.provider).toBe(baseEarner.provider);
     expect(character.mood).toBe("neutral");
-    expect(character.zone).toBe("main_city");
+    // Zone is determined by wallet hash - verify it's a valid zone
+    expect(["main_city", "trending", "ballers", "founders"]).toContain(character.zone);
   });
 
   it("should place Toly at fixed center position", () => {
