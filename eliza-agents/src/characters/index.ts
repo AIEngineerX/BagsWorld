@@ -1,49 +1,28 @@
 // Character adapter for ElizaOS compatibility
-// Imports CharacterDefinition from main app and converts to ElizaOS Character type
+// Imports CharacterDefinition from local definitions and converts to ElizaOS Character type
 
 import type { Character } from '../types/elizaos.js';
-import { createRequire } from 'module';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
 
-// Use createRequire to import from parent package (handles CJS/ESM interop)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const require = createRequire(import.meta.url);
-
-// Import character definitions from main app
-const charactersPath = resolve(__dirname, '../../../src/characters/index.ts');
-const mainCharacters = require(charactersPath);
-
-// Extract character definitions
-const bagsBotDef = mainCharacters.bagsBotCharacter;
-const tolyDef = mainCharacters.tolyCharacter;
-const neoDef = mainCharacters.neoCharacter;
-const finnDef = mainCharacters.finnCharacter;
-const ghostDef = mainCharacters.ghostCharacter;
-const ashDef = mainCharacters.ashCharacter;
-const cjDef = mainCharacters.cjCharacter;
-const shawDef = mainCharacters.shawCharacter;
-const ramoDef = mainCharacters.ramoCharacter;
-const sincaraDef = mainCharacters.sincaraCharacter;
-const stuuDef = mainCharacters.stuuCharacter;
-const samDef = mainCharacters.samCharacter;
-const alaaDef = mainCharacters.alaaCharacter;
-const carloDef = mainCharacters.carloCharacter;
-const bnnDef = mainCharacters.bnnCharacter;
-const professorOakDef = mainCharacters.professorOakCharacter;
-
-// CharacterDefinition type (inline to avoid import issues)
-interface CharacterDefinition {
-  name: string;
-  bio: string[];
-  lore: string[];
-  style: { tone: string; adjectives: string[]; vocabulary: string[] };
-  quirks: string[];
-  messageExamples: Array<Array<{ user: string; content: string }>>;
-  topics: string[];
-  postExamples: string[];
-}
+// Import character definitions from local copies (for standalone deployment)
+import {
+  bagsBotCharacter as bagsBotDef,
+  type CharacterDefinition,
+} from './definitions/bags-bot.character.js';
+import { tolyCharacter as tolyDef } from './definitions/toly.character.js';
+import { neoCharacter as neoDef } from './definitions/neo.character.js';
+import { finnCharacter as finnDef } from './definitions/finn.character.js';
+import { ghostCharacter as ghostDef } from './definitions/ghost.character.js';
+import { ashCharacter as ashDef } from './definitions/ash.character.js';
+import { cjCharacter as cjDef } from './definitions/cj.character.js';
+import { shawCharacter as shawDef } from './definitions/shaw.character.js';
+import { ramoCharacter as ramoDef } from './definitions/ramo.character.js';
+import { sincaraCharacter as sincaraDef } from './definitions/sincara.character.js';
+import { stuuCharacter as stuuDef } from './definitions/stuu.character.js';
+import { samCharacter as samDef } from './definitions/sam.character.js';
+import { alaaCharacter as alaaDef } from './definitions/alaa.character.js';
+import { carloCharacter as carloDef } from './definitions/carlo.character.js';
+import { bnnCharacter as bnnDef } from './definitions/bnn.character.js';
+import { professorOakCharacter as professorOakDef } from './definitions/professor-oak.character.js';
 
 // Convert CharacterDefinition to ElizaOS Character format
 function toElizaCharacter(def: CharacterDefinition): Character {
