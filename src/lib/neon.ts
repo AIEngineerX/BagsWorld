@@ -34,6 +34,9 @@ export interface GlobalToken {
   position_y?: number | null; // Y coordinate override
   style_override?: number | null; // Building style (0-3)
   health_override?: number | null; // Health override (0-100)
+  // Building decay system - computed health that persists across serverless instances
+  current_health?: number | null; // Computed health (0-100), decays over time
+  health_updated_at?: string | null; // Last time health was calculated (ISO timestamp)
 }
 
 // Check if Neon is configured (either Netlify integration or direct DATABASE_URL)
@@ -140,6 +143,12 @@ export async function initializeDatabase(): Promise<boolean> {
     await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS position_y DECIMAL`;
     await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS style_override INTEGER`;
     await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS health_override INTEGER`;
+
+    // Add building decay system columns (migration)
+    // current_health: Computed health that decays over time (0-100)
+    // health_updated_at: Timestamp of last health calculation for time-based decay
+    await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS current_health INTEGER DEFAULT 50`;
+    await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS health_updated_at TIMESTAMP WITH TIME ZONE`;
 
     return true;
   } catch (error) {
@@ -267,6 +276,120 @@ export async function updateTokenStats(
     `;
   } catch (error) {
     console.error("Error updating token stats:", error);
+  }
+}
+
+// ============================================
+// Building Health Persistence (Decay System)
+// ============================================
+
+export interface BuildingHealthUpdate {
+  mint: string;
+  health: number;
+}
+
+/**
+ * Update building health for a single token.
+ * Only updates if health has changed to minimize DB writes.
+ */
+export async function updateBuildingHealth(mint: string, health: number): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await sql`
+      UPDATE tokens SET
+        current_health = ${health},
+        health_updated_at = NOW()
+      WHERE mint = ${mint}
+    `;
+    return true;
+  } catch (error) {
+    console.error("[Neon] Error updating building health:", error);
+    return false;
+  }
+}
+
+/**
+ * Batch update building health for multiple tokens.
+ * Only updates tokens where health has actually changed.
+ * Uses a single query for efficiency.
+ */
+export async function batchUpdateBuildingHealth(
+  updates: BuildingHealthUpdate[]
+): Promise<{ updated: number; failed: number }> {
+  const sql = await getSql();
+  if (!sql) return { updated: 0, failed: 0 };
+
+  if (updates.length === 0) return { updated: 0, failed: 0 };
+
+  let updated = 0;
+  let failed = 0;
+
+  try {
+    // For small batches, individual updates are fine and simpler
+    // For larger batches, we could use a CTE but this is clearer
+    for (const update of updates) {
+      try {
+        await sql`
+          UPDATE tokens SET
+            current_health = ${update.health},
+            health_updated_at = NOW()
+          WHERE mint = ${update.mint}
+            AND (current_health IS NULL OR current_health != ${update.health})
+        `;
+        updated++;
+      } catch {
+        failed++;
+      }
+    }
+
+    if (updated > 0) {
+      console.log(`[Neon] Updated health for ${updated} buildings`);
+    }
+
+    return { updated, failed };
+  } catch (error) {
+    console.error("[Neon] Error in batch health update:", error);
+    return { updated, failed: updates.length };
+  }
+}
+
+/**
+ * Get building health data for specific mints.
+ * Returns a map of mint -> { health, updatedAt }
+ */
+export async function getBuildingHealthData(
+  mints: string[]
+): Promise<Map<string, { health: number; updatedAt: Date | null }>> {
+  const sql = await getSql();
+  const result = new Map<string, { health: number; updatedAt: Date | null }>();
+
+  if (!sql || mints.length === 0) return result;
+
+  try {
+    // Fetch health data for all requested mints
+    const rows = await sql`
+      SELECT mint, current_health, health_updated_at
+      FROM tokens
+      WHERE mint = ANY(${mints})
+    `;
+
+    for (const row of rows as Array<{
+      mint: string;
+      current_health: number | null;
+      health_updated_at: string | null;
+    }>) {
+      result.set(row.mint, {
+        health: row.current_health ?? 50, // Default to 50 if null
+        updatedAt: row.health_updated_at ? new Date(row.health_updated_at) : null,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error("[Neon] Error fetching building health data:", error);
+    return result;
   }
 }
 

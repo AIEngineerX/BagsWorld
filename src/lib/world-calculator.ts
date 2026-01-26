@@ -116,50 +116,73 @@ function getStatusFromHealth(health: number): BuildingStatus {
   return "active";
 }
 
+// Decay cycle duration in milliseconds (60 seconds)
+const DECAY_CYCLE_MS = 60 * 1000;
+// Maximum cycles to apply at once (prevents extreme decay after long periods)
+// 60 cycles = 1 hour of decay applied at once max
+const MAX_DECAY_CYCLES = 60;
+
 export function calculateBuildingHealth(
   volume24h: number,
   marketCap: number,
   change24h: number,
   previousHealth: number,
   isPermanent: boolean = false,
-  healthOverride?: number | null
-): { health: number; status: BuildingStatus } {
+  healthOverride?: number | null,
+  lastHealthUpdate?: Date | null
+): { health: number; status: BuildingStatus; cyclesApplied: number } {
   // Admin override - use directly
   if (healthOverride != null) {
-    return { health: healthOverride, status: getStatusFromHealth(healthOverride) };
+    return { health: healthOverride, status: getStatusFromHealth(healthOverride), cyclesApplied: 0 };
   }
 
   // Permanent buildings always healthy
   if (isPermanent) {
-    return { health: 100, status: "active" };
+    return { health: 100, status: "active", cyclesApplied: 0 };
   }
 
   const config = ECOSYSTEM_CONFIG.buildings.decay;
-  let adjustment = 0;
+  let adjustmentPerCycle = 0;
 
   // Determine decay/recovery rate based on volume and market cap
   if (volume24h < config.volumeThresholds.dead) {
     if (marketCap < config.marketCapThreshold) {
       // Low volume + low market cap = heavy decay
-      adjustment = config.rates.heavyDecay;
+      adjustmentPerCycle = config.rates.heavyDecay;
     } else {
       // Low volume only = moderate decay
-      adjustment = config.rates.moderateDecay;
+      adjustmentPerCycle = config.rates.moderateDecay;
     }
   } else if (volume24h >= config.volumeThresholds.healthy) {
     // High volume = fast recovery
-    adjustment = config.rates.fastRecovery;
+    adjustmentPerCycle = config.rates.fastRecovery;
   } else if (change24h < -20) {
     // Moderate volume + price drop = light decay
-    adjustment = config.rates.lightDecay;
+    adjustmentPerCycle = config.rates.lightDecay;
   } else {
     // Normal activity = recovery
-    adjustment = config.rates.recovery;
+    adjustmentPerCycle = config.rates.recovery;
   }
 
-  // Apply adjustment to previous health
-  const newHealth = Math.round(Math.max(0, Math.min(100, previousHealth + adjustment)));
-  return { health: newHealth, status: getStatusFromHealth(newHealth) };
+  // Calculate number of cycles based on time elapsed since last update
+  let cyclesElapsed = 1; // Default: apply one cycle (for new buildings or missing timestamp)
+
+  if (lastHealthUpdate) {
+    const now = Date.now();
+    const elapsed = now - lastHealthUpdate.getTime();
+    // Calculate cycles, minimum 1, maximum MAX_DECAY_CYCLES
+    cyclesElapsed = Math.min(MAX_DECAY_CYCLES, Math.max(1, Math.floor(elapsed / DECAY_CYCLE_MS)));
+  }
+
+  // Apply adjustment multiplied by cycles elapsed
+  const totalAdjustment = adjustmentPerCycle * cyclesElapsed;
+  const newHealth = Math.round(Math.max(0, Math.min(100, previousHealth + totalAdjustment)));
+
+  return {
+    health: newHealth,
+    status: getStatusFromHealth(newHealth),
+    cyclesApplied: cyclesElapsed,
+  };
 }
 
 export function calculateCharacterMood(
@@ -589,14 +612,21 @@ export function transformTokenToBuilding(
     tokenUrl = `https://bags.fm/${token.mint}`;
   }
 
-  const previousHealth = existingBuilding?.health ?? 50;
+  // Health source priority:
+  // 1. DB persisted health (token.currentHealth) - survives serverless cold starts
+  // 2. In-memory previous building health (existingBuilding?.health) - same instance
+  // 3. Default to 50 for new buildings
+  const previousHealth = token.currentHealth ?? existingBuilding?.health ?? 50;
+
+  // Pass the last health update timestamp for time-based decay calculation
   const { health: newHealth, status } = calculateBuildingHealth(
     token.volume24h,
     token.marketCap,
     token.change24h,
     previousHealth,
     landmark.isPermanent,
-    token.healthOverride
+    token.healthOverride,
+    token.healthUpdatedAt // For time-based decay - how long since last calculation
   );
 
   // Assign zones based on landmark type or hash of mint for user buildings
