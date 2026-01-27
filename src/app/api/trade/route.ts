@@ -24,7 +24,7 @@ interface TradeRequestBody {
 export async function POST(request: Request) {
   // Rate limit: 30 requests per minute (standard)
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`trade:${clientIP}`, RATE_LIMITS.standard);
+  const rateLimit = await checkRateLimit(`trade:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
       {

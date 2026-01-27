@@ -3,6 +3,7 @@ import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import type { BagsApiClient } from "@/lib/bags-api";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { isValidSolanaAddress, isValidBps, sanitizeString } from "@/lib/env-utils";
 
 interface LaunchRequestBody {
   action: "create-info" | "configure-fees" | "create-launch-tx" | "lookup-wallet";
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
   // Rate limit: 20 requests per minute (standard - allows full launch flow with retries)
   // A single launch needs: create-info + configure-fees + create-launch-tx + potential retries
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`launch:${clientIP}`, RATE_LIMITS.standard);
+  const rateLimit = await checkRateLimit(`launch:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
       {
@@ -173,6 +174,44 @@ async function handleConfigureFees(
     );
   }
 
+  // Validate mint address
+  if (!isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: "Invalid token mint address" }, { status: 400 });
+  }
+
+  // Validate payer address
+  if (!isValidSolanaAddress(data.payer)) {
+    return NextResponse.json({ error: "Invalid payer wallet address" }, { status: 400 });
+  }
+
+  // Validate each fee claimer's BPS value
+  for (const claimer of data.feeClaimers) {
+    if (!isValidBps(claimer.bps, 1, 10000)) {
+      return NextResponse.json(
+        {
+          error: `Invalid BPS value for ${claimer.providerUsername}: ${claimer.bps}. Must be between 1 and 10000.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate provider is a supported type
+    const validProviders = ["twitter", "github", "kick"];
+    if (!validProviders.includes(claimer.provider)) {
+      return NextResponse.json(
+        {
+          error: `Invalid provider: ${claimer.provider}. Must be one of: ${validProviders.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize username
+    if (!claimer.providerUsername || claimer.providerUsername.length > 100) {
+      return NextResponse.json({ error: "Invalid provider username" }, { status: 400 });
+    }
+  }
+
   // Validate total bps equals exactly 100%
   const totalBps = data.feeClaimers.reduce((sum, c) => sum + c.bps, 0);
   if (totalBps !== 10000) {
@@ -232,6 +271,24 @@ async function handleCreateLaunchTx(
       { error: "Missing required fields: ipfs, tokenMint, wallet, configKey" },
       { status: 400 }
     );
+  }
+
+  // Validate Solana addresses
+  if (!isValidSolanaAddress(data.tokenMint)) {
+    return NextResponse.json({ error: "Invalid token mint address" }, { status: 400 });
+  }
+
+  if (!isValidSolanaAddress(data.wallet)) {
+    return NextResponse.json({ error: "Invalid wallet address" }, { status: 400 });
+  }
+
+  if (data.tipWallet && !isValidSolanaAddress(data.tipWallet)) {
+    return NextResponse.json({ error: "Invalid tip wallet address" }, { status: 400 });
+  }
+
+  // Validate IPFS URL format
+  if (!data.ipfs.startsWith("ipfs://") && !data.ipfs.startsWith("https://")) {
+    return NextResponse.json({ error: "Invalid IPFS URL format" }, { status: 400 });
   }
 
   // Debug log the request data

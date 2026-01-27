@@ -19,6 +19,50 @@
 // Follow @DaddyGhost on X for updates
 // =============================================================================
 
+import { isProduction, isDevelopment } from "./env-utils";
+
+/**
+ * Get admin wallets from environment.
+ *
+ * In production: Returns empty array if not configured (disables admin features)
+ * In development: Returns fallback wallet with warning
+ *
+ * Supports multiple wallets via comma-separated ADMIN_WALLETS env var.
+ */
+function getAdminWallets(): string[] {
+  // Check multiple env var names for backwards compatibility
+  const adminWalletEnv =
+    process.env.ADMIN_WALLETS || process.env.ADMIN_WALLET || process.env.NEXT_PUBLIC_ADMIN_WALLET;
+
+  if (adminWalletEnv) {
+    // Support comma-separated list of admin wallets
+    return adminWalletEnv
+      .split(",")
+      .map((wallet) => wallet.trim())
+      .filter(Boolean);
+  }
+
+  // No admin wallet configured
+  if (isProduction()) {
+    console.error(
+      "[Config] ADMIN_WALLETS not configured - admin features disabled in production. " +
+        "Set ADMIN_WALLETS environment variable to enable admin access."
+    );
+    return [];
+  }
+
+  // Development fallback with clear warning
+  if (isDevelopment()) {
+    console.warn(
+      "[Config] Using development admin wallet fallback - NOT FOR PRODUCTION. " +
+        "Set ADMIN_WALLETS environment variable for production."
+    );
+    return ["9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC"];
+  }
+
+  return [];
+}
+
 export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
   // ECOSYSTEM FUNDING
@@ -76,11 +120,11 @@ export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
   // ADMIN CONFIGURATION
   // -------------------------------------------------------------------------
+  // Admin wallets must be explicitly configured via ADMIN_WALLETS env var in production.
+  // In development, a fallback wallet is used for testing.
   admin: {
     // Wallets with admin privileges (can delete buildings, moderate)
-    wallets: [
-      process.env.NEXT_PUBLIC_ADMIN_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
-    ],
+    wallets: getAdminWallets(),
   },
 
   // -------------------------------------------------------------------------
@@ -387,9 +431,30 @@ export const ECOSYSTEM_CONFIG = {
 };
 
 // Helper functions
+
+/**
+ * Check if a wallet address has admin privileges.
+ *
+ * Returns false if:
+ * - No wallet address provided
+ * - Admin wallets not configured (production without ADMIN_WALLETS env var)
+ * - Wallet not in admin list
+ */
 export function isAdmin(walletAddress: string | null | undefined): boolean {
   if (!walletAddress) return false;
-  return ECOSYSTEM_CONFIG.admin.wallets.includes(walletAddress);
+  const adminWallets = ECOSYSTEM_CONFIG.admin.wallets;
+  if (adminWallets.length === 0) return false;
+  return adminWallets.includes(walletAddress);
+}
+
+/**
+ * Check if admin functionality is available.
+ *
+ * Returns false in production if ADMIN_WALLETS is not configured.
+ * Useful for disabling admin UI elements when no admins are set.
+ */
+export function isAdminConfigured(): boolean {
+  return ECOSYSTEM_CONFIG.admin.wallets.length > 0;
 }
 
 export function getBuildingTier(marketCap: number): (typeof ECOSYSTEM_CONFIG.buildings.tiers)[0] {

@@ -44,7 +44,7 @@ const CHARACTER_DISPLAY_NAMES: Record<string, string> = {
 
 export async function POST(request: Request) {
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`chat:${clientIP}`, RATE_LIMITS.ai);
+  const rateLimit = await checkRateLimit(`chat:${clientIP}`, RATE_LIMITS.ai);
 
   if (!rateLimit.success) {
     return NextResponse.json(

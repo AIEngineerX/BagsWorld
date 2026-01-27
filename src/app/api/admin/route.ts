@@ -5,6 +5,7 @@ import { isAdmin } from "@/lib/config";
 import { getGlobalTokens, saveGlobalToken, isNeonConfigured, type GlobalToken } from "@/lib/neon";
 import { verifySessionToken } from "@/lib/wallet-auth";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { sanitizeString } from "@/lib/env-utils";
 
 /**
  * Validate that a string is a valid Solana public key
@@ -97,7 +98,7 @@ function verifyAdmin(request: NextRequest): string | null {
 export async function GET(request: NextRequest) {
   // Rate limit: 30 requests per minute (standard)
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`admin:${clientIP}`, RATE_LIMITS.standard);
+  const rateLimit = await checkRateLimit(`admin:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
       {
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Rate limit: 30 requests per minute (standard)
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`admin:${clientIP}`, RATE_LIMITS.standard);
+  const rateLimit = await checkRateLimit(`admin:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
       {
@@ -294,6 +295,32 @@ async function handleUpdateToken(data: { mint: string; updates: Partial<GlobalTo
     );
   }
 
+  // Sanitize string inputs to prevent XSS
+  const sanitizedUpdates = {
+    ...data.updates,
+    name: data.updates.name ? sanitizeString(data.updates.name, MAX_NAME_LENGTH) : undefined,
+    symbol: data.updates.symbol
+      ? sanitizeString(data.updates.symbol, MAX_SYMBOL_LENGTH)
+      : undefined,
+    description: data.updates.description
+      ? sanitizeString(data.updates.description, MAX_DESCRIPTION_LENGTH)
+      : undefined,
+    // For URLs, just validate format rather than sanitize (would break valid URLs)
+    image_url: data.updates.image_url,
+  };
+
+  // Validate image URL format if provided
+  if (sanitizedUpdates.image_url) {
+    try {
+      const url = new URL(sanitizedUpdates.image_url);
+      if (!["http:", "https:", "ipfs:"].includes(url.protocol)) {
+        return NextResponse.json({ error: "Invalid image URL protocol" }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid image URL format" }, { status: 400 });
+    }
+  }
+
   if (!isNeonConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
@@ -305,7 +332,8 @@ async function handleUpdateToken(data: { mint: string; updates: Partial<GlobalTo
     const { neon } = require(moduleName);
     const sql = neon();
 
-    const { mint, updates } = data;
+    const { mint } = data;
+    const updates = sanitizedUpdates;
 
     // Build update query dynamically
     const updateFields: string[] = [];

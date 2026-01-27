@@ -38,7 +38,7 @@ function isValidSolanaAddress(address: string): boolean {
 export async function GET(request: NextRequest) {
   // Rate limit: 5 requests per minute (strict)
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`admin-auth:${clientIP}`, RATE_LIMITS.strict);
+  const rateLimit = await checkRateLimit(`admin-auth:${clientIP}`, RATE_LIMITS.strict);
   if (!rateLimit.success) {
     return NextResponse.json(
       {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Rate limit: 5 requests per minute (strict)
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`admin-auth:${clientIP}`, RATE_LIMITS.strict);
+  const rateLimit = await checkRateLimit(`admin-auth:${clientIP}`, RATE_LIMITS.strict);
   if (!rateLimit.success) {
     return NextResponse.json(
       {

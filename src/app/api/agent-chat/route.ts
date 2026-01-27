@@ -263,7 +263,7 @@ interface AgentChatResponse {
 export async function POST(request: Request) {
   // Rate limit
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`agent:${clientIP}`, RATE_LIMITS.standard);
+  const rateLimit = await checkRateLimit(`agent:${clientIP}`, RATE_LIMITS.standard);
 
   if (!rateLimit.success) {
     return NextResponse.json(

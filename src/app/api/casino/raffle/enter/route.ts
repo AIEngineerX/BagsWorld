@@ -1,6 +1,7 @@
 // Casino Raffle Entry API
 import { NextRequest, NextResponse } from "next/server";
 import { enterCasinoRaffle, checkRaffleThreshold, isNeonConfigured } from "@/lib/neon";
+import { isValidSolanaAddress } from "@/lib/env-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,9 +12,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Wallet address required" }, { status: 400 });
     }
 
-    // Validate wallet format (basic check)
-    if (typeof wallet !== "string" || wallet.length < 32 || wallet.length > 44) {
-      return NextResponse.json({ error: "Invalid wallet address format" }, { status: 400 });
+    // Validate wallet is a valid Solana address
+    if (!isValidSolanaAddress(wallet)) {
+      return NextResponse.json({ error: "Invalid Solana wallet address" }, { status: 400 });
     }
 
     // Check database is configured

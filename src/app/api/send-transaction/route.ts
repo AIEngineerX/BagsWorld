@@ -47,7 +47,7 @@ async function rpcCall(method: string, params: unknown[]) {
 export async function POST(request: Request) {
   // Rate limit: 5 requests per minute (strict - prevents transaction spam)
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`send-tx:${clientIP}`, RATE_LIMITS.strict);
+  const rateLimit = await checkRateLimit(`send-tx:${clientIP}`, RATE_LIMITS.strict);
   if (!rateLimit.success) {
     return NextResponse.json(
       {
