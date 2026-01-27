@@ -26,7 +26,7 @@ const LOCATIONS: Record<
       desc: "Heal & Info",
       event: "bagsworld-pokecenter-click",
     },
-    { id: "dojo", name: "Trading Dojo", desc: "AI Sparring", event: "bagsworld-tradinggym-click" },
+    // { id: "dojo", name: "Trading Dojo", desc: "AI Sparring", event: "bagsworld-tradinggym-click" }, // STASHED
     { id: "treasury", name: "Treasury", desc: "Claim Fees", event: "bagsworld-treasury-click" },
   ],
   trending: [

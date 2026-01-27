@@ -222,7 +222,7 @@ const MIN_SLOT_SPACING = Math.round(100 * SCALE); // Minimum gap between buildin
 const LANDMARK_X_POSITIONS = [
   Math.round(50 * SCALE), // Casino (80) - far left
   Math.round(280 * SCALE), // PokeCenter (448)
-  Math.round(380 * SCALE), // TradingDojo (608) - spaced from casino
+  // Math.round(380 * SCALE), // TradingDojo (608) - STASHED
   WORLD_WIDTH / 2, // HQ/Treasury (640)
 ];
 const LANDMARK_CLEARANCE = 80; // Pixels to stay clear of landmarks
@@ -351,14 +351,14 @@ const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
 
 // Check if token/building is a landmark (fixed position, never decays)
 function isLandmark(token: { mint: string; symbol: string }): {
-  type: "pokecenter" | "dojo" | "casino" | "terminal" | "treasury" | "hq" | null;
+  type: "pokecenter" | "casino" | "terminal" | "treasury" | "hq" | null;
   isPermanent: boolean;
 } {
   const { mint, symbol } = token;
   if (mint === BAGSHQ_MINT || symbol === "BAGSWORLD") return { type: "hq", isPermanent: true };
   if (symbol === "POKECENTER" || mint.includes("PokeCenter"))
     return { type: "pokecenter", isPermanent: true };
-  if (symbol === "DOJO" || mint.includes("TradingGym")) return { type: "dojo", isPermanent: true };
+  // if (symbol === "DOJO" || mint.includes("TradingGym")) return { type: "dojo", isPermanent: true }; // STASHED
   if (symbol === "CASINO" || mint.includes("Casino")) return { type: "casino", isPermanent: true };
   if (symbol === "TERMINAL" || mint.includes("TradingTerminal"))
     return { type: "terminal", isPermanent: true };
@@ -595,8 +595,8 @@ export function transformTokenToBuilding(
     position = { x: existingBuilding.x, y: existingBuilding.y };
   } else if (landmark.type === "casino") {
     position = { x: Math.round(50 * SCALE), y: landmarkY };
-  } else if (landmark.type === "dojo") {
-    position = { x: Math.round(380 * SCALE), y: landmarkY };
+    // } else if (landmark.type === "dojo") { // STASHED
+    //   position = { x: Math.round(380 * SCALE), y: landmarkY };
   } else if (landmark.type === "terminal") {
     position = { x: Math.round(520 * SCALE), y: landmarkY };
   } else if (landmark.type === "pokecenter") {
@@ -645,7 +645,7 @@ export function transformTokenToBuilding(
 
   const zone = isBagsWorldHQ
     ? undefined // HQ appears in all zones as the main landmark
-    : landmark.type === "dojo" || landmark.type === "casino" || landmark.type === "terminal"
+    : landmark.type === "casino" || landmark.type === "terminal" // dojo STASHED
       ? ("trending" as const)
       : landmark.type === "pokecenter" || landmark.type === "treasury"
         ? ("main_city" as const)
