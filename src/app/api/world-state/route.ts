@@ -562,7 +562,7 @@ const TREASURY_BUILDING: RegisteredToken = {
   name: "Community Fund",
   symbol: "FUND",
   description:
-    "Ghost's 5% $BagsWorld contribution funds Casino, features & development. Zero creator fees. Click to verify on Solscan!",
+    "Ghost's 5% $BagsWorld contribution funds Casino, features & development. Click to verify on Solscan!",
   imageUrl: "/assets/buildings/treasury.png",
   creator: TREASURY_WALLET,
   createdAt: Date.now() - 86400000 * 365, // 1 year ago (always been here)
