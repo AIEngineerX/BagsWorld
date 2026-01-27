@@ -231,7 +231,10 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
         addLog(result.error || "Failed to add building", "error");
         return;
       }
-      addLog(result.message || `Added building: ${result.token?.symbol || newMint.slice(0, 8)}`, "success");
+      addLog(
+        result.message || `Added building: ${result.token?.symbol || newMint.slice(0, 8)}`,
+        "success"
+      );
       setNewMint("");
       setSelectedMint(newMint.trim()); // Select the newly added building
       onRefresh();
@@ -349,9 +352,7 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
               <select
                 value={filterFeatured === "all" ? "all" : filterFeatured ? "yes" : "no"}
                 onChange={(e) =>
-                  setFilterFeatured(
-                    e.target.value === "all" ? "all" : e.target.value === "yes"
-                  )
+                  setFilterFeatured(e.target.value === "all" ? "all" : e.target.value === "yes")
                 }
                 className="flex-1 bg-black/50 border border-gray-700 px-2 py-1 font-pixel text-[8px] text-white"
               >
@@ -395,12 +396,8 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
                     <p className="font-pixel text-[7px] text-gray-500 truncate">{token.name}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    {token.is_featured && (
-                      <span className="text-yellow-400 text-[8px]">★</span>
-                    )}
-                    {token.is_verified && (
-                      <span className="text-green-400 text-[8px]">✓</span>
-                    )}
+                    {token.is_featured && <span className="text-yellow-400 text-[8px]">★</span>}
+                    {token.is_verified && <span className="text-green-400 text-[8px]">✓</span>}
                     {hasOverrides && (
                       <span className="w-2 h-2 rounded-full bg-purple-500" title="Has overrides" />
                     )}
@@ -433,12 +430,8 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
                   <div>
                     <h3 className="font-pixel text-sm text-white">
                       ${selectedToken.symbol}
-                      {selectedToken.is_featured && (
-                        <span className="ml-2 text-yellow-400">★</span>
-                      )}
-                      {selectedToken.is_verified && (
-                        <span className="ml-1 text-green-400">✓</span>
-                      )}
+                      {selectedToken.is_featured && <span className="ml-2 text-yellow-400">★</span>}
+                      {selectedToken.is_verified && <span className="ml-1 text-green-400">✓</span>}
                     </h3>
                     <p className="font-pixel text-[8px] text-gray-500">{selectedToken.name}</p>
                     <p className="font-pixel text-[7px] text-gray-600 truncate max-w-[200px]">
