@@ -28,8 +28,8 @@ const LOCATIONS: Record<
     },
     {
       id: "treasury",
-      name: "Creator Hub",
-      desc: "Top 3 Payouts",
+      name: "Community Fund",
+      desc: "Ghost's 5%",
       event: "bagsworld-treasury-click",
     },
   ],
