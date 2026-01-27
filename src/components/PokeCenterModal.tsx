@@ -199,25 +199,25 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
             )}
           </div>
 
-          {/* Creator Rewards Info */}
+          {/* Fee Claim Info */}
           <div className="border border-gray-700 rounded p-3">
-            <h3 className="font-pixel text-white text-xs mb-2">[*] Creator Rewards</h3>
+            <h3 className="font-pixel text-white text-xs mb-2">[*] Fee Claims</h3>
             <ul className="space-y-1">
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span className="text-bags-gold">&gt;</span>
-                <span>1% of all fees go to the ecosystem rewards pool</span>
+                <span>Creators earn fees from their token trading volume</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span className="text-bags-gold">&gt;</span>
-                <span>Top 3 creators by fee contribution get rewarded</span>
+                <span>Top 3 fee earners per token get rewarded</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span className="text-bags-gold">&gt;</span>
-                <span>Distribution: 50% / 30% / 20% split</span>
+                <span>Claim fees directly through Bags.fm</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span className="text-bags-gold">&gt;</span>
-                <span>Triggers at 10 SOL or every 5 days (min 10 SOL)</span>
+                <span>No additional BagsWorld fees - 100% to creators</span>
               </li>
             </ul>
           </div>

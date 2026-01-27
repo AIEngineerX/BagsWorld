@@ -29,10 +29,10 @@ const ECOSYSTEM_TOPICS = [
       "Every token launched on BagsWorld becomes a building! As the market cap grows, your building evolves - from a small shop to a towering skyscraper. Level 1 is under $100K, Level 5 is $10M+!",
   },
   {
-    title: "Creator Rewards",
+    title: "Creator Fees",
     icon: "R",
     content:
-      "1% ecosystem fee goes to the rewards pool. Top 3 creators by fee contribution get paid directly - 50% to 1st, 30% to 2nd, 20% to 3rd. SOL sent straight to your wallet!",
+      "Creators earn 100% of the fee share they configure at launch. Top 3 fee earners per token get the fees. Claim directly through Bags.fm - no extra BagsWorld fees!",
   },
   {
     title: "How Citizens Work",
