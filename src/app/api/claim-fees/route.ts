@@ -3,6 +3,7 @@ import { getServerBagsApiOrNull } from "@/lib/bags-api-server";
 import type { BagsApiClient } from "@/lib/bags-api";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { getTokensByMints } from "@/lib/dexscreener-api";
+import { isValidSolanaAddress } from "@/lib/env-utils";
 
 interface ClaimRequestBody {
   action: "get-positions" | "generate-claim-tx" | "lookup-by-x";
@@ -14,7 +15,7 @@ interface ClaimRequestBody {
 export async function POST(request: Request) {
   // Rate limit: 30 requests per minute (standard)
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`claim-fees:${clientIP}`, RATE_LIMITS.standard);
+  const rateLimit = await checkRateLimit(`claim-fees:${clientIP}`, RATE_LIMITS.standard);
   if (!rateLimit.success) {
     return NextResponse.json(
       {
@@ -62,6 +63,10 @@ export async function POST(request: Request) {
 async function handleGetPositions(api: BagsApiClient, wallet: string): Promise<NextResponse> {
   if (!wallet) {
     return NextResponse.json({ error: "Missing required field: wallet" }, { status: 400 });
+  }
+
+  if (!isValidSolanaAddress(wallet)) {
+    return NextResponse.json({ error: "Invalid Solana wallet address" }, { status: 400 });
   }
 
   try {
@@ -212,6 +217,17 @@ async function handleGenerateClaimTx(
       { error: "Missing required fields: wallet, positions" },
       { status: 400 }
     );
+  }
+
+  if (!isValidSolanaAddress(wallet)) {
+    return NextResponse.json({ error: "Invalid Solana wallet address" }, { status: 400 });
+  }
+
+  // Validate all position addresses (virtualPool addresses)
+  for (const position of positions) {
+    if (!isValidSolanaAddress(position)) {
+      return NextResponse.json({ error: "Invalid position address in list" }, { status: 400 });
+    }
   }
 
   try {

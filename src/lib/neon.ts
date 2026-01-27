@@ -1515,3 +1515,151 @@ export async function getCasinoHistory(wallet: string): Promise<CasinoHistoryEnt
     return null;
   }
 }
+
+// ============================================
+// Distributed Rate Limiting
+// ============================================
+// Persists rate limit state to database so it survives serverless cold starts.
+// Uses atomic upsert for thread-safe counter increment.
+
+// Track if rate limit table has been initialized
+let rateLimitTableInitialized = false;
+
+/**
+ * Initialize rate limit table if it doesn't exist.
+ * Called lazily on first rate limit check.
+ */
+export async function initializeRateLimitTable(): Promise<boolean> {
+  if (rateLimitTableInitialized) return true;
+
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS rate_limits (
+        identifier VARCHAR(255) PRIMARY KEY,
+        count INTEGER NOT NULL DEFAULT 1,
+        window_start BIGINT NOT NULL,
+        expires_at BIGINT NOT NULL
+      )
+    `;
+
+    // Index for cleanup queries - find expired entries efficiently
+    await sql`CREATE INDEX IF NOT EXISTS idx_rate_limits_expires ON rate_limits(expires_at)`;
+
+    rateLimitTableInitialized = true;
+    return true;
+  } catch (error) {
+    console.error("[Neon] Error creating rate_limits table:", error);
+    return false;
+  }
+}
+
+/**
+ * Rate limit result returned by checkDistributedRateLimit
+ */
+export interface DistributedRateLimitResult {
+  success: boolean;
+  remaining: number;
+  resetIn: number;
+}
+
+/**
+ * Check and increment rate limit atomically using database.
+ *
+ * Uses PostgreSQL UPSERT (INSERT ON CONFLICT) for atomic counter increment.
+ * Handles window expiration within the same query for efficiency.
+ *
+ * @param identifier - Unique key for rate limiting (e.g., "admin-auth:192.168.1.1")
+ * @param limit - Maximum requests allowed in the window
+ * @param windowMs - Time window in milliseconds
+ * @returns Rate limit result with success, remaining, and resetIn
+ */
+export async function checkDistributedRateLimit(
+  identifier: string,
+  limit: number,
+  windowMs: number
+): Promise<DistributedRateLimitResult> {
+  const sql = await getSql();
+  const now = Date.now();
+  const expiresAt = now + windowMs;
+
+  // If database is not available, fail open (allow request) but log warning
+  // This ensures availability even when DB is temporarily unreachable
+  if (!sql) {
+    console.warn("[RateLimit] Database unavailable, allowing request");
+    return { success: true, remaining: limit - 1, resetIn: windowMs };
+  }
+
+  // Ensure table exists (lazy initialization)
+  await initializeRateLimitTable();
+
+  try {
+    // Atomic upsert with conditional logic:
+    // - If entry doesn't exist: insert with count=1
+    // - If entry exists but expired: reset count to 1, update window
+    // - If entry exists and valid: increment count
+    const result = await sql`
+      INSERT INTO rate_limits (identifier, count, window_start, expires_at)
+      VALUES (${identifier}, 1, ${now}, ${expiresAt})
+      ON CONFLICT (identifier) DO UPDATE SET
+        count = CASE
+          WHEN rate_limits.expires_at < ${now} THEN 1
+          ELSE rate_limits.count + 1
+        END,
+        window_start = CASE
+          WHEN rate_limits.expires_at < ${now} THEN ${now}
+          ELSE rate_limits.window_start
+        END,
+        expires_at = CASE
+          WHEN rate_limits.expires_at < ${now} THEN ${expiresAt}
+          ELSE rate_limits.expires_at
+        END
+      RETURNING count, expires_at
+    `;
+
+    const row = (result as Array<{ count: number; expires_at: string }>)[0];
+    const count = row.count;
+    const resetIn = Math.max(0, parseInt(String(row.expires_at), 10) - now);
+
+    return {
+      success: count <= limit,
+      remaining: Math.max(0, limit - count),
+      resetIn,
+    };
+  } catch (error) {
+    console.error("[RateLimit] Database error:", error);
+    // Fail open on database errors to maintain availability
+    return { success: true, remaining: limit - 1, resetIn: windowMs };
+  }
+}
+
+/**
+ * Cleanup expired rate limit entries from the database.
+ *
+ * Should be called periodically to prevent table bloat.
+ * The rate-limit module calls this lazily every 5 minutes.
+ *
+ * @returns Number of entries deleted
+ */
+export async function cleanupExpiredRateLimits(): Promise<number> {
+  const sql = await getSql();
+  if (!sql) return 0;
+
+  try {
+    const result = await sql`
+      DELETE FROM rate_limits
+      WHERE expires_at < ${Date.now()}
+      RETURNING identifier
+    `;
+    const deleted = (result as unknown[]).length;
+    if (deleted > 0) {
+      console.log(`[RateLimit] Cleaned up ${deleted} expired entries`);
+    }
+    return deleted;
+  } catch (error) {
+    console.error("[RateLimit] Cleanup error:", error);
+    return 0;
+  }
+}

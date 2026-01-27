@@ -1,27 +1,41 @@
 /**
- * Simple in-memory rate limiter for serverless functions
+ * Distributed Rate Limiter for Serverless Functions
  *
- * Note: This resets on cold starts. For distributed rate limiting,
- * use Redis (Upstash) or put Cloudflare in front.
+ * Uses Neon PostgreSQL for persistent rate limiting that survives cold starts.
+ * Falls back to in-memory rate limiting for local development or when DB is unavailable.
  */
+
+import {
+  isNeonConfigured,
+  checkDistributedRateLimit,
+  cleanupExpiredRateLimits,
+  type DistributedRateLimitResult,
+} from "./neon";
 
 interface RateLimitEntry {
   count: number;
   resetTime: number;
 }
 
-// In-memory store (resets on cold start)
+// In-memory store (fallback for local development)
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-// Clean up old entries periodically
-let lastCleanup = Date.now();
-const CLEANUP_INTERVAL = 60000; // 1 minute
+// Cleanup tracking
+let lastInMemoryCleanup = Date.now();
+const IN_MEMORY_CLEANUP_INTERVAL = 60000; // 1 minute
 
-function cleanup() {
+// Database cleanup tracking (lazy cleanup)
+let lastDbCleanup = Date.now();
+const DB_CLEANUP_INTERVAL = 300000; // 5 minutes
+
+/**
+ * Clean up expired in-memory entries
+ */
+function cleanupInMemory(): void {
   const now = Date.now();
-  if (now - lastCleanup < CLEANUP_INTERVAL) return;
+  if (now - lastInMemoryCleanup < IN_MEMORY_CLEANUP_INTERVAL) return;
 
-  lastCleanup = now;
+  lastInMemoryCleanup = now;
   for (const [key, entry] of rateLimitStore.entries()) {
     if (now > entry.resetTime) {
       rateLimitStore.delete(key);
@@ -44,17 +58,56 @@ export interface RateLimitResult {
 
 /**
  * Check rate limit for a given identifier (IP, wallet, etc.)
+ *
+ * Uses distributed (database) rate limiting when Neon is configured,
+ * falls back to in-memory for local development.
+ *
+ * @param identifier - Unique key for rate limiting (e.g., "endpoint:ip")
+ * @param config - Rate limit configuration
+ * @returns Promise with rate limit result
  */
-export function checkRateLimit(identifier: string, config: RateLimitConfig): RateLimitResult {
-  cleanup();
+export async function checkRateLimit(
+  identifier: string,
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
+  // Use distributed rate limiting if Neon is configured
+  if (isNeonConfigured()) {
+    // Trigger lazy cleanup periodically (fire and forget)
+    const now = Date.now();
+    if (now - lastDbCleanup > DB_CLEANUP_INTERVAL) {
+      lastDbCleanup = now;
+      cleanupExpiredRateLimits().catch(() => {
+        // Ignore cleanup errors - non-critical
+      });
+    }
+
+    const result: DistributedRateLimitResult = await checkDistributedRateLimit(
+      identifier,
+      config.limit,
+      config.windowMs
+    );
+
+    return result;
+  }
+
+  // Fall back to in-memory for local development
+  return checkRateLimitInMemory(identifier, config);
+}
+
+/**
+ * In-memory rate limit check (for local development)
+ *
+ * Note: Resets on cold starts. Only use for development.
+ */
+function checkRateLimitInMemory(identifier: string, config: RateLimitConfig): RateLimitResult {
+  cleanupInMemory();
 
   const now = Date.now();
-  const key = identifier;
-  const entry = rateLimitStore.get(key);
+  const entry = rateLimitStore.get(identifier);
 
   // No existing entry or window expired
   if (!entry || now > entry.resetTime) {
-    rateLimitStore.set(key, {
+    rateLimitStore.set(identifier, {
       count: 1,
       resetTime: now + config.windowMs,
     });
@@ -81,6 +134,18 @@ export function checkRateLimit(identifier: string, config: RateLimitConfig): Rat
     remaining: 0,
     resetIn: Math.max(0, entry.resetTime - now),
   };
+}
+
+/**
+ * Synchronous in-memory rate limit check.
+ *
+ * Only for use in contexts where async is not possible.
+ * Does NOT use distributed rate limiting.
+ *
+ * @deprecated Prefer async checkRateLimit() for production use
+ */
+export function checkRateLimitSync(identifier: string, config: RateLimitConfig): RateLimitResult {
+  return checkRateLimitInMemory(identifier, config);
 }
 
 /**

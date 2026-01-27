@@ -6,12 +6,16 @@
  * other privileged operations.
  *
  * Uses stateless challenge verification for serverless compatibility.
+ *
+ * SECURITY: CHALLENGE_SECRET and SESSION_SECRET must be set in production.
+ * Generate with: openssl rand -base64 32
  */
 
 import { PublicKey } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
 import crypto from "crypto";
+import { getRequiredSecret, validateSecretStrength, isProduction } from "./env-utils";
 
 // Challenge message prefix - prevents signature reuse across apps
 const MESSAGE_PREFIX = "BagsWorld Auth";
@@ -19,9 +23,14 @@ const MESSAGE_PREFIX = "BagsWorld Auth";
 // Challenge expiry time (5 minutes)
 const CHALLENGE_EXPIRY_MS = 5 * 60 * 1000;
 
-// Secret for HMAC - use env var in production, fallback for dev
-const CHALLENGE_SECRET =
-  process.env.CHALLENGE_SECRET || "bagsworld-dev-secret-change-in-production";
+// Secret for HMAC - REQUIRED in production, dev fallback for local testing
+const CHALLENGE_SECRET = getRequiredSecret(
+  "CHALLENGE_SECRET",
+  "bagsworld-local-dev-secret-do-not-use-in-production"
+);
+
+// Validate secret strength in production
+validateSecretStrength("CHALLENGE_SECRET", CHALLENGE_SECRET);
 
 /**
  * Generate HMAC for challenge validation (stateless verification)
@@ -161,8 +170,14 @@ export function verifyAdminSignature(
 // Session duration (1 hour)
 const SESSION_DURATION_MS = 60 * 60 * 1000;
 
-// Secret for session HMAC
+// Secret for session HMAC - uses separate secret if provided, falls back to challenge secret
+// Both must meet minimum strength requirements in production
 const SESSION_SECRET = process.env.SESSION_SECRET || CHALLENGE_SECRET;
+
+// Validate session secret strength in production (if using separate secret)
+if (process.env.SESSION_SECRET) {
+  validateSecretStrength("SESSION_SECRET", SESSION_SECRET);
+}
 
 /**
  * Create a stateless session token after successful signature verification

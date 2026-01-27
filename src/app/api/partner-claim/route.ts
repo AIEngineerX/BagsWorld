@@ -65,7 +65,7 @@ function verifyPartner(request: NextRequest): string | null {
 export async function POST(request: NextRequest) {
   // Rate limit: 5 requests per minute (strict - financial operations)
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`partner-claim:${clientIP}`, RATE_LIMITS.strict);
+  const rateLimit = await checkRateLimit(`partner-claim:${clientIP}`, RATE_LIMITS.strict);
   if (!rateLimit.success) {
     return NextResponse.json(
       {

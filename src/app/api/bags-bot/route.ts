@@ -41,7 +41,7 @@ interface BotResponse {
 export async function POST(request: Request) {
   // Rate limit
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`bot:${clientIP}`, RATE_LIMITS.standard);
+  const rateLimit = await checkRateLimit(`bot:${clientIP}`, RATE_LIMITS.standard);
 
   if (!rateLimit.success) {
     return NextResponse.json(
