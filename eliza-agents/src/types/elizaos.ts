@@ -126,12 +126,38 @@ export abstract class Service {
   }
 }
 
+export interface EvaluatorResult {
+  score: number; // 0-1 relevance score
+  reason?: string; // Optional explanation for debugging
+  data?: Record<string, unknown>; // Optional extracted data
+}
+
+export interface Evaluator {
+  name: string;
+  description: string;
+  /**
+   * Evaluate message relevance for a particular capability.
+   * Returns a score from 0-1 where higher = more relevant.
+   * Used to prioritize which action to execute when multiple validate.
+   */
+  evaluate: (
+    runtime: IAgentRuntime,
+    message: Memory,
+    state?: State
+  ) => Promise<EvaluatorResult>;
+  /**
+   * Optional: actions this evaluator is associated with.
+   * Helps the runtime route messages to the right actions.
+   */
+  relatedActions?: string[];
+}
+
 export interface Plugin {
   name: string;
   description?: string;
   init?: (config: Record<string, string>, runtime: IAgentRuntime) => Promise<void>;
   actions?: Action[];
   providers?: Provider[];
-  evaluators?: unknown[];
+  evaluators?: Evaluator[];
   services?: (typeof Service)[];
 }

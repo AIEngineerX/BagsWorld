@@ -20,6 +20,9 @@ import { allActions } from './actions/index.js';
 export * from './providers/index.js';
 import { allProviders } from './providers/index.js';
 
+export * from './evaluators/index.js';
+import { allEvaluators } from './evaluators/index.js';
+
 export const bagsWorldPlugin: Plugin = {
   name: '@elizaos/plugin-bagsworld',
   description: 'BagsWorld AI agents - Toly, Finn, Ash, Ghost, Neo, CJ, Shaw, and Bags Bot. Includes Bags.fm API integration for token lookups and fee queries.',
@@ -38,12 +41,12 @@ export const bagsWorldPlugin: Plugin = {
     }
 
     console.log('[plugin-bagsworld] Plugin initialized successfully');
-    console.log(`[plugin-bagsworld] Loaded ${allActions.length} actions, ${allProviders.length} providers`);
+    console.log(`[plugin-bagsworld] Loaded ${allActions.length} actions, ${allProviders.length} providers, ${allEvaluators.length} evaluators`);
   },
 
   actions: allActions,
   providers: allProviders,
-  evaluators: [],
+  evaluators: allEvaluators,
   services: [BagsApiService, LLMService],
 };
 
