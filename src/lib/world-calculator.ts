@@ -643,13 +643,16 @@ export function transformTokenToBuilding(
     return Math.abs(hash) % 2 === 0 ? "main_city" : "trending";
   };
 
+  // Use zone override if set by admin, otherwise determine zone automatically
   const zone = isBagsWorldHQ
     ? undefined // HQ appears in all zones as the main landmark
-    : landmark.type === "casino" || landmark.type === "terminal" // dojo STASHED
-      ? ("trending" as const)
-      : landmark.type === "pokecenter" || landmark.type === "treasury"
-        ? ("main_city" as const)
-        : getZoneFromMint(token.mint);
+    : token.zoneOverride // Admin zone override takes priority
+      ? token.zoneOverride
+      : landmark.type === "casino" || landmark.type === "terminal" // dojo STASHED
+        ? ("trending" as const)
+        : landmark.type === "pokecenter" || landmark.type === "treasury"
+          ? ("main_city" as const)
+          : getZoneFromMint(token.mint);
 
   // Use level override if set by admin, otherwise calculate from market cap
   // BagsWorld HQ always gets max level (it's the headquarters!)
