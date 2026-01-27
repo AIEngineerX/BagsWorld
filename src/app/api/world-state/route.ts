@@ -629,7 +629,7 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     name: "Oracle's Tower",
     symbol: "ORACLE",
     description:
-      "Predict which token will perform best! Free entry prediction market where winners earn bragging rights.",
+      "Predict which token will perform best! Token-gated prediction market with SOL prize pools for winners.",
     imageUrl: "/assets/buildings/oracle.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
