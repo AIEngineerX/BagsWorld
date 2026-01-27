@@ -257,32 +257,12 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
 
       setTxStatus("confirming");
 
-      // Send transaction - try with preflight first (better for Phantom/Blowfish simulation)
+      // Send transaction
       const rawTransaction = signedTransaction.serialize();
-      let signature: string;
-      try {
-        signature = await connection.sendRawTransaction(rawTransaction, {
-          skipPreflight: false,
-          maxRetries: 3,
-        });
-      } catch (preflightError: unknown) {
-        const errMsg =
-          preflightError instanceof Error ? preflightError.message : String(preflightError);
-        // If preflight simulation failed, retry without it
-        if (
-          errMsg.includes("simulation") ||
-          errMsg.includes("Simulation") ||
-          errMsg.includes("preflight")
-        ) {
-          console.warn("Preflight failed, retrying without simulation:", errMsg);
-          signature = await connection.sendRawTransaction(rawTransaction, {
-            skipPreflight: true,
-            maxRetries: 3,
-          });
-        } else {
-          throw preflightError;
-        }
-      }
+      const signature = await connection.sendRawTransaction(rawTransaction, {
+        skipPreflight: true,
+        maxRetries: 3,
+      });
 
       // Confirm transaction
       const confirmation = await connection.confirmTransaction(signature, "confirmed");
