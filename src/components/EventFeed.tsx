@@ -1,6 +1,9 @@
 "use client";
 
+import { useState, useCallback } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import type { GameEvent } from "@/lib/types";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import {
   RocketIcon,
   DiamondIcon,
@@ -14,9 +17,37 @@ import {
 
 interface EventFeedProps {
   events: GameEvent[];
+  onClear?: () => void;
 }
 
-export function EventFeed({ events }: EventFeedProps) {
+export function EventFeed({ events, onClear }: EventFeedProps) {
+  const { publicKey } = useWallet();
+  const { isAdmin } = useAdminCheck();
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearFeed = useCallback(async () => {
+    if (!publicKey || !isAdmin) return;
+
+    setIsClearing(true);
+    try {
+      const response = await fetch("/api/world-state/clear-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: publicKey.toBase58() }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        onClear?.();
+      } else {
+        console.error("[EventFeed] Failed to clear:", data.error);
+      }
+    } catch (error) {
+      console.error("[EventFeed] Error clearing feed:", error);
+    } finally {
+      setIsClearing(false);
+    }
+  }, [publicKey, isAdmin, onClear]);
   const formatTime = (timestamp: number): string => {
     const diff = Date.now() - timestamp;
     const seconds = Math.floor(diff / 1000);
@@ -62,12 +93,24 @@ export function EventFeed({ events }: EventFeedProps) {
 
   return (
     <div className="h-full flex flex-col p-2">
-      <h2 className="font-pixel text-xs text-bags-green mb-2 px-2 flex items-center gap-2">
-        <span className="animate-pulse">
-          <SignalIcon size={14} />
-        </span>{" "}
-        BAGS.FM LIVE
-      </h2>
+      <div className="flex items-center justify-between mb-2 px-2">
+        <h2 className="font-pixel text-xs text-bags-green flex items-center gap-2">
+          <span className="animate-pulse">
+            <SignalIcon size={14} />
+          </span>{" "}
+          BAGS.FM LIVE
+        </h2>
+        {isAdmin && events.length > 0 && (
+          <button
+            onClick={handleClearFeed}
+            disabled={isClearing}
+            className="font-pixel text-[6px] px-2 py-0.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors disabled:opacity-50"
+            title="Clear all feed events"
+          >
+            {isClearing ? "..." : "CLEAR"}
+          </button>
+        )}
+      </div>
 
       <div className="flex-1 overflow-y-auto space-y-1">
         {events.length === 0 ? (

@@ -112,8 +112,17 @@ const EARNER_CACHE_DURATION = 60 * 1000; // 1 minute
 const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const CLAIM_EVENTS_CACHE_DURATION = 15 * 1000; // 15 seconds
 const PRICE_CACHE_DURATION = 60 * 1000; // 60 seconds for DexScreener rate limits
+const EVENT_EXPIRY_DURATION = 60 * 60 * 1000; // 1 hour - auto-expire old events
 
 let previousState: WorldState | null = null;
+
+// Clear all feed events (admin function)
+export function clearFeedEvents(): void {
+  if (previousState) {
+    previousState.events = [];
+  }
+  console.log("[WorldState] Feed events cleared by admin");
+}
 
 // Price cache for DexScreener data
 interface PriceData {
@@ -590,6 +599,16 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
+  {
+    mint: "StarterOracleTower11111111111111111111111111",
+    name: "Oracle's Tower",
+    symbol: "ORACLE",
+    description:
+      "Predict which token will perform best! Free entry prediction market where winners earn bragging rights.",
+    imageUrl: "/assets/buildings/oracle.png",
+    creator: "BagsWorld",
+    createdAt: Date.now() - 86400000 * 7, // 7 days ago
+  },
 ];
 
 // Generate events from claim data and launches
@@ -599,8 +618,15 @@ async function generateEvents(
   tokens: TokenInfo[],
   existingEvents: GameEvent[]
 ): Promise<GameEvent[]> {
-  const events: GameEvent[] = [...existingEvents];
-  const existingIds = new Set(existingEvents.map((e) => e.id));
+  const now = Date.now();
+
+  // Auto-expire old events (older than EVENT_EXPIRY_DURATION)
+  const freshEvents = existingEvents.filter(
+    (e) => now - e.timestamp < EVENT_EXPIRY_DURATION
+  );
+
+  const events: GameEvent[] = [...freshEvents];
+  const existingIds = new Set(freshEvents.map((e) => e.id));
 
   // Add claim events
   claimEvents.forEach((claim) => {
