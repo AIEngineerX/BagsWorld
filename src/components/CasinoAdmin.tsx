@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-
-// Admin wallet that can manage the casino
-const ADMIN_WALLET = "7BAHgz9Q2ubiTaVo9sCy5AdDvNMiJaK8FebGHTM3PEwm";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 
 interface RaffleStatus {
   id?: number;
@@ -44,8 +42,8 @@ type AdminTab = "current" | "entries" | "history";
 export function CasinoAdmin({ onClose }: CasinoAdminProps) {
   const { publicKey, signMessage, connected } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
+  const { isAdmin } = useAdminCheck();
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [raffle, setRaffle] = useState<RaffleStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -65,15 +63,6 @@ export function CasinoAdmin({ onClose }: CasinoAdminProps) {
   // Form states
   const [potSol, setPotSol] = useState("1");
   const [thresholdEntries, setThresholdEntries] = useState("50");
-
-  // Check if connected wallet is admin
-  useEffect(() => {
-    if (publicKey) {
-      setIsAdmin(publicKey.toString() === ADMIN_WALLET);
-    } else {
-      setIsAdmin(false);
-    }
-  }, [publicKey]);
 
   // Fetch current raffle status
   const fetchRaffle = useCallback(async () => {

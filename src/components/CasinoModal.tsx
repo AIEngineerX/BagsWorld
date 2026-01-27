@@ -11,6 +11,7 @@ import {
   MIN_TOKEN_BALANCE,
 } from "../lib/token-balance";
 import { CasinoAdmin } from "./CasinoAdmin";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 
 interface CasinoModalProps {
   onClose: () => void;
@@ -29,7 +30,6 @@ interface RaffleState {
 }
 
 const AGE_VERIFIED_KEY = "bagsworld_casino_age_verified";
-const CASINO_ADMIN_WALLET = "7BAHgz9Q2ubiTaVo9sCy5AdDvNMiJaK8FebGHTM3PEwm";
 
 // Game definitions - raffle is now LIVE!
 const CASINO_GAMES = [
@@ -122,6 +122,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   const { publicKey, connected } = useWallet();
   const { connection } = useConnection();
   const { setVisible: setWalletModalVisible } = useWalletModal();
+  const { isAdmin: isUserAdmin } = useAdminCheck();
 
   // Check localStorage on mount
   useEffect(() => {
@@ -134,7 +135,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     if (!publicKey || !connection) return;
 
     // Admin wallet bypasses token gate
-    if (publicKey.toString() === CASINO_ADMIN_WALLET) {
+    if (isUserAdmin) {
       setTokenBalance(0);
       setHasAccess(true);
       return;
@@ -152,7 +153,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     } finally {
       setIsCheckingAccess(false);
     }
-  }, [publicKey, connection]);
+  }, [publicKey, connection, isUserAdmin]);
 
   // Fetch raffle status (silent = no loading spinner for background polls)
   const fetchRaffleStatus = useCallback(
@@ -817,11 +818,8 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     );
   }
 
-  // Check if user is admin
-  const isAdmin = publicKey?.toString() === CASINO_ADMIN_WALLET;
-
   // Admin panel
-  if (showAdminPanel && isAdmin) {
+  if (showAdminPanel && isUserAdmin) {
     return <CasinoAdmin onClose={() => setShowAdminPanel(false)} />;
   }
 
@@ -1039,7 +1037,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
               Funded by BagsWorld ecosystem
             </p>
             <div className="flex items-center gap-3">
-              {isAdmin && (
+              {isUserAdmin && (
                 <button
                   onClick={() => setShowAdminPanel(true)}
                   className="text-green-400 hover:text-green-300 text-[10px] font-pixel transition-colors flex items-center gap-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 px-3 py-1.5 rounded-lg"
