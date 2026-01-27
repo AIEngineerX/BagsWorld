@@ -201,7 +201,11 @@ export const docsContent: DocSection[] = [
         table: {
           headers: ["Zone", "Theme", "Key Features"],
           rows: [
-            ["HQ", "Futuristic R&D", "Bags.fm headquarters, team characters (Ramo, Sincara, Stuu, Sam, Alaa, Carlo, BNN)"],
+            [
+              "HQ",
+              "Futuristic R&D",
+              "Bags.fm headquarters, team characters (Ramo, Sincara, Stuu, Sam, Alaa, Carlo, BNN)",
+            ],
             ["Park", "Green, peaceful", "PokeCenter, Toly, Ash, Shaw, Finn"],
             ["BagsCity", "Urban, neon", "Casino, Trading Terminal, Neo, CJ"],
             ["Ballers Valley", "Luxury mansions", "Top 5 $BagsWorld holder showcases"],

@@ -28,16 +28,16 @@ npm start        # Start production server
 
 ### Key Files
 
-| Path | Purpose |
-|------|---------|
-| `src/app/api/world-state/` | Main API endpoint for WorldState |
-| `src/app/api/character-chat/` | AI chatbot for character interactions |
-| `src/app/api/launch-token/` | Token creation flow |
-| `src/game/scenes/BootScene.ts` | Asset preloading + pixel art texture generation |
-| `src/game/scenes/WorldScene.ts` | Main game logic, zone rendering, weather |
-| `src/lib/types.ts` | Core types: WorldState, GameCharacter, GameBuilding, GameEvent |
-| `src/lib/store.ts` | Zustand store |
-| `src/lib/bags-api.ts` | BagsApiClient class |
+| Path                            | Purpose                                                        |
+| ------------------------------- | -------------------------------------------------------------- |
+| `src/app/api/world-state/`      | Main API endpoint for WorldState                               |
+| `src/app/api/character-chat/`   | AI chatbot for character interactions                          |
+| `src/app/api/launch-token/`     | Token creation flow                                            |
+| `src/game/scenes/BootScene.ts`  | Asset preloading + pixel art texture generation                |
+| `src/game/scenes/WorldScene.ts` | Main game logic, zone rendering, weather                       |
+| `src/lib/types.ts`              | Core types: WorldState, GameCharacter, GameBuilding, GameEvent |
+| `src/lib/store.ts`              | Zustand store                                                  |
+| `src/lib/bags-api.ts`           | BagsApiClient class                                            |
 
 ### State Management
 
@@ -49,10 +49,12 @@ npm start        # Start production server
 ## Environment Variables
 
 **Required:**
+
 - `BAGS_API_KEY` - Bags.fm API key (server-side)
 - `SOLANA_RPC_URL` - Helius RPC URL for transactions (server-side)
 
 **Optional:**
+
 - `NEXT_PUBLIC_SOLANA_RPC_URL` - Client-side RPC (defaults to Ankr public)
 - `ANTHROPIC_API_KEY` - Enables Claude-powered AI chat
 - `BAGS_API_URL` - Defaults to `https://public-api-v2.bags.fm/api/v1`
@@ -63,6 +65,7 @@ npm start        # Start production server
 ## Bags.fm Live Feed
 
 Platform-wide activity monitoring via Bitquery (`src/lib/bags-live-feed.ts`):
+
 - **All new token launches** (Meteora DBC pool initialization)
 - **All trades** for Bags tokens across DEXs
 - **Whale alerts** (10+ SOL transfers)
@@ -75,6 +78,7 @@ Requires `BITQUERY_API_KEY` from [Bitquery.io](https://bitquery.io)
 ## Bags.fm API
 
 Token-centric API - most endpoints require a known token mint:
+
 - `/token-launch/creator/v3?mint=` - Get token creators
 - `/token-launch/lifetime-fees?mint=` - Get fee statistics
 - `/fee-share/token/claim-events?mint=` - Get claim events
@@ -86,6 +90,7 @@ Token-centric API - most endpoints require a known token mint:
 Health calculated from real Bags.fm data in `calculateWorldHealth()`:
 
 **Inputs:**
+
 - `claimVolume24h` (60% weight) - Total SOL claimed in 24h
 - `totalLifetimeFees` (30% weight) - Lifetime fees across tokens
 - `activeTokenCount` (10% weight) - Tokens with fee activity
@@ -112,46 +117,48 @@ Health calculated from real Bags.fm data in `calculateWorldHealth()`:
 ## Weather System
 
 Derived from world health:
+
 - Sunny: 80%+ | Cloudy: 60-80% | Rain: 40-60% | Storm: 20-40% | Apocalypse: <20%
 
 Day/Night synced to EST timezone via `timeInfo` from API.
 
 ## World Zones
 
-| Zone ID | Name | Theme |
-|---------|------|-------|
-| `labs` | HQ | Bags.fm team headquarters, R&D |
-| `main_city` | Park | Peaceful green space, PokeCenter |
-| `trending` | BagsCity | Urban neon, Casino, Terminal |
-| `ballers` | Ballers Valley | Luxury mansions for top holders |
-| `founders` | Founder's Corner | Token launch education hub |
+| Zone ID     | Name             | Theme                            |
+| ----------- | ---------------- | -------------------------------- |
+| `labs`      | HQ               | Bags.fm team headquarters, R&D   |
+| `main_city` | Park             | Peaceful green space, PokeCenter |
+| `trending`  | BagsCity         | Urban neon, Casino, Terminal     |
+| `ballers`   | Ballers Valley   | Luxury mansions for top holders  |
+| `founders`  | Founder's Corner | Token launch education hub       |
 
 ## AI Characters (16 Total)
 
-| Character | File | Zone | Role |
-|-----------|------|------|------|
-| Toly | `toly.character.ts` | Park | Solana co-founder, blockchain expert |
-| Ash | `ash.character.ts` | Park | Pokemon-themed ecosystem guide |
-| Finn | `finnbags.character.ts` | Park | Bags.fm CEO |
-| Shaw | `shaw.character.ts` | Park | ElizaOS creator, agent architect |
-| Ghost | `ghost.character.ts` | Park | Community funding (5%), on-chain verification |
-| Neo | `neo.character.ts` | BagsCity | Scout agent, watches for launches |
-| CJ | `cj.character.ts` | BagsCity | Market commentary (GTA vibes) |
-| Ramo | `ramo.character.ts` | HQ | CTO, smart contracts, SDK |
-| Sincara | `sincara.character.ts` | HQ | Frontend Engineer, UI/UX |
-| Stuu | `stuu.character.ts` | HQ | Operations, support |
-| Sam | `sam.character.ts` | HQ | Growth, marketing |
-| Alaa | `alaa.character.ts` | HQ | Skunk Works, R&D |
-| Carlo | `carlo.character.ts` | HQ | Ambassador, community |
-| BNN | `bnn.character.ts` | HQ | News bot, announcements |
-| Professor Oak | `oak.character.ts` | Founder's Corner | Token launch guide |
-| Bags Bot | `bags-bot.character.ts` | All | Commands, world features |
+| Character     | File                    | Zone             | Role                                          |
+| ------------- | ----------------------- | ---------------- | --------------------------------------------- |
+| Toly          | `toly.character.ts`     | Park             | Solana co-founder, blockchain expert          |
+| Ash           | `ash.character.ts`      | Park             | Pokemon-themed ecosystem guide                |
+| Finn          | `finnbags.character.ts` | Park             | Bags.fm CEO                                   |
+| Shaw          | `shaw.character.ts`     | Park             | ElizaOS creator, agent architect              |
+| Ghost         | `ghost.character.ts`    | Park             | Community funding (5%), on-chain verification |
+| Neo           | `neo.character.ts`      | BagsCity         | Scout agent, watches for launches             |
+| CJ            | `cj.character.ts`       | BagsCity         | Market commentary (GTA vibes)                 |
+| Ramo          | `ramo.character.ts`     | HQ               | CTO, smart contracts, SDK                     |
+| Sincara       | `sincara.character.ts`  | HQ               | Frontend Engineer, UI/UX                      |
+| Stuu          | `stuu.character.ts`     | HQ               | Operations, support                           |
+| Sam           | `sam.character.ts`      | HQ               | Growth, marketing                             |
+| Alaa          | `alaa.character.ts`     | HQ               | Skunk Works, R&D                              |
+| Carlo         | `carlo.character.ts`    | HQ               | Ambassador, community                         |
+| BNN           | `bnn.character.ts`      | HQ               | News bot, announcements                       |
+| Professor Oak | `oak.character.ts`      | Founder's Corner | Token launch guide                            |
+| Bags Bot      | `bags-bot.character.ts` | All              | Commands, world features                      |
 
 ## Community Funding Model
 
 BagsWorld charges **zero extra fees** to creators. Ghost (@DaddyGhost) personally contributes 5% of his $BagsWorld token revenue to fund community features.
 
 **Funded Features:**
+
 - Casino prizes and raffles
 - New zones and features
 - Development and improvements
@@ -188,24 +195,24 @@ this.zoneElements.push(building);
 
 ## Layer System
 
-| Depth | Y Position | Layer | Contents |
-|-------|------------|-------|----------|
-| -2 | 0-430 | Sky | Day/night gradient (DO NOT MODIFY) |
-| -1 | 0-300 | Stars | Night only (DO NOT MODIFY) |
-| 0 | 540 * SCALE | Ground | Zone-specific texture |
-| 1 | 570 * SCALE | Path | Walking surface |
-| 2-4 | Variable | Props | Trees, bushes, lamps, benches |
-| 5+ | Variable | Buildings | Zone structures |
-| 10 | 555 * SCALE | Characters | NPCs walking |
-| 15 | Variable | Flying | Birds, butterflies |
+| Depth | Y Position   | Layer      | Contents                           |
+| ----- | ------------ | ---------- | ---------------------------------- |
+| -2    | 0-430        | Sky        | Day/night gradient (DO NOT MODIFY) |
+| -1    | 0-300        | Stars      | Night only (DO NOT MODIFY)         |
+| 0     | 540 \* SCALE | Ground     | Zone-specific texture              |
+| 1     | 570 \* SCALE | Path       | Walking surface                    |
+| 2-4   | Variable     | Props      | Trees, bushes, lamps, benches      |
+| 5+    | Variable     | Buildings  | Zone structures                    |
+| 10    | 555 \* SCALE | Characters | NPCs walking                       |
+| 15    | Variable     | Flying     | Birds, butterflies                 |
 
 ## Critical Y-Positions
 
 ```typescript
-const grassTop = 455 * SCALE;   // Top of grass, trees go here
-const groundY = 540 * SCALE;    // Ground layer Y
-const pathLevel = 555 * SCALE;  // Characters walk here
-const pathY = 570 * SCALE;      // Path layer Y
+const grassTop = 455 * SCALE; // Top of grass, trees go here
+const groundY = 540 * SCALE; // Ground layer Y
+const pathLevel = 555 * SCALE; // Characters walk here
+const pathY = 570 * SCALE; // Path layer Y
 ```
 
 ## Zone Setup Pattern
@@ -239,12 +246,14 @@ private setupMyZone(): void {
 ## Zone Requirements
 
 **Minimum content:**
+
 - 3+ detailed buildings (not plain rectangles)
 - 20+ props (trees, lamps, benches, decorations)
 - Textured ground (not solid flat colors)
 - Day/night compatible colors
 
 **Pixel art style:**
+
 - Hard edges only, no anti-aliasing
 - Solid colors or dithering, no smooth gradients
 - 3D depth: light left edges, dark right edges
@@ -258,12 +267,12 @@ private setupMyZone(): void {
 
 ## Existing Texture Generators
 
-| Method | Creates |
-|--------|---------|
-| `generateBuildings()` | 5 levels x 4 styles = 20 buildings |
-| `generateMansions()` | 5 luxury mansion styles |
-| `generateAcademyBuildings()` | 8 campus buildings |
-| `generatePokeCenter()` | Pokemon-style center |
-| `generateTerminal()` | Tech terminal building |
+| Method                       | Creates                            |
+| ---------------------------- | ---------------------------------- |
+| `generateBuildings()`        | 5 levels x 4 styles = 20 buildings |
+| `generateMansions()`         | 5 luxury mansion styles            |
+| `generateAcademyBuildings()` | 8 campus buildings                 |
+| `generatePokeCenter()`       | Pokemon-style center               |
+| `generateTerminal()`         | Tech terminal building             |
 
 Use Park zone (main_city) as the reference template for element density and placement.
