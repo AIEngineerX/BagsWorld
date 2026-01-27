@@ -76,9 +76,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Check token gate (admins bypass)
+  // Check token gate (admins and localhost bypass)
   const walletIsAdmin = isAdmin(wallet);
-  if (!walletIsAdmin) {
+  const host = request.headers.get("host") || "";
+  const isLocalhost = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+
+  if (!walletIsAdmin && !isLocalhost) {
     const accessCheck = await hasOracleAccess(wallet);
 
     if (!accessCheck.hasAccess) {
@@ -123,6 +126,6 @@ export async function POST(request: NextRequest) {
     message: "Prediction submitted successfully",
     roundId: round.id,
     tokenMint,
-    adminBypass: walletIsAdmin,
+    bypass: walletIsAdmin ? "admin" : isLocalhost ? "localhost" : undefined,
   });
 }
