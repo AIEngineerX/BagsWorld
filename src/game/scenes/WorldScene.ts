@@ -2409,8 +2409,8 @@ export class WorldScene extends Phaser.Scene {
     // === CONTENT SECTION ===
     // Calculate section Y based on whether we have a tip
     const hasTip = content.tip && content.tip.length > 0;
-    const sectionHeight = hasTip ? Math.round(220 * s) : Math.round(250 * s);
-    const sectionY = centerY + Math.round(25 * s);
+    const sectionHeight = hasTip ? Math.round(235 * s) : Math.round(265 * s);
+    const sectionY = centerY + Math.round(28 * s);
 
     // Section background with inner shadow effect
     const sectionBgOuter = this.add.rectangle(
@@ -2444,22 +2444,28 @@ export class WorldScene extends Phaser.Scene {
     );
     popup.add(sectionShadow);
 
-    // Content text with pixel font - color code different line types
-    const contentLines = content.body.split("\n");
-    const lineHeight = Math.round(11 * s);
-    const startY = sectionY - sectionHeight / 2 + Math.round(16 * s);
+    // Content text - filter empty lines and use compact spacing
+    const contentLines = content.body.split("\n").filter((ln) => ln.trim() !== "");
+    const lineHeight = Math.round(9 * s);
+    const startY = sectionY - sectionHeight / 2 + Math.round(14 * s);
 
     contentLines.forEach((line, i) => {
       // Determine line color based on content
       let lineColor = "#cbd5e1"; // Default gray
-      if (line.startsWith(" +") || line.startsWith(" [x]")) {
-        lineColor = "#4ade80"; // Green for included/checked items
+      if (line.startsWith(" +") || line.startsWith(" [x]") || line.match(/^\d\./)) {
+        lineColor = "#4ade80"; // Green for included/checked/numbered items
       } else if (line.startsWith(" [ ]")) {
         lineColor = "#fbbf24"; // Gold for optional items
       } else if (
         line.includes("CHECKLIST") ||
         line.includes("WHAT YOU GET") ||
-        line.includes("IMPORTANT")
+        line.includes("IMPORTANT") ||
+        line.includes("REQUIRED") ||
+        line.includes("OPTIONAL") ||
+        line.includes("BAGS.FM TIP") ||
+        line.includes("TOKEN LOGO") ||
+        line.includes("TOKEN BANNER") ||
+        line.includes("FREE TOOLS")
       ) {
         lineColor = "#60a5fa"; // Cyan for headers
       } else if (line.includes("ORDER:") || line.includes("COST:") || line.includes("TIME:")) {
@@ -2467,12 +2473,12 @@ export class WorldScene extends Phaser.Scene {
       }
 
       const lineText = this.add.text(
-        centerX - panelW / 2 + Math.round(28 * s),
+        centerX - panelW / 2 + Math.round(24 * s),
         startY + i * lineHeight,
         line,
         {
           fontFamily: '"Press Start 2P", monospace',
-          fontSize: `${Math.round(6 * s)}px`,
+          fontSize: `${Math.round(5 * s)}px`,
           color: lineColor,
         }
       );
@@ -7287,7 +7293,7 @@ Use: bags.fm/[yourname]`,
       });
       descText.setOrigin(0.5, 0.5);
 
-      const breakdownText = this.add.text(0, 4, "Funds Casino, features & dev\nZero creator fees", {
+      const breakdownText = this.add.text(0, 4, "Funds Casino, features & dev", {
         fontFamily: "monospace",
         fontSize: "6px",
         color: "#9ca3af",
