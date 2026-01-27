@@ -132,7 +132,9 @@ export function getCharacterIds(): string[] {
 }
 
 // Get characters for a specific zone
-export function getCharactersByZone(zone: "labs" | "main_city" | "trending" | "founders" | "ballers"): CharacterDefinition[] {
+export function getCharactersByZone(
+  zone: "labs" | "main_city" | "trending" | "founders" | "ballers"
+): CharacterDefinition[] {
   switch (zone) {
     case "labs":
       return Object.values(labsCharacters);
@@ -150,7 +152,9 @@ export function getCharactersByZone(zone: "labs" | "main_city" | "trending" | "f
 }
 
 // Get character IDs for a specific zone
-export function getCharacterIdsByZone(zone: "labs" | "main_city" | "trending" | "founders" | "ballers"): string[] {
+export function getCharacterIdsByZone(
+  zone: "labs" | "main_city" | "trending" | "founders" | "ballers"
+): string[] {
   switch (zone) {
     case "labs":
       return Object.keys(labsCharacters);
@@ -307,7 +311,5 @@ export const characterMeta: Record<string, CharacterMeta> = {
 
 // Get metadata for characters in a specific zone
 export function getCharacterMetaByZone(zone: ZoneType): Record<string, CharacterMeta> {
-  return Object.fromEntries(
-    Object.entries(characterMeta).filter(([, meta]) => meta.zone === zone)
-  );
+  return Object.fromEntries(Object.entries(characterMeta).filter(([, meta]) => meta.zone === zone));
 }
