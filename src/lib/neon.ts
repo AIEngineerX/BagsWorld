@@ -2114,6 +2114,119 @@ export async function getOraclePredictionCounts(
   }
 }
 
+// Get Oracle leaderboard - top predictors by wins
+export interface OracleLeaderboardEntry {
+  wallet: string;
+  wins: number;
+  totalPredictions: number;
+  winRate: number;
+  lastWin?: Date;
+}
+
+export async function getOracleLeaderboard(
+  limit: number = 10
+): Promise<OracleLeaderboardEntry[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    // Check if tables exist
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'oracle_predictions'
+      )
+    `;
+
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
+      return [];
+    }
+
+    const result = await sql`
+      SELECT
+        wallet,
+        COUNT(*) FILTER (WHERE is_winner = true) as wins,
+        COUNT(*) as total_predictions,
+        MAX(created_at) FILTER (WHERE is_winner = true) as last_win
+      FROM oracle_predictions
+      GROUP BY wallet
+      HAVING COUNT(*) FILTER (WHERE is_winner = true) > 0
+      ORDER BY wins DESC, total_predictions ASC
+      LIMIT ${limit}
+    `;
+
+    return (result as Array<Record<string, unknown>>).map((row) => ({
+      wallet: row.wallet as string,
+      wins: safeParseInt(row.wins as string, 0),
+      totalPredictions: safeParseInt(row.total_predictions as string, 0),
+      winRate:
+        safeParseInt(row.wins as string, 0) /
+        Math.max(1, safeParseInt(row.total_predictions as string, 1)),
+      lastWin: row.last_win ? new Date(row.last_win as string) : undefined,
+    }));
+  } catch (error) {
+    console.error("[Oracle] Error getting leaderboard:", error);
+    return [];
+  }
+}
+
+// Get user's Oracle stats
+export async function getUserOracleStats(
+  wallet: string
+): Promise<{ wins: number; total: number; rank: number } | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'oracle_predictions'
+      )
+    `;
+
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
+      return null;
+    }
+
+    // Get user stats
+    const userStats = await sql`
+      SELECT
+        COUNT(*) FILTER (WHERE is_winner = true) as wins,
+        COUNT(*) as total
+      FROM oracle_predictions
+      WHERE wallet = ${wallet}
+    `;
+
+    const stats = (userStats as Array<Record<string, unknown>>)[0];
+    const wins = safeParseInt(stats?.wins as string, 0);
+    const total = safeParseInt(stats?.total as string, 0);
+
+    if (total === 0) return null;
+
+    // Get rank
+    const rankResult = await sql`
+      SELECT COUNT(*) + 1 as rank
+      FROM (
+        SELECT wallet, COUNT(*) FILTER (WHERE is_winner = true) as wins
+        FROM oracle_predictions
+        GROUP BY wallet
+        HAVING COUNT(*) FILTER (WHERE is_winner = true) > ${wins}
+      ) as better_wallets
+    `;
+
+    const rank = safeParseInt(
+      (rankResult as Array<{ rank: string }>)[0]?.rank,
+      0
+    );
+
+    return { wins, total, rank };
+  } catch (error) {
+    console.error("[Oracle] Error getting user stats:", error);
+    return null;
+  }
+}
+
 // ============================================================================
 // ADMIN SETTINGS (Simple key-value store for global settings)
 // ============================================================================

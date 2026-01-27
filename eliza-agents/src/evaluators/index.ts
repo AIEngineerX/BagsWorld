@@ -306,7 +306,7 @@ export const creatorQueryEvaluator: Evaluator = {
 export const oracleQueryEvaluator: Evaluator = {
   name: 'oracleQuery',
   description: 'Detects queries about Oracle prediction market',
-  relatedActions: ['getOracleRound', 'enterPrediction', 'checkPrediction', 'getOracleHistory'],
+  relatedActions: ['getOracleRound', 'enterPrediction', 'checkPrediction', 'getOracleHistory', 'getOracleLeaderboard', 'getOraclePrices'],
 
   evaluate: async (
     runtime: IAgentRuntime,
@@ -323,6 +323,14 @@ export const oracleQueryEvaluator: Evaluator = {
     const pickKeywords = ['pick', 'bet', 'winner', 'win', 'guess', 'call'];
     const pickMatches = pickKeywords.filter(k => text.includes(k));
 
+    // Leaderboard keywords
+    const leaderboardKeywords = ['leaderboard', 'top', 'ranking', 'leaders', 'best predictors'];
+    const leaderboardMatches = leaderboardKeywords.filter(k => text.includes(k));
+
+    // Price keywords
+    const priceKeywords = ['price', 'prices', 'leading', 'winning', 'pump', 'dump', 'up', 'down'];
+    const priceMatches = priceKeywords.filter(k => text.includes(k));
+
     // Action patterns
     const actionPatterns = [
       /(?:what|show|check).*(?:oracle|prediction|round)/,
@@ -330,6 +338,8 @@ export const oracleQueryEvaluator: Evaluator = {
       /(?:did i|my).*(?:win|prediction|pick)/,
       /(?:history|past|previous).*(?:oracle|prediction|round)/,
       /which.*(?:token|coin).*(?:win|best|pump)/,
+      /(?:who|top).*(?:predict|won|winning)/,
+      /(?:live|current).*(?:price|prices)/,
     ];
     const hasActionPattern = actionPatterns.some(p => p.test(text));
 
@@ -344,6 +354,14 @@ export const oracleQueryEvaluator: Evaluator = {
       score += 0.2;
       reasons.push(`pick: ${pickMatches.join(', ')}`);
     }
+    if (leaderboardMatches.length > 0) {
+      score += 0.25;
+      reasons.push(`leaderboard: ${leaderboardMatches.join(', ')}`);
+    }
+    if (priceMatches.length > 0 && primaryMatches.length > 0) {
+      score += 0.2;
+      reasons.push(`prices: ${priceMatches.join(', ')}`);
+    }
     if (hasActionPattern) {
       score += 0.3;
       reasons.push('action pattern');
@@ -355,6 +373,8 @@ export const oracleQueryEvaluator: Evaluator = {
       data: {
         primaryKeywords: primaryMatches,
         pickKeywords: pickMatches,
+        leaderboardKeywords: leaderboardMatches,
+        priceKeywords: priceMatches,
       },
     };
   },

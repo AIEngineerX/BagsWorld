@@ -9,6 +9,8 @@ export { getOracleRoundAction } from './getOracleRound.js';
 export { enterPredictionAction } from './enterPrediction.js';
 export { checkPredictionAction } from './checkPrediction.js';
 export { getOracleHistoryAction } from './getOracleHistory.js';
+export { getOracleLeaderboardAction } from './getOracleLeaderboard.js';
+export { getOraclePricesAction } from './getOraclePrices.js';
 
 import { lookupTokenAction } from './lookupToken.js';
 import { getCreatorFeesAction } from './getCreatorFees.js';
@@ -19,6 +21,8 @@ import { getOracleRoundAction } from './getOracleRound.js';
 import { enterPredictionAction } from './enterPrediction.js';
 import { checkPredictionAction } from './checkPrediction.js';
 import { getOracleHistoryAction } from './getOracleHistory.js';
+import { getOracleLeaderboardAction } from './getOracleLeaderboard.js';
+import { getOraclePricesAction } from './getOraclePrices.js';
 
 export const allActions = [
   lookupTokenAction,
@@ -31,6 +35,8 @@ export const allActions = [
   enterPredictionAction,
   checkPredictionAction,
   getOracleHistoryAction,
+  getOracleLeaderboardAction,
+  getOraclePricesAction,
 ];
 
 export default allActions;
