@@ -14,10 +14,11 @@ interface Position {
 }
 
 // Locations with clean data
-const LOCATIONS: Record<string, { id: string; name: string; desc: string; event: string | null }[]> = {
-  labs: [
-    { id: "hq", name: "Bags.FM HQ", desc: "Headquarters", event: "bagsworld-hq-click" },
-  ],
+const LOCATIONS: Record<
+  string,
+  { id: string; name: string; desc: string; event: string | null }[]
+> = {
+  labs: [{ id: "hq", name: "Bags.FM HQ", desc: "Headquarters", event: "bagsworld-hq-click" }],
   main_city: [
     {
       id: "pokecenter",

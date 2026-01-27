@@ -75,9 +75,10 @@ export function useAgentEvents(options?: {
         const uniqueNew = newAnnouncements.filter((a) => !existingIds.has(a.id));
 
         // Combine and filter out old events
-        const merged = filterOldAnnouncements(
-          [...uniqueNew, ...prev.announcements]
-        ).slice(0, maxAnnouncements);
+        const merged = filterOldAnnouncements([...uniqueNew, ...prev.announcements]).slice(
+          0,
+          maxAnnouncements
+        );
 
         const unreadCount = merged.filter((a) => !a.read).length;
 

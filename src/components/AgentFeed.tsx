@@ -73,7 +73,9 @@ export function AgentFeed({
 
   if (compact) {
     return (
-      <div className={`bg-black/80 border border-gray-700 rounded-lg p-2 overflow-hidden ${className}`}>
+      <div
+        className={`bg-black/80 border border-gray-700 rounded-lg p-2 overflow-hidden ${className}`}
+      >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-gray-400">AGENT FEED</span>
@@ -177,9 +179,13 @@ export function AgentFeed({
                     </span>
                     {!a.read && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
                   </div>
-                  <span className="text-xs text-gray-500 flex-shrink-0 ml-2">{formatTime(a.timestamp)}</span>
+                  <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                    {formatTime(a.timestamp)}
+                  </span>
                 </div>
-                <p className="text-sm text-white font-mono break-words overflow-hidden">{a.message}</p>
+                <p className="text-sm text-white font-mono break-words overflow-hidden">
+                  {a.message}
+                </p>
               </div>
             ))}
           </div>

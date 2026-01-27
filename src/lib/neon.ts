@@ -1415,7 +1415,7 @@ export async function getEmittedEventIds(): Promise<Set<string>> {
       SELECT id FROM emitted_events
       WHERE emitted_at > NOW() - INTERVAL '24 hours'
     `;
-    return new Set((result as Array<{ id: string }>).map(r => r.id));
+    return new Set((result as Array<{ id: string }>).map((r) => r.id));
   } catch (error) {
     console.error("[Neon] Error fetching emitted event IDs:", error);
     return new Set();

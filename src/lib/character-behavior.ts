@@ -212,11 +212,27 @@ function buildContext(worldState: WorldState) {
 function isSpecialCharacter(id: string): boolean {
   const specialIds = [
     // Core characters
-    "finn", "ghost", "neo", "ash", "toly", "dev", "scout", "cj", "shaw",
+    "finn",
+    "ghost",
+    "neo",
+    "ash",
+    "toly",
+    "dev",
+    "scout",
+    "cj",
+    "shaw",
     // Academy Zone - Bags.fm Team
-    "ramo", "sincara", "stuu", "sam", "alaa", "carlo", "bnn",
+    "ramo",
+    "sincara",
+    "stuu",
+    "sam",
+    "alaa",
+    "carlo",
+    "bnn",
     // Founder's Corner Zone
-    "professoroak", "professor-oak", "professor oak",
+    "professoroak",
+    "professor-oak",
+    "professor oak",
   ];
   const lowerName = id.toLowerCase();
   return (
