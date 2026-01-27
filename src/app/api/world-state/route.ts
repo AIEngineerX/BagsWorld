@@ -3,7 +3,14 @@
 // Each launched token becomes a building in BagsWorld
 
 import { NextRequest, NextResponse } from "next/server";
-import type { WorldState, FeeEarner, TokenInfo, GameEvent, ClaimEvent, ZoneType } from "@/lib/types";
+import type {
+  WorldState,
+  FeeEarner,
+  TokenInfo,
+  GameEvent,
+  ClaimEvent,
+  ZoneType,
+} from "@/lib/types";
 import {
   buildWorldState,
   type BagsHealthMetrics,
