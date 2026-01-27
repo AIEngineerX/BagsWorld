@@ -22,9 +22,26 @@ import {
 export function Leaderboard() {
   const { worldState, selectCharacter, selectedCharacter } = useGameStore();
 
-  // Filter out guide characters (Toly, Ash, Finn, Dev, Scout, CJ, Shaw) from the leaderboard
+  // Filter out all NPC agents from the leaderboard (only show real fee earners)
   const population = (worldState?.population ?? []).filter(
-    (c) => !c.isToly && !c.isAsh && !c.isFinn && !c.isDev && !c.isScout && !c.isCJ && !c.isShaw
+    (c) =>
+      !c.isToly &&
+      !c.isAsh &&
+      !c.isFinn &&
+      !c.isDev &&
+      !c.isScout &&
+      !c.isCJ &&
+      !c.isShaw &&
+      // Bags.fm Team (HQ zone)
+      !c.isRamo &&
+      !c.isSincara &&
+      !c.isStuu &&
+      !c.isSam &&
+      !c.isAlaa &&
+      !c.isCarlo &&
+      !c.isBNN &&
+      // Founder's Corner
+      !c.isProfessorOak
   );
 
   const formatEarnings = (amount: number): string => {
