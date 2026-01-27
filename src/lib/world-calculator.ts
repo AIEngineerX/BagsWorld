@@ -395,7 +395,7 @@ const SPECIAL_CHARACTERS: Record<
     flag: "isFinn",
     wallet: "finnbags-ceo-permanent",
     x: Math.round(100 * SCALE),
-    zone: "main_city", // Moved from Academy to Park
+    zone: "labs", // CEO at Tech Labs HQ with his team
     profileUrl: "https://x.com/finnbags",
   },
   dev: {

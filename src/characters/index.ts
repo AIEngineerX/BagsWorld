@@ -24,9 +24,9 @@ import { bnnCharacter } from "./bnn.character.ts";
 // ============================================================================
 import { tolyCharacter } from "./toly.character.ts";
 import { ashCharacter } from "./ash.character.ts";
-import { finnCharacter } from "./finn.character.ts";
 import { ghostCharacter } from "./ghost.character.ts";
 import { shawCharacter } from "./shaw.character.ts";
+import { finnCharacter } from "./finn.character.ts"; // Finn visits Park but works at Labs
 
 // ============================================================================
 // BAGSCITY ZONE (trending) - Downtown trading district
@@ -47,6 +47,7 @@ import { professorOakCharacter } from "./professor-oak.character.ts";
 export { bagsBotCharacter } from "./bags-bot.character.ts";
 
 // Tech Labs Zone (labs) - Bags.fm Team
+export { finnCharacter } from "./finn.character.ts"; // CEO leads the team
 export { ramoCharacter } from "./ramo.character.ts";
 export { sincaraCharacter } from "./sincara.character.ts";
 export { stuuCharacter } from "./stuu.character.ts";
@@ -58,7 +59,6 @@ export { bnnCharacter } from "./bnn.character.ts";
 // Park Zone (main_city)
 export { tolyCharacter } from "./toly.character.ts";
 export { ashCharacter } from "./ash.character.ts";
-export { finnCharacter } from "./finn.character.ts";
 export { ghostCharacter } from "./ghost.character.ts";
 export { shawCharacter } from "./shaw.character.ts";
 
@@ -78,6 +78,7 @@ export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.ch
 
 // Tech Labs Zone characters (labs) - Bags.fm Team
 export const labsCharacters: Record<string, CharacterDefinition> = {
+  finn: finnCharacter, // CEO leads the team
   ramo: ramoCharacter,
   sincara: sincaraCharacter,
   stuu: stuuCharacter,
@@ -91,7 +92,6 @@ export const labsCharacters: Record<string, CharacterDefinition> = {
 export const parkCharacters: Record<string, CharacterDefinition> = {
   toly: tolyCharacter,
   ash: ashCharacter,
-  finn: finnCharacter,
   ghost: ghostCharacter,
   shaw: shawCharacter,
 };
@@ -262,7 +262,7 @@ export const characterMeta: Record<string, CharacterMeta> = {
     role: "Founder & CEO",
     color: "#10b981",
     icon: "🎩",
-    zone: "main_city",
+    zone: "labs", // CEO at Tech Labs HQ
   },
   ghost: {
     displayName: "Ghost",
