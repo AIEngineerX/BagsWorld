@@ -32,7 +32,7 @@
   for = "/*"
   [headers.values]
     # Content Security Policy
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.solana.com https://*.bags.fm https://*.supabase.co https://*.neon.tech https://rpc.ankr.com https://*.helius-rpc.com wss://*.solana.com; font-src 'self' data:;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.solana.com https://*.bags.fm https://*.supabase.co https://*.neon.tech https://rpc.ankr.com https://*.helius-rpc.com https://*.up.railway.app https://api.dexscreener.com https://api.anthropic.com wss://*.solana.com; font-src 'self' data:;"
     # Strict Transport Security
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
