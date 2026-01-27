@@ -23,32 +23,31 @@ BagsWorld transforms abstract DeFi data into a living, gamified visualization. T
 
 - **Living World** - Health, weather, and population react to real Bags.fm fee activity
 - **Token Buildings** - Each token becomes a building that evolves with market cap
-- **AI Characters** - Five AI-powered NPCs guide users through the ecosystem
+- **AI Characters** - 16 AI-powered NPCs guide users through the ecosystem
 - **Real-time Events** - Watch token launches, fee claims, and milestones as they happen
 - **Direct Trading** - Click any building to trade the underlying token
-- **Creator Rewards** - 1% ecosystem fee funds rewards for top 3 creators
+- **5 Unique Zones** - HQ, Park, BagsCity, Ballers Valley, Founder's Corner
+- **Zero Creator Fees** - Ghost personally funds the community (no ecosystem tax)
 - **Day/Night Cycle** - Synced to EST timezone with dynamic weather
+- **Pokemon-style Music** - 3 original pixel art soundtrack tracks
 
-## Ecosystem Fee System
+## Community Funding Model
 
-BagsWorld adds a 1% ecosystem fee to tokens launched through the platform. These fees fund:
+BagsWorld charges **zero extra fees** to creators. Instead, Ghost (@DaddyGhost) personally contributes 5% of his $BagsWorld token revenue to fund community features.
 
-| Allocation | Status | Description |
-|------------|--------|-------------|
-| Creator Rewards | Live | Top 3 creators by fees split the rewards pool |
-| Casino | Coming Soon | Wheel spins, raffles, and jackpots |
-| Future Features | Planned | New game mechanics and community rewards |
+| What | Status | Description |
+|------|--------|-------------|
+| Creator Fees | **None** | Creators keep 100% of their configured fee share |
+| Community Fund | Live | Ghost's 5% contribution funds Casino prizes |
+| Development | Ongoing | New features, zones, and improvements |
 
-### Creator Rewards
+### How It Works
 
 ```
-Ecosystem fees collected --> Pool reaches 5 SOL OR 3 days pass --> Top 3 creators paid
+Ghost's $BagsWorld revenue --> 5% sent to Community Wallet --> Funds Casino & Features
 ```
 
-**Distribution Split:**
-- 1st place: 50%
-- 2nd place: 30%
-- 3rd place: 20%
+All transactions are verifiable on-chain via [Solscan](https://solscan.io).
 
 Follow [@DaddyGhost](https://x.com/DaddyGhost) on X for updates.
 
@@ -73,6 +72,16 @@ Health is calculated from real Bags.fm data:
 | 10-25% | DORMANT |
 | <10% | DYING |
 
+## World Zones
+
+| Zone | Theme | Key Features |
+|------|-------|--------------|
+| HQ | Futuristic R&D | Bags.fm headquarters, team characters |
+| Park | Peaceful green | PokeCenter, Toly, Ash, Shaw |
+| BagsCity | Urban neon | Casino, Trading Terminal, Neo, CJ |
+| Ballers Valley | Luxury mansions | Top $BagsWorld holder showcases |
+| Founder's Corner | Learning hub | Professor Oak, token launch guidance |
+
 ## Building Levels
 
 | Level | Market Cap | Style |
@@ -92,7 +101,7 @@ All 16 agents run on [ElizaOS](https://github.com/elizaOS/eliza) - Shaw's open-s
 | Toly | Blockchain Expert | Solana technical knowledge |
 | Ash | Ecosystem Guide | Platform mechanics (Pokemon style) |
 | Finn | Bags.fm Founder & CEO | Platform features, creator economy |
-| Ghost | The Dev (@DaddyGhost) | Creator rewards, on-chain verification |
+| Ghost | The Dev (@DaddyGhost) | Community funding, on-chain verification |
 | Neo | Scout Agent | Launch detection, blockchain scanning |
 | CJ | Hood Rat | Market commentary (GTA vibes) |
 | Shaw | ElizaOS Creator | Agent architecture, character files |
@@ -205,7 +214,7 @@ src/
 | `/api/world-state` | POST | Get enriched world state |
 | `/api/character-chat` | POST | Chat with AI characters |
 | `/api/launch-token` | POST | Create token launch |
-| `/api/ecosystem-stats` | GET | Creator rewards pool stats |
+| `/api/ecosystem-stats` | GET | Community fund wallet stats |
 
 ## Security
 
