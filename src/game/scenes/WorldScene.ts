@@ -49,6 +49,7 @@ export class WorldScene extends Phaser.Scene {
   private audioContext: AudioContext | null = null;
   private gainNode: GainNode | null = null;
   private musicInterval: number | null = null;
+  private activeOscillators: OscillatorNode[] = []; // Track active oscillators to stop on track switch
   private currentTrack = 0;
   private trackNames = [
     "Adventure",
@@ -3929,12 +3930,28 @@ Use: bags.fm/[yourname]`,
     );
   }
 
+  private stopAllOscillators(): void {
+    // Stop all active oscillators immediately to prevent overlap
+    this.activeOscillators.forEach((osc) => {
+      try {
+        osc.stop();
+        osc.disconnect();
+      } catch {
+        // Oscillator may have already stopped
+      }
+    });
+    this.activeOscillators = [];
+  }
+
   private playCurrentTrack(): void {
     // Clear any existing scheduled track to prevent overlapping
     if (this.musicInterval) {
       clearTimeout(this.musicInterval);
       this.musicInterval = null;
     }
+
+    // Stop all currently playing oscillators
+    this.stopAllOscillators();
 
     switch (this.currentTrack) {
       case 0:
@@ -4559,6 +4576,17 @@ Use: bags.fm/[yourname]`,
 
     oscillator.start(startTime);
     oscillator.stop(startTime + duration + 0.01);
+
+    // Track oscillator for cleanup on track switch
+    this.activeOscillators.push(oscillator);
+
+    // Remove from array when it ends naturally
+    oscillator.onended = () => {
+      const index = this.activeOscillators.indexOf(oscillator);
+      if (index > -1) {
+        this.activeOscillators.splice(index, 1);
+      }
+    };
   }
 
   private toggleMusic(): void {
@@ -4568,6 +4596,8 @@ Use: bags.fm/[yourname]`,
         clearTimeout(this.musicInterval);
         this.musicInterval = null;
       }
+      // Stop all active oscillators when muting
+      this.stopAllOscillators();
       if (this.gainNode) {
         this.gainNode.gain.value = 0;
       }
