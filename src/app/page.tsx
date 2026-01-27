@@ -43,7 +43,7 @@ import { ZoneNav } from "@/components/ZoneNav";
 import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
 import { AgentFeed, AgentToast } from "@/components/AgentFeed";
 import { TradingGymModal } from "@/components/TradingGymModal";
-import { CreatorRewardsModal } from "@/components/CreatorRewardsModal";
+import { CommunityFundModal } from "@/components/CommunityFundModal";
 import { CasinoModal } from "@/components/CasinoModal";
 import { CasinoAdmin } from "@/components/CasinoAdmin";
 import { LauncherHub } from "@/components/LauncherHub";
@@ -101,7 +101,7 @@ export default function Home() {
   const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
   const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
   const [showTradingGymModal, setShowTradingGymModal] = useState(false);
-  const [showCreatorRewardsModal, setShowCreatorRewardsModal] = useState(false);
+  const [showCommunityFundModal, setShowCommunityFundModal] = useState(false);
   const [showCasinoModal, setShowCasinoModal] = useState(false);
   const [showLauncherHub, setShowLauncherHub] = useState(false);
   const [showCasinoAdmin, setShowCasinoAdmin] = useState(false);
@@ -135,7 +135,7 @@ export default function Home() {
     };
 
     const handleTreasuryClick = () => {
-      setShowCreatorRewardsModal(true);
+      setShowCommunityFundModal(true);
     };
 
     const handleCasinoClick = () => {
@@ -552,9 +552,9 @@ export default function Home() {
       {/* Trading Gym Modal - triggered by clicking Trading Gym building */}
       {showTradingGymModal && <TradingGymModal onClose={() => setShowTradingGymModal(false)} />}
 
-      {/* Creator Rewards Hub Modal - Treasury Building */}
-      {showCreatorRewardsModal && (
-        <CreatorRewardsModal onClose={() => setShowCreatorRewardsModal(false)} />
+      {/* Community Fund Modal - Treasury Building */}
+      {showCommunityFundModal && (
+        <CommunityFundModal onClose={() => setShowCommunityFundModal(false)} />
       )}
 
       {/* Casino Modal - triggered by clicking Casino building */}
