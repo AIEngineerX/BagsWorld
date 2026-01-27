@@ -2915,209 +2915,219 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generateBagsWorldHQ(): void {
-    const s = 1.8; // Scale for larger building
-    const canvasWidth = Math.round(80 * s);
-    const canvasHeight = Math.round(100 * s);
+    // BagsWorld HQ - Pixel art castle/headquarters (matches other zone buildings)
+    const s = SCALE;
     const g = this.make.graphics({ x: 0, y: 0 }, false);
-    const bWidth = canvasWidth;
-    const bHeight = canvasHeight;
+    const canvasWidth = Math.round(90 * s);
+    const canvasHeight = Math.round(140 * s);
+    const bWidth = Math.round(75 * s);
+    const bHeight = Math.round(100 * s);
+    const baseX = Math.round(8 * s);
 
-    // Sky fortress floating island base
-    const baseY = canvasHeight - Math.round(25 * s);
+    // Ground shadow (flat, no alpha)
+    g.fillStyle(PALETTE.void);
+    g.fillRect(baseX + Math.round(6 * s), canvasHeight - Math.round(4 * s), bWidth - Math.round(4 * s), Math.round(4 * s));
 
-    // Floating island/cloud base with gradient effect
-    g.fillStyle(0x4a5568); // Dark gray rock
-    g.fillTriangle(
-      Math.round(10 * s),
-      baseY,
-      bWidth - Math.round(10 * s),
-      baseY,
-      bWidth / 2,
-      canvasHeight - Math.round(5 * s)
-    );
-    // Lighter rock highlights
-    g.fillStyle(0x718096);
-    g.fillTriangle(
-      Math.round(15 * s),
-      baseY - Math.round(2 * s),
-      bWidth - Math.round(15 * s),
-      baseY - Math.round(2 * s),
-      bWidth / 2,
-      canvasHeight - Math.round(10 * s)
-    );
+    // Main castle body
+    const castleX = baseX;
+    const castleY = canvasHeight - bHeight;
+    const castleW = bWidth;
+    const castleH = bHeight;
 
-    // Cloud wisps around base
-    g.fillStyle(0xffffff, 0.6);
-    g.fillCircle(Math.round(15 * s), baseY, Math.round(8 * s));
-    g.fillCircle(bWidth - Math.round(15 * s), baseY, Math.round(6 * s));
-    g.fillCircle(bWidth / 2, canvasHeight - Math.round(8 * s), Math.round(10 * s));
+    // Castle base (dark blue - Bags brand)
+    const bagsBlue = 0x1a1a2e;
+    const bagsBlueLight = 0x2d2d4a;
+    const bagsBlueDark = 0x0f0f1a;
 
-    // Main tower - epic castle style
-    const towerWidth = Math.round(40 * s);
-    const towerX = (bWidth - towerWidth) / 2;
-    const towerHeight = Math.round(55 * s);
-    const towerY = baseY - towerHeight;
+    g.fillStyle(bagsBlue);
+    g.fillRect(castleX, castleY, castleW, castleH);
 
-    // Tower base - deep purple/blue gradient (Bags colors)
-    g.fillStyle(0x1a1a2e);
-    g.fillRect(towerX, towerY, towerWidth, towerHeight);
+    // Brick pattern (darker rectangles)
+    g.fillStyle(bagsBlueDark);
+    for (let row = 0; row < castleH; row += Math.round(10 * s)) {
+      const offset = (row / Math.round(10 * s)) % 2 === 0 ? 0 : Math.round(8 * s);
+      for (let col = offset; col < castleW; col += Math.round(16 * s)) {
+        g.fillRect(castleX + col, castleY + row, Math.round(14 * s), Math.round(8 * s));
+      }
+    }
 
-    // Tower mid section - slightly lighter
-    g.fillStyle(0x16213e);
-    g.fillRect(
-      towerX + Math.round(3 * s),
-      towerY + Math.round(5 * s),
-      towerWidth - Math.round(6 * s),
-      towerHeight - Math.round(10 * s)
-    );
+    // Left edge highlight
+    g.fillStyle(bagsBlueLight);
+    g.fillRect(castleX, castleY, Math.round(6 * s), castleH);
 
-    // Golden trim borders
-    g.fillStyle(PALETTE.gold);
-    g.fillRect(towerX, towerY, towerWidth, Math.round(2 * s)); // Top
-    g.fillRect(towerX, towerY, Math.round(2 * s), towerHeight); // Left
-    g.fillRect(towerX + towerWidth - Math.round(2 * s), towerY, Math.round(2 * s), towerHeight); // Right
-
-    // Side turrets
-    const turretWidth = Math.round(12 * s);
-    const turretHeight = Math.round(35 * s);
+    // Right edge shadow
+    g.fillStyle(bagsBlueDark);
+    g.fillRect(castleX + castleW - Math.round(6 * s), castleY, Math.round(6 * s), castleH);
 
     // Left turret
-    g.fillStyle(0x1a1a2e);
-    g.fillRect(Math.round(5 * s), baseY - turretHeight, turretWidth, turretHeight);
+    const turretW = Math.round(18 * s);
+    const turretH = Math.round(70 * s);
+    const leftTurretX = castleX - Math.round(4 * s);
+    const leftTurretY = canvasHeight - turretH - Math.round(20 * s);
+
+    g.fillStyle(bagsBlue);
+    g.fillRect(leftTurretX, leftTurretY, turretW, turretH + Math.round(20 * s));
+    g.fillStyle(bagsBlueLight);
+    g.fillRect(leftTurretX, leftTurretY, Math.round(4 * s), turretH + Math.round(20 * s));
+    g.fillStyle(bagsBlueDark);
+    g.fillRect(leftTurretX + turretW - Math.round(4 * s), leftTurretY, Math.round(4 * s), turretH + Math.round(20 * s));
+
+    // Left turret spire (stepped pyramid)
     g.fillStyle(PALETTE.gold);
-    g.fillRect(Math.round(5 * s), baseY - turretHeight, turretWidth, Math.round(2 * s));
+    g.fillRect(leftTurretX - Math.round(2 * s), leftTurretY - Math.round(6 * s), turretW + Math.round(4 * s), Math.round(6 * s));
+    g.fillRect(leftTurretX + Math.round(2 * s), leftTurretY - Math.round(12 * s), turretW - Math.round(4 * s), Math.round(6 * s));
+    g.fillRect(leftTurretX + Math.round(5 * s), leftTurretY - Math.round(18 * s), turretW - Math.round(10 * s), Math.round(6 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(leftTurretX - Math.round(2 * s), leftTurretY - Math.round(6 * s), turretW + Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(leftTurretX + Math.round(2 * s), leftTurretY - Math.round(12 * s), turretW - Math.round(4 * s), Math.round(2 * s));
 
     // Right turret
-    g.fillStyle(0x1a1a2e);
-    g.fillRect(bWidth - Math.round(17 * s), baseY - turretHeight, turretWidth, turretHeight);
+    const rightTurretX = castleX + castleW - turretW + Math.round(4 * s);
+
+    g.fillStyle(bagsBlue);
+    g.fillRect(rightTurretX, leftTurretY, turretW, turretH + Math.round(20 * s));
+    g.fillStyle(bagsBlueLight);
+    g.fillRect(rightTurretX, leftTurretY, Math.round(4 * s), turretH + Math.round(20 * s));
+    g.fillStyle(bagsBlueDark);
+    g.fillRect(rightTurretX + turretW - Math.round(4 * s), leftTurretY, Math.round(4 * s), turretH + Math.round(20 * s));
+
+    // Right turret spire (stepped pyramid)
     g.fillStyle(PALETTE.gold);
-    g.fillRect(bWidth - Math.round(17 * s), baseY - turretHeight, turretWidth, Math.round(2 * s));
+    g.fillRect(rightTurretX - Math.round(2 * s), leftTurretY - Math.round(6 * s), turretW + Math.round(4 * s), Math.round(6 * s));
+    g.fillRect(rightTurretX + Math.round(2 * s), leftTurretY - Math.round(12 * s), turretW - Math.round(4 * s), Math.round(6 * s));
+    g.fillRect(rightTurretX + Math.round(5 * s), leftTurretY - Math.round(18 * s), turretW - Math.round(10 * s), Math.round(6 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(rightTurretX - Math.round(2 * s), leftTurretY - Math.round(6 * s), turretW + Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(rightTurretX + Math.round(2 * s), leftTurretY - Math.round(12 * s), turretW - Math.round(4 * s), Math.round(2 * s));
 
-    // Turret spires (pointed tops)
+    // Central tower (taller, behind main body)
+    const centerTowerW = Math.round(30 * s);
+    const centerTowerH = Math.round(50 * s);
+    const centerTowerX = castleX + (castleW - centerTowerW) / 2;
+    const centerTowerY = castleY - centerTowerH + Math.round(15 * s);
+
+    g.fillStyle(bagsBlue);
+    g.fillRect(centerTowerX, centerTowerY, centerTowerW, centerTowerH);
+    g.fillStyle(bagsBlueLight);
+    g.fillRect(centerTowerX, centerTowerY, Math.round(5 * s), centerTowerH);
+    g.fillStyle(bagsBlueDark);
+    g.fillRect(centerTowerX + centerTowerW - Math.round(5 * s), centerTowerY, Math.round(5 * s), centerTowerH);
+
+    // Central tower spire (stepped)
     g.fillStyle(PALETTE.gold);
-    // Left spire
-    g.fillTriangle(
-      Math.round(5 * s),
-      baseY - turretHeight,
-      Math.round(17 * s),
-      baseY - turretHeight,
-      Math.round(11 * s),
-      baseY - turretHeight - Math.round(12 * s)
-    );
-    // Right spire
-    g.fillTriangle(
-      bWidth - Math.round(17 * s),
-      baseY - turretHeight,
-      bWidth - Math.round(5 * s),
-      baseY - turretHeight,
-      bWidth - Math.round(11 * s),
-      baseY - turretHeight - Math.round(12 * s)
-    );
+    g.fillRect(centerTowerX - Math.round(3 * s), centerTowerY - Math.round(8 * s), centerTowerW + Math.round(6 * s), Math.round(8 * s));
+    g.fillRect(centerTowerX + Math.round(4 * s), centerTowerY - Math.round(16 * s), centerTowerW - Math.round(8 * s), Math.round(8 * s));
+    g.fillRect(centerTowerX + Math.round(10 * s), centerTowerY - Math.round(24 * s), centerTowerW - Math.round(20 * s), Math.round(8 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(centerTowerX - Math.round(3 * s), centerTowerY - Math.round(8 * s), centerTowerW + Math.round(6 * s), Math.round(2 * s));
+    g.fillRect(centerTowerX + Math.round(4 * s), centerTowerY - Math.round(16 * s), centerTowerW - Math.round(8 * s), Math.round(2 * s));
 
-    // Main tower spire - grand central spire
+    // Flag pole on center
+    const flagX = centerTowerX + centerTowerW / 2;
+    const flagY = centerTowerY - Math.round(24 * s);
     g.fillStyle(PALETTE.gold);
-    g.fillTriangle(
-      towerX,
-      towerY,
-      towerX + towerWidth,
-      towerY,
-      bWidth / 2,
-      towerY - Math.round(20 * s)
-    );
+    g.fillRect(flagX - Math.round(1 * s), flagY - Math.round(16 * s), Math.round(2 * s), Math.round(16 * s));
+    // Flag (Bags green)
+    g.fillStyle(PALETTE.green);
+    g.fillRect(flagX + Math.round(1 * s), flagY - Math.round(16 * s), Math.round(10 * s), Math.round(8 * s));
+    g.fillStyle(lighten(PALETTE.green, 0.2));
+    g.fillRect(flagX + Math.round(1 * s), flagY - Math.round(16 * s), Math.round(10 * s), Math.round(2 * s));
 
-    // Glowing windows - cyan/teal glow (Bags brand)
-    const windowColor = 0x4ade80; // Bags green
-    g.fillStyle(windowColor);
+    // Windows - Bags green glow (uniform rectangles)
+    const winW = Math.round(8 * s);
+    const winH = Math.round(12 * s);
 
-    // Main tower windows (3 rows)
-    for (let row = 0; row < 3; row++) {
-      const windowY = towerY + Math.round(15 * s) + row * Math.round(14 * s);
-      g.fillRect(towerX + Math.round(8 * s), windowY, Math.round(8 * s), Math.round(10 * s));
-      g.fillRect(towerX + Math.round(24 * s), windowY, Math.round(8 * s), Math.round(10 * s));
+    // Main castle windows (2 rows of 3)
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 3; col++) {
+        const winX = castleX + Math.round(12 * s) + col * Math.round(22 * s);
+        const winY = castleY + Math.round(20 * s) + row * Math.round(30 * s);
+
+        // Window frame
+        g.fillStyle(bagsBlueDark);
+        g.fillRect(winX - Math.round(1 * s), winY - Math.round(1 * s), winW + Math.round(2 * s), winH + Math.round(2 * s));
+
+        // Window (green glow)
+        g.fillStyle(PALETTE.green);
+        g.fillRect(winX, winY, winW, winH);
+
+        // Window highlight
+        g.fillStyle(lighten(PALETTE.green, 0.3));
+        g.fillRect(winX + Math.round(1 * s), winY + Math.round(1 * s), Math.round(3 * s), Math.round(3 * s));
+
+        // Window cross
+        g.fillStyle(bagsBlue);
+        g.fillRect(winX + winW / 2 - Math.round(1 * s), winY, Math.round(2 * s), winH);
+        g.fillRect(winX, winY + winH / 2 - Math.round(1 * s), winW, Math.round(2 * s));
+      }
     }
 
-    // Window glow effect
-    g.fillStyle(windowColor, 0.3);
-    for (let row = 0; row < 3; row++) {
-      const windowY = towerY + Math.round(15 * s) + row * Math.round(14 * s);
-      g.fillRect(
-        towerX + Math.round(6 * s),
-        windowY - Math.round(2 * s),
-        Math.round(12 * s),
-        Math.round(14 * s)
-      );
-      g.fillRect(
-        towerX + Math.round(22 * s),
-        windowY - Math.round(2 * s),
-        Math.round(12 * s),
-        Math.round(14 * s)
-      );
-    }
+    // Turret windows (one each)
+    const turretWinY = leftTurretY + Math.round(20 * s);
+    // Left turret window
+    g.fillStyle(bagsBlueDark);
+    g.fillRect(leftTurretX + Math.round(4 * s), turretWinY, winW + Math.round(2 * s), winH + Math.round(2 * s));
+    g.fillStyle(PALETTE.green);
+    g.fillRect(leftTurretX + Math.round(5 * s), turretWinY + Math.round(1 * s), winW, winH);
+    g.fillStyle(lighten(PALETTE.green, 0.3));
+    g.fillRect(leftTurretX + Math.round(6 * s), turretWinY + Math.round(2 * s), Math.round(3 * s), Math.round(3 * s));
 
-    // Side turret windows
-    g.fillStyle(windowColor);
-    g.fillRect(Math.round(8 * s), baseY - Math.round(25 * s), Math.round(6 * s), Math.round(8 * s));
-    g.fillRect(
-      bWidth - Math.round(14 * s),
-      baseY - Math.round(25 * s),
-      Math.round(6 * s),
-      Math.round(8 * s)
-    );
+    // Right turret window
+    g.fillStyle(bagsBlueDark);
+    g.fillRect(rightTurretX + Math.round(4 * s), turretWinY, winW + Math.round(2 * s), winH + Math.round(2 * s));
+    g.fillStyle(PALETTE.green);
+    g.fillRect(rightTurretX + Math.round(5 * s), turretWinY + Math.round(1 * s), winW, winH);
+    g.fillStyle(lighten(PALETTE.green, 0.3));
+    g.fillRect(rightTurretX + Math.round(6 * s), turretWinY + Math.round(2 * s), Math.round(3 * s), Math.round(3 * s));
 
-    // Grand entrance door (arched)
-    g.fillStyle(0x0f0f23);
-    g.fillRect(
-      bWidth / 2 - Math.round(6 * s),
-      baseY - Math.round(16 * s),
-      Math.round(12 * s),
-      Math.round(16 * s)
-    );
-    // Door arch
-    g.fillCircle(bWidth / 2, baseY - Math.round(16 * s), Math.round(6 * s));
-    // Door trim
+    // Central tower window (larger)
+    const centerWinX = centerTowerX + (centerTowerW - Math.round(12 * s)) / 2;
+    const centerWinY = centerTowerY + Math.round(15 * s);
+    g.fillStyle(bagsBlueDark);
+    g.fillRect(centerWinX - Math.round(1 * s), centerWinY - Math.round(1 * s), Math.round(14 * s), Math.round(18 * s));
+    g.fillStyle(PALETTE.green);
+    g.fillRect(centerWinX, centerWinY, Math.round(12 * s), Math.round(16 * s));
+    g.fillStyle(lighten(PALETTE.green, 0.3));
+    g.fillRect(centerWinX + Math.round(1 * s), centerWinY + Math.round(1 * s), Math.round(4 * s), Math.round(4 * s));
+
+    // Grand entrance door
+    const doorW = Math.round(16 * s);
+    const doorH = Math.round(26 * s);
+    const doorX = castleX + (castleW - doorW) / 2;
+    const doorY = canvasHeight - doorH;
+
+    // Door frame (gold)
     g.fillStyle(PALETTE.gold);
-    g.fillRect(
-      bWidth / 2 - Math.round(7 * s),
-      baseY - Math.round(16 * s),
-      Math.round(2 * s),
-      Math.round(16 * s)
-    );
-    g.fillRect(
-      bWidth / 2 + Math.round(5 * s),
-      baseY - Math.round(16 * s),
-      Math.round(2 * s),
-      Math.round(16 * s)
-    );
+    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(6 * s), doorW + Math.round(6 * s), doorH + Math.round(6 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(6 * s), doorW + Math.round(6 * s), Math.round(2 * s));
 
-    // Floating particles/magic effect (small gold dots)
-    g.fillStyle(PALETTE.gold, 0.8);
-    const particlePositions = [
-      [20, 30],
-      [60, 25],
-      [35, 15],
-      [50, 40],
-      [25, 50],
-      [55, 55],
-    ];
-    particlePositions.forEach(([px, py]) => {
-      g.fillCircle(Math.round((px * s) / 1.8), Math.round((py * s) / 1.8), Math.round(1.5 * s));
-    });
+    // Door (dark)
+    g.fillStyle(bagsBlueDark);
+    g.fillRect(doorX, doorY, doorW, doorH);
 
-    // "BAGS" text emblem at top (simplified pixel banner)
+    // Door panels
+    g.fillStyle(bagsBlue);
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(2 * s), Math.round(5 * s), doorH - Math.round(4 * s));
+    g.fillRect(doorX + Math.round(9 * s), doorY + Math.round(2 * s), Math.round(5 * s), doorH - Math.round(4 * s));
+
+    // Door handle
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(doorX + doorW - Math.round(4 * s), doorY + doorH / 2, Math.round(2 * s), Math.round(2 * s));
+
+    // Base trim (gold)
     g.fillStyle(PALETTE.gold);
-    g.fillRect(
-      bWidth / 2 - Math.round(10 * s),
-      towerY + Math.round(5 * s),
-      Math.round(20 * s),
-      Math.round(6 * s)
-    );
-    g.fillStyle(0x1a1a2e);
-    g.fillRect(
-      bWidth / 2 - Math.round(8 * s),
-      towerY + Math.round(6 * s),
-      Math.round(16 * s),
-      Math.round(4 * s)
-    );
+    g.fillRect(castleX, canvasHeight - Math.round(4 * s), castleW, Math.round(4 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(castleX, canvasHeight - Math.round(4 * s), castleW, Math.round(1 * s));
+
+    // "BAGS" banner above door (pixel text area)
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(doorX - Math.round(6 * s), doorY - Math.round(16 * s), doorW + Math.round(12 * s), Math.round(8 * s));
+    g.fillStyle(bagsBlue);
+    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(14 * s), doorW + Math.round(8 * s), Math.round(4 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(doorX - Math.round(6 * s), doorY - Math.round(16 * s), doorW + Math.round(12 * s), Math.round(1 * s));
 
     g.generateTexture("bagshq", canvasWidth, canvasHeight);
     g.destroy();
@@ -5790,6 +5800,7 @@ export class BootScene extends Phaser.Scene {
   /**
    * Generate Academy buildings - Hogwarts-style educational campus
    * Each building represents a team member's domain with unique architectural style
+   * REWRITTEN: Proper 16-bit pixel art - no circles, no triangles, no alpha
    */
   private generateAcademyBuildings(): void {
     const s = SCALE;
@@ -5881,202 +5892,242 @@ export class BootScene extends Phaser.Scene {
       const baseY = canvasHeight - bHeight;
       const centerX = canvasWidth / 2;
 
-      // Drop shadow
-      g.fillStyle(PALETTE.void, 0.5);
-      g.fillRect(Math.round(6 * s), baseY + Math.round(6 * s), bWidth - Math.round(4 * s), bHeight);
+      // Ground shadow (flat, solid - no alpha)
+      g.fillStyle(PALETTE.void);
+      g.fillRect(
+        Math.round(8 * s),
+        canvasHeight - Math.round(4 * s),
+        bWidth - Math.round(8 * s),
+        Math.round(4 * s)
+      );
 
       // Main building body
       g.fillStyle(style.base);
       g.fillRect(Math.round(4 * s), baseY, bWidth - Math.round(4 * s), bHeight);
 
-      // Highlight left edge
-      g.fillStyle(lighten(style.base, 0.15));
+      // Highlight left edge (3D depth)
+      g.fillStyle(lighten(style.base, 0.2));
       g.fillRect(Math.round(4 * s), baseY, Math.round(6 * s), bHeight);
 
-      // Shadow right edge
-      g.fillStyle(darken(style.base, 0.2));
+      // Shadow right edge (3D depth)
+      g.fillStyle(darken(style.base, 0.25));
       g.fillRect(bWidth - Math.round(6 * s), baseY, Math.round(6 * s), bHeight);
 
-      // Dithering pattern for stone texture
-      g.fillStyle(darken(style.base, 0.1));
+      // Brick/stone texture (checkerboard pattern - solid colors)
+      g.fillStyle(darken(style.base, 0.12));
       for (let py = 0; py < bHeight; py += Math.round(8 * s)) {
-        for (
-          let px = Math.round(8 * s);
-          px < bWidth - Math.round(8 * s);
-          px += Math.round(12 * s)
-        ) {
-          if ((py / Math.round(8 * s) + px / Math.round(12 * s)) % 2 === 0) {
-            g.fillRect(Math.round(4 * s) + px, baseY + py, Math.round(10 * s), Math.round(6 * s));
-          }
+        const offset = (py / Math.round(8 * s)) % 2 === 0 ? 0 : Math.round(6 * s);
+        for (let px = Math.round(8 * s) + offset; px < bWidth - Math.round(8 * s); px += Math.round(12 * s)) {
+          g.fillRect(Math.round(4 * s) + px, baseY + py, Math.round(10 * s), Math.round(6 * s));
         }
       }
 
-      // Roof based on building type
+      // Roof based on building type - all use stepped rectangles
       const roofY = baseY - Math.round(20 * s);
 
       if (style.hasDome) {
-        // Observatory dome
+        // Observatory dome (stacked rectangles to form dome shape)
+        const domeBaseY = baseY;
+        const domeWidth = Math.round(44 * s);
+        const domeX = centerX - domeWidth / 2;
+
+        // Dome layer 1 (widest)
         g.fillStyle(style.roof);
-        g.fillCircle(centerX, roofY + Math.round(5 * s), Math.round(22 * s));
-        g.fillStyle(lighten(style.roof, 0.2));
-        g.fillCircle(centerX - Math.round(5 * s), roofY - Math.round(2 * s), Math.round(8 * s));
-        // Dome slit
-        g.fillStyle(darken(style.roof, 0.3));
-        g.fillRect(
-          centerX - Math.round(2 * s),
-          roofY - Math.round(15 * s),
-          Math.round(4 * s),
-          Math.round(20 * s)
-        );
+        g.fillRect(domeX, domeBaseY - Math.round(10 * s), domeWidth, Math.round(10 * s));
+        // Dome layer 2
+        g.fillRect(domeX + Math.round(4 * s), domeBaseY - Math.round(18 * s), domeWidth - Math.round(8 * s), Math.round(8 * s));
+        // Dome layer 3
+        g.fillRect(domeX + Math.round(10 * s), domeBaseY - Math.round(24 * s), domeWidth - Math.round(20 * s), Math.round(6 * s));
+        // Dome layer 4 (top)
+        g.fillRect(domeX + Math.round(16 * s), domeBaseY - Math.round(28 * s), domeWidth - Math.round(32 * s), Math.round(4 * s));
+
+        // Dome highlight (left side of each layer)
+        g.fillStyle(lighten(style.roof, 0.25));
+        g.fillRect(domeX, domeBaseY - Math.round(10 * s), Math.round(4 * s), Math.round(10 * s));
+        g.fillRect(domeX + Math.round(4 * s), domeBaseY - Math.round(18 * s), Math.round(4 * s), Math.round(8 * s));
+        g.fillRect(domeX + Math.round(10 * s), domeBaseY - Math.round(24 * s), Math.round(4 * s), Math.round(6 * s));
+
+        // Dome slit (telescope opening)
+        g.fillStyle(darken(style.roof, 0.35));
+        g.fillRect(centerX - Math.round(2 * s), domeBaseY - Math.round(26 * s), Math.round(4 * s), Math.round(18 * s));
       } else if (style.hasTower) {
-        // Clock tower peaked roof
+        // Clock tower peaked roof (stepped pyramid)
+        const roofW1 = bWidth + Math.round(4 * s);
+        const roofX1 = Math.round(2 * s);
+
+        // Roof layer 1 (eaves)
         g.fillStyle(style.roof);
-        g.beginPath();
-        g.moveTo(0, baseY);
-        g.lineTo(centerX, roofY - Math.round(25 * s));
-        g.lineTo(canvasWidth - Math.round(4 * s), baseY);
-        g.closePath();
-        g.fill();
-        // Roof highlight
+        g.fillRect(roofX1, baseY - Math.round(8 * s), roofW1, Math.round(8 * s));
         g.fillStyle(lighten(style.roof, 0.2));
-        g.beginPath();
-        g.moveTo(0, baseY);
-        g.lineTo(centerX, roofY - Math.round(25 * s));
-        g.lineTo(centerX, roofY - Math.round(18 * s));
-        g.lineTo(Math.round(6 * s), baseY);
-        g.closePath();
-        g.fill();
-        // Spire
+        g.fillRect(roofX1, baseY - Math.round(8 * s), roofW1, Math.round(2 * s));
+
+        // Roof layer 2
+        const roofW2 = roofW1 - Math.round(12 * s);
+        const roofX2 = roofX1 + Math.round(6 * s);
+        g.fillStyle(style.roof);
+        g.fillRect(roofX2, baseY - Math.round(18 * s), roofW2, Math.round(10 * s));
+        g.fillStyle(lighten(style.roof, 0.2));
+        g.fillRect(roofX2, baseY - Math.round(18 * s), roofW2, Math.round(2 * s));
+
+        // Roof layer 3
+        const roofW3 = roofW2 - Math.round(12 * s);
+        const roofX3 = roofX2 + Math.round(6 * s);
+        g.fillStyle(style.roof);
+        g.fillRect(roofX3, baseY - Math.round(28 * s), roofW3, Math.round(10 * s));
+        g.fillStyle(lighten(style.roof, 0.2));
+        g.fillRect(roofX3, baseY - Math.round(28 * s), roofW3, Math.round(2 * s));
+
+        // Roof layer 4 (peak)
+        const roofW4 = roofW3 - Math.round(12 * s);
+        const roofX4 = roofX3 + Math.round(6 * s);
+        g.fillStyle(style.roof);
+        g.fillRect(roofX4, baseY - Math.round(38 * s), roofW4, Math.round(10 * s));
+        g.fillStyle(lighten(style.roof, 0.2));
+        g.fillRect(roofX4, baseY - Math.round(38 * s), roofW4, Math.round(2 * s));
+
+        // Spire (vertical bar with cap)
         g.fillStyle(style.accent);
-        g.fillRect(
-          centerX - Math.round(2 * s),
-          roofY - Math.round(40 * s),
-          Math.round(4 * s),
-          Math.round(20 * s)
-        );
-        g.fillCircle(centerX, roofY - Math.round(42 * s), Math.round(4 * s));
+        g.fillRect(centerX - Math.round(2 * s), baseY - Math.round(55 * s), Math.round(4 * s), Math.round(20 * s));
+        // Spire top (small stacked rectangles)
+        g.fillRect(centerX - Math.round(4 * s), baseY - Math.round(58 * s), Math.round(8 * s), Math.round(4 * s));
+        g.fillRect(centerX - Math.round(3 * s), baseY - Math.round(61 * s), Math.round(6 * s), Math.round(3 * s));
+        g.fillStyle(PALETTE.yellow);
+        g.fillRect(centerX - Math.round(2 * s), baseY - Math.round(63 * s), Math.round(4 * s), Math.round(2 * s));
       } else if (style.hasGlass) {
-        // Greenhouse glass roof
-        g.fillStyle(PALETTE.lightBlue, 0.6);
-        g.beginPath();
-        g.moveTo(Math.round(2 * s), baseY);
-        g.lineTo(centerX, roofY);
-        g.lineTo(canvasWidth - Math.round(6 * s), baseY);
-        g.closePath();
-        g.fill();
-        // Glass frame lines
+        // Greenhouse glass roof (stepped with frame lines)
+        const roofW1 = bWidth + Math.round(4 * s);
+        const roofX1 = Math.round(2 * s);
+
+        // Roof layer 1 (eaves) - light blue for glass
+        g.fillStyle(PALETTE.lightBlue);
+        g.fillRect(roofX1, baseY - Math.round(8 * s), roofW1, Math.round(8 * s));
+
+        // Roof layer 2
+        const roofW2 = roofW1 - Math.round(14 * s);
+        const roofX2 = roofX1 + Math.round(7 * s);
+        g.fillRect(roofX2, baseY - Math.round(16 * s), roofW2, Math.round(8 * s));
+
+        // Roof layer 3 (peak)
+        const roofW3 = roofW2 - Math.round(14 * s);
+        const roofX3 = roofX2 + Math.round(7 * s);
+        g.fillRect(roofX3, baseY - Math.round(22 * s), roofW3, Math.round(6 * s));
+
+        // Glass frame lines (white trim)
         g.fillStyle(style.trim);
-        g.fillRect(centerX - Math.round(1 * s), roofY, Math.round(2 * s), baseY - roofY);
-        for (let i = 1; i <= 3; i++) {
-          const lineY = roofY + (baseY - roofY) * (i / 4);
-          g.fillRect(
-            Math.round(4 * s) + i * Math.round(5 * s),
-            lineY,
-            bWidth - Math.round(8 * s) - i * Math.round(10 * s),
-            Math.round(2 * s)
-          );
-        }
+        // Vertical center strut
+        g.fillRect(centerX - Math.round(1 * s), baseY - Math.round(22 * s), Math.round(2 * s), Math.round(22 * s));
+        // Horizontal struts
+        g.fillRect(roofX1 + Math.round(4 * s), baseY - Math.round(6 * s), roofW1 - Math.round(8 * s), Math.round(2 * s));
+        g.fillRect(roofX2 + Math.round(4 * s), baseY - Math.round(14 * s), roofW2 - Math.round(8 * s), Math.round(2 * s));
       } else if (style.hasAntenna) {
         // Broadcast tower flat roof with antenna
         g.fillStyle(style.roof);
         g.fillRect(0, baseY - Math.round(8 * s), bWidth + Math.round(8 * s), Math.round(12 * s));
-        g.fillStyle(lighten(style.roof, 0.15));
-        g.fillRect(0, baseY - Math.round(8 * s), bWidth + Math.round(8 * s), Math.round(3 * s));
-        // Main antenna
-        g.fillStyle(PALETTE.lightGray);
-        g.fillRect(
-          centerX - Math.round(2 * s),
-          roofY - Math.round(35 * s),
-          Math.round(4 * s),
-          Math.round(45 * s)
-        );
-        // Satellite dish
-        g.fillStyle(PALETTE.silver);
-        g.fillCircle(centerX + Math.round(12 * s), roofY - Math.round(10 * s), Math.round(8 * s));
-        g.fillStyle(PALETTE.lightGray);
-        g.fillCircle(centerX + Math.round(12 * s), roofY - Math.round(10 * s), Math.round(4 * s));
-        // Blinking light
-        g.fillStyle(PALETTE.brightRed);
-        g.fillCircle(centerX, roofY - Math.round(38 * s), Math.round(3 * s));
-      } else {
-        // Standard peaked roof
-        g.fillStyle(style.roof);
-        g.beginPath();
-        g.moveTo(0, baseY);
-        g.lineTo(centerX, roofY);
-        g.lineTo(canvasWidth - Math.round(4 * s), baseY);
-        g.closePath();
-        g.fill();
-        // Roof highlight
         g.fillStyle(lighten(style.roof, 0.2));
-        g.beginPath();
-        g.moveTo(0, baseY);
-        g.lineTo(centerX, roofY);
-        g.lineTo(centerX, roofY + Math.round(6 * s));
-        g.lineTo(Math.round(6 * s), baseY);
-        g.closePath();
-        g.fill();
+        g.fillRect(0, baseY - Math.round(8 * s), bWidth + Math.round(8 * s), Math.round(3 * s));
+
+        // Main antenna pole
+        g.fillStyle(PALETTE.lightGray);
+        g.fillRect(centerX - Math.round(2 * s), roofY - Math.round(35 * s), Math.round(4 * s), Math.round(45 * s));
+        g.fillStyle(PALETTE.silver);
+        g.fillRect(centerX - Math.round(2 * s), roofY - Math.round(35 * s), Math.round(1 * s), Math.round(45 * s));
+
+        // Satellite dish (stacked rectangles)
+        const dishX = centerX + Math.round(8 * s);
+        const dishY = roofY - Math.round(10 * s);
+        g.fillStyle(PALETTE.silver);
+        g.fillRect(dishX, dishY - Math.round(4 * s), Math.round(12 * s), Math.round(3 * s));
+        g.fillRect(dishX + Math.round(2 * s), dishY - Math.round(8 * s), Math.round(8 * s), Math.round(4 * s));
+        g.fillRect(dishX + Math.round(4 * s), dishY - Math.round(10 * s), Math.round(4 * s), Math.round(2 * s));
+        g.fillStyle(PALETTE.lightGray);
+        g.fillRect(dishX + Math.round(4 * s), dishY, Math.round(4 * s), Math.round(4 * s));
+
+        // Blinking light (small rectangle)
+        g.fillStyle(PALETTE.brightRed);
+        g.fillRect(centerX - Math.round(2 * s), roofY - Math.round(40 * s), Math.round(4 * s), Math.round(4 * s));
+        g.fillStyle(lighten(PALETTE.brightRed, 0.3));
+        g.fillRect(centerX - Math.round(1 * s), roofY - Math.round(39 * s), Math.round(2 * s), Math.round(2 * s));
+      } else {
+        // Standard peaked roof (stepped pyramid)
+        const roofW1 = bWidth + Math.round(4 * s);
+        const roofX1 = Math.round(2 * s);
+
+        // Roof layer 1 (eaves)
+        g.fillStyle(style.roof);
+        g.fillRect(roofX1, baseY - Math.round(8 * s), roofW1, Math.round(8 * s));
+        g.fillStyle(lighten(style.roof, 0.2));
+        g.fillRect(roofX1, baseY - Math.round(8 * s), roofW1, Math.round(2 * s));
+
+        // Roof layer 2
+        const roofW2 = roofW1 - Math.round(14 * s);
+        const roofX2 = roofX1 + Math.round(7 * s);
+        g.fillStyle(style.roof);
+        g.fillRect(roofX2, baseY - Math.round(16 * s), roofW2, Math.round(8 * s));
+        g.fillStyle(lighten(style.roof, 0.2));
+        g.fillRect(roofX2, baseY - Math.round(16 * s), roofW2, Math.round(2 * s));
+
+        // Roof layer 3 (peak)
+        const roofW3 = roofW2 - Math.round(14 * s);
+        const roofX3 = roofX2 + Math.round(7 * s);
+        g.fillStyle(style.roof);
+        g.fillRect(roofX3, baseY - Math.round(22 * s), roofW3, Math.round(6 * s));
+        g.fillStyle(lighten(style.roof, 0.2));
+        g.fillRect(roofX3, baseY - Math.round(22 * s), roofW3, Math.round(2 * s));
       }
 
-      // Windows - 2 rows x 2 columns (gothic arched style)
+      // Windows - 2 rows x 2 columns (uniform rectangles with cross dividers)
       const windowColor = style.hasGlass ? PALETTE.mint : PALETTE.lightBlue;
       for (let row = 0; row < 2; row++) {
         for (let col = 0; col < 2; col++) {
           const wx = Math.round(10 * s) + col * Math.round(18 * s);
           const wy = baseY + Math.round(15 * s) + row * Math.round(25 * s);
+          const winW = Math.round(12 * s);
+          const winH = Math.round(16 * s);
 
-          // Window glow
-          g.fillStyle(windowColor, 0.25);
-          g.fillRect(
-            wx - Math.round(1 * s),
-            wy - Math.round(1 * s),
-            Math.round(14 * s),
-            Math.round(18 * s)
-          );
+          // Window frame (dark)
+          g.fillStyle(darken(style.base, 0.35));
+          g.fillRect(wx - Math.round(1 * s), wy - Math.round(1 * s), winW + Math.round(2 * s), winH + Math.round(2 * s));
 
-          // Gothic arch window
+          // Window glass
           g.fillStyle(windowColor);
-          g.fillRect(wx, wy + Math.round(4 * s), Math.round(12 * s), Math.round(14 * s));
-          g.fillCircle(wx + Math.round(6 * s), wy + Math.round(4 * s), Math.round(6 * s));
+          g.fillRect(wx, wy, winW, winH);
 
-          // Window highlight
-          g.fillStyle(lighten(windowColor, 0.3));
-          g.fillRect(
-            wx + Math.round(2 * s),
-            wy + Math.round(6 * s),
-            Math.round(3 * s),
-            Math.round(4 * s)
-          );
+          // Window inner glow
+          g.fillStyle(lighten(windowColor, 0.2));
+          g.fillRect(wx + Math.round(2 * s), wy + Math.round(2 * s), winW - Math.round(4 * s), winH - Math.round(4 * s));
 
-          // Window frame divider
+          // Window highlight (top-left corner)
+          g.fillStyle(PALETTE.white);
+          g.fillRect(wx + Math.round(1 * s), wy + Math.round(1 * s), Math.round(3 * s), Math.round(3 * s));
+
+          // Window cross dividers
           g.fillStyle(style.trim);
-          g.fillRect(
-            wx + Math.round(5 * s),
-            wy + Math.round(4 * s),
-            Math.round(2 * s),
-            Math.round(14 * s)
-          );
+          g.fillRect(wx + winW / 2 - Math.round(1 * s), wy, Math.round(2 * s), winH);
+          g.fillRect(wx, wy + winH / 2 - Math.round(1 * s), winW, Math.round(2 * s));
         }
       }
 
-      // Clock face for clock tower
+      // Clock face for clock tower (rectangular pixel clock)
       if (style.hasClock) {
         const clockY = baseY + Math.round(8 * s);
+        const clockSize = Math.round(16 * s);
+        const clockX = centerX - clockSize / 2;
+
+        // Clock frame
         g.fillStyle(PALETTE.cream);
-        g.fillCircle(centerX, clockY, Math.round(10 * s));
-        g.fillStyle(PALETTE.darkGray);
-        g.fillCircle(centerX, clockY, Math.round(8 * s));
+        g.fillRect(clockX - Math.round(2 * s), clockY - Math.round(2 * s), clockSize + Math.round(4 * s), clockSize + Math.round(4 * s));
+        // Clock face
         g.fillStyle(style.accent);
-        g.fillCircle(centerX, clockY, Math.round(6 * s));
-        // Clock hands
+        g.fillRect(clockX, clockY, clockSize, clockSize);
+        // Clock inner
         g.fillStyle(PALETTE.darkGray);
-        g.fillRect(
-          centerX - Math.round(1 * s),
-          clockY - Math.round(5 * s),
-          Math.round(2 * s),
-          Math.round(5 * s)
-        );
-        g.fillRect(centerX, clockY - Math.round(1 * s), Math.round(4 * s), Math.round(2 * s));
+        g.fillRect(clockX + Math.round(2 * s), clockY + Math.round(2 * s), clockSize - Math.round(4 * s), clockSize - Math.round(4 * s));
+        // Clock hands (rectangles)
+        g.fillStyle(PALETTE.gold);
+        // Hour hand (vertical)
+        g.fillRect(centerX - Math.round(1 * s), clockY + Math.round(3 * s), Math.round(2 * s), Math.round(6 * s));
+        // Minute hand (horizontal)
+        g.fillRect(centerX, clockY + clockSize / 2 - Math.round(1 * s), Math.round(5 * s), Math.round(2 * s));
       }
 
       // Books/scrolls for library
@@ -6085,74 +6136,83 @@ export class BootScene extends Phaser.Scene {
         const bookColors = [PALETTE.brightRed, PALETTE.forest, PALETTE.navy, PALETTE.amber];
         bookColors.forEach((color, i) => {
           g.fillStyle(color);
-          g.fillRect(
-            Math.round(8 * s) + i * Math.round(8 * s),
-            bookY,
-            Math.round(6 * s),
-            Math.round(12 * s)
-          );
+          g.fillRect(Math.round(8 * s) + i * Math.round(8 * s), bookY, Math.round(6 * s), Math.round(12 * s));
+          // Book spine highlight
+          g.fillStyle(lighten(color, 0.2));
+          g.fillRect(Math.round(8 * s) + i * Math.round(8 * s), bookY, Math.round(1 * s), Math.round(12 * s));
         });
       }
 
-      // Art palette for studio
+      // Art palette for studio (rectangular palette shape)
       if (style.hasPalette) {
+        const paletteX = bWidth - Math.round(18 * s);
+        const paletteY = baseY + Math.round(14 * s);
+        // Palette base (rounded rectangle approximation)
         g.fillStyle(PALETTE.brown);
-        g.fillCircle(bWidth - Math.round(12 * s), baseY + Math.round(20 * s), Math.round(8 * s));
+        g.fillRect(paletteX, paletteY, Math.round(14 * s), Math.round(12 * s));
+        g.fillRect(paletteX + Math.round(2 * s), paletteY - Math.round(2 * s), Math.round(10 * s), Math.round(2 * s));
+        g.fillRect(paletteX + Math.round(2 * s), paletteY + Math.round(12 * s), Math.round(10 * s), Math.round(2 * s));
+        // Paint dabs (small rectangles)
         const paletteColors = [PALETTE.brightRed, PALETTE.yellow, PALETTE.blue, PALETTE.bagsGreen];
         paletteColors.forEach((color, i) => {
           g.fillStyle(color);
-          g.fillCircle(
-            bWidth - Math.round(14 * s) + (i % 2) * Math.round(6 * s),
-            baseY + Math.round(18 * s) + Math.floor(i / 2) * Math.round(5 * s),
-            Math.round(2 * s)
+          g.fillRect(
+            paletteX + Math.round(2 * s) + (i % 2) * Math.round(6 * s),
+            paletteY + Math.round(2 * s) + Math.floor(i / 2) * Math.round(5 * s),
+            Math.round(4 * s),
+            Math.round(3 * s)
           );
         });
       }
 
-      // Telescope for observatory
+      // Telescope for observatory (rectangular)
       if (style.hasTelescope) {
+        const telescopeX = centerX + Math.round(6 * s);
+        const telescopeY = baseY - Math.round(30 * s);
+        // Telescope tube
         g.fillStyle(PALETTE.darkGray);
-        g.fillRect(
-          centerX + Math.round(8 * s),
-          roofY - Math.round(25 * s),
-          Math.round(4 * s),
-          Math.round(18 * s)
-        );
+        g.fillRect(telescopeX, telescopeY, Math.round(4 * s), Math.round(20 * s));
+        g.fillStyle(lighten(PALETTE.darkGray, 0.15));
+        g.fillRect(telescopeX, telescopeY, Math.round(1 * s), Math.round(20 * s));
+        // Telescope lens (wider end)
         g.fillStyle(PALETTE.lightGray);
-        g.fillCircle(centerX + Math.round(10 * s), roofY - Math.round(28 * s), Math.round(5 * s));
+        g.fillRect(telescopeX - Math.round(2 * s), telescopeY - Math.round(4 * s), Math.round(8 * s), Math.round(5 * s));
+        g.fillStyle(PALETTE.cyan);
+        g.fillRect(telescopeX - Math.round(1 * s), telescopeY - Math.round(3 * s), Math.round(6 * s), Math.round(3 * s));
       }
 
-      // Plants for greenhouse
+      // Plants for greenhouse (rectangular plant shapes)
       if (style.hasPlants) {
         const plantColors = [PALETTE.bagsGreen, PALETTE.forest, PALETTE.mint];
         for (let i = 0; i < 3; i++) {
+          // Plant foliage (stacked rectangles)
           g.fillStyle(plantColors[i]);
-          g.fillCircle(
-            Math.round(12 * s) + i * Math.round(12 * s),
-            baseY + Math.round(70 * s),
-            Math.round(6 * s)
-          );
+          g.fillRect(Math.round(9 * s) + i * Math.round(12 * s), baseY + Math.round(66 * s), Math.round(10 * s), Math.round(6 * s));
+          g.fillRect(Math.round(10 * s) + i * Math.round(12 * s), baseY + Math.round(62 * s), Math.round(8 * s), Math.round(4 * s));
+          g.fillRect(Math.round(11 * s) + i * Math.round(12 * s), baseY + Math.round(59 * s), Math.round(6 * s), Math.round(3 * s));
         }
         // Flower pots
         g.fillStyle(PALETTE.brown);
         for (let i = 0; i < 3; i++) {
-          g.fillRect(
-            Math.round(8 * s) + i * Math.round(12 * s),
-            baseY + Math.round(72 * s),
-            Math.round(8 * s),
-            Math.round(8 * s)
-          );
+          g.fillRect(Math.round(8 * s) + i * Math.round(12 * s), baseY + Math.round(72 * s), Math.round(10 * s), Math.round(8 * s));
+          g.fillStyle(darken(PALETTE.brown, 0.15));
+          g.fillRect(Math.round(8 * s) + i * Math.round(12 * s) + Math.round(8 * s), baseY + Math.round(72 * s), Math.round(2 * s), Math.round(8 * s));
+          g.fillStyle(PALETTE.brown);
         }
       }
 
-      // Stage lights for amphitheater
+      // Stage lights for amphitheater (rectangular lights)
       if (style.hasLights) {
-        const lightPositions = [Math.round(8 * s), centerX, bWidth - Math.round(4 * s)];
+        const lightPositions = [Math.round(10 * s), centerX, bWidth - Math.round(6 * s)];
         lightPositions.forEach((lx) => {
-          g.fillStyle(PALETTE.yellow, 0.6);
-          g.fillCircle(lx, baseY - Math.round(5 * s), Math.round(6 * s));
+          // Light fixture
+          g.fillStyle(PALETTE.darkGray);
+          g.fillRect(lx - Math.round(4 * s), baseY - Math.round(10 * s), Math.round(8 * s), Math.round(6 * s));
+          // Light glow
           g.fillStyle(PALETTE.gold);
-          g.fillCircle(lx, baseY - Math.round(5 * s), Math.round(4 * s));
+          g.fillRect(lx - Math.round(3 * s), baseY - Math.round(8 * s), Math.round(6 * s), Math.round(4 * s));
+          g.fillStyle(PALETTE.yellow);
+          g.fillRect(lx - Math.round(2 * s), baseY - Math.round(7 * s), Math.round(4 * s), Math.round(2 * s));
         });
       }
 
@@ -6161,109 +6221,79 @@ export class BootScene extends Phaser.Scene {
         const columnWidth = Math.round(5 * s);
         const columnHeight = Math.round(45 * s);
         const columnY = canvasHeight - columnHeight;
+
         // Left column
         g.fillStyle(style.trim);
         g.fillRect(Math.round(10 * s), columnY, columnWidth, columnHeight);
+        g.fillStyle(lighten(style.trim, 0.15));
+        g.fillRect(Math.round(10 * s), columnY, Math.round(2 * s), columnHeight);
         g.fillStyle(darken(style.trim, 0.15));
-        g.fillRect(
-          Math.round(10 * s) + columnWidth - Math.round(1 * s),
-          columnY,
-          Math.round(1 * s),
-          columnHeight
-        );
+        g.fillRect(Math.round(10 * s) + columnWidth - Math.round(1 * s), columnY, Math.round(1 * s), columnHeight);
+
         // Right column
         g.fillStyle(style.trim);
         g.fillRect(bWidth - Math.round(11 * s), columnY, columnWidth, columnHeight);
-        // Column caps
+        g.fillStyle(lighten(style.trim, 0.15));
+        g.fillRect(bWidth - Math.round(11 * s), columnY, Math.round(2 * s), columnHeight);
+
+        // Column caps (decorative tops)
         g.fillStyle(style.trim);
-        g.fillRect(
-          Math.round(8 * s),
-          columnY - Math.round(3 * s),
-          columnWidth + Math.round(4 * s),
-          Math.round(3 * s)
-        );
-        g.fillRect(
-          bWidth - Math.round(13 * s),
-          columnY - Math.round(3 * s),
-          columnWidth + Math.round(4 * s),
-          Math.round(3 * s)
-        );
+        g.fillRect(Math.round(8 * s), columnY - Math.round(4 * s), columnWidth + Math.round(4 * s), Math.round(4 * s));
+        g.fillRect(bWidth - Math.round(13 * s), columnY - Math.round(4 * s), columnWidth + Math.round(4 * s), Math.round(4 * s));
+        g.fillStyle(lighten(style.trim, 0.2));
+        g.fillRect(Math.round(8 * s), columnY - Math.round(4 * s), columnWidth + Math.round(4 * s), Math.round(1 * s));
+        g.fillRect(bWidth - Math.round(13 * s), columnY - Math.round(4 * s), columnWidth + Math.round(4 * s), Math.round(1 * s));
       }
 
-      // Screen for broadcast tower
+      // Screen for broadcast tower (solid colors)
       if (style.hasScreen) {
+        // Screen frame
         g.fillStyle(PALETTE.darkGray);
-        g.fillRect(
-          Math.round(8 * s),
-          baseY + Math.round(12 * s),
-          bWidth - Math.round(12 * s),
-          Math.round(20 * s)
-        );
-        g.fillStyle(PALETTE.cyan, 0.8);
-        g.fillRect(
-          Math.round(10 * s),
-          baseY + Math.round(14 * s),
-          bWidth - Math.round(16 * s),
-          Math.round(16 * s)
-        );
-        // Screen glow
-        g.fillStyle(PALETTE.cyan, 0.3);
-        g.fillRect(
-          Math.round(6 * s),
-          baseY + Math.round(10 * s),
-          bWidth - Math.round(8 * s),
-          Math.round(24 * s)
-        );
+        g.fillRect(Math.round(8 * s), baseY + Math.round(10 * s), bWidth - Math.round(12 * s), Math.round(24 * s));
+        // Screen glass
+        g.fillStyle(PALETTE.cyan);
+        g.fillRect(Math.round(10 * s), baseY + Math.round(12 * s), bWidth - Math.round(16 * s), Math.round(20 * s));
+        // Screen highlight
+        g.fillStyle(lighten(PALETTE.cyan, 0.3));
+        g.fillRect(Math.round(10 * s), baseY + Math.round(12 * s), Math.round(6 * s), Math.round(4 * s));
       }
 
       // Door
       const doorWidth = Math.round(14 * s);
       const doorHeight = Math.round(20 * s);
       const doorX = centerX - doorWidth / 2;
+      const doorY = canvasHeight - doorHeight;
 
       // Door frame
       g.fillStyle(style.accent);
-      g.fillRect(
-        doorX - Math.round(2 * s),
-        canvasHeight - doorHeight - Math.round(2 * s),
-        doorWidth + Math.round(4 * s),
-        doorHeight + Math.round(2 * s)
-      );
+      g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(4 * s), doorWidth + Math.round(4 * s), doorHeight + Math.round(4 * s));
+      g.fillStyle(lighten(style.accent, 0.2));
+      g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(4 * s), doorWidth + Math.round(4 * s), Math.round(2 * s));
 
-      // Gothic arch door
+      // Door body (rectangular - no arch)
       g.fillStyle(PALETTE.darkBrown);
-      g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
-      // Arch top
-      g.fillCircle(doorX + doorWidth / 2, canvasHeight - doorHeight, doorWidth / 2);
+      g.fillRect(doorX, doorY, doorWidth, doorHeight);
 
-      // Door highlight
-      g.fillStyle(lighten(PALETTE.darkBrown, 0.1));
-      g.fillRect(
-        doorX + Math.round(2 * s),
-        canvasHeight - doorHeight + Math.round(4 * s),
-        Math.round(3 * s),
-        doorHeight - Math.round(6 * s)
-      );
+      // Door panels
+      g.fillStyle(darken(PALETTE.darkBrown, 0.15));
+      g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(2 * s), Math.round(4 * s), doorHeight - Math.round(4 * s));
+      g.fillRect(doorX + Math.round(8 * s), doorY + Math.round(2 * s), Math.round(4 * s), doorHeight - Math.round(4 * s));
 
-      // Door knocker
+      // Door highlight (left edge)
+      g.fillStyle(lighten(PALETTE.darkBrown, 0.12));
+      g.fillRect(doorX, doorY, Math.round(2 * s), doorHeight);
+
+      // Door knocker (small rectangle)
       g.fillStyle(style.accent);
-      g.fillCircle(doorX + doorWidth / 2, canvasHeight - doorHeight / 2, Math.round(2 * s));
+      g.fillRect(doorX + doorWidth / 2 - Math.round(1 * s), doorY + doorHeight / 2, Math.round(2 * s), Math.round(3 * s));
 
       // Building name plaque
       g.fillStyle(PALETTE.darkGray);
-      g.fillRect(
-        Math.round(8 * s),
-        baseY + Math.round(3 * s),
-        bWidth - Math.round(12 * s),
-        Math.round(8 * s)
-      );
+      g.fillRect(Math.round(8 * s), baseY + Math.round(3 * s), bWidth - Math.round(12 * s), Math.round(8 * s));
       g.fillStyle(style.accent);
-      g.fillRect(
-        Math.round(10 * s),
-        baseY + Math.round(4 * s),
-        bWidth - Math.round(16 * s),
-        Math.round(6 * s)
-      );
+      g.fillRect(Math.round(10 * s), baseY + Math.round(4 * s), bWidth - Math.round(16 * s), Math.round(6 * s));
+      g.fillStyle(lighten(style.accent, 0.25));
+      g.fillRect(Math.round(10 * s), baseY + Math.round(4 * s), bWidth - Math.round(16 * s), Math.round(1 * s));
 
       g.generateTexture(`academy_${index}`, canvasWidth, canvasHeight);
       g.destroy();
@@ -6275,6 +6305,7 @@ export class BootScene extends Phaser.Scene {
 
   /**
    * Generate the grand entrance gate for the Academy
+   * REWRITTEN: Proper 16-bit pixel art - no circles, no triangles, no alpha
    */
   private generateAcademyGate(): void {
     const s = SCALE;
@@ -6285,147 +6316,128 @@ export class BootScene extends Phaser.Scene {
     const gateHeight = Math.round(70 * s);
     const pillarWidth = Math.round(15 * s);
 
+    // Ground shadow (flat, solid)
+    g.fillStyle(PALETTE.void);
+    g.fillRect(Math.round(12 * s), canvasHeight - Math.round(4 * s), canvasWidth - Math.round(24 * s), Math.round(4 * s));
+
     // Left pillar
     g.fillStyle(PALETTE.gray);
     g.fillRect(Math.round(10 * s), canvasHeight - gateHeight, pillarWidth, gateHeight);
-    g.fillStyle(lighten(PALETTE.gray, 0.15));
+    // Left pillar highlight
+    g.fillStyle(lighten(PALETTE.gray, 0.2));
     g.fillRect(Math.round(10 * s), canvasHeight - gateHeight, Math.round(4 * s), gateHeight);
+    // Left pillar shadow
+    g.fillStyle(darken(PALETTE.gray, 0.2));
+    g.fillRect(Math.round(10 * s) + pillarWidth - Math.round(3 * s), canvasHeight - gateHeight, Math.round(3 * s), gateHeight);
+
     // Left pillar cap
     g.fillStyle(PALETTE.gold);
-    g.fillRect(
-      Math.round(8 * s),
-      canvasHeight - gateHeight - Math.round(8 * s),
-      pillarWidth + Math.round(4 * s),
-      Math.round(10 * s)
-    );
-    // Left finial
-    g.fillCircle(
-      Math.round(10 * s) + pillarWidth / 2,
-      canvasHeight - gateHeight - Math.round(14 * s),
-      Math.round(6 * s)
-    );
+    g.fillRect(Math.round(8 * s), canvasHeight - gateHeight - Math.round(8 * s), pillarWidth + Math.round(4 * s), Math.round(10 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(Math.round(8 * s), canvasHeight - gateHeight - Math.round(8 * s), pillarWidth + Math.round(4 * s), Math.round(2 * s));
+
+    // Left finial (stacked rectangles instead of circle)
+    const leftFinialX = Math.round(10 * s) + pillarWidth / 2;
+    const leftFinialY = canvasHeight - gateHeight - Math.round(14 * s);
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(leftFinialX - Math.round(5 * s), leftFinialY - Math.round(2 * s), Math.round(10 * s), Math.round(4 * s));
+    g.fillRect(leftFinialX - Math.round(4 * s), leftFinialY - Math.round(5 * s), Math.round(8 * s), Math.round(3 * s));
+    g.fillRect(leftFinialX - Math.round(3 * s), leftFinialY - Math.round(7 * s), Math.round(6 * s), Math.round(2 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(leftFinialX - Math.round(3 * s), leftFinialY - Math.round(7 * s), Math.round(6 * s), Math.round(1 * s));
 
     // Right pillar
     g.fillStyle(PALETTE.gray);
-    g.fillRect(
-      canvasWidth - Math.round(25 * s),
-      canvasHeight - gateHeight,
-      pillarWidth,
-      gateHeight
-    );
-    g.fillStyle(lighten(PALETTE.gray, 0.15));
-    g.fillRect(
-      canvasWidth - Math.round(25 * s),
-      canvasHeight - gateHeight,
-      Math.round(4 * s),
-      gateHeight
-    );
+    g.fillRect(canvasWidth - Math.round(25 * s), canvasHeight - gateHeight, pillarWidth, gateHeight);
+    // Right pillar highlight
+    g.fillStyle(lighten(PALETTE.gray, 0.2));
+    g.fillRect(canvasWidth - Math.round(25 * s), canvasHeight - gateHeight, Math.round(4 * s), gateHeight);
+    // Right pillar shadow
+    g.fillStyle(darken(PALETTE.gray, 0.2));
+    g.fillRect(canvasWidth - Math.round(25 * s) + pillarWidth - Math.round(3 * s), canvasHeight - gateHeight, Math.round(3 * s), gateHeight);
+
     // Right pillar cap
     g.fillStyle(PALETTE.gold);
-    g.fillRect(
-      canvasWidth - Math.round(27 * s),
-      canvasHeight - gateHeight - Math.round(8 * s),
-      pillarWidth + Math.round(4 * s),
-      Math.round(10 * s)
-    );
-    // Right finial
-    g.fillCircle(
-      canvasWidth - Math.round(25 * s) + pillarWidth / 2,
-      canvasHeight - gateHeight - Math.round(14 * s),
-      Math.round(6 * s)
-    );
+    g.fillRect(canvasWidth - Math.round(27 * s), canvasHeight - gateHeight - Math.round(8 * s), pillarWidth + Math.round(4 * s), Math.round(10 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(canvasWidth - Math.round(27 * s), canvasHeight - gateHeight - Math.round(8 * s), pillarWidth + Math.round(4 * s), Math.round(2 * s));
+
+    // Right finial (stacked rectangles instead of circle)
+    const rightFinialX = canvasWidth - Math.round(25 * s) + pillarWidth / 2;
+    const rightFinialY = canvasHeight - gateHeight - Math.round(14 * s);
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(rightFinialX - Math.round(5 * s), rightFinialY - Math.round(2 * s), Math.round(10 * s), Math.round(4 * s));
+    g.fillRect(rightFinialX - Math.round(4 * s), rightFinialY - Math.round(5 * s), Math.round(8 * s), Math.round(3 * s));
+    g.fillRect(rightFinialX - Math.round(3 * s), rightFinialY - Math.round(7 * s), Math.round(6 * s), Math.round(2 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(rightFinialX - Math.round(3 * s), rightFinialY - Math.round(7 * s), Math.round(6 * s), Math.round(1 * s));
 
     // Arch connecting pillars
     g.fillStyle(PALETTE.gold);
-    g.fillRect(
-      Math.round(25 * s),
-      canvasHeight - gateHeight - Math.round(4 * s),
-      canvasWidth - Math.round(50 * s),
-      Math.round(8 * s)
-    );
+    g.fillRect(Math.round(25 * s), canvasHeight - gateHeight - Math.round(4 * s), canvasWidth - Math.round(50 * s), Math.round(8 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(Math.round(25 * s), canvasHeight - gateHeight - Math.round(4 * s), canvasWidth - Math.round(50 * s), Math.round(2 * s));
 
     // "BAGS ACADEMY" banner on arch
     g.fillStyle(PALETTE.navy);
-    g.fillRect(
-      Math.round(30 * s),
-      canvasHeight - gateHeight - Math.round(22 * s),
-      canvasWidth - Math.round(60 * s),
-      Math.round(18 * s)
-    );
+    g.fillRect(Math.round(30 * s), canvasHeight - gateHeight - Math.round(22 * s), canvasWidth - Math.round(60 * s), Math.round(18 * s));
     g.fillStyle(PALETTE.bagsGreen);
-    g.fillRect(
-      Math.round(32 * s),
-      canvasHeight - gateHeight - Math.round(20 * s),
-      canvasWidth - Math.round(64 * s),
-      Math.round(14 * s)
-    );
+    g.fillRect(Math.round(32 * s), canvasHeight - gateHeight - Math.round(20 * s), canvasWidth - Math.round(64 * s), Math.round(14 * s));
+    g.fillStyle(lighten(PALETTE.bagsGreen, 0.2));
+    g.fillRect(Math.round(32 * s), canvasHeight - gateHeight - Math.round(20 * s), canvasWidth - Math.round(64 * s), Math.round(2 * s));
 
-    // Decorative crest/shield at top
+    // Decorative crest/shield at top (rectangular approximation)
     const crestX = canvasWidth / 2;
     const crestY = canvasHeight - gateHeight - Math.round(32 * s);
+    const crestW = Math.round(22 * s);
+    const crestH = Math.round(28 * s);
+
+    // Crest outer (gold) - stepped rectangle shield shape
     g.fillStyle(PALETTE.gold);
-    g.beginPath();
-    g.moveTo(crestX, crestY - Math.round(12 * s));
-    g.lineTo(crestX + Math.round(12 * s), crestY);
-    g.lineTo(crestX + Math.round(10 * s), crestY + Math.round(15 * s));
-    g.lineTo(crestX, crestY + Math.round(20 * s));
-    g.lineTo(crestX - Math.round(10 * s), crestY + Math.round(15 * s));
-    g.lineTo(crestX - Math.round(12 * s), crestY);
-    g.closePath();
-    g.fill();
-    // Crest inner
+    g.fillRect(crestX - crestW / 2, crestY - Math.round(6 * s), crestW, Math.round(6 * s)); // Top
+    g.fillRect(crestX - crestW / 2 + Math.round(2 * s), crestY - Math.round(10 * s), crestW - Math.round(4 * s), Math.round(4 * s)); // Top narrower
+    g.fillRect(crestX - crestW / 2, crestY, crestW, crestH - Math.round(8 * s)); // Body
+    g.fillRect(crestX - crestW / 2 + Math.round(2 * s), crestY + crestH - Math.round(8 * s), crestW - Math.round(4 * s), Math.round(4 * s)); // Bottom narrower
+    g.fillRect(crestX - crestW / 2 + Math.round(4 * s), crestY + crestH - Math.round(4 * s), crestW - Math.round(8 * s), Math.round(4 * s)); // Bottom point
+
+    // Crest inner (green)
     g.fillStyle(PALETTE.bagsGreen);
-    g.beginPath();
-    g.moveTo(crestX, crestY - Math.round(8 * s));
-    g.lineTo(crestX + Math.round(8 * s), crestY + Math.round(2 * s));
-    g.lineTo(crestX + Math.round(6 * s), crestY + Math.round(12 * s));
-    g.lineTo(crestX, crestY + Math.round(16 * s));
-    g.lineTo(crestX - Math.round(6 * s), crestY + Math.round(12 * s));
-    g.lineTo(crestX - Math.round(8 * s), crestY + Math.round(2 * s));
-    g.closePath();
-    g.fill();
-    // "B" on crest
+    g.fillRect(crestX - crestW / 2 + Math.round(3 * s), crestY - Math.round(4 * s), crestW - Math.round(6 * s), Math.round(4 * s));
+    g.fillRect(crestX - crestW / 2 + Math.round(3 * s), crestY, crestW - Math.round(6 * s), crestH - Math.round(12 * s));
+    g.fillRect(crestX - crestW / 2 + Math.round(5 * s), crestY + crestH - Math.round(12 * s), crestW - Math.round(10 * s), Math.round(6 * s));
+
+    // "B" on crest (pixel letter)
     g.fillStyle(PALETTE.gold);
-    g.fillRect(crestX - Math.round(3 * s), crestY, Math.round(2 * s), Math.round(10 * s));
-    g.fillRect(crestX - Math.round(3 * s), crestY, Math.round(6 * s), Math.round(2 * s));
-    g.fillRect(
-      crestX - Math.round(3 * s),
-      crestY + Math.round(4 * s),
-      Math.round(5 * s),
-      Math.round(2 * s)
-    );
-    g.fillRect(
-      crestX - Math.round(3 * s),
-      crestY + Math.round(8 * s),
-      Math.round(6 * s),
-      Math.round(2 * s)
-    );
-    g.fillRect(crestX + Math.round(1 * s), crestY, Math.round(2 * s), Math.round(5 * s));
-    g.fillRect(
-      crestX + Math.round(2 * s),
-      crestY + Math.round(4 * s),
-      Math.round(2 * s),
-      Math.round(5 * s)
-    );
+    g.fillRect(crestX - Math.round(3 * s), crestY + Math.round(2 * s), Math.round(2 * s), Math.round(10 * s)); // Vertical bar
+    g.fillRect(crestX - Math.round(3 * s), crestY + Math.round(2 * s), Math.round(6 * s), Math.round(2 * s)); // Top bar
+    g.fillRect(crestX - Math.round(3 * s), crestY + Math.round(6 * s), Math.round(5 * s), Math.round(2 * s)); // Middle bar
+    g.fillRect(crestX - Math.round(3 * s), crestY + Math.round(10 * s), Math.round(6 * s), Math.round(2 * s)); // Bottom bar
+    g.fillRect(crestX + Math.round(1 * s), crestY + Math.round(2 * s), Math.round(2 * s), Math.round(5 * s)); // Top right curve
+    g.fillRect(crestX + Math.round(2 * s), crestY + Math.round(6 * s), Math.round(2 * s), Math.round(5 * s)); // Bottom right curve
 
     // Iron gates (decorative bars)
     g.fillStyle(PALETTE.darkGray);
     for (let i = 0; i < 5; i++) {
       const barX = Math.round(32 * s) + i * Math.round(14 * s);
-      g.fillRect(
-        barX,
-        canvasHeight - gateHeight + Math.round(10 * s),
-        Math.round(3 * s),
-        gateHeight - Math.round(12 * s)
-      );
+      g.fillRect(barX, canvasHeight - gateHeight + Math.round(10 * s), Math.round(3 * s), gateHeight - Math.round(12 * s));
+      // Bar highlight
+      g.fillStyle(lighten(PALETTE.darkGray, 0.15));
+      g.fillRect(barX, canvasHeight - gateHeight + Math.round(10 * s), Math.round(1 * s), gateHeight - Math.round(12 * s));
+      g.fillStyle(PALETTE.darkGray);
     }
+
     // Horizontal bar
-    g.fillRect(
-      Math.round(28 * s),
-      canvasHeight - Math.round(30 * s),
-      canvasWidth - Math.round(56 * s),
-      Math.round(3 * s)
-    );
+    g.fillRect(Math.round(28 * s), canvasHeight - Math.round(30 * s), canvasWidth - Math.round(56 * s), Math.round(3 * s));
+    g.fillStyle(lighten(PALETTE.darkGray, 0.15));
+    g.fillRect(Math.round(28 * s), canvasHeight - Math.round(30 * s), canvasWidth - Math.round(56 * s), Math.round(1 * s));
+
+    // Decorative spikes on top of gate bars
+    g.fillStyle(PALETTE.darkGray);
+    for (let i = 0; i < 5; i++) {
+      const spikeX = Math.round(32 * s) + i * Math.round(14 * s);
+      g.fillRect(spikeX - Math.round(1 * s), canvasHeight - gateHeight + Math.round(6 * s), Math.round(5 * s), Math.round(4 * s));
+      g.fillRect(spikeX, canvasHeight - gateHeight + Math.round(3 * s), Math.round(3 * s), Math.round(3 * s));
+    }
 
     g.generateTexture("academy_gate", canvasWidth, canvasHeight);
     g.destroy();
@@ -9613,6 +9625,10 @@ export class BootScene extends Phaser.Scene {
     this.generateFoundersSocialHub(s);
   }
 
+  /**
+   * Founders Workshop - Token launch education building
+   * REWRITTEN: Proper 16-bit pixel art - no circles, no triangles, no alpha
+   */
   private generateFoundersWorkshop(s: number): void {
     const g = this.make.graphics({ x: 0, y: 0 });
     const canvasW = Math.round(80 * s);
@@ -9624,14 +9640,15 @@ export class BootScene extends Phaser.Scene {
 
     // Colors
     const woodBase = 0x8b4513; // SaddleBrown
-    const woodLight = lighten(woodBase, 0.15);
-    const woodDark = darken(woodBase, 0.2);
+    const woodLight = lighten(woodBase, 0.2);
+    const woodDark = darken(woodBase, 0.25);
     const roofColor = 0x5c3317; // Dark brown roof
+    const roofLight = lighten(roofColor, 0.2);
     const accent = PALETTE.bagsGreen; // DexScreener green
 
-    // Drop shadow
-    g.fillStyle(PALETTE.void, 0.5);
-    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
+    // Ground shadow (flat, solid - no alpha)
+    g.fillStyle(PALETTE.void);
+    g.fillRect(baseX + Math.round(6 * s), canvasH - Math.round(4 * s), bWidth - Math.round(4 * s), Math.round(4 * s));
 
     // Main body
     g.fillStyle(woodBase);
@@ -9645,64 +9662,68 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(woodDark);
     g.fillRect(baseX + bWidth - Math.round(5 * s), baseY, Math.round(5 * s), bHeight);
 
-    // Dithering texture on walls
-    g.fillStyle(darken(woodBase, 0.08));
-    for (let py = 0; py < bHeight; py += Math.round(6 * s)) {
-      for (let px = Math.round(6 * s); px < bWidth - Math.round(6 * s); px += Math.round(10 * s)) {
-        if ((Math.floor(py / Math.round(6 * s)) + Math.floor(px / Math.round(10 * s))) % 2 === 0) {
-          g.fillRect(baseX + px, baseY + py, Math.round(8 * s), Math.round(4 * s));
-        }
+    // Wood plank texture (brick pattern)
+    g.fillStyle(darken(woodBase, 0.1));
+    for (let py = 0; py < bHeight; py += Math.round(8 * s)) {
+      const offset = (py / Math.round(8 * s)) % 2 === 0 ? 0 : Math.round(6 * s);
+      for (let px = Math.round(6 * s) + offset; px < bWidth - Math.round(6 * s); px += Math.round(12 * s)) {
+        g.fillRect(baseX + px, baseY + py, Math.round(10 * s), Math.round(6 * s));
       }
     }
 
     // Horizontal wood plank lines
     g.fillStyle(woodDark);
     for (let py = Math.round(15 * s); py < bHeight; py += Math.round(18 * s)) {
-      g.fillRect(
-        baseX + Math.round(5 * s),
-        baseY + py,
-        bWidth - Math.round(10 * s),
-        Math.round(1 * s)
-      );
+      g.fillRect(baseX + Math.round(5 * s), baseY + py, bWidth - Math.round(10 * s), Math.round(1 * s));
     }
 
-    // Pointed roof
-    const roofPeakY = baseY - Math.round(35 * s);
-    const roofLeftX = baseX - Math.round(5 * s);
-    const roofRightX = baseX + bWidth + Math.round(5 * s);
+    // Pointed roof (stepped pyramid - no triangles)
     const roofCenterX = baseX + bWidth / 2;
+    const roofW1 = bWidth + Math.round(10 * s);
+    const roofX1 = baseX - Math.round(5 * s);
 
+    // Roof layer 1 (eaves)
     g.fillStyle(roofColor);
-    g.fillTriangle(roofLeftX, baseY, roofCenterX, roofPeakY, roofRightX, baseY);
+    g.fillRect(roofX1, baseY - Math.round(10 * s), roofW1, Math.round(10 * s));
+    g.fillStyle(roofLight);
+    g.fillRect(roofX1, baseY - Math.round(10 * s), roofW1, Math.round(2 * s));
 
-    // Roof highlight (left slope)
-    g.fillStyle(lighten(roofColor, 0.15));
-    g.fillTriangle(roofLeftX, baseY, roofCenterX, roofPeakY, roofCenterX, baseY);
+    // Roof layer 2
+    const roofW2 = roofW1 - Math.round(16 * s);
+    const roofX2 = roofX1 + Math.round(8 * s);
+    g.fillStyle(roofColor);
+    g.fillRect(roofX2, baseY - Math.round(20 * s), roofW2, Math.round(10 * s));
+    g.fillStyle(roofLight);
+    g.fillRect(roofX2, baseY - Math.round(20 * s), roofW2, Math.round(2 * s));
+
+    // Roof layer 3
+    const roofW3 = roofW2 - Math.round(16 * s);
+    const roofX3 = roofX2 + Math.round(8 * s);
+    g.fillStyle(roofColor);
+    g.fillRect(roofX3, baseY - Math.round(30 * s), roofW3, Math.round(10 * s));
+    g.fillStyle(roofLight);
+    g.fillRect(roofX3, baseY - Math.round(30 * s), roofW3, Math.round(2 * s));
 
     // Roof ridge cap
     g.fillStyle(0x78350f);
-    g.fillRect(
-      roofCenterX - Math.round(3 * s),
-      roofPeakY - Math.round(2 * s),
-      Math.round(6 * s),
-      Math.round(8 * s)
-    );
+    g.fillRect(roofCenterX - Math.round(4 * s), baseY - Math.round(35 * s), Math.round(8 * s), Math.round(6 * s));
+    g.fillStyle(lighten(0x78350f, 0.15));
+    g.fillRect(roofCenterX - Math.round(4 * s), baseY - Math.round(35 * s), Math.round(8 * s), Math.round(2 * s));
 
     // Chimney
     const chimneyX = baseX + bWidth - Math.round(18 * s);
-    const chimneyY = roofPeakY + Math.round(10 * s);
-    g.fillStyle(0x78716c);
+    const chimneyY = baseY - Math.round(25 * s);
+    g.fillStyle(PALETTE.gray);
     g.fillRect(chimneyX, chimneyY, Math.round(10 * s), Math.round(25 * s));
-    g.fillStyle(lighten(0x78716c, 0.1));
-    g.fillRect(chimneyX, chimneyY, Math.round(2 * s), Math.round(25 * s));
+    g.fillStyle(lighten(PALETTE.gray, 0.15));
+    g.fillRect(chimneyX, chimneyY, Math.round(3 * s), Math.round(25 * s));
+    g.fillStyle(darken(PALETTE.gray, 0.2));
+    g.fillRect(chimneyX + Math.round(7 * s), chimneyY, Math.round(3 * s), Math.round(25 * s));
     // Chimney cap
-    g.fillStyle(0x57534e);
-    g.fillRect(
-      chimneyX - Math.round(2 * s),
-      chimneyY - Math.round(3 * s),
-      Math.round(14 * s),
-      Math.round(4 * s)
-    );
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(chimneyX - Math.round(2 * s), chimneyY - Math.round(4 * s), Math.round(14 * s), Math.round(5 * s));
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(chimneyX - Math.round(2 * s), chimneyY - Math.round(4 * s), Math.round(14 * s), Math.round(1 * s));
 
     // Large chalkboard sign on facade (DexScreener info)
     const signX = baseX + Math.round(10 * s);
@@ -9711,51 +9732,20 @@ export class BootScene extends Phaser.Scene {
     const signH = Math.round(28 * s);
     // Sign frame
     g.fillStyle(0x451a03);
-    g.fillRect(
-      signX - Math.round(3 * s),
-      signY - Math.round(3 * s),
-      signW + Math.round(6 * s),
-      signH + Math.round(6 * s)
-    );
+    g.fillRect(signX - Math.round(3 * s), signY - Math.round(3 * s), signW + Math.round(6 * s), signH + Math.round(6 * s));
     // Chalkboard background
     g.fillStyle(0x1f2937);
     g.fillRect(signX, signY, signW, signH);
-    // Chalk text representation (green lines for DexScreener theme)
-    g.fillStyle(accent, 0.9);
-    g.fillRect(
-      signX + Math.round(5 * s),
-      signY + Math.round(5 * s),
-      signW - Math.round(10 * s),
-      Math.round(3 * s)
-    );
-    g.fillRect(
-      signX + Math.round(5 * s),
-      signY + Math.round(12 * s),
-      signW - Math.round(15 * s),
-      Math.round(2 * s)
-    );
-    g.fillRect(
-      signX + Math.round(5 * s),
-      signY + Math.round(18 * s),
-      signW - Math.round(12 * s),
-      Math.round(2 * s)
-    );
-    // Checkmarks
+    // Chalk text representation (green lines for DexScreener theme - solid colors)
     g.fillStyle(accent);
-    g.fillRect(
-      signX + Math.round(3 * s),
-      signY + Math.round(12 * s),
-      Math.round(2 * s),
-      Math.round(2 * s)
-    );
-    g.fillRect(
-      signX + Math.round(3 * s),
-      signY + Math.round(18 * s),
-      Math.round(2 * s),
-      Math.round(2 * s)
-    );
+    g.fillRect(signX + Math.round(5 * s), signY + Math.round(5 * s), signW - Math.round(10 * s), Math.round(3 * s));
+    g.fillRect(signX + Math.round(5 * s), signY + Math.round(12 * s), signW - Math.round(15 * s), Math.round(2 * s));
+    g.fillRect(signX + Math.round(5 * s), signY + Math.round(18 * s), signW - Math.round(12 * s), Math.round(2 * s));
+    // Checkmarks (small rectangles)
+    g.fillRect(signX + Math.round(3 * s), signY + Math.round(12 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(signX + Math.round(3 * s), signY + Math.round(18 * s), Math.round(2 * s), Math.round(2 * s));
 
-    // Windows (2x2 grid with warm glow)
+    // Windows (2x2 grid - solid colors, no alpha)
     const windowColor = 0xfbbf24; // Amber glow
     for (let wy = 0; wy < 2; wy++) {
       for (let wx = 0; wx < 2; wx++) {
@@ -9766,29 +9756,19 @@ export class BootScene extends Phaser.Scene {
 
         // Window frame (dark wood)
         g.fillStyle(0x451a03);
-        g.fillRect(
-          winX - Math.round(2 * s),
-          winY - Math.round(2 * s),
-          winW + Math.round(4 * s),
-          winH + Math.round(4 * s)
-        );
+        g.fillRect(winX - Math.round(2 * s), winY - Math.round(2 * s), winW + Math.round(4 * s), winH + Math.round(4 * s));
 
-        // Glow aura
-        g.fillStyle(windowColor, 0.3);
-        g.fillRect(
-          winX - Math.round(1 * s),
-          winY - Math.round(1 * s),
-          winW + Math.round(2 * s),
-          winH + Math.round(2 * s)
-        );
-
-        // Window glass
-        g.fillStyle(windowColor, 0.8);
+        // Window glass (solid amber)
+        g.fillStyle(windowColor);
         g.fillRect(winX, winY, winW, winH);
 
-        // Window highlight corner
-        g.fillStyle(lighten(windowColor, 0.4));
-        g.fillRect(winX, winY, Math.round(3 * s), Math.round(4 * s));
+        // Window inner glow (lighter amber)
+        g.fillStyle(lighten(windowColor, 0.15));
+        g.fillRect(winX + Math.round(2 * s), winY + Math.round(2 * s), winW - Math.round(4 * s), winH - Math.round(4 * s));
+
+        // Window highlight corner (top-left)
+        g.fillStyle(PALETTE.white);
+        g.fillRect(winX + Math.round(1 * s), winY + Math.round(1 * s), Math.round(3 * s), Math.round(3 * s));
 
         // Window cross frame
         g.fillStyle(woodDark);
@@ -9797,7 +9777,7 @@ export class BootScene extends Phaser.Scene {
       }
     }
 
-    // Door (center-bottom, welcoming double door)
+    // Door (center-bottom, welcoming double door - rectangular, no arch)
     const doorW = Math.round(18 * s);
     const doorH = Math.round(28 * s);
     const doorX = baseX + bWidth / 2 - doorW / 2;
@@ -9805,104 +9785,58 @@ export class BootScene extends Phaser.Scene {
 
     // Door frame
     g.fillStyle(0x451a03);
-    g.fillRect(
-      doorX - Math.round(3 * s),
-      doorY - Math.round(5 * s),
-      doorW + Math.round(6 * s),
-      doorH + Math.round(5 * s)
-    );
-
-    // Door arch top
-    g.fillCircle(doorX + doorW / 2, doorY - Math.round(2 * s), doorW / 2 + Math.round(3 * s));
-    g.fillStyle(woodDark);
-    g.fillCircle(doorX + doorW / 2, doorY - Math.round(2 * s), doorW / 2);
+    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(5 * s), doorW + Math.round(6 * s), doorH + Math.round(5 * s));
+    g.fillStyle(lighten(0x451a03, 0.15));
+    g.fillRect(doorX - Math.round(3 * s), doorY - Math.round(5 * s), doorW + Math.round(6 * s), Math.round(2 * s));
 
     // Double doors
     g.fillStyle(0x5c3317);
     g.fillRect(doorX, doorY, doorW / 2 - Math.round(1 * s), doorH);
     g.fillRect(doorX + doorW / 2 + Math.round(1 * s), doorY, doorW / 2 - Math.round(1 * s), doorH);
+    // Door highlight (left edge of each door)
+    g.fillStyle(lighten(0x5c3317, 0.12));
+    g.fillRect(doorX, doorY, Math.round(2 * s), doorH);
+    g.fillRect(doorX + doorW / 2 + Math.round(1 * s), doorY, Math.round(2 * s), doorH);
 
     // Door panels
-    g.fillStyle(darken(0x5c3317, 0.15));
-    g.fillRect(
-      doorX + Math.round(2 * s),
-      doorY + Math.round(3 * s),
-      Math.round(5 * s),
-      Math.round(10 * s)
-    );
-    g.fillRect(
-      doorX + Math.round(2 * s),
-      doorY + Math.round(16 * s),
-      Math.round(5 * s),
-      Math.round(10 * s)
-    );
-    g.fillRect(
-      doorX + doorW / 2 + Math.round(2 * s),
-      doorY + Math.round(3 * s),
-      Math.round(5 * s),
-      Math.round(10 * s)
-    );
-    g.fillRect(
-      doorX + doorW / 2 + Math.round(2 * s),
-      doorY + Math.round(16 * s),
-      Math.round(5 * s),
-      Math.round(10 * s)
-    );
+    g.fillStyle(darken(0x5c3317, 0.18));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(3 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(16 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(doorX + doorW / 2 + Math.round(2 * s), doorY + Math.round(3 * s), Math.round(5 * s), Math.round(10 * s));
+    g.fillRect(doorX + doorW / 2 + Math.round(2 * s), doorY + Math.round(16 * s), Math.round(5 * s), Math.round(10 * s));
 
     // Door handles
     g.fillStyle(PALETTE.gold);
-    g.fillRect(
-      doorX + doorW / 2 - Math.round(4 * s),
-      doorY + Math.round(14 * s),
-      Math.round(2 * s),
-      Math.round(4 * s)
-    );
-    g.fillRect(
-      doorX + doorW / 2 + Math.round(2 * s),
-      doorY + Math.round(14 * s),
-      Math.round(2 * s),
-      Math.round(4 * s)
-    );
+    g.fillRect(doorX + doorW / 2 - Math.round(4 * s), doorY + Math.round(14 * s), Math.round(2 * s), Math.round(4 * s));
+    g.fillRect(doorX + doorW / 2 + Math.round(2 * s), doorY + Math.round(14 * s), Math.round(2 * s), Math.round(4 * s));
 
     // Welcome mat
     g.fillStyle(0x78350f);
-    g.fillRect(
-      doorX - Math.round(4 * s),
-      canvasH - Math.round(3 * s),
-      doorW + Math.round(8 * s),
-      Math.round(3 * s)
-    );
+    g.fillRect(doorX - Math.round(4 * s), canvasH - Math.round(4 * s), doorW + Math.round(8 * s), Math.round(4 * s));
+    g.fillStyle(lighten(0x78350f, 0.1));
+    g.fillRect(doorX - Math.round(4 * s), canvasH - Math.round(4 * s), doorW + Math.round(8 * s), Math.round(1 * s));
 
     // Hanging sign "LEARN" above door
     const hangSignY = doorY - Math.round(15 * s);
     g.fillStyle(0x451a03);
     g.fillRect(doorX + Math.round(2 * s), hangSignY, doorW - Math.round(4 * s), Math.round(10 * s));
     g.fillStyle(accent);
-    g.fillRect(
-      doorX + Math.round(4 * s),
-      hangSignY + Math.round(2 * s),
-      doorW - Math.round(8 * s),
-      Math.round(6 * s)
-    );
+    g.fillRect(doorX + Math.round(4 * s), hangSignY + Math.round(2 * s), doorW - Math.round(8 * s), Math.round(6 * s));
+    g.fillStyle(lighten(accent, 0.2));
+    g.fillRect(doorX + Math.round(4 * s), hangSignY + Math.round(2 * s), doorW - Math.round(8 * s), Math.round(1 * s));
     // Hanging chains
-    g.fillStyle(0x6b7280);
-    g.fillRect(
-      doorX + Math.round(4 * s),
-      hangSignY - Math.round(5 * s),
-      Math.round(2 * s),
-      Math.round(5 * s)
-    );
-    g.fillRect(
-      doorX + doorW - Math.round(6 * s),
-      hangSignY - Math.round(5 * s),
-      Math.round(2 * s),
-      Math.round(5 * s)
-    );
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(doorX + Math.round(4 * s), hangSignY - Math.round(5 * s), Math.round(2 * s), Math.round(5 * s));
+    g.fillRect(doorX + doorW - Math.round(6 * s), hangSignY - Math.round(5 * s), Math.round(2 * s), Math.round(5 * s));
 
     g.generateTexture("founders_0", canvasW, canvasH);
     g.destroy();
   }
 
+  /**
+   * Founders Studio - Art/asset creation building
+   * REWRITTEN: Proper 16-bit pixel art - no circles, no triangles, no alpha
+   */
   private generateFoundersStudio(s: number): void {
     const g = this.make.graphics({ x: 0, y: 0 });
     const canvasW = Math.round(75 * s);
@@ -9914,91 +9848,83 @@ export class BootScene extends Phaser.Scene {
 
     // Colors - Art studio theme (warmer brown with gold accents)
     const woodBase = 0xa0522d; // Sienna
-    const woodLight = lighten(woodBase, 0.15);
-    const woodDark = darken(woodBase, 0.2);
+    const woodLight = lighten(woodBase, 0.2);
+    const woodDark = darken(woodBase, 0.25);
     const roofColor = 0x6b4423;
+    const roofLight = lighten(roofColor, 0.2);
     const accent = PALETTE.gold;
 
-    // Drop shadow
-    g.fillStyle(PALETTE.void, 0.5);
-    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
+    // Ground shadow (flat, solid - no alpha)
+    g.fillStyle(PALETTE.void);
+    g.fillRect(baseX + Math.round(6 * s), canvasH - Math.round(4 * s), bWidth - Math.round(4 * s), Math.round(4 * s));
 
     // Main body
     g.fillStyle(woodBase);
     g.fillRect(baseX, baseY, bWidth, bHeight);
 
-    // 3D depth
+    // 3D depth: Light left edge
     g.fillStyle(woodLight);
     g.fillRect(baseX, baseY, Math.round(5 * s), bHeight);
+    // 3D depth: Dark right edge
     g.fillStyle(woodDark);
     g.fillRect(baseX + bWidth - Math.round(5 * s), baseY, Math.round(5 * s), bHeight);
 
-    // Dithering
-    g.fillStyle(darken(woodBase, 0.08));
-    for (let py = 0; py < bHeight; py += Math.round(6 * s)) {
-      for (let px = Math.round(6 * s); px < bWidth - Math.round(6 * s); px += Math.round(10 * s)) {
-        if ((Math.floor(py / Math.round(6 * s)) + Math.floor(px / Math.round(10 * s))) % 2 === 0) {
-          g.fillRect(baseX + px, baseY + py, Math.round(8 * s), Math.round(4 * s));
-        }
+    // Wood plank texture (brick pattern)
+    g.fillStyle(darken(woodBase, 0.1));
+    for (let py = 0; py < bHeight; py += Math.round(8 * s)) {
+      const offset = (py / Math.round(8 * s)) % 2 === 0 ? 0 : Math.round(6 * s);
+      for (let px = Math.round(6 * s) + offset; px < bWidth - Math.round(6 * s); px += Math.round(12 * s)) {
+        g.fillRect(baseX + px, baseY + py, Math.round(10 * s), Math.round(6 * s));
       }
     }
 
-    // Gambrel roof (barn-style, good for art studio)
-    const roofPeakY = baseY - Math.round(30 * s);
-    const roofMidY = baseY - Math.round(12 * s);
+    // Gambrel roof (barn-style - stepped rectangles instead of triangles)
+    const roofCenterX = baseX + bWidth / 2;
     const roofLeftX = baseX - Math.round(4 * s);
     const roofRightX = baseX + bWidth + Math.round(4 * s);
-    const roofCenterX = baseX + bWidth / 2;
+    const roofW = roofRightX - roofLeftX;
 
-    // Lower roof slopes
+    // Lower roof section (flat bar)
     g.fillStyle(roofColor);
-    g.fillTriangle(
-      roofLeftX,
-      baseY,
-      roofLeftX,
-      roofMidY,
-      roofCenterX - Math.round(5 * s),
-      roofMidY
-    );
-    g.fillTriangle(
-      roofRightX,
-      baseY,
-      roofRightX,
-      roofMidY,
-      roofCenterX + Math.round(5 * s),
-      roofMidY
-    );
-    g.fillRect(roofLeftX, roofMidY, roofRightX - roofLeftX, baseY - roofMidY);
+    g.fillRect(roofLeftX, baseY - Math.round(12 * s), roofW, Math.round(12 * s));
+    g.fillStyle(roofLight);
+    g.fillRect(roofLeftX, baseY - Math.round(12 * s), roofW, Math.round(2 * s));
 
-    // Upper roof peak
-    g.fillStyle(lighten(roofColor, 0.1));
-    g.fillTriangle(
-      roofCenterX - Math.round(20 * s),
-      roofMidY,
-      roofCenterX,
-      roofPeakY,
-      roofCenterX + Math.round(20 * s),
-      roofMidY
-    );
+    // Upper roof (stepped pyramid)
+    // Layer 1
+    const roof2W = roofW - Math.round(16 * s);
+    const roof2X = roofLeftX + Math.round(8 * s);
+    g.fillStyle(roofColor);
+    g.fillRect(roof2X, baseY - Math.round(22 * s), roof2W, Math.round(10 * s));
+    g.fillStyle(roofLight);
+    g.fillRect(roof2X, baseY - Math.round(22 * s), roof2W, Math.round(2 * s));
+
+    // Layer 2
+    const roof3W = roof2W - Math.round(14 * s);
+    const roof3X = roof2X + Math.round(7 * s);
+    g.fillStyle(roofColor);
+    g.fillRect(roof3X, baseY - Math.round(30 * s), roof3W, Math.round(8 * s));
+    g.fillStyle(roofLight);
+    g.fillRect(roof3X, baseY - Math.round(30 * s), roof3W, Math.round(2 * s));
 
     // Roof edge trim
     g.fillStyle(0x78350f);
-    g.fillRect(roofLeftX, roofMidY - Math.round(2 * s), roofRightX - roofLeftX, Math.round(3 * s));
+    g.fillRect(roofLeftX, baseY - Math.round(14 * s), roofW, Math.round(3 * s));
+    g.fillStyle(lighten(0x78350f, 0.15));
+    g.fillRect(roofLeftX, baseY - Math.round(14 * s), roofW, Math.round(1 * s));
 
-    // Large skylight window in roof (for natural light in studio)
+    // Large skylight window in roof (for natural light in studio - solid colors)
     const skylightX = roofCenterX - Math.round(12 * s);
-    const skylightY = roofMidY - Math.round(18 * s);
+    const skylightY = baseY - Math.round(28 * s);
     g.fillStyle(0x451a03);
-    g.fillRect(
-      skylightX - Math.round(2 * s),
-      skylightY - Math.round(2 * s),
-      Math.round(28 * s),
-      Math.round(18 * s)
-    );
-    g.fillStyle(0x87ceeb, 0.7);
-    g.fillRect(skylightX, skylightY, Math.round(24 * s), Math.round(14 * s));
-    g.fillStyle(0xffffff, 0.3);
-    g.fillRect(skylightX, skylightY, Math.round(8 * s), Math.round(5 * s));
+    g.fillRect(skylightX - Math.round(2 * s), skylightY - Math.round(2 * s), Math.round(28 * s), Math.round(16 * s));
+    g.fillStyle(PALETTE.sky);
+    g.fillRect(skylightX, skylightY, Math.round(24 * s), Math.round(12 * s));
+    g.fillStyle(lighten(PALETTE.sky, 0.25));
+    g.fillRect(skylightX + Math.round(2 * s), skylightY + Math.round(2 * s), Math.round(8 * s), Math.round(4 * s));
+    // Skylight highlight
+    g.fillStyle(PALETTE.white);
+    g.fillRect(skylightX + Math.round(2 * s), skylightY + Math.round(2 * s), Math.round(3 * s), Math.round(2 * s));
 
     // Easel display on facade (showing canvas shapes)
     const easelX = baseX + Math.round(8 * s);
@@ -10006,51 +9932,26 @@ export class BootScene extends Phaser.Scene {
     // Easel frame
     g.fillStyle(0x451a03);
     g.fillRect(easelX, easelY, Math.round(20 * s), Math.round(25 * s));
-    // Canvas on easel - showing square (logo) and rectangle (banner)
+    // Canvas on easel - showing square (logo)
     g.fillStyle(0xfef3c7);
-    g.fillRect(
-      easelX + Math.round(3 * s),
-      easelY + Math.round(3 * s),
-      Math.round(14 * s),
-      Math.round(14 * s)
-    );
+    g.fillRect(easelX + Math.round(3 * s), easelY + Math.round(3 * s), Math.round(14 * s), Math.round(14 * s));
     // Square indicator (1:1)
     g.fillStyle(accent);
-    g.fillRect(
-      easelX + Math.round(5 * s),
-      easelY + Math.round(5 * s),
-      Math.round(10 * s),
-      Math.round(10 * s)
-    );
+    g.fillRect(easelX + Math.round(5 * s), easelY + Math.round(5 * s), Math.round(10 * s), Math.round(10 * s));
     // "1:1" text representation
-    g.fillStyle(0x000000);
-    g.fillRect(
-      easelX + Math.round(8 * s),
-      easelY + Math.round(8 * s),
-      Math.round(4 * s),
-      Math.round(4 * s)
-    );
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(easelX + Math.round(8 * s), easelY + Math.round(8 * s), Math.round(4 * s), Math.round(4 * s));
 
     // Second display showing 3:1 banner
     const bannerX = baseX + Math.round(32 * s);
     g.fillStyle(0x451a03);
     g.fillRect(bannerX, easelY, Math.round(22 * s), Math.round(12 * s));
     g.fillStyle(0xfef3c7);
-    g.fillRect(
-      bannerX + Math.round(2 * s),
-      easelY + Math.round(2 * s),
-      Math.round(18 * s),
-      Math.round(8 * s)
-    );
+    g.fillRect(bannerX + Math.round(2 * s), easelY + Math.round(2 * s), Math.round(18 * s), Math.round(8 * s));
     g.fillStyle(PALETTE.sky);
-    g.fillRect(
-      bannerX + Math.round(3 * s),
-      easelY + Math.round(3 * s),
-      Math.round(16 * s),
-      Math.round(6 * s)
-    );
+    g.fillRect(bannerX + Math.round(3 * s), easelY + Math.round(3 * s), Math.round(16 * s), Math.round(6 * s));
 
-    // Windows
+    // Windows (solid colors, no alpha)
     const windowColor = 0xfbbf24;
     for (let wx = 0; wx < 2; wx++) {
       const winX = baseX + Math.round(10 * s) + wx * Math.round(25 * s);
@@ -10058,24 +9959,22 @@ export class BootScene extends Phaser.Scene {
       const winW = Math.round(15 * s);
       const winH = Math.round(18 * s);
 
+      // Window frame (dark wood)
       g.fillStyle(0x451a03);
-      g.fillRect(
-        winX - Math.round(2 * s),
-        winY - Math.round(2 * s),
-        winW + Math.round(4 * s),
-        winH + Math.round(4 * s)
-      );
-      g.fillStyle(windowColor, 0.3);
-      g.fillRect(
-        winX - Math.round(1 * s),
-        winY - Math.round(1 * s),
-        winW + Math.round(2 * s),
-        winH + Math.round(2 * s)
-      );
-      g.fillStyle(windowColor, 0.8);
+      g.fillRect(winX - Math.round(2 * s), winY - Math.round(2 * s), winW + Math.round(4 * s), winH + Math.round(4 * s));
+
+      // Window glass (solid amber)
+      g.fillStyle(windowColor);
       g.fillRect(winX, winY, winW, winH);
-      g.fillStyle(lighten(windowColor, 0.4));
-      g.fillRect(winX, winY, Math.round(4 * s), Math.round(5 * s));
+
+      // Window inner glow (lighter amber)
+      g.fillStyle(lighten(windowColor, 0.15));
+      g.fillRect(winX + Math.round(2 * s), winY + Math.round(2 * s), winW - Math.round(4 * s), winH - Math.round(4 * s));
+
+      // Window highlight corner (top-left)
+      g.fillStyle(PALETTE.white);
+      g.fillRect(winX + Math.round(1 * s), winY + Math.round(1 * s), Math.round(4 * s), Math.round(4 * s));
+
       // Cross frame
       g.fillStyle(woodDark);
       g.fillRect(winX + winW / 2 - Math.round(1 * s), winY, Math.round(2 * s), winH);
@@ -10088,64 +9987,58 @@ export class BootScene extends Phaser.Scene {
     const doorX = baseX + bWidth / 2 - doorW / 2;
     const doorY = canvasH - doorH;
 
+    // Door frame
     g.fillStyle(0x451a03);
-    g.fillRect(
-      doorX - Math.round(2 * s),
-      doorY - Math.round(3 * s),
-      doorW + Math.round(4 * s),
-      doorH + Math.round(3 * s)
-    );
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(3 * s), doorW + Math.round(4 * s), doorH + Math.round(3 * s));
+    g.fillStyle(lighten(0x451a03, 0.15));
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(3 * s), doorW + Math.round(4 * s), Math.round(2 * s));
+
+    // Door body
     g.fillStyle(0x5c3317);
     g.fillRect(doorX, doorY, doorW, doorH);
-    g.fillStyle(darken(0x5c3317, 0.15));
-    g.fillRect(
-      doorX + Math.round(2 * s),
-      doorY + Math.round(3 * s),
-      doorW - Math.round(4 * s),
-      Math.round(8 * s)
-    );
-    g.fillRect(
-      doorX + Math.round(2 * s),
-      doorY + Math.round(14 * s),
-      doorW - Math.round(4 * s),
-      Math.round(8 * s)
-    );
+    // Door highlight
+    g.fillStyle(lighten(0x5c3317, 0.12));
+    g.fillRect(doorX, doorY, Math.round(2 * s), doorH);
+
+    // Door panels
+    g.fillStyle(darken(0x5c3317, 0.18));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(3 * s), doorW - Math.round(4 * s), Math.round(8 * s));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(14 * s), doorW - Math.round(4 * s), Math.round(8 * s));
+
+    // Door handle
     g.fillStyle(PALETTE.gold);
-    g.fillRect(
-      doorX + doorW - Math.round(4 * s),
-      doorY + Math.round(12 * s),
-      Math.round(2 * s),
-      Math.round(3 * s)
-    );
+    g.fillRect(doorX + doorW - Math.round(4 * s), doorY + Math.round(12 * s), Math.round(2 * s), Math.round(3 * s));
 
     // "ASSETS" sign above door
     const signY = doorY - Math.round(12 * s);
     g.fillStyle(0x451a03);
     g.fillRect(doorX - Math.round(4 * s), signY, doorW + Math.round(8 * s), Math.round(9 * s));
     g.fillStyle(accent);
-    g.fillRect(
-      doorX - Math.round(2 * s),
-      signY + Math.round(2 * s),
-      doorW + Math.round(4 * s),
-      Math.round(5 * s)
-    );
+    g.fillRect(doorX - Math.round(2 * s), signY + Math.round(2 * s), doorW + Math.round(4 * s), Math.round(5 * s));
+    g.fillStyle(lighten(accent, 0.2));
+    g.fillRect(doorX - Math.round(2 * s), signY + Math.round(2 * s), doorW + Math.round(4 * s), Math.round(1 * s));
 
-    // Paint splashes on building exterior (artistic touch)
-    g.fillStyle(0xef4444, 0.7); // Red splash
-    g.fillCircle(baseX + Math.round(8 * s), baseY + Math.round(70 * s), Math.round(3 * s));
-    g.fillStyle(0x3b82f6, 0.7); // Blue splash
-    g.fillCircle(
-      baseX + bWidth - Math.round(10 * s),
-      baseY + Math.round(65 * s),
-      Math.round(4 * s)
-    );
-    g.fillStyle(0x22c55e, 0.7); // Green splash
-    g.fillCircle(baseX + Math.round(15 * s), baseY + Math.round(75 * s), Math.round(2 * s));
+    // Paint splashes on building exterior (small rectangles instead of circles)
+    // Red splash
+    g.fillStyle(0xef4444);
+    g.fillRect(baseX + Math.round(6 * s), baseY + Math.round(68 * s), Math.round(5 * s), Math.round(4 * s));
+    g.fillRect(baseX + Math.round(7 * s), baseY + Math.round(66 * s), Math.round(3 * s), Math.round(2 * s));
+    // Blue splash
+    g.fillStyle(0x3b82f6);
+    g.fillRect(baseX + bWidth - Math.round(12 * s), baseY + Math.round(63 * s), Math.round(6 * s), Math.round(5 * s));
+    g.fillRect(baseX + bWidth - Math.round(11 * s), baseY + Math.round(60 * s), Math.round(4 * s), Math.round(3 * s));
+    // Green splash
+    g.fillStyle(0x22c55e);
+    g.fillRect(baseX + Math.round(13 * s), baseY + Math.round(73 * s), Math.round(4 * s), Math.round(3 * s));
 
     g.generateTexture("founders_1", canvasW, canvasH);
     g.destroy();
   }
 
+  /**
+   * Founders Social Hub - Community/social links building
+   * REWRITTEN: Proper 16-bit pixel art - no circles, no triangles, no alpha
+   */
   private generateFoundersSocialHub(s: number): void {
     const g = this.make.graphics({ x: 0, y: 0 });
     const canvasW = Math.round(70 * s);
@@ -10157,32 +10050,33 @@ export class BootScene extends Phaser.Scene {
 
     // Colors - Community/social theme (rustic brown with blue accents)
     const woodBase = 0x6b4423;
-    const woodLight = lighten(woodBase, 0.15);
-    const woodDark = darken(woodBase, 0.2);
+    const woodLight = lighten(woodBase, 0.2);
+    const woodDark = darken(woodBase, 0.25);
     const roofColor = 0x5c3317;
+    const roofLight = lighten(roofColor, 0.15);
     const accent = PALETTE.lightBlue;
 
-    // Drop shadow
-    g.fillStyle(PALETTE.void, 0.5);
-    g.fillRect(baseX + Math.round(5 * s), baseY + Math.round(5 * s), bWidth, bHeight);
+    // Ground shadow (flat, solid - no alpha)
+    g.fillStyle(PALETTE.void);
+    g.fillRect(baseX + Math.round(6 * s), canvasH - Math.round(4 * s), bWidth - Math.round(4 * s), Math.round(4 * s));
 
     // Main body
     g.fillStyle(woodBase);
     g.fillRect(baseX, baseY, bWidth, bHeight);
 
-    // 3D depth
+    // 3D depth: Light left edge
     g.fillStyle(woodLight);
     g.fillRect(baseX, baseY, Math.round(5 * s), bHeight);
+    // 3D depth: Dark right edge
     g.fillStyle(woodDark);
     g.fillRect(baseX + bWidth - Math.round(5 * s), baseY, Math.round(5 * s), bHeight);
 
-    // Dithering
-    g.fillStyle(darken(woodBase, 0.08));
-    for (let py = 0; py < bHeight; py += Math.round(6 * s)) {
-      for (let px = Math.round(6 * s); px < bWidth - Math.round(6 * s); px += Math.round(10 * s)) {
-        if ((Math.floor(py / Math.round(6 * s)) + Math.floor(px / Math.round(10 * s))) % 2 === 0) {
-          g.fillRect(baseX + px, baseY + py, Math.round(8 * s), Math.round(4 * s));
-        }
+    // Wood plank texture (brick pattern)
+    g.fillStyle(darken(woodBase, 0.1));
+    for (let py = 0; py < bHeight; py += Math.round(8 * s)) {
+      const offset = (py / Math.round(8 * s)) % 2 === 0 ? 0 : Math.round(6 * s);
+      for (let px = Math.round(6 * s) + offset; px < bWidth - Math.round(6 * s); px += Math.round(12 * s)) {
+        g.fillRect(baseX + px, baseY + py, Math.round(10 * s), Math.round(6 * s));
       }
     }
 
@@ -10190,15 +10084,16 @@ export class BootScene extends Phaser.Scene {
     const roofY = baseY - Math.round(8 * s);
     g.fillStyle(roofColor);
     g.fillRect(baseX - Math.round(3 * s), roofY, bWidth + Math.round(6 * s), Math.round(10 * s));
+    g.fillStyle(roofLight);
+    g.fillRect(baseX - Math.round(3 * s), roofY, bWidth + Math.round(6 * s), Math.round(2 * s));
+
     // Parapet crenellations
-    g.fillStyle(lighten(roofColor, 0.1));
+    g.fillStyle(roofColor);
     for (let i = 0; i < 5; i++) {
-      g.fillRect(
-        baseX - Math.round(2 * s) + i * Math.round(12 * s),
-        roofY - Math.round(6 * s),
-        Math.round(8 * s),
-        Math.round(6 * s)
-      );
+      g.fillRect(baseX - Math.round(2 * s) + i * Math.round(12 * s), roofY - Math.round(6 * s), Math.round(8 * s), Math.round(6 * s));
+      g.fillStyle(roofLight);
+      g.fillRect(baseX - Math.round(2 * s) + i * Math.round(12 * s), roofY - Math.round(6 * s), Math.round(8 * s), Math.round(1 * s));
+      g.fillStyle(roofColor);
     }
 
     // Large bulletin board on facade
@@ -10209,98 +10104,72 @@ export class BootScene extends Phaser.Scene {
 
     // Cork board frame
     g.fillStyle(0x451a03);
-    g.fillRect(
-      boardX - Math.round(3 * s),
-      boardY - Math.round(3 * s),
-      boardW + Math.round(6 * s),
-      boardH + Math.round(6 * s)
-    );
+    g.fillRect(boardX - Math.round(3 * s), boardY - Math.round(3 * s), boardW + Math.round(6 * s), boardH + Math.round(6 * s));
+    g.fillStyle(lighten(0x451a03, 0.15));
+    g.fillRect(boardX - Math.round(3 * s), boardY - Math.round(3 * s), boardW + Math.round(6 * s), Math.round(2 * s));
+
     // Cork surface
     g.fillStyle(0xd2b48c);
     g.fillRect(boardX, boardY, boardW, boardH);
-    // Cork texture
-    g.fillStyle(darken(0xd2b48c, 0.1));
-    for (let py = 0; py < boardH; py += Math.round(4 * s)) {
-      for (let px = 0; px < boardW; px += Math.round(6 * s)) {
-        if ((py + px) % Math.round(8 * s) === 0) {
-          g.fillRect(boardX + px, boardY + py, Math.round(3 * s), Math.round(3 * s));
-        }
+
+    // Cork texture (checkerboard pattern)
+    g.fillStyle(darken(0xd2b48c, 0.12));
+    for (let py = 0; py < boardH; py += Math.round(6 * s)) {
+      const offset = (py / Math.round(6 * s)) % 2 === 0 ? 0 : Math.round(4 * s);
+      for (let px = offset; px < boardW; px += Math.round(8 * s)) {
+        g.fillRect(boardX + px, boardY + py, Math.round(4 * s), Math.round(4 * s));
       }
     }
 
     // Pinned notes on bulletin board
     // Twitter/X note (blue)
     g.fillStyle(0x1da1f2);
-    g.fillRect(
-      boardX + Math.round(4 * s),
-      boardY + Math.round(4 * s),
-      Math.round(12 * s),
-      Math.round(10 * s)
-    );
-    g.fillStyle(0xffffff);
-    g.fillRect(
-      boardX + Math.round(6 * s),
-      boardY + Math.round(7 * s),
-      Math.round(8 * s),
-      Math.round(1 * s)
-    );
-    g.fillRect(
-      boardX + Math.round(6 * s),
-      boardY + Math.round(10 * s),
-      Math.round(6 * s),
-      Math.round(1 * s)
-    );
+    g.fillRect(boardX + Math.round(4 * s), boardY + Math.round(4 * s), Math.round(12 * s), Math.round(10 * s));
+    g.fillStyle(PALETTE.white);
+    g.fillRect(boardX + Math.round(6 * s), boardY + Math.round(7 * s), Math.round(8 * s), Math.round(1 * s));
+    g.fillRect(boardX + Math.round(6 * s), boardY + Math.round(10 * s), Math.round(6 * s), Math.round(1 * s));
 
     // Website note (green)
     g.fillStyle(PALETTE.bagsGreen);
-    g.fillRect(
-      boardX + Math.round(20 * s),
-      boardY + Math.round(6 * s),
-      Math.round(12 * s),
-      Math.round(10 * s)
-    );
-    g.fillStyle(0xffffff);
-    g.fillRect(
-      boardX + Math.round(22 * s),
-      boardY + Math.round(9 * s),
-      Math.round(8 * s),
-      Math.round(1 * s)
-    );
-    g.fillRect(
-      boardX + Math.round(22 * s),
-      boardY + Math.round(12 * s),
-      Math.round(5 * s),
-      Math.round(1 * s)
-    );
+    g.fillRect(boardX + Math.round(20 * s), boardY + Math.round(6 * s), Math.round(12 * s), Math.round(10 * s));
+    g.fillStyle(PALETTE.white);
+    g.fillRect(boardX + Math.round(22 * s), boardY + Math.round(9 * s), Math.round(8 * s), Math.round(1 * s));
+    g.fillRect(boardX + Math.round(22 * s), boardY + Math.round(12 * s), Math.round(5 * s), Math.round(1 * s));
 
     // Telegram note (blue)
     g.fillStyle(0x0088cc);
-    g.fillRect(
-      boardX + Math.round(8 * s),
-      boardY + Math.round(18 * s),
-      Math.round(10 * s),
-      Math.round(8 * s)
-    );
+    g.fillRect(boardX + Math.round(8 * s), boardY + Math.round(18 * s), Math.round(10 * s), Math.round(8 * s));
+
     // Discord note (purple)
     g.fillStyle(0x5865f2);
-    g.fillRect(
-      boardX + Math.round(22 * s),
-      boardY + Math.round(18 * s),
-      Math.round(10 * s),
-      Math.round(8 * s)
-    );
+    g.fillRect(boardX + Math.round(22 * s), boardY + Math.round(18 * s), Math.round(10 * s), Math.round(8 * s));
 
-    // Push pins
+    // Push pins (small rectangles instead of circles)
+    // Red pin
     g.fillStyle(0xef4444);
-    g.fillCircle(boardX + Math.round(10 * s), boardY + Math.round(4 * s), Math.round(2 * s));
-    g.fillStyle(0xfbbf24);
-    g.fillCircle(boardX + Math.round(26 * s), boardY + Math.round(6 * s), Math.round(2 * s));
-    g.fillStyle(0x22c55e);
-    g.fillCircle(boardX + Math.round(13 * s), boardY + Math.round(18 * s), Math.round(2 * s));
-    g.fillStyle(0xa855f7);
-    g.fillCircle(boardX + Math.round(27 * s), boardY + Math.round(18 * s), Math.round(2 * s));
+    g.fillRect(boardX + Math.round(9 * s), boardY + Math.round(3 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillStyle(lighten(0xef4444, 0.3));
+    g.fillRect(boardX + Math.round(9 * s), boardY + Math.round(3 * s), Math.round(1 * s), Math.round(1 * s));
 
-    // Windows
+    // Yellow pin
+    g.fillStyle(0xfbbf24);
+    g.fillRect(boardX + Math.round(25 * s), boardY + Math.round(5 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillStyle(lighten(0xfbbf24, 0.3));
+    g.fillRect(boardX + Math.round(25 * s), boardY + Math.round(5 * s), Math.round(1 * s), Math.round(1 * s));
+
+    // Green pin
+    g.fillStyle(0x22c55e);
+    g.fillRect(boardX + Math.round(12 * s), boardY + Math.round(17 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillStyle(lighten(0x22c55e, 0.3));
+    g.fillRect(boardX + Math.round(12 * s), boardY + Math.round(17 * s), Math.round(1 * s), Math.round(1 * s));
+
+    // Purple pin
+    g.fillStyle(0xa855f7);
+    g.fillRect(boardX + Math.round(26 * s), boardY + Math.round(17 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillStyle(lighten(0xa855f7, 0.3));
+    g.fillRect(boardX + Math.round(26 * s), boardY + Math.round(17 * s), Math.round(1 * s), Math.round(1 * s));
+
+    // Windows (solid colors, no alpha)
     const windowColor = 0xfbbf24;
     for (let wx = 0; wx < 2; wx++) {
       const winX = baseX + Math.round(8 * s) + wx * Math.round(22 * s);
@@ -10308,24 +10177,23 @@ export class BootScene extends Phaser.Scene {
       const winW = Math.round(12 * s);
       const winH = Math.round(16 * s);
 
+      // Window frame
       g.fillStyle(0x451a03);
-      g.fillRect(
-        winX - Math.round(2 * s),
-        winY - Math.round(2 * s),
-        winW + Math.round(4 * s),
-        winH + Math.round(4 * s)
-      );
-      g.fillStyle(windowColor, 0.3);
-      g.fillRect(
-        winX - Math.round(1 * s),
-        winY - Math.round(1 * s),
-        winW + Math.round(2 * s),
-        winH + Math.round(2 * s)
-      );
-      g.fillStyle(windowColor, 0.8);
+      g.fillRect(winX - Math.round(2 * s), winY - Math.round(2 * s), winW + Math.round(4 * s), winH + Math.round(4 * s));
+
+      // Window glass (solid amber)
+      g.fillStyle(windowColor);
       g.fillRect(winX, winY, winW, winH);
-      g.fillStyle(lighten(windowColor, 0.4));
-      g.fillRect(winX, winY, Math.round(3 * s), Math.round(4 * s));
+
+      // Window inner glow (lighter amber)
+      g.fillStyle(lighten(windowColor, 0.15));
+      g.fillRect(winX + Math.round(2 * s), winY + Math.round(2 * s), winW - Math.round(4 * s), winH - Math.round(4 * s));
+
+      // Window highlight (top-left corner)
+      g.fillStyle(PALETTE.white);
+      g.fillRect(winX + Math.round(1 * s), winY + Math.round(1 * s), Math.round(3 * s), Math.round(3 * s));
+
+      // Window cross divider
       g.fillStyle(woodDark);
       g.fillRect(winX + winW / 2 - Math.round(1 * s), winY, Math.round(2 * s), winH);
     }
@@ -10336,75 +10204,57 @@ export class BootScene extends Phaser.Scene {
     const doorX = baseX + bWidth / 2 - doorW / 2;
     const doorY = canvasH - doorH;
 
+    // Door frame
     g.fillStyle(0x451a03);
-    g.fillRect(
-      doorX - Math.round(2 * s),
-      doorY - Math.round(3 * s),
-      doorW + Math.round(4 * s),
-      doorH + Math.round(3 * s)
-    );
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(3 * s), doorW + Math.round(4 * s), doorH + Math.round(3 * s));
+    g.fillStyle(lighten(0x451a03, 0.15));
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(3 * s), doorW + Math.round(4 * s), Math.round(2 * s));
+
+    // Door body
     g.fillStyle(0x5c3317);
     g.fillRect(doorX, doorY, doorW, doorH);
-    g.fillStyle(darken(0x5c3317, 0.15));
-    g.fillRect(
-      doorX + Math.round(2 * s),
-      doorY + Math.round(3 * s),
-      doorW - Math.round(4 * s),
-      Math.round(7 * s)
-    );
-    g.fillRect(
-      doorX + Math.round(2 * s),
-      doorY + Math.round(13 * s),
-      doorW - Math.round(4 * s),
-      Math.round(7 * s)
-    );
+    // Door highlight
+    g.fillStyle(lighten(0x5c3317, 0.12));
+    g.fillRect(doorX, doorY, Math.round(2 * s), doorH);
+
+    // Door panels
+    g.fillStyle(darken(0x5c3317, 0.18));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(3 * s), doorW - Math.round(4 * s), Math.round(7 * s));
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(13 * s), doorW - Math.round(4 * s), Math.round(7 * s));
+
+    // Door handle
     g.fillStyle(PALETTE.gold);
-    g.fillRect(
-      doorX + doorW - Math.round(4 * s),
-      doorY + Math.round(10 * s),
-      Math.round(2 * s),
-      Math.round(3 * s)
-    );
+    g.fillRect(doorX + doorW - Math.round(4 * s), doorY + Math.round(10 * s), Math.round(2 * s), Math.round(3 * s));
 
     // "CONNECT" sign
     const signY = doorY - Math.round(10 * s);
     g.fillStyle(0x451a03);
     g.fillRect(doorX - Math.round(6 * s), signY, doorW + Math.round(12 * s), Math.round(8 * s));
     g.fillStyle(accent);
-    g.fillRect(
-      doorX - Math.round(4 * s),
-      signY + Math.round(2 * s),
-      doorW + Math.round(8 * s),
-      Math.round(4 * s)
-    );
+    g.fillRect(doorX - Math.round(4 * s), signY + Math.round(2 * s), doorW + Math.round(8 * s), Math.round(4 * s));
+    g.fillStyle(lighten(accent, 0.2));
+    g.fillRect(doorX - Math.round(4 * s), signY + Math.round(2 * s), doorW + Math.round(8 * s), Math.round(1 * s));
 
-    // Network connection lines decorating the building
-    g.fillStyle(accent, 0.5);
+    // Network connection lines decorating the building (solid colors)
+    g.fillStyle(darken(accent, 0.2));
     // Vertical line on left
-    g.fillRect(
-      baseX + Math.round(3 * s),
-      baseY + Math.round(40 * s),
-      Math.round(1 * s),
-      Math.round(30 * s)
-    );
+    g.fillRect(baseX + Math.round(3 * s), baseY + Math.round(40 * s), Math.round(1 * s), Math.round(30 * s));
     // Horizontal line to window
-    g.fillRect(
-      baseX + Math.round(3 * s),
-      baseY + Math.round(50 * s),
-      Math.round(5 * s),
-      Math.round(1 * s)
-    );
+    g.fillRect(baseX + Math.round(3 * s), baseY + Math.round(50 * s), Math.round(5 * s), Math.round(1 * s));
     // Vertical line on right
-    g.fillRect(
-      baseX + bWidth - Math.round(4 * s),
-      baseY + Math.round(42 * s),
-      Math.round(1 * s),
-      Math.round(28 * s)
-    );
-    // Connection nodes
+    g.fillRect(baseX + bWidth - Math.round(4 * s), baseY + Math.round(42 * s), Math.round(1 * s), Math.round(28 * s));
+
+    // Connection nodes (small rectangles instead of circles)
     g.fillStyle(accent);
-    g.fillCircle(baseX + Math.round(3 * s), baseY + Math.round(50 * s), Math.round(2 * s));
-    g.fillCircle(baseX + bWidth - Math.round(4 * s), baseY + Math.round(55 * s), Math.round(2 * s));
+    // Left node
+    g.fillRect(baseX + Math.round(2 * s), baseY + Math.round(49 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillStyle(lighten(accent, 0.3));
+    g.fillRect(baseX + Math.round(2 * s), baseY + Math.round(49 * s), Math.round(1 * s), Math.round(1 * s));
+    // Right node
+    g.fillStyle(accent);
+    g.fillRect(baseX + bWidth - Math.round(5 * s), baseY + Math.round(54 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillStyle(lighten(accent, 0.3));
+    g.fillRect(baseX + bWidth - Math.round(5 * s), baseY + Math.round(54 * s), Math.round(1 * s), Math.round(1 * s));
 
     g.generateTexture("founders_2", canvasW, canvasH);
     g.destroy();
@@ -11093,8 +10943,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generateBagsFMHQ(s: number): void {
+    // Pixel art Bags.FM HQ - modern tech building with proper 16-bit style
     const g = this.make.graphics({ x: 0, y: 0 });
-    // Large building - dominant presence
     const canvasW = Math.round(180 * s);
     const canvasH = Math.round(280 * s);
     const bWidth = Math.round(150 * s);
@@ -11103,21 +10953,30 @@ export class BootScene extends Phaser.Scene {
     const baseY = canvasH - bHeight;
     const centerX = baseX + bWidth / 2;
 
-    // Bags.FM brand colors
+    // Bags.FM brand colors (solid, no transparency)
     const bagsGreen = 0x4ade80;
-    const bagsDark = 0x14532d;
-    const bagsLight = 0x86efac;
+    const bagsGreenDark = 0x22c55e;
+    const bagsGreenLight = 0x86efac;
     const wallBase = 0x1a1a2e;
-    const wallLight = 0x22223a;
+    const wallLight = 0x2d2d4a;
     const wallDark = 0x0f0f1a;
 
-    // Drop shadow
-    g.fillStyle(PALETTE.void, 0.6);
-    g.fillRect(baseX + Math.round(8 * s), baseY + Math.round(8 * s), bWidth, bHeight);
+    // Ground shadow (solid, no alpha)
+    g.fillStyle(PALETTE.void);
+    g.fillRect(baseX + Math.round(6 * s), canvasH - Math.round(4 * s), bWidth - Math.round(4 * s), Math.round(4 * s));
 
-    // Main building body (dark modern)
+    // Main building body
     g.fillStyle(wallBase);
     g.fillRect(baseX, baseY, bWidth, bHeight);
+
+    // Brick texture (checkerboard dithering)
+    g.fillStyle(wallDark);
+    for (let row = 0; row < bHeight; row += Math.round(12 * s)) {
+      const offset = (row / Math.round(12 * s)) % 2 === 0 ? 0 : Math.round(10 * s);
+      for (let col = offset; col < bWidth; col += Math.round(20 * s)) {
+        g.fillRect(baseX + col, baseY + row, Math.round(18 * s), Math.round(10 * s));
+      }
+    }
 
     // 3D depth: Light left edge
     g.fillStyle(wallLight);
@@ -11127,267 +10986,149 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(wallDark);
     g.fillRect(baseX + bWidth - Math.round(8 * s), baseY, Math.round(8 * s), bHeight);
 
-    // Horizontal floor dividers (modern office look)
-    g.fillStyle(bagsDark);
-    for (let i = 1; i < 6; i++) {
-      const lineY = baseY + Math.round(30 * s) * i;
-      g.fillRect(baseX, lineY, bWidth, Math.round(3 * s));
-    }
-
-    // Giant BAGS.FM logo area (center of building)
-    const logoY = baseY + Math.round(40 * s);
-    const logoH = Math.round(60 * s);
+    // BAGS logo panel (solid green panel with pixel text)
+    const logoY = baseY + Math.round(25 * s);
+    const logoH = Math.round(50 * s);
     const logoW = bWidth - Math.round(30 * s);
+    const logoX = baseX + Math.round(15 * s);
 
-    // Logo background (glowing green panel)
-    g.fillStyle(bagsGreen, 0.2);
-    g.fillRect(baseX + Math.round(15 * s), logoY, logoW, logoH);
+    // Logo panel background
+    g.fillStyle(bagsGreenDark);
+    g.fillRect(logoX, logoY, logoW, logoH);
 
-    // Logo border glow
-    g.fillStyle(bagsGreen, 0.6);
-    g.fillRect(baseX + Math.round(15 * s), logoY, logoW, Math.round(3 * s));
-    g.fillRect(
-      baseX + Math.round(15 * s),
-      logoY + logoH - Math.round(3 * s),
-      logoW,
-      Math.round(3 * s)
-    );
-    g.fillRect(baseX + Math.round(15 * s), logoY, Math.round(3 * s), logoH);
-    g.fillRect(
-      baseX + Math.round(15 * s) + logoW - Math.round(3 * s),
-      logoY,
-      Math.round(3 * s),
-      logoH
-    );
-
-    // BAGS text representation (stylized blocks)
-    const textY = logoY + Math.round(15 * s);
-    const letterW = Math.round(20 * s);
-    const letterH = Math.round(30 * s);
-    const letterGap = Math.round(8 * s);
-    const textStartX = centerX - Math.round(55 * s);
-
-    // B
+    // Logo panel border
     g.fillStyle(bagsGreen);
-    g.fillRect(textStartX, textY, Math.round(5 * s), letterH);
-    g.fillRect(textStartX, textY, letterW - Math.round(5 * s), Math.round(5 * s));
-    g.fillRect(
-      textStartX,
-      textY + letterH / 2 - Math.round(2 * s),
-      letterW - Math.round(5 * s),
-      Math.round(5 * s)
-    );
-    g.fillRect(
-      textStartX,
-      textY + letterH - Math.round(5 * s),
-      letterW - Math.round(5 * s),
-      Math.round(5 * s)
-    );
-    g.fillRect(
-      textStartX + letterW - Math.round(8 * s),
-      textY + Math.round(5 * s),
-      Math.round(5 * s),
-      letterH / 2 - Math.round(7 * s)
-    );
-    g.fillRect(
-      textStartX + letterW - Math.round(8 * s),
-      textY + letterH / 2 + Math.round(3 * s),
-      Math.round(5 * s),
-      letterH / 2 - Math.round(8 * s)
-    );
+    g.fillRect(logoX, logoY, logoW, Math.round(3 * s));
+    g.fillRect(logoX, logoY + logoH - Math.round(3 * s), logoW, Math.round(3 * s));
+    g.fillRect(logoX, logoY, Math.round(3 * s), logoH);
+    g.fillRect(logoX + logoW - Math.round(3 * s), logoY, Math.round(3 * s), logoH);
 
-    // A
+    // Pixel BAGS text (simplified blocky letters)
+    const textY = logoY + Math.round(12 * s);
+    const letterW = Math.round(18 * s);
+    const letterH = Math.round(26 * s);
+    const letterGap = Math.round(6 * s);
+    const textStartX = centerX - Math.round(48 * s);
+
+    g.fillStyle(bagsGreenLight);
+
+    // B - pixel letter
+    g.fillRect(textStartX, textY, Math.round(4 * s), letterH);
+    g.fillRect(textStartX, textY, letterW - Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(textStartX, textY + letterH / 2 - Math.round(2 * s), letterW - Math.round(6 * s), Math.round(4 * s));
+    g.fillRect(textStartX, textY + letterH - Math.round(4 * s), letterW - Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(textStartX + letterW - Math.round(6 * s), textY + Math.round(4 * s), Math.round(4 * s), letterH / 2 - Math.round(6 * s));
+    g.fillRect(textStartX + letterW - Math.round(6 * s), textY + letterH / 2 + Math.round(2 * s), Math.round(4 * s), letterH / 2 - Math.round(6 * s));
+
+    // A - pixel letter
     const aX = textStartX + letterW + letterGap;
-    g.fillRect(aX + letterW / 2 - Math.round(3 * s), textY, Math.round(6 * s), Math.round(5 * s));
-    g.fillRect(aX, textY + Math.round(5 * s), Math.round(5 * s), letterH - Math.round(5 * s));
-    g.fillRect(
-      aX + letterW - Math.round(5 * s),
-      textY + Math.round(5 * s),
-      Math.round(5 * s),
-      letterH - Math.round(5 * s)
-    );
-    g.fillRect(
-      aX + Math.round(5 * s),
-      textY + letterH / 2,
-      letterW - Math.round(10 * s),
-      Math.round(5 * s)
-    );
+    g.fillRect(aX + letterW / 2 - Math.round(2 * s), textY, Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(aX, textY + Math.round(4 * s), Math.round(4 * s), letterH - Math.round(4 * s));
+    g.fillRect(aX + letterW - Math.round(4 * s), textY + Math.round(4 * s), Math.round(4 * s), letterH - Math.round(4 * s));
+    g.fillRect(aX + Math.round(4 * s), textY + letterH / 2, letterW - Math.round(8 * s), Math.round(4 * s));
 
-    // G
+    // G - pixel letter
     const gX = aX + letterW + letterGap;
-    g.fillRect(gX + Math.round(5 * s), textY, letterW - Math.round(5 * s), Math.round(5 * s));
-    g.fillRect(gX, textY, Math.round(5 * s), letterH);
-    g.fillRect(
-      gX + Math.round(5 * s),
-      textY + letterH - Math.round(5 * s),
-      letterW - Math.round(5 * s),
-      Math.round(5 * s)
-    );
-    g.fillRect(
-      gX + letterW - Math.round(5 * s),
-      textY + letterH / 2,
-      Math.round(5 * s),
-      letterH / 2 - Math.round(5 * s)
-    );
-    g.fillRect(
-      gX + letterW / 2,
-      textY + letterH / 2,
-      letterW / 2 - Math.round(5 * s),
-      Math.round(5 * s)
-    );
+    g.fillRect(gX + Math.round(4 * s), textY, letterW - Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(gX, textY, Math.round(4 * s), letterH);
+    g.fillRect(gX + Math.round(4 * s), textY + letterH - Math.round(4 * s), letterW - Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(gX + letterW - Math.round(4 * s), textY + letterH / 2, Math.round(4 * s), letterH / 2 - Math.round(4 * s));
+    g.fillRect(gX + letterW / 2, textY + letterH / 2, letterW / 2 - Math.round(4 * s), Math.round(4 * s));
 
-    // S
+    // S - pixel letter
     const sX = gX + letterW + letterGap;
-    g.fillRect(sX + Math.round(5 * s), textY, letterW - Math.round(5 * s), Math.round(5 * s));
-    g.fillRect(sX, textY, Math.round(5 * s), letterH / 2);
-    g.fillRect(
-      sX + Math.round(5 * s),
-      textY + letterH / 2 - Math.round(3 * s),
-      letterW - Math.round(10 * s),
-      Math.round(5 * s)
-    );
-    g.fillRect(
-      sX + letterW - Math.round(5 * s),
-      textY + letterH / 2,
-      Math.round(5 * s),
-      letterH / 2 - Math.round(5 * s)
-    );
-    g.fillRect(
-      sX,
-      textY + letterH - Math.round(5 * s),
-      letterW - Math.round(5 * s),
-      Math.round(5 * s)
-    );
+    g.fillRect(sX + Math.round(4 * s), textY, letterW - Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(sX, textY, Math.round(4 * s), letterH / 2);
+    g.fillRect(sX + Math.round(4 * s), textY + letterH / 2 - Math.round(2 * s), letterW - Math.round(8 * s), Math.round(4 * s));
+    g.fillRect(sX + letterW - Math.round(4 * s), textY + letterH / 2, Math.round(4 * s), letterH / 2 - Math.round(4 * s));
+    g.fillRect(sX, textY + letterH - Math.round(4 * s), letterW - Math.round(4 * s), Math.round(4 * s));
 
-    // Windows (3 rows x 4 columns with green glow)
+    // Windows (3 rows x 4 columns - solid green, no alpha)
     for (let row = 0; row < 3; row++) {
       for (let col = 0; col < 4; col++) {
-        const wx = baseX + Math.round(20 * s) + col * Math.round(32 * s);
-        const wy = baseY + Math.round(115 * s) + row * Math.round(28 * s);
+        const wx = baseX + Math.round(18 * s) + col * Math.round(32 * s);
+        const wy = baseY + Math.round(90 * s) + row * Math.round(32 * s);
         const winW = Math.round(24 * s);
-        const winH = Math.round(20 * s);
+        const winH = Math.round(24 * s);
 
-        // Window glow
-        g.fillStyle(bagsGreen, 0.2);
-        g.fillRect(
-          wx - Math.round(2 * s),
-          wy - Math.round(2 * s),
-          winW + Math.round(4 * s),
-          winH + Math.round(4 * s)
-        );
+        // Window frame (dark)
+        g.fillStyle(wallDark);
+        g.fillRect(wx - Math.round(2 * s), wy - Math.round(2 * s), winW + Math.round(4 * s), winH + Math.round(4 * s));
 
-        // Window glass
-        g.fillStyle(bagsGreen, 0.5);
+        // Window glass (solid green)
+        g.fillStyle(bagsGreen);
         g.fillRect(wx, wy, winW, winH);
 
-        // Window highlight
-        g.fillStyle(bagsLight, 0.4);
-        g.fillRect(wx, wy, Math.round(5 * s), Math.round(5 * s));
+        // Window highlight (corner)
+        g.fillStyle(bagsGreenLight);
+        g.fillRect(wx + Math.round(2 * s), wy + Math.round(2 * s), Math.round(6 * s), Math.round(6 * s));
 
-        // Window frame
-        g.fillStyle(bagsDark);
+        // Window cross divider
+        g.fillStyle(wallBase);
         g.fillRect(wx + winW / 2 - Math.round(1 * s), wy, Math.round(2 * s), winH);
+        g.fillRect(wx, wy + winH / 2 - Math.round(1 * s), winW, Math.round(2 * s));
       }
     }
 
-    // Roof - modern flat with green accent
-    const roofY = baseY - Math.round(15 * s);
-    g.fillStyle(wallDark);
-    g.fillRect(baseX - Math.round(5 * s), roofY, bWidth + Math.round(10 * s), Math.round(18 * s));
+    // Stepped pyramid roof
+    const roofY = baseY - Math.round(8 * s);
+    g.fillStyle(bagsGreenDark);
+    g.fillRect(baseX - Math.round(6 * s), roofY, bWidth + Math.round(12 * s), Math.round(12 * s));
+    g.fillRect(baseX + Math.round(10 * s), roofY - Math.round(10 * s), bWidth - Math.round(20 * s), Math.round(10 * s));
+    g.fillRect(baseX + Math.round(30 * s), roofY - Math.round(18 * s), bWidth - Math.round(60 * s), Math.round(8 * s));
 
-    // Roof green accent line
+    // Roof highlights
     g.fillStyle(bagsGreen);
-    g.fillRect(baseX - Math.round(5 * s), roofY, bWidth + Math.round(10 * s), Math.round(4 * s));
+    g.fillRect(baseX - Math.round(6 * s), roofY, bWidth + Math.round(12 * s), Math.round(3 * s));
+    g.fillRect(baseX + Math.round(10 * s), roofY - Math.round(10 * s), bWidth - Math.round(20 * s), Math.round(3 * s));
+    g.fillRect(baseX + Math.round(30 * s), roofY - Math.round(18 * s), bWidth - Math.round(60 * s), Math.round(3 * s));
 
-    // Roof glow
-    g.fillStyle(bagsGreen, 0.3);
-    g.fillRect(
-      baseX - Math.round(5 * s),
-      roofY - Math.round(3 * s),
-      bWidth + Math.round(10 * s),
-      Math.round(3 * s)
-    );
-
-    // Antenna/spire with green light
+    // Antenna/spire (rectangular, no circles)
+    const antennaX = centerX - Math.round(4 * s);
+    const antennaY = roofY - Math.round(50 * s);
     g.fillStyle(PALETTE.lightGray);
-    g.fillRect(
-      centerX - Math.round(3 * s),
-      roofY - Math.round(40 * s),
-      Math.round(6 * s),
-      Math.round(42 * s)
-    );
+    g.fillRect(antennaX, antennaY, Math.round(8 * s), Math.round(32 * s));
 
-    // Antenna light (green beacon)
-    g.fillStyle(bagsGreen, 0.5);
-    g.fillCircle(centerX, roofY - Math.round(43 * s), Math.round(8 * s));
+    // Antenna beacon (stacked rectangles instead of circle)
+    g.fillStyle(bagsGreenDark);
+    g.fillRect(antennaX - Math.round(4 * s), antennaY - Math.round(8 * s), Math.round(16 * s), Math.round(8 * s));
     g.fillStyle(bagsGreen);
-    g.fillCircle(centerX, roofY - Math.round(43 * s), Math.round(5 * s));
-    g.fillStyle(bagsLight);
-    g.fillCircle(centerX, roofY - Math.round(43 * s), Math.round(3 * s));
+    g.fillRect(antennaX - Math.round(2 * s), antennaY - Math.round(6 * s), Math.round(12 * s), Math.round(6 * s));
+    g.fillStyle(bagsGreenLight);
+    g.fillRect(antennaX, antennaY - Math.round(4 * s), Math.round(8 * s), Math.round(4 * s));
 
-    // Grand entrance door
-    const doorW = Math.round(40 * s);
-    const doorH = Math.round(50 * s);
+    // Grand entrance door (stepped arch instead of circle)
+    const doorW = Math.round(36 * s);
+    const doorH = Math.round(46 * s);
     const doorX = centerX - doorW / 2;
     const doorY = canvasH - doorH;
 
-    // Door frame (green glowing outline)
-    g.fillStyle(bagsGreen, 0.5);
-    g.fillRect(
-      doorX - Math.round(5 * s),
-      doorY - Math.round(8 * s),
-      doorW + Math.round(10 * s),
-      doorH + Math.round(8 * s)
-    );
-
-    // Door arch
-    g.fillStyle(bagsGreen, 0.5);
-    g.fillCircle(centerX, doorY - Math.round(5 * s), doorW / 2 + Math.round(5 * s));
-
-    // Door panel (dark glass)
-    g.fillStyle(0x0f172a);
-    g.fillRect(doorX, doorY, doorW, doorH);
-    g.fillCircle(centerX, doorY, doorW / 2);
-
-    // Door center line
+    // Door frame (solid green)
     g.fillStyle(bagsGreen);
-    g.fillRect(
-      centerX - Math.round(1 * s),
-      doorY - doorW / 2 + Math.round(5 * s),
-      Math.round(2 * s),
-      doorH + doorW / 2 - Math.round(5 * s)
-    );
+    g.fillRect(doorX - Math.round(4 * s), doorY - Math.round(10 * s), doorW + Math.round(8 * s), doorH + Math.round(10 * s));
+
+    // Stepped arch top
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(14 * s), doorW + Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(doorX + Math.round(4 * s), doorY - Math.round(18 * s), doorW - Math.round(8 * s), Math.round(4 * s));
+
+    // Door panel (dark)
+    g.fillStyle(wallDark);
+    g.fillRect(doorX, doorY, doorW, doorH);
+
+    // Door divider
+    g.fillStyle(bagsGreen);
+    g.fillRect(centerX - Math.round(2 * s), doorY, Math.round(4 * s), doorH);
 
     // Door handles
-    g.fillStyle(bagsGreen);
-    g.fillRect(
-      doorX + Math.round(8 * s),
-      doorY + Math.round(20 * s),
-      Math.round(3 * s),
-      Math.round(10 * s)
-    );
-    g.fillRect(
-      doorX + doorW - Math.round(11 * s),
-      doorY + Math.round(20 * s),
-      Math.round(3 * s),
-      Math.round(10 * s)
-    );
+    g.fillStyle(bagsGreenLight);
+    g.fillRect(doorX + Math.round(6 * s), doorY + Math.round(18 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(doorX + doorW - Math.round(10 * s), doorY + Math.round(18 * s), Math.round(4 * s), Math.round(10 * s));
 
-    // Welcome mat with green accent
-    g.fillStyle(bagsDark);
-    g.fillRect(
-      doorX - Math.round(10 * s),
-      canvasH - Math.round(4 * s),
-      doorW + Math.round(20 * s),
-      Math.round(4 * s)
-    );
-    g.fillStyle(bagsGreen, 0.5);
-    g.fillRect(
-      doorX - Math.round(5 * s),
-      canvasH - Math.round(3 * s),
-      doorW + Math.round(10 * s),
-      Math.round(2 * s)
-    );
+    // Base trim (green)
+    g.fillStyle(bagsGreen);
+    g.fillRect(baseX, canvasH - Math.round(6 * s), bWidth, Math.round(6 * s));
+    g.fillStyle(bagsGreenLight);
+    g.fillRect(baseX, canvasH - Math.round(6 * s), bWidth, Math.round(2 * s));
 
     g.generateTexture("labs_hq", canvasW, canvasH);
     g.destroy();
