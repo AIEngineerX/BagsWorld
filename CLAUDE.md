@@ -116,15 +116,47 @@ Derived from world health:
 
 Day/Night synced to EST timezone via `timeInfo` from API.
 
-## AI Characters
+## World Zones
 
-| Character | File | Role |
-|-----------|------|------|
-| Toly | `toly.character.ts` | Solana co-founder, blockchain expert |
-| Ash | `ash.character.ts` | Pokemon-themed ecosystem guide |
-| Finn | `finnbags.character.ts` | Bags.fm CEO |
-| The Dev | `ghost.character.ts` | Trading agent, market analysis |
-| Neo | `neo.character.ts` | Scout agent, watches for launches |
+| Zone ID | Name | Theme |
+|---------|------|-------|
+| `labs` | HQ | Bags.fm team headquarters, R&D |
+| `main_city` | Park | Peaceful green space, PokeCenter |
+| `trending` | BagsCity | Urban neon, Casino, Terminal |
+| `ballers` | Ballers Valley | Luxury mansions for top holders |
+| `founders` | Founder's Corner | Token launch education hub |
+
+## AI Characters (16 Total)
+
+| Character | File | Zone | Role |
+|-----------|------|------|------|
+| Toly | `toly.character.ts` | Park | Solana co-founder, blockchain expert |
+| Ash | `ash.character.ts` | Park | Pokemon-themed ecosystem guide |
+| Finn | `finnbags.character.ts` | Park | Bags.fm CEO |
+| Shaw | `shaw.character.ts` | Park | ElizaOS creator, agent architect |
+| Ghost | `ghost.character.ts` | Park | Community funding (5%), on-chain verification |
+| Neo | `neo.character.ts` | BagsCity | Scout agent, watches for launches |
+| CJ | `cj.character.ts` | BagsCity | Market commentary (GTA vibes) |
+| Ramo | `ramo.character.ts` | HQ | CTO, smart contracts, SDK |
+| Sincara | `sincara.character.ts` | HQ | Frontend Engineer, UI/UX |
+| Stuu | `stuu.character.ts` | HQ | Operations, support |
+| Sam | `sam.character.ts` | HQ | Growth, marketing |
+| Alaa | `alaa.character.ts` | HQ | Skunk Works, R&D |
+| Carlo | `carlo.character.ts` | HQ | Ambassador, community |
+| BNN | `bnn.character.ts` | HQ | News bot, announcements |
+| Professor Oak | `oak.character.ts` | Founder's Corner | Token launch guide |
+| Bags Bot | `bags-bot.character.ts` | All | Commands, world features |
+
+## Community Funding Model
+
+BagsWorld charges **zero extra fees** to creators. Ghost (@DaddyGhost) personally contributes 5% of his $BagsWorld token revenue to fund community features.
+
+**Funded Features:**
+- Casino prizes and raffles
+- New zones and features
+- Development and improvements
+
+All contributions verifiable on-chain via Solscan.
 
 ## Deployment
 
