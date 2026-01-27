@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import {
   getLaunchedTokens,
@@ -9,7 +9,8 @@ import {
   type LaunchedToken,
 } from "@/lib/token-registry";
 import { TradeModal } from "./TradeModal";
-import { isAdmin } from "@/lib/config";
+import { isAdmin, ECOSYSTEM_CONFIG } from "@/lib/config";
+import { useGameStore } from "@/lib/store";
 
 interface YourBuildingsProps {
   onRefresh?: () => void;
@@ -20,9 +21,30 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
   const [tokens, setTokens] = useState<LaunchedToken[]>([]);
   const [isExpanded, setIsExpanded] = useState(true);
   const [tradeToken, setTradeToken] = useState<LaunchedToken | null>(null);
+  const { worldState } = useGameStore();
 
   // Check if connected wallet is admin
   const isUserAdmin = isAdmin(publicKey?.toBase58());
+
+  // Get active building mints from worldState (filters out decayed buildings)
+  const activeBuildingMints = useMemo(() => {
+    if (!worldState?.buildings) return new Set<string>();
+    return new Set(
+      worldState.buildings
+        .filter((b) => !b.isPermanent && !b.isFloating && !b.isMansion)
+        .map((b) => b.tokenMint)
+    );
+  }, [worldState?.buildings]);
+
+  // Filter tokens to only show active buildings (not decayed)
+  const activeTokens = useMemo(() => {
+    // If no worldState yet, show all tokens
+    if (!worldState?.buildings || activeBuildingMints.size === 0) {
+      return tokens;
+    }
+    // Only show tokens that are active in the world
+    return tokens.filter((t) => activeBuildingMints.has(t.mint));
+  }, [tokens, activeBuildingMints, worldState?.buildings]);
 
   useEffect(() => {
     const loadTokens = async () => {
@@ -79,13 +101,13 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
     return `${days}d ago`;
   };
 
-  if (tokens.length === 0) {
+  if (activeTokens.length === 0) {
     return (
       <div className="p-4 text-center">
-        <div className="text-2xl mb-2">📋</div>
-        <p className="font-pixel text-[10px] text-gray-400 mb-2">No buildings yet!</p>
+        <div className="text-2xl mb-2">🏗️</div>
+        <p className="font-pixel text-[10px] text-gray-400 mb-2">No active buildings</p>
         <p className="font-pixel text-[8px] text-gray-500">
-          Launch a token to build your first structure
+          Launch a token to add a building to the world
         </p>
       </div>
     );
@@ -99,15 +121,15 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
       >
         <div className="flex items-center gap-2">
           <span className="text-sm">🏢</span>
-          <span className="font-pixel text-[10px] text-bags-green">YOUR BUILDINGS</span>
-          <span className="font-pixel text-[8px] text-gray-500">({tokens.length})</span>
+          <span className="font-pixel text-[10px] text-bags-green">WORLD BUILDINGS</span>
+          <span className="font-pixel text-[8px] text-gray-500">({activeTokens.length})</span>
         </div>
         <span className="font-pixel text-[10px] text-gray-500">{isExpanded ? "▼" : "▶"}</span>
       </div>
 
       {isExpanded && (
         <div className="flex-1 overflow-y-auto">
-          {tokens.map((token, index) => (
+          {activeTokens.map((token, index) => (
             <div
               key={token.mint}
               className="p-3 border-b border-bags-green/10 hover:bg-bags-green/5 group"
