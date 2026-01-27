@@ -2100,6 +2100,7 @@ export class WorldScene extends Phaser.Scene {
 
   /**
    * Show Founder's Corner popup with pixel-art themed educational content
+   * Enhanced with CRT scanlines, animated elements, and retro terminal styling
    */
   private showFoundersPopup(type: string): void {
     // Don't open if popup already exists
@@ -2121,7 +2122,7 @@ export class WorldScene extends Phaser.Scene {
       GAME_WIDTH * 2,
       GAME_WIDTH * 2,
       0x0a0a0f,
-      0.85
+      0.88
     );
     overlay.setInteractive();
     overlay.on("pointerdown", () => this.hideFoundersPopup());
@@ -2136,19 +2137,29 @@ export class WorldScene extends Phaser.Scene {
     const panelH = Math.round(420 * s);
     const borderW = Math.round(4 * s);
 
-    // === PIXEL ART BORDER (multi-layer for chunky effect) ===
-    // Outer shadow
-    const shadow = this.add.rectangle(
-      centerX + Math.round(4 * s),
-      centerY + Math.round(4 * s),
+    // === PIXEL-PERFECT DROP SHADOW (layered for depth) ===
+    const shadowOffset = Math.round(6 * s);
+    const shadow1 = this.add.rectangle(
+      centerX + shadowOffset,
+      centerY + shadowOffset,
       panelW + borderW * 2,
       panelH + borderW * 2,
       0x000000,
-      0.6
+      0.4
     );
-    popup.add(shadow);
+    popup.add(shadow1);
+    const shadow2 = this.add.rectangle(
+      centerX + Math.round(3 * s),
+      centerY + Math.round(3 * s),
+      panelW + borderW * 2,
+      panelH + borderW * 2,
+      0x000000,
+      0.3
+    );
+    popup.add(shadow2);
 
-    // Outer border (theme accent color)
+    // === DOUBLE-LINE BORDER (classic terminal style) ===
+    // Outer border line
     const outerBorder = this.add.rectangle(
       centerX,
       centerY,
@@ -2158,173 +2169,399 @@ export class WorldScene extends Phaser.Scene {
     );
     popup.add(outerBorder);
 
-    // Inner border (dark)
-    const innerBorder = this.add.rectangle(
+    // Gap between borders (dark)
+    const borderGap = this.add.rectangle(
       centerX,
       centerY,
       panelW + borderW,
       panelH + borderW,
-      0x1a1a2e
+      0x0a0a0f
     );
+    popup.add(borderGap);
+
+    // Inner border line
+    const innerBorder = this.add.rectangle(centerX, centerY, panelW, panelH, theme.accent);
     popup.add(innerBorder);
 
-    // Main panel background (gradient effect via layered rectangles)
-    const panelDark = this.add.rectangle(centerX, centerY, panelW, panelH, 0x16213e);
+    // Main panel background with subtle dither texture
+    const panelDark = this.add.rectangle(
+      centerX,
+      centerY,
+      panelW - Math.round(4 * s),
+      panelH - Math.round(4 * s),
+      0x0f172a
+    );
     popup.add(panelDark);
 
-    // Subtle top highlight for depth
-    const topHighlight = this.add.rectangle(
-      centerX,
-      centerY - panelH / 2 + Math.round(30 * s),
-      panelW - Math.round(8 * s),
-      Math.round(60 * s),
-      0x1a2744,
-      0.5
+    // Inner bevel highlight (top/left edges)
+    const bevelLight = this.add.rectangle(
+      centerX - panelW / 2 + Math.round(4 * s),
+      centerY,
+      Math.round(2 * s),
+      panelH - Math.round(8 * s),
+      theme.accent,
+      0.15
     );
-    popup.add(topHighlight);
+    popup.add(bevelLight);
+    const bevelTop = this.add.rectangle(
+      centerX,
+      centerY - panelH / 2 + Math.round(4 * s),
+      panelW - Math.round(8 * s),
+      Math.round(2 * s),
+      theme.accent,
+      0.2
+    );
+    popup.add(bevelTop);
 
-    // === CORNER DECORATIONS (pixel art style) ===
-    const cornerSize = Math.round(8 * s);
-    const corners = [
-      { x: centerX - panelW / 2 + cornerSize, y: centerY - panelH / 2 + cornerSize },
-      { x: centerX + panelW / 2 - cornerSize, y: centerY - panelH / 2 + cornerSize },
-      { x: centerX - panelW / 2 + cornerSize, y: centerY + panelH / 2 - cornerSize },
-      { x: centerX + panelW / 2 - cornerSize, y: centerY + panelH / 2 - cornerSize },
-    ];
-    corners.forEach((corner) => {
-      const dot = this.add.rectangle(corner.x, corner.y, cornerSize, cornerSize, theme.accent, 0.8);
+    // === CRT SCANLINE OVERLAY ===
+    const scanlineSpacing = Math.round(3 * s);
+    for (let y = centerY - panelH / 2; y < centerY + panelH / 2; y += scanlineSpacing) {
+      const scanline = this.add.rectangle(
+        centerX,
+        y,
+        panelW - Math.round(8 * s),
+        1,
+        0x000000,
+        0.08
+      );
+      popup.add(scanline);
+    }
+
+    // === L-SHAPED CORNER DECORATIONS (pixel art flourishes) ===
+    const cornerLen = Math.round(16 * s);
+    const cornerThick = Math.round(4 * s);
+    const cornerInset = Math.round(8 * s);
+
+    // Helper to create L-shaped corner
+    const createCorner = (cx: number, cy: number, flipX: boolean, flipY: boolean) => {
+      const xDir = flipX ? -1 : 1;
+      const yDir = flipY ? -1 : 1;
+      // Horizontal bar
+      const hBar = this.add.rectangle(
+        cx + (xDir * cornerLen) / 2,
+        cy,
+        cornerLen,
+        cornerThick,
+        theme.accent
+      );
+      popup.add(hBar);
+      // Vertical bar
+      const vBar = this.add.rectangle(
+        cx,
+        cy + (yDir * cornerLen) / 2,
+        cornerThick,
+        cornerLen,
+        theme.accent
+      );
+      popup.add(vBar);
+      // Corner dot accent
+      const dot = this.add.rectangle(cx, cy, cornerThick, cornerThick, 0xffffff, 0.8);
       popup.add(dot);
-    });
+    };
+
+    // Place corners at panel edges
+    createCorner(
+      centerX - panelW / 2 + cornerInset,
+      centerY - panelH / 2 + cornerInset,
+      false,
+      false
+    );
+    createCorner(
+      centerX + panelW / 2 - cornerInset,
+      centerY - panelH / 2 + cornerInset,
+      true,
+      false
+    );
+    createCorner(
+      centerX - panelW / 2 + cornerInset,
+      centerY + panelH / 2 - cornerInset,
+      false,
+      true
+    );
+    createCorner(
+      centerX + panelW / 2 - cornerInset,
+      centerY + panelH / 2 - cornerInset,
+      true,
+      true
+    );
 
     // === HEADER SECTION ===
-    // Icon background (pixel circle effect)
+    const iconY = centerY - panelH / 2 + Math.round(45 * s);
+
+    // Icon container for animation
+    const iconContainer = this.add.container(centerX, iconY);
+    popup.add(iconContainer);
+
+    // Icon background (pixel octagon effect - double border)
     const iconBgOuter = this.add.rectangle(
-      centerX,
-      centerY - panelH / 2 + Math.round(45 * s),
-      Math.round(50 * s),
-      Math.round(50 * s),
+      0,
+      0,
+      Math.round(52 * s),
+      Math.round(52 * s),
       theme.accent
     );
-    popup.add(iconBgOuter);
+    iconContainer.add(iconBgOuter);
+    const iconBgMid = this.add.rectangle(0, 0, Math.round(48 * s), Math.round(48 * s), 0x0a0a0f);
+    iconContainer.add(iconBgMid);
+    const iconBgInner = this.add.rectangle(0, 0, Math.round(44 * s), Math.round(44 * s), 0x1a1a2e);
+    iconContainer.add(iconBgInner);
 
-    const iconBgInner = this.add.rectangle(
-      centerX,
-      centerY - panelH / 2 + Math.round(45 * s),
-      Math.round(44 * s),
-      Math.round(44 * s),
-      0x1a1a2e
+    // Pixel art icon glow effect
+    const iconGlow = this.add.rectangle(
+      0,
+      0,
+      Math.round(40 * s),
+      Math.round(40 * s),
+      theme.accent,
+      0.1
     );
-    popup.add(iconBgInner);
+    iconContainer.add(iconGlow);
 
     // Building icon (emoji representation)
-    const iconText = this.add.text(centerX, centerY - panelH / 2 + Math.round(45 * s), theme.icon, {
+    const iconText = this.add.text(0, 0, theme.icon, {
       fontFamily: "monospace",
-      fontSize: `${Math.round(20 * s)}px`,
+      fontSize: `${Math.round(22 * s)}px`,
     });
     iconText.setOrigin(0.5);
-    popup.add(iconText);
+    iconContainer.add(iconText);
 
-    // Title with pixel-style underline
+    // Animate icon with slow pulse and subtle rotation
+    this.tweens.add({
+      targets: iconContainer,
+      scaleX: { from: 1, to: 1.08 },
+      scaleY: { from: 1, to: 1.08 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+    this.tweens.add({
+      targets: iconGlow,
+      alpha: { from: 0.1, to: 0.3 },
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Title with glow effect
     const titleY = centerY - panelH / 2 + Math.round(85 * s);
+
+    // Title glow (behind main text)
+    const titleGlow = this.add.text(centerX, titleY, content.title, {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: `${Math.round(10 * s)}px`,
+      color: theme.titleColor,
+      fontStyle: "bold",
+    });
+    titleGlow.setOrigin(0.5);
+    titleGlow.setAlpha(0.3);
+    titleGlow.setBlendMode(Phaser.BlendModes.ADD);
+    popup.add(titleGlow);
+
+    // Main title text
     const titleText = this.add.text(centerX, titleY, content.title, {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(11 * s)}px`,
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: `${Math.round(10 * s)}px`,
       color: theme.titleColor,
       fontStyle: "bold",
     });
     titleText.setOrigin(0.5);
     popup.add(titleText);
 
-    // Pixel divider (dashed style - wider for larger panel)
+    // Animated title glow pulse
+    this.tweens.add({
+      targets: titleGlow,
+      alpha: { from: 0.2, to: 0.5 },
+      scaleX: { from: 1, to: 1.02 },
+      scaleY: { from: 1, to: 1.02 },
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Pixel divider (terminal-style double line)
     const dividerY = titleY + Math.round(18 * s);
-    for (let i = 0; i < 14; i++) {
-      const dashX = centerX - Math.round(78 * s) + i * Math.round(12 * s);
-      const dash = this.add.rectangle(
-        dashX,
-        dividerY,
-        Math.round(8 * s),
-        Math.round(2 * s),
-        theme.accent,
-        0.7
-      );
-      popup.add(dash);
-    }
+    const dividerWidth = panelW - Math.round(48 * s);
+
+    // Top divider line
+    const dividerTop = this.add.rectangle(
+      centerX,
+      dividerY - Math.round(2 * s),
+      dividerWidth,
+      Math.round(2 * s),
+      theme.accent,
+      0.8
+    );
+    popup.add(dividerTop);
+    // Bottom divider line
+    const dividerBottom = this.add.rectangle(
+      centerX,
+      dividerY + Math.round(2 * s),
+      dividerWidth,
+      Math.round(2 * s),
+      theme.accent,
+      0.4
+    );
+    popup.add(dividerBottom);
 
     // === CONTENT SECTION ===
-    // Section backgrounds for visual hierarchy (taller for more content)
-    const sectionY = centerY + Math.round(30 * s);
+    // Calculate section Y based on whether we have a tip
+    const hasTip = content.tip && content.tip.length > 0;
+    const sectionHeight = hasTip ? Math.round(220 * s) : Math.round(250 * s);
+    const sectionY = centerY + Math.round(25 * s);
+
+    // Section background with inner shadow effect
+    const sectionBgOuter = this.add.rectangle(
+      centerX,
+      sectionY,
+      panelW - Math.round(20 * s),
+      sectionHeight,
+      theme.accent,
+      0.2
+    );
+    popup.add(sectionBgOuter);
+
     const sectionBg = this.add.rectangle(
       centerX,
       sectionY,
       panelW - Math.round(24 * s),
-      Math.round(230 * s),
-      0x0f172a,
-      0.6
+      sectionHeight - Math.round(4 * s),
+      0x0a0e17,
+      0.95
     );
-    sectionBg.setStrokeStyle(1, theme.accent, 0.3);
     popup.add(sectionBg);
 
-    // Content text (smaller font to fit more)
-    const contentText = this.add.text(centerX, sectionY, content.body, {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(7 * s)}px`,
-      color: "#e2e8f0",
-      align: "left",
-      lineSpacing: 4,
-      wordWrap: { width: panelW - Math.round(40 * s) },
-    });
-    contentText.setOrigin(0.5, 0.5);
-    popup.add(contentText);
-
-    // === PRO TIP SECTION ===
-    const tipY = centerY + panelH / 2 - Math.round(40 * s);
-    const tipBg = this.add.rectangle(
+    // Inner shadow (top edge)
+    const sectionShadow = this.add.rectangle(
       centerX,
-      tipY,
-      panelW - Math.round(24 * s),
-      Math.round(28 * s),
-      theme.accent,
-      0.15
+      sectionY - sectionHeight / 2 + Math.round(4 * s),
+      panelW - Math.round(28 * s),
+      Math.round(8 * s),
+      0x000000,
+      0.3
     );
-    tipBg.setStrokeStyle(1, theme.accent, 0.5);
-    popup.add(tipBg);
+    popup.add(sectionShadow);
 
-    const tipLabel = this.add.text(centerX - panelW / 2 + Math.round(24 * s), tipY, "TIP:", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(7 * s)}px`,
-      color: theme.titleColor,
-      fontStyle: "bold",
+    // Content text with pixel font - color code different line types
+    const contentLines = content.body.split("\n");
+    const lineHeight = Math.round(11 * s);
+    const startY = sectionY - sectionHeight / 2 + Math.round(16 * s);
+
+    contentLines.forEach((line, i) => {
+      // Determine line color based on content
+      let lineColor = "#cbd5e1"; // Default gray
+      if (line.startsWith(" +") || line.startsWith(" [x]")) {
+        lineColor = "#4ade80"; // Green for included/checked items
+      } else if (line.startsWith(" [ ]")) {
+        lineColor = "#fbbf24"; // Gold for optional items
+      } else if (
+        line.includes("CHECKLIST") ||
+        line.includes("WHAT YOU GET") ||
+        line.includes("IMPORTANT")
+      ) {
+        lineColor = "#60a5fa"; // Cyan for headers
+      } else if (line.includes("ORDER:") || line.includes("COST:") || line.includes("TIME:")) {
+        lineColor = theme.titleColor; // Theme color for key info
+      }
+
+      const lineText = this.add.text(
+        centerX - panelW / 2 + Math.round(28 * s),
+        startY + i * lineHeight,
+        line,
+        {
+          fontFamily: '"Press Start 2P", monospace',
+          fontSize: `${Math.round(6 * s)}px`,
+          color: lineColor,
+        }
+      );
+      lineText.setOrigin(0, 0);
+      popup.add(lineText);
     });
-    tipLabel.setOrigin(0, 0.5);
-    popup.add(tipLabel);
 
-    const tipText = this.add.text(centerX - panelW / 2 + Math.round(55 * s), tipY, content.tip, {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(6.5 * s)}px`,
-      color: "#94a3b8",
-    });
-    tipText.setOrigin(0, 0.5);
-    popup.add(tipText);
+    // === PRO TIP SECTION (only if tip exists) ===
+    if (hasTip) {
+      const tipY = centerY + panelH / 2 - Math.round(45 * s);
+      const tipBgOuter = this.add.rectangle(
+        centerX,
+        tipY,
+        panelW - Math.round(20 * s),
+        Math.round(30 * s),
+        theme.accent,
+        0.3
+      );
+      popup.add(tipBgOuter);
 
-    // === CLOSE BUTTON (pixel style) ===
-    const closeBtnX = centerX + panelW / 2 - Math.round(18 * s);
-    const closeBtnY = centerY - panelH / 2 + Math.round(18 * s);
+      const tipBg = this.add.rectangle(
+        centerX,
+        tipY,
+        panelW - Math.round(24 * s),
+        Math.round(26 * s),
+        0x0a0e17,
+        0.9
+      );
+      popup.add(tipBg);
 
-    // Button pixel border
+      const tipLabel = this.add.text(centerX - panelW / 2 + Math.round(28 * s), tipY, "TIP:", {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: `${Math.round(6 * s)}px`,
+        color: "#fbbf24",
+        fontStyle: "bold",
+      });
+      tipLabel.setOrigin(0, 0.5);
+      popup.add(tipLabel);
+
+      const tipText = this.add.text(centerX - panelW / 2 + Math.round(65 * s), tipY, content.tip, {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: `${Math.round(5.5 * s)}px`,
+        color: "#94a3b8",
+      });
+      tipText.setOrigin(0, 0.5);
+      popup.add(tipText);
+    }
+
+    // === CLOSE BUTTON (enhanced pixel style with glow) ===
+    const closeBtnX = centerX + panelW / 2 - Math.round(20 * s);
+    const closeBtnY = centerY - panelH / 2 + Math.round(20 * s);
+
+    // Button glow effect (behind)
+    const closeBtnGlow = this.add.rectangle(
+      closeBtnX,
+      closeBtnY,
+      Math.round(30 * s),
+      Math.round(30 * s),
+      0xef4444,
+      0.2
+    );
+    popup.add(closeBtnGlow);
+
+    // Button outer border (3D effect)
     const closeBtnOuter = this.add.rectangle(
       closeBtnX,
       closeBtnY,
-      Math.round(24 * s),
-      Math.round(24 * s),
+      Math.round(26 * s),
+      Math.round(26 * s),
       0xef4444
     );
     popup.add(closeBtnOuter);
 
+    // Button mid border
+    const closeBtnMid = this.add.rectangle(
+      closeBtnX,
+      closeBtnY,
+      Math.round(22 * s),
+      Math.round(22 * s),
+      0x7f1d1d
+    );
+    popup.add(closeBtnMid);
+
+    // Button inner face
     const closeBtnInner = this.add.rectangle(
       closeBtnX,
       closeBtnY,
-      Math.round(20 * s),
-      Math.round(20 * s),
+      Math.round(18 * s),
+      Math.round(18 * s),
       0x1a1a2e
     );
     closeBtnInner.setInteractive({ useHandCursor: true });
@@ -2332,35 +2569,65 @@ export class WorldScene extends Phaser.Scene {
     closeBtnInner.on("pointerover", () => {
       closeBtnInner.setFillStyle(0x2a2a3e);
       closeBtnOuter.setFillStyle(0xff6b6b);
+      closeBtnGlow.setAlpha(0.5);
+      closeBtn.setColor("#ffffff");
     });
     closeBtnInner.on("pointerout", () => {
       closeBtnInner.setFillStyle(0x1a1a2e);
       closeBtnOuter.setFillStyle(0xef4444);
+      closeBtnGlow.setAlpha(0.2);
+      closeBtn.setColor("#ef4444");
     });
     popup.add(closeBtnInner);
 
+    // X text with pixel font
     const closeBtn = this.add.text(closeBtnX, closeBtnY, "X", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(10 * s)}px`,
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: `${Math.round(9 * s)}px`,
       color: "#ef4444",
       fontStyle: "bold",
     });
     closeBtn.setOrigin(0.5);
     popup.add(closeBtn);
 
-    // === FOOTER ===
-    const footerText = this.add.text(
-      centerX,
-      centerY + panelH / 2 - Math.round(12 * s),
-      "[ Click anywhere to close ]",
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(6 * s)}px`,
-        color: "#475569",
-      }
-    );
+    // === FOOTER (blinking "click to close") ===
+    const footerY = centerY + panelH / 2 - Math.round(14 * s);
+
+    // Footer brackets (static)
+    const footerLeft = this.add.text(centerX - Math.round(100 * s), footerY, "[", {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: `${Math.round(5 * s)}px`,
+      color: "#475569",
+    });
+    footerLeft.setOrigin(0.5);
+    popup.add(footerLeft);
+
+    const footerRight = this.add.text(centerX + Math.round(100 * s), footerY, "]", {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: `${Math.round(5 * s)}px`,
+      color: "#475569",
+    });
+    footerRight.setOrigin(0.5);
+    popup.add(footerRight);
+
+    // Footer text (blinking)
+    const footerText = this.add.text(centerX, footerY, "Click anywhere to close", {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: `${Math.round(5 * s)}px`,
+      color: "#64748b",
+    });
     footerText.setOrigin(0.5);
     popup.add(footerText);
+
+    // Subtle blink animation for footer
+    this.tweens.add({
+      targets: footerText,
+      alpha: { from: 1, to: 0.4 },
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
 
     // === ENTRANCE ANIMATION ===
     popup.setAlpha(0);
@@ -2384,11 +2651,14 @@ export class WorldScene extends Phaser.Scene {
   } {
     switch (type) {
       case "workshop":
-        return { accent: 0x4ade80, titleColor: "#4ade80", icon: "🔧" }; // Green - DexScreener
+        // Terminal green - classic DexScreener/hacker aesthetic
+        return { accent: 0x22c55e, titleColor: "#22c55e", icon: "⚙" };
       case "studio":
-        return { accent: 0xfbbf24, titleColor: "#fbbf24", icon: "🎨" }; // Gold - Art
+        // Gold - creative/art theme
+        return { accent: 0xfbbf24, titleColor: "#fbbf24", icon: "🎨" };
       case "social":
-        return { accent: 0x60a5fa, titleColor: "#60a5fa", icon: "🌐" }; // Blue - Social
+        // Cyan/blue - social/web theme
+        return { accent: 0x38bdf8, titleColor: "#38bdf8", icon: "🌐" };
       default:
         return { accent: 0x4ade80, titleColor: "#4ade80", icon: "📋" };
     }
@@ -2744,7 +3014,7 @@ CHECKLIST BEFORE ORDERING:
 
 IMPORTANT: You need the wallet that
 created the token to verify ownership.`,
-          tip: "Wait 24h after launch before ordering!",
+          tip: "",
         };
 
       case "studio":
@@ -7009,28 +7279,23 @@ Use: bags.fm/[yourname]`,
     nameText.setOrigin(0.5, 0.5);
 
     if (isTreasury) {
-      // Creator Rewards Hub tooltip
-      const descText = this.add.text(0, -12, "Top 3 Creators Get Paid", {
+      // Community Fund tooltip
+      const descText = this.add.text(0, -12, "Ghost's 5% Contribution", {
         fontFamily: "monospace",
         fontSize: "10px",
         color: "#4ade80",
       });
       descText.setOrigin(0.5, 0.5);
 
-      const breakdownText = this.add.text(
-        0,
-        4,
-        "10 SOL threshold or 5 day timer\n50% / 30% / 20% split",
-        {
-          fontFamily: "monospace",
-          fontSize: "6px",
-          color: "#9ca3af",
-          align: "center",
-        }
-      );
+      const breakdownText = this.add.text(0, 4, "Funds Casino, features & dev\nZero creator fees", {
+        fontFamily: "monospace",
+        fontSize: "6px",
+        color: "#9ca3af",
+        align: "center",
+      });
       breakdownText.setOrigin(0.5, 0.5);
 
-      const clickText = this.add.text(0, 24, "🏆 Click to view rewards hub", {
+      const clickText = this.add.text(0, 24, "👻 Click to view fund", {
         fontFamily: "monospace",
         fontSize: "9px",
         color: "#60a5fa",
@@ -7098,12 +7363,14 @@ Use: bags.fm/[yourname]`,
       const isOracleBuilding = building.id.includes("Oracle") || building.symbol === "ORACLE";
       const isCasinoBuilding = building.id.includes("Casino") || building.symbol === "CASINO";
       const isTerminalBuilding = building.id.includes("Terminal") || building.symbol === "TERMINAL";
-      const actionText = building.isMansion || isOracleBuilding || isCasinoBuilding || isTerminalBuilding
-        ? "Enter"
-        : "Click to trade";
-      const actionColor = building.isMansion || isOracleBuilding || isCasinoBuilding || isTerminalBuilding
-        ? "#fbbf24"
-        : "#6b7280";
+      const actionText =
+        building.isMansion || isOracleBuilding || isCasinoBuilding || isTerminalBuilding
+          ? "Enter"
+          : "Click to trade";
+      const actionColor =
+        building.isMansion || isOracleBuilding || isCasinoBuilding || isTerminalBuilding
+          ? "#fbbf24"
+          : "#6b7280";
       const clickText = this.add.text(0, statusText ? 40 : 32, actionText, {
         fontFamily: "monospace",
         fontSize: "9px",

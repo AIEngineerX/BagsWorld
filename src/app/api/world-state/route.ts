@@ -555,14 +555,14 @@ async function enrichTokenWithSDK(
 // Ecosystem rewards wallet - always visible for transparency
 const TREASURY_WALLET = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC";
 
-// Creator Rewards Hub - ALWAYS appears in the world (permanent landmark)
-// Links to Solscan so users can verify the creator rewards system
+// Community Fund - ALWAYS appears in the world (permanent landmark)
+// Links to Solscan so users can verify Ghost's community contributions
 const TREASURY_BUILDING: RegisteredToken = {
   mint: "TreasuryBagsWorld1111111111111111111111111111",
-  name: "Creator Rewards Hub",
-  symbol: "REWARDS",
+  name: "Community Fund",
+  symbol: "FUND",
   description:
-    "Top 3 creators get paid. 10 SOL threshold or 5 days. 50/30/20 split. Click to verify on Solscan!",
+    "Ghost's 5% $BagsWorld contribution funds Casino, features & development. Zero creator fees. Click to verify on Solscan!",
   imageUrl: "/assets/buildings/treasury.png",
   creator: TREASURY_WALLET,
   createdAt: Date.now() - 86400000 * 365, // 1 year ago (always been here)
