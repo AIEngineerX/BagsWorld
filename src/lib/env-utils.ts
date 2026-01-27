@@ -39,9 +39,14 @@ export function isProduction(): boolean {
 
 /**
  * Detect if running in development/local environment.
+ * Returns true when not in production runtime, allowing fallbacks during:
+ * - Local development
+ * - CI/CD build steps (secrets not needed for compilation)
  */
 export function isDevelopment(): boolean {
-  return process.env.NODE_ENV === "development" || (!isProduction() && !process.env.CI);
+  // If not in production runtime, allow fallbacks
+  // This covers both local dev and CI builds
+  return !isProduction();
 }
 
 /**
