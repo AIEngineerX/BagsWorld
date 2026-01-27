@@ -55,6 +55,10 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
   const [filterFeatured, setFilterFeatured] = useState<boolean | "all">("all");
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Add building state
+  const [newMint, setNewMint] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+
   // Local edit state for the selected building
   const [editLevel, setEditLevel] = useState<number | "auto">("auto");
   const [editStyle, setEditStyle] = useState<number | "auto">("auto");
@@ -194,6 +198,36 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
     await Promise.all(updates);
   };
 
+  // Add new building by mint
+  const addBuilding = async () => {
+    if (!newMint.trim() || !sessionToken) return;
+
+    setIsAdding(true);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ action: "add_token", data: { mint: newMint.trim() } }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        addLog(result.error || "Failed to add building", "error");
+        return;
+      }
+      addLog(result.message || `Added building: ${result.token?.symbol || newMint.slice(0, 8)}`, "success");
+      setNewMint("");
+      setSelectedMint(newMint.trim()); // Select the newly added building
+      onRefresh();
+    } catch (err) {
+      addLog("Network error adding building", "error");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   // Calculate building level from market cap
   const calculateLevel = (marketCap: number): number => {
     if (marketCap >= 10000000) return 5;
@@ -251,6 +285,30 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
         {/* Left Panel: Building List */}
         <div className="lg:col-span-1 bg-bags-darker border border-red-500/30 p-3">
           <h3 className="font-pixel text-[10px] text-red-400 mb-3">ALL BUILDINGS</h3>
+
+          {/* Add New Building */}
+          <div className="mb-3 p-2 bg-green-500/10 border border-green-500/30">
+            <p className="font-pixel text-[8px] text-green-400 mb-2">+ ADD NEW BUILDING</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Paste token mint address..."
+                value={newMint}
+                onChange={(e) => setNewMint(e.target.value)}
+                className="flex-1 bg-black/50 border border-gray-700 px-2 py-1 font-mono text-[8px] text-white placeholder-gray-600"
+              />
+              <button
+                onClick={addBuilding}
+                disabled={isAdding || !newMint.trim()}
+                className="font-pixel text-[8px] text-green-400 hover:text-green-300 bg-green-500/20 px-2 py-1 border border-green-500/30 disabled:opacity-50"
+              >
+                {isAdding ? "..." : "ADD"}
+              </button>
+            </div>
+            <p className="font-pixel text-[6px] text-gray-500 mt-1">
+              Auto-fetches from DexScreener/Bags.fm
+            </p>
+          </div>
 
           {/* Search and Filters */}
           <div className="space-y-2 mb-3">
