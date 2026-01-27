@@ -38,11 +38,16 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
 
   // Filter tokens to only show active buildings (not decayed)
   const activeTokens = useMemo(() => {
-    // If no worldState yet, show all tokens
-    if (!worldState?.buildings || activeBuildingMints.size === 0) {
+    // If worldState loaded but no buildings, show empty (all decayed)
+    if (worldState?.buildings && activeBuildingMints.size === 0) {
+      return [];
+    }
+    // If worldState not loaded yet, show tokens from database
+    // (database already filters out decayed tokens with health <= 10)
+    if (!worldState?.buildings) {
       return tokens;
     }
-    // Only show tokens that are active in the world
+    // Filter to only show tokens that are active in the world
     return tokens.filter((t) => activeBuildingMints.has(t.mint));
   }, [tokens, activeBuildingMints, worldState?.buildings]);
 

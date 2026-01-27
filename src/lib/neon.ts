@@ -157,7 +157,11 @@ export async function initializeDatabase(): Promise<boolean> {
   }
 }
 
+// Decay threshold - buildings with health <= this are hidden
+const DECAY_REMOVE_THRESHOLD = 10;
+
 // Fetch all global tokens (visible to everyone)
+// Filters out decayed buildings (health <= 10)
 export async function getGlobalTokens(): Promise<GlobalToken[]> {
   const sql = await getSql();
   if (!sql) return [];
@@ -165,7 +169,13 @@ export async function getGlobalTokens(): Promise<GlobalToken[]> {
   try {
     // First ensure tables exist
     await initializeDatabase();
-    const rows = await sql`SELECT * FROM tokens ORDER BY created_at DESC`;
+    // Only return tokens with health above decay threshold
+    // NULL health means new token (not yet processed), so include those
+    const rows = await sql`
+      SELECT * FROM tokens
+      WHERE current_health IS NULL OR current_health > ${DECAY_REMOVE_THRESHOLD}
+      ORDER BY created_at DESC
+    `;
     return rows as GlobalToken[];
   } catch (error) {
     console.error("[Neon] Error fetching global tokens:", error);
