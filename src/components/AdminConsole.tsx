@@ -337,7 +337,8 @@ export function AdminConsole() {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        addLog(`Action "${action}" completed`, "success");
+        const msg = result.message || `Action "${action}" completed`;
+        addLog(msg, "success");
         return true;
       } else {
         addLog(`Action "${action}" failed: ${result.error}`, "error");

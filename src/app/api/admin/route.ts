@@ -379,8 +379,11 @@ async function handleUpdateToken(data: { mint: string; updates: Partial<GlobalTo
 // Handle token deletion from global DB
 async function handleDeleteToken(data: { mint: string }) {
   // Validate mint address
-  if (!data.mint || !isValidSolanaAddress(data.mint)) {
-    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  if (!data.mint) {
+    return NextResponse.json({ error: "Missing mint address" }, { status: 400 });
+  }
+  if (!isValidSolanaAddress(data.mint)) {
+    return NextResponse.json({ error: `Invalid mint address: "${data.mint.slice(0, 20)}..."` }, { status: 400 });
   }
 
   if (!isNeonConfigured()) {
@@ -582,7 +585,7 @@ async function handleSetZone(data: { mint: string; zone: string | null }) {
 }
 
 // Handle adding token manually by mint
-async function handleAddToken(data: { mint: string }) {
+async function handleAddToken(data: { mint: string; name?: string; symbol?: string }) {
   // Validate mint address
   if (!data.mint || !isValidSolanaAddress(data.mint)) {
     return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
@@ -593,29 +596,68 @@ async function handleAddToken(data: { mint: string }) {
   }
 
   try {
-    // Fetch token info from DexScreener
-    const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${data.mint}`);
+    let tokenName = data.name || "Unknown Token";
+    let tokenSymbol = data.symbol || "???";
+    let imageUrl: string | undefined;
+    let marketCap = 0;
+    let volume24h = 0;
+    let source = "manual";
 
-    if (!dexResponse.ok) {
-      return NextResponse.json({ error: "Token not found on DexScreener" }, { status: 404 });
+    // Try DexScreener first
+    try {
+      const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${data.mint}`);
+      if (dexResponse.ok) {
+        const dexData = await dexResponse.json();
+        const pair = dexData.pairs?.[0];
+        if (pair) {
+          tokenName = pair.baseToken?.name || tokenName;
+          tokenSymbol = pair.baseToken?.symbol || tokenSymbol;
+          imageUrl = pair.info?.imageUrl;
+          marketCap = pair.marketCap || pair.fdv || 0;
+          volume24h = pair.volume?.h24 || 0;
+          source = "dexscreener";
+        }
+      }
+    } catch (e) {
+      console.log("DexScreener lookup failed, trying Bags.fm...");
     }
 
-    const dexData = await dexResponse.json();
-    const pair = dexData.pairs?.[0];
-
-    if (!pair) {
-      return NextResponse.json({ error: "No trading pairs found" }, { status: 404 });
+    // If DexScreener didn't find it, try Bags.fm API
+    if (source === "manual" && process.env.BAGS_API_KEY) {
+      try {
+        const bagsUrl = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
+        const bagsResponse = await fetch(
+          `${bagsUrl}/token-launch/creator/v3?mint=${data.mint}`,
+          {
+            headers: {
+              "x-api-key": process.env.BAGS_API_KEY,
+            },
+          }
+        );
+        if (bagsResponse.ok) {
+          const bagsData = await bagsResponse.json();
+          if (bagsData.data?.tokenLaunchInfo) {
+            const info = bagsData.data.tokenLaunchInfo;
+            tokenName = info.name || tokenName;
+            tokenSymbol = info.symbol || tokenSymbol;
+            imageUrl = info.imageUrl || imageUrl;
+            source = "bags.fm";
+          }
+        }
+      } catch (e) {
+        console.log("Bags.fm lookup failed, using manual entry...");
+      }
     }
 
     const token: GlobalToken = {
       mint: data.mint,
-      name: pair.baseToken?.name || "Unknown",
-      symbol: pair.baseToken?.symbol || "???",
-      description: `Added via admin panel`,
-      image_url: pair.info?.imageUrl || undefined,
+      name: tokenName,
+      symbol: tokenSymbol,
+      description: `Added via admin panel (${source})`,
+      image_url: imageUrl,
       creator_wallet: "admin-added",
-      market_cap: pair.marketCap || pair.fdv || 0,
-      volume_24h: pair.volume?.h24 || 0,
+      market_cap: marketCap,
+      volume_24h: volume24h,
     };
 
     const success = await saveGlobalToken(token);
@@ -624,7 +666,14 @@ async function handleAddToken(data: { mint: string }) {
       return NextResponse.json({ error: "Failed to save token" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, token });
+    return NextResponse.json({
+      success: true,
+      token,
+      source,
+      message: source === "manual"
+        ? "Token added with minimal info. Update name/symbol manually if needed."
+        : `Token info fetched from ${source}`
+    });
   } catch (error) {
     console.error("Add token error:", error);
     return NextResponse.json({ error: "Failed to add token" }, { status: 500 });
