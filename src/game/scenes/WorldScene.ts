@@ -50,11 +50,20 @@ export class WorldScene extends Phaser.Scene {
   private gainNode: GainNode | null = null;
   private musicInterval: number | null = null;
   private currentTrack = 0;
-  private trackNames = ["Adventure", "Bags Anthem", "Night Market", "Victory March"];
+  private trackNames = [
+    "Adventure",
+    "Bags Anthem",
+    "Night Market",
+    "Victory March",
+    "Route 101",
+    "Pokemon Center",
+    "Mystery Dungeon",
+  ];
 
   // Store bound event handlers for cleanup
   private boundToggleMusic: (() => void) | null = null;
   private boundSkipTrack: (() => void) | null = null;
+  private boundPrevTrack: (() => void) | null = null;
   private boundBotEffect: ((e: Event) => void) | null = null;
   private boundBotAnimal: ((e: Event) => void) | null = null;
 
@@ -170,6 +179,10 @@ export class WorldScene extends Phaser.Scene {
     // Listen for track skip (store bound handler for cleanup)
     this.boundSkipTrack = () => this.skipTrack();
     window.addEventListener("bagsworld-skip-track", this.boundSkipTrack);
+
+    // Listen for previous track (store bound handler for cleanup)
+    this.boundPrevTrack = () => this.prevTrack();
+    window.addEventListener("bagsworld-prev-track", this.boundPrevTrack);
 
     // Listen for bot effect commands
     this.boundBotEffect = (e: Event) => this.handleBotEffect(e as CustomEvent);
@@ -2959,6 +2972,10 @@ Use: bags.fm/[yourname]`,
       window.removeEventListener("bagsworld-skip-track", this.boundSkipTrack);
       this.boundSkipTrack = null;
     }
+    if (this.boundPrevTrack) {
+      window.removeEventListener("bagsworld-prev-track", this.boundPrevTrack);
+      this.boundPrevTrack = null;
+    }
     if (this.boundBotEffect) {
       window.removeEventListener("bagsworld-bot-effect", this.boundBotEffect);
       this.boundBotEffect = null;
@@ -3932,6 +3949,15 @@ Use: bags.fm/[yourname]`,
       case 3:
         this.playVictoryMarch();
         break;
+      case 4:
+        this.playRoute101();
+        break;
+      case 5:
+        this.playPokemonCenter();
+        break;
+      case 6:
+        this.playMysteryDungeon();
+        break;
       default:
         this.playPokemonMelody();
     }
@@ -3946,6 +3972,23 @@ Use: bags.fm/[yourname]`,
 
     // Move to next track
     this.currentTrack = (this.currentTrack + 1) % this.trackNames.length;
+    this.emitTrackChange();
+
+    // Play new track if music is on
+    if (this.musicPlaying && this.audioContext && this.gainNode) {
+      this.playCurrentTrack();
+    }
+  }
+
+  private prevTrack(): void {
+    // Stop current melody
+    if (this.musicInterval) {
+      clearTimeout(this.musicInterval);
+      this.musicInterval = null;
+    }
+
+    // Move to previous track (wrap around)
+    this.currentTrack = (this.currentTrack - 1 + this.trackNames.length) % this.trackNames.length;
     this.emitTrackChange();
 
     // Play new track if music is on
@@ -4245,6 +4288,226 @@ Use: bags.fm/[yourname]`,
     bass.forEach((note) => {
       if (note.freq > 0) {
         this.playNote(note.freq, bassTime, note.duration * 0.9, 0.03, "triangle");
+      }
+      bassTime += note.duration;
+    });
+
+    this.musicInterval = window.setTimeout(
+      () => {
+        if (this.musicPlaying) {
+          this.playCurrentTrack();
+        }
+      },
+      (totalDuration + 2) * 1000
+    );
+  }
+
+  // Track 5: Route 101 - Cheerful walking/exploration theme
+  private playRoute101(): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    // Cheerful, bouncy melody - reminiscent of Pokemon routes
+    const notes = [
+      // Opening phrase - bright and cheerful
+      { freq: 523.25, duration: 0.4 }, // C5
+      { freq: 587.33, duration: 0.4 }, // D5
+      { freq: 659.25, duration: 0.6 }, // E5
+      { freq: 0, duration: 0.3 }, // Rest
+      { freq: 587.33, duration: 0.4 }, // D5
+      { freq: 523.25, duration: 0.6 }, // C5
+      { freq: 0, duration: 0.5 }, // Rest
+
+      // Second phrase - playful variation
+      { freq: 440.0, duration: 0.4 }, // A4
+      { freq: 523.25, duration: 0.4 }, // C5
+      { freq: 587.33, duration: 0.5 }, // D5
+      { freq: 659.25, duration: 0.7 }, // E5
+      { freq: 0, duration: 0.6 }, // Rest
+
+      // Third phrase - descending
+      { freq: 659.25, duration: 0.4 }, // E5
+      { freq: 587.33, duration: 0.4 }, // D5
+      { freq: 523.25, duration: 0.4 }, // C5
+      { freq: 440.0, duration: 0.6 }, // A4
+      { freq: 0, duration: 0.8 }, // Rest
+
+      // Resolution phrase
+      { freq: 392.0, duration: 0.5 }, // G4
+      { freq: 440.0, duration: 0.4 }, // A4
+      { freq: 523.25, duration: 0.8 }, // C5
+      { freq: 0, duration: 1.5 }, // Long rest before loop
+    ];
+
+    const bass = [
+      { freq: 130.81, duration: 2.0 }, // C3
+      { freq: 0, duration: 0.5 },
+      { freq: 110.0, duration: 2.0 }, // A2
+      { freq: 0, duration: 0.5 },
+      { freq: 146.83, duration: 2.0 }, // D3
+      { freq: 0, duration: 0.5 },
+      { freq: 130.81, duration: 2.5 }, // C3
+      { freq: 0, duration: 1.5 },
+    ];
+
+    let time = this.audioContext.currentTime + 0.1;
+    const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
+
+    notes.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, time, note.duration * 0.85, 0.08, "sine");
+      }
+      time += note.duration;
+    });
+
+    let bassTime = this.audioContext.currentTime + 0.1;
+    bass.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, bassTime, note.duration * 0.9, 0.04, "triangle");
+      }
+      bassTime += note.duration;
+    });
+
+    this.musicInterval = window.setTimeout(
+      () => {
+        if (this.musicPlaying) {
+          this.playCurrentTrack();
+        }
+      },
+      (totalDuration + 2) * 1000
+    );
+  }
+
+  // Track 6: Pokemon Center - Healing/rest theme
+  private playPokemonCenter(): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    // Soothing, comforting melody - the classic healing feel
+    const notes = [
+      // Iconic opening
+      { freq: 659.25, duration: 0.5 }, // E5
+      { freq: 783.99, duration: 0.5 }, // G5
+      { freq: 880.0, duration: 0.7 }, // A5
+      { freq: 0, duration: 0.4 }, // Rest
+      { freq: 783.99, duration: 0.4 }, // G5
+      { freq: 659.25, duration: 0.6 }, // E5
+      { freq: 0, duration: 0.8 }, // Rest
+
+      // Gentle continuation
+      { freq: 523.25, duration: 0.5 }, // C5
+      { freq: 587.33, duration: 0.4 }, // D5
+      { freq: 659.25, duration: 0.6 }, // E5
+      { freq: 0, duration: 0.5 }, // Rest
+      { freq: 587.33, duration: 0.4 }, // D5
+      { freq: 523.25, duration: 0.8 }, // C5
+      { freq: 0, duration: 1.0 }, // Rest
+
+      // Resolving phrase
+      { freq: 440.0, duration: 0.5 }, // A4
+      { freq: 523.25, duration: 0.5 }, // C5
+      { freq: 659.25, duration: 0.7 }, // E5
+      { freq: 0, duration: 0.4 }, // Rest
+      { freq: 523.25, duration: 0.5 }, // C5
+      { freq: 440.0, duration: 0.8 }, // A4
+      { freq: 0, duration: 2.0 }, // Long rest
+    ];
+
+    const pad = [
+      { freq: 220.0, duration: 3.0 }, // A3
+      { freq: 0, duration: 1.0 },
+      { freq: 261.63, duration: 3.0 }, // C4
+      { freq: 0, duration: 1.0 },
+      { freq: 220.0, duration: 3.5 }, // A3
+      { freq: 0, duration: 2.0 },
+    ];
+
+    let time = this.audioContext.currentTime + 0.1;
+    const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
+
+    notes.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, time, note.duration * 0.9, 0.07, "sine");
+      }
+      time += note.duration;
+    });
+
+    let padTime = this.audioContext.currentTime + 0.1;
+    pad.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, padTime, note.duration * 0.95, 0.03, "sine");
+      }
+      padTime += note.duration;
+    });
+
+    this.musicInterval = window.setTimeout(
+      () => {
+        if (this.musicPlaying) {
+          this.playCurrentTrack();
+        }
+      },
+      (totalDuration + 2) * 1000
+    );
+  }
+
+  // Track 7: Mystery Dungeon - Mysterious exploration theme
+  private playMysteryDungeon(): void {
+    if (!this.audioContext || !this.gainNode) return;
+
+    // Mysterious, slightly tense but adventurous melody
+    const notes = [
+      // Opening - mysterious
+      { freq: 329.63, duration: 0.8 }, // E4
+      { freq: 0, duration: 0.4 }, // Rest
+      { freq: 311.13, duration: 0.6 }, // Eb4
+      { freq: 329.63, duration: 0.8 }, // E4
+      { freq: 0, duration: 0.6 }, // Rest
+
+      // Building tension
+      { freq: 392.0, duration: 0.6 }, // G4
+      { freq: 369.99, duration: 0.5 }, // F#4
+      { freq: 329.63, duration: 0.7 }, // E4
+      { freq: 0, duration: 0.8 }, // Rest
+
+      // Mysterious phrase
+      { freq: 293.66, duration: 0.6 }, // D4
+      { freq: 329.63, duration: 0.5 }, // E4
+      { freq: 392.0, duration: 0.8 }, // G4
+      { freq: 0, duration: 0.5 }, // Rest
+      { freq: 369.99, duration: 0.6 }, // F#4
+      { freq: 329.63, duration: 1.0 }, // E4
+      { freq: 0, duration: 1.0 }, // Rest
+
+      // Resolution with minor feel
+      { freq: 261.63, duration: 0.7 }, // C4
+      { freq: 293.66, duration: 0.5 }, // D4
+      { freq: 329.63, duration: 1.2 }, // E4
+      { freq: 0, duration: 2.0 }, // Long rest before loop
+    ];
+
+    const bass = [
+      { freq: 82.41, duration: 3.0 }, // E2
+      { freq: 0, duration: 1.0 },
+      { freq: 98.0, duration: 3.0 }, // G2
+      { freq: 0, duration: 1.0 },
+      { freq: 73.42, duration: 3.0 }, // D2
+      { freq: 0, duration: 1.0 },
+      { freq: 82.41, duration: 3.5 }, // E2
+      { freq: 0, duration: 2.0 },
+    ];
+
+    let time = this.audioContext.currentTime + 0.1;
+    const totalDuration = notes.reduce((sum, n) => sum + n.duration, 0);
+
+    notes.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, time, note.duration * 0.85, 0.07, "sine");
+      }
+      time += note.duration;
+    });
+
+    let bassTime = this.audioContext.currentTime + 0.1;
+    bass.forEach((note) => {
+      if (note.freq > 0) {
+        this.playNote(note.freq, bassTime, note.duration * 0.9, 0.04, "triangle");
       }
       bassTime += note.duration;
     });
