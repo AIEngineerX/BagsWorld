@@ -26,13 +26,19 @@ const LOCATIONS: Record<
       desc: "Heal & Info",
       event: "bagsworld-pokecenter-click",
     },
-    // { id: "dojo", name: "Trading Dojo", desc: "AI Sparring", event: "bagsworld-tradinggym-click" }, // STASHED
     { id: "treasury", name: "Treasury", desc: "Claim Fees", event: "bagsworld-treasury-click" },
   ],
   trending: [
     { id: "casino", name: "Casino", desc: "Games & Raffle", event: "bagsworld-casino-click" },
     { id: "terminal", name: "Terminal", desc: "Live Trading", event: "bagsworld-terminal-click" },
-    { id: "hq", name: "Bags HQ", desc: "Coming Soon", event: null },
+  ],
+  ballers: [
+    { id: "mansions", name: "Mansions", desc: "Top Holders", event: null },
+    { id: "leaderboard", name: "Leaderboard", desc: "View Rankings", event: null },
+  ],
+  founders: [
+    { id: "oak", name: "Prof. Oak", desc: "Launch Guide", event: "bagsworld-oak-click" },
+    { id: "dexprep", name: "DexScreener Prep", desc: "Get Listed", event: null },
   ],
 };
 
@@ -157,11 +163,11 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
             </button>
           </div>
 
-          {/* Zone Tabs */}
+          {/* Zone Tabs - Row 1 */}
           <div className="flex border-b border-bags-green/10">
             <button
               onClick={() => handleZoneChange("labs")}
-              className={`flex-1 py-2.5 font-pixel text-[9px] tracking-wide transition-all ${
+              className={`flex-1 py-2 font-pixel text-[8px] tracking-wide transition-all ${
                 currentZone === "labs"
                   ? "text-green-400 bg-green-400/10 border-b-2 border-green-400"
                   : "text-gray-500 hover:text-gray-300"
@@ -171,7 +177,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
             </button>
             <button
               onClick={() => handleZoneChange("main_city")}
-              className={`flex-1 py-2.5 font-pixel text-[9px] tracking-wide transition-all ${
+              className={`flex-1 py-2 font-pixel text-[8px] tracking-wide transition-all ${
                 currentZone === "main_city"
                   ? "text-bags-green bg-bags-green/10 border-b-2 border-bags-green"
                   : "text-gray-500 hover:text-gray-300"
@@ -181,13 +187,36 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
             </button>
             <button
               onClick={() => handleZoneChange("trending")}
-              className={`flex-1 py-2.5 font-pixel text-[9px] tracking-wide transition-all ${
+              className={`flex-1 py-2 font-pixel text-[8px] tracking-wide transition-all ${
                 currentZone === "trending"
                   ? "text-bags-green bg-bags-green/10 border-b-2 border-bags-green"
                   : "text-gray-500 hover:text-gray-300"
               }`}
             >
               CITY
+            </button>
+          </div>
+          {/* Zone Tabs - Row 2 */}
+          <div className="flex border-b border-bags-green/10">
+            <button
+              onClick={() => handleZoneChange("ballers")}
+              className={`flex-1 py-2 font-pixel text-[8px] tracking-wide transition-all ${
+                currentZone === "ballers"
+                  ? "text-bags-gold bg-bags-gold/10 border-b-2 border-bags-gold"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              BALLERS
+            </button>
+            <button
+              onClick={() => handleZoneChange("founders")}
+              className={`flex-1 py-2 font-pixel text-[8px] tracking-wide transition-all ${
+                currentZone === "founders"
+                  ? "text-purple-400 bg-purple-400/10 border-b-2 border-purple-400"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              FOUNDERS
             </button>
           </div>
 
