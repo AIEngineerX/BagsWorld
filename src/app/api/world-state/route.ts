@@ -196,11 +196,13 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
 
   try {
     // Get the base URL for internal API calls
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NETLIFY
-        ? process.env.URL || "http://localhost:3000"
-        : "http://localhost:3000";
+    // Netlify provides multiple URL env vars - check them in order of preference
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.URL ||
+      process.env.DEPLOY_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+      "http://localhost:3000";
 
     const response = await fetch(`${baseUrl}/api/bagsworld-holders`, {
       cache: "no-store", // Always fetch fresh data
