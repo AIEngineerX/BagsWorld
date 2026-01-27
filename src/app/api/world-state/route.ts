@@ -116,12 +116,21 @@ const EVENT_EXPIRY_DURATION = 60 * 60 * 1000; // 1 hour - auto-expire old events
 
 let previousState: WorldState | null = null;
 
+// Timestamp after which events should be shown (for clearing)
+let eventsClearedAfter: number = 0;
+
 // Clear all feed events (admin function)
 export function clearFeedEvents(): void {
+  eventsClearedAfter = Date.now();
   if (previousState) {
     previousState.events = [];
   }
-  console.log("[WorldState] Feed events cleared by admin");
+  console.log("[WorldState] Feed events cleared by admin at", eventsClearedAfter);
+}
+
+// Get the clear timestamp (for filtering in generateEvents)
+export function getEventsClearedAfter(): number {
+  return eventsClearedAfter;
 }
 
 // Price cache for DexScreener data
@@ -619,19 +628,22 @@ async function generateEvents(
   existingEvents: GameEvent[]
 ): Promise<GameEvent[]> {
   const now = Date.now();
+  const clearedAfter = getEventsClearedAfter();
 
-  // Auto-expire old events (older than EVENT_EXPIRY_DURATION)
+  // Auto-expire old events (older than EVENT_EXPIRY_DURATION or before clear timestamp)
   const freshEvents = existingEvents.filter(
-    (e) => now - e.timestamp < EVENT_EXPIRY_DURATION
+    (e) => now - e.timestamp < EVENT_EXPIRY_DURATION && e.timestamp > clearedAfter
   );
 
   const events: GameEvent[] = [...freshEvents];
   const existingIds = new Set(freshEvents.map((e) => e.id));
 
-  // Add claim events
+  // Add claim events (only those after the clear timestamp)
   claimEvents.forEach((claim) => {
     const eventId = `claim-${claim.signature}`;
-    if (!existingIds.has(eventId)) {
+    const claimTimestamp = claim.timestamp * 1000;
+    // Skip if already exists or if claim is before the clear timestamp
+    if (!existingIds.has(eventId) && claimTimestamp > clearedAfter) {
       const token = tokens.find((t) => t.mint === claim.tokenMint);
       const claimAmountSol = lamportsToSol(claim.amount);
       const displayName = claim.claimerUsername || claim.claimer?.slice(0, 8) || "Unknown";
@@ -639,7 +651,7 @@ async function generateEvents(
         id: eventId,
         type: "fee_claim",
         message: `${displayName} claimed ${formatSol(claimAmountSol)} from ${token?.symbol || "token"}`,
-        timestamp: claim.timestamp * 1000,
+        timestamp: claimTimestamp,
         data: {
           username: displayName,
           tokenName: token?.name,
