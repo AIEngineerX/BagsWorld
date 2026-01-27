@@ -62,8 +62,12 @@ export function useSniperTokens(options: UseSniperTokensOptions = {}): UseSniper
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        setError(errorData.error || "Failed to fetch tokens");
+        try {
+          const errorData = await response.json();
+          setError(errorData.error || "Failed to fetch tokens");
+        } catch {
+          setError(`Failed to fetch tokens (${response.status})`);
+        }
         setIsLoading(false);
         return;
       }

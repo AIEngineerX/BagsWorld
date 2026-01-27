@@ -16,9 +16,7 @@ interface Position {
 // Locations with clean data
 const LOCATIONS: Record<string, { id: string; name: string; desc: string; event: string | null }[]> = {
   labs: [
-    { id: "server", name: "Server Room", desc: "Core Systems", event: "bagsworld-server-click" },
-    { id: "research", name: "Research Lab", desc: "R&D Projects", event: "bagsworld-research-click" },
-    { id: "holo", name: "Holo Deck", desc: "Team Meetings", event: "bagsworld-holo-click" },
+    { id: "hq", name: "Bags.FM HQ", desc: "Headquarters", event: "bagsworld-hq-click" },
   ],
   main_city: [
     {
@@ -164,7 +162,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
               onClick={() => handleZoneChange("labs")}
               className={`flex-1 py-2.5 font-pixel text-[9px] tracking-wide transition-all ${
                 currentZone === "labs"
-                  ? "text-cyan-400 bg-cyan-400/10 border-b-2 border-cyan-400"
+                  ? "text-green-400 bg-green-400/10 border-b-2 border-green-400"
                   : "text-gray-500 hover:text-gray-300"
               }`}
             >
