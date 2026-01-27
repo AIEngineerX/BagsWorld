@@ -29,6 +29,11 @@ export function MusicButton() {
     window.dispatchEvent(new CustomEvent("bagsworld-toggle-music"));
   };
 
+  const prevTrack = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("bagsworld-prev-track"));
+  };
+
   const skipTrack = (e: React.MouseEvent) => {
     e.stopPropagation();
     window.dispatchEvent(new CustomEvent("bagsworld-skip-track"));
@@ -36,6 +41,15 @@ export function MusicButton() {
 
   return (
     <div className="flex items-center gap-1">
+      {isPlaying && (
+        <button
+          onClick={prevTrack}
+          className="px-2 py-1 bg-bags-darker border-2 border-bags-green font-pixel text-[10px] hover:bg-bags-green/20 transition-colors"
+          title="Previous track"
+        >
+          <span className="text-sm">⏮️</span>
+        </button>
+      )}
       <button
         onClick={toggleMusic}
         className="px-2 py-1 bg-bags-darker border-2 border-bags-green font-pixel text-[10px] hover:bg-bags-green/20 transition-colors flex items-center gap-1"
@@ -50,7 +64,7 @@ export function MusicButton() {
         <button
           onClick={skipTrack}
           className="px-2 py-1 bg-bags-darker border-2 border-bags-green font-pixel text-[10px] hover:bg-bags-green/20 transition-colors"
-          title="Skip to next track"
+          title="Next track"
         >
           <span className="text-sm">⏭️</span>
         </button>
