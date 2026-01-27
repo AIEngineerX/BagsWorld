@@ -60,6 +60,8 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
   const [isAdding, setIsAdding] = useState(false);
 
   // Local edit state for the selected building
+  const [editName, setEditName] = useState<string>("");
+  const [editSymbol, setEditSymbol] = useState<string>("");
   const [editLevel, setEditLevel] = useState<number | "auto">("auto");
   const [editStyle, setEditStyle] = useState<number | "auto">("auto");
   const [editZone, setEditZone] = useState<ZoneType | "auto">("auto");
@@ -109,6 +111,8 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
   // Load selected token's values into edit state
   useEffect(() => {
     if (selectedToken) {
+      setEditName(selectedToken.name || "");
+      setEditSymbol(selectedToken.symbol || "");
       setEditLevel(selectedToken.level_override ?? "auto");
       setEditStyle(selectedToken.style_override ?? "auto");
       setEditZone((selectedToken.zone_override as ZoneType) ?? "auto");
@@ -158,6 +162,16 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
     if (!selectedMint) return;
 
     const updates: Promise<boolean>[] = [];
+
+    // Name and Symbol (use update_token action)
+    if (editName !== selectedToken?.name || editSymbol !== selectedToken?.symbol) {
+      const tokenUpdates: Record<string, string> = {};
+      if (editName && editName !== selectedToken?.name) tokenUpdates.name = editName;
+      if (editSymbol && editSymbol !== selectedToken?.symbol) tokenUpdates.symbol = editSymbol;
+      if (Object.keys(tokenUpdates).length > 0) {
+        updates.push(updateBuilding("update_token", { mint: selectedMint, updates: tokenUpdates }));
+      }
+    }
 
     // Level
     const newLevel = editLevel === "auto" ? null : editLevel;
@@ -462,6 +476,42 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
                   </p>
                 </div>
               </div>
+
+              {/* Token Info Edit (for manual entries) */}
+              {(selectedToken.symbol === "???" || selectedToken.name === "Unknown Token") && (
+                <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30">
+                  <p className="font-pixel text-[9px] text-yellow-400 mb-2">
+                    ⚠ TOKEN INFO MISSING - Edit below:
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-pixel text-[7px] text-gray-500 block mb-1">
+                        TOKEN NAME
+                      </label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Enter token name..."
+                        className="w-full bg-black/50 border border-yellow-500/50 px-2 py-1 font-pixel text-[10px] text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-pixel text-[7px] text-gray-500 block mb-1">
+                        SYMBOL (without $)
+                      </label>
+                      <input
+                        type="text"
+                        value={editSymbol}
+                        onChange={(e) => setEditSymbol(e.target.value.toUpperCase())}
+                        placeholder="SYMBOL"
+                        maxLength={10}
+                        className="w-full bg-black/50 border border-yellow-500/50 px-2 py-1 font-pixel text-[10px] text-white uppercase"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Building Controls Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
