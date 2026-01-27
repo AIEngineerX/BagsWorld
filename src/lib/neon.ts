@@ -1669,3 +1669,516 @@ export async function cleanupExpiredRateLimits(): Promise<number> {
     return 0;
   }
 }
+
+// ============================================
+// Oracle Prediction Market Functions
+// ============================================
+
+export interface OracleTokenOptionDB {
+  mint: string;
+  symbol: string;
+  name: string;
+  startPrice: number;
+  imageUrl?: string;
+}
+
+export interface OracleRoundDB {
+  id: number;
+  status: "active" | "settled" | "cancelled";
+  startTime: Date;
+  endTime: Date;
+  tokenOptions: OracleTokenOptionDB[];
+  winningTokenMint?: string;
+  winningPriceChange?: number;
+  settlementData?: Record<string, unknown>;
+  entryCount: number;
+  createdAt: Date;
+}
+
+export interface OraclePredictionDB {
+  id: number;
+  roundId: number;
+  wallet: string;
+  tokenMint: string;
+  isWinner: boolean;
+  createdAt: Date;
+}
+
+// Initialize Oracle tables
+export async function initializeOracleTables(): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    // Create oracle_rounds table
+    await sql`
+      CREATE TABLE IF NOT EXISTS oracle_rounds (
+        id SERIAL PRIMARY KEY,
+        status VARCHAR(20) DEFAULT 'active',
+        start_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+        token_options JSONB NOT NULL,
+        winning_token_mint VARCHAR(64),
+        winning_price_change DECIMAL,
+        settlement_data JSONB,
+        entry_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Create oracle_predictions table
+    await sql`
+      CREATE TABLE IF NOT EXISTS oracle_predictions (
+        id SERIAL PRIMARY KEY,
+        round_id INTEGER REFERENCES oracle_rounds(id) ON DELETE CASCADE,
+        wallet VARCHAR(64) NOT NULL,
+        token_mint VARCHAR(64) NOT NULL,
+        is_winner BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(round_id, wallet)
+      )
+    `;
+
+    // Create indexes
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_rounds_status ON oracle_rounds(status)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_predictions_round ON oracle_predictions(round_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_predictions_wallet ON oracle_predictions(wallet)`;
+
+    return true;
+  } catch (error) {
+    console.error("[Oracle] Error initializing tables:", error);
+    return false;
+  }
+}
+
+// Get active Oracle round (or most recent if none active)
+export async function getActiveOracleRound(): Promise<OracleRoundDB | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    // Check if tables exist
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'oracle_rounds'
+      )
+    `;
+
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
+      return null;
+    }
+
+    const result = await sql`
+      SELECT r.*,
+        (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as entry_count
+      FROM oracle_rounds r
+      WHERE r.status = 'active'
+      ORDER BY r.created_at DESC
+      LIMIT 1
+    `;
+
+    if ((result as unknown[]).length === 0) return null;
+
+    const row = (result as Array<Record<string, unknown>>)[0];
+    return {
+      id: row.id as number,
+      status: row.status as "active" | "settled" | "cancelled",
+      startTime: new Date(row.start_time as string),
+      endTime: new Date(row.end_time as string),
+      tokenOptions: row.token_options as OracleTokenOptionDB[],
+      winningTokenMint: row.winning_token_mint as string | undefined,
+      winningPriceChange: row.winning_price_change
+        ? safeParseFloat(row.winning_price_change as string, 0)
+        : undefined,
+      settlementData: row.settlement_data as Record<string, unknown> | undefined,
+      entryCount: safeParseInt(row.entry_count as string, 0),
+      createdAt: new Date(row.created_at as string),
+    };
+  } catch (error) {
+    console.error("[Oracle] Error getting active round:", error);
+    return null;
+  }
+}
+
+// Create a new Oracle round
+export async function createOracleRound(
+  tokenOptions: OracleTokenOptionDB[],
+  endTime: Date
+): Promise<{ success: boolean; roundId?: number; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    // Initialize tables if needed
+    await initializeOracleTables();
+
+    // Check for existing active round
+    const existing = await sql`
+      SELECT id FROM oracle_rounds WHERE status = 'active' LIMIT 1
+    `;
+
+    if ((existing as unknown[]).length > 0) {
+      return { success: false, error: "Active round already exists. Settle or cancel it first." };
+    }
+
+    // Create new round
+    const result = await sql`
+      INSERT INTO oracle_rounds (token_options, end_time, status)
+      VALUES (${JSON.stringify(tokenOptions)}, ${endTime.toISOString()}, 'active')
+      RETURNING id
+    `;
+
+    const roundId = (result as Array<{ id: number }>)[0]?.id;
+    return { success: true, roundId };
+  } catch (error) {
+    console.error("[Oracle] Error creating round:", error);
+    return { success: false, error: "Failed to create round" };
+  }
+}
+
+// Enter a prediction for a round
+export async function enterOraclePrediction(
+  roundId: number,
+  wallet: string,
+  tokenMint: string
+): Promise<{ success: boolean; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    // Check if round exists and is active
+    const round = await sql`
+      SELECT id, status, end_time, token_options FROM oracle_rounds
+      WHERE id = ${roundId}
+    `;
+
+    if ((round as unknown[]).length === 0) {
+      return { success: false, error: "Round not found" };
+    }
+
+    const roundData = (round as Array<Record<string, unknown>>)[0];
+
+    if (roundData.status !== "active") {
+      return { success: false, error: "Round is not active" };
+    }
+
+    // Check if entry deadline passed (2 hours before end)
+    const endTime = new Date(roundData.end_time as string);
+    const entryDeadline = new Date(endTime.getTime() - 2 * 60 * 60 * 1000);
+    if (new Date() > entryDeadline) {
+      return { success: false, error: "Entry deadline has passed" };
+    }
+
+    // Validate token is in options
+    const tokenOptions = roundData.token_options as OracleTokenOptionDB[];
+    const validToken = tokenOptions.some((t) => t.mint === tokenMint);
+    if (!validToken) {
+      return { success: false, error: "Invalid token selection" };
+    }
+
+    // Check if already entered
+    const existing = await sql`
+      SELECT id FROM oracle_predictions
+      WHERE round_id = ${roundId} AND wallet = ${wallet}
+    `;
+
+    if ((existing as unknown[]).length > 0) {
+      return { success: false, error: "Already entered this round" };
+    }
+
+    // Enter prediction
+    await sql`
+      INSERT INTO oracle_predictions (round_id, wallet, token_mint)
+      VALUES (${roundId}, ${wallet}, ${tokenMint})
+    `;
+
+    // Update entry count
+    await sql`
+      UPDATE oracle_rounds SET entry_count = entry_count + 1
+      WHERE id = ${roundId}
+    `;
+
+    return { success: true };
+  } catch (error) {
+    console.error("[Oracle] Error entering prediction:", error);
+    return { success: false, error: "Failed to enter prediction" };
+  }
+}
+
+// Get user's prediction for a round
+export async function getUserOraclePrediction(
+  roundId: number,
+  wallet: string
+): Promise<OraclePredictionDB | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const result = await sql`
+      SELECT * FROM oracle_predictions
+      WHERE round_id = ${roundId} AND wallet = ${wallet}
+    `;
+
+    if ((result as unknown[]).length === 0) return null;
+
+    const row = (result as Array<Record<string, unknown>>)[0];
+    return {
+      id: row.id as number,
+      roundId: row.round_id as number,
+      wallet: row.wallet as string,
+      tokenMint: row.token_mint as string,
+      isWinner: row.is_winner as boolean,
+      createdAt: new Date(row.created_at as string),
+    };
+  } catch (error) {
+    console.error("[Oracle] Error getting user prediction:", error);
+    return null;
+  }
+}
+
+// Settle an Oracle round
+export async function settleOracleRound(
+  roundId: number,
+  winningTokenMint: string,
+  winningPriceChange: number,
+  settlementData: Record<string, unknown>
+): Promise<{ success: boolean; winnersCount?: number; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    // Verify round exists and is active
+    const round = await sql`
+      SELECT id, status FROM oracle_rounds WHERE id = ${roundId}
+    `;
+
+    if ((round as unknown[]).length === 0) {
+      return { success: false, error: "Round not found" };
+    }
+
+    const roundData = (round as Array<Record<string, unknown>>)[0];
+    if (roundData.status !== "active") {
+      return { success: false, error: "Round is not active" };
+    }
+
+    // Update round with settlement
+    await sql`
+      UPDATE oracle_rounds SET
+        status = 'settled',
+        winning_token_mint = ${winningTokenMint},
+        winning_price_change = ${winningPriceChange},
+        settlement_data = ${JSON.stringify(settlementData)}
+      WHERE id = ${roundId}
+    `;
+
+    // Mark winning predictions
+    const updateResult = await sql`
+      UPDATE oracle_predictions SET is_winner = TRUE
+      WHERE round_id = ${roundId} AND token_mint = ${winningTokenMint}
+      RETURNING id
+    `;
+
+    const winnersCount = (updateResult as unknown[]).length;
+
+    return { success: true, winnersCount };
+  } catch (error) {
+    console.error("[Oracle] Error settling round:", error);
+    return { success: false, error: "Failed to settle round" };
+  }
+}
+
+// Cancel an Oracle round
+export async function cancelOracleRound(
+  roundId: number
+): Promise<{ success: boolean; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    const result = await sql`
+      UPDATE oracle_rounds SET status = 'cancelled'
+      WHERE id = ${roundId} AND status = 'active'
+      RETURNING id
+    `;
+
+    if ((result as unknown[]).length === 0) {
+      return { success: false, error: "No active round found with that ID" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[Oracle] Error cancelling round:", error);
+    return { success: false, error: "Failed to cancel round" };
+  }
+}
+
+// Get Oracle history
+export async function getOracleHistory(
+  limit: number = 10,
+  wallet?: string
+): Promise<
+  Array<{
+    round: OracleRoundDB;
+    userPrediction?: OraclePredictionDB;
+  }>
+> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    // Check if tables exist
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'oracle_rounds'
+      )
+    `;
+
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
+      return [];
+    }
+
+    const rounds = await sql`
+      SELECT r.*,
+        (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as entry_count
+      FROM oracle_rounds r
+      WHERE r.status IN ('settled', 'cancelled')
+      ORDER BY r.created_at DESC
+      LIMIT ${limit}
+    `;
+
+    const results: Array<{
+      round: OracleRoundDB;
+      userPrediction?: OraclePredictionDB;
+    }> = [];
+
+    for (const row of rounds as Array<Record<string, unknown>>) {
+      const round: OracleRoundDB = {
+        id: row.id as number,
+        status: row.status as "active" | "settled" | "cancelled",
+        startTime: new Date(row.start_time as string),
+        endTime: new Date(row.end_time as string),
+        tokenOptions: row.token_options as OracleTokenOptionDB[],
+        winningTokenMint: row.winning_token_mint as string | undefined,
+        winningPriceChange: row.winning_price_change
+          ? safeParseFloat(row.winning_price_change as string, 0)
+          : undefined,
+        settlementData: row.settlement_data as Record<string, unknown> | undefined,
+        entryCount: safeParseInt(row.entry_count as string, 0),
+        createdAt: new Date(row.created_at as string),
+      };
+
+      let userPrediction: OraclePredictionDB | undefined;
+      if (wallet) {
+        const prediction = await getUserOraclePrediction(round.id, wallet);
+        if (prediction) {
+          userPrediction = prediction;
+        }
+      }
+
+      results.push({ round, userPrediction });
+    }
+
+    return results;
+  } catch (error) {
+    console.error("[Oracle] Error getting history:", error);
+    return [];
+  }
+}
+
+// Get prediction counts by token for a round
+export async function getOraclePredictionCounts(
+  roundId: number
+): Promise<Record<string, number>> {
+  const sql = await getSql();
+  if (!sql) return {};
+
+  try {
+    const result = await sql`
+      SELECT token_mint, COUNT(*) as count
+      FROM oracle_predictions
+      WHERE round_id = ${roundId}
+      GROUP BY token_mint
+    `;
+
+    const counts: Record<string, number> = {};
+    for (const row of result as Array<{ token_mint: string; count: string }>) {
+      counts[row.token_mint] = safeParseInt(row.count, 0);
+    }
+
+    return counts;
+  } catch (error) {
+    console.error("[Oracle] Error getting prediction counts:", error);
+    return {};
+  }
+}
+
+// ============================================================================
+// ADMIN SETTINGS (Simple key-value store for global settings)
+// ============================================================================
+
+// Initialize admin settings table
+async function initializeSettingsTable(): Promise<void> {
+  const sql = await getSql();
+  if (!sql) return;
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS admin_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+  } catch (error) {
+    console.error("[Settings] Error initializing table:", error);
+  }
+}
+
+// Get a setting value
+export async function getSetting(key: string): Promise<string | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    await initializeSettingsTable();
+    const result = await sql`
+      SELECT value FROM admin_settings WHERE key = ${key}
+    `;
+    return (result as Array<{ value: string }>)[0]?.value || null;
+  } catch (error) {
+    console.error("[Settings] Error getting setting:", error);
+    return null;
+  }
+}
+
+// Set a setting value
+export async function setSetting(key: string, value: string): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await initializeSettingsTable();
+    await sql`
+      INSERT INTO admin_settings (key, value, updated_at)
+      VALUES (${key}, ${value}, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = ${value}, updated_at = NOW()
+    `;
+    return true;
+  } catch (error) {
+    console.error("[Settings] Error setting value:", error);
+    return false;
+  }
+}
+
+// Get events cleared timestamp (returns 0 if not set)
+export async function getEventsClearedTimestamp(): Promise<number> {
+  const value = await getSetting("events_cleared_after");
+  return value ? parseInt(value, 10) : 0;
+}
+
+// Set events cleared timestamp
+export async function setEventsClearedTimestamp(timestamp: number): Promise<boolean> {
+  return setSetting("events_cleared_after", timestamp.toString());
+}
