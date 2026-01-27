@@ -167,7 +167,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
                   : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              LABS
+              HQ
             </button>
             <button
               onClick={() => handleZoneChange("main_city")}
