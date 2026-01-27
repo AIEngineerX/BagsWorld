@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { isAdmin } from "@/lib/config";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 
 interface AgentStatus {
   authenticated: boolean;
@@ -59,8 +59,8 @@ export function AgentDashboard() {
   const [lastResult, setLastResult] = useState<TriggerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if current wallet is admin using the config helper
-  const isUserAdmin = connected && isAdmin(publicKey?.toBase58());
+  // Check if current wallet is admin using server-side API
+  const { isAdmin: isUserAdmin } = useAdminCheck();
 
   const fetchStatus = useCallback(async () => {
     try {

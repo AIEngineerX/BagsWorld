@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { isAdmin, ECOSYSTEM_CONFIG } from "@/lib/config";
+import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { getLaunchedTokens, removeLaunchedToken, type LaunchedToken } from "@/lib/token-registry";
 import bs58 from "bs58";
 
@@ -114,7 +115,8 @@ export function AdminConsole() {
   const [authError, setAuthError] = useState<string | null>(null);
   const authPromiseRef = useRef<{ resolve: (value: boolean) => void } | null>(null);
 
-  const isUserAdmin = connected && isAdmin(publicKey?.toBase58());
+  // Use API-based admin check instead of client-side env vars
+  const { isAdmin: isUserAdmin, isLoading: isAdminLoading } = useAdminCheck();
 
   // Load session token from localStorage on mount
   useEffect(() => {

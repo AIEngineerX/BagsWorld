@@ -9,7 +9,8 @@ import {
   type LaunchedToken,
 } from "@/lib/token-registry";
 import { TradeModal } from "./TradeModal";
-import { isAdmin, ECOSYSTEM_CONFIG } from "@/lib/config";
+import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useGameStore } from "@/lib/store";
 
 interface YourBuildingsProps {
@@ -23,8 +24,8 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
   const [tradeToken, setTradeToken] = useState<LaunchedToken | null>(null);
   const { worldState } = useGameStore();
 
-  // Check if connected wallet is admin
-  const isUserAdmin = isAdmin(publicKey?.toBase58());
+  // Check if connected wallet is admin using server-side API
+  const { isAdmin: isUserAdmin } = useAdminCheck();
 
   // Get active building mints from worldState (filters out decayed buildings)
   const activeBuildingMints = useMemo(() => {
