@@ -221,6 +221,7 @@ const MIN_SLOT_SPACING = Math.round(100 * SCALE); // Minimum gap between buildin
 // Landmark X positions to avoid (with clearance)
 const LANDMARK_X_POSITIONS = [
   Math.round(50 * SCALE), // Casino (80) - far left
+  Math.round(200 * SCALE), // Oracle Tower (320) - between Casino and center
   Math.round(280 * SCALE), // PokeCenter (448)
   // Math.round(380 * SCALE), // TradingDojo (608) - STASHED
   WORLD_WIDTH / 2, // HQ/Treasury (640)
@@ -351,7 +352,7 @@ const BAGSHQ_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
 
 // Check if token/building is a landmark (fixed position, never decays)
 function isLandmark(token: { mint: string; symbol: string }): {
-  type: "pokecenter" | "casino" | "terminal" | "treasury" | "hq" | null;
+  type: "pokecenter" | "casino" | "terminal" | "treasury" | "hq" | "oracle" | null;
   isPermanent: boolean;
 } {
   const { mint, symbol } = token;
@@ -362,6 +363,8 @@ function isLandmark(token: { mint: string; symbol: string }): {
   if (symbol === "CASINO" || mint.includes("Casino")) return { type: "casino", isPermanent: true };
   if (symbol === "TERMINAL" || mint.includes("TradingTerminal"))
     return { type: "terminal", isPermanent: true };
+  if (symbol === "ORACLE" || mint.includes("OracleTower") || mint.includes("Oracle"))
+    return { type: "oracle", isPermanent: true };
   if (mint.startsWith("Treasury")) return { type: "treasury", isPermanent: true };
   if (mint.startsWith("Starter")) return { type: null, isPermanent: true };
   return { type: null, isPermanent: false };
@@ -597,6 +600,8 @@ export function transformTokenToBuilding(
     position = { x: Math.round(50 * SCALE), y: landmarkY };
     // } else if (landmark.type === "dojo") { // STASHED
     //   position = { x: Math.round(380 * SCALE), y: landmarkY };
+  } else if (landmark.type === "oracle") {
+    position = { x: Math.round(200 * SCALE), y: landmarkY };
   } else if (landmark.type === "terminal") {
     position = { x: Math.round(520 * SCALE), y: landmarkY };
   } else if (landmark.type === "pokecenter") {
@@ -648,7 +653,7 @@ export function transformTokenToBuilding(
     ? undefined // HQ appears in all zones as the main landmark
     : token.zoneOverride // Admin zone override takes priority
       ? token.zoneOverride
-      : landmark.type === "casino" || landmark.type === "terminal" // dojo STASHED
+      : landmark.type === "casino" || landmark.type === "terminal" || landmark.type === "oracle"
         ? ("trending" as const)
         : landmark.type === "pokecenter" || landmark.type === "treasury"
           ? ("main_city" as const)

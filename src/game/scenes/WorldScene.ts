@@ -5864,7 +5864,7 @@ Use: bags.fm/[yourname]`,
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
     const isTradingTerminal =
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
-    const isOracle = building.id.includes("OracleTower") || building.symbol === "ORACLE";
+    const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
     const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
 
     // Skip texture updates for special buildings (they don't change)
@@ -5928,7 +5928,7 @@ Use: bags.fm/[yourname]`,
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
     const isTradingTerminal =
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
-    const isOracle = building.id.includes("OracleTower") || building.symbol === "ORACLE";
+    const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
     const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
     const isMansion = building.isMansion;
 
@@ -6198,7 +6198,7 @@ Use: bags.fm/[yourname]`,
       const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
       const isTradingTerminal =
         building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
-      const isOracle = building.id.includes("OracleTower") || building.symbol === "ORACLE";
+      const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
       const isStarterBuilding = building.id.startsWith("Starter");
       const isTreasuryBuilding = building.id.startsWith("Treasury");
       const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
@@ -7094,9 +7094,16 @@ Use: bags.fm/[yourname]`,
         }
       }
 
-      // Different action text for mansions vs regular buildings
-      const actionText = building.isMansion ? "Enter" : "Click to trade";
-      const actionColor = building.isMansion ? "#fbbf24" : "#6b7280";
+      // Different action text for special buildings
+      const isOracleBuilding = building.id.includes("Oracle") || building.symbol === "ORACLE";
+      const isCasinoBuilding = building.id.includes("Casino") || building.symbol === "CASINO";
+      const isTerminalBuilding = building.id.includes("Terminal") || building.symbol === "TERMINAL";
+      const actionText = building.isMansion || isOracleBuilding || isCasinoBuilding || isTerminalBuilding
+        ? "Enter"
+        : "Click to trade";
+      const actionColor = building.isMansion || isOracleBuilding || isCasinoBuilding || isTerminalBuilding
+        ? "#fbbf24"
+        : "#6b7280";
       const clickText = this.add.text(0, statusText ? 40 : 32, actionText, {
         fontFamily: "monospace",
         fontSize: "9px",

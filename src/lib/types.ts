@@ -368,6 +368,43 @@ export interface SniperFilters {
   hideRugRisk?: boolean;
 }
 
+// Oracle Prediction Market Types
+
+export interface OracleTokenOption {
+  mint: string;
+  symbol: string;
+  name: string;
+  startPrice: number;
+  imageUrl?: string;
+}
+
+export interface OracleRound {
+  id: number;
+  status: "active" | "settled" | "cancelled";
+  startTime: string;
+  endTime: string;
+  tokenOptions: OracleTokenOption[];
+  entryCount: number;
+  winningTokenMint?: string;
+  winningTokenSymbol?: string;
+  winningPriceChange?: number;
+}
+
+export interface OraclePrediction {
+  id: number;
+  roundId: number;
+  wallet: string;
+  tokenMint: string;
+  isWinner: boolean;
+  createdAt: string;
+}
+
+export interface OracleSettlementData {
+  endPrices: Record<string, number>;
+  priceChanges: Record<string, number>;
+  settledAt: string;
+}
+
 // Store types
 export interface GameStore {
   worldState: WorldState | null;

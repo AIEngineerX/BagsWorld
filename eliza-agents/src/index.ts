@@ -25,7 +25,7 @@ import { allEvaluators } from './evaluators/index.js';
 
 export const bagsWorldPlugin: Plugin = {
   name: '@elizaos/plugin-bagsworld',
-  description: 'BagsWorld AI agents - Toly, Finn, Ash, Ghost, Neo, CJ, Shaw, and Bags Bot. Includes Bags.fm API integration for token lookups and fee queries.',
+  description: 'BagsWorld AI agents with Oracle prediction market. Includes Bags.fm API integration for token lookups, fee queries, and prediction markets for any Bags.fm token.',
 
   init: async (config: Record<string, string>, runtime: IAgentRuntime): Promise<void> => {
     console.log('[plugin-bagsworld] Initializing BagsWorld plugin...');
