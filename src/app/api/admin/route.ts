@@ -383,7 +383,10 @@ async function handleDeleteToken(data: { mint: string }) {
     return NextResponse.json({ error: "Missing mint address" }, { status: 400 });
   }
   if (!isValidSolanaAddress(data.mint)) {
-    return NextResponse.json({ error: `Invalid mint address: "${data.mint.slice(0, 20)}..."` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Invalid mint address: "${data.mint.slice(0, 20)}..."` },
+      { status: 400 }
+    );
   }
 
   if (!isNeonConfigured()) {
@@ -626,14 +629,11 @@ async function handleAddToken(data: { mint: string; name?: string; symbol?: stri
     if (source === "manual" && process.env.BAGS_API_KEY) {
       try {
         const bagsUrl = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
-        const bagsResponse = await fetch(
-          `${bagsUrl}/token-launch/creator/v3?mint=${data.mint}`,
-          {
-            headers: {
-              "x-api-key": process.env.BAGS_API_KEY,
-            },
-          }
-        );
+        const bagsResponse = await fetch(`${bagsUrl}/token-launch/creator/v3?mint=${data.mint}`, {
+          headers: {
+            "x-api-key": process.env.BAGS_API_KEY,
+          },
+        });
         if (bagsResponse.ok) {
           const bagsData = await bagsResponse.json();
           if (bagsData.data?.tokenLaunchInfo) {
@@ -685,9 +685,10 @@ async function handleAddToken(data: { mint: string; name?: string; symbol?: stri
       success: true,
       token,
       source,
-      message: source === "manual"
-        ? "Token added with health=100. Update name/symbol manually if needed."
-        : `Token info fetched from ${source} (health set to 100)`
+      message:
+        source === "manual"
+          ? "Token added with health=100. Update name/symbol manually if needed."
+          : `Token info fetched from ${source} (health set to 100)`,
     });
   } catch (error) {
     console.error("Add token error:", error);

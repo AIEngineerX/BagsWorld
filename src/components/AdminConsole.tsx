@@ -649,21 +649,29 @@ export function AdminConsole() {
 
           {/* Tabs */}
           <div className="flex border-b border-red-500/30 overflow-x-auto">
-            {(["overview", "buildings", "diagnostics", "global", "local", "analytics", "logs"] as TabType[]).map(
-              (tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-shrink-0 px-4 py-2 font-pixel text-[9px] transition-colors ${
-                    activeTab === tab
-                      ? "bg-red-500/20 text-red-300 border-b-2 border-red-400"
-                      : "text-gray-500 hover:text-gray-300 hover:bg-red-500/10"
-                  }`}
-                >
-                  {tab.toUpperCase()}
-                </button>
-              )
-            )}
+            {(
+              [
+                "overview",
+                "buildings",
+                "diagnostics",
+                "global",
+                "local",
+                "analytics",
+                "logs",
+              ] as TabType[]
+            ).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-shrink-0 px-4 py-2 font-pixel text-[9px] transition-colors ${
+                  activeTab === tab
+                    ? "bg-red-500/20 text-red-300 border-b-2 border-red-400"
+                    : "text-gray-500 hover:text-gray-300 hover:bg-red-500/10"
+                }`}
+              >
+                {tab.toUpperCase()}
+              </button>
+            ))}
           </div>
 
           {/* Content */}
