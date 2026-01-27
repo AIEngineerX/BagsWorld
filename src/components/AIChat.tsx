@@ -111,6 +111,14 @@ export function AIChat() {
             })
           );
           break;
+        case "pokemon":
+          // Dispatch pokemon control event to WorldScene (Founders zone)
+          window.dispatchEvent(
+            new CustomEvent("bagsworld-bot-pokemon", {
+              detail: action.data,
+            })
+          );
+          break;
         case "announce":
           // Could show announcement in UI or dispatch to game
           console.log("Announcement:", action.data);
@@ -260,7 +268,7 @@ export function AIChat() {
               i can control animals, trigger effects, and answer questions!
             </p>
 
-            {/* Quick Actions - Animals */}
+            {/* Quick Actions - Animals & Pokemon */}
             <div className="flex flex-wrap justify-center gap-1 mb-2">
               <button
                 onClick={() => handleQuickAction("pet the dog")}
@@ -275,10 +283,11 @@ export function AIChat() {
                 🐱 call cat
               </button>
               <button
-                onClick={() => handleQuickAction("scare the bird")}
-                className="px-2 py-1 bg-bags-darker border border-bags-green/30 font-pixel text-[7px] text-bags-green hover:bg-bags-green/20"
+                onClick={() => handleQuickAction("play with charmander")}
+                className="px-2 py-1 bg-bags-darker border border-orange-500/30 font-pixel text-[7px] text-orange-400 hover:bg-orange-500/20"
+                title="Visit Founders zone!"
               >
-                🐦 scare bird
+                🔥 charmander
               </button>
             </div>
 

@@ -174,18 +174,79 @@ function parseBotCommands(message: string): Array<{ type: string; data: Record<s
   const actions: Array<{ type: string; data: Record<string, unknown> }> = [];
 
   // Animal commands - only match one action per animal
+  // Support aliases: puppy=dog, kitty=cat
+  // Support phrases: "pet the dog", "give the puppy some love", "scare the cat"
   const animalCommands: Array<{ pattern: RegExp; animal: string; action: string }> = [
-    { pattern: /pet\s*(?:the\s*)?dog/i, animal: "dog", action: "pet" },
-    { pattern: /(?:call|summon)\s*(?:the\s*)?dog/i, animal: "dog", action: "call" },
-    { pattern: /pet\s*(?:the\s*)?cat/i, animal: "cat", action: "pet" },
-    { pattern: /(?:call|summon)\s*(?:the\s*)?cat/i, animal: "cat", action: "call" },
-    { pattern: /(?:scare|shoo)\s*(?:the\s*)?bird/i, animal: "bird", action: "scare" },
-    { pattern: /(?:feed|pet)\s*(?:the\s*)?bird/i, animal: "bird", action: "feed" },
+    // Dog/Puppy commands
     {
-      pattern: /(?:chase|play\s*with)\s*(?:the\s*)?squirrel/i,
-      animal: "squirrel",
-      action: "chase",
+      pattern: /(?:pet|pat|love|cuddle)\s+(?:the\s+)?(?:dog|puppy)/i,
+      animal: "dog",
+      action: "pet",
     },
+    {
+      pattern: /(?:give|show)\s+(?:the\s+)?(?:dog|puppy)\s+(?:some\s+)?love/i,
+      animal: "dog",
+      action: "pet",
+    },
+    {
+      pattern: /(?:call|summon|find|where(?:'s)?)\s+(?:the\s+)?(?:dog|puppy)/i,
+      animal: "dog",
+      action: "call",
+    },
+    {
+      pattern: /(?:scare|spook|chase)\s+(?:the\s+)?(?:dog|puppy)/i,
+      animal: "dog",
+      action: "scare",
+    },
+    { pattern: /(?:feed)\s+(?:the\s+)?(?:dog|puppy)/i, animal: "dog", action: "feed" },
+    // Cat/Kitty commands
+    {
+      pattern: /(?:pet|pat|love|cuddle)\s+(?:the\s+)?(?:cat|kitty)/i,
+      animal: "cat",
+      action: "pet",
+    },
+    {
+      pattern: /(?:give|show)\s+(?:the\s+)?(?:cat|kitty)\s+(?:some\s+)?love/i,
+      animal: "cat",
+      action: "pet",
+    },
+    {
+      pattern: /(?:call|summon|find|where(?:'s)?)\s+(?:the\s+)?(?:cat|kitty)/i,
+      animal: "cat",
+      action: "call",
+    },
+    {
+      pattern: /(?:scare|spook|chase)\s+(?:the\s+)?(?:cat|kitty)/i,
+      animal: "cat",
+      action: "scare",
+    },
+    { pattern: /(?:feed)\s+(?:the\s+)?(?:cat|kitty)/i, animal: "cat", action: "feed" },
+    // Bird commands
+    { pattern: /(?:pet|pat)\s+(?:the\s+)?bird/i, animal: "bird", action: "pet" },
+    { pattern: /(?:call|summon|find)\s+(?:the\s+)?bird/i, animal: "bird", action: "call" },
+    { pattern: /(?:scare|spook|shoo)\s+(?:the\s+)?bird/i, animal: "bird", action: "scare" },
+    { pattern: /(?:feed)\s+(?:the\s+)?bird/i, animal: "bird", action: "feed" },
+    // Butterfly commands
+    { pattern: /(?:pet|touch)\s+(?:the\s+)?butterfly/i, animal: "butterfly", action: "pet" },
+    {
+      pattern: /(?:call|summon|find)\s+(?:the\s+)?butterfly/i,
+      animal: "butterfly",
+      action: "call",
+    },
+    {
+      pattern: /(?:scare|spook|shoo)\s+(?:the\s+)?butterfly/i,
+      animal: "butterfly",
+      action: "scare",
+    },
+    // Squirrel commands
+    { pattern: /(?:pet|pat)\s+(?:the\s+)?squirrel/i, animal: "squirrel", action: "pet" },
+    { pattern: /(?:call|summon|find)\s+(?:the\s+)?squirrel/i, animal: "squirrel", action: "call" },
+    {
+      pattern: /(?:scare|spook|chase)\s+(?:the\s+)?squirrel/i,
+      animal: "squirrel",
+      action: "scare",
+    },
+    { pattern: /(?:feed)\s+(?:the\s+)?squirrel/i, animal: "squirrel", action: "feed" },
   ];
 
   // Only add one action per animal type
@@ -198,24 +259,61 @@ function parseBotCommands(message: string): Array<{ type: string; data: Record<s
     }
   }
 
-  // Effect commands
+  // Effect commands - must match WorldScene.handleBotEffect cases
+  // Use word boundaries to avoid false positives (e.g., "brain" shouldn't match "rain")
   const effectPatterns = [
-    { pattern: /firework|fireworks/i, effect: "fireworks" },
-    { pattern: /confetti/i, effect: "confetti" },
-    { pattern: /coin|coins|money/i, effect: "coins" },
-    { pattern: /rain\s*(?:effect)?/i, effect: "rain" },
-    { pattern: /snow/i, effect: "snow" },
-    { pattern: /sparkle|sparkles/i, effect: "sparkles" },
-    { pattern: /star|stars/i, effect: "stars" },
-    { pattern: /heart|hearts/i, effect: "hearts" },
-    { pattern: /ufo/i, effect: "ufo" },
-    { pattern: /celebrat/i, effect: "celebration" },
+    { pattern: /\bfireworks?\b/i, effect: "fireworks" },
+    { pattern: /\bconfetti\b/i, effect: "confetti" },
+    { pattern: /\bcoins?\b|\bmoney\b|make\s+it\s+rain/i, effect: "coins" },
+    { pattern: /\bstars?\b|\bsparkles?\b/i, effect: "stars" },
+    { pattern: /\bhearts?\b/i, effect: "hearts" }, // Don't match "love" - conflicts with animal petting
+    { pattern: /\bufo\b|\baliens?\b|\bspaceship\b/i, effect: "ufo" },
+    { pattern: /\bcelebrat\w*\b|\bparty\b/i, effect: "celebration" },
   ];
 
   for (const { pattern, effect } of effectPatterns) {
     if (pattern.test(lowerMessage)) {
       // WorldScene expects effectType
       actions.push({ type: "effect", data: { effectType: effect } });
+    }
+  }
+
+  // Pokemon commands (Founders zone) - play with starter Pokemon
+  const pokemonCommands: Array<{ pattern: RegExp; pokemon: string; action: string }> = [
+    // Charmander
+    {
+      pattern: /(?:pet|play\s+with|pat)\s+(?:the\s+)?charmander/i,
+      pokemon: "charmander",
+      action: "play",
+    },
+    { pattern: /(?:call|find)\s+(?:the\s+)?charmander/i, pokemon: "charmander", action: "call" },
+    // Squirtle
+    {
+      pattern: /(?:pet|play\s+with|pat)\s+(?:the\s+)?squirtle/i,
+      pokemon: "squirtle",
+      action: "play",
+    },
+    { pattern: /(?:call|find)\s+(?:the\s+)?squirtle/i, pokemon: "squirtle", action: "call" },
+    // Bulbasaur
+    {
+      pattern: /(?:pet|play\s+with|pat)\s+(?:the\s+)?bulbasaur/i,
+      pokemon: "bulbasaur",
+      action: "play",
+    },
+    { pattern: /(?:call|find)\s+(?:the\s+)?bulbasaur/i, pokemon: "bulbasaur", action: "call" },
+    // Generic "play with pokemon" - defaults to charmander
+    {
+      pattern: /play\s+(?:with\s+)?(?:the\s+)?(?:a\s+)?pokemon/i,
+      pokemon: "charmander",
+      action: "play",
+    },
+  ];
+
+  const matchedPokemon = new Set<string>();
+  for (const { pattern, pokemon, action } of pokemonCommands) {
+    if (pattern.test(lowerMessage) && !matchedPokemon.has(pokemon)) {
+      actions.push({ type: "pokemon", data: { pokemonType: pokemon, pokemonAction: action } });
+      matchedPokemon.add(pokemon);
     }
   }
 

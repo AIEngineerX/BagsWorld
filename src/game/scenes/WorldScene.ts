@@ -26,6 +26,17 @@ interface Animal {
   isIdle: boolean;
 }
 
+interface Pokemon {
+  sprite: Phaser.GameObjects.Sprite;
+  type: "charmander" | "squirtle" | "bulbasaur";
+  targetX: number;
+  speed: number;
+  direction: "left" | "right";
+  idleTimer: number;
+  isIdle: boolean;
+  baseY: number; // Store base Y position for this Pokemon
+}
+
 export class WorldScene extends Phaser.Scene {
   private worldState: WorldState | null = null;
   private characterSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
@@ -36,6 +47,7 @@ export class WorldScene extends Phaser.Scene {
   private clouds: Phaser.GameObjects.Sprite[] = [];
   private decorations: Phaser.GameObjects.Sprite[] = [];
   private animals: Animal[] = [];
+  private pokemon: Pokemon[] = []; // Pokemon in Founders zone
   private fountainWater: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ground!: Phaser.GameObjects.TileSprite;
   private timeOfDay = 0;
@@ -67,6 +79,7 @@ export class WorldScene extends Phaser.Scene {
   private boundPrevTrack: (() => void) | null = null;
   private boundBotEffect: ((e: Event) => void) | null = null;
   private boundBotAnimal: ((e: Event) => void) | null = null;
+  private boundBotPokemon: ((e: Event) => void) | null = null;
 
   // Announcement text object
   private announcementText: Phaser.GameObjects.Text | null = null;
@@ -192,6 +205,10 @@ export class WorldScene extends Phaser.Scene {
     // Listen for bot animal commands
     this.boundBotAnimal = (e: Event) => this.handleBotAnimal(e as CustomEvent);
     window.addEventListener("bagsworld-bot-animal", this.boundBotAnimal);
+
+    // Listen for bot pokemon commands (Founders zone)
+    this.boundBotPokemon = (e: Event) => this.handleBotPokemon(e as CustomEvent);
+    window.addEventListener("bagsworld-bot-pokemon", this.boundBotPokemon);
 
     // Listen for zone change events
     this.boundZoneChange = (e: Event) => this.handleZoneChange(e as CustomEvent);
@@ -1978,48 +1995,102 @@ export class WorldScene extends Phaser.Scene {
     chalkboard.setDepth(2);
     this.foundersElements.push(chalkboard);
 
-    // === POKEMON (depth 4, ground level) ===
-    const pokemonConfigs = [
-      { texture: "pokemon_charmander", x: 120, yOffset: 15, scale: 1.3 },
-      { texture: "pokemon_squirtle", x: 400, yOffset: 12, scale: 1.25 },
-      { texture: "pokemon_bulbasaur", x: 680, yOffset: 10, scale: 1.2 },
+    // === POKEMON (depth 4, ground level) - Interactive and roaming ===
+    // Clear any existing pokemon from previous zone visits
+    this.pokemon = [];
+
+    const pokemonConfigs: Array<{
+      texture: string;
+      type: "charmander" | "squirtle" | "bulbasaur";
+      x: number;
+      yOffset: number;
+      scale: number;
+      speed: number;
+    }> = [
+      {
+        texture: "pokemon_charmander",
+        type: "charmander",
+        x: 150,
+        yOffset: 8,
+        scale: 1.4,
+        speed: 0.25,
+      },
+      {
+        texture: "pokemon_squirtle",
+        type: "squirtle",
+        x: 400,
+        yOffset: 8,
+        scale: 1.35,
+        speed: 0.2,
+      },
+      {
+        texture: "pokemon_bulbasaur",
+        type: "bulbasaur",
+        x: 650,
+        yOffset: 8,
+        scale: 1.3,
+        speed: 0.15,
+      },
     ];
 
     pokemonConfigs.forEach((config, index) => {
-      const pokemon = this.add.sprite(
-        Math.round(config.x * s),
-        pathLevel + Math.round(config.yOffset * s),
-        config.texture
-      );
-      pokemon.setOrigin(0.5, 1);
-      pokemon.setScale(config.scale);
-      pokemon.setDepth(4);
-      this.foundersElements.push(pokemon);
+      const baseY = pathLevel + Math.round(config.yOffset * s);
+      const sprite = this.add.sprite(Math.round(config.x * s), baseY, config.texture);
+      sprite.setOrigin(0.5, 1);
+      sprite.setScale(config.scale);
+      sprite.setDepth(4);
+      this.foundersElements.push(sprite);
 
-      // Idle bounce animation (like other animals)
+      // Make Pokemon interactive
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on("pointerdown", () => this.petPokemon(config.type));
+      sprite.on("pointerover", () => sprite.setTint(0xffffcc));
+      sprite.on("pointerout", () => sprite.clearTint());
+
+      // Store in pokemon array for movement updates
+      const pokemonObj: Pokemon = {
+        sprite,
+        type: config.type,
+        targetX: Math.round(config.x * s),
+        speed: config.speed,
+        direction: Math.random() > 0.5 ? "left" : "right",
+        idleTimer: 0,
+        isIdle: true,
+        baseY,
+      };
+      this.pokemon.push(pokemonObj);
+
+      // Subtle idle breathing animation
       this.tweens.add({
-        targets: pokemon,
-        y: pathLevel + Math.round(config.yOffset * s) - Math.round(3 * s),
-        duration: 600 + index * 100,
+        targets: sprite,
+        scaleY: config.scale * 1.03,
+        duration: 800 + index * 150,
         yoyo: true,
         repeat: -1,
         ease: "Sine.easeInOut",
       });
 
-      // Occasional hop animation
+      // Random hop/movement trigger
       this.time.addEvent({
-        delay: 3000 + index * 1500,
+        delay: 2000 + index * 800,
         callback: () => {
-          if (pokemon.active) {
-            this.tweens.add({
-              targets: pokemon,
-              y: pokemon.y - Math.round(8 * s),
-              scaleX: config.scale * 1.1,
-              scaleY: config.scale * 0.9,
-              duration: 150,
-              yoyo: true,
-              ease: "Quad.easeOut",
-            });
+          if (sprite.active && pokemonObj.isIdle && this.currentZone === "founders") {
+            // Decide to move or hop
+            if (Math.random() > 0.4) {
+              // Start roaming
+              pokemonObj.isIdle = false;
+              pokemonObj.targetX = Math.round(100 * s) + Math.random() * Math.round(600 * s);
+              pokemonObj.direction = pokemonObj.targetX > sprite.x ? "right" : "left";
+            } else {
+              // Just hop in place
+              this.tweens.add({
+                targets: sprite,
+                y: sprite.y - Math.round(12 * s),
+                duration: 200,
+                yoyo: true,
+                ease: "Quad.easeOut",
+              });
+            }
           }
         },
         loop: true,
@@ -2984,6 +3055,10 @@ Use: bags.fm/[yourname]`,
     if (this.boundBotAnimal) {
       window.removeEventListener("bagsworld-bot-animal", this.boundBotAnimal);
       this.boundBotAnimal = null;
+    }
+    if (this.boundBotPokemon) {
+      window.removeEventListener("bagsworld-bot-pokemon", this.boundBotPokemon);
+      this.boundBotPokemon = null;
     }
     if (this.boundZoneChange) {
       window.removeEventListener("bagsworld-zone-change", this.boundZoneChange);
@@ -4730,6 +4805,41 @@ Use: bags.fm/[yourname]`,
         }
       }
     });
+
+    // === POKEMON MOVEMENT (Founders zone only) ===
+    if (this.currentZone === "founders") {
+      const pokemonMinX = Math.round(80 * SCALE);
+      const pokemonMaxX = Math.round(720 * SCALE);
+
+      this.pokemon.forEach((poke) => {
+        if (!poke.sprite.active) return;
+
+        if (!poke.isIdle) {
+          // Move toward target
+          const dx = poke.targetX - poke.sprite.x;
+          if (Math.abs(dx) < 5 * SCALE) {
+            // Reached target, become idle
+            poke.isIdle = true;
+            poke.idleTimer = 0;
+          } else {
+            poke.sprite.x += poke.speed * SCALE * (dx > 0 ? 1 : -1);
+            poke.sprite.setFlipX(dx < 0);
+          }
+
+          // Keep within bounds
+          if (poke.sprite.x < pokemonMinX) {
+            poke.sprite.x = pokemonMinX;
+            poke.isIdle = true;
+            poke.targetX = pokemonMinX + Math.random() * Math.round(200 * SCALE);
+          }
+          if (poke.sprite.x > pokemonMaxX) {
+            poke.sprite.x = pokemonMaxX;
+            poke.isIdle = true;
+            poke.targetX = pokemonMaxX - Math.random() * Math.round(200 * SCALE);
+          }
+        }
+      });
+    }
   }
 
   updateWorldState(state: WorldState): void {
@@ -5754,10 +5864,11 @@ Use: bags.fm/[yourname]`,
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
     const isTradingTerminal =
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
+    const isOracle = building.id.includes("OracleTower") || building.symbol === "ORACLE";
     const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
 
     // Skip texture updates for special buildings (they don't change)
-    if (isPokeCenter || isTradingGym || isCasino || isTradingTerminal || isBagsHQ) {
+    if (isPokeCenter || isTradingGym || isCasino || isTradingTerminal || isOracle || isBagsHQ) {
       return;
     }
 
@@ -5811,12 +5922,13 @@ Use: bags.fm/[yourname]`,
       container.add(shadow);
     }
 
-    // Use special texture for PokeCenter/TradingGym/Casino/Terminal/HQ/Mansions, otherwise use level-based building with style
+    // Use special texture for PokeCenter/TradingGym/Casino/Terminal/Oracle/HQ/Mansions, otherwise use level-based building with style
     const isPokeCenter = building.id.includes("PokeCenter") || building.symbol === "HEAL";
     const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
     const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
     const isTradingTerminal =
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
+    const isOracle = building.id.includes("OracleTower") || building.symbol === "ORACLE";
     const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
     const isMansion = building.isMansion;
 
@@ -5848,7 +5960,9 @@ Use: bags.fm/[yourname]`,
               ? "casino"
               : isTradingTerminal
                 ? "terminal"
-                : `building_${building.level}_${styleIndex}`;
+                : isOracle
+                  ? "oracle_tower"
+                  : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data
@@ -5868,7 +5982,9 @@ Use: bags.fm/[yourname]`,
                 ? 1.0
                 : isTradingTerminal
                   ? 1.0
-                  : buildingScale
+                  : isOracle
+                    ? 1.0
+                    : buildingScale
     );
     container.add(sprite);
 
@@ -6082,6 +6198,7 @@ Use: bags.fm/[yourname]`,
       const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";
       const isTradingTerminal =
         building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
+      const isOracle = building.id.includes("OracleTower") || building.symbol === "ORACLE";
       const isStarterBuilding = building.id.startsWith("Starter");
       const isTreasuryBuilding = building.id.startsWith("Treasury");
       const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
@@ -6124,6 +6241,13 @@ Use: bags.fm/[yourname]`,
         // Trading Terminal opens the professional trading terminal modal
         window.dispatchEvent(
           new CustomEvent("bagsworld-terminal-click", {
+            detail: { buildingId: building.id, name: building.name },
+          })
+        );
+      } else if (isOracle) {
+        // Oracle Tower opens the prediction market modal
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-oracle-click", {
             detail: { buildingId: building.id, name: building.name },
           })
         );
@@ -7244,6 +7368,7 @@ Use: bags.fm/[yourname]`,
         this.petAnimal(animalType);
         break;
       case "scare":
+      case "chase": // Chase is similar to scare
         this.scareAnimal(animalType);
         break;
       case "call":
@@ -7255,6 +7380,95 @@ Use: bags.fm/[yourname]`,
       default:
         this.petAnimal(animalType); // Default to pet
     }
+  }
+
+  private handleBotPokemon(event: CustomEvent): void {
+    const { pokemonType, pokemonAction } = event.detail || {};
+
+    if (!pokemonType) return;
+
+    switch (pokemonAction) {
+      case "pet":
+      case "play":
+        this.petPokemon(pokemonType);
+        break;
+      case "call":
+        this.callPokemon(pokemonType);
+        break;
+      default:
+        this.petPokemon(pokemonType);
+    }
+  }
+
+  // Pet/play with a Pokemon - happy reaction with particles
+  petPokemon(pokemonType: Pokemon["type"]): void {
+    const poke = this.pokemon.find((p) => p.type === pokemonType);
+    if (!poke || !poke.sprite.active) return;
+
+    // Stop moving and react happily
+    poke.isIdle = true;
+    poke.idleTimer = 0;
+
+    // Happy jump animation
+    this.tweens.add({
+      targets: poke.sprite,
+      y: poke.baseY - Math.round(20 * SCALE),
+      scaleX: poke.sprite.scaleX * 1.15,
+      scaleY: poke.sprite.scaleY * 0.85,
+      duration: 150,
+      yoyo: true,
+      repeat: 2,
+      ease: "Bounce.easeOut",
+      onComplete: () => {
+        poke.sprite.y = poke.baseY;
+      },
+    });
+
+    // Happy particles (hearts and stars)
+    const particles = this.add.particles(
+      poke.sprite.x,
+      poke.sprite.y - Math.round(15 * SCALE),
+      "star",
+      {
+        speed: { min: Math.round(30 * SCALE), max: Math.round(80 * SCALE) },
+        angle: { min: 200, max: 340 },
+        lifespan: 1000,
+        quantity: 8,
+        scale: { start: 0.6 * SCALE, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: [0xffcc00, 0xff6699, 0x66ffcc], // Gold, pink, teal for Pokemon vibes
+        gravityY: Math.round(-20 * SCALE),
+      }
+    );
+
+    particles.explode(8);
+
+    this.time.delayedCall(1200, () => {
+      particles.destroy();
+    });
+
+    // Screen flash for extra feedback
+    this.cameras.main.flash(100, 255, 255, 200, true);
+  }
+
+  // Call a Pokemon - make it come to center
+  callPokemon(pokemonType: Pokemon["type"]): void {
+    const poke = this.pokemon.find((p) => p.type === pokemonType);
+    if (!poke || !poke.sprite.active) return;
+
+    // Move to center
+    poke.isIdle = false;
+    poke.targetX = GAME_WIDTH / 2;
+    poke.direction = poke.targetX > poke.sprite.x ? "right" : "left";
+
+    // Little attention animation
+    this.tweens.add({
+      targets: poke.sprite,
+      angle: { from: -5, to: 5 },
+      duration: 100,
+      yoyo: true,
+      repeat: 2,
+    });
   }
 
   // Feed animal - similar to pet but with food particle (scaled)
