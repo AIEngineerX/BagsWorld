@@ -493,46 +493,62 @@ router.post('/dialogue', async (req: Request, res: Response) => {
     worldContext
   );
 
-  const llmService = getLLMService();
-  const llmResponse = await llmService.generateWithSystemPrompt(
-    systemPrompt,
-    userPrompt,
-    [],
-    undefined,
-    800
-  );
-
-  const result = parseDialogueResponse(llmResponse.text, dialogueParticipants);
-
   const hasLiveData = liveData.tokens.length > 0 || liveData.creators.length > 0;
 
-  res.json({
-    success: true,
-    dialogue: {
-      topic,
-      participants: dialogueParticipants.map(p => ({
-        id: p.toLowerCase(),
-        name: getCharacter(p.toLowerCase())?.name || p,
-      })),
-      turns: result.turns.map(turn => ({
-        speaker: turn.speaker,
-        speakerName: getCharacter(turn.speaker.toLowerCase())?.name || turn.speaker,
-        message: turn.message,
-        timestamp: turn.timestamp,
-      })),
-      sentiment: result.sentiment,
-      summary: result.summary,
-    },
-    dataSource: hasLiveData ? 'dexscreener' : worldContext ? 'world_state' : 'character_knowledge',
-    liveData: hasLiveData ? {
-      topToken: liveData.tokens[0]?.symbol || null,
-      topCreator: liveData.creators[0]?.username || null,
-      totalVolume24h: liveData.totalVolume24h,
-      tokenCount: liveData.tokens.length,
-    } : null,
-    model: llmResponse.model,
-    usage: llmResponse.usage,
-  });
+  try {
+    const llmService = getLLMService();
+    const llmResponse = await llmService.generateWithSystemPrompt(
+      systemPrompt,
+      userPrompt,
+      [],
+      undefined,
+      800
+    );
+
+    const result = parseDialogueResponse(llmResponse.text, dialogueParticipants);
+
+    res.json({
+      success: true,
+      dialogue: {
+        topic,
+        participants: dialogueParticipants.map(p => ({
+          id: p.toLowerCase(),
+          name: getCharacter(p.toLowerCase())?.name || p,
+        })),
+        turns: result.turns.map(turn => ({
+          speaker: turn.speaker,
+          speakerName: getCharacter(turn.speaker.toLowerCase())?.name || turn.speaker,
+          message: turn.message,
+          timestamp: turn.timestamp,
+        })),
+        sentiment: result.sentiment,
+        summary: result.summary,
+      },
+      dataSource: hasLiveData ? 'dexscreener' : worldContext ? 'world_state' : 'character_knowledge',
+      liveData: hasLiveData ? {
+        topToken: liveData.tokens[0]?.symbol || null,
+        topCreator: liveData.creators[0]?.username || null,
+        totalVolume24h: liveData.totalVolume24h,
+        tokenCount: liveData.tokens.length,
+      } : null,
+      model: llmResponse.model,
+      usage: llmResponse.usage,
+    });
+  } catch (err) {
+    console.error('[world] Dialogue generation failed:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate dialogue',
+      message: err instanceof Error ? err.message : 'Unknown error',
+      dataSource: hasLiveData ? 'dexscreener' : worldContext ? 'world_state' : 'character_knowledge',
+      liveData: hasLiveData ? {
+        topToken: liveData.tokens[0]?.symbol || null,
+        topCreator: liveData.creators[0]?.username || null,
+        totalVolume24h: liveData.totalVolume24h,
+        tokenCount: liveData.tokens.length,
+      } : null,
+    });
+  }
 });
 
 export default router;
