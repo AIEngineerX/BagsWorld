@@ -6,20 +6,28 @@
 // =============================================================================
 // 1. VISIBILITY: Your token becomes a building in a living world
 // 2. SUCCESS REWARDS SUCCESS: More volume = more fees = higher ranking
-// 3. ZERO EXTRA FEES: No additional BagsWorld fees - just standard Bags.fm fees
+// 3. ZERO EXTRA FEES: No additional BagsWorld fees on token launches
+// 4. COMMUNITY FUNDED: Ghost contributes 5% of his $BagsWorld revenue to community
 // =============================================================================
+//
+// FUNDING MODEL:
+// - Ghost (dev) personally diverts 5% of his $BagsWorld token revenue fees
+// - This funds Casino, community features, and future development
+// - Bags.fm fees are separate (standard platform fees)
+// - Creators launching tokens pay NO extra BagsWorld fees
 //
 // Follow @DaddyGhost on X for updates
 // =============================================================================
 
 export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
-  // ECOSYSTEM FEE STRUCTURE
+  // ECOSYSTEM FUNDING
   // -------------------------------------------------------------------------
-  // BagsWorld does NOT take additional fees on token launches
-  // Creators get 100% of their configured fee share (minus standard Bags.fm fees)
+  // BagsWorld does NOT take fees on token launches
+  // Community features are funded by Ghost's 5% $BagsWorld revenue contribution
+  // Bags.fm has its own separate fee structure (standard platform fees)
   ecosystem: {
-    // Wallet for future ecosystem features (currently unused for launch fees)
+    // Wallet that receives Ghost's community contribution
     wallet:
       process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
@@ -27,26 +35,15 @@ export const ECOSYSTEM_CONFIG = {
     // This enables BagsWorld to earn Bags.fm partner fees from token launches
     partnerConfigPda: "5TcACd9yCLEBewdRrhk9hb6A22oS2gFLzG7oH5YCq1Po",
 
-    // Fee percentage in basis points (0 = no ecosystem fee)
-    // BagsWorld does not take additional fees from token launches
+    // Fee percentage in basis points (0 = no mandatory ecosystem fee on launches)
+    // Community is funded by Ghost's personal $BagsWorld revenue contribution instead
     feeBps: 0,
 
-    // Creator Rewards System
-    // - Rewards top 3 token creators based on fee contribution
-    // - Distributes when threshold hit OR backup timer expires
-    // - Direct SOL payments to creator wallets
-    rewards: {
-      thresholdSol: 5.0, // Distribute when 5+ SOL accumulated
-      backupTimerDays: 3, // Or distribute after 3 days
-      minimumDistributionSol: 2.0, // Minimum SOL required for timer-based distribution
-      checkIntervalMs: 15 * 60 * 1000, // Check every 15 minutes
-      reservePercentage: 10, // 10% reserved for gas/operations
-      topCreatorsCount: 3, // Reward top 3 creators
-      distribution: {
-        first: 50, // 1st place: 50% of pot
-        second: 30, // 2nd place: 30% of pot
-        third: 20, // 3rd place: 20% of pot
-      },
+    // Founder's Community Contribution
+    // Ghost contributes 5% of his personal $BagsWorld token fees to fund community
+    founderContribution: {
+      percentage: 5, // 5% of Ghost's $BagsWorld revenue
+      fundedFeatures: ["Casino", "Community rewards", "Future development"],
     },
 
     // Scout Agent: Scans for new token launches in real-time
@@ -201,19 +198,19 @@ export const ECOSYSTEM_CONFIG = {
     ],
     forEcosystem: [
       {
-        title: "5 SOL Threshold",
-        description: "Fees accumulate until 5 SOL or 3 days pass",
-        icon: "5",
+        title: "Zero Extra Fees",
+        description: "No BagsWorld fees on token launches",
+        icon: "0",
       },
       {
-        title: "Top 3 Creators",
-        description: "Top 3 token creators by fees get rewarded",
-        icon: "3",
+        title: "Ghost's 5%",
+        description: "Founder funds community from his $BagsWorld revenue",
+        icon: "F",
       },
       {
-        title: "Direct Rewards",
-        description: "SOL sent directly to creator wallets (50/30/20 split)",
-        icon: "S",
+        title: "Community First",
+        description: "Casino, features & development funded by Ghost",
+        icon: "C",
       },
     ],
   },
@@ -265,16 +262,16 @@ export const ECOSYSTEM_CONFIG = {
   },
 
   // -------------------------------------------------------------------------
-  // CREATOR REWARDS HUB (Permanent landmark)
+  // COMMUNITY HUB (Permanent landmark)
   // -------------------------------------------------------------------------
   // This building always appears in the world and links to Solscan
-  // Shows the creator rewards system: top 3 creators get paid
+  // Shows Ghost's community fund wallet
   treasury: {
-    id: "BagsWorldRewardsHub",
-    name: "Creator Rewards Hub",
-    symbol: "REWARDS",
+    id: "BagsWorldCommunityHub",
+    name: "Community Hub",
+    symbol: "COMMUNITY",
     description:
-      "Ecosystem fees reward top 3 creators. 5 SOL threshold or 3 days. 50/30/20 split. Click to verify on Solscan.",
+      "Funded by Ghost's 5% $BagsWorld revenue. Powers Casino, features & development. Click to verify on Solscan.",
     level: 5, // Always max level - it's the centerpiece
     getSolscanUrl: () => `https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`,
   },
@@ -292,11 +289,11 @@ export const ECOSYSTEM_CONFIG = {
     // Ash explains the ecosystem with Pokemon-themed analogies
     quotes: [
       "Gotta catch 'em all... tokens that is! Each one becomes a building in BagsWorld!",
-      "Top 3 creators get rewarded from the ecosystem pool - like winning the Pokemon League!",
+      "Ghost funds the community with 5% of his $BagsWorld fees - like a Pokemon Champion giving back!",
       "Just like Pokemon evolve, your building grows as market cap increases!",
-      "Drive volume, earn fees, climb the leaderboard - top earners get paid directly!",
-      "I wanna be the very best! And in BagsWorld, the best creators get rewarded!",
-      "No extra BagsWorld fees - creators get 100% of their configured fee share!",
+      "Launch tokens with ZERO extra fees - BagsWorld is free to use!",
+      "I wanna be the very best! And in BagsWorld, creators keep 100% of their fee share!",
+      "Ghost's contribution powers the Casino, features, and more - community first!",
     ],
     // Clicking Ash opens ecosystem explainer
     interactionType: "ecosystem-guide",
@@ -330,7 +327,7 @@ export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
   // DADDYGHOST - The Dev (Trading & Agent Operations)
   // -------------------------------------------------------------------------
-  // DaddyGhost (@DaddyGhost) is the developer who runs the creator rewards system
+  // DaddyGhost (@DaddyGhost) is the developer who builds BagsWorld features
   dev: {
     id: "daddyghost",
     username: "Ghost",
@@ -338,16 +335,16 @@ export const ECOSYSTEM_CONFIG = {
     providerUsername: "DaddyGhost",
     twitterHandle: "DaddyGhost",
     mood: "happy" as const,
-    // Ghost runs the creator rewards system: fees accumulate, distribute to top 3 creators
+    // Ghost builds BagsWorld - no more reward system, community funded by Ghost
     quotes: [
-      "yo i run the rewards system. fees stack up, hit 10 SOL or 5 days, top 3 creators get paid",
-      "no middleman. ecosystem fees go directly to creator wallets. 50/30/20 split for top 3",
-      "threshold-based rewards are efficient. bigger payouts, less gas waste, real money to devs",
-      "the system tracks fee contribution. top 3 tokens by volume = top 3 creators get rewarded",
-      "i built this to reward good devs. stack fees -> hit threshold -> claim -> pay creators directly",
-      "check the wallet on solscan. fees accumulate, then boom - SOL to the top 3 creators",
-      "not just a dev, im the ghost in the machine. you build, you earn. simple as that",
-      "90% of claimed fees go to creators. top 3 by fee contribution. no burn, just rewards",
+      "yo i build the features here. i fund the community with 5% of his $BagsWorld revenue",
+      "no mandatory fees on your launches. creators get 100% of their configured share",
+      "my contribution powers the casino, features, all the cool stuff. community first",
+      "bags.fm fees are separate - that's their platform. bagsworld adds zero extra fees",
+      "i built this for devs. launch for free, earn your fees through bags.fm, simple as that",
+      "check the community wallet on solscan. my 5% contribution funds everything here",
+      "not just a dev, im the ghost in the machine. you build, you keep your earnings",
+      "the old reward system is gone. now it's funded by me directly. cleaner, simpler",
     ],
     // Clicking Dev opens trading assistant
     interactionType: "trading-agent",

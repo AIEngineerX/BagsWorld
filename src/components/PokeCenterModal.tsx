@@ -100,7 +100,7 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
             <div>
               <h2 className="font-pixel text-white text-xs sm:text-sm">REWARDS CENTER</h2>
               <p className="font-pixel text-red-200 text-[7px] sm:text-[8px]">
-                Top 3 Creators Get Paid
+                Powered by Ghost&apos;s Community Fund
               </p>
             </div>
           </div>
@@ -117,8 +117,8 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
           {/* Welcome Message */}
           <div className="bg-red-900/30 border border-red-500/50 rounded p-3">
             <p className="font-pixel text-[10px] text-red-200">
-              Welcome to the BagsWorld Rewards Center. Top 3 creators by fee contribution get
-              rewarded directly. Launch tokens, drive volume, earn SOL.
+              Welcome to BagsWorld! Ghost contributes 5% of his personal $BagsWorld revenue to fund
+              community features. Launch tokens with zero extra fees.
             </p>
           </div>
 
@@ -199,25 +199,25 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
             )}
           </div>
 
-          {/* Fee Claim Info */}
+          {/* How It Works */}
           <div className="border border-gray-700 rounded p-3">
-            <h3 className="font-pixel text-white text-xs mb-2">[*] Fee Claims</h3>
+            <h3 className="font-pixel text-white text-xs mb-2">[*] How BagsWorld Works</h3>
             <ul className="space-y-1">
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span className="text-bags-gold">&gt;</span>
-                <span>Creators earn fees from their token trading volume</span>
+                <span>Launch tokens with NO extra BagsWorld fees</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span className="text-bags-gold">&gt;</span>
-                <span>Top 3 fee earners per token get rewarded</span>
+                <span>Creators get 100% of their configured fee share</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span className="text-bags-gold">&gt;</span>
-                <span>Claim fees directly through Bags.fm</span>
+                <span>Ghost funds community with 5% of his $BagsWorld fees</span>
               </li>
               <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
                 <span className="text-bags-gold">&gt;</span>
-                <span>No additional BagsWorld fees - 100% to creators</span>
+                <span>Bags.fm fees are separate (standard platform fees)</span>
               </li>
             </ul>
           </div>
