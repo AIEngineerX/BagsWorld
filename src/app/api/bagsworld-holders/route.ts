@@ -8,10 +8,11 @@ const DECIMAL_DIVISOR = 10 ** TOKEN_DECIMALS; // Pre-computed for efficiency
 // Addresses to exclude (liquidity pools, burn addresses, etc.)
 const EXCLUDED_ADDRESSES = new Set([
   "HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC", // Liquidity pool
+  "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1", // Raydium AMM
 ]);
 
-// Cache for holder data (5 minutes)
-const CACHE_TTL = 5 * 60 * 1000;
+// Cache for holder data (2 minutes - shorter for faster updates)
+const CACHE_TTL = 2 * 60 * 1000;
 let cachedHolders: { data: TokenHolder[]; timestamp: number } | null = null;
 
 export interface TokenHolder {
@@ -20,6 +21,110 @@ export interface TokenHolder {
   balance: number; // Human-readable balance
   percentage: number;
   rank: number;
+}
+
+// Try Helius DAS API first (more reliable, higher rate limits)
+async function fetchHoldersFromHelius(heliusUrl: string): Promise<TokenHolder[]> {
+  try {
+    console.log("[Holders] Trying Helius DAS API...");
+
+    // Get token accounts using Helius's enhanced RPC
+    const response = await fetch(heliusUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenLargestAccounts",
+        params: [BAGSWORLD_MINT],
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("[Holders] Helius request failed:", response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    if (data.error) {
+      console.warn("[Holders] Helius RPC error:", data.error.message);
+      return [];
+    }
+
+    const accounts = data.result?.value || [];
+    if (accounts.length === 0) {
+      console.warn("[Holders] No accounts from Helius");
+      return [];
+    }
+
+    // Get total supply
+    const supplyResponse = await fetch(heliusUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenSupply",
+        params: [BAGSWORLD_MINT],
+      }),
+    });
+
+    let totalSupply = 0;
+    if (supplyResponse.ok) {
+      const supplyData = await supplyResponse.json();
+      totalSupply = parseFloat(supplyData.result?.value?.amount || "0") / DECIMAL_DIVISOR;
+    }
+
+    // Resolve owners for top 10 accounts
+    const topAccounts = accounts.slice(0, 10);
+    const holders: TokenHolder[] = [];
+    let rank = 1;
+
+    for (const account of topAccounts) {
+      if (holders.length >= 5) break;
+
+      // Resolve token account to owner
+      const ownerResponse = await fetch(heliusUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getAccountInfo",
+          params: [account.address, { encoding: "jsonParsed" }],
+        }),
+      });
+
+      let ownerAddress = account.address;
+      if (ownerResponse.ok) {
+        const ownerData = await ownerResponse.json();
+        ownerAddress = ownerData.result?.value?.data?.parsed?.info?.owner || account.address;
+      }
+
+      // Skip excluded addresses
+      if (EXCLUDED_ADDRESSES.has(ownerAddress)) {
+        console.log(`[Holders] Skipping excluded: ${ownerAddress.substring(0, 8)}...`);
+        continue;
+      }
+
+      const balance = parseFloat(account.amount) / DECIMAL_DIVISOR;
+      const percentage = totalSupply > 0 ? (balance / totalSupply) * 100 : 0;
+
+      holders.push({
+        address: ownerAddress,
+        tokenAccount: account.address,
+        balance,
+        percentage: Math.round(percentage * 100) / 100,
+        rank: rank++,
+      });
+    }
+
+    console.log(`[Holders] Got ${holders.length} holders from Helius`);
+    return holders;
+  } catch (err) {
+    console.warn("[Holders] Helius failed:", err);
+    return [];
+  }
 }
 
 // Resolve token account to owner wallet using RPC
@@ -96,95 +201,91 @@ export async function GET(): Promise<NextResponse> {
     cachedHolders = null;
   }
 
-  const holders: TokenHolder[] = [];
+  let holders: TokenHolder[] = [];
 
-  // RPC priority: Helius (env) > NEXT_PUBLIC RPC > Solana mainnet (rate limited)
-  const rpcUrls = [
-    process.env.SOLANA_RPC_URL,
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
-    "https://api.mainnet-beta.solana.com", // Fallback, often rate limited
-  ].filter(Boolean) as string[];
+  // Try Helius first (server-side RPC with better rate limits)
+  const heliusUrl = process.env.SOLANA_RPC_URL;
+  if (heliusUrl && heliusUrl.includes("helius")) {
+    holders = await fetchHoldersFromHelius(heliusUrl);
+  }
 
-  // Try each RPC until one works
-  for (const rpcUrl of rpcUrls) {
-    if (holders.length > 0) break; // Already got data from previous RPC
+  // If Helius didn't work, try other RPCs
+  if (holders.length === 0) {
+    const rpcUrls = [
+      process.env.SOLANA_RPC_URL,
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
+      "https://api.mainnet-beta.solana.com",
+    ].filter(Boolean) as string[];
 
-    try {
-      console.log(`[Holders] Trying RPC: ${rpcUrl.substring(0, 40)}...`);
+    for (const rpcUrl of rpcUrls) {
+      if (holders.length > 0) break;
 
-      // Get largest token accounts
-      const rpcResponse = await fetch(rpcUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getTokenLargestAccounts",
-          params: [BAGSWORLD_MINT],
-        }),
-      });
+      try {
+        console.log(`[Holders] Trying RPC: ${rpcUrl.substring(0, 40)}...`);
 
-      if (rpcResponse.ok) {
-        const rpcData = await rpcResponse.json();
+        const rpcResponse = await fetch(rpcUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getTokenLargestAccounts",
+            params: [BAGSWORLD_MINT],
+          }),
+        });
 
-        // Check for RPC errors (rate limits, etc)
-        if (rpcData.error) {
-          console.warn(
-            `[Holders] RPC error from ${rpcUrl.substring(0, 30)}:`,
-            rpcData.error.message
-          );
-          continue;
-        }
+        if (rpcResponse.ok) {
+          const rpcData = await rpcResponse.json();
 
-        const accounts = rpcData.result?.value || [];
-        if (accounts.length === 0) {
-          console.warn(`[Holders] No accounts returned from ${rpcUrl.substring(0, 30)}`);
-          continue;
-        }
-
-        // Get total supply for percentage calculation
-        const totalSupply = await getTokenSupply(rpcUrl);
-
-        // Fetch more accounts (10) to have enough after filtering out pools
-        const topAccounts = accounts.slice(0, 10);
-        const ownerPromises = topAccounts.map((account: { address: string }) =>
-          resolveTokenAccountOwner(rpcUrl, account.address)
-        );
-        const owners = await Promise.all(ownerPromises);
-
-        let rank = 1;
-        for (let i = 0; i < topAccounts.length && holders.length < 5; i++) {
-          const account = topAccounts[i];
-          const ownerAddress = owners[i];
-          const resolvedAddress = ownerAddress || account.address;
-
-          // Skip excluded addresses (pools, burn addresses, etc.)
-          if (EXCLUDED_ADDRESSES.has(resolvedAddress)) {
-            console.log(
-              `[Holders] Skipping excluded address: ${resolvedAddress.substring(0, 8)}...`
+          if (rpcData.error) {
+            console.warn(
+              `[Holders] RPC error from ${rpcUrl.substring(0, 30)}:`,
+              rpcData.error.message
             );
             continue;
           }
 
-          const rawBalance = parseFloat(account.amount) || 0;
-          const balance = rawBalance / DECIMAL_DIVISOR;
-          const percentage = totalSupply > 0 ? (balance / totalSupply) * 100 : 0;
+          const accounts = rpcData.result?.value || [];
+          if (accounts.length === 0) {
+            console.warn(`[Holders] No accounts from ${rpcUrl.substring(0, 30)}`);
+            continue;
+          }
 
-          holders.push({
-            address: resolvedAddress,
-            tokenAccount: account.address,
-            balance,
-            percentage: Math.round(percentage * 100) / 100, // Round to 2 decimals
-            rank: rank++,
-          });
+          const totalSupply = await getTokenSupply(rpcUrl);
+          const topAccounts = accounts.slice(0, 10);
+          const ownerPromises = topAccounts.map((account: { address: string }) =>
+            resolveTokenAccountOwner(rpcUrl, account.address)
+          );
+          const owners = await Promise.all(ownerPromises);
+
+          let rank = 1;
+          for (let i = 0; i < topAccounts.length && holders.length < 5; i++) {
+            const account = topAccounts[i];
+            const ownerAddress = owners[i];
+            const resolvedAddress = ownerAddress || account.address;
+
+            if (EXCLUDED_ADDRESSES.has(resolvedAddress)) {
+              console.log(`[Holders] Skipping excluded: ${resolvedAddress.substring(0, 8)}...`);
+              continue;
+            }
+
+            const balance = parseFloat(account.amount) / DECIMAL_DIVISOR;
+            const percentage = totalSupply > 0 ? (balance / totalSupply) * 100 : 0;
+
+            holders.push({
+              address: resolvedAddress,
+              tokenAccount: account.address,
+              balance,
+              percentage: Math.round(percentage * 100) / 100,
+              rank: rank++,
+            });
+          }
+
+          console.log(`[Holders] Got ${holders.length} holders from ${rpcUrl.substring(0, 30)}`);
         }
-
-        console.log(
-          `[Holders] Successfully got ${holders.length} holders from ${rpcUrl.substring(0, 30)}`
-        );
+      } catch (err) {
+        console.warn(`[Holders] RPC failed (${rpcUrl.substring(0, 30)}):`, err);
       }
-    } catch (err) {
-      console.warn(`[Holders] RPC failed (${rpcUrl.substring(0, 30)}):`, err);
     }
   }
 
