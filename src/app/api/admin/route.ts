@@ -666,13 +666,28 @@ async function handleAddToken(data: { mint: string; name?: string; symbol?: stri
       return NextResponse.json({ error: "Failed to save token" }, { status: 500 });
     }
 
+    // Set health_override to 100 so new buildings don't get filtered out by decay system
+    // Admin can later change this via the Building Editor
+    try {
+      const sql = getNeonSQL();
+      await sql`
+        UPDATE tokens SET
+          health_override = 100,
+          current_health = 100,
+          health_updated_at = NOW()
+        WHERE mint = ${data.mint}
+      `;
+    } catch (e) {
+      console.log("Warning: Could not set initial health for new building");
+    }
+
     return NextResponse.json({
       success: true,
       token,
       source,
       message: source === "manual"
-        ? "Token added with minimal info. Update name/symbol manually if needed."
-        : `Token info fetched from ${source}`
+        ? "Token added with health=100. Update name/symbol manually if needed."
+        : `Token info fetched from ${source} (health set to 100)`
     });
   } catch (error) {
     console.error("Add token error:", error);
