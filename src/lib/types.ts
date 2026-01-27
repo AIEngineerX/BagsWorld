@@ -11,9 +11,9 @@ export interface ZoneInfo {
 export const ZONES: Record<ZoneType, ZoneInfo> = {
   labs: {
     id: "labs",
-    name: "Tech Labs",
+    name: "HQ",
     description: "R&D headquarters of the Bags.fm team",
-    icon: "[L]",
+    icon: "[H]",
   },
   main_city: {
     id: "main_city",
