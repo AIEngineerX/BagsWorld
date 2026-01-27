@@ -4,16 +4,10 @@
 // =============================================================================
 // WHY JOIN BAGSWORLD?
 // =============================================================================
-// 1. CREATOR REWARDS: Top 3 creators get paid directly from ecosystem fees
-// 2. VISIBILITY: Your token becomes a building in a living world
-// 3. SUCCESS REWARDS SUCCESS: More volume = more fees = higher ranking = bigger rewards
-// 4. LOW FEE: Only 1% ecosystem fee funds rewards, casino, and future features
+// 1. VISIBILITY: Your token becomes a building in a living world
+// 2. SUCCESS REWARDS SUCCESS: More volume = more fees = higher ranking
+// 3. ZERO EXTRA FEES: No additional BagsWorld fees - just standard Bags.fm fees
 // =============================================================================
-//
-// ECOSYSTEM FEE ALLOCATION:
-// - Creator Rewards Pool: Top 3 creators by fee generation
-// - Casino Rewards: Wheel spins, raffles, and jackpots (coming soon)
-// - Future Features: New game mechanics and community rewards
 //
 // Follow @DaddyGhost on X for updates
 // =============================================================================
@@ -22,22 +16,20 @@ export const ECOSYSTEM_CONFIG = {
   // -------------------------------------------------------------------------
   // ECOSYSTEM FEE STRUCTURE
   // -------------------------------------------------------------------------
-  // Every token launched through BagsWorld contributes 1% to the ecosystem
-  // Fees are SET PERMANENTLY at launch - locked forever, trustless
-  // All fees go to rewarding top 3 creators based on fee contribution
+  // BagsWorld does NOT take additional fees on token launches
+  // Creators get 100% of their configured fee share (minus standard Bags.fm fees)
   ecosystem: {
-    // Wallet that receives ecosystem fees - viewable on Solscan
+    // Wallet for future ecosystem features (currently unused for launch fees)
     wallet:
       process.env.NEXT_PUBLIC_ECOSYSTEM_WALLET || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
 
     // Partner Config PDA - created at dev.bags.fm
     // This enables BagsWorld to earn Bags.fm partner fees from token launches
-    // Partner fees are SEPARATE from the 1% ecosystem fee
     partnerConfigPda: "5TcACd9yCLEBewdRrhk9hb6A22oS2gFLzG7oH5YCq1Po",
 
-    // Fee percentage in basis points (100 = 1%)
-    // 1% goes to @BagsWorldApp for ecosystem rewards
-    feeBps: 100,
+    // Fee percentage in basis points (0 = no ecosystem fee)
+    // BagsWorld does not take additional fees from token launches
+    feeBps: 0,
 
     // Creator Rewards System
     // - Rewards top 3 token creators based on fee contribution
@@ -302,9 +294,9 @@ export const ECOSYSTEM_CONFIG = {
       "Gotta catch 'em all... tokens that is! Each one becomes a building in BagsWorld!",
       "Top 3 creators get rewarded from the ecosystem pool - like winning the Pokemon League!",
       "Just like Pokemon evolve, your building grows as market cap increases!",
-      "Drive volume, earn fees, climb the leaderboard - top 3 get paid directly!",
+      "Drive volume, earn fees, climb the leaderboard - top earners get paid directly!",
       "I wanna be the very best! And in BagsWorld, the best creators get rewarded!",
-      "Remember: 1% ecosystem fee, top 3 creators split the pot. 50/30/20!",
+      "No extra BagsWorld fees - creators get 100% of their configured fee share!",
     ],
     // Clicking Ash opens ecosystem explainer
     interactionType: "ecosystem-guide",

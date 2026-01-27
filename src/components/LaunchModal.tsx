@@ -104,7 +104,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   const [step, setStep] = useState<"info" | "fees" | "confirm">("info");
   const [initialBuySOL, setInitialBuySOL] = useState<string>("0"); // SOL amount to buy at launch
   const [feeShares, setFeeShares] = useState<FeeShareEntry[]>([
-    { provider: "twitter", username: "", bps: 9900 }, // Default 99% to creator (+ 1% ecosystem = 100%)
+    { provider: "twitter", username: "", bps: 10000 }, // Default 100% to creator
   ]);
 
   // Duplicate name/symbol warnings
@@ -852,8 +852,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="flex items-start gap-2">
                   <span className="font-pixel text-xs text-bags-gold">4</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Only 1% ecosystem fee</span> - Funds rewards,
-                    casino & more
+                    <span className="text-bags-green">No extra fees</span> - Just standard Bags.fm
+                    fees
                   </span>
                 </div>
               </div>

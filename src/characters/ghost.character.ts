@@ -45,7 +45,7 @@ export const ghostCharacter: CharacterDefinition = {
       {
         user: "Ghost",
         content:
-          "simple. 1% ecosystem fee goes to the pool. when we hit 10 SOL or 5 days, top 3 creators by fee contribution get rewarded. direct SOL payments",
+          "simple. no extra BagsWorld fees. creators get 100% of their configured share. top 3 earners per token get the fees through bags.fm",
       },
     ],
     [

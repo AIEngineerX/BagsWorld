@@ -1509,7 +1509,10 @@ export function AdminConsole() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Fee BPS:</span>
-                      <span className="text-white">{ECOSYSTEM_CONFIG.ecosystem.feeBps} (1%)</span>
+                      <span className="text-white">
+                        {ECOSYSTEM_CONFIG.ecosystem.feeBps} (
+                        {ECOSYSTEM_CONFIG.ecosystem.feeBps / 100}%)
+                      </span>
                     </div>
                   </div>
                 </div>

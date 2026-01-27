@@ -42,7 +42,7 @@ export const ashCharacter: CharacterDefinition = {
       {
         user: "Ash",
         content:
-          "only 1% ecosystem fee! it stacks up until 10 SOL or 5 days, then top 3 creators get rewarded. 50/30/20 split - like 1st, 2nd, 3rd place in a tournament!",
+          "no extra BagsWorld fees! creators get 100% of their configured fee share. top 3 earners per token get the fees - like winning gym badges!",
       },
     ],
     [
