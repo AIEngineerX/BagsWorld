@@ -29,10 +29,10 @@ const ECOSYSTEM_TOPICS = [
       "Every token launched on BagsWorld becomes a building! As the market cap grows, your building evolves - from a small shop to a towering skyscraper. Level 1 is under $100K, Level 5 is $10M+!",
   },
   {
-    title: "Creator Fees",
-    icon: "R",
+    title: "Zero Extra Fees",
+    icon: "0",
     content:
-      "Creators earn 100% of the fee share they configure at launch. Top 3 fee earners per token get the fees. Claim directly through Bags.fm - no extra BagsWorld fees!",
+      "BagsWorld charges NO additional fees on token launches! Creators get 100% of their configured fee share. Bags.fm has its own standard platform fees (separate from BagsWorld).",
   },
   {
     title: "How Citizens Work",
@@ -47,10 +47,10 @@ const ECOSYSTEM_TOPICS = [
       "The world's weather reflects overall trading health! Sunny means things are booming (80%+ health), cloudy is normal, rain means slowing down, storm is rough times, and apocalypse... well, HODL tight!",
   },
   {
-    title: "Reward Triggers",
-    icon: "T",
+    title: "Finn's Contribution",
+    icon: "F",
     content:
-      "Rewards distribute when pool hits 10 SOL OR 5 days pass (min 10 SOL). This ensures regular payouts while accumulating meaningful amounts for creators.",
+      "Ghost (dev) contributes 5% of his personal $BagsWorld token revenue to fund community features. This powers the Casino, development, and future features - no mandatory fees on creators!",
   },
   {
     title: "The Flywheel",
