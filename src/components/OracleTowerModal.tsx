@@ -61,22 +61,11 @@ interface HistoryRound {
 }
 
 function formatTimeRemaining(ms: number): string {
-  if (ms <= 0) return "Ended";
+  if (ms <= 0) return "00:00:00";
   const hours = Math.floor(ms / (1000 * 60 * 60));
   const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((ms % (1000 * 60)) / 1000);
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-  return `${seconds}s`;
-}
-
-function truncateWallet(wallet: string): string {
-  if (wallet.length <= 12) return wallet;
-  return `${wallet.slice(0, 4)}...${wallet.slice(-4)}`;
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
 export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
@@ -89,7 +78,6 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
 
-  // Admin states
   const [isCreatingRound, setIsCreatingRound] = useState(false);
   const [isSettling, setIsSettling] = useState(false);
 
@@ -97,7 +85,6 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { isAdmin } = useAdminCheck();
 
-  // Fetch current round
   const fetchRound = useCallback(async () => {
     setIsLoading(true);
     const walletParam = publicKey ? `?wallet=${publicKey.toString()}` : "";
@@ -108,7 +95,6 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
     setIsLoading(false);
   }, [publicKey]);
 
-  // Fetch history
   const fetchHistory = useCallback(async () => {
     const walletParam = publicKey ? `?wallet=${publicKey.toString()}&limit=10` : "?limit=10";
     const res = await fetch(`/api/oracle/history${walletParam}`);
@@ -118,21 +104,15 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
 
   useEffect(() => {
     fetchRound();
-    if (view === "history") {
-      fetchHistory();
-    }
+    if (view === "history") fetchHistory();
   }, [fetchRound, fetchHistory, view]);
 
-  // Countdown timer
   useEffect(() => {
     if (countdown <= 0) return;
-    const timer = setInterval(() => {
-      setCountdown((prev) => Math.max(0, prev - 1000));
-    }, 1000);
+    const timer = setInterval(() => setCountdown((prev) => Math.max(0, prev - 1000)), 1000);
     return () => clearInterval(timer);
   }, [countdown]);
 
-  // Auto-refresh every 30s
   useEffect(() => {
     const interval = setInterval(() => fetchRound(), 30000);
     return () => clearInterval(interval);
@@ -140,201 +120,102 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
 
   const handleSubmitPrediction = async () => {
     if (!publicKey || !selectedToken || isSubmitting) return;
-
     setIsSubmitting(true);
     setMessage(null);
 
     const res = await fetch("/api/oracle/enter", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        wallet: publicKey.toString(),
-        tokenMint: selectedToken,
-      }),
+      body: JSON.stringify({ wallet: publicKey.toString(), tokenMint: selectedToken }),
     });
 
     const data = await res.json();
-
     if (data.success) {
-      setMessage("Prediction submitted!");
+      setMessage("Prediction locked!");
       setSelectedToken(null);
       await fetchRound();
     } else {
-      setMessage(data.error || "Failed to submit prediction");
+      setMessage(data.error || "Failed to submit");
     }
-
     setIsSubmitting(false);
   };
 
   const handleCreateRound = async () => {
     if (!publicKey || isCreatingRound) return;
-
     setIsCreatingRound(true);
     const res = await fetch("/api/oracle/admin/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        adminWallet: publicKey.toString(),
-        durationHours: 24,
-      }),
+      body: JSON.stringify({ adminWallet: publicKey.toString(), durationHours: 24 }),
     });
-
     const data = await res.json();
-    if (data.success) {
-      setMessage("Round created!");
-      await fetchRound();
-    } else {
-      setMessage(data.error || "Failed to create round");
-    }
+    setMessage(data.success ? "Round created!" : data.error || "Failed");
+    if (data.success) await fetchRound();
     setIsCreatingRound(false);
   };
 
   const handleSettleRound = async () => {
     if (!publicKey || isSettling) return;
-
     setIsSettling(true);
     const res = await fetch("/api/oracle/admin/settle", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        adminWallet: publicKey.toString(),
-      }),
+      body: JSON.stringify({ adminWallet: publicKey.toString() }),
     });
-
     const data = await res.json();
-    if (data.success) {
-      setMessage(`Round settled! Winner: ${data.winner?.symbol} (+${data.winner?.priceChange?.toFixed(2)}%)`);
-      await fetchRound();
-    } else {
-      setMessage(data.error || "Failed to settle round");
-    }
+    setMessage(data.success ? `Winner: ${data.winner?.symbol}` : data.error || "Failed");
+    if (data.success) await fetchRound();
     setIsSettling(false);
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+  // Calculate probability distribution
+  const getTotalPredictions = () => {
+    if (!round?.predictionCounts) return 0;
+    return Object.values(round.predictionCounts).reduce((a, b) => a + b, 0);
   };
 
-  // Token selection card
-  const TokenCard = ({
-    token,
-    isSelected,
-    onClick,
-    predictionCount,
-    isWinner,
-    priceChange,
-  }: {
-    token: TokenOption;
-    isSelected: boolean;
-    onClick: () => void;
-    predictionCount?: number;
-    isWinner?: boolean;
-    priceChange?: number;
-  }) => (
-    <button
-      onClick={onClick}
-      className={`
-        w-full p-3 rounded-xl border transition-all
-        ${isSelected
-          ? "border-purple-500 bg-purple-500/20"
-          : isWinner
-            ? "border-green-500 bg-green-500/10"
-            : "border-gray-700/50 bg-gray-900/50 hover:border-purple-500/50"}
-      `}
-    >
-      <div className="flex items-center gap-3">
-        {token.imageUrl ? (
-          <img
-            src={token.imageUrl}
-            alt={token.symbol}
-            className="w-10 h-10 rounded-lg"
-          />
-        ) : (
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center">
-            <span className="font-pixel text-xs text-white">
-              {token.symbol.slice(0, 3)}
-            </span>
-          </div>
-        )}
-        <div className="flex-1 text-left">
-          <div className="flex items-center gap-2">
-            <span className="font-pixel text-sm text-white">{token.symbol}</span>
-            {isWinner && (
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
-                WINNER
-              </span>
-            )}
-          </div>
-          <p className="text-gray-500 text-xs truncate">{token.name}</p>
-        </div>
-        <div className="text-right">
-          {priceChange !== undefined ? (
-            <p
-              className={`font-pixel text-sm ${priceChange >= 0 ? "text-green-400" : "text-red-400"}`}
-            >
-              {priceChange >= 0 ? "+" : ""}
-              {priceChange.toFixed(2)}%
-            </p>
-          ) : (
-            <p className="text-gray-400 text-xs">
-              ${token.startPrice > 0 ? token.startPrice.toFixed(6) : "N/A"}
-            </p>
-          )}
-          {predictionCount !== undefined && predictionCount > 0 && (
-            <p className="text-purple-400/70 text-[10px]">
-              {predictionCount} predict{predictionCount !== 1 ? "ions" : "ion"}
-            </p>
-          )}
-        </div>
-      </div>
-    </button>
-  );
+  const getTokenProbability = (mint: string) => {
+    const total = getTotalPredictions();
+    if (total === 0) return round?.tokenOptions?.length ? 100 / round.tokenOptions.length : 20;
+    return ((round?.predictionCounts?.[mint] || 0) / total) * 100;
+  };
 
   // Wallet not connected
   if (!connected) {
     return (
-      <div
-        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-        onClick={handleBackdropClick}
-      >
-        <div className="bg-[#0a0a0f] border border-purple-500/50 rounded-2xl max-w-md w-full overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-900/60 to-purple-800/40 p-6 border-b border-purple-500/30">
-            <div className="flex items-center justify-center gap-3 mb-2">
-              <span className="text-4xl">&#128302;</span>
-              <h2 className="font-pixel text-xl text-purple-400 tracking-wider">
-                ORACLE&apos;S TOWER
-              </h2>
-            </div>
-            <p className="text-center text-purple-300/80 text-sm">
-              Connect wallet to make predictions
-            </p>
-          </div>
-          <div className="p-6 space-y-5">
-            <div className="flex justify-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center border-4 border-purple-400/50 shadow-lg shadow-purple-500/30">
-                <span className="text-3xl">&#128302;</span>
+      <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="bg-[#0d0d0d] border-2 border-[#2a2a2a] w-full max-w-md">
+          {/* Pixel Header Bar */}
+          <div className="bg-[#1a1a2e] border-b-2 border-[#2a2a2a] px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-[#6b21a8] flex items-center justify-center">
+                <span className="text-white text-xs">&#9650;</span>
               </div>
+              <span className="font-pixel text-[#a855f7] text-sm">ORACLE</span>
             </div>
-            <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
-              <p className="text-purple-400/90 text-[11px] text-center leading-relaxed">
-                Predict which token will perform best over 24 hours.
-                Free entry - bragging rights to the winners!
+            <button onClick={onClose} className="font-pixel text-[#666] hover:text-white text-xs">[X]</button>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-[#1a1a2e] border-2 border-[#6b21a8] flex items-center justify-center">
+                <span className="font-pixel text-[#a855f7] text-2xl">?</span>
+              </div>
+              <p className="font-pixel text-[#888] text-xs">CONNECT WALLET TO PREDICT</p>
+            </div>
+
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-3">
+              <p className="font-pixel text-[#666] text-[10px] text-center leading-relaxed">
+                Predict which token gains most in 24h. Free entry. Bragging rights to winners.
               </p>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="flex-1 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-pixel text-xs transition-colors border border-gray-700"
-              >
-                EXIT
+
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={onClose} className="font-pixel text-xs py-3 bg-[#1a1a1a] border border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#444] transition-colors">
+                CANCEL
               </button>
-              <button
-                onClick={() => setWalletModalVisible(true)}
-                className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-lg font-pixel text-xs transition-all shadow-lg shadow-purple-500/20 border border-purple-500/50"
-              >
-                CONNECT WALLET
+              <button onClick={() => setWalletModalVisible(true)} className="font-pixel text-xs py-3 bg-[#6b21a8] border border-[#7c3aed] text-white hover:bg-[#7c3aed] transition-colors">
+                CONNECT
               </button>
             </div>
           </div>
@@ -344,381 +225,392 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-2 sm:p-4"
-      onClick={handleBackdropClick}
-    >
-      <div className="bg-gradient-to-b from-[#12061f] via-[#0a0a12] to-[#080810] border border-purple-500/20 rounded-2xl max-w-lg w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl shadow-purple-900/30">
-        {/* Decorative top border glow */}
-        <div className="h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
-
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-2 sm:p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-[#0d0d0d] border-2 border-[#2a2a2a] w-full max-w-lg max-h-[95vh] flex flex-col">
         {/* Header */}
-        <div className="relative p-5 sm:p-6">
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl" />
-            <div className="absolute -top-10 -left-10 w-32 h-32 bg-cyan-600/10 rounded-full blur-3xl" />
-          </div>
-
-          <div className="relative flex justify-between items-start">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 via-purple-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/40 border border-purple-400/30">
-                  <span className="text-2xl">&#128302;</span>
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full animate-ping opacity-75" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full" />
-              </div>
-              <div>
-                <h2 className="font-pixel text-lg sm:text-xl text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-cyan-300 to-purple-300 tracking-wider">
-                  ORACLE&apos;S TOWER
-                </h2>
-                {round?.status === "active" && countdown > 0 && (
-                  <p className="text-purple-400/70 text-xs sm:text-sm mt-1 flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
-                    {formatTimeRemaining(countdown)} remaining
-                  </p>
-                )}
-              </div>
+        <div className="bg-[#1a1a2e] border-b-2 border-[#2a2a2a] px-4 py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#6b21a8] border border-[#7c3aed] flex items-center justify-center">
+              <span className="text-white text-sm">&#9650;</span>
             </div>
-            <button
-              onClick={onClose}
-              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/50 flex items-center justify-center text-gray-400 hover:text-white transition-all"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div>
+              <span className="font-pixel text-[#a855f7] text-sm block">ORACLE MARKET</span>
+              {round?.status === "active" && countdown > 0 && (
+                <span className="font-pixel text-[#22c55e] text-[10px]">{formatTimeRemaining(countdown)}</span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {round?.status === "active" && (
+              <span className="font-pixel text-[10px] px-2 py-1 bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]/30">LIVE</span>
+            )}
+            <button onClick={onClose} className="font-pixel text-[#666] hover:text-white text-xs">[X]</button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-purple-500/10 px-4">
-          <button
-            onClick={() => setView("predict")}
-            className={`flex-1 py-3 font-pixel text-[10px] tracking-wide transition-all ${
-              view === "predict"
-                ? "text-purple-400 border-b-2 border-purple-400"
-                : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            PREDICT
-          </button>
-          <button
-            onClick={() => setView("history")}
-            className={`flex-1 py-3 font-pixel text-[10px] tracking-wide transition-all ${
-              view === "history"
-                ? "text-purple-400 border-b-2 border-purple-400"
-                : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            HISTORY
-          </button>
-          {isAdmin && (
+        <div className="flex border-b-2 border-[#2a2a2a] shrink-0">
+          {["predict", "history", ...(isAdmin ? ["admin"] : [])].map((tab) => (
             <button
-              onClick={() => setView("admin")}
-              className={`flex-1 py-3 font-pixel text-[10px] tracking-wide transition-all ${
-                view === "admin"
-                  ? "text-green-400 border-b-2 border-green-400"
-                  : "text-gray-500 hover:text-gray-300"
+              key={tab}
+              onClick={() => setView(tab as typeof view)}
+              className={`flex-1 font-pixel text-[10px] py-2 border-r border-[#2a2a2a] last:border-r-0 transition-colors ${
+                view === tab
+                  ? tab === "admin" ? "bg-[#166534] text-[#22c55e]" : "bg-[#1a1a2e] text-[#a855f7]"
+                  : "bg-[#0d0d0d] text-[#666] hover:text-[#888]"
               }`}
             >
-              ADMIN
+              {tab.toUpperCase()}
             </button>
-          )}
+          ))}
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center animate-pulse">
-                <span className="text-xl">&#128302;</span>
+              <div className="w-8 h-8 bg-[#1a1a2e] border border-[#6b21a8] flex items-center justify-center animate-pulse">
+                <span className="font-pixel text-[#a855f7]">...</span>
               </div>
-              <p className="text-purple-400 font-pixel text-sm mt-4">Loading...</p>
             </div>
           ) : view === "predict" ? (
             round?.status === "none" || !round ? (
-              // No active round
-              <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-6 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800 flex items-center justify-center">
-                  <span className="text-2xl text-gray-500">&#128302;</span>
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-6 text-center">
+                <div className="w-12 h-12 mx-auto mb-3 bg-[#1a1a2e] border border-[#2a2a2a] flex items-center justify-center">
+                  <span className="font-pixel text-[#444] text-lg">-</span>
                 </div>
-                <h3 className="font-pixel text-lg text-gray-400 mb-2">No Active Round</h3>
-                <p className="text-gray-500 text-sm">
-                  {round?.message || "Check back soon for the next prediction round!"}
-                </p>
+                <p className="font-pixel text-[#666] text-xs">NO ACTIVE MARKET</p>
+                <p className="font-pixel text-[#444] text-[10px] mt-2">{round?.message || "Check back soon"}</p>
               </div>
             ) : round.status === "settled" ? (
-              // Settled round - show results
-              <div className="space-y-4">
-                <div className="bg-gradient-to-br from-green-900/30 to-cyan-900/20 border border-green-500/30 rounded-xl p-6 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-green-500/30">
-                    <span className="text-2xl">&#127942;</span>
-                  </div>
-                  <h3 className="font-pixel text-lg text-green-400 mb-2">ROUND COMPLETE!</h3>
-                  <p className="text-gray-400 text-sm mb-4">Winner determined by highest % gain</p>
-
-                  {round.userPrediction && (
-                    <div className="bg-black/30 rounded-lg p-3 mb-4">
-                      <p className="text-gray-500 text-xs mb-1">Your Prediction</p>
-                      <p className="font-pixel text-white">
-                        {round.tokenOptions.find((t) => t.mint === round.userPrediction?.tokenMint)?.symbol || "Unknown"}
-                      </p>
-                      {round.userPrediction.tokenMint === round.winningTokenMint ? (
-                        <p className="text-green-400 text-xs mt-1 animate-pulse">
-                          You won! Congratulations!
-                        </p>
-                      ) : (
-                        <p className="text-gray-500 text-xs mt-1">Better luck next time!</p>
-                      )}
-                    </div>
-                  )}
+              <div className="space-y-3">
+                {/* Winner Banner */}
+                <div className="bg-[#166534]/20 border-2 border-[#22c55e]/50 p-4 text-center">
+                  <p className="font-pixel text-[#22c55e] text-xs mb-1">MARKET RESOLVED</p>
+                  <p className="font-pixel text-white text-lg">
+                    {round.tokenOptions.find((t) => t.mint === round.winningTokenMint)?.symbol || "?"}
+                  </p>
+                  <p className="font-pixel text-[#22c55e] text-sm">
+                    +{round.winningPriceChange?.toFixed(2)}%
+                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <p className="text-gray-500 text-xs uppercase tracking-wider">Results</p>
+                {/* User Result */}
+                {round.userPrediction && (
+                  <div className={`border p-3 ${
+                    round.userPrediction.tokenMint === round.winningTokenMint
+                      ? "bg-[#166534]/10 border-[#22c55e]/30"
+                      : "bg-[#1a1a1a] border-[#2a2a2a]"
+                  }`}>
+                    <p className="font-pixel text-[#666] text-[10px]">YOUR PREDICTION</p>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="font-pixel text-white text-sm">
+                        {round.tokenOptions.find((t) => t.mint === round.userPrediction?.tokenMint)?.symbol}
+                      </span>
+                      {round.userPrediction.tokenMint === round.winningTokenMint ? (
+                        <span className="font-pixel text-[#22c55e] text-xs">WIN</span>
+                      ) : (
+                        <span className="font-pixel text-[#ef4444] text-xs">MISS</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Results Grid */}
+                <div className="space-y-1">
+                  <p className="font-pixel text-[#666] text-[10px]">FINAL RESULTS</p>
                   {round.tokenOptions
-                    .sort((a, b) => {
-                      const changeA = round.settlementData?.priceChanges?.[a.mint] || 0;
-                      const changeB = round.settlementData?.priceChanges?.[b.mint] || 0;
-                      return changeB - changeA;
-                    })
-                    .map((token) => (
-                      <TokenCard
-                        key={token.mint}
-                        token={token}
-                        isSelected={false}
-                        onClick={() => {}}
-                        isWinner={token.mint === round.winningTokenMint}
-                        priceChange={round.settlementData?.priceChanges?.[token.mint]}
-                      />
-                    ))}
+                    .sort((a, b) => (round.settlementData?.priceChanges?.[b.mint] || 0) - (round.settlementData?.priceChanges?.[a.mint] || 0))
+                    .map((token, i) => {
+                      const change = round.settlementData?.priceChanges?.[token.mint] || 0;
+                      const isWinner = token.mint === round.winningTokenMint;
+                      return (
+                        <div key={token.mint} className={`flex items-center gap-2 p-2 border ${isWinner ? "bg-[#166534]/10 border-[#22c55e]/30" : "bg-[#1a1a1a] border-[#2a2a2a]"}`}>
+                          <span className="font-pixel text-[#666] text-[10px] w-4">{i + 1}</span>
+                          {token.imageUrl ? (
+                            <img src={token.imageUrl} alt="" className="w-6 h-6" />
+                          ) : (
+                            <div className="w-6 h-6 bg-[#6b21a8] flex items-center justify-center">
+                              <span className="font-pixel text-white text-[8px]">{token.symbol.slice(0, 2)}</span>
+                            </div>
+                          )}
+                          <span className="font-pixel text-white text-xs flex-1">{token.symbol}</span>
+                          <span className={`font-pixel text-xs ${change >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+                            {change >= 0 ? "+" : ""}{change.toFixed(2)}%
+                          </span>
+                          {isWinner && <span className="font-pixel text-[#fbbf24] text-[10px]">&#9733;</span>}
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             ) : (
-              // Active round - make prediction
-              <div className="space-y-4">
+              <div className="space-y-3">
+                {/* User Prediction Status */}
                 {round.userPrediction ? (
-                  // Already predicted
-                  <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 text-center">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <span className="text-purple-400 text-lg">&#10003;</span>
-                      <p className="font-pixel text-purple-400">PREDICTION LOCKED</p>
-                    </div>
-                    <p className="text-gray-400 text-xs mb-2">
-                      You predicted:
-                    </p>
+                  <div className="bg-[#6b21a8]/20 border-2 border-[#7c3aed]/50 p-4 text-center">
+                    <p className="font-pixel text-[#a855f7] text-[10px] mb-1">PREDICTION LOCKED</p>
                     <p className="font-pixel text-white text-lg">
-                      {round.tokenOptions.find((t) => t.mint === round.userPrediction?.tokenMint)?.symbol || "Unknown"}
+                      {round.tokenOptions.find((t) => t.mint === round.userPrediction?.tokenMint)?.symbol}
                     </p>
-                    <p className="text-gray-500 text-[10px] mt-2">
-                      Results will be announced when the round ends
-                    </p>
+                    <p className="font-pixel text-[#666] text-[10px] mt-2">Awaiting resolution...</p>
                   </div>
                 ) : !round.canEnter ? (
-                  // Entry deadline passed
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
-                    <p className="font-pixel text-yellow-400 mb-2">ENTRIES CLOSED</p>
-                    <p className="text-gray-400 text-xs">
-                      Entry deadline has passed. Results coming soon!
-                    </p>
+                  <div className="bg-[#854d0e]/20 border border-[#fbbf24]/30 p-3 text-center">
+                    <p className="font-pixel text-[#fbbf24] text-xs">ENTRIES CLOSED</p>
+                    <p className="font-pixel text-[#666] text-[10px] mt-1">Market resolving soon</p>
                   </div>
                 ) : (
-                  // Can still predict
-                  <>
-                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
-                      <p className="text-purple-400/90 text-xs text-center">
-                        Pick the token you think will gain the most over 24 hours
-                      </p>
-                    </div>
+                  <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-2">
+                    <p className="font-pixel text-[#666] text-[10px] text-center">SELECT WINNER</p>
+                  </div>
+                )}
 
-                    <div className="space-y-2">
-                      {round.tokenOptions.map((token) => (
-                        <TokenCard
-                          key={token.mint}
-                          token={token}
-                          isSelected={selectedToken === token.mint}
-                          onClick={() => setSelectedToken(token.mint)}
-                          predictionCount={round.predictionCounts?.[token.mint]}
-                        />
-                      ))}
-                    </div>
+                {/* Market Question */}
+                <div className="bg-[#1a1a2e] border border-[#2a2a2a] p-3">
+                  <p className="font-pixel text-white text-xs text-center">
+                    Which token gains the most in 24h?
+                  </p>
+                  <div className="flex justify-center gap-4 mt-2">
+                    <span className="font-pixel text-[#666] text-[10px]">{round.entryCount} predictions</span>
+                    <span className="font-pixel text-[#666] text-[10px]">|</span>
+                    <span className="font-pixel text-[#666] text-[10px]">Free entry</span>
+                  </div>
+                </div>
 
-                    <button
-                      onClick={handleSubmitPrediction}
-                      disabled={!selectedToken || isSubmitting}
-                      className="w-full py-4 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-pixel text-sm transition-all shadow-lg shadow-purple-500/20 border border-purple-500/50"
-                    >
-                      {isSubmitting
-                        ? "SUBMITTING..."
-                        : selectedToken
-                          ? `PREDICT ${round.tokenOptions.find((t) => t.mint === selectedToken)?.symbol || ""}`
-                          : "SELECT A TOKEN"}
-                    </button>
-                  </>
+                {/* Token Options - Polymarket Style */}
+                <div className="space-y-2">
+                  {round.tokenOptions.map((token) => {
+                    const probability = getTokenProbability(token.mint);
+                    const predictions = round.predictionCounts?.[token.mint] || 0;
+                    const isSelected = selectedToken === token.mint;
+                    const isUserPick = round.userPrediction?.tokenMint === token.mint;
+
+                    return (
+                      <button
+                        key={token.mint}
+                        onClick={() => !round.userPrediction && round.canEnter && setSelectedToken(token.mint)}
+                        disabled={!!round.userPrediction || !round.canEnter}
+                        className={`w-full text-left transition-colors ${
+                          isSelected
+                            ? "bg-[#6b21a8]/20 border-2 border-[#7c3aed]"
+                            : isUserPick
+                              ? "bg-[#6b21a8]/10 border-2 border-[#6b21a8]/50"
+                              : "bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#444]"
+                        } ${round.userPrediction || !round.canEnter ? "cursor-default" : "cursor-pointer"}`}
+                      >
+                        <div className="p-3">
+                          <div className="flex items-center gap-3">
+                            {token.imageUrl ? (
+                              <img src={token.imageUrl} alt="" className="w-8 h-8" />
+                            ) : (
+                              <div className="w-8 h-8 bg-[#6b21a8] flex items-center justify-center">
+                                <span className="font-pixel text-white text-[10px]">{token.symbol.slice(0, 3)}</span>
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="font-pixel text-white text-sm">{token.symbol}</span>
+                                <span className="font-pixel text-[#a855f7] text-sm">{probability.toFixed(0)}%</span>
+                              </div>
+                              <p className="font-pixel text-[#666] text-[10px] truncate">{token.name}</p>
+                            </div>
+                          </div>
+
+                          {/* Probability Bar */}
+                          <div className="mt-2 h-2 bg-[#1a1a2e] border border-[#2a2a2a]">
+                            <div
+                              className="h-full bg-[#6b21a8] transition-all"
+                              style={{ width: `${probability}%` }}
+                            />
+                          </div>
+
+                          <div className="flex justify-between mt-1">
+                            <span className="font-pixel text-[#666] text-[10px]">
+                              {predictions} prediction{predictions !== 1 ? "s" : ""}
+                            </span>
+                            <span className="font-pixel text-[#666] text-[10px]">
+                              ${token.startPrice > 0 ? token.startPrice.toFixed(6) : "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Submit Button */}
+                {!round.userPrediction && round.canEnter && (
+                  <button
+                    onClick={handleSubmitPrediction}
+                    disabled={!selectedToken || isSubmitting}
+                    className={`w-full font-pixel text-sm py-3 border-2 transition-colors ${
+                      selectedToken
+                        ? "bg-[#6b21a8] border-[#7c3aed] text-white hover:bg-[#7c3aed]"
+                        : "bg-[#1a1a1a] border-[#2a2a2a] text-[#666] cursor-not-allowed"
+                    }`}
+                  >
+                    {isSubmitting
+                      ? "SUBMITTING..."
+                      : selectedToken
+                        ? `PREDICT ${round.tokenOptions.find((t) => t.mint === selectedToken)?.symbol}`
+                        : "SELECT TOKEN"}
+                  </button>
                 )}
 
                 {message && (
-                  <p
-                    className={`text-center text-sm ${message.includes("submitted") || message.includes("success") ? "text-green-400" : "text-red-400"}`}
-                  >
+                  <p className={`font-pixel text-xs text-center ${message.includes("locked") || message.includes("success") ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
                     {message}
                   </p>
                 )}
 
-                {/* Round Info */}
-                <div className="bg-gray-900/30 border border-gray-700/30 rounded-lg p-4 mt-4">
-                  <h4 className="font-pixel text-xs text-gray-400 mb-2">HOW IT WORKS</h4>
-                  <ul className="text-gray-500 text-[11px] space-y-1">
-                    <li>&#8226; Free entry - one prediction per wallet per round</li>
-                    <li>&#8226; Pick the token you think will gain the most</li>
-                    <li>&#8226; Winner determined by highest % price change</li>
-                    <li>&#8226; Entries close 2 hours before round ends</li>
-                  </ul>
+                {/* Info Box */}
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-3 mt-2">
+                  <p className="font-pixel text-[#666] text-[10px] mb-2">HOW IT WORKS</p>
+                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                    <div className="flex items-start gap-1">
+                      <span className="text-[#6b21a8]">&#9632;</span>
+                      <span className="font-pixel text-[#888]">Free entry, 1 per wallet</span>
+                    </div>
+                    <div className="flex items-start gap-1">
+                      <span className="text-[#6b21a8]">&#9632;</span>
+                      <span className="font-pixel text-[#888]">Winner = most % gain</span>
+                    </div>
+                    <div className="flex items-start gap-1">
+                      <span className="text-[#6b21a8]">&#9632;</span>
+                      <span className="font-pixel text-[#888]">24h duration</span>
+                    </div>
+                    <div className="flex items-start gap-1">
+                      <span className="text-[#6b21a8]">&#9632;</span>
+                      <span className="font-pixel text-[#888]">Entries close 2h early</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )
           ) : view === "history" ? (
-            // History view
-            <div className="space-y-4">
+            <div className="space-y-2">
               {history.length === 0 ? (
-                <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-6 text-center">
-                  <p className="text-gray-500">No past rounds yet</p>
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-6 text-center">
+                  <p className="font-pixel text-[#666] text-xs">NO PAST MARKETS</p>
                 </div>
               ) : (
                 history.map((pastRound) => (
-                  <div
-                    key={pastRound.id}
-                    className="bg-gray-900/30 border border-gray-700/30 rounded-xl p-4"
-                  >
-                    <div className="flex justify-between items-start mb-3">
+                  <div key={pastRound.id} className="bg-[#1a1a1a] border border-[#2a2a2a]">
+                    <div className="flex items-center justify-between p-3 border-b border-[#2a2a2a]">
                       <div>
-                        <p className="font-pixel text-xs text-gray-400">
-                          Round #{pastRound.id}
-                        </p>
-                        <p className="text-gray-600 text-[10px]">
+                        <span className="font-pixel text-[#666] text-[10px]">ROUND #{pastRound.id}</span>
+                        <span className="font-pixel text-[#444] text-[10px] ml-2">
                           {new Date(pastRound.endTime).toLocaleDateString()}
-                        </p>
+                        </span>
                       </div>
-                      <span
-                        className={`text-[10px] px-2 py-1 rounded-full ${
-                          pastRound.status === "settled"
-                            ? "bg-green-500/20 text-green-400"
-                            : "bg-gray-500/20 text-gray-400"
-                        }`}
-                      >
+                      <span className={`font-pixel text-[10px] px-2 py-0.5 ${
+                        pastRound.status === "settled"
+                          ? "bg-[#166534]/20 text-[#22c55e]"
+                          : "bg-[#1a1a1a] text-[#666]"
+                      }`}>
                         {pastRound.status.toUpperCase()}
                       </span>
                     </div>
 
-                    {pastRound.winner && (
-                      <div className="flex items-center gap-2 bg-green-500/10 rounded-lg p-2 mb-3">
-                        <span className="text-green-400 text-sm">&#127942;</span>
-                        <span className="font-pixel text-green-400 text-sm">
-                          {pastRound.winner.symbol}
-                        </span>
-                        <span className="text-green-400/70 text-xs">
-                          +{pastRound.winner.priceChange.toFixed(2)}%
-                        </span>
-                      </div>
-                    )}
+                    <div className="p-3">
+                      {pastRound.winner && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-pixel text-[#fbbf24] text-xs">&#9733;</span>
+                          <span className="font-pixel text-white text-sm">{pastRound.winner.symbol}</span>
+                          <span className="font-pixel text-[#22c55e] text-xs">+{pastRound.winner.priceChange.toFixed(2)}%</span>
+                        </div>
+                      )}
 
-                    {pastRound.userPrediction && (
-                      <div
-                        className={`text-xs p-2 rounded-lg ${
+                      {pastRound.userPrediction && (
+                        <div className={`font-pixel text-[10px] p-2 ${
                           pastRound.userPrediction.isWinner
-                            ? "bg-green-500/10 text-green-400"
-                            : "bg-gray-700/30 text-gray-400"
-                        }`}
-                      >
-                        Your pick:{" "}
-                        {pastRound.tokenOptions.find(
-                          (t) => t.mint === pastRound.userPrediction?.tokenMint
-                        )?.symbol || "Unknown"}{" "}
-                        {pastRound.userPrediction.isWinner && "- Winner!"}
-                      </div>
-                    )}
+                            ? "bg-[#166534]/10 text-[#22c55e]"
+                            : "bg-[#1a1a2e] text-[#666]"
+                        }`}>
+                          You: {pastRound.tokenOptions.find((t) => t.mint === pastRound.userPrediction?.tokenMint)?.symbol}
+                          {pastRound.userPrediction.isWinner && " - WIN!"}
+                        </div>
+                      )}
 
-                    <p className="text-gray-600 text-[10px] mt-2">
-                      {pastRound.entryCount} participant{pastRound.entryCount !== 1 ? "s" : ""}
-                    </p>
+                      <p className="font-pixel text-[#444] text-[10px] mt-2">
+                        {pastRound.entryCount} participant{pastRound.entryCount !== 1 ? "s" : ""}
+                      </p>
+                    </div>
                   </div>
                 ))
               )}
             </div>
           ) : (
-            // Admin view
-            <div className="space-y-4">
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                <h3 className="font-pixel text-sm text-green-400 mb-3">Admin Controls</h3>
+            <div className="space-y-3">
+              <div className="bg-[#166534]/10 border border-[#22c55e]/30 p-4">
+                <p className="font-pixel text-[#22c55e] text-xs mb-3">ADMIN CONTROLS</p>
 
                 {round?.status === "active" ? (
                   <div className="space-y-3">
-                    <div className="bg-black/30 rounded-lg p-3">
-                      <p className="text-gray-400 text-xs mb-1">Active Round #{round.id}</p>
-                      <p className="text-white font-pixel">
-                        {round.entryCount} entries | {formatTimeRemaining(countdown)} left
-                      </p>
+                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-3">
+                      <div className="grid grid-cols-2 gap-2 font-pixel text-[10px]">
+                        <div>
+                          <span className="text-[#666]">Round</span>
+                          <span className="text-white ml-2">#{round.id}</span>
+                        </div>
+                        <div>
+                          <span className="text-[#666]">Entries</span>
+                          <span className="text-white ml-2">{round.entryCount}</span>
+                        </div>
+                        <div>
+                          <span className="text-[#666]">Time Left</span>
+                          <span className="text-[#22c55e] ml-2">{formatTimeRemaining(countdown)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[#666]">Tokens</span>
+                          <span className="text-white ml-2">{round.tokenOptions.length}</span>
+                        </div>
+                      </div>
                     </div>
 
                     <button
                       onClick={handleSettleRound}
                       disabled={isSettling}
-                      className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white rounded-lg font-pixel text-xs transition-all"
+                      className="w-full font-pixel text-xs py-3 bg-[#854d0e] border border-[#fbbf24]/50 text-[#fbbf24] hover:bg-[#a16207] disabled:opacity-50 transition-colors"
                     >
-                      {isSettling ? "SETTLING..." : "SETTLE ROUND NOW"}
+                      {isSettling ? "SETTLING..." : "SETTLE NOW"}
                     </button>
                   </div>
                 ) : (
                   <button
                     onClick={handleCreateRound}
                     disabled={isCreatingRound}
-                    className="w-full py-3 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-lg font-pixel text-xs transition-all"
+                    className="w-full font-pixel text-xs py-3 bg-[#166534] border border-[#22c55e]/50 text-[#22c55e] hover:bg-[#15803d] disabled:opacity-50 transition-colors"
                   >
                     {isCreatingRound ? "CREATING..." : "CREATE 24H ROUND"}
                   </button>
                 )}
+
+                {message && (
+                  <p className="font-pixel text-[#fbbf24] text-xs text-center mt-2">{message}</p>
+                )}
               </div>
 
-              {message && (
-                <p className="text-center text-sm text-yellow-400">{message}</p>
-              )}
-
-              <div className="bg-gray-900/30 border border-gray-700/30 rounded-lg p-4">
-                <h4 className="font-pixel text-xs text-gray-400 mb-2">ROUND FLOW</h4>
-                <ul className="text-gray-500 text-[11px] space-y-1">
-                  <li>1. Create round - fetches top 5 tokens with prices</li>
-                  <li>2. Users predict for 22 hours</li>
-                  <li>3. Entries close 2 hours before end</li>
-                  <li>4. Admin settles - fetches end prices, picks winner</li>
-                </ul>
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-3">
+                <p className="font-pixel text-[#666] text-[10px] mb-2">ROUND FLOW</p>
+                <div className="space-y-1 font-pixel text-[10px] text-[#888]">
+                  <p>1. Create round - auto-fetches top tokens</p>
+                  <p>2. Users predict for 22 hours</p>
+                  <p>3. Entries close 2h before end</p>
+                  <p>4. Settle - determine winner by % gain</p>
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-purple-500/10 bg-black/20">
-          <div className="flex items-center justify-between">
-            <p className="text-gray-600 text-[10px] flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-              Free entry - bragging rights only
-            </p>
-            <button
-              onClick={fetchRound}
-              className="text-purple-400 hover:text-purple-300 text-[10px] transition-colors flex items-center gap-1.5"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Refresh
-            </button>
-          </div>
+        <div className="border-t-2 border-[#2a2a2a] px-4 py-2 flex items-center justify-between shrink-0 bg-[#0d0d0d]">
+          <span className="font-pixel text-[#444] text-[10px]">Free entry | Bragging rights</span>
+          <button onClick={fetchRound} className="font-pixel text-[#666] hover:text-[#a855f7] text-[10px] transition-colors">
+            [REFRESH]
+          </button>
         </div>
       </div>
     </div>

@@ -624,17 +624,16 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
-  // Oracle Tower disabled for now
-  // {
-  //   mint: "StarterOracleTower11111111111111111111111111",
-  //   name: "Oracle's Tower",
-  //   symbol: "ORACLE",
-  //   description:
-  //     "Predict which token will perform best! Free entry prediction market where winners earn bragging rights.",
-  //   imageUrl: "/assets/buildings/oracle.png",
-  //   creator: "BagsWorld",
-  //   createdAt: Date.now() - 86400000 * 7, // 7 days ago
-  // },
+  {
+    mint: "StarterOracleTower11111111111111111111111111",
+    name: "Oracle's Tower",
+    symbol: "ORACLE",
+    description:
+      "Predict which token will perform best! Free entry prediction market where winners earn bragging rights.",
+    imageUrl: "/assets/buildings/oracle.png",
+    creator: "BagsWorld",
+    createdAt: Date.now() - 86400000 * 7, // 7 days ago
+  },
 ];
 
 // Generate events from claim data and launches
