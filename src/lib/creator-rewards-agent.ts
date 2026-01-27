@@ -18,7 +18,7 @@ import {
   sendAndConfirmTransaction,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
-import { ECOSYSTEM_CONFIG } from "./config";
+// ECOSYSTEM_CONFIG import removed - rewards system deprecated
 import type { ClaimablePosition } from "./types";
 import { getRewardsState, saveRewardsState, isNeonConfigured } from "./neon";
 
@@ -86,19 +86,20 @@ export interface DistributionResult {
   trigger: "threshold" | "timer";
 }
 
-// Default configuration from ECOSYSTEM_CONFIG
+// Default configuration - DEPRECATED: Creator rewards agent disabled
+// Community is now funded by Ghost's 5% $BagsWorld revenue contribution
 const DEFAULT_CONFIG: CreatorRewardsConfig = {
-  enabled: true,
-  thresholdSol: ECOSYSTEM_CONFIG.ecosystem.rewards.thresholdSol,
-  backupTimerMs: ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays * 24 * 60 * 60 * 1000,
-  minimumDistributionSol: ECOSYSTEM_CONFIG.ecosystem.rewards.minimumDistributionSol,
-  checkIntervalMs: ECOSYSTEM_CONFIG.ecosystem.rewards.checkIntervalMs,
-  reservePercentage: ECOSYSTEM_CONFIG.ecosystem.rewards.reservePercentage,
-  topCreatorsCount: ECOSYSTEM_CONFIG.ecosystem.rewards.topCreatorsCount,
+  enabled: false, // Disabled - using Ghost's founder contribution model instead
+  thresholdSol: 10,
+  backupTimerMs: 5 * 24 * 60 * 60 * 1000, // 5 days
+  minimumDistributionSol: 2,
+  checkIntervalMs: 15 * 60 * 1000, // 15 minutes
+  reservePercentage: 10,
+  topCreatorsCount: 3,
   distribution: {
-    first: ECOSYSTEM_CONFIG.ecosystem.rewards.distribution.first,
-    second: ECOSYSTEM_CONFIG.ecosystem.rewards.distribution.second,
-    third: ECOSYSTEM_CONFIG.ecosystem.rewards.distribution.third,
+    first: 50,
+    second: 30,
+    third: 20,
   },
 };
 

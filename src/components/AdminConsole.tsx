@@ -1484,28 +1484,17 @@ export function AdminConsole() {
                 </div>
 
                 {/* Config Summary */}
+                {/* REWARDS CONFIG - DEPRECATED: Now funded by Ghost's 5% contribution */}
                 <div className="bg-bags-darker p-3 border border-red-500/30">
-                  <p className="font-pixel text-[8px] text-gray-400 mb-2">REWARDS CONFIG</p>
+                  <p className="font-pixel text-[8px] text-gray-400 mb-2">FUNDING MODEL</p>
                   <div className="grid grid-cols-2 gap-3 font-mono text-[9px]">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Threshold:</span>
-                      <span className="text-white">
-                        {ECOSYSTEM_CONFIG.ecosystem.rewards.thresholdSol} SOL
-                      </span>
+                      <span className="text-gray-500">Source:</span>
+                      <span className="text-white">Ghost&apos;s 5%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Backup Timer:</span>
-                      <span className="text-white">
-                        {ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays} days
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Distribution:</span>
-                      <span className="text-white">
-                        {ECOSYSTEM_CONFIG.ecosystem.rewards.distribution.first}/
-                        {ECOSYSTEM_CONFIG.ecosystem.rewards.distribution.second}/
-                        {ECOSYSTEM_CONFIG.ecosystem.rewards.distribution.third}
-                      </span>
+                      <span className="text-gray-500">Launch Fees:</span>
+                      <span className="text-white">0% (free)</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Fee BPS:</span>
@@ -1513,6 +1502,10 @@ export function AdminConsole() {
                         {ECOSYSTEM_CONFIG.ecosystem.feeBps} (
                         {ECOSYSTEM_CONFIG.ecosystem.feeBps / 100}%)
                       </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Status:</span>
+                      <span className="text-green-400">Community Funded</span>
                     </div>
                   </div>
                 </div>
