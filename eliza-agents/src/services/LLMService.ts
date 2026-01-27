@@ -11,6 +11,7 @@ export interface ConversationContext {
   worldState?: string;
   tokenData?: string;
   agentContext?: string;
+  oracleState?: string;
 }
 
 export interface LLMResponse {
@@ -118,6 +119,10 @@ RULES:
 
     if (context?.agentContext) {
       systemPrompt += `\n\nOTHER AGENTS:\n${context.agentContext}`;
+    }
+
+    if (context?.oracleState) {
+      systemPrompt += `\n\nORACLE PREDICTION MARKET:\n${context.oracleState}`;
     }
 
     return systemPrompt;
