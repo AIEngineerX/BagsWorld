@@ -57,14 +57,30 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
     }
   };
 
-  // Calculate world stats
+  // Calculate world stats - exclude all NPC agents
   const citizenCount =
-    worldState?.population?.filter((c) => !c.isToly && !c.isAsh && !c.isFinn && !c.isDev).length ||
-    0;
-  const buildingCount =
-    worldState?.buildings?.filter(
-      (b) => !b.id.startsWith("Treasury") && !b.id.startsWith("Starter")
+    worldState?.population?.filter(
+      (c) =>
+        !c.isToly &&
+        !c.isAsh &&
+        !c.isFinn &&
+        !c.isDev &&
+        !c.isScout &&
+        !c.isCJ &&
+        !c.isShaw &&
+        !c.isRamo &&
+        !c.isSincara &&
+        !c.isStuu &&
+        !c.isSam &&
+        !c.isAlaa &&
+        !c.isCarlo &&
+        !c.isBNN &&
+        !c.isProfessorOak
     ).length || 0;
+  // Exclude landmarks (permanent, floating, mansions) from building count
+  const buildingCount =
+    worldState?.buildings?.filter((b) => !b.isPermanent && !b.isFloating && !b.isMansion).length ||
+    0;
   const happyCitizens =
     worldState?.population?.filter((c) => c.mood === "happy" || c.mood === "celebrating").length ||
     0;
