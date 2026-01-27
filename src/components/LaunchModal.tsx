@@ -404,13 +404,34 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               `Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`
             );
 
-            // Send transaction - skip preflight to avoid blockhash simulation issues
-            // The transaction will still be validated by validators when submitted
-            const txid = await connection.sendRawTransaction(signedTx.serialize(), {
-              skipPreflight: true,
-              preflightCommitment: "confirmed",
-              maxRetries: 5,
-            });
+            // Send transaction - try with preflight first (better for Phantom/Blowfish simulation)
+            // Falls back to skipPreflight if simulation fails
+            let txid: string;
+            try {
+              txid = await connection.sendRawTransaction(signedTx.serialize(), {
+                skipPreflight: false,
+                preflightCommitment: "confirmed",
+                maxRetries: 5,
+              });
+            } catch (preflightError: unknown) {
+              const errMsg =
+                preflightError instanceof Error ? preflightError.message : String(preflightError);
+              // If preflight simulation failed, retry without it
+              if (
+                errMsg.includes("simulation") ||
+                errMsg.includes("Simulation") ||
+                errMsg.includes("preflight")
+              ) {
+                console.warn("Preflight failed, retrying without simulation:", errMsg);
+                txid = await connection.sendRawTransaction(signedTx.serialize(), {
+                  skipPreflight: true,
+                  preflightCommitment: "confirmed",
+                  maxRetries: 5,
+                });
+              } else {
+                throw preflightError;
+              }
+            }
 
             await connection.confirmTransaction(
               {
@@ -583,11 +604,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         const maxSendAttempts = 3;
         let currentSignedTx = signedTx;
 
+        let useSkipPreflight = false; // Start with preflight enabled for Blowfish simulation
+
         while (sendAttempts < maxSendAttempts) {
           sendAttempts++;
           try {
             txid = await connection.sendRawTransaction(currentSignedTx.serialize(), {
-              skipPreflight: true,
+              skipPreflight: useSkipPreflight,
               preflightCommitment: "confirmed",
               maxRetries: 5,
             });
@@ -595,6 +618,19 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           } catch (sendError: unknown) {
             const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
             console.error(`Send attempt ${sendAttempts} failed:`, errorMessage);
+
+            // If preflight simulation failed, retry with skipPreflight
+            if (
+              !useSkipPreflight &&
+              (errorMessage.includes("simulation") ||
+                errorMessage.includes("Simulation") ||
+                errorMessage.includes("preflight"))
+            ) {
+              console.warn("Preflight failed, retrying without simulation");
+              useSkipPreflight = true;
+              sendAttempts--; // Don't count this as a full attempt
+              continue;
+            }
 
             // If blockhash error and we haven't hit max attempts, request fresh transaction from API
             if (
