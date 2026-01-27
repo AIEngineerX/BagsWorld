@@ -7,6 +7,7 @@ import type { Character, Memory, State, IAgentRuntime } from '../types/elizaos.j
 import { Message, ConversationContext } from '../services/LLMService.js';
 import { worldStateProvider } from '../providers/worldState.js';
 import { agentContextProvider } from '../providers/agentContext.js';
+import { oracleDataProvider } from '../providers/oracleData.js';
 
 // Reduced from 50 to 8 for token efficiency (~80% savings on conversation context)
 export const MAX_CONVERSATION_LENGTH = 8;
@@ -17,6 +18,9 @@ const WORLD_STATE_CACHE_TTL = 60000; // 1 minute
 
 // Pattern to detect if user is asking about other agents
 const AGENT_MENTION_PATTERN = /\b(toly|finn|ash|ghost|neo|cj|shaw|bags.?bot|who|which agent|talk to|ask)\b/i;
+
+// Pattern to detect Oracle-related queries
+const ORACLE_PATTERN = /\b(oracle|predict|prediction|forecast|tower|bet|pick|winner|round)\b/i;
 
 // Database instance - set by server.ts
 let dbInstance: NeonQueryFunction<false, false> | null = null;
@@ -153,6 +157,14 @@ export async function buildConversationContext(
     const agentResult = await agentContextProvider.get(runtime, memory, state);
     if (agentResult?.text) {
       context.agentContext = agentResult.text;
+    }
+  }
+
+  // Include Oracle context when user asks about predictions
+  if (ORACLE_PATTERN.test(userMessage)) {
+    const oracleResult = await oracleDataProvider.get(runtime, memory, state);
+    if (oracleResult?.text) {
+      context.oracleState = oracleResult.text;
     }
   }
 
