@@ -22,11 +22,16 @@ const LOCATIONS: Record<
   main_city: [
     {
       id: "pokecenter",
-      name: "PokeCenter",
-      desc: "Heal & Info",
+      name: "Rewards Center",
+      desc: "Fee Claims",
       event: "bagsworld-pokecenter-click",
     },
-    { id: "treasury", name: "Treasury", desc: "Claim Fees", event: "bagsworld-treasury-click" },
+    {
+      id: "treasury",
+      name: "Creator Hub",
+      desc: "Top 3 Payouts",
+      event: "bagsworld-treasury-click",
+    },
   ],
   trending: [
     { id: "casino", name: "Casino", desc: "Games & Raffle", event: "bagsworld-casino-click" },
