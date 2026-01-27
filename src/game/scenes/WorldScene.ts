@@ -345,9 +345,10 @@ export class WorldScene extends Phaser.Scene {
       if (origX !== undefined) (a.sprite as any).x = origX;
     });
 
-    // Determine slide direction: Park -> BagsCity -> Ballers Valley -> Founder's Corner (left to right)
-    // Zone order: main_city (0) -> trending (1) -> ballers (2) -> founders (3)
+    // Determine slide direction: Labs -> Park -> BagsCity -> Ballers Valley -> Founder's Corner (left to right)
+    // Zone order: labs (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3)
     const zoneOrder: Record<ZoneType, number> = {
+      labs: -1,
       main_city: 0,
       trending: 1,
       ballers: 2,
@@ -2400,8 +2401,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * Create Tech Labs decorations - futuristic R&D environment
-   * Includes 3 clickable buildings and tech-themed props
+   * Create Tech Labs decorations - Bags.FM HQ environment
+   * Features single large HQ building with green-themed props
    */
   private createLabsDecorations(): void {
     const s = SCALE;
@@ -2471,68 +2472,60 @@ export class WorldScene extends Phaser.Scene {
       });
     });
 
-    // === BUILDINGS (depth 5+) - Clickable with info popups ===
-    const buildings = [
-      { texture: "labs_0", x: 200, label: "SERVER\nROOM", type: "server" },
-      { texture: "labs_1", x: 420, label: "RESEARCH\nLAB", type: "research" },
-      { texture: "labs_2", x: 640, label: "HOLO\nDECK", type: "holo" },
-    ];
+    // === BAGS.FM HQ (depth 5) - Single large building in center ===
+    const hqX = Math.round(420 * s); // Center of zone
+    const hqSprite = this.add.sprite(hqX, pathLevel, "labs_hq");
+    hqSprite.setOrigin(0.5, 1);
+    hqSprite.setDepth(5);
 
-    buildings.forEach((b, i) => {
-      const bx = Math.round(b.x * s);
-      const sprite = this.add.sprite(bx, pathLevel, b.texture);
-      sprite.setOrigin(0.5, 1);
-      sprite.setDepth(5 - i / 10);
-
-      // Make building interactive
-      sprite.setInteractive({ useHandCursor: true });
-      sprite.on("pointerdown", () => this.showLabsPopup(b.type));
-      sprite.on("pointerover", () => {
-        sprite.setTint(0xaaddff);
-        this.tweens.add({
-          targets: sprite,
-          scaleX: 1.02,
-          scaleY: 1.02,
-          duration: 100,
-          ease: "Power2",
-        });
+    // Make HQ interactive
+    hqSprite.setInteractive({ useHandCursor: true });
+    hqSprite.on("pointerdown", () => this.showLabsPopup("hq"));
+    hqSprite.on("pointerover", () => {
+      hqSprite.setTint(0xbbf7d0); // Light green tint on hover
+      this.tweens.add({
+        targets: hqSprite,
+        scaleX: 1.02,
+        scaleY: 1.02,
+        duration: 100,
+        ease: "Power2",
       });
-      sprite.on("pointerout", () => {
-        sprite.clearTint();
-        this.tweens.add({
-          targets: sprite,
-          scaleX: 1,
-          scaleY: 1,
-          duration: 100,
-          ease: "Power2",
-        });
-      });
-
-      this.labsElements.push(sprite);
-
-      // Building label with tech-styled background
-      const labelBg = this.add.rectangle(
-        bx,
-        pathLevel + Math.round(18 * s),
-        Math.round(70 * s),
-        Math.round(24 * s),
-        0x0a0a0f,
-        0.8
-      );
-      labelBg.setDepth(6);
-      labelBg.setStrokeStyle(1, 0x06b6d4);
-      this.labsElements.push(labelBg);
-
-      const label = this.add.text(bx, pathLevel + Math.round(18 * s), b.label, {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(8 * s)}px`,
-        color: "#22d3ee",
-        align: "center",
-      });
-      label.setOrigin(0.5, 0.5);
-      label.setDepth(7);
-      this.labsElements.push(label);
     });
+    hqSprite.on("pointerout", () => {
+      hqSprite.clearTint();
+      this.tweens.add({
+        targets: hqSprite,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 100,
+        ease: "Power2",
+      });
+    });
+
+    this.labsElements.push(hqSprite);
+
+    // HQ label with Bags.FM green theme
+    const labelBg = this.add.rectangle(
+      hqX,
+      pathLevel + Math.round(18 * s),
+      Math.round(90 * s),
+      Math.round(24 * s),
+      0x0a1a0f,
+      0.9
+    );
+    labelBg.setDepth(6);
+    labelBg.setStrokeStyle(1, 0x4ade80);
+    this.labsElements.push(labelBg);
+
+    const label = this.add.text(hqX, pathLevel + Math.round(18 * s), "BAGS.FM\nHQ", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(8 * s)}px`,
+      color: "#4ade80",
+      align: "center",
+    });
+    label.setOrigin(0.5, 0.5);
+    label.setDepth(7);
+    this.labsElements.push(label);
 
     // === DATA TERMINALS (depth 3) ===
     const terminalPositions = [100, 320, 520, 760];
@@ -2593,30 +2586,27 @@ export class WorldScene extends Phaser.Scene {
       });
     });
 
-    // === FLOOR GLOW EFFECTS (depth 1) - Ambient tech lighting ===
-    const glowPositions = [200, 420, 640];
-    glowPositions.forEach((gx) => {
-      const glow = this.add.ellipse(
-        Math.round(gx * s),
-        pathLevel + Math.round(5 * s),
-        Math.round(80 * s),
-        Math.round(20 * s),
-        0x06b6d4,
-        0.15
-      );
-      glow.setDepth(1);
-      this.labsElements.push(glow);
+    // === FLOOR GLOW EFFECT (depth 1) - Bags.FM green ambient lighting under HQ ===
+    const hqGlow = this.add.ellipse(
+      Math.round(420 * s),
+      pathLevel + Math.round(5 * s),
+      Math.round(160 * s),
+      Math.round(30 * s),
+      0x4ade80,
+      0.2
+    );
+    hqGlow.setDepth(1);
+    this.labsElements.push(hqGlow);
 
-      // Subtle pulse
-      this.tweens.add({
-        targets: glow,
-        alpha: { from: 0.1, to: 0.2 },
-        scaleX: { from: 0.95, to: 1.05 },
-        duration: 2000,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
+    // Pulsing glow effect
+    this.tweens.add({
+      targets: hqGlow,
+      alpha: { from: 0.15, to: 0.25 },
+      scaleX: { from: 0.95, to: 1.05 },
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
     });
   }
 

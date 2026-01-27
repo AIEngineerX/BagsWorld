@@ -40,7 +40,7 @@ export function ZoneNav() {
                   ? "bg-bags-green text-bags-dark border-bags-green shadow-[0_0_10px_rgba(74,222,128,0.5)]"
                   : "text-gray-400 hover:text-bags-green hover:bg-bags-green/10 border-gray-600 hover:border-bags-green/50"
               }
-              ${isLabs && !isActive ? "border-cyan-400/50 text-cyan-400" : ""}
+              ${isLabs && !isActive ? "border-green-400/50 text-green-400" : ""}
               ${isTrending && !isActive ? "border-bags-gold/50 text-bags-gold" : ""}
               ${isBallers && !isActive ? "border-yellow-400/50 text-yellow-400" : ""}
               ${isFounders && !isActive ? "border-amber-500/50 text-amber-400" : ""}
