@@ -46,6 +46,7 @@ import { TradingGymModal } from "@/components/TradingGymModal";
 import { CommunityFundModal } from "@/components/CommunityFundModal";
 import { CasinoModal } from "@/components/CasinoModal";
 import { CasinoAdmin } from "@/components/CasinoAdmin";
+import { OracleTowerModal } from "@/components/OracleTowerModal";
 import { LauncherHub } from "@/components/LauncherHub";
 import { TradingTerminalModal } from "@/components/TradingTerminalModal";
 import { MansionModal } from "@/components/MansionModal";
@@ -95,7 +96,7 @@ const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
 });
 
 export default function Home() {
-  const { worldState, isLoading, refreshAfterLaunch, tokenCount } = useWorldState();
+  const { worldState, isLoading, refreshAfterLaunch, tokenCount, refetch } = useWorldState();
   const { publicKey } = useWallet();
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
   const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
@@ -103,6 +104,7 @@ export default function Home() {
   const [showTradingGymModal, setShowTradingGymModal] = useState(false);
   const [showCommunityFundModal, setShowCommunityFundModal] = useState(false);
   const [showCasinoModal, setShowCasinoModal] = useState(false);
+  const [showOracleModal, setShowOracleModal] = useState(false);
   const [showLauncherHub, setShowLauncherHub] = useState(false);
   const [showCasinoAdmin, setShowCasinoAdmin] = useState(false);
   const [showTradingTerminal, setShowTradingTerminal] = useState(false);
@@ -142,6 +144,10 @@ export default function Home() {
       setShowCasinoModal(true);
     };
 
+    const handleOracleClick = () => {
+      setShowOracleModal(true);
+    };
+
     const handleTradingTerminalClick = () => {
       setShowTradingTerminal(true);
     };
@@ -172,6 +178,7 @@ export default function Home() {
     window.addEventListener("bagsworld-tradinggym-click", handleTradingGymClick as EventListener);
     window.addEventListener("bagsworld-treasury-click", handleTreasuryClick as EventListener);
     window.addEventListener("bagsworld-casino-click", handleCasinoClick as EventListener);
+    window.addEventListener("bagsworld-oracle-click", handleOracleClick as EventListener);
     window.addEventListener(
       "bagsworld-terminal-click",
       handleTradingTerminalClick as EventListener
@@ -191,6 +198,7 @@ export default function Home() {
       );
       window.removeEventListener("bagsworld-treasury-click", handleTreasuryClick as EventListener);
       window.removeEventListener("bagsworld-casino-click", handleCasinoClick as EventListener);
+      window.removeEventListener("bagsworld-oracle-click", handleOracleClick as EventListener);
       window.removeEventListener(
         "bagsworld-terminal-click",
         handleTradingTerminalClick as EventListener
@@ -470,7 +478,7 @@ export default function Home() {
 
           {/* Event Feed */}
           <div className="h-36 border-t-4 border-bags-green">
-            <EventFeed events={worldState?.events ?? []} />
+            <EventFeed events={worldState?.events ?? []} onClear={refetch} />
           </div>
         </aside>
 
@@ -559,6 +567,7 @@ export default function Home() {
 
       {/* Casino Modal - triggered by clicking Casino building */}
       {showCasinoModal && <CasinoModal onClose={() => setShowCasinoModal(false)} />}
+      {showOracleModal && <OracleTowerModal onClose={() => setShowOracleModal(false)} />}
 
       {/* Trading Terminal Modal - professional trading terminal with charts */}
       {showTradingTerminal && (
