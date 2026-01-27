@@ -2371,8 +2371,7 @@ export class WorldScene extends Phaser.Scene {
 
     // Check if elements were destroyed (can happen during transitions)
     const elementsValid =
-      this.labsElements.length > 0 &&
-      this.labsElements.every((el) => (el as any).active !== false);
+      this.labsElements.length > 0 && this.labsElements.every((el) => (el as any).active !== false);
 
     if (!elementsValid && this.labsZoneCreated) {
       this.labsElements = [];
@@ -2455,7 +2454,11 @@ export class WorldScene extends Phaser.Scene {
     // === HOLO DISPLAYS (depth 2) ===
     const holoPositions = [150, 350, 550, 750];
     holoPositions.forEach((hx) => {
-      const holo = this.add.sprite(Math.round(hx * s), grassTop + Math.round(28 * s), "labs_prop_0");
+      const holo = this.add.sprite(
+        Math.round(hx * s),
+        grassTop + Math.round(28 * s),
+        "labs_prop_0"
+      );
       holo.setOrigin(0.5, 1);
       holo.setDepth(2);
       holo.setScale(0.8 + Math.random() * 0.3);
@@ -2549,7 +2552,11 @@ export class WorldScene extends Phaser.Scene {
     // === ENERGY CORES (depth 3) - Ambient energy nodes ===
     const corePositions = [250, 550];
     corePositions.forEach((cx) => {
-      const core = this.add.sprite(Math.round(cx * s), grassTop + Math.round(35 * s), "labs_prop_4");
+      const core = this.add.sprite(
+        Math.round(cx * s),
+        grassTop + Math.round(35 * s),
+        "labs_prop_4"
+      );
       core.setOrigin(0.5, 1);
       core.setDepth(3);
       this.labsElements.push(core);
@@ -2570,7 +2577,11 @@ export class WorldScene extends Phaser.Scene {
     // === DRONE DOCKS (depth 3) ===
     const dronePositions = [680];
     dronePositions.forEach((dx) => {
-      const drone = this.add.sprite(Math.round(dx * s), grassTop + Math.round(20 * s), "labs_prop_5");
+      const drone = this.add.sprite(
+        Math.round(dx * s),
+        grassTop + Math.round(20 * s),
+        "labs_prop_5"
+      );
       drone.setOrigin(0.5, 1);
       drone.setDepth(3);
       this.labsElements.push(drone);
@@ -2616,9 +2627,7 @@ export class WorldScene extends Phaser.Scene {
   private showLabsPopup(type: string): void {
     // Reuse the founders popup system with labs-specific content
     // For now, dispatch a custom event that can be handled by UI
-    window.dispatchEvent(
-      new CustomEvent(`bagsworld-${type}-click`)
-    );
+    window.dispatchEvent(new CustomEvent(`bagsworld-${type}-click`));
   }
 
   /**
@@ -4924,6 +4933,7 @@ Use: bags.fm/[yourname]`,
     });
 
     // Separate characters into existing (quick update) and new (needs creation)
+    // Only create sprites for characters in the current zone
     const existingCharacters: { character: GameCharacter; sprite: Phaser.GameObjects.Sprite }[] =
       [];
     const newCharacters: { character: GameCharacter; index: number }[] = [];
@@ -4933,7 +4943,11 @@ Use: bags.fm/[yourname]`,
       if (sprite) {
         existingCharacters.push({ character, sprite });
       } else {
-        newCharacters.push({ character, index });
+        // Only create new sprites for characters in the current zone
+        const charZone = character.zone || "main_city"; // Default to Park
+        if (charZone === this.currentZone) {
+          newCharacters.push({ character, index });
+        }
       }
     });
 
