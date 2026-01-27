@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
+import bs58 from "bs58";
 
 interface OracleTowerModalProps {
   onClose: () => void;
@@ -29,6 +30,12 @@ interface OracleRoundData {
     tokenMint: string;
     createdAt: string;
   };
+  userPrizeInfo?: {
+    rank: number;
+    prizeLamports: string;
+    prizeSol: number;
+    claimed: boolean;
+  };
   remainingMs?: number;
   canEnter?: boolean;
   entryDeadline?: string;
@@ -36,8 +43,32 @@ interface OracleRoundData {
   winningPriceChange?: number;
   settlementData?: {
     priceChanges?: Record<string, number>;
+    distributions?: Array<{
+      wallet: string;
+      rank: number;
+      prizeLamports: string;
+      prizeSol: number;
+    }>;
   };
+  prizePool?: {
+    lamports: string;
+    sol: number;
+    hasPrize: boolean;
+  };
+  prizeDistributed?: boolean;
   message?: string;
+}
+
+interface OracleBalance {
+  balance: { lamports: string; sol: number };
+  totalEarned: { lamports: string; sol: number };
+  totalClaimed: { lamports: string; sol: number };
+  pendingClaim?: {
+    id: number;
+    amountSol: number;
+    status: string;
+    createdAt: string;
+  };
 }
 
 interface HistoryRound {
@@ -47,6 +78,7 @@ interface HistoryRound {
   endTime: string;
   tokenOptions: TokenOption[];
   entryCount: number;
+  prizePool?: { lamports: string; sol: number };
   winner?: {
     mint: string;
     symbol: string;
@@ -57,6 +89,9 @@ interface HistoryRound {
     tokenMint: string;
     isWinner: boolean;
     createdAt: string;
+    prizeLamports?: string;
+    prizeSol?: number;
+    rank?: number;
   };
 }
 
@@ -171,42 +206,94 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   const [isCreatingRound, setIsCreatingRound] = useState(false);
   const [isSettling, setIsSettling] = useState(false);
 
-  const { publicKey, connected } = useWallet();
+  // Balance and claiming state
+  const [balance, setBalance] = useState<OracleBalance | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [prizePoolInput, setPrizePoolInput] = useState("0.5");
+
+  const { publicKey, connected, signMessage } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { isAdmin } = useAdminCheck();
 
   const fetchRound = useCallback(async () => {
     setIsLoading(true);
-    const walletParam = publicKey ? `?wallet=${publicKey.toString()}` : "";
-    const res = await fetch(`/api/oracle/current${walletParam}`);
-    const data = await res.json();
-    setRound(data);
-    setCountdown(data.remainingMs || 0);
-    setIsLoading(false);
+    try {
+      const walletParam = publicKey ? `?wallet=${publicKey.toString()}` : "";
+      const res = await fetch(`/api/oracle/current${walletParam}`);
+      if (!res.ok) {
+        console.error("[Oracle] Failed to fetch round:", res.status);
+        setRound(null);
+        return;
+      }
+      const data = await res.json();
+      setRound(data);
+      setCountdown(data.remainingMs || 0);
+    } catch (error) {
+      console.error("[Oracle] Error fetching round:", error);
+      setRound(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, [publicKey]);
 
   const fetchHistory = useCallback(async () => {
-    const walletParam = publicKey ? `?wallet=${publicKey.toString()}&limit=10` : "?limit=10";
-    const res = await fetch(`/api/oracle/history${walletParam}`);
-    const data = await res.json();
-    setHistory(data.rounds || []);
+    try {
+      const walletParam = publicKey ? `?wallet=${publicKey.toString()}&limit=10` : "?limit=10";
+      const res = await fetch(`/api/oracle/history${walletParam}`);
+      if (!res.ok) {
+        console.error("[Oracle] Failed to fetch history:", res.status);
+        return;
+      }
+      const data = await res.json();
+      setHistory(data.rounds || []);
+    } catch (error) {
+      console.error("[Oracle] Error fetching history:", error);
+      setHistory([]);
+    }
   }, [publicKey]);
 
   const fetchLeaderboard = useCallback(async () => {
-    const walletParam = publicKey ? `?wallet=${publicKey.toString()}&limit=10` : "?limit=10";
-    const res = await fetch(`/api/oracle/leaderboard${walletParam}`);
-    const data = await res.json();
-    setLeaderboard(data.leaderboard || []);
-    if (data.userStats) {
-      setUserStats({ wins: data.userStats.wins, rank: data.userStats.rank });
+    try {
+      const walletParam = publicKey ? `?wallet=${publicKey.toString()}&limit=10` : "?limit=10";
+      const res = await fetch(`/api/oracle/leaderboard${walletParam}`);
+      if (!res.ok) {
+        console.error("[Oracle] Failed to fetch leaderboard:", res.status);
+        return;
+      }
+      const data = await res.json();
+      setLeaderboard(data.leaderboard || []);
+      if (data.userStats) {
+        setUserStats({ wins: data.userStats.wins, rank: data.userStats.rank });
+      }
+    } catch (error) {
+      console.error("[Oracle] Error fetching leaderboard:", error);
+      setLeaderboard([]);
+    }
+  }, [publicKey]);
+
+  const fetchBalance = useCallback(async () => {
+    if (!publicKey) return;
+    try {
+      const res = await fetch(`/api/oracle/balance?wallet=${publicKey.toString()}`);
+      if (!res.ok) {
+        console.error("[Oracle] Failed to fetch balance:", res.status);
+        return;
+      }
+      const data = await res.json();
+      if (data.success) {
+        setBalance(data);
+      }
+    } catch (error) {
+      console.error("[Oracle] Error fetching balance:", error);
     }
   }, [publicKey]);
 
   useEffect(() => {
     fetchRound();
+    if (publicKey) fetchBalance();
     if (view === "history") fetchHistory();
     if (view === "leaders") fetchLeaderboard();
-  }, [fetchRound, fetchHistory, fetchLeaderboard, view]);
+  }, [fetchRound, fetchHistory, fetchLeaderboard, fetchBalance, view, publicKey]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -247,13 +334,18 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   const handleCreateRound = async () => {
     if (!publicKey || isCreatingRound) return;
     setIsCreatingRound(true);
+    const prizePoolSol = parseFloat(prizePoolInput) || 0;
     const res = await fetch("/api/oracle/admin/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adminWallet: publicKey.toString(), durationHours: 24 }),
+      body: JSON.stringify({
+        adminWallet: publicKey.toString(),
+        durationHours: 24,
+        prizePoolSol,
+      }),
     });
     const data = await res.json();
-    setMessage(data.success ? "Round created!" : data.error || "Failed");
+    setMessage(data.success ? `Round created! Prize: ${prizePoolSol} SOL` : data.error || "Failed");
     if (data.success) await fetchRound();
     setIsCreatingRound(false);
   };
@@ -267,9 +359,60 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
       body: JSON.stringify({ adminWallet: publicKey.toString() }),
     });
     const data = await res.json();
-    setMessage(data.success ? `Winner: ${data.winner?.symbol}` : data.error || "Failed");
-    if (data.success) await fetchRound();
+    const prizeInfo = data.prizePool?.sol > 0 ? ` (${data.prizePool.sol} SOL distributed)` : "";
+    setMessage(
+      data.success ? `Winner: ${data.winner?.symbol}${prizeInfo}` : data.error || "Failed"
+    );
+    if (data.success) {
+      await fetchRound();
+      await fetchBalance();
+    }
     setIsSettling(false);
+  };
+
+  const handleClaim = async () => {
+    if (!publicKey || !signMessage || isClaiming) return;
+    if (!balance || balance.balance.sol <= 0) {
+      setMessage("No balance to claim");
+      return;
+    }
+
+    setIsClaiming(true);
+    setMessage(null);
+
+    // Sign the claim message
+    const claimMessage = "Sign to claim your Oracle winnings from BagsWorld";
+    const messageBytes = new TextEncoder().encode(claimMessage);
+
+    let signature: string;
+    try {
+      const signatureBytes = await signMessage(messageBytes);
+      // Convert to base58 using proper library (handles leading zeros correctly)
+      signature = bs58.encode(signatureBytes);
+    } catch (error) {
+      console.error("Failed to sign message:", error);
+      setMessage("Failed to sign claim request");
+      setIsClaiming(false);
+      return;
+    }
+
+    const res = await fetch("/api/oracle/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        wallet: publicKey.toString(),
+        signature,
+      }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      setMessage(`Claim submitted! ${data.amount.sol} SOL processing...`);
+      await fetchBalance();
+    } else {
+      setMessage(data.error || "Failed to submit claim");
+    }
+    setIsClaiming(false);
   };
 
   const getTotalPredictions = () => {
@@ -293,16 +436,37 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
       {/* Scanline overlay */}
       <style jsx global>{`
         @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-4px);
+          }
         }
         @keyframes twinkle {
-          0%, 100% { opacity: 0; transform: scale(0.5); }
-          50% { opacity: 1; transform: scale(1); }
+          0%,
+          100% {
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1);
+          }
         }
         @keyframes glow-pulse {
-          0%, 100% { box-shadow: 0 0 8px rgba(168, 85, 247, 0.4), inset 0 0 8px rgba(168, 85, 247, 0.1); }
-          50% { box-shadow: 0 0 16px rgba(168, 85, 247, 0.6), inset 0 0 12px rgba(168, 85, 247, 0.2); }
+          0%,
+          100% {
+            box-shadow:
+              0 0 8px rgba(168, 85, 247, 0.4),
+              inset 0 0 8px rgba(168, 85, 247, 0.1);
+          }
+          50% {
+            box-shadow:
+              0 0 16px rgba(168, 85, 247, 0.6),
+              inset 0 0 12px rgba(168, 85, 247, 0.2);
+          }
         }
         .rpg-border {
           border: 4px solid #6b21a8;
@@ -326,7 +490,8 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
           border-color: #c084fc #6b21a8 #6b21a8 #c084fc;
           background: linear-gradient(180deg, #7c3aed 0%, #6b21a8 100%);
         }
-        .rpg-button:active:not(:disabled), .rpg-button.active {
+        .rpg-button:active:not(:disabled),
+        .rpg-button.active {
           border-color: #4c1d95 #a855f7 #a855f7 #4c1d95;
           background: linear-gradient(180deg, #4c1d95 0%, #3b0764 100%);
           box-shadow: inset 2px 2px 0 #1a1a2e;
@@ -355,10 +520,14 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
             inset 0 0 20px rgba(139, 92, 246, 0.1);
         }
         .glow-text {
-          text-shadow: 0 0 8px rgba(168, 85, 247, 0.8), 0 0 16px rgba(168, 85, 247, 0.4);
+          text-shadow:
+            0 0 8px rgba(168, 85, 247, 0.8),
+            0 0 16px rgba(168, 85, 247, 0.4);
         }
         .glow-green {
-          text-shadow: 0 0 8px rgba(34, 197, 94, 0.8), 0 0 16px rgba(34, 197, 94, 0.4);
+          text-shadow:
+            0 0 8px rgba(34, 197, 94, 0.8),
+            0 0 16px rgba(34, 197, 94, 0.4);
         }
       `}</style>
 
@@ -397,10 +566,21 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
               </svg>
             </div>
             <div>
-              <span className="font-pixel text-[#a855f7] text-sm block glow-text">ORACLE MARKET</span>
-              {round?.status === "active" && countdown > 0 && (
-                <span className="font-pixel text-[#22c55e] text-[10px] glow-green">{formatTimeRemaining(countdown)}</span>
-              )}
+              <span className="font-pixel text-[#a855f7] text-sm block glow-text">
+                ORACLE MARKET
+              </span>
+              <div className="flex items-center gap-2">
+                {round?.status === "active" && countdown > 0 && (
+                  <span className="font-pixel text-[#22c55e] text-[10px] glow-green">
+                    {formatTimeRemaining(countdown)}
+                  </span>
+                )}
+                {round?.prizePool?.hasPrize && (
+                  <span className="font-pixel text-[#fbbf24] text-[10px]">
+                    ◆ {round.prizePool.sol} SOL
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -417,6 +597,38 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
             </button>
           </div>
         </div>
+
+        {/* Balance Section - Show if user has claimable balance or pending claim */}
+        {connected && balance && (balance.balance.sol > 0 || balance.pendingClaim) && (
+          <div className="px-4 py-2 bg-[#0a0a0a] border-b border-[#2e1065] shrink-0">
+            <div className="rpg-border-inner bg-[#1a1a2e] p-2 flex items-center justify-between">
+              <div>
+                <p className="font-pixel text-[#666] text-[8px]">YOUR ORACLE BALANCE</p>
+                <p className="font-pixel text-[#fbbf24] text-sm glow-text">
+                  {balance.balance.sol.toFixed(4)} SOL
+                </p>
+              </div>
+              {balance.pendingClaim ? (
+                <div className="text-right">
+                  <span className="font-pixel text-[#666] text-[8px] block">CLAIM PENDING</span>
+                  <span className="font-pixel text-[#fbbf24] text-[10px]">
+                    {balance.pendingClaim.amountSol.toFixed(4)} SOL
+                  </span>
+                </div>
+              ) : balance.balance.sol >= 0.001 ? (
+                <button
+                  onClick={handleClaim}
+                  disabled={isClaiming}
+                  className="rpg-button font-pixel text-[10px] px-3 py-1 !bg-gradient-to-b !from-[#fbbf24] !to-[#b45309] text-black"
+                >
+                  {isClaiming ? "..." : "CLAIM"}
+                </button>
+              ) : (
+                <span className="font-pixel text-[#666] text-[8px]">Min: 0.001 SOL</span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Tabs - RPG button style */}
         <div className="flex gap-1 px-2 py-2 bg-[#0a0a0a] shrink-0">
@@ -453,7 +665,9 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
               <div className="rpg-border-inner bg-[#1a1a1a] p-6 text-center">
                 <CrystalBall />
                 <p className="font-pixel text-[#a855f7] text-sm mt-4 glow-text">NO ACTIVE MARKET</p>
-                <p className="font-pixel text-[#666] text-[10px] mt-2">{round?.message || "The oracle rests..."}</p>
+                <p className="font-pixel text-[#666] text-[10px] mt-2">
+                  {round?.message || "The oracle rests..."}
+                </p>
                 <div className="mt-4 flex justify-center gap-2">
                   {[0, 1, 2].map((i) => (
                     <div
@@ -468,9 +682,12 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
               <div className="space-y-3">
                 {/* Winner Banner */}
                 <div className="rpg-border-inner bg-[#166534]/20 p-4 text-center animate-[glow-pulse_2s_ease-in-out_infinite]">
-                  <p className="font-pixel text-[#22c55e] text-xs mb-1 glow-green">MARKET RESOLVED</p>
+                  <p className="font-pixel text-[#22c55e] text-xs mb-1 glow-green">
+                    MARKET RESOLVED
+                  </p>
                   <p className="font-pixel text-white text-lg glow-text">
-                    {round.tokenOptions.find((t) => t.mint === round.winningTokenMint)?.symbol || "?"}
+                    {round.tokenOptions.find((t) => t.mint === round.winningTokenMint)?.symbol ||
+                      "?"}
                   </p>
                   <p className="font-pixel text-[#22c55e] text-sm glow-green">
                     +{round.winningPriceChange?.toFixed(2)}%
@@ -479,15 +696,20 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
 
                 {/* User Result */}
                 {round.userPrediction && (
-                  <div className={`rpg-border-inner p-3 ${
-                    round.userPrediction.tokenMint === round.winningTokenMint
-                      ? "bg-[#166534]/10"
-                      : "bg-[#1a1a1a]"
-                  }`}>
+                  <div
+                    className={`rpg-border-inner p-3 ${
+                      round.userPrediction.tokenMint === round.winningTokenMint
+                        ? "bg-[#166534]/10"
+                        : "bg-[#1a1a1a]"
+                    }`}
+                  >
                     <p className="font-pixel text-[#666] text-[10px]">YOUR PREDICTION</p>
                     <div className="flex justify-between items-center mt-1">
                       <span className="font-pixel text-white text-sm">
-                        {round.tokenOptions.find((t) => t.mint === round.userPrediction?.tokenMint)?.symbol}
+                        {
+                          round.tokenOptions.find((t) => t.mint === round.userPrediction?.tokenMint)
+                            ?.symbol
+                        }
                       </span>
                       {round.userPrediction.tokenMint === round.winningTokenMint ? (
                         <span className="font-pixel text-[#22c55e] text-xs glow-green">WIN!</span>
@@ -502,25 +724,43 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                 <div className="space-y-1">
                   <p className="font-pixel text-[#666] text-[10px]">FINAL RESULTS</p>
                   {round.tokenOptions
-                    .sort((a, b) => (round.settlementData?.priceChanges?.[b.mint] || 0) - (round.settlementData?.priceChanges?.[a.mint] || 0))
+                    .sort(
+                      (a, b) =>
+                        (round.settlementData?.priceChanges?.[b.mint] || 0) -
+                        (round.settlementData?.priceChanges?.[a.mint] || 0)
+                    )
                     .map((token, i) => {
                       const change = round.settlementData?.priceChanges?.[token.mint] || 0;
                       const isWinner = token.mint === round.winningTokenMint;
                       return (
-                        <div key={token.mint} className={`flex items-center gap-2 p-2 rpg-border-inner ${isWinner ? "bg-[#166534]/10" : "bg-[#1a1a1a]"}`}>
+                        <div
+                          key={token.mint}
+                          className={`flex items-center gap-2 p-2 rpg-border-inner ${isWinner ? "bg-[#166534]/10" : "bg-[#1a1a1a]"}`}
+                        >
                           <span className="font-pixel text-[#666] text-[10px] w-4">{i + 1}</span>
                           {token.imageUrl ? (
                             <img src={token.imageUrl} alt="" className="w-6 h-6 pixelated" />
                           ) : (
                             <div className="w-6 h-6 rpg-border-inner bg-[#6b21a8] flex items-center justify-center">
-                              <span className="font-pixel text-white text-[8px]">{token.symbol.slice(0, 2)}</span>
+                              <span className="font-pixel text-white text-[8px]">
+                                {token.symbol.slice(0, 2)}
+                              </span>
                             </div>
                           )}
-                          <span className="font-pixel text-white text-xs flex-1">{token.symbol}</span>
-                          <span className={`font-pixel text-xs ${change >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
-                            {change >= 0 ? "+" : ""}{change.toFixed(2)}%
+                          <span className="font-pixel text-white text-xs flex-1">
+                            {token.symbol}
                           </span>
-                          {isWinner && <span className="font-pixel text-[#fbbf24] text-[10px] animate-pulse">★</span>}
+                          <span
+                            className={`font-pixel text-xs ${change >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                          >
+                            {change >= 0 ? "+" : ""}
+                            {change.toFixed(2)}%
+                          </span>
+                          {isWinner && (
+                            <span className="font-pixel text-[#fbbf24] text-[10px] animate-pulse">
+                              ★
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -533,9 +773,14 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                   <div className="rpg-border-inner bg-[#6b21a8]/20 p-4 text-center animate-[glow-pulse_2s_ease-in-out_infinite]">
                     <p className="font-pixel text-[#a855f7] text-[10px] mb-1">PREDICTION LOCKED</p>
                     <p className="font-pixel text-white text-lg glow-text">
-                      {round.tokenOptions.find((t) => t.mint === round.userPrediction?.tokenMint)?.symbol}
+                      {
+                        round.tokenOptions.find((t) => t.mint === round.userPrediction?.tokenMint)
+                          ?.symbol
+                      }
                     </p>
-                    <p className="font-pixel text-[#666] text-[10px] mt-2">Awaiting resolution...</p>
+                    <p className="font-pixel text-[#666] text-[10px] mt-2">
+                      Awaiting resolution...
+                    </p>
                   </div>
                 ) : !round.canEnter ? (
                   <div className="rpg-border-inner bg-[#854d0e]/20 p-3 text-center">
@@ -544,7 +789,9 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                   </div>
                 ) : (
                   <div className="rpg-border-inner bg-[#1a1a1a] p-2">
-                    <p className="font-pixel text-[#a855f7] text-[10px] text-center glow-text">SELECT YOUR CHAMPION</p>
+                    <p className="font-pixel text-[#a855f7] text-[10px] text-center glow-text">
+                      SELECT YOUR CHAMPION
+                    </p>
                   </div>
                 )}
 
@@ -554,9 +801,11 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                     Which token gains the most in 24h?
                   </p>
                   <div className="flex justify-center gap-4 mt-2">
-                    <span className="font-pixel text-[#a855f7] text-[10px]">{round.entryCount} seers</span>
+                    <span className="font-pixel text-[#a855f7] text-[10px]">
+                      {round.entryCount} seers
+                    </span>
                     <span className="font-pixel text-[#4c1d95] text-[10px]">|</span>
-                    <span className="font-pixel text-[#a855f7] text-[10px]">Free entry</span>
+                    <span className="font-pixel text-[#a855f7] text-[10px]">2M $BAGSWORLD</span>
                   </div>
                 </div>
 
@@ -571,7 +820,9 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                     return (
                       <button
                         key={token.mint}
-                        onClick={() => !round.userPrediction && round.canEnter && setSelectedToken(token.mint)}
+                        onClick={() =>
+                          !round.userPrediction && round.canEnter && setSelectedToken(token.mint)
+                        }
                         disabled={!!round.userPrediction || !round.canEnter}
                         className={`w-full text-left transition-all ${
                           isSelected
@@ -587,17 +838,25 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                               <img src={token.imageUrl} alt="" className="w-8 h-8 pixelated" />
                             ) : (
                               <div className="w-8 h-8 rpg-border-inner bg-[#6b21a8] flex items-center justify-center">
-                                <span className="font-pixel text-white text-[10px]">{token.symbol.slice(0, 3)}</span>
+                                <span className="font-pixel text-white text-[10px]">
+                                  {token.symbol.slice(0, 3)}
+                                </span>
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
-                                <span className="font-pixel text-white text-sm">{token.symbol}</span>
-                                <span className={`font-pixel text-sm ${isSelected ? "text-[#c084fc] glow-text" : "text-[#a855f7]"}`}>
+                                <span className="font-pixel text-white text-sm">
+                                  {token.symbol}
+                                </span>
+                                <span
+                                  className={`font-pixel text-sm ${isSelected ? "text-[#c084fc] glow-text" : "text-[#a855f7]"}`}
+                                >
                                   {probability.toFixed(0)}%
                                 </span>
                               </div>
-                              <p className="font-pixel text-[#666] text-[10px] truncate">{token.name}</p>
+                              <p className="font-pixel text-[#666] text-[10px] truncate">
+                                {token.name}
+                              </p>
                             </div>
                           </div>
 
@@ -626,8 +885,9 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                 </div>
 
                 {/* Submit Button */}
-                {!round.userPrediction && round.canEnter && (
-                  connected ? (
+                {!round.userPrediction &&
+                  round.canEnter &&
+                  (connected ? (
                     <button
                       onClick={handleSubmitPrediction}
                       disabled={!selectedToken || isSubmitting}
@@ -648,11 +908,12 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                     >
                       CONNECT WALLET TO PREDICT
                     </button>
-                  )
-                )}
+                  ))}
 
                 {message && (
-                  <p className={`font-pixel text-xs text-center ${message.includes("locked") || message.includes("success") ? "text-[#22c55e] glow-green" : "text-[#ef4444]"}`}>
+                  <p
+                    className={`font-pixel text-xs text-center ${message.includes("locked") || message.includes("success") ? "text-[#22c55e] glow-green" : "text-[#ef4444]"}`}
+                  >
                     {message}
                   </p>
                 )}
@@ -661,15 +922,21 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                 {tokenGateError && (
                   <div className="rpg-border-inner bg-[#7f1d1d]/20 p-4">
                     <p className="font-pixel text-[#ef4444] text-xs mb-2">TOKEN GATE</p>
-                    <p className="font-pixel text-[#888] text-[10px] mb-3">{tokenGateError.message}</p>
+                    <p className="font-pixel text-[#888] text-[10px] mb-3">
+                      {tokenGateError.message}
+                    </p>
                     <div className="rpg-border-inner bg-[#1a1a1a] p-2 mb-3">
                       <div className="flex justify-between font-pixel text-[10px]">
                         <span className="text-[#666]">Your Balance:</span>
-                        <span className="text-white">{tokenGateError.balance.toLocaleString()}</span>
+                        <span className="text-white">
+                          {tokenGateError.balance.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between font-pixel text-[10px]">
                         <span className="text-[#666]">Required:</span>
-                        <span className="text-[#ef4444]">{tokenGateError.required.toLocaleString()}</span>
+                        <span className="text-[#ef4444]">
+                          {tokenGateError.required.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                     <a
@@ -691,23 +958,25 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
 
                 {/* Info Box */}
                 <div className="rpg-border-inner bg-[#1a1a1a] p-3 mt-2">
-                  <p className="font-pixel text-[#a855f7] text-[10px] mb-2 glow-text">HOW IT WORKS</p>
+                  <p className="font-pixel text-[#a855f7] text-[10px] mb-2 glow-text">
+                    HOW IT WORKS
+                  </p>
                   <div className="grid grid-cols-2 gap-2 text-[10px]">
                     <div className="flex items-start gap-1">
-                      <span className="text-[#a855f7]">◆</span>
-                      <span className="font-pixel text-[#888]">Free entry, 1 per wallet</span>
+                      <span className="text-[#fbbf24]">◆</span>
+                      <span className="font-pixel text-[#888]">Hold 2M $BAGSWORLD</span>
                     </div>
                     <div className="flex items-start gap-1">
                       <span className="text-[#a855f7]">◆</span>
                       <span className="font-pixel text-[#888]">Winner = most % gain</span>
                     </div>
                     <div className="flex items-start gap-1">
-                      <span className="text-[#a855f7]">◆</span>
-                      <span className="font-pixel text-[#888]">24h duration</span>
+                      <span className="text-[#22c55e]">◆</span>
+                      <span className="font-pixel text-[#888]">Early birds get more</span>
                     </div>
                     <div className="flex items-start gap-1">
                       <span className="text-[#a855f7]">◆</span>
-                      <span className="font-pixel text-[#888]">Entries close 2h early</span>
+                      <span className="font-pixel text-[#888]">Winners split prize pool</span>
                     </div>
                   </div>
                 </div>
@@ -720,9 +989,13 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                 <div className="rpg-border-inner bg-[#6b21a8]/20 p-3 animate-[glow-pulse_2s_ease-in-out_infinite]">
                   <div className="flex justify-between items-center">
                     <span className="font-pixel text-[#a855f7] text-xs glow-text">YOUR RANK</span>
-                    <span className="font-pixel text-white text-lg glow-text">#{userStats.rank}</span>
+                    <span className="font-pixel text-white text-lg glow-text">
+                      #{userStats.rank}
+                    </span>
                   </div>
-                  <p className="font-pixel text-[#666] text-[10px] mt-1">{userStats.wins} win{userStats.wins !== 1 ? "s" : ""}</p>
+                  <p className="font-pixel text-[#666] text-[10px] mt-1">
+                    {userStats.wins} win{userStats.wins !== 1 ? "s" : ""}
+                  </p>
                 </div>
               )}
 
@@ -740,21 +1013,33 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                 ) : (
                   <div className="divide-y divide-[#2e1065]">
                     {leaderboard.map((entry) => (
-                      <div key={entry.wallet} className={`flex items-center gap-3 p-3 ${entry.rank <= 3 ? "bg-[#1a1a2e]/50" : ""}`}>
-                        <div className={`w-7 h-7 rpg-border-inner flex items-center justify-center font-pixel text-xs ${
-                          entry.rank === 1 ? "bg-gradient-to-b from-[#fbbf24] to-[#b45309] text-black" :
-                          entry.rank === 2 ? "bg-gradient-to-b from-[#9ca3af] to-[#6b7280] text-black" :
-                          entry.rank === 3 ? "bg-gradient-to-b from-[#cd7f32] to-[#92400e] text-black" :
-                          "bg-[#2a2a2a] text-[#666]"
-                        }`}>
+                      <div
+                        key={entry.wallet}
+                        className={`flex items-center gap-3 p-3 ${entry.rank <= 3 ? "bg-[#1a1a2e]/50" : ""}`}
+                      >
+                        <div
+                          className={`w-7 h-7 rpg-border-inner flex items-center justify-center font-pixel text-xs ${
+                            entry.rank === 1
+                              ? "bg-gradient-to-b from-[#fbbf24] to-[#b45309] text-black"
+                              : entry.rank === 2
+                                ? "bg-gradient-to-b from-[#9ca3af] to-[#6b7280] text-black"
+                                : entry.rank === 3
+                                  ? "bg-gradient-to-b from-[#cd7f32] to-[#92400e] text-black"
+                                  : "bg-[#2a2a2a] text-[#666]"
+                          }`}
+                        >
                           {entry.rank}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-pixel text-white text-xs">{entry.walletShort}</p>
-                          <p className="font-pixel text-[#666] text-[10px]">{entry.totalPredictions} predictions</p>
+                          <p className="font-pixel text-[#666] text-[10px]">
+                            {entry.totalPredictions} predictions
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-pixel text-[#22c55e] text-sm glow-green">{entry.wins}</p>
+                          <p className="font-pixel text-[#22c55e] text-sm glow-green">
+                            {entry.wins}
+                          </p>
                           <p className="font-pixel text-[#666] text-[10px]">{entry.winRate}% win</p>
                         </div>
                       </div>
@@ -783,16 +1068,20 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                   <div key={pastRound.id} className="rpg-border-inner bg-[#1a1a1a]">
                     <div className="flex items-center justify-between p-3 border-b-2 border-[#2e1065] bg-gradient-to-r from-[#1a1a2e] to-transparent">
                       <div>
-                        <span className="font-pixel text-[#a855f7] text-[10px]">ROUND #{pastRound.id}</span>
+                        <span className="font-pixel text-[#a855f7] text-[10px]">
+                          ROUND #{pastRound.id}
+                        </span>
                         <span className="font-pixel text-[#444] text-[10px] ml-2">
                           {new Date(pastRound.endTime).toLocaleDateString()}
                         </span>
                       </div>
-                      <span className={`font-pixel text-[10px] px-2 py-0.5 rpg-border-inner ${
-                        pastRound.status === "settled"
-                          ? "bg-[#166534]/20 text-[#22c55e]"
-                          : "bg-[#1a1a1a] text-[#666]"
-                      }`}>
+                      <span
+                        className={`font-pixel text-[10px] px-2 py-0.5 rpg-border-inner ${
+                          pastRound.status === "settled"
+                            ? "bg-[#166534]/20 text-[#22c55e]"
+                            : "bg-[#1a1a1a] text-[#666]"
+                        }`}
+                      >
                         {pastRound.status.toUpperCase()}
                       </span>
                     </div>
@@ -801,18 +1090,29 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                       {pastRound.winner && (
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-pixel text-[#fbbf24] text-xs animate-pulse">★</span>
-                          <span className="font-pixel text-white text-sm">{pastRound.winner.symbol}</span>
-                          <span className="font-pixel text-[#22c55e] text-xs glow-green">+{pastRound.winner.priceChange.toFixed(2)}%</span>
+                          <span className="font-pixel text-white text-sm">
+                            {pastRound.winner.symbol}
+                          </span>
+                          <span className="font-pixel text-[#22c55e] text-xs glow-green">
+                            +{pastRound.winner.priceChange.toFixed(2)}%
+                          </span>
                         </div>
                       )}
 
                       {pastRound.userPrediction && (
-                        <div className={`font-pixel text-[10px] p-2 rpg-border-inner ${
-                          pastRound.userPrediction.isWinner
-                            ? "bg-[#166534]/10 text-[#22c55e]"
-                            : "bg-[#1a1a2e] text-[#666]"
-                        }`}>
-                          You: {pastRound.tokenOptions.find((t) => t.mint === pastRound.userPrediction?.tokenMint)?.symbol}
+                        <div
+                          className={`font-pixel text-[10px] p-2 rpg-border-inner ${
+                            pastRound.userPrediction.isWinner
+                              ? "bg-[#166534]/10 text-[#22c55e]"
+                              : "bg-[#1a1a2e] text-[#666]"
+                          }`}
+                        >
+                          You:{" "}
+                          {
+                            pastRound.tokenOptions.find(
+                              (t) => t.mint === pastRound.userPrediction?.tokenMint
+                            )?.symbol
+                          }
                           {pastRound.userPrediction.isWinner && " - WIN!"}
                         </div>
                       )}
@@ -844,7 +1144,9 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                         </div>
                         <div>
                           <span className="text-[#666]">Time Left</span>
-                          <span className="text-[#22c55e] ml-2 glow-green">{formatTimeRemaining(countdown)}</span>
+                          <span className="text-[#22c55e] ml-2 glow-green">
+                            {formatTimeRemaining(countdown)}
+                          </span>
                         </div>
                         <div>
                           <span className="text-[#666]">Tokens</span>
@@ -862,13 +1164,38 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={handleCreateRound}
-                    disabled={isCreatingRound}
-                    className="w-full font-pixel text-xs py-3 rpg-button !bg-gradient-to-b !from-[#166534] !to-[#14532d]"
-                  >
-                    {isCreatingRound ? "CREATING..." : "CREATE 24H ROUND"}
-                  </button>
+                  <div className="space-y-3">
+                    {/* Prize Pool Input */}
+                    <div className="rpg-border-inner bg-[#0d0d0d] p-3">
+                      <label className="font-pixel text-[#fbbf24] text-[10px] block mb-2">
+                        PRIZE POOL (SOL)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0.1"
+                          max="1.0"
+                          step="0.1"
+                          value={prizePoolInput}
+                          onChange={(e) => setPrizePoolInput(e.target.value)}
+                          className="flex-1 bg-[#1a1a1a] border-2 border-[#333] font-pixel text-white text-xs px-2 py-2 rounded focus:border-[#fbbf24] focus:outline-none"
+                          placeholder="0.5"
+                        />
+                        <span className="font-pixel text-[#888] text-[10px]">Max: 1.0 SOL</span>
+                      </div>
+                      <p className="font-pixel text-[#666] text-[8px] mt-1">
+                        Winners split this amount based on prediction order
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleCreateRound}
+                      disabled={isCreatingRound}
+                      className="w-full font-pixel text-xs py-3 rpg-button !bg-gradient-to-b !from-[#166534] !to-[#14532d]"
+                    >
+                      {isCreatingRound ? "CREATING..." : "CREATE 24H ROUND"}
+                    </button>
+                  </div>
                 )}
 
                 {message && (
@@ -895,7 +1222,9 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
             <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_4px,rgba(0,0,0,0.3)_4px,rgba(0,0,0,0.3)_8px)]" />
           </div>
           <div className="px-4 py-2 flex items-center justify-between bg-gradient-to-b from-[#1a1a2e] to-[#0d0d0d]">
-            <span className="font-pixel text-[#4c1d95] text-[10px]">Token-gated | Bragging rights</span>
+            <span className="font-pixel text-[#4c1d95] text-[10px]">
+              Token-gated | Winners share prize pool
+            </span>
             <button onClick={fetchRound} className="font-pixel text-[10px] rpg-button px-2 py-1">
               REFRESH
             </button>

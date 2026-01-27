@@ -1,4 +1,4 @@
-// Oracle Admin Create Round API - Create a new prediction round
+// Oracle Admin Create Round API - Create a new prediction round with prize pool
 // Supports any Bags.fm token - specify mints directly or use auto-selection from registry
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -8,9 +8,14 @@ import {
   OracleTokenOptionDB,
 } from "@/lib/neon";
 import { getAllWorldTokensAsync, LaunchedToken } from "@/lib/token-registry";
-import { isAdmin } from "@/lib/config";
+import { isAdmin, ECOSYSTEM_CONFIG } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
+
+// Prize pool configuration from config
+const MIN_PRIZE_SOL = ECOSYSTEM_CONFIG.oracle.prizePool.minSol;
+const MAX_PRIZE_SOL = ECOSYSTEM_CONFIG.oracle.prizePool.maxSol;
+const LAMPORTS_PER_SOL = 1_000_000_000;
 
 interface DexScreenerPair {
   priceUsd?: string;
@@ -27,10 +32,9 @@ async function getTokenData(mint: string): Promise<{
   imageUrl?: string;
 } | null> {
   try {
-    const response = await fetch(
-      `https://api.dexscreener.com/latest/dex/tokens/${mint}`,
-      { next: { revalidate: 0 } }
-    );
+    const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, {
+      next: { revalidate: 0 },
+    });
 
     if (!response.ok) {
       console.error(`DexScreener API error for ${mint}: ${response.status}`);
@@ -71,22 +75,42 @@ interface TokenInput {
 
 export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
-    return NextResponse.json(
-      { success: false, error: "Oracle not initialized" },
-      { status: 503 }
-    );
+    return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
 
   const body = await request.json();
-  const { adminWallet, durationHours = 24, tokens, tokenMints, useRegistry = true } = body;
+  const {
+    adminWallet,
+    durationHours = 24,
+    tokens,
+    tokenMints,
+    useRegistry = true,
+    prizePoolSol = 0,
+  } = body;
 
   // Verify admin using config-based admin check
   if (!adminWallet || !isAdmin(adminWallet)) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 403 }
-    );
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
   }
+
+  // Validate prize pool (0 = no prize pool)
+  const prizeAmount = Number(prizePoolSol) || 0;
+  if (prizeAmount > 0) {
+    if (prizeAmount < MIN_PRIZE_SOL) {
+      return NextResponse.json(
+        { success: false, error: `Prize pool must be at least ${MIN_PRIZE_SOL} SOL` },
+        { status: 400 }
+      );
+    }
+    if (prizeAmount > MAX_PRIZE_SOL) {
+      return NextResponse.json(
+        { success: false, error: `Prize pool cannot exceed ${MAX_PRIZE_SOL} SOL` },
+        { status: 400 }
+      );
+    }
+  }
+
+  const prizePoolLamports = BigInt(Math.floor(prizeAmount * LAMPORTS_PER_SOL));
 
   // Initialize tables
   const tablesInitialized = await initializeOracleTables();
@@ -168,23 +192,27 @@ export async function POST(request: NextRequest) {
   // Calculate end time
   const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000);
 
-  // Create round
-  const result = await createOracleRound(tokenOptions, endTime);
+  // Create round with prize pool
+  const result = await createOracleRound(tokenOptions, endTime, prizePoolLamports);
 
   if (!result.success) {
-    return NextResponse.json(
-      { success: false, error: result.error },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: result.error }, { status: 400 });
   }
 
-  console.log(`[Oracle Admin] Round #${result.roundId} created by ${adminWallet}: ${tokenOptions.length} tokens, ends ${endTime.toISOString()}`);
+  const prizeDisplay = prizeAmount > 0 ? `${prizeAmount} SOL prize` : "no prize pool";
+  console.log(
+    `[Oracle Admin] Round #${result.roundId} created by ${adminWallet}: ${tokenOptions.length} tokens, ${prizeDisplay}, ends ${endTime.toISOString()}`
+  );
 
   return NextResponse.json({
     success: true,
     roundId: result.roundId,
     tokenCount: tokenOptions.length,
     endTime: endTime.toISOString(),
+    prizePool: {
+      lamports: prizePoolLamports.toString(),
+      sol: prizeAmount,
+    },
     tokens: tokenOptions.map((t) => ({
       mint: t.mint,
       symbol: t.symbol,
