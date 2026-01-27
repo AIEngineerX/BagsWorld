@@ -107,7 +107,7 @@ async function fetchHoldersFromHelius(heliusUrl: string): Promise<TokenHolder[]>
         continue;
       }
 
-      const balance = parseFloat(account.amount) / DECIMAL_DIVISOR;
+      const balance = parseFloat(account.amount) / DECIMAL_DIVISOR || 0;
       const percentage = totalSupply > 0 ? (balance / totalSupply) * 100 : 0;
 
       holders.push({
@@ -269,7 +269,7 @@ export async function GET(): Promise<NextResponse> {
               continue;
             }
 
-            const balance = parseFloat(account.amount) / DECIMAL_DIVISOR;
+            const balance = parseFloat(account.amount) / DECIMAL_DIVISOR || 0;
             const percentage = totalSupply > 0 ? (balance / totalSupply) * 100 : 0;
 
             holders.push({

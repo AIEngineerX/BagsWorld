@@ -176,11 +176,7 @@ describe("Claim Signature Verification", () => {
     return bs58.encode(signature);
   }
 
-  function verifySignature(
-    message: string,
-    signatureB58: string,
-    publicKey: PublicKey
-  ): boolean {
+  function verifySignature(message: string, signatureB58: string, publicKey: PublicKey): boolean {
     const messageBytes = new Uint8Array(Buffer.from(message, "utf-8"));
     const signatureBytes = new Uint8Array(bs58.decode(signatureB58));
     const publicKeyBytes = new Uint8Array(publicKey.toBytes());
