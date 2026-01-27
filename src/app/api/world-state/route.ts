@@ -24,6 +24,8 @@ import {
   isNeonConfigured,
   batchUpdateBuildingHealth,
   recordMilestoneAchievement,
+  getEventsClearedTimestamp,
+  setEventsClearedTimestamp,
   type GlobalToken,
 } from "@/lib/neon";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
@@ -116,21 +118,35 @@ const EVENT_EXPIRY_DURATION = 60 * 60 * 1000; // 1 hour - auto-expire old events
 
 let previousState: WorldState | null = null;
 
-// Timestamp after which events should be shown (for clearing)
-let eventsClearedAfter: number = 0;
+// Local cache for cleared timestamp (fallback for non-DB environments)
+let eventsClearedAfterLocal: number = 0;
 
-// Clear all feed events (admin function)
-export function clearFeedEvents(): void {
-  eventsClearedAfter = Date.now();
+// Clear all feed events (admin function) - stores in database for global effect
+export async function clearFeedEvents(): Promise<void> {
+  const timestamp = Date.now();
+  eventsClearedAfterLocal = timestamp;
+
+  // Store in database for persistence across serverless instances
+  if (isNeonConfigured()) {
+    await setEventsClearedTimestamp(timestamp);
+  }
+
   if (previousState) {
     previousState.events = [];
   }
-  console.log("[WorldState] Feed events cleared by admin at", eventsClearedAfter);
+  console.log("[WorldState] Feed events cleared by admin at", timestamp);
 }
 
-// Get the clear timestamp (for filtering in generateEvents)
-export function getEventsClearedAfter(): number {
-  return eventsClearedAfter;
+// Get the clear timestamp (for filtering in generateEvents) - checks database
+export async function getEventsClearedAfter(): Promise<number> {
+  // Check database first for global timestamp
+  if (isNeonConfigured()) {
+    const dbTimestamp = await getEventsClearedTimestamp();
+    if (dbTimestamp > eventsClearedAfterLocal) {
+      eventsClearedAfterLocal = dbTimestamp; // Update local cache
+    }
+  }
+  return eventsClearedAfterLocal;
 }
 
 // Price cache for DexScreener data
@@ -629,7 +645,7 @@ async function generateEvents(
   existingEvents: GameEvent[]
 ): Promise<GameEvent[]> {
   const now = Date.now();
-  const clearedAfter = getEventsClearedAfter();
+  const clearedAfter = await getEventsClearedAfter();
 
   // Auto-expire old events (older than EVENT_EXPIRY_DURATION or before clear timestamp)
   const freshEvents = existingEvents.filter(

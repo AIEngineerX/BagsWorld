@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    clearFeedEvents();
+    await clearFeedEvents();
 
     return NextResponse.json({
       success: true,
