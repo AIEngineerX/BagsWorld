@@ -34,11 +34,19 @@ async function getOracleRound(): Promise<OracleRoundResponse> {
     return oracleCache.data;
   }
 
-  const response = await fetch(`${BAGSWORLD_API_URL}/api/oracle/current`);
-  const data: OracleRoundResponse = await response.json();
-
-  oracleCache = { data, timestamp: now };
-  return data;
+  try {
+    const response = await fetch(`${BAGSWORLD_API_URL}/api/oracle/current`);
+    if (!response.ok) {
+      console.error(`[oracleData] API error: ${response.status}`);
+      return { status: 'none' };
+    }
+    const data: OracleRoundResponse = await response.json();
+    oracleCache = { data, timestamp: now };
+    return data;
+  } catch (error) {
+    console.error('[oracleData] Failed to fetch oracle round:', error);
+    return { status: 'none' };
+  }
 }
 
 function formatTimeRemaining(ms: number): string {

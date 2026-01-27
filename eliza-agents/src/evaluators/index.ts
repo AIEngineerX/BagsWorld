@@ -300,6 +300,67 @@ export const creatorQueryEvaluator: Evaluator = {
 };
 
 /**
+ * Scores higher when user asks about Oracle predictions or prediction markets.
+ * Associated with: getOracleRound, enterPrediction, checkPrediction, getOracleHistory actions
+ */
+export const oracleQueryEvaluator: Evaluator = {
+  name: 'oracleQuery',
+  description: 'Detects queries about Oracle prediction market',
+  relatedActions: ['getOracleRound', 'enterPrediction', 'checkPrediction', 'getOracleHistory'],
+
+  evaluate: async (
+    runtime: IAgentRuntime,
+    message: Memory,
+    state?: State
+  ): Promise<EvaluatorResult> => {
+    const text = message.content?.text?.toLowerCase() || '';
+
+    // Primary Oracle keywords (high signal)
+    const primaryKeywords = ['oracle', 'prediction', 'predict', 'forecast', 'tower'];
+    const primaryMatches = primaryKeywords.filter(k => text.includes(k));
+
+    // Betting/picking keywords (medium signal)
+    const pickKeywords = ['pick', 'bet', 'winner', 'win', 'guess', 'call'];
+    const pickMatches = pickKeywords.filter(k => text.includes(k));
+
+    // Action patterns
+    const actionPatterns = [
+      /(?:what|show|check).*(?:oracle|prediction|round)/,
+      /(?:enter|submit|make).*(?:prediction|pick|bet)/,
+      /(?:did i|my).*(?:win|prediction|pick)/,
+      /(?:history|past|previous).*(?:oracle|prediction|round)/,
+      /which.*(?:token|coin).*(?:win|best|pump)/,
+    ];
+    const hasActionPattern = actionPatterns.some(p => p.test(text));
+
+    let score = 0;
+    const reasons: string[] = [];
+
+    if (primaryMatches.length > 0) {
+      score += Math.min(primaryMatches.length * 0.3, 0.6);
+      reasons.push(`oracle: ${primaryMatches.join(', ')}`);
+    }
+    if (pickMatches.length > 0 && primaryMatches.length > 0) {
+      score += 0.2;
+      reasons.push(`pick: ${pickMatches.join(', ')}`);
+    }
+    if (hasActionPattern) {
+      score += 0.3;
+      reasons.push('action pattern');
+    }
+
+    return {
+      score: Math.min(score, 1),
+      reason: reasons.length ? reasons.join(', ') : 'no oracle reference',
+      data: {
+        primaryKeywords: primaryMatches,
+        pickKeywords: pickMatches,
+      },
+    };
+  },
+};
+
+/**
  * Scores higher when user asks for explanations or how things work.
  * Useful for routing to educational responses.
  */
@@ -367,6 +428,7 @@ export const allEvaluators: Evaluator[] = [
   launchQueryEvaluator,
   worldStatusEvaluator,
   creatorQueryEvaluator,
+  oracleQueryEvaluator,
   explanationQueryEvaluator,
 ];
 

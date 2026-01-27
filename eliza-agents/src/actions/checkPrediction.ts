@@ -107,8 +107,19 @@ export const checkPredictionAction: Action = {
       return { success: false, text: response.text, error: 'No wallet connected' };
     }
 
-    const roundResponse = await fetch(`${BAGSWORLD_API_URL}/api/oracle/current?wallet=${walletAddress}`);
-    const round: OracleRoundResponse = await roundResponse.json();
+    let round: OracleRoundResponse;
+    try {
+      const roundResponse = await fetch(`${BAGSWORLD_API_URL}/api/oracle/current?wallet=${walletAddress}`);
+      if (!roundResponse.ok) {
+        throw new Error(`API error: ${roundResponse.status}`);
+      }
+      round = await roundResponse.json();
+    } catch (error) {
+      console.error('[checkPrediction] Failed to fetch:', error);
+      const response = { text: 'oracle is offline. try again in a moment.' };
+      if (callback) await callback(response);
+      return { success: false, text: response.text, error: 'API error' };
+    }
 
     const characterName = runtime.character?.name?.toLowerCase() || '';
     let responseText = '';
