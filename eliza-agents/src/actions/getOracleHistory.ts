@@ -106,8 +106,19 @@ export const getOracleHistoryAction: Action = {
     const walletAddress = message.content?.wallet as string;
     const walletParam = walletAddress ? `wallet=${walletAddress}&` : '';
 
-    const response = await fetch(`${BAGSWORLD_API_URL}/api/oracle/history?${walletParam}limit=5`);
-    const data: HistoryResponse = await response.json();
+    let data: HistoryResponse;
+    try {
+      const response = await fetch(`${BAGSWORLD_API_URL}/api/oracle/history?${walletParam}limit=5`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      data = await response.json();
+    } catch (error) {
+      console.error('[getOracleHistory] Failed to fetch:', error);
+      const errorResponse = { text: 'oracle archives offline. try again in a moment.' };
+      if (callback) await callback(errorResponse);
+      return { success: false, text: errorResponse.text, error: 'API error' };
+    }
 
     const characterName = runtime.character?.name?.toLowerCase() || '';
     let responseText = '';

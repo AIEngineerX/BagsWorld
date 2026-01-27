@@ -114,8 +114,19 @@ export const getOracleRoundAction: Action = {
     const walletAddress = (message.content?.wallet as string) || '';
     const walletParam = walletAddress ? `?wallet=${walletAddress}` : '';
 
-    const response = await fetch(`${BAGSWORLD_API_URL}/api/oracle/current${walletParam}`);
-    const data: OracleRoundResponse = await response.json();
+    let data: OracleRoundResponse;
+    try {
+      const response = await fetch(`${BAGSWORLD_API_URL}/api/oracle/current${walletParam}`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      data = await response.json();
+    } catch (error) {
+      console.error('[getOracleRound] Failed to fetch:', error);
+      const errorResponse = { text: 'oracle is offline. try again in a moment.' };
+      if (callback) await callback(errorResponse);
+      return { success: false, text: errorResponse.text, error: 'API error' };
+    }
 
     const characterName = runtime.character?.name?.toLowerCase() || '';
     let responseText = '';

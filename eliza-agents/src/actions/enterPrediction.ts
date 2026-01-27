@@ -2,7 +2,6 @@
 // Submit a prediction for the Oracle prediction market
 
 import type { Action, ActionExample, IAgentRuntime, Memory, State, HandlerCallback, ActionResult } from '../types/elizaos.js';
-import { BagsApiService, getBagsApiService } from '../services/BagsApiService.js';
 
 const BAGSWORLD_API_URL = process.env.BAGSWORLD_API_URL || 'https://bags.world';
 
@@ -126,8 +125,19 @@ export const enterPredictionAction: Action = {
     const symbolMatch = text.match(/\$([A-Za-z]{2,10})/) || text.match(/\b([A-Z]{2,10})\b/);
 
     // Get current round to find the token
-    const roundResponse = await fetch(`${BAGSWORLD_API_URL}/api/oracle/current?wallet=${walletAddress}`);
-    const round: OracleRoundResponse = await roundResponse.json();
+    let round: OracleRoundResponse;
+    try {
+      const roundResponse = await fetch(`${BAGSWORLD_API_URL}/api/oracle/current?wallet=${walletAddress}`);
+      if (!roundResponse.ok) {
+        throw new Error(`API error: ${roundResponse.status}`);
+      }
+      round = await roundResponse.json();
+    } catch (error) {
+      console.error('[enterPrediction] Failed to fetch round:', error);
+      const response = { text: 'oracle is offline. try again in a moment.' };
+      if (callback) await callback(response);
+      return { success: false, text: response.text, error: 'API error' };
+    }
 
     if (round.status !== 'active' || !round.tokenOptions) {
       const response = { text: 'no active prediction round. wait for the next one!' };
@@ -166,16 +176,23 @@ export const enterPredictionAction: Action = {
     }
 
     // Submit prediction
-    const enterResponse = await fetch(`${BAGSWORLD_API_URL}/api/oracle/enter`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        wallet: walletAddress,
-        tokenMint: targetToken.mint,
-      }),
-    });
-
-    const enterData: EnterPredictionResponse = await enterResponse.json();
+    let enterData: EnterPredictionResponse;
+    try {
+      const enterResponse = await fetch(`${BAGSWORLD_API_URL}/api/oracle/enter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wallet: walletAddress,
+          tokenMint: targetToken.mint,
+        }),
+      });
+      enterData = await enterResponse.json();
+    } catch (error) {
+      console.error('[enterPrediction] Failed to submit:', error);
+      const response = { text: 'failed to submit prediction. try again.' };
+      if (callback) await callback(response);
+      return { success: false, text: response.text, error: 'Submission failed' };
+    }
 
     const characterName = runtime.character?.name?.toLowerCase() || '';
     let responseText = '';
