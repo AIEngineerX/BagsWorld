@@ -1,12 +1,62 @@
 // Oracle Enter Prediction API - Submit a prediction
+// Token-gated: requires $BagsWorld tokens (admins bypass)
 import { NextRequest, NextResponse } from "next/server";
+import { Connection, PublicKey } from "@solana/web3.js";
 import {
   getActiveOracleRound,
   enterOraclePrediction,
   isNeonConfigured,
 } from "@/lib/neon";
+import { isAdmin, ECOSYSTEM_CONFIG } from "@/lib/config";
+import {
+  getTokenBalance,
+  BAGSWORLD_TOKEN_MINT,
+  MIN_TOKEN_BALANCE,
+  BAGSWORLD_TOKEN_SYMBOL,
+  BAGSWORLD_BUY_URL,
+} from "@/lib/token-balance";
 
 export const dynamic = "force-dynamic";
+
+// Get RPC URL from environment
+function getRpcUrl(): string {
+  return (
+    process.env.SOLANA_RPC_URL ||
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
+    "https://api.mainnet-beta.solana.com"
+  );
+}
+
+// Check if wallet has enough tokens for Oracle access
+async function hasOracleAccess(wallet: string): Promise<{
+  hasAccess: boolean;
+  balance: number;
+  required: number;
+}> {
+  try {
+    const connection = new Connection(getRpcUrl(), "confirmed");
+    const walletPubkey = new PublicKey(wallet);
+    const balance = await getTokenBalance(
+      connection,
+      walletPubkey,
+      BAGSWORLD_TOKEN_MINT
+    );
+
+    return {
+      hasAccess: balance >= MIN_TOKEN_BALANCE,
+      balance,
+      required: MIN_TOKEN_BALANCE,
+    };
+  } catch (error) {
+    console.error("[Oracle] Error checking token balance:", error);
+    // On error, deny access (fail closed)
+    return {
+      hasAccess: false,
+      balance: 0,
+      required: MIN_TOKEN_BALANCE,
+    };
+  }
+}
 
 export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
@@ -24,6 +74,29 @@ export async function POST(request: NextRequest) {
       { success: false, error: "Missing wallet or tokenMint" },
       { status: 400 }
     );
+  }
+
+  // Check token gate (admins bypass)
+  const walletIsAdmin = isAdmin(wallet);
+  if (!walletIsAdmin) {
+    const accessCheck = await hasOracleAccess(wallet);
+
+    if (!accessCheck.hasAccess) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Token gate: Insufficient balance",
+          tokenGate: {
+            required: accessCheck.required,
+            balance: accessCheck.balance,
+            symbol: BAGSWORLD_TOKEN_SYMBOL,
+            buyUrl: BAGSWORLD_BUY_URL,
+            message: `Hold ${accessCheck.required.toLocaleString()} ${BAGSWORLD_TOKEN_SYMBOL} to enter predictions`,
+          },
+        },
+        { status: 403 }
+      );
+    }
   }
 
   // Get active round
@@ -50,5 +123,6 @@ export async function POST(request: NextRequest) {
     message: "Prediction submitted successfully",
     roundId: round.id,
     tokenMint,
+    adminBypass: walletIsAdmin,
   });
 }

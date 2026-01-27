@@ -60,6 +60,23 @@ interface HistoryRound {
   };
 }
 
+interface LeaderboardEntry {
+  rank: number;
+  wallet: string;
+  walletShort: string;
+  wins: number;
+  totalPredictions: number;
+  winRate: number;
+}
+
+interface TokenGateError {
+  required: number;
+  balance: number;
+  symbol: string;
+  buyUrl: string;
+  message: string;
+}
+
 function formatTimeRemaining(ms: number): string {
   if (ms <= 0) return "00:00:00";
   const hours = Math.floor(ms / (1000 * 60 * 60));
@@ -69,14 +86,17 @@ function formatTimeRemaining(ms: number): string {
 }
 
 export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
-  const [view, setView] = useState<"predict" | "history" | "admin">("predict");
+  const [view, setView] = useState<"predict" | "leaders" | "history" | "admin">("predict");
   const [round, setRound] = useState<OracleRoundData | null>(null);
   const [history, setHistory] = useState<HistoryRound[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [userStats, setUserStats] = useState<{ wins: number; rank: number } | null>(null);
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
+  const [tokenGateError, setTokenGateError] = useState<TokenGateError | null>(null);
 
   const [isCreatingRound, setIsCreatingRound] = useState(false);
   const [isSettling, setIsSettling] = useState(false);
@@ -102,10 +122,21 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
     setHistory(data.rounds || []);
   }, [publicKey]);
 
+  const fetchLeaderboard = useCallback(async () => {
+    const walletParam = publicKey ? `?wallet=${publicKey.toString()}&limit=10` : "?limit=10";
+    const res = await fetch(`/api/oracle/leaderboard${walletParam}`);
+    const data = await res.json();
+    setLeaderboard(data.leaderboard || []);
+    if (data.userStats) {
+      setUserStats({ wins: data.userStats.wins, rank: data.userStats.rank });
+    }
+  }, [publicKey]);
+
   useEffect(() => {
     fetchRound();
     if (view === "history") fetchHistory();
-  }, [fetchRound, fetchHistory, view]);
+    if (view === "leaders") fetchLeaderboard();
+  }, [fetchRound, fetchHistory, fetchLeaderboard, view]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -122,6 +153,7 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
     if (!publicKey || !selectedToken || isSubmitting) return;
     setIsSubmitting(true);
     setMessage(null);
+    setTokenGateError(null);
 
     const res = await fetch("/api/oracle/enter", {
       method: "POST",
@@ -134,6 +166,9 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
       setMessage("Prediction locked!");
       setSelectedToken(null);
       await fetchRound();
+    } else if (data.tokenGate) {
+      // Token gate error - show buy prompt
+      setTokenGateError(data.tokenGate);
     } else {
       setMessage(data.error || "Failed to submit");
     }
@@ -250,7 +285,7 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
 
         {/* Tabs */}
         <div className="flex border-b-2 border-[#2a2a2a] shrink-0">
-          {["predict", "history", ...(isAdmin ? ["admin"] : [])].map((tab) => (
+          {["predict", "leaders", "history", ...(isAdmin ? ["admin"] : [])].map((tab) => (
             <button
               key={tab}
               onClick={() => setView(tab as typeof view)}
@@ -464,6 +499,38 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                   </p>
                 )}
 
+                {/* Token Gate Error */}
+                {tokenGateError && (
+                  <div className="bg-[#7f1d1d]/20 border-2 border-[#ef4444]/50 p-4">
+                    <p className="font-pixel text-[#ef4444] text-xs mb-2">TOKEN GATE</p>
+                    <p className="font-pixel text-[#888] text-[10px] mb-3">{tokenGateError.message}</p>
+                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-2 mb-3">
+                      <div className="flex justify-between font-pixel text-[10px]">
+                        <span className="text-[#666]">Your Balance:</span>
+                        <span className="text-white">{tokenGateError.balance.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between font-pixel text-[10px]">
+                        <span className="text-[#666]">Required:</span>
+                        <span className="text-[#ef4444]">{tokenGateError.required.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <a
+                      href={tokenGateError.buyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full font-pixel text-xs py-2 text-center bg-[#6b21a8] border border-[#7c3aed] text-white hover:bg-[#7c3aed] transition-colors"
+                    >
+                      BUY {tokenGateError.symbol}
+                    </a>
+                    <button
+                      onClick={() => setTokenGateError(null)}
+                      className="w-full mt-2 font-pixel text-[10px] text-[#666] hover:text-white"
+                    >
+                      [DISMISS]
+                    </button>
+                  </div>
+                )}
+
                 {/* Info Box */}
                 <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-3 mt-2">
                   <p className="font-pixel text-[#666] text-[10px] mb-2">HOW IT WORKS</p>
@@ -488,6 +555,62 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                 </div>
               </div>
             )
+          ) : view === "leaders" ? (
+            <div className="space-y-3">
+              {/* User Stats */}
+              {userStats && (
+                <div className="bg-[#6b21a8]/20 border-2 border-[#7c3aed]/50 p-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-pixel text-[#a855f7] text-xs">YOUR RANK</span>
+                    <span className="font-pixel text-white text-lg">#{userStats.rank}</span>
+                  </div>
+                  <p className="font-pixel text-[#666] text-[10px] mt-1">{userStats.wins} win{userStats.wins !== 1 ? "s" : ""}</p>
+                </div>
+              )}
+
+              {/* Leaderboard */}
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a]">
+                <div className="border-b border-[#2a2a2a] px-3 py-2">
+                  <p className="font-pixel text-[#666] text-[10px]">TOP ORACLES</p>
+                </div>
+                {leaderboard.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <p className="font-pixel text-[#666] text-xs">NO PREDICTIONS YET</p>
+                    <p className="font-pixel text-[#444] text-[10px] mt-1">Be the first to win!</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#2a2a2a]">
+                    {leaderboard.map((entry) => (
+                      <div key={entry.wallet} className={`flex items-center gap-3 p-3 ${entry.rank <= 3 ? "bg-[#1a1a2e]/50" : ""}`}>
+                        <div className={`w-6 h-6 flex items-center justify-center font-pixel text-xs ${
+                          entry.rank === 1 ? "bg-[#fbbf24] text-black" :
+                          entry.rank === 2 ? "bg-[#9ca3af] text-black" :
+                          entry.rank === 3 ? "bg-[#cd7f32] text-black" :
+                          "bg-[#2a2a2a] text-[#666]"
+                        }`}>
+                          {entry.rank}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-pixel text-white text-xs">{entry.walletShort}</p>
+                          <p className="font-pixel text-[#666] text-[10px]">{entry.totalPredictions} predictions</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-pixel text-[#22c55e] text-sm">{entry.wins}</p>
+                          <p className="font-pixel text-[#666] text-[10px]">{entry.winRate}% win</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={fetchLeaderboard}
+                className="w-full font-pixel text-[10px] py-2 text-[#666] hover:text-[#a855f7] border border-[#2a2a2a] hover:border-[#6b21a8] transition-colors"
+              >
+                [REFRESH]
+              </button>
+            </div>
           ) : view === "history" ? (
             <div className="space-y-2">
               {history.length === 0 ? (
@@ -607,7 +730,7 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
 
         {/* Footer */}
         <div className="border-t-2 border-[#2a2a2a] px-4 py-2 flex items-center justify-between shrink-0 bg-[#0d0d0d]">
-          <span className="font-pixel text-[#444] text-[10px]">Free entry | Bragging rights</span>
+          <span className="font-pixel text-[#444] text-[10px]">Token-gated | Bragging rights</span>
           <button onClick={fetchRound} className="font-pixel text-[#666] hover:text-[#a855f7] text-[10px] transition-colors">
             [REFRESH]
           </button>
