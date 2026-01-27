@@ -3,7 +3,7 @@
 // Each launched token becomes a building in BagsWorld
 
 import { NextRequest, NextResponse } from "next/server";
-import type { WorldState, FeeEarner, TokenInfo, GameEvent, ClaimEvent } from "@/lib/types";
+import type { WorldState, FeeEarner, TokenInfo, GameEvent, ClaimEvent, ZoneType } from "@/lib/types";
 import {
   buildWorldState,
   type BagsHealthMetrics,
@@ -368,6 +368,7 @@ interface RegisteredToken {
   positionOverride?: { x: number; y: number } | null;
   styleOverride?: number | null;
   healthOverride?: number | null;
+  zoneOverride?: ZoneType | null;
 }
 
 // Build FeeEarner from SDK creator data
@@ -773,6 +774,7 @@ export async function POST(request: NextRequest) {
                 : token.positionOverride,
             styleOverride: gt.style_override ?? token.styleOverride,
             healthOverride: gt.health_override ?? token.healthOverride,
+            zoneOverride: (gt.zone_override as TokenInfo["zoneOverride"]) ?? token.zoneOverride,
           };
         });
       } catch (err) {

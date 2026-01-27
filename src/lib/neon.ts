@@ -34,6 +34,7 @@ export interface GlobalToken {
   position_y?: number | null; // Y coordinate override
   style_override?: number | null; // Building style (0-3)
   health_override?: number | null; // Health override (0-100)
+  zone_override?: string | null; // Zone override (main_city, trending, ballers, founders, labs)
   // Building decay system - computed health that persists across serverless instances
   current_health?: number | null; // Computed health (0-100), decays over time
   health_updated_at?: string | null; // Last time health was calculated (ISO timestamp)
@@ -149,6 +150,11 @@ export async function initializeDatabase(): Promise<boolean> {
     // health_updated_at: Timestamp of last health calculation for time-based decay
     await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS current_health INTEGER DEFAULT 50`;
     await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS health_updated_at TIMESTAMP WITH TIME ZONE`;
+
+    // Add zone override column (migration)
+    // zone_override: Admin can override automatic zone assignment
+    // Valid values: main_city, trending, ballers, founders, labs, or NULL for auto
+    await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS zone_override TEXT`;
 
     return true;
   } catch (error) {

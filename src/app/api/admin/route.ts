@@ -170,6 +170,8 @@ export async function POST(request: NextRequest) {
         return await handleSetStyle(data);
       case "set_health":
         return await handleSetHealth(data);
+      case "set_zone":
+        return await handleSetZone(data);
       case "add_token":
         return await handleAddToken(data);
       case "clear_cache":
@@ -547,6 +549,35 @@ async function handleSetHealth(data: { mint: string; health: number | null }) {
   } catch (error) {
     console.error("Set health error:", error);
     return NextResponse.json({ error: "Failed to set health" }, { status: 500 });
+  }
+}
+
+// Valid zone types for zone override
+const VALID_ZONES = ["labs", "main_city", "trending", "ballers", "founders"] as const;
+
+// Handle set building zone override
+async function handleSetZone(data: { mint: string; zone: string | null }) {
+  const validationError = validateMintAndDb(data.mint);
+  if (validationError) return validationError;
+
+  // Validate zone is valid or null
+  if (data.zone !== null && !VALID_ZONES.includes(data.zone as (typeof VALID_ZONES)[number])) {
+    return NextResponse.json(
+      { error: `Invalid zone. Must be one of: ${VALID_ZONES.join(", ")} or null` },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const sql = getNeonSQL();
+    await sql`
+      UPDATE tokens SET zone_override = ${data.zone}, last_updated = NOW()
+      WHERE mint = ${data.mint}
+    `;
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Set zone error:", error);
+    return NextResponse.json({ error: "Failed to set zone" }, { status: 500 });
   }
 }
 

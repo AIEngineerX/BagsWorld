@@ -5,6 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { getLaunchedTokens, removeLaunchedToken, type LaunchedToken } from "@/lib/token-registry";
+import { BuildingEditor } from "./BuildingEditor";
 import bs58 from "bs58";
 
 const SESSION_TOKEN_KEY = "bagsworld_admin_session";
@@ -84,9 +85,10 @@ interface GlobalToken {
   position_y?: number | null;
   style_override?: number | null;
   health_override?: number | null;
+  zone_override?: string | null;
 }
 
-type TabType = "overview" | "diagnostics" | "global" | "local" | "analytics" | "logs";
+type TabType = "overview" | "buildings" | "diagnostics" | "global" | "local" | "analytics" | "logs";
 
 export function AdminConsole() {
   const { publicKey, connected, signMessage } = useWallet();
@@ -646,7 +648,7 @@ export function AdminConsole() {
 
           {/* Tabs */}
           <div className="flex border-b border-red-500/30 overflow-x-auto">
-            {(["overview", "diagnostics", "global", "local", "analytics", "logs"] as TabType[]).map(
+            {(["overview", "buildings", "diagnostics", "global", "local", "analytics", "logs"] as TabType[]).map(
               (tab) => (
                 <button
                   key={tab}
@@ -793,6 +795,16 @@ export function AdminConsole() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* BUILDINGS TAB */}
+            {activeTab === "buildings" && (
+              <BuildingEditor
+                tokens={globalTokens}
+                sessionToken={sessionToken}
+                onRefresh={fetchAdminData}
+                addLog={addLog}
+              />
             )}
 
             {/* DIAGNOSTICS TAB */}
