@@ -83,10 +83,13 @@ export async function POST(request: Request) {
     switch (action) {
       case "start": {
         if (!process.env.BITQUERY_API_KEY) {
-          return NextResponse.json({
-            success: false,
-            error: "BITQUERY_API_KEY not configured",
-          }, { status: 400 });
+          return NextResponse.json(
+            {
+              success: false,
+              error: "BITQUERY_API_KEY not configured",
+            },
+            { status: 400 }
+          );
         }
         const started = startLiveFeed();
         return NextResponse.json({

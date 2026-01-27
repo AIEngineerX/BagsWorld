@@ -141,7 +141,9 @@ async function initializeDatabase(): Promise<void> {
         await initializeAgentFeedTables();
         // Load existing event IDs from database to prevent duplicates on cold start
         emittedEventIdsCache = await getEmittedEventIds();
-        console.log(`[Agent Coordinator] Loaded ${emittedEventIdsCache.size} existing event IDs from database`);
+        console.log(
+          `[Agent Coordinator] Loaded ${emittedEventIdsCache.size} existing event IDs from database`
+        );
       }
       dbInitialized = true;
     } catch (error) {
@@ -525,7 +527,10 @@ export async function emitWorldHealthChange(
  * Emit an AI agent insight
  * Returns null if event was deduplicated
  */
-export async function emitAgentInsight(message: string, action?: AIAction): Promise<AgentEvent | null> {
+export async function emitAgentInsight(
+  message: string,
+  action?: AIAction
+): Promise<AgentEvent | null> {
   return emitEvent("agent_insight", "ai-agent", { message, action }, "low");
 }
 

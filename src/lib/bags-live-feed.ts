@@ -123,7 +123,10 @@ const priceCache = new Map<string, { price: number; timestamp: number }>();
 // BITQUERY CLIENT
 // ============================================================================
 
-async function queryBitquery<T>(query: string, variables?: Record<string, unknown>): Promise<T | null> {
+async function queryBitquery<T>(
+  query: string,
+  variables?: Record<string, unknown>
+): Promise<T | null> {
   const apiKey = process.env.BITQUERY_API_KEY;
 
   if (!apiKey) {
@@ -136,7 +139,7 @@ async function queryBitquery<T>(query: string, variables?: Record<string, unknow
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({ query, variables }),
     });
@@ -318,7 +321,7 @@ async function fetchRecentLaunches(): Promise<BagsLaunch[]> {
     seenLaunches.add(signature);
 
     // Extract mint from accounts (typically the first writable account)
-    const writableAccounts = instruction.Instruction.Accounts.filter(a => a.IsWritable);
+    const writableAccounts = instruction.Instruction.Accounts.filter((a) => a.IsWritable);
     const mint = writableAccounts[0]?.Address || "";
 
     if (!mint) continue;
@@ -485,7 +488,9 @@ async function pollLaunches(): Promise<void> {
         signature: launch.signature,
       });
 
-      console.log(`[Bags Live Feed] New launch: $${launch.symbol} - ${launch.name} (${launch.mint.slice(0, 8)}...)`);
+      console.log(
+        `[Bags Live Feed] New launch: $${launch.symbol} - ${launch.name} (${launch.mint.slice(0, 8)}...)`
+      );
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -524,8 +529,8 @@ async function pollWhales(): Promise<void> {
 
       // Determine if buy or sell based on receiver
       // If receiver is a DEX/AMM, it's likely a sell
-      const action: "buy" | "sell" = transfer.to.includes("pump") ||
-        transfer.to.includes("raydium") ? "sell" : "buy";
+      const action: "buy" | "sell" =
+        transfer.to.includes("pump") || transfer.to.includes("raydium") ? "sell" : "buy";
 
       await emitWhaleAlert(
         action,
@@ -535,7 +540,9 @@ async function pollWhales(): Promise<void> {
         transfer.from
       );
 
-      console.log(`[Bags Live Feed] Whale ${action}: ${transfer.symbol} $${transfer.amountUsd.toFixed(0)}`);
+      console.log(
+        `[Bags Live Feed] Whale ${action}: ${transfer.symbol} $${transfer.amountUsd.toFixed(0)}`
+      );
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -619,38 +626,43 @@ function addError(error: string): void {
 }
 
 // Clean up old entries from seen sets periodically
-setInterval(() => {
-  // Keep sets from growing unbounded
-  if (seenLaunches.size > 1000) {
-    const arr = Array.from(seenLaunches);
-    seenLaunches.clear();
-    arr.slice(-500).forEach(s => seenLaunches.add(s));
-  }
-  if (seenTrades.size > 5000) {
-    const arr = Array.from(seenTrades);
-    seenTrades.clear();
-    arr.slice(-2500).forEach(s => seenTrades.add(s));
-  }
-  if (seenWhales.size > 500) {
-    const arr = Array.from(seenWhales);
-    seenWhales.clear();
-    arr.slice(-250).forEach(s => seenWhales.add(s));
-  }
-
-  // Clean old price cache entries
-  const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-  for (const [mint, data] of priceCache.entries()) {
-    if (data.timestamp < fiveMinutesAgo) {
-      priceCache.delete(mint);
+setInterval(
+  () => {
+    // Keep sets from growing unbounded
+    if (seenLaunches.size > 1000) {
+      const arr = Array.from(seenLaunches);
+      seenLaunches.clear();
+      arr.slice(-500).forEach((s) => seenLaunches.add(s));
     }
-  }
-}, 5 * 60 * 1000); // Every 5 minutes
+    if (seenTrades.size > 5000) {
+      const arr = Array.from(seenTrades);
+      seenTrades.clear();
+      arr.slice(-2500).forEach((s) => seenTrades.add(s));
+    }
+    if (seenWhales.size > 500) {
+      const arr = Array.from(seenWhales);
+      seenWhales.clear();
+      arr.slice(-250).forEach((s) => seenWhales.add(s));
+    }
+
+    // Clean old price cache entries
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    for (const [mint, data] of priceCache.entries()) {
+      if (data.timestamp < fiveMinutesAgo) {
+        priceCache.delete(mint);
+      }
+    }
+  },
+  5 * 60 * 1000
+); // Every 5 minutes
 
 // ============================================================================
 // MANUAL ENRICHMENT (fetch token metadata for new launches)
 // ============================================================================
 
-export async function enrichLaunchMetadata(mint: string): Promise<{ name: string; symbol: string } | null> {
+export async function enrichLaunchMetadata(
+  mint: string
+): Promise<{ name: string; symbol: string } | null> {
   // Try multiple sources for token metadata
 
   // 1. Try DexScreener (fast, no auth)

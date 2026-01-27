@@ -13,16 +13,8 @@ import {
   type AgentEvent,
 } from "@/lib/agent-coordinator";
 import { connectToCoordinator as connectAIAgent } from "@/lib/ai-agent";
-import {
-  isNeonConfigured,
-  getRecentEmittedEvents,
-  initializeAgentFeedTables,
-} from "@/lib/neon";
-import {
-  startLiveFeed,
-  stopLiveFeed,
-  getLiveFeedState,
-} from "@/lib/bags-live-feed";
+import { isNeonConfigured, getRecentEmittedEvents, initializeAgentFeedTables } from "@/lib/neon";
+import { startLiveFeed, stopLiveFeed, getLiveFeedState } from "@/lib/bags-live-feed";
 
 // 24 hour TTL for events
 const EVENT_TTL_MS = 24 * 60 * 60 * 1000;
