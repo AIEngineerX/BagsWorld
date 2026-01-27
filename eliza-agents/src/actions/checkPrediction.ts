@@ -1,182 +1,82 @@
-// checkPrediction Action
-// Check user's prediction status in the Oracle
+// checkPrediction Action - Check user's Oracle prediction status
 
 import type { Action, ActionExample, IAgentRuntime, Memory, State, HandlerCallback, ActionResult } from '../types/elizaos.js';
-
-const BAGSWORLD_API_URL = process.env.BAGSWORLD_API_URL || 'https://bags.world';
-
-interface OracleTokenOption {
-  mint: string;
-  symbol: string;
-  name: string;
-  startPrice: number;
-}
-
-interface OracleRoundResponse {
-  id?: number;
-  status: 'active' | 'settled' | 'cancelled' | 'none';
-  tokenOptions?: OracleTokenOption[];
-  userPrediction?: {
-    tokenMint: string;
-    createdAt: string;
-  };
-  winningTokenMint?: string;
-  winningPriceChange?: number;
-  remainingMs?: number;
-}
-
-function formatTimeRemaining(ms: number): string {
-  if (ms <= 0) return 'ended';
-  const hours = Math.floor(ms / (1000 * 60 * 60));
-  const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  return `${minutes}m`;
-}
+import { OracleRoundResponse, fetchOracle, formatTimeRemaining } from './oracle/types.js';
 
 export const checkPredictionAction: Action = {
   name: 'checkPrediction',
-  description: 'Check your prediction status in the Oracle prediction market',
-
-  similes: [
-    'my prediction',
-    'check prediction',
-    'prediction status',
-    'did i win',
-    'my pick',
-    'what did i predict',
-    'oracle status',
-  ],
+  description: 'Check your prediction status in the Oracle',
+  similes: ['my prediction', 'check prediction', 'did i win', 'my pick', 'prediction status'],
 
   examples: [
     [
-      {
-        name: '{{name1}}',
-        content: { text: 'did i win the oracle round?' },
-      },
-      {
-        name: 'Bags Bot',
-        content: { text: 'let me check your prediction status...' },
-      },
-    ],
-    [
-      {
-        name: '{{name1}}',
-        content: { text: 'whats my prediction' },
-      },
-      {
-        name: 'Neo',
-        content: { text: '*scanning* looking up your oracle entry...' },
-      },
+      { name: '{{name1}}', content: { text: 'did i win the oracle round?' } },
+      { name: 'Bags Bot', content: { text: 'let me check your prediction...' } },
     ],
   ] as ActionExample[][],
 
-  validate: async (runtime: IAgentRuntime, message: Memory, state?: State): Promise<boolean> => {
+  validate: async (_runtime: IAgentRuntime, message: Memory): Promise<boolean> => {
     const text = message.content?.text?.toLowerCase() || '';
-
-    const hasPredictionRef = [
-      'my prediction',
-      'my pick',
-      'my bet',
-      'my entry',
-      'did i win',
-      'did i predict',
-      'what did i',
-      'check my',
-      'prediction status',
-    ].some(phrase => text.includes(phrase));
-
-    const hasOracleContext = text.includes('oracle') || text.includes('predict');
-
-    return hasPredictionRef || (hasOracleContext && text.includes('my'));
+    const hasMyPrediction = ['my prediction', 'my pick', 'did i win', 'check my', 'what did i'].some(p => text.includes(p));
+    const hasOracleMy = (text.includes('oracle') || text.includes('predict')) && text.includes('my');
+    return hasMyPrediction || hasOracleMy;
   },
 
   handler: async (
     runtime: IAgentRuntime,
     message: Memory,
-    state?: State,
-    options?: Record<string, unknown>,
+    _state?: State,
+    _options?: Record<string, unknown>,
     callback?: HandlerCallback
   ): Promise<ActionResult> => {
-    const walletAddress = message.content?.wallet as string;
-
-    if (!walletAddress) {
-      const response = { text: 'connect your wallet to check your predictions.' };
+    const wallet = message.content?.wallet as string;
+    if (!wallet) {
+      const response = { text: 'connect your wallet to check predictions.' };
       if (callback) await callback(response);
-      return { success: false, text: response.text, error: 'No wallet connected' };
+      return { success: false, text: response.text, error: 'No wallet' };
     }
 
-    let round: OracleRoundResponse;
-    try {
-      const roundResponse = await fetch(`${BAGSWORLD_API_URL}/api/oracle/current?wallet=${walletAddress}`);
-      if (!roundResponse.ok) {
-        throw new Error(`API error: ${roundResponse.status}`);
-      }
-      round = await roundResponse.json();
-    } catch (error) {
-      console.error('[checkPrediction] Failed to fetch:', error);
-      const response = { text: 'oracle is offline. try again in a moment.' };
+    const { data, error } = await fetchOracle<OracleRoundResponse>(`/api/oracle/current?wallet=${wallet}`);
+    if (error || !data) {
+      const response = { text: 'oracle is offline. try again.' };
       if (callback) await callback(response);
-      return { success: false, text: response.text, error: 'API error' };
+      return { success: false, text: response.text, error: error || 'API error' };
     }
 
-    const characterName = runtime.character?.name?.toLowerCase() || '';
-    let responseText = '';
+    const char = runtime.character?.name?.toLowerCase() || '';
+    let text: string;
 
-    if (round.status === 'none') {
-      responseText = 'no active oracle round. check back for the next one!';
-    } else if (!round.userPrediction) {
-      if (round.status === 'active' && round.tokenOptions) {
-        const tokens = round.tokenOptions.map(t => t.symbol).join(', ');
-        responseText = `you haven't entered this round yet. available picks: ${tokens}`;
-      } else {
-        responseText = 'you didnt enter this round.';
-      }
+    if (data.status === 'none') {
+      text = 'no active oracle round.';
+    } else if (!data.userPrediction) {
+      const tokens = data.tokenOptions?.map(t => t.symbol).join(', ') || '';
+      text = data.status === 'active' && tokens
+        ? `you haven't entered this round. picks: ${tokens}`
+        : 'you didn\'t enter this round.';
     } else {
-      const predictedToken = round.tokenOptions?.find(t => t.mint === round.userPrediction?.tokenMint);
-      const tokenSymbol = predictedToken?.symbol || 'unknown';
+      const token = data.tokenOptions?.find(t => t.mint === data.userPrediction?.tokenMint);
+      const symbol = token?.symbol || '?';
 
-      if (round.status === 'active') {
-        const timeLeft = formatTimeRemaining(round.remainingMs || 0);
-        if (characterName === 'neo') {
-          responseText = `*prediction found* you picked ${tokenSymbol}. ` +
-            `${timeLeft} remaining. the oracle awaits the outcome.`;
-        } else {
-          responseText = `you predicted ${tokenSymbol}! ${timeLeft} left until results.`;
-        }
-      } else if (round.status === 'settled') {
-        const isWinner = round.userPrediction.tokenMint === round.winningTokenMint;
-        const winnerToken = round.tokenOptions?.find(t => t.mint === round.winningTokenMint);
+      if (data.status === 'active') {
+        const timeLeft = formatTimeRemaining(data.remainingMs || 0);
+        text = char === 'neo'
+          ? `*found* you picked ${symbol}. ${timeLeft} left.`
+          : `you predicted ${symbol}! ${timeLeft} until results.`;
+      } else if (data.status === 'settled') {
+        const isWinner = data.userPrediction.tokenMint === data.winningTokenMint;
+        const change = data.winningPriceChange?.toFixed(2) || '0';
+        const winnerSymbol = data.tokenOptions?.find(t => t.mint === data.winningTokenMint)?.symbol || '?';
 
-        if (isWinner) {
-          if (characterName === 'neo') {
-            responseText = `*winner detected* you called it. ${tokenSymbol} won with ` +
-              `+${round.winningPriceChange?.toFixed(2)}% gain. the matrix favored your prediction.`;
-          } else if (characterName === 'ghost') {
-            responseText = `you won! ${tokenSymbol} took it with +${round.winningPriceChange?.toFixed(2)}%. ` +
-              `good call.`;
-          } else {
-            responseText = `congratulations! your pick ${tokenSymbol} won the round! ` +
-              `+${round.winningPriceChange?.toFixed(2)}% gain.`;
-          }
-        } else {
-          responseText = `you picked ${tokenSymbol}, but ${winnerToken?.symbol || 'another token'} won ` +
-            `with +${round.winningPriceChange?.toFixed(2)}%. better luck next round!`;
-        }
+        text = isWinner
+          ? (char === 'neo' ? `*winner* ${symbol} won (+${change}%)!` : `you won! ${symbol} +${change}%!`)
+          : `you picked ${symbol}, but ${winnerSymbol} won (+${change}%).`;
       } else {
-        responseText = `round was cancelled. your ${tokenSymbol} prediction was voided.`;
+        text = `round cancelled. your ${symbol} prediction voided.`;
       }
     }
 
-    const result = { text: responseText };
-    if (callback) await callback(result);
-
-    return {
-      success: true,
-      text: responseText,
-      data: { round, prediction: round.userPrediction },
-    };
+    if (callback) await callback({ text });
+    return { success: true, text, data: { round: data } };
   },
 };
 
