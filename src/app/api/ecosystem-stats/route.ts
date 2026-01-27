@@ -5,7 +5,7 @@ import {
   startCreatorRewardsAgent,
   getTimeUntilDistribution,
 } from "@/lib/creator-rewards-agent";
-import { ECOSYSTEM_CONFIG } from "@/lib/config";
+// ECOSYSTEM_CONFIG import removed - rewards system deprecated
 import { isAgentWalletConfigured } from "@/lib/agent-wallet";
 import { isServerBagsApiConfigured } from "@/lib/bags-api-server";
 import { getRewardsState, isNeonConfigured, saveRewardsState } from "@/lib/neon";
@@ -88,7 +88,9 @@ export async function GET() {
     }
 
     // Calculate trigger info using persisted cycle start time
-    const backupTimerMs = ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays * 24 * 60 * 60 * 1000;
+    // DEPRECATED: Rewards system disabled - using hardcoded defaults
+    const backupTimerDays = 5; // Was ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays
+    const backupTimerMs = backupTimerDays * 24 * 60 * 60 * 1000;
     const timeRemaining = backupTimerMs - (Date.now() - cycleStartTime);
     const solNeeded = rewardsState.config.thresholdSol - rewardsState.pendingPoolSol;
 
@@ -112,7 +114,7 @@ export async function GET() {
 
       // Timer status - use persisted value
       cycleStartTime,
-      backupTimerDays: ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays,
+      backupTimerDays, // Hardcoded above - rewards system deprecated
 
       // Distribution stats - use persisted values
       totalDistributed,
@@ -149,21 +151,22 @@ export async function GET() {
     console.error("Ecosystem stats error:", error);
 
     // Return default values if agent not initialized
+    // DEPRECATED: Rewards system disabled - hardcoded defaults
     return NextResponse.json({
       pendingPoolSol: 0,
-      thresholdSol: ECOSYSTEM_CONFIG.ecosystem.rewards.thresholdSol,
-      minimumDistributionSol: ECOSYSTEM_CONFIG.ecosystem.rewards.minimumDistributionSol,
+      thresholdSol: 10,
+      minimumDistributionSol: 2,
       cycleStartTime: defaultCycleStart || Date.now(),
-      backupTimerDays: ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays,
+      backupTimerDays: 5,
       totalDistributed: 0,
       distributionCount: 0,
       lastDistribution: 0,
       topCreators: [],
       recentDistributions: [],
-      distribution: ECOSYSTEM_CONFIG.ecosystem.rewards.distribution,
+      distribution: { first: 50, second: 30, third: 20 },
       triggerInfo: {
-        byThreshold: ECOSYSTEM_CONFIG.ecosystem.rewards.thresholdSol,
-        byTimer: ECOSYSTEM_CONFIG.ecosystem.rewards.backupTimerDays * 24 * 60 * 60 * 1000,
+        byThreshold: 10,
+        byTimer: 5 * 24 * 60 * 60 * 1000,
         estimatedTrigger: "unknown" as const,
       },
     });
