@@ -2665,299 +2665,250 @@ export class BootScene extends Phaser.Scene {
   }
 
   private generateOracleTower(): void {
-    // Oracle Tower - Mystical prediction market tower (purple/gold, crystal ball theme)
+    // Oracle Tower - Pixel art mystical tower (matches Casino/Terminal style)
     const s = SCALE;
     const g = this.make.graphics({ x: 0, y: 0 });
-    const canvasHeight = Math.round(200 * s);
-    const canvasWidth = Math.round(75 * s);
-    const bHeight = Math.round(150 * s);
-    const bWidth = Math.round(65 * s);
+    const canvasHeight = Math.round(180 * s);
+    const canvasWidth = Math.round(70 * s);
+    const bHeight = Math.round(130 * s);
+    const bWidth = Math.round(55 * s);
+    const baseX = Math.round(8 * s);
 
-    // Oracle color palette (mystical, ethereal)
-    const oracleDeepPurple = 0x2d1b4e;
-    const oraclePurple = 0x5b21b6;
-    const oracleViolet = 0x8b5cf6;
-    const oracleLavender = 0xa78bfa;
-    const oracleGold = 0xfbbf24;
-    const oracleGoldLight = 0xfcd34d;
-    const oracleCrystal = 0x06b6d4;
-    const oracleCrystalLight = 0x22d3ee;
-    const oracleWhite = 0xf5f3ff;
-
-    // Shadow
-    g.fillStyle(PALETTE.void, 0.5);
+    // Ground shadow (flat, no alpha)
+    g.fillStyle(PALETTE.void);
     g.fillRect(
-      Math.round(8 * s),
-      canvasHeight - bHeight + Math.round(8 * s),
-      bWidth - Math.round(10 * s),
-      bHeight
-    );
-
-    // Tower base (wider at bottom, tapers up) - stone texture effect
-    const baseWidth = Math.round(55 * s);
-    const midWidth = Math.round(45 * s);
-    const topWidth = Math.round(38 * s);
-    const baseX = (canvasWidth - baseWidth) / 2;
-    const midX = (canvasWidth - midWidth) / 2;
-    const topX = (canvasWidth - topWidth) / 2;
-
-    // Bottom third (widest)
-    g.fillStyle(oracleDeepPurple);
-    g.fillRect(baseX, canvasHeight - Math.round(50 * s), baseWidth, Math.round(50 * s));
-
-    // Middle third
-    g.fillRect(midX, canvasHeight - Math.round(100 * s), midWidth, Math.round(50 * s));
-
-    // Top third (narrowest)
-    g.fillRect(topX, canvasHeight - bHeight, topWidth, Math.round(50 * s));
-
-    // Stone texture effect (dithering)
-    g.fillStyle(darken(oracleDeepPurple, 0.15));
-    for (let py = 0; py < bHeight; py += Math.round(6 * s)) {
-      for (let px = 0; px < baseWidth; px += Math.round(8 * s)) {
-        if ((py / Math.round(6 * s) + px / Math.round(8 * s)) % 2 === 0) {
-          const currentWidth =
-            py < Math.round(50 * s)
-              ? topWidth
-              : py < Math.round(100 * s)
-                ? midWidth
-                : baseWidth;
-          const currentX =
-            py < Math.round(50 * s) ? topX : py < Math.round(100 * s) ? midX : baseX;
-          if (px < currentWidth) {
-            g.fillRect(
-              currentX + px,
-              canvasHeight - bHeight + py,
-              Math.round(3 * s),
-              Math.round(3 * s)
-            );
-          }
-        }
-      }
-    }
-
-    // Left edge highlight
-    g.fillStyle(lighten(oracleDeepPurple, 0.2));
-    g.fillRect(baseX, canvasHeight - Math.round(50 * s), Math.round(6 * s), Math.round(50 * s));
-    g.fillRect(midX, canvasHeight - Math.round(100 * s), Math.round(6 * s), Math.round(50 * s));
-    g.fillRect(topX, canvasHeight - bHeight, Math.round(6 * s), Math.round(50 * s));
-
-    // Right edge shadow
-    g.fillStyle(darken(oracleDeepPurple, 0.3));
-    g.fillRect(
-      baseX + baseWidth - Math.round(6 * s),
-      canvasHeight - Math.round(50 * s),
-      Math.round(6 * s),
-      Math.round(50 * s)
-    );
-    g.fillRect(
-      midX + midWidth - Math.round(6 * s),
-      canvasHeight - Math.round(100 * s),
-      Math.round(6 * s),
-      Math.round(50 * s)
-    );
-    g.fillRect(
-      topX + topWidth - Math.round(6 * s),
-      canvasHeight - bHeight,
-      Math.round(6 * s),
-      Math.round(50 * s)
-    );
-
-    // Gold bands at section transitions
-    g.fillStyle(oracleGold);
-    g.fillRect(midX - Math.round(2 * s), canvasHeight - Math.round(52 * s), midWidth + Math.round(4 * s), Math.round(4 * s));
-    g.fillRect(topX - Math.round(2 * s), canvasHeight - Math.round(102 * s), topWidth + Math.round(4 * s), Math.round(4 * s));
-    // Gold band highlights
-    g.fillStyle(oracleGoldLight);
-    g.fillRect(midX - Math.round(2 * s), canvasHeight - Math.round(52 * s), midWidth + Math.round(4 * s), Math.round(1 * s));
-    g.fillRect(topX - Math.round(2 * s), canvasHeight - Math.round(102 * s), topWidth + Math.round(4 * s), Math.round(1 * s));
-
-    // Arched windows with purple glow (3 rows, 2 per row on wider sections)
-    const windowPositions = [
-      // Bottom section (2 windows)
-      { x: baseX + Math.round(10 * s), y: canvasHeight - Math.round(40 * s), w: Math.round(12 * s), h: Math.round(18 * s) },
-      { x: baseX + baseWidth - Math.round(22 * s), y: canvasHeight - Math.round(40 * s), w: Math.round(12 * s), h: Math.round(18 * s) },
-      // Middle section (2 windows)
-      { x: midX + Math.round(8 * s), y: canvasHeight - Math.round(90 * s), w: Math.round(10 * s), h: Math.round(16 * s) },
-      { x: midX + midWidth - Math.round(18 * s), y: canvasHeight - Math.round(90 * s), w: Math.round(10 * s), h: Math.round(16 * s) },
-      // Top section (1 centered window)
-      { x: topX + (topWidth - Math.round(10 * s)) / 2, y: canvasHeight - bHeight + Math.round(15 * s), w: Math.round(10 * s), h: Math.round(14 * s) },
-    ];
-
-    windowPositions.forEach((win) => {
-      // Window glow (purple aura)
-      g.fillStyle(oracleViolet, 0.35);
-      g.fillRect(
-        win.x - Math.round(3 * s),
-        win.y - Math.round(3 * s),
-        win.w + Math.round(6 * s),
-        win.h + Math.round(6 * s)
-      );
-
-      // Window base (dark interior)
-      g.fillStyle(oraclePurple);
-      g.fillRect(win.x, win.y, win.w, win.h);
-
-      // Arch top (semi-circle approximation with rectangles)
-      g.fillStyle(oraclePurple);
-      g.fillRect(win.x + Math.round(2 * s), win.y - Math.round(3 * s), win.w - Math.round(4 * s), Math.round(4 * s));
-
-      // Window glow interior
-      g.fillStyle(oracleLavender, 0.6);
-      g.fillRect(
-        win.x + Math.round(2 * s),
-        win.y + Math.round(2 * s),
-        win.w - Math.round(4 * s),
-        win.h - Math.round(4 * s)
-      );
-
-      // Highlight corner
-      g.fillStyle(oracleWhite, 0.5);
-      g.fillRect(win.x + Math.round(2 * s), win.y + Math.round(2 * s), Math.round(3 * s), Math.round(3 * s));
-    });
-
-    // Pointed roof/spire
-    const spireBaseY = canvasHeight - bHeight;
-    const spireWidth = topWidth + Math.round(6 * s);
-    const spireX = (canvasWidth - spireWidth) / 2;
-    const spireHeight = Math.round(25 * s);
-
-    // Roof triangular shape
-    g.fillStyle(oraclePurple);
-    g.fillTriangle(
-      spireX,
-      spireBaseY,
-      spireX + spireWidth,
-      spireBaseY,
-      canvasWidth / 2,
-      spireBaseY - spireHeight
-    );
-
-    // Roof highlight (left side)
-    g.fillStyle(oracleViolet);
-    g.fillTriangle(
-      spireX,
-      spireBaseY,
-      spireX + spireWidth / 2,
-      spireBaseY,
-      canvasWidth / 2,
-      spireBaseY - spireHeight
-    );
-
-    // Crystal ball pedestal at top
-    const crystalY = spireBaseY - spireHeight - Math.round(8 * s);
-    const pedestalSize = Math.round(10 * s);
-    g.fillStyle(oracleGold);
-    g.fillRect(
-      canvasWidth / 2 - pedestalSize / 2,
-      crystalY + Math.round(4 * s),
-      pedestalSize,
-      Math.round(6 * s)
-    );
-
-    // Crystal ball with radial glow effect
-    const crystalRadius = Math.round(12 * s);
-    const crystalCenterX = canvasWidth / 2;
-    const crystalCenterY = crystalY - crystalRadius + Math.round(2 * s);
-
-    // Outer glow (large, faint)
-    g.fillStyle(oracleCrystal, 0.2);
-    g.fillCircle(crystalCenterX, crystalCenterY, crystalRadius + Math.round(6 * s));
-
-    // Middle glow
-    g.fillStyle(oracleCrystal, 0.35);
-    g.fillCircle(crystalCenterX, crystalCenterY, crystalRadius + Math.round(3 * s));
-
-    // Crystal ball main
-    g.fillStyle(oracleCrystal);
-    g.fillCircle(crystalCenterX, crystalCenterY, crystalRadius);
-
-    // Crystal ball highlight
-    g.fillStyle(oracleCrystalLight);
-    g.fillCircle(
-      crystalCenterX - Math.round(4 * s),
-      crystalCenterY - Math.round(4 * s),
+      baseX + Math.round(6 * s),
+      canvasHeight - Math.round(4 * s),
+      bWidth - Math.round(4 * s),
       Math.round(4 * s)
     );
 
-    // Crystal ball inner glow
-    g.fillStyle(oracleWhite, 0.6);
-    g.fillCircle(
-      crystalCenterX - Math.round(3 * s),
-      crystalCenterY - Math.round(3 * s),
-      Math.round(2 * s)
-    );
+    // Main tower body (3 tapered sections)
+    const section1H = Math.round(45 * s); // Bottom
+    const section2H = Math.round(45 * s); // Middle
+    const section3H = Math.round(40 * s); // Top
 
-    // Star decorations around tower
-    const stars = [
-      { x: canvasWidth / 2 - Math.round(25 * s), y: canvasHeight - bHeight - Math.round(5 * s) },
-      { x: canvasWidth / 2 + Math.round(25 * s), y: canvasHeight - bHeight - Math.round(5 * s) },
-      { x: canvasWidth / 2 - Math.round(15 * s), y: crystalCenterY + Math.round(2 * s) },
-      { x: canvasWidth / 2 + Math.round(15 * s), y: crystalCenterY + Math.round(2 * s) },
+    // Bottom section (widest)
+    const sec1W = bWidth;
+    const sec1X = baseX;
+    const sec1Y = canvasHeight - section1H;
+    g.fillStyle(PALETTE.deepPurple);
+    g.fillRect(sec1X, sec1Y, sec1W, section1H);
+
+    // Middle section
+    const sec2W = Math.round(45 * s);
+    const sec2X = baseX + (bWidth - sec2W) / 2;
+    const sec2Y = sec1Y - section2H;
+    g.fillStyle(PALETTE.deepPurple);
+    g.fillRect(sec2X, sec2Y, sec2W, section2H);
+
+    // Top section (narrowest)
+    const sec3W = Math.round(36 * s);
+    const sec3X = baseX + (bWidth - sec3W) / 2;
+    const sec3Y = sec2Y - section3H;
+    g.fillStyle(PALETTE.deepPurple);
+    g.fillRect(sec3X, sec3Y, sec3W, section3H);
+
+    // Stone brick pattern (dithering - checkerboard darker pixels)
+    const brickColor = darken(PALETTE.deepPurple, 0.2);
+    g.fillStyle(brickColor);
+
+    // Bottom section bricks
+    for (let row = 0; row < section1H; row += Math.round(8 * s)) {
+      const offset = (row / Math.round(8 * s)) % 2 === 0 ? 0 : Math.round(6 * s);
+      for (let col = offset; col < sec1W; col += Math.round(12 * s)) {
+        g.fillRect(sec1X + col, sec1Y + row, Math.round(10 * s), Math.round(6 * s));
+      }
+    }
+    // Middle section bricks
+    for (let row = 0; row < section2H; row += Math.round(8 * s)) {
+      const offset = (row / Math.round(8 * s)) % 2 === 0 ? 0 : Math.round(6 * s);
+      for (let col = offset; col < sec2W; col += Math.round(12 * s)) {
+        g.fillRect(sec2X + col, sec2Y + row, Math.round(10 * s), Math.round(6 * s));
+      }
+    }
+    // Top section bricks
+    for (let row = 0; row < section3H; row += Math.round(8 * s)) {
+      const offset = (row / Math.round(8 * s)) % 2 === 0 ? 0 : Math.round(6 * s);
+      for (let col = offset; col < sec3W; col += Math.round(12 * s)) {
+        g.fillRect(sec3X + col, sec3Y + row, Math.round(10 * s), Math.round(6 * s));
+      }
+    }
+
+    // Left edge highlight (light source top-left)
+    g.fillStyle(lighten(PALETTE.deepPurple, 0.25));
+    g.fillRect(sec1X, sec1Y, Math.round(6 * s), section1H);
+    g.fillRect(sec2X, sec2Y, Math.round(6 * s), section2H);
+    g.fillRect(sec3X, sec3Y, Math.round(6 * s), section3H);
+
+    // Right edge shadow
+    g.fillStyle(darken(PALETTE.deepPurple, 0.35));
+    g.fillRect(sec1X + sec1W - Math.round(6 * s), sec1Y, Math.round(6 * s), section1H);
+    g.fillRect(sec2X + sec2W - Math.round(6 * s), sec2Y, Math.round(6 * s), section2H);
+    g.fillRect(sec3X + sec3W - Math.round(6 * s), sec3Y, Math.round(6 * s), section3H);
+
+    // Gold trim bands between sections
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(sec2X - Math.round(2 * s), sec1Y - Math.round(4 * s), sec2W + Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(sec3X - Math.round(2 * s), sec2Y - Math.round(4 * s), sec3W + Math.round(4 * s), Math.round(4 * s));
+    // Gold band highlights
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(sec2X - Math.round(2 * s), sec1Y - Math.round(4 * s), sec2W + Math.round(4 * s), Math.round(1 * s));
+    g.fillRect(sec3X - Math.round(2 * s), sec2Y - Math.round(4 * s), sec3W + Math.round(4 * s), Math.round(1 * s));
+
+    // Windows - uniform pixel rectangles
+    const winW = Math.round(10 * s);
+    const winH = Math.round(14 * s);
+
+    // Bottom section windows (2)
+    const win1aX = sec1X + Math.round(8 * s);
+    const win1bX = sec1X + sec1W - Math.round(18 * s);
+    const win1Y = sec1Y + Math.round(16 * s);
+
+    // Middle section windows (2)
+    const win2aX = sec2X + Math.round(6 * s);
+    const win2bX = sec2X + sec2W - Math.round(16 * s);
+    const win2Y = sec2Y + Math.round(16 * s);
+
+    // Top section window (1 centered)
+    const win3X = sec3X + (sec3W - winW) / 2;
+    const win3Y = sec3Y + Math.round(14 * s);
+
+    const windowPositions = [
+      { x: win1aX, y: win1Y },
+      { x: win1bX, y: win1Y },
+      { x: win2aX, y: win2Y },
+      { x: win2bX, y: win2Y },
+      { x: win3X, y: win3Y },
     ];
 
-    stars.forEach((star) => {
-      g.fillStyle(oracleGold);
-      g.fillCircle(star.x, star.y, Math.round(2 * s));
-      g.fillStyle(oracleGoldLight);
-      g.fillCircle(star.x, star.y, Math.round(1 * s));
+    windowPositions.forEach((win) => {
+      // Window frame (dark)
+      g.fillStyle(darken(PALETTE.deepPurple, 0.4));
+      g.fillRect(win.x - Math.round(1 * s), win.y - Math.round(1 * s), winW + Math.round(2 * s), winH + Math.round(2 * s));
+
+      // Window interior (purple glow)
+      g.fillStyle(PALETTE.purple);
+      g.fillRect(win.x, win.y, winW, winH);
+
+      // Window glow (lavender inner)
+      g.fillStyle(PALETTE.lavender);
+      g.fillRect(win.x + Math.round(2 * s), win.y + Math.round(2 * s), winW - Math.round(4 * s), winH - Math.round(4 * s));
+
+      // Highlight corner (top-left, hard pixel)
+      g.fillStyle(PALETTE.white);
+      g.fillRect(win.x + Math.round(2 * s), win.y + Math.round(2 * s), Math.round(3 * s), Math.round(3 * s));
+
+      // Window divider (cross)
+      g.fillStyle(PALETTE.purple);
+      g.fillRect(win.x + winW / 2 - Math.round(1 * s), win.y, Math.round(2 * s), winH);
+      g.fillRect(win.x, win.y + winH / 2 - Math.round(1 * s), winW, Math.round(2 * s));
+    });
+
+    // Pointed roof (stepped pyramid for pixel art)
+    const roofBaseY = sec3Y;
+    const roofW1 = sec3W + Math.round(8 * s);
+    const roofX1 = sec3X - Math.round(4 * s);
+
+    // Roof layer 1 (eaves)
+    g.fillStyle(PALETTE.purple);
+    g.fillRect(roofX1, roofBaseY - Math.round(6 * s), roofW1, Math.round(6 * s));
+    g.fillStyle(PALETTE.violet);
+    g.fillRect(roofX1, roofBaseY - Math.round(6 * s), roofW1, Math.round(2 * s));
+
+    // Roof layer 2
+    const roofW2 = roofW1 - Math.round(10 * s);
+    const roofX2 = roofX1 + Math.round(5 * s);
+    g.fillStyle(PALETTE.purple);
+    g.fillRect(roofX2, roofBaseY - Math.round(14 * s), roofW2, Math.round(8 * s));
+    g.fillStyle(PALETTE.violet);
+    g.fillRect(roofX2, roofBaseY - Math.round(14 * s), roofW2, Math.round(2 * s));
+
+    // Roof layer 3 (spire base)
+    const roofW3 = roofW2 - Math.round(10 * s);
+    const roofX3 = roofX2 + Math.round(5 * s);
+    g.fillStyle(PALETTE.purple);
+    g.fillRect(roofX3, roofBaseY - Math.round(22 * s), roofW3, Math.round(8 * s));
+    g.fillStyle(PALETTE.violet);
+    g.fillRect(roofX3, roofBaseY - Math.round(22 * s), roofW3, Math.round(2 * s));
+
+    // Spire (narrow tower top)
+    const spireW = Math.round(8 * s);
+    const spireX = baseX + bWidth / 2 - spireW / 2;
+    const spireH = Math.round(16 * s);
+    g.fillStyle(PALETTE.purple);
+    g.fillRect(spireX, roofBaseY - Math.round(22 * s) - spireH, spireW, spireH);
+    g.fillStyle(PALETTE.violet);
+    g.fillRect(spireX, roofBaseY - Math.round(22 * s) - spireH, Math.round(3 * s), spireH);
+
+    // Crystal orb at top (pixel diamond shape, not circle)
+    const orbY = roofBaseY - Math.round(22 * s) - spireH - Math.round(6 * s);
+    const orbX = baseX + bWidth / 2;
+    const orbSize = Math.round(4 * s);
+
+    // Gold pedestal
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(orbX - Math.round(5 * s), orbY + Math.round(4 * s), Math.round(10 * s), Math.round(4 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(orbX - Math.round(5 * s), orbY + Math.round(4 * s), Math.round(10 * s), Math.round(1 * s));
+
+    // Crystal orb (blocky diamond - stacked rectangles)
+    g.fillStyle(0x06b6d4); // Cyan crystal
+    g.fillRect(orbX - orbSize, orbY, orbSize * 2, Math.round(2 * s));
+    g.fillRect(orbX - orbSize - Math.round(2 * s), orbY - Math.round(2 * s), orbSize * 2 + Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(orbX - orbSize - Math.round(2 * s), orbY + Math.round(2 * s), orbSize * 2 + Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(orbX - orbSize, orbY - Math.round(4 * s), orbSize * 2, Math.round(2 * s));
+    g.fillRect(orbX - orbSize, orbY + Math.round(4 * s), orbSize * 2, Math.round(2 * s));
+
+    // Orb highlight (top-left pixel)
+    g.fillStyle(0x22d3ee); // Light cyan
+    g.fillRect(orbX - orbSize, orbY - Math.round(2 * s), Math.round(4 * s), Math.round(4 * s));
+    g.fillStyle(PALETTE.white);
+    g.fillRect(orbX - orbSize + Math.round(1 * s), orbY - Math.round(1 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Star decorations (4-pixel crosses, not circles)
+    const starPositions = [
+      { x: orbX - Math.round(18 * s), y: orbY + Math.round(4 * s) },
+      { x: orbX + Math.round(18 * s), y: orbY + Math.round(4 * s) },
+    ];
+    starPositions.forEach((star) => {
+      g.fillStyle(PALETTE.gold);
+      g.fillRect(star.x - Math.round(1 * s), star.y - Math.round(3 * s), Math.round(2 * s), Math.round(6 * s));
+      g.fillRect(star.x - Math.round(3 * s), star.y - Math.round(1 * s), Math.round(6 * s), Math.round(2 * s));
+      g.fillStyle(PALETTE.yellow);
+      g.fillRect(star.x - Math.round(1 * s), star.y - Math.round(1 * s), Math.round(2 * s), Math.round(2 * s));
     });
 
     // Door at base
-    const doorWidth = Math.round(16 * s);
-    const doorHeight = Math.round(24 * s);
-    const doorX = canvasWidth / 2 - doorWidth / 2;
+    const doorW = Math.round(14 * s);
+    const doorH = Math.round(22 * s);
+    const doorX = sec1X + (sec1W - doorW) / 2;
+    const doorY = canvasHeight - doorH;
 
     // Door frame (gold)
-    g.fillStyle(oracleGold);
-    g.fillRect(
-      doorX - Math.round(2 * s),
-      canvasHeight - doorHeight - Math.round(2 * s),
-      doorWidth + Math.round(4 * s),
-      doorHeight + Math.round(2 * s)
-    );
-
-    // Door arch top
-    g.fillStyle(oracleGold);
-    g.fillRect(
-      doorX,
-      canvasHeight - doorHeight - Math.round(6 * s),
-      doorWidth,
-      Math.round(6 * s)
-    );
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(4 * s), doorW + Math.round(4 * s), doorH + Math.round(4 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(doorX - Math.round(2 * s), doorY - Math.round(4 * s), doorW + Math.round(4 * s), Math.round(2 * s));
 
     // Door (dark purple)
-    g.fillStyle(oraclePurple);
-    g.fillRect(doorX, canvasHeight - doorHeight, doorWidth, doorHeight);
+    g.fillStyle(PALETTE.purple);
+    g.fillRect(doorX, doorY, doorW, doorH);
 
     // Door panels
-    g.fillStyle(oracleDeepPurple);
-    g.fillRect(
-      doorX + Math.round(2 * s),
-      canvasHeight - doorHeight + Math.round(2 * s),
-      Math.round(5 * s),
-      doorHeight - Math.round(4 * s)
-    );
-    g.fillRect(
-      doorX + Math.round(9 * s),
-      canvasHeight - doorHeight + Math.round(2 * s),
-      Math.round(5 * s),
-      doorHeight - Math.round(4 * s)
-    );
+    g.fillStyle(PALETTE.deepPurple);
+    g.fillRect(doorX + Math.round(2 * s), doorY + Math.round(2 * s), Math.round(4 * s), doorH - Math.round(4 * s));
+    g.fillRect(doorX + Math.round(8 * s), doorY + Math.round(2 * s), Math.round(4 * s), doorH - Math.round(4 * s));
 
-    // Door handle (gold)
-    g.fillStyle(oracleGoldLight);
-    g.fillCircle(doorX + doorWidth - Math.round(4 * s), canvasHeight - doorHeight / 2, Math.round(2 * s));
+    // Door handle (gold pixel)
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(doorX + doorW - Math.round(4 * s), doorY + doorH / 2, Math.round(2 * s), Math.round(2 * s));
 
-    // "ORACLE" text area at base (subtle sign)
-    g.fillStyle(oracleGold, 0.8);
-    g.fillRect(baseX + Math.round(8 * s), canvasHeight - Math.round(8 * s), baseWidth - Math.round(16 * s), Math.round(4 * s));
-
-    // Mystic runes/symbols on tower (decorative lines)
-    g.fillStyle(oracleGold, 0.5);
-    // Vertical accent lines
-    g.fillRect(midX + Math.round(3 * s), canvasHeight - Math.round(95 * s), Math.round(1 * s), Math.round(40 * s));
-    g.fillRect(midX + midWidth - Math.round(4 * s), canvasHeight - Math.round(95 * s), Math.round(1 * s), Math.round(40 * s));
+    // Base trim (gold)
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(sec1X, canvasHeight - Math.round(4 * s), sec1W, Math.round(4 * s));
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(sec1X, canvasHeight - Math.round(4 * s), sec1W, Math.round(1 * s));
 
     g.generateTexture("oracle_tower", canvasWidth, canvasHeight);
     g.destroy();
