@@ -1,12 +1,4 @@
-/**
- * WorldSyncService - WebSocket bridge between Phaser game and agent server
- *
- * This service maintains bidirectional communication:
- * - Receives world state updates from the game (character positions, zone, events)
- * - Sends agent commands back to the game (movement, speech, zone transitions)
- *
- * Based on eliza-town's architecture for autonomous agent control.
- */
+// WorldSyncService - WebSocket bridge between Phaser game and agent server
 
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
@@ -37,9 +29,6 @@ export class WorldSyncService {
   private commandQueue: GameCommand[] = [];
   private isInitialized = false;
 
-  /**
-   * Initialize the WebSocket server attached to an HTTP server
-   */
   initialize(server: Server): void {
     if (this.isInitialized) {
       console.warn('[WorldSync] Already initialized');
@@ -93,9 +82,6 @@ export class WorldSyncService {
     console.log('[WorldSync] WebSocket server initialized on /ws');
   }
 
-  /**
-   * Handle incoming messages from game clients
-   */
   private handleMessage(data: Buffer, ws: WebSocket): void {
     let message: unknown;
 
@@ -133,9 +119,6 @@ export class WorldSyncService {
     }
   }
 
-  /**
-   * Process world state updates from the game
-   */
   private processWorldStateUpdate(update: WorldStateUpdate): void {
     this.worldState = update;
 
@@ -164,9 +147,6 @@ export class WorldSyncService {
     }
   }
 
-  /**
-   * Calculate which agents are nearby a given position
-   */
   private calculateNearbyAgents(
     agentId: string,
     x: number,
@@ -190,24 +170,14 @@ export class WorldSyncService {
     return nearby;
   }
 
-  /**
-   * Handle player clicking on a character
-   */
   private handleCharacterClick(data: { characterId: string; playerId?: string }): void {
-    // This could trigger the character to react or start a conversation
     console.log(`[WorldSync] Character clicked: ${data.characterId}`);
   }
 
-  /**
-   * Handle zone change events
-   */
   private handleZoneChange(data: { zone: ZoneType }): void {
     console.log(`[WorldSync] Zone changed to: ${data.zone}`);
   }
 
-  /**
-   * Send a command to all connected game clients
-   */
   sendCommand(command: GameCommand): void {
     const data = JSON.stringify(command);
 
@@ -229,9 +199,6 @@ export class WorldSyncService {
     }
   }
 
-  /**
-   * Send queued commands to a newly connected client
-   */
   private flushCommandQueue(ws: WebSocket): void {
     while (this.commandQueue.length > 0) {
       const command = this.commandQueue.shift();
@@ -241,9 +208,6 @@ export class WorldSyncService {
     }
   }
 
-  /**
-   * Send movement command for an agent
-   */
   sendMove(agentId: string, x: number, y: number): void {
     this.sendCommand({
       type: 'character-behavior',
@@ -253,9 +217,6 @@ export class WorldSyncService {
     });
   }
 
-  /**
-   * Send movement command to approach another agent
-   */
   sendApproach(agentId: string, targetAgentId: string): void {
     this.sendCommand({
       type: 'character-behavior',
@@ -265,9 +226,6 @@ export class WorldSyncService {
     });
   }
 
-  /**
-   * Send speech command for an agent
-   */
   sendSpeak(agentId: string, message: string, emotion: string = 'neutral'): void {
     this.sendCommand({
       type: 'character-speak',
@@ -277,9 +235,6 @@ export class WorldSyncService {
     });
   }
 
-  /**
-   * Request zone transition for an agent
-   */
   sendZoneTransition(agentId: string, zone: ZoneType): void {
     this.sendCommand({
       type: 'zone-transition',
@@ -288,30 +243,18 @@ export class WorldSyncService {
     });
   }
 
-  /**
-   * Get the current world state
-   */
   getWorldState(): WorldStateUpdate | null {
     return this.worldState;
   }
 
-  /**
-   * Get state for a specific agent
-   */
   getAgentState(agentId: string): AgentWorldState | null {
     return this.agentStates.get(agentId) || null;
   }
 
-  /**
-   * Get all agent states
-   */
   getAllAgentStates(): Map<string, AgentWorldState> {
     return this.agentStates;
   }
 
-  /**
-   * Update activity state for an agent
-   */
   updateAgentActivity(
     agentId: string,
     activity: { description: string; emoji: string; until: number } | undefined
@@ -325,9 +268,6 @@ export class WorldSyncService {
     }
   }
 
-  /**
-   * Record that an agent finished a conversation
-   */
   recordConversationEnd(agentId: string): void {
     const state = this.agentStates.get(agentId);
     if (state) {
@@ -335,9 +275,6 @@ export class WorldSyncService {
     }
   }
 
-  /**
-   * Get a random wander destination within a zone
-   */
   getWanderDestination(zone: ZoneType): { x: number; y: number } {
     const bounds = ZONE_BOUNDS[zone] || ZONE_BOUNDS.main_city;
     return {
@@ -346,44 +283,26 @@ export class WorldSyncService {
     };
   }
 
-  /**
-   * Get current zone from world state
-   */
   getCurrentZone(): ZoneType {
     return (this.worldState?.zone as ZoneType) || 'main_city';
   }
 
-  /**
-   * Get current weather from world state
-   */
   getCurrentWeather(): string {
     return this.worldState?.weather || 'cloudy';
   }
 
-  /**
-   * Get current world health from world state
-   */
   getCurrentHealth(): number {
     return this.worldState?.health || 50;
   }
 
-  /**
-   * Get number of connected clients
-   */
   getClientCount(): number {
     return this.clients.size;
   }
 
-  /**
-   * Check if service is connected to any game clients
-   */
   isConnected(): boolean {
     return this.clients.size > 0;
   }
 
-  /**
-   * Register an agent with initial state
-   */
   registerAgent(agentId: string, zone: ZoneType = 'main_city'): void {
     const bounds = ZONE_BOUNDS[zone];
     const initialX = bounds.minX + Math.floor(Math.random() * (bounds.maxX - bounds.minX));
@@ -396,9 +315,6 @@ export class WorldSyncService {
     });
   }
 
-  /**
-   * Shutdown the WebSocket server
-   */
   async shutdown(): Promise<void> {
     if (this.wss) {
       for (const client of this.clients) {

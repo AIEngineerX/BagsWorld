@@ -1,11 +1,6 @@
 // SolanaService - Transaction signing and submission for Ghost trading
-// Handles keypair management, transaction signing, and RPC submission
 
 import { Service, type IAgentRuntime } from "../types/elizaos.js";
-
-// ============================================================================
-// Types (matching @solana/web3.js without requiring the full dependency)
-// ============================================================================
 
 interface TransactionSignature {
   signature: string;
@@ -19,10 +14,6 @@ interface SendTransactionOptions {
   preflightCommitment?: "processed" | "confirmed" | "finalized";
   maxRetries?: number;
 }
-
-// ============================================================================
-// Base58 Encoding/Decoding
-// ============================================================================
 
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
@@ -72,7 +63,6 @@ function base58Encode(bytes: Uint8Array): string {
     }
   }
 
-  // Handle leading zeros
   for (const byte of bytes) {
     if (byte !== 0) break;
     digits.push(0);
@@ -84,19 +74,11 @@ function base58Encode(bytes: Uint8Array): string {
     .join("");
 }
 
-// ============================================================================
-// Ed25519 Signing
-// Note: Web Crypto API Ed25519 support varies by runtime.
-// For production, consider using @solana/web3.js or tweetnacl.
-// ============================================================================
-
-// Check if Ed25519 is available in this runtime
+// Ed25519 support varies by runtime - falls back to simulation if unavailable
 let ed25519Available = false;
 
 async function checkEd25519Support(): Promise<boolean> {
   try {
-    // Try to generate a test key to check support
-    // Use any to bypass strict TypeScript typing for Ed25519
     const subtle = crypto.subtle as any;
     const testKey = new Uint8Array(32).fill(1);
     await subtle.importKey("raw", testKey, { name: "Ed25519" }, false, ["sign"]);
@@ -107,15 +89,10 @@ async function checkEd25519Support(): Promise<boolean> {
 }
 
 async function importEd25519PrivateKey(privateKeyBytes: Uint8Array): Promise<CryptoKey | null> {
-  if (!ed25519Available) {
-    return null;
-  }
+  if (!ed25519Available) return null;
 
-  // Ed25519 private key is 64 bytes (32 private + 32 public) or 32 bytes (private only)
   const keyBytes = privateKeyBytes.slice(0, 32);
-
   try {
-    // Use any to bypass strict TypeScript typing for Ed25519
     const subtle = crypto.subtle as any;
     return await subtle.importKey("raw", keyBytes, { name: "Ed25519" }, false, ["sign"]);
   } catch (error) {
@@ -125,16 +102,10 @@ async function importEd25519PrivateKey(privateKeyBytes: Uint8Array): Promise<Cry
 }
 
 async function signMessage(privateKey: CryptoKey, message: Uint8Array): Promise<Uint8Array> {
-  // Use any to bypass strict TypeScript typing for Ed25519
-  // Ed25519 is supported in Node.js 18+ but types may not be complete
   const subtle = crypto.subtle as any;
   const signature = await subtle.sign("Ed25519", privateKey, message);
   return new Uint8Array(signature);
 }
-
-// ============================================================================
-// SolanaService
-// ============================================================================
 
 let solanaServiceInstance: SolanaService | null = null;
 
@@ -171,12 +142,7 @@ export class SolanaService extends Service {
     solanaServiceInstance = null;
   }
 
-  // ==========================================================================
-  // Initialization
-  // ==========================================================================
-
   async initialize(): Promise<void> {
-    // Check Ed25519 support in this runtime
     ed25519Available = await checkEd25519Support();
     if (!ed25519Available) {
       console.warn("[SolanaService] Ed25519 not available in this runtime");
@@ -192,24 +158,17 @@ export class SolanaService extends Service {
     }
 
     try {
-      // Decode base58 private key
       this.privateKeyBytes = base58Decode(privateKeyBase58);
 
-      // Extract public key (last 32 bytes of 64-byte keypair, or derive from 32-byte seed)
       if (this.privateKeyBytes.length === 64) {
         this.publicKeyBytes = this.privateKeyBytes.slice(32);
       } else if (this.privateKeyBytes.length === 32) {
-        // For 32-byte seeds, we need to derive the public key
-        // This requires the full ed25519 implementation
-        console.warn(
-          "[SolanaService] 32-byte private key detected. Please use full 64-byte keypair."
-        );
+        console.warn("[SolanaService] 32-byte key detected. Use full 64-byte keypair.");
         return;
       } else {
         throw new Error(`Invalid private key length: ${this.privateKeyBytes.length}`);
       }
 
-      // Import key for signing (if Ed25519 available)
       if (ed25519Available) {
         this.cryptoKey = await importEd25519PrivateKey(this.privateKeyBytes);
       }
@@ -227,10 +186,6 @@ export class SolanaService extends Service {
     }
   }
 
-  // ==========================================================================
-  // Public Methods
-  // ==========================================================================
-
   isConfigured(): boolean {
     return this.cryptoKey !== null && this.publicKeyBytes !== null;
   }
@@ -240,9 +195,6 @@ export class SolanaService extends Service {
     return base58Encode(this.publicKeyBytes);
   }
 
-  /**
-   * Sign and submit a base64-encoded transaction
-   */
   async signAndSendTransaction(
     base64Transaction: string,
     options?: SendTransactionOptions
@@ -257,10 +209,10 @@ export class SolanaService extends Service {
 
     // Check if real signing is available
     if (!ed25519Available || !this.cryptoKey) {
-      console.log("[SolanaService] Ed25519 not available, returning simulation");
+      console.warn("[SolanaService] Ed25519 not available - transaction NOT executed");
       return {
         signature: `sim_${crypto.randomUUID().slice(0, 16)}`,
-        confirmed: true,
+        confirmed: false, // IMPORTANT: Simulation means nothing happened on-chain
         error: "Simulated - Ed25519 signing not available in this runtime",
       };
     }
