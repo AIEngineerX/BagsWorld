@@ -29,10 +29,10 @@ const ECOSYSTEM_TOPICS = [
       "Every token launched on BagsWorld becomes a building! As the market cap grows, your building evolves - from a small shop to a towering skyscraper. Level 1 is under $100K, Level 5 is $10M+!",
   },
   {
-    title: "Zero Extra Fees",
-    icon: "0",
+    title: "Creator Fees",
+    icon: "💰",
     content:
-      "BagsWorld charges NO additional fees on token launches! Creators get 100% of their configured fee share. Bags.fm has its own standard platform fees (separate from BagsWorld).",
+      "Creators earn 1% of ALL trading volume on their tokens - forever! Set your fee at launch and it's locked permanently. Claim anytime through Bags.fm. That's passive income that grows with your community!",
   },
   {
     title: "How Citizens Work",
@@ -47,16 +47,16 @@ const ECOSYSTEM_TOPICS = [
       "The world's weather reflects overall trading health! Sunny means things are booming (80%+ health), cloudy is normal, rain means slowing down, storm is rough times, and apocalypse... well, HODL tight!",
   },
   {
-    title: "Finn's Contribution",
-    icon: "F",
+    title: "World Zones",
+    icon: "🗺️",
     content:
-      "Ghost (dev) contributes 5% of his personal $BagsWorld token revenue to fund community features. This powers the Casino, development, and future features - no mandatory fees on creators!",
+      "BagsWorld has 5 zones! Park (starter area), BagsCity (trending tokens), Ballers Valley (top market caps), Founder's Corner (launch help), and HQ (the Bags.fm team). Each zone has unique characters!",
   },
   {
-    title: "The Flywheel",
-    icon: "F",
+    title: "Getting Started",
+    icon: "🚀",
     content:
-      "Launch token -> Drive volume -> Generate fees -> Climb leaderboard -> Get rewarded -> Reinvest. Top creators earn more, which incentivizes building real communities.",
+      "Ready to start? Talk to Professor Oak in Founder's Corner to launch a token, visit the Casino to win prizes, or explore the world to meet all the characters. Your journey begins now, trainer!",
   },
 ];
 
@@ -366,33 +366,33 @@ export function AshChat() {
         </div>
       </div>
 
-      {/* Footer with key stats */}
+      {/* Footer with building levels */}
       <div className="p-2 border-t border-red-500/30 bg-bags-darker">
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-bags-gold/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Threshold</p>
-            <p className="font-pixel text-[10px] text-bags-gold">10 SOL</p>
+        <div className="grid grid-cols-5 gap-1 text-center">
+          <div className="bg-gray-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-gray-400">Lv1</p>
+            <p className="font-pixel text-[8px] text-gray-300">&lt;100K</p>
           </div>
-          <div className="bg-bags-green/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Creators</p>
-            <p className="font-pixel text-[10px] text-bags-green">Top 3</p>
+          <div className="bg-blue-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-blue-400">Lv2</p>
+            <p className="font-pixel text-[8px] text-blue-300">100K</p>
+          </div>
+          <div className="bg-green-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-green-400">Lv3</p>
+            <p className="font-pixel text-[8px] text-green-300">500K</p>
+          </div>
+          <div className="bg-purple-500/10 p-1 rounded">
+            <p className="font-pixel text-[6px] text-purple-400">Lv4</p>
+            <p className="font-pixel text-[8px] text-purple-300">2M</p>
           </div>
           <div className="bg-bags-gold/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Split</p>
-            <p className="font-pixel text-[10px] text-bags-gold">50/30/20</p>
+            <p className="font-pixel text-[6px] text-bags-gold">Lv5</p>
+            <p className="font-pixel text-[8px] text-yellow-300">10M+</p>
           </div>
         </div>
         <p className="font-pixel text-[6px] text-gray-500 text-center mt-1">
-          10 SOL or 5 days → Claim → Pay top 3 creators
+          Building levels by market cap - evolve your token!
         </p>
-        <a
-          href={`https://solscan.io/account/${ECOSYSTEM_CONFIG.ecosystem.wallet}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 mt-1"
-        >
-          View Rewards Wallet on Solscan
-        </a>
       </div>
     </div>
   );

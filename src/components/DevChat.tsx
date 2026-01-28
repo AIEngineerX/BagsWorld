@@ -44,9 +44,9 @@ const DEV_QUOTES = ECOSYSTEM_CONFIG.dev.quotes;
 
 const AGENT_TOPICS = [
   {
-    title: "Creator Rewards",
+    title: "Community Fund",
     icon: "💰",
-    description: "How the rewards system works",
+    description: "Ghost's 5% contribution",
   },
   {
     title: "Auto Trading",
@@ -308,12 +308,12 @@ export function DevChat() {
   }, [connected, publicKey, setWalletModalVisible]);
 
   const handleTopicClick = async (topic: (typeof AGENT_TOPICS)[0]) => {
-    if (topic.title === "Creator Rewards") {
+    if (topic.title === "Community Fund") {
       addMessage({
         id: `${Date.now()}-info`,
         type: "info",
         message:
-          "CREATOR REWARDS SYSTEM\n\nFees accumulate until threshold hit:\n• 10 SOL or 5 days (whichever first)\n• Top 3 creators by fee contribution get paid\n• Split: 50% / 30% / 20%\n\nAll distributions verifiable on-chain via Solscan.",
+          "COMMUNITY FUND\n\nGhost contributes 5% of his $BagsWorld token revenue:\n• Powers Casino prizes & raffles\n• Funds new features & zones\n• Supports development\n\nNo mandatory fees on creators - this is Ghost's personal contribution.",
         timestamp: Date.now(),
       });
       setTimeout(() => {
@@ -321,7 +321,7 @@ export function DevChat() {
           id: `${Date.now()}-dev`,
           type: "dev",
           message:
-            "i run this system. when threshold hits, top 3 creators get paid directly. no middlemen, no trust required. check the wallet on solscan.",
+            "i built bagsworld. 5% of my token revenue goes back to the community. casino prizes, new features, whatever helps the ecosystem grow. all verifiable on-chain.",
           timestamp: Date.now(),
         });
       }, 500);
@@ -450,7 +450,7 @@ export function DevChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">👻</span>
           <div>
-            <p className="font-pixel text-[10px] text-purple-400">GHOST // AUTONOMOUS TRADER</p>
+            <p className="font-pixel text-[10px] text-purple-400">GHOST // DEV & TRADER</p>
             <p className="font-pixel text-[8px] text-purple-600">powered by ElizaOS</p>
           </div>
         </div>
@@ -484,9 +484,7 @@ export function DevChat() {
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-purple-400 mb-1">👻 ghost agent online</p>
-            <p className="font-pixel text-[8px] text-gray-400">
-              autonomous trader & rewards system
-            </p>
+            <p className="font-pixel text-[8px] text-gray-400">bagsworld dev & autonomous trader</p>
             <p className="font-pixel text-[7px] text-gray-500 mt-2">click a topic or paste a CA</p>
           </div>
         ) : (
