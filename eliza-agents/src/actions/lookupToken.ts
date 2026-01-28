@@ -5,6 +5,46 @@ import type { Action, ActionExample, IAgentRuntime, Memory, State, HandlerCallba
 import { BagsApiService, getBagsApiService } from '../services/BagsApiService.js';
 import { formatNumber, formatAddress } from '../utils/index.js';
 
+// Validation patterns
+const SOLANA_ADDRESS_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const SYMBOL_PATTERN = /^[A-Za-z0-9]{1,10}$/;
+
+// System addresses that aren't valid tokens
+const SYSTEM_ADDRESSES = new Set([
+  '11111111111111111111111111111111',
+  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+  'So11111111111111111111111111111111111111112',
+]);
+
+// Reserved symbols that shouldn't be looked up on Bags.fm
+const RESERVED_SYMBOLS = new Set(['SOL', 'WSOL', 'USDC', 'USDT']);
+
+/** Validate Solana address format */
+const isValidSolanaAddress = (addr: string): boolean =>
+  SOLANA_ADDRESS_PATTERN.test(addr) && !SYSTEM_ADDRESSES.has(addr);
+
+/** Validate token symbol format */
+const isValidSymbol = (sym: string): boolean =>
+  SYMBOL_PATTERN.test(sym) && !RESERVED_SYMBOLS.has(sym.toUpperCase());
+
+/** Sanitize input text */
+const sanitize = (text: string): string =>
+  text.replace(/[<>'"&]/g, '').replace(/\s+/g, ' ').trim().slice(0, 500);
+
+/** Extract first valid mint address from text */
+function extractMintAddress(text: string): string | null {
+  const matches = text.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/g);
+  return matches?.find(isValidSolanaAddress) ?? null;
+}
+
+/** Extract token symbol from text (e.g., $BAGS) */
+function extractTokenSymbol(text: string): string | null {
+  const match = text.match(/\$([A-Za-z0-9]{1,10})/);
+  if (!match?.[1]) return null;
+  const symbol = match[1].toUpperCase();
+  return isValidSymbol(symbol) ? symbol : null;
+}
+
 export const lookupTokenAction: Action = {
   name: 'lookupToken',
   description: 'Look up token information by mint address or name on Bags.fm',
@@ -41,28 +81,16 @@ export const lookupTokenAction: Action = {
   ] as ActionExample[][],
 
   validate: async (runtime: IAgentRuntime, message: Memory, state?: State): Promise<boolean> => {
-    const text = message.content?.text?.toLowerCase() || '';
+    const rawText = message.content?.text || '';
+    const text = sanitize(rawText).toLowerCase();
 
-    // Check for token lookup intent
-    const hasLookupIntent = [
-      'check',
-      'lookup',
-      'look up',
-      'find',
-      'search',
-      'get',
-      'info',
-      'token',
-      'mint',
-    ].some(keyword => text.includes(keyword));
+    if (text.length < 3) return false;
 
-    // Check for mint address pattern (base58, 32-44 chars)
-    const hasMintAddress = /[1-9A-HJ-NP-Za-km-z]{32,44}/.test(text);
+    const LOOKUP_KEYWORDS = ['check', 'lookup', 'look up', 'find', 'search', 'get', 'info', 'token', 'mint'];
+    const hasLookupIntent = LOOKUP_KEYWORDS.some(kw => text.includes(kw));
+    const hasIdentifier = extractMintAddress(rawText) !== null || extractTokenSymbol(rawText) !== null;
 
-    // Check for token symbol pattern ($SYMBOL)
-    const hasTokenSymbol = /\$[A-Za-z]{2,10}/.test(text);
-
-    return hasLookupIntent && (hasMintAddress || hasTokenSymbol);
+    return hasLookupIntent && hasIdentifier;
   },
 
   handler: async (
@@ -72,91 +100,52 @@ export const lookupTokenAction: Action = {
     options?: Record<string, unknown>,
     callback?: HandlerCallback
   ): Promise<ActionResult> => {
-    const text = message.content?.text || '';
+    const text = sanitize(message.content?.text || '');
 
-    // Extract mint address
-    const mintMatch = text.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/);
-    const symbolMatch = text.match(/\$([A-Za-z]{2,10})/);
+    // Helper to send response and return result
+    const respond = async (success: boolean, text: string, error?: string, data?: unknown): Promise<ActionResult> => {
+      if (callback) await callback({ text });
+      const result: ActionResult = { success, text };
+      if (error) result.error = error;
+      if (data) result.data = data;
+      return result;
+    };
 
-    // Use runtime service if available, fallback to standalone
+    if (text.length < 3 || text.length > 500) {
+      return respond(false, 'invalid input - message too short or too long.', 'Invalid input length');
+    }
+
+    const mintAddress = extractMintAddress(text);
+    const tokenSymbol = extractTokenSymbol(text);
+
+    if (!mintAddress && !tokenSymbol) {
+      return respond(false, 'could not find a valid token address or symbol in your message.', 'No valid token identifier');
+    }
+
     const api = runtime.getService<BagsApiService>(BagsApiService.serviceType) || getBagsApiService();
 
     try {
-      let token = null;
-
-      if (mintMatch) {
-        token = await api.getToken(mintMatch[0]);
-      } else if (symbolMatch) {
-        const tokens = await api.searchTokens(symbolMatch[1]);
-        token = tokens[0] || null;
-      }
+      const token = mintAddress
+        ? await api.getToken(mintAddress)
+        : (await api.searchTokens(tokenSymbol!))[0] ?? null;
 
       if (!token) {
-        const response = {
-          text: "i scanned the chain but couldn't find that token. check the address and try again.",
-        };
-
-        if (callback) {
-          await callback(response);
-        }
-
-        return {
-          success: false,
-          text: response.text,
-          error: 'Token not found',
-        };
+        return respond(false, "i scanned the chain but couldn't find that token. check the address and try again.", 'Token not found');
       }
 
       // Format response based on character
-      const characterName = runtime.character?.name?.toLowerCase() || '';
-      let responseText = '';
+      const char = runtime.character?.name?.toLowerCase() || '';
+      const responseText = char === 'neo'
+        ? `*scanning* i see it. ${token.name} (${token.symbol}). market cap: $${formatNumber(token.marketCap)}. lifetime fees: ${formatNumber(token.lifetimeFees)} SOL. the code reveals its nature.`
+        : char === 'ghost'
+        ? `${token.name} (${token.symbol}). lifetime fees: ${formatNumber(token.lifetimeFees)} SOL. creator: ${formatAddress(token.creator)}. check solscan to verify.`
+        : `found ${token.name} (${token.symbol})! market cap: $${formatNumber(token.marketCap)}, 24h volume: $${formatNumber(token.volume24h)}, ${token.holders || 0} holders.`;
 
-      if (characterName === 'neo') {
-        responseText = `*scanning* i see it. ${token.name} (${token.symbol}). ` +
-          `market cap: $${formatNumber(token.marketCap)}. ` +
-          `lifetime fees: ${formatNumber(token.lifetimeFees)} SOL. ` +
-          `the code reveals its nature.`;
-      } else if (characterName === 'ghost') {
-        responseText = `${token.name} (${token.symbol}). ` +
-          `lifetime fees: ${formatNumber(token.lifetimeFees)} SOL. ` +
-          `creator: ${formatAddress(token.creator)}. ` +
-          `check solscan to verify.`;
-      } else {
-        responseText = `found ${token.name} (${token.symbol})! ` +
-          `market cap: $${formatNumber(token.marketCap)}, ` +
-          `24h volume: $${formatNumber(token.volume24h)}, ` +
-          `${token.holders || 0} holders.`;
-      }
-
-      const response = { text: responseText };
-
-      if (callback) {
-        await callback(response);
-      }
-
-      return {
-        success: true,
-        text: responseText,
-        data: { token },
-      };
-
+      return respond(true, responseText, undefined, { token });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('lookupToken error:', errorMessage);
-
-      const response = {
-        text: 'something went wrong scanning the chain. try again in a moment.',
-      };
-
-      if (callback) {
-        await callback(response);
-      }
-
-      return {
-        success: false,
-        text: response.text,
-        error: errorMessage,
-      };
+      return respond(false, 'something went wrong scanning the chain. try again in a moment.', errorMessage);
     }
   },
 };

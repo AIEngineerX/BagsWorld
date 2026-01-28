@@ -11,6 +11,7 @@ import {
   type LaunchTransactionResult,
   type FeeClaimer,
 } from "./BagsApiService.js";
+import type { NeonQueryFunction } from "@neondatabase/serverless";
 
 export type LaunchStep =
   | "welcome"
@@ -329,11 +330,108 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
 };
 
 /**
- * IN-MEMORY SESSION STORAGE
- * Note: Sessions are stored in memory only and will be lost on restart.
- * For production, migrate to Neon DB.
+ * SESSION STORAGE - Hybrid in-memory cache + Neon DB persistence
+ * Uses in-memory Map as primary (for speed), with DB sync for persistence.
+ * Falls back to in-memory only when DB is not configured.
  */
 const sessions = new Map<string, LaunchSession>();
+let dbInstance: NeonQueryFunction<false, false> | null = null;
+
+/**
+ * Set the database instance for persistence
+ */
+export function setLaunchWizardDatabase(sql: NeonQueryFunction<false, false> | null): void {
+  dbInstance = sql;
+  if (sql) {
+    console.log("[LaunchWizard] Database persistence enabled");
+  }
+}
+
+/**
+ * Save session to database (async, non-blocking)
+ */
+async function persistSession(session: LaunchSession): Promise<void> {
+  if (!dbInstance) return;
+
+  const sql = dbInstance;
+  await sql`
+    INSERT INTO launch_wizard_sessions (
+      id, user_id, current_step, data, messages,
+      token_creation, fee_share_config, created_at, updated_at
+    ) VALUES (
+      ${session.id},
+      ${session.userId},
+      ${session.currentStep},
+      ${JSON.stringify(session.data)},
+      ${JSON.stringify(session.messages)},
+      ${session.tokenCreation ? JSON.stringify(session.tokenCreation) : null},
+      ${session.feeShareConfig ? JSON.stringify(session.feeShareConfig) : null},
+      to_timestamp(${session.createdAt / 1000}),
+      to_timestamp(${session.updatedAt / 1000})
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      current_step = EXCLUDED.current_step,
+      data = EXCLUDED.data,
+      messages = EXCLUDED.messages,
+      token_creation = EXCLUDED.token_creation,
+      fee_share_config = EXCLUDED.fee_share_config,
+      updated_at = EXCLUDED.updated_at
+  `;
+}
+
+/**
+ * Load session from database into cache
+ */
+async function loadSession(sessionId: string): Promise<LaunchSession | null> {
+  if (!dbInstance) return null;
+
+  const sql = dbInstance;
+  const rows = await sql`
+    SELECT id, user_id, current_step, data, messages,
+           token_creation, fee_share_config, created_at, updated_at
+    FROM launch_wizard_sessions
+    WHERE id = ${sessionId}
+  ` as Array<{
+    id: string;
+    user_id: string;
+    current_step: LaunchStep;
+    data: LaunchSession["data"];
+    messages: LaunchSession["messages"];
+    token_creation: TokenCreationResult | null;
+    fee_share_config: FeeShareConfigResult | null;
+    created_at: Date;
+    updated_at: Date;
+  }>;
+
+  if (rows.length === 0) return null;
+
+  const row = rows[0];
+  const session: LaunchSession = {
+    id: row.id,
+    userId: row.user_id,
+    currentStep: row.current_step,
+    data: row.data,
+    messages: row.messages,
+    createdAt: new Date(row.created_at).getTime(),
+    updatedAt: new Date(row.updated_at).getTime(),
+    tokenCreation: row.token_creation || undefined,
+    feeShareConfig: row.fee_share_config || undefined,
+  };
+
+  // Cache in memory
+  sessions.set(sessionId, session);
+  return session;
+}
+
+/**
+ * Delete session from database
+ */
+async function deleteSessionFromDb(sessionId: string): Promise<void> {
+  if (!dbInstance) return;
+
+  const sql = dbInstance;
+  await sql`DELETE FROM launch_wizard_sessions WHERE id = ${sessionId}`;
+}
 
 export class LaunchWizard {
   /**
@@ -355,15 +453,39 @@ export class LaunchWizard {
     };
 
     sessions.set(sessionId, session);
+
+    // Persist to DB asynchronously (non-blocking)
+    persistSession(session).catch((err) => {
+      console.error("[LaunchWizard] Failed to persist session:", err.message);
+    });
+
     console.log(`[LaunchWizard] Started session ${sessionId} for user ${userId}`);
     return session;
   }
 
   /**
-   * Get an existing session
+   * Get an existing session (checks cache first, then DB)
    */
   static getSession(sessionId: string): LaunchSession | null {
-    return sessions.get(sessionId) || null;
+    // Check in-memory cache first
+    const cached = sessions.get(sessionId);
+    if (cached) return cached;
+
+    // For sync compatibility, return null here
+    // Use getSessionAsync for DB lookup
+    return null;
+  }
+
+  /**
+   * Get session async (with DB lookup)
+   */
+  static async getSessionAsync(sessionId: string): Promise<LaunchSession | null> {
+    // Check in-memory cache first
+    const cached = sessions.get(sessionId);
+    if (cached) return cached;
+
+    // Try loading from DB
+    return loadSession(sessionId);
   }
 
   /**
@@ -379,6 +501,30 @@ export class LaunchWizard {
       }
     }
     return latest;
+  }
+
+  /**
+   * Get session by user ID async (with DB lookup)
+   */
+  static async getSessionByUserAsync(userId: string): Promise<LaunchSession | null> {
+    // First check in-memory cache
+    const cached = this.getSessionByUser(userId);
+    if (cached) return cached;
+
+    // Try loading from DB
+    if (!dbInstance) return null;
+
+    const sql = dbInstance;
+    const rows = await sql`
+      SELECT id FROM launch_wizard_sessions
+      WHERE user_id = ${userId}
+      ORDER BY updated_at DESC
+      LIMIT 1
+    ` as Array<{ id: string }>;
+
+    if (rows.length === 0) return null;
+
+    return loadSession(rows[0].id);
   }
 
   /**
@@ -438,6 +584,10 @@ export class LaunchWizard {
 
     if (input.toLowerCase() === "cancel") {
       sessions.delete(sessionId);
+      // Also delete from DB asynchronously
+      deleteSessionFromDb(sessionId).catch((err) => {
+        console.error("[LaunchWizard] Failed to delete session from DB:", err.message);
+      });
       return {
         success: true,
         session,
@@ -540,7 +690,11 @@ export class LaunchWizard {
           // Parse socials from input
           const parts = input.split(",").map((s) => s.trim());
           for (const part of parts) {
-            const [platform, value] = part.split(":").map((s) => s.trim());
+            // Split only on first colon to preserve URLs like https://
+            const colonIndex = part.indexOf(":");
+            if (colonIndex === -1) continue;
+            const platform = part.slice(0, colonIndex).trim();
+            const value = part.slice(colonIndex + 1).trim();
             if (platform && value) {
               const platformLower = platform.toLowerCase();
               if (platformLower === "twitter" || platformLower === "x") {
@@ -607,6 +761,11 @@ export class LaunchWizard {
 
     session.messages.push({ role: "assistant", content: response });
     session.updatedAt = Date.now();
+
+    // Persist to DB asynchronously (non-blocking)
+    persistSession(session).catch((err) => {
+      console.error("[LaunchWizard] Failed to persist session:", err.message);
+    });
 
     return {
       success: true,
@@ -800,6 +959,11 @@ export class LaunchWizard {
       session.currentStep = "completed";
       session.updatedAt = Date.now();
       console.log(`[LaunchWizard] Session ${sessionId} completed with mint ${mint}`);
+
+      // Persist to DB asynchronously
+      persistSession(session).catch((err) => {
+        console.error(`[LaunchWizard] Failed to persist completed session: ${err.message}`);
+      });
     }
   }
 
@@ -878,18 +1042,35 @@ Type 'confirm' to build your launch transaction, or 'back' to make changes.`;
   }
 
   /**
-   * Clean up old sessions
+   * Clean up old sessions from memory and database
    */
   static cleanupSessions(maxAgeMs: number = SESSION_MAX_AGE_MS): number {
     const cutoff = Date.now() - maxAgeMs;
     let cleaned = 0;
+    const sessionIdsToDelete: string[] = [];
+
     for (const [id, session] of sessions) {
       if (session.updatedAt < cutoff) {
         sessions.delete(id);
+        sessionIdsToDelete.push(id);
         cleaned++;
       }
     }
-    console.log(`[LaunchWizard] Cleaned up ${cleaned} old sessions`);
+
+    // Also clean from DB asynchronously
+    if (dbInstance && sessionIdsToDelete.length > 0) {
+      const sql = dbInstance;
+      const cutoffDate = new Date(cutoff).toISOString();
+      sql`DELETE FROM launch_wizard_sessions WHERE updated_at < ${cutoffDate}`
+        .then(() => {
+          console.log(`[LaunchWizard] Cleaned old sessions from DB`);
+        })
+        .catch((err) => {
+          console.error(`[LaunchWizard] Failed to clean old sessions from DB: ${err.message}`);
+        });
+    }
+
+    console.log(`[LaunchWizard] Cleaned up ${cleaned} old sessions from memory`);
     return cleaned;
   }
 }

@@ -68,9 +68,9 @@ async function fetchLiveMarketData(): Promise<LiveMarketData> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-  let response: Response;
+  let fetchResponse: globalThis.Response;
   try {
-    response = await fetch('https://api.dexscreener.com/latest/dex/search?q=BAGS', {
+    fetchResponse = await fetch('https://api.dexscreener.com/latest/dex/search?q=BAGS', {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'BagsWorld-ElizaOS/1.0',
@@ -84,12 +84,12 @@ async function fetchLiveMarketData(): Promise<LiveMarketData> {
   }
   clearTimeout(timeoutId);
 
-  if (!response.ok) {
-    console.warn('[world] DexScreener API error:', response.status);
+  if (!fetchResponse.ok) {
+    console.warn('[world] DexScreener API error:', fetchResponse.status);
     return data;
   }
 
-  const json = await response.json();
+  const json = await fetchResponse.json();
   const pairs = json.pairs || [];
 
   const EXCLUDED_SYMBOLS = ['REWARDS', 'POKECENTER', 'GYM', 'TREASURY', 'CASINO'];
