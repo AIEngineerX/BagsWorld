@@ -22,25 +22,25 @@ const LAUNCH_GUIDE_TOPICS = [
     title: "Start Launch",
     icon: "S",
     content:
-      "Ready to launch your token on Bags.fm? Here's what you'll need:\n\n1. Token Name (3-32 chars)\n2. Symbol (2-10 chars)\n3. Description (tell your story!)\n4. Logo image (square, 512x512 recommended)\n5. SOL for initial buy (0.5-1 SOL recommended)\n\nSay 'launch' to begin the wizard!",
+      "Ready to launch your token on Bags.fm? Here's what you'll need:\n\n1. Token Name (3-32 chars)\n2. Symbol (2-10 chars)\n3. Description (tell your story!)\n4. Logo image (square format)\n5. SOL for initial buy (optional)\n\nClick 'LAUNCH TOKEN NOW' below to begin!",
   },
   {
     title: "Creator Fees",
     icon: "F",
     content:
-      "CREATOR FEES - Finn's wonderful invention!\n\nYou earn a % of EVERY trade, forever:\n- Range: 0% to 5%\n- Recommended: 1%\n- Claimed anytime via Bags.fm\n\nThis is passive income that grows with your community!",
+      "CREATOR FEES - Finn's wonderful invention!\n\nYou earn a % of EVERY trade:\n- Range: 0% to 5%\n- Set at launch, locked permanently\n- Claimed anytime via Bags.fm\n\nThis is passive income that grows with your community!",
   },
   {
     title: "Initial Buy",
     icon: "B",
     content:
-      "INITIAL BUY - Your first purchase:\n\n- Secures your position before snipers\n- Recommended: 0.5-1 SOL\n- Maximum: 10 SOL\n- You can buy more after launch too!\n\nTIP: Buy enough to show commitment but leave room for community!",
+      "INITIAL BUY - Your first purchase:\n\n- Optional but helps secure your position\n- Amount is entirely your choice\n- You can always buy more after launch!\n\nTIP: Consider your budget and project goals when deciding!",
   },
   {
     title: "Token Setup",
     icon: "T",
     content:
-      "TOKEN CONFIGURATION:\n\nName: 3-32 characters\nSymbol: 2-10 characters (uppercase)\nSupply: 1M to 1T tokens\nFee: 0-5% (1% recommended)\n\nChoose something memorable and easy to search!",
+      "TOKEN CONFIGURATION:\n\nName: 3-32 characters\nSymbol: 2-10 characters (uppercase)\nSupply: 1M to 1T tokens\nFee: 0-5% (your choice!)\n\nChoose something memorable and easy to search!",
   },
   {
     title: "Launch Checklist",
@@ -361,15 +361,15 @@ export function ProfessorOakChat() {
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-amber-600/10 p-1 rounded">
             <p className="font-pixel text-[7px] text-gray-400">Fee</p>
-            <p className="font-pixel text-[10px] text-amber-400">1%</p>
+            <p className="font-pixel text-[10px] text-amber-400">0-5%</p>
           </div>
           <div className="bg-amber-600/10 p-1 rounded">
             <p className="font-pixel text-[7px] text-gray-400">Initial Buy</p>
-            <p className="font-pixel text-[10px] text-amber-400">0.5-1 SOL</p>
+            <p className="font-pixel text-[10px] text-amber-400">Optional</p>
           </div>
           <div className="bg-amber-600/10 p-1 rounded">
             <p className="font-pixel text-[7px] text-gray-400">Logo</p>
-            <p className="font-pixel text-[10px] text-amber-400">512x512</p>
+            <p className="font-pixel text-[10px] text-amber-400">Square</p>
           </div>
         </div>
         <button
