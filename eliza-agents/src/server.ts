@@ -6,11 +6,15 @@ import cors from "cors";
 import { neon, NeonQueryFunction } from "@neondatabase/serverless";
 
 import { getCharacterIds } from "./characters/index.js";
-import { AgentCoordinator } from "./services/AgentCoordinator.js";
+import { AgentCoordinator, getAgentCoordinator } from "./services/AgentCoordinator.js";
 import { AutonomousService } from "./services/AutonomousService.js";
 import { LaunchWizard } from "./services/LaunchWizard.js";
 import { cleanupCache as cleanupApiCache } from "./services/BagsApiService.js";
+import { getWorldSyncService } from "./services/WorldSyncService.js";
+import { getAgentTickService } from "./services/AgentTickService.js";
+import { getLLMService } from "./services/LLMService.js";
 import type { Character } from "./types/elizaos.js";
+import type { Server } from "http";
 
 // Import route modules
 import {
@@ -188,6 +192,56 @@ async function initializeAutonomousServices(): Promise<void> {
   console.log("[BagsApi] Cache cleanup timer started (every 5 minutes)");
 }
 
+// Initialize WorldSync WebSocket server and AgentTick loop
+async function initializeWorldSyncAndTick(server: Server): Promise<void> {
+  const enableWorldSync = process.env.ENABLE_WORLD_SYNC !== "false";
+
+  if (!enableWorldSync) {
+    console.log("[WorldSync] World sync disabled (ENABLE_WORLD_SYNC=false)");
+    return;
+  }
+
+  // Initialize WorldSync WebSocket server
+  const worldSync = getWorldSyncService();
+  worldSync.initialize(server);
+  console.log("[WorldSync] WebSocket server initialized on /ws");
+
+  // Initialize AgentTickService
+  const tickService = getAgentTickService();
+
+  // Connect the coordinator
+  const coordinator = getAgentCoordinator();
+  if (coordinator) {
+    tickService.setCoordinator(coordinator);
+  }
+
+  // Connect LLM service for complex decisions (if available)
+  const llmConfigured = !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
+  if (llmConfigured) {
+    const llmService = getLLMService();
+    tickService.setLLMService(llmService);
+    console.log("[AgentTick] LLM service connected for complex decisions");
+  } else {
+    console.log("[AgentTick] Running without LLM (rules-based only)");
+  }
+
+  // Register all 16 agents with the tick service
+  const agentIds = getCharacterIds();
+  for (const agentId of agentIds) {
+    tickService.registerAgent(agentId);
+  }
+  console.log(`[AgentTick] Registered ${agentIds.length} agents: ${agentIds.join(", ")}`);
+
+  // Start the tick loop
+  tickService.start();
+  console.log("[AgentTick] Autonomous behavior tick loop started (4s interval)");
+
+  // Add stats endpoint
+  app.get("/api/agent-tick/stats", (req, res) => {
+    res.json(tickService.getStats());
+  });
+}
+
 async function main(): Promise<void> {
   console.log("Starting BagsWorld Agents Server...");
 
@@ -202,9 +256,13 @@ async function main(): Promise<void> {
     console.log(`[LLM] Using ${process.env.ANTHROPIC_API_KEY ? "Anthropic Claude" : "OpenAI GPT"}`);
   }
 
-  app.listen(PORT, HOST, () => {
+  const server = app.listen(PORT, HOST, async () => {
     console.log(`\nBagsWorld Agents Server running at http://${HOST}:${PORT}`);
     console.log(`\nLoaded ${getCharacterIds().length} agents: ${getCharacterIds().join(", ")}`);
+
+    // Initialize WorldSync WebSocket server after HTTP server is ready
+    await initializeWorldSyncAndTick(server);
+
     console.log(`\nEndpoints:`);
     console.log(`  GET    /health                      - Health check`);
     console.log(`  GET    /api/agents                  - List all agents`);
@@ -224,6 +282,9 @@ async function main(): Promise<void> {
     console.log(`  GET    /api/autonomous/alerts       - Get recent alerts`);
     console.log(`  POST   /api/autonomous/trigger/:task - Manually trigger a task`);
     console.log(`  GET    /api/coordination/context    - Get agent coordination context`);
+    console.log(`  GET    /api/agent-tick/stats        - Get tick service stats`);
+    console.log(`\nWebSocket:`);
+    console.log(`  WS     ws://${HOST}:${PORT}/ws      - World sync (Phaser game)`);
     console.log(`\nLaunch Wizard (Professor Oak):`);
     console.log(`  POST   /api/launch-wizard/start     - Start guided launch`);
     console.log(`  GET    /api/launch-wizard/session/:id - Get session status`);

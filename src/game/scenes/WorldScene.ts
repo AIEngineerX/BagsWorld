@@ -3169,6 +3169,11 @@ Use: bags.fm/[yourname]`,
     return null;
   }
 
+  // Public method to get character sprite (for agent bridge)
+  getCharacterSprite(characterId: string): Phaser.GameObjects.Sprite | null {
+    return this.findCharacterSprite(characterId);
+  }
+
   // Map a character to their behavior system ID
   private getCharacterBehaviorId(character: GameCharacter): string {
     // Core characters
