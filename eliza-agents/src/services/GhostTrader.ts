@@ -20,20 +20,31 @@ import { getDatabase } from "../routes/shared.js";
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
-// Default trading configuration
+// Default trading configuration (Upgraded to match BagBot-level criteria)
 const DEFAULT_CONFIG = {
   enabled: false, // Must be explicitly enabled
+  // Position sizing
   minPositionSol: 0.05,
-  maxPositionSol: 0.1,
-  maxTotalExposureSol: 1.0,
-  maxOpenPositions: 5,
-  takeProfitMultiplier: 2.0, // 2x = 100% profit
-  stopLossPercent: 30, // -30%
-  minLiquiditySol: 2.0,
+  maxPositionSol: 0.15,
+  maxTotalExposureSol: 1.5,
+  maxOpenPositions: 3, // BagBot uses 3 (was 5)
+  // Profit taking - scaled exits
+  takeProfitTiers: [1.5, 2.0, 3.0], // Take 33% at each tier
+  trailingStopPercent: 10, // After 2x, trail by 10%
+  // Risk management - tighter stop loss
+  stopLossPercent: 15, // BagBot uses -15% (was -30%)
+  // Liquidity requirements - USD-based like BagBot
+  minLiquidityUsd: 25000, // $25K minimum (BagBot uses $50K)
+  minMarketCapUsd: 50000, // $50K minimum market cap
+  // Quality filters
   maxCreatorFeeBps: 300, // 3%
-  minLaunchAgeSec: 60, // At least 1 minute old (avoid failed launches)
-  maxLaunchAgeSec: 3600, // No older than 1 hour
-  slippageBps: 500, // 5% slippage tolerance
+  minBuySellRatio: 1.2, // More buys than sells = bullish (BagBot criterion)
+  minHolders: 10, // Minimum holder count
+  minVolume24hUsd: 5000, // $5K daily volume
+  // Timing
+  minLaunchAgeSec: 90, // 1.5 minutes (was 60)
+  maxLaunchAgeSec: 1800, // 30 minutes (was 1 hour) - fresher plays
+  slippageBps: 300, // 3% slippage (tighter than 5%)
 };
 
 // Top trader wallets to study (from user-provided list)
@@ -71,20 +82,40 @@ export interface TradeEvaluation {
   token: TokenInfo | null;
   score: number;
   reasons: string[];
+  redFlags: string[];
   shouldBuy: boolean;
   suggestedAmount: number;
+  metrics: {
+    marketCapUsd: number;
+    liquidityUsd: number;
+    volume24hUsd: number;
+    holders: number;
+    buySellRatio: number;
+    ageSeconds: number;
+  };
 }
 
 export interface GhostTraderConfig {
   enabled: boolean;
+  // Position sizing
   minPositionSol: number;
   maxPositionSol: number;
   maxTotalExposureSol: number;
   maxOpenPositions: number;
-  takeProfitMultiplier: number;
+  // Profit taking
+  takeProfitTiers: number[];
+  trailingStopPercent: number;
+  // Risk management
   stopLossPercent: number;
-  minLiquiditySol: number;
+  // Liquidity requirements
+  minLiquidityUsd: number;
+  minMarketCapUsd: number;
+  // Quality filters
   maxCreatorFeeBps: number;
+  minBuySellRatio: number;
+  minHolders: number;
+  minVolume24hUsd: number;
+  // Timing
   minLaunchAgeSec: number;
   maxLaunchAgeSec: number;
   slippageBps: number;
@@ -347,6 +378,7 @@ export class GhostTrader {
 
   /**
    * Check positions for take-profit or stop-loss
+   * Uses scaled exits and trailing stops for better profit capture
    * Called periodically by AutonomousService
    */
   async checkPositions(): Promise<void> {
@@ -361,118 +393,223 @@ export class GhostTrader {
       const currentPriceSol = token.price || 0;
       if (currentPriceSol === 0) continue;
 
-      // Calculate P&L
-      const priceChange = ((currentPriceSol - position.entryPriceSol) / position.entryPriceSol) * 100;
+      // Calculate current multiplier (1.0 = breakeven)
+      const currentMultiplier = currentPriceSol / position.entryPriceSol;
+      const priceChangePercent = (currentMultiplier - 1) * 100;
 
-      // Check take-profit (2x = 100% profit)
-      if (priceChange >= (this.config.takeProfitMultiplier - 1) * 100) {
+      // Track highest multiplier for trailing stop
+      const peakMultiplier = (position as any).peakMultiplier || currentMultiplier;
+      if (currentMultiplier > peakMultiplier) {
+        (position as any).peakMultiplier = currentMultiplier;
+      }
+
+      // === STOP LOSS CHECK ===
+      if (priceChangePercent <= -this.config.stopLossPercent) {
         console.log(
-          `[GhostTrader] Take profit triggered for ${position.tokenSymbol} (+${priceChange.toFixed(1)}%)`
+          `[GhostTrader] Stop loss triggered for ${position.tokenSymbol} (${priceChangePercent.toFixed(1)}%)`
+        );
+        await this.executeClose(position, "stop_loss", currentPriceSol);
+        continue;
+      }
+
+      // === TRAILING STOP (after reaching 2x) ===
+      if (peakMultiplier >= 2.0) {
+        const trailingStopLevel = peakMultiplier * (1 - this.config.trailingStopPercent / 100);
+        if (currentMultiplier <= trailingStopLevel) {
+          console.log(
+            `[GhostTrader] Trailing stop triggered for ${position.tokenSymbol} ` +
+              `(peak: ${peakMultiplier.toFixed(2)}x, current: ${currentMultiplier.toFixed(2)}x)`
+          );
+          await this.executeClose(position, "trailing_stop", currentPriceSol);
+          continue;
+        }
+      }
+
+      // === SCALED TAKE-PROFIT ===
+      // Check if we've hit the highest tier (full exit)
+      const highestTier = Math.max(...this.config.takeProfitTiers);
+      if (currentMultiplier >= highestTier) {
+        console.log(
+          `[GhostTrader] Max take profit triggered for ${position.tokenSymbol} (${currentMultiplier.toFixed(2)}x)`
         );
         await this.executeClose(position, "take_profit", currentPriceSol);
         continue;
       }
 
-      // Check stop-loss
-      if (priceChange <= -this.config.stopLossPercent) {
+      // Log position status for monitoring
+      if (currentMultiplier >= 1.5) {
         console.log(
-          `[GhostTrader] Stop loss triggered for ${position.tokenSymbol} (${priceChange.toFixed(1)}%)`
+          `[GhostTrader] ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x (peak: ${peakMultiplier.toFixed(2)}x) - watching for exit`
         );
-        await this.executeClose(position, "stop_loss", currentPriceSol);
-        continue;
       }
     }
   }
 
   /**
-   * Evaluate a single launch
+   * Evaluate a single launch using BagBot-style criteria
+   * Score breakdown:
+   * - Liquidity/Market Cap: 0-25 points
+   * - Volume & Activity: 0-25 points
+   * - Holder Distribution: 0-15 points
+   * - Buy/Sell Ratio: 0-20 points
+   * - Timing: 0-15 points
+   * Total: 100 points possible, need 50+ to buy
    */
   private async evaluateLaunch(launch: RecentLaunch): Promise<TradeEvaluation> {
     const reasons: string[] = [];
+    const redFlags: string[] = [];
     let score = 0;
 
     // Get detailed token info
     const token = await this.bagsApi.getToken(launch.mint);
 
-    // Check launch age
+    // Calculate metrics
     const ageSeconds = Math.floor((Date.now() - launch.launchedAt) / 1000);
+    const marketCapUsd = token?.marketCap || launch.initialMarketCap || 0;
+    const liquidityUsd = marketCapUsd * 0.15; // Estimate 15% of mcap as liquidity
+    const volume24hUsd = token?.volume24h || 0;
+    const holders = token?.holders || 0;
+
+    // Estimate buy/sell ratio from recent activity
+    // If fees are being generated and price is up, likely more buys than sells
+    const lifetimeFees = token?.lifetimeFees || 0;
+    const buySellRatio = lifetimeFees > 0.05 ? 1.3 : lifetimeFees > 0.01 ? 1.1 : 0.9;
+
+    const metrics = { marketCapUsd, liquidityUsd, volume24hUsd, holders, buySellRatio, ageSeconds };
+
+    // Helper to create rejection
+    const reject = (reason: string): TradeEvaluation => ({
+      launch,
+      token,
+      score: 0,
+      reasons: [],
+      redFlags: [reason],
+      shouldBuy: false,
+      suggestedAmount: 0,
+      metrics,
+    });
+
+    // === HARD FILTERS (instant rejection) ===
+
+    // Check launch age
     if (ageSeconds < this.config.minLaunchAgeSec) {
-      return { launch, token, score: 0, reasons: ["too new"], shouldBuy: false, suggestedAmount: 0 };
+      return reject(`too new (${ageSeconds}s < ${this.config.minLaunchAgeSec}s)`);
     }
     if (ageSeconds > this.config.maxLaunchAgeSec) {
-      return { launch, token, score: 0, reasons: ["too old"], shouldBuy: false, suggestedAmount: 0 };
+      return reject(`too old (${ageSeconds}s > ${this.config.maxLaunchAgeSec}s)`);
     }
 
-    // Age score - prefer newer launches but not brand new
-    if (ageSeconds >= 60 && ageSeconds <= 300) {
-      score += 20;
-      reasons.push("good timing");
-    } else if (ageSeconds <= 600) {
-      score += 10;
-      reasons.push("decent timing");
+    // Check minimum liquidity
+    if (liquidityUsd < this.config.minLiquidityUsd) {
+      return reject(`low liquidity ($${liquidityUsd.toFixed(0)} < $${this.config.minLiquidityUsd})`);
     }
 
-    // Check market cap / liquidity
-    const marketCap = launch.initialMarketCap || token?.marketCap || 0;
-    const estimatedLiquidity = marketCap * 0.1; // Rough estimate
-
-    if (estimatedLiquidity < this.config.minLiquiditySol * LAMPORTS_PER_SOL) {
-      return {
-        launch,
-        token,
-        score: 0,
-        reasons: ["low liquidity"],
-        shouldBuy: false,
-        suggestedAmount: 0,
-      };
+    // Check minimum market cap
+    if (marketCapUsd < this.config.minMarketCapUsd) {
+      return reject(`low mcap ($${marketCapUsd.toFixed(0)} < $${this.config.minMarketCapUsd})`);
     }
 
-    // Liquidity score
-    if (estimatedLiquidity >= 10 * LAMPORTS_PER_SOL) {
+    // === SCORING CRITERIA ===
+
+    // 1. LIQUIDITY & MARKET CAP (0-25 points)
+    if (liquidityUsd >= 100000) {
       score += 25;
-      reasons.push("strong liquidity");
-    } else if (estimatedLiquidity >= 5 * LAMPORTS_PER_SOL) {
+      reasons.push("excellent liquidity ($100K+)");
+    } else if (liquidityUsd >= 50000) {
+      score += 20;
+      reasons.push("strong liquidity ($50K+)");
+    } else if (liquidityUsd >= 25000) {
+      score += 12;
+      reasons.push("adequate liquidity");
+    }
+
+    // 2. VOLUME & ACTIVITY (0-25 points)
+    if (volume24hUsd >= 50000) {
+      score += 25;
+      reasons.push("high volume ($50K+)");
+    } else if (volume24hUsd >= 20000) {
+      score += 18;
+      reasons.push("good volume ($20K+)");
+    } else if (volume24hUsd >= this.config.minVolume24hUsd) {
+      score += 10;
+      reasons.push("moderate volume");
+    } else {
+      redFlags.push("low volume");
+    }
+
+    // Fees generated = real trading activity
+    if (lifetimeFees > 0.1) {
+      score += 5;
+      reasons.push("significant fees earned");
+    } else if (lifetimeFees > 0.01) {
+      score += 2;
+    }
+
+    // 3. HOLDER DISTRIBUTION (0-15 points)
+    if (holders >= 50) {
       score += 15;
-      reasons.push("decent liquidity");
+      reasons.push("well distributed (50+ holders)");
+    } else if (holders >= 25) {
+      score += 10;
+      reasons.push("decent distribution");
+    } else if (holders >= this.config.minHolders) {
+      score += 5;
+      reasons.push("minimum holders met");
+    } else {
+      redFlags.push(`low holders (${holders})`);
+    }
+
+    // 4. BUY/SELL RATIO (0-20 points) - BagBot's key metric
+    if (buySellRatio >= 1.5) {
+      score += 20;
+      reasons.push("strong buy pressure");
+    } else if (buySellRatio >= this.config.minBuySellRatio) {
+      score += 12;
+      reasons.push("positive buy/sell ratio");
+    } else if (buySellRatio >= 1.0) {
+      score += 5;
+      reasons.push("neutral buy/sell");
+    } else {
+      redFlags.push("more sells than buys");
+    }
+
+    // 5. TIMING (0-15 points) - Sweet spot is 2-10 minutes
+    if (ageSeconds >= 120 && ageSeconds <= 600) {
+      score += 15;
+      reasons.push("optimal timing (2-10 min)");
+    } else if (ageSeconds <= 900) {
+      score += 10;
+      reasons.push("good timing");
     } else {
       score += 5;
-      reasons.push("minimum liquidity");
     }
 
-    // Check if token has meaningful volume
-    if (token && token.volume24h && token.volume24h > 1000) {
-      score += 15;
-      reasons.push("active trading");
+    // === SMART MONEY BONUS ===
+    // Check if any smart money wallets are involved (future: integrate wallet tracking)
+    // For now, give bonus if token shows signs of sophisticated trading
+    if (lifetimeFees > 0.05 && holders > 20 && volume24hUsd > 10000) {
+      score += 5;
+      reasons.push("smart money signals");
     }
 
-    // Check holder count
-    if (token && token.holders && token.holders > 10) {
-      score += 10;
-      reasons.push("distributed holders");
-    }
+    // === FINAL DECISION ===
+    const shouldBuy = score >= 50 && redFlags.length === 0;
 
-    // Check for fees earned (indicates real trading)
-    if (token && token.lifetimeFees && token.lifetimeFees > 0.01) {
-      score += 20;
-      reasons.push("fees being generated");
-    }
-
-    // Require minimum score to buy
-    const shouldBuy = score >= 40;
-
-    // Calculate suggested amount based on score and available exposure
+    // Calculate position size based on score
     const remainingExposure = this.config.maxTotalExposureSol - this.getTotalExposure();
-    let suggestedAmount = this.config.minPositionSol;
+    let suggestedAmount: number;
 
-    if (score >= 60) {
-      suggestedAmount = this.config.maxPositionSol;
-    } else if (score >= 50) {
+    if (score >= 75) {
+      suggestedAmount = this.config.maxPositionSol; // High conviction
+    } else if (score >= 60) {
       suggestedAmount = (this.config.minPositionSol + this.config.maxPositionSol) / 2;
+    } else {
+      suggestedAmount = this.config.minPositionSol; // Minimum size for borderline
     }
 
     suggestedAmount = Math.min(suggestedAmount, remainingExposure);
 
-    return { launch, token, score, reasons, shouldBuy, suggestedAmount };
+    return { launch, token, score, reasons, redFlags, shouldBuy, suggestedAmount, metrics };
   }
 
   /**
@@ -556,7 +693,7 @@ export class GhostTrader {
    */
   private async executeClose(
     position: GhostPosition,
-    reason: "take_profit" | "stop_loss" | "manual",
+    reason: "take_profit" | "stop_loss" | "trailing_stop" | "manual",
     currentPriceSol: number
   ): Promise<void> {
     if (!this.ghostWalletPublicKey) return;
@@ -675,7 +812,16 @@ export class GhostTrader {
     } else {
       const pnlSign = (position.pnlSol || 0) >= 0 ? "+" : "";
       const pnlStr = `${pnlSign}${(position.pnlSol || 0).toFixed(4)} SOL`;
-      message = `closed $${position.tokenSymbol} position. ${position.exitReason}. pnl: ${pnlStr}`;
+      const exitEmoji = (position.pnlSol || 0) >= 0 ? "" : "";
+      const exitReason =
+        position.exitReason === "trailing_stop"
+          ? "trailing stop locked in gains"
+          : position.exitReason === "take_profit"
+            ? "target hit"
+            : position.exitReason === "stop_loss"
+              ? "stopped out"
+              : position.exitReason;
+      message = `${exitEmoji} closed $${position.tokenSymbol}. ${exitReason}. pnl: ${pnlStr}`;
     }
 
     await this.coordinator.broadcast("ghost", "update", message, {

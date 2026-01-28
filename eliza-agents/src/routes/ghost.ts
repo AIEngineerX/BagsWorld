@@ -37,8 +37,11 @@ router.get("/status", (req: Request, res: Response) => {
     config: {
       minPositionSol: config.minPositionSol,
       maxPositionSol: config.maxPositionSol,
-      takeProfitMultiplier: config.takeProfitMultiplier,
+      takeProfitTiers: config.takeProfitTiers,
+      trailingStopPercent: config.trailingStopPercent,
       stopLossPercent: config.stopLossPercent,
+      minLiquidityUsd: config.minLiquidityUsd,
+      minBuySellRatio: config.minBuySellRatio,
       slippageBps: config.slippageBps,
     },
     smartMoneyWallets: trader.getSmartMoneyWallets(),
