@@ -44,6 +44,16 @@ const DEV_QUOTES = ECOSYSTEM_CONFIG.dev.quotes;
 
 const AGENT_TOPICS = [
   {
+    title: "Creator Rewards",
+    icon: "💰",
+    description: "How the rewards system works",
+  },
+  {
+    title: "Auto Trading",
+    icon: "🤖",
+    description: "Ghost's autonomous trades",
+  },
+  {
     title: "Token Lookup",
     icon: "🔍",
     description: "Get Bags.fm token stats",
@@ -52,16 +62,6 @@ const AGENT_TOPICS = [
     title: "My Portfolio",
     icon: "💼",
     description: "Check your positions",
-  },
-  {
-    title: "Trenches",
-    icon: "⛏️",
-    description: "Market talk",
-  },
-  {
-    title: "Alpha",
-    icon: "💡",
-    description: "Bags ecosystem tips",
   },
 ];
 
@@ -308,7 +308,41 @@ export function DevChat() {
   }, [connected, publicKey, setWalletModalVisible]);
 
   const handleTopicClick = async (topic: (typeof AGENT_TOPICS)[0]) => {
-    if (topic.title === "Token Lookup") {
+    if (topic.title === "Creator Rewards") {
+      addMessage({
+        id: `${Date.now()}-info`,
+        type: "info",
+        message:
+          "CREATOR REWARDS SYSTEM\n\nFees accumulate until threshold hit:\n• 10 SOL or 5 days (whichever first)\n• Top 3 creators by fee contribution get paid\n• Split: 50% / 30% / 20%\n\nAll distributions verifiable on-chain via Solscan.",
+        timestamp: Date.now(),
+      });
+      setTimeout(() => {
+        addMessage({
+          id: `${Date.now()}-dev`,
+          type: "dev",
+          message:
+            "i run this system. when threshold hits, top 3 creators get paid directly. no middlemen, no trust required. check the wallet on solscan.",
+          timestamp: Date.now(),
+        });
+      }, 500);
+    } else if (topic.title === "Auto Trading") {
+      addMessage({
+        id: `${Date.now()}-info`,
+        type: "info",
+        message:
+          "AUTONOMOUS TRADING\n\nGhost trades new launches:\n• Position size: 0.05-0.1 SOL\n• Max exposure: 1 SOL total\n• Take profit: 2x\n• Stop loss: -30%\n\nEvaluates: liquidity, creator history, fee config.",
+        timestamp: Date.now(),
+      });
+      setTimeout(() => {
+        addMessage({
+          id: `${Date.now()}-dev`,
+          type: "dev",
+          message:
+            "i watch the chain constantly. when a launch looks solid - good liquidity, reasonable fees, real creator - i enter a small position. all trades logged, all on-chain.",
+          timestamp: Date.now(),
+        });
+      }, 500);
+    } else if (topic.title === "Token Lookup") {
       addMessage({
         id: `${Date.now()}-dev`,
         type: "dev",
@@ -318,33 +352,6 @@ export function DevChat() {
       });
     } else if (topic.title === "My Portfolio") {
       await getPortfolio();
-    } else if (topic.title === "Trenches") {
-      const trenchTalk = [
-        "been building in these trenches since day one. bags.fm is where builders eat. launch a token, earn fees forever.",
-        "the trenches separate builders from flippers. if youre here to build, youll make it.",
-        "real talk - the fee share model is changing the game. creators actually get paid now.",
-        "seen a lot of projects come and go. the ones that last? they build for the community.",
-      ];
-      addMessage({
-        id: `${Date.now()}-dev`,
-        type: "dev",
-        message: trenchTalk[Math.floor(Math.random() * trenchTalk.length)],
-        timestamp: Date.now(),
-      });
-    } else if (topic.title === "Alpha") {
-      const alphaTips = [
-        "alpha: launch through bags.fm and you earn fees on every trade. forever. thats the model.",
-        "tip: check token creators before buying. bags.fm shows you exactly who earns the fees.",
-        "the move right now: build a community, launch a token, share fees with your holders.",
-        "alpha: the best tokens on bags have active creators who keep building. look for commitment.",
-        "pro tip: claim your fees regularly. compound that into more positions.",
-      ];
-      addMessage({
-        id: `${Date.now()}-dev`,
-        type: "dev",
-        message: alphaTips[Math.floor(Math.random() * alphaTips.length)],
-        timestamp: Date.now(),
-      });
     }
   };
 
@@ -443,7 +450,7 @@ export function DevChat() {
         <div className="flex items-center gap-2">
           <span className="font-pixel text-sm">👻</span>
           <div>
-            <p className="font-pixel text-[10px] text-purple-400">GHOST // THE DEV</p>
+            <p className="font-pixel text-[10px] text-purple-400">GHOST // AUTONOMOUS TRADER</p>
             <p className="font-pixel text-[8px] text-purple-600">powered by ElizaOS</p>
           </div>
         </div>
@@ -477,8 +484,10 @@ export function DevChat() {
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-purple-400 mb-1">👻 ghost agent online</p>
-            <p className="font-pixel text-[8px] text-gray-400">paste a CA to lookup token stats</p>
-            <p className="font-pixel text-[7px] text-gray-500 mt-2">or click a topic above</p>
+            <p className="font-pixel text-[8px] text-gray-400">
+              autonomous trader & rewards system
+            </p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-2">click a topic or paste a CA</p>
           </div>
         ) : (
           messages.map((msg) => (
