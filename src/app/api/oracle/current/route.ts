@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
 
   // Check if user has entered (if wallet provided)
   let userPrediction = null;
+  let userPrizeInfo = null;
   if (wallet) {
     const prediction = await getUserOraclePrediction(round.id, wallet);
     if (prediction) {
@@ -40,6 +41,16 @@ export async function GET(request: NextRequest) {
         tokenMint: prediction.tokenMint,
         createdAt: prediction.createdAt.toISOString(),
       };
+
+      // If round is settled and user won, include prize info
+      if (round.status === "settled" && prediction.isWinner && prediction.prizeLamports > BigInt(0)) {
+        userPrizeInfo = {
+          rank: prediction.predictionRank,
+          prizeLamports: prediction.prizeLamports.toString(),
+          prizeSol: Number(prediction.prizeLamports) / 1_000_000_000,
+          claimed: prediction.claimed,
+        };
+      }
     }
   }
 
@@ -50,6 +61,10 @@ export async function GET(request: NextRequest) {
   const entryDeadline = new Date(endTime.getTime() - 2 * 60 * 60 * 1000); // 2 hours before end
   const canEnter = now < entryDeadline;
 
+  // Prize pool info
+  const prizePoolLamports = round.prizePoolLamports || BigInt(0);
+  const prizePoolSol = Number(prizePoolLamports) / 1_000_000_000;
+
   return NextResponse.json({
     id: round.id,
     status: round.status,
@@ -59,14 +74,22 @@ export async function GET(request: NextRequest) {
     entryCount: round.entryCount,
     predictionCounts,
     userPrediction,
+    userPrizeInfo,
     remainingMs,
     canEnter,
     entryDeadline: entryDeadline.toISOString(),
+    // Prize pool
+    prizePool: {
+      lamports: prizePoolLamports.toString(),
+      sol: prizePoolSol,
+      hasPrize: prizePoolSol > 0,
+    },
     // Include settlement data if round is settled
     ...(round.status === "settled" && {
       winningTokenMint: round.winningTokenMint,
       winningPriceChange: round.winningPriceChange,
       settlementData: round.settlementData,
+      prizeDistributed: round.prizeDistributed,
     }),
   });
 }

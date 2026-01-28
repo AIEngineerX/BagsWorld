@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
   // Settle the round - fetch end prices and determine winner
   const endPrices: Record<string, number> = {};
   const priceChanges: Record<string, number> = {};
+  let validPriceCount = 0;
 
   for (const token of round.tokenOptions) {
     const endPrice = await getTokenPrice(token.mint);
@@ -93,16 +94,33 @@ export async function POST(request: NextRequest) {
     if (token.startPrice > 0 && endPrice > 0) {
       const changePercent = ((endPrice - token.startPrice) / token.startPrice) * 100;
       priceChanges[token.mint] = changePercent;
+      validPriceCount++;
     } else {
-      priceChanges[token.mint] = 0;
+      // Mark as invalid (NaN will be excluded from winner selection)
+      priceChanges[token.mint] = NaN;
     }
   }
 
-  // Find winner (highest % change)
+  // Verify we have at least 1 token with valid prices
+  if (validPriceCount === 0) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Could not fetch valid prices for any tokens. DexScreener may be unavailable. Try again later.",
+        pricesAttempted: endPrices
+      },
+      { status: 503 }
+    );
+  }
+
+  // Find winner (highest % change, excluding invalid prices)
   let winningTokenMint = "";
   let winningPriceChange = -Infinity;
 
   for (const [mint, change] of Object.entries(priceChanges)) {
+    // Skip tokens without valid price data
+    if (isNaN(change)) continue;
+
     if (change > winningPriceChange) {
       winningPriceChange = change;
       winningTokenMint = mint;
@@ -111,7 +129,7 @@ export async function POST(request: NextRequest) {
 
   if (!winningTokenMint) {
     return NextResponse.json(
-      { success: false, error: "Could not determine winner" },
+      { success: false, error: "Could not determine winner - no valid price changes" },
       { status: 500 }
     );
   }
@@ -141,7 +159,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  console.log(`[Oracle Admin] Round #${round.id} settled by ${adminWallet}: Winner ${winningToken?.symbol} (+${winningPriceChange.toFixed(2)}%), ${result.winnersCount} correct predictions`);
+  // Calculate prize pool in SOL for logging
+  const prizePoolSol = Number(round.prizePoolLamports) / 1_000_000_000;
+
+  console.log(`[Oracle Admin] Round #${round.id} settled by ${adminWallet}: Winner ${winningToken?.symbol} (+${winningPriceChange.toFixed(2)}%), ${result.winnersCount} winners, ${prizePoolSol} SOL distributed`);
 
   return NextResponse.json({
     success: true,
@@ -154,5 +175,16 @@ export async function POST(request: NextRequest) {
     },
     winnersCount: result.winnersCount,
     priceChanges,
+    prizePool: {
+      lamports: round.prizePoolLamports.toString(),
+      sol: prizePoolSol,
+    },
+    distributions: result.distributions?.map((d) => ({
+      wallet: d.wallet,
+      walletShort: `${d.wallet.slice(0, 4)}...${d.wallet.slice(-4)}`,
+      rank: d.rank,
+      prizeLamports: d.prizeLamports.toString(),
+      prizeSol: d.prizeSol,
+    })),
   });
 }
