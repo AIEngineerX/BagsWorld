@@ -6,6 +6,7 @@ import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { getLaunchedTokens, removeLaunchedToken, type LaunchedToken } from "@/lib/token-registry";
 import { BuildingEditor } from "./BuildingEditor";
+import { AgentDashboard } from "./admin/AgentDashboard";
 import bs58 from "bs58";
 
 const SESSION_TOKEN_KEY = "bagsworld_admin_session";
@@ -88,7 +89,7 @@ interface GlobalToken {
   zone_override?: string | null;
 }
 
-type TabType = "overview" | "buildings" | "diagnostics" | "global" | "local" | "analytics" | "logs";
+type TabType = "overview" | "buildings" | "diagnostics" | "global" | "local" | "analytics" | "logs" | "agents";
 
 export function AdminConsole() {
   const { publicKey, connected, signMessage } = useWallet();
@@ -658,18 +659,22 @@ export function AdminConsole() {
                 "local",
                 "analytics",
                 "logs",
+                "agents",
               ] as TabType[]
             ).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-shrink-0 px-4 py-2 font-pixel text-[9px] transition-colors ${
+                className={`flex-shrink-0 px-4 py-2 font-pixel text-[9px] transition-colors relative ${
                   activeTab === tab
                     ? "bg-red-500/20 text-red-300 border-b-2 border-red-400"
                     : "text-gray-500 hover:text-gray-300 hover:bg-red-500/10"
-                }`}
+                } ${tab === "agents" ? "text-bags-green" : ""}`}
               >
                 {tab.toUpperCase()}
+                {tab === "agents" && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-bags-green rounded-full animate-pulse" />
+                )}
               </button>
             ))}
           </div>
@@ -1570,6 +1575,11 @@ export function AdminConsole() {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* AGENTS TAB */}
+            {activeTab === "agents" && (
+              <AgentDashboard addLog={addLog} />
             )}
           </div>
 
