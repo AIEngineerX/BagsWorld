@@ -1,0 +1,22 @@
+# Don't copy local env files to container
+.env
+.env.*
+!.env.example
+
+# Development files
+node_modules
+npm-debug.log
+.git
+.gitignore
+
+# Build artifacts
+dist
+*.log
+
+# IDE
+.vscode
+.idea
+
+# Test data
+data/
+*.db
