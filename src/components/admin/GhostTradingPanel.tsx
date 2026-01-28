@@ -310,16 +310,22 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
               value={configEdits.maxPositionSol ?? String(config?.maxPositionSol || 0.1)}
               onChange={(v) => setConfigEdits((p) => ({ ...p, maxPositionSol: v }))}
             />
+            <div className="flex items-center gap-2">
+              <label className="font-pixel text-[8px] text-gray-400 w-32">Take Profit Tiers</label>
+              <span className="font-pixel text-[8px] text-green-400">
+                {config?.takeProfitTiers?.join("x, ") || "1.5, 2, 3"}x (read-only)
+              </span>
+            </div>
             <ConfigField
-              label="Take Profit (x)"
-              field="takeProfitMultiplier"
-              value={configEdits.takeProfitMultiplier ?? String(config?.takeProfitMultiplier || 2)}
-              onChange={(v) => setConfigEdits((p) => ({ ...p, takeProfitMultiplier: v }))}
+              label="Trailing Stop (%)"
+              field="trailingStopPercent"
+              value={configEdits.trailingStopPercent ?? String(config?.trailingStopPercent || 10)}
+              onChange={(v) => setConfigEdits((p) => ({ ...p, trailingStopPercent: v }))}
             />
             <ConfigField
               label="Stop Loss (%)"
               field="stopLossPercent"
-              value={configEdits.stopLossPercent ?? String(config?.stopLossPercent || 30)}
+              value={configEdits.stopLossPercent ?? String(config?.stopLossPercent || 15)}
               onChange={(v) => setConfigEdits((p) => ({ ...p, stopLossPercent: v }))}
             />
             <ConfigField
@@ -356,12 +362,18 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
               </span>
             </div>
             <div>
-              <span className="text-gray-500">TP:</span>{" "}
-              <span className="text-green-400">{config?.takeProfitMultiplier}x</span>
+              <span className="text-gray-500">TP Tiers:</span>{" "}
+              <span className="text-green-400">
+                {config?.takeProfitTiers?.map((t: number) => `${t}x`).join(", ") || "1.5x, 2x, 3x"}
+              </span>
             </div>
             <div>
               <span className="text-gray-500">SL:</span>{" "}
-              <span className="text-red-400">-{config?.stopLossPercent}%</span>
+              <span className="text-red-400">-{config?.stopLossPercent || 15}%</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Trailing:</span>{" "}
+              <span className="text-yellow-400">{config?.trailingStopPercent || 10}%</span>
             </div>
             <div>
               <span className="text-gray-500">Slippage:</span>{" "}
