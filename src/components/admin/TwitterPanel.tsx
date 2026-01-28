@@ -14,7 +14,12 @@ interface TwitterPanelProps {
 }
 
 export function TwitterPanel({ addLog }: TwitterPanelProps) {
-  const { data: status, isLoading: statusLoading, error: statusError, refetch: refetchStatus } = useTwitterStatus();
+  const {
+    data: status,
+    isLoading: statusLoading,
+    error: statusError,
+    refetch: refetchStatus,
+  } = useTwitterStatus();
   const { data: history, refetch: refetchHistory } = useTwitterHistory(20);
 
   const postTweet = usePostTweet();
@@ -61,7 +66,10 @@ export function TwitterPanel({ addLog }: TwitterPanelProps) {
     );
 
     if (result.success && result.templates) {
-      addLog?.(`Generated ${result.templates.length} templates for ${result.token?.symbol}`, "success");
+      addLog?.(
+        `Generated ${result.templates.length} templates for ${result.token?.symbol}`,
+        "success"
+      );
       setGeneratedTemplates(result.templates);
     } else {
       addLog?.(`Failed to generate: ${result.error}`, "error");
@@ -94,9 +102,7 @@ export function TwitterPanel({ addLog }: TwitterPanelProps) {
   if (statusError) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 p-3">
-        <p className="font-pixel text-[9px] text-red-400">
-          Failed to load Twitter status
-        </p>
+        <p className="font-pixel text-[9px] text-red-400">Failed to load Twitter status</p>
         <p className="font-pixel text-[8px] text-gray-500 mt-1">
           {statusError instanceof Error ? statusError.message : "Connection error"}
         </p>
@@ -118,10 +124,14 @@ export function TwitterPanel({ addLog }: TwitterPanelProps) {
   return (
     <div className="space-y-4">
       {/* Status */}
-      <div className={`p-3 border ${twitter?.authenticated ? "bg-blue-500/10 border-blue-500/30" : "bg-yellow-500/10 border-yellow-500/30"}`}>
+      <div
+        className={`p-3 border ${twitter?.authenticated ? "bg-blue-500/10 border-blue-500/30" : "bg-yellow-500/10 border-yellow-500/30"}`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className={`w-3 h-3 rounded-full ${twitter?.authenticated ? "bg-blue-400" : "bg-yellow-400"}`} />
+            <span
+              className={`w-3 h-3 rounded-full ${twitter?.authenticated ? "bg-blue-400" : "bg-yellow-400"}`}
+            />
             <div>
               <p className="font-pixel text-[10px] text-white">
                 {twitter?.username || "Finn (Twitter)"}
@@ -144,8 +154,12 @@ export function TwitterPanel({ addLog }: TwitterPanelProps) {
             <p className="font-pixel text-[8px] text-gray-400">
               Total Posts: {stats?.totalPosts || 0}
             </p>
-            <p className={`font-pixel text-[8px] ${canPost ? "text-green-400" : "text-yellow-400"}`}>
-              {canPost ? "Ready to post" : `Cooldown: ${formatCooldown(twitter?.nextPostInSeconds || 0)}`}
+            <p
+              className={`font-pixel text-[8px] ${canPost ? "text-green-400" : "text-yellow-400"}`}
+            >
+              {canPost
+                ? "Ready to post"
+                : `Cooldown: ${formatCooldown(twitter?.nextPostInSeconds || 0)}`}
             </p>
           </div>
         </div>
@@ -164,7 +178,9 @@ export function TwitterPanel({ addLog }: TwitterPanelProps) {
             maxLength={280}
           />
           <div className="absolute bottom-2 right-2">
-            <span className={`font-pixel text-[8px] ${tweetContent.length > 280 ? "text-red-400" : tweetContent.length > 250 ? "text-yellow-400" : "text-gray-500"}`}>
+            <span
+              className={`font-pixel text-[8px] ${tweetContent.length > 280 ? "text-red-400" : tweetContent.length > 250 ? "text-yellow-400" : "text-gray-500"}`}
+            >
               {tweetContent.length}/280
             </span>
           </div>
@@ -173,7 +189,12 @@ export function TwitterPanel({ addLog }: TwitterPanelProps) {
         <div className="flex gap-2 mt-2">
           <button
             onClick={handlePost}
-            disabled={postTweet.isPending || !canPost || tweetContent.length === 0 || tweetContent.length > 280}
+            disabled={
+              postTweet.isPending ||
+              !canPost ||
+              tweetContent.length === 0 ||
+              tweetContent.length > 280
+            }
             className="font-pixel text-[8px] text-blue-400 hover:text-blue-300 bg-blue-500/10 px-3 py-1.5 border border-blue-500/30 disabled:opacity-50"
           >
             {postTweet.isPending ? "[POSTING...]" : isDryRun ? "[POST (DRY RUN)]" : "[POST TWEET]"}
@@ -217,9 +238,7 @@ export function TwitterPanel({ addLog }: TwitterPanelProps) {
                 onClick={() => applyTemplate(template)}
                 className="w-full text-left bg-black/30 p-2 border border-gray-700 hover:border-gray-500"
               >
-                <p className="font-mono text-[8px] text-gray-300 whitespace-pre-wrap">
-                  {template}
-                </p>
+                <p className="font-mono text-[8px] text-gray-300 whitespace-pre-wrap">{template}</p>
                 <p className="font-pixel text-[6px] text-gray-500 mt-1">
                   {template.length}/280 chars
                 </p>
@@ -248,9 +267,7 @@ export function TwitterPanel({ addLog }: TwitterPanelProps) {
             ))}
           </div>
         ) : (
-          <p className="font-pixel text-[9px] text-gray-500 text-center py-4">
-            No posts yet
-          </p>
+          <p className="font-pixel text-[9px] text-gray-500 text-center py-4">No posts yet</p>
         )}
       </div>
 
@@ -259,7 +276,8 @@ export function TwitterPanel({ addLog }: TwitterPanelProps) {
         <div className="bg-yellow-500/10 border border-yellow-500/30 p-3">
           <p className="font-pixel text-[8px] text-yellow-400 mb-1">CONFIGURATION REQUIRED</p>
           <p className="font-pixel text-[7px] text-gray-400">
-            Set TWITTER_BEARER_TOKEN env var to enable real posting, or set TWITTER_DRY_RUN=true for testing.
+            Set TWITTER_BEARER_TOKEN env var to enable real posting, or set TWITTER_DRY_RUN=true for
+            testing.
           </p>
         </div>
       )}
@@ -276,13 +294,9 @@ function TweetCard({ tweet }: { tweet: Tweet }) {
 
   return (
     <div className="bg-black/30 p-2 border border-gray-700">
-      <p className="font-mono text-[9px] text-gray-300 whitespace-pre-wrap">
-        {tweet.text}
-      </p>
+      <p className="font-mono text-[9px] text-gray-300 whitespace-pre-wrap">{tweet.text}</p>
       <div className="flex justify-between items-center mt-1">
-        <p className="font-pixel text-[6px] text-gray-500">
-          {formatDate(tweet.createdAt)}
-        </p>
+        <p className="font-pixel text-[6px] text-gray-500">{formatDate(tweet.createdAt)}</p>
         {tweet.url && (
           <a
             href={tweet.url}

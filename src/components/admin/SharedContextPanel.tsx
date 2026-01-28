@@ -1,18 +1,24 @@
 "use client";
 
-import {
-  useSharedContext,
-  useElizaHealth,
-  type SharedContext,
-} from "@/hooks/useElizaAgents";
+import { useSharedContext, useElizaHealth, type SharedContext } from "@/hooks/useElizaAgents";
 
 interface SharedContextPanelProps {
   addLog?: (message: string, type?: "info" | "success" | "error") => void;
 }
 
 export function SharedContextPanel({ addLog }: SharedContextPanelProps) {
-  const { data: contextData, isLoading: contextLoading, error: contextError, refetch: refetchContext } = useSharedContext();
-  const { data: health, isLoading: healthLoading, error: healthError, refetch: refetchHealth } = useElizaHealth();
+  const {
+    data: contextData,
+    isLoading: contextLoading,
+    error: contextError,
+    refetch: refetchContext,
+  } = useSharedContext();
+  const {
+    data: health,
+    isLoading: healthLoading,
+    error: healthError,
+    refetch: refetchHealth,
+  } = useElizaHealth();
 
   const formatTimeAgo = (timestamp: number | undefined) => {
     if (!timestamp) return "Never";
@@ -66,9 +72,7 @@ export function SharedContextPanel({ addLog }: SharedContextPanelProps) {
   if (contextError || healthError) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 p-3">
-        <p className="font-pixel text-[9px] text-red-400">
-          Failed to load shared context
-        </p>
+        <p className="font-pixel text-[9px] text-red-400">Failed to load shared context</p>
         <p className="font-pixel text-[8px] text-gray-500 mt-1">
           {(contextError || healthError) instanceof Error
             ? (contextError || healthError)?.message
@@ -103,27 +107,27 @@ export function SharedContextPanel({ addLog }: SharedContextPanelProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Status</p>
-            <p className={`font-pixel text-sm ${health?.status === "ok" ? "text-green-400" : "text-yellow-400"}`}>
+            <p
+              className={`font-pixel text-sm ${health?.status === "ok" ? "text-green-400" : "text-yellow-400"}`}
+            >
               {health?.status?.toUpperCase() || "UNKNOWN"}
             </p>
           </div>
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Database</p>
-            <p className={`font-pixel text-sm ${health?.database?.status === "connected" ? "text-green-400" : "text-red-400"}`}>
+            <p
+              className={`font-pixel text-sm ${health?.database?.status === "connected" ? "text-green-400" : "text-red-400"}`}
+            >
               {health?.database?.status?.toUpperCase() || "UNKNOWN"}
             </p>
           </div>
           <div>
             <p className="font-pixel text-[7px] text-gray-500">LLM Provider</p>
-            <p className="font-pixel text-sm text-white">
-              {health?.llm?.provider || "None"}
-            </p>
+            <p className="font-pixel text-sm text-white">{health?.llm?.provider || "None"}</p>
           </div>
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Agents</p>
-            <p className="font-pixel text-sm text-white">
-              {health?.agents || 0}
-            </p>
+            <p className="font-pixel text-sm text-white">{health?.agents || 0}</p>
           </div>
         </div>
       </div>
@@ -148,7 +152,9 @@ export function SharedContextPanel({ addLog }: SharedContextPanelProps) {
           <div>
             <p className="font-pixel text-[7px] text-gray-500">24h Fees</p>
             <p className="font-pixel text-sm text-bags-gold">
-              {context.fees24h !== undefined ? `${(context.fees24h as number).toFixed(2)} SOL` : "-"}
+              {context.fees24h !== undefined
+                ? `${(context.fees24h as number).toFixed(2)} SOL`
+                : "-"}
             </p>
           </div>
         </div>
@@ -161,15 +167,15 @@ export function SharedContextPanel({ addLog }: SharedContextPanelProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Status</p>
-            <p className={`font-pixel text-sm ${context.ghostTradingEnabled ? "text-green-400" : "text-red-400"}`}>
+            <p
+              className={`font-pixel text-sm ${context.ghostTradingEnabled ? "text-green-400" : "text-red-400"}`}
+            >
               {context.ghostTradingEnabled ? "ENABLED" : "DISABLED"}
             </p>
           </div>
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Open Positions</p>
-            <p className="font-pixel text-sm text-white">
-              {context.ghostOpenPositions ?? "-"}
-            </p>
+            <p className="font-pixel text-sm text-white">{context.ghostOpenPositions ?? "-"}</p>
           </div>
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Exposure</p>
@@ -181,13 +187,15 @@ export function SharedContextPanel({ addLog }: SharedContextPanelProps) {
           </div>
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Total P&L</p>
-            <p className={`font-pixel text-sm ${
-              (context.ghostPnlSol as number) > 0
-                ? "text-green-400"
-                : (context.ghostPnlSol as number) < 0
-                ? "text-red-400"
-                : "text-gray-400"
-            }`}>
+            <p
+              className={`font-pixel text-sm ${
+                (context.ghostPnlSol as number) > 0
+                  ? "text-green-400"
+                  : (context.ghostPnlSol as number) < 0
+                    ? "text-red-400"
+                    : "text-gray-400"
+              }`}
+            >
               {context.ghostPnlSol !== undefined
                 ? `${(context.ghostPnlSol as number) > 0 ? "+" : ""}${(context.ghostPnlSol as number).toFixed(4)} SOL`
                 : "-"}
@@ -203,18 +211,14 @@ export function SharedContextPanel({ addLog }: SharedContextPanelProps) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Recent Launches</p>
-            <p className="font-pixel text-sm text-white">
-              {context.recentLaunches ?? "-"}
-            </p>
+            <p className="font-pixel text-sm text-white">{context.recentLaunches ?? "-"}</p>
             <p className="font-pixel text-[6px] text-gray-600">
               Last scan: {formatTimeAgo(context.lastLaunchScan as number)}
             </p>
           </div>
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Anomalies Detected</p>
-            <p className="font-pixel text-sm text-purple-400">
-              {context.anomaliesDetected ?? "-"}
-            </p>
+            <p className="font-pixel text-sm text-purple-400">{context.anomaliesDetected ?? "-"}</p>
             <p className="font-pixel text-[6px] text-gray-600">
               Last scan: {formatTimeAgo(context.lastAnomalyScan as number)}
             </p>

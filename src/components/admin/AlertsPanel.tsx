@@ -89,9 +89,7 @@ export function AlertsPanel({ addLog }: AlertsPanelProps) {
   if (error) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 p-3">
-        <p className="font-pixel text-[9px] text-red-400">
-          Failed to load alerts
-        </p>
+        <p className="font-pixel text-[9px] text-red-400">Failed to load alerts</p>
         <p className="font-pixel text-[8px] text-gray-500 mt-1">
           {error instanceof Error ? error.message : "Connection error"}
         </p>
@@ -141,7 +139,9 @@ export function AlertsPanel({ addLog }: AlertsPanelProps) {
               onChange={(e) =>
                 setFilters((f) => ({
                   ...f,
-                  severity: (e.target.value || undefined) as AutonomousAlert["severity"] | undefined,
+                  severity: (e.target.value || undefined) as
+                    | AutonomousAlert["severity"]
+                    | undefined,
                 }))
               }
               className="bg-black/50 border border-gray-700 px-2 py-0.5 font-pixel text-[8px] text-white"
@@ -159,14 +159,10 @@ export function AlertsPanel({ addLog }: AlertsPanelProps) {
             <input
               type="checkbox"
               checked={filters.unacknowledgedOnly}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, unacknowledgedOnly: e.target.checked }))
-              }
+              onChange={(e) => setFilters((f) => ({ ...f, unacknowledgedOnly: e.target.checked }))}
               className="w-3 h-3"
             />
-            <span className="font-pixel text-[8px] text-gray-400">
-              Unacknowledged only
-            </span>
+            <span className="font-pixel text-[8px] text-gray-400">Unacknowledged only</span>
           </label>
 
           <button
@@ -257,9 +253,7 @@ function AlertCard({
               )}
             </div>
             <p className="font-pixel text-[9px] text-white">{alert.title}</p>
-            <p className="font-pixel text-[8px] text-gray-400 mt-0.5">
-              {alert.message}
-            </p>
+            <p className="font-pixel text-[8px] text-gray-400 mt-0.5">{alert.message}</p>
             <p className="font-pixel text-[6px] text-gray-500 mt-1">
               {formatTimeAgo(alert.timestamp)}
             </p>
