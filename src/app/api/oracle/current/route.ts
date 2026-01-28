@@ -43,7 +43,11 @@ export async function GET(request: NextRequest) {
       };
 
       // If round is settled and user won, include prize info
-      if (round.status === "settled" && prediction.isWinner && prediction.prizeLamports > BigInt(0)) {
+      if (
+        round.status === "settled" &&
+        prediction.isWinner &&
+        prediction.prizeLamports > BigInt(0)
+      ) {
         userPrizeInfo = {
           rank: prediction.predictionRank,
           prizeLamports: prediction.prizeLamports.toString(),

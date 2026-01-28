@@ -12,10 +12,9 @@ export const dynamic = "force-dynamic";
 
 // Fetch current price from DexScreener
 async function getTokenPrice(mint: string): Promise<number> {
-  const response = await fetch(
-    `https://api.dexscreener.com/latest/dex/tokens/${mint}`,
-    { next: { revalidate: 0 } }
-  );
+  const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, {
+    next: { revalidate: 0 },
+  });
 
   if (!response.ok) {
     console.error(`DexScreener API error for ${mint}: ${response.status}`);
@@ -38,10 +37,7 @@ async function getTokenPrice(mint: string): Promise<number> {
 
 export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
-    return NextResponse.json(
-      { success: false, error: "Oracle not initialized" },
-      { status: 503 }
-    );
+    return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
 
   const body = await request.json();
@@ -49,10 +45,7 @@ export async function POST(request: NextRequest) {
 
   // Verify admin using config-based admin check
   if (!adminWallet || !isAdmin(adminWallet)) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 403 }
-    );
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
   }
 
   // Get active round
@@ -68,10 +61,7 @@ export async function POST(request: NextRequest) {
   if (action === "cancel") {
     const result = await cancelOracleRound(round.id);
     if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }
     console.log(`[Oracle Admin] Round #${round.id} cancelled by ${adminWallet}`);
     return NextResponse.json({
@@ -106,8 +96,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: "Could not fetch valid prices for any tokens. DexScreener may be unavailable. Try again later.",
-        pricesAttempted: endPrices
+        error:
+          "Could not fetch valid prices for any tokens. DexScreener may be unavailable. Try again later.",
+        pricesAttempted: endPrices,
       },
       { status: 503 }
     );
@@ -153,16 +144,15 @@ export async function POST(request: NextRequest) {
   );
 
   if (!result.success) {
-    return NextResponse.json(
-      { success: false, error: result.error },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: result.error }, { status: 400 });
   }
 
   // Calculate prize pool in SOL for logging
   const prizePoolSol = Number(round.prizePoolLamports) / 1_000_000_000;
 
-  console.log(`[Oracle Admin] Round #${round.id} settled by ${adminWallet}: Winner ${winningToken?.symbol} (+${winningPriceChange.toFixed(2)}%), ${result.winnersCount} winners, ${prizePoolSol} SOL distributed`);
+  console.log(
+    `[Oracle Admin] Round #${round.id} settled by ${adminWallet}: Winner ${winningToken?.symbol} (+${winningPriceChange.toFixed(2)}%), ${result.winnersCount} winners, ${prizePoolSol} SOL distributed`
+  );
 
   return NextResponse.json({
     success: true,

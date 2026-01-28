@@ -18,10 +18,7 @@ const CLAIM_MESSAGE = "Sign to claim your Oracle winnings from BagsWorld";
 
 export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
-    return NextResponse.json(
-      { success: false, error: "Oracle not initialized" },
-      { status: 503 }
-    );
+    return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
 
   const body = await request.json();
@@ -39,10 +36,7 @@ export async function POST(request: NextRequest) {
   try {
     walletPubkey = new PublicKey(wallet);
   } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid wallet address" },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: "Invalid wallet address" }, { status: 400 });
   }
 
   // Verify signature proves wallet ownership
@@ -51,17 +45,10 @@ export async function POST(request: NextRequest) {
     const signatureBytes = bs58.decode(signature);
     const publicKeyBytes = walletPubkey.toBytes();
 
-    const isValid = nacl.sign.detached.verify(
-      messageBytes,
-      signatureBytes,
-      publicKeyBytes
-    );
+    const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
 
     if (!isValid) {
-      return NextResponse.json(
-        { success: false, error: "Invalid signature" },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: "Invalid signature" }, { status: 401 });
     }
   } catch (error) {
     console.error("[Oracle Claim] Signature verification error:", error);
@@ -92,20 +79,14 @@ export async function POST(request: NextRequest) {
   // Check balance
   const balance = await getOracleBalance(wallet);
   if (!balance || balance.balanceLamports <= BigInt(0)) {
-    return NextResponse.json(
-      { success: false, error: "No balance to claim" },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: "No balance to claim" }, { status: 400 });
   }
 
   // Create claim request
   const result = await createOracleClaimRequest(wallet);
 
   if (!result.success) {
-    return NextResponse.json(
-      { success: false, error: result.error },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: result.error }, { status: 400 });
   }
 
   const amountSol = Number(result.amountLamports || BigInt(0)) / 1_000_000_000;

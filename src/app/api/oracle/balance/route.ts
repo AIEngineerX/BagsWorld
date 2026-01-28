@@ -1,20 +1,13 @@
 // Oracle Balance API - Get user's claimable balance
 import { NextRequest, NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
-import {
-  getOracleBalance,
-  getOraclePendingClaim,
-  isNeonConfigured,
-} from "@/lib/neon";
+import { getOracleBalance, getOraclePendingClaim, isNeonConfigured } from "@/lib/neon";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   if (!isNeonConfigured()) {
-    return NextResponse.json(
-      { success: false, error: "Oracle not initialized" },
-      { status: 503 }
-    );
+    return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
 
   const wallet = request.nextUrl.searchParams.get("wallet");
@@ -30,10 +23,7 @@ export async function GET(request: NextRequest) {
   try {
     new PublicKey(wallet);
   } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid wallet address" },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: "Invalid wallet address" }, { status: 400 });
   }
 
   const balance = await getOracleBalance(wallet);

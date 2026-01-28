@@ -1,264 +1,250 @@
 # BagsWorld
 
-A self-evolving pixel art game that visualizes real-time [Bags.fm](https://bags.fm) on-chain activity on Solana.
+**A living pixel art world powered by real Solana on-chain activity**
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Solana](https://img.shields.io/badge/built%20on-Solana-9945FF)
-![Next.js](https://img.shields.io/badge/Next.js-14-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Solana](https://img.shields.io/badge/Solana-9945FF?logo=solana&logoColor=white)](https://solana.com)
+[![Next.js](https://img.shields.io/badge/Next.js_14-black?logo=next.js)](https://nextjs.org)
+[![ElizaOS](https://img.shields.io/badge/ElizaOS-AI_Agents-FF6B6B)](https://github.com/elizaOS/eliza)
+[![Phaser](https://img.shields.io/badge/Phaser_3-Game_Engine-8B5CF6)](https://phaser.io)
 
-## Overview
+---
 
-BagsWorld transforms abstract DeFi data into a living, gamified visualization. Token launches become buildings, fee share recipients become citizens, and real on-chain activity drives the health of the world.
+## What is BagsWorld?
 
-| On-Chain Event        | In-Game Effect            |
-| --------------------- | ------------------------- |
-| Token launched        | Building appears in world |
-| Market cap grows      | Building levels up (1-5)  |
-| Fee share recipient   | Citizen walking around    |
-| Fee claiming activity | World health increases    |
-| Creator fees earned   | Characters celebrate      |
+BagsWorld transforms abstract DeFi data into a living, breathing pixel art game. Every token launched on [Bags.fm](https://bags.fm) becomes a building. Every fee claim makes the world healthier. Every whale move triggers weather changes.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     REAL ON-CHAIN DATA                          │
+│  Token Launches • Fee Claims • Trading Volume • Market Caps     │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      BAGSWORLD ENGINE                           │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
+│  │ World State │  │   ElizaOS   │  │      Phaser 3           │  │
+│  │ Calculator  │  │  16 Agents  │  │   Pixel Art Renderer    │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      LIVING GAME WORLD                          │
+│  Buildings grow/decay • Weather shifts • NPCs react • Day/Night │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Core Mechanics
+
+| On-Chain Event | In-Game Effect |
+|----------------|----------------|
+| Token launched on Bags.fm | Building appears in world |
+| Market cap grows | Building levels up (1→5) |
+| No trading activity | Building decays and crumbles |
+| Fee claims spike | World health increases, sun comes out |
+| Whale moves 10+ SOL | Storm clouds roll in |
+| Price pumps 20%+ | Characters celebrate |
+
+### World Health Formula
+
+```
+Health = (0.6 × 24h_claim_volume) + (0.3 × lifetime_fees) + (0.1 × active_tokens)
+```
+
+- **80%+** THRIVING - Sunny skies, citizens celebrating
+- **60-80%** HEALTHY - Clear weather, normal activity
+- **40-60%** GROWING - Cloudy, some concern
+- **20-40%** QUIET - Rain, citizens worried
+- **<20%** DYING - Storms, buildings crumbling
 
 ## Features
 
-- **Living World** - Health, weather, and population react to real Bags.fm fee activity
-- **Token Buildings** - Each token becomes a building that evolves with market cap
-- **AI Characters** - 16 AI-powered NPCs guide users through the ecosystem
-- **Real-time Events** - Watch token launches, fee claims, and milestones as they happen
-- **Direct Trading** - Click any building to trade the underlying token
-- **5 Unique Zones** - HQ, Park, BagsCity, Ballers Valley, Founder's Corner
-- **Zero Creator Fees** - Ghost personally funds the community (no ecosystem tax)
-- **Day/Night Cycle** - Synced to EST timezone with dynamic weather
-- **Pokemon-style Music** - 3 original pixel art soundtrack tracks
+### 5 Unique Zones
 
-## Community Funding Model
+| Zone | Theme | Highlights |
+|------|-------|------------|
+| **HQ** | Futuristic R&D | Bags.fm team HQ, meet Ramo, Sincara, Stuu |
+| **Park** | Peaceful green | PokeCenter, Toly, Ash, Shaw |
+| **BagsCity** | Neon urban | Casino, Trading Terminal, Neo, CJ |
+| **Ballers Valley** | Luxury mansions | Top holder showcases |
+| **Founder's Corner** | Learning hub | Professor Oak's token launch guidance |
 
-BagsWorld charges **zero extra fees** to creators. Instead, Ghost (@DaddyGhost) personally contributes 5% of his $BagsWorld token revenue to fund community features.
+### 16 AI Characters (ElizaOS)
 
-| What           | Status   | Description                                      |
-| -------------- | -------- | ------------------------------------------------ |
-| Creator Fees   | **None** | Creators keep 100% of their configured fee share |
-| Community Fund | Live     | Ghost's 5% contribution funds Casino prizes      |
-| Development    | Ongoing  | New features, zones, and improvements            |
+Every character runs on [ElizaOS](https://github.com/elizaOS/eliza) with persistent memory and distinct personalities:
 
-### How It Works
+| Character | Role | Zone |
+|-----------|------|------|
+| **Finn** | Bags.fm CEO | Park |
+| **Toly** | Solana Co-founder | Park |
+| **Shaw** | ElizaOS Creator | Park |
+| **Ghost** | Community Funder | Park |
+| **Neo** | Launch Scout | BagsCity |
+| **CJ** | Market Commentary | BagsCity |
+| **Professor Oak** | Launch Wizard | Founder's Corner |
+| **Ramo** | CTO | HQ |
+| **Sincara** | Frontend Engineer | HQ |
+| **Stuu** | Operations | HQ |
+| **Sam** | Growth | HQ |
+| **Alaa** | Skunk Works | HQ |
+| **Carlo** | Ambassador | HQ |
+| **BNN** | News Network | HQ |
+| **Ash** | Ecosystem Guide | Park |
+| **Bags Bot** | World Guide | All |
 
-```
-Ghost's $BagsWorld revenue --> 5% sent to Community Wallet --> Funds Casino & Features
-```
+### Game Features
 
-All transactions are verifiable on-chain via [Solscan](https://solscan.io).
+- **Building Decay System** - Buildings lose health without trading activity (60-second cycles)
+- **Trading Dojo** - Spar against 5 AI opponents with belt progression
+- **Oracle Tower** - Prediction market for token price movements
+- **Casino** - Community-funded raffles and prizes
+- **Sniper Tower** - Real-time launch detection across all Bags.fm
+- **Day/Night Cycle** - Synced to EST with dynamic lighting
+- **Original Soundtrack** - 7 Pokemon-style tracks synthesized in-browser
 
-Follow [@DaddyGhost](https://x.com/DaddyGhost) on X for updates.
+### Blockchain Integration
 
-## World Health
+- **Bags.fm SDK** - Real-time token data, launches, fee claims
+- **Jupiter** - In-game token swaps
+- **DexScreener** - Market data and price feeds
+- **Phantom Wallet** - Connect and trade directly
+- **Bitquery** - Platform-wide activity monitoring
 
-Health is calculated from real Bags.fm data:
-
-| Metric           | Weight |
-| ---------------- | ------ |
-| 24h Claim Volume | 60%    |
-| Lifetime Fees    | 30%    |
-| Active Tokens    | 10%    |
-
-**Baseline:** 25% + 3% per building (max 40%) when no activity
-
-| Health Range | Status   |
-| ------------ | -------- |
-| 80%+         | THRIVING |
-| 60-80%       | HEALTHY  |
-| 45-60%       | GROWING  |
-| 25-45%       | QUIET    |
-| 10-25%       | DORMANT  |
-| <10%         | DYING    |
-
-## World Zones
-
-| Zone             | Theme           | Key Features                          |
-| ---------------- | --------------- | ------------------------------------- |
-| HQ               | Futuristic R&D  | Bags.fm headquarters, team characters |
-| Park             | Peaceful green  | PokeCenter, Toly, Ash, Shaw           |
-| BagsCity         | Urban neon      | Casino, Trading Terminal, Neo, CJ     |
-| Ballers Valley   | Luxury mansions | Top $BagsWorld holder showcases       |
-| Founder's Corner | Learning hub    | Professor Oak, token launch guidance  |
-
-## Building Levels
-
-| Level | Market Cap    | Style          |
-| ----- | ------------- | -------------- |
-| 1     | < $100K       | Small shop     |
-| 2     | $100K - $500K | Growing office |
-| 3     | $500K - $2M   | Corporate HQ   |
-| 4     | $2M - $10M    | Modern tower   |
-| 5     | $10M+         | Skyscraper     |
-
-## AI Agents (Powered by ElizaOS)
-
-All 16 agents run on [ElizaOS](https://github.com/elizaOS/eliza) - Shaw's open-source TypeScript framework for autonomous AI agents.
-
-| Character     | Role                  | Specialty                                |
-| ------------- | --------------------- | ---------------------------------------- |
-| Toly          | Blockchain Expert     | Solana technical knowledge               |
-| Ash           | Ecosystem Guide       | Platform mechanics (Pokemon style)       |
-| Finn          | Bags.fm Founder & CEO | Platform features, creator economy       |
-| Ghost         | The Dev (@DaddyGhost) | Community funding, on-chain verification |
-| Neo           | Scout Agent           | Launch detection, blockchain scanning    |
-| CJ            | Hood Rat              | Market commentary (GTA vibes)            |
-| Shaw          | ElizaOS Creator       | Agent architecture, character files      |
-| Bags Bot      | World Guide           | Commands, world features                 |
-| Professor Oak | Launch Wizard         | Token launch guidance                    |
-| Ramo          | CTO                   | Smart contracts, SDK                     |
-| Sincara       | Frontend Engineer     | UI/UX, React                             |
-| Stuu          | Operations            | Support, troubleshooting                 |
-| Sam           | Growth                | Marketing, community growth              |
-| Alaa          | Skunk Works           | R&D, experimental features               |
-| Carlo         | Ambassador            | Community onboarding                     |
-| BNN           | News Network          | Platform announcements                   |
-
-## Tech Stack
-
-| Layer       | Technology                |
-| ----------- | ------------------------- |
-| Framework   | Next.js 14 (App Router)   |
-| Game Engine | Phaser 3                  |
-| Blockchain  | Solana Web3.js            |
-| Trading     | Bags.fm SDK               |
-| AI Agents   | ElizaOS + Claude Sonnet 4 |
-| Database    | Neon (PostgreSQL)         |
-| State       | Zustand + TanStack Query  |
-| Styling     | Tailwind CSS              |
-| Language    | TypeScript                |
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Bags.fm API key
-
-### Installation
+## Quick Start
 
 ```bash
-# Clone repository
+# Clone
 git clone https://github.com/AIEngineerX/BagsWorld.git
 cd BagsWorld
 
-# Install dependencies
+# Install
 npm install
 
-# Configure environment
+# Configure (copy and edit with your keys)
 cp .env.example .env.local
-```
 
-### Environment Variables
-
-| Variable                     | Required | Description                        |
-| ---------------------------- | -------- | ---------------------------------- |
-| `BAGS_API_KEY`               | Yes      | Bags.fm API key                    |
-| `SOLANA_RPC_URL`             | Yes      | Helius RPC URL for transactions    |
-| `NEXT_PUBLIC_SOLANA_RPC_URL` | No       | Client-side RPC (defaults to Ankr) |
-| `ANTHROPIC_API_KEY`          | No       | Enables Claude AI chat             |
-
-### Development
-
-```bash
+# Run
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
 
-### Build
+### Running ElizaOS Agents
+
+The AI characters run as a separate microservice:
 
 ```bash
-npm run build
-npm start
+# In a separate terminal
+cd eliza-agents
+npm install
+npm run start:dev
 ```
+
+This starts the agent server on port 3001. The main app connects automatically via `AGENTS_API_URL`.
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `BAGS_API_KEY` | Yes | Bags.fm API key |
+| `SOLANA_RPC_URL` | Yes | Helius RPC for transactions |
+| `ANTHROPIC_API_KEY` | For AI | Claude API for character chat |
+| `DATABASE_URL` | For persistence | Neon PostgreSQL connection |
+| `BITQUERY_API_KEY` | Optional | Platform-wide Bags.fm feed |
+
+See [.env.example](.env.example) for full configuration.
+
+## Architecture
+
+```
+BagsWorld/
+├── src/
+│   ├── app/
+│   │   ├── api/              # 65+ API routes
+│   │   │   ├── world-state/  # Main game state engine
+│   │   │   ├── character-chat/
+│   │   │   ├── casino/
+│   │   │   ├── oracle/
+│   │   │   └── ...
+│   │   └── page.tsx
+│   ├── components/           # React UI components
+│   ├── game/
+│   │   └── scenes/
+│   │       ├── BootScene.ts  # Asset generation
+│   │       └── WorldScene.ts # Main game logic
+│   ├── characters/           # Character metadata for UI
+│   ├── hooks/                # React hooks
+│   └── lib/
+│       ├── world-calculator.ts  # Health & decay logic
+│       ├── bags-api.ts          # Bags.fm client
+│       └── types.ts             # TypeScript definitions
+│
+├── eliza-agents/             # ElizaOS microservice
+│   └── src/
+│       ├── characters/       # Full character definitions
+│       ├── services/         # Agent coordination
+│       ├── routes/           # Agent API endpoints
+│       └── server.ts         # Express server
+│
+└── public/                   # Static assets
+```
+
+### Data Flow
+
+1. **Token Registry** - Users register tokens (localStorage + Neon DB)
+2. **useWorldState Hook** - Polls API every 30 seconds
+3. **World State API** - Enriches tokens with Bags SDK data
+4. **World Calculator** - Transforms data into game entities
+5. **Phaser WorldScene** - Renders the pixel art world
+6. **ElizaOS Agents** - Handle character conversations
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 14 (App Router) |
+| Game Engine | Phaser 3.80 |
+| AI Agents | ElizaOS + Claude/GPT |
+| Blockchain | Solana Web3.js, Bags.fm SDK |
+| Database | Neon PostgreSQL |
+| State | Zustand + TanStack Query |
+| Styling | Tailwind CSS |
+
+## Community Funding
+
+BagsWorld charges **zero fees** to creators. Ghost ([@DaddyGhost](https://x.com/DaddyGhost)) personally contributes 5% of $BagsWorld revenue to fund:
+
+- Casino prizes and raffles
+- New zones and features
+- Development and maintenance
+
+All contributions verifiable on-chain via [Solscan](https://solscan.io/account/9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC).
 
 ## Deployment
 
 ### Netlify (Recommended)
 
-1. Connect GitHub repository to Netlify
-2. Configure build settings:
-   - Build command: `npm run build`
-   - Publish directory: `.next`
-3. Add environment variables in dashboard
+1. Connect GitHub repo to Netlify
+2. Build command: `npm run build`
+3. Publish directory: `.next`
+4. Add environment variables in dashboard
 
-Neon database auto-configures on Netlify for global token storage.
+Neon database auto-configures via Netlify integration.
 
-## Project Structure
+### ElizaOS Agents
 
-```
-src/
-├── app/
-│   ├── api/           # API routes
-│   │   ├── world-state/
-│   │   ├── character-chat/
-│   │   ├── launch-token/
-│   │   └── ecosystem-stats/
-│   └── page.tsx       # Main page
-├── components/        # React components
-├── game/
-│   └── scenes/        # Phaser scenes
-├── hooks/             # Custom hooks
-└── lib/               # Utilities and types
-```
-
-## API Reference
-
-### Key Endpoints
-
-| Endpoint               | Method | Description                 |
-| ---------------------- | ------ | --------------------------- |
-| `/api/world-state`     | POST   | Get enriched world state    |
-| `/api/character-chat`  | POST   | Chat with AI characters     |
-| `/api/launch-token`    | POST   | Create token launch         |
-| `/api/ecosystem-stats` | GET    | Community fund wallet stats |
-
-## Security
-
-**Key Security Features:**
-
-- Server-side API key protection
-- Client-side wallet signing (keys never leave wallet)
-- Input validation on all endpoints
-- No XSS vulnerabilities (React JSX escaping)
-
-See [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) for the full security audit report.
-
-## Testing
-
-```bash
-# Run tests
-npm test
-
-# Watch mode
-npm run test:watch
-
-# Coverage report
-npm run test:coverage
-```
-
-See [docs/TESTING.md](docs/TESTING.md) for the full testing guide.
+Deploy the `eliza-agents/` folder separately (Railway, Render, or any Node.js host). Set `AGENTS_API_URL` in the main app to point to your deployed agent server.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/new-feature`)
-3. Commit changes (`git commit -am 'Add new feature'`)
-4. Push to branch (`git push origin feature/new-feature`)
-5. Open a Pull Request
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Links
-
-- [Bags.fm](https://bags.fm) - Trading platform
-- [Documentation](docs/) - Project documentation
+MIT License - see [LICENSE](LICENSE)
 
 ---
 
-Built for the Bags.fm ecosystem on Solana
+**Built for the [Bags.fm](https://bags.fm) ecosystem on Solana**

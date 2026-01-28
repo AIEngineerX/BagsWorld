@@ -33,9 +33,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[ClearEvents] Error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to clear events" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Failed to clear events" }, { status: 500 });
   }
 }
