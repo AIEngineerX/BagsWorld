@@ -31,14 +31,15 @@ export async function GET(request: NextRequest) {
       endTime: round.endTime.toISOString(),
       tokenOptions: round.tokenOptions,
       entryCount: round.entryCount,
-      winner: round.status === "settled" && winningToken
-        ? {
-            mint: round.winningTokenMint,
-            symbol: winningToken.symbol,
-            name: winningToken.name,
-            priceChange: round.winningPriceChange,
-          }
-        : null,
+      winner:
+        round.status === "settled" && winningToken
+          ? {
+              mint: round.winningTokenMint,
+              symbol: winningToken.symbol,
+              name: winningToken.name,
+              priceChange: round.winningPriceChange,
+            }
+          : null,
       settlementData: round.settlementData,
       // Include user's prediction if available
       ...(userPrediction && {

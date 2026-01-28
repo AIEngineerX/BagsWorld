@@ -1,10 +1,6 @@
 // Oracle Leaderboard API - Get top predictors
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getOracleLeaderboard,
-  getUserOracleStats,
-  isNeonConfigured,
-} from "@/lib/neon";
+import { getOracleLeaderboard, getUserOracleStats, isNeonConfigured } from "@/lib/neon";
 
 export const dynamic = "force-dynamic";
 

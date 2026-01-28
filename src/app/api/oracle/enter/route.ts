@@ -2,11 +2,7 @@
 // Token-gated: requires 2M $BagsWorld tokens (admins and localhost bypass)
 import { NextRequest, NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
-import {
-  getActiveOracleRound,
-  enterOraclePrediction,
-  isNeonConfigured,
-} from "@/lib/neon";
+import { getActiveOracleRound, enterOraclePrediction, isNeonConfigured } from "@/lib/neon";
 import { isAdmin } from "@/lib/config";
 import {
   getTokenBalance,
@@ -36,11 +32,7 @@ async function checkOracleAccess(wallet: string): Promise<{
   try {
     const connection = new Connection(getRpcUrl(), "confirmed");
     const walletPubkey = new PublicKey(wallet);
-    const balance = await getTokenBalance(
-      connection,
-      walletPubkey,
-      BAGSWORLD_TOKEN_MINT
-    );
+    const balance = await getTokenBalance(connection, walletPubkey, BAGSWORLD_TOKEN_MINT);
 
     return {
       hasAccess: balance >= ORACLE_MIN_BALANCE,
@@ -60,10 +52,7 @@ async function checkOracleAccess(wallet: string): Promise<{
 
 export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
-    return NextResponse.json(
-      { success: false, error: "Oracle not initialized" },
-      { status: 503 }
-    );
+    return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
 
   const body = await request.json();
@@ -115,10 +104,7 @@ export async function POST(request: NextRequest) {
   const result = await enterOraclePrediction(round.id, wallet, tokenMint);
 
   if (!result.success) {
-    return NextResponse.json(
-      { success: false, error: result.error },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: result.error }, { status: 400 });
   }
 
   return NextResponse.json({

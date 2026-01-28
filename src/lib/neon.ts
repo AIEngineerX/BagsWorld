@@ -1879,8 +1879,8 @@ export async function getActiveOracleRound(): Promise<OracleRoundDB | null> {
         : undefined,
       settlementData: row.settlement_data as Record<string, unknown> | undefined,
       entryCount: safeParseInt(row.entry_count as string, 0),
-      prizePoolLamports: BigInt(row.prize_pool_lamports as string || "0"),
-      prizeDistributed: row.prize_distributed as boolean || false,
+      prizePoolLamports: BigInt((row.prize_pool_lamports as string) || "0"),
+      prizeDistributed: (row.prize_distributed as boolean) || false,
       createdAt: new Date(row.created_at as string),
     };
   } catch (error) {
@@ -2025,8 +2025,8 @@ export async function getUserOraclePrediction(
       tokenMint: row.token_mint as string,
       isWinner: row.is_winner as boolean,
       predictionRank: row.prediction_rank as number | undefined,
-      prizeLamports: BigInt(row.prize_lamports as string || "0"),
-      claimed: row.claimed as boolean || false,
+      prizeLamports: BigInt((row.prize_lamports as string) || "0"),
+      claimed: (row.claimed as boolean) || false,
       createdAt: new Date(row.created_at as string),
     };
   } catch (error) {
@@ -2102,7 +2102,7 @@ export async function settleOracleRound(
       return { success: false, error: "Round is not active" };
     }
 
-    const prizePoolLamports = BigInt(roundData.prize_pool_lamports as string || "0");
+    const prizePoolLamports = BigInt((roundData.prize_pool_lamports as string) || "0");
 
     // Get winning predictions ordered by creation time (first-come)
     const winningPredictions = await sql`
@@ -2202,7 +2202,9 @@ async function creditOracleBalance(
       RETURNING balance_lamports
     `;
 
-    const newBalance = BigInt((result as Array<{ balance_lamports: string }>)[0]?.balance_lamports || "0");
+    const newBalance = BigInt(
+      (result as Array<{ balance_lamports: string }>)[0]?.balance_lamports || "0"
+    );
     return { success: true, newBalance };
   } catch (error) {
     console.error("[Oracle] Error crediting balance:", error);
@@ -2288,8 +2290,8 @@ export async function getOracleHistory(
           : undefined,
         settlementData: row.settlement_data as Record<string, unknown> | undefined,
         entryCount: safeParseInt(row.entry_count as string, 0),
-        prizePoolLamports: BigInt(row.prize_pool_lamports as string || "0"),
-        prizeDistributed: row.prize_distributed as boolean || false,
+        prizePoolLamports: BigInt((row.prize_pool_lamports as string) || "0"),
+        prizeDistributed: (row.prize_distributed as boolean) || false,
         createdAt: new Date(row.created_at as string),
       };
 
@@ -2312,9 +2314,7 @@ export async function getOracleHistory(
 }
 
 // Get prediction counts by token for a round
-export async function getOraclePredictionCounts(
-  roundId: number
-): Promise<Record<string, number>> {
+export async function getOraclePredictionCounts(roundId: number): Promise<Record<string, number>> {
   const sql = await getSql();
   if (!sql) return {};
 
@@ -2347,9 +2347,7 @@ export interface OracleLeaderboardEntry {
   lastWin?: Date;
 }
 
-export async function getOracleLeaderboard(
-  limit: number = 10
-): Promise<OracleLeaderboardEntry[]> {
+export async function getOracleLeaderboard(limit: number = 10): Promise<OracleLeaderboardEntry[]> {
   const sql = await getSql();
   if (!sql) return [];
 
@@ -2439,10 +2437,7 @@ export async function getUserOracleStats(
       ) as better_wallets
     `;
 
-    const rank = safeParseInt(
-      (rankResult as Array<{ rank: string }>)[0]?.rank,
-      0
-    );
+    const rank = safeParseInt((rankResult as Array<{ rank: string }>)[0]?.rank, 0);
 
     return { wins, total, rank };
   } catch (error) {
@@ -2456,9 +2451,7 @@ export async function getUserOracleStats(
 // ============================================================================
 
 // Get user's Oracle balance
-export async function getOracleBalance(
-  wallet: string
-): Promise<OracleBalanceDB | null> {
+export async function getOracleBalance(wallet: string): Promise<OracleBalanceDB | null> {
   const sql = await getSql();
   if (!sql) return null;
 
@@ -2472,9 +2465,9 @@ export async function getOracleBalance(
     const row = (result as Array<Record<string, unknown>>)[0];
     return {
       wallet: row.wallet as string,
-      balanceLamports: BigInt(row.balance_lamports as string || "0"),
-      totalEarnedLamports: BigInt(row.total_earned_lamports as string || "0"),
-      totalClaimedLamports: BigInt(row.total_claimed_lamports as string || "0"),
+      balanceLamports: BigInt((row.balance_lamports as string) || "0"),
+      totalEarnedLamports: BigInt((row.total_earned_lamports as string) || "0"),
+      totalClaimedLamports: BigInt((row.total_claimed_lamports as string) || "0"),
       lastClaimAt: row.last_claim_at ? new Date(row.last_claim_at as string) : undefined,
       updatedAt: new Date(row.updated_at as string),
     };
@@ -2549,9 +2542,7 @@ export async function createOracleClaimRequest(
 }
 
 // Get pending claim for a wallet
-export async function getOraclePendingClaim(
-  wallet: string
-): Promise<OracleClaimDB | null> {
+export async function getOraclePendingClaim(wallet: string): Promise<OracleClaimDB | null> {
   const sql = await getSql();
   if (!sql) return null;
 
@@ -2569,7 +2560,7 @@ export async function getOraclePendingClaim(
     return {
       id: row.id as number,
       wallet: row.wallet as string,
-      amountLamports: BigInt(row.amount_lamports as string || "0"),
+      amountLamports: BigInt((row.amount_lamports as string) || "0"),
       txSignature: row.tx_signature as string | undefined,
       status: row.status as "pending" | "processing" | "completed" | "failed",
       createdAt: new Date(row.created_at as string),
@@ -2596,7 +2587,7 @@ export async function getAllPendingOracleClaims(): Promise<OracleClaimDB[]> {
     return (result as Array<Record<string, unknown>>).map((row) => ({
       id: row.id as number,
       wallet: row.wallet as string,
-      amountLamports: BigInt(row.amount_lamports as string || "0"),
+      amountLamports: BigInt((row.amount_lamports as string) || "0"),
       txSignature: row.tx_signature as string | undefined,
       status: row.status as "pending" | "processing" | "completed" | "failed",
       createdAt: new Date(row.created_at as string),
@@ -2743,7 +2734,7 @@ export async function getOracleClaimHistory(
     return (result as Array<Record<string, unknown>>).map((row) => ({
       id: row.id as number,
       wallet: row.wallet as string,
-      amountLamports: BigInt(row.amount_lamports as string || "0"),
+      amountLamports: BigInt((row.amount_lamports as string) || "0"),
       txSignature: row.tx_signature as string | undefined,
       status: row.status as "pending" | "processing" | "completed" | "failed",
       createdAt: new Date(row.created_at as string),
@@ -2774,7 +2765,7 @@ export async function getUserRoundPrize(
 
     const row = (result as Array<Record<string, unknown>>)[0];
     return {
-      prizeLamports: BigInt(row.prize_lamports as string || "0"),
+      prizeLamports: BigInt((row.prize_lamports as string) || "0"),
       rank: row.prediction_rank as number,
     };
   } catch (error) {

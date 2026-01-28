@@ -14,19 +14,13 @@ export const dynamic = "force-dynamic";
 // GET: List all pending claims
 export async function GET(request: NextRequest) {
   if (!isNeonConfigured()) {
-    return NextResponse.json(
-      { success: false, error: "Oracle not initialized" },
-      { status: 503 }
-    );
+    return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
 
   const adminWallet = request.nextUrl.searchParams.get("adminWallet");
 
   if (!adminWallet || !isAdmin(adminWallet)) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 403 }
-    );
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
   }
 
   const pendingClaims = await getAllPendingOracleClaims();
@@ -43,47 +37,32 @@ export async function GET(request: NextRequest) {
       status: claim.status,
       createdAt: claim.createdAt.toISOString(),
     })),
-    totalSol: pendingClaims.reduce(
-      (sum, c) => sum + Number(c.amountLamports) / 1_000_000_000,
-      0
-    ),
+    totalSol: pendingClaims.reduce((sum, c) => sum + Number(c.amountLamports) / 1_000_000_000, 0),
   });
 }
 
 // POST: Process a specific claim
 export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
-    return NextResponse.json(
-      { success: false, error: "Oracle not initialized" },
-      { status: 503 }
-    );
+    return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
 
   const body = await request.json();
   const { adminWallet, claimId, action, txSignature, reason } = body;
 
   if (!adminWallet || !isAdmin(adminWallet)) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 403 }
-    );
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
   }
 
   if (!claimId) {
-    return NextResponse.json(
-      { success: false, error: "Missing claimId" },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: "Missing claimId" }, { status: 400 });
   }
 
   // Mark as processing
   if (action === "processing") {
     const result = await markOracleClaimProcessing(claimId);
     if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }
 
     console.log(`[Oracle Admin] Claim #${claimId} marked as processing by ${adminWallet}`);
@@ -106,10 +85,7 @@ export async function POST(request: NextRequest) {
 
     const result = await completeOracleClaim(claimId, txSignature);
     if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }
 
     console.log(`[Oracle Admin] Claim #${claimId} completed by ${adminWallet}: ${txSignature}`);
@@ -127,10 +103,7 @@ export async function POST(request: NextRequest) {
     const failReason = reason || "Processing failed";
     const result = await failOracleClaim(claimId, failReason);
     if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }
 
     console.log(`[Oracle Admin] Claim #${claimId} failed by ${adminWallet}: ${failReason}`);

@@ -12,10 +12,9 @@ interface DexScreenerPair {
 
 async function getCurrentPrice(mint: string): Promise<number | null> {
   try {
-    const response = await fetch(
-      `https://api.dexscreener.com/latest/dex/tokens/${mint}`,
-      { next: { revalidate: 0 } }
-    );
+    const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, {
+      next: { revalidate: 0 },
+    });
 
     if (!response.ok) return null;
 
@@ -83,9 +82,7 @@ export async function GET() {
   const tokenPrices = await Promise.all(pricePromises);
 
   // Sort by price change (leader first)
-  const sortedPrices = tokenPrices.sort(
-    (a, b) => b.priceChangePercent - a.priceChangePercent
-  );
+  const sortedPrices = tokenPrices.sort((a, b) => b.priceChangePercent - a.priceChangePercent);
 
   // Identify current leader
   const leader = sortedPrices[0];
