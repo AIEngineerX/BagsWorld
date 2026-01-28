@@ -44,7 +44,7 @@ const DEFAULT_CONFIG: BubbleConfig = {
   fadeInDuration: 150, // Faster fade in
   fadeOutDuration: 250, // Faster fade out
   displayDuration: 3500, // Slightly shorter to match dialogue timing
-  yOffset: -60, // Higher above character
+  yOffset: -30, // Additional offset above sprite top (sprite height is calculated separately)
 };
 
 // Character-specific bubble colors - VIBRANT for visibility
@@ -53,11 +53,13 @@ const CHARACTER_COLORS: Record<string, { bg: number; border: number; text: strin
   ghost: { bg: 0x0f0f1f, border: 0xa78bfa, text: "#c4b5fd" }, // Bright purple
   neo: { bg: 0x001a00, border: 0x00ff55, text: "#00ff55" }, // Bright matrix green
   ash: { bg: 0x1f0a0a, border: 0xf87171, text: "#fca5a5" }, // Bright Pokemon red
-  "bags-bot": { bg: 0x1f1a00, border: 0xfbbf24, text: "#fde047" }, // Bright amber
   cj: { bg: 0x1f1000, border: 0xfb923c, text: "#fdba74" }, // Bright Grove Street orange
   toly: { bg: 0x1a0a1f, border: 0xa855f7, text: "#c084fc" }, // Bright purple for Toly
   shaw: { bg: 0x1f1408, border: 0xff5800, text: "#ffb380" }, // ai16z purple for Shaw
 };
+
+// Characters that should NOT show speech bubbles (tooltip-only)
+const SILENT_CHARACTERS = new Set(["bags-bot", "bagsbot"]);
 
 export class SpeechBubbleManager {
   private scene: Phaser.Scene;
@@ -82,6 +84,11 @@ export class SpeechBubbleManager {
   showBubble(line: DialogueLine, characterSpriteId?: string): SpeechBubble | null {
     const { characterId, characterName, message } = line;
 
+    // Skip silent characters (tooltip-only bots)
+    if (SILENT_CHARACTERS.has(characterId.toLowerCase())) {
+      return null;
+    }
+
     // Find the character sprite
     // Special characters have IDs that match their character names
     const spriteId = characterSpriteId || this.findCharacterSpriteId(characterId);
@@ -102,8 +109,14 @@ export class SpeechBubbleManager {
       text: this.config.textColor,
     };
 
+    // Calculate y position based on sprite's actual displayed height
+    // Sprites use default origin (0.5, 0.5) so y is at center
+    // We need to go up by half the displayed height plus offset
+    const spriteHeight = sprite.displayHeight || sprite.height || 50;
+    const bubbleY = sprite.y - (spriteHeight / 2) + this.config.yOffset;
+
     // Create container
-    const container = this.scene.add.container(sprite.x, sprite.y + this.config.yOffset);
+    const container = this.scene.add.container(sprite.x, bubbleY);
     container.setDepth(200); // Above everything
 
     // Create background graphics
@@ -179,7 +192,7 @@ export class SpeechBubbleManager {
     this.scene.tweens.add({
       targets: container,
       alpha: 1,
-      y: sprite.y + this.config.yOffset - 10,
+      y: bubbleY - 10,
       duration: this.config.fadeInDuration,
       ease: "Back.easeOut",
     });
@@ -236,11 +249,17 @@ export class SpeechBubbleManager {
   }
 
   /**
-   * Hide all bubbles
+   * Hide all bubbles immediately (no fade animation to prevent stacking)
    */
   hideAllBubbles(): void {
-    this.bubbles.forEach((_, characterId) => {
-      this.hideBubble(characterId);
+    this.bubbles.forEach((bubble, characterId) => {
+      // Cancel any scheduled fade out
+      if (bubble.fadeOutTimer) {
+        bubble.fadeOutTimer.destroy();
+      }
+      // Immediately destroy without animation
+      bubble.container.destroy();
+      this.bubbles.delete(characterId);
     });
   }
 
@@ -253,10 +272,12 @@ export class SpeechBubbleManager {
       const sprite = spriteId ? this.characterSprites.get(spriteId) : null;
 
       if (sprite && bubble.container.active) {
-        // Smoothly follow character
+        // Calculate y based on sprite's actual displayed height
+        const spriteHeight = sprite.displayHeight || sprite.height || 50;
         const targetX = sprite.x;
-        const targetY = sprite.y + this.config.yOffset - 10;
+        const targetY = sprite.y - (spriteHeight / 2) + this.config.yOffset - 10;
 
+        // Smoothly follow character
         bubble.container.x += (targetX - bubble.container.x) * 0.3;
         bubble.container.y += (targetY - bubble.container.y) * 0.3;
       }
@@ -280,10 +301,6 @@ export class SpeechBubbleManager {
       if (characterId === "toly" && spriteData.isToly) return spriteId;
       if (characterId === "cj" && spriteData.isCJ) return spriteId;
       if (characterId === "shaw" && spriteData.isShaw) return spriteId;
-      if (characterId === "bags-bot") {
-        // Bags bot doesn't have a sprite, use Toly as fallback
-        if (spriteData.isToly) return spriteId;
-      }
 
       // Direct ID match
       if (spriteId === characterId) return spriteId;
@@ -322,7 +339,12 @@ export class SpeechBubbleManager {
 export function getCharacterSpriteKey(characterId: string): {
   flag: string;
   fallback?: string;
-} {
+} | null {
+  // Silent characters don't have speech bubbles
+  if (SILENT_CHARACTERS.has(characterId.toLowerCase())) {
+    return null;
+  }
+
   switch (characterId) {
     case "finn":
       return { flag: "isFinn" };
@@ -336,8 +358,6 @@ export function getCharacterSpriteKey(characterId: string): {
       return { flag: "isCJ" };
     case "shaw":
       return { flag: "isShaw" };
-    case "bags-bot":
-      return { flag: "isToly", fallback: "toly" }; // Use Toly sprite for Bags Bot
     default:
       return { flag: characterId };
   }
