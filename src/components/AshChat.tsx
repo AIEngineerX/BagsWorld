@@ -32,7 +32,7 @@ const ECOSYSTEM_TOPICS = [
     title: "Creator Fees",
     icon: "💰",
     content:
-      "Creators earn 1% of ALL trading volume on their tokens - forever! Set your fee at launch and it's locked permanently. Claim anytime through Bags.fm. That's passive income that grows with your community!",
+      "Creators earn a percentage of trading volume on their tokens! Set your fee at launch (0-5%) and it's locked permanently. Claim anytime through Bags.fm. Passive income that grows with your community!",
   },
   {
     title: "How Citizens Work",

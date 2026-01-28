@@ -42,7 +42,7 @@ export const ashCharacter: CharacterDefinition = {
       {
         user: "Ash",
         content:
-          "creators earn 1% of all trading volume on their token - forever! it's like earning XP every time someone battles. set your fee at launch and it's locked permanently!",
+          "creators earn a percentage of trading volume on their token! it's like earning XP every time someone battles. set your fee at launch (0-5%) and it's locked permanently!",
       },
     ],
     [
@@ -66,7 +66,7 @@ export const ashCharacter: CharacterDefinition = {
       {
         user: "Ash",
         content:
-          "fees are locked forever at launch - no one can change them, not even Professor Oak! plus everything's on-chain so you can verify like checking a Pokedex",
+          "fees are locked at launch - no one can change them, not even Professor Oak! plus everything's on-chain so you can verify like checking a Pokedex",
       },
     ],
   ],
