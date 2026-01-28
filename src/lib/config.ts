@@ -34,20 +34,12 @@ function getAdminWallets(): string[] {
   const adminWalletEnv =
     process.env.ADMIN_WALLETS || process.env.ADMIN_WALLET || process.env.NEXT_PUBLIC_ADMIN_WALLET;
 
-  // Debug logging
-  console.log("[Config] getAdminWallets called");
-  console.log("[Config] ADMIN_WALLETS:", process.env.ADMIN_WALLETS);
-  console.log("[Config] ADMIN_WALLET:", process.env.ADMIN_WALLET);
-  console.log("[Config] NEXT_PUBLIC_ADMIN_WALLET:", process.env.NEXT_PUBLIC_ADMIN_WALLET);
-  console.log("[Config] Combined value:", adminWalletEnv);
-
   if (adminWalletEnv) {
     // Support comma-separated list of admin wallets
     const wallets = adminWalletEnv
       .split(",")
       .map((wallet) => wallet.trim())
       .filter(Boolean);
-    console.log("[Config] Parsed admin wallets:", wallets);
     return wallets;
   }
 
