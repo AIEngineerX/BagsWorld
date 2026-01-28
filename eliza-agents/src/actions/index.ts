@@ -12,6 +12,10 @@ export { getOracleHistoryAction } from './getOracleHistory.js';
 export { getOracleLeaderboardAction } from './getOracleLeaderboard.js';
 export { getOraclePricesAction } from './getOraclePrices.js';
 
+// Finn Actions (Fee Claims & Shilling)
+export { claimFeesReminderAction } from './claimFeesReminderAction.js';
+export { shillTokenAction } from './shillTokenAction.js';
+
 import { lookupTokenAction } from './lookupToken.js';
 import { getCreatorFeesAction } from './getCreatorFees.js';
 import { getTopCreatorsAction } from './getTopCreators.js';
@@ -23,6 +27,8 @@ import { checkPredictionAction } from './checkPrediction.js';
 import { getOracleHistoryAction } from './getOracleHistory.js';
 import { getOracleLeaderboardAction } from './getOracleLeaderboard.js';
 import { getOraclePricesAction } from './getOraclePrices.js';
+import { claimFeesReminderAction } from './claimFeesReminderAction.js';
+import { shillTokenAction } from './shillTokenAction.js';
 
 export const allActions = [
   lookupTokenAction,
@@ -37,6 +43,9 @@ export const allActions = [
   getOracleHistoryAction,
   getOracleLeaderboardAction,
   getOraclePricesAction,
+  // Finn Actions
+  claimFeesReminderAction,
+  shillTokenAction,
 ];
 
 export default allActions;
