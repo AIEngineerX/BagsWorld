@@ -22,13 +22,13 @@ const LAUNCH_GUIDE_TOPICS = [
     title: "Start Launch",
     icon: "S",
     content:
-      "Ready to launch your token on Bags.fm? Here's what you'll need:\n\n1. Token Name (3-32 chars)\n2. Symbol (2-10 chars)\n3. Description (tell your story!)\n4. Logo image (square format)\n5. SOL for initial buy (optional)\n\nClick 'LAUNCH TOKEN NOW' below to begin!",
+      "Ready to launch your token on Bags.fm? Here's what you'll need:\n\n1. Token Name (3-32 chars)\n2. Symbol (up to 10 chars)\n3. Description (tell your story!)\n4. Logo image (square, required)\n5. Fee sharing setup (who gets trading fees)\n\nClick 'LAUNCH TOKEN NOW' below to begin!",
   },
   {
-    title: "Creator Fees",
+    title: "Fee Sharing",
     icon: "F",
     content:
-      "CREATOR FEES - Finn's wonderful invention!\n\nYou earn a % of EVERY trade:\n- Range: 0% to 5%\n- Set at launch, locked permanently\n- Claimed anytime via Bags.fm\n\nThis is passive income that grows with your community!",
+      "FEE SHARING - Who gets the trading fees!\n\nYou assign WHO receives fees from trades:\n- Add Twitter, GitHub, or Kick usernames\n- Percentages MUST total exactly 100%\n- Each person needs wallet linked at bags.fm/settings\n\nExample: You 100%, or You 80% + Friend 20%",
   },
   {
     title: "Initial Buy",
@@ -37,22 +37,22 @@ const LAUNCH_GUIDE_TOPICS = [
       "INITIAL BUY - Your first purchase:\n\n- Optional but helps secure your position\n- Amount is entirely your choice\n- You can always buy more after launch!\n\nTIP: Consider your budget and project goals when deciding!",
   },
   {
-    title: "Token Setup",
-    icon: "T",
+    title: "Wallet Link",
+    icon: "W",
     content:
-      "TOKEN CONFIGURATION:\n\nName: 3-32 characters\nSymbol: 2-10 characters (uppercase)\nSupply: 1M to 1T tokens\nFee: 0-5% (your choice!)\n\nChoose something memorable and easy to search!",
+      "IMPORTANT: WALLET LINKING\n\nFee claimers MUST link their wallet first!\n\n1. Go to bags.fm/settings\n2. Connect your Solana wallet\n3. Link your Twitter/GitHub/Kick\n\nWithout this, you cannot receive fees!",
   },
   {
     title: "Launch Checklist",
     icon: "C",
     content:
-      "PRE-LAUNCH CHECKLIST:\n[ ] Catchy name decided\n[ ] Symbol chosen (easy to remember)\n[ ] Story/description written\n[ ] Logo ready (512x512px square)\n[ ] SOL ready for initial buy\n[ ] Twitter account active\n[ ] Community building plan",
+      "PRE-LAUNCH CHECKLIST:\n[ ] Name and symbol decided\n[ ] Description written\n[ ] Square logo ready\n[ ] Wallet linked at bags.fm/settings\n[ ] Fee sharing planned (must = 100%)\n[ ] SOL for initial buy (optional)",
   },
   {
-    title: "After Launch",
-    icon: "A",
+    title: "NFA",
+    icon: "!",
     content:
-      "POST-LAUNCH SUCCESS:\n\n1. Share on Twitter immediately\n2. Engage with your community\n3. Claim fees regularly\n4. Consider DexScreener listing ($299)\n5. Build utility and partnerships\n\nYour token is now live on Bags.fm!",
+      "NOT FINANCIAL ADVICE\n\nBagsWorld and Professor Oak provide educational guidance only.\n\n- Do your own research (DYOR)\n- Never invest more than you can lose\n- Token launches carry significant risk\n- Past performance ≠ future results\n\nThis is not financial, legal, or investment advice.",
   },
 ];
 
@@ -360,16 +360,16 @@ export function ProfessorOakChat() {
       <div className="p-2 border-t border-amber-600/30 bg-bags-darker">
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-amber-600/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Fee</p>
-            <p className="font-pixel text-[10px] text-amber-400">0-5%</p>
+            <p className="font-pixel text-[7px] text-gray-400">Fee Share</p>
+            <p className="font-pixel text-[10px] text-amber-400">=100%</p>
           </div>
           <div className="bg-amber-600/10 p-1 rounded">
             <p className="font-pixel text-[7px] text-gray-400">Initial Buy</p>
             <p className="font-pixel text-[10px] text-amber-400">Optional</p>
           </div>
-          <div className="bg-amber-600/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Logo</p>
-            <p className="font-pixel text-[10px] text-amber-400">Square</p>
+          <div className="bg-red-600/10 p-1 rounded">
+            <p className="font-pixel text-[7px] text-gray-400">Disclaimer</p>
+            <p className="font-pixel text-[10px] text-red-400">NFA</p>
           </div>
         </div>
         <button
