@@ -12,6 +12,7 @@ export interface ConversationContext {
   tokenData?: string;
   agentContext?: string;
   oracleState?: string;
+  tradingState?: string;
 }
 
 export interface LLMResponse {
@@ -123,6 +124,10 @@ RULES:
 
     if (context?.oracleState) {
       systemPrompt += `\n\nORACLE PREDICTION MARKET:\n${context.oracleState}`;
+    }
+
+    if (context?.tradingState) {
+      systemPrompt += `\n\nYOUR TRADING DATA (use this to answer questions about your positions, performance, and strategy):\n${context.tradingState}`;
     }
 
     return systemPrompt;

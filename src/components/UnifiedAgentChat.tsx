@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAgentChat, getAgentInfo, type ChatMessage } from "@/hooks/useAgentChat";
+import { GhostTradingMini } from "./GhostTradingMini";
 
 interface Position {
   x: number;
@@ -171,6 +172,9 @@ export function UnifiedAgentChat({
           </button>
         </div>
       </div>
+
+      {/* Ghost Trading Widget */}
+      {agentId === "ghost" && <GhostTradingMini />}
 
       {/* Topics */}
       {topics.length > 0 && (
