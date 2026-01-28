@@ -94,10 +94,7 @@ export function AgentList({ onSelectAgent, selectedAgentId }: AgentListProps) {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[...Array(16)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-bags-darker p-2 border border-gray-700 animate-pulse"
-            >
+            <div key={i} className="bg-bags-darker p-2 border border-gray-700 animate-pulse">
               <div className="h-4 bg-gray-700 rounded mb-2" />
               <div className="h-3 bg-gray-700 rounded w-1/2" />
             </div>
@@ -110,9 +107,7 @@ export function AgentList({ onSelectAgent, selectedAgentId }: AgentListProps) {
   if (error) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 p-3">
-        <p className="font-pixel text-[9px] text-red-400">
-          Failed to load agent statuses
-        </p>
+        <p className="font-pixel text-[9px] text-red-400">Failed to load agent statuses</p>
         <p className="font-pixel text-[8px] text-gray-500 mt-1">
           {error instanceof Error ? error.message : "Connection error"}
         </p>
@@ -144,8 +139,7 @@ export function AgentList({ onSelectAgent, selectedAgentId }: AgentListProps) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {agents.map((agent) => {
-          const displayName =
-            AGENT_NAMES[agent.agentId] || agent.agentId;
+          const displayName = AGENT_NAMES[agent.agentId] || agent.agentId;
           const zone = AGENT_ZONES[agent.agentId] || "Unknown";
           const isSelected = selectedAgentId === agent.agentId;
 
@@ -160,20 +154,12 @@ export function AgentList({ onSelectAgent, selectedAgentId }: AgentListProps) {
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <span
-                  className={`w-2 h-2 rounded-full ${getStatusColor(agent.status)}`}
-                />
-                <span className="font-pixel text-[10px] text-white truncate">
-                  {displayName}
-                </span>
+                <span className={`w-2 h-2 rounded-full ${getStatusColor(agent.status)}`} />
+                <span className="font-pixel text-[10px] text-white truncate">{displayName}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="font-pixel text-[7px] text-gray-500">
-                  {zone}
-                </span>
-                <span
-                  className={`font-pixel text-[7px] ${getStatusText(agent.status)}`}
-                >
+                <span className="font-pixel text-[7px] text-gray-500">{zone}</span>
+                <span className={`font-pixel text-[7px] ${getStatusText(agent.status)}`}>
                   {agent.status.toUpperCase()}
                 </span>
               </div>
@@ -192,9 +178,7 @@ export function AgentList({ onSelectAgent, selectedAgentId }: AgentListProps) {
 
       {agents.length === 0 && (
         <div className="text-center py-4">
-          <p className="font-pixel text-[9px] text-gray-500">
-            No agents registered
-          </p>
+          <p className="font-pixel text-[9px] text-gray-500">No agents registered</p>
           <p className="font-pixel text-[8px] text-gray-600 mt-1">
             Make sure eliza-agents server is running
           </p>

@@ -1,8 +1,7 @@
 // Eliza Agents API Client
 // Provides typed access to the eliza-agents backend at :3001
 
-const ELIZA_API_BASE =
-  process.env.NEXT_PUBLIC_ELIZA_API_URL || "http://localhost:3001";
+const ELIZA_API_BASE = process.env.NEXT_PUBLIC_ELIZA_API_URL || "http://localhost:3001";
 
 // ============================================================================
 // Types
@@ -77,15 +76,7 @@ export interface ScheduledTask {
 
 export interface AutonomousAlert {
   id: string;
-  type:
-    | "launch"
-    | "rug"
-    | "pump"
-    | "dump"
-    | "milestone"
-    | "anomaly"
-    | "fee_reminder"
-    | "trade";
+  type: "launch" | "rug" | "pump" | "dump" | "milestone" | "anomaly" | "fee_reminder" | "trade";
   severity: "info" | "warning" | "critical";
   title: string;
   message: string;
@@ -164,10 +155,7 @@ export class ElizaApiClient {
     this.baseUrl = baseUrl;
   }
 
-  private async fetch<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async fetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const response = await fetch(url, {
       ...options,
@@ -179,9 +167,7 @@ export class ElizaApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error || `API error: ${response.status} ${response.statusText}`
-      );
+      throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`);
     }
 
     return response.json();
@@ -297,9 +283,7 @@ export class ElizaApiClient {
     });
   }
 
-  async updateGhostConfig(
-    updates: Partial<GhostConfig>
-  ): Promise<{
+  async updateGhostConfig(updates: Partial<GhostConfig>): Promise<{
     success: boolean;
     message: string;
     updates: Record<string, number>;
@@ -365,17 +349,13 @@ export class ElizaApiClient {
     return this.fetch(`/api/autonomous/alerts${query ? `?${query}` : ""}`);
   }
 
-  async acknowledgeAlert(
-    alertId: string
-  ): Promise<{ success: boolean; message: string }> {
+  async acknowledgeAlert(alertId: string): Promise<{ success: boolean; message: string }> {
     return this.fetch(`/api/autonomous/alerts/${alertId}/acknowledge`, {
       method: "POST",
     });
   }
 
-  async triggerTask(
-    taskName: string
-  ): Promise<{
+  async triggerTask(taskName: string): Promise<{
     success: boolean;
     message: string;
     error?: string;
@@ -472,18 +452,5 @@ export class ElizaApiClient {
   }
 }
 
-// ============================================================================
-// Singleton Instance
-// ============================================================================
-
-let elizaApiInstance: ElizaApiClient | null = null;
-
-export function getElizaApi(): ElizaApiClient {
-  if (!elizaApiInstance) {
-    elizaApiInstance = new ElizaApiClient();
-  }
-  return elizaApiInstance;
-}
-
-// Export default instance for convenience
-export const elizaApi = getElizaApi();
+// Singleton instance
+export const elizaApi = new ElizaApiClient();

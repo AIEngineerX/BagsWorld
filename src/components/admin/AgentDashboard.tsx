@@ -47,26 +47,20 @@ export function AgentDashboard({ addLog }: AgentDashboardProps) {
       {!healthLoading && (
         <div
           className={`p-2 border ${
-            isConnected
-              ? "bg-green-500/10 border-green-500/30"
-              : "bg-red-500/10 border-red-500/30"
+            isConnected ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30"
           }`}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  isConnected ? "bg-green-400" : "bg-red-400"
-                }`}
+                className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-400" : "bg-red-400"}`}
               />
               <span
                 className={`font-pixel text-[9px] ${
                   isConnected ? "text-green-400" : "text-red-400"
                 }`}
               >
-                {isConnected
-                  ? "Connected to eliza-agents"
-                  : "Cannot connect to eliza-agents"}
+                {isConnected ? "Connected to eliza-agents" : "Cannot connect to eliza-agents"}
               </span>
             </div>
             {isConnected && health?.agents && (
@@ -75,9 +69,7 @@ export function AgentDashboard({ addLog }: AgentDashboardProps) {
               </span>
             )}
             {!isConnected && connectionError && (
-              <span className="font-pixel text-[7px] text-gray-500">
-                {connectionError}
-              </span>
+              <span className="font-pixel text-[7px] text-gray-500">{connectionError}</span>
             )}
           </div>
           {!isConnected && (
@@ -112,10 +104,7 @@ export function AgentDashboard({ addLog }: AgentDashboardProps) {
       {/* Content */}
       <div className="min-h-[400px]">
         {activeSubTab === "agents" && (
-          <AgentList
-            onSelectAgent={setSelectedAgentId}
-            selectedAgentId={selectedAgentId}
-          />
+          <AgentList onSelectAgent={setSelectedAgentId} selectedAgentId={selectedAgentId} />
         )}
 
         {activeSubTab === "trading" && <GhostTradingPanel addLog={logMessage} />}

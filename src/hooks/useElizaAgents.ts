@@ -31,12 +31,10 @@ export const elizaKeys = {
   ghostPositions: () => [...elizaKeys.ghost(), "positions"] as const,
   ghostOpenPositions: () => [...elizaKeys.ghost(), "openPositions"] as const,
   tasks: () => [...elizaKeys.all, "tasks"] as const,
-  alerts: (filters?: AlertFilters) =>
-    [...elizaKeys.all, "alerts", filters] as const,
+  alerts: (filters?: AlertFilters) => [...elizaKeys.all, "alerts", filters] as const,
   twitter: () => [...elizaKeys.all, "twitter"] as const,
   twitterStatus: () => [...elizaKeys.twitter(), "status"] as const,
-  twitterHistory: (limit?: number) =>
-    [...elizaKeys.twitter(), "history", limit] as const,
+  twitterHistory: (limit?: number) => [...elizaKeys.twitter(), "history", limit] as const,
 };
 
 // ============================================================================
@@ -60,10 +58,7 @@ export function useElizaHealth() {
 export function useAgentStatuses() {
   return useQuery({
     queryKey: elizaKeys.agentStatuses(),
-    queryFn: async () => {
-      const result = await elizaApi.getAgentStatuses();
-      return result;
-    },
+    queryFn: () => elizaApi.getAgentStatuses(),
     refetchInterval: 10000,
     staleTime: 8000,
     retry: 1,
@@ -73,10 +68,7 @@ export function useAgentStatuses() {
 export function useSharedContext() {
   return useQuery({
     queryKey: elizaKeys.sharedContext(),
-    queryFn: async () => {
-      const result = await elizaApi.getSharedContext();
-      return result;
-    },
+    queryFn: () => elizaApi.getSharedContext(),
     refetchInterval: 30000,
     staleTime: 25000,
     retry: 1,
@@ -111,14 +103,8 @@ export function useBroadcastMessage() {
 export function useGhostStatus() {
   return useQuery({
     queryKey: elizaKeys.ghostStatus(),
-    queryFn: async () => {
-      const result = await elizaApi.getGhostStatus();
-      return result;
-    },
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      return data?.trading?.enabled ? 5000 : 30000;
-    },
+    queryFn: () => elizaApi.getGhostStatus(),
+    refetchInterval: (query) => (query.state.data?.trading?.enabled ? 5000 : 30000),
     staleTime: 4000,
     retry: 1,
   });
@@ -127,10 +113,7 @@ export function useGhostStatus() {
 export function useGhostPositions() {
   return useQuery({
     queryKey: elizaKeys.ghostPositions(),
-    queryFn: async () => {
-      const result = await elizaApi.getGhostPositions();
-      return result;
-    },
+    queryFn: () => elizaApi.getGhostPositions(),
     refetchInterval: 15000,
     staleTime: 10000,
     retry: 1,
@@ -139,13 +122,9 @@ export function useGhostPositions() {
 
 export function useGhostOpenPositions() {
   const ghostStatus = useGhostStatus();
-
   return useQuery({
     queryKey: elizaKeys.ghostOpenPositions(),
-    queryFn: async () => {
-      const result = await elizaApi.getGhostOpenPositions();
-      return result;
-    },
+    queryFn: () => elizaApi.getGhostOpenPositions(),
     refetchInterval: ghostStatus.data?.trading?.enabled ? 10000 : 60000,
     staleTime: 8000,
     retry: 1,
@@ -157,8 +136,7 @@ export function useEnableGhostTrading() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (confirmPhrase: string) =>
-      elizaApi.enableGhostTrading(confirmPhrase),
+    mutationFn: (confirmPhrase: string) => elizaApi.enableGhostTrading(confirmPhrase),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: elizaKeys.ghostStatus() });
       const previous = queryClient.getQueryData(elizaKeys.ghostStatus());
@@ -202,8 +180,7 @@ export function useUpdateGhostConfig() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (updates: Partial<GhostConfig>) =>
-      elizaApi.updateGhostConfig(updates),
+    mutationFn: (updates: Partial<GhostConfig>) => elizaApi.updateGhostConfig(updates),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: elizaKeys.ghostStatus() });
     },
@@ -239,10 +216,7 @@ export function useTriggerGhostCheckPositions() {
 export function useAutonomousTasks() {
   return useQuery({
     queryKey: elizaKeys.tasks(),
-    queryFn: async () => {
-      const result = await elizaApi.getTaskStatus();
-      return result;
-    },
+    queryFn: () => elizaApi.getTaskStatus(),
     refetchInterval: 30000,
     staleTime: 25000,
     retry: 1,
@@ -252,10 +226,7 @@ export function useAutonomousTasks() {
 export function useAlerts(filters?: AlertFilters) {
   return useQuery({
     queryKey: elizaKeys.alerts(filters),
-    queryFn: async () => {
-      const result = await elizaApi.getAlerts(filters);
-      return result;
-    },
+    queryFn: () => elizaApi.getAlerts(filters),
     refetchInterval: 15000,
     staleTime: 10000,
     retry: 1,
@@ -323,10 +294,7 @@ export function useTriggerTask() {
 export function useTwitterStatus() {
   return useQuery({
     queryKey: elizaKeys.twitterStatus(),
-    queryFn: async () => {
-      const result = await elizaApi.getTwitterStatus();
-      return result;
-    },
+    queryFn: () => elizaApi.getTwitterStatus(),
     refetchInterval: 60000,
     staleTime: 55000,
     retry: 1,
@@ -336,10 +304,7 @@ export function useTwitterStatus() {
 export function useTwitterHistory(limit = 10) {
   return useQuery({
     queryKey: elizaKeys.twitterHistory(limit),
-    queryFn: async () => {
-      const result = await elizaApi.getTwitterHistory(limit);
-      return result;
-    },
+    queryFn: () => elizaApi.getTwitterHistory(limit),
     refetchInterval: 60000,
     staleTime: 55000,
     retry: 1,
@@ -382,11 +347,8 @@ export function useGenerateShillContent() {
 export function useAgents() {
   return useQuery({
     queryKey: elizaKeys.agents(),
-    queryFn: async () => {
-      const result = await elizaApi.getAgents();
-      return result;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes - agents don't change often
+    queryFn: () => elizaApi.getAgents(),
+    staleTime: 300000, // 5 minutes - agents don't change often
     retry: 1,
   });
 }

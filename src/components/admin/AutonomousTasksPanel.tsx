@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useAutonomousTasks,
-  useTriggerTask,
-  type ScheduledTask,
-} from "@/hooks/useElizaAgents";
+import { useAutonomousTasks, useTriggerTask, type ScheduledTask } from "@/hooks/useElizaAgents";
 
 // Agent display names
 const AGENT_NAMES: Record<string, string> = {
@@ -86,9 +82,7 @@ export function AutonomousTasksPanel({ addLog }: AutonomousTasksPanelProps) {
   if (error) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 p-3">
-        <p className="font-pixel text-[9px] text-red-400">
-          Failed to load autonomous tasks
-        </p>
+        <p className="font-pixel text-[9px] text-red-400">Failed to load autonomous tasks</p>
         <p className="font-pixel text-[8px] text-gray-500 mt-1">
           {error instanceof Error ? error.message : "Connection error"}
         </p>
@@ -105,12 +99,15 @@ export function AutonomousTasksPanel({ addLog }: AutonomousTasksPanelProps) {
   const tasks = data?.tasks || [];
 
   // Group tasks by agent
-  const tasksByAgent = tasks.reduce((acc, task) => {
-    const agent = task.agentId;
-    if (!acc[agent]) acc[agent] = [];
-    acc[agent].push(task);
-    return acc;
-  }, {} as Record<string, ScheduledTask[]>);
+  const tasksByAgent = tasks.reduce(
+    (acc, task) => {
+      const agent = task.agentId;
+      if (!acc[agent]) acc[agent] = [];
+      acc[agent].push(task);
+      return acc;
+    },
+    {} as Record<string, ScheduledTask[]>
+  );
 
   return (
     <div className="space-y-4">
@@ -192,13 +189,13 @@ function TaskCard({
   const isOverdue = task.nextRun < Date.now();
 
   return (
-    <div className={`bg-black/30 p-2 border ${task.enabled ? "border-gray-600" : "border-red-500/30"}`}>
+    <div
+      className={`bg-black/30 p-2 border ${task.enabled ? "border-gray-600" : "border-red-500/30"}`}
+    >
       <div className="flex justify-between items-start">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-pixel text-[9px] text-white">
-              {task.name.replace(/_/g, " ")}
-            </p>
+            <p className="font-pixel text-[9px] text-white">{task.name.replace(/_/g, " ")}</p>
             {!task.enabled && (
               <span className="font-pixel text-[6px] text-red-400 bg-red-500/20 px-1">
                 DISABLED
@@ -206,9 +203,7 @@ function TaskCard({
             )}
           </div>
           {description && (
-            <p className="font-pixel text-[7px] text-gray-500 mt-0.5 truncate">
-              {description}
-            </p>
+            <p className="font-pixel text-[7px] text-gray-500 mt-0.5 truncate">{description}</p>
           )}
           <div className="flex gap-3 mt-1 text-[7px]">
             <span className="text-gray-500">
@@ -218,7 +213,8 @@ function TaskCard({
               Last: <span className="text-white">{formatLastRun(task.lastRun)}</span>
             </span>
             <span className={isOverdue ? "text-yellow-400" : "text-gray-500"}>
-              Next: <span className={isOverdue ? "text-yellow-400" : "text-white"}>
+              Next:{" "}
+              <span className={isOverdue ? "text-yellow-400" : "text-white"}>
                 {formatTimeUntil(task.nextRun)}
               </span>
             </span>

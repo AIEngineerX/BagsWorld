@@ -134,9 +134,7 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
   if (statusError) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 p-3">
-        <p className="font-pixel text-[9px] text-red-400">
-          Failed to load Ghost trading status
-        </p>
+        <p className="font-pixel text-[9px] text-red-400">Failed to load Ghost trading status</p>
         <p className="font-pixel text-[8px] text-gray-500 mt-1">
           {statusError instanceof Error ? statusError.message : "Connection error"}
         </p>
@@ -152,10 +150,14 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
   return (
     <div className="space-y-4">
       {/* Trading Status */}
-      <div className={`p-3 border ${isEnabled ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30"}`}>
+      <div
+        className={`p-3 border ${isEnabled ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30"}`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className={`w-3 h-3 rounded-full ${isEnabled ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
+            <span
+              className={`w-3 h-3 rounded-full ${isEnabled ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
+            />
             <div>
               <p className={`font-pixel text-sm ${isEnabled ? "text-green-400" : "text-red-400"}`}>
                 TRADING {isEnabled ? "ENABLED" : "DISABLED"}
@@ -205,9 +207,7 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
         </div>
         <div className="bg-bags-darker p-2 border border-gray-700">
           <p className="font-pixel text-[7px] text-gray-500">Win Rate</p>
-          <p className="font-pixel text-lg text-white">
-            {performance?.winRate || "0%"}
-          </p>
+          <p className="font-pixel text-lg text-white">{performance?.winRate || "0%"}</p>
         </div>
         <div className="bg-bags-darker p-2 border border-gray-700">
           <p className="font-pixel text-[7px] text-gray-500">Total P&L</p>
@@ -223,21 +223,15 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
         <div className="grid grid-cols-3 gap-3">
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Total Trades</p>
-            <p className="font-pixel text-sm text-white">
-              {performance?.totalTrades || 0}
-            </p>
+            <p className="font-pixel text-sm text-white">{performance?.totalTrades || 0}</p>
           </div>
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Winning</p>
-            <p className="font-pixel text-sm text-green-400">
-              {performance?.winningTrades || 0}
-            </p>
+            <p className="font-pixel text-sm text-green-400">{performance?.winningTrades || 0}</p>
           </div>
           <div>
             <p className="font-pixel text-[7px] text-gray-500">Losing</p>
-            <p className="font-pixel text-sm text-red-400">
-              {performance?.losingTrades || 0}
-            </p>
+            <p className="font-pixel text-sm text-red-400">{performance?.losingTrades || 0}</p>
           </div>
         </div>
       </div>
@@ -397,9 +391,7 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
       {showEnableModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80">
           <div className="bg-bags-dark border-4 border-yellow-500 p-6 max-w-md w-full mx-4 shadow-2xl">
-            <h3 className="font-pixel text-sm text-yellow-400 mb-4">
-              ENABLE GHOST TRADING
-            </h3>
+            <h3 className="font-pixel text-sm text-yellow-400 mb-4">ENABLE GHOST TRADING</h3>
 
             <div className="bg-red-500/20 border border-red-500/50 p-3 mb-4">
               <p className="font-pixel text-[9px] text-red-400 mb-2">WARNING</p>
@@ -454,38 +446,31 @@ function PositionCard({ position }: { position: GhostPosition }) {
   const isOpen = position.status === "open";
   const isFailed = position.status === "failed";
 
-  const statusColor = isOpen
-    ? "text-yellow-400"
-    : isFailed
-    ? "text-red-400"
-    : "text-gray-400";
+  const statusColor = isOpen ? "text-yellow-400" : isFailed ? "text-red-400" : "text-gray-400";
 
   const pnlColor = position.pnlSol
     ? position.pnlSol > 0
       ? "text-green-400"
       : position.pnlSol < 0
-      ? "text-red-400"
-      : "text-gray-400"
+        ? "text-red-400"
+        : "text-gray-400"
     : "text-gray-400";
 
   return (
-    <div className={`bg-black/30 p-2 border ${isOpen ? "border-yellow-500/30" : "border-gray-700"}`}>
+    <div
+      className={`bg-black/30 p-2 border ${isOpen ? "border-yellow-500/30" : "border-gray-700"}`}
+    >
       <div className="flex justify-between items-start">
         <div>
-          <p className="font-pixel text-[10px] text-bags-gold">
-            ${position.tokenSymbol}
-          </p>
-          <p className="font-pixel text-[7px] text-gray-500">
-            {position.tokenName}
-          </p>
+          <p className="font-pixel text-[10px] text-bags-gold">${position.tokenSymbol}</p>
+          <p className="font-pixel text-[7px] text-gray-500">{position.tokenName}</p>
         </div>
         <div className="text-right">
-          <p className={`font-pixel text-[8px] ${statusColor}`}>
-            {position.status.toUpperCase()}
-          </p>
+          <p className={`font-pixel text-[8px] ${statusColor}`}>{position.status.toUpperCase()}</p>
           {position.pnlSol !== undefined && position.pnlSol !== null && (
             <p className={`font-pixel text-[9px] ${pnlColor}`}>
-              {position.pnlSol > 0 ? "+" : ""}{position.pnlSol.toFixed(4)} SOL
+              {position.pnlSol > 0 ? "+" : ""}
+              {position.pnlSol.toFixed(4)} SOL
             </p>
           )}
         </div>
@@ -500,13 +485,9 @@ function PositionCard({ position }: { position: GhostPosition }) {
           <span className="text-white">{position.amountTokens.toLocaleString()}</span>
         </div>
       </div>
-      <p className="font-pixel text-[6px] text-gray-600 mt-1 truncate">
-        {position.entryReason}
-      </p>
+      <p className="font-pixel text-[6px] text-gray-600 mt-1 truncate">{position.entryReason}</p>
       {position.exitReason && (
-        <p className="font-pixel text-[6px] text-gray-500 truncate">
-          Exit: {position.exitReason}
-        </p>
+        <p className="font-pixel text-[6px] text-gray-500 truncate">Exit: {position.exitReason}</p>
       )}
     </div>
   );
