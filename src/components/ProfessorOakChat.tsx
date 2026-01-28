@@ -17,42 +17,42 @@ interface Position {
   y: number;
 }
 
-const DEXSCREENER_TOPICS = [
+const LAUNCH_GUIDE_TOPICS = [
   {
-    title: "Getting Started",
+    title: "Start Launch",
     icon: "S",
     content:
-      "DexScreener Enhanced Token Info costs $299. You'll need: a square logo (512x512px), a 3:1 banner (600x200px), website URL, and Twitter handle. Processing usually takes minutes!",
+      "Ready to launch your token on Bags.fm? Here's what you'll need:\n\n1. Token Name (3-32 chars)\n2. Symbol (2-10 chars)\n3. Description (tell your story!)\n4. Logo image (square, 512x512 recommended)\n5. SOL for initial buy (0.5-1 SOL recommended)\n\nSay 'launch' to begin the wizard!",
   },
   {
-    title: "Logo Requirements",
-    icon: "L",
+    title: "Creator Fees",
+    icon: "F",
     content:
-      "TOKEN LOGO:\n- Format: PNG, JPG, WEBP, or GIF\n- Ratio: 1:1 (SQUARE)\n- Recommended: 512x512px or 1024x1024px\n- Minimum: 100px width",
+      "CREATOR FEES - Finn's wonderful invention!\n\nYou earn a % of EVERY trade, forever:\n- Range: 0% to 5%\n- Recommended: 1%\n- Claimed anytime via Bags.fm\n\nThis is passive income that grows with your community!",
   },
   {
-    title: "Banner Requirements",
+    title: "Initial Buy",
     icon: "B",
     content:
-      "TOKEN HEADER/BANNER:\n- Format: PNG, JPG, WEBP, or GIF\n- Ratio: 3:1 (wide rectangle)\n- Recommended: 600x200px or 1500x500px\n- Minimum: 600px width",
+      "INITIAL BUY - Your first purchase:\n\n- Secures your position before snipers\n- Recommended: 0.5-1 SOL\n- Maximum: 10 SOL\n- You can buy more after launch too!\n\nTIP: Buy enough to show commitment but leave room for community!",
   },
   {
-    title: "Social Links",
-    icon: "X",
+    title: "Token Setup",
+    icon: "T",
     content:
-      "REQUIRED:\n- Website URL\n- Twitter/X handle\n\nOPTIONAL (recommended):\n- Telegram group\n- Discord server\n\nTIP: Active socials = more trust!",
+      "TOKEN CONFIGURATION:\n\nName: 3-32 characters\nSymbol: 2-10 characters (uppercase)\nSupply: 1M to 1T tokens\nFee: 0-5% (1% recommended)\n\nChoose something memorable and easy to search!",
   },
   {
     title: "Launch Checklist",
     icon: "C",
     content:
-      "PRE-LAUNCH CHECKLIST:\n[ ] Logo ready (512x512px, square)\n[ ] Banner ready (600x200px, 3:1)\n[ ] Website live\n[ ] Twitter active\n[ ] Description written\n[ ] $299 payment ready",
+      "PRE-LAUNCH CHECKLIST:\n[ ] Catchy name decided\n[ ] Symbol chosen (easy to remember)\n[ ] Story/description written\n[ ] Logo ready (512x512px square)\n[ ] SOL ready for initial buy\n[ ] Twitter account active\n[ ] Community building plan",
   },
   {
-    title: "Payment Info",
-    icon: "$",
+    title: "After Launch",
+    icon: "A",
     content:
-      "PAYMENT OPTIONS:\n- Crypto (various tokens)\n- Credit card\n\nCost: $299 USD\nProcessing: Minutes to 12 hours\n\nMake sure all assets are ready BEFORE payment!",
+      "POST-LAUNCH SUCCESS:\n\n1. Share on Twitter immediately\n2. Engage with your community\n3. Claim fees regularly\n4. Consider DexScreener listing ($299)\n5. Build utility and partnerships\n\nYour token is now live on Bags.fm!",
   },
 ];
 
@@ -77,7 +77,7 @@ export function ProfessorOakChat() {
           id: `${Date.now()}-oak`,
           type: "oak",
           message:
-            "Welcome to Founder's Corner! I'm Professor Oak, and I'm here to help you prepare your token for DexScreener. What would you like to learn about?",
+            "Ah, a new trainer ready to launch their first token! Welcome to Founder's Corner! I'm Professor Oak, and I'll guide you through launching on Bags.fm. What would you like to learn about?",
           timestamp: Date.now(),
         });
       }
@@ -142,7 +142,7 @@ export function ProfessorOakChat() {
     setMessages((prev) => [...prev.slice(-30), message]);
   };
 
-  const handleTopicClick = (topic: (typeof DEXSCREENER_TOPICS)[0]) => {
+  const handleTopicClick = (topic: (typeof LAUNCH_GUIDE_TOPICS)[0]) => {
     addMessage({
       id: `${Date.now()}-info`,
       type: "info",
@@ -178,7 +178,7 @@ export function ProfessorOakChat() {
       const messageText =
         data.response ||
         data.message ||
-        "Great question! Ask me about logo sizes, banner dimensions, or the launch checklist!";
+        "Wonderful question! Ask me about launching tokens, creator fees, or the launch checklist!";
 
       addMessage({
         id: `${Date.now()}-oak`,
@@ -269,9 +269,9 @@ export function ProfessorOakChat() {
 
       {/* Topic Buttons */}
       <div className="p-2 border-b border-amber-600/30 bg-bags-darker">
-        <p className="font-pixel text-[8px] text-gray-400 mb-2">DexScreener Launch Guide:</p>
+        <p className="font-pixel text-[8px] text-gray-400 mb-2">Bags.fm Token Launch Guide:</p>
         <div className="flex flex-wrap gap-1">
-          {DEXSCREENER_TOPICS.map((topic, i) => (
+          {LAUNCH_GUIDE_TOPICS.map((topic, i) => (
             <button
               key={i}
               onClick={() => handleTopicClick(topic)}
@@ -287,9 +287,9 @@ export function ProfessorOakChat() {
       <div className="h-36 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-4">
-            <p className="font-pixel text-[10px] text-amber-400 mb-1">🎓 Welcome, Creator!</p>
+            <p className="font-pixel text-[10px] text-amber-400 mb-1">🎓 Welcome, Trainer!</p>
             <p className="font-pixel text-[8px] text-gray-400">
-              I&apos;m Professor Oak! Let me help you prepare for DexScreener.
+              I&apos;m Professor Oak! Let me guide you through launching on Bags.fm.
             </p>
             <p className="font-pixel text-[7px] text-gray-500 mt-2">
               Click a topic or ask a question below
@@ -342,7 +342,7 @@ export function ProfessorOakChat() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about DexScreener..."
+            placeholder="Ask about launching tokens..."
             disabled={isLoading}
             className="flex-1 bg-bags-darker border border-amber-600/30 px-2 py-1 font-pixel text-[8px] text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 disabled:opacity-50"
           />
@@ -360,26 +360,24 @@ export function ProfessorOakChat() {
       <div className="p-2 border-t border-amber-600/30 bg-bags-darker">
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-amber-600/10 p-1 rounded">
+            <p className="font-pixel text-[7px] text-gray-400">Fee</p>
+            <p className="font-pixel text-[10px] text-amber-400">1%</p>
+          </div>
+          <div className="bg-amber-600/10 p-1 rounded">
+            <p className="font-pixel text-[7px] text-gray-400">Initial Buy</p>
+            <p className="font-pixel text-[10px] text-amber-400">0.5-1 SOL</p>
+          </div>
+          <div className="bg-amber-600/10 p-1 rounded">
             <p className="font-pixel text-[7px] text-gray-400">Logo</p>
             <p className="font-pixel text-[10px] text-amber-400">512x512</p>
           </div>
-          <div className="bg-amber-600/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Banner</p>
-            <p className="font-pixel text-[10px] text-amber-400">600x200</p>
-          </div>
-          <div className="bg-amber-600/10 p-1 rounded">
-            <p className="font-pixel text-[7px] text-gray-400">Cost</p>
-            <p className="font-pixel text-[10px] text-amber-400">$299</p>
-          </div>
         </div>
-        <a
-          href="https://marketplace.dexscreener.com/product/token-info"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 mt-1"
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("bagsworld-launch-click"))}
+          className="w-full mt-2 py-1.5 bg-bags-green/20 border border-bags-green/50 font-pixel text-[9px] text-bags-green hover:bg-bags-green/30 transition-colors"
         >
-          Visit DexScreener Marketplace
-        </a>
+          [LAUNCH TOKEN NOW]
+        </button>
       </div>
     </div>
   );
