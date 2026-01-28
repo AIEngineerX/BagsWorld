@@ -127,6 +127,25 @@ export const ECOSYSTEM_CONFIG = {
   },
 
   // -------------------------------------------------------------------------
+  // ORACLE TOKEN GATE (Higher requirement than Casino)
+  // -------------------------------------------------------------------------
+  // Hold $BagsWorld tokens to enter Oracle predictions with prize pools
+  oracle: {
+    gateToken: {
+      mint: "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
+      symbol: "$BagsWorld",
+      minBalance: 2_000_000, // 2M tokens required (2x Casino requirement)
+      buyUrl: "https://bags.fm/9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS",
+    },
+    // Prize pool configuration
+    prizePool: {
+      minSol: 0.1, // Minimum prize pool per round
+      maxSol: 1.0, // Maximum prize pool per round
+      minClaimSol: 0.001, // Minimum claimable amount
+    },
+  },
+
+  // -------------------------------------------------------------------------
   // ADMIN CONFIGURATION
   // -------------------------------------------------------------------------
   // Admin wallets must be explicitly configured via ADMIN_WALLETS env var in production.

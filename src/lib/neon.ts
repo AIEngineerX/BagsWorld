@@ -1692,6 +1692,8 @@ export interface OracleRoundDB {
   winningPriceChange?: number;
   settlementData?: Record<string, unknown>;
   entryCount: number;
+  prizePoolLamports: bigint;
+  prizeDistributed: boolean;
   createdAt: Date;
 }
 
@@ -1701,7 +1703,36 @@ export interface OraclePredictionDB {
   wallet: string;
   tokenMint: string;
   isWinner: boolean;
+  predictionRank?: number;
+  prizeLamports: bigint;
+  claimed: boolean;
   createdAt: Date;
+}
+
+export interface OracleBalanceDB {
+  wallet: string;
+  balanceLamports: bigint;
+  totalEarnedLamports: bigint;
+  totalClaimedLamports: bigint;
+  lastClaimAt?: Date;
+  updatedAt: Date;
+}
+
+export interface OracleClaimDB {
+  id: number;
+  wallet: string;
+  amountLamports: bigint;
+  txSignature?: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  createdAt: Date;
+  completedAt?: Date;
+}
+
+export interface PrizeDistribution {
+  wallet: string;
+  rank: number;
+  prizeLamports: bigint;
+  prizeSol: number;
 }
 
 // Initialize Oracle tables
@@ -1722,6 +1753,8 @@ export async function initializeOracleTables(): Promise<boolean> {
         winning_price_change DECIMAL,
         settlement_data JSONB,
         entry_count INTEGER DEFAULT 0,
+        prize_pool_lamports BIGINT DEFAULT 0,
+        prize_distributed BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `;
@@ -1734,8 +1767,36 @@ export async function initializeOracleTables(): Promise<boolean> {
         wallet VARCHAR(64) NOT NULL,
         token_mint VARCHAR(64) NOT NULL,
         is_winner BOOLEAN DEFAULT FALSE,
+        prediction_rank INTEGER,
+        prize_lamports BIGINT DEFAULT 0,
+        claimed BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         UNIQUE(round_id, wallet)
+      )
+    `;
+
+    // Create oracle_balances table - aggregate claimable balance per wallet
+    await sql`
+      CREATE TABLE IF NOT EXISTS oracle_balances (
+        wallet VARCHAR(64) PRIMARY KEY,
+        balance_lamports BIGINT DEFAULT 0,
+        total_earned_lamports BIGINT DEFAULT 0,
+        total_claimed_lamports BIGINT DEFAULT 0,
+        last_claim_at TIMESTAMP WITH TIME ZONE,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Create oracle_claims table - claim request history
+    await sql`
+      CREATE TABLE IF NOT EXISTS oracle_claims (
+        id SERIAL PRIMARY KEY,
+        wallet VARCHAR(64) NOT NULL,
+        amount_lamports BIGINT NOT NULL,
+        tx_signature VARCHAR(128),
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        completed_at TIMESTAMP WITH TIME ZONE
       )
     `;
 
@@ -1743,6 +1804,31 @@ export async function initializeOracleTables(): Promise<boolean> {
     await sql`CREATE INDEX IF NOT EXISTS idx_oracle_rounds_status ON oracle_rounds(status)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_oracle_predictions_round ON oracle_predictions(round_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_oracle_predictions_wallet ON oracle_predictions(wallet)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_balances_balance ON oracle_balances(balance_lamports) WHERE balance_lamports > 0`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_claims_wallet ON oracle_claims(wallet)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_claims_status ON oracle_claims(status)`;
+
+    // Add new columns to existing tables if they don't exist (migration)
+    await sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'prize_pool_lamports') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN prize_pool_lamports BIGINT DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'prize_distributed') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN prize_distributed BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_predictions' AND column_name = 'prediction_rank') THEN
+          ALTER TABLE oracle_predictions ADD COLUMN prediction_rank INTEGER;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_predictions' AND column_name = 'prize_lamports') THEN
+          ALTER TABLE oracle_predictions ADD COLUMN prize_lamports BIGINT DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_predictions' AND column_name = 'claimed') THEN
+          ALTER TABLE oracle_predictions ADD COLUMN claimed BOOLEAN DEFAULT FALSE;
+        END IF;
+      END $$
+    `;
 
     return true;
   } catch (error) {
@@ -1793,6 +1879,8 @@ export async function getActiveOracleRound(): Promise<OracleRoundDB | null> {
         : undefined,
       settlementData: row.settlement_data as Record<string, unknown> | undefined,
       entryCount: safeParseInt(row.entry_count as string, 0),
+      prizePoolLamports: BigInt(row.prize_pool_lamports as string || "0"),
+      prizeDistributed: row.prize_distributed as boolean || false,
       createdAt: new Date(row.created_at as string),
     };
   } catch (error) {
@@ -1801,10 +1889,11 @@ export async function getActiveOracleRound(): Promise<OracleRoundDB | null> {
   }
 }
 
-// Create a new Oracle round
+// Create a new Oracle round with optional prize pool
 export async function createOracleRound(
   tokenOptions: OracleTokenOptionDB[],
-  endTime: Date
+  endTime: Date,
+  prizePoolLamports: bigint = BigInt(0)
 ): Promise<{ success: boolean; roundId?: number; error?: string }> {
   const sql = await getSql();
   if (!sql) return { success: false, error: "Database not configured" };
@@ -1822,10 +1911,16 @@ export async function createOracleRound(
       return { success: false, error: "Active round already exists. Settle or cancel it first." };
     }
 
-    // Create new round
+    // Validate prize pool (max 1 SOL = 1_000_000_000 lamports)
+    const maxPrizeLamports = BigInt(1_000_000_000);
+    if (prizePoolLamports > maxPrizeLamports) {
+      return { success: false, error: "Prize pool exceeds maximum of 1 SOL" };
+    }
+
+    // Create new round with prize pool
     const result = await sql`
-      INSERT INTO oracle_rounds (token_options, end_time, status)
-      VALUES (${JSON.stringify(tokenOptions)}, ${endTime.toISOString()}, 'active')
+      INSERT INTO oracle_rounds (token_options, end_time, status, prize_pool_lamports, prize_distributed)
+      VALUES (${JSON.stringify(tokenOptions)}, ${endTime.toISOString()}, 'active', ${prizePoolLamports.toString()}, FALSE)
       RETURNING id
     `;
 
@@ -1929,6 +2024,9 @@ export async function getUserOraclePrediction(
       wallet: row.wallet as string,
       tokenMint: row.token_mint as string,
       isWinner: row.is_winner as boolean,
+      predictionRank: row.prediction_rank as number | undefined,
+      prizeLamports: BigInt(row.prize_lamports as string || "0"),
+      claimed: row.claimed as boolean || false,
       createdAt: new Date(row.created_at as string),
     };
   } catch (error) {
@@ -1937,20 +2035,62 @@ export async function getUserOraclePrediction(
   }
 }
 
-// Settle an Oracle round
+// Calculate first-come weighted prize distribution
+// Weight = (totalWinners - rank + 1)^1.5
+// Exported for testing
+export function calculatePrizeDistribution(
+  winnersCount: number,
+  prizePoolLamports: bigint
+): bigint[] {
+  if (winnersCount === 0) return [];
+  if (winnersCount === 1) return [prizePoolLamports];
+
+  // Calculate weights for each rank
+  const weights: number[] = [];
+  let totalWeight = 0;
+
+  for (let rank = 1; rank <= winnersCount; rank++) {
+    const weight = Math.pow(winnersCount - rank + 1, 1.5);
+    weights.push(weight);
+    totalWeight += weight;
+  }
+
+  // Calculate prize for each rank
+  const prizes: bigint[] = [];
+  let distributedTotal = BigInt(0);
+
+  for (let i = 0; i < winnersCount - 1; i++) {
+    const share = weights[i] / totalWeight;
+    const prize = BigInt(Math.floor(Number(prizePoolLamports) * share));
+    prizes.push(prize);
+    distributedTotal += prize;
+  }
+
+  // Last person gets remainder to avoid rounding errors
+  prizes.push(prizePoolLamports - distributedTotal);
+
+  return prizes;
+}
+
+// Settle an Oracle round and distribute prizes
 export async function settleOracleRound(
   roundId: number,
   winningTokenMint: string,
   winningPriceChange: number,
   settlementData: Record<string, unknown>
-): Promise<{ success: boolean; winnersCount?: number; error?: string }> {
+): Promise<{
+  success: boolean;
+  winnersCount?: number;
+  distributions?: PrizeDistribution[];
+  error?: string;
+}> {
   const sql = await getSql();
   if (!sql) return { success: false, error: "Database not configured" };
 
   try {
     // Verify round exists and is active
     const round = await sql`
-      SELECT id, status FROM oracle_rounds WHERE id = ${roundId}
+      SELECT id, status, prize_pool_lamports FROM oracle_rounds WHERE id = ${roundId}
     `;
 
     if ((round as unknown[]).length === 0) {
@@ -1962,29 +2102,111 @@ export async function settleOracleRound(
       return { success: false, error: "Round is not active" };
     }
 
-    // Update round with settlement
+    const prizePoolLamports = BigInt(roundData.prize_pool_lamports as string || "0");
+
+    // Get winning predictions ordered by creation time (first-come)
+    const winningPredictions = await sql`
+      SELECT id, wallet, created_at
+      FROM oracle_predictions
+      WHERE round_id = ${roundId} AND token_mint = ${winningTokenMint}
+      ORDER BY created_at ASC
+    `;
+
+    const winners = winningPredictions as Array<{
+      id: number;
+      wallet: string;
+      created_at: string;
+    }>;
+    const winnersCount = winners.length;
+
+    // Calculate prize distribution
+    const prizeAmounts = calculatePrizeDistribution(winnersCount, prizePoolLamports);
+
+    // Update each winning prediction with rank and prize
+    const distributions: PrizeDistribution[] = [];
+
+    for (let i = 0; i < winnersCount; i++) {
+      const winner = winners[i];
+      const rank = i + 1;
+      const prizeLamports = prizeAmounts[i] || BigInt(0);
+
+      // Update prediction with rank and prize
+      await sql`
+        UPDATE oracle_predictions
+        SET is_winner = TRUE, prediction_rank = ${rank}, prize_lamports = ${prizeLamports.toString()}
+        WHERE id = ${winner.id}
+      `;
+
+      // Credit winner's balance if prize > 0
+      if (prizeLamports > BigInt(0)) {
+        await creditOracleBalance(winner.wallet, prizeLamports, roundId);
+      }
+
+      distributions.push({
+        wallet: winner.wallet,
+        rank,
+        prizeLamports,
+        prizeSol: Number(prizeLamports) / 1_000_000_000,
+      });
+    }
+
+    // Update round with settlement data including prize distribution
+    const extendedSettlementData = {
+      ...settlementData,
+      prizeDistributed: true,
+      prizePoolLamports: prizePoolLamports.toString(),
+      winnersCount,
+      distributions: distributions.map((d) => ({
+        wallet: d.wallet,
+        rank: d.rank,
+        prizeLamports: d.prizeLamports.toString(),
+        prizeSol: d.prizeSol,
+      })),
+    };
+
     await sql`
       UPDATE oracle_rounds SET
         status = 'settled',
         winning_token_mint = ${winningTokenMint},
         winning_price_change = ${winningPriceChange},
-        settlement_data = ${JSON.stringify(settlementData)}
+        settlement_data = ${JSON.stringify(extendedSettlementData)},
+        prize_distributed = TRUE
       WHERE id = ${roundId}
     `;
 
-    // Mark winning predictions
-    const updateResult = await sql`
-      UPDATE oracle_predictions SET is_winner = TRUE
-      WHERE round_id = ${roundId} AND token_mint = ${winningTokenMint}
-      RETURNING id
-    `;
-
-    const winnersCount = (updateResult as unknown[]).length;
-
-    return { success: true, winnersCount };
+    return { success: true, winnersCount, distributions };
   } catch (error) {
     console.error("[Oracle] Error settling round:", error);
     return { success: false, error: "Failed to settle round" };
+  }
+}
+
+// Credit balance to a wallet (internal function)
+async function creditOracleBalance(
+  wallet: string,
+  amountLamports: bigint,
+  roundId: number
+): Promise<{ success: boolean; newBalance?: bigint; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    // Upsert balance record
+    const result = await sql`
+      INSERT INTO oracle_balances (wallet, balance_lamports, total_earned_lamports, updated_at)
+      VALUES (${wallet}, ${amountLamports.toString()}, ${amountLamports.toString()}, NOW())
+      ON CONFLICT (wallet) DO UPDATE SET
+        balance_lamports = oracle_balances.balance_lamports + ${amountLamports.toString()},
+        total_earned_lamports = oracle_balances.total_earned_lamports + ${amountLamports.toString()},
+        updated_at = NOW()
+      RETURNING balance_lamports
+    `;
+
+    const newBalance = BigInt((result as Array<{ balance_lamports: string }>)[0]?.balance_lamports || "0");
+    return { success: true, newBalance };
+  } catch (error) {
+    console.error("[Oracle] Error crediting balance:", error);
+    return { success: false, error: "Failed to credit balance" };
   }
 }
 
@@ -2066,6 +2288,8 @@ export async function getOracleHistory(
           : undefined,
         settlementData: row.settlement_data as Record<string, unknown> | undefined,
         entryCount: safeParseInt(row.entry_count as string, 0),
+        prizePoolLamports: BigInt(row.prize_pool_lamports as string || "0"),
+        prizeDistributed: row.prize_distributed as boolean || false,
         createdAt: new Date(row.created_at as string),
       };
 
@@ -2223,6 +2447,338 @@ export async function getUserOracleStats(
     return { wins, total, rank };
   } catch (error) {
     console.error("[Oracle] Error getting user stats:", error);
+    return null;
+  }
+}
+
+// ============================================================================
+// ORACLE BALANCE & CLAIM MANAGEMENT
+// ============================================================================
+
+// Get user's Oracle balance
+export async function getOracleBalance(
+  wallet: string
+): Promise<OracleBalanceDB | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const result = await sql`
+      SELECT * FROM oracle_balances WHERE wallet = ${wallet}
+    `;
+
+    if ((result as unknown[]).length === 0) return null;
+
+    const row = (result as Array<Record<string, unknown>>)[0];
+    return {
+      wallet: row.wallet as string,
+      balanceLamports: BigInt(row.balance_lamports as string || "0"),
+      totalEarnedLamports: BigInt(row.total_earned_lamports as string || "0"),
+      totalClaimedLamports: BigInt(row.total_claimed_lamports as string || "0"),
+      lastClaimAt: row.last_claim_at ? new Date(row.last_claim_at as string) : undefined,
+      updatedAt: new Date(row.updated_at as string),
+    };
+  } catch (error) {
+    console.error("[Oracle] Error getting balance:", error);
+    return null;
+  }
+}
+
+// Create a claim request
+export async function createOracleClaimRequest(
+  wallet: string
+): Promise<{ success: boolean; claimId?: number; amountLamports?: bigint; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    // Get current balance
+    const balance = await getOracleBalance(wallet);
+    if (!balance || balance.balanceLamports <= BigInt(0)) {
+      return { success: false, error: "No balance to claim" };
+    }
+
+    // Minimum claim amount: 0.001 SOL (1,000,000 lamports)
+    const minClaimLamports = BigInt(1_000_000);
+    if (balance.balanceLamports < minClaimLamports) {
+      return { success: false, error: "Balance below minimum claim amount (0.001 SOL)" };
+    }
+
+    // Check for existing pending claim
+    const pendingCheck = await sql`
+      SELECT id FROM oracle_claims
+      WHERE wallet = ${wallet} AND status IN ('pending', 'processing')
+      LIMIT 1
+    `;
+
+    if ((pendingCheck as unknown[]).length > 0) {
+      return { success: false, error: "You already have a pending claim" };
+    }
+
+    const amountLamports = balance.balanceLamports;
+
+    // Create claim request and zero out balance atomically using a CTE
+    // This ensures both operations happen in a single transaction
+    const claimResult = await sql`
+      WITH new_claim AS (
+        INSERT INTO oracle_claims (wallet, amount_lamports, status)
+        VALUES (${wallet}, ${amountLamports.toString()}, 'pending')
+        RETURNING id
+      ),
+      update_balance AS (
+        UPDATE oracle_balances SET
+          balance_lamports = 0,
+          updated_at = NOW()
+        WHERE wallet = ${wallet}
+        RETURNING wallet
+      )
+      SELECT id FROM new_claim
+    `;
+
+    const claimId = (claimResult as Array<{ id: number }>)[0]?.id;
+
+    if (!claimId) {
+      return { success: false, error: "Failed to create claim record" };
+    }
+
+    return { success: true, claimId, amountLamports };
+  } catch (error) {
+    console.error("[Oracle] Error creating claim:", error);
+    return { success: false, error: "Failed to create claim request" };
+  }
+}
+
+// Get pending claim for a wallet
+export async function getOraclePendingClaim(
+  wallet: string
+): Promise<OracleClaimDB | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const result = await sql`
+      SELECT * FROM oracle_claims
+      WHERE wallet = ${wallet} AND status IN ('pending', 'processing')
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    if ((result as unknown[]).length === 0) return null;
+
+    const row = (result as Array<Record<string, unknown>>)[0];
+    return {
+      id: row.id as number,
+      wallet: row.wallet as string,
+      amountLamports: BigInt(row.amount_lamports as string || "0"),
+      txSignature: row.tx_signature as string | undefined,
+      status: row.status as "pending" | "processing" | "completed" | "failed",
+      createdAt: new Date(row.created_at as string),
+      completedAt: row.completed_at ? new Date(row.completed_at as string) : undefined,
+    };
+  } catch (error) {
+    console.error("[Oracle] Error getting pending claim:", error);
+    return null;
+  }
+}
+
+// Get all pending claims (for admin processing)
+export async function getAllPendingOracleClaims(): Promise<OracleClaimDB[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT * FROM oracle_claims
+      WHERE status = 'pending'
+      ORDER BY created_at ASC
+    `;
+
+    return (result as Array<Record<string, unknown>>).map((row) => ({
+      id: row.id as number,
+      wallet: row.wallet as string,
+      amountLamports: BigInt(row.amount_lamports as string || "0"),
+      txSignature: row.tx_signature as string | undefined,
+      status: row.status as "pending" | "processing" | "completed" | "failed",
+      createdAt: new Date(row.created_at as string),
+      completedAt: row.completed_at ? new Date(row.completed_at as string) : undefined,
+    }));
+  } catch (error) {
+    console.error("[Oracle] Error getting pending claims:", error);
+    return [];
+  }
+}
+
+// Mark claim as processing
+export async function markOracleClaimProcessing(
+  claimId: number
+): Promise<{ success: boolean; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    const result = await sql`
+      UPDATE oracle_claims SET status = 'processing'
+      WHERE id = ${claimId} AND status = 'pending'
+      RETURNING id
+    `;
+
+    if ((result as unknown[]).length === 0) {
+      return { success: false, error: "Claim not found or already processing" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[Oracle] Error marking claim processing:", error);
+    return { success: false, error: "Failed to update claim" };
+  }
+}
+
+// Complete a claim (after admin sends SOL)
+export async function completeOracleClaim(
+  claimId: number,
+  txSignature: string
+): Promise<{ success: boolean; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    // Get claim details
+    const claimResult = await sql`
+      SELECT wallet, amount_lamports FROM oracle_claims
+      WHERE id = ${claimId} AND status IN ('pending', 'processing')
+    `;
+
+    if ((claimResult as unknown[]).length === 0) {
+      return { success: false, error: "Claim not found or already completed" };
+    }
+
+    const claim = (claimResult as Array<{ wallet: string; amount_lamports: string }>)[0];
+
+    // Update claim as completed
+    await sql`
+      UPDATE oracle_claims SET
+        status = 'completed',
+        tx_signature = ${txSignature},
+        completed_at = NOW()
+      WHERE id = ${claimId}
+    `;
+
+    // Update balance stats
+    await sql`
+      UPDATE oracle_balances SET
+        total_claimed_lamports = total_claimed_lamports + ${claim.amount_lamports},
+        last_claim_at = NOW(),
+        updated_at = NOW()
+      WHERE wallet = ${claim.wallet}
+    `;
+
+    return { success: true };
+  } catch (error) {
+    console.error("[Oracle] Error completing claim:", error);
+    return { success: false, error: "Failed to complete claim" };
+  }
+}
+
+// Fail a claim (return balance to wallet)
+export async function failOracleClaim(
+  claimId: number,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    // Get claim details
+    const claimResult = await sql`
+      SELECT wallet, amount_lamports FROM oracle_claims
+      WHERE id = ${claimId} AND status IN ('pending', 'processing')
+    `;
+
+    if ((claimResult as unknown[]).length === 0) {
+      return { success: false, error: "Claim not found or already completed" };
+    }
+
+    const claim = (claimResult as Array<{ wallet: string; amount_lamports: string }>)[0];
+
+    // Update claim as failed
+    await sql`
+      UPDATE oracle_claims SET
+        status = 'failed',
+        tx_signature = ${reason},
+        completed_at = NOW()
+      WHERE id = ${claimId}
+    `;
+
+    // Return balance to wallet
+    await sql`
+      UPDATE oracle_balances SET
+        balance_lamports = balance_lamports + ${claim.amount_lamports},
+        updated_at = NOW()
+      WHERE wallet = ${claim.wallet}
+    `;
+
+    return { success: true };
+  } catch (error) {
+    console.error("[Oracle] Error failing claim:", error);
+    return { success: false, error: "Failed to fail claim" };
+  }
+}
+
+// Get claim history for a wallet
+export async function getOracleClaimHistory(
+  wallet: string,
+  limit: number = 10
+): Promise<OracleClaimDB[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT * FROM oracle_claims
+      WHERE wallet = ${wallet}
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `;
+
+    return (result as Array<Record<string, unknown>>).map((row) => ({
+      id: row.id as number,
+      wallet: row.wallet as string,
+      amountLamports: BigInt(row.amount_lamports as string || "0"),
+      txSignature: row.tx_signature as string | undefined,
+      status: row.status as "pending" | "processing" | "completed" | "failed",
+      createdAt: new Date(row.created_at as string),
+      completedAt: row.completed_at ? new Date(row.completed_at as string) : undefined,
+    }));
+  } catch (error) {
+    console.error("[Oracle] Error getting claim history:", error);
+    return [];
+  }
+}
+
+// Get user's prize earnings for a specific round
+export async function getUserRoundPrize(
+  roundId: number,
+  wallet: string
+): Promise<{ prizeLamports: bigint; rank: number } | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const result = await sql`
+      SELECT prize_lamports, prediction_rank
+      FROM oracle_predictions
+      WHERE round_id = ${roundId} AND wallet = ${wallet} AND is_winner = TRUE
+    `;
+
+    if ((result as unknown[]).length === 0) return null;
+
+    const row = (result as Array<Record<string, unknown>>)[0];
+    return {
+      prizeLamports: BigInt(row.prize_lamports as string || "0"),
+      rank: row.prediction_rank as number,
+    };
+  } catch (error) {
+    console.error("[Oracle] Error getting user round prize:", error);
     return null;
   }
 }

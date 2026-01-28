@@ -38,6 +38,10 @@ export const MIN_TOKEN_BALANCE = ECOSYSTEM_CONFIG.casino.gateToken.minBalance;
 export const BAGSWORLD_TOKEN_SYMBOL = ECOSYSTEM_CONFIG.casino.gateToken.symbol;
 export const BAGSWORLD_BUY_URL = ECOSYSTEM_CONFIG.casino.gateToken.buyUrl;
 
+// Oracle-specific token gate (higher requirement than casino)
+export const ORACLE_MIN_BALANCE = ECOSYSTEM_CONFIG.oracle.gateToken.minBalance;
+export const ORACLE_PRIZE_CONFIG = ECOSYSTEM_CONFIG.oracle.prizePool;
+
 /**
  * Get the balance of a specific SPL token for a wallet
  * @param connection Solana connection
@@ -111,5 +115,41 @@ export async function getCasinoAccessInfo(
     balance,
     hasAccess: balance >= MIN_TOKEN_BALANCE,
     minRequired: MIN_TOKEN_BALANCE,
+  };
+}
+
+/**
+ * Check if a wallet has enough tokens to access Oracle predictions
+ * @param connection Solana connection
+ * @param walletPubkey Wallet public key
+ * @returns True if wallet has minimum required tokens (2M)
+ */
+export async function hasOracleAccess(
+  connection: Connection,
+  walletPubkey: PublicKey
+): Promise<boolean> {
+  const balance = await getTokenBalance(connection, walletPubkey, BAGSWORLD_TOKEN_MINT);
+  return balance >= ORACLE_MIN_BALANCE;
+}
+
+/**
+ * Get Oracle access info including balance and access status
+ * @param connection Solana connection
+ * @param walletPubkey Wallet public key
+ * @returns Object with balance, hasAccess, and minRequired
+ */
+export async function getOracleAccessInfo(
+  connection: Connection,
+  walletPubkey: PublicKey
+): Promise<{
+  balance: number;
+  hasAccess: boolean;
+  minRequired: number;
+}> {
+  const balance = await getTokenBalance(connection, walletPubkey, BAGSWORLD_TOKEN_MINT);
+  return {
+    balance,
+    hasAccess: balance >= ORACLE_MIN_BALANCE,
+    minRequired: ORACLE_MIN_BALANCE,
   };
 }

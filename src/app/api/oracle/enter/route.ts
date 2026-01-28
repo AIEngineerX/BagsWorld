@@ -1,5 +1,5 @@
 // Oracle Enter Prediction API - Submit a prediction
-// Token-gated: requires $BagsWorld tokens (admins bypass)
+// Token-gated: requires 2M $BagsWorld tokens (admins and localhost bypass)
 import { NextRequest, NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
 import {
@@ -7,11 +7,11 @@ import {
   enterOraclePrediction,
   isNeonConfigured,
 } from "@/lib/neon";
-import { isAdmin, ECOSYSTEM_CONFIG } from "@/lib/config";
+import { isAdmin } from "@/lib/config";
 import {
   getTokenBalance,
   BAGSWORLD_TOKEN_MINT,
-  MIN_TOKEN_BALANCE,
+  ORACLE_MIN_BALANCE,
   BAGSWORLD_TOKEN_SYMBOL,
   BAGSWORLD_BUY_URL,
 } from "@/lib/token-balance";
@@ -27,8 +27,8 @@ function getRpcUrl(): string {
   );
 }
 
-// Check if wallet has enough tokens for Oracle access
-async function hasOracleAccess(wallet: string): Promise<{
+// Check if wallet has enough tokens for Oracle access (2M required)
+async function checkOracleAccess(wallet: string): Promise<{
   hasAccess: boolean;
   balance: number;
   required: number;
@@ -43,9 +43,9 @@ async function hasOracleAccess(wallet: string): Promise<{
     );
 
     return {
-      hasAccess: balance >= MIN_TOKEN_BALANCE,
+      hasAccess: balance >= ORACLE_MIN_BALANCE,
       balance,
-      required: MIN_TOKEN_BALANCE,
+      required: ORACLE_MIN_BALANCE,
     };
   } catch (error) {
     console.error("[Oracle] Error checking token balance:", error);
@@ -53,7 +53,7 @@ async function hasOracleAccess(wallet: string): Promise<{
     return {
       hasAccess: false,
       balance: 0,
-      required: MIN_TOKEN_BALANCE,
+      required: ORACLE_MIN_BALANCE,
     };
   }
 }
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   const isLocalhost = host.startsWith("localhost") || host.startsWith("127.0.0.1");
 
   if (!walletIsAdmin && !isLocalhost) {
-    const accessCheck = await hasOracleAccess(wallet);
+    const accessCheck = await checkOracleAccess(wallet);
 
     if (!accessCheck.hasAccess) {
       return NextResponse.json(
