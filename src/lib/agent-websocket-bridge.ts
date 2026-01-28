@@ -82,7 +82,8 @@ export class AgentWebSocketBridge {
     // Default to localhost agent server or use environment variable
     const agentServerUrl =
       url ||
-      (typeof window !== "undefined" && (window as unknown as { AGENT_WS_URL?: string }).AGENT_WS_URL) ||
+      (typeof window !== "undefined" &&
+        (window as unknown as { AGENT_WS_URL?: string }).AGENT_WS_URL) ||
       (process.env.NEXT_PUBLIC_AGENT_WS_URL as string | undefined) ||
       "ws://localhost:3001/ws";
 
@@ -330,7 +331,10 @@ export class AgentWebSocketBridge {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelay);
+    const delay = Math.min(
+      this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+      this.maxReconnectDelay
+    );
 
     console.log(`[AgentBridge] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
 

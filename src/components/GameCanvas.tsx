@@ -6,7 +6,11 @@ import { BootScene } from "@/game/scenes/BootScene";
 import { WorldScene } from "@/game/scenes/WorldScene";
 import { UIScene } from "@/game/scenes/UIScene";
 import type { WorldState } from "@/lib/types";
-import { initAgentBridge, disconnectAgentBridge, getAgentBridge } from "@/lib/agent-websocket-bridge";
+import {
+  initAgentBridge,
+  disconnectAgentBridge,
+  getAgentBridge,
+} from "@/lib/agent-websocket-bridge";
 
 // Error boundary to catch Phaser/game errors without crashing the entire UI
 interface ErrorBoundaryProps {
@@ -254,7 +258,9 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
     // Only connect if agent server is configured
     const agentWsUrl = process.env.NEXT_PUBLIC_AGENT_WS_URL;
     if (!agentWsUrl) {
-      console.log("[AgentBridge] No NEXT_PUBLIC_AGENT_WS_URL configured, skipping agent connection");
+      console.log(
+        "[AgentBridge] No NEXT_PUBLIC_AGENT_WS_URL configured, skipping agent connection"
+      );
       return;
     }
 
@@ -293,8 +299,13 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
     }
 
     // Get current zone from the scene or use main_city default
-    const currentZone = (worldScene as unknown as { currentZone?: string }).currentZone || "main_city";
-    bridge.sendWorldStateUpdate(worldState, positions, currentZone as "main_city" | "trending" | "labs" | "founders" | "ballers");
+    const currentZone =
+      (worldScene as unknown as { currentZone?: string }).currentZone || "main_city";
+    bridge.sendWorldStateUpdate(
+      worldState,
+      positions,
+      currentZone as "main_city" | "trending" | "labs" | "founders" | "ballers"
+    );
   }, [worldState]);
 
   return (

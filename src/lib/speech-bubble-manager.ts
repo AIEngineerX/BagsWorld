@@ -113,7 +113,7 @@ export class SpeechBubbleManager {
     // Sprites use default origin (0.5, 0.5) so y is at center
     // We need to go up by half the displayed height plus offset
     const spriteHeight = sprite.displayHeight || sprite.height || 50;
-    const bubbleY = sprite.y - (spriteHeight / 2) + this.config.yOffset;
+    const bubbleY = sprite.y - spriteHeight / 2 + this.config.yOffset;
 
     // Create container
     const container = this.scene.add.container(sprite.x, bubbleY);
@@ -275,7 +275,7 @@ export class SpeechBubbleManager {
         // Calculate y based on sprite's actual displayed height
         const spriteHeight = sprite.displayHeight || sprite.height || 50;
         const targetX = sprite.x;
-        const targetY = sprite.y - (spriteHeight / 2) + this.config.yOffset - 10;
+        const targetY = sprite.y - spriteHeight / 2 + this.config.yOffset - 10;
 
         // Smoothly follow character
         bubble.container.x += (targetX - bubble.container.x) * 0.3;
