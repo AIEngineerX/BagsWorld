@@ -25,7 +25,7 @@ export { AutonomousService, getAutonomousService } from './AutonomousService.js'
 export type { ScheduledTask, AutonomousAlert, TrackedWallet } from './AutonomousService.js';
 
 // Launch Wizard - Professor Oak guided token launches
-export { LaunchWizard } from './LaunchWizard.js';
+export { LaunchWizard, setLaunchWizardDatabase } from './LaunchWizard.js';
 export type { LaunchSession, LaunchStep, StepGuidance, BuildTransactionRequest, BuildTransactionResult } from './LaunchWizard.js';
 
 // Creator Tools - Fee optimization, marketing, community advice
@@ -42,3 +42,7 @@ export { SolanaService, getSolanaService } from './SolanaService.js';
 // Twitter Service - Twitter/X posting and engagement
 export { TwitterService, getTwitterService } from './TwitterService.js';
 export type { Tweet, PostResult, TwitterConfig } from './TwitterService.js';
+
+// Helius Service - Real-time Solana transaction tracking
+export { HeliusService, getHeliusService } from './HeliusService.js';
+export type { ParsedTransaction, WalletTradeHistory, TradeAlert } from './HeliusService.js';
