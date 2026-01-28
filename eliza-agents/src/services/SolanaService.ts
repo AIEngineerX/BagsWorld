@@ -152,6 +152,9 @@ export class SolanaService extends Service {
 
     const privateKeyBase58 = process.env.GHOST_WALLET_PRIVATE_KEY;
 
+    // Debug: check if env var exists (length only, not the value)
+    console.log(`[SolanaService] GHOST_WALLET_PRIVATE_KEY exists: ${!!privateKeyBase58}, length: ${privateKeyBase58?.length || 0}`);
+
     if (!privateKeyBase58) {
       console.warn("[SolanaService] No GHOST_WALLET_PRIVATE_KEY configured");
       return;
