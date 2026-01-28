@@ -6,6 +6,7 @@ import { BootScene } from "@/game/scenes/BootScene";
 import { WorldScene } from "@/game/scenes/WorldScene";
 import { UIScene } from "@/game/scenes/UIScene";
 import type { WorldState } from "@/lib/types";
+import { initAgentBridge, disconnectAgentBridge, getAgentBridge } from "@/lib/agent-websocket-bridge";
 
 // Error boundary to catch Phaser/game errors without crashing the entire UI
 interface ErrorBoundaryProps {
@@ -247,6 +248,54 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
       window.removeEventListener("bagsworld-animal-control", handleAnimalControl as EventListener);
     };
   }, []);
+
+  // Initialize WebSocket bridge to agent server
+  useEffect(() => {
+    // Only connect if agent server is configured
+    const agentWsUrl = process.env.NEXT_PUBLIC_AGENT_WS_URL;
+    if (!agentWsUrl) {
+      console.log("[AgentBridge] No NEXT_PUBLIC_AGENT_WS_URL configured, skipping agent connection");
+      return;
+    }
+
+    const bridge = initAgentBridge(agentWsUrl);
+    console.log("[AgentBridge] Initialized connection to agent server");
+
+    return () => {
+      disconnectAgentBridge();
+    };
+  }, []);
+
+  // Send world state updates to agent bridge
+  useEffect(() => {
+    if (!worldState) return;
+
+    const bridge = getAgentBridge();
+    if (!bridge.isConnected()) return;
+
+    // Get character positions from the game
+    const worldScene = gameRef.current?.scene.getScene("WorldScene") as WorldScene | undefined;
+    if (!worldScene || !worldScene.scene.isActive()) return;
+
+    // Build character positions map
+    const positions = new Map<string, { x: number; y: number }>();
+    if (worldState.population) {
+      for (const char of worldState.population) {
+        // Get actual sprite position if available
+        const sprite = worldScene.getCharacterSprite?.(char.id);
+        if (sprite) {
+          positions.set(char.id, { x: sprite.x, y: sprite.y });
+        } else {
+          // Use character's x/y from world state
+          positions.set(char.id, { x: char.x || 400, y: char.y || 555 });
+        }
+      }
+    }
+
+    // Get current zone from the scene or use main_city default
+    const currentZone = (worldScene as unknown as { currentZone?: string }).currentZone || "main_city";
+    bridge.sendWorldStateUpdate(worldState, positions, currentZone as "main_city" | "trending" | "labs" | "founders" | "ballers");
+  }, [worldState]);
 
   return (
     <div
