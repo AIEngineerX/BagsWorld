@@ -144,9 +144,12 @@ export const claimFeesReminderAction: Action = {
     const api =
       runtime.getService<BagsApiService>(BagsApiService.serviceType) || getBagsApiService();
 
-    let positions: ClaimablePosition[];
+    // Use the Bags API to get claimable positions
+    console.log(`[claimFeesReminder] Checking fees for wallet: ${walletAddress}`);
+
+    let claimStats;
     try {
-      positions = await api.getClaimablePositions(walletAddress);
+      claimStats = await api.getWalletClaimStats(walletAddress);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error(`[claimFeesReminder] Failed to fetch claimable positions: ${errorMessage}`);
@@ -166,46 +169,32 @@ export const claimFeesReminderAction: Action = {
       };
     }
 
-    // Calculate total unclaimed
-    const totalUnclaimedLamports = positions.reduce(
-      (sum, pos) => sum + pos.totalClaimableLamportsUserShare,
-      0
-    );
+    const { totalClaimableLamports, totalClaimableSol, positionCount, positions } = claimStats;
 
     // Build response based on amount
     let responseText: string;
 
-    if (totalUnclaimedLamports < MIN_REMINDER_THRESHOLD_LAMPORTS) {
+    if (totalClaimableLamports < MIN_REMINDER_THRESHOLD_LAMPORTS) {
       responseText =
         "You're clean! No significant unclaimed fees right now. Keep building and they'll stack up! When you earn, claim at bags.fm/claim";
-    } else if (totalUnclaimedLamports < 0.1 * LAMPORTS_PER_SOL) {
+    } else if (totalClaimableSol < 0.1) {
       // Small amount (< 0.1 SOL)
-      const solAmount = formatSol(totalUnclaimedLamports);
-      responseText = `You've got ${solAmount} SOL waiting! Not huge but it adds up. Claim at bags.fm/claim when you're ready!`;
-    } else if (totalUnclaimedLamports < 1 * LAMPORTS_PER_SOL) {
+      responseText = `You've got ${formatSol(totalClaimableLamports)} SOL waiting! Not huge but it adds up. Claim at bags.fm/claim when you're ready!`;
+    } else if (totalClaimableSol < 1) {
       // Medium amount (0.1 - 1 SOL)
-      const solAmount = formatSol(totalUnclaimedLamports);
-      responseText = `Yo! You have ${solAmount} SOL unclaimed! That's real money bro. Go claim it at bags.fm/claim!`;
+      responseText = `Yo! You have ${formatSol(totalClaimableLamports)} SOL unclaimed! That's real money bro. Go claim it at bags.fm/claim!`;
     } else {
       // Large amount (> 1 SOL)
-      const solAmount = formatSol(totalUnclaimedLamports);
-      responseText = `BRO WHAT ARE YOU DOING?! You have ${solAmount} SOL just sitting there unclaimed! Go to bags.fm/claim RIGHT NOW and get your money!`;
+      responseText = `BRO WHAT ARE YOU DOING?! You have ${formatSol(totalClaimableLamports)} SOL just sitting there unclaimed! Go to bags.fm/claim RIGHT NOW and get your money!`;
     }
 
-    // Add position breakdown if there are multiple tokens
-    if (positions.length > 1 && totalUnclaimedLamports >= MIN_REMINDER_THRESHOLD_LAMPORTS) {
-      const topPositions = positions
-        .filter((p) => p.totalClaimableLamportsUserShare > 0)
-        .sort((a, b) => b.totalClaimableLamportsUserShare - a.totalClaimableLamportsUserShare)
-        .slice(0, 3);
+    // Add position breakdown if there are multiple tokens with fees
+    if (positions.length > 1 && totalClaimableLamports >= MIN_REMINDER_THRESHOLD_LAMPORTS) {
+      const topPositions = positions.slice(0, 3);
 
       if (topPositions.length > 0) {
         const breakdown = topPositions
-          .map((p) => {
-            const symbol = p.tokenSymbol || "Unknown";
-            const amount = formatSol(p.totalClaimableLamportsUserShare);
-            return `${symbol}: ${amount} SOL`;
-          })
+          .map((p) => `${p.symbol}: ${p.claimableSol.toFixed(3)} SOL`)
           .join(", ");
         responseText += `\n\nTop earners: ${breakdown}`;
       }
@@ -217,20 +206,19 @@ export const claimFeesReminderAction: Action = {
       await callback(response);
     }
 
+    console.log(
+      `[claimFeesReminder] Wallet ${walletAddress.slice(0, 8)}... has ${totalClaimableSol.toFixed(4)} SOL unclaimed across ${positionCount} positions`
+    );
+
     return {
       success: true,
       text: responseText,
       data: {
         wallet: walletAddress,
-        totalUnclaimedLamports,
-        totalUnclaimedSol: totalUnclaimedLamports / LAMPORTS_PER_SOL,
-        positionCount: positions.length,
-        positions: positions.map((p) => ({
-          mint: p.baseMint,
-          symbol: p.tokenSymbol,
-          unclaimedLamports: p.totalClaimableLamportsUserShare,
-          unclaimedSol: p.totalClaimableLamportsUserShare / LAMPORTS_PER_SOL,
-        })),
+        totalClaimableLamports,
+        totalClaimableSol,
+        positionCount,
+        positions,
       },
     };
   },
