@@ -8,6 +8,7 @@ import { Message, ConversationContext } from '../services/LLMService.js';
 import { worldStateProvider } from '../providers/worldState.js';
 import { agentContextProvider } from '../providers/agentContext.js';
 import { oracleDataProvider } from '../providers/oracleData.js';
+import { ghostTradingProvider } from '../providers/ghostTrading.js';
 
 // Reduced from 50 to 8 for token efficiency (~80% savings on conversation context)
 export const MAX_CONVERSATION_LENGTH = 8;
@@ -21,6 +22,9 @@ const AGENT_MENTION_PATTERN = /\b(toly|finn|ash|ghost|neo|cj|shaw|bags.?bot|who|
 
 // Pattern to detect Oracle-related queries
 const ORACLE_PATTERN = /\b(oracle|predict|prediction|forecast|tower|bet|pick|winner|round)\b/i;
+
+// Pattern to detect trading-related queries
+const TRADING_PATTERN = /\b(trad|position|buy|sell|pnl|profit|loss|exposure|performance|portfolio|stats|holding|wallet)\b/i;
 
 // Database instance - set by server.ts
 let dbInstance: NeonQueryFunction<false, false> | null = null;
@@ -165,6 +169,17 @@ export async function buildConversationContext(
     const oracleResult = await oracleDataProvider.get(runtime, memory, state);
     if (oracleResult?.text) {
       context.oracleState = oracleResult.text;
+    }
+  }
+
+  // Include Ghost trading context when talking to Ghost or asking about trading
+  const isGhost = character.name.toLowerCase() === 'ghost';
+  const askingAboutTrading = TRADING_PATTERN.test(userMessage);
+
+  if (isGhost || askingAboutTrading) {
+    const tradingResult = await ghostTradingProvider.get(runtime, memory, state);
+    if (tradingResult?.text) {
+      context.tradingState = tradingResult.text;
     }
   }
 
