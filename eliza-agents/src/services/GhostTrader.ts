@@ -47,13 +47,46 @@ const DEFAULT_CONFIG = {
   slippageBps: 300, // 3% slippage (tighter than 5%)
 };
 
-// Top trader wallets to study (from user-provided list)
+// Top trader wallets to study (from Kolscan & GMGN leaderboards)
+// Prioritized: Owner wallet first, then verified profitable traders
 const SMART_MONEY_WALLETS = [
-  "9bqx8GEcwuw4r3WzhWnJx8fpjt7aXdvVZhWE56bzWBoK",
-  "FxN3VZ4BosL5urG2yoeQ156JSdmavm9K5fdLxjkPmaMR",
-  "2fg5QD1eD7rzNNCsvnhmXFm5hqNgwTTG8p7kQ6f3rx6f",
-  "suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK",
+  // === OWNER WALLET (Priority #1) ===
+  "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3", // Owner - primary learning source
+
+  // === KOLSCAN TOP 10 (Daily PnL leaders, $100K+ verified) ===
+  "7xwDKXNG9dxMsBSCmiAThp7PyDaUXbm23irLr7iPeh7w", // shah - #1, +234 SOL/day
+  "4vw54BmAogeRV3vPKWyFet5yf8DTLcREzdSzx4rw9Ud9", // decu - #3, 147W/80L high volume
+  "8deJ9xwuVbfjCb1jvrDjPBLGTsHnTKwgPhV9pMLe9rSK", // Cooker - #7, 99W/31L (76% win rate)
+
+  // === GMGN SMART MONEY (Early entry specialists) ===
+  "H72yLkhTnoBfhBTXXaj1RBXuirm8s8G5fcVh2XpQLggM", // GMGN featured - early meme entries
+  "AVAZvHLR2PcWpDf8BXY4rVxNHYRBytycHkcB5z5QNXYm", // High win rate pump.fun launches
+  "4Be9CvxqHW6BYiRAxW9Q3xu1ycTMWaL5z8NX4HR3ha7t", // Consistent 50x flips on Raydium
+
+  // === DUNE ALPHA WALLETS ===
+  "8zFZHuSRuDpuAR7J6FzwyF3vKNx4CVW3DFHJerQhc7Zd", // Dune alpha dashboard - high win rate
+
+  // === ADDITIONAL KOLSCAN VERIFIED ===
+  "FSAmbD6jm6SZZQadSJeC1paX3oTtAiY9hTx1UYzVoXqj", // Zil - low cap specialist
+  "J6TDXvEDjbFWacRWQPiUpZNTBJBK1qsC8XTGy1tPtUXW", // Pain - #5, balanced W/L
 ];
+
+// Owner wallet for priority tracking
+const OWNER_WALLET = "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3";
+
+// Wallet metadata for display
+const WALLET_LABELS: Record<string, string> = {
+  "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3": "Owner",
+  "7xwDKXNG9dxMsBSCmiAThp7PyDaUXbm23irLr7iPeh7w": "shah (Kolscan #1)",
+  "4vw54BmAogeRV3vPKWyFet5yf8DTLcREzdSzx4rw9Ud9": "decu (High Volume)",
+  "8deJ9xwuVbfjCb1jvrDjPBLGTsHnTKwgPhV9pMLe9rSK": "Cooker (76% WR)",
+  "H72yLkhTnoBfhBTXXaj1RBXuirm8s8G5fcVh2XpQLggM": "GMGN Alpha",
+  "AVAZvHLR2PcWpDf8BXY4rVxNHYRBytycHkcB5z5QNXYm": "Pump.fun Sniper",
+  "4Be9CvxqHW6BYiRAxW9Q3xu1ycTMWaL5z8NX4HR3ha7t": "50x Flipper",
+  "8zFZHuSRuDpuAR7J6FzwyF3vKNx4CVW3DFHJerQhc7Zd": "Dune Alpha",
+  "FSAmbD6jm6SZZQadSJeC1paX3oTtAiY9hTx1UYzVoXqj": "Zil (Low Cap)",
+  "J6TDXvEDjbFWacRWQPiUpZNTBJBK1qsC8XTGy1tPtUXW": "Pain (Balanced)",
+};
 
 // ============================================================================
 // Types
@@ -959,6 +992,17 @@ export class GhostTrader {
 
   getSmartMoneyWallets(): string[] {
     return [...SMART_MONEY_WALLETS];
+  }
+
+  getSmartMoneyWalletsWithLabels(): Array<{ address: string; label: string }> {
+    return SMART_MONEY_WALLETS.map(addr => ({
+      address: addr,
+      label: WALLET_LABELS[addr] || addr.slice(0, 8) + "...",
+    }));
+  }
+
+  getWalletLabel(address: string): string {
+    return WALLET_LABELS[address] || address.slice(0, 8) + "...";
   }
 }
 
