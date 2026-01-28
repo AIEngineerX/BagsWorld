@@ -3,12 +3,13 @@
 
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import { neon, NeonQueryFunction } from "@neondatabase/serverless";
 
 import { getCharacterIds } from "./characters/index.js";
 import { AgentCoordinator, getAgentCoordinator } from "./services/AgentCoordinator.js";
 import { AutonomousService } from "./services/AutonomousService.js";
-import { LaunchWizard } from "./services/LaunchWizard.js";
+import { LaunchWizard, setLaunchWizardDatabase } from "./services/LaunchWizard.js";
 import { cleanupCache as cleanupApiCache } from "./services/BagsApiService.js";
 import { getWorldSyncService } from "./services/WorldSyncService.js";
 import { getAgentTickService } from "./services/AgentTickService.js";
@@ -49,6 +50,7 @@ let sql: NeonQueryFunction<false, false> | null = null;
 if (DATABASE_URL) {
   sql = neon(DATABASE_URL);
   setDatabase(sql);
+  setLaunchWizardDatabase(sql);
   console.log("[Database] Connected to Neon");
 } else {
   console.warn("[Database] No DATABASE_URL - running without persistence");
@@ -62,6 +64,33 @@ app.use(
     credentials: true,
   })
 );
+
+// Rate limiting - different limits for different endpoint types
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: { error: "Too many requests, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20, // 20 chat requests per minute (LLM calls are expensive)
+  message: { error: "Too many chat requests, please slow down" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const tradingLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 trading operations per minute
+  message: { error: "Too many trading requests" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(generalLimiter);
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -102,14 +131,16 @@ app.get("/health", async (req, res) => {
   });
 });
 
-// Mount route modules
+// Mount route modules with appropriate rate limits
+app.use("/api/agents/:agentId/chat", chatLimiter); // LLM-heavy endpoint
+app.use("/api/ghost", tradingLimiter); // Trading operations
 app.use("/api", chatRoutes);
 app.use("/api", tokenRoutes);
 app.use("/api", worldRoutes);
 app.use("/api/autonomous", autonomousRoutes);
 app.use("/api/coordination", coordinationRoutes);
-app.use("/api/launch-wizard", launchWizardRoutes);
-app.use("/api/creator-tools", creatorToolsRoutes);
+app.use("/api/launch-wizard", chatLimiter, launchWizardRoutes); // LLM-heavy
+app.use("/api/creator-tools", chatLimiter, creatorToolsRoutes); // LLM-heavy
 app.use("/api/ghost", ghostRoutes);
 app.use("/api/twitter", twitterRoutes);
 
@@ -152,6 +183,31 @@ async function initializeDatabase(): Promise<void> {
     await sql`
       CREATE INDEX IF NOT EXISTS idx_sessions_agent
       ON agent_sessions(agent_id)
+    `;
+
+    // Launch Wizard sessions table
+    await sql`
+      CREATE TABLE IF NOT EXISTS launch_wizard_sessions (
+        id UUID PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
+        current_step VARCHAR(50) NOT NULL,
+        data JSONB NOT NULL DEFAULT '{}',
+        messages JSONB NOT NULL DEFAULT '[]',
+        token_creation JSONB,
+        fee_share_config JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_launch_wizard_user
+      ON launch_wizard_sessions(user_id)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_launch_wizard_updated
+      ON launch_wizard_sessions(updated_at)
     `;
 
     console.log("[Database] Schema initialized");

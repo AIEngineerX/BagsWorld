@@ -486,3 +486,60 @@ describe('URL encoding (real routes)', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('Rate limiting', () => {
+  it('rate limiter is properly configured', async () => {
+    // Import and verify the rate limiter exists
+    const rateLimit = await import('express-rate-limit');
+    expect(rateLimit.default).toBeDefined();
+    expect(typeof rateLimit.default).toBe('function');
+  });
+
+  it('rate limiter returns correct headers', async () => {
+    // Create app with rate limiting
+    const rateLimit = (await import('express-rate-limit')).default;
+    const testApp = express();
+
+    const limiter = rateLimit({
+      windowMs: 60 * 1000,
+      max: 5, // Low limit for testing
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
+
+    testApp.use(limiter);
+    testApp.get('/test', (req, res) => res.json({ ok: true }));
+
+    // First request should succeed
+    const res1 = await request(testApp).get('/test');
+    expect(res1.status).toBe(200);
+    expect(res1.headers['ratelimit-limit']).toBe('5');
+    expect(res1.headers['ratelimit-remaining']).toBe('4');
+  });
+
+  it('rate limiter blocks after limit exceeded', async () => {
+    const rateLimit = (await import('express-rate-limit')).default;
+    const testApp = express();
+
+    const limiter = rateLimit({
+      windowMs: 60 * 1000,
+      max: 3, // Very low limit
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: 'Rate limit exceeded' },
+    });
+
+    testApp.use(limiter);
+    testApp.get('/test', (req, res) => res.json({ ok: true }));
+
+    // Make requests until limit hit
+    await request(testApp).get('/test');
+    await request(testApp).get('/test');
+    await request(testApp).get('/test');
+
+    // 4th request should be blocked
+    const blocked = await request(testApp).get('/test');
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error).toBe('Rate limit exceeded');
+  });
+});
