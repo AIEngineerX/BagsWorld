@@ -557,9 +557,90 @@ export class BagsApiService extends Service {
   // Fee Claiming Methods
   // ==========================================================================
 
+  /**
+   * Get all claimable fee positions for a wallet
+   * Uses Bags.fm API: /token-launch/claimable-positions
+   */
   async getClaimablePositions(wallet: string): Promise<ClaimablePosition[]> {
-    const params = new URLSearchParams({ wallet });
-    return this.fetch(`/token-launch/claimable-positions?${params}`);
+    try {
+      const params = new URLSearchParams({ wallet });
+      const result = await this.fetch<ClaimablePosition[]>(
+        `/token-launch/claimable-positions?${params}`
+      );
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error(`[BagsApiService] Failed to get claimable positions for ${wallet}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get a summary of total claimable fees for a wallet
+   */
+  async getWalletClaimStats(wallet: string): Promise<{
+    totalClaimableLamports: number;
+    totalClaimableSol: number;
+    positionCount: number;
+    positions: Array<{
+      mint: string;
+      symbol: string;
+      claimableLamports: number;
+      claimableSol: number;
+    }>;
+  }> {
+    const positions = await this.getClaimablePositions(wallet);
+
+    const totalClaimableLamports = positions.reduce(
+      (sum, pos) => sum + (pos.totalClaimableLamportsUserShare || 0),
+      0
+    );
+
+    return {
+      totalClaimableLamports,
+      totalClaimableSol: totalClaimableLamports / 1_000_000_000,
+      positionCount: positions.length,
+      positions: positions
+        .filter((p) => p.totalClaimableLamportsUserShare > 0)
+        .map((p) => ({
+          mint: p.baseMint,
+          symbol: p.tokenSymbol || "Unknown",
+          claimableLamports: p.totalClaimableLamportsUserShare,
+          claimableSol: p.totalClaimableLamportsUserShare / 1_000_000_000,
+        }))
+        .sort((a, b) => b.claimableLamports - a.claimableLamports),
+    };
+  }
+
+  /**
+   * Get claim history/events for a token
+   * Uses Bags.fm API: /fee-share/token/claim-events
+   */
+  async getClaimEvents(
+    tokenMint: string,
+    options?: { limit?: number; offset?: number }
+  ): Promise<Array<{
+    wallet: string;
+    amount: number;
+    timestamp: number;
+    txSignature: string;
+  }>> {
+    try {
+      const params = new URLSearchParams({
+        tokenMint,
+        limit: String(options?.limit || 20),
+        offset: String(options?.offset || 0),
+      });
+      const result = await this.fetch<Array<{
+        wallet: string;
+        amount: number;
+        timestamp: number;
+        txSignature: string;
+      }>>(`/fee-share/token/claim-events?${params}`);
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error(`[BagsApiService] Failed to get claim events for ${tokenMint}:`, error);
+      return [];
+    }
   }
 
   async generateClaimTransactions(

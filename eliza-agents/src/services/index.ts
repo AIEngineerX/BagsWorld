@@ -10,6 +10,7 @@ export type {
   TokenCreationResult,
   FeeShareConfigResult,
   LaunchTransactionResult,
+  ClaimTransactionsResult,
 } from './BagsApiService.js';
 
 export { LLMService, getLLMService } from './LLMService.js';

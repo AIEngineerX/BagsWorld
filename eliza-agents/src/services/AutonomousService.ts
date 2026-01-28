@@ -413,7 +413,8 @@ export class AutonomousService extends Service {
   // ===== Autonomous Task Implementations =====
 
   /**
-   * Finn's fee reminder checker - checks all tracked wallets
+   * Finn's fee reminder checker - checks all tracked wallets using Bags API
+   * Uses /token-launch/claimable-positions endpoint
    */
   private async checkTrackedWalletFees(): Promise<void> {
     if (!this.bagsApi) return;
@@ -421,25 +422,26 @@ export class AutonomousService extends Service {
     const wallets = Array.from(this.trackedWallets.values());
     if (wallets.length === 0) return;
 
-    console.log(`[AutonomousService] Checking ${wallets.length} tracked wallets for unclaimed fees`);
+    console.log(`[AutonomousService] Checking ${wallets.length} tracked wallets for unclaimed fees via Bags API`);
 
     let totalUnclaimed = 0;
     let walletsWithFees = 0;
 
     for (const wallet of wallets) {
       try {
-        const positions = await this.bagsApi.getClaimablePositions(wallet.address);
-        const unclaimed = positions.reduce(
-          (sum, pos) => sum + pos.totalClaimableLamportsUserShare,
-          0
-        );
+        // Use Bags API to get claimable positions
+        const claimStats = await this.bagsApi.getWalletClaimStats(wallet.address);
 
-        wallet.unclaimedLamports = unclaimed;
+        wallet.unclaimedLamports = claimStats.totalClaimableLamports;
         wallet.lastChecked = Date.now();
 
-        if (unclaimed >= AutonomousService.MIN_FEE_THRESHOLD_LAMPORTS) {
-          totalUnclaimed += unclaimed;
+        if (claimStats.totalClaimableLamports >= AutonomousService.MIN_FEE_THRESHOLD_LAMPORTS) {
+          totalUnclaimed += claimStats.totalClaimableLamports;
           walletsWithFees++;
+
+          console.log(
+            `[AutonomousService] Wallet ${wallet.address.slice(0, 8)}... has ${claimStats.totalClaimableSol.toFixed(4)} SOL unclaimed across ${claimStats.positionCount} tokens`
+          );
         }
       } catch (error) {
         console.error(
@@ -455,10 +457,10 @@ export class AutonomousService extends Service {
     if (walletsWithFees > 0) {
       const totalSol = totalUnclaimed / 1_000_000_000;
       console.log(
-        `[AutonomousService] Found ${walletsWithFees} wallets with ${totalSol.toFixed(2)} SOL unclaimed`
+        `[AutonomousService] Found ${walletsWithFees} wallets with ${totalSol.toFixed(2)} SOL total unclaimed`
       );
 
-      // Update shared context
+      // Update shared context for other agents to reference
       if (this.coordinator) {
         this.coordinator.setSharedContext("walletsWithUnclaimedFees", walletsWithFees);
         this.coordinator.setSharedContext("totalUnclaimedSol", totalSol);

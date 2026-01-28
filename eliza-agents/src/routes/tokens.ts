@@ -85,4 +85,67 @@ router.get('/launches/recent', async (req: Request, res: Response) => {
   });
 });
 
+// GET /api/wallet/:address/claimable - Get claimable fees for a wallet
+// Uses Bags.fm API: /token-launch/claimable-positions
+router.get('/wallet/:address/claimable', async (req: Request, res: Response) => {
+  const address = req.params.address as string;
+
+  // Basic Solana address validation
+  if (!address || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
+    res.status(400).json({
+      success: false,
+      error: 'Invalid wallet address'
+    });
+    return;
+  }
+
+  const api = getBagsApiService();
+
+  try {
+    const claimStats = await api.getWalletClaimStats(address);
+
+    res.json({
+      success: true,
+      wallet: address,
+      totalClaimableSol: claimStats.totalClaimableSol,
+      totalClaimableLamports: claimStats.totalClaimableLamports,
+      positionCount: claimStats.positionCount,
+      positions: claimStats.positions,
+      claimUrl: `https://bags.fm/claim`,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
+
+// GET /api/tokens/:mint/claim-events - Get claim history for a token
+router.get('/tokens/:mint/claim-events', async (req: Request, res: Response) => {
+  const mint = req.params.mint as string;
+  const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+  const offset = parseInt(req.query.offset as string) || 0;
+
+  const api = getBagsApiService();
+
+  try {
+    const events = await api.getClaimEvents(mint, { limit, offset });
+
+    res.json({
+      success: true,
+      tokenMint: mint,
+      events,
+      count: events.length,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
+
 export default router;
