@@ -89,7 +89,15 @@ interface GlobalToken {
   zone_override?: string | null;
 }
 
-type TabType = "overview" | "buildings" | "diagnostics" | "global" | "local" | "analytics" | "logs" | "agents";
+type TabType =
+  | "overview"
+  | "buildings"
+  | "diagnostics"
+  | "global"
+  | "local"
+  | "analytics"
+  | "logs"
+  | "agents";
 
 export function AdminConsole() {
   const { publicKey, connected, signMessage } = useWallet();
@@ -1578,9 +1586,7 @@ export function AdminConsole() {
             )}
 
             {/* AGENTS TAB */}
-            {activeTab === "agents" && (
-              <AgentDashboard addLog={addLog} />
-            )}
+            {activeTab === "agents" && <AgentDashboard addLog={addLog} />}
           </div>
 
           {/* Footer */}
