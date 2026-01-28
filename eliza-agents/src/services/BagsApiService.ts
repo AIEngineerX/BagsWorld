@@ -1,9 +1,5 @@
 import { Service, type IAgentRuntime } from "../types/elizaos.js";
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface TokenInfo {
   mint: string;
   name: string;
@@ -164,10 +160,6 @@ export interface LaunchTransactionData {
   tipLamports?: number;
 }
 
-// ============================================================================
-// Cache
-// ============================================================================
-
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 30000;
 const MAX_CACHE_SIZE = 500;
@@ -199,33 +191,23 @@ export function cleanupCache(): number {
   return cleaned;
 }
 
-// ============================================================================
-// API Response Type
-// ============================================================================
-
 interface ApiResponse<T> {
   success: boolean;
   response?: T;
   error?: string;
 }
 
-// ============================================================================
-// Config
-// ============================================================================
-
 interface BagsApiConfig {
   baseUrl?: string;
   apiKey?: string;
   bagsWorldUrl?: string;
+  /** When true, API errors are thrown instead of returning null/empty. Default: false */
+  throwOnError?: boolean;
 }
 
 function isRuntime(arg: unknown): arg is IAgentRuntime {
   return arg !== null && typeof arg === "object" && "getSetting" in arg;
 }
-
-// ============================================================================
-// BagsApiService
-// ============================================================================
 
 export class BagsApiService extends Service {
   static readonly serviceType = "bags_api";
@@ -235,6 +217,8 @@ export class BagsApiService extends Service {
   private baseUrl: string;
   private apiKey: string;
   private bagsWorldUrl: string;
+  /** When true, API errors are thrown instead of returning null/empty arrays */
+  private throwOnError: boolean;
 
   // BagsWorld partner config for fee sharing
   static readonly PARTNER_CONFIG_PDA = "5TcACd9yCLEBewdRrhk9hb6A22oS2gFLzG7oH5YCq1Po";
@@ -249,6 +233,7 @@ export class BagsApiService extends Service {
       this.apiKey = (runtimeOrConfig.getSetting("BAGS_API_KEY") as string) || "";
       this.bagsWorldUrl =
         (runtimeOrConfig.getSetting("BAGSWORLD_API_URL") as string) || "http://localhost:3000";
+      this.throwOnError = runtimeOrConfig.getSetting("BAGS_API_THROW_ON_ERROR") === "true";
     } else if (runtimeOrConfig) {
       this.baseUrl =
         runtimeOrConfig.baseUrl ||
@@ -257,11 +242,20 @@ export class BagsApiService extends Service {
       this.apiKey = runtimeOrConfig.apiKey || process.env.BAGS_API_KEY || "";
       this.bagsWorldUrl =
         runtimeOrConfig.bagsWorldUrl || process.env.BAGSWORLD_API_URL || "http://localhost:3000";
+      this.throwOnError = runtimeOrConfig.throwOnError ?? false;
     } else {
       this.baseUrl = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
       this.apiKey = process.env.BAGS_API_KEY || "";
       this.bagsWorldUrl = process.env.BAGSWORLD_API_URL || "http://localhost:3000";
+      this.throwOnError = process.env.BAGS_API_THROW_ON_ERROR === "true";
     }
+  }
+
+  /**
+   * Enable or disable strict mode (throw on API errors)
+   */
+  setThrowOnError(value: boolean): void {
+    this.throwOnError = value;
   }
 
   static async start(runtime: IAgentRuntime): Promise<BagsApiService> {
@@ -278,10 +272,6 @@ export class BagsApiService extends Service {
   async stop(): Promise<void> {
     this.clearCache();
   }
-
-  // ==========================================================================
-  // Private Fetch Methods
-  // ==========================================================================
 
   private async fetch<T>(
     endpoint: string,
@@ -433,16 +423,13 @@ export class BagsApiService extends Service {
     }
   }
 
-  // ==========================================================================
-  // Read-Only Methods
-  // ==========================================================================
-
   async getToken(mint: string): Promise<TokenInfo | null> {
     try {
       const data = await this.fetch<{ token: TokenInfo }>(`/token-launch/creator/v3?mint=${mint}`);
       return data.token || null;
     } catch (error) {
       console.error(`Failed to fetch token ${mint}:`, error);
+      if (this.throwOnError) throw error;
       return null;
     }
   }
@@ -453,6 +440,7 @@ export class BagsApiService extends Service {
       return data;
     } catch (error) {
       console.error(`Failed to fetch fees for ${mint}:`, error);
+      if (this.throwOnError) throw error;
       return null;
     }
   }
@@ -463,6 +451,7 @@ export class BagsApiService extends Service {
       return data.creators || [];
     } catch (error) {
       console.error("Failed to fetch top creators:", error);
+      if (this.throwOnError) throw error;
       return [];
     }
   }
@@ -475,6 +464,7 @@ export class BagsApiService extends Service {
       return data.launches || [];
     } catch (error) {
       console.error("Failed to fetch recent launches:", error);
+      if (this.throwOnError) throw error;
       return [];
     }
   }
@@ -482,7 +472,11 @@ export class BagsApiService extends Service {
   async getWorldHealth(): Promise<WorldHealthData | null> {
     try {
       const response = await fetch(`${this.bagsWorldUrl}/api/world-state`);
-      if (!response.ok) return null;
+      if (!response.ok) {
+        const error = new Error(`World health API error: ${response.status} ${response.statusText}`);
+        if (this.throwOnError) throw error;
+        return null;
+      }
 
       const data = await response.json();
       return {
@@ -495,6 +489,7 @@ export class BagsApiService extends Service {
       };
     } catch (error) {
       console.error("Failed to fetch world health:", error);
+      if (this.throwOnError) throw error;
       return null;
     }
   }
@@ -507,6 +502,7 @@ export class BagsApiService extends Service {
       return data.tokens || [];
     } catch (error) {
       console.error(`Failed to search tokens for "${query}":`, error);
+      if (this.throwOnError) throw error;
       return [];
     }
   }
@@ -535,10 +531,6 @@ export class BagsApiService extends Service {
     return this.fetch(`/token-launch/lifetime-fees?${params}`);
   }
 
-  // ==========================================================================
-  // Wallet Lookup Methods
-  // ==========================================================================
-
   async getWalletByUsername(provider: string, username: string): Promise<WalletLookupResult> {
     const params = new URLSearchParams({ provider, username });
     return this.fetch(`/token-launch/fee-share/wallet/v2?${params}`);
@@ -552,15 +544,6 @@ export class BagsApiService extends Service {
       body: JSON.stringify({ items }),
     });
   }
-
-  // ==========================================================================
-  // Fee Claiming Methods
-  // ==========================================================================
-
-  /**
-   * Get all claimable fee positions for a wallet
-   * Uses Bags.fm API: /token-launch/claimable-positions
-   */
   async getClaimablePositions(wallet: string): Promise<ClaimablePosition[]> {
     try {
       const params = new URLSearchParams({ wallet });
@@ -570,6 +553,7 @@ export class BagsApiService extends Service {
       return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error(`[BagsApiService] Failed to get claimable positions for ${wallet}:`, error);
+      if (this.throwOnError) throw error;
       return [];
     }
   }
@@ -639,6 +623,7 @@ export class BagsApiService extends Service {
       return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error(`[BagsApiService] Failed to get claim events for ${tokenMint}:`, error);
+      if (this.throwOnError) throw error;
       return [];
     }
   }
@@ -652,10 +637,6 @@ export class BagsApiService extends Service {
       body: JSON.stringify({ wallet, positions }),
     });
   }
-
-  // ==========================================================================
-  // Trading Methods
-  // ==========================================================================
 
   async getTradeQuote(
     inputMint: string,
@@ -683,10 +664,6 @@ export class BagsApiService extends Service {
       body: JSON.stringify({ quoteResponse, userPublicKey }),
     });
   }
-
-  // ==========================================================================
-  // Token Launch Methods
-  // ==========================================================================
 
   async createTokenInfo(data: TokenCreationData): Promise<TokenCreationResult> {
     const formData = new FormData();
@@ -916,10 +893,6 @@ export class BagsApiService extends Service {
     return { transaction, lastValidBlockHeight };
   }
 
-  // ==========================================================================
-  // Partner Fee Methods
-  // ==========================================================================
-
   async generatePartnerClaimTx(
     partnerKey: string,
     wallet: string
@@ -943,10 +916,6 @@ export class BagsApiService extends Service {
     return this.fetch(`/fee-share/partner-config/stats?${params}`);
   }
 
-  // ==========================================================================
-  // Utility Methods
-  // ==========================================================================
-
   clearCache(): void {
     cache.clear();
   }
@@ -955,10 +924,6 @@ export class BagsApiService extends Service {
     return !!this.apiKey;
   }
 }
-
-// ============================================================================
-// Singleton Instance
-// ============================================================================
 
 let standaloneInstance: BagsApiService | null = null;
 

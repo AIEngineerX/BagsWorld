@@ -620,18 +620,19 @@ export class GhostTrader {
 
   /**
    * Sign and submit a transaction using SolanaService
+   * Returns signature on success, null on failure (including simulations)
    */
   private async signAndSubmitTransaction(base64Transaction: string): Promise<string | null> {
     // Check if Solana service is configured
     if (!this.solanaService || !this.solanaService.isConfigured()) {
-      console.log("[GhostTrader] Solana wallet not configured, simulating transaction");
-      return `sim_${crypto.randomUUID().slice(0, 16)}`;
+      console.warn("[GhostTrader] Solana wallet not configured - cannot execute transaction");
+      return null; // Don't create fake positions for unconfigured wallets
     }
 
-    // If trading is disabled, simulate
+    // If trading is disabled, don't execute
     if (!this.config.enabled) {
-      console.log("[GhostTrader] Trading disabled, simulating transaction");
-      return `sim_${crypto.randomUUID().slice(0, 16)}`;
+      console.warn("[GhostTrader] Trading disabled - cannot execute transaction");
+      return null; // Don't create fake positions when trading is disabled
     }
 
     // Real transaction signing and submission

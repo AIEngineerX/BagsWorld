@@ -71,7 +71,7 @@ describe("BagsApiService", () => {
     it("fetches token successfully", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ token: mockToken }),
+        json: async () => ({ success: true, response: { token: mockToken } }),
       });
 
       const result = await service.getToken(mockToken.mint);
@@ -86,7 +86,7 @@ describe("BagsApiService", () => {
     it("returns null for non-existent token", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ token: null }),
+        json: async () => ({ success: true, response: { token: null } }),
       });
 
       const result = await service.getToken("nonexistent");
@@ -98,6 +98,7 @@ describe("BagsApiService", () => {
         ok: false,
         status: 404,
         statusText: "Not Found",
+        text: async () => "Not Found",
       });
 
       const result = await service.getToken("invalid");
@@ -114,7 +115,7 @@ describe("BagsApiService", () => {
     it("uses cache for repeated requests", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ token: mockToken }),
+        json: async () => ({ success: true, response: { token: mockToken } }),
       });
 
       // First request
@@ -138,7 +139,7 @@ describe("BagsApiService", () => {
     it("fetches fees successfully", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockFees,
+        json: async () => ({ success: true, response: mockFees }),
       });
 
       const result = await service.getCreatorFees(mockFees.mint);
@@ -155,6 +156,7 @@ describe("BagsApiService", () => {
         ok: false,
         status: 500,
         statusText: "Internal Server Error",
+        text: async () => "Internal Server Error",
       });
 
       const result = await service.getCreatorFees("test");
@@ -172,7 +174,7 @@ describe("BagsApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => zeroFees,
+        json: async () => ({ success: true, response: zeroFees }),
       });
 
       const result = await service.getCreatorFees("test");
@@ -190,7 +192,7 @@ describe("BagsApiService", () => {
     it("fetches top creators with default limit", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ creators: mockCreators }),
+        json: async () => ({ success: true, response: { creators: mockCreators } }),
       });
 
       const result = await service.getTopCreators();
@@ -205,7 +207,7 @@ describe("BagsApiService", () => {
     it("fetches with custom limit", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ creators: mockCreators.slice(0, 2) }),
+        json: async () => ({ success: true, response: { creators: mockCreators.slice(0, 2) } }),
       });
 
       const result = await service.getTopCreators(2);
@@ -222,6 +224,7 @@ describe("BagsApiService", () => {
         ok: false,
         status: 500,
         statusText: "Error",
+        text: async () => "Error",
       });
 
       const result = await service.getTopCreators();
@@ -231,7 +234,7 @@ describe("BagsApiService", () => {
     it("returns empty array when no creators", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ creators: null }),
+        json: async () => ({ success: true, response: { creators: null } }),
       });
 
       const result = await service.getTopCreators();
@@ -261,7 +264,7 @@ describe("BagsApiService", () => {
     it("fetches recent launches", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ launches: mockLaunches }),
+        json: async () => ({ success: true, response: { launches: mockLaunches } }),
       });
 
       const result = await service.getRecentLaunches(5);
@@ -284,7 +287,7 @@ describe("BagsApiService", () => {
       const launchWithoutMC = [{ ...mockLaunches[1] }];
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ launches: launchWithoutMC }),
+        json: async () => ({ success: true, response: { launches: launchWithoutMC } }),
       });
 
       const result = await service.getRecentLaunches(1);
@@ -365,7 +368,7 @@ describe("BagsApiService", () => {
     it("searches tokens by query", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ tokens: mockTokens }),
+        json: async () => ({ success: true, response: { tokens: mockTokens } }),
       });
 
       const result = await service.searchTokens("bags");
@@ -380,7 +383,7 @@ describe("BagsApiService", () => {
     it("URL-encodes special characters", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ tokens: [] }),
+        json: async () => ({ success: true, response: { tokens: [] } }),
       });
 
       await service.searchTokens("$BAGS");
@@ -401,7 +404,7 @@ describe("BagsApiService", () => {
     it("returns empty array for no results", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ tokens: null }),
+        json: async () => ({ success: true, response: { tokens: null } }),
       });
 
       const result = await service.searchTokens("nonexistent");
@@ -413,7 +416,7 @@ describe("BagsApiService", () => {
     it("clears the cache", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ token: { mint: "test", name: "Test", symbol: "T" } }),
+        json: async () => ({ success: true, response: { token: { mint: "test", name: "Test", symbol: "T" } } }),
       });
 
       // First request
@@ -442,7 +445,7 @@ describe("BagsApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ token: null }),
+        json: async () => ({ success: true, response: { token: null } }),
       });
 
       await authService.getToken("test");
@@ -451,7 +454,7 @@ describe("BagsApiService", () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: "Bearer test-api-key",
+            "x-api-key": "test-api-key",
           }),
         })
       );
@@ -464,13 +467,13 @@ describe("BagsApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ token: null }),
+        json: async () => ({ success: true, response: { token: null } }),
       });
 
       await noAuthService.getToken("test");
 
       const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[1].headers["Authorization"]).toBeUndefined();
+      expect(callArgs[1].headers["x-api-key"]).toBeUndefined();
     });
   });
 });
@@ -500,7 +503,7 @@ describe("BagsApiService edge cases", () => {
     it("handles multiple simultaneous requests to same endpoint", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ token: { mint: "test", name: "Test", symbol: "T" } }),
+        json: async () => ({ success: true, response: { token: { mint: "test", name: "Test", symbol: "T" } } }),
       });
 
       // Fire 5 concurrent requests
@@ -517,7 +520,7 @@ describe("BagsApiService edge cases", () => {
     it("uses cache for sequential requests to same endpoint", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ token: { mint: "cached", name: "Cached", symbol: "C" } }),
+        json: async () => ({ success: true, response: { token: { mint: "cached", name: "Cached", symbol: "C" } } }),
       });
 
       // First call - fetches from API
@@ -535,15 +538,15 @@ describe("BagsApiService edge cases", () => {
     it("handles multiple simultaneous requests to different endpoints", async () => {
       mockFetch.mockImplementation(async (url: string) => {
         if (url.includes("token-launch/creator")) {
-          return { ok: true, json: async () => ({ token: { mint: "t", name: "T", symbol: "T" } }) };
+          return { ok: true, json: async () => ({ success: true, response: { token: { mint: "t", name: "T", symbol: "T" } } }) };
         }
         if (url.includes("creators/top")) {
-          return { ok: true, json: async () => ({ creators: [] }) };
+          return { ok: true, json: async () => ({ success: true, response: { creators: [] } }) };
         }
         if (url.includes("token-launch/recent")) {
-          return { ok: true, json: async () => ({ launches: [] }) };
+          return { ok: true, json: async () => ({ success: true, response: { launches: [] } }) };
         }
-        return { ok: true, json: async () => ({}) };
+        return { ok: true, json: async () => ({ success: true, response: {} }) };
       });
 
       // Fire concurrent requests to different endpoints
@@ -564,7 +567,7 @@ describe("BagsApiService edge cases", () => {
     it("handles response with unexpected structure", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ unexpectedField: "value" }),
+        json: async () => ({ success: true, response: { unexpectedField: "value" } }),
       });
 
       const result = await service.getToken("test");
@@ -575,7 +578,7 @@ describe("BagsApiService edge cases", () => {
     it("handles array instead of object response", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => [],
+        json: async () => ({ success: true, response: [] }),
       });
 
       const result = await service.getToken("test");
@@ -596,14 +599,32 @@ describe("BagsApiService edge cases", () => {
   });
 
   describe("HTTP status code handling", () => {
-    const statusCodes = [400, 401, 403, 404, 429, 500, 502, 503, 504];
-
-    for (const status of statusCodes) {
+    // Test 4xx errors (no retry)
+    const clientErrorCodes = [400, 401, 403, 404, 429];
+    for (const status of clientErrorCodes) {
       it(`handles ${status} status code`, async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
           status,
           statusText: `Error ${status}`,
+          text: async () => `Error ${status}`,
+        });
+
+        const result = await service.getToken("test");
+        expect(result).toBeNull();
+      });
+    }
+
+    // Test 5xx errors (with retry - need to mock all retry attempts)
+    const serverErrorCodes = [500, 502, 503, 504];
+    for (const status of serverErrorCodes) {
+      it(`handles ${status} status code after retries`, async () => {
+        // Mock all retry attempts to return the same error
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status,
+          statusText: `Error ${status}`,
+          text: async () => `Error ${status}`,
         });
 
         const result = await service.getToken("test");
@@ -616,7 +637,7 @@ describe("BagsApiService edge cases", () => {
     it("handles limit of 0", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ creators: [] }),
+        json: async () => ({ success: true, response: { creators: [] } }),
       });
 
       const result = await service.getTopCreators(0);
@@ -630,7 +651,7 @@ describe("BagsApiService edge cases", () => {
     it("handles very large limit", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ creators: [] }),
+        json: async () => ({ success: true, response: { creators: [] } }),
       });
 
       const result = await service.getTopCreators(10000);
@@ -644,7 +665,7 @@ describe("BagsApiService edge cases", () => {
     it("handles negative limit", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ creators: [] }),
+        json: async () => ({ success: true, response: { creators: [] } }),
       });
 
       const result = await service.getTopCreators(-5);
@@ -656,7 +677,7 @@ describe("BagsApiService edge cases", () => {
     it("handles whitespace in search query", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ tokens: [] }),
+        json: async () => ({ success: true, response: { tokens: [] } }),
       });
 
       await service.searchTokens("  bags  token  ");
@@ -669,7 +690,7 @@ describe("BagsApiService edge cases", () => {
     it("handles Unicode in search query", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ tokens: [] }),
+        json: async () => ({ success: true, response: { tokens: [] } }),
       });
 
       await service.searchTokens("🚀token");
@@ -679,7 +700,7 @@ describe("BagsApiService edge cases", () => {
     it("handles empty search query", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ tokens: [] }),
+        json: async () => ({ success: true, response: { tokens: [] } }),
       });
 
       const result = await service.searchTokens("");
@@ -692,11 +713,14 @@ describe("BagsApiService edge cases", () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          token: {
-            mint: "test",
-            name: "Minimal",
-            symbol: "MIN",
-            // No marketCap, volume24h, lifetimeFees, holders
+          success: true,
+          response: {
+            token: {
+              mint: "test",
+              name: "Minimal",
+              symbol: "MIN",
+              // No marketCap, volume24h, lifetimeFees, holders
+            },
           },
         }),
       });
@@ -710,14 +734,17 @@ describe("BagsApiService edge cases", () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          creators: [
-            {
-              address: "addr1",
-              name: "Whale",
-              totalFees: 999999999.999999,
-              rank: 1,
-            },
-          ],
+          success: true,
+          response: {
+            creators: [
+              {
+                address: "addr1",
+                name: "Whale",
+                totalFees: 999999999.999999,
+                rank: 1,
+              },
+            ],
+          },
         }),
       });
 
@@ -753,7 +780,7 @@ describe("BagsApiService edge cases", () => {
             setTimeout(() => {
               resolve({
                 ok: true,
-                json: async () => ({ token: { mint: "t", name: "T", symbol: "T" } }),
+                json: async () => ({ success: true, response: { token: { mint: "t", name: "T", symbol: "T" } } }),
               });
             }, 100);
           })
@@ -769,7 +796,7 @@ describe("BagsApiService edge cases", () => {
       // First, populate cache with a fresh request
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ token: { mint: "test1", name: "Test", symbol: "T" } }),
+        json: async () => ({ success: true, response: { token: { mint: "test1", name: "Test", symbol: "T" } } }),
       });
       await service.getToken("test1");
 
