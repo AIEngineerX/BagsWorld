@@ -498,9 +498,9 @@ function getTopicResponses(
         "on-chain receipt: fees distributed. transparent as always",
       ],
       distribution: [
-        `distribution complete. ${amount ? amount.toFixed(2) : ""} SOL to top 3. 50/30/20 split`,
-        "threshold hit. rewards sent. all verifiable on-chain",
-        "top creators paid. check the wallet for proof",
+        `community fund contribution. ${amount ? amount.toFixed(2) : ""} SOL for ecosystem development`,
+        "funds distributed. all verifiable on-chain via solscan",
+        "ecosystem support sent. check the wallet for proof",
       ],
       whale_alert: [
         `whale movement detected. ${amount ? amount.toFixed(2) : "large"} SOL ${tokenSymbol ? `on $${tokenSymbol}` : ""}`,

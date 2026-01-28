@@ -831,15 +831,15 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <div className="flex items-start gap-2">
                   <span className="font-pixel text-xs text-bags-gold">1</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Top 3 get paid</span> - Creators ranked by
-                    fees get SOL rewards (50/30/20)
+                    <span className="text-bags-green">Earn trading fees</span> - Get a share of
+                    every trade on your token
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="font-pixel text-xs text-bags-gold">2</span>
                   <span className="font-pixel text-[7px] text-gray-300">
-                    <span className="text-bags-green">Direct to wallet</span> - No claiming needed,
-                    SOL sent automatically
+                    <span className="text-bags-green">Flexible fee sharing</span> - Split fees with
+                    collaborators via social accounts
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
@@ -1022,7 +1022,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               </p>
             </div>
 
-            {/* Ecosystem Fee - Creator & Holder Rewards (only show if > 0) */}
+            {/* Ecosystem Fee - Community Fund (only show if > 0) */}
             {ecosystemFee.bps > 0 && (
               <div className="bg-bags-gold/10 border border-bags-gold/30 p-3 space-y-2">
                 <div className="flex justify-between items-center">
@@ -1033,7 +1033,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                         {ecosystemFee.displayName}
                       </p>
                       <p className="font-pixel text-[7px] text-gray-400">
-                        Rewards top 3 creators by fees
+                        Supports BagsWorld development
                       </p>
                     </div>
                   </div>
@@ -1043,8 +1043,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 </div>
                 <div className="pt-1 border-t border-bags-gold/20">
                   <p className="font-pixel text-[6px] text-gray-400">
-                    Top 3 creators by fees get rewarded. 50/30/20 split. Triggers at 10 SOL or 5
-                    days (min 10 SOL). Direct SOL to your wallet.
+                    This fee supports BagsWorld ecosystem development, features, and community
+                    initiatives. Verifiable on-chain.
                   </p>
                 </div>
                 <a
@@ -1053,7 +1053,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   rel="noopener noreferrer"
                   className="block text-center font-pixel text-[7px] text-blue-400 hover:text-blue-300 pt-1"
                 >
-                  🔍 View Rewards Wallet on Solscan →
+                  🔍 View Ecosystem Wallet on Solscan →
                 </a>
               </div>
             )}
