@@ -25,8 +25,13 @@ import {
   coordinationRoutes,
   launchWizardRoutes,
   creatorToolsRoutes,
+  ghostRoutes,
+  twitterRoutes,
   setDatabase,
 } from "./routes/index.js";
+import { GhostTrader, getGhostTrader } from "./services/GhostTrader.js";
+import { SolanaService, getSolanaService } from "./services/SolanaService.js";
+import { TwitterService, getTwitterService } from "./services/TwitterService.js";
 import { createMockRuntime } from "./routes/shared.js";
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
@@ -105,6 +110,8 @@ app.use("/api/autonomous", autonomousRoutes);
 app.use("/api/coordination", coordinationRoutes);
 app.use("/api/launch-wizard", launchWizardRoutes);
 app.use("/api/creator-tools", creatorToolsRoutes);
+app.use("/api/ghost", ghostRoutes);
+app.use("/api/twitter", twitterRoutes);
 
 // Database initialization
 async function initializeDatabase(): Promise<void> {
@@ -170,6 +177,28 @@ async function initializeAutonomousServices(): Promise<void> {
   } else {
     console.log("[Autonomous] Autonomous service disabled (ENABLE_AUTONOMOUS=false)");
   }
+
+  // Initialize Solana Service (for Ghost trading)
+  const solanaService = getSolanaService();
+  await solanaService.initialize();
+  console.log(
+    `[SolanaService] Initialized (wallet: ${solanaService.isConfigured() ? solanaService.getPublicKey()?.slice(0, 8) + "..." : "NOT configured"})`
+  );
+
+  // Initialize Ghost Trader
+  const ghostTrader = getGhostTrader();
+  await ghostTrader.initialize();
+  console.log(
+    `[GhostTrader] Initialized (trading: ${ghostTrader.isEnabled() ? "ENABLED" : "DISABLED"})`
+  );
+
+  // Initialize Twitter Service (for Finn posting)
+  const twitterService = getTwitterService();
+  await twitterService.initialize();
+  const twitterStats = twitterService.getStats();
+  console.log(
+    `[TwitterService] Initialized (${twitterStats.authenticated ? "@" + twitterStats.username : "NOT configured"}${twitterStats.dryRun ? " - DRY RUN" : ""})`
+  );
 
   // Start LaunchWizard session cleanup timer (every hour)
   const SESSION_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
@@ -295,6 +324,21 @@ async function main(): Promise<void> {
     console.log(`  GET    /api/creator-tools/fee-advice/:mint   - Fee optimization (Ghost)`);
     console.log(`  GET    /api/creator-tools/marketing-advice/:mint - Marketing tips (Sam)`);
     console.log(`  GET    /api/creator-tools/community-advice/:mint - Community help (Carlo)`);
+    console.log(`\nGhost Autonomous Trading:`);
+    console.log(`  GET    /api/ghost/status                     - Trading status and stats`);
+    console.log(`  GET    /api/ghost/positions                  - List all positions`);
+    console.log(`  GET    /api/ghost/positions/open             - List open positions`);
+    console.log(`  POST   /api/ghost/enable                     - Enable trading (requires confirmation)`);
+    console.log(`  POST   /api/ghost/disable                    - Disable trading (kill switch)`);
+    console.log(`  POST   /api/ghost/config                     - Update trading config`);
+    console.log(`  POST   /api/ghost/evaluate                   - Manually trigger evaluation`);
+    console.log(`  POST   /api/ghost/check-positions            - Manually check positions`);
+    console.log(`\nFinn Twitter (Requires TWITTER_BEARER_TOKEN):`);
+    console.log(`  GET    /api/twitter/status                   - Twitter service status`);
+    console.log(`  GET    /api/twitter/history                  - Recent post history`);
+    console.log(`  POST   /api/twitter/post                     - Post a tweet as Finn`);
+    console.log(`  POST   /api/twitter/thread                   - Post a thread as Finn`);
+    console.log(`  POST   /api/twitter/generate-shill           - Generate shill content for token`);
   });
 }
 

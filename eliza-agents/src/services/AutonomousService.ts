@@ -1,15 +1,17 @@
 // AutonomousService - Scheduled tasks and autonomous agent actions
 // Enables agents to act without human prompting
 
-import { Service, type IAgentRuntime } from '../types/elizaos.js';
-import { BagsApiService, getBagsApiService } from './BagsApiService.js';
-import { AgentCoordinator, getAgentCoordinator } from './AgentCoordinator.js';
+import { Service, type IAgentRuntime } from "../types/elizaos.js";
+import { BagsApiService, getBagsApiService, type ClaimablePosition } from "./BagsApiService.js";
+import { AgentCoordinator, getAgentCoordinator } from "./AgentCoordinator.js";
+import { GhostTrader, getGhostTrader } from "./GhostTrader.js";
+import { TwitterService, getTwitterService } from "./TwitterService.js";
 
 export interface ScheduledTask {
   id: string;
   name: string;
   agentId: string;
-  interval: number;      // ms between runs
+  interval: number; // ms between runs
   lastRun: number;
   nextRun: number;
   enabled: boolean;
@@ -18,8 +20,8 @@ export interface ScheduledTask {
 
 export interface AutonomousAlert {
   id: string;
-  type: 'launch' | 'rug' | 'pump' | 'dump' | 'milestone' | 'anomaly';
-  severity: 'info' | 'warning' | 'critical';
+  type: "launch" | "rug" | "pump" | "dump" | "milestone" | "anomaly" | "fee_reminder" | "trade";
+  severity: "info" | "warning" | "critical";
   title: string;
   message: string;
   data: Record<string, unknown>;
@@ -27,35 +29,55 @@ export interface AutonomousAlert {
   acknowledged: boolean;
 }
 
+// Wallet tracking for fee reminders
+export interface TrackedWallet {
+  address: string;
+  userId?: string;
+  lastChecked: number;
+  unclaimedLamports: number;
+  lastReminded: number;
+  reminderCount: number;
+}
+
 // Singleton instance
 let autonomousInstance: AutonomousService | null = null;
 
 export class AutonomousService extends Service {
-  static readonly serviceType = 'bags_autonomous';
-  readonly capabilityDescription = 'Autonomous agent actions and scheduled tasks';
+  static readonly serviceType = "bags_autonomous";
+  readonly capabilityDescription = "Autonomous agent actions and scheduled tasks";
 
   private tasks = new Map<string, ScheduledTask>();
   private alerts: AutonomousAlert[] = [];
   private tickInterval: NodeJS.Timeout | null = null;
   private bagsApi: BagsApiService | null = null;
   private coordinator: AgentCoordinator | null = null;
+  private twitterService: TwitterService | null = null;
+
+  // Wallet tracking for Finn's fee reminders
+  private trackedWallets = new Map<string, TrackedWallet>();
+  private static readonly FEE_REMINDER_COOLDOWN = 6 * 60 * 60 * 1000; // 6 hours between reminders
+  private static readonly MIN_FEE_THRESHOLD_LAMPORTS = 0.1 * 1_000_000_000; // 0.1 SOL minimum to remind
 
   // Thresholds for alerts
-  private readonly PUMP_THRESHOLD = 50;     // 50% price increase
-  private readonly DUMP_THRESHOLD = -30;    // 30% price decrease
-  private readonly VOLUME_SPIKE = 200;      // 200% volume increase
+  private readonly PUMP_THRESHOLD = 50; // 50% price increase
+  private readonly DUMP_THRESHOLD = -30; // 30% price decrease
+  private readonly VOLUME_SPIKE = 200; // 200% volume increase
 
   constructor(runtime?: IAgentRuntime) {
     super(runtime);
   }
 
   static async start(runtime: IAgentRuntime): Promise<AutonomousService> {
-    console.log('[AutonomousService] Starting autonomous service...');
+    console.log("[AutonomousService] Starting autonomous service...");
     const service = new AutonomousService(runtime);
 
     // Get dependencies
     service.bagsApi = getBagsApiService();
     service.coordinator = getAgentCoordinator();
+    service.twitterService = getTwitterService();
+
+    // Initialize Twitter service
+    await service.twitterService.initialize();
 
     // Register default autonomous tasks
     service.registerDefaultTasks();
@@ -66,7 +88,7 @@ export class AutonomousService extends Service {
     // Store as singleton
     autonomousInstance = service;
 
-    console.log('[AutonomousService] Autonomous service ready');
+    console.log("[AutonomousService] Autonomous service ready");
     return service;
   }
 
@@ -81,8 +103,8 @@ export class AutonomousService extends Service {
   private registerDefaultTasks(): void {
     // Neo: Scan for new launches every 2 minutes
     this.registerTask({
-      name: 'neo_launch_scan',
-      agentId: 'neo',
+      name: "neo_launch_scan",
+      agentId: "neo",
       interval: 2 * 60 * 1000,
       handler: async () => {
         await this.scanForNewLaunches();
@@ -91,8 +113,8 @@ export class AutonomousService extends Service {
 
     // Neo: Monitor for suspicious activity every 5 minutes
     this.registerTask({
-      name: 'neo_anomaly_detection',
-      agentId: 'neo',
+      name: "neo_anomaly_detection",
+      agentId: "neo",
       interval: 5 * 60 * 1000,
       handler: async () => {
         await this.detectAnomalies();
@@ -101,18 +123,28 @@ export class AutonomousService extends Service {
 
     // Ghost: Check rewards pool every 10 minutes
     this.registerTask({
-      name: 'ghost_rewards_check',
-      agentId: 'ghost',
+      name: "ghost_rewards_check",
+      agentId: "ghost",
       interval: 10 * 60 * 1000,
       handler: async () => {
         await this.checkRewardsPool();
       },
     });
 
+    // Finn: Check tracked wallets for unclaimed fees every 10 minutes
+    this.registerTask({
+      name: "finn_fee_reminder",
+      agentId: "finn",
+      interval: 10 * 60 * 1000,
+      handler: async () => {
+        await this.checkTrackedWalletFees();
+      },
+    });
+
     // Finn: Check world health every 15 minutes
     this.registerTask({
-      name: 'finn_health_check',
-      agentId: 'finn',
+      name: "finn_health_check",
+      agentId: "finn",
       interval: 15 * 60 * 1000,
       handler: async () => {
         await this.checkWorldHealth();
@@ -121,11 +153,41 @@ export class AutonomousService extends Service {
 
     // BNN: Broadcast daily recap every 6 hours
     this.registerTask({
-      name: 'bnn_daily_recap',
-      agentId: 'bnn',
+      name: "bnn_daily_recap",
+      agentId: "bnn",
       interval: 6 * 60 * 60 * 1000,
       handler: async () => {
         await this.broadcastRecap();
+      },
+    });
+
+    // Ghost: Evaluate new launches for trading every 5 minutes
+    this.registerTask({
+      name: "ghost_trade_eval",
+      agentId: "ghost",
+      interval: 5 * 60 * 1000,
+      handler: async () => {
+        await this.evaluateGhostTrades();
+      },
+    });
+
+    // Ghost: Check positions for take-profit/stop-loss every 2 minutes
+    this.registerTask({
+      name: "ghost_position_check",
+      agentId: "ghost",
+      interval: 2 * 60 * 1000,
+      handler: async () => {
+        await this.checkGhostPositions();
+      },
+    });
+
+    // Finn: Post ecosystem updates to Twitter every 4 hours
+    this.registerTask({
+      name: "finn_twitter_update",
+      agentId: "finn",
+      interval: 4 * 60 * 60 * 1000, // 4 hours
+      handler: async () => {
+        await this.postFinnTwitterUpdate();
       },
     });
   }
@@ -154,7 +216,9 @@ export class AutonomousService extends Service {
     };
 
     this.tasks.set(id, task);
-    console.log(`[AutonomousService] Registered task: ${params.name} (every ${params.interval / 1000}s)`);
+    console.log(
+      `[AutonomousService] Registered task: ${params.name} (every ${params.interval / 1000}s)`
+    );
     return id;
   }
 
@@ -165,14 +229,16 @@ export class AutonomousService extends Service {
     const task = this.tasks.get(taskId);
     if (task) {
       task.enabled = enabled;
-      console.log(`[AutonomousService] Task ${task.name} ${enabled ? 'enabled' : 'disabled'}`);
+      console.log(`[AutonomousService] Task ${task.name} ${enabled ? "enabled" : "disabled"}`);
     }
   }
 
   /**
    * Create an alert and notify agents
    */
-  async createAlert(params: Omit<AutonomousAlert, 'id' | 'timestamp' | 'acknowledged'>): Promise<string> {
+  async createAlert(
+    params: Omit<AutonomousAlert, "id" | "timestamp" | "acknowledged">
+  ): Promise<string> {
     const alert: AutonomousAlert = {
       ...params,
       id: crypto.randomUUID(),
@@ -191,7 +257,11 @@ export class AutonomousService extends Service {
 
     // Notify coordinator
     if (this.coordinator) {
-      await this.coordinator.alert('system', `[${alert.type.toUpperCase()}] ${alert.title}: ${alert.message}`, alert.data);
+      await this.coordinator.alert(
+        "system",
+        `[${alert.type.toUpperCase()}] ${alert.title}: ${alert.message}`,
+        alert.data
+      );
     }
 
     return alert.id;
@@ -201,15 +271,15 @@ export class AutonomousService extends Service {
    * Get recent alerts
    */
   getAlerts(options?: {
-    type?: AutonomousAlert['type'];
-    severity?: AutonomousAlert['severity'];
+    type?: AutonomousAlert["type"];
+    severity?: AutonomousAlert["severity"];
     unacknowledgedOnly?: boolean;
     limit?: number;
   }): AutonomousAlert[] {
     const { type, severity, unacknowledgedOnly = false, limit = 20 } = options || {};
 
     return this.alerts
-      .filter(a => {
+      .filter((a) => {
         if (type && a.type !== type) return false;
         if (severity && a.severity !== severity) return false;
         if (unacknowledgedOnly && a.acknowledged) return false;
@@ -223,7 +293,7 @@ export class AutonomousService extends Service {
    * Acknowledge an alert
    */
   acknowledgeAlert(alertId: string): void {
-    const alert = this.alerts.find(a => a.id === alertId);
+    const alert = this.alerts.find((a) => a.id === alertId);
     if (alert) {
       alert.acknowledged = true;
     }
@@ -263,7 +333,138 @@ export class AutonomousService extends Service {
     }
   }
 
+  // ===== Wallet Tracking for Fee Reminders =====
+
+  /**
+   * Track a wallet for fee reminders (called when user chats with agents)
+   */
+  trackWallet(address: string, userId?: string): void {
+    const existing = this.trackedWallets.get(address);
+    if (existing) {
+      // Update existing
+      existing.userId = userId || existing.userId;
+      return;
+    }
+
+    this.trackedWallets.set(address, {
+      address,
+      userId,
+      lastChecked: 0,
+      unclaimedLamports: 0,
+      lastReminded: 0,
+      reminderCount: 0,
+    });
+
+    console.log(`[AutonomousService] Now tracking wallet ${address.slice(0, 8)}... for fee reminders`);
+  }
+
+  /**
+   * Get pending fee reminder for a wallet (called when user starts chatting)
+   */
+  getPendingFeeReminder(walletAddress: string): {
+    hasReminder: boolean;
+    unclaimedSol: number;
+    message: string;
+  } | null {
+    const tracked = this.trackedWallets.get(walletAddress);
+    if (!tracked) return null;
+
+    const now = Date.now();
+
+    // Check if enough time has passed since last reminder
+    if (now - tracked.lastReminded < AutonomousService.FEE_REMINDER_COOLDOWN) {
+      return null;
+    }
+
+    // Check if there are significant unclaimed fees
+    if (tracked.unclaimedLamports < AutonomousService.MIN_FEE_THRESHOLD_LAMPORTS) {
+      return null;
+    }
+
+    const unclaimedSol = tracked.unclaimedLamports / 1_000_000_000;
+    let message: string;
+
+    if (unclaimedSol >= 1) {
+      message = `BRO! You have ${unclaimedSol.toFixed(2)} SOL unclaimed! Go to bags.fm/claim right now!`;
+    } else {
+      message = `Hey! You've got ${unclaimedSol.toFixed(3)} SOL waiting to be claimed at bags.fm/claim`;
+    }
+
+    // Mark as reminded
+    tracked.lastReminded = now;
+    tracked.reminderCount++;
+
+    return {
+      hasReminder: true,
+      unclaimedSol,
+      message,
+    };
+  }
+
+  /**
+   * Get all wallets with unclaimed fees above threshold
+   */
+  getWalletsWithUnclaimedFees(): TrackedWallet[] {
+    return Array.from(this.trackedWallets.values()).filter(
+      (w) => w.unclaimedLamports >= AutonomousService.MIN_FEE_THRESHOLD_LAMPORTS
+    );
+  }
+
   // ===== Autonomous Task Implementations =====
+
+  /**
+   * Finn's fee reminder checker - checks all tracked wallets
+   */
+  private async checkTrackedWalletFees(): Promise<void> {
+    if (!this.bagsApi) return;
+
+    const wallets = Array.from(this.trackedWallets.values());
+    if (wallets.length === 0) return;
+
+    console.log(`[AutonomousService] Checking ${wallets.length} tracked wallets for unclaimed fees`);
+
+    let totalUnclaimed = 0;
+    let walletsWithFees = 0;
+
+    for (const wallet of wallets) {
+      try {
+        const positions = await this.bagsApi.getClaimablePositions(wallet.address);
+        const unclaimed = positions.reduce(
+          (sum, pos) => sum + pos.totalClaimableLamportsUserShare,
+          0
+        );
+
+        wallet.unclaimedLamports = unclaimed;
+        wallet.lastChecked = Date.now();
+
+        if (unclaimed >= AutonomousService.MIN_FEE_THRESHOLD_LAMPORTS) {
+          totalUnclaimed += unclaimed;
+          walletsWithFees++;
+        }
+      } catch (error) {
+        console.error(
+          `[AutonomousService] Failed to check fees for ${wallet.address.slice(0, 8)}...:`,
+          error
+        );
+      }
+
+      // Small delay between requests to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    if (walletsWithFees > 0) {
+      const totalSol = totalUnclaimed / 1_000_000_000;
+      console.log(
+        `[AutonomousService] Found ${walletsWithFees} wallets with ${totalSol.toFixed(2)} SOL unclaimed`
+      );
+
+      // Update shared context
+      if (this.coordinator) {
+        this.coordinator.setSharedContext("walletsWithUnclaimedFees", walletsWithFees);
+        this.coordinator.setSharedContext("totalUnclaimedSol", totalSol);
+      }
+    }
+  }
 
   /**
    * Neo's launch scanner
@@ -281,22 +482,27 @@ export class AutonomousService extends Service {
         // Alert on high market cap new launches
         if (marketCap > 50000) {
           await this.createAlert({
-            type: 'launch',
-            severity: 'info',
+            type: "launch",
+            severity: "info",
             title: `Hot Launch: ${launch.name}`,
             message: `New token ${launch.symbol} launched with $${(marketCap / 1000).toFixed(1)}K market cap`,
-            data: { mint: launch.mint, symbol: launch.symbol, marketCap, creator: launch.creator },
+            data: {
+              mint: launch.mint,
+              symbol: launch.symbol,
+              marketCap,
+              creator: launch.creator,
+            },
           });
         }
       }
 
       // Update shared context
       if (this.coordinator) {
-        this.coordinator.setSharedContext('recentLaunches', launches.length);
-        this.coordinator.setSharedContext('lastLaunchScan', Date.now());
+        this.coordinator.setSharedContext("recentLaunches", launches.length);
+        this.coordinator.setSharedContext("lastLaunchScan", Date.now());
       }
     } catch (error) {
-      console.error('[AutonomousService] Launch scan failed:', error);
+      console.error("[AutonomousService] Launch scan failed:", error);
     }
   }
 
@@ -327,11 +533,17 @@ export class AutonomousService extends Service {
         // Check for pump (>50% increase)
         if (priceChange > this.PUMP_THRESHOLD) {
           await this.createAlert({
-            type: 'pump',
-            severity: 'info',
+            type: "pump",
+            severity: "info",
             title: `Pump Alert: ${token.name}`,
             message: `${token.symbol} up ${priceChange.toFixed(1)}% since launch`,
-            data: { mint: launch.mint, symbol: token.symbol, priceChange, currentMC, initialMC },
+            data: {
+              mint: launch.mint,
+              symbol: token.symbol,
+              priceChange,
+              currentMC,
+              initialMC,
+            },
           });
           anomaliesDetected++;
         }
@@ -339,11 +551,17 @@ export class AutonomousService extends Service {
         // Check for dump (>30% decrease)
         if (priceChange < this.DUMP_THRESHOLD) {
           await this.createAlert({
-            type: 'dump',
-            severity: 'warning',
+            type: "dump",
+            severity: "warning",
             title: `Dump Alert: ${token.name}`,
             message: `${token.symbol} down ${Math.abs(priceChange).toFixed(1)}% since launch`,
-            data: { mint: launch.mint, symbol: token.symbol, priceChange, currentMC, initialMC },
+            data: {
+              mint: launch.mint,
+              symbol: token.symbol,
+              priceChange,
+              currentMC,
+              initialMC,
+            },
           });
           anomaliesDetected++;
         }
@@ -353,25 +571,33 @@ export class AutonomousService extends Service {
           const volumeRatio = (volume24h / currentMC) * 100;
           if (volumeRatio > this.VOLUME_SPIKE) {
             await this.createAlert({
-              type: 'anomaly',
-              severity: 'info',
+              type: "anomaly",
+              severity: "info",
               title: `Volume Spike: ${token.name}`,
               message: `${token.symbol} 24h volume is ${volumeRatio.toFixed(0)}% of market cap`,
-              data: { mint: launch.mint, symbol: token.symbol, volumeRatio, volume24h, currentMC },
+              data: {
+                mint: launch.mint,
+                symbol: token.symbol,
+                volumeRatio,
+                volume24h,
+                currentMC,
+              },
             });
             anomaliesDetected++;
           }
         }
       }
 
-      console.log(`[AutonomousService] Anomaly scan complete - ${anomaliesDetected} anomalies detected`);
+      console.log(
+        `[AutonomousService] Anomaly scan complete - ${anomaliesDetected} anomalies detected`
+      );
 
       if (this.coordinator) {
-        this.coordinator.setSharedContext('lastAnomalyScan', Date.now());
-        this.coordinator.setSharedContext('anomaliesDetected', anomaliesDetected);
+        this.coordinator.setSharedContext("lastAnomalyScan", Date.now());
+        this.coordinator.setSharedContext("anomaliesDetected", anomaliesDetected);
       }
     } catch (error) {
-      console.error('[AutonomousService] Anomaly detection failed:', error);
+      console.error("[AutonomousService] Anomaly detection failed:", error);
     }
   }
 
@@ -391,9 +617,9 @@ export class AutonomousService extends Service {
 
       if (fees24h >= threshold * 0.8) {
         await this.createAlert({
-          type: 'milestone',
-          severity: 'info',
-          title: 'High Fee Activity',
+          type: "milestone",
+          severity: "info",
+          title: "High Fee Activity",
           message: `24h fees at ${fees24h.toFixed(2)} SOL - ecosystem is active!`,
           data: { fees24h, threshold },
         });
@@ -401,11 +627,11 @@ export class AutonomousService extends Service {
 
       // Update shared context
       if (this.coordinator) {
-        this.coordinator.setSharedContext('fees24h', fees24h);
-        this.coordinator.setSharedContext('lastRewardsCheck', Date.now());
+        this.coordinator.setSharedContext("fees24h", fees24h);
+        this.coordinator.setSharedContext("lastRewardsCheck", Date.now());
       }
     } catch (error) {
-      console.error('[AutonomousService] Rewards check failed:', error);
+      console.error("[AutonomousService] Rewards check failed:", error);
     }
   }
 
@@ -424,17 +650,17 @@ export class AutonomousService extends Service {
 
       if (healthPercent < 30) {
         await this.createAlert({
-          type: 'anomaly',
-          severity: 'warning',
-          title: 'World Health Critical',
+          type: "anomaly",
+          severity: "warning",
+          title: "World Health Critical",
           message: `BagsWorld health at ${healthPercent}% - activity levels low`,
           data: { health: healthPercent, weather: healthData.weather },
         });
       } else if (healthPercent > 80) {
         await this.createAlert({
-          type: 'milestone',
-          severity: 'info',
-          title: 'World Thriving',
+          type: "milestone",
+          severity: "info",
+          title: "World Thriving",
           message: `BagsWorld health at ${healthPercent}% - ecosystem is active!`,
           data: { health: healthPercent, weather: healthData.weather },
         });
@@ -442,12 +668,12 @@ export class AutonomousService extends Service {
 
       // Update shared context
       if (this.coordinator) {
-        this.coordinator.setSharedContext('worldHealth', healthPercent);
-        this.coordinator.setSharedContext('weather', healthData.weather);
-        this.coordinator.setSharedContext('lastHealthCheck', Date.now());
+        this.coordinator.setSharedContext("worldHealth", healthPercent);
+        this.coordinator.setSharedContext("weather", healthData.weather);
+        this.coordinator.setSharedContext("lastHealthCheck", Date.now());
       }
     } catch (error) {
-      console.error('[AutonomousService] Health check failed:', error);
+      console.error("[AutonomousService] Health check failed:", error);
     }
   }
 
@@ -462,7 +688,7 @@ export class AutonomousService extends Service {
       if (!healthData) return;
 
       const recapLines: string[] = [
-        '📰 BNN ECOSYSTEM RECAP:',
+        "📰 BNN ECOSYSTEM RECAP:",
         `Health: ${healthData.health}%`,
         `Weather: ${healthData.weather}`,
         `24h Volume: ${healthData.totalVolume24h?.toFixed(2) || 0} SOL`,
@@ -471,17 +697,170 @@ export class AutonomousService extends Service {
       ];
 
       if (this.coordinator) {
-        await this.coordinator.broadcast('bnn', 'update', recapLines.join('\n'), {
-          type: 'recap',
+        await this.coordinator.broadcast("bnn", "update", recapLines.join("\n"), {
+          type: "recap",
           timestamp: Date.now(),
           ...healthData,
         });
       }
 
-      console.log('[AutonomousService] BNN broadcast complete');
+      console.log("[AutonomousService] BNN broadcast complete");
     } catch (error) {
-      console.error('[AutonomousService] BNN broadcast failed:', error);
+      console.error("[AutonomousService] BNN broadcast failed:", error);
     }
+  }
+
+  /**
+   * Ghost's autonomous trade evaluator - evaluates new launches and executes trades
+   */
+  private async evaluateGhostTrades(): Promise<void> {
+    try {
+      const trader = getGhostTrader();
+
+      if (!trader.isEnabled()) {
+        // Trading disabled - just log and skip
+        return;
+      }
+
+      console.log("[AutonomousService] Ghost trade evaluation starting...");
+      await trader.evaluateAndTrade();
+
+      // Update shared context with trading stats
+      if (this.coordinator) {
+        const stats = trader.getStats();
+        this.coordinator.setSharedContext("ghostTradingEnabled", stats.enabled);
+        this.coordinator.setSharedContext("ghostOpenPositions", stats.openPositions);
+        this.coordinator.setSharedContext("ghostExposureSol", stats.totalExposureSol);
+        this.coordinator.setSharedContext("lastGhostEval", Date.now());
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Ghost trade evaluation failed:", error);
+    }
+  }
+
+  /**
+   * Ghost's position checker - monitors for take-profit/stop-loss triggers
+   */
+  private async checkGhostPositions(): Promise<void> {
+    try {
+      const trader = getGhostTrader();
+
+      if (!trader.isEnabled()) {
+        return;
+      }
+
+      const openBefore = trader.getOpenPositionCount();
+      await trader.checkPositions();
+      const openAfter = trader.getOpenPositionCount();
+
+      if (openBefore !== openAfter) {
+        console.log(
+          `[AutonomousService] Ghost position check: ${openBefore - openAfter} positions closed`
+        );
+      }
+
+      // Update shared context
+      if (this.coordinator) {
+        const stats = trader.getStats();
+        this.coordinator.setSharedContext("ghostOpenPositions", stats.openPositions);
+        this.coordinator.setSharedContext("ghostPnlSol", stats.totalPnlSol);
+        this.coordinator.setSharedContext("lastPositionCheck", Date.now());
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Ghost position check failed:", error);
+    }
+  }
+
+  /**
+   * Finn's Twitter update - posts ecosystem activity updates
+   */
+  private async postFinnTwitterUpdate(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      console.log("[AutonomousService] Twitter not configured, skipping Finn update");
+      return;
+    }
+
+    if (!this.bagsApi) return;
+
+    try {
+      const healthData = await this.bagsApi.getWorldHealth();
+      if (!healthData) return;
+
+      const walletsWithFees = this.getWalletsWithUnclaimedFees().length;
+      const totalUnclaimedSol = this.getWalletsWithUnclaimedFees().reduce(
+        (sum, w) => sum + w.unclaimedLamports / 1_000_000_000,
+        0
+      );
+
+      // Build Finn-style tweet
+      const tweets = this.generateFinnTweets(healthData, walletsWithFees, totalUnclaimedSol);
+
+      // Pick a random tweet style
+      const tweet = tweets[Math.floor(Math.random() * tweets.length)];
+
+      const result = await this.twitterService.post(tweet);
+
+      if (result.success) {
+        console.log(`[AutonomousService] Finn posted: ${result.tweet?.url}`);
+
+        // Create alert about the post
+        await this.createAlert({
+          type: "milestone",
+          severity: "info",
+          title: "Finn Twitter Update",
+          message: tweet,
+          data: { tweetId: result.tweet?.id },
+        });
+      } else {
+        console.error(`[AutonomousService] Finn tweet failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Finn Twitter update failed:", error);
+    }
+  }
+
+  /**
+   * Generate Finn-style tweets based on ecosystem data
+   */
+  private generateFinnTweets(
+    healthData: { health: number; totalFees24h: number; activeTokens: number },
+    walletsWithFees: number,
+    totalUnclaimedSol: number
+  ): string[] {
+    const tweets: string[] = [];
+    const fees24h = healthData.totalFees24h?.toFixed(2) || "0";
+    const activeTokens = healthData.activeTokens || 0;
+    const health = healthData.health || 50;
+
+    // Ecosystem update
+    tweets.push(
+      `ecosystem update:\n\n${fees24h} SOL in fees generated today\n${activeTokens} active tokens\n\ncreators are eating. LFG`
+    );
+
+    // Fee reminder style
+    if (walletsWithFees > 0 && totalUnclaimedSol > 0.5) {
+      tweets.push(
+        `PSA: ${walletsWithFees} creators have ${totalUnclaimedSol.toFixed(1)} SOL unclaimed right now\n\nbro go claim your fees at bags.fm/claim\n\nthat's YOUR money sitting there`
+      );
+    }
+
+    // Health based
+    if (health >= 80) {
+      tweets.push(
+        `bagsworld health: ${health}%\n\necosystem is THRIVING\n\ncreators earning, community growing, vibes immaculate\n\nthis is what we build for`
+      );
+    } else if (health >= 50) {
+      tweets.push(
+        `${activeTokens} tokens active on @BagsFM today\n\n${fees24h} SOL in creator fees\n\nthe flywheel is spinning. keep building`
+      );
+    }
+
+    // Hype post
+    tweets.push(
+      `reminder:\n\nevery trade on @BagsFM = creator fees forever\n\nnot just at launch. FOREVER.\n\nbuild something. earn something. simple.`
+    );
+
+    return tweets;
   }
 
   /**
@@ -494,11 +873,11 @@ export class AutonomousService extends Service {
     lastRun: string;
     nextRun: string;
   }> {
-    return Array.from(this.tasks.values()).map(t => ({
+    return Array.from(this.tasks.values()).map((t) => ({
       name: t.name,
       agentId: t.agentId,
       enabled: t.enabled,
-      lastRun: t.lastRun ? new Date(t.lastRun).toISOString() : 'never',
+      lastRun: t.lastRun ? new Date(t.lastRun).toISOString() : "never",
       nextRun: new Date(t.nextRun).toISOString(),
     }));
   }

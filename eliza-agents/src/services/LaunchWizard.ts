@@ -1,19 +1,29 @@
 // LaunchWizard - Guided token launch flow with Professor Oak
 // Walks users through each step of launching a token on Bags.fm
 
-import { getCharacter } from '../characters/index.js';
-import { getLLMService } from './LLMService.js';
+import { getCharacter } from "../characters/index.js";
+import { getLLMService } from "./LLMService.js";
+import {
+  BagsApiService,
+  getBagsApiService,
+  type TokenCreationResult,
+  type FeeShareConfigResult,
+  type LaunchTransactionResult,
+  type FeeClaimer,
+} from "./BagsApiService.js";
 
 export type LaunchStep =
-  | 'welcome'
-  | 'token_name'
-  | 'token_symbol'
-  | 'token_description'
-  | 'token_image'
-  | 'fee_config'
-  | 'review'
-  | 'confirmed'
-  | 'completed';
+  | "welcome"
+  | "token_name"
+  | "token_symbol"
+  | "token_description"
+  | "token_image"
+  | "fee_config"
+  | "socials"
+  | "initial_buy"
+  | "review"
+  | "confirmed"
+  | "completed";
 
 export interface LaunchSession {
   id: string;
@@ -28,10 +38,16 @@ export interface LaunchSession {
     twitter?: string;
     telegram?: string;
     website?: string;
+    initialBuySol?: number;
+    // Fee share recipients (optional additional claimers)
+    feeClaimers?: FeeClaimer[];
   };
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  messages: Array<{ role: "user" | "assistant"; content: string }>;
   createdAt: number;
   updatedAt: number;
+  // Transaction building state
+  tokenCreation?: TokenCreationResult;
+  feeShareConfig?: FeeShareConfigResult;
 }
 
 export interface StepGuidance {
@@ -43,41 +59,95 @@ export interface StepGuidance {
   tips?: string[];
 }
 
+export interface BuildTransactionRequest {
+  sessionId: string;
+  walletAddress: string;
+}
+
+export interface BuildTransactionResult {
+  success: boolean;
+  tokenMint?: string;
+  tokenMetadata?: string;
+  feeShareConfigId?: string;
+  feeShareTransactions?: Array<{
+    transaction: string;
+    blockhash: { blockhash: string; lastValidBlockHeight: number };
+  }>;
+  launchTransaction?: string;
+  lastValidBlockHeight?: number;
+  error?: string;
+  oakMessage?: string;
+}
+
 // Step ordering for navigation
 const STEP_ORDER: LaunchStep[] = [
-  'welcome', 'token_name', 'token_symbol', 'token_description',
-  'token_image', 'fee_config', 'review', 'confirmed', 'completed',
+  "welcome",
+  "token_name",
+  "token_symbol",
+  "token_description",
+  "token_image",
+  "fee_config",
+  "socials",
+  "initial_buy",
+  "review",
+  "confirmed",
+  "completed",
 ];
 
 const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Affirmative words for welcome step
-const AFFIRMATIVE_WORDS = ['ready', 'yes', 'start', 'begin', 'ok', 'okay', "let's go", 'lets go'];
+const AFFIRMATIVE_WORDS = [
+  "ready",
+  "yes",
+  "start",
+  "begin",
+  "ok",
+  "okay",
+  "let's go",
+  "lets go",
+  "launch",
+  "create",
+];
+
+// SOL constants
+const LAMPORTS_PER_SOL = 1_000_000_000;
+const MIN_INITIAL_BUY_SOL = 0.1;
+const DEFAULT_INITIAL_BUY_SOL = 0.5;
+const RECOMMENDED_INITIAL_BUY_SOL = 1.0;
 
 // Professor Oak's guidance for each step
 const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
   welcome: {
-    title: 'Welcome to Token Launch',
-    oakAdvice: "Ah, welcome young trainer! I'm Professor Oak, and I'll guide you through launching your very own token on Bags.fm. Just like catching your first Pokémon, this is an exciting journey! Are you ready to begin?",
+    title: "Welcome to Token Launch",
+    oakAdvice:
+      "Ah, a new trainer ready to launch their first token! *adjusts glasses excitedly* Wonderful! I'm Professor Oak, and I'll guide you through every step of launching on Bags.fm. Just like catching your first Pokémon, this is going to be an adventure! Are you ready to begin?",
     prompt: "Say 'ready' or 'yes' to start your token launch journey!",
     tips: [
       "Have your token concept ready",
       "Prepare a logo (512x512 PNG recommended)",
       "Think about your community strategy",
+      "Have at least 1 SOL for initial buy + fees",
     ],
   },
 
   token_name: {
-    title: 'Choose Your Token Name',
-    oakAdvice: "Every great token needs a memorable name! Just like how Pikachu is instantly recognizable, your token name should be catchy and represent your project's identity. What would you like to call your token?",
+    title: "Choose Your Token Name",
+    oakAdvice:
+      "Every great token needs a memorable name! Just like how Pikachu is instantly recognizable, your token name should be catchy and capture your project's spirit. What would you like to call your token?",
     prompt: "Enter your token name (3-32 characters)",
     validation: (value: string) => {
-      if (value.length < 3) return { valid: false, error: 'Token name must be at least 3 characters' };
-      if (value.length > 32) return { valid: false, error: 'Token name must be 32 characters or less' };
-      if (!/^[a-zA-Z0-9\s]+$/.test(value)) return { valid: false, error: 'Token name can only contain letters, numbers, and spaces' };
+      if (value.length < 3) return { valid: false, error: "Token name must be at least 3 characters" };
+      if (value.length > 32)
+        return { valid: false, error: "Token name must be 32 characters or less" };
+      if (!/^[a-zA-Z0-9\s\-_]+$/.test(value))
+        return {
+          valid: false,
+          error: "Token name can only contain letters, numbers, spaces, hyphens, and underscores",
+        };
       return { valid: true };
     },
-    examples: ['Bags World', 'Moon Token', 'Degen Coin'],
+    examples: ["Bags World", "Moon Token", "Degen Coin"],
     tips: [
       "Keep it memorable and easy to spell",
       "Avoid names too similar to existing tokens",
@@ -86,17 +156,21 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
   },
 
   token_symbol: {
-    title: 'Choose Your Token Symbol',
-    oakAdvice: "Now for the ticker symbol! This is like your token's nickname - short and punchy. It appears on exchanges and in wallets. Most symbols are 3-5 characters. What symbol suits your token?",
+    title: "Choose Your Token Symbol",
+    oakAdvice:
+      "Now for the ticker symbol! This is like your token's nickname - short and punchy. It appears on exchanges and in wallets. Most symbols are 3-5 characters. What symbol suits your token?",
     prompt: "Enter your token symbol (2-10 characters, letters only)",
     validation: (value: string) => {
-      const symbol = value.toUpperCase().replace('$', '');
-      if (symbol.length < 2) return { valid: false, error: 'Symbol must be at least 2 characters' };
-      if (symbol.length > 10) return { valid: false, error: 'Symbol must be 10 characters or less' };
-      if (!/^[A-Z]+$/.test(symbol)) return { valid: false, error: 'Symbol can only contain letters' };
+      const symbol = value.toUpperCase().replace("$", "");
+      if (symbol.length < 2)
+        return { valid: false, error: "Symbol must be at least 2 characters" };
+      if (symbol.length > 10)
+        return { valid: false, error: "Symbol must be 10 characters or less" };
+      if (!/^[A-Z]+$/.test(symbol))
+        return { valid: false, error: "Symbol can only contain letters" };
       return { valid: true };
     },
-    examples: ['$BAGS', '$MOON', '$DEGEN'],
+    examples: ["$BAGS", "$MOON", "$DEGEN"],
     tips: [
       "All caps is standard",
       "Shorter is usually better (3-5 chars)",
@@ -105,12 +179,15 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
   },
 
   token_description: {
-    title: 'Describe Your Token',
-    oakAdvice: "Fascinating! Now tell me about your token's purpose. A good description helps traders understand what makes your project special. Think of it as your token's Pokédex entry - what story does it tell?",
+    title: "Describe Your Token",
+    oakAdvice:
+      "Wonderful progress! Now tell me about your token's purpose. A good description helps traders understand what makes your project special. Think of it as your token's story - what journey does it tell?",
     prompt: "Enter a description for your token (10-500 characters)",
     validation: (value: string) => {
-      if (value.length < 10) return { valid: false, error: 'Description must be at least 10 characters' };
-      if (value.length > 500) return { valid: false, error: 'Description must be 500 characters or less' };
+      if (value.length < 10)
+        return { valid: false, error: "Description must be at least 10 characters" };
+      if (value.length > 500)
+        return { valid: false, error: "Description must be 500 characters or less" };
       return { valid: true };
     },
     examples: [
@@ -125,46 +202,99 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
   },
 
   token_image: {
-    title: 'Add Token Image',
-    oakAdvice: "A picture is worth a thousand words! Your token image appears everywhere - wallets, DEXes, and social media. For best results, use a 512x512 PNG with a transparent or solid background. Do you have an image URL ready?",
-    prompt: "Enter your token image URL (must be https:// and end in .png, .jpg, .gif, or .webp) or type 'skip' to add later",
+    title: "Add Token Image",
+    oakAdvice:
+      "A picture is worth a thousand words! Your token image appears everywhere - wallets, DEXes, and social media. For best results, use a 512x512 PNG with a transparent or solid background. Do you have an image URL ready?",
+    prompt:
+      "Enter your token image URL (must be https:// and end in .png, .jpg, .gif, or .webp) or type 'skip' to add later",
     validation: (value: string) => {
-      if (value.toLowerCase() === 'skip') return { valid: true };
-      if (!value.startsWith('https://')) return { valid: false, error: 'Image URL must start with https://' };
-      if (!/\.(png|jpg|jpeg|gif|webp)$/i.test(value)) return { valid: false, error: 'Image must be PNG, JPG, GIF, or WebP' };
+      if (value.toLowerCase() === "skip") return { valid: true };
+      if (!value.startsWith("https://"))
+        return { valid: false, error: "Image URL must start with https://" };
+      if (!/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(value))
+        return { valid: false, error: "Image must be PNG, JPG, GIF, or WebP" };
       return { valid: true };
     },
     tips: [
       "512x512 pixels is the standard size",
       "PNG with transparent background works best",
-      "For DexScreener paid listing: 512x512 logo + 1500x500 banner",
-      "DexScreener listing costs $299 but increases visibility",
+      "Upload to Imgur, Cloudinary, or your own hosting",
     ],
   },
 
   fee_config: {
-    title: 'Configure Creator Fees',
-    oakAdvice: "Ah, the creator fee! On Bags.fm, you earn a percentage of every trade. The standard is 1%, but you can set 0-5%. Higher fees mean more earnings but might discourage trading. What percentage would you like?",
+    title: "Configure Creator Fees",
+    oakAdvice:
+      "Ah, the creator fee - Finn's wonderful invention! On Bags.fm, you earn a percentage of every trade forever. The standard is 1%, but you can set 0-5%. Higher fees mean more earnings but might discourage trading. What percentage would you like?",
     prompt: "Enter your creator fee percentage (0-5, default is 1)",
     validation: (value: string) => {
       const num = parseFloat(value);
-      if (isNaN(num)) return { valid: false, error: 'Please enter a number' };
-      if (num < 0 || num > 5) return { valid: false, error: 'Fee must be between 0% and 5%' };
+      if (isNaN(num)) return { valid: false, error: "Please enter a number" };
+      if (num < 0 || num > 5)
+        return { valid: false, error: "Fee must be between 0% and 5%" };
       return { valid: true };
     },
-    examples: ['1', '0.5', '2'],
+    examples: ["1", "0.5", "2"],
     tips: [
       "1% is the most common choice",
       "Lower fees can encourage more trading volume",
       "Fees accumulate and can be claimed anytime",
-      "You can check unclaimed fees on your profile",
+    ],
+  },
+
+  socials: {
+    title: "Add Social Links (Optional)",
+    oakAdvice:
+      "Social links help build trust and community! Twitter/X is especially important for visibility. You can add these now or skip and add them later. Format: twitter:username, telegram:group, website:url",
+    prompt:
+      "Enter your socials (e.g., 'twitter:mytoken, telegram:mytokenchat, website:https://mytoken.com') or 'skip'",
+    validation: (value: string) => {
+      if (value.toLowerCase() === "skip") return { valid: true };
+      // Basic validation - we'll parse more carefully in the handler
+      return { valid: true };
+    },
+    examples: [
+      "twitter:bagsfm",
+      "twitter:bagsfm, telegram:bagsworld",
+      "twitter:bagsfm, website:https://bags.fm",
+    ],
+    tips: [
+      "Twitter is most important for crypto communities",
+      "Telegram/Discord for community engagement",
+      "Website adds credibility",
+    ],
+  },
+
+  initial_buy: {
+    title: "Initial Buy Amount",
+    oakAdvice: `This is important! The initial buy determines how much of your own supply you secure at launch. Buying enough prevents snipers from grabbing it all before your community can. I recommend at least ${RECOMMENDED_INITIAL_BUY_SOL} SOL to be safe!`,
+    prompt: `Enter how much SOL to spend on initial buy (minimum ${MIN_INITIAL_BUY_SOL} SOL, recommended ${RECOMMENDED_INITIAL_BUY_SOL} SOL)`,
+    validation: (value: string) => {
+      const num = parseFloat(value);
+      if (isNaN(num)) return { valid: false, error: "Please enter a number" };
+      if (num < MIN_INITIAL_BUY_SOL)
+        return { valid: false, error: `Minimum initial buy is ${MIN_INITIAL_BUY_SOL} SOL` };
+      if (num > 100)
+        return {
+          valid: false,
+          error: "That seems very high! Are you sure? Max 100 SOL for safety.",
+        };
+      return { valid: true };
+    },
+    examples: ["0.5", "1", "2"],
+    tips: [
+      "More SOL = larger starting position",
+      "Helps prevent snipers from taking your supply",
+      `${RECOMMENDED_INITIAL_BUY_SOL} SOL is a good starting point`,
+      "You'll also need ~0.02 SOL for transaction fees",
     ],
   },
 
   review: {
-    title: 'Review Your Token',
-    oakAdvice: "Excellent work! Let's review everything before we finalize. Once launched, some details cannot be changed, so make sure everything looks right!",
-    prompt: "Type 'confirm' to launch your token, or 'back' to make changes",
+    title: "Review Your Token",
+    oakAdvice:
+      "Excellent work! You've come so far! Let's review everything before we finalize. Once launched, some details cannot be changed, so make sure everything looks right!",
+    prompt: "Type 'confirm' to proceed with building your launch transaction, or 'back' to make changes",
     tips: [
       "Double-check your symbol spelling",
       "Verify your image URL works",
@@ -173,9 +303,10 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
   },
 
   confirmed: {
-    title: 'Launch Confirmed',
-    oakAdvice: "Your token details are confirmed! Now you'll need to sign a transaction with your wallet to complete the launch. This will create your token on the Solana blockchain.",
-    prompt: "Ready to sign the transaction? This will open your wallet.",
+    title: "Launch Confirmed",
+    oakAdvice:
+      "Your token details are confirmed! Now we're building your launch transaction. This will create your token on the Solana blockchain. You'll need to sign the transaction with your wallet.",
+    prompt: "Click 'Build Transaction' to generate your launch transaction.",
     tips: [
       "Have some SOL ready for transaction fees (~0.02 SOL)",
       "The transaction creates your token on-chain",
@@ -184,8 +315,9 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
   },
 
   completed: {
-    title: 'Token Launched!',
-    oakAdvice: "Congratulations, trainer! Your token is now live on Bags.fm! Just like releasing a Pokémon into the wild, your token is now out there for the world to discover. Share it, build your community, and watch it grow!",
+    title: "Token Launched!",
+    oakAdvice:
+      "WONDERFUL! *tears up* Your token is evolving... into a real project! Just like releasing a Pokémon into the wild, your token is now out there for the world to discover. Share it, build your community, and watch it grow! I'm so proud of you!",
     prompt: "Your token is live! Share it with the world.",
     tips: [
       "Share on Twitter/X with your token link",
@@ -198,23 +330,8 @@ const STEP_GUIDANCE: Record<LaunchStep, StepGuidance> = {
 
 /**
  * IN-MEMORY SESSION STORAGE
- *
- * LIMITATION: Sessions are stored in memory only. This means:
- * - Sessions are LOST on server restart
- * - Sessions are NOT shared across multiple server instances (no horizontal scaling)
- * - Users will lose progress if the server restarts during their launch flow
- *
- * PRODUCTION RECOMMENDATION:
- * For production deployments, replace this Map with:
- * - Redis: For multi-instance deployments (recommended for horizontal scaling)
- * - PostgreSQL: Using the existing Neon DB connection from shared.ts
- *
- * MIGRATION APPROACH:
- * 1. Create a sessions table: (id, user_id, current_step, data JSON, messages JSON, created_at, updated_at)
- * 2. Replace Map operations with SQL queries
- * 3. Use the getDatabase() helper from routes/shared.ts
- *
- * Current max session age: 24 hours (see SESSION_MAX_AGE_MS)
+ * Note: Sessions are stored in memory only and will be lost on restart.
+ * For production, migrate to Neon DB.
  */
 const sessions = new Map<string, LaunchSession>();
 
@@ -227,8 +344,11 @@ export class LaunchWizard {
     const session: LaunchSession = {
       id: sessionId,
       userId,
-      currentStep: 'welcome',
-      data: {},
+      currentStep: "welcome",
+      data: {
+        creatorFeePercent: 1, // Default to 1%
+        initialBuySol: DEFAULT_INITIAL_BUY_SOL,
+      },
       messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -281,7 +401,7 @@ export class LaunchWizard {
     nextStep?: LaunchStep;
     error?: string;
     launchReady?: boolean;
-    launchData?: LaunchSession['data'];
+    launchData?: LaunchSession["data"];
   }> {
     const session = sessions.get(sessionId);
     if (!session) {
@@ -289,7 +409,7 @@ export class LaunchWizard {
         success: false,
         session: { id: sessionId } as LaunchSession,
         response: "I can't find your session. Let's start fresh!",
-        error: 'Session not found',
+        error: "Session not found",
       };
     }
 
@@ -297,16 +417,16 @@ export class LaunchWizard {
     const input = userInput.trim();
 
     // Add user message to history
-    session.messages.push({ role: 'user', content: input });
+    session.messages.push({ role: "user", content: input });
 
     // Handle special commands
-    if (input.toLowerCase() === 'back' && session.currentStep !== 'welcome') {
+    if (input.toLowerCase() === "back" && session.currentStep !== "welcome") {
       const prevStep = this.getPreviousStep(session.currentStep);
       session.currentStep = prevStep;
       session.updatedAt = Date.now();
       const prevGuidance = STEP_GUIDANCE[prevStep];
 
-      session.messages.push({ role: 'assistant', content: prevGuidance.oakAdvice });
+      session.messages.push({ role: "assistant", content: prevGuidance.oakAdvice });
 
       return {
         success: true,
@@ -316,94 +436,137 @@ export class LaunchWizard {
       };
     }
 
-    if (input.toLowerCase() === 'cancel') {
+    if (input.toLowerCase() === "cancel") {
       sessions.delete(sessionId);
       return {
         success: true,
         session,
-        response: "No problem! Your session has been cancelled. Come back anytime you're ready to launch!",
+        response:
+          "No problem! Your session has been cancelled. Come back anytime you're ready to launch - I'll be here in Founder's Corner!",
       };
     }
 
     // Process based on current step
-    let response = '';
+    let response = "";
     let nextStep: LaunchStep | undefined;
     let launchReady = false;
 
     switch (session.currentStep) {
-      case 'welcome': {
-        if (AFFIRMATIVE_WORDS.some(w => input.toLowerCase().includes(w))) {
-          nextStep = 'token_name';
+      case "welcome": {
+        if (AFFIRMATIVE_WORDS.some((w) => input.toLowerCase().includes(w))) {
+          nextStep = "token_name";
           session.currentStep = nextStep;
-          response = STEP_GUIDANCE[nextStep].oakAdvice;
+          response = `Wonderful! Let's begin your journey! ${STEP_GUIDANCE[nextStep].oakAdvice}`;
         } else {
-          response = "Just say 'ready' when you want to begin! I'll guide you through each step.";
+          response =
+            "Just say 'ready' when you want to begin! I'll guide you through each step with care.";
         }
         break;
       }
 
-      case 'token_name': {
+      case "token_name": {
         const validation = guidance.validation!(input);
         if (validation.valid) {
           session.data.name = input;
-          nextStep = 'token_symbol';
+          nextStep = "token_symbol";
           session.currentStep = nextStep;
-          response = `"${input}" - wonderful choice! ${STEP_GUIDANCE[nextStep].oakAdvice}`;
+          response = `"${input}" - what a wonderful name! I can already see it evolving into something special. ${STEP_GUIDANCE[nextStep].oakAdvice}`;
         } else {
           response = `Hmm, ${validation.error}. ${guidance.prompt}`;
         }
         break;
       }
 
-      case 'token_symbol': {
-        const symbol = input.toUpperCase().replace('$', '');
+      case "token_symbol": {
+        const symbol = input.toUpperCase().replace("$", "");
         const validation = guidance.validation!(symbol);
         if (validation.valid) {
           session.data.symbol = symbol;
-          nextStep = 'token_description';
+          nextStep = "token_description";
           session.currentStep = nextStep;
-          response = `$${symbol} - that has a nice ring to it! ${STEP_GUIDANCE[nextStep].oakAdvice}`;
+          response = `$${symbol} - that has a nice ring to it! Your token is taking shape! ${STEP_GUIDANCE[nextStep].oakAdvice}`;
         } else {
           response = `${validation.error}. ${guidance.prompt}`;
         }
         break;
       }
 
-      case 'token_description': {
+      case "token_description": {
         const validation = guidance.validation!(input);
         if (validation.valid) {
           session.data.description = input;
-          nextStep = 'token_image';
+          nextStep = "token_image";
           session.currentStep = nextStep;
-          response = `Great description! ${STEP_GUIDANCE[nextStep].oakAdvice}`;
+          response = `Excellent description! Your token's story is compelling. ${STEP_GUIDANCE[nextStep].oakAdvice}`;
         } else {
           response = `${validation.error}. ${guidance.prompt}`;
         }
         break;
       }
 
-      case 'token_image': {
+      case "token_image": {
         const validation = guidance.validation!(input);
         if (validation.valid) {
-          if (input.toLowerCase() !== 'skip') {
+          if (input.toLowerCase() !== "skip") {
             session.data.imageUrl = input;
           }
-          nextStep = 'fee_config';
+          nextStep = "fee_config";
           session.currentStep = nextStep;
-          response = input.toLowerCase() === 'skip'
-            ? `No problem, you can add an image later! ${STEP_GUIDANCE[nextStep].oakAdvice}`
-            : `Image saved! ${STEP_GUIDANCE[nextStep].oakAdvice}`;
+          response =
+            input.toLowerCase() === "skip"
+              ? `No problem, you can add an image later! ${STEP_GUIDANCE[nextStep].oakAdvice}`
+              : `Image saved! Your token is looking great. ${STEP_GUIDANCE[nextStep].oakAdvice}`;
         } else {
           response = `${validation.error}. ${guidance.prompt}`;
         }
         break;
       }
 
-      case 'fee_config': {
+      case "fee_config": {
         const validation = guidance.validation!(input);
         if (validation.valid) {
           session.data.creatorFeePercent = parseFloat(input);
-          nextStep = 'review';
+          nextStep = "socials";
+          session.currentStep = nextStep;
+          response = `${input}% creator fee - excellent choice! You'll earn from every trade. ${STEP_GUIDANCE[nextStep].oakAdvice}`;
+        } else {
+          response = `${validation.error}. ${guidance.prompt}`;
+        }
+        break;
+      }
+
+      case "socials": {
+        if (input.toLowerCase() !== "skip") {
+          // Parse socials from input
+          const parts = input.split(",").map((s) => s.trim());
+          for (const part of parts) {
+            const [platform, value] = part.split(":").map((s) => s.trim());
+            if (platform && value) {
+              const platformLower = platform.toLowerCase();
+              if (platformLower === "twitter" || platformLower === "x") {
+                session.data.twitter = value.replace("@", "");
+              } else if (platformLower === "telegram" || platformLower === "tg") {
+                session.data.telegram = value.replace("@", "");
+              } else if (platformLower === "website" || platformLower === "web") {
+                session.data.website = value;
+              }
+            }
+          }
+        }
+        nextStep = "initial_buy";
+        session.currentStep = nextStep;
+        response =
+          input.toLowerCase() === "skip"
+            ? `No socials for now - you can add them later! ${STEP_GUIDANCE[nextStep].oakAdvice}`
+            : `Socials added! Building community is so important. ${STEP_GUIDANCE[nextStep].oakAdvice}`;
+        break;
+      }
+
+      case "initial_buy": {
+        const validation = guidance.validation!(input);
+        if (validation.valid) {
+          session.data.initialBuySol = parseFloat(input);
+          nextStep = "review";
           session.currentStep = nextStep;
           response = this.buildReviewMessage(session);
         } else {
@@ -412,36 +575,37 @@ export class LaunchWizard {
         break;
       }
 
-      case 'review': {
-        if (input.toLowerCase() === 'confirm') {
-          nextStep = 'confirmed';
+      case "review": {
+        if (input.toLowerCase() === "confirm") {
+          nextStep = "confirmed";
           session.currentStep = nextStep;
           launchReady = true;
-          response = `${STEP_GUIDANCE[nextStep].oakAdvice}\n\nYour token "${session.data.name}" ($${session.data.symbol}) is ready to launch!`;
-        } else if (input.toLowerCase() === 'back') {
-          nextStep = 'fee_config';
+          response = `${STEP_GUIDANCE[nextStep].oakAdvice}\n\nYour token "${session.data.name}" ($${session.data.symbol}) is ready! Click 'Build Transaction' to generate your launch transaction.`;
+        } else if (input.toLowerCase() === "back") {
+          nextStep = "initial_buy";
           session.currentStep = nextStep;
           response = STEP_GUIDANCE[nextStep].oakAdvice;
         } else {
-          response = "Type 'confirm' to proceed with the launch, or 'back' to make changes.";
+          response =
+            "Type 'confirm' to proceed with building your launch transaction, or 'back' to make changes.";
         }
         break;
       }
 
-      case 'confirmed': {
-        // After confirmation, they need to sign the transaction
-        response = "Your token details are locked in! Connect your wallet and sign the transaction to complete the launch.";
+      case "confirmed": {
+        response =
+          "Your token details are locked in! Use the 'Build Transaction' button to generate your launch transaction, then sign it with your wallet.";
         launchReady = true;
         break;
       }
 
-      case 'completed': {
-        response = `Your token ${session.data.name} ($${session.data.symbol}) is live! Share it with the world and start building your community.`;
+      case "completed": {
+        response = `Your token ${session.data.name} ($${session.data.symbol}) is live! Share it with the world and start building your community. I'm so proud of you!`;
         break;
       }
     }
 
-    session.messages.push({ role: 'assistant', content: response });
+    session.messages.push({ role: "assistant", content: response });
     session.updatedAt = Date.now();
 
     return {
@@ -455,12 +619,185 @@ export class LaunchWizard {
   }
 
   /**
+   * Build the actual launch transaction
+   * This calls Bags.fm API to create token info, fee share config, and launch transaction
+   */
+  static async buildTransaction(
+    request: BuildTransactionRequest
+  ): Promise<BuildTransactionResult> {
+    const session = sessions.get(request.sessionId);
+    if (!session) {
+      return {
+        success: false,
+        error: "Session not found",
+        oakMessage:
+          "I can't find your session! Let's start fresh - say 'launch a token' to begin again.",
+      };
+    }
+
+    if (session.currentStep !== "confirmed" && session.currentStep !== "review") {
+      return {
+        success: false,
+        error: "Session not ready for transaction building",
+        oakMessage: "We're not quite ready yet! Let's finish reviewing your token details first.",
+      };
+    }
+
+    const data = session.data;
+
+    // Validate required fields
+    if (!data.name || !data.symbol || !data.description) {
+      return {
+        success: false,
+        error: "Missing required token data",
+        oakMessage:
+          "Hmm, some required details are missing. Let's go back and make sure we have your token name, symbol, and description.",
+      };
+    }
+
+    const api = getBagsApiService();
+
+    if (!api.hasApiKey()) {
+      return {
+        success: false,
+        error: "Bags API key not configured",
+        oakMessage:
+          "I'm having trouble connecting to Bags.fm. Please try again later or contact support.",
+      };
+    }
+
+    console.log(`[LaunchWizard] Building transaction for ${data.name} ($${data.symbol})`);
+
+    // Step 1: Create token info (metadata + mint address)
+    let tokenCreation: TokenCreationResult;
+    try {
+      console.log("[LaunchWizard] Step 1: Creating token info...");
+      tokenCreation = await api.createTokenInfo({
+        name: data.name,
+        symbol: data.symbol,
+        description: data.description,
+        imageUrl: data.imageUrl,
+        twitter: data.twitter,
+        telegram: data.telegram,
+        website: data.website,
+      });
+      session.tokenCreation = tokenCreation;
+      console.log(`[LaunchWizard] Token info created: mint=${tokenCreation.tokenMint}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("[LaunchWizard] Failed to create token info:", errorMessage);
+      return {
+        success: false,
+        error: `Failed to create token: ${errorMessage}`,
+        oakMessage: `Oh no! There was a problem creating your token metadata: ${errorMessage}. Let's try again!`,
+      };
+    }
+
+    // Step 2: Create fee share config
+    let feeShareConfig: FeeShareConfigResult;
+    try {
+      console.log("[LaunchWizard] Step 2: Creating fee share config...");
+
+      // Build fee claimers - default to creator getting 100%
+      const feeClaimers: FeeClaimer[] = [
+        {
+          provider: "solana",
+          providerUsername: request.walletAddress,
+          bps: 10000, // 100% in basis points
+        },
+      ];
+
+      // Add any additional fee claimers from session data
+      if (data.feeClaimers && data.feeClaimers.length > 0) {
+        // Recalculate basis points to include additional claimers
+        // For simplicity, creator always gets majority
+        feeClaimers[0].bps = 8000; // 80% to creator
+        const remainingBps = 2000; // 20% to split among others
+        const perClaimerBps = Math.floor(remainingBps / data.feeClaimers.length);
+        for (const claimer of data.feeClaimers) {
+          feeClaimers.push({
+            provider: claimer.provider,
+            providerUsername: claimer.providerUsername,
+            bps: perClaimerBps,
+          });
+        }
+      }
+
+      feeShareConfig = await api.createFeeShareConfig(
+        tokenCreation.tokenMint,
+        feeClaimers,
+        request.walletAddress,
+        undefined, // partnerWallet
+        BagsApiService.PARTNER_CONFIG_PDA // Use BagsWorld partner config
+      );
+      session.feeShareConfig = feeShareConfig;
+      console.log(`[LaunchWizard] Fee share config created: ${feeShareConfig.configId}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("[LaunchWizard] Failed to create fee share config:", errorMessage);
+      return {
+        success: false,
+        error: `Failed to configure fees: ${errorMessage}`,
+        oakMessage: `There was an issue setting up your fee configuration: ${errorMessage}. Don't worry, we can try again!`,
+        tokenMint: tokenCreation.tokenMint,
+        tokenMetadata: tokenCreation.tokenMetadata,
+      };
+    }
+
+    // Step 3: Create launch transaction
+    let launchTx: LaunchTransactionResult;
+    try {
+      console.log("[LaunchWizard] Step 3: Creating launch transaction...");
+
+      const initialBuyLamports = Math.floor(
+        (data.initialBuySol || DEFAULT_INITIAL_BUY_SOL) * LAMPORTS_PER_SOL
+      );
+
+      launchTx = await api.createLaunchTransaction({
+        ipfs: tokenCreation.tokenMetadata,
+        tokenMint: tokenCreation.tokenMint,
+        wallet: request.walletAddress,
+        initialBuyLamports,
+        configKey: feeShareConfig.configId,
+      });
+      console.log("[LaunchWizard] Launch transaction created successfully");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("[LaunchWizard] Failed to create launch transaction:", errorMessage);
+      return {
+        success: false,
+        error: `Failed to create launch transaction: ${errorMessage}`,
+        oakMessage: `Almost there! But we hit a snag creating your launch transaction: ${errorMessage}. Let's try once more!`,
+        tokenMint: tokenCreation.tokenMint,
+        tokenMetadata: tokenCreation.tokenMetadata,
+        feeShareConfigId: feeShareConfig.configId,
+        feeShareTransactions: feeShareConfig.transactions,
+      };
+    }
+
+    // Success!
+    session.currentStep = "confirmed";
+    session.updatedAt = Date.now();
+
+    return {
+      success: true,
+      tokenMint: tokenCreation.tokenMint,
+      tokenMetadata: tokenCreation.tokenMetadata,
+      feeShareConfigId: feeShareConfig.configId,
+      feeShareTransactions: feeShareConfig.transactions,
+      launchTransaction: launchTx.transaction,
+      lastValidBlockHeight: launchTx.lastValidBlockHeight,
+      oakMessage: `WONDERFUL! Your token "${data.name}" ($${data.symbol}) transaction is ready! Sign it with your wallet to bring your token to life! I can't wait to see it evolve!`,
+    };
+  }
+
+  /**
    * Mark session as completed after successful launch
    */
   static completeSession(sessionId: string, mint: string): void {
     const session = sessions.get(sessionId);
     if (session) {
-      session.currentStep = 'completed';
+      session.currentStep = "completed";
       session.updatedAt = Date.now();
       console.log(`[LaunchWizard] Session ${sessionId} completed with mint ${mint}`);
     }
@@ -469,11 +806,8 @@ export class LaunchWizard {
   /**
    * Get Professor Oak's personalized advice using LLM
    */
-  static async getPersonalizedAdvice(
-    session: LaunchSession,
-    question: string
-  ): Promise<string> {
-    const professorOak = getCharacter('professor-oak');
+  static async getPersonalizedAdvice(session: LaunchSession, question: string): Promise<string> {
+    const professorOak = getCharacter("professor-oak");
     if (!professorOak) {
       return "I'm here to help! What would you like to know about launching your token?";
     }
@@ -482,10 +816,12 @@ export class LaunchWizard {
     const context = `
 Current launch session:
 - Step: ${session.currentStep}
-- Token Name: ${session.data.name || 'not set'}
-- Symbol: ${session.data.symbol || 'not set'}
-- Description: ${session.data.description || 'not set'}
-- Creator Fee: ${session.data.creatorFeePercent ?? 'not set'}%
+- Token Name: ${session.data.name || "not set"}
+- Symbol: ${session.data.symbol || "not set"}
+- Description: ${session.data.description || "not set"}
+- Creator Fee: ${session.data.creatorFeePercent ?? "not set"}%
+- Initial Buy: ${session.data.initialBuySol || DEFAULT_INITIAL_BUY_SOL} SOL
+- Twitter: ${session.data.twitter || "not set"}
 
 User question: ${question}
 `;
@@ -508,15 +844,21 @@ User question: ${question}
     return `${STEP_GUIDANCE.review.oakAdvice}
 
 📋 TOKEN DETAILS:
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Name: ${d.name}
 Symbol: $${d.symbol}
 Description: ${d.description}
-Image: ${d.imageUrl || '(none set)'}
+Image: ${d.imageUrl || "(none set - you can add later)"}
 Creator Fee: ${d.creatorFeePercent}%
-━━━━━━━━━━━━━━━━━━
+Initial Buy: ${d.initialBuySol} SOL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Socials:
+- Twitter: ${d.twitter ? `@${d.twitter}` : "(not set)"}
+- Telegram: ${d.telegram ? `@${d.telegram}` : "(not set)"}
+- Website: ${d.website || "(not set)"}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Type 'confirm' to launch, or 'back' to make changes.`;
+Type 'confirm' to build your launch transaction, or 'back' to make changes.`;
   }
 
   /**
@@ -524,7 +866,7 @@ Type 'confirm' to launch, or 'back' to make changes.`;
    */
   private static getPreviousStep(current: LaunchStep): LaunchStep {
     const idx = STEP_ORDER.indexOf(current);
-    return idx > 0 ? STEP_ORDER[idx - 1] : 'welcome';
+    return idx > 0 ? STEP_ORDER[idx - 1] : "welcome";
   }
 
   /**
@@ -532,7 +874,7 @@ Type 'confirm' to launch, or 'back' to make changes.`;
    */
   static getActiveSessions(): LaunchSession[] {
     const cutoff = Date.now() - SESSION_MAX_AGE_MS;
-    return Array.from(sessions.values()).filter(s => s.updatedAt > cutoff);
+    return Array.from(sessions.values()).filter((s) => s.updatedAt > cutoff);
   }
 
   /**
