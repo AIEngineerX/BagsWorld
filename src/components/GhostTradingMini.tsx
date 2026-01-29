@@ -118,7 +118,10 @@ export function GhostTradingMini() {
                 : null;
 
               return (
-                <div key={pos.id} className="flex justify-between items-center bg-purple-500/10 rounded px-1 py-0.5">
+                <div
+                  key={pos.id}
+                  className="flex justify-between items-center bg-purple-500/10 rounded px-1 py-0.5"
+                >
                   <div className="flex items-center gap-1">
                     {dexUrl ? (
                       <a

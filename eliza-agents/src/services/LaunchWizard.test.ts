@@ -43,7 +43,11 @@ describe('LaunchWizard', () => {
       expect(session.id).toBeDefined();
       expect(session.userId).toBe('user123');
       expect(session.currentStep).toBe('welcome');
-      expect(session.data).toEqual({});
+      // Session starts with default values for fee and initial buy
+      expect(session.data).toEqual({
+        creatorFeePercent: 1,
+        initialBuySol: 0.5,
+      });
       expect(session.messages).toEqual([]);
       expect(session.createdAt).toBeDefined();
       expect(session.updatedAt).toBeDefined();
@@ -124,7 +128,7 @@ describe('LaunchWizard', () => {
     it('returns guidance for all steps', () => {
       const steps: LaunchStep[] = [
         'welcome', 'token_name', 'token_symbol', 'token_description',
-        'token_image', 'fee_config', 'review', 'confirmed', 'completed'
+        'token_image', 'fee_config', 'socials', 'initial_buy', 'review', 'confirmed', 'completed'
       ];
 
       for (const step of steps) {
@@ -201,7 +205,7 @@ describe('LaunchWizard', () => {
       it('rejects special characters', async () => {
         const result = await LaunchWizard.processInput(sessionId, 'Token@#$');
 
-        expect(result.response).toContain('letters, numbers, and spaces');
+        expect(result.response).toContain('letters, numbers, spaces, hyphens, and underscores');
       });
     });
 
@@ -343,11 +347,11 @@ describe('LaunchWizard', () => {
         sessionId = session.id;
       });
 
-      it('accepts valid fee and advances to review', async () => {
+      it('accepts valid fee and advances to socials', async () => {
         const result = await LaunchWizard.processInput(sessionId, '1');
 
         expect(result.success).toBe(true);
-        expect(result.nextStep).toBe('review');
+        expect(result.nextStep).toBe('socials');
         expect(result.session.data.creatorFeePercent).toBe(1);
       });
 
@@ -361,7 +365,7 @@ describe('LaunchWizard', () => {
         const result = await LaunchWizard.processInput(sessionId, '0');
 
         expect(result.session.data.creatorFeePercent).toBe(0);
-        expect(result.nextStep).toBe('review');
+        expect(result.nextStep).toBe('socials');
       });
 
       it('accepts maximum 5% fee', async () => {
@@ -389,6 +393,139 @@ describe('LaunchWizard', () => {
       });
     });
 
+    describe('socials step', () => {
+      let sessionId: string;
+
+      beforeEach(async () => {
+        const session = LaunchWizard.startSession('user123');
+        await LaunchWizard.processInput(session.id, 'ready');
+        await LaunchWizard.processInput(session.id, 'Test Token');
+        await LaunchWizard.processInput(session.id, 'TEST');
+        await LaunchWizard.processInput(session.id, 'A great token for testing purposes');
+        await LaunchWizard.processInput(session.id, 'skip'); // image
+        await LaunchWizard.processInput(session.id, '1'); // fee
+        sessionId = session.id;
+      });
+
+      it('accepts skip and advances to initial_buy', async () => {
+        const result = await LaunchWizard.processInput(sessionId, 'skip');
+
+        expect(result.success).toBe(true);
+        expect(result.nextStep).toBe('initial_buy');
+      });
+
+      it('parses twitter handle', async () => {
+        const result = await LaunchWizard.processInput(sessionId, 'twitter:mytoken');
+
+        expect(result.success).toBe(true);
+        expect(result.nextStep).toBe('initial_buy');
+        expect(result.session.data.twitter).toBe('mytoken');
+      });
+
+      it('parses twitter handle with @ prefix', async () => {
+        const result = await LaunchWizard.processInput(sessionId, 'twitter:@mytoken');
+
+        expect(result.session.data.twitter).toBe('mytoken');
+      });
+
+      it('parses telegram handle', async () => {
+        const result = await LaunchWizard.processInput(sessionId, 'telegram:mytokenchat');
+
+        expect(result.session.data.telegram).toBe('mytokenchat');
+      });
+
+      it('parses website URL', async () => {
+        const result = await LaunchWizard.processInput(sessionId, 'website:https://mytoken.com');
+
+        expect(result.session.data.website).toBe('https://mytoken.com');
+      });
+
+      it('parses multiple socials', async () => {
+        const result = await LaunchWizard.processInput(
+          sessionId,
+          'twitter:mytoken, telegram:mytokenchat, website:https://mytoken.com'
+        );
+
+        expect(result.session.data.twitter).toBe('mytoken');
+        expect(result.session.data.telegram).toBe('mytokenchat');
+        expect(result.session.data.website).toBe('https://mytoken.com');
+      });
+
+      it('accepts x: as alias for twitter', async () => {
+        const result = await LaunchWizard.processInput(sessionId, 'x:mytoken');
+
+        expect(result.session.data.twitter).toBe('mytoken');
+      });
+
+      it('accepts tg: as alias for telegram', async () => {
+        const result = await LaunchWizard.processInput(sessionId, 'tg:mytokenchat');
+
+        expect(result.session.data.telegram).toBe('mytokenchat');
+      });
+
+      it('accepts web: as alias for website', async () => {
+        const result = await LaunchWizard.processInput(sessionId, 'web:https://mytoken.com');
+
+        expect(result.session.data.website).toBe('https://mytoken.com');
+      });
+    });
+
+    describe('initial_buy step', () => {
+      let sessionId: string;
+
+      beforeEach(async () => {
+        const session = LaunchWizard.startSession('user123');
+        await LaunchWizard.processInput(session.id, 'ready');
+        await LaunchWizard.processInput(session.id, 'Test Token');
+        await LaunchWizard.processInput(session.id, 'TEST');
+        await LaunchWizard.processInput(session.id, 'A great token for testing purposes');
+        await LaunchWizard.processInput(session.id, 'skip'); // image
+        await LaunchWizard.processInput(session.id, '1'); // fee
+        await LaunchWizard.processInput(session.id, 'skip'); // socials
+        sessionId = session.id;
+      });
+
+      it('accepts valid amount and advances to review', async () => {
+        const result = await LaunchWizard.processInput(sessionId, '1');
+
+        expect(result.success).toBe(true);
+        expect(result.nextStep).toBe('review');
+        expect(result.session.data.initialBuySol).toBe(1);
+      });
+
+      it('accepts decimal amounts', async () => {
+        const result = await LaunchWizard.processInput(sessionId, '0.5');
+
+        expect(result.session.data.initialBuySol).toBe(0.5);
+      });
+
+      it('accepts minimum 0.1 SOL', async () => {
+        const result = await LaunchWizard.processInput(sessionId, '0.1');
+
+        expect(result.success).toBe(true);
+        expect(result.nextStep).toBe('review');
+        expect(result.session.data.initialBuySol).toBe(0.1);
+      });
+
+      it('rejects below minimum 0.1 SOL', async () => {
+        const result = await LaunchWizard.processInput(sessionId, '0.05');
+
+        expect(result.response).toContain('Minimum initial buy is 0.1 SOL');
+      });
+
+      it('rejects above maximum 100 SOL', async () => {
+        const result = await LaunchWizard.processInput(sessionId, '101');
+
+        expect(result.response).toContain('Max 100 SOL');
+      });
+
+      it('rejects non-numeric input', async () => {
+        const result = await LaunchWizard.processInput(sessionId, 'abc');
+
+        expect(result.response).toContain('enter a number');
+      });
+    });
+
     describe('review step', () => {
       let sessionId: string;
 
@@ -400,6 +537,8 @@ describe('LaunchWizard', () => {
         await LaunchWizard.processInput(session.id, 'A great token for testing purposes');
         await LaunchWizard.processInput(session.id, 'https://example.com/logo.png');
         await LaunchWizard.processInput(session.id, '1');
+        await LaunchWizard.processInput(session.id, 'skip'); // socials
+        await LaunchWizard.processInput(session.id, '1'); // initial_buy
         sessionId = session.id;
       });
 
@@ -426,7 +565,7 @@ describe('LaunchWizard', () => {
       it('goes back on back command', async () => {
         const result = await LaunchWizard.processInput(sessionId, 'back');
 
-        expect(result.nextStep).toBe('fee_config');
+        expect(result.nextStep).toBe('initial_buy');
       });
 
       it('stays on review for other input', async () => {
@@ -505,8 +644,10 @@ describe('LaunchWizard', () => {
       await LaunchWizard.processInput(session.id, 'Test Token');
       await LaunchWizard.processInput(session.id, 'TEST');
       await LaunchWizard.processInput(session.id, 'A great token');
-      await LaunchWizard.processInput(session.id, 'skip');
-      await LaunchWizard.processInput(session.id, '1');
+      await LaunchWizard.processInput(session.id, 'skip'); // image
+      await LaunchWizard.processInput(session.id, '1'); // fee
+      await LaunchWizard.processInput(session.id, 'skip'); // socials
+      await LaunchWizard.processInput(session.id, '1'); // initial_buy
       await LaunchWizard.processInput(session.id, 'confirm');
 
       LaunchWizard.completeSession(session.id, 'mint123abc');
@@ -706,7 +847,7 @@ describe('LaunchWizard', () => {
       it('accepts exactly 5% fee (maximum)', async () => {
         const result = await LaunchWizard.processInput(sessionId, '5');
         expect(result.success).toBe(true);
-        expect(result.nextStep).toBe('review');
+        expect(result.nextStep).toBe('socials');
         expect(result.session.data.creatorFeePercent).toBe(5);
       });
 
@@ -725,6 +866,46 @@ describe('LaunchWizard', () => {
         const result = await LaunchWizard.processInput(sessionId, '2%');
         expect(result.success).toBe(true);
         expect(result.session.data.creatorFeePercent).toBe(2);
+      });
+    });
+
+    describe('initial_buy boundaries', () => {
+      let sessionId: string;
+
+      beforeEach(async () => {
+        const session = LaunchWizard.startSession('user');
+        await LaunchWizard.processInput(session.id, 'ready');
+        await LaunchWizard.processInput(session.id, 'Test Token');
+        await LaunchWizard.processInput(session.id, 'TEST');
+        await LaunchWizard.processInput(session.id, 'A great token here');
+        await LaunchWizard.processInput(session.id, 'skip'); // image
+        await LaunchWizard.processInput(session.id, '1'); // fee
+        await LaunchWizard.processInput(session.id, 'skip'); // socials
+        sessionId = session.id;
+      });
+
+      it('accepts exactly 0.1 SOL (minimum)', async () => {
+        const result = await LaunchWizard.processInput(sessionId, '0.1');
+        expect(result.success).toBe(true);
+        expect(result.nextStep).toBe('review');
+        expect(result.session.data.initialBuySol).toBe(0.1);
+      });
+
+      it('rejects 0.09 SOL (below minimum)', async () => {
+        const result = await LaunchWizard.processInput(sessionId, '0.09');
+        expect(result.response).toContain('Minimum initial buy is 0.1 SOL');
+      });
+
+      it('accepts exactly 100 SOL (maximum)', async () => {
+        const result = await LaunchWizard.processInput(sessionId, '100');
+        expect(result.success).toBe(true);
+        expect(result.nextStep).toBe('review');
+        expect(result.session.data.initialBuySol).toBe(100);
+      });
+
+      it('rejects 100.01 SOL (above maximum)', async () => {
+        const result = await LaunchWizard.processInput(sessionId, '100.01');
+        expect(result.response).toContain('Max 100 SOL');
       });
     });
   });
@@ -776,7 +957,7 @@ describe('LaunchWizard', () => {
       expect(result.nextStep).toBe('token_symbol');
     });
 
-    it('rejects image URL with query parameters (extension not at end)', async () => {
+    it('accepts image URL with query parameters', async () => {
       const session = LaunchWizard.startSession('user');
       await LaunchWizard.processInput(session.id, 'ready');
       await LaunchWizard.processInput(session.id, 'Token');
@@ -787,10 +968,10 @@ describe('LaunchWizard', () => {
         'https://example.com/image.png?size=512&format=webp'
       );
 
-      // Current validation requires extension at end of URL
+      // Validation allows query parameters after the extension
       expect(result.success).toBe(true);
-      expect(result.nextStep).toBeUndefined();
-      expect(result.response).toContain('PNG, JPG, GIF, or WebP');
+      expect(result.nextStep).toBe('fee_config');
+      expect(result.session.data.imageUrl).toBe('https://example.com/image.png?size=512&format=webp');
     });
 
     it('handles image URL with uppercase extension', async () => {
@@ -848,8 +1029,10 @@ describe('LaunchWizard', () => {
         await LaunchWizard.processInput(session.id, 'Token');
         await LaunchWizard.processInput(session.id, 'TKN');
         await LaunchWizard.processInput(session.id, 'A good description');
-        await LaunchWizard.processInput(session.id, 'skip');
-        await LaunchWizard.processInput(session.id, '1');
+        await LaunchWizard.processInput(session.id, 'skip'); // image
+        await LaunchWizard.processInput(session.id, '1'); // fee
+        await LaunchWizard.processInput(session.id, 'skip'); // socials
+        await LaunchWizard.processInput(session.id, '1'); // initial_buy
         const result = await LaunchWizard.processInput(session.id, confirmWord);
         expect(result.nextStep).toBe('confirmed');
         expect(result.launchReady).toBe(true);
@@ -865,8 +1048,10 @@ describe('LaunchWizard', () => {
         await LaunchWizard.processInput(session.id, 'Token');
         await LaunchWizard.processInput(session.id, 'TKN');
         await LaunchWizard.processInput(session.id, 'A good description');
-        await LaunchWizard.processInput(session.id, 'skip');
-        await LaunchWizard.processInput(session.id, '1');
+        await LaunchWizard.processInput(session.id, 'skip'); // image
+        await LaunchWizard.processInput(session.id, '1'); // fee
+        await LaunchWizard.processInput(session.id, 'skip'); // socials
+        await LaunchWizard.processInput(session.id, '1'); // initial_buy
         const result = await LaunchWizard.processInput(session.id, word);
         // These are not valid confirm words
         expect(result.nextStep).toBeUndefined();
@@ -916,11 +1101,19 @@ describe('LaunchWizard', () => {
       await LaunchWizard.processInput(session.id, 'Token');
       await LaunchWizard.processInput(session.id, 'TKN');
       await LaunchWizard.processInput(session.id, 'Description');
-      await LaunchWizard.processInput(session.id, 'skip');
-      await LaunchWizard.processInput(session.id, '1');
+      await LaunchWizard.processInput(session.id, 'skip'); // image
+      await LaunchWizard.processInput(session.id, '1'); // fee
+      await LaunchWizard.processInput(session.id, 'skip'); // socials
+      await LaunchWizard.processInput(session.id, '1'); // initial_buy
 
       // Now on review, go back
       let result = await LaunchWizard.processInput(session.id, 'back');
+      expect(result.session.currentStep).toBe('initial_buy');
+
+      result = await LaunchWizard.processInput(session.id, 'back');
+      expect(result.session.currentStep).toBe('socials');
+
+      result = await LaunchWizard.processInput(session.id, 'back');
       expect(result.session.currentStep).toBe('fee_config');
 
       result = await LaunchWizard.processInput(session.id, 'back');
@@ -970,8 +1163,10 @@ describe('LaunchWizard', () => {
       await LaunchWizard.processInput(session.id, 'Token');
       await LaunchWizard.processInput(session.id, 'TKN');
       await LaunchWizard.processInput(session.id, 'Description here');
-      await LaunchWizard.processInput(session.id, 'skip');
-      await LaunchWizard.processInput(session.id, '1');
+      await LaunchWizard.processInput(session.id, 'skip'); // image
+      await LaunchWizard.processInput(session.id, '1'); // fee
+      await LaunchWizard.processInput(session.id, 'skip'); // socials
+      await LaunchWizard.processInput(session.id, '1'); // initial_buy
       await LaunchWizard.processInput(session.id, 'confirm');
 
       const current = LaunchWizard.getSession(session.id)!;
@@ -988,8 +1183,10 @@ describe('LaunchWizard', () => {
       await LaunchWizard.processInput(session.id, 'Token');
       await LaunchWizard.processInput(session.id, 'TKN');
       await LaunchWizard.processInput(session.id, 'Description here');
-      await LaunchWizard.processInput(session.id, 'skip');
-      await LaunchWizard.processInput(session.id, '1');
+      await LaunchWizard.processInput(session.id, 'skip'); // image
+      await LaunchWizard.processInput(session.id, '1'); // fee
+      await LaunchWizard.processInput(session.id, 'skip'); // socials
+      await LaunchWizard.processInput(session.id, '1'); // initial_buy
       await LaunchWizard.processInput(session.id, 'confirm');
 
       LaunchWizard.completeSession(session.id, 'mint123');
@@ -1025,12 +1222,21 @@ describe('LaunchWizard', () => {
 
       // Fee
       result = await LaunchWizard.processInput(session.id, '1.5');
+      expect(result.nextStep).toBe('socials');
+
+      // Socials
+      result = await LaunchWizard.processInput(session.id, 'twitter:awesometoken');
+      expect(result.nextStep).toBe('initial_buy');
+
+      // Initial buy
+      result = await LaunchWizard.processInput(session.id, '2');
       expect(result.nextStep).toBe('review');
 
       // Review shows all data
       expect(result.response).toContain('Awesome Token');
       expect(result.response).toContain('$AWE');
       expect(result.response).toContain('1.5%');
+      expect(result.response).toContain('2 SOL');
 
       // Confirm
       result = await LaunchWizard.processInput(session.id, 'confirm');
@@ -1042,6 +1248,8 @@ describe('LaunchWizard', () => {
         description: 'The most awesome token on Solana',
         imageUrl: 'https://awesome.io/logo.png',
         creatorFeePercent: 1.5,
+        twitter: 'awesometoken',
+        initialBuySol: 2,
       });
 
       // Complete

@@ -39,11 +39,11 @@ describe('bagsWorldPlugin', () => {
       expect(bagsWorldPlugin.description!.length).toBeGreaterThan(0);
     });
 
-    it('description mentions key agents', () => {
+    it('description mentions key features', () => {
       const desc = bagsWorldPlugin.description!.toLowerCase();
-      expect(desc).toContain('toly');
-      expect(desc).toContain('finn');
       expect(desc).toContain('bags');
+      expect(desc).toContain('oracle');
+      expect(desc).toContain('prediction');
     });
   });
 
@@ -66,10 +66,10 @@ describe('bagsWorldPlugin', () => {
       expect(bagsWorldPlugin.services!.length).toBe(2); // BagsApiService, LLMService
     });
 
-    it('exports evaluators array (empty)', () => {
+    it('exports evaluators array', () => {
       expect(bagsWorldPlugin.evaluators).toBeDefined();
       expect(Array.isArray(bagsWorldPlugin.evaluators)).toBe(true);
-      expect(bagsWorldPlugin.evaluators!.length).toBe(0);
+      expect(bagsWorldPlugin.evaluators!.length).toBe(7);
     });
 
     it('has init function', () => {

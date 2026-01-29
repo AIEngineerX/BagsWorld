@@ -183,7 +183,8 @@ describe('lookupTokenAction', () => {
     it('returns error when token not found', async () => {
       mockApi.getToken.mockResolvedValueOnce(null);
 
-      const message = createMockMemory('check nonexistent12345678901234567890123456789012');
+      // Use a valid-looking base58 address that will pass validation but return null from API
+      const message = createMockMemory('check BagsNotExistingTokenAddressXYZABCDEFGHJK');
       const callback = vi.fn();
 
       const result = await lookupTokenAction.handler(
