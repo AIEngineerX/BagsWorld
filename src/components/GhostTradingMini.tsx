@@ -19,7 +19,7 @@ export function GhostTradingMini() {
 
   const isEnabled = status?.trading?.enabled || false;
   const openCount = status?.trading?.openPositions || 0;
-  const exposure = status?.trading?.totalExposureSol || 0;
+  const walletBalance = status?.wallet?.balanceSol || 0;
   const totalPnl = status?.performance?.totalPnlSol || 0;
   const winRate = status?.performance?.winRate || "0%";
   const totalTrades = status?.performance?.totalTrades || 0;
@@ -50,8 +50,8 @@ export function GhostTradingMini() {
           <p className="font-pixel text-[10px] text-white">{openCount}/3</p>
         </div>
         <div>
-          <p className="font-pixel text-[6px] text-gray-500">EXPOSURE</p>
-          <p className="font-pixel text-[10px] text-yellow-400">{exposure.toFixed(2)}</p>
+          <p className="font-pixel text-[6px] text-gray-500">BALANCE</p>
+          <p className="font-pixel text-[10px] text-yellow-400">{walletBalance.toFixed(2)}</p>
         </div>
         <div>
           <p className="font-pixel text-[6px] text-gray-500">WIN RATE</p>

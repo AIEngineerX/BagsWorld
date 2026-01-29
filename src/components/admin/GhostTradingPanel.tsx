@@ -191,6 +191,28 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
         </div>
       </div>
 
+      {/* Wallet Info */}
+      {status?.wallet && (
+        <div className="bg-bags-darker p-3 border border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-pixel text-[7px] text-gray-500">GHOST WALLET</p>
+              <p className="font-mono text-[9px] text-gray-400">
+                {status.wallet.address
+                  ? `${status.wallet.address.slice(0, 8)}...${status.wallet.address.slice(-8)}`
+                  : "Not configured"}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-pixel text-[7px] text-gray-500">BALANCE</p>
+              <p className="font-pixel text-lg text-bags-gold">
+                {status.wallet.balanceSol.toFixed(4)} SOL
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div className="bg-bags-darker p-2 border border-gray-700">

@@ -11,6 +11,7 @@
 import { Router, Request, Response } from "express";
 import { getGhostTrader } from "../services/GhostTrader.js";
 import { getHeliusService } from "../services/HeliusService.js";
+import { getSolanaService } from "../services/SolanaService.js";
 
 // Solana RPC for wallet analysis
 const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
@@ -18,13 +19,26 @@ const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solan
 const router = Router();
 
 // GET /api/ghost/status - Get trading status and stats
-router.get("/status", (req: Request, res: Response) => {
+router.get("/status", async (req: Request, res: Response) => {
   const trader = getGhostTrader();
+  const solanaService = getSolanaService();
   const stats = trader.getStats();
   const config = trader.getConfig();
 
+  // Fetch wallet balance
+  let walletBalance = 0;
+  try {
+    walletBalance = await solanaService.getBalance();
+  } catch (error) {
+    console.error("[Ghost] Failed to fetch wallet balance:", error);
+  }
+
   res.json({
     success: true,
+    wallet: {
+      address: solanaService.getPublicKey() || null,
+      balanceSol: walletBalance,
+    },
     trading: {
       enabled: stats.enabled,
       openPositions: stats.openPositions,
