@@ -31,8 +31,8 @@ import {
 
 describe('Character Registry', () => {
   describe('allCharacters array', () => {
-    it('contains all 16 unique characters', () => {
-      expect(allCharacters).toHaveLength(16);
+    it('contains all 17 unique characters', () => {
+      expect(allCharacters).toHaveLength(17);
     });
 
     it('has bagsBotCharacter first (main guide)', () => {
@@ -63,8 +63,8 @@ describe('Character Registry', () => {
   });
 
   describe('characters record', () => {
-    it('has 20 entries (16 characters + 4 aliases)', () => {
-      expect(Object.keys(characters)).toHaveLength(20);
+    it('has 21 entries (17 characters + 4 aliases)', () => {
+      expect(Object.keys(characters)).toHaveLength(21);
     });
 
     it('includes aliases for bagsbot and dev', () => {
@@ -112,9 +112,9 @@ describe('Character Registry', () => {
   });
 
   describe('getCharacterIds', () => {
-    it('returns 16 primary character IDs', () => {
+    it('returns 17 primary character IDs', () => {
       const ids = getCharacterIds();
-      expect(ids).toHaveLength(16);
+      expect(ids).toHaveLength(17);
     });
 
     it('excludes aliases', () => {

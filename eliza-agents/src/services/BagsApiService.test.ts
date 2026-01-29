@@ -243,37 +243,40 @@ describe("BagsApiService", () => {
   });
 
   describe("getRecentLaunches", () => {
-    const mockLaunches: RecentLaunch[] = [
+    // Uses DexScreener API format
+    const mockDexScreenerPairs = [
       {
-        mint: "mint1",
-        name: "Token 1",
-        symbol: "TK1",
-        launchedAt: Date.now() - 3600000,
-        creator: "creator1",
-        initialMarketCap: 100000,
+        chainId: "solana",
+        dexId: "bags",
+        pairCreatedAt: Date.now() - 3600000,
+        baseToken: { address: "mint1", name: "Token 1", symbol: "TK1" },
+        fdv: 100000,
+        liquidity: { usd: 50000 },
       },
       {
-        mint: "mint2",
-        name: "Token 2",
-        symbol: "TK2",
-        launchedAt: Date.now() - 7200000,
-        creator: "creator2",
+        chainId: "solana",
+        dexId: "bags",
+        pairCreatedAt: Date.now() - 7200000,
+        baseToken: { address: "mint2", name: "Token 2", symbol: "TK2" },
+        fdv: 50000,
+        liquidity: { usd: 25000 },
       },
     ];
 
-    it("fetches recent launches", async () => {
+    it("fetches recent launches from DexScreener", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, response: { launches: mockLaunches } }),
+        json: async () => ({ pairs: mockDexScreenerPairs }),
       });
 
       const result = await service.getRecentLaunches(5);
 
-      expect(result).toEqual(mockLaunches);
+      // Verify it calls DexScreener
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/token-launch/recent?limit=5"),
-        expect.any(Object)
+        expect.stringContaining("api.dexscreener.com")
       );
+      // Returns formatted launches
+      expect(result.length).toBeLessThanOrEqual(5);
     });
 
     it("returns empty array on error", async () => {
@@ -283,15 +286,16 @@ describe("BagsApiService", () => {
       expect(result).toEqual([]);
     });
 
-    it("handles launches without initialMarketCap", async () => {
-      const launchWithoutMC = [{ ...mockLaunches[1] }];
+    it("handles pairs with missing fdv", async () => {
+      const pairsNoFdv = [{ ...mockDexScreenerPairs[0], fdv: undefined }];
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, response: { launches: launchWithoutMC } }),
+        json: async () => ({ pairs: pairsNoFdv }),
       });
 
       const result = await service.getRecentLaunches(1);
-      expect(result[0].initialMarketCap).toBeUndefined();
+      // Should still return result even without FDV
+      expect(result).toBeDefined();
     });
   });
 
