@@ -479,6 +479,14 @@ const SPECIAL_CHARACTERS: Record<
     x: Math.round(400 * SCALE), // Center of Founder's Corner (near workshop)
     zone: "founders",
   },
+  // Mascots
+  bagsy: {
+    flag: "isBagsy",
+    wallet: "bagsy-mascot-permanent",
+    x: Math.round(350 * SCALE), // Center of Park near the PokeCenter
+    zone: "main_city",
+    profileUrl: "https://x.com/BagsWorldApp",
+  },
 };
 
 export function transformFeeEarnerToCharacter(
@@ -514,6 +522,8 @@ export function transformFeeEarnerToCharacter(
     isBNN: e.isBNN || earner.wallet === SPECIAL_CHARACTERS.bnn.wallet,
     // Founder's Corner Zone
     isProfessorOak: e.isProfessorOak || earner.wallet === SPECIAL_CHARACTERS.professorOak.wallet,
+    // Mascots
+    isBagsy: e.isBagsy || earner.wallet === SPECIAL_CHARACTERS.bagsy.wallet,
   };
 
   // Determine position

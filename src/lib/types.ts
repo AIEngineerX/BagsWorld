@@ -72,6 +72,8 @@ export interface FeeEarner {
   isBNN?: boolean; // Special flag for BNN (News Bot) character
   // Founder's Corner Zone
   isProfessorOak?: boolean; // Special flag for Professor Oak (Token Launch Guide) character
+  // Mascots
+  isBagsy?: boolean; // Special flag for Bagsy (BagsWorld Hype Bot) character
 }
 
 export interface TokenInfo {
@@ -206,6 +208,8 @@ export interface GameCharacter {
   isBNN?: boolean; // Special flag for BNN (News Bot) - Academy
   // Founder's Corner Zone
   isProfessorOak?: boolean; // Special flag for Professor Oak (Token Launch Guide) - Founder's Corner
+  // Mascots
+  isBagsy?: boolean; // Special flag for Bagsy (BagsWorld Hype Bot) - Park
 }
 
 export interface GameBuilding {

@@ -23,6 +23,7 @@ import { alaaCharacter as alaaDef } from './definitions/alaa.character.js';
 import { carloCharacter as carloDef } from './definitions/carlo.character.js';
 import { bnnCharacter as bnnDef } from './definitions/bnn.character.js';
 import { professorOakCharacter as professorOakDef } from './definitions/professor-oak.character.js';
+import { bagsyCharacter as bagsyDef } from './definitions/bagsy.character.js';
 
 // Convert CharacterDefinition to ElizaOS Character format
 function toElizaCharacter(def: CharacterDefinition): Character {
@@ -117,6 +118,9 @@ export const sincaraCharacter: Character = toElizaCharacter(sincaraDef);
 export const stuuCharacter: Character = toElizaCharacter(stuuDef);
 export const professorOakCharacter: Character = toElizaCharacter(professorOakDef);
 
+// Mascots
+export const bagsyCharacter: Character = toElizaCharacter(bagsyDef);
+
 export type CharacterId =
   // Core characters
   | 'toly'
@@ -139,7 +143,9 @@ export type CharacterId =
   | 'stuu'
   | 'professor-oak'
   | 'professoroak'
-  | 'oak';
+  | 'oak'
+  // Mascots
+  | 'bagsy';
 
 export const characters: Record<string, Character> = {
   // Core characters
@@ -164,6 +170,8 @@ export const characters: Record<string, Character> = {
   'professor-oak': professorOakCharacter,
   'professoroak': professorOakCharacter,
   'oak': professorOakCharacter,
+  // Mascots
+  'bagsy': bagsyCharacter,
 };
 
 export function getCharacter(id: string): Character | undefined {
@@ -177,6 +185,8 @@ export function getCharacterIds(): CharacterId[] {
     'toly', 'finn', 'ash', 'ghost', 'neo', 'cj', 'shaw', 'bags-bot',
     // Academy
     'alaa', 'bnn', 'carlo', 'ramo', 'sam', 'sincara', 'stuu', 'professor-oak',
+    // Mascots
+    'bagsy',
   ];
 }
 
@@ -208,6 +218,8 @@ export const allCharacters: Character[] = [
   sincaraCharacter,
   stuuCharacter,
   professorOakCharacter,
+  // Mascots
+  bagsyCharacter,
 ];
 
 export default allCharacters;

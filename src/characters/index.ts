@@ -40,6 +40,11 @@ import { cjCharacter } from "./cj.character.ts";
 import { professorOakCharacter } from "./professor-oak.character.ts";
 
 // ============================================================================
+// MASCOTS - Official Bags.fm mascots
+// ============================================================================
+import { bagsyCharacter } from "./bagsy.character.ts";
+
+// ============================================================================
 // EXPORTS - Organized by zone
 // ============================================================================
 
@@ -69,6 +74,9 @@ export { cjCharacter } from "./cj.character.ts";
 // Founder's Corner Zone (founders)
 export { professorOakCharacter } from "./professor-oak.character.ts";
 
+// Mascots
+export { bagsyCharacter } from "./bagsy.character.ts";
+
 // Export types and utilities
 export { generateCharacterPrompt, type CharacterDefinition } from "./bags-bot.character.ts";
 
@@ -94,6 +102,7 @@ export const parkCharacters: Record<string, CharacterDefinition> = {
   ash: ashCharacter,
   ghost: ghostCharacter,
   shaw: shawCharacter,
+  bagsy: bagsyCharacter, // Official mascot
 };
 
 // BagsCity Zone characters (trending)
@@ -306,6 +315,15 @@ export const characterMeta: Record<string, CharacterMeta> = {
     color: "#a16207",
     icon: "🧪",
     zone: "founders",
+  },
+
+  // ========== MASCOTS ==========
+  bagsy: {
+    displayName: "Bagsy",
+    role: "Hype Bot",
+    color: "#00ff00",
+    icon: "💰",
+    zone: "main_city",
   },
 };
 

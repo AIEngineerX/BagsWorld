@@ -7480,6 +7480,9 @@ export class BootScene extends Phaser.Scene {
 
     // Founder's Corner Zone
     this.generateProfessorOakSprite();
+
+    // Mascots
+    this.generateBagsySprite();
   }
 
   private generateTolySprite(): void {
@@ -10323,6 +10326,212 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(Math.round(13 * s), Math.round(13 * s), Math.round(6 * s), Math.round(2 * s));
 
     g.generateTexture("professorOak", size, size);
+    g.destroy();
+  }
+
+  private generateBagsySprite(): void {
+    // Bagsy - BagsWorld Hype Bot
+    // Bagtardio-style blob with detailed WIF hat
+    // Simple green eyes with black pupils, expressive eyebrows
+    const s = SCALE;
+    const size = Math.round(32 * s);
+
+    // Color palette
+    // Body: Lime green blob
+    const greenLight = 0x90ee90; // Light highlight
+    const greenMain = 0x32cd32; // Main lime green
+    const greenMid = 0x228b22; // Mid shadow
+    const greenDark = 0x006400; // Dark outline
+
+    // WIF Hat: Salmon/terracotta with lots of texture
+    const hatHighlight = 0xdeb887; // Burlywood highlight
+    const hatLight = 0xcd853f; // Peru - light areas
+    const hatMain = 0xb87333; // Copper main
+    const hatMid = 0xa0522d; // Sienna mid
+    const hatDark = 0x8b4513; // Saddle brown dark
+    const hatOutline = 0x5d3a1a; // Very dark brown outline
+
+    // Face
+    const white = 0xffffff;
+    const black = 0x000000;
+
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // === SHADOW under blob (wider for bag shape) ===
+    g.fillStyle(0x000000, 0.3);
+    g.fillEllipse(Math.round(16 * s), Math.round(30 * s), Math.round(13 * s), Math.round(4 * s));
+
+    // === BLOB BODY - MONEY BAG SHAPE ===
+    // Narrow at top (cinched), wider bulge at bottom
+    // Dark outline - money bag shape
+    g.fillStyle(greenDark);
+    // Top (narrow cinch under hat)
+    g.fillRect(Math.round(8 * s), Math.round(12 * s), Math.round(16 * s), Math.round(3 * s));
+    // Upper body (starts to widen)
+    g.fillRect(Math.round(6 * s), Math.round(14 * s), Math.round(20 * s), Math.round(4 * s));
+    // Middle body (wider)
+    g.fillRect(Math.round(4 * s), Math.round(17 * s), Math.round(24 * s), Math.round(5 * s));
+    // Lower body (widest bulge)
+    g.fillRect(Math.round(3 * s), Math.round(21 * s), Math.round(26 * s), Math.round(6 * s));
+    // Bottom rounded corners
+    g.fillRect(Math.round(5 * s), Math.round(27 * s), Math.round(22 * s), Math.round(2 * s));
+    g.fillRect(Math.round(8 * s), Math.round(28 * s), Math.round(16 * s), Math.round(1 * s));
+
+    // Main body fill - money bag shape
+    g.fillStyle(greenMain);
+    // Top (narrow)
+    g.fillRect(Math.round(9 * s), Math.round(12 * s), Math.round(14 * s), Math.round(3 * s));
+    // Upper body
+    g.fillRect(Math.round(7 * s), Math.round(14 * s), Math.round(18 * s), Math.round(4 * s));
+    // Middle body
+    g.fillRect(Math.round(5 * s), Math.round(17 * s), Math.round(22 * s), Math.round(5 * s));
+    // Lower body (widest)
+    g.fillRect(Math.round(4 * s), Math.round(21 * s), Math.round(24 * s), Math.round(6 * s));
+    // Bottom rounded
+    g.fillRect(Math.round(6 * s), Math.round(27 * s), Math.round(20 * s), Math.round(1 * s));
+
+    // Highlight left side (follows bag curve)
+    g.fillStyle(greenLight);
+    g.fillRect(Math.round(9 * s), Math.round(13 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(7 * s), Math.round(15 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillRect(Math.round(5 * s), Math.round(18 * s), Math.round(3 * s), Math.round(4 * s));
+    g.fillRect(Math.round(5 * s), Math.round(22 * s), Math.round(4 * s), Math.round(4 * s));
+
+    // Shadow right side (follows bag curve)
+    g.fillStyle(greenMid);
+    g.fillRect(Math.round(22 * s), Math.round(15 * s), Math.round(3 * s), Math.round(3 * s));
+    g.fillRect(Math.round(24 * s), Math.round(18 * s), Math.round(3 * s), Math.round(4 * s));
+    g.fillRect(Math.round(24 * s), Math.round(22 * s), Math.round(3 * s), Math.round(5 * s));
+
+    // === WIF HAT - DETAILED KNIT TEXTURE ===
+    // Outline/base layer
+    g.fillStyle(hatOutline);
+    g.fillRect(Math.round(2 * s), Math.round(3 * s), Math.round(28 * s), Math.round(12 * s));
+    g.fillRect(Math.round(4 * s), Math.round(1 * s), Math.round(24 * s), Math.round(3 * s));
+    g.fillRect(Math.round(8 * s), Math.round(-1 * s), Math.round(16 * s), Math.round(3 * s));
+
+    // Main hat fill
+    g.fillStyle(hatMain);
+    g.fillRect(Math.round(3 * s), Math.round(4 * s), Math.round(26 * s), Math.round(10 * s));
+    g.fillRect(Math.round(5 * s), Math.round(2 * s), Math.round(22 * s), Math.round(3 * s));
+    g.fillRect(Math.round(9 * s), Math.round(0 * s), Math.round(14 * s), Math.round(3 * s));
+
+    // Knit texture bumps - row 1 (top)
+    g.fillStyle(hatLight);
+    g.fillRect(Math.round(10 * s), Math.round(1 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(14 * s), Math.round(0 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(19 * s), Math.round(1 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Knit texture bumps - row 2
+    g.fillRect(Math.round(6 * s), Math.round(3 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(10 * s), Math.round(3 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(15 * s), Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(19 * s), Math.round(3 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(24 * s), Math.round(3 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Knit texture bumps - row 3
+    g.fillRect(Math.round(4 * s), Math.round(5 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(8 * s), Math.round(5 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(12 * s), Math.round(5 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(17 * s), Math.round(5 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(21 * s), Math.round(5 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(26 * s), Math.round(5 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Highlight bumps
+    g.fillStyle(hatHighlight);
+    g.fillRect(Math.round(6 * s), Math.round(3 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(12 * s), Math.round(5 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(10 * s), Math.round(1 * s), Math.round(1 * s), Math.round(1 * s));
+
+    // Shadow bumps/grooves
+    g.fillStyle(hatMid);
+    g.fillRect(Math.round(7 * s), Math.round(4 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(11 * s), Math.round(4 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(16 * s), Math.round(4 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(20 * s), Math.round(4 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(24 * s), Math.round(4 * s), Math.round(1 * s), Math.round(2 * s));
+
+    // Knit texture bumps - row 4
+    g.fillStyle(hatLight);
+    g.fillRect(Math.round(5 * s), Math.round(7 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(10 * s), Math.round(7 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(14 * s), Math.round(7 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(19 * s), Math.round(7 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(23 * s), Math.round(7 * s), Math.round(3 * s), Math.round(2 * s));
+
+    // Shadow grooves row 4
+    g.fillStyle(hatMid);
+    g.fillRect(Math.round(8 * s), Math.round(7 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(13 * s), Math.round(7 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(17 * s), Math.round(7 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(22 * s), Math.round(7 * s), Math.round(1 * s), Math.round(2 * s));
+
+    // Hat brim/fold - thick band at bottom
+    g.fillStyle(hatDark);
+    g.fillRect(Math.round(2 * s), Math.round(10 * s), Math.round(28 * s), Math.round(4 * s));
+    g.fillStyle(hatMid);
+    g.fillRect(Math.round(3 * s), Math.round(11 * s), Math.round(26 * s), Math.round(2 * s));
+    // Brim texture
+    g.fillStyle(hatLight);
+    g.fillRect(Math.round(5 * s), Math.round(11 * s), Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(Math.round(10 * s), Math.round(11 * s), Math.round(3 * s), Math.round(1 * s));
+    g.fillRect(Math.round(16 * s), Math.round(11 * s), Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(Math.round(21 * s), Math.round(11 * s), Math.round(3 * s), Math.round(1 * s));
+
+    // === EYES - Large, round, simple with green iris ===
+    // Left eye outline
+    g.fillStyle(black);
+    g.fillRect(Math.round(7 * s), Math.round(15 * s), Math.round(8 * s), Math.round(8 * s));
+    // Left eye green iris
+    g.fillStyle(greenMain);
+    g.fillRect(Math.round(8 * s), Math.round(16 * s), Math.round(6 * s), Math.round(6 * s));
+    // Left eye black pupil
+    g.fillStyle(black);
+    g.fillRect(Math.round(10 * s), Math.round(17 * s), Math.round(3 * s), Math.round(4 * s));
+    // Left eye white shine
+    g.fillStyle(white);
+    g.fillRect(Math.round(9 * s), Math.round(16 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Right eye outline
+    g.fillStyle(black);
+    g.fillRect(Math.round(17 * s), Math.round(15 * s), Math.round(8 * s), Math.round(8 * s));
+    // Right eye green iris
+    g.fillStyle(greenMain);
+    g.fillRect(Math.round(18 * s), Math.round(16 * s), Math.round(6 * s), Math.round(6 * s));
+    // Right eye black pupil
+    g.fillStyle(black);
+    g.fillRect(Math.round(19 * s), Math.round(17 * s), Math.round(3 * s), Math.round(4 * s));
+    // Right eye white shine
+    g.fillStyle(white);
+    g.fillRect(Math.round(19 * s), Math.round(16 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // === EYEBROWS - angled for expression ===
+    g.fillStyle(black);
+    // Left eyebrow (angled down toward center)
+    g.fillRect(Math.round(7 * s), Math.round(14 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(Math.round(10 * s), Math.round(13 * s), Math.round(2 * s), Math.round(2 * s));
+    // Right eyebrow (angled down toward center)
+    g.fillRect(Math.round(21 * s), Math.round(14 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(Math.round(20 * s), Math.round(13 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // === SMALL MOUTH ===
+    g.fillStyle(black);
+    g.fillRect(Math.round(14 * s), Math.round(25 * s), Math.round(4 * s), Math.round(2 * s));
+
+    // === TINY BLOB ARMS (on wider bag body) ===
+    // Left arm - positioned on widest part of bag
+    g.fillStyle(greenDark);
+    g.fillRect(Math.round(1 * s), Math.round(20 * s), Math.round(4 * s), Math.round(4 * s));
+    g.fillStyle(greenMain);
+    g.fillRect(Math.round(2 * s), Math.round(21 * s), Math.round(2 * s), Math.round(2 * s));
+
+    // Right arm (raised) - positioned on wider bag body
+    g.fillStyle(greenDark);
+    g.fillRect(Math.round(27 * s), Math.round(16 * s), Math.round(4 * s), Math.round(4 * s));
+    g.fillStyle(greenMain);
+    g.fillRect(Math.round(28 * s), Math.round(17 * s), Math.round(2 * s), Math.round(2 * s));
+
+    g.generateTexture("bagsy", size, size);
     g.destroy();
   }
 
