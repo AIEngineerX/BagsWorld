@@ -285,59 +285,85 @@ function sortTokens(
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const sortField = (searchParams.get("sortField") || "volume24h") as SniperSortField;
-  const sortDirection = (searchParams.get("sortDirection") || "desc") as SniperSortDirection;
-  const limit = parseInt(searchParams.get("limit") || "50");
-  const offset = parseInt(searchParams.get("offset") || "0");
+  try {
+    const { searchParams } = new URL(request.url);
+    const sortField = (searchParams.get("sortField") || "volume24h") as SniperSortField;
+    const sortDirection = (searchParams.get("sortDirection") || "desc") as SniperSortDirection;
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const offset = parseInt(searchParams.get("offset") || "0");
 
-  const filters: SniperFilters = {};
-  const minMarketCap = searchParams.get("minMarketCap");
-  const maxMarketCap = searchParams.get("maxMarketCap");
-  const minVolume = searchParams.get("minVolume");
-  const maxAge = searchParams.get("maxAge");
+    const filters: SniperFilters = {};
+    const minMarketCap = searchParams.get("minMarketCap");
+    const maxMarketCap = searchParams.get("maxMarketCap");
+    const minVolume = searchParams.get("minVolume");
+    const maxAge = searchParams.get("maxAge");
 
-  if (minMarketCap) filters.minMarketCap = parseFloat(minMarketCap);
-  if (maxMarketCap) filters.maxMarketCap = parseFloat(maxMarketCap);
-  if (minVolume) filters.minVolume = parseFloat(minVolume);
-  if (maxAge) filters.maxAge = parseInt(maxAge);
+    if (minMarketCap) filters.minMarketCap = parseFloat(minMarketCap);
+    if (maxMarketCap) filters.maxMarketCap = parseFloat(maxMarketCap);
+    if (minVolume) filters.minVolume = parseFloat(minVolume);
+    if (maxAge) filters.maxAge = parseInt(maxAge);
 
-  const tokens = await getTokensWithCache();
-  const filtered = applyFilters(tokens, filters);
-  const sorted = sortTokens(filtered, sortField, sortDirection);
-  const paginated = sorted.slice(offset, offset + limit);
+    const tokens = await getTokensWithCache();
+    const filtered = applyFilters(tokens, filters);
+    const sorted = sortTokens(filtered, sortField, sortDirection);
+    const paginated = sorted.slice(offset, offset + limit);
 
-  return NextResponse.json({
-    success: true,
-    tokens: paginated,
-    total: filtered.length,
-    limit,
-    offset,
-    cacheAge: tokenCache ? Date.now() - tokenCache.timestamp : 0,
-  });
+    return NextResponse.json({
+      success: true,
+      tokens: paginated,
+      total: filtered.length,
+      limit,
+      offset,
+      cacheAge: tokenCache ? Date.now() - tokenCache.timestamp : 0,
+    });
+  } catch (error) {
+    console.error("[Sniper] GET error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch tokens",
+        tokens: [],
+        total: 0,
+      },
+      { status: 200 } // Return 200 with empty array instead of 500
+    );
+  }
 }
 
 export async function POST(request: Request) {
-  const body: RequestBody = await request.json();
-  const {
-    sortField = "volume24h",
-    sortDirection = "desc",
-    filters = {},
-    limit = 50,
-    offset = 0,
-  } = body;
+  try {
+    const body: RequestBody = await request.json();
+    const {
+      sortField = "volume24h",
+      sortDirection = "desc",
+      filters = {},
+      limit = 50,
+      offset = 0,
+    } = body;
 
-  const tokens = await getTokensWithCache();
-  const filtered = applyFilters(tokens, filters);
-  const sorted = sortTokens(filtered, sortField, sortDirection);
-  const paginated = sorted.slice(offset, offset + limit);
+    const tokens = await getTokensWithCache();
+    const filtered = applyFilters(tokens, filters);
+    const sorted = sortTokens(filtered, sortField, sortDirection);
+    const paginated = sorted.slice(offset, offset + limit);
 
-  return NextResponse.json({
-    success: true,
-    tokens: paginated,
-    total: filtered.length,
-    limit,
-    offset,
-    cacheAge: tokenCache ? Date.now() - tokenCache.timestamp : 0,
-  });
+    return NextResponse.json({
+      success: true,
+      tokens: paginated,
+      total: filtered.length,
+      limit,
+      offset,
+      cacheAge: tokenCache ? Date.now() - tokenCache.timestamp : 0,
+    });
+  } catch (error) {
+    console.error("[Sniper] POST error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch tokens",
+        tokens: [],
+        total: 0,
+      },
+      { status: 200 } // Return 200 with empty array instead of 500
+    );
+  }
 }
