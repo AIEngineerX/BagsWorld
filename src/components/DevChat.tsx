@@ -331,7 +331,7 @@ export function DevChat() {
         id: `${Date.now()}-info`,
         type: "info",
         message:
-          "AUTONOMOUS TRADING\n\nGhost trades new launches:\n• Position size: 0.05-0.1 SOL\n• Max exposure: 1 SOL total\n• Take profit: 2x\n• Stop loss: -30%\n\nEvaluates: liquidity, creator history, fee config.",
+          "AUTONOMOUS TRADING\n\nGhost trades new launches:\n• Position size: 0.05-0.15 SOL\n• Max exposure: 1.5 SOL total\n• Take profit: 1.5x, 2x, 3x (scaled)\n• Stop loss: -15%\n\nEvaluates: liquidity, creator history, fee config.",
         timestamp: Date.now(),
       });
       setTimeout(() => {
