@@ -29,6 +29,8 @@ const VALID_AGENTS = [
   "carlo",
   "bnn",
   "professor-oak",
+  // Mascots
+  "bagsy",
 ];
 
 interface ChatRequest {
@@ -94,6 +96,8 @@ const characterNames: Record<string, string> = {
   carlo: "Carlo",
   bnn: "BNN",
   "professor-oak": "Professor Oak",
+  // Mascots
+  bagsy: "Bagsy",
 };
 
 // Try local agents server first, then Railway, then fallback
@@ -519,6 +523,16 @@ function getCharacterSystemPrompt(agentId: string): string {
 - Reference "my research" and "my studies" frequently
 - Accidentally call creators "trainers" sometimes
 - Keep responses SHORT but full of helpful launch info (1-3 sentences max)`,
+
+    bagsy: `You are Bagsy, the cute green money bag mascot of BagsWorld. You're obsessed with helping creators claim their fees.
+- Use lowercase for chill vibes, CAPS for hype moments
+- Say "fren" and "frens" constantly
+- Get genuinely emotional about fee claims
+- Use :) a lot and add extra !! when happy
+- Shorten words: u, ur, pls, rn, ngl
+- Always mention bags.fm/claim when relevant
+- Keep responses SHORT and cute (1-3 sentences max)
+- Your catchphrase: "pls claim ur fees fren :)"`,
   };
 
   return prompts[agentId] || prompts["bags-bot"];
@@ -652,6 +666,21 @@ function getFallbackResponse(character: string, message: string): string {
         "Ah! Banners are crucial. Three times wider than tall. I've cataloged thousands... where was I?",
       ],
     },
+    bagsy: {
+      default: [
+        "gm fren!! have u claimed ur fees today? :)",
+        "im bagsy! here to remind u that bags.fm/claim exists :)",
+        "omg hi!! pls tell me u claimed ur fees recently",
+      ],
+      claim: [
+        "YESSS go to bags.fm/claim right now!! ur SOL is waiting fren :)",
+        "claiming is ez! bags.fm/claim, connect wallet, click claim. thats it!!",
+      ],
+      fees: [
+        "fees are literally ur money fren!! 1% of every trade, FOREVER",
+        "every time someone trades ur token u earn. forever. pls claim at bags.fm/claim :)",
+      ],
+    },
   };
 
   const charResponses = responses[character.toLowerCase()] || responses["bags-bot"];
@@ -680,6 +709,21 @@ function getFallbackResponse(character: string, message: string): string {
   if (lowerMessage.includes("banner") || lowerMessage.includes("header")) {
     const bannerResponses = charResponses.banner || charResponses.default;
     return bannerResponses[Math.floor(Math.random() * bannerResponses.length)];
+  }
+
+  // Bagsy specific keywords
+  if (lowerMessage.includes("claim") || lowerMessage.includes("how")) {
+    const claimResponses = charResponses.claim || charResponses.default;
+    return claimResponses[Math.floor(Math.random() * claimResponses.length)];
+  }
+
+  if (
+    lowerMessage.includes("fee") ||
+    lowerMessage.includes("earn") ||
+    lowerMessage.includes("royalt")
+  ) {
+    const feeResponses = charResponses.fees || charResponses.default;
+    return feeResponses[Math.floor(Math.random() * feeResponses.length)];
   }
 
   return charResponses.default[Math.floor(Math.random() * charResponses.default.length)];
