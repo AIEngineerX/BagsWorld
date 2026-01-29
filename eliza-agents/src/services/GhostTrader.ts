@@ -12,6 +12,7 @@ import {
 import { AgentCoordinator, getAgentCoordinator } from "./AgentCoordinator.js";
 import { SolanaService, getSolanaService } from "./SolanaService.js";
 import { SmartMoneyService, getSmartMoneyService } from "./SmartMoneyService.js";
+import { WorldSyncService, getWorldSyncService } from "./WorldSyncService.js";
 import { getDatabase } from "../routes/shared.js";
 
 // ============================================================================
@@ -177,6 +178,7 @@ export class GhostTrader {
   private bagsApi: BagsApiService;
   private coordinator: AgentCoordinator | null;
   private solanaService: SolanaService | null;
+  private worldSync: WorldSyncService | null;
   private db: NeonQueryFunction<false, false> | null;
   private ghostWalletPrivateKey: string | null;
   private ghostWalletPublicKey: string | null;
@@ -196,6 +198,7 @@ export class GhostTrader {
     this.bagsApi = getBagsApiService();
     this.coordinator = getAgentCoordinator();
     this.solanaService = null; // Initialized in initialize()
+    this.worldSync = null; // Initialized in initialize()
     this.db = getDatabase();
 
     // Load wallet from environment
@@ -234,6 +237,9 @@ export class GhostTrader {
     // Initialize Solana service for transaction signing
     this.solanaService = getSolanaService();
     await this.solanaService.initialize();
+
+    // Initialize WorldSync for in-game visual feedback
+    this.worldSync = getWorldSyncService();
 
     // Update public key from Solana service if not set
     if (this.solanaService.isConfigured() && !this.ghostWalletPublicKey) {
@@ -903,19 +909,21 @@ export class GhostTrader {
   }
 
   /**
-   * Announce a trade to the world
+   * Announce a trade to the world with visual feedback
    */
   private async announceTrade(type: "buy" | "sell", position: GhostPosition): Promise<void> {
-    if (!this.coordinator) return;
-
     let message: string;
+    let speechMessage: string;
+    let emotion: string;
 
     if (type === "buy") {
       message = `bought ${position.amountSol.toFixed(2)} SOL of $${position.tokenSymbol}. ${position.entryReason}. watching.`;
+      speechMessage = `aping into $${position.tokenSymbol}`;
+      emotion = "excited";
     } else {
       const pnlSign = (position.pnlSol || 0) >= 0 ? "+" : "";
       const pnlStr = `${pnlSign}${(position.pnlSol || 0).toFixed(4)} SOL`;
-      const exitEmoji = (position.pnlSol || 0) >= 0 ? "" : "";
+      const isProfitable = (position.pnlSol || 0) >= 0;
       const exitReason =
         position.exitReason === "trailing_stop"
           ? "trailing stop locked in gains"
@@ -924,17 +932,41 @@ export class GhostTrader {
             : position.exitReason === "stop_loss"
               ? "stopped out"
               : position.exitReason;
-      message = `${exitEmoji} closed $${position.tokenSymbol}. ${exitReason}. pnl: ${pnlStr}`;
+      message = `closed $${position.tokenSymbol}. ${exitReason}. pnl: ${pnlStr}`;
+      speechMessage = isProfitable
+        ? `banked ${pnlStr} on $${position.tokenSymbol}`
+        : `cut losses on $${position.tokenSymbol}`;
+      emotion = isProfitable ? "happy" : "sad";
     }
 
-    await this.coordinator.broadcast("ghost", "update", message, {
-      type: "trade",
-      action: type,
-      tokenMint: position.tokenMint,
-      tokenSymbol: position.tokenSymbol,
-      amountSol: position.amountSol,
-      pnlSol: position.pnlSol,
-    });
+    // Send visual speech bubble in the game world
+    if (this.worldSync) {
+      this.worldSync.sendSpeak("ghost", speechMessage, emotion);
+
+      // Update Ghost's activity status
+      const activityEmoji = type === "buy" ? "📈" : (position.pnlSol || 0) >= 0 ? "💰" : "📉";
+      const activityDesc =
+        type === "buy"
+          ? `trading $${position.tokenSymbol}`
+          : `closed $${position.tokenSymbol}`;
+      this.worldSync.updateAgentActivity("ghost", {
+        description: activityDesc,
+        emoji: activityEmoji,
+        until: Date.now() + 30000, // 30 seconds
+      });
+    }
+
+    // Broadcast to coordinator for other agents/systems
+    if (this.coordinator) {
+      await this.coordinator.broadcast("ghost", "update", message, {
+        type: "trade",
+        action: type,
+        tokenMint: position.tokenMint,
+        tokenSymbol: position.tokenSymbol,
+        amountSol: position.amountSol,
+        pnlSol: position.pnlSol,
+      });
+    }
   }
 
   // ==========================================================================
@@ -1131,10 +1163,31 @@ export class GhostTrader {
       return { success: false, error: "Would exceed max exposure" };
     }
 
-    // Get token info (optional - we can trade without it via Jupiter)
+    // Get token info - try Bags API first, then DexScreener
+    let tokenSymbol = mint.slice(0, 8);
+    let tokenName = "Unknown Token";
+
+    // Try Bags API
     const token = await this.bagsApi.getToken(mint).catch(() => null);
-    const tokenSymbol = token?.symbol || mint.slice(0, 8);
-    const tokenName = token?.name || "Unknown Token";
+    if (token?.symbol) {
+      tokenSymbol = token.symbol;
+      tokenName = token.name || tokenName;
+    } else {
+      // Fallback: fetch from DexScreener
+      try {
+        const dexRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
+        if (dexRes.ok) {
+          const dexData = await dexRes.json();
+          const pair = dexData.pairs?.[0];
+          if (pair?.baseToken) {
+            tokenSymbol = pair.baseToken.symbol || tokenSymbol;
+            tokenName = pair.baseToken.name || tokenName;
+          }
+        }
+      } catch {
+        // Keep defaults
+      }
+    }
 
     const amountLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
