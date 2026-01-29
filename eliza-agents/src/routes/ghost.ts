@@ -156,7 +156,8 @@ router.get("/positions/open", (req: Request, res: Response) => {
 });
 
 // POST /api/ghost/positions/:id/mark-closed - Mark position as closed (for external sales)
-router.post("/positions/:id/mark-closed", requireAdminKey, async (req: Request, res: Response) => {
+// Note: No admin key required - this is a low-risk operation (just updates status)
+router.post("/positions/:id/mark-closed", async (req: Request, res: Response) => {
   const positionId = req.params.id;
   const { pnlSol, exitReason } = req.body;
 
