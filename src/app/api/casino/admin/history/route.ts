@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRaffleHistory, getCasinoAdminWallet } from "@/lib/neon";
+import { getRaffleHistory, getCasinoAdminWallets } from "@/lib/neon";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,8 +8,8 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get("limit") || "10";
 
     // Verify admin wallet
-    const adminWallet = getCasinoAdminWallet();
-    if (wallet !== adminWallet) {
+    const adminWallets = getCasinoAdminWallets();
+    if (!wallet || !adminWallets.includes(wallet)) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
     }
 

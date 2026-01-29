@@ -561,11 +561,23 @@ export async function resetRewardsCycle(): Promise<boolean> {
 // Casino Functions
 // ============================================
 
-// Admin wallet for casino operations
-const CASINO_ADMIN_WALLET = "7BAHgz9Q2ubiTaVo9sCy5AdDvNMiJaK8FebGHTM3PEwm";
+// Get admin wallets from environment (uses same config as general admin)
+export function getCasinoAdminWallets(): string[] {
+  const adminWalletsEnv =
+    process.env.ADMIN_WALLETS || process.env.ADMIN_WALLET || process.env.NEXT_PUBLIC_ADMIN_WALLET;
+  if (adminWalletsEnv) {
+    return adminWalletsEnv
+      .split(",")
+      .map((w) => w.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
 
+// Legacy function for backwards compatibility - returns first admin wallet
 export function getCasinoAdminWallet(): string {
-  return CASINO_ADMIN_WALLET;
+  const wallets = getCasinoAdminWallets();
+  return wallets[0] || "";
 }
 
 export interface CasinoRaffle {

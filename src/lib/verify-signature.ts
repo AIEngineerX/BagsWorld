@@ -9,10 +9,12 @@ export function verifyAdminSignature(
   signature: string,
   action: string,
   timestamp: number,
-  adminWallet: string
+  adminWallet: string | string[]
 ): { verified: boolean; error?: string } {
   try {
-    if (wallet !== adminWallet) {
+    // Support both single wallet and array of wallets
+    const adminWallets = Array.isArray(adminWallet) ? adminWallet : [adminWallet];
+    if (!adminWallets.includes(wallet)) {
       return { verified: false, error: "Not admin wallet" };
     }
 
