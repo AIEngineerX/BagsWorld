@@ -35,6 +35,10 @@ const DEFAULT_CONFIG = {
   trailingStopPercent: 10, // After 2x, trail by 10%
   // Risk management - tighter stop loss
   stopLossPercent: 15, // Cut losses at -15%
+  // Dead position detection - auto-sell stale positions
+  maxHoldTimeMinutes: 240, // 4 hours max hold for memecoins
+  minVolumeToHoldUsd: 500, // Need at least $500/24h volume to keep holding
+  deadPositionDecayPercent: 25, // If down 25%+ and stale, consider dead
   // Liquidity requirements - tuned for Bags.fm micro-caps
   minLiquidityUsd: 500, // $500 minimum (Bags tokens are very small)
   minMarketCapUsd: 3000, // $3K minimum (micro-cap reality)
@@ -142,6 +146,10 @@ export interface GhostTraderConfig {
   trailingStopPercent: number;
   // Risk management
   stopLossPercent: number;
+  // Dead position detection
+  maxHoldTimeMinutes: number;
+  minVolumeToHoldUsd: number;
+  deadPositionDecayPercent: number;
   // Liquidity requirements
   minLiquidityUsd: number;
   minMarketCapUsd: number;
@@ -436,8 +444,8 @@ export class GhostTrader {
   }
 
   /**
-   * Check positions for take-profit or stop-loss
-   * Uses scaled exits and trailing stops for better profit capture
+   * Check positions for take-profit, stop-loss, or dead positions
+   * Uses scaled exits, trailing stops, and dead position detection
    * Called periodically by AutonomousService
    */
   async checkPositions(): Promise<void> {
@@ -446,28 +454,35 @@ export class GhostTrader {
     const openPositions = Array.from(this.positions.values()).filter((p) => p.status === "open");
 
     for (const position of openPositions) {
-      // Get current price - try Bags API first, then DexScreener
+      // Get current price and market data - try Bags API first, then DexScreener
       let currentPriceSol = 0;
+      let volume24hUsd = 0;
+      let liquidityUsd = 0;
 
       const token = await this.bagsApi.getToken(position.tokenMint).catch(() => null);
       if (token?.price) {
         currentPriceSol = token.price;
-      } else {
-        // Fallback to DexScreener
-        try {
-          const dexRes = await fetch(
-            `https://api.dexscreener.com/latest/dex/tokens/${position.tokenMint}`
-          );
-          if (dexRes.ok) {
-            const dexData = await dexRes.json();
-            const pair = dexData.pairs?.[0];
-            if (pair?.priceNative) {
+        volume24hUsd = token.volume24h || 0;
+      }
+
+      // Always check DexScreener for more accurate volume/liquidity data
+      try {
+        const dexRes = await fetch(
+          `https://api.dexscreener.com/latest/dex/tokens/${position.tokenMint}`
+        );
+        if (dexRes.ok) {
+          const dexData = await dexRes.json();
+          const pair = dexData.pairs?.[0];
+          if (pair) {
+            if (pair.priceNative && !currentPriceSol) {
               currentPriceSol = parseFloat(pair.priceNative);
             }
+            volume24hUsd = pair.volume?.h24 || volume24hUsd;
+            liquidityUsd = pair.liquidity?.usd || 0;
           }
-        } catch {
-          console.warn(`[GhostTrader] Failed to get price for ${position.tokenSymbol}`);
         }
+      } catch {
+        console.warn(`[GhostTrader] Failed to get DexScreener data for ${position.tokenSymbol}`);
       }
 
       if (currentPriceSol === 0) {
@@ -485,12 +500,39 @@ export class GhostTrader {
         (position as any).peakMultiplier = currentMultiplier;
       }
 
+      // Calculate hold time
+      const holdTimeMinutes = (Date.now() - position.createdAt.getTime()) / 60000;
+
       // === STOP LOSS CHECK ===
       if (priceChangePercent <= -this.config.stopLossPercent) {
         console.log(
           `[GhostTrader] Stop loss triggered for ${position.tokenSymbol} (${priceChangePercent.toFixed(1)}%)`
         );
         await this.executeClose(position, "stop_loss", currentPriceSol);
+        continue;
+      }
+
+      // === DEAD POSITION CHECK ===
+      // Detect tokens that are slowly dying: held too long + no volume + decaying price
+      const isHeldTooLong = holdTimeMinutes > this.config.maxHoldTimeMinutes;
+      const isVolumeDead = volume24hUsd < this.config.minVolumeToHoldUsd;
+      const isDecaying =
+        priceChangePercent <= -this.config.deadPositionDecayPercent &&
+        priceChangePercent > -this.config.stopLossPercent;
+      const isLiquidityDrained = liquidityUsd > 0 && liquidityUsd < 200; // Less than $200 liquidity
+
+      // Dead if: (held too long AND low volume) OR (decaying AND no volume) OR (liquidity drained)
+      if ((isHeldTooLong && isVolumeDead) || (isDecaying && isVolumeDead) || isLiquidityDrained) {
+        const reasons: string[] = [];
+        if (isHeldTooLong) reasons.push(`held ${holdTimeMinutes.toFixed(0)}min`);
+        if (isVolumeDead) reasons.push(`vol $${volume24hUsd.toFixed(0)}`);
+        if (isDecaying) reasons.push(`down ${priceChangePercent.toFixed(1)}%`);
+        if (isLiquidityDrained) reasons.push(`liq $${liquidityUsd.toFixed(0)}`);
+
+        console.log(
+          `[GhostTrader] Dead position detected: ${position.tokenSymbol} (${reasons.join(", ")})`
+        );
+        await this.executeClose(position, "dead_position", currentPriceSol);
         continue;
       }
 
@@ -522,6 +564,11 @@ export class GhostTrader {
       if (currentMultiplier >= 1.5) {
         console.log(
           `[GhostTrader] ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x (peak: ${peakMultiplier.toFixed(2)}x) - watching for exit`
+        );
+      } else if (holdTimeMinutes > 60) {
+        // Log stale positions that haven't moved
+        console.log(
+          `[GhostTrader] ${position.tokenSymbol} held ${holdTimeMinutes.toFixed(0)}min at ${currentMultiplier.toFixed(2)}x, vol: $${volume24hUsd.toFixed(0)}`
         );
       }
     }
@@ -830,7 +877,7 @@ export class GhostTrader {
    */
   private async executeClose(
     position: GhostPosition,
-    reason: "take_profit" | "stop_loss" | "trailing_stop" | "manual",
+    reason: "take_profit" | "stop_loss" | "trailing_stop" | "dead_position" | "manual",
     currentPriceSol: number
   ): Promise<void> {
     if (!this.ghostWalletPublicKey) return;
@@ -954,7 +1001,9 @@ export class GhostTrader {
             ? "target hit"
             : position.exitReason === "stop_loss"
               ? "stopped out"
-              : position.exitReason;
+              : position.exitReason === "dead_position"
+                ? "token died, cutting losses"
+                : position.exitReason;
       message = `closed $${position.tokenSymbol}. ${exitReason}. pnl: ${pnlStr}`;
       speechMessage = isProfitable
         ? `banked ${pnlStr} on $${position.tokenSymbol}`
