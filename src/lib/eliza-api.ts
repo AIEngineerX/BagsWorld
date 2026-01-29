@@ -38,6 +38,8 @@ export interface GhostConfig {
   minPositionSol: number;
   maxPositionSol: number;
   takeProfitMultiplier: number;
+  takeProfitTiers?: number[];
+  trailingStopPercent?: number;
   stopLossPercent: number;
   slippageBps: number;
   maxTotalExposureSol?: number;
