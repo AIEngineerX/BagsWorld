@@ -68,7 +68,7 @@ export function GhostTradingMini() {
             target="_blank"
             rel="noopener noreferrer"
             className="font-pixel text-[7px] text-purple-400 hover:text-purple-300 underline"
-            title={walletAddress}
+            title={walletAddress || undefined}
           >
             {shortWallet}
           </a>
