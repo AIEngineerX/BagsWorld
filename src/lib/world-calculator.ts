@@ -485,7 +485,7 @@ const SPECIAL_CHARACTERS: Record<
     wallet: "bagsy-mascot-permanent",
     x: Math.round(350 * SCALE), // Center of Park near the PokeCenter
     zone: "main_city",
-    profileUrl: "https://x.com/BagsWorldApp",
+    profileUrl: "https://x.com/BagsyHypeBot",
   },
 };
 

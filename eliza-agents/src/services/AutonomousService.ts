@@ -1065,7 +1065,7 @@ export class AutonomousService extends Service {
       return;
     }
 
-    const username = "BagsWorldApp";
+    const username = "BagsyHypeBot";
 
     const mentions = await this.twitterService.getMentions(username, this.lastMentionId || undefined);
 
