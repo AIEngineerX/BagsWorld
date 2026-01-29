@@ -22,41 +22,53 @@ import { getDatabase } from "../routes/shared.js";
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
-// Default trading configuration (optimized for Bags.fm micro-cap tokens)
+// Default trading configuration (BagBot-inspired, tuned for Bags.fm reality)
+// Reference: https://github.com/BagBotX/bagbot + DexScreener Bags runner analysis
+// Key insight: Bags runners have LOW mcap, HUGE vol/mcap ratios, run for days
 const DEFAULT_CONFIG = {
   enabled: false, // Must be explicitly enabled
-  // Position sizing
-  minPositionSol: 0.05,
-  maxPositionSol: 0.15,
-  maxTotalExposureSol: 1.5,
+  // Position sizing (BagBot uses 1 SOL max)
+  minPositionSol: 0.25, // Meaningful positions
+  maxPositionSol: 1.0, // Match BagBot
+  maxTotalExposureSol: 3.0, // Allow 3 full positions
   maxOpenPositions: 3, // Conservative position limit
-  // Profit taking - scaled exits
+  // Profit taking - BagBot style: 33% at 1.5R, 33% at 2R, trailing
   takeProfitTiers: [1.5, 2.0, 3.0], // Take 33% at each tier
   trailingStopPercent: 10, // After 2x, trail by 10%
-  // Risk management - tighter stop loss
-  stopLossPercent: 15, // Cut losses at -15%
-  // Dead position detection - auto-sell stale positions
-  maxHoldTimeMinutes: 240, // 4 hours max hold for memecoins
-  minVolumeToHoldUsd: 500, // Need at least $500/24h volume to keep holding
+  // Risk management
+  stopLossPercent: 15, // Cut losses at -15% (BagBot uses same)
+  // Dead position detection
+  maxHoldTimeMinutes: 480, // 8 hours - Bags runners need time (LOBSTER ran for days)
+  minVolumeToHoldUsd: 500, // Need some volume to keep holding
   deadPositionDecayPercent: 25, // If down 25%+ and stale, consider dead
-  // Liquidity requirements - tuned for Bags.fm micro-caps
-  minLiquidityUsd: 500, // $500 minimum (Bags tokens are very small)
-  minMarketCapUsd: 3000, // $3K minimum (micro-cap reality)
-  // Quality filters
-  maxCreatorFeeBps: 300, // 3%
-  minBuySellRatio: 1.0, // Even ratio is fine (was 1.2 - too strict)
-  minHolders: 5, // Lower holder requirement (new tokens)
-  minVolume24hUsd: 1000, // $1K daily volume (was $5K - too strict for fresh launches)
-  // Timing - EXPANDED to find more tokens
-  minLaunchAgeSec: 60, // 1 minute minimum (tokens need SOME time)
-  maxLaunchAgeSec: 21600, // 6 hours (was 30 min - way too restrictive)
-  slippageBps: 500, // 5% slippage for low-liquidity tokens
+  // Liquidity requirements - TUNED FOR BAGS REALITY
+  // Real runners: SLACKINT $21K mcap, RIZZLE $11K, ALBERTA $9K
+  minLiquidityUsd: 1000, // $1K minimum (Bags tokens have low liq but high volume)
+  minMarketCapUsd: 5000, // $5K minimum (runners can start small)
+  // Quality filters - balanced for Bags
+  maxCreatorFeeBps: 500, // 5% max (some Bags creators set higher)
+  minBuySellRatio: 1.1, // Slightly bullish (runners show 1.2-1.5x)
+  minHolders: 5, // New tokens start with few holders
+  minVolume24hUsd: 10000, // $10K volume - KEY FILTER (runners have massive vol/mcap)
+  maxPriceImpactPercent: 2.0, // 2% impact OK for micro-caps
+  // Timing - EXPANDED (Bags runners are days old, not minutes)
+  minLaunchAgeSec: 300, // 5 minutes minimum (avoid instant rugs)
+  maxLaunchAgeSec: 604800, // 7 DAYS max (LOBSTER, SLACKINT were 3-4 days old)
+  slippageBps: 500, // 5% slippage for low-liquidity Bags tokens
+  // Bags-specific signals
+  requireTokenClaimed: false, // DISABLED - many runners don't have claims yet
+  minLifetimeFeesSol: 0.0, // Don't require fees (volume is better indicator)
+  // NEW: Volume/MCap ratio is the KEY metric for Bags runners
+  minVolumeMcapRatio: 1.0, // 100% vol/mcap minimum (SLACKINT had 12x!)
 };
 
 // Top trader wallets to study (from Kolscan & GMGN leaderboards)
 // Prioritized: Owner wallet first, then verified profitable traders
 const SMART_MONEY_WALLETS = [
-  // === OWNER WALLET (Priority #1) ===
+  // === BAGBOT WALLET (Priority #1 - our benchmark) ===
+  "bL7yksLLAUZDhSXvxhMEVpruqhUNn8T8C4jWzdnVChm", // BagBot - the bot to beat
+
+  // === OWNER WALLET (Priority #2) ===
   "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3", // Owner - primary learning source
 
   // === KOLSCAN TOP 10 (Daily PnL leaders, $100K+ verified) ===
@@ -82,6 +94,7 @@ const OWNER_WALLET = "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3";
 
 // Wallet metadata for display
 const WALLET_LABELS: Record<string, string> = {
+  bL7yksLLAUZDhSXvxhMEVpruqhUNn8T8C4jWzdnVChm: "BagBot (Benchmark)",
   Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3: "Owner",
   "7xwDKXNG9dxMsBSCmiAThp7PyDaUXbm23irLr7iPeh7w": "shah (Kolscan #1)",
   "4vw54BmAogeRV3vPKWyFet5yf8DTLcREzdSzx4rw9Ud9": "decu (High Volume)",
@@ -93,6 +106,9 @@ const WALLET_LABELS: Record<string, string> = {
   FSAmbD6jm6SZZQadSJeC1paX3oTtAiY9hTx1UYzVoXqj: "Zil (Low Cap)",
   J6TDXvEDjbFWacRWQPiUpZNTBJBK1qsC8XTGy1tPtUXW: "Pain (Balanced)",
 };
+
+// BagBot wallet for special tracking
+const BAGBOT_WALLET = "bL7yksLLAUZDhSXvxhMEVpruqhUNn8T8C4jWzdnVChm";
 
 // ============================================================================
 // Types
@@ -150,6 +166,9 @@ export interface TradeEvaluation {
     holders: number;
     buySellRatio: number;
     ageSeconds: number;
+    volumeMcapRatio?: number; // BagBot key metric
+    lifetimeFeesSol?: number; // Bags-specific
+    hasFeeClaims?: boolean; // Bags-specific
   };
 }
 
@@ -177,10 +196,15 @@ export interface GhostTraderConfig {
   minBuySellRatio: number;
   minHolders: number;
   minVolume24hUsd: number;
+  maxPriceImpactPercent: number;
+  minVolumeMcapRatio: number; // KEY METRIC: vol/mcap ratio (Bags runners have 1x-20x!)
   // Timing
   minLaunchAgeSec: number;
   maxLaunchAgeSec: number;
   slippageBps: number;
+  // Bags-specific signals
+  requireTokenClaimed: boolean; // Token must have fee claims (optional)
+  minLifetimeFeesSol: number; // Minimum fees generated
 }
 
 export interface GhostTraderStats {
@@ -222,7 +246,7 @@ export class GhostTrader {
 
   // Chatter cooldown (avoid spamming speech bubbles)
   private lastChatter: number = 0;
-  private static readonly CHATTER_COOLDOWN_MS = 60000; // 1 minute between random chatter
+  private static readonly CHATTER_COOLDOWN_MS = 30000; // 30 seconds between random chatter
 
   // Self-learning: track which signals lead to wins/losses
   private signalPerformance: Map<string, SignalPerformance> = new Map();
@@ -658,13 +682,14 @@ export class GhostTrader {
     const launches = await this.bagsApi.getRecentLaunches(20);
     console.log(`[GhostTrader] Evaluating ${launches.length} recent launches`);
 
-    // Chatter about scanning
+    // Chatter about scanning (Bags runner hunting)
     const scanMessages = [
-      "scanning for plays...",
-      "looking for entries...",
-      "watching the feed...",
-      "hunting for alpha...",
-      "checking new launches...",
+      "hunting vol/mcap monsters...",
+      "looking for 5x+ vol/mcap...",
+      "checking Bags runners...",
+      "SLACKINT mode: vol > mcap",
+      "scanning for the next LOBSTER...",
+      "volume is the key...",
     ];
     this.maybeChatter(scanMessages[Math.floor(Math.random() * scanMessages.length)], "focused");
 
@@ -692,23 +717,25 @@ export class GhostTrader {
         `[GhostTrader] Best candidate: ${best.launch.symbol} (score: ${best.score}, reasons: ${best.reasons.join(", ")})`
       );
 
-      // Chatter about finding something good
-      this.chatter(`found one... $${best.launch.symbol} looks good`, "excited");
+      // Chatter about finding something good (with score)
+      this.chatter(`found one! $${best.launch.symbol} score: ${best.score}`, "excited");
 
       // Execute trade
       await this.executeBuy(best);
     } else {
-      console.log("[GhostTrader] No suitable launches found");
+      console.log("[GhostTrader] No suitable launches found (Bags runner standards)");
 
-      // Occasional chatter about nothing interesting
+      // Occasional chatter about vol/mcap focus
       const boredMessages = [
-        "nothing interesting rn",
-        "market's quiet...",
-        "waiting for setups...",
-        "no plays yet",
-        "everything looks mid",
+        "vol/mcap too low everywhere...",
+        "waiting for volume spike...",
+        "no runners yet",
+        "need that 100%+ vol/mcap...",
+        "hunting for the next LOBSTER",
+        "volume is king on Bags",
+        "patient... runners take time",
       ];
-      this.maybeChatter(boredMessages[Math.floor(Math.random() * boredMessages.length)], "bored");
+      this.maybeChatter(boredMessages[Math.floor(Math.random() * boredMessages.length)], "focused");
     }
   }
 
@@ -874,13 +901,14 @@ export class GhostTrader {
 
   /**
    * Evaluate a single launch for trading potential
-   * Score breakdown:
-   * - Liquidity/Market Cap: 0-25 points
-   * - Volume & Activity: 0-25 points
-   * - Holder Distribution: 0-15 points
-   * - Buy/Sell Ratio: 0-20 points
-   * - Timing: 0-15 points
-   * Total: 100 points possible, need 50+ to buy
+   * BagBot-inspired scoring algorithm:
+   * - Volume/MCap ratio: 0-25 points (organic trading indicator)
+   * - Buy/Sell pressure: 0-25 points (momentum)
+   * - Momentum signals: 0-20 points (price action)
+   * - Liquidity depth: 0-15 points (execution safety)
+   * - Token age/rug risk: 0-15 points (safety)
+   * + Bags-specific bonuses: Token CLAIMED, lifetime fees
+   * Total: 100+ points possible, need 80+ to buy (BagBot standard)
    */
   private async evaluateLaunch(launch: RecentLaunch): Promise<TradeEvaluation> {
     const reasons: string[] = [];
@@ -898,6 +926,7 @@ export class GhostTrader {
     const liquidityUsd = launch._dexData?.liquidityUsd || marketCapUsd * 0.15;
     const volume24hUsd = launch._dexData?.volume24hUsd || token?.volume24h || 0;
     const holders = token?.holders || 0;
+    const lifetimeFees = token?.lifetimeFees || 0;
 
     // Calculate REAL buy/sell ratio from DexScreener transaction data
     const buys24h = launch._dexData?.buys24h || 0;
@@ -909,14 +938,25 @@ export class GhostTrader {
       buySellRatio = 2.0; // All buys, no sells = very bullish
     } else {
       // Fallback to fee-based estimate
-      const lifetimeFees = token?.lifetimeFees || 0;
       buySellRatio = lifetimeFees > 0.05 ? 1.3 : lifetimeFees > 0.01 ? 1.1 : 0.9;
     }
 
     // Price momentum from DexScreener
     const priceChange24h = launch._dexData?.priceChange24h || 0;
 
-    const metrics = { marketCapUsd, liquidityUsd, volume24hUsd, holders, buySellRatio, ageSeconds };
+    // Volume/MCap ratio - key BagBot metric
+    const volumeMcapRatio = marketCapUsd > 0 ? volume24hUsd / marketCapUsd : 0;
+
+    const metrics = {
+      marketCapUsd,
+      liquidityUsd,
+      volume24hUsd,
+      holders,
+      buySellRatio,
+      ageSeconds,
+      volumeMcapRatio,
+      lifetimeFeesSol: lifetimeFees,
+    };
 
     // Helper to create rejection
     const reject = (reason: string): TradeEvaluation => ({
@@ -930,7 +970,7 @@ export class GhostTrader {
       metrics,
     });
 
-    // === HARD FILTERS (instant rejection) ===
+    // === HARD FILTERS (BagBot-style instant rejection) ===
 
     // Check launch age
     if (ageSeconds < this.config.minLaunchAgeSec) {
@@ -940,7 +980,7 @@ export class GhostTrader {
       return reject(`too old (${ageSeconds}s > ${this.config.maxLaunchAgeSec}s)`);
     }
 
-    // Check minimum liquidity
+    // Check minimum liquidity (BagBot: $50K, we use $5K for Bags tokens)
     if (liquidityUsd < this.config.minLiquidityUsd) {
       return reject(
         `low liquidity ($${liquidityUsd.toFixed(0)} < $${this.config.minLiquidityUsd})`
@@ -952,129 +992,202 @@ export class GhostTrader {
       return reject(`low mcap ($${marketCapUsd.toFixed(0)} < $${this.config.minMarketCapUsd})`);
     }
 
-    // === SCORING CRITERIA (adjusted for Bags.fm micro-cap reality) ===
+    // Check minimum volume (KEY FILTER for Bags runners - they have MASSIVE volume)
+    if (volume24hUsd < this.config.minVolume24hUsd) {
+      return reject(`low volume ($${volume24hUsd.toFixed(0)} < $${this.config.minVolume24hUsd})`);
+    }
 
-    // 1. LIQUIDITY & MARKET CAP (0-25 points) - scaled for micro-caps
-    if (liquidityUsd >= 10000) {
+    // === VOLUME/MCAP RATIO - THE KEY BAGS RUNNER METRIC ===
+    // Real runners: SLACKINT 12x, ALBERTA 19x, LOBSTER 4x
+    if (volumeMcapRatio < this.config.minVolumeMcapRatio) {
+      return reject(`low vol/mcap ratio (${(volumeMcapRatio * 100).toFixed(0)}% < ${(this.config.minVolumeMcapRatio * 100).toFixed(0)}%)`);
+    }
+
+    // Check buy/sell ratio (softer filter - runners show 1.1-1.5x)
+    if (buySellRatio < this.config.minBuySellRatio) {
+      return reject(`weak buy pressure (${buySellRatio.toFixed(2)} < ${this.config.minBuySellRatio})`);
+    }
+
+    // Check minimum holders (soft - new runners start small)
+    if (holders > 0 && holders < this.config.minHolders) {
+      return reject(`too few holders (${holders} < ${this.config.minHolders})`);
+    }
+
+    // === BAGS-SPECIFIC SIGNALS (Optional bonuses, not hard requirements) ===
+
+    // Check if token has fee claims (BONUS, not required)
+    let hasFeeClaims = false;
+    if (this.config.requireTokenClaimed || lifetimeFees > 0) {
+      try {
+        const claimEvents = await this.bagsApi.getClaimEvents(launch.mint, { limit: 5 });
+        hasFeeClaims = claimEvents.length > 0;
+        // Only reject if explicitly required AND no claims
+        if (this.config.requireTokenClaimed && !hasFeeClaims && lifetimeFees < this.config.minLifetimeFeesSol) {
+          return reject("no fee claims (token not CLAIMED on bags.fm)");
+        }
+      } catch {
+        // API error - be lenient
+        hasFeeClaims = lifetimeFees > 0;
+      }
+    }
+
+    // === PRICE IMPACT CHECK ===
+    // Use liquidity as proxy for micro-caps
+    const estimatedImpact = (this.config.maxPositionSol * 170) / (liquidityUsd || 1) * 100;
+    if (estimatedImpact > this.config.maxPriceImpactPercent) {
+      return reject(`high price impact (est ${estimatedImpact.toFixed(1)}% > ${this.config.maxPriceImpactPercent}%)`);
+    }
+
+    // === BAGS RUNNER SCORING (tuned from DexScreener analysis) ===
+    // Key insight: Bags runners have MASSIVE vol/mcap ratios (1x-20x)
+
+    // 1. VOLUME/MCAP RATIO (0-35 points) - THE KEY METRIC for Bags runners
+    // SLACKINT: 12x, ALBERTA: 19x, LOBSTER: 4x, RIZZLE: 6x
+    if (volumeMcapRatio >= 5.0) {
+      score += 35;
+      reasons.push(`insane vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%!) - runner alert`);
+    } else if (volumeMcapRatio >= 2.0) {
+      score += 30;
+      reasons.push(`massive vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
+    } else if (volumeMcapRatio >= 1.0) {
       score += 25;
-      reasons.push("excellent liquidity ($10K+)");
-    } else if (liquidityUsd >= 5000) {
-      score += 20;
-      reasons.push("strong liquidity ($5K+)");
-    } else if (liquidityUsd >= 2000) {
+      reasons.push(`strong vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
+    } else if (volumeMcapRatio >= 0.5) {
       score += 15;
-      reasons.push("good liquidity ($2K+)");
-    } else if (liquidityUsd >= 1000) {
-      score += 10;
-      reasons.push("adequate liquidity ($1K+)");
-    } else if (liquidityUsd >= 500) {
-      score += 5;
-      reasons.push("minimal liquidity");
-    }
-
-    // 2. VOLUME & ACTIVITY (0-25 points) - scaled for fresh micro-cap launches
-    if (volume24hUsd >= 10000) {
-      score += 25;
-      reasons.push("high volume ($10K+)");
-    } else if (volume24hUsd >= 5000) {
-      score += 20;
-      reasons.push("good volume ($5K+)");
-    } else if (volume24hUsd >= 1000) {
-      score += 15;
-      reasons.push("active trading ($1K+)");
-    } else if (volume24hUsd >= 100) {
-      score += 10;
-      reasons.push("some volume");
+      reasons.push(`healthy vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
     } else {
-      score += 5; // Don't penalize fresh tokens with no volume yet
-      reasons.push("fresh token");
-    }
-
-    // Fees generated = real trading activity
-    const lifetimeFees = token?.lifetimeFees || 0;
-    if (lifetimeFees > 0.1) {
       score += 5;
-      reasons.push("significant fees earned");
-    } else if (lifetimeFees > 0.01) {
-      score += 2;
+      reasons.push(`low vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
     }
 
-    // 3. HOLDER DISTRIBUTION (0-15 points) - scaled for new tokens
-    if (holders >= 30) {
-      score += 15;
-      reasons.push("well distributed (30+ holders)");
-    } else if (holders >= 15) {
-      score += 12;
-      reasons.push("growing holder base");
-    } else if (holders >= 5) {
-      score += 8;
-      reasons.push("holders accumulating");
-    } else {
-      score += 5; // New tokens start with few/no holders - don't penalize
-      reasons.push("early stage");
-    }
-
-    // 4. BUY/SELL RATIO (0-20 points) - key momentum metric
+    // 2. BUY/SELL PRESSURE (0-20 points) - momentum indicator
+    // Real runners: 1.2-1.5x typical, not extreme
     if (buySellRatio >= 1.5) {
       score += 20;
       reasons.push("strong buy pressure");
-    } else if (buySellRatio >= this.config.minBuySellRatio) {
-      score += 12;
-      reasons.push("positive buy/sell ratio");
-    } else if (buySellRatio >= 1.0) {
-      score += 5;
-      reasons.push("neutral buy/sell");
-    } else {
-      redFlags.push("more sells than buys");
-    }
-
-    // 5. TIMING (0-15 points) - Sweet spot is 2-10 minutes
-    if (ageSeconds >= 120 && ageSeconds <= 600) {
+    } else if (buySellRatio >= 1.3) {
       score += 15;
-      reasons.push("optimal timing (2-10 min)");
-    } else if (ageSeconds <= 900) {
+      reasons.push("good buy pressure");
+    } else if (buySellRatio >= 1.1) {
       score += 10;
-      reasons.push("good timing");
+      reasons.push("positive buy/sell");
     } else {
       score += 5;
+      reasons.push("neutral momentum");
     }
 
-    // === MOMENTUM BONUS (from DexScreener price change) ===
-    if (priceChange24h > 0 && priceChange24h < 100) {
-      // Positive momentum but not already pumped too much
+    // 3. MOMENTUM SIGNALS (0-20 points) - price action
+    // Bags runners pump 100-800%+ over days
+    if (priceChange24h > 100 && priceChange24h < 500) {
+      score += 20;
+      reasons.push(`pumping (+${priceChange24h.toFixed(0)}%)`);
+    } else if (priceChange24h > 50 && priceChange24h <= 100) {
+      score += 15;
+      reasons.push(`strong momentum (+${priceChange24h.toFixed(0)}%)`);
+    } else if (priceChange24h > 20 && priceChange24h <= 50) {
+      score += 12;
+      reasons.push(`good momentum (+${priceChange24h.toFixed(0)}%)`);
+    } else if (priceChange24h > 0) {
+      score += 8;
+      reasons.push(`positive (+${priceChange24h.toFixed(0)}%)`);
+    } else if (priceChange24h > -15) {
       score += 5;
-      reasons.push(`positive momentum (+${priceChange24h.toFixed(0)}%)`);
-    } else if (priceChange24h > 100) {
-      // Already pumped significantly - risky entry
-      redFlags.push(`already pumped ${priceChange24h.toFixed(0)}%`);
-    } else if (priceChange24h < -20) {
-      // Dumping hard
-      redFlags.push(`price dumping (${priceChange24h.toFixed(0)}%)`);
+      reasons.push("consolidating");
+    } else {
+      redFlags.push(`dumping (${priceChange24h.toFixed(0)}%)`);
     }
 
-    // === SMART MONEY BONUS (Real-time tracking) ===
+    // Don't penalize big pumps on Bags - they can keep running!
+    // LOBSTER went +790%, SLACKINT +473%
+    if (priceChange24h > 500) {
+      // Already pumped a lot, still can enter but be careful
+      reasons.push(`already pumped ${priceChange24h.toFixed(0)}% - late entry risk`);
+    }
+
+    // 4. LIQUIDITY (0-10 points) - less important for Bags micro-caps
+    // Bags tokens have low liq but high volume
+    if (liquidityUsd >= 10000) {
+      score += 10;
+      reasons.push("good liquidity ($10K+)");
+    } else if (liquidityUsd >= 5000) {
+      score += 8;
+      reasons.push("decent liquidity ($5K+)");
+    } else if (liquidityUsd >= 2000) {
+      score += 6;
+      reasons.push("some liquidity ($2K+)");
+    } else if (liquidityUsd >= 1000) {
+      score += 4;
+      reasons.push("low liquidity ($1K+)");
+    } else {
+      score += 2;
+      reasons.push("minimal liquidity");
+    }
+
+    // 5. TOKEN AGE (0-10 points) - Bags runners are DAYS old, not minutes
+    // LOBSTER: 4 days, SLACKINT: 3 days, ALBERTA: 9 days
+    const ageDays = ageSeconds / 86400;
+    if (ageDays >= 1 && ageDays <= 7) {
+      score += 10;
+      reasons.push(`good age (${ageDays.toFixed(1)} days)`);
+    } else if (ageDays >= 0.25 && ageDays < 1) {
+      score += 8;
+      reasons.push("young but established");
+    } else if (ageDays < 0.25) {
+      score += 5;
+      reasons.push("very new - higher risk");
+    } else {
+      score += 5;
+      reasons.push(`older token (${ageDays.toFixed(0)} days)`);
+    }
+
+    // Holder distribution bonus
+    if (holders >= 100) {
+      score += 5;
+      reasons.push("well distributed (100+ holders)");
+    } else if (holders >= 30) {
+      score += 3;
+      reasons.push("growing holder base");
+    }
+
+    // === BAGS-SPECIFIC BONUSES ===
+
+    // Fee claims = real activity (bonus, not required)
+    if (hasFeeClaims) {
+      score += 10;
+      reasons.push("TOKEN CLAIMED on bags.fm");
+    }
+
+    // Significant fees earned = sustained trading
+    if (lifetimeFees >= 0.5) {
+      score += 8;
+      reasons.push(`significant fees (${lifetimeFees.toFixed(2)} SOL)`);
+    } else if (lifetimeFees >= 0.1) {
+      score += 4;
+      reasons.push("fees accumulating");
+    }
+
+    // === SMART MONEY BONUS ===
     const smartMoneyService = getSmartMoneyService();
     const smartMoneyData = await smartMoneyService.getSmartMoneyScore(launch.mint);
 
     if (smartMoneyData.score >= 50) {
-      score += 25; // Major bonus for strong smart money interest
+      score += 15;
       reasons.push(`smart money buying (${smartMoneyData.buyers.join(", ")})`);
     } else if (smartMoneyData.score >= 25) {
-      score += 15;
+      score += 10;
       reasons.push("some smart money interest");
     } else if (smartMoneyData.score > 0) {
       score += 5;
       reasons.push("light smart money activity");
     }
 
-    // Legacy check: high fees + good distribution = organic interest
-    if (lifetimeFees > 0.05 && holders > 20 && volume24hUsd > 10000) {
-      score += 5;
-      reasons.push("organic traction");
+    // Check specifically if BagBot is buying (our benchmark)
+    if (smartMoneyData.buyers.some(b => b.includes("BagBot"))) {
+      score += 15;
+      reasons.push("BagBot is buying!");
     }
 
     // === SELF-LEARNING ADJUSTMENT ===
-    // Apply learned score adjustments based on historical signal performance
     const { adjustment, appliedSignals } = this.getLearningAdjustment(reasons);
     if (adjustment !== 0) {
       score += adjustment;
@@ -1089,24 +1202,34 @@ export class GhostTrader {
     }
 
     // === FINAL DECISION ===
-    // Lower threshold to 40 (was 50) - be more active while maintaining quality
-    const shouldBuy = score >= 40 && redFlags.length === 0;
+    // Bags runner threshold: 60+ (balanced - not too strict)
+    // Max possible: ~130 (vol/mcap 35 + buy/sell 20 + momentum 20 + liq 10 + age 10 + holders 5 + bags 18 + smart 15)
+    const shouldBuy = score >= 60 && redFlags.length === 0;
 
-    // Calculate position size based on score
+    // Calculate position size based on score (larger for higher conviction)
     const remainingExposure = this.config.maxTotalExposureSol - this.getTotalExposure();
     let suggestedAmount: number;
 
-    if (score >= 75) {
-      suggestedAmount = this.config.maxPositionSol; // High conviction
-    } else if (score >= 60) {
-      suggestedAmount = (this.config.minPositionSol + this.config.maxPositionSol) / 2;
+    // Position sizing based on score (60-130 range)
+    if (score >= 100) {
+      suggestedAmount = this.config.maxPositionSol; // Max conviction - runner alert
+    } else if (score >= 85) {
+      suggestedAmount = this.config.maxPositionSol * 0.75; // High conviction
+    } else if (score >= 70) {
+      suggestedAmount = (this.config.minPositionSol + this.config.maxPositionSol) / 2; // Medium
     } else {
       suggestedAmount = this.config.minPositionSol; // Minimum size for borderline
     }
 
     suggestedAmount = Math.min(suggestedAmount, remainingExposure);
 
-    return { launch, token, score, reasons, redFlags, shouldBuy, suggestedAmount, metrics };
+    // Include vol/mcap in metrics for transparency
+    const finalMetrics = {
+      ...metrics,
+      hasFeeClaims,
+    };
+
+    return { launch, token, score, reasons, redFlags, shouldBuy, suggestedAmount, metrics: finalMetrics };
   }
 
   /**
@@ -1131,6 +1254,16 @@ export class GhostTrader {
         amountLamports,
         this.config.slippageBps
       );
+
+      // BagBot check: verify price impact < 1%
+      const priceImpact = parseFloat(quote.priceImpactPct || "0");
+      if (priceImpact > this.config.maxPriceImpactPercent) {
+        console.log(
+          `[GhostTrader] Skipping ${launch.symbol}: price impact ${priceImpact.toFixed(2)}% > ${this.config.maxPriceImpactPercent}%`
+        );
+        this.chatter(`skipping $${launch.symbol}... impact too high`, "concerned");
+        return;
+      }
     } catch (error) {
       console.error(`[GhostTrader] Failed to get quote for ${launch.symbol}:`, error);
       return;
@@ -1533,8 +1666,8 @@ export class GhostTrader {
       return; // On cooldown
     }
 
-    // 30% chance to chatter (makes it feel more natural, not every action)
-    if (Math.random() > 0.3) {
+    // 50% chance to chatter (makes Ghost more visible in the world)
+    if (Math.random() > 0.5) {
       return;
     }
 
