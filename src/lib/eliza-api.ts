@@ -31,7 +31,7 @@ export interface GhostTradingStatus {
     winRate: string;
   };
   config: GhostConfig;
-  smartMoneyWallets: string[];
+  smartMoneyWallets: Array<{ address: string; label: string }>;
 }
 
 export interface GhostConfig {
