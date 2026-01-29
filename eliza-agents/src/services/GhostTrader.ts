@@ -201,6 +201,10 @@ export class GhostTrader {
   // Tracking which launches we've already traded
   private tradedMints: Set<string> = new Set();
 
+  // Chatter cooldown (avoid spamming speech bubbles)
+  private lastChatter: number = 0;
+  private static readonly CHATTER_COOLDOWN_MS = 60000; // 1 minute between random chatter
+
   constructor() {
     this.config = { ...DEFAULT_CONFIG };
     this.bagsApi = getBagsApiService();
@@ -412,6 +416,16 @@ export class GhostTrader {
     const launches = await this.bagsApi.getRecentLaunches(20);
     console.log(`[GhostTrader] Evaluating ${launches.length} recent launches`);
 
+    // Chatter about scanning
+    const scanMessages = [
+      "scanning for plays...",
+      "looking for entries...",
+      "watching the feed...",
+      "hunting for alpha...",
+      "checking new launches...",
+    ];
+    this.maybeChatter(scanMessages[Math.floor(Math.random() * scanMessages.length)], "focused");
+
     const evaluations: TradeEvaluation[] = [];
 
     for (const launch of launches) {
@@ -436,10 +450,23 @@ export class GhostTrader {
         `[GhostTrader] Best candidate: ${best.launch.symbol} (score: ${best.score}, reasons: ${best.reasons.join(", ")})`
       );
 
+      // Chatter about finding something good
+      this.chatter(`found one... $${best.launch.symbol} looks good`, "excited");
+
       // Execute trade
       await this.executeBuy(best);
     } else {
       console.log("[GhostTrader] No suitable launches found");
+
+      // Occasional chatter about nothing interesting
+      const boredMessages = [
+        "nothing interesting rn",
+        "market's quiet...",
+        "waiting for setups...",
+        "no plays yet",
+        "everything looks mid",
+      ];
+      this.maybeChatter(boredMessages[Math.floor(Math.random() * boredMessages.length)], "bored");
     }
   }
 
@@ -565,12 +592,41 @@ export class GhostTrader {
         console.log(
           `[GhostTrader] ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x (peak: ${peakMultiplier.toFixed(2)}x) - watching for exit`
         );
+
+        // Chatter about positions doing well
+        const profitMessages = [
+          `$${position.tokenSymbol} pumping ${currentMultiplier.toFixed(1)}x`,
+          `riding $${position.tokenSymbol}... ${currentMultiplier.toFixed(1)}x`,
+          `$${position.tokenSymbol} looking good`,
+          `${currentMultiplier.toFixed(1)}x on $${position.tokenSymbol}... watching`,
+        ];
+        this.maybeChatter(profitMessages[Math.floor(Math.random() * profitMessages.length)], "happy");
       } else if (holdTimeMinutes > 60) {
         // Log stale positions that haven't moved
         console.log(
           `[GhostTrader] ${position.tokenSymbol} held ${holdTimeMinutes.toFixed(0)}min at ${currentMultiplier.toFixed(2)}x, vol: $${volume24hUsd.toFixed(0)}`
         );
+
+        // Occasional concern about slow positions
+        if (currentMultiplier < 1) {
+          const concernMessages = [
+            `$${position.tokenSymbol} being slow...`,
+            `cmon $${position.tokenSymbol}...`,
+            `watching $${position.tokenSymbol} closely`,
+          ];
+          this.maybeChatter(concernMessages[Math.floor(Math.random() * concernMessages.length)], "concerned");
+        }
       }
+    }
+
+    // Occasional summary if watching multiple positions
+    if (openPositions.length >= 2) {
+      const summaryMessages = [
+        `watching ${openPositions.length} positions...`,
+        `${openPositions.length} plays active rn`,
+        `managing ${openPositions.length} trades`,
+      ];
+      this.maybeChatter(summaryMessages[Math.floor(Math.random() * summaryMessages.length)], "focused");
     }
   }
 
@@ -1205,6 +1261,37 @@ export class GhostTrader {
 
   getWalletLabel(address: string): string {
     return WALLET_LABELS[address] || address.slice(0, 8) + "...";
+  }
+
+  /**
+   * Random chatter - Ghost talks about what he's doing/thinking
+   * Has cooldown to avoid spam
+   */
+  private maybeChatter(message: string, emotion: string = "neutral"): void {
+    const now = Date.now();
+    if (now - this.lastChatter < GhostTrader.CHATTER_COOLDOWN_MS) {
+      return; // On cooldown
+    }
+
+    // 30% chance to chatter (makes it feel more natural, not every action)
+    if (Math.random() > 0.3) {
+      return;
+    }
+
+    if (this.worldSync) {
+      this.worldSync.sendSpeak("ghost", message, emotion);
+      this.lastChatter = now;
+    }
+  }
+
+  /**
+   * Force chatter - always sends (for important events)
+   */
+  private chatter(message: string, emotion: string = "neutral"): void {
+    if (this.worldSync) {
+      this.worldSync.sendSpeak("ghost", message, emotion);
+      this.lastChatter = Date.now();
+    }
   }
 
   /**
