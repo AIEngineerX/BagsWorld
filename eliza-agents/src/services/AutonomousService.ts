@@ -1412,7 +1412,7 @@ export class AutonomousService extends Service {
    */
   private async fetchFeeEarnersWithXUsernames(): Promise<Array<{ wallet: string; xUsername: string | null }>> {
     // Fetch world state which includes fee earners
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/world-state`, {
+    const response = await fetch(`${process.env.BAGSWORLD_API_URL || 'http://localhost:3000'}/api/world-state`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tokens: [] }),
