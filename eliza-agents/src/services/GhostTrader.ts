@@ -1131,17 +1131,16 @@ export class GhostTrader {
       return { success: false, error: "Would exceed max exposure" };
     }
 
-    // Get token info
-    const token = await this.bagsApi.getToken(mint);
-    if (!token) {
-      return { success: false, error: "Token not found" };
-    }
+    // Get token info (optional - we can trade without it via Jupiter)
+    const token = await this.bagsApi.getToken(mint).catch(() => null);
+    const tokenSymbol = token?.symbol || mint.slice(0, 8);
+    const tokenName = token?.name || "Unknown Token";
 
     const amountLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
-    console.log(`[GhostTrader] Manual buy: ${amountSol} SOL of ${token.symbol} (${mint})`);
+    console.log(`[GhostTrader] Manual buy: ${amountSol} SOL of ${tokenSymbol} (${mint})`);
 
-    // Get trade quote
+    // Get trade quote from Jupiter
     let quote: TradeQuote;
     try {
       quote = await this.bagsApi.getTradeQuote(
@@ -1152,7 +1151,7 @@ export class GhostTrader {
       );
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Quote failed";
-      return { success: false, error: `Failed to get quote: ${msg}` };
+      return { success: false, error: `Failed to get Jupiter quote: ${msg}` };
     }
 
     // Build swap transaction
@@ -1178,8 +1177,8 @@ export class GhostTrader {
     const position: GhostPosition = {
       id: crypto.randomUUID(),
       tokenMint: mint,
-      tokenSymbol: token.symbol || "???",
-      tokenName: token.name || "Unknown",
+      tokenSymbol: tokenSymbol,
+      tokenName: tokenName,
       entryPriceSol,
       amountSol,
       amountTokens: tokensReceived,
