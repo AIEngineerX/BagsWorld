@@ -192,7 +192,7 @@ export function GhostTradingMini() {
 
               // Calculate live P&L if we have price data
               const livePrice = pos.tokenMint ? livePrices.get(pos.tokenMint) : null;
-              const entryPrice = pos.entryPriceNative || pos.entryPrice || 0;
+              const entryPrice = pos.entryPriceSol || pos.entryPriceNative || pos.entryPrice || 0;
               let pnlPercent: number | null = null;
               if (livePrice && entryPrice > 0) {
                 pnlPercent = ((livePrice.priceNative - entryPrice) / entryPrice) * 100;
