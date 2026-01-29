@@ -12,6 +12,7 @@ import { Router, Request, Response } from "express";
 import { getGhostTrader } from "../services/GhostTrader.js";
 import { getHeliusService } from "../services/HeliusService.js";
 import { getSolanaService } from "../services/SolanaService.js";
+import { getSmartMoneyService } from "../services/SmartMoneyService.js";
 
 // Solana RPC for wallet analysis
 const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
@@ -1077,6 +1078,119 @@ router.post("/learn-from-wallet", async (req: Request, res: Response) => {
       error: error instanceof Error ? error.message : "Learning analysis failed",
     });
   }
+});
+
+// ============================================================================
+// Smart Money Routes
+// ============================================================================
+
+// GET /api/ghost/smart-money - List all tracked smart money wallets
+router.get("/smart-money", (req: Request, res: Response) => {
+  const smartMoney = getSmartMoneyService();
+  const wallets = smartMoney.getAllWallets();
+
+  res.json({
+    success: true,
+    count: wallets.length,
+    wallets: wallets.map((w) => ({
+      address: w.address,
+      label: w.label,
+      winRate: (w.winRate * 100).toFixed(1) + "%",
+      totalPnlSol: w.totalPnlSol.toFixed(2),
+      avgHoldTime: w.avgHoldTime + " min",
+      preferredMcap: w.preferredMcapRange,
+      source: w.source,
+    })),
+  });
+});
+
+// GET /api/ghost/smart-money/alerts - Recent smart money activity
+router.get("/smart-money/alerts", (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 20;
+  const smartMoney = getSmartMoneyService();
+  const alerts = smartMoney.getRecentAlerts(limit);
+
+  res.json({
+    success: true,
+    count: alerts.length,
+    alerts: alerts.map((a) => ({
+      wallet: a.walletLabel,
+      action: a.action,
+      tokenMint: a.tokenMint.slice(0, 8) + "...",
+      tokenSymbol: a.tokenSymbol || "???",
+      amountSol: a.amountSol.toFixed(4),
+      time: new Date(a.timestamp).toISOString(),
+    })),
+  });
+});
+
+// GET /api/ghost/smart-money/score/:mint - Get smart money score for a token
+router.get("/smart-money/score/:mint", async (req: Request, res: Response) => {
+  const mint = req.params.mint as string;
+  const smartMoney = getSmartMoneyService();
+
+  const score = await smartMoney.getSmartMoneyScore(mint);
+
+  res.json({
+    success: true,
+    tokenMint: mint,
+    smartMoneyScore: score.score,
+    buyerCount: score.buyers.length,
+    buyers: score.buyers,
+    signals: score.signals,
+    recommendation:
+      score.score >= 50
+        ? "STRONG BUY SIGNAL"
+        : score.score >= 25
+          ? "moderate interest"
+          : "no significant activity",
+  });
+});
+
+// POST /api/ghost/smart-money/refresh - Refresh smart money wallet list from GMGN
+router.post("/smart-money/refresh", async (req: Request, res: Response) => {
+  const smartMoney = getSmartMoneyService();
+  const beforeCount = smartMoney.getAllWallets().length;
+
+  await smartMoney.refreshSmartMoneyList();
+
+  const afterCount = smartMoney.getAllWallets().length;
+
+  res.json({
+    success: true,
+    message: "Smart money list refreshed",
+    walletsBefore: beforeCount,
+    walletsAfter: afterCount,
+    newWallets: afterCount - beforeCount,
+  });
+});
+
+// POST /api/ghost/smart-money/record - Record smart money activity (for webhooks/alerts)
+router.post("/smart-money/record", (req: Request, res: Response) => {
+  const { wallet, tokenMint, action, amountSol } = req.body;
+
+  if (!wallet || !tokenMint || !action || !amountSol) {
+    res.status(400).json({ success: false, error: "Missing required fields" });
+    return;
+  }
+
+  const smartMoney = getSmartMoneyService();
+
+  if (!smartMoney.isSmartMoney(wallet)) {
+    res.status(400).json({ success: false, error: "Wallet is not in smart money list" });
+    return;
+  }
+
+  smartMoney.recordActivity(tokenMint, wallet, action, parseFloat(amountSol));
+
+  res.json({
+    success: true,
+    message: "Activity recorded",
+    wallet: smartMoney.getWalletInfo(wallet)?.label || wallet.slice(0, 8),
+    action,
+    tokenMint: tokenMint.slice(0, 8) + "...",
+    amountSol,
+  });
 });
 
 export default router;

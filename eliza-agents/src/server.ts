@@ -33,6 +33,7 @@ import {
 import { GhostTrader, getGhostTrader } from "./services/GhostTrader.js";
 import { SolanaService, getSolanaService } from "./services/SolanaService.js";
 import { TwitterService, getTwitterService } from "./services/TwitterService.js";
+import { SmartMoneyService, getSmartMoneyService } from "./services/SmartMoneyService.js";
 import { createMockRuntime } from "./routes/shared.js";
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
@@ -244,6 +245,12 @@ async function initializeAutonomousServices(): Promise<void> {
     `[SolanaService] Initialized (wallet: ${solanaService.isConfigured() ? solanaService.getPublicKey()?.slice(0, 8) + "..." : "NOT configured"})`
   );
 
+  // Initialize Smart Money Service (for tracking alpha wallets)
+  const smartMoneyService = getSmartMoneyService();
+  console.log(
+    `[SmartMoneyService] Tracking ${smartMoneyService.getAllWallets().length} smart money wallets`
+  );
+
   // Initialize Ghost Trader
   const ghostTrader = getGhostTrader();
   await ghostTrader.initialize();
@@ -387,7 +394,9 @@ async function main(): Promise<void> {
     console.log(`  GET    /api/ghost/status                     - Trading status and stats`);
     console.log(`  GET    /api/ghost/positions                  - List all positions`);
     console.log(`  GET    /api/ghost/positions/open             - List open positions`);
-    console.log(`  POST   /api/ghost/enable                     - Enable trading (requires confirmation)`);
+    console.log(
+      `  POST   /api/ghost/enable                     - Enable trading (requires confirmation)`
+    );
     console.log(`  POST   /api/ghost/disable                    - Disable trading (kill switch)`);
     console.log(`  POST   /api/ghost/config                     - Update trading config`);
     console.log(`  POST   /api/ghost/evaluate                   - Manually trigger evaluation`);
@@ -397,7 +406,9 @@ async function main(): Promise<void> {
     console.log(`  GET    /api/twitter/history                  - Recent post history`);
     console.log(`  POST   /api/twitter/post                     - Post a tweet as Finn`);
     console.log(`  POST   /api/twitter/thread                   - Post a thread as Finn`);
-    console.log(`  POST   /api/twitter/generate-shill           - Generate shill content for token`);
+    console.log(
+      `  POST   /api/twitter/generate-shill           - Generate shill content for token`
+    );
   });
 }
 
