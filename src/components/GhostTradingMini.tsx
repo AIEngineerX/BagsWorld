@@ -110,21 +110,41 @@ export function GhostTradingMini() {
             <p className="font-pixel text-[6px] text-gray-600">SL: -15% | TP: 1.5x-3x</p>
           </div>
           <div className="space-y-1">
-            {positions.positions.slice(0, 3).map((pos: any) => (
-              <div key={pos.id} className="flex justify-between items-center bg-purple-500/10 rounded px-1 py-0.5">
-                <div className="flex items-center gap-1">
-                  <span className="font-pixel text-[8px] text-purple-300 font-bold">
-                    ${formatSymbol(pos.tokenSymbol)}
-                  </span>
-                  <span className="font-pixel text-[6px] text-gray-500">
-                    {timeAgo(pos.createdAt)}
+            {positions.positions.slice(0, 3).map((pos: any) => {
+              const symbol = pos.tokenSymbol || pos.tokenMint?.slice(0, 6) || "???";
+              const displaySymbol = formatSymbol(symbol);
+              const dexUrl = pos.tokenMint
+                ? `https://dexscreener.com/solana/${pos.tokenMint}`
+                : null;
+
+              return (
+                <div key={pos.id} className="flex justify-between items-center bg-purple-500/10 rounded px-1 py-0.5">
+                  <div className="flex items-center gap-1">
+                    {dexUrl ? (
+                      <a
+                        href={dexUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-pixel text-[8px] text-purple-300 hover:text-purple-100 font-bold underline"
+                        title={`View ${symbol} on DexScreener`}
+                      >
+                        ${displaySymbol}
+                      </a>
+                    ) : (
+                      <span className="font-pixel text-[8px] text-purple-300 font-bold">
+                        ${displaySymbol}
+                      </span>
+                    )}
+                    <span className="font-pixel text-[6px] text-gray-500">
+                      {timeAgo(pos.createdAt)}
+                    </span>
+                  </div>
+                  <span className="font-pixel text-[7px] text-yellow-400">
+                    {pos.amountSol?.toFixed(2) || "0.00"} SOL
                   </span>
                 </div>
-                <span className="font-pixel text-[7px] text-yellow-400">
-                  {pos.amountSol.toFixed(2)} SOL
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
