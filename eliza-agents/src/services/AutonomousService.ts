@@ -55,6 +55,16 @@ export class AutonomousService extends Service {
 
   // Wallet tracking for Finn's fee reminders
   private trackedWallets = new Map<string, TrackedWallet>();
+
+  // Bagsy: Track last processed mention ID for pagination
+  private lastMentionId: string | null = null;
+
+  // Bagsy: Track high-value fee alert history (wallet -> lastAlertTimestamp)
+  private highValueAlertHistory = new Map<string, number>();
+
+  // Bagsy: Threshold for high-value fee alerts (5 SOL ~ $1K at $200/SOL)
+  private static readonly HIGH_VALUE_THRESHOLD_SOL = 5;
+  private static readonly ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
   private static readonly FEE_REMINDER_COOLDOWN = 6 * 60 * 60 * 1000; // 6 hours between reminders
   private static readonly MIN_FEE_THRESHOLD_LAMPORTS = 0.1 * 1_000_000_000; // 0.1 SOL minimum to remind
 
@@ -208,6 +218,26 @@ export class AutonomousService extends Service {
       interval: 6 * 60 * 60 * 1000, // 6 hours
       handler: async () => {
         await this.postBagsyFeeReminder();
+      },
+    });
+
+    // Bagsy: Poll for Twitter mentions every 5 minutes
+    this.registerTask({
+      name: "bagsy_mention_poll",
+      agentId: "bagsy",
+      interval: 5 * 60 * 1000, // 5 minutes
+      handler: async () => {
+        await this.handleBagsyMentions();
+      },
+    });
+
+    // Bagsy: Check for high-value unclaimed fees every 30 minutes
+    this.registerTask({
+      name: "bagsy_highvalue_fee_alert",
+      agentId: "bagsy",
+      interval: 30 * 60 * 1000, // 30 minutes
+      handler: async () => {
+        await this.checkHighValueUnclaimedFees();
       },
     });
   }
@@ -1019,6 +1049,211 @@ export class AutonomousService extends Service {
     }
 
     return tweets;
+  }
+
+  // ==========================================================================
+  // Bagsy: Mention Handling
+  // ==========================================================================
+
+  /**
+   * Handle Twitter mentions for Bagsy
+   * Polls for @BagsWorldApp mentions and replies with helpful fee info
+   */
+  private async handleBagsyMentions(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      console.log("[AutonomousService] Twitter not configured, skipping Bagsy mention poll");
+      return;
+    }
+
+    const username = "BagsWorldApp";
+
+    const mentions = await this.twitterService.getMentions(username, this.lastMentionId || undefined);
+
+    if (mentions.length === 0) {
+      return;
+    }
+
+    console.log(`[AutonomousService] Bagsy found ${mentions.length} new mentions`);
+
+    for (const mention of mentions) {
+      // Skip if already processed
+      if (this.twitterService.isProcessed(mention.tweetId)) {
+        continue;
+      }
+
+      // Generate Bagsy-style reply
+      const reply = this.generateBagsyMentionReply(mention.authorUsername);
+
+      // Reply to the tweet
+      const result = await this.twitterService.reply(mention.tweetId, reply);
+
+      if (result.success) {
+        this.twitterService.markProcessed(mention.tweetId);
+        console.log(`[AutonomousService] Bagsy replied to @${mention.authorUsername}: ${result.tweet?.url}`);
+
+        await this.createAlert({
+          type: "milestone",
+          severity: "info",
+          title: "Bagsy Reply",
+          message: `Replied to @${mention.authorUsername}`,
+          data: { tweetId: result.tweet?.id, originalTweetId: mention.tweetId },
+        });
+      } else {
+        console.log(`[AutonomousService] Bagsy reply failed: ${result.error}`);
+      }
+
+      // Small delay between replies to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+
+    // Update last mention ID for pagination
+    if (mentions.length > 0) {
+      this.lastMentionId = mentions[0].tweetId;
+    }
+  }
+
+  /**
+   * Generate a Bagsy-style reply to a mention
+   */
+  private generateBagsyMentionReply(authorUsername: string): string {
+    const templates = [
+      `hey @${authorUsername}! have u claimed ur fees today? bags.fm/claim :)`,
+      `gm @${authorUsername}! hope ur having a great day fren. remember to claim at bags.fm/claim :)`,
+      `hi @${authorUsername}! if u have tokens on @BagsFM, u might have fees waiting at bags.fm/claim :)`,
+      `hey fren @${authorUsername}! just checking - did u claim ur fees? bags.fm/claim`,
+      `@${authorUsername} gm! ur fees wont claim themselves :) bags.fm/claim`,
+    ];
+    return templates[Math.floor(Math.random() * templates.length)];
+  }
+
+  // ==========================================================================
+  // Bagsy: High-Value Fee Alerts ($1K+)
+  // ==========================================================================
+
+  /**
+   * Check for creators with high-value unclaimed fees (>$1K)
+   * Tweets at them to remind them to claim
+   */
+  private async checkHighValueUnclaimedFees(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      console.log("[AutonomousService] Twitter not configured, skipping high-value fee check");
+      return;
+    }
+
+    if (!this.bagsApi) {
+      return;
+    }
+
+    // Fetch fee earners from world state (includes X usernames for twitter-linked accounts)
+    const feeEarners = await this.fetchFeeEarnersWithXUsernames();
+
+    if (feeEarners.length === 0) {
+      return;
+    }
+
+    const now = Date.now();
+    let alertCount = 0;
+
+    for (const earner of feeEarners) {
+      // Skip if no twitter username
+      if (!earner.xUsername) {
+        continue;
+      }
+
+      // Check unclaimed fees for this wallet
+      const claimStats = await this.bagsApi.getWalletClaimStats(earner.wallet);
+      const unclaimedSol = claimStats.totalClaimableSol;
+
+      // Check threshold
+      if (unclaimedSol < AutonomousService.HIGH_VALUE_THRESHOLD_SOL) {
+        continue;
+      }
+
+      // Check cooldown (don't alert same wallet within 24h)
+      const lastAlert = this.highValueAlertHistory.get(earner.wallet) || 0;
+      if (now - lastAlert < AutonomousService.ALERT_COOLDOWN_MS) {
+        continue;
+      }
+
+      // Tweet at the user
+      const tweet = this.generateHighValueFeeAlert(earner.xUsername, unclaimedSol);
+      const result = await this.twitterService.post(tweet);
+
+      if (result.success) {
+        this.highValueAlertHistory.set(earner.wallet, now);
+        alertCount++;
+        console.log(`[AutonomousService] Bagsy alerted @${earner.xUsername} about ${unclaimedSol.toFixed(1)} SOL unclaimed`);
+
+        await this.createAlert({
+          type: "fee_reminder",
+          severity: "warning",
+          title: "High-Value Fee Alert",
+          message: `Alerted @${earner.xUsername} about ${unclaimedSol.toFixed(1)} SOL unclaimed`,
+          data: { wallet: earner.wallet, unclaimedSol, tweetId: result.tweet?.id },
+        });
+      }
+
+      // Limit to 3 alerts per check cycle to avoid spam
+      if (alertCount >= 3) {
+        break;
+      }
+
+      // Delay between tweets
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+
+    if (alertCount > 0) {
+      console.log(`[AutonomousService] Bagsy sent ${alertCount} high-value fee alerts`);
+    }
+  }
+
+  /**
+   * Generate a high-value fee alert tweet
+   */
+  private generateHighValueFeeAlert(xUsername: string, unclaimedSol: number): string {
+    const templates = [
+      `hey @${xUsername} u have ${unclaimedSol.toFixed(1)} SOL unclaimed on @BagsFM!\n\ngo claim fren: bags.fm/claim :)`,
+      `@${xUsername} ur leaving ${unclaimedSol.toFixed(1)} SOL on the table!!\n\nclaim ur fees at bags.fm/claim\n\nthats ur money fren`,
+      `psa: @${xUsername} has ${unclaimedSol.toFixed(1)} SOL waiting at bags.fm/claim\n\ngo get ur bag :)`,
+      `friendly reminder @${xUsername}:\n\nu have ${unclaimedSol.toFixed(1)} SOL in unclaimed fees\n\nbags.fm/claim\n\nim begging u`,
+    ];
+    return templates[Math.floor(Math.random() * templates.length)];
+  }
+
+  /**
+   * Fetch fee earners with their X/Twitter usernames
+   * Returns earners who have twitter as their provider
+   */
+  private async fetchFeeEarnersWithXUsernames(): Promise<Array<{ wallet: string; xUsername: string | null }>> {
+    // Fetch world state which includes fee earners
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/world-state`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokens: [] }),
+    });
+
+    if (!response.ok) {
+      console.error("[AutonomousService] Failed to fetch fee earners");
+      return [];
+    }
+
+    const worldState = await response.json();
+    const characters = worldState.population || [];
+
+    // Extract wallets with twitter usernames
+    const earners: Array<{ wallet: string; xUsername: string | null }> = [];
+
+    for (const char of characters) {
+      // Only include characters with twitter provider and valid wallet
+      if (char.provider === "twitter" && char.wallet && !char.wallet.includes("-permanent")) {
+        earners.push({
+          wallet: char.wallet,
+          xUsername: char.providerUsername || null,
+        });
+      }
+    }
+
+    return earners;
   }
 
   /**

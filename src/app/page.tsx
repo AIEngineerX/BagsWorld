@@ -24,6 +24,7 @@ import { AlaaChat } from "@/components/AlaaChat";
 import { CarloChat } from "@/components/CarloChat";
 import { BNNChat } from "@/components/BNNChat";
 import { ProfessorOakChat } from "@/components/ProfessorOakChat";
+import { BagsyChat } from "@/components/BagsyChat";
 import { AgentDashboard } from "@/components/AgentDashboard";
 import { AdminConsole } from "@/components/AdminConsole";
 import { YourBuildings } from "@/components/YourBuildings";
@@ -398,6 +399,8 @@ export default function Home() {
           <BNNChat />
           {/* Founder's Corner Characters */}
           <ProfessorOakChat />
+          {/* Mascots */}
+          <BagsyChat />
           <AgentDashboard />
           <AdminConsole />
 

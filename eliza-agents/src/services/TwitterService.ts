@@ -33,6 +33,14 @@ export interface TwitterConfig {
   replyCooldownMs?: number;
 }
 
+export interface ProcessedMention {
+  tweetId: string;
+  authorId: string;
+  authorUsername: string;
+  text: string;
+  createdAt: Date;
+}
+
 // ============================================================================
 // Content Moderation
 // ============================================================================
@@ -164,6 +172,7 @@ export class TwitterService extends Service {
   private cooldown: TwitterCooldown;
   private postHistory: Tweet[] = [];
   private isAuthenticated: boolean = false;
+  private processedMentions: Set<string> = new Set();
 
   // Twitter API credentials (from environment)
   private bearerToken: string | null = null;
@@ -454,6 +463,104 @@ export class TwitterService extends Service {
       canPost: this.cooldown.canAct("post"),
       nextPostIn: this.cooldown.timeUntilReady("post"),
     };
+  }
+
+  // ==========================================================================
+  // Mention Handling
+  // ==========================================================================
+
+  /**
+   * Search for recent mentions of a username
+   * Uses Twitter API v2 search/recent endpoint
+   */
+  async getMentions(username: string, sinceId?: string): Promise<ProcessedMention[]> {
+    if (!this.bearerToken) {
+      console.warn("[TwitterService] Cannot fetch mentions: Bearer token not configured");
+      return [];
+    }
+
+    // Build search query - find tweets mentioning the username, excluding retweets
+    const query = encodeURIComponent(`@${username} -is:retweet`);
+    let url = `https://api.twitter.com/2/tweets/search/recent?query=${query}&max_results=10&tweet.fields=created_at,author_id&expansions=author_id&user.fields=username`;
+
+    if (sinceId) {
+      url += `&since_id=${sinceId}`;
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${this.bearerToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[TwitterService] Mention search failed: ${response.status} - ${errorText}`);
+      return [];
+    }
+
+    const data = await response.json();
+
+    // No mentions found
+    if (!data.data || data.data.length === 0) {
+      return [];
+    }
+
+    // Build a map of author_id -> username from the includes
+    const userMap = new Map<string, string>();
+    if (data.includes?.users) {
+      for (const user of data.includes.users) {
+        userMap.set(user.id, user.username);
+      }
+    }
+
+    // Map tweets to ProcessedMention format
+    const mentions: ProcessedMention[] = data.data.map((tweet: {
+      id: string;
+      text: string;
+      author_id: string;
+      created_at: string;
+    }) => ({
+      tweetId: tweet.id,
+      authorId: tweet.author_id,
+      authorUsername: userMap.get(tweet.author_id) || "unknown",
+      text: tweet.text,
+      createdAt: new Date(tweet.created_at),
+    }));
+
+    console.log(`[TwitterService] Found ${mentions.length} mentions for @${username}`);
+    return mentions;
+  }
+
+  /**
+   * Check if a tweet has already been processed (replied to)
+   */
+  isProcessed(tweetId: string): boolean {
+    return this.processedMentions.has(tweetId);
+  }
+
+  /**
+   * Mark a tweet as processed to avoid duplicate replies
+   * Keeps the set bounded to prevent memory leaks
+   */
+  markProcessed(tweetId: string): void {
+    this.processedMentions.add(tweetId);
+
+    // Keep set bounded to last 1000 entries
+    if (this.processedMentions.size > 1000) {
+      const iterator = this.processedMentions.values();
+      const oldest = iterator.next().value;
+      if (oldest) {
+        this.processedMentions.delete(oldest);
+      }
+    }
+  }
+
+  /**
+   * Get count of processed mentions (for debugging)
+   */
+  getProcessedCount(): number {
+    return this.processedMentions.size;
   }
 
   // ==========================================================================
