@@ -546,8 +546,12 @@ router.get("/dry-run", async (req: Request, res: Response) => {
       const mockData = mockTokenData[launch.mint];
       const ageSeconds = Math.floor((Date.now() - launch.launchedAt) / 1000);
       const marketCapUsd = token?.marketCap || mockData?.marketCap || launch.initialMarketCap || 0;
-      const liquidityUsd = marketCapUsd * 0.15;
-      const volume24hUsd = token?.volume24h || mockData?.volume24h || 0;
+      // Use REAL DexScreener data if available, otherwise estimate
+      const liquidityUsd = launch._dexData?.liquidityUsd || marketCapUsd * 0.15;
+      const volume24hUsd = launch._dexData?.volume24hUsd || token?.volume24h || mockData?.volume24h || 0;
+      const buys24h = launch._dexData?.buys24h || 0;
+      const sells24h = launch._dexData?.sells24h || 0;
+      const buySellRatio = sells24h > 0 ? buys24h / sells24h : buys24h > 0 ? 2.0 : 1.0;
       const holders = token?.holders || mockData?.holders || 0;
       const lifetimeFees = token?.lifetimeFees || mockData?.lifetimeFees || 0;
 
@@ -569,42 +573,65 @@ router.get("/dry-run", async (req: Request, res: Response) => {
         redFlags.push(`low mcap ($${marketCapUsd.toFixed(0)})`);
       }
 
-      // Scoring
-      if (liquidityUsd >= 100000) {
+      // Scoring (matched to GhostTrader micro-cap thresholds)
+      if (liquidityUsd >= 10000) {
         score += 25;
-        reasons.push("excellent liquidity");
-      } else if (liquidityUsd >= 50000) {
+        reasons.push("excellent liquidity ($10K+)");
+      } else if (liquidityUsd >= 5000) {
         score += 20;
-        reasons.push("strong liquidity");
-      } else if (liquidityUsd >= 25000) {
-        score += 12;
-        reasons.push("adequate liquidity");
-      }
-
-      if (volume24hUsd >= 50000) {
-        score += 25;
-        reasons.push("high volume");
-      } else if (volume24hUsd >= 20000) {
-        score += 18;
-        reasons.push("good volume");
-      } else if (volume24hUsd >= 5000) {
+        reasons.push("strong liquidity ($5K+)");
+      } else if (liquidityUsd >= 2000) {
+        score += 15;
+        reasons.push("good liquidity ($2K+)");
+      } else if (liquidityUsd >= 1000) {
         score += 10;
-        reasons.push("moderate volume");
-      } else {
-        redFlags.push("low volume");
+        reasons.push("adequate liquidity");
+      } else if (liquidityUsd >= 500) {
+        score += 5;
+        reasons.push("minimal liquidity");
       }
 
-      if (holders >= 50) {
+      if (volume24hUsd >= 10000) {
+        score += 25;
+        reasons.push("high volume ($10K+)");
+      } else if (volume24hUsd >= 5000) {
+        score += 20;
+        reasons.push("good volume ($5K+)");
+      } else if (volume24hUsd >= 1000) {
+        score += 15;
+        reasons.push("active trading");
+      } else if (volume24hUsd >= 100) {
+        score += 10;
+        reasons.push("some volume");
+      } else {
+        score += 5;
+        reasons.push("fresh token");
+      }
+
+      // Buy/sell ratio scoring
+      if (buySellRatio >= 1.5) {
+        score += 20;
+        reasons.push(`strong buy pressure (${buySellRatio.toFixed(1)}x)`);
+      } else if (buySellRatio >= 1.2) {
+        score += 15;
+        reasons.push("bullish ratio");
+      } else if (buySellRatio >= 1.0) {
+        score += 10;
+        reasons.push("balanced trading");
+      }
+
+      if (holders >= 30) {
         score += 15;
         reasons.push("well distributed");
-      } else if (holders >= 25) {
-        score += 10;
-        reasons.push("decent distribution");
-      } else if (holders >= 10) {
-        score += 5;
-        reasons.push("minimum holders");
+      } else if (holders >= 15) {
+        score += 12;
+        reasons.push("growing holders");
+      } else if (holders >= 5) {
+        score += 8;
+        reasons.push("accumulating");
       } else {
-        redFlags.push(`low holders (${holders})`);
+        score += 5;
+        reasons.push("early stage");
       }
 
       if (lifetimeFees > 0.05) {
@@ -623,7 +650,7 @@ router.get("/dry-run", async (req: Request, res: Response) => {
         reasons.push("good timing");
       }
 
-      const shouldBuy = score >= 50 && redFlags.length === 0;
+      const shouldBuy = score >= 40 && redFlags.length === 0;
 
       evaluations.push({
         token: {
@@ -636,6 +663,7 @@ router.get("/dry-run", async (req: Request, res: Response) => {
           marketCapUsd: Math.round(marketCapUsd),
           liquidityUsd: Math.round(liquidityUsd),
           volume24hUsd: Math.round(volume24hUsd),
+          buySellRatio: buySellRatio.toFixed(2),
           holders,
           lifetimeFees: lifetimeFees.toFixed(4),
         },
@@ -660,7 +688,7 @@ router.get("/dry-run", async (req: Request, res: Response) => {
         minMarketCapUsd: config.minMarketCapUsd,
         minLaunchAgeSec: config.minLaunchAgeSec,
         maxLaunchAgeSec: config.maxLaunchAgeSec,
-        requiredScore: 50,
+        requiredScore: 40,
       },
       evaluations,
       summary: {
