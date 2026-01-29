@@ -188,6 +188,11 @@ export const bagsyTweetTemplates = {
     "gm CT! bagsy here with ur daily fee check\n\nhave u claimed? bags.fm/claim",
     "gm gm gm :)\n\nfees are waiting. creators are earning. vibes are good\n\nbags.fm",
     "good morning! time to check if u have fees to claim\n\n(u probably do)\n\nbags.fm/claim",
+    "gm :) woke up thinking about unclaimed fees again\n\nnormal bagsy behavior\n\nbags.fm/claim",
+    "gm frens! the sun is shining, the fees are accumulating\n\ngo get em\n\nbags.fm/claim",
+    "gm from ur favorite smol green bean\n\nhope ur day is as green as ur fee claims :)",
+    "gm! quick q: did u dream about passive income too or is that just me",
+    "gm gm! starting the day with gratitude:\n\n- creators earning\n- fees flowing\n- u reading this :)",
   ],
 
   // Fee reminders (can post multiple times)
@@ -200,6 +205,12 @@ export const bagsyTweetTemplates = {
     "just a smol bean checking in:\n\nhave u claimed ur fees today?\n\nbags.fm/claim",
     "ur fees miss u\n\ngo visit them at bags.fm/claim",
     "reasons to claim:\n\n1. its ur money\n2. makes me happy\n3. bags.fm/claim\n4. pls",
+    "hey u. yes u.\n\nhave u checked for unclaimed fees lately?\n\nbags.fm/claim\n\njust looking out for u fren",
+    "somewhere right now a creator has fees waiting\n\nif thats u, this is ur sign\n\nbags.fm/claim",
+    "imagine having passive income just... sitting there\n\nclaim it fren\n\nbags.fm/claim",
+    "friendly nudge:\n\nevery time u claim, a bagsy gets their wings\n\nok thats not true but still\n\nbags.fm/claim",
+    "me: i wont be annoying today\n\nalso me: have u claimed tho\n\nbags.fm/claim",
+    "the fees are calling. they want to come home to ur wallet\n\nbags.fm/claim",
   ],
 
   // Dynamic fee reminder (uses real data)
@@ -241,6 +252,16 @@ export const bagsyTweetTemplates = {
     "im literally made of fees\n\nevery unclaimed SOL is like... part of me out there\n\npls bring it home",
     "cant sleep. thinking about unclaimed fees\n\nbags.fm/claim",
     "green is my favorite color\n\nits also the color of claimed fees\n\ncoincidence? no",
+    "therapist: what do u think about\n\nbagsy: fees\n\ntherapist: anything else?\n\nbagsy: unclaimed fees",
+    "day 847 of being a smol green bean\n\nstill thinking about ur fees\n\nstill hoping u claim them",
+    "my toxic trait is thinking about ur unclaimed fees more than u do",
+    "pov: me watching u scroll past without claiming\n\n:(\n\nbags.fm/claim",
+    "roses are red\nviolets are blue\ngo claim ur fees\nim begging u",
+    "manifesting a world where no fee goes unclaimed\n\nwe can do this frens",
+    "normalize claiming ur fees every day\n\nits self care actually",
+    "u know whats hot?\n\npassive income\n\nbags.fm",
+    "if loving fees is wrong i dont wanna be right\n\nbags.fm/claim",
+    "the only thing keeping me going is the thought of u claiming ur fees\n\npls fren",
   ],
 
   // Evening posts
@@ -248,6 +269,11 @@ export const bagsyTweetTemplates = {
     "gn frens :) hope u claimed today\n\nif not theres always tomorrow\n\n(but also maybe claim rn)",
     "gn CT! bagsy signing off\n\nclaim ur fees before bed. sleep better knowing u did\n\nbags.fm/claim",
     "ending the day grateful for:\n\n- creators earning\n- fees being claimed\n- this community\n\ngn :)",
+    "gn frens :)\n\nsweet dreams about passive income\n\nsee u tomorrow for more fee reminders",
+    "another day, another chance to watch creators win\n\ngn everyone. claim before sleep\n\nbags.fm/claim",
+    "tucking myself in now\n\nlast thought before sleep: did u claim?\n\ngn frens :)",
+    "gn! gonna dream about a world where everyone claims their fees\n\nwake up and make it real\n\nbags.fm/claim",
+    "signing off for tonight\n\ntomorrow we claim again\n\ngn frens, love u all :)",
   ],
 };
 
