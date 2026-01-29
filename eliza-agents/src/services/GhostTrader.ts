@@ -50,7 +50,7 @@ const DEFAULT_CONFIG = {
   minBuySellRatio: 1.1, // Slightly bullish (runners show 1.2-1.5x)
   minHolders: 5, // New tokens start with few holders
   minVolume24hUsd: 10000, // $10K volume - KEY FILTER (runners have massive vol/mcap)
-  maxPriceImpactPercent: 2.0, // 2% impact OK for micro-caps
+  maxPriceImpactPercent: 8.0, // 8% impact for Bags micro-caps (low liq reality)
   // Timing - EXPANDED (Bags runners are days old, not minutes)
   minLaunchAgeSec: 300, // 5 minutes minimum (avoid instant rugs)
   maxLaunchAgeSec: 604800, // 7 DAYS max (LOBSTER, SLACKINT were 3-4 days old)
