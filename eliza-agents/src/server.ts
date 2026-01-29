@@ -87,7 +87,7 @@ const chatLimiter = rateLimit({
 
 const tradingLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // 10 trading operations per minute
+  max: 60, // 60 requests per minute (allows frequent polling + operations)
   message: { error: "Too many trading requests" },
   standardHeaders: true,
   legacyHeaders: false,

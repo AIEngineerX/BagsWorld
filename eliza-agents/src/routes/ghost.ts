@@ -120,7 +120,7 @@ router.get("/positions/open", (req: Request, res: Response) => {
 });
 
 // POST /api/ghost/enable - Enable trading
-router.post("/enable", (req: Request, res: Response) => {
+router.post("/enable", async (req: Request, res: Response) => {
   const { confirmPhrase } = req.body;
 
   // Require confirmation phrase for safety
@@ -145,7 +145,7 @@ router.post("/enable", (req: Request, res: Response) => {
     return;
   }
 
-  trader.enableTrading();
+  await trader.enableTrading();
 
   res.json({
     success: true,
@@ -156,9 +156,9 @@ router.post("/enable", (req: Request, res: Response) => {
 });
 
 // POST /api/ghost/disable - Disable trading (kill switch)
-router.post("/disable", (req: Request, res: Response) => {
+router.post("/disable", async (req: Request, res: Response) => {
   const trader = getGhostTrader();
-  trader.disableTrading();
+  await trader.disableTrading();
 
   res.json({
     success: true,
@@ -169,9 +169,9 @@ router.post("/disable", (req: Request, res: Response) => {
 });
 
 // Alias: POST /api/ghost/stop-trading
-router.post("/stop-trading", (req: Request, res: Response) => {
+router.post("/stop-trading", async (req: Request, res: Response) => {
   const trader = getGhostTrader();
-  trader.disableTrading();
+  await trader.disableTrading();
 
   res.json({
     success: true,

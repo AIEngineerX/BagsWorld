@@ -292,6 +292,25 @@ export class GhostTrader {
       ON ghost_positions(token_mint)
     `;
 
+    // Config table for persisting enabled state
+    await this.db`
+      CREATE TABLE IF NOT EXISTS ghost_config (
+        key VARCHAR(50) PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Load persisted enabled state
+    const configRows = (await this.db`
+      SELECT value FROM ghost_config WHERE key = 'trading_enabled'
+    `) as Array<{ value: string }>;
+
+    if (configRows.length > 0 && configRows[0].value === "true") {
+      this.config.enabled = true;
+      console.log("[GhostTrader] Loaded persisted state: ENABLED");
+    }
+
     console.log("[GhostTrader] Database schema initialized");
   }
 
@@ -946,14 +965,42 @@ export class GhostTrader {
   // Control Methods
   // ==========================================================================
 
-  enableTrading(): void {
+  async enableTrading(): Promise<void> {
     this.config.enabled = true;
     console.log("[GhostTrader] Trading ENABLED");
+
+    // Persist to database
+    if (this.db) {
+      try {
+        await this.db`
+          INSERT INTO ghost_config (key, value, updated_at)
+          VALUES ('trading_enabled', 'true', NOW())
+          ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = NOW()
+        `;
+        console.log("[GhostTrader] Persisted enabled state to database");
+      } catch (error) {
+        console.error("[GhostTrader] Failed to persist enabled state:", error);
+      }
+    }
   }
 
-  disableTrading(): void {
+  async disableTrading(): Promise<void> {
     this.config.enabled = false;
     console.log("[GhostTrader] Trading DISABLED");
+
+    // Persist to database
+    if (this.db) {
+      try {
+        await this.db`
+          INSERT INTO ghost_config (key, value, updated_at)
+          VALUES ('trading_enabled', 'false', NOW())
+          ON CONFLICT (key) DO UPDATE SET value = 'false', updated_at = NOW()
+        `;
+        console.log("[GhostTrader] Persisted disabled state to database");
+      } catch (error) {
+        console.error("[GhostTrader] Failed to persist disabled state:", error);
+      }
+    }
   }
 
   isEnabled(): boolean {
