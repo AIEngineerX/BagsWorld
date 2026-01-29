@@ -10,6 +10,7 @@ import {
   useUpdateGhostConfig,
   useTriggerGhostEvaluate,
   useTriggerGhostCheckPositions,
+  useMarkPositionClosed,
   type GhostPosition,
 } from "@/hooks/useElizaAgents";
 
@@ -296,7 +297,7 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
         {positions && positions.length > 0 ? (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {positions.map((pos) => (
-              <PositionCard key={pos.id} position={pos} />
+              <PositionCard key={pos.id} position={pos} addLog={addLog} />
             ))}
           </div>
         ) : (
@@ -479,7 +480,17 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
 }
 
 // Position card subcomponent
-function PositionCard({ position }: { position: GhostPosition }) {
+function PositionCard({
+  position,
+  addLog,
+}: {
+  position: GhostPosition;
+  addLog?: (message: string, type?: "info" | "success" | "error") => void;
+}) {
+  const [showCloseForm, setShowCloseForm] = useState(false);
+  const [pnlInput, setPnlInput] = useState("");
+  const markClosed = useMarkPositionClosed();
+
   const status = position.status || "unknown";
   const isOpen = status === "open";
   const isFailed = status === "failed";
@@ -498,13 +509,45 @@ function PositionCard({ position }: { position: GhostPosition }) {
   const symbol = position.tokenSymbol || position.tokenMint?.slice(0, 6) || "???";
   const displaySymbol = symbol.length > 10 ? `${symbol.slice(0, 6)}...` : symbol;
 
+  const handleMarkClosed = async () => {
+    const pnlSol = pnlInput ? parseFloat(pnlInput) : undefined;
+    const result = await markClosed.mutateAsync({
+      positionId: position.id,
+      pnlSol,
+      exitReason: "manual_external",
+    });
+
+    if (result.success) {
+      addLog?.(`Marked ${symbol} as closed${pnlSol !== undefined ? ` (PnL: ${pnlSol} SOL)` : ""}`, "success");
+      setShowCloseForm(false);
+      setPnlInput("");
+    } else {
+      addLog?.(`Failed to close: ${result.error}`, "error");
+    }
+  };
+
+  const dexUrl = position.tokenMint
+    ? `https://dexscreener.com/solana/${position.tokenMint}`
+    : null;
+
   return (
     <div
       className={`bg-black/30 p-2 border ${isOpen ? "border-yellow-500/30" : "border-gray-700"}`}
     >
       <div className="flex justify-between items-start">
         <div>
-          <p className="font-pixel text-[10px] text-bags-gold">${displaySymbol}</p>
+          {dexUrl ? (
+            <a
+              href={dexUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-pixel text-[10px] text-bags-gold hover:text-yellow-300 underline"
+            >
+              ${displaySymbol}
+            </a>
+          ) : (
+            <p className="font-pixel text-[10px] text-bags-gold">${displaySymbol}</p>
+          )}
           <p className="font-pixel text-[7px] text-gray-500">{position.tokenName || "Unknown"}</p>
         </div>
         <div className="text-right">
@@ -530,6 +573,52 @@ function PositionCard({ position }: { position: GhostPosition }) {
       <p className="font-pixel text-[6px] text-gray-600 mt-1 truncate">{position.entryReason}</p>
       {position.exitReason && (
         <p className="font-pixel text-[6px] text-gray-500 truncate">Exit: {position.exitReason}</p>
+      )}
+
+      {/* Mark Closed Button/Form for open positions */}
+      {isOpen && (
+        <div className="mt-2 pt-2 border-t border-gray-700">
+          {showCloseForm ? (
+            <div className="space-y-1">
+              <div className="flex gap-1">
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder="PnL (SOL)"
+                  value={pnlInput}
+                  onChange={(e) => setPnlInput(e.target.value)}
+                  className="flex-1 bg-black/50 border border-gray-600 px-1.5 py-0.5 font-mono text-[8px] text-white placeholder-gray-500"
+                />
+                <button
+                  onClick={handleMarkClosed}
+                  disabled={markClosed.isPending}
+                  className="font-pixel text-[7px] text-green-400 hover:text-green-300 bg-green-500/10 px-2 py-0.5 border border-green-500/30"
+                >
+                  {markClosed.isPending ? "..." : "SAVE"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCloseForm(false);
+                    setPnlInput("");
+                  }}
+                  className="font-pixel text-[7px] text-gray-400 hover:text-gray-300 px-1"
+                >
+                  X
+                </button>
+              </div>
+              <p className="font-pixel text-[6px] text-gray-500">
+                Enter PnL in SOL (positive for profit, negative for loss)
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowCloseForm(true)}
+              className="font-pixel text-[7px] text-orange-400 hover:text-orange-300"
+            >
+              [MARK CLOSED]
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
