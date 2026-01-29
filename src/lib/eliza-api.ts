@@ -327,6 +327,24 @@ export class ElizaApiClient {
     });
   }
 
+  async markPositionClosed(
+    positionId: string,
+    pnlSol?: number,
+    exitReason?: string
+  ): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }> {
+    return this.fetch(`/api/ghost/positions/${positionId}/mark-closed`, {
+      method: "POST",
+      body: JSON.stringify({
+        pnlSol,
+        exitReason: exitReason || "manual_external",
+      }),
+    });
+  }
+
   // -------------------------------------------------------------------------
   // Autonomous Tasks
   // -------------------------------------------------------------------------

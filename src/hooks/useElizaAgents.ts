@@ -209,6 +209,25 @@ export function useTriggerGhostCheckPositions() {
   });
 }
 
+export function useMarkPositionClosed() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      positionId,
+      pnlSol,
+      exitReason,
+    }: {
+      positionId: string;
+      pnlSol?: number;
+      exitReason?: string;
+    }) => elizaApi.markPositionClosed(positionId, pnlSol, exitReason),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: elizaKeys.ghost() });
+    },
+  });
+}
+
 // ============================================================================
 // Autonomous Tasks
 // ============================================================================
