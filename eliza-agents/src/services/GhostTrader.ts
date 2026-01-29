@@ -1303,6 +1303,40 @@ export class GhostTrader {
       pnlSol: position.pnlSol,
     };
   }
+
+  /**
+   * Mark a position as closed without executing a trade
+   * Use this when tokens were sold outside of Ghost (e.g., manually through wallet)
+   */
+  async markPositionClosed(
+    positionId: string,
+    pnlSol?: number,
+    exitReason: string = "manual_external"
+  ): Promise<{ success: boolean; error?: string }> {
+    const position = this.positions.get(positionId);
+    if (!position) {
+      return { success: false, error: "Position not found" };
+    }
+
+    if (position.status !== "open") {
+      return { success: false, error: "Position is not open" };
+    }
+
+    // Update position
+    position.status = "closed";
+    position.exitReason = exitReason;
+    position.pnlSol = pnlSol ?? 0;
+    position.closedAt = new Date();
+
+    // Update in database
+    await this.updatePositionInDatabase(position);
+
+    console.log(
+      `[GhostTrader] Position marked closed: ${position.tokenSymbol} (${exitReason}, PnL: ${pnlSol?.toFixed(4) || "unknown"} SOL)`
+    );
+
+    return { success: true };
+  }
 }
 
 export function getGhostTrader(): GhostTrader {

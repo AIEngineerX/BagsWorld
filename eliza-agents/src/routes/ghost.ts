@@ -2,6 +2,7 @@
 // GET /api/ghost/status - Trading status and stats
 // GET /api/ghost/positions - List all positions
 // GET /api/ghost/positions/open - List open positions only
+// POST /api/ghost/positions/:id/mark-closed - Mark position as closed (external sale)
 // POST /api/ghost/enable - Enable trading
 // POST /api/ghost/disable - Disable trading (kill switch)
 // POST /api/ghost/config - Update trading config
@@ -150,6 +151,34 @@ router.get("/positions/open", (req: Request, res: Response) => {
       entryTxSignature: p.entryTxSignature,
       createdAt: p.createdAt.toISOString(),
     })),
+  });
+});
+
+// POST /api/ghost/positions/:id/mark-closed - Mark position as closed (for external sales)
+router.post("/positions/:id/mark-closed", requireAdminKey, async (req: Request, res: Response) => {
+  const positionId = req.params.id;
+  const { pnlSol, exitReason } = req.body;
+
+  const trader = getGhostTrader();
+  const result = await trader.markPositionClosed(
+    positionId,
+    pnlSol !== undefined ? parseFloat(pnlSol) : undefined,
+    exitReason || "manual_external"
+  );
+
+  if (!result.success) {
+    res.status(400).json({
+      success: false,
+      error: result.error,
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    message: `Position ${positionId} marked as closed`,
+    pnlSol: pnlSol !== undefined ? parseFloat(pnlSol) : 0,
+    exitReason: exitReason || "manual_external",
   });
 });
 
