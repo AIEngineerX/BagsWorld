@@ -13,6 +13,7 @@ import { getGhostTrader } from "../services/GhostTrader.js";
 import { getHeliusService } from "../services/HeliusService.js";
 import { getSolanaService } from "../services/SolanaService.js";
 import { getSmartMoneyService } from "../services/SmartMoneyService.js";
+import { getCopyTraderService } from "../services/CopyTraderService.js";
 
 // Solana RPC for wallet analysis
 const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
@@ -1190,6 +1191,275 @@ router.post("/smart-money/record", (req: Request, res: Response) => {
     action,
     tokenMint: tokenMint.slice(0, 8) + "...",
     amountSol,
+  });
+});
+
+// ============================================================================
+// Helius Webhook - Real-time smart money alerts
+// ============================================================================
+
+// POST /api/ghost/webhook/helius - Helius webhook endpoint
+// Set this URL in your Helius dashboard: https://your-app.up.railway.app/api/ghost/webhook/helius
+router.post("/webhook/helius", async (req: Request, res: Response) => {
+  // Verify webhook secret
+  const webhookSecret = process.env.HELIUS_WEBHOOK_SECRET;
+  const authHeader = req.headers["authorization"];
+
+  if (webhookSecret && authHeader !== `Bearer ${webhookSecret}`) {
+    console.warn("[Webhook] Invalid authorization header");
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const events = Array.isArray(req.body) ? req.body : [req.body];
+  const smartMoney = getSmartMoneyService();
+  const copyTrader = getCopyTraderService();
+
+  let processed = 0;
+  let copySignals = 0;
+
+  for (const event of events) {
+    try {
+      // Parse Helius enhanced transaction format
+      const { type, feePayer, signature, tokenTransfers, nativeTransfers } = event;
+
+      // Skip if not a swap/trade
+      if (type !== "SWAP" && type !== "TRANSFER") continue;
+
+      // Check if feePayer is a tracked smart money wallet
+      if (!smartMoney.isSmartMoney(feePayer)) continue;
+
+      // Parse the trade
+      let action: "buy" | "sell" = "buy";
+      let tokenMint = "";
+      let tokenSymbol = "";
+      let amountSol = 0;
+
+      // Check token transfers for the trade details
+      if (tokenTransfers && tokenTransfers.length > 0) {
+        const transfer = tokenTransfers[0];
+        tokenMint = transfer.mint;
+        tokenSymbol = transfer.tokenStandard || "???";
+
+        // If wallet received tokens, it's a buy
+        if (transfer.toUserAccount === feePayer) {
+          action = "buy";
+        } else {
+          action = "sell";
+        }
+      }
+
+      // Get SOL amount from native transfers
+      if (nativeTransfers && nativeTransfers.length > 0) {
+        for (const nt of nativeTransfers) {
+          if (nt.fromUserAccount === feePayer) {
+            amountSol += nt.amount / 1_000_000_000;
+          }
+        }
+      }
+
+      if (!tokenMint || amountSol === 0) continue;
+
+      // Record the activity
+      smartMoney.recordActivity(tokenMint, feePayer, action, amountSol);
+
+      // Check if we should copy this trade
+      const copyResult = await copyTrader.handleSmartMoneyTrade({
+        wallet: feePayer,
+        action,
+        tokenMint,
+        tokenSymbol,
+        amountSol,
+        txSignature: signature,
+      });
+
+      if (copyResult.shouldCopy) {
+        copySignals++;
+        console.log(
+          `[Webhook] Smart money ${action}: ${amountSol.toFixed(2)} SOL of ${tokenSymbol} - ${copyResult.reason}`
+        );
+      }
+
+      processed++;
+    } catch (error) {
+      console.error("[Webhook] Error processing event:", error);
+    }
+  }
+
+  res.json({
+    success: true,
+    processed,
+    copySignals,
+  });
+});
+
+// ============================================================================
+// Copy Trader Routes
+// ============================================================================
+
+// GET /api/ghost/copy-trader/status - Copy trader status and stats
+router.get("/copy-trader/status", (req: Request, res: Response) => {
+  const copyTrader = getCopyTraderService();
+  const stats = copyTrader.getStats();
+  const config = copyTrader.getConfig();
+  const limits = copyTrader.getSafetyLimits();
+
+  res.json({
+    success: true,
+    enabled: stats.enabled,
+    config: {
+      sizeMultiplier: config.sizeMultiplier,
+      copyBuysOnly: config.copyBuysOnly,
+      requireApproval: config.requireApproval,
+      whitelistCount: config.walletWhitelist.length,
+    },
+    stats: {
+      totalCopied: stats.totalCopied,
+      successfulCopies: stats.successfulCopies,
+      failedCopies: stats.failedCopies,
+      copiesThisHour: stats.copiesThisHour,
+      maxCopiesPerHour: limits.MAX_COPIES_PER_HOUR,
+      pendingApprovals: stats.pendingApprovals,
+      lastCopyTime: stats.lastCopyTime ? new Date(stats.lastCopyTime).toISOString() : null,
+    },
+    safetyLimits: {
+      maxCopyAmountSol: limits.MAX_COPY_AMOUNT_SOL,
+      maxCopyExposureSol: limits.MAX_COPY_EXPOSURE_SOL,
+      minWalletWinRate: (limits.MIN_WALLET_WIN_RATE * 100).toFixed(0) + "%",
+      minTradeIntervalSec: limits.MIN_TRADE_INTERVAL_MS / 1000,
+      lossCooldownMin: limits.LOSS_COOLDOWN_MS / 60000,
+    },
+  });
+});
+
+// POST /api/ghost/copy-trader/enable - Enable copy trading (DANGEROUS)
+router.post("/copy-trader/enable", async (req: Request, res: Response) => {
+  const { confirmPhrase } = req.body;
+  const copyTrader = getCopyTraderService();
+
+  const result = await copyTrader.enable(confirmPhrase);
+
+  if (result.success) {
+    res.json({
+      success: true,
+      message: "⚠️ COPY TRADING ENABLED",
+      warning: [
+        "Ghost will now AUTOMATICALLY execute trades when smart money buys",
+        "This uses REAL SOL from your wallet",
+        "Monitor closely and disable if needed",
+      ],
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      error: result.error,
+      hint: "Send { confirmPhrase: 'i accept copy trading risks' }",
+    });
+  }
+});
+
+// POST /api/ghost/copy-trader/disable - Disable copy trading
+router.post("/copy-trader/disable", async (req: Request, res: Response) => {
+  const copyTrader = getCopyTraderService();
+  await copyTrader.disable();
+
+  res.json({
+    success: true,
+    message: "Copy trading DISABLED",
+  });
+});
+
+// GET /api/ghost/copy-trader/pending - List pending trade approvals
+router.get("/copy-trader/pending", (req: Request, res: Response) => {
+  const copyTrader = getCopyTraderService();
+  const pending = copyTrader.getPendingTrades();
+
+  res.json({
+    success: true,
+    count: pending.length,
+    trades: pending.map((t) => ({
+      id: t.id,
+      sourceWallet: t.sourceWalletLabel,
+      action: t.action,
+      tokenMint: t.tokenMint.slice(0, 8) + "...",
+      tokenSymbol: t.tokenSymbol,
+      originalAmountSol: t.originalAmountSol.toFixed(4),
+      suggestedAmountSol: t.suggestedAmountSol.toFixed(4),
+      expiresIn: Math.max(0, Math.floor((t.expiresAt - Date.now()) / 1000)) + "s",
+    })),
+  });
+});
+
+// POST /api/ghost/copy-trader/approve/:id - Approve a pending trade
+router.post("/copy-trader/approve/:id", async (req: Request, res: Response) => {
+  const tradeId = req.params.id as string;
+  const copyTrader = getCopyTraderService();
+
+  const result = await copyTrader.approveTrade(tradeId);
+
+  if (result.success) {
+    res.json({
+      success: true,
+      message: "Trade executed",
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      error: result.error,
+    });
+  }
+});
+
+// POST /api/ghost/copy-trader/reject/:id - Reject a pending trade
+router.post("/copy-trader/reject/:id", async (req: Request, res: Response) => {
+  const tradeId = req.params.id as string;
+  const copyTrader = getCopyTraderService();
+
+  await copyTrader.rejectTrade(tradeId);
+
+  res.json({
+    success: true,
+    message: "Trade rejected",
+  });
+});
+
+// POST /api/ghost/copy-trader/config - Update copy trader config
+router.post("/copy-trader/config", async (req: Request, res: Response) => {
+  const copyTrader = getCopyTraderService();
+
+  try {
+    await copyTrader.updateConfig(req.body);
+
+    res.json({
+      success: true,
+      message: "Config updated",
+      config: copyTrader.getConfig(),
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Invalid config",
+    });
+  }
+});
+
+// GET /api/ghost/copy-trader/history - Recent copy trade executions
+router.get("/copy-trader/history", (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 10;
+  const copyTrader = getCopyTraderService();
+  const executions = copyTrader.getRecentExecutions(limit);
+
+  res.json({
+    success: true,
+    count: executions.length,
+    executions: executions.map((t) => ({
+      sourceWallet: t.sourceWalletLabel,
+      action: t.action,
+      tokenSymbol: t.tokenSymbol,
+      amountSol: t.suggestedAmountSol.toFixed(4),
+      status: t.status,
+      time: new Date(t.timestamp).toISOString(),
+    })),
   });
 });
 
