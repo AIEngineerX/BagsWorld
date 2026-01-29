@@ -37,8 +37,8 @@ export function AgentDashboard({ addLog }: AgentDashboardProps) {
     { id: "context", label: "Context" },
   ];
 
-  // Server connection status
-  const isConnected = health?.status === "ok";
+  // Server connection status (backend returns "healthy" or "degraded" or "unhealthy")
+  const isConnected = health?.status === "healthy" || health?.status === "degraded";
   const connectionError = healthError instanceof Error ? healthError.message : null;
 
   return (
