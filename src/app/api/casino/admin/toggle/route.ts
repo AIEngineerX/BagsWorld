@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pauseCasinoRaffle, resumeCasinoRaffle, getCasinoAdminWallet } from "@/lib/neon";
+import { pauseCasinoRaffle, resumeCasinoRaffle, getCasinoAdminWallets } from "@/lib/neon";
 import { verifyAdminSignature } from "@/lib/verify-signature";
 
 export async function POST(request: NextRequest) {
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify admin wallet
-    const adminWallet = getCasinoAdminWallet();
+    const adminWallet = getCasinoAdminWallets();
     if (wallet !== adminWallet) {
       return NextResponse.json(
         { success: false, error: "Unauthorized: Not admin wallet" },

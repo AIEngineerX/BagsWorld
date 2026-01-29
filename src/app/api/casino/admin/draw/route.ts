@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSignature } from "@/lib/verify-signature";
 import {
   drawRaffleWinner,
-  getCasinoAdminWallet,
+  getCasinoAdminWallets,
   isNeonConfigured,
   checkRaffleThreshold,
 } from "@/lib/neon";
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify admin signature
-    const adminWallet = getCasinoAdminWallet();
+    const adminWallet = getCasinoAdminWallets();
     const verification = verifyAdminSignature(wallet, signature, "draw", timestamp, adminWallet);
 
     if (!verification.verified) {

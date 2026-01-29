@@ -1,7 +1,7 @@
 // Casino Admin API - Create a new raffle
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSignature } from "@/lib/verify-signature";
-import { createCasinoRaffle, getCasinoAdminWallet, isNeonConfigured } from "@/lib/neon";
+import { createCasinoRaffle, getCasinoAdminWallets, isNeonConfigured } from "@/lib/neon";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify admin signature
-    const adminWallet = getCasinoAdminWallet();
+    const adminWallet = getCasinoAdminWallets();
     const verification = verifyAdminSignature(
       wallet,
       signature,
