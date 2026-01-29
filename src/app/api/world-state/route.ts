@@ -379,11 +379,36 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
 function getPlaceholderHolders(now: number): BagsWorldHolder[] {
   console.log("[WorldState] Using placeholder holders - RPC unavailable");
   const placeholderHolders: BagsWorldHolder[] = [
-    { address: "BaGs1WhaLeHoLderxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 12500000, percentage: 28.5, rank: 1 },
-    { address: "BaGs2BiGHoLderxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 6200000, percentage: 14.2, rank: 2 },
-    { address: "BaGs3HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 3800000, percentage: 8.7, rank: 3 },
-    { address: "BaGs4HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 2100000, percentage: 4.8, rank: 4 },
-    { address: "BaGs5HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 1400000, percentage: 3.2, rank: 5 },
+    {
+      address: "BaGs1WhaLeHoLderxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 12500000,
+      percentage: 28.5,
+      rank: 1,
+    },
+    {
+      address: "BaGs2BiGHoLderxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 6200000,
+      percentage: 14.2,
+      rank: 2,
+    },
+    {
+      address: "BaGs3HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 3800000,
+      percentage: 8.7,
+      rank: 3,
+    },
+    {
+      address: "BaGs4HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 2100000,
+      percentage: 4.8,
+      rank: 4,
+    },
+    {
+      address: "BaGs5HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      balance: 1400000,
+      percentage: 3.2,
+      rank: 5,
+    },
   ];
   holdersCache = { data: placeholderHolders, timestamp: now };
   return placeholderHolders;
