@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useGameStore } from "@/lib/store";
 import type { WorldState } from "@/lib/types";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import {
   getAllWorldTokens,
   getAllWorldTokensAsync,
@@ -43,8 +43,8 @@ async function fetchWorldState(tokens: LaunchedToken[]): Promise<WorldState> {
 export function useWorldState() {
   const { worldState, setWorldState, setLoading, setError, isLoading, error } = useGameStore();
 
-  // Track registered tokens from localStorage
   const [registeredTokens, setRegisteredTokens] = useState<LaunchedToken[]>([]);
+  const registeredTokensRef = useRef<LaunchedToken[]>([]);
 
   // Load tokens from localStorage AND global database on mount and when storage changes
   useEffect(() => {
@@ -87,9 +87,13 @@ export function useWorldState() {
     };
   }, []);
 
+  useEffect(() => {
+    registeredTokensRef.current = registeredTokens;
+  }, [registeredTokens]);
+
   const query = useQuery({
     queryKey: ["worldState", registeredTokens.map((t) => t.mint).join(",")],
-    queryFn: () => fetchWorldState(registeredTokens),
+    queryFn: () => fetchWorldState(registeredTokensRef.current),
     refetchInterval: 60000, // Refresh every 60 seconds (reduced from 30s for smoother rendering)
     staleTime: 55000,
     retry: 3,
@@ -106,12 +110,10 @@ export function useWorldState() {
     }
   }, [query.data, query.isLoading, query.error, setWorldState, setLoading, setError]);
 
-  // Function to trigger refresh after token launch
   const refreshAfterLaunch = useCallback(() => {
     const tokens = getAllWorldTokens();
     setRegisteredTokens(tokens);
-    query.refetch();
-  }, [query]);
+  }, []);
 
   return {
     worldState,

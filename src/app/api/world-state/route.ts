@@ -49,14 +49,31 @@ interface TokenClaimEventSDK {
   timestamp: number;
 }
 
+interface BagsSDKInstance {
+  state: {
+    getTokenCreators(mint: PublicKey): Promise<TokenLaunchCreator[]>;
+    getTokenLifetimeFees(mint: PublicKey): Promise<number>;
+    getTokenClaimEvents(
+      mint: PublicKey,
+      options?: { limit?: number; startTime?: number }
+    ): Promise<TokenClaimEventSDK[]>;
+  };
+}
+
+function safeParseClaimAmount(amount: string | number | undefined): number {
+  if (amount === undefined || amount === null) return 0;
+  const parsed = typeof amount === "number" ? amount : parseFloat(amount);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
 // Lazy-loaded SDK instance with proper mutex to prevent race conditions
-let sdkInstance: any = null;
-let sdkInitPromise: Promise<any | null> | null = null;
+let sdkInstance: BagsSDKInstance | null = null;
+let sdkInitPromise: Promise<BagsSDKInstance | null> | null = null;
 let sdkInitFailed = false;
 let sdkFailedAt = 0;
 const SDK_RETRY_DELAY = 5000; // Wait 5 seconds before retrying after failure
 
-async function getBagsSDK(): Promise<any | null> {
+async function getBagsSDK(): Promise<BagsSDKInstance | null> {
   if (!process.env.BAGS_API_KEY) {
     return null;
   }
@@ -503,7 +520,7 @@ async function enrichTokenWithSDK(
           signature: e.signature,
           claimer: e.wallet,
           claimerUsername: undefined,
-          amount: parseFloat(e.amount),
+          amount: safeParseClaimAmount(e.amount),
           timestamp: e.timestamp,
           tokenMint: token.mint,
         }));
@@ -515,7 +532,7 @@ async function enrichTokenWithSDK(
           signature: e.signature,
           claimer: e.wallet,
           claimerUsername: undefined,
-          amount: parseFloat(e.amount),
+          amount: safeParseClaimAmount(e.amount),
           timestamp: e.timestamp,
           tokenMint: token.mint,
         }));
@@ -1269,13 +1286,16 @@ export async function POST(request: NextRequest) {
         if (building.isPermanent || building.isFloating) continue;
         if (building.id.startsWith("Starter") || building.id.startsWith("Treasury")) continue;
 
-        // Get the previous health from database
         const previousHealthData = healthDataMap.get(building.id);
         const previousHealth = previousHealthData?.currentHealth ?? 50;
+        const currentHealth =
+          typeof building.health === "number" && !isNaN(building.health)
+            ? Math.round(Math.max(0, Math.min(100, building.health)))
+            : 50;
 
         // Only persist if health changed
-        if (building.health !== previousHealth) {
-          healthUpdates.push({ mint: building.id, health: building.health });
+        if (currentHealth !== previousHealth) {
+          healthUpdates.push({ mint: building.id, health: currentHealth });
         }
       }
 

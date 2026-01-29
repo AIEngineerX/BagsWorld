@@ -121,7 +121,7 @@ describe('Character Registry', () => {
     });
 
     it('should know fee structure', () => {
-      expect(finnCharacter.system).toContain('50/30/20');
+      expect(finnCharacter.system).toContain('fee sharing');
     });
   });
 
@@ -176,10 +176,11 @@ describe('Character Registry', () => {
   });
 
   describe('Ghost Character', () => {
-    it('should be rewards system developer', () => {
+    it('should be BagsWorld developer', () => {
       expect(ghostCharacter.name).toBe('Ghost');
       expect(ghostCharacter.username).toBe('DaddyGhost');
-      expect(ghostCharacter.system).toContain('creator rewards');
+      expect(ghostCharacter.system).toContain('Built BagsWorld');
+      expect(ghostCharacter.system).toContain('community fund');
     });
 
     it('should be technical and on-chain focused', () => {

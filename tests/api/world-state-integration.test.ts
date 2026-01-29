@@ -443,4 +443,132 @@ describe("World State API Integration (Logic)", () => {
       expect(event1.id).not.toBe(event2.id);
     });
   });
+
+  describe("Bug Fix #7 - Health Validation Before DB Update", () => {
+    it("should handle buildings with valid health values", () => {
+      const token: TokenInfo = {
+        mint: "health-valid-token",
+        name: "Valid Health",
+        symbol: "VH",
+        creator: "creator",
+        marketCap: 100000,
+        volume24h: 1000,
+        change24h: 0,
+      };
+
+      const building = transformTokenToBuilding(token, 0);
+      expect(building.health).toBeGreaterThanOrEqual(0);
+      expect(building.health).toBeLessThanOrEqual(100);
+      expect(Number.isInteger(building.health)).toBe(true);
+    });
+
+    it("should clamp health to 0-100 range when transforming", () => {
+      // Create a token that would theoretically generate extreme health
+      const extremeToken: TokenInfo = {
+        mint: "extreme-health-token",
+        name: "Extreme Health",
+        symbol: "EXT",
+        creator: "creator",
+        marketCap: 1000000000, // Very high
+        volume24h: 1000000000, // Very high
+        change24h: 1000, // Very high change
+      };
+
+      const building = transformTokenToBuilding(extremeToken, 0);
+      expect(building.health).toBeLessThanOrEqual(100);
+    });
+
+    it("should handle buildings with health override", () => {
+      const tokenWithOverride: TokenInfo = {
+        mint: "health-override-token",
+        name: "Override Health",
+        symbol: "OH",
+        creator: "creator",
+        marketCap: 100000,
+        healthOverride: 75,
+      };
+
+      const building = transformTokenToBuilding(tokenWithOverride, 0);
+      expect(building.health).toBe(75);
+    });
+
+    it("should handle health override at boundaries (0 and 100)", () => {
+      const tokenZero: TokenInfo = {
+        mint: "health-zero-token",
+        name: "Zero Health",
+        symbol: "ZH",
+        creator: "creator",
+        marketCap: 100000,
+        healthOverride: 0,
+      };
+
+      const tokenMax: TokenInfo = {
+        mint: "health-max-token",
+        name: "Max Health",
+        symbol: "MH",
+        creator: "creator",
+        marketCap: 100000,
+        healthOverride: 100,
+      };
+
+      expect(transformTokenToBuilding(tokenZero, 0).health).toBe(0);
+      expect(transformTokenToBuilding(tokenMax, 0).health).toBe(100);
+    });
+  });
+
+  describe("Bug Fix #8 - Market Cap Input Validation", () => {
+    it("should handle NaN market cap gracefully", () => {
+      const nanToken: TokenInfo = {
+        mint: "nan-market-cap-token",
+        name: "NaN Token",
+        symbol: "NAN",
+        creator: "creator",
+        marketCap: NaN,
+      };
+
+      const building = transformTokenToBuilding(nanToken, 0);
+      // NaN market cap should result in level 1
+      expect(building.level).toBe(1);
+    });
+
+    it("should handle undefined market cap gracefully", () => {
+      const undefinedToken: TokenInfo = {
+        mint: "undefined-market-cap-token",
+        name: "Undefined Token",
+        symbol: "UND",
+        creator: "creator",
+        marketCap: undefined as unknown as number,
+      };
+
+      const building = transformTokenToBuilding(undefinedToken, 0);
+      expect(building.level).toBe(1);
+    });
+
+    it("should handle negative market cap gracefully", () => {
+      const negativeToken: TokenInfo = {
+        mint: "negative-market-cap-token",
+        name: "Negative Token",
+        symbol: "NEG",
+        creator: "creator",
+        marketCap: -500000,
+      };
+
+      const building = transformTokenToBuilding(negativeToken, 0);
+      // Negative market cap should be sanitized to 0, resulting in level 1
+      expect(building.level).toBe(1);
+    });
+
+    it("should handle zero market cap", () => {
+      const zeroToken: TokenInfo = {
+        mint: "zero-market-cap-token",
+        name: "Zero Token",
+        symbol: "ZERO",
+        creator: "creator",
+        marketCap: 0,
+      };
+
+      const building = transformTokenToBuilding(zeroToken, 0);
+      expect(building.level).toBe(1);
+    });
+  });
 });
