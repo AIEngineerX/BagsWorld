@@ -11,6 +11,7 @@ import {
 } from "./BagsApiService.js";
 import { AgentCoordinator, getAgentCoordinator } from "./AgentCoordinator.js";
 import { SolanaService, getSolanaService } from "./SolanaService.js";
+import { SmartMoneyService, getSmartMoneyService } from "./SmartMoneyService.js";
 import { getDatabase } from "../routes/shared.js";
 
 // ============================================================================
@@ -666,12 +667,25 @@ export class GhostTrader {
       redFlags.push(`price dumping (${priceChange24h.toFixed(0)}%)`);
     }
 
-    // === SMART MONEY BONUS ===
-    // Check if any smart money wallets are involved (future: integrate wallet tracking)
-    // For now, give bonus if token shows signs of sophisticated trading
+    // === SMART MONEY BONUS (Real-time tracking) ===
+    const smartMoneyService = getSmartMoneyService();
+    const smartMoneyData = await smartMoneyService.getSmartMoneyScore(launch.mint);
+
+    if (smartMoneyData.score >= 50) {
+      score += 25; // Major bonus for strong smart money interest
+      reasons.push(`smart money buying (${smartMoneyData.buyers.join(", ")})`);
+    } else if (smartMoneyData.score >= 25) {
+      score += 15;
+      reasons.push("some smart money interest");
+    } else if (smartMoneyData.score > 0) {
+      score += 5;
+      reasons.push("light smart money activity");
+    }
+
+    // Legacy check: high fees + good distribution = organic interest
     if (lifetimeFees > 0.05 && holders > 20 && volume24hUsd > 10000) {
       score += 5;
-      reasons.push("smart money signals");
+      reasons.push("organic traction");
     }
 
     // === FINAL DECISION ===
