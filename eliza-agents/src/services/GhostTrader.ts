@@ -641,6 +641,29 @@ export class GhostTrader {
     };
   }
 
+  /**
+   * Reset all learning data - use when strategy changes significantly
+   */
+  async resetLearning(): Promise<{ success: boolean; signalsCleared: number }> {
+    const signalsCleared = this.signalPerformance.size;
+
+    // Clear in-memory cache
+    this.signalPerformance.clear();
+
+    // Clear database
+    if (this.db) {
+      try {
+        await this.db`DELETE FROM ghost_learning`;
+        console.log(`[GhostTrader] Reset learning data: ${signalsCleared} signals cleared`);
+      } catch (error) {
+        console.error("[GhostTrader] Failed to reset learning data:", error);
+        return { success: false, signalsCleared: 0 };
+      }
+    }
+
+    return { success: true, signalsCleared };
+  }
+
   // ==========================================================================
   // Trading Logic
   // ==========================================================================

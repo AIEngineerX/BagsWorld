@@ -80,6 +80,20 @@ router.get("/learning", (req: Request, res: Response) => {
   });
 });
 
+// POST /api/ghost/learning/reset - Reset learning data (use after strategy changes)
+router.post("/learning/reset", async (req: Request, res: Response) => {
+  const trader = getGhostTrader();
+  const result = await trader.resetLearning();
+
+  res.json({
+    success: result.success,
+    message: result.success
+      ? `Learning data reset. ${result.signalsCleared} signals cleared.`
+      : "Failed to reset learning data",
+    signalsCleared: result.signalsCleared,
+  });
+});
+
 // GET /api/ghost/status - Get trading status and stats
 router.get("/status", async (req: Request, res: Response) => {
   const trader = getGhostTrader();
