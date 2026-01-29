@@ -567,7 +567,8 @@ export function transformFeeEarnerToCharacter(
     mood: isSpecial ? "happy" : calculateCharacterMood(earner.earnings24h, earner.change24h),
     earnings24h: earner.earnings24h,
     direction: Math.random() > 0.5 ? "left" : "right",
-    isMoving: !isSpecial && Math.random() > 0.7,
+    // Allow mascots (Bagsy) to wander, other special characters stay still
+    isMoving: flags.isBagsy ? Math.random() > 0.3 : !isSpecial && Math.random() > 0.7,
     buildingId: earner.topToken?.mint,
     profileUrl,
     zone: specialCfg?.zone ?? getZoneForFeeEarner(earner.wallet),

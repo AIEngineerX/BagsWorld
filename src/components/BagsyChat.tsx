@@ -140,27 +140,37 @@ export function BagsyChat() {
 
       setIsLoading(true);
 
-      const response = await fetch("/api/eliza-agent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          character: "bagsy",
-          message: userMessage,
-        }),
-      });
+      try {
+        const response = await fetch("/api/eliza-agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            character: "bagsy",
+            message: userMessage,
+          }),
+        });
 
-      const data = await response.json();
-      const messageText = data.response || "hmm something went wrong fren, try again? :)";
+        const data = await response.json();
+        const messageText = data.response || "hmm something went wrong fren, try again? :)";
 
-      addMessage({
-        id: `${Date.now()}-bagsy`,
-        type: "bagsy",
-        message: messageText,
-        timestamp: Date.now(),
-        actions: data.actions || [],
-      });
-
-      setIsLoading(false);
+        addMessage({
+          id: `${Date.now()}-bagsy`,
+          type: "bagsy",
+          message: messageText,
+          timestamp: Date.now(),
+          actions: data.actions || [],
+        });
+      } catch (error) {
+        console.error("Bagsy chat error:", error);
+        addMessage({
+          id: `${Date.now()}-bagsy`,
+          type: "bagsy",
+          message: "oops something went wrong fren! maybe try again? :)",
+          timestamp: Date.now(),
+        });
+      } finally {
+        setIsLoading(false);
+      }
     },
     [isLoading, addMessage]
   );
@@ -274,7 +284,9 @@ export function BagsyChat() {
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-bags-green mb-1">💰 gm fren!</p>
-            <p className="font-pixel text-[8px] text-gray-400">im bagsy, ur fee claiming assistant :)</p>
+            <p className="font-pixel text-[8px] text-gray-400">
+              im bagsy, ur fee claiming assistant :)
+            </p>
             <p className="font-pixel text-[7px] text-gray-500 mt-2">
               ask me about fees or click a topic above!
             </p>
