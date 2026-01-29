@@ -2,6 +2,8 @@
 // Handles authentication, posting, rate limiting, and content moderation
 
 import { Service, type IAgentRuntime } from "../types/elizaos.js";
+import OAuth from "oauth-1.0a";
+import CryptoJS from "crypto-js";
 
 // ============================================================================
 // Types
@@ -180,6 +182,7 @@ export class TwitterService extends Service {
   private apiSecret: string | null = null;
   private accessToken: string | null = null;
   private accessTokenSecret: string | null = null;
+  private oauth: OAuth | null = null;
 
   constructor(runtime?: IAgentRuntime) {
     super(runtime);
@@ -199,6 +202,20 @@ export class TwitterService extends Service {
     this.apiSecret = process.env.TWITTER_API_SECRET || null;
     this.accessToken = process.env.TWITTER_ACCESS_TOKEN || null;
     this.accessTokenSecret = process.env.TWITTER_ACCESS_TOKEN_SECRET || null;
+
+    // Initialize OAuth 1.0a for posting (Twitter API v2 requires this for write operations)
+    if (this.apiKey && this.apiSecret) {
+      this.oauth = new OAuth({
+        consumer: {
+          key: this.apiKey,
+          secret: this.apiSecret,
+        },
+        signature_method: "HMAC-SHA1",
+        hash_function(baseString: string, key: string) {
+          return CryptoJS.HmacSHA1(baseString, key).toString(CryptoJS.enc.Base64);
+        },
+      });
+    }
   }
 
   static async start(runtime: IAgentRuntime): Promise<TwitterService> {
@@ -218,13 +235,18 @@ export class TwitterService extends Service {
   // ==========================================================================
 
   async initialize(): Promise<void> {
-    const hasCredentials =
-      (this.bearerToken || (this.apiKey && this.apiSecret && this.accessToken && this.accessTokenSecret));
+    // Check for OAuth 1.0a credentials (required for posting)
+    const hasOAuthCredentials = this.apiKey && this.apiSecret && this.accessToken && this.accessTokenSecret;
+    const hasBearerToken = !!this.bearerToken;
 
-    if (!hasCredentials) {
-      console.warn("[TwitterService] No Twitter API credentials configured");
-      console.warn("[TwitterService] Set TWITTER_BEARER_TOKEN or full OAuth credentials");
-      return;
+    if (!hasOAuthCredentials) {
+      console.warn("[TwitterService] OAuth credentials not fully configured");
+      console.warn("[TwitterService] For posting, need: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET");
+      if (!hasBearerToken) {
+        console.warn("[TwitterService] No credentials at all - Twitter integration disabled");
+        return;
+      }
+      console.warn("[TwitterService] Bearer token found - read-only mode (cannot post)");
     }
 
     // Verify credentials
@@ -232,6 +254,7 @@ export class TwitterService extends Service {
       await this.verifyCredentials();
       this.isAuthenticated = true;
       console.log(`[TwitterService] Authenticated as @${this.config.username || "unknown"}`);
+      console.log(`[TwitterService] OAuth posting: ${hasOAuthCredentials ? "ENABLED" : "DISABLED (read-only)"}`);
       console.log(`[TwitterService] Dry run mode: ${this.config.dryRun ? "ENABLED" : "DISABLED"}`);
     } catch (error) {
       console.error("[TwitterService] Authentication failed:", error);
@@ -568,20 +591,30 @@ export class TwitterService extends Service {
   // ==========================================================================
 
   private async postTweet(content: string, replyToId?: string): Promise<Tweet> {
-    if (!this.bearerToken) {
-      throw new Error("Bearer token not configured");
+    // OAuth 1.0a is required for posting tweets (Bearer token is read-only)
+    if (!this.oauth || !this.accessToken || !this.accessTokenSecret) {
+      throw new Error("OAuth credentials not configured (need API key, secret, access token, and access token secret)");
     }
 
+    const url = "https://api.twitter.com/2/tweets";
     const body: Record<string, unknown> = { text: content };
 
     if (replyToId) {
       body.reply = { in_reply_to_tweet_id: replyToId };
     }
 
-    const response = await fetch("https://api.twitter.com/2/tweets", {
+    // Generate OAuth 1.0a authorization header
+    const authHeader = this.oauth.toHeader(
+      this.oauth.authorize(
+        { url, method: "POST" },
+        { key: this.accessToken, secret: this.accessTokenSecret }
+      )
+    );
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${this.bearerToken}`,
+        ...authHeader,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
