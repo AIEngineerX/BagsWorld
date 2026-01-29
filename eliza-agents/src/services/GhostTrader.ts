@@ -21,31 +21,31 @@ import { getDatabase } from "../routes/shared.js";
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
-// Default trading configuration (Upgraded to match BagBot-level criteria)
+// Default trading configuration (Matched to BagBot's proven criteria)
 const DEFAULT_CONFIG = {
   enabled: false, // Must be explicitly enabled
   // Position sizing
   minPositionSol: 0.05,
   maxPositionSol: 0.15,
   maxTotalExposureSol: 1.5,
-  maxOpenPositions: 3, // BagBot uses 3 (was 5)
+  maxOpenPositions: 3, // BagBot uses 3
   // Profit taking - scaled exits
   takeProfitTiers: [1.5, 2.0, 3.0], // Take 33% at each tier
   trailingStopPercent: 10, // After 2x, trail by 10%
   // Risk management - tighter stop loss
-  stopLossPercent: 15, // BagBot uses -15% (was -30%)
-  // Liquidity requirements - USD-based like BagBot
-  minLiquidityUsd: 25000, // $25K minimum (BagBot uses $50K)
-  minMarketCapUsd: 50000, // $50K minimum market cap
+  stopLossPercent: 15, // BagBot uses -15%
+  // Liquidity requirements - LOWERED to match BagBot/real market
+  minLiquidityUsd: 5000, // $5K minimum (BagBot uses $10K, most Bags tokens are small)
+  minMarketCapUsd: 8000, // $8K minimum (typical Bags.fm token starts ~$5-10K)
   // Quality filters
   maxCreatorFeeBps: 300, // 3%
-  minBuySellRatio: 1.2, // More buys than sells = bullish (BagBot criterion)
-  minHolders: 10, // Minimum holder count
-  minVolume24hUsd: 5000, // $5K daily volume
-  // Timing
-  minLaunchAgeSec: 90, // 1.5 minutes (was 60)
-  maxLaunchAgeSec: 1800, // 30 minutes (was 1 hour) - fresher plays
-  slippageBps: 300, // 3% slippage (tighter than 5%)
+  minBuySellRatio: 1.0, // Even ratio is fine (was 1.2 - too strict)
+  minHolders: 5, // Lower holder requirement (new tokens)
+  minVolume24hUsd: 1000, // $1K daily volume (was $5K - too strict for fresh launches)
+  // Timing - EXPANDED to find more tokens
+  minLaunchAgeSec: 60, // 1 minute minimum (tokens need SOME time)
+  maxLaunchAgeSec: 21600, // 6 hours (was 30 min - way too restrictive)
+  slippageBps: 500, // 5% slippage for low-liquidity tokens
 };
 
 // Top trader wallets to study (from Kolscan & GMGN leaderboards)
@@ -578,30 +578,36 @@ export class GhostTrader {
       return reject(`low mcap ($${marketCapUsd.toFixed(0)} < $${this.config.minMarketCapUsd})`);
     }
 
-    // === SCORING CRITERIA ===
+    // === SCORING CRITERIA (adjusted for Bags.fm token reality) ===
 
-    // 1. LIQUIDITY & MARKET CAP (0-25 points)
-    if (liquidityUsd >= 100000) {
+    // 1. LIQUIDITY & MARKET CAP (0-25 points) - scaled for small caps
+    if (liquidityUsd >= 50000) {
       score += 25;
-      reasons.push("excellent liquidity ($100K+)");
-    } else if (liquidityUsd >= 50000) {
+      reasons.push("excellent liquidity ($50K+)");
+    } else if (liquidityUsd >= 20000) {
       score += 20;
-      reasons.push("strong liquidity ($50K+)");
-    } else if (liquidityUsd >= 25000) {
-      score += 12;
+      reasons.push("strong liquidity ($20K+)");
+    } else if (liquidityUsd >= 10000) {
+      score += 15;
+      reasons.push("good liquidity ($10K+)");
+    } else if (liquidityUsd >= 5000) {
+      score += 10;
       reasons.push("adequate liquidity");
     }
 
-    // 2. VOLUME & ACTIVITY (0-25 points)
-    if (volume24hUsd >= 50000) {
+    // 2. VOLUME & ACTIVITY (0-25 points) - scaled for fresh launches
+    if (volume24hUsd >= 30000) {
       score += 25;
-      reasons.push("high volume ($50K+)");
-    } else if (volume24hUsd >= 20000) {
-      score += 18;
-      reasons.push("good volume ($20K+)");
+      reasons.push("high volume ($30K+)");
+    } else if (volume24hUsd >= 10000) {
+      score += 20;
+      reasons.push("good volume ($10K+)");
+    } else if (volume24hUsd >= 3000) {
+      score += 15;
+      reasons.push("active trading ($3K+)");
     } else if (volume24hUsd >= this.config.minVolume24hUsd) {
       score += 10;
-      reasons.push("moderate volume");
+      reasons.push("some volume");
     } else {
       redFlags.push("low volume");
     }
@@ -615,18 +621,19 @@ export class GhostTrader {
       score += 2;
     }
 
-    // 3. HOLDER DISTRIBUTION (0-15 points)
-    if (holders >= 50) {
+    // 3. HOLDER DISTRIBUTION (0-15 points) - scaled for new tokens
+    if (holders >= 30) {
       score += 15;
-      reasons.push("well distributed (50+ holders)");
-    } else if (holders >= 25) {
-      score += 10;
-      reasons.push("decent distribution");
+      reasons.push("well distributed (30+ holders)");
+    } else if (holders >= 15) {
+      score += 12;
+      reasons.push("growing holder base");
     } else if (holders >= this.config.minHolders) {
-      score += 5;
-      reasons.push("minimum holders met");
-    } else {
-      redFlags.push(`low holders (${holders})`);
+      score += 8;
+      reasons.push("holders accumulating");
+    } else if (holders > 0) {
+      score += 3; // Still give some points, new tokens start with few holders
+      reasons.push("early stage holders");
     }
 
     // 4. BUY/SELL RATIO (0-20 points) - BagBot's key metric
@@ -689,7 +696,8 @@ export class GhostTrader {
     }
 
     // === FINAL DECISION ===
-    const shouldBuy = score >= 50 && redFlags.length === 0;
+    // Lower threshold to 40 (was 50) - be more active while maintaining quality
+    const shouldBuy = score >= 40 && redFlags.length === 0;
 
     // Calculate position size based on score
     const remainingExposure = this.config.maxTotalExposureSol - this.getTotalExposure();
