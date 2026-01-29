@@ -38,9 +38,12 @@ import { createMockRuntime } from "./routes/shared.js";
 const PORT = parseInt(process.env.PORT || "3001", 10);
 const HOST = process.env.HOST || "0.0.0.0";
 const CORS_ORIGINS = process.env.CORS_ORIGINS?.split(",") || [
+  "https://bagsworld.netlify.app",
+  "https://bagsworld.app",
   "http://localhost:3000",
   "http://localhost:5173",
 ];
+console.log("[CORS] Allowed origins:", CORS_ORIGINS);
 
 const DATABASE_URL =
   process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL;
