@@ -324,6 +324,47 @@ router.post("/evaluate", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/ghost/debug-evaluate - Debug: show actual GhostTrader evaluation results
+router.get("/debug-evaluate", async (req: Request, res: Response) => {
+  try {
+    const trader = getGhostTrader();
+    const bagsApi = (await import("../services/BagsApiService.js")).getBagsApiService();
+
+    // Get launches with _dexData
+    const launches = await bagsApi.getRecentLaunches(10);
+
+    // Evaluate each through actual GhostTrader
+    const evaluations = [];
+    for (const launch of launches) {
+      const evaluation = await trader.evaluateLaunchPublic(launch);
+      evaluations.push({
+        token: { name: launch.name, symbol: launch.symbol, mint: launch.mint },
+        _dexData: launch._dexData, // Show the raw DexScreener data
+        score: evaluation.score,
+        shouldBuy: evaluation.shouldBuy,
+        reasons: evaluation.reasons,
+        redFlags: evaluation.redFlags,
+        metrics: evaluation.metrics,
+      });
+    }
+
+    evaluations.sort((a, b) => b.score - a.score);
+
+    res.json({
+      success: true,
+      tradingEnabled: trader.isEnabled(),
+      launchesFound: launches.length,
+      buySignals: evaluations.filter(e => e.shouldBuy).length,
+      evaluations,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Debug evaluation failed",
+    });
+  }
+});
+
 // POST /api/ghost/check-positions - Manually trigger position check
 router.post("/check-positions", async (req: Request, res: Response) => {
   const trader = getGhostTrader();
