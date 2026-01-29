@@ -1,9 +1,21 @@
 "use client";
 
 // Mini trading widget for Ghost's chat interface
-// Shows live trading stats at a glance
+// Shows live trading stats with real-time price action
 
+import { useState, useEffect, useCallback } from "react";
 import { useGhostStatus, useGhostOpenPositions } from "@/hooks/useElizaAgents";
+
+// Live price data for a token
+interface LivePrice {
+  priceUsd: number;
+  priceNative: number; // SOL price
+  priceChange24h: number;
+  lastUpdated: number;
+}
+
+// Cache for price data
+const priceCache = new Map<string, LivePrice>();
 
 // Format time ago
 function timeAgo(date: string | Date): string {
@@ -23,9 +35,70 @@ function formatSymbol(symbol: string): string {
   return symbol;
 }
 
+// Fetch live price from DexScreener
+async function fetchTokenPrice(mint: string): Promise<LivePrice | null> {
+  // Check cache (valid for 10 seconds)
+  const cached = priceCache.get(mint);
+  if (cached && Date.now() - cached.lastUpdated < 10000) {
+    return cached;
+  }
+
+  try {
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const pair = data.pairs?.[0];
+    if (!pair) return null;
+
+    const price: LivePrice = {
+      priceUsd: parseFloat(pair.priceUsd) || 0,
+      priceNative: parseFloat(pair.priceNative) || 0,
+      priceChange24h: pair.priceChange?.h24 || 0,
+      lastUpdated: Date.now(),
+    };
+
+    priceCache.set(mint, price);
+    return price;
+  } catch {
+    return null;
+  }
+}
+
+// Hook to track live prices for multiple tokens
+function useLivePrices(mints: string[]) {
+  const [prices, setPrices] = useState<Map<string, LivePrice>>(new Map());
+
+  const fetchPrices = useCallback(async () => {
+    if (mints.length === 0) return;
+
+    const newPrices = new Map<string, LivePrice>();
+    await Promise.all(
+      mints.map(async (mint) => {
+        const price = await fetchTokenPrice(mint);
+        if (price) newPrices.set(mint, price);
+      })
+    );
+
+    setPrices(newPrices);
+  }, [mints.join(",")]);
+
+  useEffect(() => {
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 10000); // Update every 10s
+    return () => clearInterval(interval);
+  }, [fetchPrices]);
+
+  return prices;
+}
+
 export function GhostTradingMini() {
   const { data: status, isLoading } = useGhostStatus();
   const { data: positions } = useGhostOpenPositions();
+
+  // Get mints for open positions to fetch live prices
+  const openMints = positions?.positions?.map((p: any) => p.tokenMint).filter(Boolean) || [];
+  const livePrices = useLivePrices(openMints);
 
   if (isLoading) {
     return (
@@ -117,6 +190,14 @@ export function GhostTradingMini() {
                 ? `https://dexscreener.com/solana/${pos.tokenMint}`
                 : null;
 
+              // Calculate live P&L if we have price data
+              const livePrice = pos.tokenMint ? livePrices.get(pos.tokenMint) : null;
+              const entryPrice = pos.entryPriceNative || pos.entryPrice || 0;
+              let pnlPercent: number | null = null;
+              if (livePrice && entryPrice > 0) {
+                pnlPercent = ((livePrice.priceNative - entryPrice) / entryPrice) * 100;
+              }
+
               return (
                 <div
                   key={pos.id}
@@ -142,9 +223,19 @@ export function GhostTradingMini() {
                       {timeAgo(pos.createdAt)}
                     </span>
                   </div>
-                  <span className="font-pixel text-[7px] text-yellow-400">
-                    {pos.amountSol?.toFixed(2) || "0.00"} SOL
-                  </span>
+                  <div className="flex items-center gap-1">
+                    {pnlPercent !== null && (
+                      <span
+                        className={`font-pixel text-[7px] ${pnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
+                      >
+                        {pnlPercent >= 0 ? "+" : ""}
+                        {pnlPercent.toFixed(1)}%
+                      </span>
+                    )}
+                    <span className="font-pixel text-[7px] text-yellow-400">
+                      {pos.amountSol?.toFixed(2) || "0.00"}
+                    </span>
+                  </div>
                 </div>
               );
             })}
