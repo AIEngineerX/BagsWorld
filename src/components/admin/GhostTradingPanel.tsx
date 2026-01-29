@@ -391,9 +391,12 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
           </p>
           <div className="space-y-1">
             {status.smartMoneyWallets.map((wallet) => (
-              <p key={wallet} className="font-mono text-[8px] text-gray-500">
-                {wallet.slice(0, 8)}...{wallet.slice(-8)}
-              </p>
+              <div key={wallet.address} className="flex justify-between">
+                <span className="font-mono text-[8px] text-gray-500">
+                  {wallet.address.slice(0, 8)}...{wallet.address.slice(-8)}
+                </span>
+                <span className="font-pixel text-[7px] text-gray-600">{wallet.label}</span>
+              </div>
             ))}
           </div>
         </div>
