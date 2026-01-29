@@ -32,14 +32,14 @@ export function GhostTradingMini() {
           <span
             className={`w-2 h-2 rounded-full ${isEnabled ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
           />
-          <span className={`font-pixel text-[8px] ${isEnabled ? "text-green-400" : "text-red-400"}`}>
+          <span
+            className={`font-pixel text-[8px] ${isEnabled ? "text-green-400" : "text-red-400"}`}
+          >
             {isEnabled ? "TRADING LIVE" : "TRADING OFF"}
           </span>
         </div>
         {totalTrades > 0 && (
-          <span className="font-pixel text-[7px] text-gray-500">
-            {totalTrades} trades
-          </span>
+          <span className="font-pixel text-[7px] text-gray-500">{totalTrades} trades</span>
         )}
       </div>
 
@@ -59,8 +59,11 @@ export function GhostTradingMini() {
         </div>
         <div>
           <p className="font-pixel text-[6px] text-gray-500">P&L</p>
-          <p className={`font-pixel text-[10px] ${totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-            {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(3)}
+          <p
+            className={`font-pixel text-[10px] ${totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+          >
+            {totalPnl >= 0 ? "+" : ""}
+            {totalPnl.toFixed(3)}
           </p>
         </div>
       </div>
