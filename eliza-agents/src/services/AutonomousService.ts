@@ -59,6 +59,9 @@ export class AutonomousService extends Service {
   // Bagsy: Track last processed mention ID for pagination
   private lastMentionId: string | null = null;
 
+  // Bagsy: Track last processed Finn tweet ID for CEO engagement
+  private lastFinnTweetId: string | null = null;
+
   // Bagsy: Track high-value fee alert history (wallet -> lastAlertTimestamp)
   private highValueAlertHistory = new Map<string, number>();
 
@@ -238,6 +241,16 @@ export class AutonomousService extends Service {
       interval: 30 * 60 * 1000, // 30 minutes
       handler: async () => {
         await this.checkHighValueUnclaimedFees();
+      },
+    });
+
+    // Bagsy: Engage with @finnbags tweets (CEO support) every 2 hours
+    this.registerTask({
+      name: "bagsy_finn_engagement",
+      agentId: "bagsy",
+      interval: 2 * 60 * 60 * 1000, // 2 hours
+      handler: async () => {
+        await this.engageWithFinnTweets();
       },
     });
   }
@@ -1052,6 +1065,166 @@ export class AutonomousService extends Service {
   }
 
   // ==========================================================================
+  // Bagsy: CEO Engagement (@finnbags)
+  // ==========================================================================
+
+  /**
+   * Engage with @finnbags tweets - Bagsy supports the CEO!
+   * Checks Finn's recent tweets and replies with hype
+   */
+  private async engageWithFinnTweets(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      console.log("[AutonomousService] Twitter not configured, skipping Finn engagement");
+      return;
+    }
+
+    try {
+      // Search for recent tweets from @finnbags
+      const finnTweets = await this.getFinnRecentTweets();
+
+      if (finnTweets.length === 0) {
+        console.log("[AutonomousService] No new tweets from @finnbags to engage with");
+        return;
+      }
+
+      console.log(`[AutonomousService] Found ${finnTweets.length} tweets from @finnbags to potentially engage with`);
+
+      // Pick one tweet to reply to (most recent unprocessed)
+      for (const tweet of finnTweets) {
+        // Skip if already processed
+        if (this.twitterService.isProcessed(tweet.id)) {
+          continue;
+        }
+
+        // Generate appropriate reply based on tweet content
+        const reply = this.generateFinnEngagementReply(tweet.text);
+
+        const result = await this.twitterService.reply(tweet.id, reply);
+
+        if (result.success) {
+          this.twitterService.markProcessed(tweet.id);
+          this.lastFinnTweetId = tweet.id;
+          console.log(`[AutonomousService] Bagsy replied to @finnbags: ${result.tweet?.url}`);
+
+          await this.createAlert({
+            type: "milestone",
+            severity: "info",
+            title: "Bagsy CEO Engagement",
+            message: `Replied to @finnbags tweet`,
+            data: { tweetId: result.tweet?.id, originalTweetId: tweet.id },
+          });
+
+          // Only reply to one tweet per cycle to avoid spam
+          break;
+        } else {
+          console.log(`[AutonomousService] Failed to reply to @finnbags: ${result.error}`);
+        }
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Finn engagement failed:", error);
+    }
+  }
+
+  /**
+   * Get recent tweets from @finnbags
+   */
+  private async getFinnRecentTweets(): Promise<Array<{ id: string; text: string }>> {
+    if (!this.twitterService) return [];
+
+    // Use Twitter API to search for tweets from @finnbags
+    // We'll use the search endpoint with from:finnbags
+    const bearerToken = process.env.TWITTER_BEARER_TOKEN;
+    if (!bearerToken) {
+      return [];
+    }
+
+    try {
+      const query = encodeURIComponent("from:finnbags -is:retweet -is:reply");
+      let url = `https://api.twitter.com/2/tweets/search/recent?query=${query}&max_results=10&tweet.fields=created_at`;
+
+      if (this.lastFinnTweetId) {
+        url += `&since_id=${this.lastFinnTweetId}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${bearerToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`[AutonomousService] Failed to fetch @finnbags tweets: ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+
+      if (!data.data || data.data.length === 0) {
+        return [];
+      }
+
+      return data.data.map((tweet: { id: string; text: string }) => ({
+        id: tweet.id,
+        text: tweet.text,
+      }));
+    } catch (error) {
+      console.error("[AutonomousService] Error fetching @finnbags tweets:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Generate a Bagsy-style reply to @finnbags based on tweet content
+   */
+  private generateFinnEngagementReply(tweetText: string): string {
+    const lowerText = tweetText.toLowerCase();
+
+    // Check if it's a GM tweet
+    if (lowerText.includes("gm") || lowerText.includes("good morning")) {
+      const gmReplies = [
+        "gm boss!! :) hope ur ready to watch creators win today @finnbags",
+        "gm @finnbags!! the ceo is up, the vibes are good\n\nlets get this bread",
+        "gm gm @finnbags :)\n\nanother day another chance to help creators earn",
+        "the ceo said gm so we all gotta gm back\n\ngm @finnbags!!",
+        "gm to the best ceo in crypto @finnbags :)\n\nlets make today amazing",
+      ];
+      return gmReplies[Math.floor(Math.random() * gmReplies.length)];
+    }
+
+    // Check if it's an announcement or hype (keywords: new, launch, update, ship, build)
+    if (
+      lowerText.includes("launch") ||
+      lowerText.includes("ship") ||
+      lowerText.includes("new") ||
+      lowerText.includes("update") ||
+      lowerText.includes("announce") ||
+      lowerText.includes("live")
+    ) {
+      const announcementReplies = [
+        "LETS GOOOOO @finnbags!!\n\nthe ceo is COOKING",
+        "THIS IS HUGE\n\ncreators winning, bagsy crying happy tears",
+        "WE ARE SO BACK\n\nthe flywheel never stops @finnbags",
+        "the ceo just dropped a bomb\n\nu are actually insane (in a good way)",
+        "WHAT\n\nthis is the best news ever\n\nso proud of this team @finnbags",
+      ];
+      return announcementReplies[Math.floor(Math.random() * announcementReplies.length)];
+    }
+
+    // Default supportive replies
+    const defaultReplies = [
+      "the ceo has spoken :)\n\nlets gooo",
+      "this is why @finnbags is the goat\n\ncreators winning, fees flowing",
+      "love this!!\n\nthe vision is real",
+      "@finnbags out here building the future of creator economy\n\nso proud to be the mascot :)",
+      "the ceo is cooking\n\nalways delivers",
+      "spitting facts as always :)",
+      "when the ceo speaks, bagsy listens\n\nlets gooo",
+      "another W from the boss\n\nthe flywheel keeps spinning",
+    ];
+    return defaultReplies[Math.floor(Math.random() * defaultReplies.length)];
+  }
+
+  // ==========================================================================
   // Bagsy: Mention Handling
   // ==========================================================================
 
@@ -1116,6 +1289,19 @@ export class AutonomousService extends Service {
    * Generate a Bagsy-style reply to a mention
    */
   private generateBagsyMentionReply(authorUsername: string): string {
+    // Special handling for CEO @finnbags
+    if (authorUsername.toLowerCase() === "finnbags") {
+      const ceoReplies = [
+        "omg the ceo noticed me!! :)\n\ngm boss @finnbags\n\nhope ur having an amazing day",
+        "WAIT @finnbags said hi to bagsy??\n\nthis is the best day ever\n\nlets gooo",
+        "gm boss!! :)\n\nalways here to help spread the fee gospel @finnbags",
+        "the ceo himself!! hi @finnbags :)\n\nso honored to be part of the @BagsFM fam",
+        "yes boss! @finnbags\n\nbagsy reporting for duty :)\n\nlets help creators win today",
+      ];
+      return ceoReplies[Math.floor(Math.random() * ceoReplies.length)];
+    }
+
+    // Regular mention replies
     const templates = [
       `hey @${authorUsername}! have u claimed ur fees today? bags.fm/claim :)`,
       `gm @${authorUsername}! hope ur having a great day fren. remember to claim at bags.fm/claim :)`,
