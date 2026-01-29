@@ -74,16 +74,17 @@ describe('GET /api/agents (real routes)', () => {
     expect(finn.name).toBe('Finn');
   });
 
-  it('includes all 16 expected agents', async () => {
+  it('includes all 17 expected agents', async () => {
     const res = await request(app).get('/api/agents');
 
-    expect(res.body.count).toBe(16);
+    expect(res.body.count).toBe(17);
     const ids = res.body.agents.map((a: { id: string }) => a.id);
     expect(ids).toContain('finn');
     expect(ids).toContain('toly');
     expect(ids).toContain('ash');
     expect(ids).toContain('ghost');
     expect(ids).toContain('neo');
+    expect(ids).toContain('bagsy');
   });
 });
 
