@@ -53,6 +53,33 @@ const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solan
 
 const router = Router();
 
+// GET /api/ghost/learning - Get self-learning insights
+router.get("/learning", (req: Request, res: Response) => {
+  const trader = getGhostTrader();
+  const insights = trader.getLearningInsights();
+
+  res.json({
+    success: true,
+    learning: {
+      totalSignalsTracked: insights.signals.length,
+      totalTradesAnalyzed: insights.totalTradesAnalyzed,
+      bestSignals: insights.bestSignals,
+      worstSignals: insights.worstSignals,
+      lastUpdated: new Date(insights.lastUpdated).toISOString(),
+    },
+    signals: insights.signals.map((s) => ({
+      signal: s.signal,
+      trades: s.totalTrades,
+      wins: s.winningTrades,
+      losses: s.losingTrades,
+      winRate: (s.winRate * 100).toFixed(1) + "%",
+      totalPnl: s.totalPnlSol.toFixed(4) + " SOL",
+      avgPnl: s.avgPnlSol.toFixed(4) + " SOL",
+      scoreAdjustment: s.scoreAdjustment,
+    })),
+  });
+});
+
 // GET /api/ghost/status - Get trading status and stats
 router.get("/status", async (req: Request, res: Response) => {
   const trader = getGhostTrader();

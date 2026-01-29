@@ -98,6 +98,25 @@ const WALLET_LABELS: Record<string, string> = {
 // Types
 // ============================================================================
 
+export interface SignalPerformance {
+  signal: string;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  totalPnlSol: number;
+  avgPnlSol: number;
+  winRate: number;
+  scoreAdjustment: number; // Learned adjustment to apply to this signal's score
+}
+
+export interface LearningInsights {
+  signals: SignalPerformance[];
+  bestSignals: string[];
+  worstSignals: string[];
+  totalTradesAnalyzed: number;
+  lastUpdated: number;
+}
+
 export interface GhostPosition {
   id: string;
   tokenMint: string;
@@ -205,6 +224,9 @@ export class GhostTrader {
   private lastChatter: number = 0;
   private static readonly CHATTER_COOLDOWN_MS = 60000; // 1 minute between random chatter
 
+  // Self-learning: track which signals lead to wins/losses
+  private signalPerformance: Map<string, SignalPerformance> = new Map();
+
   constructor() {
     this.config = { ...DEFAULT_CONFIG };
     this.bagsApi = getBagsApiService();
@@ -264,6 +286,9 @@ export class GhostTrader {
     // Load existing positions from database
     await this.loadPositionsFromDatabase();
 
+    // Load learning data
+    await this.loadLearningData();
+
     const hasWallet = this.solanaService.isConfigured();
     console.log(`[GhostTrader] Wallet: ${hasWallet ? "configured" : "NOT configured"}`);
     if (hasWallet) {
@@ -316,6 +341,18 @@ export class GhostTrader {
       CREATE TABLE IF NOT EXISTS ghost_config (
         key VARCHAR(50) PRIMARY KEY,
         value TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Learning table for signal performance tracking
+    await this.db`
+      CREATE TABLE IF NOT EXISTS ghost_learning (
+        signal VARCHAR(100) PRIMARY KEY,
+        total_trades INTEGER DEFAULT 0,
+        winning_trades INTEGER DEFAULT 0,
+        losing_trades INTEGER DEFAULT 0,
+        total_pnl_sol DECIMAL(18, 9) DEFAULT 0,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `;
@@ -390,6 +427,194 @@ export class GhostTrader {
     console.log(
       `[GhostTrader] Loaded ${rows.length} positions from database (${openCount} open, ${closedCount} closed)`
     );
+  }
+
+  // ==========================================================================
+  // Self-Learning System
+  // ==========================================================================
+
+  private async loadLearningData(): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      const rows = (await this.db`
+        SELECT * FROM ghost_learning
+      `) as Array<{
+        signal: string;
+        total_trades: number;
+        winning_trades: number;
+        losing_trades: number;
+        total_pnl_sol: string;
+      }>;
+
+      for (const row of rows) {
+        const totalPnl = parseFloat(row.total_pnl_sol) || 0;
+        const winRate = row.total_trades > 0 ? row.winning_trades / row.total_trades : 0;
+        const avgPnl = row.total_trades > 0 ? totalPnl / row.total_trades : 0;
+
+        // Calculate score adjustment based on performance
+        // Good signals get bonus, bad signals get penalty
+        let scoreAdjustment = 0;
+        if (row.total_trades >= 3) {
+          // Need at least 3 trades to learn from
+          if (winRate >= 0.7) scoreAdjustment = 10; // 70%+ win rate = +10 score
+          else if (winRate >= 0.5) scoreAdjustment = 5; // 50%+ win rate = +5 score
+          else if (winRate <= 0.3) scoreAdjustment = -10; // 30% or less = -10 score
+          else if (winRate <= 0.4) scoreAdjustment = -5; // 40% or less = -5 score
+        }
+
+        this.signalPerformance.set(row.signal, {
+          signal: row.signal,
+          totalTrades: row.total_trades,
+          winningTrades: row.winning_trades,
+          losingTrades: row.losing_trades,
+          totalPnlSol: totalPnl,
+          avgPnlSol: avgPnl,
+          winRate,
+          scoreAdjustment,
+        });
+      }
+
+      console.log(`[GhostTrader] Loaded learning data for ${rows.length} signals`);
+    } catch (error) {
+      console.error("[GhostTrader] Failed to load learning data:", error);
+    }
+  }
+
+  /**
+   * Record the outcome of a trade for learning
+   * Called when a position is closed
+   */
+  private async recordTradeOutcome(position: GhostPosition): Promise<void> {
+    if (!this.db || !position.entryReason) return;
+
+    const isWin = (position.pnlSol || 0) > 0;
+    const pnl = position.pnlSol || 0;
+
+    // Parse entry reasons (comma-separated signals)
+    const signals = position.entryReason.split(",").map((s) => s.trim().toLowerCase());
+
+    for (const signal of signals) {
+      if (!signal) continue;
+
+      try {
+        // Upsert signal performance
+        await this.db`
+          INSERT INTO ghost_learning (signal, total_trades, winning_trades, losing_trades, total_pnl_sol, updated_at)
+          VALUES (${signal}, 1, ${isWin ? 1 : 0}, ${isWin ? 0 : 1}, ${pnl}, NOW())
+          ON CONFLICT (signal) DO UPDATE SET
+            total_trades = ghost_learning.total_trades + 1,
+            winning_trades = ghost_learning.winning_trades + ${isWin ? 1 : 0},
+            losing_trades = ghost_learning.losing_trades + ${isWin ? 0 : 1},
+            total_pnl_sol = ghost_learning.total_pnl_sol + ${pnl},
+            updated_at = NOW()
+        `;
+
+        // Update in-memory cache
+        const existing = this.signalPerformance.get(signal) || {
+          signal,
+          totalTrades: 0,
+          winningTrades: 0,
+          losingTrades: 0,
+          totalPnlSol: 0,
+          avgPnlSol: 0,
+          winRate: 0,
+          scoreAdjustment: 0,
+        };
+
+        existing.totalTrades++;
+        if (isWin) existing.winningTrades++;
+        else existing.losingTrades++;
+        existing.totalPnlSol += pnl;
+        existing.avgPnlSol = existing.totalPnlSol / existing.totalTrades;
+        existing.winRate = existing.winningTrades / existing.totalTrades;
+
+        // Recalculate score adjustment
+        if (existing.totalTrades >= 3) {
+          if (existing.winRate >= 0.7) existing.scoreAdjustment = 10;
+          else if (existing.winRate >= 0.5) existing.scoreAdjustment = 5;
+          else if (existing.winRate <= 0.3) existing.scoreAdjustment = -10;
+          else if (existing.winRate <= 0.4) existing.scoreAdjustment = -5;
+          else existing.scoreAdjustment = 0;
+        }
+
+        this.signalPerformance.set(signal, existing);
+      } catch (error) {
+        console.error(`[GhostTrader] Failed to record learning for signal "${signal}":`, error);
+      }
+    }
+
+    // Chatter about learning occasionally
+    if (signals.length > 0) {
+      const topSignal = signals[0];
+      const perf = this.signalPerformance.get(topSignal);
+      if (perf && perf.totalTrades >= 3) {
+        const learningMessages = isWin
+          ? [
+              `"${topSignal}" keeps working... ${(perf.winRate * 100).toFixed(0)}% win rate`,
+              `learning that ${topSignal} is reliable`,
+              `noted: ${topSignal} = good signal`,
+            ]
+          : [
+              `hmm "${topSignal}" not always working...`,
+              `adjusting for ${topSignal} losses`,
+              `learning from this L`,
+            ];
+        this.maybeChatter(
+          learningMessages[Math.floor(Math.random() * learningMessages.length)],
+          isWin ? "thoughtful" : "concerned"
+        );
+      }
+    }
+
+    console.log(
+      `[GhostTrader] Recorded trade outcome: ${position.tokenSymbol} (${isWin ? "WIN" : "LOSS"}, signals: ${signals.join(", ")})`
+    );
+  }
+
+  /**
+   * Get the learned score adjustment for a set of reasons
+   */
+  private getLearningAdjustment(reasons: string[]): { adjustment: number; appliedSignals: string[] } {
+    let totalAdjustment = 0;
+    const appliedSignals: string[] = [];
+
+    for (const reason of reasons) {
+      const signal = reason.toLowerCase().trim();
+      const perf = this.signalPerformance.get(signal);
+
+      if (perf && perf.scoreAdjustment !== 0) {
+        totalAdjustment += perf.scoreAdjustment;
+        appliedSignals.push(`${signal} (${perf.scoreAdjustment > 0 ? "+" : ""}${perf.scoreAdjustment})`);
+      }
+    }
+
+    return { adjustment: totalAdjustment, appliedSignals };
+  }
+
+  /**
+   * Get learning insights for API/display
+   */
+  getLearningInsights(): LearningInsights {
+    const signals = Array.from(this.signalPerformance.values());
+
+    // Sort by win rate (with minimum trades filter)
+    const reliableSignals = signals.filter((s) => s.totalTrades >= 3);
+    const sortedByWinRate = [...reliableSignals].sort((a, b) => b.winRate - a.winRate);
+
+    const bestSignals = sortedByWinRate.slice(0, 5).map((s) => s.signal);
+    const worstSignals = sortedByWinRate
+      .slice(-5)
+      .reverse()
+      .map((s) => s.signal);
+
+    return {
+      signals,
+      bestSignals,
+      worstSignals,
+      totalTradesAnalyzed: signals.reduce((sum, s) => sum + s.totalTrades, 0),
+      lastUpdated: Date.now(),
+    };
   }
 
   // ==========================================================================
@@ -848,6 +1073,21 @@ export class GhostTrader {
       reasons.push("organic traction");
     }
 
+    // === SELF-LEARNING ADJUSTMENT ===
+    // Apply learned score adjustments based on historical signal performance
+    const { adjustment, appliedSignals } = this.getLearningAdjustment(reasons);
+    if (adjustment !== 0) {
+      score += adjustment;
+      if (adjustment > 0) {
+        reasons.push(`learned bonus (+${adjustment})`);
+      } else {
+        redFlags.push(`learned penalty (${adjustment})`);
+      }
+      console.log(
+        `[GhostTrader] Applied learning adjustment: ${adjustment} for ${launch.symbol} (${appliedSignals.join(", ")})`
+      );
+    }
+
     // === FINAL DECISION ===
     // Lower threshold to 40 (was 50) - be more active while maintaining quality
     const shouldBuy = score >= 40 && redFlags.length === 0;
@@ -1001,6 +1241,9 @@ export class GhostTrader {
 
     // Update database
     await this.updatePositionInDatabase(position);
+
+    // Record for learning
+    await this.recordTradeOutcome(position);
 
     // Announce trade
     await this.announceTrade("sell", position);
