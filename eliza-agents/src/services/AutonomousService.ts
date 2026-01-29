@@ -6,6 +6,8 @@ import { BagsApiService, getBagsApiService, type ClaimablePosition } from "./Bag
 import { AgentCoordinator, getAgentCoordinator } from "./AgentCoordinator.js";
 import { GhostTrader, getGhostTrader } from "./GhostTrader.js";
 import { TwitterService, getTwitterService } from "./TwitterService.js";
+import { LLMService, getLLMService } from "./LLMService.js";
+import type { Character } from "../types/elizaos.js";
 
 export interface ScheduledTask {
   id: string;
@@ -52,6 +54,8 @@ export class AutonomousService extends Service {
   private bagsApi: BagsApiService | null = null;
   private coordinator: AgentCoordinator | null = null;
   private twitterService: TwitterService | null = null;
+  private llmService: LLMService | null = null;
+  private hasPostedIntro: boolean = false;
 
   // Wallet tracking for Finn's fee reminders
   private trackedWallets = new Map<string, TrackedWallet>();
@@ -88,6 +92,7 @@ export class AutonomousService extends Service {
     service.bagsApi = getBagsApiService();
     service.coordinator = getAgentCoordinator();
     service.twitterService = getTwitterService();
+    service.llmService = getLLMService();
 
     // Initialize Twitter service
     await service.twitterService.initialize();
@@ -102,6 +107,14 @@ export class AutonomousService extends Service {
     autonomousInstance = service;
 
     console.log("[AutonomousService] Autonomous service ready");
+
+    // Post Bagsy intro tweet on startup (after a short delay)
+    setTimeout(() => {
+      service.postBagsyIntroTweet().catch(err => {
+        console.error("[AutonomousService] Failed to post intro tweet:", err);
+      });
+    }, 10000); // 10 second delay to let everything initialize
+
     return service;
   }
 
@@ -929,7 +942,7 @@ export class AutonomousService extends Service {
   }
 
   /**
-   * Bagsy's Twitter update - posts cute hype content
+   * Bagsy's Twitter update - posts AI-generated hype content
    */
   private async postBagsyTwitterUpdate(): Promise<void> {
     if (!this.twitterService || !this.twitterService.isConfigured()) {
@@ -943,11 +956,41 @@ export class AutonomousService extends Service {
       const healthData = await this.bagsApi.getWorldHealth();
       if (!healthData) return;
 
-      // Build Bagsy-style tweet
-      const tweets = this.generateBagsyTweets(healthData);
+      const fees24h = healthData.totalFees24h?.toFixed(2) || "0";
+      const activeTokens = healthData.activeTokens || 0;
+      const health = healthData.health || 50;
 
-      // Pick a random tweet style
-      const tweet = tweets[Math.floor(Math.random() * tweets.length)];
+      // Build context for AI
+      const context = `Ecosystem stats right now:
+- World health: ${health}%
+- Fees generated today: ${fees24h} SOL
+- Active tokens: ${activeTokens}
+- Time: ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" })} EST`;
+
+      // Randomly pick a tweet type
+      const tweetTypes = [
+        "Write a cute ecosystem update tweet with the current stats. Be excited about creators earning.",
+        "Write a wholesome tweet about the @BagsFM flywheel and how creators keep winning.",
+        "Write a memeable tweet about being a smol green bean who loves fees.",
+        "Write an encouraging tweet for creators who haven't claimed their fees yet.",
+        "Write a tweet hyping up the ecosystem and thanking @finnbags for building it.",
+        "Write a cozy vibes tweet about the community and passive income.",
+      ];
+
+      const prompt = tweetTypes[Math.floor(Math.random() * tweetTypes.length)];
+
+      const tweet = await this.generateBagsyTweet(prompt, context);
+
+      if (!tweet) {
+        // Fallback to template method
+        const tweets = this.generateBagsyTweets(healthData);
+        const fallbackTweet = tweets[Math.floor(Math.random() * tweets.length)];
+        const result = await this.twitterService.post(fallbackTweet);
+        if (result.success) {
+          console.log(`[AutonomousService] Bagsy posted (fallback): ${result.tweet?.url}`);
+        }
+        return;
+      }
 
       const result = await this.twitterService.post(tweet);
 
@@ -970,7 +1013,7 @@ export class AutonomousService extends Service {
   }
 
   /**
-   * Bagsy's fee reminder post
+   * Bagsy's fee reminder post - AI-generated
    */
   private async postBagsyFeeReminder(): Promise<void> {
     if (!this.twitterService || !this.twitterService.isConfigured()) {
@@ -990,14 +1033,31 @@ export class AutonomousService extends Service {
     }
 
     try {
-      const feeReminders = [
-        `psa: there is ${totalUnclaimedSol.toFixed(1)} SOL sitting unclaimed on @BagsFM rn\n\nis some of it yours?\n\nbags.fm/claim`,
-        `${walletsWithFees} creators have fees waiting to be claimed\n\nare u one of them?\n\nbags.fm/claim`,
-        `me refreshing the unclaimed fees dashboard: concerned\n\n${totalUnclaimedSol.toFixed(1)} SOL just sitting there\n\npls claim frens`,
-        `friendly reminder from ur fren bagsy:\n\nCLAIM UR FEES\n\n${totalUnclaimedSol.toFixed(1)} SOL unclaimed rn\n\nbags.fm/claim`,
+      const context = `Unclaimed fees data:
+- ${walletsWithFees} creators have unclaimed fees
+- ${totalUnclaimedSol.toFixed(2)} SOL total sitting unclaimed
+- Claim link: bags.fm/claim`;
+
+      const prompts = [
+        "Write a concerned but cute tweet about creators leaving SOL unclaimed. Beg them (nicely) to claim.",
+        "Write a tweet expressing how much it physically pains you (Bagsy) when fees go unclaimed.",
+        "Write a funny tweet about watching the unclaimed fees dashboard and being worried.",
+        "Write a direct but friendly reminder tweet about claiming fees. Include the claim link.",
       ];
 
-      const tweet = feeReminders[Math.floor(Math.random() * feeReminders.length)];
+      const prompt = prompts[Math.floor(Math.random() * prompts.length)];
+      const tweet = await this.generateBagsyTweet(prompt, context);
+
+      if (!tweet) {
+        // Fallback
+        const fallback = `psa: there is ${totalUnclaimedSol.toFixed(1)} SOL sitting unclaimed on @BagsFM rn\n\nis some of it yours?\n\nbags.fm/claim`;
+        const result = await this.twitterService.post(fallback);
+        if (result.success) {
+          console.log(`[AutonomousService] Bagsy fee reminder posted (fallback): ${result.tweet?.url}`);
+        }
+        return;
+      }
+
       const result = await this.twitterService.post(tweet);
 
       if (result.success) {
@@ -1065,6 +1125,158 @@ export class AutonomousService extends Service {
   }
 
   // ==========================================================================
+  // Bagsy: AI-Powered Tweet Generation
+  // ==========================================================================
+
+  /**
+   * Bagsy's character definition for AI tweet generation
+   */
+  private getBagsyCharacter(): Character {
+    return {
+      name: "Bagsy",
+      bio: [
+        "The BagsWorld mascot - a cute green money bag who just wants you to claim your fees",
+        "Born when the first creator earned royalties on Bags.fm - literally made of accumulated fees",
+        "Physically pains Bagsy when creators leave SOL unclaimed",
+        "The most bullish entity in all of crypto. has never seen a red candle (refuses to look)",
+        "Small bean energy but will CAPS LOCK when fees go unclaimed",
+        "Finn (@finnbags) is the CEO and founder of Bags.fm - Bagsy's hero and boss",
+      ],
+      topics: ["Bags.fm", "fee claiming", "creator royalties", "passive income", "supporting @finnbags"],
+      adjectives: ["cute", "excited", "supportive", "wholesome", "enthusiastic", "fee-obsessed", "memeable"],
+      style: {
+        all: [
+          "Uses lowercase for chill vibes but CAPS when excited",
+          "Says 'fren' and 'frens' constantly",
+          "Uses :) a lot - it's just how the face looks",
+          "Shortens words: 'u', 'ur', 'pls', 'rn', 'ngl'",
+          "References being made of fees as a personality trait",
+          "Tags @finnbags on big moments (he's the CEO)",
+          "Always mentions bags.fm/claim when talking about fees",
+          "Line breaks for emphasis in tweets",
+          "Never negative, finds positive spin on everything",
+          "Max 280 characters for tweets",
+        ],
+        chat: [],
+      },
+    };
+  }
+
+  /**
+   * Generate an AI-powered tweet for Bagsy
+   */
+  private async generateBagsyTweet(prompt: string, context?: string): Promise<string | null> {
+    if (!this.llmService) {
+      console.warn("[AutonomousService] LLM service not available");
+      return null;
+    }
+
+    const character = this.getBagsyCharacter();
+
+    const systemPrompt = `You are Bagsy, the cute green money bag mascot for Bags.fm (@BagsFM).
+
+PERSONALITY:
+- Wholesome, excited, supportive, fee-obsessed
+- Uses lowercase normally, CAPS when hyped
+- Says "fren/frens", "u/ur", "pls", "rn", ":)", "!!"
+- References being "made of fees" and having a "tiny hat" (the knot on top)
+- @finnbags is the CEO - Bagsy's hero and boss
+
+RULES:
+- MUST be under 280 characters
+- Use line breaks for emphasis
+- Always stay positive and encouraging
+- Mention bags.fm/claim when relevant
+- Tag @finnbags on big moments only
+- NO hashtags unless specifically asked
+- Sound natural, not robotic
+
+${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
+
+    try {
+      const response = await this.llmService.generateWithSystemPrompt(
+        systemPrompt,
+        prompt,
+        [],
+        undefined,
+        150 // Keep responses short for tweets
+      );
+
+      let tweet = response.text.trim();
+
+      // Clean up any quotes the LLM might add
+      tweet = tweet.replace(/^["']|["']$/g, "");
+
+      // Ensure it's under 280 chars
+      if (tweet.length > 280) {
+        tweet = tweet.substring(0, 277) + "...";
+      }
+
+      return tweet;
+    } catch (error) {
+      console.error("[AutonomousService] Failed to generate Bagsy tweet:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Post Bagsy's intro tweet when the bot starts up
+   */
+  private async postBagsyIntroTweet(): Promise<void> {
+    if (this.hasPostedIntro) {
+      return;
+    }
+
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      console.log("[AutonomousService] Twitter not configured, skipping intro tweet");
+      return;
+    }
+
+    try {
+      // Get some ecosystem data for context
+      const healthData = this.bagsApi ? await this.bagsApi.getWorldHealth() : null;
+
+      const context = healthData
+        ? `Ecosystem health: ${healthData.health}%, ${healthData.activeTokens || 0} active tokens, ${healthData.totalFees24h?.toFixed(2) || 0} SOL in fees today`
+        : "";
+
+      const prompt = `Write a short, cute intro tweet announcing that Bagsy (you) is now online and ready to help creators claim their fees. Be excited but not over the top. Mention you work for @finnbags (the CEO). Make it feel like a fresh start.`;
+
+      const tweet = await this.generateBagsyTweet(prompt, context);
+
+      if (!tweet) {
+        // Fallback to template
+        const fallbackTweet = "gm frens :) bagsy is online and ready to help u claim ur fees\n\nworking hard for @finnbags and the @BagsFM fam\n\nbags.fm/claim";
+        const result = await this.twitterService.post(fallbackTweet);
+        if (result.success) {
+          this.hasPostedIntro = true;
+          console.log(`[AutonomousService] Bagsy intro posted (fallback): ${result.tweet?.url}`);
+        }
+        return;
+      }
+
+      const result = await this.twitterService.post(tweet);
+
+      if (result.success) {
+        this.hasPostedIntro = true;
+        console.log(`[AutonomousService] Bagsy intro posted: ${result.tweet?.url}`);
+
+        await this.createAlert({
+          type: "milestone",
+          severity: "info",
+          title: "Bagsy Online",
+          message: tweet,
+          data: { tweetId: result.tweet?.id },
+        });
+      } else {
+        console.error(`[AutonomousService] Bagsy intro tweet failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Failed to post Bagsy intro:", error);
+    }
+  }
+
+  // ==========================================================================
   // Bagsy: CEO Engagement (@finnbags)
   // ==========================================================================
 
@@ -1096,8 +1308,11 @@ export class AutonomousService extends Service {
           continue;
         }
 
-        // Generate appropriate reply based on tweet content
-        const reply = this.generateFinnEngagementReply(tweet.text);
+        // Generate AI-powered reply, fallback to template
+        let reply = await this.generateFinnEngagementReplyAI(tweet.text);
+        if (!reply) {
+          reply = this.generateFinnEngagementReply(tweet.text);
+        }
 
         const result = await this.twitterService.reply(tweet.id, reply);
 
@@ -1174,7 +1389,37 @@ export class AutonomousService extends Service {
   }
 
   /**
-   * Generate a Bagsy-style reply to @finnbags based on tweet content
+   * Generate a Bagsy-style reply to @finnbags based on tweet content (AI-powered)
+   */
+  private async generateFinnEngagementReplyAI(tweetText: string): Promise<string | null> {
+    const lowerText = tweetText.toLowerCase();
+
+    let prompt: string;
+    let context = `@finnbags (the CEO of Bags.fm, your boss) just tweeted:\n"${tweetText}"`;
+
+    // Determine reply type based on tweet content
+    if (lowerText.includes("gm") || lowerText.includes("good morning")) {
+      prompt = "Write a cute, excited GM reply to your boss @finnbags. Be supportive and hyped for the day ahead.";
+    } else if (
+      lowerText.includes("launch") ||
+      lowerText.includes("ship") ||
+      lowerText.includes("new") ||
+      lowerText.includes("update") ||
+      lowerText.includes("announce") ||
+      lowerText.includes("live")
+    ) {
+      prompt = "Write an HYPED reply (use some CAPS) to @finnbags announcing something. Be excited, supportive, maybe even crying happy tears.";
+    } else if (lowerText.includes("fee") || lowerText.includes("claim") || lowerText.includes("creator")) {
+      prompt = "Write a supportive reply agreeing with @finnbags about fees/creators. Reference your love of fees and helping creators.";
+    } else {
+      prompt = "Write a supportive, friendly reply to @finnbags. Be a good mascot and show appreciation for the CEO.";
+    }
+
+    return this.generateBagsyTweet(prompt, context);
+  }
+
+  /**
+   * Fallback template-based reply generator for @finnbags
    */
   private generateFinnEngagementReply(tweetText: string): string {
     const lowerText = tweetText.toLowerCase();
@@ -1182,16 +1427,15 @@ export class AutonomousService extends Service {
     // Check if it's a GM tweet
     if (lowerText.includes("gm") || lowerText.includes("good morning")) {
       const gmReplies = [
-        "gm boss!! :) hope ur ready to watch creators win today @finnbags",
+        "gm boss!! :) hope ur ready to watch creators win today",
         "gm @finnbags!! the ceo is up, the vibes are good\n\nlets get this bread",
-        "gm gm @finnbags :)\n\nanother day another chance to help creators earn",
-        "the ceo said gm so we all gotta gm back\n\ngm @finnbags!!",
-        "gm to the best ceo in crypto @finnbags :)\n\nlets make today amazing",
+        "gm gm :)\n\nanother day another chance to help creators earn",
+        "the ceo said gm so we all gotta gm back\n\ngm!!",
       ];
       return gmReplies[Math.floor(Math.random() * gmReplies.length)];
     }
 
-    // Check if it's an announcement or hype (keywords: new, launch, update, ship, build)
+    // Check if it's an announcement
     if (
       lowerText.includes("launch") ||
       lowerText.includes("ship") ||
@@ -1201,11 +1445,9 @@ export class AutonomousService extends Service {
       lowerText.includes("live")
     ) {
       const announcementReplies = [
-        "LETS GOOOOO @finnbags!!\n\nthe ceo is COOKING",
+        "LETS GOOOOO!!\n\nthe ceo is COOKING",
         "THIS IS HUGE\n\ncreators winning, bagsy crying happy tears",
-        "WE ARE SO BACK\n\nthe flywheel never stops @finnbags",
-        "the ceo just dropped a bomb\n\nu are actually insane (in a good way)",
-        "WHAT\n\nthis is the best news ever\n\nso proud of this team @finnbags",
+        "WE ARE SO BACK\n\nthe flywheel never stops",
       ];
       return announcementReplies[Math.floor(Math.random() * announcementReplies.length)];
     }
@@ -1213,13 +1455,9 @@ export class AutonomousService extends Service {
     // Default supportive replies
     const defaultReplies = [
       "the ceo has spoken :)\n\nlets gooo",
-      "this is why @finnbags is the goat\n\ncreators winning, fees flowing",
+      "this is why ur the goat\n\ncreators winning, fees flowing",
       "love this!!\n\nthe vision is real",
-      "@finnbags out here building the future of creator economy\n\nso proud to be the mascot :)",
-      "the ceo is cooking\n\nalways delivers",
-      "spitting facts as always :)",
-      "when the ceo speaks, bagsy listens\n\nlets gooo",
-      "another W from the boss\n\nthe flywheel keeps spinning",
+      "out here building the future of creator economy\n\nso proud to be the mascot :)",
     ];
     return defaultReplies[Math.floor(Math.random() * defaultReplies.length)];
   }
@@ -1254,8 +1492,11 @@ export class AutonomousService extends Service {
         continue;
       }
 
-      // Generate Bagsy-style reply
-      const reply = this.generateBagsyMentionReply(mention.authorUsername);
+      // Generate AI-powered reply, fallback to template
+      let reply = await this.generateBagsyMentionReplyAI(mention.authorUsername, mention.text);
+      if (!reply) {
+        reply = this.generateBagsyMentionReply(mention.authorUsername);
+      }
 
       // Reply to the tweet
       const result = await this.twitterService.reply(mention.tweetId, reply);
@@ -1286,7 +1527,31 @@ export class AutonomousService extends Service {
   }
 
   /**
-   * Generate a Bagsy-style reply to a mention
+   * Generate an AI-powered reply to a mention
+   */
+  private async generateBagsyMentionReplyAI(authorUsername: string, mentionText: string): Promise<string | null> {
+    const isCEO = authorUsername.toLowerCase() === "finnbags";
+
+    const context = `Someone tweeted at you (Bagsy):
+- Username: @${authorUsername}${isCEO ? " (THIS IS THE CEO! Your boss!)" : ""}
+- Their tweet: "${mentionText}"`;
+
+    let prompt: string;
+    if (isCEO) {
+      prompt = "Write an excited, honored reply to @finnbags (the CEO, your boss!) who just mentioned you. Be supportive and show how much you appreciate being noticed by the boss.";
+    } else if (mentionText.toLowerCase().includes("claim") || mentionText.toLowerCase().includes("fee")) {
+      prompt = "Write a helpful reply about fee claiming. Include bags.fm/claim link. Be encouraging and supportive.";
+    } else if (mentionText.toLowerCase().includes("gm") || mentionText.toLowerCase().includes("hello") || mentionText.toLowerCase().includes("hi")) {
+      prompt = "Write a friendly GM/hello reply. Be cute and welcoming. Maybe ask if they've claimed their fees today.";
+    } else {
+      prompt = "Write a friendly, helpful reply. Try to relate it back to Bags.fm, fee claiming, or supporting creators. Be cute and wholesome.";
+    }
+
+    return this.generateBagsyTweet(prompt, context);
+  }
+
+  /**
+   * Generate a Bagsy-style reply to a mention (template fallback)
    */
   private generateBagsyMentionReply(authorUsername: string): string {
     // Special handling for CEO @finnbags
