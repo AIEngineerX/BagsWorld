@@ -8,12 +8,44 @@
 // POST /api/ghost/evaluate - Manually trigger evaluation
 // GET /api/ghost/study-wallet/:address - Analyze a wallet's trading patterns
 
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { getGhostTrader } from "../services/GhostTrader.js";
 import { getHeliusService } from "../services/HeliusService.js";
 import { getSolanaService } from "../services/SolanaService.js";
 import { getSmartMoneyService } from "../services/SmartMoneyService.js";
 import { getCopyTraderService } from "../services/CopyTraderService.js";
+
+// ============================================================================
+// Authentication Middleware
+// ============================================================================
+
+const GHOST_ADMIN_KEY = process.env.GHOST_ADMIN_KEY;
+
+/**
+ * Middleware to protect sensitive endpoints
+ * Requires header: x-ghost-admin-key: YOUR_SECRET
+ */
+function requireAdminKey(req: Request, res: Response, next: NextFunction): void {
+  // If no admin key is configured, allow all (backwards compatible but warns)
+  if (!GHOST_ADMIN_KEY) {
+    console.warn("[Ghost] WARNING: GHOST_ADMIN_KEY not set - endpoints are unprotected!");
+    next();
+    return;
+  }
+
+  const providedKey = req.headers["x-ghost-admin-key"];
+
+  if (providedKey !== GHOST_ADMIN_KEY) {
+    res.status(401).json({
+      success: false,
+      error: "Unauthorized",
+      message: "Invalid or missing x-ghost-admin-key header",
+    });
+    return;
+  }
+
+  next();
+}
 
 // Solana RPC for wallet analysis
 const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
@@ -121,8 +153,8 @@ router.get("/positions/open", (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/enable - Enable trading
-router.post("/enable", async (req: Request, res: Response) => {
+// POST /api/ghost/enable - Enable trading (PROTECTED)
+router.post("/enable", requireAdminKey, async (req: Request, res: Response) => {
   const { confirmPhrase } = req.body;
 
   // Require confirmation phrase for safety
@@ -157,8 +189,8 @@ router.post("/enable", async (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/disable - Disable trading (kill switch)
-router.post("/disable", async (req: Request, res: Response) => {
+// POST /api/ghost/disable - Disable trading (kill switch) (PROTECTED)
+router.post("/disable", requireAdminKey, async (req: Request, res: Response) => {
   const trader = getGhostTrader();
   await trader.disableTrading();
 
@@ -170,8 +202,8 @@ router.post("/disable", async (req: Request, res: Response) => {
   });
 });
 
-// Alias: POST /api/ghost/stop-trading
-router.post("/stop-trading", async (req: Request, res: Response) => {
+// Alias: POST /api/ghost/stop-trading (PROTECTED)
+router.post("/stop-trading", requireAdminKey, async (req: Request, res: Response) => {
   const trader = getGhostTrader();
   await trader.disableTrading();
 
@@ -183,7 +215,7 @@ router.post("/stop-trading", async (req: Request, res: Response) => {
 });
 
 // POST /api/ghost/config - Update trading configuration
-router.post("/config", (req: Request, res: Response) => {
+router.post("/config", requireAdminKey, (req: Request, res: Response) => {
   const trader = getGhostTrader();
   const allowedUpdates = [
     "minPositionSol",
@@ -343,8 +375,8 @@ router.post("/check-positions", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/ghost/buy - Manually buy a specific token
-router.post("/buy", async (req: Request, res: Response) => {
+// POST /api/ghost/buy - Manually buy a specific token (PROTECTED)
+router.post("/buy", requireAdminKey, async (req: Request, res: Response) => {
   const { mint, amountSol } = req.body;
   const trader = getGhostTrader();
 
@@ -383,8 +415,8 @@ router.post("/buy", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/ghost/sell - Manually sell a position
-router.post("/sell", async (req: Request, res: Response) => {
+// POST /api/ghost/sell - Manually sell a position (PROTECTED)
+router.post("/sell", requireAdminKey, async (req: Request, res: Response) => {
   const { positionId } = req.body;
   const trader = getGhostTrader();
 
@@ -1332,8 +1364,8 @@ router.get("/copy-trader/status", (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/copy-trader/enable - Enable copy trading (DANGEROUS)
-router.post("/copy-trader/enable", async (req: Request, res: Response) => {
+// POST /api/ghost/copy-trader/enable - Enable copy trading (DANGEROUS) (PROTECTED)
+router.post("/copy-trader/enable", requireAdminKey, async (req: Request, res: Response) => {
   const { confirmPhrase } = req.body;
   const copyTrader = getCopyTraderService();
 
@@ -1358,8 +1390,8 @@ router.post("/copy-trader/enable", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/ghost/copy-trader/disable - Disable copy trading
-router.post("/copy-trader/disable", async (req: Request, res: Response) => {
+// POST /api/ghost/copy-trader/disable - Disable copy trading (PROTECTED)
+router.post("/copy-trader/disable", requireAdminKey, async (req: Request, res: Response) => {
   const copyTrader = getCopyTraderService();
   await copyTrader.disable();
 
@@ -1390,8 +1422,8 @@ router.get("/copy-trader/pending", (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/copy-trader/approve/:id - Approve a pending trade
-router.post("/copy-trader/approve/:id", async (req: Request, res: Response) => {
+// POST /api/ghost/copy-trader/approve/:id - Approve a pending trade (PROTECTED)
+router.post("/copy-trader/approve/:id", requireAdminKey, async (req: Request, res: Response) => {
   const tradeId = req.params.id as string;
   const copyTrader = getCopyTraderService();
 
@@ -1410,8 +1442,8 @@ router.post("/copy-trader/approve/:id", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/ghost/copy-trader/reject/:id - Reject a pending trade
-router.post("/copy-trader/reject/:id", async (req: Request, res: Response) => {
+// POST /api/ghost/copy-trader/reject/:id - Reject a pending trade (PROTECTED)
+router.post("/copy-trader/reject/:id", requireAdminKey, async (req: Request, res: Response) => {
   const tradeId = req.params.id as string;
   const copyTrader = getCopyTraderService();
 
@@ -1423,8 +1455,8 @@ router.post("/copy-trader/reject/:id", async (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/copy-trader/config - Update copy trader config
-router.post("/copy-trader/config", async (req: Request, res: Response) => {
+// POST /api/ghost/copy-trader/config - Update copy trader config (PROTECTED)
+router.post("/copy-trader/config", requireAdminKey, async (req: Request, res: Response) => {
   const copyTrader = getCopyTraderService();
 
   try {
