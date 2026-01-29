@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -31,69 +31,30 @@ interface RaffleState {
 
 const AGE_VERIFIED_KEY = "bagsworld_casino_age_verified";
 
-// Game definitions - raffle is now LIVE!
-const CASINO_GAMES = [
-  {
-    id: "raffle",
-    name: "RAFFLE",
-    description: "Free entry, winner takes pot",
-    icon: "TKT",
-    color: "from-blue-600 to-indigo-700",
-    borderColor: "border-blue-500/30",
-    glowColor: "shadow-blue-500/20",
-    comingSoon: false, // LIVE!
-  },
-  {
-    id: "highlow",
-    name: "HIGH / LOW",
-    description: "Predict if the next card will be higher or lower",
-    icon: "H/L",
-    color: "from-red-600 to-red-800",
-    borderColor: "border-red-500/30",
-    glowColor: "shadow-red-500/20",
-    comingSoon: true,
-  },
-  {
-    id: "coinflip",
-    name: "COIN FLIP",
-    description: "Double or nothing - 50/50 odds",
-    icon: "2x",
-    color: "from-yellow-600 to-amber-700",
-    borderColor: "border-yellow-500/30",
-    glowColor: "shadow-yellow-500/20",
-    comingSoon: true,
-  },
-  {
-    id: "dice",
-    name: "DICE ROLL",
-    description: "Roll the dice, beat the house",
-    icon: "D6",
-    color: "from-green-600 to-emerald-700",
-    borderColor: "border-green-500/30",
-    glowColor: "shadow-green-500/20",
-    comingSoon: true,
-  },
-  {
-    id: "slots",
-    name: "SLOT MACHINE",
-    description: "Match symbols to win big",
-    icon: "777",
-    color: "from-purple-600 to-violet-700",
-    borderColor: "border-purple-500/30",
-    glowColor: "shadow-purple-500/20",
-    comingSoon: true,
-  },
-  {
-    id: "prediction",
-    name: "PRICE PREDICT",
-    description: "Predict token price movements",
-    icon: "UP",
-    color: "from-cyan-600 to-teal-700",
-    borderColor: "border-cyan-500/30",
-    glowColor: "shadow-cyan-500/20",
-    comingSoon: true,
-  },
+// Slot machine symbols
+const SLOT_SYMBOLS = [
+  { id: "seven", emoji: "7", color: "#ef4444", name: "Lucky Seven" },
+  { id: "bar", emoji: "B", color: "#fbbf24", name: "Bar" },
+  { id: "diamond", emoji: "D", color: "#60a5fa", name: "Diamond" },
+  { id: "bell", emoji: "N", color: "#fde047", name: "Bell" },
+  { id: "cherry", emoji: "C", color: "#f87171", name: "Cherry" },
+  { id: "coin", emoji: "$", color: "#a3e635", name: "Coin" },
 ];
+
+// Slot payout table
+const SLOT_PAYOUTS: { combo: string[]; multiplier: number; name: string }[] = [
+  { combo: ["seven", "seven", "seven"], multiplier: 100, name: "JACKPOT!" },
+  { combo: ["bar", "bar", "bar"], multiplier: 50, name: "Triple Bar" },
+  { combo: ["diamond", "diamond", "diamond"], multiplier: 30, name: "Diamonds" },
+  { combo: ["bell", "bell", "bell"], multiplier: 20, name: "Bells" },
+  { combo: ["cherry", "cherry", "cherry"], multiplier: 15, name: "Cherries" },
+  { combo: ["coin", "coin", "coin"], multiplier: 10, name: "Coins" },
+  { combo: ["seven", "seven", "*"], multiplier: 5, name: "Double Seven" },
+  { combo: ["cherry", "cherry", "*"], multiplier: 3, name: "Double Cherry" },
+];
+
+// Bet options
+const BET_OPTIONS = [0.01, 0.05, 0.1];
 
 // Truncate wallet address for display
 function truncateWallet(wallet: string): string {
@@ -101,10 +62,281 @@ function truncateWallet(wallet: string): string {
   return `${wallet.slice(0, 4)}...${wallet.slice(-4)}`;
 }
 
+// Enhanced pixel art corner with rivets
+function CasinoCorner({ position }: { position: "tl" | "tr" | "bl" | "br" }) {
+  const rotation = {
+    tl: "rotate(0)",
+    tr: "rotate(90deg)",
+    br: "rotate(180deg)",
+    bl: "rotate(270deg)",
+  }[position];
+
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      className="absolute z-20"
+      style={{
+        transform: rotation,
+        top: position.includes("t") ? "-4px" : "auto",
+        bottom: position.includes("b") ? "-4px" : "auto",
+        left: position.includes("l") ? "-4px" : "auto",
+        right: position.includes("r") ? "-4px" : "auto",
+      }}
+    >
+      {/* Outer diamond shape */}
+      <rect x="0" y="0" width="4" height="4" fill="#fbbf24" />
+      <rect x="4" y="0" width="4" height="4" fill="#dc2626" />
+      <rect x="8" y="0" width="4" height="4" fill="#fbbf24" />
+      <rect x="12" y="0" width="4" height="4" fill="#dc2626" />
+      <rect x="0" y="4" width="4" height="4" fill="#dc2626" />
+      <rect x="0" y="8" width="4" height="4" fill="#fbbf24" />
+      <rect x="0" y="12" width="4" height="4" fill="#dc2626" />
+      <rect x="16" y="0" width="4" height="4" fill="#b91c1c" />
+      <rect x="0" y="16" width="4" height="4" fill="#b91c1c" />
+      {/* Rivet/stud effect */}
+      <rect x="6" y="6" width="4" height="4" fill="#fde047" />
+      <rect x="7" y="7" width="2" height="2" fill="#d97706" />
+    </svg>
+  );
+}
+
+// Enhanced casino chip with more detail
+function CasinoChip({ size = 24, animated = false }: { size?: number; animated?: boolean }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      className={`inline-block ${animated ? "animate-[spin_3s_linear_infinite]" : ""}`}
+    >
+      {/* Outer ring */}
+      <rect x="6" y="1" width="8" height="2" fill="#dc2626" />
+      <rect x="3" y="3" width="3" height="2" fill="#dc2626" />
+      <rect x="14" y="3" width="3" height="2" fill="#dc2626" />
+      <rect x="1" y="6" width="2" height="8" fill="#dc2626" />
+      <rect x="17" y="6" width="2" height="8" fill="#dc2626" />
+      <rect x="3" y="15" width="3" height="2" fill="#dc2626" />
+      <rect x="14" y="15" width="3" height="2" fill="#dc2626" />
+      <rect x="6" y="17" width="8" height="2" fill="#dc2626" />
+      {/* Notches */}
+      <rect x="8" y="0" width="2" height="1" fill="#fbbf24" />
+      <rect x="0" y="9" width="1" height="2" fill="#fbbf24" />
+      <rect x="19" y="9" width="1" height="2" fill="#fbbf24" />
+      <rect x="8" y="19" width="2" height="1" fill="#fbbf24" />
+      {/* Inner gold circle */}
+      <rect x="5" y="5" width="10" height="10" fill="#fbbf24" />
+      <rect x="4" y="6" width="1" height="8" fill="#fbbf24" />
+      <rect x="15" y="6" width="1" height="8" fill="#fbbf24" />
+      {/* Center emblem */}
+      <rect x="7" y="7" width="6" height="6" fill="#dc2626" />
+      <rect x="8" y="8" width="4" height="4" fill="#b91c1c" />
+      <rect x="9" y="9" width="2" height="2" fill="#fde047" />
+    </svg>
+  );
+}
+
+// Animated pixel art roulette wheel
+function RouletteWheel({ size = 40 }: { size?: number }) {
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      {/* Outer frame (stationary) */}
+      <svg width={size} height={size} viewBox="0 0 32 32" className="absolute inset-0">
+        {/* Gold outer rim */}
+        <rect x="12" y="0" width="8" height="2" fill="#d97706" />
+        <rect x="8" y="2" width="4" height="2" fill="#d97706" />
+        <rect x="20" y="2" width="4" height="2" fill="#d97706" />
+        <rect x="4" y="4" width="4" height="2" fill="#d97706" />
+        <rect x="24" y="4" width="4" height="2" fill="#d97706" />
+        <rect x="2" y="6" width="2" height="4" fill="#d97706" />
+        <rect x="28" y="6" width="2" height="4" fill="#d97706" />
+        <rect x="0" y="10" width="2" height="12" fill="#d97706" />
+        <rect x="30" y="10" width="2" height="12" fill="#d97706" />
+        <rect x="2" y="22" width="2" height="4" fill="#d97706" />
+        <rect x="28" y="22" width="2" height="4" fill="#d97706" />
+        <rect x="4" y="26" width="4" height="2" fill="#d97706" />
+        <rect x="24" y="26" width="4" height="2" fill="#d97706" />
+        <rect x="8" y="28" width="4" height="2" fill="#d97706" />
+        <rect x="20" y="28" width="4" height="2" fill="#d97706" />
+        <rect x="12" y="30" width="8" height="2" fill="#d97706" />
+        {/* Ball track (gold inner ring) */}
+        <rect x="12" y="2" width="8" height="1" fill="#fbbf24" />
+        <rect x="2" y="12" width="1" height="8" fill="#fbbf24" />
+        <rect x="29" y="12" width="1" height="8" fill="#fbbf24" />
+        <rect x="12" y="29" width="8" height="1" fill="#fbbf24" />
+      </svg>
+      {/* Spinning wheel */}
+      <svg
+        width={size * 0.75}
+        height={size * 0.75}
+        viewBox="0 0 24 24"
+        className="absolute animate-[spin_4s_linear_infinite]"
+        style={{ top: size * 0.125, left: size * 0.125 }}
+      >
+        {/* Wheel segments - alternating red/black */}
+        <rect x="10" y="0" width="4" height="4" fill="#dc2626" />
+        <rect x="16" y="2" width="4" height="4" fill="#1a1a1a" />
+        <rect x="20" y="6" width="4" height="4" fill="#dc2626" />
+        <rect x="20" y="12" width="4" height="4" fill="#1a1a1a" />
+        <rect x="18" y="18" width="4" height="4" fill="#dc2626" />
+        <rect x="12" y="20" width="4" height="4" fill="#1a1a1a" />
+        <rect x="6" y="20" width="4" height="4" fill="#dc2626" />
+        <rect x="0" y="16" width="4" height="4" fill="#1a1a1a" />
+        <rect x="0" y="10" width="4" height="4" fill="#dc2626" />
+        <rect x="0" y="4" width="4" height="4" fill="#1a1a1a" />
+        <rect x="4" y="0" width="4" height="4" fill="#dc2626" />
+        <rect x="14" y="4" width="4" height="4" fill="#1a1a1a" />
+        {/* Green zero */}
+        <rect x="8" y="2" width="2" height="2" fill="#16a34a" />
+        {/* Inner circle */}
+        <rect x="8" y="8" width="8" height="8" fill="#fbbf24" />
+        <rect x="6" y="10" width="2" height="4" fill="#fbbf24" />
+        <rect x="16" y="10" width="2" height="4" fill="#fbbf24" />
+        {/* Center hub */}
+        <rect x="10" y="10" width="4" height="4" fill="#d97706" />
+        <rect x="11" y="11" width="2" height="2" fill="#fde047" />
+      </svg>
+      {/* Ball (bouncing on the wheel) */}
+      <div
+        className="absolute w-2 h-2 bg-white rounded-full shadow-lg animate-[roulette-ball_2s_ease-in-out_infinite]"
+        style={{
+          top: "15%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          boxShadow: "0 0 4px rgba(255,255,255,0.8), inset 1px 1px 0 rgba(0,0,0,0.2)",
+        }}
+      />
+    </div>
+  );
+}
+
+// Detailed pixel art raffle ticket
+function RaffleTicket({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" className="inline-block">
+      {/* Ticket body */}
+      <rect x="1" y="4" width="18" height="12" fill="#fbbf24" />
+      <rect x="2" y="5" width="16" height="10" fill="#0a0505" />
+      {/* Gold border detail */}
+      <rect x="1" y="4" width="18" height="1" fill="#fde047" />
+      <rect x="1" y="15" width="18" height="1" fill="#d97706" />
+      {/* Perforations */}
+      <rect x="6" y="4" width="1" height="1" fill="#0a0505" />
+      <rect x="6" y="6" width="1" height="1" fill="#fbbf24" />
+      <rect x="6" y="8" width="1" height="1" fill="#0a0505" />
+      <rect x="6" y="10" width="1" height="1" fill="#fbbf24" />
+      <rect x="6" y="12" width="1" height="1" fill="#0a0505" />
+      <rect x="6" y="14" width="1" height="1" fill="#fbbf24" />
+      <rect x="6" y="15" width="1" height="1" fill="#0a0505" />
+      {/* Star emblem */}
+      <rect x="11" y="7" width="1" height="1" fill="#fbbf24" />
+      <rect x="10" y="8" width="3" height="1" fill="#fbbf24" />
+      <rect x="9" y="9" width="5" height="1" fill="#fde047" />
+      <rect x="10" y="10" width="3" height="1" fill="#fbbf24" />
+      <rect x="9" y="11" width="2" height="1" fill="#fbbf24" />
+      <rect x="12" y="11" width="2" height="1" fill="#fbbf24" />
+      {/* Ticket number lines */}
+      <rect x="3" y="7" width="2" height="1" fill="#fbbf24" opacity="0.5" />
+      <rect x="3" y="9" width="2" height="1" fill="#fbbf24" opacity="0.5" />
+      <rect x="3" y="11" width="2" height="1" fill="#fbbf24" opacity="0.5" />
+    </svg>
+  );
+}
+
+// Pixel art slot machine icon
+function SlotIcon({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" className="inline-block">
+      {/* Machine body */}
+      <rect x="2" y="3" width="16" height="14" fill="#dc2626" />
+      <rect x="3" y="4" width="14" height="12" fill="#b91c1c" />
+      {/* Screen area */}
+      <rect x="4" y="5" width="12" height="7" fill="#0a0505" />
+      <rect x="5" y="6" width="10" height="5" fill="#1a0a0a" />
+      {/* Three 7s */}
+      <rect x="5" y="7" width="2" height="3" fill="#fbbf24" />
+      <rect x="9" y="7" width="2" height="3" fill="#fbbf24" />
+      <rect x="13" y="7" width="2" height="3" fill="#fbbf24" />
+      {/* Lever */}
+      <rect x="17" y="6" width="2" height="6" fill="#fbbf24" />
+      <rect x="16" y="5" width="4" height="2" fill="#fde047" />
+      {/* Coin slot */}
+      <rect x="8" y="13" width="4" height="2" fill="#0a0505" />
+      <rect x="9" y="13" width="2" height="1" fill="#fbbf24" />
+      {/* Top decoration */}
+      <rect x="6" y="2" width="8" height="2" fill="#fde047" />
+      <rect x="8" y="1" width="4" height="1" fill="#fbbf24" />
+    </svg>
+  );
+}
+
+// Pixel padlock icon for coming soon
+function PixelLock({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 12 12" className="inline-block">
+      <rect x="3" y="5" width="6" height="6" fill="#4a4a4a" />
+      <rect x="4" y="6" width="4" height="4" fill="#3a3a3a" />
+      <rect x="4" y="2" width="1" height="4" fill="#5a5a5a" />
+      <rect x="7" y="2" width="1" height="4" fill="#5a5a5a" />
+      <rect x="4" y="2" width="4" height="1" fill="#5a5a5a" />
+      <rect x="5" y="7" width="2" height="2" fill="#fbbf24" />
+    </svg>
+  );
+}
+
+// Animated pixel chevron
+function PixelChevron() {
+  return (
+    <div className="flex items-center animate-[bounce-x_1s_ease-in-out_infinite]">
+      <svg width="12" height="12" viewBox="0 0 12 12" className="inline-block">
+        <rect x="2" y="5" width="2" height="2" fill="#fbbf24" />
+        <rect x="4" y="4" width="2" height="2" fill="#fbbf24" />
+        <rect x="4" y="6" width="2" height="2" fill="#fbbf24" />
+        <rect x="6" y="3" width="2" height="2" fill="#fde047" />
+        <rect x="6" y="7" width="2" height="2" fill="#fde047" />
+        <rect x="8" y="4" width="2" height="2" fill="#fbbf24" />
+        <rect x="8" y="6" width="2" height="2" fill="#fbbf24" />
+      </svg>
+    </div>
+  );
+}
+
+// Pixel star bullet
+function PixelStar() {
+  return (
+    <svg width="8" height="8" viewBox="0 0 8 8" className="inline-block flex-shrink-0">
+      <rect x="3" y="0" width="2" height="2" fill="#fbbf24" />
+      <rect x="0" y="3" width="2" height="2" fill="#fbbf24" />
+      <rect x="6" y="3" width="2" height="2" fill="#fbbf24" />
+      <rect x="2" y="2" width="4" height="4" fill="#fde047" />
+      <rect x="3" y="6" width="2" height="2" fill="#fbbf24" />
+    </svg>
+  );
+}
+
+// Slot reel symbol component
+function SlotSymbol({ symbol, spinning }: { symbol: (typeof SLOT_SYMBOLS)[0]; spinning: boolean }) {
+  return (
+    <div
+      className={`w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center casino-reel-symbol ${spinning ? "animate-slot-blur" : ""}`}
+      style={{ backgroundColor: "#0a0505" }}
+    >
+      <span
+        className="font-pixel text-2xl sm:text-3xl"
+        style={{ color: symbol.color, textShadow: `0 0 8px ${symbol.color}40` }}
+      >
+        {symbol.emoji}
+      </span>
+    </div>
+  );
+}
+
 export function CasinoModal({ onClose }: CasinoModalProps) {
-  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [view, setView] = useState<"lobby" | "raffle" | "slots" | "admin">("lobby");
   const [ageVerified, setAgeVerified] = useState<boolean | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   // Token gate states
   const [isCheckingAccess, setIsCheckingAccess] = useState(false);
@@ -118,11 +350,34 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   const [entryMessage, setEntryMessage] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
+  // Slot machine states
+  const [slotReels, setSlotReels] = useState<(typeof SLOT_SYMBOLS)[0][]>([
+    SLOT_SYMBOLS[0],
+    SLOT_SYMBOLS[0],
+    SLOT_SYMBOLS[0],
+  ]);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [reelsStopped, setReelsStopped] = useState([true, true, true]);
+  const [selectedBet, setSelectedBet] = useState(BET_OPTIONS[0]);
+  const [slotResult, setSlotResult] = useState<{
+    win: boolean;
+    amount: number;
+    name: string;
+  } | null>(null);
+  const [slotCredits, setSlotCredits] = useState(1.0);
+  const spinTimeouts = useRef<NodeJS.Timeout[]>([]);
+
   // Wallet hooks
   const { publicKey, connected } = useWallet();
   const { connection } = useConnection();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { isAdmin: isUserAdmin } = useAdminCheck();
+
+  // Entry animation
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Check localStorage on mount
   useEffect(() => {
@@ -155,7 +410,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     }
   }, [publicKey, connection, isUserAdmin]);
 
-  // Fetch raffle status (silent = no loading spinner for background polls)
+  // Fetch raffle status
   const fetchRaffleStatus = useCallback(
     async (silent = false) => {
       if (!publicKey) return;
@@ -194,20 +449,26 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     }
   }, [ageVerified, connected, publicKey, checkTokenAccess]);
 
-  // Fetch raffle when game selected
+  // Fetch raffle when view is raffle
   useEffect(() => {
-    if (selectedGame === "raffle" && publicKey && hasAccess) {
+    if (view === "raffle" && publicKey && hasAccess) {
       fetchRaffleStatus();
     }
-  }, [selectedGame, publicKey, hasAccess, fetchRaffleStatus]);
+  }, [view, publicKey, hasAccess, fetchRaffleStatus]);
 
-  // Auto-refresh raffle every 10s when viewing (silent refresh - no loading spinner)
+  // Auto-refresh raffle every 10s
   useEffect(() => {
-    if (selectedGame !== "raffle" || !publicKey || !hasAccess) return;
-
+    if (view !== "raffle" || !publicKey || !hasAccess) return;
     const interval = setInterval(() => fetchRaffleStatus(true), 10000);
     return () => clearInterval(interval);
-  }, [selectedGame, publicKey, hasAccess, fetchRaffleStatus]);
+  }, [view, publicKey, hasAccess, fetchRaffleStatus]);
+
+  // Cleanup spin timeouts
+  useEffect(() => {
+    return () => {
+      spinTimeouts.current.forEach(clearTimeout);
+    };
+  }, []);
 
   const handleAgeVerification = (isOver18: boolean) => {
     if (isOver18) {
@@ -220,12 +481,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      if (selectedGame) {
-        setSelectedGame(null);
-        setEntryMessage(null);
-      } else {
-        onClose();
-      }
+      onClose();
     }
   };
 
@@ -246,7 +502,6 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
 
       if (data.success) {
         setEntryMessage("You're in! Good luck!");
-        // Refresh raffle status
         await fetchRaffleStatus();
       } else {
         setEntryMessage(data.error || "Failed to enter");
@@ -259,14 +514,299 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     }
   };
 
-  // Loading state while checking localStorage
+  // Slot machine functions
+  const spinSlots = () => {
+    if (isSpinning || slotCredits < selectedBet) return;
+
+    setSlotCredits((prev) => prev - selectedBet);
+    setIsSpinning(true);
+    setSlotResult(null);
+    setReelsStopped([false, false, false]);
+
+    spinTimeouts.current.forEach(clearTimeout);
+    spinTimeouts.current = [];
+
+    const finalReels = [
+      SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+      SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+      SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+    ];
+
+    const stopTimes = [500, 1000, 1500];
+
+    stopTimes.forEach((time, index) => {
+      const timeout = setTimeout(() => {
+        setSlotReels((prev) => {
+          const newReels = [...prev];
+          newReels[index] = finalReels[index];
+          return newReels;
+        });
+        setReelsStopped((prev) => {
+          const newStopped = [...prev];
+          newStopped[index] = true;
+          return newStopped;
+        });
+
+        if (index === 2) {
+          setTimeout(() => {
+            checkWin(finalReels);
+            setIsSpinning(false);
+          }, 200);
+        }
+      }, time);
+      spinTimeouts.current.push(timeout);
+    });
+  };
+
+  const checkWin = (reels: (typeof SLOT_SYMBOLS)[0][]) => {
+    const reelIds = reels.map((r) => r.id);
+
+    for (const payout of SLOT_PAYOUTS) {
+      const matches = payout.combo.every((symbol, i) => {
+        if (symbol === "*") return true;
+        return symbol === reelIds[i];
+      });
+
+      if (matches) {
+        const winAmount = selectedBet * payout.multiplier;
+        setSlotCredits((prev) => prev + winAmount);
+        setSlotResult({ win: true, amount: winAmount, name: payout.name });
+        return;
+      }
+    }
+
+    setSlotResult({ win: false, amount: 0, name: "No win" });
+  };
+
+  // Loading state
   if (ageVerified === null) {
     return (
       <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="font-pixel text-purple-400 animate-pulse">Loading...</div>
+        <div className="font-pixel text-red-400 animate-pulse">Loading...</div>
       </div>
     );
   }
+
+  // Shared styles
+  const modalStyles = `
+    @keyframes neon-flicker {
+      0%, 100% { opacity: 1; text-shadow: 0 0 4px #fbbf24, 0 0 8px #fbbf24, 0 0 12px #dc2626, 0 0 20px #dc2626; }
+      50% { opacity: 0.95; text-shadow: 0 0 2px #fbbf24, 0 0 4px #fbbf24, 0 0 8px #dc2626; }
+      52% { opacity: 1; }
+      54% { opacity: 0.9; }
+      56% { opacity: 1; }
+    }
+    @keyframes slot-blur {
+      0% { filter: blur(0px); transform: translateY(0); }
+      50% { filter: blur(2px); transform: translateY(-2px); }
+      100% { filter: blur(0px); transform: translateY(0); }
+    }
+    @keyframes jackpot-flash {
+      0%, 100% { background-color: #dc2626; }
+      25% { background-color: #fbbf24; }
+      50% { background-color: #ef4444; }
+      75% { background-color: #fde047; }
+    }
+    @keyframes bounce-x {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(4px); }
+    }
+    @keyframes roulette-ball {
+      0% { top: 15%; left: 50%; }
+      25% { top: 50%; left: 85%; }
+      50% { top: 85%; left: 50%; }
+      75% { top: 50%; left: 15%; }
+      100% { top: 15%; left: 50%; }
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.4); }
+      50% { box-shadow: 0 0 16px rgba(251, 191, 36, 0.8), 0 0 24px rgba(251, 191, 36, 0.4); }
+    }
+    @keyframes modal-enter {
+      0% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .casino-border {
+      border: 4px solid #dc2626;
+      box-shadow:
+        inset 0 0 0 2px #7f1d1d,
+        inset 0 0 0 4px #b91c1c,
+        inset 4px 4px 8px rgba(0,0,0,0.5),
+        0 0 20px rgba(239, 68, 68, 0.3),
+        0 0 40px rgba(251, 191, 36, 0.1);
+    }
+    .casino-border-inner {
+      border: 2px solid #b91c1c;
+      box-shadow:
+        inset 0 0 0 1px #7f1d1d,
+        inset 2px 2px 4px rgba(0,0,0,0.4);
+    }
+    .casino-border-double {
+      border: 3px solid #dc2626;
+      box-shadow:
+        inset 0 0 0 1px #0a0505,
+        inset 0 0 0 3px #b91c1c,
+        inset 0 0 0 4px #0a0505,
+        inset 0 0 0 6px #7f1d1d,
+        inset 4px 4px 8px rgba(0,0,0,0.5);
+    }
+    .casino-button {
+      border: 3px solid;
+      border-color: #fbbf24 #7f1d1d #7f1d1d #fbbf24;
+      background: linear-gradient(180deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
+      box-shadow:
+        2px 2px 0 #1a0a0a,
+        inset 1px 1px 0 rgba(255,255,255,0.1);
+      transition: all 0.1s;
+    }
+    .casino-button:hover:not(:disabled) {
+      border-color: #fde047 #b91c1c #b91c1c #fde047;
+      background: linear-gradient(180deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+      box-shadow:
+        2px 2px 0 #1a0a0a,
+        0 0 12px rgba(251, 191, 36, 0.3),
+        inset 1px 1px 0 rgba(255,255,255,0.2);
+    }
+    .casino-button:active:not(:disabled),
+    .casino-button.active {
+      border-color: #7f1d1d #fbbf24 #fbbf24 #7f1d1d;
+      background: linear-gradient(180deg, #991b1b 0%, #7f1d1d 50%, #450a0a 100%);
+      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.5);
+      transform: translate(1px, 1px);
+    }
+    .casino-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .casino-button-gold {
+      border-color: #fde047 #92400e #92400e #fde047;
+      background: linear-gradient(180deg, #fbbf24 0%, #d97706 50%, #b45309 100%);
+      color: #1a0a0a;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+    }
+    .casino-button-gold:hover:not(:disabled) {
+      background: linear-gradient(180deg, #fde047 0%, #fbbf24 50%, #d97706 100%);
+    }
+    .casino-button-green {
+      border-color: #4ade80 #14532d #14532d #4ade80;
+      background: linear-gradient(180deg, #22c55e 0%, #16a34a 50%, #166534 100%);
+      color: white;
+    }
+    .casino-tab {
+      position: relative;
+      border: 2px solid #7f1d1d;
+      background: linear-gradient(180deg, #1a0a0a 0%, #0a0505 100%);
+      opacity: 0.7;
+      transition: all 0.15s;
+    }
+    .casino-tab:hover:not(.active) {
+      opacity: 0.9;
+      border-color: #b91c1c;
+    }
+    .casino-tab.active {
+      opacity: 1;
+      border-color: #fbbf24;
+      background: linear-gradient(180deg, #2a1515 0%, #1a0a0a 100%);
+      box-shadow:
+        inset 0 -2px 0 #fbbf24,
+        0 0 8px rgba(251, 191, 36, 0.3);
+    }
+    .casino-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: #fbbf24;
+      box-shadow: 0 0 8px #fbbf24;
+    }
+    .neon-sign {
+      animation: neon-flicker 3s ease-in-out infinite;
+      color: #fbbf24;
+    }
+    .casino-carpet {
+      background-color: #1a0a0a;
+      background-image:
+        repeating-linear-gradient(45deg, #2a1515 0px, #2a1515 2px, transparent 2px, transparent 12px),
+        repeating-linear-gradient(-45deg, #2a1515 0px, #2a1515 2px, transparent 2px, transparent 12px);
+    }
+    .slot-reel {
+      background: #0a0505;
+      border: 3px solid #fbbf24;
+      box-shadow:
+        inset 0 0 10px rgba(0, 0, 0, 0.8),
+        inset 0 0 20px rgba(0, 0, 0, 0.4),
+        0 0 8px rgba(251, 191, 36, 0.3);
+    }
+    .casino-scanlines {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.1) 0px, rgba(0, 0, 0, 0.1) 1px, transparent 1px, transparent 2px);
+      z-index: 100;
+    }
+    .glow-red { text-shadow: 0 0 8px rgba(239, 68, 68, 0.8), 0 0 16px rgba(239, 68, 68, 0.4); }
+    .glow-gold { text-shadow: 0 0 8px rgba(251, 191, 36, 0.8), 0 0 16px rgba(251, 191, 36, 0.4); }
+    .glow-green { text-shadow: 0 0 8px rgba(34, 197, 94, 0.8), 0 0 16px rgba(34, 197, 94, 0.4); }
+    .animate-slot-blur { animation: slot-blur 0.1s linear infinite; }
+    .game-card {
+      position: relative;
+      transition: all 0.2s ease;
+    }
+    .game-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0) 0%, rgba(251, 191, 36, 0.1) 50%, rgba(251, 191, 36, 0) 100%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .game-card:hover::before {
+      opacity: 1;
+    }
+    .game-card:hover {
+      transform: translateX(2px);
+      box-shadow:
+        inset 0 0 0 1px #7f1d1d,
+        inset 2px 2px 4px rgba(0,0,0,0.4),
+        0 0 12px rgba(251, 191, 36, 0.2);
+    }
+    .parchment-bg {
+      background: linear-gradient(180deg, #2a1a10 0%, #1a0a05 100%);
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(251, 191, 36, 0.02) 2px, rgba(251, 191, 36, 0.02) 4px);
+    }
+    .pixel-badge {
+      border: 2px solid;
+      border-color: #fde047 #92400e #92400e #fde047;
+      background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+      box-shadow: 1px 1px 0 #1a0a0a;
+    }
+    .pixel-badge-demo {
+      border-color: #a3e635 #365314 #365314 #a3e635;
+      background: linear-gradient(180deg, #84cc16 0%, #65a30d 100%);
+    }
+    .follow-pulse {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    .coming-soon-card {
+      position: relative;
+      border: 2px solid #3a3a3a;
+      background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    .coming-soon-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.2) 4px, rgba(0,0,0,0.2) 8px);
+    }
+  `;
 
   // Age verification gate
   if (!ageVerified) {
@@ -275,102 +815,76 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
         className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         onClick={handleBackdropClick}
       >
-        <div className="bg-[#0a0a0f] border border-red-500/50 rounded-2xl max-w-md w-full overflow-hidden">
-          {/* Warning Header */}
-          <div className="bg-gradient-to-r from-red-900/60 to-red-800/40 p-6 border-b border-red-500/30">
+        <style jsx global>
+          {modalStyles}
+        </style>
+        <div
+          className={`casino-border bg-[#0a0505] max-w-md w-full overflow-hidden relative transition-all duration-300 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+          style={{ animation: isVisible ? "modal-enter 0.3s ease-out" : "none" }}
+        >
+          <div className="casino-scanlines" />
+          <CasinoCorner position="tl" />
+          <CasinoCorner position="tr" />
+          <CasinoCorner position="bl" />
+          <CasinoCorner position="br" />
+
+          <div className="bg-gradient-to-b from-[#1a0a0a] to-[#0a0505] p-6 border-b-2 border-[#b91c1c]">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <span className="text-4xl">&#9888;&#65039;</span>
-              <h2 className="font-pixel text-xl text-red-400 tracking-wider">AGE VERIFICATION</h2>
-              <span className="text-4xl">&#9888;&#65039;</span>
+              <span className="font-pixel text-2xl text-yellow-400 animate-pulse">!</span>
+              <h2 className="font-pixel text-xl text-red-400 tracking-wider glow-red">
+                AGE VERIFICATION
+              </h2>
+              <span className="font-pixel text-2xl text-yellow-400 animate-pulse">!</span>
             </div>
-            <p className="text-center text-red-300/80 text-sm">
-              This section contains gambling content
-            </p>
+            <p className="text-center text-red-300/80 text-sm font-pixel">Gambling content ahead</p>
           </div>
 
-          {/* Content */}
           <div className="p-6 space-y-5">
-            {/* 18+ Badge */}
             <div className="flex justify-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center border-4 border-red-400/50 shadow-lg shadow-red-500/30">
-                <span className="font-pixel text-2xl text-white">18+</span>
+              <div className="w-20 h-20 casino-border-double bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center">
+                <span className="font-pixel text-2xl text-white glow-gold">18+</span>
               </div>
             </div>
 
-            {/* Legal Text */}
-            <div className="bg-black/50 border border-gray-700/50 rounded-lg p-4 max-h-40 overflow-y-auto">
-              <p className="text-gray-300 text-xs leading-relaxed mb-3">
-                By entering, you confirm that:
+            <div className="casino-border-inner parchment-bg p-4 max-h-40 overflow-y-auto">
+              <p className="text-gray-300 text-xs leading-relaxed mb-3 font-pixel">
+                By entering, you confirm:
               </p>
-              <ul className="text-gray-400 text-[11px] space-y-2">
+              <ul className="text-gray-400 text-[11px] space-y-2 font-pixel">
                 <li className="flex items-start gap-2">
-                  <span className="text-red-400 mt-0.5">&#8226;</span>
+                  <PixelStar />
                   <span>
-                    You are <strong className="text-white">18 years of age or older</strong> (or the
-                    legal gambling age in your jurisdiction)
+                    You are <strong className="text-white">18+ years old</strong>
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-red-400 mt-0.5">&#8226;</span>
+                  <PixelStar />
                   <span>
-                    Online gambling is{" "}
-                    <strong className="text-white">legal in your jurisdiction</strong>
+                    Gambling is <strong className="text-white">legal</strong> in your area
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-red-400 mt-0.5">&#8226;</span>
+                  <PixelStar />
                   <span>
-                    You understand gambling involves{" "}
-                    <strong className="text-white">risk of financial loss</strong>
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-red-400 mt-0.5">&#8226;</span>
-                  <span>
-                    You are{" "}
-                    <strong className="text-white">
-                      not using funds you cannot afford to lose
-                    </strong>
+                    You understand <strong className="text-white">risk of loss</strong>
                   </span>
                 </li>
               </ul>
             </div>
 
-            {/* Responsible Gambling Notice */}
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-              <p className="text-yellow-400/90 text-[10px] text-center leading-relaxed">
-                Gambling can be addictive. Play responsibly. If you have a gambling problem, please
-                seek help at <span className="text-yellow-300">begambleaware.org</span>
-              </p>
-            </div>
-
-            {/* Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={() => handleAgeVerification(false)}
-                className="flex-1 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-pixel text-xs transition-colors border border-gray-700"
+                className="flex-1 py-3 px-4 casino-border-inner bg-[#1a0a0a] hover:bg-[#2a1515] text-gray-300 font-pixel text-xs transition-colors"
               >
                 EXIT
               </button>
               <button
                 onClick={() => handleAgeVerification(true)}
-                className="flex-1 py-3 px-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-pixel text-xs transition-all shadow-lg shadow-green-500/20 border border-green-500/50"
+                className="flex-1 py-3 px-4 casino-button casino-button-gold font-pixel text-xs"
               >
                 I AM 18+ ENTER
               </button>
-            </div>
-
-            {/* Generic Legal Disclaimer */}
-            <div className="border-t border-gray-800 pt-4 mt-2">
-              <p className="text-gray-500 text-[9px] text-center leading-relaxed">
-                <strong className="text-gray-400">DISCLAIMER:</strong> BagsWorld Casino is provided
-                &quot;as is&quot; for entertainment purposes only. We make no guarantees regarding
-                winnings or outcomes. By proceeding, you acknowledge that you are solely responsible
-                for any losses incurred. BagsWorld, its developers, and affiliates shall not be held
-                liable for any direct, indirect, incidental, or consequential damages arising from
-                your use of this service. Gambling laws vary by jurisdiction - it is your
-                responsibility to ensure compliance with local laws.
-              </p>
             </div>
           </div>
         </div>
@@ -385,57 +899,54 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
         className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         onClick={handleBackdropClick}
       >
-        <div className="bg-[#0a0a0f] border border-purple-500/50 rounded-2xl max-w-md w-full overflow-hidden">
-          {/* Gate Header */}
-          <div className="bg-gradient-to-r from-purple-900/60 to-purple-800/40 p-6 border-b border-purple-500/30">
+        <style jsx global>
+          {modalStyles}
+        </style>
+        <div
+          className={`casino-border bg-[#0a0505] max-w-md w-full overflow-hidden relative transition-all duration-300 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+          style={{ animation: isVisible ? "modal-enter 0.3s ease-out" : "none" }}
+        >
+          <div className="casino-scanlines" />
+          <CasinoCorner position="tl" />
+          <CasinoCorner position="tr" />
+          <CasinoCorner position="bl" />
+          <CasinoCorner position="br" />
+
+          <div className="bg-gradient-to-b from-[#1a0a0a] to-[#0a0505] p-6 border-b-2 border-[#b91c1c]">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <span className="text-4xl">&#127920;</span>
-              <h2 className="font-pixel text-xl text-purple-400 tracking-wider">TOKEN GATE</h2>
-              <span className="text-4xl">&#128274;</span>
+              <CasinoChip size={32} />
+              <h2 className="font-pixel text-xl text-yellow-400 tracking-wider glow-gold">
+                TOKEN GATE
+              </h2>
+              <CasinoChip size={32} />
             </div>
-            <p className="text-center text-purple-300/80 text-sm">
-              Connect wallet to access the casino
+            <p className="text-center text-red-300/80 text-sm font-pixel">
+              Connect wallet to enter
             </p>
           </div>
 
-          {/* Content */}
           <div className="p-6 space-y-5">
-            {/* Lock Icon */}
-            <div className="flex justify-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center border-4 border-purple-400/50 shadow-lg shadow-purple-500/30">
-                <span className="font-pixel text-3xl">&#128272;</span>
-              </div>
-            </div>
-
-            {/* Requirement Box */}
-            <div className="bg-black/50 border border-purple-500/30 rounded-lg p-4">
-              <p className="text-center text-white text-sm mb-2">
+            <div className="casino-border-inner parchment-bg p-4">
+              <p className="text-center text-white text-sm mb-2 font-pixel">
                 <strong>
                   Hold {MIN_TOKEN_BALANCE.toLocaleString()} {BAGSWORLD_TOKEN_SYMBOL}
                 </strong>
               </p>
-              <p className="text-center text-gray-400 text-xs">to unlock BagsWorld Casino games</p>
-            </div>
-
-            {/* Info */}
-            <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
-              <p className="text-purple-400/90 text-[11px] text-center leading-relaxed">
-                Connect your Solana wallet to verify your {BAGSWORLD_TOKEN_SYMBOL} balance and
-                access exclusive casino features.
+              <p className="text-center text-gray-400 text-xs font-pixel">
+                to unlock BagsWorld Casino
               </p>
             </div>
 
-            {/* Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-pixel text-xs transition-colors border border-gray-700"
+                className="flex-1 py-3 px-4 casino-border-inner bg-[#1a0a0a] hover:bg-[#2a1515] text-gray-300 font-pixel text-xs transition-colors"
               >
                 EXIT
               </button>
               <button
                 onClick={() => setWalletModalVisible(true)}
-                className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-lg font-pixel text-xs transition-all shadow-lg shadow-purple-500/20 border border-purple-500/50"
+                className="flex-1 py-3 px-4 casino-button font-pixel text-xs text-white"
               >
                 CONNECT WALLET
               </button>
@@ -446,86 +957,81 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     );
   }
 
-  // Token gate - checking balance
+  // Token gate - checking
   if (isCheckingAccess || hasAccess === null) {
     return (
       <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-[#0a0a0f] border border-purple-500/30 rounded-2xl p-8 max-w-sm w-full">
+        <style jsx global>
+          {modalStyles}
+        </style>
+        <div className="casino-border bg-[#0a0505] p-8 max-w-sm w-full relative">
+          <div className="casino-scanlines" />
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center animate-pulse">
-              <span className="font-pixel text-2xl">&#127920;</span>
+            <CasinoChip size={48} animated />
+            <div className="font-pixel text-red-400 text-center">
+              Checking {BAGSWORLD_TOKEN_SYMBOL}...
             </div>
-            <div className="font-pixel text-purple-400 text-center">
-              Checking {BAGSWORLD_TOKEN_SYMBOL} balance...
-            </div>
-            <div className="text-gray-500 text-xs text-center">Verifying casino access</div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Token gate - insufficient balance (show buy prompt)
+  // Token gate - insufficient balance
   if (!hasAccess) {
     return (
       <div
         className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         onClick={handleBackdropClick}
       >
-        <div className="bg-[#0a0a0f] border border-yellow-500/50 rounded-2xl max-w-md w-full overflow-hidden">
-          {/* Gate Header */}
-          <div className="bg-gradient-to-r from-yellow-900/60 to-orange-800/40 p-6 border-b border-yellow-500/30">
+        <style jsx global>
+          {modalStyles}
+        </style>
+        <div
+          className={`casino-border bg-[#0a0505] max-w-md w-full overflow-hidden relative transition-all duration-300 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+        >
+          <div className="casino-scanlines" />
+          <CasinoCorner position="tl" />
+          <CasinoCorner position="tr" />
+          <CasinoCorner position="bl" />
+          <CasinoCorner position="br" />
+
+          <div className="bg-gradient-to-b from-[#1a0a0a] to-[#0a0505] p-6 border-b-2 border-[#b91c1c]">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <span className="text-4xl">&#129689;</span>
-              <h2 className="font-pixel text-xl text-yellow-400 tracking-wider">ACCESS DENIED</h2>
-              <span className="text-4xl">&#128683;</span>
+              <span className="font-pixel text-2xl text-red-400">X</span>
+              <h2 className="font-pixel text-xl text-yellow-400 tracking-wider glow-gold">
+                ACCESS DENIED
+              </h2>
+              <span className="font-pixel text-2xl text-red-400">X</span>
             </div>
-            <p className="text-center text-yellow-300/80 text-sm">
-              Insufficient {BAGSWORLD_TOKEN_SYMBOL} balance
+            <p className="text-center text-red-300/80 text-sm font-pixel">
+              Insufficient {BAGSWORLD_TOKEN_SYMBOL}
             </p>
           </div>
 
-          {/* Content */}
           <div className="p-6 space-y-5">
-            {/* Balance Display */}
-            <div className="bg-black/50 border border-yellow-500/30 rounded-lg p-5">
+            <div className="casino-border-inner parchment-bg p-5">
               <div className="text-center mb-4">
-                <p className="text-gray-400 text-xs mb-1">Required to Enter</p>
+                <p className="text-gray-400 text-xs mb-1 font-pixel">Required to Enter</p>
                 <p className="text-white font-bold text-2xl font-pixel">
                   {MIN_TOKEN_BALANCE.toLocaleString()}{" "}
                   <span className="text-yellow-400">{BAGSWORLD_TOKEN_SYMBOL}</span>
                 </p>
               </div>
-              <div className="w-full h-px bg-yellow-500/20 mb-4" />
+              <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-red-500/50 to-transparent mb-4" />
               <div className="text-center">
-                <p className="text-gray-400 text-xs mb-1">Your Balance</p>
+                <p className="text-gray-400 text-xs mb-1 font-pixel">Your Balance</p>
                 <p className="text-red-400 font-bold text-xl font-pixel">
                   {tokenBalance.toLocaleString()}{" "}
                   <span className="text-yellow-400/60">{BAGSWORLD_TOKEN_SYMBOL}</span>
                 </p>
               </div>
-              <div className="mt-4 text-center">
-                <p className="text-gray-500 text-[10px]">
-                  Need {(MIN_TOKEN_BALANCE - tokenBalance).toLocaleString()} more tokens
-                </p>
-              </div>
             </div>
 
-            {/* Buy Prompt */}
-            <div className="bg-gradient-to-r from-purple-500/10 to-yellow-500/10 border border-purple-500/20 rounded-lg p-4">
-              <p className="text-white text-sm text-center mb-2 font-medium">
-                Get {BAGSWORLD_TOKEN_SYMBOL} on Bags.fm
-              </p>
-              <p className="text-gray-400 text-[11px] text-center leading-relaxed">
-                Buy {BAGSWORLD_TOKEN_SYMBOL} tokens to unlock casino access and exclusive features.
-              </p>
-            </div>
-
-            {/* Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-pixel text-xs transition-colors border border-gray-700"
+                className="flex-1 py-3 px-4 casino-border-inner bg-[#1a0a0a] hover:bg-[#2a1515] text-gray-300 font-pixel text-xs transition-colors"
               >
                 EXIT
               </button>
@@ -533,284 +1039,17 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
                 href={BAGSWORLD_BUY_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-3 px-4 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white rounded-lg font-pixel text-xs transition-all shadow-lg shadow-yellow-500/20 border border-yellow-500/50 text-center block"
+                className="flex-1 py-3 px-4 casino-button casino-button-gold font-pixel text-xs text-center block"
               >
                 BUY ON BAGS.FM
               </a>
             </div>
 
-            {/* Refresh */}
             <button
               onClick={checkTokenAccess}
-              className="w-full py-2 text-purple-400 hover:text-purple-300 text-xs transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2 text-yellow-400 hover:text-yellow-300 text-xs transition-colors flex items-center justify-center gap-2 font-pixel"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Refresh Balance
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Raffle game view
-  if (selectedGame === "raffle") {
-    return (
-      <div
-        className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4"
-        onClick={handleBackdropClick}
-      >
-        <div className="bg-[#0a0a0f] border border-blue-500/30 max-w-md w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col rounded-2xl">
-          {/* Header */}
-          <div className="relative bg-gradient-to-b from-blue-900/40 to-transparent p-4 sm:p-6 border-b border-blue-500/20">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-600 to-indigo-700 border border-blue-400/50 flex items-center justify-center shadow-lg shadow-blue-500/30 rounded-xl flex-shrink-0">
-                  <span className="font-pixel text-lg sm:text-xl text-white">TKT</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-pixel text-lg sm:text-xl text-white tracking-wider">
-                      RAFFLE
-                    </h2>
-                    {raffle?.status === "paused" ? (
-                      <div className="flex items-center gap-1 bg-yellow-500/20 px-2 py-0.5 rounded-full">
-                        <span className="w-2 h-2 bg-yellow-500 rounded-full" />
-                        <span className="text-yellow-400 text-[9px] font-pixel">PAUSED</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 bg-green-500/20 px-2 py-0.5 rounded-full">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-green-400 text-[9px] font-pixel">LIVE</span>
-                      </div>
-                    )}
-                  </div>
-                  <p className="font-pixel text-blue-400/80 text-[10px] sm:text-xs mt-1">
-                    Free entry, winner takes all
-                    {lastRefresh && <span className="text-gray-500 ml-2">(updates every 10s)</span>}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedGame(null);
-                  setEntryMessage(null);
-                }}
-                className="font-pixel text-xs p-2 text-gray-400 hover:text-white touch-target border border-blue-500/30 hover:border-blue-400/60 transition-colors flex-shrink-0 rounded"
-                aria-label="Back"
-              >
-                [&lt;]
-              </button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {isLoadingRaffle ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center animate-pulse">
-                  <span className="font-pixel text-lg">TKT</span>
-                </div>
-                <p className="text-blue-400 font-pixel text-sm mt-4">Loading raffle...</p>
-              </div>
-            ) : raffle?.status === "none" || !raffle ? (
-              // No active raffle
-              <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-6 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800 flex items-center justify-center">
-                  <span className="font-pixel text-2xl text-gray-500">TKT</span>
-                </div>
-                <h3 className="font-pixel text-lg text-gray-400 mb-2">No Active Raffle</h3>
-                <p className="text-gray-500 text-sm">
-                  {raffle?.message || "Check back soon for the next raffle!"}
-                </p>
-              </div>
-            ) : raffle.status === "completed" ? (
-              // Completed raffle - show winner
-              <div className="space-y-4">
-                <div className="bg-gradient-to-br from-yellow-900/30 to-orange-900/20 border border-yellow-500/30 rounded-xl p-6 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg shadow-yellow-500/30">
-                    <span className="font-pixel text-2xl">&#127942;</span>
-                  </div>
-                  <h3 className="font-pixel text-lg text-yellow-400 mb-2">RAFFLE COMPLETE!</h3>
-                  <p className="text-gray-400 text-sm mb-4">Winner has been drawn</p>
-
-                  <div className="bg-black/30 rounded-lg p-4 space-y-3">
-                    <div>
-                      <p className="text-gray-500 text-xs mb-1">Winner</p>
-                      <p className="font-pixel text-white text-lg">
-                        {raffle.winnerWallet ? truncateWallet(raffle.winnerWallet) : "Unknown"}
-                      </p>
-                      {raffle.winnerWallet === publicKey?.toString() && (
-                        <p className="text-yellow-400 text-xs mt-1 animate-pulse">
-                          That&apos;s you!
-                        </p>
-                      )}
-                    </div>
-                    <div className="w-full h-px bg-yellow-500/20" />
-                    <div>
-                      <p className="text-gray-500 text-xs mb-1">Prize</p>
-                      <p className="font-pixel text-green-400 text-xl">
-                        {raffle.prizeSol?.toFixed(2) || "0"} SOL
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                  <p className="text-blue-400/90 text-xs text-center">
-                    Stay tuned for the next raffle! Follow @BagsWorldApp for announcements.
-                  </p>
-                </div>
-              </div>
-            ) : raffle.status === "drawing" ? (
-              // Drawing in progress
-              <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl p-6 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center animate-spin">
-                  <span className="font-pixel text-2xl">&#127922;</span>
-                </div>
-                <h3 className="font-pixel text-lg text-purple-400 mb-2">DRAWING WINNER...</h3>
-                <p className="text-gray-400 text-sm">Please wait while we select the winner</p>
-              </div>
-            ) : raffle.status === "paused" ? (
-              // Raffle is paused
-              <div className="space-y-4">
-                <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-xl p-6 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-600 to-orange-700 flex items-center justify-center">
-                    <span className="font-pixel text-2xl">&#9208;</span>
-                  </div>
-                  <h3 className="font-pixel text-lg text-yellow-400 mb-2">RAFFLE PAUSED</h3>
-                  <p className="text-gray-400 text-sm mb-4">Entries are temporarily disabled</p>
-
-                  <div className="bg-black/30 rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500 text-xs">Prize Pool</span>
-                      <span className="text-white font-pixel">
-                        {raffle.potSol?.toFixed(2) || "0"} SOL
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500 text-xs">Current Entries</span>
-                      <span className="text-white font-pixel">
-                        {raffle.entryCount} / {raffle.threshold}
-                      </span>
-                    </div>
-                    {raffle.userEntered && (
-                      <div className="pt-2 border-t border-yellow-500/20">
-                        <p className="text-green-400 text-xs flex items-center justify-center gap-1">
-                          <span>&#10003;</span> You&apos;re already entered
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-                  <p className="text-yellow-400/90 text-xs text-center">
-                    The raffle will resume soon. Follow @BagsWorldApp for updates!
-                  </p>
-                </div>
-              </div>
-            ) : (
-              // Active raffle
-              <div className="space-y-4">
-                {/* Pot Display */}
-                <div className="bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border border-blue-500/30 rounded-xl p-6 text-center">
-                  <p className="text-gray-400 text-xs mb-2 uppercase tracking-wider">Prize Pool</p>
-                  <p className="font-pixel text-4xl text-white mb-1">
-                    {raffle.potSol?.toFixed(2) || "0"} <span className="text-blue-400">SOL</span>
-                  </p>
-                  <p className="text-gray-500 text-xs">Winner takes all!</p>
-                </div>
-
-                {/* Entry Progress */}
-                <div className="bg-black/30 border border-gray-700/30 rounded-xl p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-gray-400 text-xs">Entries</p>
-                    <p className="text-white font-pixel text-sm">
-                      {raffle.entryCount} / {raffle.threshold}
-                    </p>
-                  </div>
-                  <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min((raffle.entryCount / raffle.threshold) * 100, 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-gray-500 text-[10px] mt-2 text-center">
-                    {raffle.entryCount >= raffle.threshold
-                      ? "Threshold reached! Draw incoming..."
-                      : `${raffle.threshold - raffle.entryCount} more entries until draw`}
-                  </p>
-                </div>
-
-                {/* Entry Button / Status */}
-                {raffle.userEntered ? (
-                  <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <span className="text-green-400 text-lg">&#10003;</span>
-                      <p className="font-pixel text-green-400">YOU&apos;RE IN!</p>
-                    </div>
-                    <p className="text-gray-400 text-xs">
-                      Your entry has been recorded. Good luck!
-                    </p>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleEnterRaffle}
-                    disabled={isEntering}
-                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-pixel text-sm transition-all shadow-lg shadow-blue-500/20 border border-blue-500/50"
-                  >
-                    {isEntering ? "ENTERING..." : "ENTER RAFFLE (FREE)"}
-                  </button>
-                )}
-
-                {/* Entry message */}
-                {entryMessage && (
-                  <p
-                    className={`text-center text-sm ${entryMessage.includes("in!") ? "text-green-400" : "text-red-400"}`}
-                  >
-                    {entryMessage}
-                  </p>
-                )}
-
-                {/* Rules */}
-                <div className="bg-gray-900/30 border border-gray-700/30 rounded-lg p-4">
-                  <h4 className="font-pixel text-xs text-gray-400 mb-2">HOW IT WORKS</h4>
-                  <ul className="text-gray-500 text-[11px] space-y-1">
-                    <li>&#8226; Free entry - one entry per wallet</li>
-                    <li>&#8226; Winner drawn when threshold is reached</li>
-                    <li>&#8226; Winner receives the entire prize pool</li>
-                    <li>&#8226; Random selection using secure RNG</li>
-                  </ul>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-blue-500/20 bg-black/30">
-            <button
-              onClick={() => fetchRaffleStatus()}
-              className="w-full py-2 text-blue-400 hover:text-blue-300 text-xs transition-colors flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Refresh Status
+              [REFRESH BALANCE]
             </button>
           </div>
         </div>
@@ -823,254 +1062,544 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
     return <CasinoAdmin onClose={() => setShowAdminPanel(false)} />;
   }
 
-  // Main casino view
+  // Main casino modal
   return (
     <div
-      className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-2 sm:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-gradient-to-b from-[#12061f] via-[#0a0a12] to-[#080810] border border-purple-500/20 rounded-2xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl shadow-purple-900/30">
-        {/* Decorative top border glow */}
-        <div className="h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
+      <style jsx global>
+        {modalStyles}
+      </style>
+
+      <div
+        className={`casino-border bg-[#0a0505] w-full max-w-lg max-h-[95vh] flex flex-col relative overflow-hidden transition-all duration-300 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+        style={{ animation: isVisible ? "modal-enter 0.3s ease-out" : "none" }}
+      >
+        <div className="casino-scanlines" />
+        <CasinoCorner position="tl" />
+        <CasinoCorner position="tr" />
+        <CasinoCorner position="bl" />
+        <CasinoCorner position="br" />
 
         {/* Header */}
-        <div className="relative p-5 sm:p-6">
-          {/* Background decoration */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl" />
-            <div className="absolute -top-10 -left-10 w-32 h-32 bg-pink-600/10 rounded-full blur-3xl" />
-          </div>
-
-          <div className="relative flex justify-between items-start">
-            <div className="flex items-center gap-4">
-              {/* Animated casino icon */}
-              <div className="relative">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/40 border border-purple-400/30">
-                  <span className="font-pixel text-xl sm:text-2xl text-white drop-shadow-lg">
-                    777
-                  </span>
-                </div>
-                {/* Sparkle effects */}
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping opacity-75" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="font-pixel text-lg sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 tracking-wider">
-                    BAGSWORLD CASINO
-                  </h2>
-                  <span className="font-mono text-[8px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded">
-                    BETA
-                  </span>
-                </div>
-                <p className="text-purple-400/70 text-xs sm:text-sm mt-1 flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  Play to win SOL rewards
-                </p>
-              </div>
+        <div className="bg-gradient-to-b from-[#1a0a0a] to-[#0a0505] px-4 py-3 flex items-center justify-between shrink-0 relative">
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#dc2626] to-transparent" />
+          <div className="flex items-center gap-3">
+            <RouletteWheel size={42} />
+            <div>
+              <span className="font-pixel text-lg neon-sign">CASINO</span>
+              <span className="font-pixel text-[10px] text-gray-500 block">BAGSWORLD</span>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-pixel text-[8px] px-2 py-1 pixel-badge text-[#1a0a0a]">BETA</span>
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/50 flex items-center justify-center text-gray-400 hover:text-white transition-all"
-              aria-label="Close"
+              className="casino-button font-pixel text-white text-[10px] px-2 py-1"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              X
             </button>
           </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 px-2 py-2 bg-[#0a0505] shrink-0">
+          {(["lobby", "raffle", "slots", ...(isUserAdmin ? ["admin"] : [])] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => {
+                if (tab === "admin") {
+                  setShowAdminPanel(true);
+                } else {
+                  setView(tab as "lobby" | "raffle" | "slots");
+                }
+              }}
+              className={`flex-1 font-pixel text-[10px] py-2 px-2 casino-tab ${view === tab ? "active" : ""} ${tab === "admin" ? "!border-green-500/50" : ""}`}
+            >
+              <span className={view === tab ? "text-yellow-400 glow-gold" : "text-gray-400"}>
+                {tab.toUpperCase()}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Decorative divider */}
+        <div className="h-[4px] bg-gradient-to-r from-[#dc2626] via-[#fbbf24] to-[#dc2626] relative">
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_4px,rgba(0,0,0,0.3)_4px,rgba(0,0,0,0.3)_8px)]" />
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 pb-5">
-          {/* Featured Game - Raffle */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
-              <span className="text-green-400 text-[10px] font-pixel tracking-widest">
-                FEATURED
-              </span>
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
-            </div>
+        <div className="flex-1 overflow-y-auto casino-carpet p-4 relative z-10">
+          {/* LOBBY VIEW */}
+          {view === "lobby" && (
+            <div className="space-y-4">
+              {/* Welcome Banner */}
+              <div className="casino-border-double bg-[#0a0505] p-4 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-red-900/20 to-transparent" />
+                <p className="font-pixel text-yellow-400 text-xs mb-2 glow-gold relative z-10">
+                  WELCOME TO THE
+                </p>
+                <p className="font-pixel text-2xl neon-sign relative z-10">BAGSWORLD CASINO</p>
+                <p className="font-pixel text-gray-500 text-[10px] mt-2 relative z-10">
+                  Select a game to begin
+                </p>
+              </div>
 
-            <button
-              onClick={() => setSelectedGame("raffle")}
-              className="w-full relative group overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-purple-600/20 rounded-2xl" />
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 opacity-0 group-hover:opacity-20 transition-opacity rounded-2xl" />
-              <div className="relative bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-500/30 rounded-2xl p-5 hover:border-blue-400/50 transition-all">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 border border-blue-400/30">
-                      <span className="font-pixel text-xl text-white">TKT</span>
-                    </div>
-                    <div className="text-left">
+              {/* Game Cards */}
+              <div className="space-y-3">
+                {/* Raffle - LIVE */}
+                <button
+                  onClick={() => setView("raffle")}
+                  className="w-full text-left casino-border-inner bg-[#1a0a0a] p-4 game-card group"
+                >
+                  <div className="flex items-center gap-4 relative z-10">
+                    <RaffleTicket size={40} />
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-pixel text-lg text-white">RAFFLE</h3>
-                        <span className="px-2 py-0.5 bg-green-500/20 border border-green-500/30 rounded-full text-green-400 text-[9px] font-pixel flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                        <span className="font-pixel text-white text-sm group-hover:text-yellow-400 transition-colors">
+                          RAFFLE
+                        </span>
+                        <span className="font-pixel text-[8px] px-2 py-0.5 pixel-badge pixel-badge-demo text-[#1a0a0a] flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                           LIVE
                         </span>
                       </div>
-                      <p className="text-blue-300/70 text-sm mt-0.5">
-                        Free entry, winner takes the pot
+                      <p className="font-pixel text-gray-500 text-[10px] mt-1">
+                        Free entry, winner takes pot
                       </p>
                     </div>
+                    <PixelChevron />
                   </div>
-                  <div className="text-right hidden sm:block">
-                    <p className="text-gray-500 text-[10px] uppercase tracking-wider">Prize Pool</p>
-                    <p className="font-pixel text-xl text-white">
-                      <span className="text-blue-400">SOL</span>
-                    </p>
+                </button>
+
+                {/* Slots */}
+                <button
+                  onClick={() => setView("slots")}
+                  className="w-full text-left casino-border-inner bg-[#1a0a0a] p-4 game-card group"
+                >
+                  <div className="flex items-center gap-4 relative z-10">
+                    <SlotIcon size={40} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-pixel text-white text-sm group-hover:text-yellow-400 transition-colors">
+                          SLOT MACHINE
+                        </span>
+                        <span className="font-pixel text-[8px] px-2 py-0.5 pixel-badge text-[#1a0a0a]">
+                          DEMO
+                        </span>
+                      </div>
+                      <p className="font-pixel text-gray-500 text-[10px] mt-1">
+                        Spin to win up to 100x
+                      </p>
+                    </div>
+                    <PixelChevron />
                   </div>
-                  <svg
-                    className="w-6 h-6 text-blue-400 group-hover:translate-x-1 transition-transform"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
+                </button>
+
+                {/* Coming Soon Section */}
+                <div className="casino-border-inner bg-[#0a0505] p-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <PixelLock size={12} />
+                    <p className="font-pixel text-gray-500 text-[10px]">COMING SOON</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { icon: "H/L", name: "HIGH/LOW" },
+                      { icon: "2x", name: "COIN FLIP" },
+                      { icon: "D6", name: "DICE" },
+                    ].map((game) => (
+                      <div key={game.name} className="coming-soon-card p-2 text-center">
+                        <div className="relative z-10">
+                          <span className="font-pixel text-gray-600 text-sm block">
+                            {game.icon}
+                          </span>
+                          <span className="font-pixel text-gray-700 text-[8px]">{game.name}</span>
+                        </div>
+                        <div className="absolute top-1 right-1 z-10">
+                          <PixelLock size={10} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </button>
-          </div>
 
-          {/* Coming Soon Section */}
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600/50 to-transparent" />
-              <span className="text-gray-500 text-[10px] font-pixel tracking-widest">
-                COMING SOON
-              </span>
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600/50 to-transparent" />
-            </div>
-          </div>
-
-          {/* Games Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {CASINO_GAMES.filter((g) => g.comingSoon).map((game) => (
-              <div
-                key={game.id}
-                className="relative group bg-gradient-to-br from-gray-900/80 to-gray-800/40 rounded-xl p-4 border border-gray-700/30 opacity-60"
-              >
-                {/* Lock overlay */}
-                <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center">
-                  <div className="w-8 h-8 rounded-full bg-gray-800/80 border border-gray-600/50 flex items-center justify-center">
-                    <svg
-                      className="w-4 h-4 text-gray-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Icon */}
-                <div className="font-pixel text-xl text-gray-500 mb-2">{game.icon}</div>
-
-                {/* Info */}
-                <h3 className="font-pixel text-[10px] text-gray-400 mb-0.5 tracking-wider">
-                  {game.name}
-                </h3>
-                <p className="text-gray-600 text-[9px] leading-relaxed line-clamp-2">
-                  {game.description}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Info Banner */}
-          <div className="mt-6 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-pink-600/10 to-purple-600/10 rounded-xl" />
-            <div className="relative border border-purple-500/20 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="w-5 h-5 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium">More games launching soon</p>
-                  <p className="text-gray-400 text-xs mt-0.5">
-                    Coin flip, dice, slots, and more. Follow for updates!
+              {/* Info Box */}
+              <div className="casino-border-inner parchment-bg overflow-hidden">
+                <div className="bg-gradient-to-r from-yellow-600/30 via-yellow-500/20 to-yellow-600/30 px-3 py-1.5 border-b border-yellow-600/30">
+                  <p className="font-pixel text-yellow-400 text-[10px] glow-gold flex items-center gap-2">
+                    <PixelStar /> INFO <PixelStar />
                   </p>
                 </div>
+                <div className="p-3 space-y-1.5">
+                  {[
+                    `Hold ${BAGSWORLD_TOKEN_SYMBOL} to play`,
+                    "Funded by ecosystem",
+                    "Play responsibly",
+                  ].map((text, i) => (
+                    <p
+                      key={i}
+                      className="font-pixel text-[10px] text-gray-400 flex items-center gap-2"
+                    >
+                      <PixelStar /> {text}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* RAFFLE VIEW */}
+          {view === "raffle" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <RaffleTicket size={36} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-pixel text-white text-sm">RAFFLE</span>
+                      {raffle?.status === "paused" ? (
+                        <span className="font-pixel text-[8px] px-2 py-0.5 pixel-badge text-[#1a0a0a]">
+                          PAUSED
+                        </span>
+                      ) : raffle?.status === "active" ? (
+                        <span className="font-pixel text-[8px] px-2 py-0.5 pixel-badge pixel-badge-demo text-[#1a0a0a] flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                          LIVE
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="font-pixel text-gray-500 text-[10px] mt-1">
+                      Free entry, winner takes all
+                      {lastRefresh && <span className="text-gray-600 ml-2">(auto-refresh)</span>}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setView("lobby")}
+                  className="casino-button font-pixel text-white text-[10px] px-2 py-1"
+                >
+                  &lt;
+                </button>
+              </div>
+
+              {isLoadingRaffle ? (
+                <div className="casino-border-inner bg-[#0a0505] p-8 text-center">
+                  <CasinoChip size={48} animated />
+                  <p className="font-pixel text-red-400 text-sm mt-4">Loading raffle...</p>
+                </div>
+              ) : raffle?.status === "none" || !raffle ? (
+                <div className="casino-border-inner bg-[#0a0505] p-6 text-center">
+                  <RaffleTicket size={48} />
+                  <p className="font-pixel text-gray-400 text-sm mt-4">No Active Raffle</p>
+                  <p className="font-pixel text-gray-600 text-[10px] mt-2">
+                    {raffle?.message || "Check back soon!"}
+                  </p>
+                </div>
+              ) : raffle.status === "completed" ? (
+                <div className="space-y-4">
+                  <div className="casino-border-double bg-gradient-to-b from-[#2a1515] to-[#1a0a0a] p-6 text-center">
+                    <span className="font-pixel text-3xl">&#127942;</span>
+                    <p className="font-pixel text-yellow-400 text-lg mt-2 glow-gold">
+                      RAFFLE COMPLETE!
+                    </p>
+                    <p className="font-pixel text-gray-400 text-sm mt-2">Winner has been drawn</p>
+
+                    <div className="casino-border-inner bg-[#0a0505] p-4 mt-4 space-y-3">
+                      <div>
+                        <p className="font-pixel text-gray-500 text-[10px]">WINNER</p>
+                        <p className="font-pixel text-white text-lg">
+                          {raffle.winnerWallet ? truncateWallet(raffle.winnerWallet) : "Unknown"}
+                        </p>
+                        {raffle.winnerWallet === publicKey?.toString() && (
+                          <p className="font-pixel text-yellow-400 text-xs mt-1 animate-pulse glow-gold">
+                            That&apos;s you!
+                          </p>
+                        )}
+                      </div>
+                      <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-yellow-500/30 to-transparent" />
+                      <div>
+                        <p className="font-pixel text-gray-500 text-[10px]">PRIZE</p>
+                        <p className="font-pixel text-green-400 text-xl glow-green">
+                          {raffle.prizeSol?.toFixed(2) || "0"} SOL
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : raffle.status === "drawing" ? (
+                <div className="casino-border-inner bg-[#0a0505] p-6 text-center">
+                  <CasinoChip size={48} animated />
+                  <p className="font-pixel text-yellow-400 text-lg mt-4 glow-gold">
+                    DRAWING WINNER...
+                  </p>
+                  <p className="font-pixel text-gray-500 text-sm mt-2">Please wait</p>
+                </div>
+              ) : raffle.status === "paused" ? (
+                <div className="space-y-4">
+                  <div className="casino-border-inner bg-[#1a0a0a] p-6 text-center">
+                    <span className="font-pixel text-3xl text-yellow-400">||</span>
+                    <p className="font-pixel text-yellow-400 text-lg mt-2">RAFFLE PAUSED</p>
+                    <p className="font-pixel text-gray-500 text-sm mt-2">
+                      Entries temporarily disabled
+                    </p>
+
+                    <div className="casino-border-inner bg-[#0a0505] p-4 mt-4 space-y-2">
+                      <div className="flex justify-between font-pixel text-[10px]">
+                        <span className="text-gray-500">Prize Pool</span>
+                        <span className="text-white">{raffle.potSol?.toFixed(2) || "0"} SOL</span>
+                      </div>
+                      <div className="flex justify-between font-pixel text-[10px]">
+                        <span className="text-gray-500">Entries</span>
+                        <span className="text-white">
+                          {raffle.entryCount} / {raffle.threshold}
+                        </span>
+                      </div>
+                      {raffle.userEntered && (
+                        <div className="pt-2 border-t border-[#b91c1c]">
+                          <p className="font-pixel text-green-400 text-[10px] flex items-center justify-center gap-1">
+                            <PixelStar /> You&apos;re entered
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="casino-border-double bg-gradient-to-b from-[#2a1515] to-[#1a0a0a] p-6 text-center">
+                    <p className="font-pixel text-gray-400 text-[10px] uppercase tracking-wider">
+                      Prize Pool
+                    </p>
+                    <p className="font-pixel text-4xl text-white mt-1 glow-gold">
+                      {raffle.potSol?.toFixed(2) || "0"}{" "}
+                      <span className="text-yellow-400">SOL</span>
+                    </p>
+                    <p className="font-pixel text-gray-500 text-[10px] mt-1">Winner takes all!</p>
+                  </div>
+
+                  <div className="casino-border-inner bg-[#0a0505] p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="font-pixel text-gray-400 text-[10px]">Entries</p>
+                      <p className="font-pixel text-white text-sm">
+                        {raffle.entryCount} / {raffle.threshold}
+                      </p>
+                    </div>
+                    <div className="w-full bg-[#1a0a0a] casino-border-inner h-4 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#dc2626] to-[#fbbf24] transition-all duration-500 relative"
+                        style={{
+                          width: `${Math.min((raffle.entryCount / raffle.threshold) * 100, 100)}%`,
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_4px,rgba(255,255,255,0.1)_4px,rgba(255,255,255,0.1)_8px)]" />
+                      </div>
+                    </div>
+                    <p className="font-pixel text-gray-500 text-[10px] mt-2 text-center">
+                      {raffle.entryCount >= raffle.threshold
+                        ? "Threshold reached! Draw incoming..."
+                        : `${raffle.threshold - raffle.entryCount} more entries until draw`}
+                    </p>
+                  </div>
+
+                  {raffle.userEntered ? (
+                    <div className="casino-border-inner bg-green-500/10 p-4 text-center">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <PixelStar />
+                        <p className="font-pixel text-green-400 glow-green">YOU&apos;RE IN!</p>
+                        <PixelStar />
+                      </div>
+                      <p className="font-pixel text-gray-400 text-[10px]">
+                        Your entry is recorded. Good luck!
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleEnterRaffle}
+                      disabled={isEntering}
+                      className="w-full py-4 casino-button casino-button-gold font-pixel text-sm"
+                    >
+                      {isEntering ? "ENTERING..." : "ENTER RAFFLE (FREE)"}
+                    </button>
+                  )}
+
+                  {entryMessage && (
+                    <p
+                      className={`font-pixel text-center text-sm ${entryMessage.includes("in!") ? "text-green-400 glow-green" : "text-red-400"}`}
+                    >
+                      {entryMessage}
+                    </p>
+                  )}
+
+                  <div className="casino-border-inner parchment-bg overflow-hidden">
+                    <div className="bg-gradient-to-r from-yellow-600/30 via-yellow-500/20 to-yellow-600/30 px-3 py-1.5 border-b border-yellow-600/30">
+                      <p className="font-pixel text-yellow-400 text-[10px] glow-gold">
+                        HOW IT WORKS
+                      </p>
+                    </div>
+                    <div className="p-3 space-y-1">
+                      {[
+                        "Free entry - one per wallet",
+                        "Winner drawn at threshold",
+                        "Winner gets entire pot",
+                        "Secure random selection",
+                      ].map((text, i) => (
+                        <p
+                          key={i}
+                          className="font-pixel text-[10px] text-gray-400 flex items-center gap-2"
+                        >
+                          <PixelStar /> {text}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => fetchRaffleStatus()}
+                className="w-full py-2 casino-button font-pixel text-white text-[10px]"
+              >
+                [REFRESH]
+              </button>
+            </div>
+          )}
+
+          {/* SLOTS VIEW */}
+          {view === "slots" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <SlotIcon size={36} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-pixel text-white text-sm">SLOT MACHINE</span>
+                      <span className="font-pixel text-[8px] px-2 py-0.5 pixel-badge text-[#1a0a0a]">
+                        DEMO
+                      </span>
+                    </div>
+                    <p className="font-pixel text-gray-500 text-[10px] mt-1">Spin to win big!</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setView("lobby")}
+                  className="casino-button font-pixel text-white text-[10px] px-2 py-1"
+                >
+                  &lt;
+                </button>
+              </div>
+
+              <div className="casino-border-inner bg-[#0a0505] p-3 flex justify-between items-center">
+                <span className="font-pixel text-gray-500 text-[10px]">CREDITS</span>
+                <span className="font-pixel text-yellow-400 text-lg glow-gold">
+                  {slotCredits.toFixed(2)} SOL
+                </span>
+              </div>
+
+              <div
+                className={`casino-border-double bg-[#0a0505] p-4 ${slotResult?.win && slotResult.amount > selectedBet * 10 ? "animate-[jackpot-flash_0.5s_ease-in-out_5]" : ""}`}
+              >
+                <div className="flex justify-center gap-2 mb-4">
+                  {slotReels.map((symbol, index) => (
+                    <div key={index} className="slot-reel p-1">
+                      <SlotSymbol symbol={symbol} spinning={isSpinning && !reelsStopped[index]} />
+                    </div>
+                  ))}
+                </div>
+
+                {slotResult && (
+                  <div
+                    className={`text-center py-2 ${slotResult.win ? "casino-border-inner bg-green-500/10" : ""}`}
+                  >
+                    {slotResult.win ? (
+                      <>
+                        <p className="font-pixel text-yellow-400 text-lg glow-gold animate-pulse">
+                          {slotResult.name}
+                        </p>
+                        <p className="font-pixel text-green-400 text-xl glow-green">
+                          +{slotResult.amount.toFixed(2)} SOL
+                        </p>
+                      </>
+                    ) : (
+                      <p className="font-pixel text-gray-500 text-sm">Try again!</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="casino-border-inner bg-[#0a0505] p-3">
+                <p className="font-pixel text-gray-500 text-[10px] mb-2">SELECT BET</p>
+                <div className="flex gap-2">
+                  {BET_OPTIONS.map((bet) => (
+                    <button
+                      key={bet}
+                      onClick={() => setSelectedBet(bet)}
+                      disabled={isSpinning}
+                      className={`flex-1 py-2 font-pixel text-[10px] ${
+                        selectedBet === bet
+                          ? "casino-button casino-button-gold"
+                          : "casino-button text-white"
+                      }`}
+                    >
+                      {bet} SOL
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={spinSlots}
+                disabled={isSpinning || slotCredits < selectedBet}
+                className={`w-full py-4 casino-button font-pixel text-lg ${isSpinning ? "" : "casino-button-gold"}`}
+              >
+                {isSpinning ? "SPINNING..." : "PULL LEVER"}
+              </button>
+
+              <div className="casino-border-inner parchment-bg overflow-hidden">
+                <div className="bg-gradient-to-r from-yellow-600/30 via-yellow-500/20 to-yellow-600/30 px-3 py-1.5 border-b border-yellow-600/30">
+                  <p className="font-pixel text-yellow-400 text-[10px] glow-gold">PAYOUTS</p>
+                </div>
+                <div className="p-3 grid grid-cols-2 gap-1 font-pixel text-[9px]">
+                  {SLOT_PAYOUTS.slice(0, 6).map((payout) => (
+                    <div key={payout.name} className="flex justify-between text-gray-500">
+                      <span>
+                        {payout.combo
+                          .map((s) => (s === "*" ? "?" : s.charAt(0).toUpperCase()))
+                          .join("-")}
+                      </span>
+                      <span className="text-yellow-400">x{payout.multiplier}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="casino-border-inner bg-yellow-500/10 p-3">
+                <p className="font-pixel text-yellow-400 text-[10px] text-center flex items-center justify-center gap-2">
+                  <PixelStar /> DEMO MODE - Play with virtual credits <PixelStar />
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-purple-500/10 bg-black/20">
-          <div className="flex items-center justify-between">
-            <p className="text-gray-600 text-[10px] flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-              Funded by BagsWorld ecosystem
-            </p>
-            <div className="flex items-center gap-3">
-              {isUserAdmin && (
-                <button
-                  onClick={() => setShowAdminPanel(true)}
-                  className="text-green-400 hover:text-green-300 text-[10px] font-pixel transition-colors flex items-center gap-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 px-3 py-1.5 rounded-lg"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  ADMIN
-                </button>
-              )}
-              <a
-                href="https://x.com/BagsWorldApp"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-white text-[10px] transition-colors flex items-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg"
-              >
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-                Follow
-              </a>
-            </div>
+        <div className="relative shrink-0">
+          <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-[#dc2626] via-[#fbbf24] to-[#dc2626]">
+            <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_4px,rgba(0,0,0,0.3)_4px,rgba(0,0,0,0.3)_8px)]" />
+          </div>
+          <div className="px-4 py-2 flex items-center justify-between bg-gradient-to-b from-[#1a0a0a] to-[#0a0505]">
+            <span className="font-pixel text-[#7f1d1d] text-[10px] flex items-center gap-1">
+              <PixelStar /> Funded by BagsWorld
+            </span>
+            <a
+              href="https://x.com/BagsWorldApp"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-pixel text-[10px] casino-button px-2 py-1 text-white follow-pulse"
+            >
+              FOLLOW
+            </a>
           </div>
         </div>
       </div>
