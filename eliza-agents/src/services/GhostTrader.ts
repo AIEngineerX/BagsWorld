@@ -446,11 +446,34 @@ export class GhostTrader {
     const openPositions = Array.from(this.positions.values()).filter((p) => p.status === "open");
 
     for (const position of openPositions) {
-      const token = await this.bagsApi.getToken(position.tokenMint);
-      if (!token) continue;
+      // Get current price - try Bags API first, then DexScreener
+      let currentPriceSol = 0;
 
-      const currentPriceSol = token.price || 0;
-      if (currentPriceSol === 0) continue;
+      const token = await this.bagsApi.getToken(position.tokenMint).catch(() => null);
+      if (token?.price) {
+        currentPriceSol = token.price;
+      } else {
+        // Fallback to DexScreener
+        try {
+          const dexRes = await fetch(
+            `https://api.dexscreener.com/latest/dex/tokens/${position.tokenMint}`
+          );
+          if (dexRes.ok) {
+            const dexData = await dexRes.json();
+            const pair = dexData.pairs?.[0];
+            if (pair?.priceNative) {
+              currentPriceSol = parseFloat(pair.priceNative);
+            }
+          }
+        } catch {
+          console.warn(`[GhostTrader] Failed to get price for ${position.tokenSymbol}`);
+        }
+      }
+
+      if (currentPriceSol === 0) {
+        console.warn(`[GhostTrader] No price data for ${position.tokenSymbol}, skipping`);
+        continue;
+      }
 
       // Calculate current multiplier (1.0 = breakeven)
       const currentMultiplier = currentPriceSol / position.entryPriceSol;
