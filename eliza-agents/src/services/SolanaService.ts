@@ -1,6 +1,7 @@
 // SolanaService - Transaction signing and submission for Ghost trading
 
 import { Service, type IAgentRuntime } from "../types/elizaos.js";
+import nacl from "tweetnacl";
 
 interface TransactionSignature {
   signature: string;
@@ -74,39 +75,6 @@ function base58Encode(bytes: Uint8Array): string {
     .join("");
 }
 
-// Ed25519 support varies by runtime - falls back to simulation if unavailable
-let ed25519Available = false;
-
-async function checkEd25519Support(): Promise<boolean> {
-  try {
-    const subtle = crypto.subtle as any;
-    const testKey = new Uint8Array(32).fill(1);
-    await subtle.importKey("raw", testKey, { name: "Ed25519" }, false, ["sign"]);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function importEd25519PrivateKey(privateKeyBytes: Uint8Array): Promise<CryptoKey | null> {
-  if (!ed25519Available) return null;
-
-  const keyBytes = privateKeyBytes.slice(0, 32);
-  try {
-    const subtle = crypto.subtle as any;
-    return await subtle.importKey("raw", keyBytes, { name: "Ed25519" }, false, ["sign"]);
-  } catch (error) {
-    console.warn("[SolanaService] Ed25519 import failed:", error);
-    return null;
-  }
-}
-
-async function signMessage(privateKey: CryptoKey, message: Uint8Array): Promise<Uint8Array> {
-  const subtle = crypto.subtle as any;
-  const signature = await subtle.sign("Ed25519", privateKey, message);
-  return new Uint8Array(signature);
-}
-
 let solanaServiceInstance: SolanaService | null = null;
 
 export class SolanaService extends Service {
@@ -114,9 +82,8 @@ export class SolanaService extends Service {
   readonly capabilityDescription = "Solana transaction signing and submission";
 
   private rpcUrl: string;
-  private privateKeyBytes: Uint8Array | null = null;
+  private keypair: nacl.SignKeyPair | null = null;
   private publicKeyBytes: Uint8Array | null = null;
-  private cryptoKey: CryptoKey | null = null;
 
   constructor(runtime?: IAgentRuntime) {
     super(runtime);
@@ -136,24 +103,18 @@ export class SolanaService extends Service {
   }
 
   async stop(): Promise<void> {
-    this.privateKeyBytes = null;
+    this.keypair = null;
     this.publicKeyBytes = null;
-    this.cryptoKey = null;
     solanaServiceInstance = null;
   }
 
   async initialize(): Promise<void> {
-    ed25519Available = await checkEd25519Support();
-    if (!ed25519Available) {
-      console.warn("[SolanaService] Ed25519 not available in this runtime");
-      console.warn("[SolanaService] Real signing requires @solana/web3.js or tweetnacl");
-      console.warn("[SolanaService] Transactions will be simulated");
-    }
-
     const privateKeyBase58 = process.env.GHOST_WALLET_PRIVATE_KEY;
 
     // Debug: check if env var exists (length only, not the value)
-    console.log(`[SolanaService] GHOST_WALLET_PRIVATE_KEY exists: ${!!privateKeyBase58}, length: ${privateKeyBase58?.length || 0}`);
+    console.log(
+      `[SolanaService] GHOST_WALLET_PRIVATE_KEY exists: ${!!privateKeyBase58}, length: ${privateKeyBase58?.length || 0}`
+    );
 
     if (!privateKeyBase58) {
       console.warn("[SolanaService] No GHOST_WALLET_PRIVATE_KEY configured");
@@ -161,36 +122,35 @@ export class SolanaService extends Service {
     }
 
     try {
-      this.privateKeyBytes = base58Decode(privateKeyBase58);
+      const privateKeyBytes = base58Decode(privateKeyBase58);
 
-      if (this.privateKeyBytes.length === 64) {
-        this.publicKeyBytes = this.privateKeyBytes.slice(32);
-      } else if (this.privateKeyBytes.length === 32) {
-        console.warn("[SolanaService] 32-byte key detected. Use full 64-byte keypair.");
-        return;
+      if (privateKeyBytes.length === 64) {
+        // Full 64-byte keypair (secret + public)
+        this.keypair = {
+          secretKey: privateKeyBytes,
+          publicKey: privateKeyBytes.slice(32),
+        };
+        this.publicKeyBytes = privateKeyBytes.slice(32);
+      } else if (privateKeyBytes.length === 32) {
+        // 32-byte seed - generate keypair from seed
+        this.keypair = nacl.sign.keyPair.fromSeed(privateKeyBytes);
+        this.publicKeyBytes = this.keypair.publicKey;
       } else {
-        throw new Error(`Invalid private key length: ${this.privateKeyBytes.length}`);
-      }
-
-      if (ed25519Available) {
-        this.cryptoKey = await importEd25519PrivateKey(this.privateKeyBytes);
+        throw new Error(`Invalid private key length: ${privateKeyBytes.length}`);
       }
 
       const publicKeyBase58 = base58Encode(this.publicKeyBytes);
       console.log(`[SolanaService] Wallet loaded: ${publicKeyBase58.slice(0, 8)}...`);
-
-      if (!ed25519Available) {
-        console.log("[SolanaService] Note: Signing will be simulated (add @solana/web3.js for real signing)");
-      }
+      console.log("[SolanaService] Using tweetnacl for Ed25519 signing");
     } catch (error) {
       console.error("[SolanaService] Failed to load wallet:", error);
-      this.privateKeyBytes = null;
+      this.keypair = null;
       this.publicKeyBytes = null;
     }
   }
 
   isConfigured(): boolean {
-    return this.cryptoKey !== null && this.publicKeyBytes !== null;
+    return this.keypair !== null && this.publicKeyBytes !== null;
   }
 
   getPublicKey(): string | null {
@@ -202,7 +162,7 @@ export class SolanaService extends Service {
     base64Transaction: string,
     options?: SendTransactionOptions
   ): Promise<TransactionSignature> {
-    if (!this.isConfigured()) {
+    if (!this.isConfigured() || !this.keypair) {
       return {
         signature: "",
         confirmed: false,
@@ -210,22 +170,12 @@ export class SolanaService extends Service {
       };
     }
 
-    // Check if real signing is available
-    if (!ed25519Available || !this.cryptoKey) {
-      console.warn("[SolanaService] Ed25519 not available - transaction NOT executed");
-      return {
-        signature: `sim_${crypto.randomUUID().slice(0, 16)}`,
-        confirmed: false, // IMPORTANT: Simulation means nothing happened on-chain
-        error: "Simulated - Ed25519 signing not available in this runtime",
-      };
-    }
-
     try {
       // Decode base64 transaction
       const transactionBytes = Uint8Array.from(atob(base64Transaction), (c) => c.charCodeAt(0));
 
-      // Sign the transaction
-      const signedTransaction = await this.signTransaction(transactionBytes);
+      // Sign the transaction using tweetnacl
+      const signedTransaction = this.signTransaction(transactionBytes);
 
       // Submit to RPC
       const signature = await this.sendRawTransaction(signedTransaction, options);
@@ -249,16 +199,11 @@ export class SolanaService extends Service {
   }
 
   /**
-   * Sign a transaction (add signature to transaction bytes)
+   * Sign a transaction using tweetnacl
    */
-  private async signTransaction(transactionBytes: Uint8Array): Promise<Uint8Array> {
-    if (!this.publicKeyBytes) {
+  private signTransaction(transactionBytes: Uint8Array): Uint8Array {
+    if (!this.keypair) {
       throw new Error("Wallet not initialized");
-    }
-
-    // If Ed25519 not available, return null to trigger simulation
-    if (!this.cryptoKey || !ed25519Available) {
-      throw new Error("Ed25519 signing not available - use simulation mode");
     }
 
     // Solana transaction format:
@@ -273,8 +218,8 @@ export class SolanaService extends Service {
     // Extract the message portion to sign
     const message = transactionBytes.slice(messageOffset);
 
-    // Sign the message
-    const signature = await signMessage(this.cryptoKey, message);
+    // Sign the message using tweetnacl
+    const signature = nacl.sign.detached(message, this.keypair.secretKey);
 
     // Create new transaction with signature inserted
     const signedTx = new Uint8Array(transactionBytes.length);
@@ -282,6 +227,10 @@ export class SolanaService extends Service {
 
     // Insert signature at first signature slot
     signedTx.set(signature, signatureOffset);
+
+    console.log(
+      `[SolanaService] Transaction signed (sig: ${base58Encode(signature).slice(0, 16)}...)`
+    );
 
     return signedTx;
   }
@@ -326,10 +275,7 @@ export class SolanaService extends Service {
   /**
    * Confirm transaction
    */
-  private async confirmTransaction(
-    signature: string,
-    maxRetries: number = 30
-  ): Promise<boolean> {
+  private async confirmTransaction(signature: string, maxRetries: number = 30): Promise<boolean> {
     for (let i = 0; i < maxRetries; i++) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -351,7 +297,10 @@ export class SolanaService extends Service {
         if (status.err) {
           throw new Error(`Transaction failed: ${JSON.stringify(status.err)}`);
         }
-        if (status.confirmationStatus === "confirmed" || status.confirmationStatus === "finalized") {
+        if (
+          status.confirmationStatus === "confirmed" ||
+          status.confirmationStatus === "finalized"
+        ) {
           return true;
         }
       }

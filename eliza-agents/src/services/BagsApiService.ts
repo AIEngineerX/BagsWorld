@@ -38,6 +38,14 @@ export interface RecentLaunch {
   creator: string;
   initialMarketCap?: number;
   imageUrl?: string;
+  // DexScreener data for better evaluation
+  _dexData?: {
+    liquidityUsd: number;
+    volume24hUsd: number;
+    buys24h: number;
+    sells24h: number;
+    priceChange24h: number;
+  };
 }
 
 export interface WorldHealthData {
@@ -458,51 +466,75 @@ export class BagsApiService extends Service {
 
   async getRecentLaunches(limit: number = 10): Promise<RecentLaunch[]> {
     try {
-      // Use DexScreener to find Bags.fm tokens (they end in "BAGS" or are on Meteora DBC)
-      // This is more reliable than the non-existent Bags API endpoint
+      // Use DexScreener's token profiles endpoint for Bags.fm DEX
+      // This searches for all pairs on the "bags" DEX on Solana
       const response = await fetch(
-        "https://api.dexscreener.com/latest/dex/search?q=BAGS"
+        "https://api.dexscreener.com/latest/dex/pairs/solana?dexId=bags"
       );
+
       if (!response.ok) {
-        console.error(`[BagsApi] DexScreener error: ${response.status}`);
-        return [];
+        // Fallback: search for tokens that trade against SOL on bags
+        console.log("[BagsApi] Trying fallback DexScreener search...");
+        return this.getRecentLaunchesFallback(limit);
       }
+
       const data = await response.json();
 
-      // Filter for Bags.fm tokens (dexId === "bags") launched recently
+      // Filter for recent launches (last 2 hours for better coverage)
       const now = Date.now();
-      const thirtyMinAgo = now - 30 * 60 * 1000; // Last 30 minutes for fresh launches
+      const twoHoursAgo = now - 2 * 60 * 60 * 1000;
 
       const launches: RecentLaunch[] = (data.pairs || [])
-        .filter((pair: {
-          chainId: string;
-          dexId?: string;
-          baseToken?: { address?: string };
-          pairCreatedAt?: number;
-        }) => {
-          // Must be Solana and on Bags DEX
-          if (pair.chainId !== "solana") return false;
-          if (pair.dexId !== "bags") return false;
-          // Must have been created recently (within last 30 min for "new" launches)
-          if (pair.pairCreatedAt && pair.pairCreatedAt < thirtyMinAgo) return false;
-          return true;
-        })
+        .filter(
+          (pair: {
+            chainId: string;
+            dexId?: string;
+            pairCreatedAt?: number;
+            liquidity?: { usd?: number };
+          }) => {
+            if (pair.chainId !== "solana") return false;
+            if (pair.dexId !== "bags") return false;
+            // Include tokens up to 2 hours old
+            if (pair.pairCreatedAt && pair.pairCreatedAt < twoHoursAgo) return false;
+            // Must have some liquidity
+            if (!pair.liquidity?.usd || pair.liquidity.usd < 1000) return false;
+            return true;
+          }
+        )
+        .sort(
+          (a: { pairCreatedAt?: number }, b: { pairCreatedAt?: number }) =>
+            (b.pairCreatedAt || 0) - (a.pairCreatedAt || 0)
+        )
         .slice(0, limit)
-        .map((pair: {
-          baseToken?: { address?: string; name?: string; symbol?: string };
-          pairCreatedAt?: number;
-          fdv?: number;
-          liquidity?: { usd?: number };
-        }) => ({
-          mint: pair.baseToken?.address || "",
-          name: pair.baseToken?.name || "Unknown",
-          symbol: pair.baseToken?.symbol || "???",
-          launchedAt: pair.pairCreatedAt || now,
-          creator: "",
-          initialMarketCap: pair.fdv || pair.liquidity?.usd || 0,
-        }));
+        .map(
+          (pair: {
+            baseToken?: { address?: string; name?: string; symbol?: string };
+            pairCreatedAt?: number;
+            fdv?: number;
+            marketCap?: number;
+            liquidity?: { usd?: number };
+            volume?: { h24?: number };
+            txns?: { h24?: { buys?: number; sells?: number } };
+            priceChange?: { h24?: number };
+          }) => ({
+            mint: pair.baseToken?.address || "",
+            name: pair.baseToken?.name || "Unknown",
+            symbol: pair.baseToken?.symbol || "???",
+            launchedAt: pair.pairCreatedAt || now,
+            creator: "",
+            initialMarketCap: pair.marketCap || pair.fdv || 0,
+            // Include DexScreener data for better evaluation
+            _dexData: {
+              liquidityUsd: pair.liquidity?.usd || 0,
+              volume24hUsd: pair.volume?.h24 || 0,
+              buys24h: pair.txns?.h24?.buys || 0,
+              sells24h: pair.txns?.h24?.sells || 0,
+              priceChange24h: pair.priceChange?.h24 || 0,
+            },
+          })
+        );
 
-      console.log(`[BagsApi] Found ${launches.length} recent Bags.fm tokens via DexScreener`);
+      console.log(`[BagsApi] Found ${launches.length} recent Bags.fm tokens`);
       return launches;
     } catch (error) {
       console.error("Failed to fetch recent launches:", error);
@@ -511,11 +543,72 @@ export class BagsApiService extends Service {
     }
   }
 
+  /**
+   * Fallback method using search endpoint
+   */
+  private async getRecentLaunchesFallback(limit: number): Promise<RecentLaunch[]> {
+    try {
+      // Search for common memecoin terms on Bags
+      const searches = ["SOL", "MEME", "DEGEN", "PUMP"];
+      const allPairs: any[] = [];
+
+      for (const term of searches) {
+        const response = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${term}`);
+        if (response.ok) {
+          const data = await response.json();
+          const bagsPairs = (data.pairs || []).filter(
+            (p: { chainId: string; dexId?: string }) => p.chainId === "solana" && p.dexId === "bags"
+          );
+          allPairs.push(...bagsPairs);
+        }
+        // Small delay between searches
+        await new Promise((r) => setTimeout(r, 200));
+      }
+
+      // Dedupe by mint address
+      const seenMints = new Set<string>();
+      const uniquePairs = allPairs.filter((p) => {
+        const mint = p.baseToken?.address;
+        if (!mint || seenMints.has(mint)) return false;
+        seenMints.add(mint);
+        return true;
+      });
+
+      const now = Date.now();
+      const twoHoursAgo = now - 2 * 60 * 60 * 1000;
+
+      return uniquePairs
+        .filter((p) => !p.pairCreatedAt || p.pairCreatedAt >= twoHoursAgo)
+        .sort((a, b) => (b.pairCreatedAt || 0) - (a.pairCreatedAt || 0))
+        .slice(0, limit)
+        .map((pair) => ({
+          mint: pair.baseToken?.address || "",
+          name: pair.baseToken?.name || "Unknown",
+          symbol: pair.baseToken?.symbol || "???",
+          launchedAt: pair.pairCreatedAt || now,
+          creator: "",
+          initialMarketCap: pair.marketCap || pair.fdv || 0,
+          _dexData: {
+            liquidityUsd: pair.liquidity?.usd || 0,
+            volume24hUsd: pair.volume?.h24 || 0,
+            buys24h: pair.txns?.h24?.buys || 0,
+            sells24h: pair.txns?.h24?.sells || 0,
+            priceChange24h: pair.priceChange?.h24 || 0,
+          },
+        }));
+    } catch (error) {
+      console.error("[BagsApi] Fallback search failed:", error);
+      return [];
+    }
+  }
+
   async getWorldHealth(): Promise<WorldHealthData | null> {
     try {
       const response = await fetch(`${this.bagsWorldUrl}/api/world-state`);
       if (!response.ok) {
-        const error = new Error(`World health API error: ${response.status} ${response.statusText}`);
+        const error = new Error(
+          `World health API error: ${response.status} ${response.statusText}`
+        );
         if (this.throwOnError) throw error;
         return null;
       }
@@ -549,9 +642,7 @@ export class BagsApiService extends Service {
     }
   }
 
-  async getTokenCreators(
-    tokenMint: string
-  ): Promise<
+  async getTokenCreators(tokenMint: string): Promise<
     Array<{
       wallet: string;
       provider: string;
@@ -644,24 +735,28 @@ export class BagsApiService extends Service {
   async getClaimEvents(
     tokenMint: string,
     options?: { limit?: number; offset?: number }
-  ): Promise<Array<{
-    wallet: string;
-    amount: number;
-    timestamp: number;
-    txSignature: string;
-  }>> {
+  ): Promise<
+    Array<{
+      wallet: string;
+      amount: number;
+      timestamp: number;
+      txSignature: string;
+    }>
+  > {
     try {
       const params = new URLSearchParams({
         tokenMint,
         limit: String(options?.limit || 20),
         offset: String(options?.offset || 0),
       });
-      const result = await this.fetch<Array<{
-        wallet: string;
-        amount: number;
-        timestamp: number;
-        txSignature: string;
-      }>>(`/fee-share/token/claim-events?${params}`);
+      const result = await this.fetch<
+        Array<{
+          wallet: string;
+          amount: number;
+          timestamp: number;
+          txSignature: string;
+        }>
+      >(`/fee-share/token/claim-events?${params}`);
       return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error(`[BagsApiService] Failed to get claim events for ${tokenMint}:`, error);
