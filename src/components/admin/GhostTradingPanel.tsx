@@ -510,25 +510,32 @@ function PositionCard({
   const displaySymbol = symbol.length > 10 ? `${symbol.slice(0, 6)}...` : symbol;
 
   const handleMarkClosed = async () => {
-    const pnlSol = pnlInput ? parseFloat(pnlInput) : undefined;
-    const result = await markClosed.mutateAsync({
-      positionId: position.id,
-      pnlSol,
-      exitReason: "manual_external",
-    });
+    try {
+      const pnlSol = pnlInput ? parseFloat(pnlInput) : undefined;
+      const result = await markClosed.mutateAsync({
+        positionId: position.id,
+        pnlSol,
+        exitReason: "manual_external",
+      });
 
-    if (result.success) {
-      addLog?.(`Marked ${symbol} as closed${pnlSol !== undefined ? ` (PnL: ${pnlSol} SOL)` : ""}`, "success");
-      setShowCloseForm(false);
-      setPnlInput("");
-    } else {
-      addLog?.(`Failed to close: ${result.error}`, "error");
+      if (result.success) {
+        addLog?.(
+          `Marked ${symbol} as closed${pnlSol !== undefined ? ` (PnL: ${pnlSol} SOL)` : ""}`,
+          "success"
+        );
+        setShowCloseForm(false);
+        setPnlInput("");
+      } else {
+        addLog?.(`Failed to close: ${result.error}`, "error");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      addLog?.(`Error closing position: ${message}`, "error");
+      console.error("Mark closed error:", error);
     }
   };
 
-  const dexUrl = position.tokenMint
-    ? `https://dexscreener.com/solana/${position.tokenMint}`
-    : null;
+  const dexUrl = position.tokenMint ? `https://dexscreener.com/solana/${position.tokenMint}` : null;
 
   return (
     <div
