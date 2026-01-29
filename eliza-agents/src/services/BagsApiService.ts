@@ -774,6 +774,10 @@ export class BagsApiService extends Service {
     });
   }
 
+  /**
+   * Get trade quote from Jupiter API
+   * Jupiter provides better liquidity access across all Solana DEXes
+   */
   async getTradeQuote(
     inputMint: string,
     outputMint: string,
@@ -784,21 +788,68 @@ export class BagsApiService extends Service {
       inputMint,
       outputMint,
       amount: amount.toString(),
+      slippageBps: (slippageBps || 300).toString(),
+      restrictIntermediateTokens: "true", // More stable routes
     });
-    if (slippageBps) {
-      params.set("slippageBps", slippageBps.toString());
+
+    const response = await fetch(`https://api.jup.ag/swap/v1/quote?${params}`, {
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Jupiter quote failed: ${response.status} - ${error}`);
     }
-    return this.fetch(`/trade/quote?${params}`);
+
+    const quote = await response.json();
+    return {
+      inputMint: quote.inputMint,
+      outputMint: quote.outputMint,
+      inAmount: quote.inAmount,
+      outAmount: quote.outAmount,
+      priceImpactPct: quote.priceImpactPct,
+      // Store full quote for swap request
+      _jupiterQuote: quote,
+    } as TradeQuote;
   }
 
+  /**
+   * Create swap transaction via Jupiter API
+   */
   async createSwapTransaction(
     quoteResponse: TradeQuote,
     userPublicKey: string
   ): Promise<SwapTransactionResult> {
-    return this.fetch("/trade/swap", {
+    // Use the stored Jupiter quote
+    const jupiterQuote = (quoteResponse as any)._jupiterQuote;
+    if (!jupiterQuote) {
+      throw new Error("Invalid quote - missing Jupiter quote data");
+    }
+
+    const response = await fetch("https://api.jup.ag/swap/v1/swap", {
       method: "POST",
-      body: JSON.stringify({ quoteResponse, userPublicKey }),
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        quoteResponse: jupiterQuote,
+        userPublicKey,
+        dynamicComputeUnitLimit: true, // Let Jupiter calculate optimal compute
+        prioritizationFeeLamports: "auto", // Auto priority fee
+      }),
     });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Jupiter swap failed: ${response.status} - ${error}`);
+    }
+
+    const swap = await response.json();
+    return {
+      swapTransaction: swap.swapTransaction,
+      lastValidBlockHeight: swap.lastValidBlockHeight,
+    } as SwapTransactionResult;
   }
 
   async createTokenInfo(data: TokenCreationData): Promise<TokenCreationResult> {
