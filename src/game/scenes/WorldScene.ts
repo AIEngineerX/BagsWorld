@@ -3164,6 +3164,8 @@ Use: bags.fm/[yourname]`,
       if (characterId === "bnn" && spriteData.isBNN) return sprite;
       // Founder's Corner Zone
       if (characterId === "professorOak" && spriteData.isProfessorOak) return sprite;
+      // Mascots
+      if (characterId === "bagsy" && spriteData.isBagsy) return sprite;
     }
 
     return null;
@@ -3194,6 +3196,8 @@ Use: bags.fm/[yourname]`,
     if (character.isBNN) return "bnn";
     // Founder's Corner Zone
     if (character.isProfessorOak) return "professorOak";
+    // Mascots
+    if (character.isBagsy) return "bagsy";
     return character.id;
   }
 
@@ -3263,6 +3267,11 @@ Use: bags.fm/[yourname]`,
     if (character.isProfessorOak && spriteData.professorOakGlow) {
       spriteData.professorOakGlow.x = sprite.x;
       spriteData.professorOakGlow.y = sprite.y;
+    }
+    // Mascots
+    if (character.isBagsy && spriteData.bagsyGlow) {
+      spriteData.bagsyGlow.x = sprite.x;
+      spriteData.bagsyGlow.y = sprite.y;
     }
   }
 
@@ -5711,8 +5720,11 @@ Use: bags.fm/[yourname]`,
     const isBNN = character.isBNN === true;
     // Founder's Corner characters
     const isProfessorOak = character.isProfessorOak === true;
+    // Mascots
+    const isBagsy = character.isBagsy === true;
     const isAcademyChar = isRamo || isSincara || isStuu || isSam || isAlaa || isCarlo || isBNN;
     const isFoundersChar = isProfessorOak;
+    const isMascot = isBagsy;
     if (
       !isToly &&
       !isAsh &&
@@ -5722,7 +5734,8 @@ Use: bags.fm/[yourname]`,
       !isCJ &&
       !isShaw &&
       !isAcademyChar &&
-      !isFoundersChar
+      !isFoundersChar &&
+      !isMascot
     ) {
       const variant = this.characterVariants.get(character.id) ?? 0;
       const expectedTexture = this.getCharacterTexture(character.mood, variant);
@@ -5751,8 +5764,11 @@ Use: bags.fm/[yourname]`,
     const isBNN = character.isBNN === true;
     // Founder's Corner characters
     const isProfessorOak = character.isProfessorOak === true;
+    // Mascots
+    const isBagsy = character.isBagsy === true;
     const isAcademyChar = isRamo || isSincara || isStuu || isSam || isAlaa || isCarlo || isBNN;
     const isFoundersChar = isProfessorOak;
+    const isMascot = isBagsy;
     const isSpecial =
       isToly ||
       isAsh ||
@@ -5762,7 +5778,8 @@ Use: bags.fm/[yourname]`,
       isCJ ||
       isShaw ||
       isAcademyChar ||
-      isFoundersChar;
+      isFoundersChar ||
+      isMascot;
     const variant = index % 9;
     this.characterVariants.set(character.id, variant);
 
@@ -5796,7 +5813,9 @@ Use: bags.fm/[yourname]`,
                                 ? "bnn"
                                 : isProfessorOak
                                   ? "professorOak"
-                                  : this.getCharacterTexture(character.mood, variant);
+                                  : isBagsy
+                                    ? "bagsy"
+                                    : this.getCharacterTexture(character.mood, variant);
     const sprite = this.add.sprite(character.x, character.y, textureKey);
     sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
     sprite.setInteractive();
@@ -5835,6 +5854,8 @@ Use: bags.fm/[yourname]`,
         this.showBNNTooltip(sprite!);
       } else if (isProfessorOak) {
         this.showProfessorOakTooltip(sprite!);
+      } else if (isBagsy) {
+        this.showBagsyTooltip(sprite!);
       } else {
         this.showCharacterTooltip(character, sprite!);
       }
@@ -5891,6 +5912,9 @@ Use: bags.fm/[yourname]`,
       } else if (isProfessorOak) {
         // Professor Oak opens the token launch guide chat
         window.dispatchEvent(new CustomEvent("bagsworld-professoroak-click"));
+      } else if (isBagsy) {
+        // Bagsy opens the mascot chat
+        window.dispatchEvent(new CustomEvent("bagsworld-bagsy-click"));
       } else if (character.profileUrl) {
         // Open profile page in new tab
         window.open(character.profileUrl, "_blank");
@@ -5942,6 +5966,8 @@ Use: bags.fm/[yourname]`,
       { active: isBNN, key: "bnnGlow", tint: 0x06b6d4, duration: 800 }, // Cyan - news/info
       // Founder's Corner character glows
       { active: isProfessorOak, key: "professorOakGlow", tint: 0xfbbf24, duration: 1000 }, // Amber - wisdom
+      // Mascot glows
+      { active: isBagsy, key: "bagsyGlow", tint: 0x00ff00, duration: 900 }, // Bright green - money bag energy
     ];
 
     for (const cfg of glowConfigs) {
@@ -5980,6 +6006,7 @@ Use: bags.fm/[yourname]`,
       isCarlo,
       isBNN,
       isProfessorOak,
+      isBagsy,
     });
 
     this.characterSprites.set(character.id, sprite);
@@ -7252,6 +7279,47 @@ Use: bags.fm/[yourname]`,
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#fbbf24",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showBagsyTooltip(sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 200, 78, 0x0a1a0a, 0.95);
+    bg.setStrokeStyle(2, 0x00ff00); // Bright green border
+
+    const nameText = this.add.text(0, -22, "💰 Bagsy", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#00ff00",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, "BagsWorld Hype Bot", {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    const quoteText = this.add.text(0, 10, '"have u claimed ur fees today? :)"', {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 26, "Click to talk", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#00ff00",
     });
     clickText.setOrigin(0.5, 0.5);
 

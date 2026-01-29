@@ -190,6 +190,26 @@ export class AutonomousService extends Service {
         await this.postFinnTwitterUpdate();
       },
     });
+
+    // Bagsy: Post hype updates to Twitter every 3 hours
+    this.registerTask({
+      name: "bagsy_twitter_hype",
+      agentId: "bagsy",
+      interval: 3 * 60 * 60 * 1000, // 3 hours
+      handler: async () => {
+        await this.postBagsyTwitterUpdate();
+      },
+    });
+
+    // Bagsy: Fee reminder posts every 6 hours
+    this.registerTask({
+      name: "bagsy_fee_reminder",
+      agentId: "bagsy",
+      interval: 6 * 60 * 60 * 1000, // 6 hours
+      handler: async () => {
+        await this.postBagsyFeeReminder();
+      },
+    });
   }
 
   /**
@@ -861,6 +881,142 @@ export class AutonomousService extends Service {
     tweets.push(
       `reminder:\n\nevery trade on @BagsFM = creator fees forever\n\nnot just at launch. FOREVER.\n\nbuild something. earn something. simple.`
     );
+
+    return tweets;
+  }
+
+  /**
+   * Bagsy's Twitter update - posts cute hype content
+   */
+  private async postBagsyTwitterUpdate(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      console.log("[AutonomousService] Twitter not configured, skipping Bagsy update");
+      return;
+    }
+
+    if (!this.bagsApi) return;
+
+    try {
+      const healthData = await this.bagsApi.getWorldHealth();
+      if (!healthData) return;
+
+      // Build Bagsy-style tweet
+      const tweets = this.generateBagsyTweets(healthData);
+
+      // Pick a random tweet style
+      const tweet = tweets[Math.floor(Math.random() * tweets.length)];
+
+      const result = await this.twitterService.post(tweet);
+
+      if (result.success) {
+        console.log(`[AutonomousService] Bagsy posted: ${result.tweet?.url}`);
+
+        await this.createAlert({
+          type: "milestone",
+          severity: "info",
+          title: "Bagsy Twitter Update",
+          message: tweet,
+          data: { tweetId: result.tweet?.id },
+        });
+      } else {
+        console.error(`[AutonomousService] Bagsy tweet failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Bagsy Twitter update failed:", error);
+    }
+  }
+
+  /**
+   * Bagsy's fee reminder post
+   */
+  private async postBagsyFeeReminder(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      return;
+    }
+
+    const walletsWithFees = this.getWalletsWithUnclaimedFees().length;
+    const totalUnclaimedSol = this.getWalletsWithUnclaimedFees().reduce(
+      (sum, w) => sum + w.unclaimedLamports / 1_000_000_000,
+      0
+    );
+
+    // Only post if there are significant unclaimed fees
+    if (walletsWithFees < 1 || totalUnclaimedSol < 0.5) {
+      console.log("[AutonomousService] Not enough unclaimed fees for Bagsy reminder");
+      return;
+    }
+
+    try {
+      const feeReminders = [
+        `psa: there is ${totalUnclaimedSol.toFixed(1)} SOL sitting unclaimed on @BagsFM rn\n\nis some of it yours?\n\nbags.fm/claim`,
+        `${walletsWithFees} creators have fees waiting to be claimed\n\nare u one of them?\n\nbags.fm/claim`,
+        `me refreshing the unclaimed fees dashboard: concerned\n\n${totalUnclaimedSol.toFixed(1)} SOL just sitting there\n\npls claim frens`,
+        `friendly reminder from ur fren bagsy:\n\nCLAIM UR FEES\n\n${totalUnclaimedSol.toFixed(1)} SOL unclaimed rn\n\nbags.fm/claim`,
+      ];
+
+      const tweet = feeReminders[Math.floor(Math.random() * feeReminders.length)];
+      const result = await this.twitterService.post(tweet);
+
+      if (result.success) {
+        console.log(`[AutonomousService] Bagsy fee reminder posted: ${result.tweet?.url}`);
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Bagsy fee reminder failed:", error);
+    }
+  }
+
+  /**
+   * Generate Bagsy-style tweets based on ecosystem data
+   */
+  private generateBagsyTweets(healthData: {
+    health: number;
+    totalFees24h: number;
+    activeTokens: number;
+  }): string[] {
+    const tweets: string[] = [];
+    const fees24h = healthData.totalFees24h?.toFixed(2) || "0";
+    const activeTokens = healthData.activeTokens || 0;
+    const health = healthData.health || 50;
+
+    // Cute ecosystem updates
+    tweets.push(
+      `ecosystem check:\n\n${fees24h} SOL in fees today\n${activeTokens} tokens cooking\n\nvibes: immaculate :)`
+    );
+
+    tweets.push(
+      `@BagsFM creators earned ${fees24h} SOL in fees today\n\nthe flywheel keeps spinning :)`
+    );
+
+    // Health-based posts
+    if (health >= 80) {
+      tweets.push(
+        `health check: ${health}%\n\necosystem is thriving, creators are eating, bagsy is happy\n\nwe're all gonna make it`
+      );
+    } else if (health >= 50) {
+      tweets.push(
+        `daily update:\n\nfees: flowing\ncreators: eating\nbagsy: happy\n\nbags.fm`
+      );
+    }
+
+    // Memeable posts
+    tweets.push(
+      `me: exists\n\nalso me: have u claimed ur fees tho\n\nbags.fm/claim`
+    );
+
+    tweets.push(
+      `im just a smol green bean who wants u to have passive income\n\nis that too much to ask\n\nbags.fm/claim`
+    );
+
+    tweets.push(
+      `things that make bagsy happy:\n\n1. fee claims\n2. new launches\n3. creators winning\n4. u :)`
+    );
+
+    // Milestone celebration (tag Finn on big days)
+    if (parseFloat(fees24h) >= 10) {
+      tweets.push(
+        `WAIT. ${fees24h} SOL in fees today??\n\n@finnbags the platform is COOKING\n\nso proud of this community`
+      );
+    }
 
     return tweets;
   }

@@ -1179,6 +1179,15 @@ export async function POST(request: NextRequest) {
         lifetimeEarnings: 151,
         flag: "isProfessorOak",
       },
+      // Mascots
+      {
+        username: "Bagsy",
+        providerUsername: "BagsWorldApp",
+        provider: "twitter",
+        wallet: "bagsy-mascot-permanent",
+        lifetimeEarnings: 420069,
+        flag: "isBagsy",
+      },
     ] as const;
 
     for (const char of specialChars) {
