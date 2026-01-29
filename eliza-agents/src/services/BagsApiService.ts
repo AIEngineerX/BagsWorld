@@ -469,23 +469,23 @@ export class BagsApiService extends Service {
       }
       const data = await response.json();
 
-      // Filter for Solana tokens that look like Bags.fm launches
+      // Filter for Bags.fm tokens (dexId === "bags") launched recently
       const now = Date.now();
-      const oneHourAgo = now - 60 * 60 * 1000;
+      const thirtyMinAgo = now - 30 * 60 * 1000; // Last 30 minutes for fresh launches
 
       const launches: RecentLaunch[] = (data.pairs || [])
         .filter((pair: {
           chainId: string;
+          dexId?: string;
           baseToken?: { address?: string };
           pairCreatedAt?: number;
         }) => {
-          // Must be Solana
+          // Must be Solana and on Bags DEX
           if (pair.chainId !== "solana") return false;
-          // Must have been created recently (within last hour for "new" launches)
-          if (pair.pairCreatedAt && pair.pairCreatedAt < oneHourAgo) return false;
-          // Bags.fm tokens typically end in "BAGS" or have specific patterns
-          const address = pair.baseToken?.address || "";
-          return address.endsWith("BAGS") || address.length === 44;
+          if (pair.dexId !== "bags") return false;
+          // Must have been created recently (within last 30 min for "new" launches)
+          if (pair.pairCreatedAt && pair.pairCreatedAt < thirtyMinAgo) return false;
+          return true;
         })
         .slice(0, limit)
         .map((pair: {
