@@ -144,6 +144,7 @@ router.get("/positions/open", (req: Request, res: Response) => {
       tokenMint: p.tokenMint,
       tokenSymbol: p.tokenSymbol,
       tokenName: p.tokenName,
+      status: p.status,
       entryPriceSol: p.entryPriceSol,
       amountSol: p.amountSol,
       amountTokens: p.amountTokens,
