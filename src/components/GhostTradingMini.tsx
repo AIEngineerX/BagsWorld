@@ -5,6 +5,24 @@
 
 import { useGhostStatus, useGhostOpenPositions } from "@/hooks/useElizaAgents";
 
+// Format time ago
+function timeAgo(date: string | Date): string {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}
+
+// Clean up symbol display
+function formatSymbol(symbol: string): string {
+  // If it looks like a mint address (long alphanumeric), truncate
+  if (symbol.length > 10 && /^[A-Za-z0-9]+$/.test(symbol)) {
+    return symbol.slice(0, 6) + "...";
+  }
+  return symbol;
+}
+
 export function GhostTradingMini() {
   const { data: status, isLoading } = useGhostStatus();
   const { data: positions } = useGhostOpenPositions();
@@ -23,6 +41,7 @@ export function GhostTradingMini() {
   const totalPnl = status?.performance?.totalPnlSol || 0;
   const winRate = status?.performance?.winRate || "0%";
   const totalTrades = status?.performance?.totalTrades || 0;
+  const exposure = status?.trading?.totalExposureSol || 0;
 
   return (
     <div className="p-2 bg-purple-500/5 border-b border-purple-500/20">
@@ -54,8 +73,8 @@ export function GhostTradingMini() {
           <p className="font-pixel text-[10px] text-yellow-400">{walletBalance.toFixed(2)}</p>
         </div>
         <div>
-          <p className="font-pixel text-[6px] text-gray-500">WIN RATE</p>
-          <p className="font-pixel text-[10px] text-white">{winRate}</p>
+          <p className="font-pixel text-[6px] text-gray-500">EXPOSURE</p>
+          <p className="font-pixel text-[10px] text-purple-300">{exposure.toFixed(2)}</p>
         </div>
         <div>
           <p className="font-pixel text-[6px] text-gray-500">P&L</p>
@@ -71,23 +90,35 @@ export function GhostTradingMini() {
       {/* Open Positions Preview */}
       {positions?.positions && positions.positions.length > 0 && (
         <div className="mt-2 pt-2 border-t border-purple-500/20">
-          <p className="font-pixel text-[6px] text-gray-500 mb-1">OPEN POSITIONS</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-pixel text-[6px] text-gray-500">OPEN POSITIONS</p>
+            <p className="font-pixel text-[6px] text-gray-600">SL: -15% | TP: 1.5x-3x</p>
+          </div>
           <div className="space-y-1">
-            {positions.positions.slice(0, 2).map((pos) => (
-              <div key={pos.id} className="flex justify-between items-center">
-                <span className="font-pixel text-[8px] text-purple-300">${pos.tokenSymbol}</span>
-                <span className="font-pixel text-[7px] text-gray-400">
-                  {pos.amountSol.toFixed(3)} SOL
+            {positions.positions.slice(0, 3).map((pos: any) => (
+              <div key={pos.id} className="flex justify-between items-center bg-purple-500/10 rounded px-1 py-0.5">
+                <div className="flex items-center gap-1">
+                  <span className="font-pixel text-[8px] text-purple-300 font-bold">
+                    ${formatSymbol(pos.tokenSymbol)}
+                  </span>
+                  <span className="font-pixel text-[6px] text-gray-500">
+                    {timeAgo(pos.createdAt)}
+                  </span>
+                </div>
+                <span className="font-pixel text-[7px] text-yellow-400">
+                  {pos.amountSol.toFixed(2)} SOL
                 </span>
               </div>
             ))}
-            {positions.positions.length > 2 && (
-              <p className="font-pixel text-[6px] text-gray-500 text-center">
-                +{positions.positions.length - 2} more
-              </p>
-            )}
           </div>
         </div>
+      )}
+
+      {/* Exit rules reminder */}
+      {openCount > 0 && (
+        <p className="font-pixel text-[6px] text-gray-600 text-center mt-1">
+          watching for exits...
+        </p>
       )}
 
       {/* Quick tip */}
