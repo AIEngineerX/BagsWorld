@@ -1182,7 +1182,7 @@ export async function POST(request: NextRequest) {
       // Mascots
       {
         username: "Bagsy",
-        providerUsername: "BagsWorldApp",
+        providerUsername: "BagsyHypeBot",
         provider: "twitter",
         wallet: "bagsy-mascot-permanent",
         lifetimeEarnings: 420069,
