@@ -5,6 +5,7 @@ import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { useGameStore } from "@/lib/store";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { GhostTradingMini } from "./GhostTradingMini";
 
 interface DevMessage {
   id: string;
@@ -478,6 +479,9 @@ export function DevChat() {
           ))}
         </div>
       </div>
+
+      {/* Live Trading Stats */}
+      <GhostTradingMini />
 
       {/* Messages */}
       <div className="h-48 overflow-y-auto p-2 space-y-2">
