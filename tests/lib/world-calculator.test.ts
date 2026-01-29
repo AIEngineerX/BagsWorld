@@ -271,18 +271,41 @@ describe("calculateBuildingLevel", () => {
     });
   });
 
-  describe("edge cases", () => {
+  describe("edge cases and input sanitization (Bug Fix #8)", () => {
     it("should handle zero market cap", () => {
       expect(calculateBuildingLevel(0)).toBe(1);
     });
 
-    it("should handle negative market cap", () => {
+    it("should sanitize negative market cap to 0 (returns level 1)", () => {
+      // Bug fix #8: Negative market cap should be treated as 0
       expect(calculateBuildingLevel(-1000)).toBe(1);
+      expect(calculateBuildingLevel(-1)).toBe(1);
+      expect(calculateBuildingLevel(-999999999)).toBe(1);
     });
 
     it("should handle decimal market cap", () => {
       expect(calculateBuildingLevel(99999.99)).toBe(1);
       expect(calculateBuildingLevel(100000.01)).toBe(2);
+    });
+
+    it("should handle NaN market cap (returns level 1)", () => {
+      // Bug fix #8: NaN should be sanitized to 0
+      expect(calculateBuildingLevel(NaN)).toBe(1);
+    });
+
+    it("should handle undefined/null coerced to NaN (returns level 1)", () => {
+      // When passed undefined or null, it becomes NaN or 0
+      expect(calculateBuildingLevel(undefined as unknown as number)).toBe(1);
+      expect(calculateBuildingLevel(null as unknown as number)).toBe(1);
+    });
+
+    it("should handle Infinity (returns level 5)", () => {
+      expect(calculateBuildingLevel(Infinity)).toBe(5);
+    });
+
+    it("should handle negative Infinity (returns level 1)", () => {
+      // Negative infinity sanitized to 0
+      expect(calculateBuildingLevel(-Infinity)).toBe(1);
     });
   });
 });
@@ -577,6 +600,107 @@ describe("getCachedBuildingPosition", () => {
     const pos1After = getCachedBuildingPosition(mint1, existingBuildings);
     expect(pos1After.x).toBe(pos1Initial.x);
     expect(pos1After.y).toBe(pos1Initial.y);
+  });
+
+  describe("deterministic hash-based positioning (Bug Fix #5)", () => {
+    beforeEach(() => {
+      cleanupBuildingPositionCache(new Set());
+    });
+
+    it("should produce IDENTICAL positions across cache clears (serverless simulation)", () => {
+      const existingBuildings = new Set<string>();
+      const mint = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
+
+      // Simulate Instance A (fresh cache)
+      cleanupBuildingPositionCache(new Set());
+      const posInstanceA = getCachedBuildingPosition(mint, existingBuildings);
+
+      // Simulate Instance B (different serverless instance, fresh cache)
+      cleanupBuildingPositionCache(new Set());
+      const posInstanceB = getCachedBuildingPosition(mint, existingBuildings);
+
+      // Simulate Instance C (yet another instance)
+      cleanupBuildingPositionCache(new Set());
+      const posInstanceC = getCachedBuildingPosition(mint, existingBuildings);
+
+      // ALL instances must return IDENTICAL positions - this is the fix
+      expect(posInstanceA.x).toBe(posInstanceB.x);
+      expect(posInstanceA.y).toBe(posInstanceB.y);
+      expect(posInstanceB.x).toBe(posInstanceC.x);
+      expect(posInstanceB.y).toBe(posInstanceC.y);
+    });
+
+    it("should produce identical positions regardless of other buildings (no coordination needed)", () => {
+      const mint = "TestMint111111111111111111111111111111111";
+
+      // Scenario 1: mint is the only building
+      cleanupBuildingPositionCache(new Set());
+      const posAlone = getCachedBuildingPosition(mint, new Set());
+
+      // Scenario 2: Other buildings were processed first
+      cleanupBuildingPositionCache(new Set());
+      getCachedBuildingPosition("OtherMint1111111111111111111111111111", new Set());
+      getCachedBuildingPosition("OtherMint2222222222222222222222222222", new Set());
+      const posWithOthers = getCachedBuildingPosition(mint, new Set());
+
+      // Position must be IDENTICAL - no dependency on other buildings
+      expect(posAlone.x).toBe(posWithOthers.x);
+      expect(posAlone.y).toBe(posWithOthers.y);
+    });
+
+    it("should distribute mints across different positions via hash", () => {
+      const existingBuildings = new Set<string>();
+      cleanupBuildingPositionCache(new Set());
+
+      const mints = [
+        "TokenMint111111111111111111111111111111111",
+        "TokenMint222222222222222222222222222222222",
+        "TokenMint333333333333333333333333333333333",
+        "TokenMint444444444444444444444444444444444",
+        "TokenMint555555555555555555555555555555555",
+      ];
+
+      const positions = mints.map((mint) =>
+        getCachedBuildingPosition(mint, existingBuildings)
+      );
+
+      // Should have varied positions (hash distributes across slots)
+      const uniqueSlots = new Set(positions.map((p) => Math.round(p.x / 80)));
+      expect(uniqueSlots.size).toBeGreaterThan(1);
+    });
+
+    it("should add small offset to separate potential hash collisions", () => {
+      // Two mints that might hash to same slot should still have slight offset
+      const mint1 = "CollisionTest111111111111111111111111111";
+      const mint2 = "CollisionTest222222222222222222222222222";
+
+      cleanupBuildingPositionCache(new Set());
+      const pos1 = getCachedBuildingPosition(mint1, new Set());
+      const pos2 = getCachedBuildingPosition(mint2, new Set());
+
+      // Even if they hash to same slot, the mint-based offset separates them
+      // (unless they're truly identical mints, which they're not)
+      if (Math.round(pos1.x / 80) === Math.round(pos2.x / 80)) {
+        // Same slot - offsets should differ
+        expect(pos1.x).not.toBe(pos2.x);
+      }
+    });
+
+    it("should handle all positions within world bounds", () => {
+      cleanupBuildingPositionCache(new Set());
+      const existingBuildings = new Set<string>();
+
+      // Test 25 different mints
+      const mints = Array.from({ length: 25 }, (_, i) => `BoundsMint${i}${"z".repeat(30)}`);
+      const positions = mints.map((mint) => getCachedBuildingPosition(mint, existingBuildings));
+
+      positions.forEach((pos) => {
+        expect(pos.x).toBeGreaterThan(-50); // Allow small negative from offset
+        expect(pos.x).toBeLessThan(WORLD_WIDTH + 50);
+        expect(pos.y).toBeGreaterThan(0);
+        expect(pos.y).toBeLessThan(WORLD_HEIGHT);
+      });
+    });
   });
 });
 

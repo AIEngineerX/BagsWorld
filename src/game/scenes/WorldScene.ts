@@ -3352,6 +3352,11 @@ Use: bags.fm/[yourname]`,
       this.musicInterval = null;
     }
     if (this.audioContext) {
+      this.stopAllOscillators();
+      if (this.gainNode) {
+        this.gainNode.disconnect();
+        this.gainNode = null;
+      }
       this.audioContext.close();
       this.audioContext = null;
     }

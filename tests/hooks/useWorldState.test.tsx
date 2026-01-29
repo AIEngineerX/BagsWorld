@@ -344,6 +344,93 @@ describe("useWorldState Hook", () => {
 
       expect(tokenRegistry.getAllWorldTokens).toHaveBeenCalled();
     });
+
+    it("should use latest tokens when fetching (Bug Fix #2 - stale closure)", async () => {
+      // Start with no tokens
+      (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue([]);
+      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue([]);
+
+      let hookResult: any;
+      await act(async () => {
+        const { result } = renderHook(() => useWorldState(), {
+          wrapper: createWrapper(),
+        });
+        hookResult = result;
+      });
+
+      // Wait for initial render
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      // Clear fetch mock to track new calls
+      (global.fetch as jest.Mock).mockClear();
+
+      // Now update tokens via registry
+      const newTokens: LaunchedToken[] = [
+        {
+          mint: "new-token-after-launch",
+          name: "New Token",
+          symbol: "NEW",
+          creator: "creator",
+          createdAt: Date.now(),
+        },
+      ];
+      (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue(newTokens);
+
+      // Call refreshAfterLaunch - this should use the NEW tokens, not stale closure
+      await act(async () => {
+        hookResult.current.refreshAfterLaunch();
+      });
+
+      // Wait for fetch to be triggered by queryKey change
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+      });
+
+      // Verify fetch was called (queryKey change triggers refetch)
+      // The fix ensures the ref has the latest tokens when queryFn executes
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    it("should not require manual refetch - queryKey change triggers it", async () => {
+      (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue([]);
+      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue([]);
+
+      let hookResult: any;
+      await act(async () => {
+        const { result } = renderHook(() => useWorldState(), {
+          wrapper: createWrapper(),
+        });
+        hookResult = result;
+      });
+
+      // Clear fetch mock
+      (global.fetch as jest.Mock).mockClear();
+
+      // Add a new token
+      const newToken: LaunchedToken = {
+        mint: "auto-refetch-token",
+        name: "Auto Refetch",
+        symbol: "AUTO",
+        creator: "creator",
+        createdAt: Date.now(),
+      };
+      (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue([newToken]);
+
+      // refreshAfterLaunch sets state which changes queryKey
+      await act(async () => {
+        hookResult.current.refreshAfterLaunch();
+      });
+
+      // Wait for React Query to react to queryKey change
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+      });
+
+      // The queryKey changing should trigger a new fetch automatically
+      expect(global.fetch).toHaveBeenCalled();
+    });
   });
 
   describe("Query configuration", () => {

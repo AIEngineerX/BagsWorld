@@ -132,8 +132,12 @@ export async function POST(request: Request) {
             confirmed = true;
           }
         }
-      } catch {
-        // Continue polling on transient errors
+      } catch (pollError) {
+        // Log polling errors for debugging while continuing to poll
+        console.warn(
+          `[send-transaction] Poll attempt ${attempts}/${maxAttempts} failed:`,
+          pollError instanceof Error ? pollError.message : String(pollError)
+        );
       }
     }
 

@@ -47,6 +47,16 @@ function calculateThresholdScore(value: number, t: HealthThresholds): number {
 // Key: token mint, Value: { x, y, assignedIndex }
 const buildingPositionCache = new Map<string, { x: number; y: number; assignedIndex: number }>();
 
+// Hash mint to index (djb2 variant)
+function hashMintToIndex(mint: string, maxIndex: number): number {
+  let hash = 0;
+  for (let i = 0; i < mint.length; i++) {
+    hash = (hash << 5) - hash + mint.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash) % maxIndex;
+}
+
 /**
  * Calculate world health based on Bags.fm ecosystem activity
  * @param claimVolume24h - Total SOL claimed in the last 24 hours
@@ -94,16 +104,12 @@ export function calculateWeather(health: number): WeatherType {
 }
 
 export function calculateBuildingLevel(marketCap: number): number {
-  // Level thresholds based on market cap
-  // Level 1: Small startup (<$100K) - Small gray shop
-  // Level 2: Growing project ($100K-$500K) - Blue office
-  // Level 3: Established token ($500K-$2M) - Purple corp building
-  // Level 4: Major token ($2M-$10M) - Blue tower
-  // Level 5: Top tier ($10M+) - Bags green skyscraper
-  if (marketCap >= 10000000) return 5; // $10M+
-  if (marketCap >= 2000000) return 4; // $2M+
-  if (marketCap >= 500000) return 3; // $500K+
-  if (marketCap >= 100000) return 2; // $100K+
+  const cap = Math.max(0, marketCap || 0);
+
+  if (cap >= 10000000) return 5; // $10M+
+  if (cap >= 2000000) return 4; // $2M+
+  if (cap >= 500000) return 3; // $500K+
+  if (cap >= 100000) return 2; // $100K+
   return 1;
 }
 
@@ -265,45 +271,34 @@ export function generateBuildingPosition(index: number, total: number): { x: num
   };
 }
 
-/**
- * Get or create a cached position for a building by its mint address.
- * This prevents buildings from shifting when rankings change.
- */
+// Deterministic position from mint hash. Same mint = same position across all instances.
 export function getCachedBuildingPosition(
   mint: string,
   existingBuildings: Set<string>
 ): { x: number; y: number } {
-  // Check if we already have a cached position for this mint
   const cached = buildingPositionCache.get(mint);
   if (cached) {
-    // Always use correct ground level (in case old cache has wrong Y)
     return { x: cached.x, y: SIDEWALK_GROUND_Y };
   }
 
-  // Find the next available index that's not in use
-  // First, collect all used indices
-  const usedIndices = new Set<number>();
-  buildingPositionCache.forEach((pos) => {
-    usedIndices.add(pos.assignedIndex);
-  });
+  const slotIndex = hashMintToIndex(mint, MAX_BUILDINGS);
+  const position = generateBuildingPosition(slotIndex, MAX_BUILDINGS);
 
-  // Find the lowest available index
-  let assignedIndex = 0;
-  while (usedIndices.has(assignedIndex) && assignedIndex < MAX_BUILDINGS) {
-    assignedIndex++;
-  }
+  // Offset to visually separate hash collisions
+  const offsetX = (hashMintToIndex(mint + "_offset", 1000) % 40) - 20;
 
-  // Generate position based on assigned index
-  const position = generateBuildingPosition(assignedIndex, MAX_BUILDINGS);
+  const finalPosition = {
+    x: position.x + offsetX,
+    y: SIDEWALK_GROUND_Y,
+  };
 
-  // Cache it
   buildingPositionCache.set(mint, {
-    x: position.x,
-    y: position.y,
-    assignedIndex,
+    x: finalPosition.x,
+    y: finalPosition.y,
+    assignedIndex: slotIndex,
   });
 
-  return position;
+  return finalPosition;
 }
 
 /**
