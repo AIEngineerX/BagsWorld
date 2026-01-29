@@ -17,6 +17,7 @@
     "express": "4.22.1",
     "express-rate-limit": "7.5.0",
     "tsx": "4.21.0",
+    "tweetnacl": "^1.0.3",
     "uuid": "11.1.0",
     "ws": "8.19.0"
   },

@@ -231,32 +231,57 @@ router.post("/config", (req: Request, res: Response) => {
 });
 
 // POST /api/ghost/evaluate - Manually trigger evaluation
+// Works in both enabled (live) and disabled (dry-run) modes
 router.post("/evaluate", async (req: Request, res: Response) => {
   const trader = getGhostTrader();
-
-  if (!trader.isEnabled()) {
-    res.status(400).json({
-      success: false,
-      error: "Trading is disabled",
-      message: "Enable trading first or this will be a dry run",
-    });
-    return;
-  }
-
+  const isEnabled = trader.isEnabled();
   const statsBefore = trader.getStats();
 
   try {
-    await trader.evaluateAndTrade();
+    if (isEnabled) {
+      // Live mode - actually execute trades
+      await trader.evaluateAndTrade();
+      const statsAfter = trader.getStats();
 
-    const statsAfter = trader.getStats();
+      res.json({
+        success: true,
+        mode: "live",
+        message: "Live evaluation completed",
+        positionsBefore: statsBefore.openPositions,
+        positionsAfter: statsAfter.openPositions,
+        newPositions: statsAfter.openPositions - statsBefore.openPositions,
+      });
+    } else {
+      // Dry-run mode - evaluate but don't trade
+      const bagsApi = (await import("../services/BagsApiService.js")).getBagsApiService();
+      const launches = await bagsApi.getRecentLaunches(20);
 
-    res.json({
-      success: true,
-      message: "Evaluation completed",
-      positionsBefore: statsBefore.openPositions,
-      positionsAfter: statsAfter.openPositions,
-      newPositions: statsAfter.openPositions - statsBefore.openPositions,
-    });
+      // Run evaluation logic without executing
+      const evaluations = [];
+      for (const launch of launches) {
+        const evaluation = await trader.evaluateLaunchPublic(launch);
+        evaluations.push({
+          token: { name: launch.name, symbol: launch.symbol, mint: launch.mint },
+          score: evaluation.score,
+          shouldBuy: evaluation.shouldBuy,
+          reasons: evaluation.reasons,
+          redFlags: evaluation.redFlags,
+          suggestedAmount: evaluation.suggestedAmount,
+          metrics: evaluation.metrics,
+        });
+      }
+
+      evaluations.sort((a, b) => b.score - a.score);
+
+      res.json({
+        success: true,
+        mode: "dry-run",
+        message: `Evaluated ${launches.length} launches (trading disabled)`,
+        launchesFound: launches.length,
+        buySignals: evaluations.filter((e) => e.shouldBuy).length,
+        evaluations: evaluations.slice(0, 10), // Top 10
+      });
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -268,24 +293,41 @@ router.post("/evaluate", async (req: Request, res: Response) => {
 // POST /api/ghost/check-positions - Manually trigger position check
 router.post("/check-positions", async (req: Request, res: Response) => {
   const trader = getGhostTrader();
+  const openBefore = trader.getOpenPositionCount();
 
-  if (!trader.isEnabled()) {
-    res.status(400).json({
-      success: false,
-      error: "Trading is disabled",
+  if (openBefore === 0) {
+    res.json({
+      success: true,
+      message: "No open positions to check",
+      openPositions: 0,
     });
     return;
   }
 
-  const openBefore = trader.getOpenPositionCount();
+  if (!trader.isEnabled()) {
+    // Return position status without executing closes
+    const positions = trader.getOpenPositions();
+    res.json({
+      success: true,
+      mode: "dry-run",
+      message: "Position status (trading disabled - no closes executed)",
+      openPositions: positions.length,
+      positions: positions.map((p) => ({
+        symbol: p.tokenSymbol,
+        amountSol: p.amountSol,
+        entryReason: p.entryReason,
+      })),
+    });
+    return;
+  }
 
   try {
     await trader.checkPositions();
-
     const openAfter = trader.getOpenPositionCount();
 
     res.json({
       success: true,
+      mode: "live",
       message: "Position check completed",
       openPositionsBefore: openBefore,
       openPositionsAfter: openAfter,
@@ -295,6 +337,76 @@ router.post("/check-positions", async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Position check failed",
+    });
+  }
+});
+
+// POST /api/ghost/buy - Manually buy a specific token
+router.post("/buy", async (req: Request, res: Response) => {
+  const { mint, amountSol } = req.body;
+  const trader = getGhostTrader();
+
+  if (!mint || typeof mint !== "string") {
+    res.status(400).json({ success: false, error: "Missing or invalid mint address" });
+    return;
+  }
+
+  if (!trader.isEnabled()) {
+    res.status(400).json({
+      success: false,
+      error: "Trading is disabled",
+      message: "Enable trading first to execute manual buys",
+    });
+    return;
+  }
+
+  const amount = amountSol ? parseFloat(amountSol) : 0.1;
+  if (isNaN(amount) || amount < 0.01 || amount > 1) {
+    res.status(400).json({
+      success: false,
+      error: "Invalid amount",
+      message: "Amount must be between 0.01 and 1 SOL",
+    });
+    return;
+  }
+
+  try {
+    const result = await trader.manualBuy(mint, amount);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Manual buy failed",
+    });
+  }
+});
+
+// POST /api/ghost/sell - Manually sell a position
+router.post("/sell", async (req: Request, res: Response) => {
+  const { positionId } = req.body;
+  const trader = getGhostTrader();
+
+  if (!positionId || typeof positionId !== "string") {
+    res.status(400).json({ success: false, error: "Missing or invalid positionId" });
+    return;
+  }
+
+  if (!trader.isEnabled()) {
+    res.status(400).json({
+      success: false,
+      error: "Trading is disabled",
+      message: "Enable trading first to execute manual sells",
+    });
+    return;
+  }
+
+  try {
+    const result = await trader.manualSell(positionId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Manual sell failed",
     });
   }
 });
@@ -365,11 +477,34 @@ router.get("/dry-run", async (req: Request, res: Response) => {
     const config = trader.getConfig();
 
     // Mock token data for testing
-    const mockTokenData: Record<string, { marketCap: number; volume24h: number; holders: number; lifetimeFees: number }> = {
-      "MOCK1111111111111111111111111111111111111111": { marketCap: 250000, volume24h: 45000, holders: 35, lifetimeFees: 0.08 },
-      "MOCK2222222222222222222222222222222222222222": { marketCap: 15000, volume24h: 500, holders: 5, lifetimeFees: 0.001 },
-      "MOCK3333333333333333333333333333333333333333": { marketCap: 100000, volume24h: 8000, holders: 20, lifetimeFees: 0.02 },
-      "MOCK4444444444444444444444444444444444444444": { marketCap: 500000, volume24h: 80000, holders: 60, lifetimeFees: 0.15 },
+    const mockTokenData: Record<
+      string,
+      { marketCap: number; volume24h: number; holders: number; lifetimeFees: number }
+    > = {
+      MOCK1111111111111111111111111111111111111111: {
+        marketCap: 250000,
+        volume24h: 45000,
+        holders: 35,
+        lifetimeFees: 0.08,
+      },
+      MOCK2222222222222222222222222222222222222222: {
+        marketCap: 15000,
+        volume24h: 500,
+        holders: 5,
+        lifetimeFees: 0.001,
+      },
+      MOCK3333333333333333333333333333333333333333: {
+        marketCap: 100000,
+        volume24h: 8000,
+        holders: 20,
+        lifetimeFees: 0.02,
+      },
+      MOCK4444444444444444444444444444444444444444: {
+        marketCap: 500000,
+        volume24h: 80000,
+        holders: 60,
+        lifetimeFees: 0.15,
+      },
     };
 
     for (const launch of launches) {
@@ -401,25 +536,58 @@ router.get("/dry-run", async (req: Request, res: Response) => {
       }
 
       // Scoring
-      if (liquidityUsd >= 100000) { score += 25; reasons.push("excellent liquidity"); }
-      else if (liquidityUsd >= 50000) { score += 20; reasons.push("strong liquidity"); }
-      else if (liquidityUsd >= 25000) { score += 12; reasons.push("adequate liquidity"); }
+      if (liquidityUsd >= 100000) {
+        score += 25;
+        reasons.push("excellent liquidity");
+      } else if (liquidityUsd >= 50000) {
+        score += 20;
+        reasons.push("strong liquidity");
+      } else if (liquidityUsd >= 25000) {
+        score += 12;
+        reasons.push("adequate liquidity");
+      }
 
-      if (volume24hUsd >= 50000) { score += 25; reasons.push("high volume"); }
-      else if (volume24hUsd >= 20000) { score += 18; reasons.push("good volume"); }
-      else if (volume24hUsd >= 5000) { score += 10; reasons.push("moderate volume"); }
-      else { redFlags.push("low volume"); }
+      if (volume24hUsd >= 50000) {
+        score += 25;
+        reasons.push("high volume");
+      } else if (volume24hUsd >= 20000) {
+        score += 18;
+        reasons.push("good volume");
+      } else if (volume24hUsd >= 5000) {
+        score += 10;
+        reasons.push("moderate volume");
+      } else {
+        redFlags.push("low volume");
+      }
 
-      if (holders >= 50) { score += 15; reasons.push("well distributed"); }
-      else if (holders >= 25) { score += 10; reasons.push("decent distribution"); }
-      else if (holders >= 10) { score += 5; reasons.push("minimum holders"); }
-      else { redFlags.push(`low holders (${holders})`); }
+      if (holders >= 50) {
+        score += 15;
+        reasons.push("well distributed");
+      } else if (holders >= 25) {
+        score += 10;
+        reasons.push("decent distribution");
+      } else if (holders >= 10) {
+        score += 5;
+        reasons.push("minimum holders");
+      } else {
+        redFlags.push(`low holders (${holders})`);
+      }
 
-      if (lifetimeFees > 0.05) { score += 20; reasons.push("strong fees"); }
-      else if (lifetimeFees > 0.01) { score += 12; reasons.push("positive fees"); }
+      if (lifetimeFees > 0.05) {
+        score += 20;
+        reasons.push("strong fees");
+      } else if (lifetimeFees > 0.01) {
+        score += 12;
+        reasons.push("positive fees");
+      }
 
-      if (ageSeconds >= 120 && ageSeconds <= 600) { score += 15; reasons.push("optimal timing"); }
-      else if (ageSeconds <= 900) { score += 10; reasons.push("good timing"); }
+      if (ageSeconds >= 120 && ageSeconds <= 600) {
+        score += 15;
+        reasons.push("optimal timing");
+      } else if (ageSeconds <= 900) {
+        score += 10;
+        reasons.push("good timing");
+      }
 
       const shouldBuy = score >= 50 && redFlags.length === 0;
 
@@ -463,8 +631,8 @@ router.get("/dry-run", async (req: Request, res: Response) => {
       evaluations,
       summary: {
         total: evaluations.length,
-        buySignals: evaluations.filter(e => e.verdict === "BUY").length,
-        passSignals: evaluations.filter(e => e.verdict === "PASS").length,
+        buySignals: evaluations.filter((e) => e.verdict === "BUY").length,
+        passSignals: evaluations.filter((e) => e.verdict === "PASS").length,
       },
     });
   } catch (error) {
@@ -477,7 +645,7 @@ router.get("/dry-run", async (req: Request, res: Response) => {
 
 // GET /api/ghost/study-wallet/:address - Analyze wallet's token holdings and trading patterns
 router.get("/study-wallet/:address", async (req: Request, res: Response) => {
-  const { address } = req.params;
+  const address = req.params.address as string;
   const trader = getGhostTrader();
   const bagsApi = (await import("../services/BagsApiService.js")).getBagsApiService();
 
@@ -499,7 +667,7 @@ router.get("/study-wallet/:address", async (req: Request, res: Response) => {
         params: [address],
       }),
     });
-    const balanceData = await balanceResponse.json() as { result?: { value: number } };
+    const balanceData = (await balanceResponse.json()) as { result?: { value: number } };
     const solBalance = (balanceData.result?.value || 0) / 1_000_000_000;
 
     // 2. Get token accounts (holdings)
@@ -517,7 +685,7 @@ router.get("/study-wallet/:address", async (req: Request, res: Response) => {
         ],
       }),
     });
-    const tokenData = await tokenResponse.json() as {
+    const tokenData = (await tokenResponse.json()) as {
       result?: {
         value: Array<{
           account: {
@@ -542,7 +710,8 @@ router.get("/study-wallet/:address", async (req: Request, res: Response) => {
 
     // 3. Analyze each token holding
     const tokenAccounts = tokenData.result?.value || [];
-    for (const account of tokenAccounts.slice(0, 20)) { // Limit to 20 tokens
+    for (const account of tokenAccounts.slice(0, 20)) {
+      // Limit to 20 tokens
       const info = account.account.data.parsed.info;
       const balance = info.tokenAmount.uiAmount;
 
@@ -552,32 +721,39 @@ router.get("/study-wallet/:address", async (req: Request, res: Response) => {
         holdings.push({
           mint: info.mint,
           balance,
-          tokenInfo: tokenInfo ? {
-            name: tokenInfo.name,
-            symbol: tokenInfo.symbol,
-            marketCap: tokenInfo.marketCap,
-          } : null,
+          tokenInfo: tokenInfo
+            ? {
+                name: tokenInfo.name,
+                symbol: tokenInfo.symbol,
+                marketCap: tokenInfo.marketCap,
+              }
+            : null,
         });
       }
     }
 
     // 4. Identify Bags.fm tokens (tokens with info from Bags API)
-    const bagsTokens = holdings.filter(h => h.tokenInfo !== null);
-    const unknownTokens = holdings.filter(h => h.tokenInfo === null);
+    const bagsTokens = holdings.filter((h) => h.tokenInfo !== null);
+    const unknownTokens = holdings.filter((h) => h.tokenInfo === null);
 
     // 5. Check if this is a smart money wallet
     const smartMoneyWallets = trader.getSmartMoneyWallets();
     const isSmartMoney = smartMoneyWallets.includes(address);
 
     // 6. Calculate trading style insights
-    const avgMarketCap = bagsTokens.length > 0
-      ? bagsTokens.reduce((sum, t) => sum + (t.tokenInfo?.marketCap || 0), 0) / bagsTokens.length
-      : 0;
+    const avgMarketCap =
+      bagsTokens.length > 0
+        ? bagsTokens.reduce((sum, t) => sum + (t.tokenInfo?.marketCap || 0), 0) / bagsTokens.length
+        : 0;
 
-    const tradingStyle = avgMarketCap > 500000 ? "blue-chip"
-      : avgMarketCap > 100000 ? "mid-cap"
-      : avgMarketCap > 25000 ? "small-cap"
-      : "micro-cap";
+    const tradingStyle =
+      avgMarketCap > 500000
+        ? "blue-chip"
+        : avgMarketCap > 100000
+          ? "mid-cap"
+          : avgMarketCap > 25000
+            ? "small-cap"
+            : "micro-cap";
 
     res.json({
       success: true,
@@ -592,21 +768,28 @@ router.get("/study-wallet/:address", async (req: Request, res: Response) => {
         bagsTokens: bagsTokens.length,
         unknownTokens: unknownTokens.length,
       },
-      bagsTokens: bagsTokens.map(t => ({
+      bagsTokens: bagsTokens.map((t) => ({
         symbol: t.tokenInfo?.symbol,
         name: t.tokenInfo?.name,
         mint: t.mint.slice(0, 8) + "...",
         balance: t.balance.toLocaleString(),
-        marketCap: t.tokenInfo?.marketCap ? `$${(t.tokenInfo.marketCap / 1000).toFixed(1)}K` : "unknown",
+        marketCap: t.tokenInfo?.marketCap
+          ? `$${(t.tokenInfo.marketCap / 1000).toFixed(1)}K`
+          : "unknown",
       })),
       insights: {
         tradingStyle,
         avgMarketCap: avgMarketCap > 0 ? `$${(avgMarketCap / 1000).toFixed(1)}K` : "N/A",
-        diversification: holdings.length > 10 ? "high" : holdings.length > 5 ? "medium" : "concentrated",
+        diversification:
+          holdings.length > 10 ? "high" : holdings.length > 5 ? "medium" : "concentrated",
       },
       learningNotes: [
-        isSmartMoney ? "This wallet is tracked as smart money" : "Add to smart money list with POST /api/ghost/add-wallet",
-        bagsTokens.length > 0 ? `Holding ${bagsTokens.length} Bags.fm tokens - Ghost can learn from these` : "No Bags.fm tokens detected",
+        isSmartMoney
+          ? "This wallet is tracked as smart money"
+          : "Add to smart money list with POST /api/ghost/add-wallet",
+        bagsTokens.length > 0
+          ? `Holding ${bagsTokens.length} Bags.fm tokens - Ghost can learn from these`
+          : "No Bags.fm tokens detected",
         `Trading style appears to be ${tradingStyle} focused`,
       ],
     });
@@ -678,7 +861,7 @@ router.get("/helius/status", (req: Request, res: Response) => {
 
 // GET /api/ghost/helius/trades/:address - Get parsed trade history for a wallet
 router.get("/helius/trades/:address", async (req: Request, res: Response) => {
-  const { address } = req.params;
+  const address = req.params.address as string;
   const limit = parseInt(req.query.limit as string) || 50;
 
   if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
@@ -696,7 +879,7 @@ router.get("/helius/trades/:address", async (req: Request, res: Response) => {
       heliusEnabled: helius.isReady(),
       wallet: address,
       stats: history.stats,
-      trades: history.trades.map(t => ({
+      trades: history.trades.map((t) => ({
         signature: t.signature.slice(0, 16) + "...",
         type: t.type,
         tokenMint: t.tokenMint ? t.tokenMint.slice(0, 8) + "..." : null,
@@ -716,7 +899,7 @@ router.get("/helius/trades/:address", async (req: Request, res: Response) => {
 
 // GET /api/ghost/helius/patterns/:address - Analyze trading patterns
 router.get("/helius/patterns/:address", async (req: Request, res: Response) => {
-  const { address } = req.params;
+  const address = req.params.address as string;
 
   if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
     res.status(400).json({ success: false, error: "Invalid Solana address" });
@@ -738,7 +921,7 @@ router.get("/helius/patterns/:address", async (req: Request, res: Response) => {
         avgBuySize: patterns.avgBuySize.toFixed(4) + " SOL",
         avgSellSize: patterns.avgSellSize.toFixed(4) + " SOL",
         preferredDexes: patterns.preferredDexes,
-        activeTradingHours: patterns.tradingHours.map(h => `${h}:00 UTC`),
+        activeTradingHours: patterns.tradingHours.map((h) => `${h}:00 UTC`),
         estimatedWinRate: (patterns.winRate * 100).toFixed(1) + "%",
       },
       learningInsights: [
@@ -771,7 +954,7 @@ router.get("/helius/alerts", (req: Request, res: Response) => {
     success: true,
     heliusEnabled: helius.isReady(),
     alertCount: alerts.length,
-    alerts: alerts.map(a => ({
+    alerts: alerts.map((a) => ({
       wallet: a.walletLabel || a.wallet.slice(0, 8) + "...",
       type: a.trade.type,
       token: a.trade.tokenMint ? a.trade.tokenMint.slice(0, 8) + "..." : null,
@@ -802,7 +985,7 @@ router.post("/helius/poll", async (req: Request, res: Response) => {
     res.json({
       success: true,
       newAlerts: newAlerts.length,
-      alerts: newAlerts.map(a => ({
+      alerts: newAlerts.map((a) => ({
         wallet: a.walletLabel || a.wallet.slice(0, 8) + "...",
         type: a.trade.type,
         token: a.trade.tokenMint?.slice(0, 8) + "...",
@@ -883,7 +1066,7 @@ router.post("/learn-from-wallet", async (req: Request, res: Response) => {
         avgBuySize: patterns.avgBuySize.toFixed(4) + " SOL",
         avgSellSize: patterns.avgSellSize.toFixed(4) + " SOL",
         preferredDexes: patterns.preferredDexes,
-        tradingHours: patterns.tradingHours.map(h => `${h}:00 UTC`),
+        tradingHours: patterns.tradingHours.map((h) => `${h}:00 UTC`),
       },
       recommendations,
       status: "Wallet added to tracking - Ghost will learn from future trades",

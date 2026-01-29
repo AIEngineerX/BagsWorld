@@ -76,16 +76,16 @@ const OWNER_WALLET = "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3";
 
 // Wallet metadata for display
 const WALLET_LABELS: Record<string, string> = {
-  "Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3": "Owner",
+  Ccs9wSrEwmKx7iBD9H4xqd311eJUd2ufDk2ip87Knbo3: "Owner",
   "7xwDKXNG9dxMsBSCmiAThp7PyDaUXbm23irLr7iPeh7w": "shah (Kolscan #1)",
   "4vw54BmAogeRV3vPKWyFet5yf8DTLcREzdSzx4rw9Ud9": "decu (High Volume)",
   "8deJ9xwuVbfjCb1jvrDjPBLGTsHnTKwgPhV9pMLe9rSK": "Cooker (76% WR)",
-  "H72yLkhTnoBfhBTXXaj1RBXuirm8s8G5fcVh2XpQLggM": "GMGN Alpha",
-  "AVAZvHLR2PcWpDf8BXY4rVxNHYRBytycHkcB5z5QNXYm": "Pump.fun Sniper",
+  H72yLkhTnoBfhBTXXaj1RBXuirm8s8G5fcVh2XpQLggM: "GMGN Alpha",
+  AVAZvHLR2PcWpDf8BXY4rVxNHYRBytycHkcB5z5QNXYm: "Pump.fun Sniper",
   "4Be9CvxqHW6BYiRAxW9Q3xu1ycTMWaL5z8NX4HR3ha7t": "50x Flipper",
   "8zFZHuSRuDpuAR7J6FzwyF3vKNx4CVW3DFHJerQhc7Zd": "Dune Alpha",
-  "FSAmbD6jm6SZZQadSJeC1paX3oTtAiY9hTx1UYzVoXqj": "Zil (Low Cap)",
-  "J6TDXvEDjbFWacRWQPiUpZNTBJBK1qsC8XTGy1tPtUXW": "Pain (Balanced)",
+  FSAmbD6jm6SZZQadSJeC1paX3oTtAiY9hTx1UYzVoXqj: "Zil (Low Cap)",
+  J6TDXvEDjbFWacRWQPiUpZNTBJBK1qsC8XTGy1tPtUXW: "Pain (Balanced)",
 };
 
 // ============================================================================
@@ -185,7 +185,7 @@ export class GhostTrader {
 
   // Recently evaluated mints (avoid re-evaluating)
   private recentlyEvaluated: Map<string, number> = new Map();
-  private static readonly EVALUATION_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+  private static readonly EVALUATION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes (was 30)
 
   // Tracking which launches we've already traded
   private tradedMints: Set<string> = new Set();
@@ -512,20 +512,34 @@ export class GhostTrader {
     const redFlags: string[] = [];
     let score = 0;
 
-    // Get detailed token info
+    // Get detailed token info from Bags API
     const token = await this.bagsApi.getToken(launch.mint);
 
-    // Calculate metrics
+    // Calculate metrics - prefer DexScreener data (real) over estimates
     const ageSeconds = Math.floor((Date.now() - launch.launchedAt) / 1000);
     const marketCapUsd = token?.marketCap || launch.initialMarketCap || 0;
-    const liquidityUsd = marketCapUsd * 0.15; // Estimate 15% of mcap as liquidity
-    const volume24hUsd = token?.volume24h || 0;
+
+    // Use REAL liquidity from DexScreener if available
+    const liquidityUsd = launch._dexData?.liquidityUsd || marketCapUsd * 0.15;
+    const volume24hUsd = launch._dexData?.volume24hUsd || token?.volume24h || 0;
     const holders = token?.holders || 0;
 
-    // Estimate buy/sell ratio from recent activity
-    // If fees are being generated and price is up, likely more buys than sells
-    const lifetimeFees = token?.lifetimeFees || 0;
-    const buySellRatio = lifetimeFees > 0.05 ? 1.3 : lifetimeFees > 0.01 ? 1.1 : 0.9;
+    // Calculate REAL buy/sell ratio from DexScreener transaction data
+    const buys24h = launch._dexData?.buys24h || 0;
+    const sells24h = launch._dexData?.sells24h || 0;
+    let buySellRatio: number;
+    if (sells24h > 0) {
+      buySellRatio = buys24h / sells24h;
+    } else if (buys24h > 0) {
+      buySellRatio = 2.0; // All buys, no sells = very bullish
+    } else {
+      // Fallback to fee-based estimate
+      const lifetimeFees = token?.lifetimeFees || 0;
+      buySellRatio = lifetimeFees > 0.05 ? 1.3 : lifetimeFees > 0.01 ? 1.1 : 0.9;
+    }
+
+    // Price momentum from DexScreener
+    const priceChange24h = launch._dexData?.priceChange24h || 0;
 
     const metrics = { marketCapUsd, liquidityUsd, volume24hUsd, holders, buySellRatio, ageSeconds };
 
@@ -553,7 +567,9 @@ export class GhostTrader {
 
     // Check minimum liquidity
     if (liquidityUsd < this.config.minLiquidityUsd) {
-      return reject(`low liquidity ($${liquidityUsd.toFixed(0)} < $${this.config.minLiquidityUsd})`);
+      return reject(
+        `low liquidity ($${liquidityUsd.toFixed(0)} < $${this.config.minLiquidityUsd})`
+      );
     }
 
     // Check minimum market cap
@@ -590,6 +606,7 @@ export class GhostTrader {
     }
 
     // Fees generated = real trading activity
+    const lifetimeFees = token?.lifetimeFees || 0;
     if (lifetimeFees > 0.1) {
       score += 5;
       reasons.push("significant fees earned");
@@ -634,6 +651,19 @@ export class GhostTrader {
       reasons.push("good timing");
     } else {
       score += 5;
+    }
+
+    // === MOMENTUM BONUS (from DexScreener price change) ===
+    if (priceChange24h > 0 && priceChange24h < 100) {
+      // Positive momentum but not already pumped too much
+      score += 5;
+      reasons.push(`positive momentum (+${priceChange24h.toFixed(0)}%)`);
+    } else if (priceChange24h > 100) {
+      // Already pumped significantly - risky entry
+      redFlags.push(`already pumped ${priceChange24h.toFixed(0)}%`);
+    } else if (priceChange24h < -20) {
+      // Dumping hard
+      redFlags.push(`price dumping (${priceChange24h.toFixed(0)}%)`);
     }
 
     // === SMART MONEY BONUS ===
@@ -750,9 +780,7 @@ export class GhostTrader {
   ): Promise<void> {
     if (!this.ghostWalletPublicKey) return;
 
-    console.log(
-      `[GhostTrader] Closing position: ${position.tokenSymbol} (${reason})`
-    );
+    console.log(`[GhostTrader] Closing position: ${position.tokenSymbol} (${reason})`);
 
     // Get trade quote for selling tokens back to SOL
     let quote: TradeQuote;
@@ -851,10 +879,7 @@ export class GhostTrader {
   /**
    * Announce a trade to the world
    */
-  private async announceTrade(
-    type: "buy" | "sell",
-    position: GhostPosition
-  ): Promise<void> {
+  private async announceTrade(type: "buy" | "sell", position: GhostPosition): Promise<void> {
     if (!this.coordinator) return;
 
     let message: string;
@@ -1042,7 +1067,7 @@ export class GhostTrader {
   }
 
   getSmartMoneyWalletsWithLabels(): Array<{ address: string; label: string }> {
-    return SMART_MONEY_WALLETS.map(addr => ({
+    return SMART_MONEY_WALLETS.map((addr) => ({
       address: addr,
       label: WALLET_LABELS[addr] || addr.slice(0, 8) + "...",
     }));
@@ -1050,6 +1075,132 @@ export class GhostTrader {
 
   getWalletLabel(address: string): string {
     return WALLET_LABELS[address] || address.slice(0, 8) + "...";
+  }
+
+  /**
+   * Public method to evaluate a launch (for dry-run endpoints)
+   */
+  async evaluateLaunchPublic(launch: RecentLaunch): Promise<TradeEvaluation> {
+    return this.evaluateLaunch(launch);
+  }
+
+  /**
+   * Manual buy - execute a buy on a specific token
+   */
+  async manualBuy(
+    mint: string,
+    amountSol: number
+  ): Promise<{ success: boolean; position?: GhostPosition; error?: string }> {
+    if (!this.config.enabled) {
+      return { success: false, error: "Trading is disabled" };
+    }
+
+    if (!this.ghostWalletPublicKey) {
+      return { success: false, error: "Wallet not configured" };
+    }
+
+    // Check exposure limits
+    const totalExposure = this.getTotalExposure();
+    if (totalExposure + amountSol > this.config.maxTotalExposureSol) {
+      return { success: false, error: "Would exceed max exposure" };
+    }
+
+    // Get token info
+    const token = await this.bagsApi.getToken(mint);
+    if (!token) {
+      return { success: false, error: "Token not found" };
+    }
+
+    const amountLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
+
+    console.log(`[GhostTrader] Manual buy: ${amountSol} SOL of ${token.symbol} (${mint})`);
+
+    // Get trade quote
+    let quote: TradeQuote;
+    try {
+      quote = await this.bagsApi.getTradeQuote(
+        SOL_MINT,
+        mint,
+        amountLamports,
+        this.config.slippageBps
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Quote failed";
+      return { success: false, error: `Failed to get quote: ${msg}` };
+    }
+
+    // Build swap transaction
+    let swapResult;
+    try {
+      swapResult = await this.bagsApi.createSwapTransaction(quote, this.ghostWalletPublicKey);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Swap creation failed";
+      return { success: false, error: `Failed to create swap: ${msg}` };
+    }
+
+    // Sign and submit
+    const txSignature = await this.signAndSubmitTransaction(swapResult.swapTransaction);
+    if (!txSignature) {
+      return { success: false, error: "Transaction failed to submit" };
+    }
+
+    // Calculate entry price
+    const tokensReceived = parseFloat(quote.outAmount);
+    const entryPriceSol = amountSol / (tokensReceived / LAMPORTS_PER_SOL);
+
+    // Create position
+    const position: GhostPosition = {
+      id: crypto.randomUUID(),
+      tokenMint: mint,
+      tokenSymbol: token.symbol || "???",
+      tokenName: token.name || "Unknown",
+      entryPriceSol,
+      amountSol,
+      amountTokens: tokensReceived,
+      entryTxSignature: txSignature,
+      status: "open",
+      entryReason: "manual buy",
+      createdAt: new Date(),
+    };
+
+    this.positions.set(position.id, position);
+    this.tradedMints.add(mint);
+    await this.savePositionToDatabase(position);
+    await this.announceTrade("buy", position);
+
+    return { success: true, position };
+  }
+
+  /**
+   * Manual sell - close a specific position
+   */
+  async manualSell(
+    positionId: string
+  ): Promise<{ success: boolean; pnlSol?: number; error?: string }> {
+    if (!this.config.enabled) {
+      return { success: false, error: "Trading is disabled" };
+    }
+
+    const position = this.positions.get(positionId);
+    if (!position) {
+      return { success: false, error: "Position not found" };
+    }
+
+    if (position.status !== "open") {
+      return { success: false, error: "Position is not open" };
+    }
+
+    // Get current price for logging
+    const token = await this.bagsApi.getToken(position.tokenMint);
+    const currentPriceSol = token?.price || 0;
+
+    // Execute close
+    await this.executeClose(position, "manual", currentPriceSol);
+
+    return {
+      success: true,
+      pnlSol: position.pnlSol,
+    };
   }
 }
 
