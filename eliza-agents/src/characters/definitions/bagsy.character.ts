@@ -6,6 +6,7 @@ import type { CharacterDefinition } from "./bags-bot.character";
 
 export const bagsyCharacter: CharacterDefinition = {
   name: "Bagsy",
+  twitter: "@BagsyHypeBot",
 
   bio: [
     "The BagsWorld mascot - a cute green money bag who just wants you to claim your fees",

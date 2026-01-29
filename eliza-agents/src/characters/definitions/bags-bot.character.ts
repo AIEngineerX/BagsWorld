@@ -3,6 +3,7 @@
 
 export interface CharacterDefinition {
   name: string;
+  twitter?: string;
   bio: string[];
   lore: string[];
   messageExamples: Array<Array<{ user: string; content: string }>>;
