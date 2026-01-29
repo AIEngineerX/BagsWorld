@@ -34,6 +34,7 @@ import { GhostTrader, getGhostTrader } from "./services/GhostTrader.js";
 import { SolanaService, getSolanaService } from "./services/SolanaService.js";
 import { TwitterService, getTwitterService } from "./services/TwitterService.js";
 import { SmartMoneyService, getSmartMoneyService } from "./services/SmartMoneyService.js";
+import { CopyTraderService, getCopyTraderService } from "./services/CopyTraderService.js";
 import { createMockRuntime } from "./routes/shared.js";
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
@@ -256,6 +257,13 @@ async function initializeAutonomousServices(): Promise<void> {
   await ghostTrader.initialize();
   console.log(
     `[GhostTrader] Initialized (trading: ${ghostTrader.isEnabled() ? "ENABLED" : "DISABLED"})`
+  );
+
+  // Initialize Copy Trader (DISABLED by default for safety)
+  const copyTrader = getCopyTraderService();
+  await copyTrader.initialize();
+  console.log(
+    `[CopyTrader] Initialized (copy trading: ${copyTrader.isEnabled() ? "⚠️ ENABLED" : "DISABLED"})`
   );
 
   // Initialize Twitter Service (for Finn posting)
