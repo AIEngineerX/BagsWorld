@@ -35,8 +35,8 @@ const DEFAULT_CONFIG = {
   // Risk management - tighter stop loss
   stopLossPercent: 15, // Cut losses at -15%
   // Liquidity requirements - tuned for Bags.fm micro-caps
-  minLiquidityUsd: 5000, // $5K minimum (most Bags tokens are small)
-  minMarketCapUsd: 8000, // $8K minimum (typical Bags.fm token starts ~$5-10K)
+  minLiquidityUsd: 500, // $500 minimum (Bags tokens are very small)
+  minMarketCapUsd: 3000, // $3K minimum (micro-cap reality)
   // Quality filters
   maxCreatorFeeBps: 300, // 3%
   minBuySellRatio: 1.0, // Even ratio is fine (was 1.2 - too strict)
@@ -578,38 +578,42 @@ export class GhostTrader {
       return reject(`low mcap ($${marketCapUsd.toFixed(0)} < $${this.config.minMarketCapUsd})`);
     }
 
-    // === SCORING CRITERIA (adjusted for Bags.fm token reality) ===
+    // === SCORING CRITERIA (adjusted for Bags.fm micro-cap reality) ===
 
-    // 1. LIQUIDITY & MARKET CAP (0-25 points) - scaled for small caps
-    if (liquidityUsd >= 50000) {
+    // 1. LIQUIDITY & MARKET CAP (0-25 points) - scaled for micro-caps
+    if (liquidityUsd >= 10000) {
       score += 25;
-      reasons.push("excellent liquidity ($50K+)");
-    } else if (liquidityUsd >= 20000) {
-      score += 20;
-      reasons.push("strong liquidity ($20K+)");
-    } else if (liquidityUsd >= 10000) {
-      score += 15;
-      reasons.push("good liquidity ($10K+)");
+      reasons.push("excellent liquidity ($10K+)");
     } else if (liquidityUsd >= 5000) {
+      score += 20;
+      reasons.push("strong liquidity ($5K+)");
+    } else if (liquidityUsd >= 2000) {
+      score += 15;
+      reasons.push("good liquidity ($2K+)");
+    } else if (liquidityUsd >= 1000) {
       score += 10;
-      reasons.push("adequate liquidity");
+      reasons.push("adequate liquidity ($1K+)");
+    } else if (liquidityUsd >= 500) {
+      score += 5;
+      reasons.push("minimal liquidity");
     }
 
-    // 2. VOLUME & ACTIVITY (0-25 points) - scaled for fresh launches
-    if (volume24hUsd >= 30000) {
+    // 2. VOLUME & ACTIVITY (0-25 points) - scaled for fresh micro-cap launches
+    if (volume24hUsd >= 10000) {
       score += 25;
-      reasons.push("high volume ($30K+)");
-    } else if (volume24hUsd >= 10000) {
+      reasons.push("high volume ($10K+)");
+    } else if (volume24hUsd >= 5000) {
       score += 20;
-      reasons.push("good volume ($10K+)");
-    } else if (volume24hUsd >= 3000) {
+      reasons.push("good volume ($5K+)");
+    } else if (volume24hUsd >= 1000) {
       score += 15;
-      reasons.push("active trading ($3K+)");
-    } else if (volume24hUsd >= this.config.minVolume24hUsd) {
+      reasons.push("active trading ($1K+)");
+    } else if (volume24hUsd >= 100) {
       score += 10;
       reasons.push("some volume");
     } else {
-      redFlags.push("low volume");
+      score += 5; // Don't penalize fresh tokens with no volume yet
+      reasons.push("fresh token");
     }
 
     // Fees generated = real trading activity
@@ -628,12 +632,12 @@ export class GhostTrader {
     } else if (holders >= 15) {
       score += 12;
       reasons.push("growing holder base");
-    } else if (holders >= this.config.minHolders) {
+    } else if (holders >= 5) {
       score += 8;
       reasons.push("holders accumulating");
-    } else if (holders > 0) {
-      score += 3; // Still give some points, new tokens start with few holders
-      reasons.push("early stage holders");
+    } else {
+      score += 5; // New tokens start with few/no holders - don't penalize
+      reasons.push("early stage");
     }
 
     // 4. BUY/SELL RATIO (0-20 points) - key momentum metric
