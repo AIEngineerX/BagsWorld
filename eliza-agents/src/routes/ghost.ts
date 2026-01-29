@@ -763,7 +763,9 @@ router.get("/dry-run", async (req: Request, res: Response) => {
         reasons.push("good timing");
       }
 
-      const shouldBuy = score >= 40 && redFlags.length === 0;
+      // Note: Actual GhostTrader uses vol/mcap scoring with threshold 60
+      // This dry-run uses simplified scoring - actual results may differ
+      const shouldBuy = score >= 60 && redFlags.length === 0;
 
       evaluations.push({
         token: {
@@ -801,7 +803,7 @@ router.get("/dry-run", async (req: Request, res: Response) => {
         minMarketCapUsd: config.minMarketCapUsd,
         minLaunchAgeSec: config.minLaunchAgeSec,
         maxLaunchAgeSec: config.maxLaunchAgeSec,
-        requiredScore: 40,
+        requiredScore: 60, // Actual threshold used by GhostTrader
       },
       evaluations,
       summary: {

@@ -1,6 +1,6 @@
 // Tests for BagsWorld evaluators
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   tokenMentionEvaluator,
   feeQueryEvaluator,
@@ -30,8 +30,8 @@ const createMessage = (text: string): Memory => ({
 
 describe('Evaluators', () => {
   describe('allEvaluators', () => {
-    it('should export 6 evaluators', () => {
-      expect(allEvaluators).toHaveLength(6);
+    it('should export 7 evaluators', () => {
+      expect(allEvaluators).toHaveLength(7);
     });
 
     it('should have unique names', () => {
