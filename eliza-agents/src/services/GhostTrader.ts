@@ -336,10 +336,11 @@ export class GhostTrader {
   private async loadPositionsFromDatabase(): Promise<void> {
     if (!this.db) return;
 
+    // Load ALL positions (open and closed) so stats are accurate
     const rows = (await this.db`
       SELECT * FROM ghost_positions
-      WHERE status = 'open'
       ORDER BY created_at DESC
+      LIMIT 100
     `) as Array<{
       id: string;
       token_mint: string;
@@ -349,10 +350,17 @@ export class GhostTrader {
       amount_sol: string;
       amount_tokens: string;
       entry_tx_signature: string;
+      exit_tx_signature: string | null;
       status: string;
       entry_reason: string;
+      exit_reason: string | null;
+      pnl_sol: string | null;
       created_at: string;
+      closed_at: string | null;
     }>;
+
+    let openCount = 0;
+    let closedCount = 0;
 
     for (const row of rows) {
       const position: GhostPosition = {
@@ -364,15 +372,24 @@ export class GhostTrader {
         amountSol: parseFloat(row.amount_sol),
         amountTokens: parseFloat(row.amount_tokens),
         entryTxSignature: row.entry_tx_signature,
+        exitTxSignature: row.exit_tx_signature || undefined,
         status: row.status as "open" | "closed" | "failed",
         entryReason: row.entry_reason,
+        exitReason: row.exit_reason || undefined,
+        pnlSol: row.pnl_sol ? parseFloat(row.pnl_sol) : undefined,
         createdAt: new Date(row.created_at),
+        closedAt: row.closed_at ? new Date(row.closed_at) : undefined,
       };
       this.positions.set(position.id, position);
       this.tradedMints.add(position.tokenMint);
+
+      if (position.status === "open") openCount++;
+      else if (position.status === "closed") closedCount++;
     }
 
-    console.log(`[GhostTrader] Loaded ${rows.length} open positions from database`);
+    console.log(
+      `[GhostTrader] Loaded ${rows.length} positions from database (${openCount} open, ${closedCount} closed)`
+    );
   }
 
   // ==========================================================================
