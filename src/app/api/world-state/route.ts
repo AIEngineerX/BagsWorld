@@ -238,7 +238,18 @@ async function fetchTokenPrices(mints: string[]): Promise<Map<string, PriceData>
 let holdersCache: { data: BagsWorldHolder[]; timestamp: number } | null = null;
 const HOLDERS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
-// Fetch top BagsWorld token holders for Ballers Valley
+// BagsWorld token constants
+const BAGSWORLD_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
+const TOKEN_DECIMALS = 6;
+const DECIMAL_DIVISOR = 10 ** TOKEN_DECIMALS;
+
+// Excluded addresses (liquidity pools, etc.)
+const EXCLUDED_HOLDER_ADDRESSES = new Set([
+  "HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC", // Liquidity pool
+  "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1", // Raydium AMM
+]);
+
+// Fetch top BagsWorld token holders directly via RPC (avoids internal API call issues on serverless)
 async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
   const now = Date.now();
 
@@ -252,82 +263,127 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
     return holdersCache.data;
   }
 
-  try {
-    // Get the base URL for internal API calls
-    // Netlify provides multiple URL env vars - check them in order of preference
-    const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      process.env.URL ||
-      process.env.DEPLOY_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-      "http://localhost:3000";
-
-    const response = await fetch(`${baseUrl}/api/bagsworld-holders`, {
-      cache: "no-store", // Always fetch fresh data
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      console.log("[WorldState] Raw holders response:", JSON.stringify(data).substring(0, 200));
-      const holders: BagsWorldHolder[] = (data.holders || []).slice(0, 5);
-      console.log(
-        "[WorldState] Fetched holders:",
-        holders.length,
-        holders.map((h) => h.rank)
-      );
-
-      // Check if we got REAL holders (not placeholder data)
-      const isRealData =
-        holders.length > 0 && holders[0]?.address && !holders[0].address.includes("xxxx"); // Placeholder addresses contain "xxxx"
-
-      if (isRealData) {
-        holdersCache = { data: holders, timestamp: now };
-        return holders;
-      } else {
-        console.log("[WorldState] Got placeholder data from holders API, clearing cache");
-        holdersCache = null; // Clear cache to retry next time
-      }
-      // Fall through to placeholder data
-    } else {
-      console.warn("[WorldState] Holders API returned:", response.status);
-    }
-  } catch (err) {
-    console.warn("[WorldState] Failed to fetch BagsWorld holders:", err);
+  const rpcUrl = process.env.SOLANA_RPC_URL;
+  if (!rpcUrl) {
+    console.warn("[WorldState] No SOLANA_RPC_URL configured");
+    return getPlaceholderHolders(now);
   }
 
-  // If we still have no holders, use placeholder data for development
-  console.log("[WorldState] Using placeholder holders - API unavailable");
+  try {
+    console.log("[WorldState] Fetching holders directly via RPC...");
+
+    // Get largest token accounts
+    const accountsResponse = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenLargestAccounts",
+        params: [BAGSWORLD_MINT],
+      }),
+    });
+
+    if (!accountsResponse.ok) {
+      console.warn("[WorldState] RPC request failed:", accountsResponse.status);
+      return getPlaceholderHolders(now);
+    }
+
+    const accountsData = await accountsResponse.json();
+    if (accountsData.error) {
+      console.warn("[WorldState] RPC error:", accountsData.error.message);
+      return getPlaceholderHolders(now);
+    }
+
+    const accounts = accountsData.result?.value || [];
+    if (accounts.length === 0) {
+      console.warn("[WorldState] No token accounts found");
+      return getPlaceholderHolders(now);
+    }
+
+    // Get total supply for percentage calculation
+    const supplyResponse = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenSupply",
+        params: [BAGSWORLD_MINT],
+      }),
+    });
+
+    let totalSupply = 0;
+    if (supplyResponse.ok) {
+      const supplyData = await supplyResponse.json();
+      totalSupply = parseFloat(supplyData.result?.value?.amount || "0") / DECIMAL_DIVISOR;
+    }
+
+    // Resolve owners for top accounts
+    const topAccounts = accounts.slice(0, 10);
+    const holders: BagsWorldHolder[] = [];
+    let rank = 1;
+
+    for (const account of topAccounts) {
+      if (holders.length >= 5) break;
+
+      // Resolve token account to owner wallet
+      const ownerResponse = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getAccountInfo",
+          params: [account.address, { encoding: "jsonParsed" }],
+        }),
+      });
+
+      let ownerAddress = account.address;
+      if (ownerResponse.ok) {
+        const ownerData = await ownerResponse.json();
+        ownerAddress = ownerData.result?.value?.data?.parsed?.info?.owner || account.address;
+      }
+
+      // Skip excluded addresses (liquidity pools, etc.)
+      if (EXCLUDED_HOLDER_ADDRESSES.has(ownerAddress)) {
+        console.log(`[WorldState] Skipping excluded: ${ownerAddress.substring(0, 8)}...`);
+        continue;
+      }
+
+      const balance = parseFloat(account.amount) / DECIMAL_DIVISOR || 0;
+      const percentage = totalSupply > 0 ? (balance / totalSupply) * 100 : 0;
+
+      holders.push({
+        address: ownerAddress,
+        balance,
+        percentage: Math.round(percentage * 100) / 100,
+        rank: rank++,
+      });
+    }
+
+    console.log(`[WorldState] Got ${holders.length} real holders via RPC`);
+
+    if (holders.length > 0) {
+      holdersCache = { data: holders, timestamp: now };
+      return holders;
+    }
+  } catch (err) {
+    console.warn("[WorldState] Failed to fetch holders via RPC:", err);
+  }
+
+  return getPlaceholderHolders(now);
+}
+
+// Placeholder holders for development/fallback
+function getPlaceholderHolders(now: number): BagsWorldHolder[] {
+  console.log("[WorldState] Using placeholder holders - RPC unavailable");
   const placeholderHolders: BagsWorldHolder[] = [
-    {
-      address: "BaGs1WhaLeHoLderxxxxxxxxxxxxxxxxxxxxxxxxx",
-      balance: 12500000,
-      percentage: 28.5,
-      rank: 1,
-    },
-    {
-      address: "BaGs2BiGHoLderxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      balance: 6200000,
-      percentage: 14.2,
-      rank: 2,
-    },
-    {
-      address: "BaGs3HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      balance: 3800000,
-      percentage: 8.7,
-      rank: 3,
-    },
-    {
-      address: "BaGs4HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      balance: 2100000,
-      percentage: 4.8,
-      rank: 4,
-    },
-    {
-      address: "BaGs5HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      balance: 1400000,
-      percentage: 3.2,
-      rank: 5,
-    },
+    { address: "BaGs1WhaLeHoLderxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 12500000, percentage: 28.5, rank: 1 },
+    { address: "BaGs2BiGHoLderxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 6200000, percentage: 14.2, rank: 2 },
+    { address: "BaGs3HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 3800000, percentage: 8.7, rank: 3 },
+    { address: "BaGs4HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 2100000, percentage: 4.8, rank: 4 },
+    { address: "BaGs5HoLderxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", balance: 1400000, percentage: 3.2, rank: 5 },
   ];
   holdersCache = { data: placeholderHolders, timestamp: now };
   return placeholderHolders;
