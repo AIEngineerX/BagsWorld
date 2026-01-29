@@ -16,6 +16,10 @@ export interface AgentStatus {
 }
 
 export interface GhostTradingStatus {
+  wallet?: {
+    address: string | null;
+    balanceSol: number;
+  };
   trading: {
     enabled: boolean;
     openPositions: number;
