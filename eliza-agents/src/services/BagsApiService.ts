@@ -466,23 +466,20 @@ export class BagsApiService extends Service {
 
   async getRecentLaunches(limit: number = 10): Promise<RecentLaunch[]> {
     try {
-      // Use DexScreener's token profiles endpoint for Bags.fm DEX
-      // This searches for all pairs on the "bags" DEX on Solana
-      const response = await fetch(
-        "https://api.dexscreener.com/latest/dex/pairs/solana?dexId=bags"
-      );
+      // Use DexScreener search endpoint - search for "bags" returns all Bags.fm pairs
+      const response = await fetch("https://api.dexscreener.com/latest/dex/search?q=bags");
 
       if (!response.ok) {
-        // Fallback: search for tokens that trade against SOL on bags
-        console.log("[BagsApi] Trying fallback DexScreener search...");
-        return this.getRecentLaunchesFallback(limit);
+        console.warn(`[BagsApi] DexScreener search failed: ${response.status}`);
+        return [];
       }
 
       const data = await response.json();
-
-      // Filter for recent launches (last 2 hours for better coverage)
       const now = Date.now();
-      const twoHoursAgo = now - 2 * 60 * 60 * 1000;
+
+      // Filter for Bags.fm pairs on Solana
+      // Extend to 6 hours to ensure we find tokens (for testing)
+      const sixHoursAgo = now - 6 * 60 * 60 * 1000;
 
       const launches: RecentLaunch[] = (data.pairs || [])
         .filter(
@@ -491,13 +488,15 @@ export class BagsApiService extends Service {
             dexId?: string;
             pairCreatedAt?: number;
             liquidity?: { usd?: number };
+            fdv?: number;
           }) => {
+            // Must be Solana + Bags.fm DEX
             if (pair.chainId !== "solana") return false;
             if (pair.dexId !== "bags") return false;
-            // Include tokens up to 2 hours old
-            if (pair.pairCreatedAt && pair.pairCreatedAt < twoHoursAgo) return false;
-            // Must have some liquidity
-            if (!pair.liquidity?.usd || pair.liquidity.usd < 1000) return false;
+            // Filter by age - include tokens up to 6 hours old
+            if (pair.pairCreatedAt && pair.pairCreatedAt < sixHoursAgo) return false;
+            // Must have some market cap (indicates trading activity)
+            if (!pair.fdv || pair.fdv < 1000) return false;
             return true;
           }
         )
@@ -534,7 +533,7 @@ export class BagsApiService extends Service {
           })
         );
 
-      console.log(`[BagsApi] Found ${launches.length} recent Bags.fm tokens`);
+      console.log(`[BagsApi] Found ${launches.length} recent Bags.fm tokens from DexScreener`);
       return launches;
     } catch (error) {
       console.error("Failed to fetch recent launches:", error);
