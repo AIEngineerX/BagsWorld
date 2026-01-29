@@ -37,11 +37,16 @@ export function GhostTradingMini() {
 
   const isEnabled = status?.trading?.enabled || false;
   const openCount = status?.trading?.openPositions || 0;
+  const walletAddress = status?.wallet?.address || null;
   const walletBalance = status?.wallet?.balanceSol || 0;
   const totalPnl = status?.performance?.totalPnlSol || 0;
-  const winRate = status?.performance?.winRate || "0%";
   const totalTrades = status?.performance?.totalTrades || 0;
   const exposure = status?.trading?.totalExposureSol || 0;
+
+  // Format wallet for display (first 4 + last 4)
+  const shortWallet = walletAddress
+    ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`
+    : null;
 
   return (
     <div className="p-2 bg-purple-500/5 border-b border-purple-500/20">
@@ -57,9 +62,19 @@ export function GhostTradingMini() {
             {isEnabled ? "TRADING LIVE" : "TRADING OFF"}
           </span>
         </div>
-        {totalTrades > 0 && (
+        {shortWallet ? (
+          <a
+            href={`https://solscan.io/account/${walletAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-pixel text-[7px] text-purple-400 hover:text-purple-300 underline"
+            title={walletAddress}
+          >
+            {shortWallet}
+          </a>
+        ) : totalTrades > 0 ? (
           <span className="font-pixel text-[7px] text-gray-500">{totalTrades} trades</span>
-        )}
+        ) : null}
       </div>
 
       {/* Stats Grid */}
