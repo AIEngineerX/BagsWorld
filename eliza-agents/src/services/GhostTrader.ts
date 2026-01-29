@@ -21,21 +21,21 @@ import { getDatabase } from "../routes/shared.js";
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
-// Default trading configuration (Matched to BagBot's proven criteria)
+// Default trading configuration (optimized for Bags.fm micro-cap tokens)
 const DEFAULT_CONFIG = {
   enabled: false, // Must be explicitly enabled
   // Position sizing
   minPositionSol: 0.05,
   maxPositionSol: 0.15,
   maxTotalExposureSol: 1.5,
-  maxOpenPositions: 3, // BagBot uses 3
+  maxOpenPositions: 3, // Conservative position limit
   // Profit taking - scaled exits
   takeProfitTiers: [1.5, 2.0, 3.0], // Take 33% at each tier
   trailingStopPercent: 10, // After 2x, trail by 10%
   // Risk management - tighter stop loss
-  stopLossPercent: 15, // BagBot uses -15%
-  // Liquidity requirements - LOWERED to match BagBot/real market
-  minLiquidityUsd: 5000, // $5K minimum (BagBot uses $10K, most Bags tokens are small)
+  stopLossPercent: 15, // Cut losses at -15%
+  // Liquidity requirements - tuned for Bags.fm micro-caps
+  minLiquidityUsd: 5000, // $5K minimum (most Bags tokens are small)
   minMarketCapUsd: 8000, // $8K minimum (typical Bags.fm token starts ~$5-10K)
   // Quality filters
   maxCreatorFeeBps: 300, // 3%
@@ -499,7 +499,7 @@ export class GhostTrader {
   }
 
   /**
-   * Evaluate a single launch using BagBot-style criteria
+   * Evaluate a single launch for trading potential
    * Score breakdown:
    * - Liquidity/Market Cap: 0-25 points
    * - Volume & Activity: 0-25 points
@@ -636,7 +636,7 @@ export class GhostTrader {
       reasons.push("early stage holders");
     }
 
-    // 4. BUY/SELL RATIO (0-20 points) - BagBot's key metric
+    // 4. BUY/SELL RATIO (0-20 points) - key momentum metric
     if (buySellRatio >= 1.5) {
       score += 20;
       reasons.push("strong buy pressure");
