@@ -458,10 +458,52 @@ export class BagsApiService extends Service {
 
   async getRecentLaunches(limit: number = 10): Promise<RecentLaunch[]> {
     try {
-      const data = await this.fetch<{ launches: RecentLaunch[] }>(
-        `/token-launch/recent?limit=${limit}`
+      // Use DexScreener to find Bags.fm tokens (they end in "BAGS" or are on Meteora DBC)
+      // This is more reliable than the non-existent Bags API endpoint
+      const response = await fetch(
+        "https://api.dexscreener.com/latest/dex/search?q=BAGS"
       );
-      return data.launches || [];
+      if (!response.ok) {
+        console.error(`[BagsApi] DexScreener error: ${response.status}`);
+        return [];
+      }
+      const data = await response.json();
+
+      // Filter for Solana tokens that look like Bags.fm launches
+      const now = Date.now();
+      const oneHourAgo = now - 60 * 60 * 1000;
+
+      const launches: RecentLaunch[] = (data.pairs || [])
+        .filter((pair: {
+          chainId: string;
+          baseToken?: { address?: string };
+          pairCreatedAt?: number;
+        }) => {
+          // Must be Solana
+          if (pair.chainId !== "solana") return false;
+          // Must have been created recently (within last hour for "new" launches)
+          if (pair.pairCreatedAt && pair.pairCreatedAt < oneHourAgo) return false;
+          // Bags.fm tokens typically end in "BAGS" or have specific patterns
+          const address = pair.baseToken?.address || "";
+          return address.endsWith("BAGS") || address.length === 44;
+        })
+        .slice(0, limit)
+        .map((pair: {
+          baseToken?: { address?: string; name?: string; symbol?: string };
+          pairCreatedAt?: number;
+          fdv?: number;
+          liquidity?: { usd?: number };
+        }) => ({
+          mint: pair.baseToken?.address || "",
+          name: pair.baseToken?.name || "Unknown",
+          symbol: pair.baseToken?.symbol || "???",
+          launchedAt: pair.pairCreatedAt || now,
+          creator: "",
+          initialMarketCap: pair.fdv || pair.liquidity?.usd || 0,
+        }));
+
+      console.log(`[BagsApi] Found ${launches.length} recent Bags.fm tokens via DexScreener`);
+      return launches;
     } catch (error) {
       console.error("Failed to fetch recent launches:", error);
       if (this.throwOnError) throw error;
