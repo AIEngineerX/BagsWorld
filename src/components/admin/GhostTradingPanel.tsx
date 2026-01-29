@@ -480,8 +480,9 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
 
 // Position card subcomponent
 function PositionCard({ position }: { position: GhostPosition }) {
-  const isOpen = position.status === "open";
-  const isFailed = position.status === "failed";
+  const status = position.status || "unknown";
+  const isOpen = status === "open";
+  const isFailed = status === "failed";
 
   const statusColor = isOpen ? "text-yellow-400" : isFailed ? "text-red-400" : "text-gray-400";
 
@@ -493,17 +494,21 @@ function PositionCard({ position }: { position: GhostPosition }) {
         : "text-gray-400"
     : "text-gray-400";
 
+  // Format symbol - truncate if it looks like a mint address
+  const symbol = position.tokenSymbol || position.tokenMint?.slice(0, 6) || "???";
+  const displaySymbol = symbol.length > 10 ? `${symbol.slice(0, 6)}...` : symbol;
+
   return (
     <div
       className={`bg-black/30 p-2 border ${isOpen ? "border-yellow-500/30" : "border-gray-700"}`}
     >
       <div className="flex justify-between items-start">
         <div>
-          <p className="font-pixel text-[10px] text-bags-gold">${position.tokenSymbol}</p>
-          <p className="font-pixel text-[7px] text-gray-500">{position.tokenName}</p>
+          <p className="font-pixel text-[10px] text-bags-gold">${displaySymbol}</p>
+          <p className="font-pixel text-[7px] text-gray-500">{position.tokenName || "Unknown"}</p>
         </div>
         <div className="text-right">
-          <p className={`font-pixel text-[8px] ${statusColor}`}>{position.status.toUpperCase()}</p>
+          <p className={`font-pixel text-[8px] ${statusColor}`}>{status.toUpperCase()}</p>
           {position.pnlSol !== undefined && position.pnlSol !== null && (
             <p className={`font-pixel text-[9px] ${pnlColor}`}>
               {position.pnlSol > 0 ? "+" : ""}
