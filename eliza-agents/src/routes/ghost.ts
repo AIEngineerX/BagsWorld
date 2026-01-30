@@ -84,8 +84,9 @@ router.get("/learning", (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/learning/reset - Reset learning data (use after strategy changes)
-router.post("/learning/reset", async (req: Request, res: Response) => {
+// POST /api/ghost/learning/reset - Reset learning data (PROTECTED)
+// SECURITY: Requires admin key to prevent malicious reset of learned patterns
+router.post("/learning/reset", requireAdminKey, async (req: Request, res: Response) => {
   const trader = getGhostTrader();
   const result = await trader.resetLearning();
 
@@ -99,11 +100,15 @@ router.post("/learning/reset", async (req: Request, res: Response) => {
 });
 
 // GET /api/ghost/status - Get trading status and stats
+// SECURITY: Masks sensitive data (wallet address, smart money wallets) unless admin key provided
 router.get("/status", async (req: Request, res: Response) => {
   const trader = getGhostTrader();
   const solanaService = getSolanaService();
   const stats = trader.getStats();
   const config = trader.getConfig();
+
+  // Check if admin key is provided for full data access
+  const isAdmin = GHOST_ADMIN_KEY && req.headers["x-ghost-admin-key"] === GHOST_ADMIN_KEY;
 
   // Fetch wallet balance
   let walletBalance = 0;
@@ -113,16 +118,22 @@ router.get("/status", async (req: Request, res: Response) => {
     console.error("[Ghost] Failed to fetch wallet balance:", error);
   }
 
+  // Mask wallet address for non-admin requests
+  const fullAddress = solanaService.getPublicKey() || null;
+  const maskedAddress = fullAddress
+    ? `${fullAddress.slice(0, 4)}...${fullAddress.slice(-4)}`
+    : null;
+
   res.json({
     success: true,
     wallet: {
-      address: solanaService.getPublicKey() || null,
-      balanceSol: walletBalance,
+      address: isAdmin ? fullAddress : maskedAddress,
+      balanceSol: isAdmin ? walletBalance : "***",
     },
     trading: {
       enabled: stats.enabled,
       openPositions: stats.openPositions,
-      totalExposureSol: stats.totalExposureSol,
+      totalExposureSol: isAdmin ? stats.totalExposureSol : "***",
       maxExposureSol: config.maxTotalExposureSol,
       maxPositions: config.maxOpenPositions,
     },
@@ -130,7 +141,7 @@ router.get("/status", async (req: Request, res: Response) => {
       totalTrades: stats.totalTrades,
       winningTrades: stats.winningTrades,
       losingTrades: stats.losingTrades,
-      totalPnlSol: stats.totalPnlSol,
+      totalPnlSol: isAdmin ? stats.totalPnlSol : "***",
       winRate: (stats.winRate * 100).toFixed(1) + "%",
     },
     config: {
@@ -143,7 +154,8 @@ router.get("/status", async (req: Request, res: Response) => {
       minBuySellRatio: config.minBuySellRatio,
       slippageBps: config.slippageBps,
     },
-    smartMoneyWallets: trader.getSmartMoneyWalletsWithLabels(),
+    // SECURITY: Hide smart money wallets from non-admin requests
+    smartMoneyWallets: isAdmin ? trader.getSmartMoneyWalletsWithLabels() : "*** (requires admin key)",
   });
 });
 
@@ -200,9 +212,9 @@ router.get("/positions/open", (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/positions/:id/mark-closed - Mark position as closed (for external sales)
-// Note: No admin key required - this is a low-risk operation (just updates status)
-router.post("/positions/:id/mark-closed", async (req: Request, res: Response) => {
+// POST /api/ghost/positions/:id/mark-closed - Mark position as closed (PROTECTED)
+// SECURITY: Requires admin key - modifying position state can affect PnL tracking
+router.post("/positions/:id/mark-closed", requireAdminKey, async (req: Request, res: Response) => {
   const positionId = req.params.id;
   const { pnlSol, exitReason } = req.body;
 
@@ -340,9 +352,10 @@ router.post("/config", requireAdminKey, (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/evaluate - Manually trigger evaluation
+// POST /api/ghost/evaluate - Manually trigger evaluation (PROTECTED)
 // Works in both enabled (live) and disabled (dry-run) modes
-router.post("/evaluate", async (req: Request, res: Response) => {
+// SECURITY: Requires admin key because live mode executes REAL trades
+router.post("/evaluate", requireAdminKey, async (req: Request, res: Response) => {
   const trader = getGhostTrader();
   const isEnabled = trader.isEnabled();
   const statsBefore = trader.getStats();
@@ -441,8 +454,9 @@ router.get("/debug-evaluate", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/ghost/check-positions - Manually trigger position check
-router.post("/check-positions", async (req: Request, res: Response) => {
+// POST /api/ghost/check-positions - Manually trigger position check (PROTECTED)
+// SECURITY: Requires admin key because live mode can CLOSE positions (sell tokens)
+router.post("/check-positions", requireAdminKey, async (req: Request, res: Response) => {
   const trader = getGhostTrader();
   const openBefore = trader.getOpenPositionCount();
 
@@ -982,8 +996,9 @@ router.get("/study-wallet/:address", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/ghost/add-wallet - Add a wallet to smart money tracking
-router.post("/add-wallet", (req: Request, res: Response) => {
+// POST /api/ghost/add-wallet - Add a wallet to smart money tracking (PROTECTED)
+// SECURITY: Requires admin key - adding wallets affects copy trading decisions
+router.post("/add-wallet", requireAdminKey, (req: Request, res: Response) => {
   const { address, label } = req.body;
 
   if (!address || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
@@ -1147,8 +1162,9 @@ router.get("/helius/alerts", (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/helius/poll - Manually trigger polling of tracked wallets
-router.post("/helius/poll", async (req: Request, res: Response) => {
+// POST /api/ghost/helius/poll - Manually trigger polling of tracked wallets (PROTECTED)
+// SECURITY: Requires admin key - polling can trigger copy trades
+router.post("/helius/poll", requireAdminKey, async (req: Request, res: Response) => {
   const helius = getHeliusService();
 
   if (!helius.isReady()) {
@@ -1181,8 +1197,9 @@ router.post("/helius/poll", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/ghost/learn-from-wallet - Have Ghost analyze and learn from a wallet's patterns
-router.post("/learn-from-wallet", async (req: Request, res: Response) => {
+// POST /api/ghost/learn-from-wallet - Have Ghost analyze and learn from a wallet's patterns (PROTECTED)
+// SECURITY: Requires admin key - learning affects trading strategy
+router.post("/learn-from-wallet", requireAdminKey, async (req: Request, res: Response) => {
   const { address } = req.body;
 
   if (!address || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
@@ -1327,8 +1344,9 @@ router.get("/smart-money/score/:mint", async (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/smart-money/refresh - Refresh smart money wallet list from GMGN
-router.post("/smart-money/refresh", async (req: Request, res: Response) => {
+// POST /api/ghost/smart-money/refresh - Refresh smart money wallet list from GMGN (PROTECTED)
+// SECURITY: Requires admin key - modifying wallet list affects trading decisions
+router.post("/smart-money/refresh", requireAdminKey, async (req: Request, res: Response) => {
   const smartMoney = getSmartMoneyService();
   const beforeCount = smartMoney.getAllWallets().length;
 
@@ -1345,8 +1363,9 @@ router.post("/smart-money/refresh", async (req: Request, res: Response) => {
   });
 });
 
-// POST /api/ghost/smart-money/record - Record smart money activity (for webhooks/alerts)
-router.post("/smart-money/record", (req: Request, res: Response) => {
+// POST /api/ghost/smart-money/record - Record smart money activity (PROTECTED)
+// SECURITY: Requires admin key - injecting fake activity could manipulate trading
+router.post("/smart-money/record", requireAdminKey, (req: Request, res: Response) => {
   const { wallet, tokenMint, action, amountSol } = req.body;
 
   if (!wallet || !tokenMint || !action || !amountSol) {
