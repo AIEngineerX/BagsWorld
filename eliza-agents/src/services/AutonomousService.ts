@@ -302,10 +302,11 @@ export class AutonomousService extends Service {
     });
 
     // Bagsy: Scheduled GM tweet at 9 AM EST (with replies to Finn and team)
+    // Check every 10 minutes to ensure we don't miss the 30-min window (8:45-9:15)
     this.registerTask({
       name: "bagsy_morning_gm",
       agentId: "bagsy",
-      interval: 60 * 60 * 1000, // Check every hour
+      interval: 10 * 60 * 1000, // Check every 10 minutes
       handler: async () => {
         await this.postBagsyMorningGM();
       },
