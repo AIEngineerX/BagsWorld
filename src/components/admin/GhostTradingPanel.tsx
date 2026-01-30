@@ -109,15 +109,15 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
     }
   };
 
-  const formatPnl = (pnl: number | undefined) => {
-    if (pnl === undefined || pnl === null) return "-";
+  const formatPnl = (pnl: number | string | undefined) => {
+    if (pnl === undefined || pnl === null || typeof pnl !== "number") return "***";
     const formatted = pnl.toFixed(4);
     if (pnl > 0) return `+${formatted}`;
     return formatted;
   };
 
-  const getPnlColor = (pnl: number | undefined) => {
-    if (pnl === undefined || pnl === null) return "text-gray-400";
+  const getPnlColor = (pnl: number | string | undefined) => {
+    if (pnl === undefined || pnl === null || typeof pnl !== "number") return "text-gray-400";
     if (pnl > 0) return "text-green-400";
     if (pnl < 0) return "text-red-400";
     return "text-gray-400";
@@ -207,7 +207,9 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
             <div className="text-right">
               <p className="font-pixel text-[7px] text-gray-500">BALANCE</p>
               <p className="font-pixel text-lg text-bags-gold">
-                {status.wallet.balanceSol.toFixed(4)} SOL
+                {typeof status.wallet.balanceSol === "number"
+                  ? `${status.wallet.balanceSol.toFixed(4)} SOL`
+                  : "***"}
               </p>
             </div>
           </div>
@@ -225,7 +227,9 @@ export function GhostTradingPanel({ addLog }: GhostTradingPanelProps) {
         <div className="bg-bags-darker p-2 border border-gray-700">
           <p className="font-pixel text-[7px] text-gray-500">Exposure</p>
           <p className="font-pixel text-lg text-bags-gold">
-            {(status?.trading?.totalExposureSol || 0).toFixed(3)} SOL
+            {typeof status?.trading?.totalExposureSol === "number"
+              ? `${status.trading.totalExposureSol.toFixed(3)} SOL`
+              : "***"}
           </p>
         </div>
         <div className="bg-bags-darker p-2 border border-gray-700">
