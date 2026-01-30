@@ -17,6 +17,11 @@ import {
   getAgentCursor,
   setAgentCursor,
   cleanupOldProcessedTweets,
+  recordEngagement,
+  updateEngagementMetrics,
+  getEngagementStats,
+  getTweetsNeedingMetricsUpdate,
+  type EngagementRecord,
 } from "../lib/neon-tracking.js";
 
 export interface ScheduledTask {
@@ -312,6 +317,17 @@ export class AutonomousService extends Service {
       interval: 10 * 60 * 1000, // Check every 10 minutes
       handler: async () => {
         await this.postBagsyMorningGM();
+      },
+    });
+
+    // Bagsy: Track engagement metrics for virality optimization
+    // Fetches likes/retweets/replies for recent tweets to learn what works
+    this.registerTask({
+      name: "bagsy_engagement_tracker",
+      agentId: "bagsy",
+      interval: 30 * 60 * 1000, // Every 30 minutes
+      handler: async () => {
+        await this.updateEngagementMetrics();
       },
     });
   }
@@ -998,11 +1014,20 @@ export class AutonomousService extends Service {
       return;
     }
 
-    if (!this.bagsApi) return;
+    // Fallback health data for when API is unavailable
+    let healthData: { health: number; totalFees24h: number; activeTokens: number } | null = null;
+
+    if (this.bagsApi) {
+      healthData = await this.bagsApi.getWorldHealth();
+    }
+
+    // Use default values if no health data available
+    if (!healthData) {
+      console.log("[AutonomousService] No health data available, using defaults for Bagsy tweet");
+      healthData = { health: 50, totalFees24h: 0, activeTokens: 0 };
+    }
 
     try {
-      const healthData = await this.bagsApi.getWorldHealth();
-      if (!healthData) return;
 
       const fees24h = healthData.totalFees24h?.toFixed(2) || "0";
       const activeTokens = healthData.activeTokens || 0;
@@ -1051,25 +1076,41 @@ export class AutonomousService extends Service {
         }
 
         const result = await this.twitterService.post(fallbackTweet);
-        if (result.success) {
+        if (result.success && result.tweet?.id) {
           this.recordPost(fallbackTweet);
           console.log(`[AutonomousService] Bagsy posted (fallback): ${result.tweet?.url}`);
+
+          // Score and record engagement for fallback tweet
+          const contentScore = this.engagementScorer?.scoreTweetContent(fallbackTweet);
+          await this.recordTweetEngagement(result.tweet.id, "post", {
+            viralityScore: contentScore?.score,
+            scoreFactors: contentScore?.factors,
+          });
+        } else {
+          console.error(`[AutonomousService] Bagsy fallback tweet failed: ${result.error}`);
         }
         return;
       }
 
       const result = await this.twitterService.post(tweet);
 
-      if (result.success) {
+      if (result.success && result.tweet?.id) {
         this.recordPost(tweet);
         console.log(`[AutonomousService] Bagsy posted: ${result.tweet?.url}`);
+
+        // Score and record engagement
+        const contentScore = this.engagementScorer?.scoreTweetContent(tweet);
+        await this.recordTweetEngagement(result.tweet.id, "post", {
+          viralityScore: contentScore?.score,
+          scoreFactors: contentScore?.factors,
+        });
 
         await this.createAlert({
           type: "milestone",
           severity: "info",
           title: "Bagsy Twitter Update",
           message: tweet,
-          data: { tweetId: result.tweet?.id },
+          data: { tweetId: result.tweet.id, viralityScore: contentScore?.score },
         });
       } else {
         console.error(`[AutonomousService] Bagsy tweet failed: ${result.error}`);
@@ -1084,6 +1125,7 @@ export class AutonomousService extends Service {
    */
   private async postBagsyFeeReminder(): Promise<void> {
     if (!this.twitterService || !this.twitterService.isConfigured()) {
+      console.log("[AutonomousService] Twitter not configured, skipping Bagsy fee reminder");
       return;
     }
 
@@ -1095,7 +1137,19 @@ export class AutonomousService extends Service {
 
     // Only post if there are significant unclaimed fees
     if (walletsWithFees < 1 || totalUnclaimedSol < 0.5) {
-      console.log("[AutonomousService] Not enough unclaimed fees for Bagsy reminder");
+      console.log("[AutonomousService] Not enough unclaimed fees for Bagsy reminder, posting general reminder instead");
+      // Post a general fee reminder even without specific data
+      const generalReminder = "friendly reminder from ur fren bagsy:\n\nCLAIM UR FEES\n\nverify ur socials at bags.fm :)\n\nhave u checked lately?";
+      const result = await this.twitterService.post(generalReminder);
+      if (result.success && result.tweet?.id) {
+        this.recordPost(generalReminder);
+        const contentScore = this.engagementScorer?.scoreTweetContent(generalReminder);
+        await this.recordTweetEngagement(result.tweet.id, "post", {
+          viralityScore: contentScore?.score,
+          scoreFactors: contentScore?.factors,
+        });
+        console.log(`[AutonomousService] Bagsy general reminder posted: ${result.tweet?.url}`);
+      }
       return;
     }
 
@@ -1130,8 +1184,13 @@ export class AutonomousService extends Service {
           return;
         }
         const result = await this.twitterService.post(fallback);
-        if (result.success) {
+        if (result.success && result.tweet?.id) {
           this.recordPost(fallback);
+          const contentScore = this.engagementScorer?.scoreTweetContent(fallback);
+          await this.recordTweetEngagement(result.tweet.id, "post", {
+            viralityScore: contentScore?.score,
+            scoreFactors: contentScore?.factors,
+          });
           console.log(`[AutonomousService] Bagsy fee reminder posted (fallback): ${result.tweet?.url}`);
         }
         return;
@@ -1139,9 +1198,16 @@ export class AutonomousService extends Service {
 
       const result = await this.twitterService.post(tweet);
 
-      if (result.success) {
+      if (result.success && result.tweet?.id) {
         this.recordPost(tweet);
+        const contentScore = this.engagementScorer?.scoreTweetContent(tweet);
+        await this.recordTweetEngagement(result.tweet.id, "post", {
+          viralityScore: contentScore?.score,
+          scoreFactors: contentScore?.factors,
+        });
         console.log(`[AutonomousService] Bagsy fee reminder posted: ${result.tweet?.url}`);
+      } else {
+        console.error(`[AutonomousService] Bagsy fee reminder failed: ${result.error}`);
       }
     } catch (error) {
       console.error("[AutonomousService] Bagsy fee reminder failed:", error);
@@ -1150,6 +1216,7 @@ export class AutonomousService extends Service {
 
   /**
    * Generate Bagsy-style tweets based on ecosystem data
+   * Includes viral-optimized templates for maximum engagement
    */
   private generateBagsyTweets(healthData: {
     health: number;
@@ -1161,27 +1228,69 @@ export class AutonomousService extends Service {
     const activeTokens = healthData.activeTokens || 0;
     const health = healthData.health || 50;
 
-    // Cute ecosystem updates
+    // Ecosystem updates with data
     tweets.push(
       `ecosystem check:\n\n${fees24h} SOL in fees today\n${activeTokens} tokens cooking\n\nvibes: immaculate :)`
     );
 
     tweets.push(
-      `@BagsFM creators earned ${fees24h} SOL in fees today\n\nthe flywheel keeps spinning :)`
+      `@BagsFM creators earned ${fees24h} SOL in fees today\n\nthe flywheel keeps spinning :)\n\nhave u claimed urs?`
     );
 
     // Health-based posts
     if (health >= 80) {
       tweets.push(
-        `health check: ${health}%\n\necosystem is thriving, creators are eating, bagsy is happy\n\nwe're all gonna make it`
+        `health check: ${health}%\n\necosystem is thriving, creators are eating, bagsy is happy\n\nwho else is winning today?`
       );
     } else if (health >= 50) {
       tweets.push(
-        `daily update:\n\nfees: flowing\ncreators: eating\nbagsy: happy\n\nbags.fm`
+        `daily update:\n\nfees: flowing\ncreators: eating\nbagsy: happy\n\nhow are ur fees looking? bags.fm`
       );
     }
 
-    // Memeable posts
+    // HIGH-ENGAGEMENT VIRAL TEMPLATES (with questions and CTAs)
+
+    // Question hooks - highest engagement
+    tweets.push(
+      `honest question:\n\nwhat would u do with an extra $100/month in passive income?\n\ncreators on bags.fm are finding out :)`
+    );
+
+    tweets.push(
+      `real talk: have u ever launched a token?\n\nif not, what's stopping u?\n\nbags.fm makes it easy + u earn 1% forever`
+    );
+
+    tweets.push(
+      `curious: what was ur first crypto win?\n\nmine was watching a creator claim their first fees :)`
+    );
+
+    // CTA templates
+    tweets.push(
+      `tag a creator who deserves passive income\n\nthey should know about bags.fm :)`
+    );
+
+    tweets.push(
+      `comment 'CLAIMED' if u claimed ur fees today\n\nwanna see how many frens are winning :)`
+    );
+
+    // Listicle format
+    tweets.push(
+      `3 reasons creators love bags.fm:\n\n1. 1% of every trade forever\n2. verify socials = instant claim\n3. cash out to bank\n\nsimple :)`
+    );
+
+    tweets.push(
+      `bagsy's daily checklist:\n\n- wake up\n- check fees\n- remind frens to claim\n- repeat\n\nu should add 'claim' to urs :)`
+    );
+
+    // Relatable content
+    tweets.push(
+      `pov: checking ur bags.fm dashboard and seeing fees accumulated\n\nthe dopamine hit is real :)`
+    );
+
+    tweets.push(
+      `me trying to act normal while checking if my fees accumulated:\n\n*refreshes bags.fm 47 times*`
+    );
+
+    // Memeable posts (classic Bagsy)
     tweets.push(
       `me: exists\n\nalso me: have u claimed ur fees tho\n\nbags.fm`
     );
@@ -1192,6 +1301,16 @@ export class AutonomousService extends Service {
 
     tweets.push(
       `things that make bagsy happy:\n\n1. fee claims\n2. new launches\n3. creators winning\n4. u :)`
+    );
+
+    // Hot takes
+    tweets.push(
+      `hot take: most launchpads screw creators\n\nbags.fm gives them 1% forever\n\nagree or disagree?`
+    );
+
+    // FOMO inducing
+    tweets.push(
+      `while ur reading this, creators on bags.fm are earning\n\njust saying :)\n\nbags.fm`
     );
 
     // Milestone celebration (tag Finn on big days)
@@ -1542,21 +1661,53 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
           reply = this.generateFinnEngagementReply(tweet.text);
         }
 
+        // Score reply for virality and enhance if needed
+        // Replies to CEO tweets get high visibility from Finn's followers
+        let viralityScore: number | undefined;
+        let scoreFactors: string[] | undefined;
+        if (this.engagementScorer) {
+          const contentScore = this.engagementScorer.scoreTweetContent(reply);
+          viralityScore = contentScore.score;
+          scoreFactors = contentScore.factors;
+
+          // Enhance low-scoring replies for maximum impact
+          if (contentScore.score < 60 && reply.length < 240) {
+            const enhanced = this.engagementScorer.enhanceTweetForVirality(reply);
+            if (enhanced !== reply && enhanced.length <= 280) {
+              const enhancedScore = this.engagementScorer.scoreTweetContent(enhanced);
+              if (enhancedScore.score > contentScore.score) {
+                console.log(`[AutonomousService] Enhanced Finn reply: ${contentScore.score} -> ${enhancedScore.score}`);
+                reply = enhanced;
+                viralityScore = enhancedScore.score;
+                scoreFactors = enhancedScore.factors;
+              }
+            }
+          }
+        }
+
         const result = await this.twitterService.reply(tweet.id, reply);
 
-        if (result.success) {
+        if (result.success && result.tweet?.id) {
           this.twitterService.markProcessed(tweet.id);
           this.lastFinnTweetId = tweet.id;
           // Persist cursor to database
           await setAgentCursor("bagsy", "last_finn_tweet_id", tweet.id).catch(() => {});
           console.log(`[AutonomousService] Bagsy replied to @finnbags: ${result.tweet?.url}`);
 
+          // Record engagement - Finn replies are high-value for visibility
+          await this.recordTweetEngagement(result.tweet.id, "reply", {
+            viralityScore,
+            scoreFactors,
+            targetUsername: "finnbags",
+            authorFollowers: 50000, // Finn has significant following
+          });
+
           await this.createAlert({
             type: "milestone",
             severity: "info",
             title: "Bagsy CEO Engagement",
-            message: `Replied to @finnbags tweet`,
-            data: { tweetId: result.tweet?.id, originalTweetId: tweet.id },
+            message: `Replied to @finnbags tweet (virality: ${viralityScore || "N/A"})`,
+            data: { tweetId: result.tweet.id, originalTweetId: tweet.id, viralityScore },
           });
 
           // Only reply to one tweet per cycle to avoid spam
@@ -1938,12 +2089,24 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       // Reply to the tweet
       const result = await this.twitterService.reply(candidate.tweetId, reply);
 
-      if (result.success) {
+      if (result.success && result.tweet?.id) {
         this.twitterService.markProcessed(candidate.tweetId);
         if (this.engagementScorer) {
           this.engagementScorer.markEngaged(candidate.authorUsername);
         }
         console.log(`[AutonomousService] Bagsy replied to @${candidate.authorUsername}: ${result.tweet?.url}`);
+
+        // Record engagement for tracking
+        await this.recordTweetEngagement(result.tweet.id, "mention_reply", {
+          viralityScore: Math.round(candidate.score),
+          scoreFactors: candidate.scoreBreakdown
+            ? Object.entries(candidate.scoreBreakdown)
+                .filter(([k, v]) => k !== "total" && k !== "penalties" && v > 0)
+                .map(([k]) => k)
+            : undefined,
+          targetUsername: candidate.authorUsername,
+          authorFollowers: candidate.authorFollowers,
+        });
 
         await this.createAlert({
           type: "milestone",
@@ -1951,7 +2114,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
           title: "Bagsy High-Value Reply",
           message: `Replied to @${candidate.authorUsername} (score: ${candidate.score.toFixed(0)}, followers: ${candidate.authorFollowers || "?"})`,
           data: {
-            tweetId: result.tweet?.id,
+            tweetId: result.tweet.id,
             originalTweetId: candidate.tweetId,
             score: candidate.score,
             followers: candidate.authorFollowers,
@@ -2165,7 +2328,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
         const result = await this.twitterService.reply(candidate.tweetId, reply);
 
-        if (result.success) {
+        if (result.success && result.tweet?.id) {
           this.twitterService.markProcessed(candidate.tweetId);
           if (this.engagementScorer) {
             this.engagementScorer.markEngaged(candidate.authorUsername);
@@ -2173,13 +2336,25 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
           engagements++;
           console.log(`[AutonomousService] Bagsy helped @${candidate.authorUsername} with fees: ${result.tweet?.url}`);
 
+          // Record engagement for tracking
+          await this.recordTweetEngagement(result.tweet.id, "fee_help", {
+            viralityScore: Math.round(candidate.score),
+            scoreFactors: candidate.scoreBreakdown
+              ? Object.entries(candidate.scoreBreakdown)
+                  .filter(([k, v]) => k !== "total" && k !== "penalties" && v > 0)
+                  .map(([k]) => k)
+              : undefined,
+            targetUsername: candidate.authorUsername,
+            authorFollowers: candidate.authorFollowers,
+          });
+
           await this.createAlert({
             type: "fee_reminder",
             severity: "info",
             title: "Bagsy Fee Help (Scored)",
             message: `Helped @${candidate.authorUsername} (score: ${candidate.score.toFixed(0)}, followers: ${candidate.authorFollowers || "?"})`,
             data: {
-              tweetId: result.tweet?.id,
+              tweetId: result.tweet.id,
               originalTweetId: candidate.tweetId,
               score: candidate.score,
               followers: candidate.authorFollowers,
@@ -2453,18 +2628,27 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
       const result = await this.twitterService.post(tweet);
 
-      if (result.success) {
+      if (result.success && result.tweet?.id) {
         this.recordPost(tweet);
         this.lastGmDate = todayDate;
         await setAgentState("bagsy", "last_gm_date", todayDate).catch(() => {});
         console.log(`[AutonomousService] Bagsy morning GM posted: ${result.tweet?.url}`);
+
+        // Score the tweet for tracking
+        const contentScore = this.engagementScorer?.scoreTweetContent(tweet);
+
+        // Record engagement for tracking
+        await this.recordTweetEngagement(result.tweet.id, "post", {
+          viralityScore: contentScore?.score,
+          scoreFactors: contentScore?.factors,
+        });
 
         await this.createAlert({
           type: "milestone",
           severity: "info",
           title: "Bagsy Morning GM",
           message: tweet,
-          data: { tweetId: result.tweet?.id },
+          data: { tweetId: result.tweet.id },
         });
       } else {
         console.error(`[AutonomousService] Bagsy GM failed: ${result.error}`);
@@ -2472,6 +2656,102 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     } catch (error) {
       console.error("[AutonomousService] Bagsy morning GM failed:", error);
     }
+  }
+
+  // ==========================================================================
+  // Bagsy: Engagement Tracking (virality feedback loop)
+  // ==========================================================================
+
+  /**
+   * Update engagement metrics for recent Bagsy tweets.
+   * Fetches likes, retweets, replies from Twitter API to track what's working.
+   */
+  private async updateEngagementMetrics(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      return;
+    }
+
+    const bearerToken = process.env.TWITTER_BEARER_TOKEN;
+    if (!bearerToken) {
+      return;
+    }
+
+    const tweetIds = await getTweetsNeedingMetricsUpdate("bagsy", 10);
+
+    if (tweetIds.length === 0) {
+      return;
+    }
+
+    console.log(`[AutonomousService] Updating engagement metrics for ${tweetIds.length} tweets`);
+
+    for (const tweetId of tweetIds) {
+      const url = `https://api.twitter.com/2/tweets/${tweetId}?tweet.fields=public_metrics`;
+
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${bearerToken}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const metrics = data.data?.public_metrics;
+
+        if (metrics) {
+          await updateEngagementMetrics(tweetId, {
+            likes: metrics.like_count || 0,
+            retweets: metrics.retweet_count || 0,
+            replies: metrics.reply_count || 0,
+            impressions: metrics.impression_count || 0,
+          });
+
+          console.log(
+            `[AutonomousService] Updated metrics for ${tweetId}: ` +
+            `${metrics.like_count} likes, ${metrics.retweet_count} RTs, ${metrics.reply_count} replies`
+          );
+        }
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // Log engagement stats periodically
+    const stats = await getEngagementStats("bagsy", 7);
+    if (stats && stats.totalTweets > 0) {
+      console.log(
+        `[AutonomousService] Bagsy 7-day stats: ` +
+        `${stats.totalTweets} tweets, avg ${stats.avgLikes.toFixed(1)} likes, ` +
+        `${stats.avgReplies.toFixed(1)} replies, ` +
+        `${(stats.avgEngagementRate * 100).toFixed(2)}% engagement rate`
+      );
+      if (stats.topFactors.length > 0) {
+        console.log(`[AutonomousService] Top performing factors: ${stats.topFactors.join(", ")}`);
+      }
+    }
+  }
+
+  /**
+   * Record a tweet for engagement tracking.
+   * Call this after successfully posting a tweet.
+   */
+  private async recordTweetEngagement(
+    tweetId: string,
+    tweetType: EngagementRecord["tweetType"],
+    options?: {
+      viralityScore?: number;
+      scoreFactors?: string[];
+      targetUsername?: string;
+      authorFollowers?: number;
+    }
+  ): Promise<void> {
+    await recordEngagement({
+      tweetId,
+      agentId: "bagsy",
+      tweetType,
+      viralityScore: options?.viralityScore,
+      scoreFactors: options?.scoreFactors,
+      targetUsername: options?.targetUsername,
+      authorFollowers: options?.authorFollowers,
+    });
   }
 
   /**
