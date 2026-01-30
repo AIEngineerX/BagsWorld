@@ -1339,7 +1339,8 @@ PERSONALITY:
 - Gets physically pained when fees go unclaimed
 
 RULES:
-- MUST be under 280 characters
+- MUST be under 250 characters (Twitter limit is 280, leave buffer)
+- Keep it SHORT - 2-3 short sentences max
 - Use line breaks for emphasis
 - Always stay positive and encouraging
 - Mention bags.fm when talking about fees
@@ -1347,6 +1348,7 @@ RULES:
 - Can reference BagsWorld, zones, world health when relevant
 - NO hashtags unless specifically asked
 - Sound natural, not robotic
+- NEVER cut off mid-sentence - if running long, end the thought
 
 ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
@@ -1364,9 +1366,9 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       // Clean up any quotes the LLM might add
       tweet = tweet.replace(/^["']|["']$/g, "");
 
-      // Ensure it's under 280 chars
+      // Smart truncation to avoid cutting mid-sentence
       if (tweet.length > 280) {
-        tweet = tweet.substring(0, 277) + "...";
+        tweet = this.smartTruncate(tweet, 280);
       }
 
       return tweet;
@@ -2243,6 +2245,48 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       }
     }
     return false;
+  }
+
+  /**
+   * Smart truncation that avoids cutting mid-sentence or mid-word.
+   * Tries to find a natural break point before the limit.
+   */
+  private smartTruncate(text: string, maxLength: number): string {
+    if (text.length <= maxLength) return text;
+
+    // Leave room for potential "..." if we need to add it
+    const targetLength = maxLength - 3;
+
+    // Try to find the last complete sentence within limit
+    const sentenceEndings = [". ", "! ", "? ", ".\n", "!\n", "?\n"];
+    let lastSentenceEnd = -1;
+
+    for (const ending of sentenceEndings) {
+      const idx = text.lastIndexOf(ending, targetLength);
+      if (idx > lastSentenceEnd && idx > targetLength * 0.5) {
+        lastSentenceEnd = idx + ending.length - 1;
+      }
+    }
+
+    // If we found a sentence boundary in the second half of the text, use it
+    if (lastSentenceEnd > targetLength * 0.5) {
+      return text.substring(0, lastSentenceEnd).trim();
+    }
+
+    // Try to find the last line break within limit
+    const lastLineBreak = text.lastIndexOf("\n", targetLength);
+    if (lastLineBreak > targetLength * 0.6) {
+      return text.substring(0, lastLineBreak).trim();
+    }
+
+    // Try to find the last space (word boundary) within limit
+    const lastSpace = text.lastIndexOf(" ", targetLength);
+    if (lastSpace > targetLength * 0.7) {
+      return text.substring(0, lastSpace).trim();
+    }
+
+    // Last resort: hard cut with ellipsis
+    return text.substring(0, targetLength).trim() + "...";
   }
 }
 
