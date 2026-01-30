@@ -238,15 +238,21 @@ export class TwitterService extends Service {
     // Check for OAuth 1.0a credentials (required for posting)
     const hasOAuthCredentials = this.apiKey && this.apiSecret && this.accessToken && this.accessTokenSecret;
     const hasBearerToken = !!this.bearerToken;
+    const hasUsername = !!this.config.username;
 
     if (!hasOAuthCredentials) {
       console.warn("[TwitterService] OAuth credentials not fully configured");
       console.warn("[TwitterService] For posting, need: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET");
-      if (!hasBearerToken) {
+
+      // Allow dry run with just username (no API calls needed)
+      if (!hasBearerToken && !hasUsername) {
         console.warn("[TwitterService] No credentials at all - Twitter integration disabled");
         return;
       }
-      console.warn("[TwitterService] Bearer token found - read-only mode (cannot post)");
+
+      if (hasBearerToken) {
+        console.warn("[TwitterService] Bearer token found - read-only mode (cannot post)");
+      }
     }
 
     // Verify credentials
@@ -254,7 +260,7 @@ export class TwitterService extends Service {
       await this.verifyCredentials();
       this.isAuthenticated = true;
       console.log(`[TwitterService] Authenticated as @${this.config.username || "unknown"}`);
-      console.log(`[TwitterService] OAuth posting: ${hasOAuthCredentials ? "ENABLED" : "DISABLED (read-only)"}`);
+      console.log(`[TwitterService] OAuth posting: ${hasOAuthCredentials ? "ENABLED" : "DISABLED (dry run only)"}`);
       console.log(`[TwitterService] Dry run mode: ${this.config.dryRun ? "ENABLED" : "DISABLED"}`);
     } catch (error) {
       console.error("[TwitterService] Authentication failed:", error);
