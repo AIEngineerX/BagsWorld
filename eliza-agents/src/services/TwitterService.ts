@@ -264,14 +264,21 @@ export class TwitterService extends Service {
 
   private async verifyCredentials(): Promise<void> {
     // If we have OAuth 1.0a credentials, use them to verify (required for user context)
-    if (this.apiKey && this.apiSecret && this.accessToken && this.accessTokenSecret) {
+    if (this.oauth && this.accessToken && this.accessTokenSecret) {
       const url = "https://api.twitter.com/2/users/me";
-      const authHeader = this.getOAuthHeader("GET", url);
+
+      // Generate OAuth 1.0a authorization header (same pattern as postTweet)
+      const authHeader = this.oauth.toHeader(
+        this.oauth.authorize(
+          { url, method: "GET" },
+          { key: this.accessToken, secret: this.accessTokenSecret }
+        )
+      );
 
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          Authorization: authHeader,
+          Authorization: authHeader.Authorization,
         },
       });
 
