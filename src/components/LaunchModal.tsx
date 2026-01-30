@@ -190,6 +190,8 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   // Image dimension warnings (not errors, just warnings)
   const [logoWarning, setLogoWarning] = useState<string | null>(null);
   const [bannerWarning, setBannerWarning] = useState<string | null>(null);
+  const [isResizingLogo, setIsResizingLogo] = useState(false);
+  const [isResizingBanner, setIsResizingBanner] = useState(false);
 
   // Validate image dimensions and load it
   const validateAndLoadImage = (
@@ -261,6 +263,76 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       img.src = result;
     };
     reader.readAsDataURL(file);
+  };
+
+  // Auto-resize image to target dimensions using the API
+  const autoResizeImage = async (
+    imageType: "logo" | "banner",
+    currentDataUrl: string,
+    targetWidth: number,
+    targetHeight: number,
+    setPreview: (url: string) => void,
+    setDataUrl: (url: string) => void,
+    setWarning: (warning: string | null) => void,
+    setResizing: (resizing: boolean) => void
+  ) => {
+    setResizing(true);
+    setError(null);
+
+    const response = await fetch("/api/oak-generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "resize-image",
+        imageData: currentDataUrl,
+        targetWidth,
+        targetHeight,
+      }),
+    });
+
+    setResizing(false);
+
+    if (!response.ok) {
+      setError(`Failed to resize ${imageType}. Please try again.`);
+      return;
+    }
+
+    const data = await response.json();
+    if (data.success && data.imageUrl) {
+      setPreview(data.imageUrl);
+      setDataUrl(data.imageUrl);
+      setWarning(null);
+    } else {
+      setError(data.error || `Failed to resize ${imageType}.`);
+    }
+  };
+
+  const handleResizeLogo = () => {
+    if (!imageDataUrl) return;
+    autoResizeImage(
+      "logo",
+      imageDataUrl,
+      512,
+      512,
+      setImagePreview,
+      setImageDataUrl,
+      setLogoWarning,
+      setIsResizingLogo
+    );
+  };
+
+  const handleResizeBanner = () => {
+    if (!bannerDataUrl) return;
+    autoResizeImage(
+      "banner",
+      bannerDataUrl,
+      600,
+      200,
+      setBannerPreview,
+      setBannerDataUrl,
+      setBannerWarning,
+      setIsResizingBanner
+    );
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1014,9 +1086,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <p className="font-pixel text-[8px] text-gray-400 text-center">LOGO (512x512) *</p>
                 <label className="cursor-pointer block">
                   <div className={`aspect-square bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
-                    logoWarning ? "border-yellow-500 hover:border-yellow-400" : "border-bags-green hover:border-bags-gold"
+                    isResizingLogo ? "border-amber-500 animate-pulse" : logoWarning ? "border-yellow-500 hover:border-yellow-400" : "border-bags-green hover:border-bags-gold"
                   }`}>
-                    {imagePreview ? (
+                    {isResizingLogo ? (
+                      <span className="font-pixel text-[8px] text-amber-400 animate-pulse">Resizing...</span>
+                    ) : imagePreview ? (
                       <img src={imagePreview} alt="Token" className="w-full h-full object-cover" />
                     ) : (
                       <span className="font-pixel text-[8px] text-gray-500 text-center">
@@ -1034,7 +1108,17 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   />
                 </label>
                 {logoWarning && (
-                  <p className="font-pixel text-[6px] text-yellow-400 text-center">⚠️ {logoWarning}</p>
+                  <div className="space-y-1">
+                    <p className="font-pixel text-[6px] text-yellow-400 text-center">⚠️ {logoWarning}</p>
+                    <button
+                      type="button"
+                      onClick={handleResizeLogo}
+                      disabled={isResizingLogo}
+                      className="w-full py-1 bg-amber-600/20 border border-amber-600/50 font-pixel text-[7px] text-amber-400 hover:bg-amber-600/30 disabled:opacity-50"
+                    >
+                      {isResizingLogo ? "Resizing..." : "🔧 Auto-fix to 512x512"}
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -1043,9 +1127,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <p className="font-pixel text-[8px] text-gray-400 text-center">BANNER (600x200)</p>
                 <label className="cursor-pointer block">
                   <div className={`aspect-[3/1] bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
-                    bannerWarning ? "border-yellow-500 hover:border-yellow-400" : "border-amber-600/50 hover:border-amber-500"
+                    isResizingBanner ? "border-amber-500 animate-pulse" : bannerWarning ? "border-yellow-500 hover:border-yellow-400" : "border-amber-600/50 hover:border-amber-500"
                   }`}>
-                    {bannerPreview ? (
+                    {isResizingBanner ? (
+                      <span className="font-pixel text-[7px] text-amber-400 animate-pulse">Resizing...</span>
+                    ) : bannerPreview ? (
                       <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
                     ) : (
                       <span className="font-pixel text-[7px] text-gray-500 text-center">
@@ -1063,7 +1149,17 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   />
                 </label>
                 {bannerWarning ? (
-                  <p className="font-pixel text-[6px] text-yellow-400 text-center">⚠️ {bannerWarning}</p>
+                  <div className="space-y-1">
+                    <p className="font-pixel text-[6px] text-yellow-400 text-center">⚠️ {bannerWarning}</p>
+                    <button
+                      type="button"
+                      onClick={handleResizeBanner}
+                      disabled={isResizingBanner}
+                      className="w-full py-1 bg-amber-600/20 border border-amber-600/50 font-pixel text-[7px] text-amber-400 hover:bg-amber-600/30 disabled:opacity-50"
+                    >
+                      {isResizingBanner ? "Resizing..." : "🔧 Auto-fix to 600x200"}
+                    </button>
+                  </div>
                 ) : (
                   <p className="font-pixel text-[6px] text-gray-500 text-center">3:1 ratio for DexScreener</p>
                 )}
