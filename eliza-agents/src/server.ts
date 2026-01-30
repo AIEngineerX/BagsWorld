@@ -1,6 +1,9 @@
 // BagsWorld Agents Standalone Server
 // Express server with full LLM integration and Neon DB persistence
 
+// Load environment variables from .env file
+import "dotenv/config";
+
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
