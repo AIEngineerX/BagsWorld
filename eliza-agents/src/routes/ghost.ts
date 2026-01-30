@@ -100,15 +100,12 @@ router.post("/learning/reset", requireAdminKey, async (req: Request, res: Respon
 });
 
 // GET /api/ghost/status - Get trading status and stats
-// SECURITY: Masks sensitive data (wallet address, smart money wallets) unless admin key provided
+// Public endpoint - trading stats are transparent for community trust
 router.get("/status", async (req: Request, res: Response) => {
   const trader = getGhostTrader();
   const solanaService = getSolanaService();
   const stats = trader.getStats();
   const config = trader.getConfig();
-
-  // Check if admin key is provided for full data access
-  const isAdmin = GHOST_ADMIN_KEY && req.headers["x-ghost-admin-key"] === GHOST_ADMIN_KEY;
 
   // Fetch wallet balance
   let walletBalance = 0;
@@ -118,22 +115,16 @@ router.get("/status", async (req: Request, res: Response) => {
     console.error("[Ghost] Failed to fetch wallet balance:", error);
   }
 
-  // Mask wallet address for non-admin requests
-  const fullAddress = solanaService.getPublicKey() || null;
-  const maskedAddress = fullAddress
-    ? `${fullAddress.slice(0, 4)}...${fullAddress.slice(-4)}`
-    : null;
-
   res.json({
     success: true,
     wallet: {
-      address: isAdmin ? fullAddress : maskedAddress,
-      balanceSol: isAdmin ? walletBalance : "***",
+      address: solanaService.getPublicKey() || null,
+      balanceSol: walletBalance,
     },
     trading: {
       enabled: stats.enabled,
       openPositions: stats.openPositions,
-      totalExposureSol: isAdmin ? stats.totalExposureSol : "***",
+      totalExposureSol: stats.totalExposureSol,
       maxExposureSol: config.maxTotalExposureSol,
       maxPositions: config.maxOpenPositions,
     },
@@ -141,7 +132,7 @@ router.get("/status", async (req: Request, res: Response) => {
       totalTrades: stats.totalTrades,
       winningTrades: stats.winningTrades,
       losingTrades: stats.losingTrades,
-      totalPnlSol: isAdmin ? stats.totalPnlSol : "***",
+      totalPnlSol: stats.totalPnlSol,
       winRate: (stats.winRate * 100).toFixed(1) + "%",
     },
     config: {
@@ -154,8 +145,7 @@ router.get("/status", async (req: Request, res: Response) => {
       minBuySellRatio: config.minBuySellRatio,
       slippageBps: config.slippageBps,
     },
-    // SECURITY: Hide smart money wallets from non-admin requests
-    smartMoneyWallets: isAdmin ? trader.getSmartMoneyWalletsWithLabels() : "*** (requires admin key)",
+    smartMoneyWallets: trader.getSmartMoneyWalletsWithLabels(),
   });
 });
 
