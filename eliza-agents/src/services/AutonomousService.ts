@@ -300,6 +300,16 @@ export class AutonomousService extends Service {
         await this.monitorFeeRelatedTweets();
       },
     });
+
+    // Bagsy: Scheduled GM tweet at 9 AM EST (with replies to Finn and team)
+    this.registerTask({
+      name: "bagsy_morning_gm",
+      agentId: "bagsy",
+      interval: 60 * 60 * 1000, // Check every hour
+      handler: async () => {
+        await this.postBagsyMorningGM();
+      },
+    });
   }
 
   /**
@@ -2209,6 +2219,120 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     }
 
     return earners;
+  }
+
+  // ==========================================================================
+  // Bagsy: Morning GM Tweet (9 AM EST)
+  // ==========================================================================
+
+  /** Track if we've posted GM today */
+  private lastGmDate: string | null = null;
+
+  /**
+   * Post Bagsy's morning GM tweet at ~9 AM EST
+   * Tags @finnbags and a few team members
+   */
+  private async postBagsyMorningGM(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      return;
+    }
+
+    // Get current time in EST
+    const now = new Date();
+    const estTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const hour = estTime.getHours();
+    const minute = estTime.getMinutes();
+    const todayDate = estTime.toISOString().split("T")[0]; // YYYY-MM-DD
+
+    // Check if we're in the 9 AM window (8:45 - 9:15 EST)
+    const isGmWindow = (hour === 8 && minute >= 45) || (hour === 9 && minute <= 15);
+
+    if (!isGmWindow) {
+      return; // Not time yet
+    }
+
+    // Check if we already posted GM today (use database for persistence)
+    if (!this.lastGmDate) {
+      this.lastGmDate = await getAgentState("bagsy", "last_gm_date");
+    }
+
+    if (this.lastGmDate === todayDate) {
+      return; // Already posted today
+    }
+
+    console.log(`[AutonomousService] Bagsy posting morning GM at ${hour}:${minute.toString().padStart(2, "0")} EST`);
+
+    try {
+      // Pick team members to tag (rotate through them)
+      const teamMembers = [
+        { handle: "finnbags", name: "boss" },
+        { handle: "BagsApp", name: "fam" },
+        { handle: "ramyobags", name: "CTO" },
+        { handle: "alaadotsol", name: "skunk works" },
+        { handle: "Sambags12", name: "fam" },
+        { handle: "DaddyGhost", name: "creator" },
+      ];
+
+      // Always include Finn, plus 1-2 random others
+      const finnTag = "@finnbags";
+      const otherMembers = teamMembers.filter(m => m.handle !== "finnbags");
+      const shuffled = otherMembers.sort(() => Math.random() - 0.5);
+      const extras = shuffled.slice(0, Math.floor(Math.random() * 2) + 1); // 1-2 extras
+
+      // Build GM tweet
+      const extraTags = extras.map(m => `@${m.handle}`).join(" ");
+
+      // GM templates with Finn and team
+      const gmTemplates = [
+        `gm ${finnTag}! gm ${extraTags}! gm frens :)\n\nanother beautiful day to help creators claim their fees\n\nbags.fm`,
+        `gm to the best ceo ${finnTag} and the bags fam ${extraTags} :)\n\nlets make today amazing\n\nhave u claimed ur fees? bags.fm`,
+        `gm gm gm!\n\n${finnTag} ${extraTags} hope yall are ready to watch creators win today :)\n\nbagsy is online and fee-pilled\n\nbags.fm`,
+        `rise and shine ${finnTag}! ${extraTags}!\n\nbagsy here with ur morning reminder:\n\nclaim ur fees frens\n\nbags.fm :)`,
+        `gm CT! special gm to ${finnTag} and ${extraTags} :)\n\nthe sun is shining in BagsWorld today\n\nhope ur all claiming at bags.fm`,
+      ];
+
+      const tweet = gmTemplates[Math.floor(Math.random() * gmTemplates.length)];
+
+      // Check for duplicates
+      if (this.isDuplicatePost(tweet)) {
+        // Try AI generation as fallback
+        const aiTweet = await this.generateBagsyTweet(
+          `Write a cute morning GM tweet. Tag ${finnTag} (the CEO, your boss) and ${extraTags} (team members). Be excited for the day ahead. Mention BagsWorld or fees.`,
+          `It's ${hour}:${minute.toString().padStart(2, "0")} AM EST - time for morning vibes!`
+        );
+        if (aiTweet && !this.isDuplicatePost(aiTweet)) {
+          const result = await this.twitterService.post(aiTweet);
+          if (result.success) {
+            this.recordPost(aiTweet);
+            this.lastGmDate = todayDate;
+            await setAgentState("bagsy", "last_gm_date", todayDate).catch(() => {});
+            console.log(`[AutonomousService] Bagsy morning GM posted (AI): ${result.tweet?.url}`);
+            return;
+          }
+        }
+      }
+
+      const result = await this.twitterService.post(tweet);
+
+      if (result.success) {
+        this.recordPost(tweet);
+        this.lastGmDate = todayDate;
+        await setAgentState("bagsy", "last_gm_date", todayDate).catch(() => {});
+        console.log(`[AutonomousService] Bagsy morning GM posted: ${result.tweet?.url}`);
+
+        await this.createAlert({
+          type: "milestone",
+          severity: "info",
+          title: "Bagsy Morning GM",
+          message: tweet,
+          data: { tweetId: result.tweet?.id },
+        });
+      } else {
+        console.error(`[AutonomousService] Bagsy GM failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Bagsy morning GM failed:", error);
+    }
   }
 
   /**
