@@ -2854,3 +2854,261 @@ export async function getEventsClearedTimestamp(): Promise<number> {
 export async function setEventsClearedTimestamp(timestamp: number): Promise<boolean> {
   return setSetting("events_cleared_after", timestamp.toString());
 }
+
+// ============================================
+// Twitter/Agent Tracking Functions
+// ============================================
+// Persists processed tweet IDs and agent state to survive serverless restarts.
+// Prevents duplicate replies, intro tweets, and re-processing old mentions.
+
+let twitterTrackingTableInitialized = false;
+
+/**
+ * Initialize Twitter tracking tables for agent state persistence.
+ * Creates tables for:
+ * - processed_tweets: Track tweets already replied to
+ * - agent_cursors: Track pagination cursors (last mention ID, etc.)
+ * - agent_state: Track agent state (has posted intro, etc.)
+ */
+export async function initializeTwitterTrackingTables(): Promise<boolean> {
+  if (twitterTrackingTableInitialized) return true;
+
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    // Track processed tweets to prevent duplicate replies
+    await sql`
+      CREATE TABLE IF NOT EXISTS processed_tweets (
+        tweet_id VARCHAR(64) PRIMARY KEY,
+        agent_id VARCHAR(64) NOT NULL,
+        action_type VARCHAR(32) NOT NULL DEFAULT 'reply',
+        processed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Track pagination cursors for each agent
+    await sql`
+      CREATE TABLE IF NOT EXISTS agent_cursors (
+        id VARCHAR(128) PRIMARY KEY,
+        agent_id VARCHAR(64) NOT NULL,
+        cursor_type VARCHAR(64) NOT NULL,
+        cursor_value VARCHAR(128) NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Track agent state (intro posted, etc.)
+    await sql`
+      CREATE TABLE IF NOT EXISTS agent_state (
+        id VARCHAR(128) PRIMARY KEY,
+        agent_id VARCHAR(64) NOT NULL,
+        state_key VARCHAR(64) NOT NULL,
+        state_value TEXT NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Indexes for efficient lookups
+    await sql`CREATE INDEX IF NOT EXISTS idx_processed_tweets_agent ON processed_tweets(agent_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_processed_tweets_time ON processed_tweets(processed_at)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_agent_cursors_agent ON agent_cursors(agent_id)`;
+
+    twitterTrackingTableInitialized = true;
+    console.log("[Neon] Twitter tracking tables initialized");
+    return true;
+  } catch (error) {
+    console.error("[Neon] Error creating Twitter tracking tables:", error);
+    return false;
+  }
+}
+
+/**
+ * Check if a tweet has already been processed by an agent.
+ * Used to prevent duplicate replies.
+ */
+export async function isTwitterProcessed(
+  tweetId: string,
+  agentId: string = "bagsy"
+): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await initializeTwitterTrackingTables();
+    const result = await sql`
+      SELECT tweet_id FROM processed_tweets
+      WHERE tweet_id = ${tweetId} AND agent_id = ${agentId}
+      LIMIT 1
+    `;
+    return (result as unknown[]).length > 0;
+  } catch (error) {
+    console.error("[Neon] Error checking processed tweet:", error);
+    return false;
+  }
+}
+
+/**
+ * Mark a tweet as processed by an agent.
+ * Prevents future duplicate actions on the same tweet.
+ */
+export async function markTwitterProcessed(
+  tweetId: string,
+  agentId: string = "bagsy",
+  actionType: string = "reply"
+): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await initializeTwitterTrackingTables();
+    await sql`
+      INSERT INTO processed_tweets (tweet_id, agent_id, action_type)
+      VALUES (${tweetId}, ${agentId}, ${actionType})
+      ON CONFLICT (tweet_id) DO NOTHING
+    `;
+    return true;
+  } catch (error) {
+    console.error("[Neon] Error marking tweet processed:", error);
+    return false;
+  }
+}
+
+/**
+ * Get a pagination cursor for an agent (e.g., last mention ID).
+ */
+export async function getAgentCursor(agentId: string, cursorType: string): Promise<string | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    await initializeTwitterTrackingTables();
+    const id = `${agentId}:${cursorType}`;
+    const result = await sql`
+      SELECT cursor_value FROM agent_cursors WHERE id = ${id} LIMIT 1
+    `;
+    return (result as Array<{ cursor_value: string }>)[0]?.cursor_value || null;
+  } catch (error) {
+    console.error("[Neon] Error getting agent cursor:", error);
+    return null;
+  }
+}
+
+/**
+ * Set a pagination cursor for an agent.
+ */
+export async function setAgentCursor(
+  agentId: string,
+  cursorType: string,
+  cursorValue: string
+): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await initializeTwitterTrackingTables();
+    const id = `${agentId}:${cursorType}`;
+    await sql`
+      INSERT INTO agent_cursors (id, agent_id, cursor_type, cursor_value, updated_at)
+      VALUES (${id}, ${agentId}, ${cursorType}, ${cursorValue}, NOW())
+      ON CONFLICT (id) DO UPDATE SET cursor_value = ${cursorValue}, updated_at = NOW()
+    `;
+    return true;
+  } catch (error) {
+    console.error("[Neon] Error setting agent cursor:", error);
+    return false;
+  }
+}
+
+/**
+ * Check if an agent has performed a one-time action (e.g., posted intro).
+ */
+export async function getAgentState(agentId: string, stateKey: string): Promise<string | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    await initializeTwitterTrackingTables();
+    const id = `${agentId}:${stateKey}`;
+    const result = await sql`
+      SELECT state_value FROM agent_state WHERE id = ${id} LIMIT 1
+    `;
+    return (result as Array<{ state_value: string }>)[0]?.state_value || null;
+  } catch (error) {
+    console.error("[Neon] Error getting agent state:", error);
+    return null;
+  }
+}
+
+/**
+ * Set agent state (e.g., mark intro as posted).
+ */
+export async function setAgentState(
+  agentId: string,
+  stateKey: string,
+  stateValue: string
+): Promise<boolean> {
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await initializeTwitterTrackingTables();
+    const id = `${agentId}:${stateKey}`;
+    await sql`
+      INSERT INTO agent_state (id, agent_id, state_key, state_value, updated_at)
+      VALUES (${id}, ${agentId}, ${stateKey}, ${stateValue}, NOW())
+      ON CONFLICT (id) DO UPDATE SET state_value = ${stateValue}, updated_at = NOW()
+    `;
+    return true;
+  } catch (error) {
+    console.error("[Neon] Error setting agent state:", error);
+    return false;
+  }
+}
+
+/**
+ * Clean up old processed tweets (older than 7 days) to prevent table bloat.
+ */
+export async function cleanupOldProcessedTweets(): Promise<number> {
+  const sql = await getSql();
+  if (!sql) return 0;
+
+  try {
+    await initializeTwitterTrackingTables();
+    const result = await sql`
+      DELETE FROM processed_tweets
+      WHERE processed_at < NOW() - INTERVAL '7 days'
+      RETURNING tweet_id
+    `;
+    const count = (result as unknown[]).length;
+    if (count > 0) {
+      console.log(`[Neon] Cleaned up ${count} old processed tweets`);
+    }
+    return count;
+  } catch (error) {
+    console.error("[Neon] Error cleaning up old processed tweets:", error);
+    return 0;
+  }
+}
+
+/**
+ * Get all processed tweet IDs for an agent (for loading into memory cache).
+ * Returns tweets from the last 7 days.
+ */
+export async function getProcessedTweetIds(agentId: string = "bagsy"): Promise<Set<string>> {
+  const sql = await getSql();
+  if (!sql) return new Set();
+
+  try {
+    await initializeTwitterTrackingTables();
+    const result = await sql`
+      SELECT tweet_id FROM processed_tweets
+      WHERE agent_id = ${agentId}
+      AND processed_at > NOW() - INTERVAL '7 days'
+    `;
+    return new Set((result as Array<{ tweet_id: string }>).map((r) => r.tweet_id));
+  } catch (error) {
+    console.error("[Neon] Error fetching processed tweet IDs:", error);
+    return new Set();
+  }
+}

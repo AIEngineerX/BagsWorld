@@ -5,6 +5,14 @@ import { Service, type IAgentRuntime } from "../types/elizaos.js";
 import OAuth from "oauth-1.0a";
 import CryptoJS from "crypto-js";
 
+// Import Neon database functions for persistent tracking
+// These prevent duplicate replies by persisting processed tweet IDs across serverless restarts
+import {
+  isTwitterProcessed as dbIsProcessed,
+  markTwitterProcessed as dbMarkProcessed,
+  getProcessedTweetIds,
+} from "../../../src/lib/neon.js";
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -174,7 +182,9 @@ export class TwitterService extends Service {
   private cooldown: TwitterCooldown;
   private postHistory: Tweet[] = [];
   private isAuthenticated: boolean = false;
-  private processedMentions: Set<string> = new Set();
+  private processedMentions: Set<string> = new Set(); // In-memory cache, backed by database
+  private processedMentionsLoaded: boolean = false;
+  private agentId: string = "bagsy"; // Agent ID for database tracking
 
   // Twitter API credentials (from environment)
   private bearerToken: string | null = null;
@@ -587,20 +597,74 @@ export class TwitterService extends Service {
   }
 
   /**
-   * Check if a tweet has already been processed (replied to)
+   * Load processed tweet IDs from database into memory cache.
+   * Called on first isProcessed check for performance.
+   */
+  private async loadProcessedFromDb(): Promise<void> {
+    if (this.processedMentionsLoaded) return;
+
+    try {
+      const dbIds = await getProcessedTweetIds(this.agentId);
+      for (const id of dbIds) {
+        this.processedMentions.add(id);
+      }
+      this.processedMentionsLoaded = true;
+      console.log(`[TwitterService] Loaded ${dbIds.size} processed tweet IDs from database`);
+    } catch (error) {
+      console.error("[TwitterService] Failed to load processed tweets from DB:", error);
+      this.processedMentionsLoaded = true; // Prevent repeated failures
+    }
+  }
+
+  /**
+   * Check if a tweet has already been processed (replied to).
+   * Uses in-memory cache backed by database for persistence across restarts.
    */
   isProcessed(tweetId: string): boolean {
+    // Trigger async load if not yet loaded (non-blocking for first check)
+    if (!this.processedMentionsLoaded) {
+      this.loadProcessedFromDb().catch(() => {});
+    }
     return this.processedMentions.has(tweetId);
   }
 
   /**
-   * Mark a tweet as processed to avoid duplicate replies
-   * Keeps the set bounded to prevent memory leaks
+   * Async version of isProcessed that ensures DB is checked.
+   * Use this for critical deduplication checks.
+   */
+  async isProcessedAsync(tweetId: string): Promise<boolean> {
+    // Check in-memory first
+    if (this.processedMentions.has(tweetId)) {
+      return true;
+    }
+
+    // Check database
+    try {
+      const inDb = await dbIsProcessed(tweetId, this.agentId);
+      if (inDb) {
+        this.processedMentions.add(tweetId); // Update cache
+      }
+      return inDb;
+    } catch (error) {
+      console.error("[TwitterService] DB check failed, using memory only:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Mark a tweet as processed to avoid duplicate replies.
+   * Persists to database AND updates in-memory cache.
    */
   markProcessed(tweetId: string): void {
+    // Add to memory cache
     this.processedMentions.add(tweetId);
 
-    // Keep set bounded to last 1000 entries
+    // Persist to database (async, fire-and-forget)
+    dbMarkProcessed(tweetId, this.agentId, "reply").catch((error) => {
+      console.error("[TwitterService] Failed to persist processed tweet to DB:", error);
+    });
+
+    // Keep memory cache bounded to last 1000 entries
     if (this.processedMentions.size > 1000) {
       const iterator = this.processedMentions.values();
       const oldest = iterator.next().value;

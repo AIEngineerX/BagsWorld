@@ -9,6 +9,15 @@ import { TwitterService, getTwitterService } from "./TwitterService.js";
 import { LLMService, getLLMService } from "./LLMService.js";
 import type { Character } from "../types/elizaos.js";
 
+// Import Neon database functions for persistent state across serverless restarts
+import {
+  getAgentState,
+  setAgentState,
+  getAgentCursor,
+  setAgentCursor,
+  cleanupOldProcessedTweets,
+} from "../../../src/lib/neon.js";
+
 export interface ScheduledTask {
   id: string;
   name: string;
@@ -56,6 +65,7 @@ export class AutonomousService extends Service {
   private twitterService: TwitterService | null = null;
   private llmService: LLMService | null = null;
   private hasPostedIntro: boolean = false;
+  private introCheckDone: boolean = false;
 
   // Wallet tracking for Finn's fee reminders
   private trackedWallets = new Map<string, TrackedWallet>();
@@ -485,9 +495,9 @@ export class AutonomousService extends Service {
     let message: string;
 
     if (unclaimedSol >= 1) {
-      message = `BRO! You have ${unclaimedSol.toFixed(2)} SOL unclaimed! Go to bags.fm/claim right now!`;
+      message = `BRO! You have ${unclaimedSol.toFixed(2)} SOL unclaimed! Go to bags.fm right now!`;
     } else {
-      message = `Hey! You've got ${unclaimedSol.toFixed(3)} SOL waiting to be claimed at bags.fm/claim`;
+      message = `Hey! You've got ${unclaimedSol.toFixed(3)} SOL waiting to be claimed at bags.fm`;
     }
 
     // Mark as reminded
@@ -942,7 +952,7 @@ export class AutonomousService extends Service {
     // Fee reminder style
     if (walletsWithFees > 0 && totalUnclaimedSol > 0.5) {
       tweets.push(
-        `PSA: ${walletsWithFees} creators have ${totalUnclaimedSol.toFixed(1)} SOL unclaimed right now\n\nbro go claim your fees at bags.fm/claim\n\nthat's YOUR money sitting there`
+        `PSA: ${walletsWithFees} creators have ${totalUnclaimedSol.toFixed(1)} SOL unclaimed right now\n\nbro go claim your fees at bags.fm\n\nthat's YOUR money sitting there`
       );
     }
 
@@ -1079,7 +1089,7 @@ export class AutonomousService extends Service {
       const context = `Unclaimed fees data:
 - ${walletsWithFees} creators have unclaimed fees
 - ${totalUnclaimedSol.toFixed(2)} SOL total sitting unclaimed
-- Claim link: bags.fm/claim`;
+- Claim link: bags.fm`;
 
       const prompts = [
         "Write a concerned but cute tweet about creators leaving SOL unclaimed. Beg them (nicely) to claim.",
@@ -1100,7 +1110,7 @@ export class AutonomousService extends Service {
 
       if (!tweet || this.isDuplicatePost(tweet)) {
         // Fallback
-        const fallback = `psa: there is ${totalUnclaimedSol.toFixed(1)} SOL sitting unclaimed on @BagsFM rn\n\nis some of it yours?\n\nbags.fm/claim`;
+        const fallback = `psa: there is ${totalUnclaimedSol.toFixed(1)} SOL sitting unclaimed on @BagsFM rn\n\nis some of it yours?\n\nbags.fm`;
         if (this.isDuplicatePost(fallback)) {
           console.log(`[AutonomousService] Bagsy fee reminder would be duplicate, skipping`);
           return;
@@ -1159,11 +1169,11 @@ export class AutonomousService extends Service {
 
     // Memeable posts
     tweets.push(
-      `me: exists\n\nalso me: have u claimed ur fees tho\n\nbags.fm/claim`
+      `me: exists\n\nalso me: have u claimed ur fees tho\n\nbags.fm`
     );
 
     tweets.push(
-      `im just a smol green bean who wants u to have passive income\n\nis that too much to ask\n\nbags.fm/claim`
+      `im just a smol green bean who wants u to have passive income\n\nis that too much to ask\n\nbags.fm`
     );
 
     tweets.push(
@@ -1223,7 +1233,7 @@ export class AutonomousService extends Service {
       ],
       topics: [
         "Bags.fm platform and creator royalties",
-        "Fee claiming at bags.fm/claim",
+        "Fee claiming at bags.fm",
         "BagsWorld the pixel art game",
         "Supporting @finnbags the CEO",
         "The five zones of BagsWorld",
@@ -1242,7 +1252,7 @@ export class AutonomousService extends Service {
           "Shortens words: 'u', 'ur', 'pls', 'rn', 'ngl'",
           "References being made of fees as a personality trait",
           "Tags @finnbags on big moments (he's the CEO)",
-          "Always mentions bags.fm/claim when talking about fees",
+          "Always mentions bags.fm when talking about fees",
           "References living in BagsWorld when relevant",
           "Knows other characters: Neo, CJ, Ghost, Ash, Professor Oak",
           "Understands world health = fee activity",
@@ -1332,7 +1342,7 @@ RULES:
 - MUST be under 280 characters
 - Use line breaks for emphasis
 - Always stay positive and encouraging
-- Mention bags.fm/claim when talking about fees
+- Mention bags.fm when talking about fees
 - Tag @finnbags on big moments only
 - Can reference BagsWorld, zones, world health when relevant
 - NO hashtags unless specifically asked
@@ -1367,11 +1377,29 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   }
 
   /**
-   * Post Bagsy's intro tweet when the bot starts up
+   * Post Bagsy's intro tweet when the bot starts up.
+   * Uses database to persist intro state across serverless restarts.
    */
   private async postBagsyIntroTweet(): Promise<void> {
     if (this.hasPostedIntro) {
       return;
+    }
+
+    // Check database for intro state (only once per instance)
+    if (!this.introCheckDone) {
+      try {
+        const introPosted = await getAgentState("bagsy", "intro_posted");
+        if (introPosted === "true") {
+          this.hasPostedIntro = true;
+          this.introCheckDone = true;
+          console.log("[AutonomousService] Bagsy intro already posted (from DB), skipping");
+          return;
+        }
+        this.introCheckDone = true;
+      } catch (error) {
+        console.error("[AutonomousService] Failed to check intro state from DB:", error);
+        this.introCheckDone = true;
+      }
     }
 
     if (!this.twitterService || !this.twitterService.isConfigured()) {
@@ -1393,10 +1421,12 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
       if (!tweet) {
         // Fallback to template
-        const fallbackTweet = "gm frens :) bagsy is online and ready to help u claim ur fees\n\nworking hard for @finnbags and the @BagsFM fam\n\nbags.fm/claim";
+        const fallbackTweet = "gm frens :) bagsy is online and ready to help u claim ur fees\n\nworking hard for @finnbags and the @BagsFM fam\n\nbags.fm";
         const result = await this.twitterService.post(fallbackTweet);
         if (result.success) {
           this.hasPostedIntro = true;
+          // Persist to database so we don't post again on restart
+          await setAgentState("bagsy", "intro_posted", "true").catch(() => {});
           console.log(`[AutonomousService] Bagsy intro posted (fallback): ${result.tweet?.url}`);
         }
         return;
@@ -1406,6 +1436,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
       if (result.success) {
         this.hasPostedIntro = true;
+        // Persist to database so we don't post again on restart
+        await setAgentState("bagsy", "intro_posted", "true").catch(() => {});
         console.log(`[AutonomousService] Bagsy intro posted: ${result.tweet?.url}`);
 
         await this.createAlert({
@@ -1444,6 +1476,11 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       return;
     }
 
+    // Load cursor from database if not in memory
+    if (!this.lastFinnTweetId) {
+      this.lastFinnTweetId = await getAgentCursor("bagsy", "last_finn_tweet_id");
+    }
+
     try {
       // Search for recent tweets from @finnbags
       const finnTweets = await this.getFinnRecentTweets();
@@ -1457,8 +1494,9 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
       // Pick one tweet to reply to (most recent unprocessed)
       for (const tweet of finnTweets) {
-        // Skip if already processed
-        if (this.twitterService.isProcessed(tweet.id)) {
+        // Skip if already processed (use async for critical dedup)
+        const isProcessed = await this.twitterService.isProcessedAsync(tweet.id);
+        if (isProcessed) {
           continue;
         }
 
@@ -1473,6 +1511,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
         if (result.success) {
           this.twitterService.markProcessed(tweet.id);
           this.lastFinnTweetId = tweet.id;
+          // Persist cursor to database
+          await setAgentCursor("bagsy", "last_finn_tweet_id", tweet.id).catch(() => {});
           console.log(`[AutonomousService] Bagsy replied to @finnbags: ${result.tweet?.url}`);
 
           await this.createAlert({
@@ -1657,7 +1697,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
       // Find first unprocessed tweet
       for (const tweet of tweets) {
-        if (this.twitterService.isProcessed(tweet.id)) {
+        const isProcessed = await this.twitterService.isProcessedAsync(tweet.id);
+        if (isProcessed) {
           continue;
         }
 
@@ -1669,6 +1710,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
         if (result.success) {
           this.twitterService.markProcessed(tweet.id);
           this.lastAffiliateTweetIds.set(affiliate.handle, tweet.id);
+          // Persist cursor for affiliate
+          await setAgentCursor("bagsy", `last_${affiliate.handle}_tweet_id`, tweet.id).catch(() => {});
           console.log(`[AutonomousService] Bagsy replied to @${affiliate.handle}: ${result.tweet?.url}`);
 
           await this.createAlert({
@@ -1784,6 +1827,11 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     const username = "BagsyHypeBot";
 
+    // Load cursor from database if not in memory
+    if (!this.lastMentionId) {
+      this.lastMentionId = await getAgentCursor("bagsy", "last_mention_id");
+    }
+
     const mentions = await this.twitterService.getMentions(username, this.lastMentionId || undefined);
 
     if (mentions.length === 0) {
@@ -1793,8 +1841,9 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     console.log(`[AutonomousService] Bagsy found ${mentions.length} new mentions`);
 
     for (const mention of mentions) {
-      // Skip if already processed
-      if (this.twitterService.isProcessed(mention.tweetId)) {
+      // Skip if already processed (use async version for critical dedup)
+      const isProcessed = await this.twitterService.isProcessedAsync(mention.tweetId);
+      if (isProcessed) {
         continue;
       }
 
@@ -1826,9 +1875,10 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
-    // Update last mention ID for pagination
+    // Update last mention ID for pagination and persist to database
     if (mentions.length > 0) {
       this.lastMentionId = mentions[0].tweetId;
+      await setAgentCursor("bagsy", "last_mention_id", this.lastMentionId).catch(() => {});
     }
   }
 
@@ -1846,7 +1896,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     if (isCEO) {
       prompt = "Write an excited, honored reply to @finnbags (the CEO, your boss!) who just mentioned you. Be supportive and show how much you appreciate being noticed by the boss.";
     } else if (mentionText.toLowerCase().includes("claim") || mentionText.toLowerCase().includes("fee")) {
-      prompt = "Write a helpful reply about fee claiming. Include bags.fm/claim link. Be encouraging and supportive.";
+      prompt = "Write a helpful reply about fee claiming. Tell them to verify their X/TikTok/IG at bags.fm to claim. Be encouraging and supportive.";
     } else if (mentionText.toLowerCase().includes("gm") || mentionText.toLowerCase().includes("hello") || mentionText.toLowerCase().includes("hi")) {
       prompt = "Write a friendly GM/hello reply. Be cute and welcoming. Maybe ask if they've claimed their fees today.";
     } else {
@@ -1874,11 +1924,11 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     // Regular mention replies
     const templates = [
-      `hey @${authorUsername}! have u claimed ur fees today? bags.fm/claim :)`,
-      `gm @${authorUsername}! hope ur having a great day fren. remember to claim at bags.fm/claim :)`,
-      `hi @${authorUsername}! if u have tokens on @BagsFM, u might have fees waiting at bags.fm/claim :)`,
-      `hey fren @${authorUsername}! just checking - did u claim ur fees? bags.fm/claim`,
-      `@${authorUsername} gm! ur fees wont claim themselves :) bags.fm/claim`,
+      `hey @${authorUsername}! have u claimed ur fees today? bags.fm :)`,
+      `gm @${authorUsername}! hope ur having a great day fren. remember to claim at bags.fm :)`,
+      `hi @${authorUsername}! if u have tokens on @BagsFM, u might have fees waiting at bags.fm :)`,
+      `hey fren @${authorUsername}! just checking - did u claim ur fees? bags.fm`,
+      `@${authorUsername} gm! ur fees wont claim themselves :) bags.fm`,
     ];
     return templates[Math.floor(Math.random() * templates.length)];
   }
@@ -1951,7 +2001,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       let engagements = 0;
 
       for (const tweet of data.data) {
-        if (this.twitterService.isProcessed(tweet.id)) {
+        const isProcessed = await this.twitterService.isProcessedAsync(tweet.id);
+        if (isProcessed) {
           continue;
         }
 
@@ -2006,7 +2057,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   private async generateFeeHelpReply(username: string, tweetText: string): Promise<string> {
     // Try AI generation
     const context = `@${username} tweeted about Bags fees:\n"${tweetText}"`;
-    const prompt = "Write a helpful, friendly reply explaining how to claim fees. Include bags.fm/claim link. Be encouraging, not spammy.";
+    const prompt = "Write a helpful, friendly reply explaining how to claim fees. Tell them to verify their X/TikTok/IG at bags.fm, then claim - earnings go to their Bags wallet and they can cash out to bank. Be encouraging, not spammy.";
 
     const aiReply = await this.generateBagsyTweet(prompt, context);
     if (aiReply && !this.isDuplicatePost(aiReply)) {
@@ -2016,9 +2067,9 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     // Fallback templates
     const templates = [
-      `hey @${username}! u can claim ur fees at bags.fm/claim :)\n\njust connect ur wallet and click claim!`,
-      `@${username} gm! if u have tokens on @BagsFM, ur fees are waiting at bags.fm/claim\n\nso easy to claim fren :)`,
-      `hi @${username}! claiming is super easy - just go to bags.fm/claim, connect wallet, done!\n\nhope this helps :)`,
+      `hey @${username}! u can claim ur fees at bags.fm :)\n\njust verify ur X account and tap claim!`,
+      `@${username} gm! if u have tokens on @BagsFM, ur fees are waiting at bags.fm\n\nverify ur socials to claim fren :)`,
+      `hi @${username}! claiming is super easy - go to bags.fm, verify ur X/TikTok/IG, tap claim!\n\nhope this helps :)`,
     ];
 
     const reply = templates[Math.floor(Math.random() * templates.length)];
@@ -2112,10 +2163,10 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
    */
   private generateHighValueFeeAlert(xUsername: string, unclaimedSol: number): string {
     const templates = [
-      `hey @${xUsername} u have ${unclaimedSol.toFixed(1)} SOL unclaimed on @BagsFM!\n\ngo claim fren: bags.fm/claim :)`,
-      `@${xUsername} ur leaving ${unclaimedSol.toFixed(1)} SOL on the table!!\n\nclaim ur fees at bags.fm/claim\n\nthats ur money fren`,
-      `psa: @${xUsername} has ${unclaimedSol.toFixed(1)} SOL waiting at bags.fm/claim\n\ngo get ur bag :)`,
-      `friendly reminder @${xUsername}:\n\nu have ${unclaimedSol.toFixed(1)} SOL in unclaimed fees\n\nbags.fm/claim\n\nim begging u`,
+      `hey @${xUsername} u have ${unclaimedSol.toFixed(1)} SOL unclaimed on @BagsFM!\n\ngo claim fren: bags.fm :)`,
+      `@${xUsername} ur leaving ${unclaimedSol.toFixed(1)} SOL on the table!!\n\nclaim ur fees at bags.fm\n\nthats ur money fren`,
+      `psa: @${xUsername} has ${unclaimedSol.toFixed(1)} SOL waiting at bags.fm\n\ngo get ur bag :)`,
+      `friendly reminder @${xUsername}:\n\nu have ${unclaimedSol.toFixed(1)} SOL in unclaimed fees\n\nbags.fm\n\nim begging u`,
     ];
     return templates[Math.floor(Math.random() * templates.length)];
   }
