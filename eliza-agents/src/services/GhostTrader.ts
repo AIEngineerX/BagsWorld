@@ -868,31 +868,33 @@ export class GhostTrader {
         }
       }
 
-      // === SCALED TAKE-PROFIT ===
-      // Check if we've hit the highest tier (full exit)
-      const highestTier = Math.max(...this.config.takeProfitTiers);
-      if (currentMultiplier >= highestTier) {
+      // === TAKE-PROFIT ===
+      // Take profit at the FIRST tier hit (e.g., 1.5x) - don't wait and risk giving back gains
+      // Memecoins can dump fast, so we take profits aggressively
+      const firstTakeProfitTier = Math.min(...this.config.takeProfitTiers);
+      if (currentMultiplier >= firstTakeProfitTier) {
         console.log(
-          `[GhostTrader] Max take profit triggered for ${position.tokenSymbol} (${currentMultiplier.toFixed(2)}x)`
+          `[GhostTrader] Take profit triggered for ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x (target was ${firstTakeProfitTier}x)`
         );
+
+        // Chatter about the win
+        const winMessages = [
+          `locked in ${currentMultiplier.toFixed(1)}x on $${position.tokenSymbol} 💰`,
+          `took profit on $${position.tokenSymbol} at ${currentMultiplier.toFixed(1)}x`,
+          `$${position.tokenSymbol} +${((currentMultiplier - 1) * 100).toFixed(0)}% secured`,
+          `gg $${position.tokenSymbol} ${currentMultiplier.toFixed(1)}x`,
+        ];
+        this.maybeChatter(winMessages[Math.floor(Math.random() * winMessages.length)], "happy");
+
         await this.executeClose(position, "take_profit", currentPriceSol);
         continue;
       }
 
-      // Log position status for monitoring
-      if (currentMultiplier >= 1.5) {
+      // Log position status for monitoring (not yet at take-profit)
+      if (currentMultiplier >= 1.2) {
         console.log(
-          `[GhostTrader] ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x (peak: ${peakMultiplier.toFixed(2)}x) - watching for exit`
+          `[GhostTrader] ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x - approaching take-profit (${firstTakeProfitTier}x)`
         );
-
-        // Chatter about positions doing well
-        const profitMessages = [
-          `$${position.tokenSymbol} pumping ${currentMultiplier.toFixed(1)}x`,
-          `riding $${position.tokenSymbol}... ${currentMultiplier.toFixed(1)}x`,
-          `$${position.tokenSymbol} looking good`,
-          `${currentMultiplier.toFixed(1)}x on $${position.tokenSymbol}... watching`,
-        ];
-        this.maybeChatter(profitMessages[Math.floor(Math.random() * profitMessages.length)], "happy");
       } else if (holdTimeMinutes > 60) {
         // Log stale positions that haven't moved
         console.log(
