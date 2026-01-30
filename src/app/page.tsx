@@ -530,7 +530,30 @@ export default function Home() {
             </button>
           )}
         </div>
-        <div className="text-gray-400">
+        <div className="flex items-center gap-2 text-gray-400">
+          <span className="hidden md:inline">
+            Crafted with 💚 by{" "}
+            <a
+              href="https://x.com/DaddyGhost"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-bags-green hover:text-bags-gold transition-colors"
+            >
+              @DaddyGhost
+            </a>
+            {" "}•{" "}
+          </span>
+          <span className="md:hidden">
+            <a
+              href="https://x.com/DaddyGhost"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-bags-green hover:text-bags-gold transition-colors"
+            >
+              @DaddyGhost
+            </a>
+            {" "}•{" "}
+          </span>
           <a
             href="https://bags.fm"
             target="_blank"
