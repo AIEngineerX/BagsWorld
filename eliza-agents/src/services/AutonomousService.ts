@@ -69,6 +69,10 @@ export class AutonomousService extends Service {
   // Bagsy: Track high-value fee alert history (wallet -> lastAlertTimestamp)
   private highValueAlertHistory = new Map<string, number>();
 
+  // Bagsy: Track recent post content to prevent duplicates
+  private recentPostHashes = new Set<string>();
+  private static readonly MAX_POST_HISTORY = 50;
+
   // Bagsy: Threshold for high-value fee alerts (5 SOL ~ $1K at $200/SOL)
   private static readonly HIGH_VALUE_THRESHOLD_SOL = 5;
   private static readonly ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -274,6 +278,16 @@ export class AutonomousService extends Service {
       interval: 3 * 60 * 60 * 1000, // 3 hours
       handler: async () => {
         await this.engageWithAffiliates();
+      },
+    });
+
+    // Bagsy: Monitor for fee/claim-related tweets and engage (help people claim)
+    this.registerTask({
+      name: "bagsy_fee_tweet_monitor",
+      agentId: "bagsy",
+      interval: 15 * 60 * 1000, // 15 minutes
+      handler: async () => {
+        await this.monitorFeeRelatedTweets();
       },
     });
   }
@@ -989,14 +1003,32 @@ export class AutonomousService extends Service {
 
       const prompt = tweetTypes[Math.floor(Math.random() * tweetTypes.length)];
 
-      const tweet = await this.generateBagsyTweet(prompt, context);
+      let tweet = await this.generateBagsyTweet(prompt, context);
 
-      if (!tweet) {
+      // Check for duplicate, try again with different prompt if needed
+      let attempts = 0;
+      while (tweet && this.isDuplicatePost(tweet) && attempts < 3) {
+        console.log(`[AutonomousService] Bagsy tweet was duplicate, regenerating...`);
+        const newPrompt = tweetTypes[Math.floor(Math.random() * tweetTypes.length)];
+        tweet = await this.generateBagsyTweet(newPrompt, context);
+        attempts++;
+      }
+
+      if (!tweet || this.isDuplicatePost(tweet)) {
         // Fallback to template method
         const tweets = this.generateBagsyTweets(healthData);
-        const fallbackTweet = tweets[Math.floor(Math.random() * tweets.length)];
+        // Shuffle and find a non-duplicate
+        const shuffled = tweets.sort(() => Math.random() - 0.5);
+        const fallbackTweet = shuffled.find(t => !this.isDuplicatePost(t)) || shuffled[0];
+
+        if (this.isDuplicatePost(fallbackTweet)) {
+          console.log(`[AutonomousService] All Bagsy tweets would be duplicates, skipping this cycle`);
+          return;
+        }
+
         const result = await this.twitterService.post(fallbackTweet);
         if (result.success) {
+          this.recordPost(fallbackTweet);
           console.log(`[AutonomousService] Bagsy posted (fallback): ${result.tweet?.url}`);
         }
         return;
@@ -1005,6 +1037,7 @@ export class AutonomousService extends Service {
       const result = await this.twitterService.post(tweet);
 
       if (result.success) {
+        this.recordPost(tweet);
         console.log(`[AutonomousService] Bagsy posted: ${result.tweet?.url}`);
 
         await this.createAlert({
@@ -1055,14 +1088,26 @@ export class AutonomousService extends Service {
         "Write a direct but friendly reminder tweet about claiming fees. Include the claim link.",
       ];
 
-      const prompt = prompts[Math.floor(Math.random() * prompts.length)];
-      const tweet = await this.generateBagsyTweet(prompt, context);
+      let tweet = await this.generateBagsyTweet(prompts[Math.floor(Math.random() * prompts.length)], context);
 
-      if (!tweet) {
+      // Check for duplicate, try again if needed
+      let attempts = 0;
+      while (tweet && this.isDuplicatePost(tweet) && attempts < 3) {
+        console.log(`[AutonomousService] Bagsy fee reminder was duplicate, regenerating...`);
+        tweet = await this.generateBagsyTweet(prompts[Math.floor(Math.random() * prompts.length)], context);
+        attempts++;
+      }
+
+      if (!tweet || this.isDuplicatePost(tweet)) {
         // Fallback
         const fallback = `psa: there is ${totalUnclaimedSol.toFixed(1)} SOL sitting unclaimed on @BagsFM rn\n\nis some of it yours?\n\nbags.fm/claim`;
+        if (this.isDuplicatePost(fallback)) {
+          console.log(`[AutonomousService] Bagsy fee reminder would be duplicate, skipping`);
+          return;
+        }
         const result = await this.twitterService.post(fallback);
         if (result.success) {
+          this.recordPost(fallback);
           console.log(`[AutonomousService] Bagsy fee reminder posted (fallback): ${result.tweet?.url}`);
         }
         return;
@@ -1071,6 +1116,7 @@ export class AutonomousService extends Service {
       const result = await this.twitterService.post(tweet);
 
       if (result.success) {
+        this.recordPost(tweet);
         console.log(`[AutonomousService] Bagsy fee reminder posted: ${result.tweet?.url}`);
       }
     } catch (error) {
@@ -1207,6 +1253,41 @@ export class AutonomousService extends Service {
         chat: [],
       },
     };
+  }
+
+  /**
+   * Check if content is a duplicate of recent posts
+   * Uses simple hash to detect very similar content
+   */
+  private isDuplicatePost(content: string): boolean {
+    // Create a simplified hash (lowercase, no whitespace, no punctuation)
+    const simplified = content.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const hash = simplified.substring(0, 50); // First 50 chars as simple hash
+
+    if (this.recentPostHashes.has(hash)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Record a post to prevent future duplicates
+   */
+  private recordPost(content: string): void {
+    const simplified = content.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const hash = simplified.substring(0, 50);
+
+    this.recentPostHashes.add(hash);
+
+    // Keep set bounded
+    if (this.recentPostHashes.size > AutonomousService.MAX_POST_HISTORY) {
+      const iterator = this.recentPostHashes.values();
+      const oldest = iterator.next().value;
+      if (oldest) {
+        this.recentPostHashes.delete(oldest);
+      }
+    }
   }
 
   /**
@@ -1353,6 +1434,13 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   private async engageWithFinnTweets(): Promise<void> {
     if (!this.twitterService || !this.twitterService.isConfigured()) {
       console.log("[AutonomousService] Twitter not configured, skipping Finn engagement");
+      return;
+    }
+
+    const bearerToken = process.env.TWITTER_BEARER_TOKEN;
+    if (!bearerToken) {
+      console.log("[AutonomousService] TWITTER_BEARER_TOKEN not set - cannot search for @finnbags tweets");
+      console.log("[AutonomousService] Set TWITTER_BEARER_TOKEN to enable Finn engagement");
       return;
     }
 
@@ -1793,6 +1881,149 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       `@${authorUsername} gm! ur fees wont claim themselves :) bags.fm/claim`,
     ];
     return templates[Math.floor(Math.random() * templates.length)];
+  }
+
+  // ==========================================================================
+  // Bagsy: Fee Tweet Monitor (engage with people talking about fees/claiming)
+  // ==========================================================================
+
+  /** Track last seen fee-related tweet ID */
+  private lastFeeTweetId: string | null = null;
+
+  /**
+   * Monitor Twitter for people tweeting about Bags fees/claiming
+   * Engages helpfully with potential claimers
+   */
+  private async monitorFeeRelatedTweets(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      console.log("[AutonomousService] Twitter not configured, skipping fee tweet monitor");
+      return;
+    }
+
+    const bearerToken = process.env.TWITTER_BEARER_TOKEN;
+    if (!bearerToken) {
+      console.log("[AutonomousService] No bearer token, cannot search tweets");
+      return;
+    }
+
+    try {
+      // Search for tweets about Bags fees, claiming, etc.
+      const searchTerms = [
+        "(bags.fm OR @BagsFM OR @BagsApp) (claim OR fees OR unclaimed)",
+        '"claim fees" (solana OR SOL)',
+        '"bags fm" claim",
+      ];
+
+      const query = encodeURIComponent(searchTerms[Math.floor(Math.random() * searchTerms.length)] + " -is:retweet -is:reply");
+      let url = `https://api.twitter.com/2/tweets/search/recent?query=${query}&max_results=10&tweet.fields=created_at,author_id&expansions=author_id&user.fields=username`;
+
+      if (this.lastFeeTweetId) {
+        url += `&since_id=${this.lastFeeTweetId}`;
+      }
+
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${bearerToken}` },
+      });
+
+      if (!response.ok) {
+        console.error(`[AutonomousService] Fee tweet search failed: ${response.status}`);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!data.data || data.data.length === 0) {
+        console.log("[AutonomousService] No new fee-related tweets found");
+        return;
+      }
+
+      // Build user map
+      const userMap = new Map<string, string>();
+      if (data.includes?.users) {
+        for (const user of data.includes.users) {
+          userMap.set(user.id, user.username);
+        }
+      }
+
+      console.log(`[AutonomousService] Found ${data.data.length} fee-related tweets`);
+
+      // Engage with up to 2 tweets per cycle
+      let engagements = 0;
+
+      for (const tweet of data.data) {
+        if (this.twitterService.isProcessed(tweet.id)) {
+          continue;
+        }
+
+        const username = userMap.get(tweet.author_id) || "unknown";
+
+        // Don't reply to ourselves or known bots
+        if (username.toLowerCase().includes("bot") || username.toLowerCase() === "bagsyhypebot") {
+          continue;
+        }
+
+        // Generate helpful reply
+        const reply = await this.generateFeeHelpReply(username, tweet.text);
+
+        const result = await this.twitterService.reply(tweet.id, reply);
+
+        if (result.success) {
+          this.twitterService.markProcessed(tweet.id);
+          engagements++;
+          console.log(`[AutonomousService] Bagsy helped @${username} with fees: ${result.tweet?.url}`);
+
+          await this.createAlert({
+            type: "fee_reminder",
+            severity: "info",
+            title: "Bagsy Fee Help",
+            message: `Helped @${username} with fee claiming`,
+            data: { tweetId: result.tweet?.id, originalTweetId: tweet.id },
+          });
+        }
+
+        if (engagements >= 2) break;
+
+        // Delay between replies
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+
+      // Update last seen ID
+      if (data.data.length > 0) {
+        this.lastFeeTweetId = data.data[0].id;
+      }
+
+      if (engagements > 0) {
+        console.log(`[AutonomousService] Bagsy engaged with ${engagements} fee-related tweets`);
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Fee tweet monitor failed:", error);
+    }
+  }
+
+  /**
+   * Generate a helpful reply about fee claiming
+   */
+  private async generateFeeHelpReply(username: string, tweetText: string): Promise<string> {
+    // Try AI generation
+    const context = `@${username} tweeted about Bags fees:\n"${tweetText}"`;
+    const prompt = "Write a helpful, friendly reply explaining how to claim fees. Include bags.fm/claim link. Be encouraging, not spammy.";
+
+    const aiReply = await this.generateBagsyTweet(prompt, context);
+    if (aiReply && !this.isDuplicatePost(aiReply)) {
+      this.recordPost(aiReply);
+      return aiReply;
+    }
+
+    // Fallback templates
+    const templates = [
+      `hey @${username}! u can claim ur fees at bags.fm/claim :)\n\njust connect ur wallet and click claim!`,
+      `@${username} gm! if u have tokens on @BagsFM, ur fees are waiting at bags.fm/claim\n\nso easy to claim fren :)`,
+      `hi @${username}! claiming is super easy - just go to bags.fm/claim, connect wallet, done!\n\nhope this helps :)`,
+    ];
+
+    const reply = templates[Math.floor(Math.random() * templates.length)];
+    this.recordPost(reply);
+    return reply;
   }
 
   // ==========================================================================
