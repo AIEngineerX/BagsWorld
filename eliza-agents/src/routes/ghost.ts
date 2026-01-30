@@ -15,6 +15,7 @@ import { getHeliusService } from "../services/HeliusService.js";
 import { getSolanaService } from "../services/SolanaService.js";
 import { getSmartMoneyService } from "../services/SmartMoneyService.js";
 import { getCopyTraderService } from "../services/CopyTraderService.js";
+import { getTelegramBroadcaster } from "../services/TelegramBroadcaster.js";
 
 // ============================================================================
 // Authentication Middleware
@@ -1648,6 +1649,130 @@ router.get("/copy-trader/history", (req: Request, res: Response) => {
       status: t.status,
       time: new Date(t.timestamp).toISOString(),
     })),
+  });
+});
+
+// ============================================================================
+// Telegram Broadcasting Routes
+// ============================================================================
+
+// GET /api/ghost/telegram/status - Get Telegram broadcast status
+router.get("/telegram/status", async (req: Request, res: Response) => {
+  const broadcaster = getTelegramBroadcaster();
+  const stats = await broadcaster.getStats();
+  const config = broadcaster.getConfig();
+
+  res.json({
+    success: true,
+    telegram: {
+      enabled: stats.enabled,
+      configured: stats.configured,
+      channelId: config.channelId || "(not set)",
+      minScoreToPost: config.minScoreToPost,
+      includeRiskLevel: config.includeRiskLevel,
+      includeDexscreenerLink: config.includeDexscreenerLink,
+      includeBagsLink: config.includeBagsLink,
+    },
+    stats: {
+      messagesSentLast1h: stats.messagesSentLast1h,
+      messagesSentLast24h: stats.messagesSentLast24h,
+      pendingMessages: stats.pendingMessages,
+      rateLimited: stats.rateLimited,
+    },
+  });
+});
+
+// POST /api/ghost/telegram/enable - Enable Telegram broadcasting (PROTECTED)
+router.post("/telegram/enable", requireAdminKey, (req: Request, res: Response) => {
+  const broadcaster = getTelegramBroadcaster();
+
+  if (!broadcaster.isConfigured()) {
+    res.status(400).json({
+      success: false,
+      error: "Telegram not configured",
+      message: "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID environment variables",
+    });
+    return;
+  }
+
+  broadcaster.enable();
+
+  res.json({
+    success: true,
+    message: "Telegram broadcasting enabled",
+    enabled: broadcaster.isEnabled(),
+  });
+});
+
+// POST /api/ghost/telegram/disable - Disable Telegram broadcasting (PROTECTED)
+router.post("/telegram/disable", requireAdminKey, (req: Request, res: Response) => {
+  const broadcaster = getTelegramBroadcaster();
+  broadcaster.disable();
+
+  res.json({
+    success: true,
+    message: "Telegram broadcasting disabled",
+    enabled: broadcaster.isEnabled(),
+  });
+});
+
+// POST /api/ghost/telegram/config - Update Telegram config (PROTECTED)
+router.post("/telegram/config", requireAdminKey, (req: Request, res: Response) => {
+  const broadcaster = getTelegramBroadcaster();
+  const { minScoreToPost, includeRiskLevel, includeDexscreenerLink, includeBagsLink } = req.body;
+
+  broadcaster.updateConfig({
+    minScoreToPost,
+    includeRiskLevel,
+    includeDexscreenerLink,
+    includeBagsLink,
+  });
+
+  res.json({
+    success: true,
+    message: "Telegram config updated",
+    config: broadcaster.getConfig(),
+  });
+});
+
+// POST /api/ghost/telegram/test - Send a test message (PROTECTED)
+router.post("/telegram/test", requireAdminKey, async (req: Request, res: Response) => {
+  const broadcaster = getTelegramBroadcaster();
+
+  if (!broadcaster.isConfigured()) {
+    res.status(400).json({
+      success: false,
+      error: "Telegram not configured",
+      message: "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID environment variables",
+    });
+    return;
+  }
+
+  const connectionTest = await broadcaster.testConnection();
+  if (!connectionTest.success) {
+    res.status(500).json({
+      success: false,
+      error: "Bot connection failed",
+      message: connectionTest.error,
+    });
+    return;
+  }
+
+  const messageTest = await broadcaster.sendTestMessage();
+  if (!messageTest.success) {
+    res.status(500).json({
+      success: false,
+      error: "Failed to send test message",
+      message: messageTest.error,
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    message: "Test message sent successfully",
+    botName: connectionTest.botName,
+    messageId: messageTest.messageId,
   });
 });
 

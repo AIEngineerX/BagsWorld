@@ -97,7 +97,8 @@ type TabType =
   | "local"
   | "analytics"
   | "logs"
-  | "agents";
+  | "agents"
+  | "telegram";
 
 export function AdminConsole() {
   const { publicKey, connected, signMessage } = useWallet();
@@ -118,6 +119,23 @@ export function AdminConsole() {
     [mint: string]: { x: string; y: string };
   }>({});
   const [healthInputs, setHealthInputs] = useState<{ [mint: string]: string }>({});
+
+  // Telegram state
+  const [telegramStatus, setTelegramStatus] = useState<{
+    enabled: boolean;
+    configured: boolean;
+    channelId: string;
+    minScoreToPost: number;
+    stats: {
+      messagesSentLast1h: number;
+      messagesSentLast24h: number;
+      pendingMessages: number;
+      rateLimited: boolean;
+    };
+  } | null>(null);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramError, setTelegramError] = useState<string | null>(null);
+  const [telegramMinScore, setTelegramMinScore] = useState(60);
 
   // Authentication state
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -321,6 +339,30 @@ export function AdminConsole() {
     addLog(`Loaded ${tokens.length} local buildings`);
   }, [addLog]);
 
+  // Fetch Telegram status from eliza-agents
+  const fetchTelegramStatus = useCallback(async () => {
+    setTelegramLoading(true);
+    setTelegramError(null);
+    const agentsUrl = process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
+    const response = await fetch(`${agentsUrl}/api/ghost/telegram/status`);
+    if (response.ok) {
+      const data = await response.json();
+      setTelegramStatus({
+        enabled: data.telegram.enabled,
+        configured: data.telegram.configured,
+        channelId: data.telegram.channelId,
+        minScoreToPost: data.telegram.minScoreToPost,
+        stats: data.stats,
+      });
+      setTelegramMinScore(data.telegram.minScoreToPost);
+      addLog("Telegram status fetched", "success");
+    } else {
+      setTelegramError("Failed to fetch Telegram status");
+      addLog("Failed to fetch Telegram status", "error");
+    }
+    setTelegramLoading(false);
+  }, [addLog]);
+
   useEffect(() => {
     if (isOpen && isUserAdmin) {
       fetchStats();
@@ -328,6 +370,13 @@ export function AdminConsole() {
       loadLocalBuildings();
     }
   }, [isOpen, isUserAdmin, fetchStats, fetchAdminData, loadLocalBuildings]);
+
+  // Fetch telegram status when tab is selected
+  useEffect(() => {
+    if (isOpen && isUserAdmin && activeTab === "telegram") {
+      fetchTelegramStatus();
+    }
+  }, [isOpen, isUserAdmin, activeTab, fetchTelegramStatus]);
 
   // Admin actions
   const adminAction = async (action: string, data: any) => {
@@ -668,6 +717,7 @@ export function AdminConsole() {
                 "analytics",
                 "logs",
                 "agents",
+                "telegram",
               ] as TabType[]
             ).map((tab) => (
               <button
@@ -1587,6 +1637,180 @@ export function AdminConsole() {
 
             {/* AGENTS TAB */}
             {activeTab === "agents" && <AgentDashboard addLog={addLog} />}
+
+            {/* TELEGRAM TAB */}
+            {activeTab === "telegram" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-pixel text-sm text-bags-green">TELEGRAM BROADCASTER</h3>
+                  <button
+                    onClick={() => fetchTelegramStatus()}
+                    disabled={telegramLoading}
+                    className="font-pixel text-[8px] px-3 py-1 bg-bags-green/20 border border-bags-green text-bags-green hover:bg-bags-green/30 disabled:opacity-50"
+                  >
+                    {telegramLoading ? "..." : "REFRESH"}
+                  </button>
+                </div>
+
+                {telegramError && (
+                  <div className="p-3 bg-red-500/20 border border-red-500 text-red-300 font-pixel text-[9px]">
+                    {telegramError}
+                  </div>
+                )}
+
+                {telegramStatus && (
+                  <>
+                    {/* Status Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="bg-bags-darker p-3 border border-bags-green/30">
+                        <p className="font-pixel text-[8px] text-gray-500">Status</p>
+                        <p className={`font-pixel text-sm ${telegramStatus.enabled ? "text-green-400" : "text-red-400"}`}>
+                          {telegramStatus.enabled ? "ENABLED" : "DISABLED"}
+                        </p>
+                      </div>
+                      <div className="bg-bags-darker p-3 border border-bags-green/30">
+                        <p className="font-pixel text-[8px] text-gray-500">Channel</p>
+                        <p className="font-pixel text-sm text-white truncate">
+                          {telegramStatus.channelId || "Not Set"}
+                        </p>
+                      </div>
+                      <div className="bg-bags-darker p-3 border border-bags-green/30">
+                        <p className="font-pixel text-[8px] text-gray-500">Last 24h</p>
+                        <p className="font-pixel text-sm text-bags-gold">
+                          {telegramStatus.stats.messagesSentLast24h} msgs
+                        </p>
+                      </div>
+                      <div className="bg-bags-darker p-3 border border-bags-green/30">
+                        <p className="font-pixel text-[8px] text-gray-500">Rate Limited</p>
+                        <p className={`font-pixel text-sm ${telegramStatus.stats.rateLimited ? "text-red-400" : "text-green-400"}`}>
+                          {telegramStatus.stats.rateLimited ? "YES" : "NO"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="bg-bags-darker p-4 border border-bags-green/30">
+                      <p className="font-pixel text-[9px] text-gray-400 mb-3">CONTROLS</p>
+
+                      {!telegramStatus.configured ? (
+                        <div className="p-3 bg-yellow-500/20 border border-yellow-500 text-yellow-300 font-pixel text-[9px]">
+                          Telegram not configured. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID in eliza-agents.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Enable/Disable */}
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={async () => {
+                                const agentsUrl = process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
+                                const adminKey = prompt("Enter Ghost Admin Key:");
+                                if (!adminKey) return;
+                                const action = telegramStatus.enabled ? "disable" : "enable";
+                                const res = await fetch(`${agentsUrl}/api/ghost/telegram/${action}`, {
+                                  method: "POST",
+                                  headers: { "x-ghost-admin-key": adminKey },
+                                });
+                                if (res.ok) {
+                                  addLog(`Telegram ${action}d`, "success");
+                                  fetchTelegramStatus();
+                                } else {
+                                  addLog(`Failed to ${action} Telegram`, "error");
+                                }
+                              }}
+                              className={`font-pixel text-[9px] px-4 py-2 border ${
+                                telegramStatus.enabled
+                                  ? "bg-red-500/20 border-red-500 text-red-300 hover:bg-red-500/30"
+                                  : "bg-green-500/20 border-green-500 text-green-300 hover:bg-green-500/30"
+                              }`}
+                            >
+                              {telegramStatus.enabled ? "DISABLE BROADCASTING" : "ENABLE BROADCASTING"}
+                            </button>
+
+                            <button
+                              onClick={async () => {
+                                const agentsUrl = process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
+                                const adminKey = prompt("Enter Ghost Admin Key:");
+                                if (!adminKey) return;
+                                const res = await fetch(`${agentsUrl}/api/ghost/telegram/test`, {
+                                  method: "POST",
+                                  headers: { "x-ghost-admin-key": adminKey },
+                                });
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  addLog(`Test message sent (ID: ${data.messageId})`, "success");
+                                } else {
+                                  addLog("Failed to send test message", "error");
+                                }
+                              }}
+                              className="font-pixel text-[9px] px-4 py-2 bg-bags-green/20 border border-bags-green text-bags-green hover:bg-bags-green/30"
+                            >
+                              SEND TEST MESSAGE
+                            </button>
+                          </div>
+
+                          {/* Min Score */}
+                          <div className="flex items-center gap-3">
+                            <span className="font-pixel text-[9px] text-gray-400">Min Score to Post:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={telegramMinScore}
+                              onChange={(e) => setTelegramMinScore(Number(e.target.value))}
+                              className="w-16 px-2 py-1 bg-bags-dark border border-bags-green/50 text-white font-pixel text-[10px]"
+                            />
+                            <button
+                              onClick={async () => {
+                                const agentsUrl = process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
+                                const adminKey = prompt("Enter Ghost Admin Key:");
+                                if (!adminKey) return;
+                                const res = await fetch(`${agentsUrl}/api/ghost/telegram/config`, {
+                                  method: "POST",
+                                  headers: {
+                                    "x-ghost-admin-key": adminKey,
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({ minScoreToPost: telegramMinScore }),
+                                });
+                                if (res.ok) {
+                                  addLog(`Min score updated to ${telegramMinScore}`, "success");
+                                  fetchTelegramStatus();
+                                } else {
+                                  addLog("Failed to update config", "error");
+                                }
+                              }}
+                              className="font-pixel text-[8px] px-2 py-1 bg-bags-green/20 border border-bags-green text-bags-green hover:bg-bags-green/30"
+                            >
+                              UPDATE
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info Box */}
+                    <div className="bg-bags-darker p-4 border border-gray-700">
+                      <p className="font-pixel text-[9px] text-gray-400 mb-2">HOW IT WORKS</p>
+                      <ul className="space-y-1 font-pixel text-[8px] text-gray-500">
+                        <li>• Ghost broadcasts entry signals to Telegram when enabled</li>
+                        <li>• Only trades with score ≥ {telegramStatus.minScoreToPost} are posted</li>
+                        <li>• Rate limited to 20 messages/minute to avoid Telegram limits</li>
+                        <li>• Each token is only posted once per hour (no spam)</li>
+                        <li>• Messages include: ticker, CA, risk level, and reasoning</li>
+                      </ul>
+                    </div>
+                  </>
+                )}
+
+                {!telegramStatus && !telegramLoading && (
+                  <div className="p-4 bg-bags-darker border border-gray-700 text-center">
+                    <p className="font-pixel text-[9px] text-gray-500">
+                      Click REFRESH to load Telegram status from eliza-agents server
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Footer */}

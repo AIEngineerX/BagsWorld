@@ -14,6 +14,11 @@ import { SolanaService, getSolanaService } from "./SolanaService.js";
 import { SmartMoneyService, getSmartMoneyService } from "./SmartMoneyService.js";
 import { WorldSyncService, getWorldSyncService } from "./WorldSyncService.js";
 import { getDatabase } from "../routes/shared.js";
+import {
+  TelegramBroadcaster,
+  getTelegramBroadcaster,
+  type TradeSignal,
+} from "./TelegramBroadcaster.js";
 
 // ============================================================================
 // Constants
@@ -251,6 +256,12 @@ export class GhostTrader {
   // Self-learning: track which signals lead to wins/losses
   private signalPerformance: Map<string, SignalPerformance> = new Map();
 
+  // Telegram broadcaster for trade signals
+  private telegramBroadcaster: TelegramBroadcaster;
+
+  // Store last evaluation for telegram broadcast (need metrics after position created)
+  private lastEvaluation: TradeEvaluation | null = null;
+
   constructor() {
     this.config = { ...DEFAULT_CONFIG };
     this.bagsApi = getBagsApiService();
@@ -258,6 +269,7 @@ export class GhostTrader {
     this.solanaService = null; // Initialized in initialize()
     this.worldSync = null; // Initialized in initialize()
     this.db = getDatabase();
+    this.telegramBroadcaster = getTelegramBroadcaster(this.db || undefined);
 
     // Load wallet from environment
     this.ghostWalletPrivateKey = process.env.GHOST_WALLET_PRIVATE_KEY || null;
@@ -379,6 +391,23 @@ export class GhostTrader {
         total_pnl_sol DECIMAL(18, 9) DEFAULT 0,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
+    `;
+
+    // Telegram broadcasts table for logging sent signals
+    await this.db`
+      CREATE TABLE IF NOT EXISTS telegram_broadcasts (
+        id SERIAL PRIMARY KEY,
+        token_mint VARCHAR(64) NOT NULL,
+        token_symbol VARCHAR(20),
+        score INTEGER,
+        message_id BIGINT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    await this.db`
+      CREATE INDEX IF NOT EXISTS idx_telegram_broadcasts_created
+      ON telegram_broadcasts(created_at)
     `;
 
     // Load persisted enabled state
@@ -742,6 +771,9 @@ export class GhostTrader {
 
       // Chatter about finding something good (with score)
       this.chatter(`found one! $${best.launch.symbol} score: ${best.score}`, "excited");
+
+      // Store evaluation for Telegram broadcast
+      this.lastEvaluation = best;
 
       // Execute trade
       await this.executeBuy(best);
@@ -1522,6 +1554,27 @@ export class GhostTrader {
         amountSol: position.amountSol,
         pnlSol: position.pnlSol,
       });
+    }
+
+    // Broadcast entry to Telegram channel (entries only)
+    if (type === "buy" && this.lastEvaluation) {
+      const signal: TradeSignal = {
+        type: "entry",
+        tokenSymbol: position.tokenSymbol,
+        tokenName: position.tokenName,
+        tokenMint: position.tokenMint,
+        amountSol: position.amountSol,
+        score: this.lastEvaluation.score,
+        reasons: this.lastEvaluation.reasons,
+        metrics: {
+          marketCapUsd: this.lastEvaluation.metrics.marketCapUsd,
+          liquidityUsd: this.lastEvaluation.metrics.liquidityUsd,
+          volume24hUsd: this.lastEvaluation.metrics.volume24hUsd,
+          buySellRatio: this.lastEvaluation.metrics.buySellRatio,
+        },
+      };
+      this.telegramBroadcaster.broadcastEntry(signal);
+      this.lastEvaluation = null; // Clear after use
     }
   }
 
