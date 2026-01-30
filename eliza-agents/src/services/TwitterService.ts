@@ -11,7 +11,7 @@ import {
   isTwitterProcessed as dbIsProcessed,
   markTwitterProcessed as dbMarkProcessed,
   getProcessedTweetIds,
-} from "../../../src/lib/neon.js";
+} from "../lib/neon-tracking.js";
 
 // ============================================================================
 // Types

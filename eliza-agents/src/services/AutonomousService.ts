@@ -16,7 +16,7 @@ import {
   getAgentCursor,
   setAgentCursor,
   cleanupOldProcessedTweets,
-} from "../../../src/lib/neon.js";
+} from "../lib/neon-tracking.js";
 
 export interface ScheduledTask {
   id: string;
