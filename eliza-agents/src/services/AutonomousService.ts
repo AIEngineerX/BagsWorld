@@ -1358,7 +1358,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
         prompt,
         [],
         undefined,
-        150 // Keep responses short for tweets
+        100 // Keep responses very short for tweets
       );
 
       let tweet = response.text.trim();
@@ -1366,9 +1366,11 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       // Clean up any quotes the LLM might add
       tweet = tweet.replace(/^["']|["']$/g, "");
 
-      // Smart truncation to avoid cutting mid-sentence
+      // If AI generated too long, return null to trigger template fallback
+      // Better to use a good template than to truncate and cut off mid-thought
       if (tweet.length > 280) {
-        tweet = this.smartTruncate(tweet, 280);
+        console.log(`[AutonomousService] AI tweet too long (${tweet.length} chars), using template fallback`);
+        return null;
       }
 
       return tweet;
@@ -2247,47 +2249,6 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     return false;
   }
 
-  /**
-   * Smart truncation that avoids cutting mid-sentence or mid-word.
-   * Tries to find a natural break point before the limit.
-   */
-  private smartTruncate(text: string, maxLength: number): string {
-    if (text.length <= maxLength) return text;
-
-    // Leave room for potential "..." if we need to add it
-    const targetLength = maxLength - 3;
-
-    // Try to find the last complete sentence within limit
-    const sentenceEndings = [". ", "! ", "? ", ".\n", "!\n", "?\n"];
-    let lastSentenceEnd = -1;
-
-    for (const ending of sentenceEndings) {
-      const idx = text.lastIndexOf(ending, targetLength);
-      if (idx > lastSentenceEnd && idx > targetLength * 0.5) {
-        lastSentenceEnd = idx + ending.length - 1;
-      }
-    }
-
-    // If we found a sentence boundary in the second half of the text, use it
-    if (lastSentenceEnd > targetLength * 0.5) {
-      return text.substring(0, lastSentenceEnd).trim();
-    }
-
-    // Try to find the last line break within limit
-    const lastLineBreak = text.lastIndexOf("\n", targetLength);
-    if (lastLineBreak > targetLength * 0.6) {
-      return text.substring(0, lastLineBreak).trim();
-    }
-
-    // Try to find the last space (word boundary) within limit
-    const lastSpace = text.lastIndexOf(" ", targetLength);
-    if (lastSpace > targetLength * 0.7) {
-      return text.substring(0, lastSpace).trim();
-    }
-
-    // Last resort: hard cut with ellipsis
-    return text.substring(0, targetLength).trim() + "...";
-  }
 }
 
 /**
