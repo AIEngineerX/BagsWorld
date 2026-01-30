@@ -263,23 +263,35 @@ export class TwitterService extends Service {
   }
 
   private async verifyCredentials(): Promise<void> {
-    if (!this.bearerToken) {
-      throw new Error("Bearer token required for API access");
+    // If we have OAuth 1.0a credentials, use them to verify (required for user context)
+    if (this.apiKey && this.apiSecret && this.accessToken && this.accessTokenSecret) {
+      const url = "https://api.twitter.com/2/users/me";
+      const authHeader = this.getOAuthHeader("GET", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: authHeader,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Twitter API error: ${response.status} - ${error}`);
+      }
+
+      const data = await response.json();
+      this.config.username = data.data?.username || this.config.username;
+      return;
     }
 
-    const response = await fetch("https://api.twitter.com/2/users/me", {
-      headers: {
-        Authorization: `Bearer ${this.bearerToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Twitter API error: ${response.status} - ${error}`);
+    // Fallback: trust the username from environment if provided
+    if (this.config.username) {
+      console.log(`[TwitterService] Using username from environment: @${this.config.username}`);
+      return;
     }
 
-    const data = await response.json();
-    this.config.username = data.data?.username;
+    throw new Error("No valid credentials configured (need OAuth 1.0a or TWITTER_USERNAME)");
   }
 
   // ==========================================================================
