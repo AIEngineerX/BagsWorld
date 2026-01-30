@@ -269,6 +269,12 @@ export class TwitterService extends Service {
   }
 
   private async verifyCredentials(): Promise<void> {
+    // In dry run mode, just use the username - no API verification needed
+    if (this.config.dryRun && this.config.username) {
+      console.log(`[TwitterService] Dry run mode - using username: @${this.config.username}`);
+      return;
+    }
+
     // If we have OAuth 1.0a credentials, use them to verify (required for user context)
     if (this.oauth && this.accessToken && this.accessTokenSecret) {
       const url = "https://api.twitter.com/2/users/me";

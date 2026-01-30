@@ -90,7 +90,10 @@ describe('TwitterService', () => {
       expect(s.isConfigured()).toBe(true);
     });
 
-    it('marks as not authenticated on failed verification', async () => {
+    it('marks as not authenticated on failed verification (non-dry-run)', async () => {
+      // Disable dry run to test actual API verification
+      process.env.TWITTER_DRY_RUN = 'false';
+
       mockFetch.mockResolvedValueOnce({
         ok: false,
         text: async () => 'Unauthorized',
