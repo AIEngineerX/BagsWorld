@@ -27,10 +27,14 @@ const GHOST_ADMIN_KEY = process.env.GHOST_ADMIN_KEY;
  * Requires header: x-ghost-admin-key: YOUR_SECRET
  */
 function requireAdminKey(req: Request, res: Response, next: NextFunction): void {
-  // If no admin key is configured, allow all (backwards compatible but warns)
+  // SECURITY: Require admin key - do NOT allow unprotected access
   if (!GHOST_ADMIN_KEY) {
-    console.warn("[Ghost] WARNING: GHOST_ADMIN_KEY not set - endpoints are unprotected!");
-    next();
+    console.error("[Ghost] CRITICAL: GHOST_ADMIN_KEY not set - blocking request for security");
+    res.status(503).json({
+      success: false,
+      error: "Service Unavailable",
+      message: "Ghost trading endpoints require GHOST_ADMIN_KEY to be configured",
+    });
     return;
   }
 
