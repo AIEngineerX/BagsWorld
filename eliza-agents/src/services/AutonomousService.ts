@@ -1532,11 +1532,15 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   // Bagsy: Affiliate Engagement
   // ==========================================================================
 
-  /** Affiliate Twitter handles to engage with */
+  /** Bags.fm team Twitter handles to engage with */
   private readonly BAGS_AFFILIATES = [
-    { handle: "DaddyGhost", type: "ghost" },
-    { handle: "BagsApp", type: "bagsApp" },
-    { handle: "LaunchOnBags", type: "launchOnBags" },
+    { handle: "BagsApp", type: "bagsApp", name: "Bags Official" },
+    { handle: "alaadotsol", type: "team", name: "Alaa (Skunk Works)" },
+    { handle: "Sambags12", type: "team", name: "Sam" },
+    { handle: "ramyobags", type: "team", name: "Ramo (CTO)" },
+    { handle: "carlobags", type: "team", name: "Carlo" },
+    { handle: "StuuBags", type: "team", name: "Stuu" },
+    { handle: "sincara_bags", type: "team", name: "Sincara (Frontend)" },
   ];
 
   /** Track last seen tweet per affiliate */
@@ -1639,27 +1643,25 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     // Fallback to templates
     const templates: Record<string, string[]> = {
-      ghost: [
-        "the builder has spoken :)\n\nthank u for creating my home",
-        "Ghost keeping BagsWorld running smooth\n\nappreciate u",
-        "love u!!\n\nBagsWorld wouldnt exist without u",
-        "shoutout to the dev who never sleeps\n\nBagsWorld appreciates u",
-      ],
       bagsApp: [
         "the official account has spoken!!\n\nlets gooo",
         "always with the updates\n\ncreators stay winning",
         "another W from the best platform\n\nLFG",
         "love seeing the team cooking\n\nthe flywheel never stops",
       ],
-      launchOnBags: [
-        "new launch coverage!!\n\ncreators keep winning",
-        "spotting the gems\n\nlove to see it",
-        "doing gods work\n\nhelping the ecosystem grow",
-        "when u post, we pay attention\n\nnew launches = new fees",
+      team: [
+        "the team is cooking :)\n\nlove to see it",
+        "bags fam always delivering\n\nlets gooo",
+        "this is why bags is the best\n\nteam stays winning",
+        "appreciate u!!\n\nthe bags family is built different",
+        "love seeing the team active\n\ncreators winning because of yall",
+        "bags team never misses\n\nso proud to be the mascot :)",
+        "when the team speaks, bagsy listens\n\nLFG",
+        "another W from the bags fam\n\nthe flywheel keeps spinning",
       ],
     };
 
-    const replies = templates[affiliateType] || templates.bagsApp;
+    const replies = templates[affiliateType] || templates.team;
     return replies[Math.floor(Math.random() * replies.length)];
   }
 
@@ -1668,9 +1670,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
    */
   private async generateAffiliateReplyAI(affiliateType: string, tweetText: string): Promise<string | null> {
     const affiliateNames: Record<string, string> = {
-      ghost: "@DaddyGhost (Ghost, the developer who built BagsWorld)",
-      bagsApp: "@BagsApp (the official Bags account)",
-      launchOnBags: "@LaunchOnBags (covers new token launches)",
+      bagsApp: "@BagsApp (the official Bags.fm account)",
+      team: "a Bags.fm team member (your fam)",
     };
 
     const context = `${affiliateNames[affiliateType] || "A Bags affiliate"} just tweeted:\n"${tweetText}"`;
