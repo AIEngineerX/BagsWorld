@@ -113,6 +113,8 @@ export function ProfessorOakChat() {
   const [selectedName, setSelectedName] = useState<NameSuggestion | null>(null);
   const [generatedLogo, setGeneratedLogo] = useState<string | null>(null);
   const [generatedBanner, setGeneratedBanner] = useState<string | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState<"logo" | "banner" | null>(null);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -322,6 +324,7 @@ export function ProfessorOakChat() {
   const selectStyle = async (style: ArtStyle) => {
     setSelectedStyle(style);
     setWizardStep("generating-names");
+    setGenerationError(null);
 
     addMessage({
       id: `${Date.now()}-oak`,
@@ -330,8 +333,10 @@ export function ProfessorOakChat() {
       timestamp: Date.now(),
     });
 
-    // Call the generation API
-    const response = await fetch("/api/oak-generate", {
+    let response: Response;
+    let data: { success?: boolean; names?: NameSuggestion[]; error?: string };
+
+    response = await fetch("/api/oak-generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -341,11 +346,25 @@ export function ProfessorOakChat() {
       }),
     });
 
-    const data = await response.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      setGenerationError(`API error: ${response.status}`);
+      addMessage({
+        id: `${Date.now()}-oak`,
+        type: "oak",
+        message: `Hmm, something went wrong with my research database (Error ${response.status}). Let's try again - click a style to retry!`,
+        timestamp: Date.now(),
+      });
+      setWizardStep("style");
+      return;
+    }
 
-    if (data.success && data.names) {
+    data = await response.json();
+
+    if (data.success && data.names && data.names.length > 0) {
       setGeneratedNames(data.names);
       setWizardStep("select-name");
+      setGenerationError(null);
 
       addMessage({
         id: `${Date.now()}-generated`,
@@ -355,19 +374,24 @@ export function ProfessorOakChat() {
         generatedData: { names: data.names },
       });
     } else {
+      const errorMsg = data.error || "No names generated";
+      setGenerationError(errorMsg);
       addMessage({
         id: `${Date.now()}-oak`,
         type: "oak",
-        message: "Hmm, my research database seems to be offline. Let me try a different approach...",
+        message: `Hmm, my research database returned an unexpected result: "${errorMsg}". Let me try a different approach - click a style to retry!`,
         timestamp: Date.now(),
       });
-      setWizardStep("concept");
+      setWizardStep("style");
     }
   };
 
   const selectName = async (name: NameSuggestion) => {
     setSelectedName(name);
     setWizardStep("generating-images");
+    setGenerationError(null);
+    setGeneratedLogo(null);
+    setGeneratedBanner(null);
 
     addMessage({
       id: `${Date.now()}-oak`,
@@ -375,6 +399,11 @@ export function ProfessorOakChat() {
       message: `Excellent choice! "${name.name}" ($${name.ticker}) - very memorable!\n\nNow generating your logo and banner... This may take a moment!`,
       timestamp: Date.now(),
     });
+
+    let logoSuccess = false;
+    let bannerSuccess = false;
+    let logoUrl: string | null = null;
+    let bannerUrl: string | null = null;
 
     // Generate logo
     const logoResponse = await fetch("/api/oak-generate", {
@@ -387,9 +416,13 @@ export function ProfessorOakChat() {
       }),
     });
 
-    const logoData = await logoResponse.json();
-    if (logoData.success && logoData.imageUrl) {
-      setGeneratedLogo(logoData.imageUrl);
+    if (logoResponse.ok) {
+      const logoData = await logoResponse.json();
+      if (logoData.success && logoData.imageUrl) {
+        logoUrl = logoData.imageUrl;
+        setGeneratedLogo(logoUrl);
+        logoSuccess = true;
+      }
     }
 
     // Generate banner
@@ -403,28 +436,49 @@ export function ProfessorOakChat() {
       }),
     });
 
-    const bannerData = await bannerResponse.json();
-    if (bannerData.success && bannerData.imageUrl) {
-      setGeneratedBanner(bannerData.imageUrl);
+    if (bannerResponse.ok) {
+      const bannerData = await bannerResponse.json();
+      if (bannerData.success && bannerData.imageUrl) {
+        bannerUrl = bannerData.imageUrl;
+        setGeneratedBanner(bannerUrl);
+        bannerSuccess = true;
+      }
     }
 
     setWizardStep("preview");
 
+    // Build appropriate message based on what succeeded
+    let resultMessage: string;
+    if (logoSuccess && bannerSuccess) {
+      resultMessage = "Your token assets are ready! Review them below:";
+    } else if (logoSuccess && !bannerSuccess) {
+      resultMessage = "Logo generated successfully! Banner generation had an issue - you can try regenerating it or upload your own later.";
+    } else if (!logoSuccess && bannerSuccess) {
+      resultMessage = "Banner generated successfully! Logo generation had an issue - you can try regenerating it.";
+      setGenerationError("Logo generation failed");
+    } else {
+      resultMessage = "Hmm, both images had generation issues. You can try regenerating them or upload your own images in the Launch Modal.";
+      setGenerationError("Image generation failed");
+    }
+
     addMessage({
       id: `${Date.now()}-generated`,
       type: "generated",
-      message: "Your token assets are ready! Review them below:",
+      message: resultMessage,
       timestamp: Date.now(),
       generatedData: {
         names: [name],
-        logoUrl: logoData.imageUrl,
-        bannerUrl: bannerData.imageUrl,
+        logoUrl: logoUrl || undefined,
+        bannerUrl: bannerUrl || undefined,
       },
     });
   };
 
   const regenerateLogo = async () => {
-    if (!selectedName) return;
+    if (!selectedName || isRegenerating) return;
+
+    setIsRegenerating("logo");
+    setGenerationError(null);
 
     addMessage({
       id: `${Date.now()}-oak`,
@@ -443,20 +497,45 @@ export function ProfessorOakChat() {
       }),
     });
 
+    setIsRegenerating(null);
+
+    if (!response.ok) {
+      setGenerationError("Logo regeneration failed");
+      addMessage({
+        id: `${Date.now()}-oak`,
+        type: "oak",
+        message: "Hmm, the logo generation encountered an issue. Try again or upload your own in the Launch Modal!",
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
     const data = await response.json();
     if (data.success && data.imageUrl) {
       setGeneratedLogo(data.imageUrl);
+      setGenerationError(null);
       addMessage({
         id: `${Date.now()}-oak`,
         type: "oak",
         message: "New logo ready! How's this one?",
         timestamp: Date.now(),
       });
+    } else {
+      setGenerationError(data.error || "Logo generation failed");
+      addMessage({
+        id: `${Date.now()}-oak`,
+        type: "oak",
+        message: `Logo generation issue: ${data.error || "Unknown error"}. Try again!`,
+        timestamp: Date.now(),
+      });
     }
   };
 
   const regenerateBanner = async () => {
-    if (!selectedName) return;
+    if (!selectedName || isRegenerating) return;
+
+    setIsRegenerating("banner");
+    setGenerationError(null);
 
     addMessage({
       id: `${Date.now()}-oak`,
@@ -475,16 +554,48 @@ export function ProfessorOakChat() {
       }),
     });
 
+    setIsRegenerating(null);
+
+    if (!response.ok) {
+      setGenerationError("Banner regeneration failed");
+      addMessage({
+        id: `${Date.now()}-oak`,
+        type: "oak",
+        message: "Hmm, the banner generation encountered an issue. Try again or upload your own in the Launch Modal!",
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
     const data = await response.json();
     if (data.success && data.imageUrl) {
       setGeneratedBanner(data.imageUrl);
+      setGenerationError(null);
       addMessage({
         id: `${Date.now()}-oak`,
         type: "oak",
         message: "New banner ready! Take a look!",
         timestamp: Date.now(),
       });
+    } else {
+      setGenerationError(data.error || "Banner generation failed");
+      addMessage({
+        id: `${Date.now()}-oak`,
+        type: "oak",
+        message: `Banner generation issue: ${data.error || "Unknown error"}. Try again!`,
+        timestamp: Date.now(),
+      });
     }
+  };
+
+  // Download image helper
+  const downloadImage = (dataUrl: string, filename: string) => {
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const launchWithGenerated = () => {
@@ -525,6 +636,8 @@ export function ProfessorOakChat() {
     setSelectedName(null);
     setGeneratedLogo(null);
     setGeneratedBanner(null);
+    setGenerationError(null);
+    setIsRegenerating(null);
 
     addMessage({
       id: `${Date.now()}-oak`,
@@ -710,65 +823,117 @@ export function ProfessorOakChat() {
               <p className="font-pixel text-[10px] text-white">{selectedName.name}</p>
               <p className="font-pixel text-[8px] text-bags-green">${selectedName.ticker}</p>
             </div>
-            {wizardStep === "preview" && (
+            {wizardStep === "preview" && generatedLogo && (
               <button
                 onClick={launchWithGenerated}
-                className="px-3 py-1.5 bg-bags-green border-2 border-bags-green/50 font-pixel text-[9px] text-black hover:bg-bags-green/80 animate-pulse"
+                disabled={isRegenerating !== null}
+                className="px-3 py-1.5 bg-bags-green border-2 border-bags-green/50 font-pixel text-[9px] text-black hover:bg-bags-green/80 animate-pulse disabled:opacity-50 disabled:animate-none"
               >
                 🚀 USE & LAUNCH
               </button>
             )}
           </div>
 
+          {/* Error Display */}
+          {generationError && (
+            <div className="mb-2 p-1.5 bg-red-500/10 border border-red-500/30 rounded">
+              <p className="font-pixel text-[7px] text-red-400">⚠️ {generationError}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             {/* Logo Preview */}
             <div className="space-y-1">
-              <p className="font-pixel text-[7px] text-gray-400">Logo (512x512)</p>
-              <div className="aspect-square bg-gray-800 border border-amber-600/30 flex items-center justify-center overflow-hidden">
-                {generatedLogo ? (
+              <div className="flex items-center justify-between">
+                <p className="font-pixel text-[7px] text-gray-400">Logo (512x512)</p>
+                {generatedLogo && wizardStep === "preview" && (
+                  <button
+                    onClick={() => downloadImage(generatedLogo, `${selectedName.ticker}-logo.png`)}
+                    className="font-pixel text-[6px] text-blue-400 hover:text-blue-300"
+                    title="Download logo"
+                  >
+                    💾
+                  </button>
+                )}
+              </div>
+              <div className={`aspect-square bg-gray-800 border flex items-center justify-center overflow-hidden ${
+                isRegenerating === "logo" ? "border-amber-500 animate-pulse" : "border-amber-600/30"
+              }`}>
+                {isRegenerating === "logo" ? (
+                  <div className="font-pixel text-[8px] text-amber-400 animate-pulse">
+                    Regenerating...
+                  </div>
+                ) : generatedLogo ? (
                   <img
                     src={generatedLogo}
                     alt="Generated logo"
                     className="w-full h-full object-cover"
                   />
-                ) : (
+                ) : wizardStep === "generating-images" ? (
                   <div className="font-pixel text-[8px] text-gray-500 animate-pulse">
                     Generating...
+                  </div>
+                ) : (
+                  <div className="font-pixel text-[8px] text-red-400">
+                    Failed
                   </div>
                 )}
               </div>
               {wizardStep === "preview" && (
                 <button
                   onClick={regenerateLogo}
-                  className="w-full py-1 bg-gray-700/50 border border-gray-600 font-pixel text-[7px] text-gray-400 hover:bg-gray-700 hover:text-white"
+                  disabled={isRegenerating !== null}
+                  className="w-full py-1 bg-gray-700/50 border border-gray-600 font-pixel text-[7px] text-gray-400 hover:bg-gray-700 hover:text-white disabled:opacity-50"
                 >
-                  🔄 New Logo
+                  {isRegenerating === "logo" ? "..." : "🔄 New Logo"}
                 </button>
               )}
             </div>
 
             {/* Banner Preview */}
             <div className="space-y-1">
-              <p className="font-pixel text-[7px] text-gray-400">Banner (600x200)</p>
-              <div className="aspect-[3/1] bg-gray-800 border border-amber-600/30 flex items-center justify-center overflow-hidden">
-                {generatedBanner ? (
+              <div className="flex items-center justify-between">
+                <p className="font-pixel text-[7px] text-gray-400">Banner (600x200)</p>
+                {generatedBanner && wizardStep === "preview" && (
+                  <button
+                    onClick={() => downloadImage(generatedBanner, `${selectedName.ticker}-banner.png`)}
+                    className="font-pixel text-[6px] text-blue-400 hover:text-blue-300"
+                    title="Download banner"
+                  >
+                    💾
+                  </button>
+                )}
+              </div>
+              <div className={`aspect-[3/1] bg-gray-800 border flex items-center justify-center overflow-hidden ${
+                isRegenerating === "banner" ? "border-amber-500 animate-pulse" : "border-amber-600/30"
+              }`}>
+                {isRegenerating === "banner" ? (
+                  <div className="font-pixel text-[8px] text-amber-400 animate-pulse">
+                    Regenerating...
+                  </div>
+                ) : generatedBanner ? (
                   <img
                     src={generatedBanner}
                     alt="Generated banner"
                     className="w-full h-full object-cover"
                   />
-                ) : (
+                ) : wizardStep === "generating-images" ? (
                   <div className="font-pixel text-[8px] text-gray-500 animate-pulse">
                     Generating...
+                  </div>
+                ) : (
+                  <div className="font-pixel text-[7px] text-gray-500">
+                    Optional
                   </div>
                 )}
               </div>
               {wizardStep === "preview" && (
                 <button
                   onClick={regenerateBanner}
-                  className="w-full py-1 bg-gray-700/50 border border-gray-600 font-pixel text-[7px] text-gray-400 hover:bg-gray-700 hover:text-white"
+                  disabled={isRegenerating !== null}
+                  className="w-full py-1 bg-gray-700/50 border border-gray-600 font-pixel text-[7px] text-gray-400 hover:bg-gray-700 hover:text-white disabled:opacity-50"
                 >
-                  🔄 New Banner
+                  {isRegenerating === "banner" ? "..." : "🔄 New Banner"}
                 </button>
               )}
             </div>
@@ -777,7 +942,9 @@ export function ProfessorOakChat() {
           <p className="font-pixel text-[7px] text-gray-500 mt-2 text-center">
             {wizardStep === "generating-images"
               ? "Creating your unique token images..."
-              : "Click 'USE & LAUNCH' to continue to token creation"}
+              : !generatedLogo
+                ? "Logo generation failed - try regenerating or upload your own in Launch Modal"
+                : "Click 'USE & LAUNCH' to continue to token creation"}
           </p>
         </div>
       )}
