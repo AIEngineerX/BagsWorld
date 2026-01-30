@@ -328,6 +328,7 @@ async function generateViaElizaOS(
   context: DialogueRequest["context"],
   lineCount: number
 ): Promise<Array<{ characterId: string; characterName: string; message: string }> | null> {
+  console.log(`[IntelligentDialogue] Trying ElizaOS at ${ELIZAOS_SERVER}/api/dialogue`);
   try {
     const response = await fetch(`${ELIZAOS_SERVER}/api/dialogue`, {
       method: "POST",
@@ -348,12 +349,18 @@ async function generateViaElizaOS(
     });
 
     if (!response.ok) {
-      console.warn("[IntelligentDialogue] ElizaOS returned:", response.status);
+      const errorText = await response.text();
+      console.warn("[IntelligentDialogue] ElizaOS returned:", response.status, errorText);
       return null;
     }
 
     const data = await response.json();
-    if (data.success && data.dialogue?.turns) {
+    console.log("[IntelligentDialogue] ElizaOS response:", {
+      success: data.success,
+      hasTurns: !!data.dialogue?.turns,
+      turnCount: data.dialogue?.turns?.length || 0,
+    });
+    if (data.success && data.dialogue?.turns && data.dialogue.turns.length > 0) {
       console.log("[IntelligentDialogue] Using ElizaOS Runtime dialogue");
       return data.dialogue.turns.map((turn: any) => ({
         characterId: turn.speaker,
@@ -377,7 +384,11 @@ async function generateViaClaude(
   context: DialogueRequest["context"],
   lineCount: number
 ): Promise<Array<{ characterId: string; characterName: string; message: string }> | null> {
-  if (!ANTHROPIC_API_KEY) return null;
+  if (!ANTHROPIC_API_KEY) {
+    console.warn("[IntelligentDialogue] No ANTHROPIC_API_KEY, skipping Claude");
+    return null;
+  }
+  console.log("[IntelligentDialogue] Trying Claude API directly");
 
   const dataContext = buildDataContext(realData, topic);
 
