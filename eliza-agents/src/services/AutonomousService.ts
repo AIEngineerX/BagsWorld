@@ -321,95 +321,95 @@ export class AutonomousService extends Service {
       },
     });
 
-    // Bagsy: Post hype updates to Twitter every 3 hours
-    this.registerTask({
-      name: "bagsy_twitter_hype",
-      agentId: "bagsy",
-      interval: 3 * 60 * 60 * 1000, // 3 hours
-      handler: async () => {
-        await this.postBagsyTwitterUpdate();
-      },
-    });
+    // ==========================================================================
+    // BAGSY TASKS - DISABLED FOR RECOVERY (visibility filtering fix)
+    // Only event-driven posting enabled, no scheduled spam
+    // ==========================================================================
 
-    // Bagsy: Fee reminder posts every 6 hours
-    this.registerTask({
-      name: "bagsy_fee_reminder",
-      agentId: "bagsy",
-      interval: 6 * 60 * 60 * 1000, // 6 hours
-      handler: async () => {
-        await this.postBagsyFeeReminder();
-      },
-    });
+    // DISABLED: Was posting every 3 hours - too spammy
+    // this.registerTask({
+    //   name: "bagsy_twitter_hype",
+    //   agentId: "bagsy",
+    //   interval: 3 * 60 * 60 * 1000,
+    //   handler: async () => { await this.postBagsyTwitterUpdate(); },
+    // });
 
-    // Bagsy: Poll for Twitter mentions every 5 minutes
+    // DISABLED: Was posting every 6 hours - repetitive fee content
+    // this.registerTask({
+    //   name: "bagsy_fee_reminder",
+    //   agentId: "bagsy",
+    //   interval: 6 * 60 * 60 * 1000,
+    //   handler: async () => { await this.postBagsyFeeReminder(); },
+    // });
+
+    // KEPT: Reply to direct mentions only (not spammy, responsive)
     this.registerTask({
       name: "bagsy_mention_poll",
       agentId: "bagsy",
-      interval: 5 * 60 * 1000, // 5 minutes
+      interval: 10 * 60 * 1000, // Check every 10 minutes (reduced from 5)
       handler: async () => {
         await this.handleBagsyMentions();
       },
     });
 
-    // Bagsy: Check for high-value unclaimed fees every 30 minutes
-    this.registerTask({
-      name: "bagsy_highvalue_fee_alert",
-      agentId: "bagsy",
-      interval: 30 * 60 * 1000, // 30 minutes
-      handler: async () => {
-        await this.checkHighValueUnclaimedFees();
-      },
-    });
+    // DISABLED: Was alerting every 30 min - too aggressive
+    // this.registerTask({
+    //   name: "bagsy_highvalue_fee_alert",
+    //   agentId: "bagsy",
+    //   interval: 30 * 60 * 1000,
+    //   handler: async () => { await this.checkHighValueUnclaimedFees(); },
+    // });
 
-    // Bagsy: Engage with @finnbags tweets (CEO support) every 2 hours
-    this.registerTask({
-      name: "bagsy_finn_engagement",
-      agentId: "bagsy",
-      interval: 2 * 60 * 60 * 1000, // 2 hours
-      handler: async () => {
-        await this.engageWithFinnTweets();
-      },
-    });
+    // DISABLED: Was engaging every 2 hours - looks bot-like
+    // this.registerTask({
+    //   name: "bagsy_finn_engagement",
+    //   agentId: "bagsy",
+    //   interval: 2 * 60 * 60 * 1000,
+    //   handler: async () => { await this.engageWithFinnTweets(); },
+    // });
 
-    // Bagsy: Engage with Bags affiliates every 3 hours
-    this.registerTask({
-      name: "bagsy_affiliate_engagement",
-      agentId: "bagsy",
-      interval: 3 * 60 * 60 * 1000, // 3 hours
-      handler: async () => {
-        await this.engageWithAffiliates();
-      },
-    });
+    // DISABLED: Was engaging every 3 hours - looks bot-like
+    // this.registerTask({
+    //   name: "bagsy_affiliate_engagement",
+    //   agentId: "bagsy",
+    //   interval: 3 * 60 * 60 * 1000,
+    //   handler: async () => { await this.engageWithAffiliates(); },
+    // });
 
-    // Bagsy: Monitor for fee/claim-related tweets and engage (help people claim)
-    this.registerTask({
-      name: "bagsy_fee_tweet_monitor",
-      agentId: "bagsy",
-      interval: 15 * 60 * 1000, // 15 minutes
-      handler: async () => {
-        await this.monitorFeeRelatedTweets();
-      },
-    });
+    // DISABLED: Was monitoring every 15 min - keyword-based bot behavior
+    // this.registerTask({
+    //   name: "bagsy_fee_tweet_monitor",
+    //   agentId: "bagsy",
+    //   interval: 15 * 60 * 1000,
+    //   handler: async () => { await this.monitorFeeRelatedTweets(); },
+    // });
 
-    // Bagsy: Scheduled GM tweet at 9 AM EST (with replies to Finn and team)
-    // Check every 10 minutes to ensure we don't miss the 30-min window (8:45-9:15)
-    this.registerTask({
-      name: "bagsy_morning_gm",
-      agentId: "bagsy",
-      interval: 10 * 60 * 1000, // Check every 10 minutes
-      handler: async () => {
-        await this.postBagsyMorningGM();
-      },
-    });
+    // DISABLED: Daily GM - still too automated feeling
+    // this.registerTask({
+    //   name: "bagsy_morning_gm",
+    //   agentId: "bagsy",
+    //   interval: 10 * 60 * 1000,
+    //   handler: async () => { await this.postBagsyMorningGM(); },
+    // });
 
-    // Bagsy: Track engagement metrics for virality optimization
-    // Fetches likes/retweets/replies for recent tweets to learn what works
+    // KEPT: Track engagement metrics (read-only, no posting)
     this.registerTask({
       name: "bagsy_engagement_tracker",
       agentId: "bagsy",
-      interval: 30 * 60 * 1000, // Every 30 minutes
+      interval: 60 * 60 * 1000, // Every hour (reduced from 30 min)
       handler: async () => {
         await this.updateEngagementMetrics();
+      },
+    });
+
+    // NEW: Event-driven news posting (only posts when there's real news)
+    // Max 2-3 posts per day, only for significant events
+    this.registerTask({
+      name: "bagsy_news_digest",
+      agentId: "bagsy",
+      interval: 4 * 60 * 60 * 1000, // Check every 4 hours
+      handler: async () => {
+        await this.postBagsyNewsIfWorthy();
       },
     });
   }
@@ -1973,9 +1973,28 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
   /**
    * Handle Twitter mentions for Bagsy with engagement scoring
+   * RATE LIMITED: Max 3 replies per cycle, max 10 replies per day
    */
+  private mentionRepliesToday: number = 0;
+  private lastMentionReplyDate: string = "";
+  private static readonly MAX_MENTION_REPLIES_PER_CYCLE = 3;
+  private static readonly MAX_MENTION_REPLIES_PER_DAY = 10;
+
   private async handleBagsyMentions(): Promise<void> {
     if (!this.isTwitterReady) return;
+
+    // Reset daily counter
+    const today = new Date().toISOString().split("T")[0];
+    if (this.lastMentionReplyDate !== today) {
+      this.mentionRepliesToday = 0;
+      this.lastMentionReplyDate = today;
+    }
+
+    // Check daily limit
+    if (this.mentionRepliesToday >= AutonomousService.MAX_MENTION_REPLIES_PER_DAY) {
+      console.log("[AutonomousService] Bagsy daily reply limit reached, skipping mentions");
+      return;
+    }
 
     if (!this.lastMentionId) {
       this.lastMentionId = await getAgentCursor("bagsy", "last_mention_id");
@@ -1984,7 +2003,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     const mentions = await this.twitterService!.getMentions("BagsyHypeBot", this.lastMentionId || undefined);
     if (mentions.length === 0) return;
 
-    console.log(`[AutonomousService] Bagsy found ${mentions.length} new mentions`);
+    console.log(`[AutonomousService] Bagsy found ${mentions.length} new mentions (replied ${this.mentionRepliesToday}/${AutonomousService.MAX_MENTION_REPLIES_PER_DAY} today)`);
     this.engagementScorer?.resetCycle();
 
     // Filter processed mentions
@@ -2007,8 +2026,19 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     console.log(`[AutonomousService] Engagement scorer selected ${scored.length} high-value mentions`);
 
-    // Process candidates
+    // Process candidates with rate limiting
+    let repliesThisCycle = 0;
     for (const c of scored) {
+      // Enforce per-cycle and daily limits
+      if (repliesThisCycle >= AutonomousService.MAX_MENTION_REPLIES_PER_CYCLE) {
+        console.log("[AutonomousService] Per-cycle reply limit reached, saving rest for later");
+        break;
+      }
+      if (this.mentionRepliesToday >= AutonomousService.MAX_MENTION_REPLIES_PER_DAY) {
+        console.log("[AutonomousService] Daily reply limit reached");
+        break;
+      }
+
       console.log(`[AutonomousService] Engaging @${c.authorUsername} | Score: ${c.score.toFixed(1)} | Followers: ${c.authorFollowers || "?"}`);
 
       const reply = await this.generateBagsyMentionReplyAI(c.authorUsername, c.text) || this.generateBagsyMentionReply(c.authorUsername);
@@ -2020,16 +2050,19 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       });
 
       if (result.success) {
+        repliesThisCycle++;
+        this.mentionRepliesToday++;
         this.engagementScorer?.markEngaged(c.authorUsername);
-        console.log(`[AutonomousService] Bagsy replied to @${c.authorUsername}: ${result.url}`);
+        console.log(`[AutonomousService] Bagsy replied to @${c.authorUsername} (${this.mentionRepliesToday}/${AutonomousService.MAX_MENTION_REPLIES_PER_DAY} today): ${result.url}`);
         await this.createAlert({
           type: "milestone", severity: "info",
-          title: "Bagsy High-Value Reply",
+          title: "Bagsy Mention Reply",
           message: `Replied to @${c.authorUsername} (score: ${c.score.toFixed(0)}, followers: ${c.authorFollowers || "?"})`,
           data: { tweetId: result.replyId, originalTweetId: c.tweetId, score: c.score, followers: c.authorFollowers },
         });
       }
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Longer delay between replies to seem more human
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
     this.updateMentionCursor(mentions);
@@ -2418,6 +2451,197 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     } catch (error) {
       console.error("[AutonomousService] Bagsy morning GM failed:", error);
     }
+  }
+
+  // ==========================================================================
+  // Bagsy: Smart News-Based Posting (event-driven, not spam)
+  // ==========================================================================
+
+  /** Track last news post to enforce daily limits */
+  private lastNewsPostTime: number = 0;
+  private newsPostsToday: number = 0;
+  private lastNewsPostDate: string = "";
+
+  /** Minimum thresholds for newsworthy events */
+  private static readonly NEWS_THRESHOLDS = {
+    newLaunchMinMcap: 50000, // $50K mcap minimum for launch announcement
+    bigClaimMinSol: 10, // 10 SOL minimum for claim celebration
+    milestoneFeesMin: 100, // 100 SOL total fees for milestone
+    healthChangeMin: 20, // 20% health change for weather update
+  };
+
+  /**
+   * Smart posting: Only post when there's real BagsWorld news
+   * Criteria:
+   * - Max 3 posts per day
+   * - At least 4 hours between posts
+   * - Must have newsworthy event (launch, big claim, milestone, etc.)
+   */
+  private async postBagsyNewsIfWorthy(): Promise<void> {
+    if (!this.isTwitterReady) return;
+
+    // Reset daily counter
+    const today = new Date().toISOString().split("T")[0];
+    if (this.lastNewsPostDate !== today) {
+      this.newsPostsToday = 0;
+      this.lastNewsPostDate = today;
+    }
+
+    // Enforce limits: max 3 posts/day, 4 hours apart
+    const MAX_DAILY_POSTS = 3;
+    const MIN_POST_INTERVAL = 4 * 60 * 60 * 1000; // 4 hours
+
+    if (this.newsPostsToday >= MAX_DAILY_POSTS) {
+      console.log("[AutonomousService] Bagsy daily post limit reached, skipping");
+      return;
+    }
+
+    if (Date.now() - this.lastNewsPostTime < MIN_POST_INTERVAL) {
+      console.log("[AutonomousService] Bagsy post cooldown active, skipping");
+      return;
+    }
+
+    // Check for newsworthy events
+    const news = await this.checkForNewsworthyEvents();
+    if (!news) {
+      console.log("[AutonomousService] No newsworthy events, Bagsy staying quiet");
+      return;
+    }
+
+    // Generate and post the news
+    const tweet = await this.generateNewsPost(news);
+    if (!tweet || this.isDuplicatePost(tweet)) {
+      console.log("[AutonomousService] News tweet would be duplicate, skipping");
+      return;
+    }
+
+    const result = await this.postWithTracking(tweet, "post");
+    if (result.success) {
+      this.lastNewsPostTime = Date.now();
+      this.newsPostsToday++;
+      console.log(`[AutonomousService] Bagsy news posted (${this.newsPostsToday}/${MAX_DAILY_POSTS} today): ${result.url}`);
+      await this.createAlert({
+        type: "milestone",
+        severity: "info",
+        title: `Bagsy News: ${news.type}`,
+        message: tweet,
+        data: { tweetId: result.tweetId, newsType: news.type },
+      });
+    }
+  }
+
+  /**
+   * Check for newsworthy BagsWorld events
+   * Returns the most significant event or null if nothing newsworthy
+   */
+  private async checkForNewsworthyEvents(): Promise<{
+    type: "launch" | "big_claim" | "milestone" | "ecosystem_update";
+    data: Record<string, unknown>;
+  } | null> {
+    if (!this.bagsApi) return null;
+
+    try {
+      const healthData = await this.bagsApi.getWorldHealth();
+
+      // Check for milestone: significant total fees
+      if (healthData.totalLifetimeFees && healthData.totalLifetimeFees >= AutonomousService.NEWS_THRESHOLDS.milestoneFeesMin) {
+        // Only post milestones at round numbers (100, 500, 1000, etc.)
+        const fees = healthData.totalLifetimeFees;
+        const milestones = [100, 250, 500, 1000, 2500, 5000, 10000];
+        for (const m of milestones) {
+          if (fees >= m && fees < m * 1.1) {
+            return {
+              type: "milestone",
+              data: { totalFees: fees, milestone: m },
+            };
+          }
+        }
+      }
+
+      // Check for ecosystem health update (significant change)
+      const lastHealth = await getAgentState("bagsy", "last_reported_health");
+      const currentHealth = healthData.health || 50;
+      if (lastHealth) {
+        const change = Math.abs(currentHealth - parseFloat(lastHealth));
+        if (change >= AutonomousService.NEWS_THRESHOLDS.healthChangeMin) {
+          await setAgentState("bagsy", "last_reported_health", currentHealth.toString());
+          return {
+            type: "ecosystem_update",
+            data: {
+              health: currentHealth,
+              previousHealth: parseFloat(lastHealth),
+              direction: currentHealth > parseFloat(lastHealth) ? "up" : "down",
+            },
+          };
+        }
+      } else {
+        await setAgentState("bagsy", "last_reported_health", currentHealth.toString());
+      }
+
+      // Check for big claims (from tracked wallets)
+      const walletsWithFees = this.getWalletsWithUnclaimedFees();
+      for (const w of walletsWithFees) {
+        const solAmount = w.unclaimedLamports / 1_000_000_000;
+        if (solAmount >= AutonomousService.NEWS_THRESHOLDS.bigClaimMinSol) {
+          return {
+            type: "big_claim",
+            data: { solAmount, wallet: w.address },
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("[AutonomousService] Error checking for news:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate a news post for a specific event
+   * Content is varied and doesn't spam links
+   */
+  private async generateNewsPost(news: {
+    type: "launch" | "big_claim" | "milestone" | "ecosystem_update";
+    data: Record<string, unknown>;
+  }): Promise<string | null> {
+    const { type, data } = news;
+
+    let prompt: string;
+    let context: string;
+
+    switch (type) {
+      case "milestone":
+        context = `BagsWorld just hit ${data.milestone} SOL in total creator fees!`;
+        prompt = `Write a celebratory tweet about creators earning ${data.milestone} SOL total on the platform. Be excited but not spammy. End with a question like "who's next?" NO links.`;
+        break;
+
+      case "big_claim":
+        context = `Someone has ${(data.solAmount as number).toFixed(1)} SOL in unclaimed fees`;
+        prompt = `Write a tweet hyping that there's ${(data.solAmount as number).toFixed(1)} SOL waiting to be claimed by a creator. Don't reveal who - just create FOMO. End with "is it u?" NO links.`;
+        break;
+
+      case "ecosystem_update":
+        const direction = data.direction as string;
+        const health = data.health as number;
+        context = `BagsWorld health ${direction === "up" ? "improved" : "dropped"} to ${health}%`;
+        if (direction === "up") {
+          prompt = `Write a positive tweet about the ecosystem getting healthier (${health}% health). Mention creators are winning. End with engagement hook. NO links.`;
+        } else {
+          prompt = `Write a rallying tweet - ecosystem needs love (${health}% health). Encourage community to support creators. End with question. NO links.`;
+        }
+        break;
+
+      case "launch":
+        context = `New token launched on Bags.fm`;
+        prompt = `Write an excited tweet about a new creator joining the platform. Be welcoming to new creators. End with engagement hook. NO links.`;
+        break;
+
+      default:
+        return null;
+    }
+
+    return this.generateBagsyTweet(prompt, context);
   }
 
   // ==========================================================================
