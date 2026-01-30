@@ -457,6 +457,76 @@ export const bagsyTweetTemplates = {
     "shoutout to the best team in crypto\n\nbags forever",
     "yall make bagsy so proud :)\n\ncreators keep eating",
   ],
+
+  // ==========================================================================
+  // HIGH-ENGAGEMENT VIRAL TEMPLATES
+  // Optimized for maximum replies, quotes, and engagement
+  // ==========================================================================
+
+  // Question hooks (reply bait - highest engagement)
+  viralQuestions: [
+    "honest question:\n\nwhat would u do with an extra $100/month in passive income?\n\ncreators on bags.fm are finding out :)",
+    "real talk: have u ever launched a token?\n\nif not, what's stopping u?\n\nbags.fm makes it easy + u earn 1% forever",
+    "unpopular opinion: most creators are leaving money on the table\n\nagree or disagree?\n\nbags.fm exists to fix this",
+    "quick poll in the replies:\n\nwhat's more important for a launchpad?\n\n1. low fees\n2. lifetime royalties\n3. community\n\n(bagsy votes 2)",
+    "curious: what was ur first crypto win?\n\nmine was watching a creator claim their first fees :)",
+    "be honest: do u know how much money ur content has made other platforms?\n\nwith bags.fm, u earn that instead",
+    "if u could launch any token tomorrow, what would it be?\n\ndrop ideas below. maybe someone will make it happen :)",
+    "which creator deserves to get bagged next?\n\ntag them below. spread the wealth fren",
+    "serious question: why arent more creators earning royalties?\n\nbags.fm gives u 1% of every trade. forever.\n\nthoughts?",
+    "whats ur dream passive income number?\n\n$100/mo? $1k/mo? $10k/mo?\n\ncreators on bags.fm are hitting these",
+  ],
+
+  // Call to action (tag a fren)
+  viralCTA: [
+    "tag a creator who deserves passive income\n\nthey should know about bags.fm :)",
+    "know someone who made viral content?\n\ntag them. they might have unclaimed fees waiting\n\nbags.fm",
+    "tag ur fren who needs to hear this:\n\nu can earn 1% of every trade. forever.\n\nbags.fm",
+    "quote this with ur best crypto take\n\nill reply to the spiciest ones :)",
+    "reply with ur favorite bags.fm token\n\nill hype it up. we're all gonna make it",
+    "drop ur wallet address in the replies\n\njk jk\n\nbut fr go to bags.fm and verify ur socials",
+    "comment 'CLAIMED' if u claimed ur fees today\n\nwanna see how many frens are winning :)",
+    "retweet if u believe creators deserve passive income\n\ncomment if u think 1% forever is fair",
+  ],
+
+  // Listicle format (structured = high engagement)
+  viralLists: [
+    "3 reasons creators love bags.fm:\n\n1. 1% of every trade forever\n2. verify socials = instant claim\n3. cash out to bank\n\nsimple :)",
+    "things that hit different:\n\n- first fee claim\n- watching passive income grow\n- knowing u earn forever\n\nbags.fm vibes",
+    "creator economy rankings:\n\n1. earning from ur content\n2. passive income\n3. community that supports u\n\nbags.fm has all 3 :)",
+    "bagsy's daily checklist:\n\n- wake up\n- check fees\n- remind frens to claim\n- repeat\n\nu should add 'claim' to urs :)",
+    "top 3 web3 wins:\n\n1. community\n2. ownership\n3. passive income for creators\n\nbags.fm delivers all 3",
+    "why bags.fm hits different:\n\n- no VC bs\n- creators actually earn\n- 1% forever not just launch\n- community first\n\nthe way it should be",
+  ],
+
+  // Hot takes / controversial (engagement through debate)
+  viralHotTakes: [
+    "hot take: most launchpads screw creators\n\nbags.fm gives them 1% forever\n\nthats not controversial, thats just facts",
+    "unpopular opinion: passive income > one-time payments\n\nbags.fm understood the assignment",
+    "controversial but true: if u have viral content, someone will tokenize it\n\nmight as well earn from it urself\n\nbags.fm",
+    "spicy take: creators who dont claim their fees are leaving generational wealth on the table\n\nbags.fm",
+    "hot take: the best platform is the one that pays creators the most\n\nbags.fm = 1% forever\n\ndo the math :)",
+  ],
+
+  // Relatable/emotional (shareable content)
+  viralRelatable: [
+    "pov: checking ur bags.fm dashboard and seeing fees accumulated\n\nthe dopamine hit is real :)",
+    "nobody:\n\nbagsy at 3am: have u claimed ur fees\n\nim not okay but also claim pls",
+    "the face u make when u realize ur content is earning passive income:\n\n:D\n\nbags.fm",
+    "explaining bags.fm to ur friends:\n\n'so u earn 1% forever...'\n\nthem: 'wait what'\n\nu: 'yeah'\n\nthem: 'WHAT'",
+    "me trying to act normal while checking if my fees accumulated:\n\n*refreshes bags.fm 47 times*",
+    "stages of bags.fm:\n\n1. skeptical\n2. verify socials\n3. first claim\n4. tell everyone u know\n5. become bagsy",
+    "when someone says 'passive income doesnt exist':\n\nbags.fm creators: allow us to introduce ourselves",
+  ],
+
+  // FOMO inducing (urgency without being scammy)
+  viralFOMO: [
+    "while ur reading this, creators on bags.fm are earning\n\njust saying :)\n\nbags.fm",
+    "some creator just claimed fees while u scrolled past\n\ncould be u next time\n\nbags.fm",
+    "every trade on bags.fm = creator earnings\n\nthe flywheel doesnt stop spinning\n\nare u in it?",
+    "imagine looking back and wishing u claimed earlier\n\ndont be that person fren\n\nbags.fm",
+    "rn someone is earning royalties from content they made months ago\n\nthats the bags.fm life",
+  ],
 };
 
 export default bagsyCharacter;
