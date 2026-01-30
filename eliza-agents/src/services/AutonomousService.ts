@@ -266,6 +266,16 @@ export class AutonomousService extends Service {
         await this.engageWithFinnTweets();
       },
     });
+
+    // Bagsy: Engage with Bags affiliates every 3 hours
+    this.registerTask({
+      name: "bagsy_affiliate_engagement",
+      agentId: "bagsy",
+      interval: 3 * 60 * 60 * 1000, // 3 hours
+      handler: async () => {
+        await this.engageWithAffiliates();
+      },
+    });
   }
 
   /**
@@ -1516,6 +1526,157 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       "out here building the future of creator economy\n\nso proud to be the mascot :)",
     ];
     return defaultReplies[Math.floor(Math.random() * defaultReplies.length)];
+  }
+
+  // ==========================================================================
+  // Bagsy: Affiliate Engagement
+  // ==========================================================================
+
+  /** Affiliate Twitter handles to engage with */
+  private readonly BAGS_AFFILIATES = [
+    { handle: "DaddyGhost", type: "ghost" },
+    { handle: "BagsApp", type: "bagsApp" },
+    { handle: "LaunchOnBags", type: "launchOnBags" },
+  ];
+
+  /** Track last seen tweet per affiliate */
+  private lastAffiliateTweetIds: Map<string, string> = new Map();
+
+  /**
+   * Engage with tweets from Bags affiliates
+   */
+  private async engageWithAffiliates(): Promise<void> {
+    if (!this.twitterService || !this.twitterService.isConfigured()) {
+      console.log("[AutonomousService] Twitter not configured, skipping affiliate engagement");
+      return;
+    }
+
+    try {
+      // Pick one random affiliate to engage with per cycle
+      const affiliate = this.BAGS_AFFILIATES[Math.floor(Math.random() * this.BAGS_AFFILIATES.length)];
+      console.log(`[AutonomousService] Checking tweets from @${affiliate.handle}`);
+
+      const tweets = await this.getAffiliateTweets(affiliate.handle);
+
+      if (tweets.length === 0) {
+        console.log(`[AutonomousService] No new tweets from @${affiliate.handle}`);
+        return;
+      }
+
+      // Find first unprocessed tweet
+      for (const tweet of tweets) {
+        if (this.twitterService.isProcessed(tweet.id)) {
+          continue;
+        }
+
+        // Generate reply based on affiliate type
+        const reply = await this.generateAffiliateReply(affiliate.type, tweet.text);
+
+        const result = await this.twitterService.reply(tweet.id, reply);
+
+        if (result.success) {
+          this.twitterService.markProcessed(tweet.id);
+          this.lastAffiliateTweetIds.set(affiliate.handle, tweet.id);
+          console.log(`[AutonomousService] Bagsy replied to @${affiliate.handle}: ${result.tweet?.url}`);
+
+          await this.createAlert({
+            type: "milestone",
+            severity: "info",
+            title: "Bagsy Affiliate Engagement",
+            message: `Replied to @${affiliate.handle}`,
+            data: { tweetId: result.tweet?.id, originalTweetId: tweet.id },
+          });
+
+          // Only reply to one tweet per cycle
+          break;
+        }
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Affiliate engagement failed:", error);
+    }
+  }
+
+  /**
+   * Get recent tweets from an affiliate
+   */
+  private async getAffiliateTweets(handle: string): Promise<Array<{ id: string; text: string }>> {
+    const bearerToken = process.env.TWITTER_BEARER_TOKEN;
+    if (!bearerToken) return [];
+
+    try {
+      const query = encodeURIComponent(`from:${handle} -is:retweet -is:reply`);
+      let url = `https://api.twitter.com/2/tweets/search/recent?query=${query}&max_results=10&tweet.fields=created_at`;
+
+      const lastId = this.lastAffiliateTweetIds.get(handle);
+      if (lastId) {
+        url += `&since_id=${lastId}`;
+      }
+
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${bearerToken}` },
+      });
+
+      if (!response.ok) {
+        console.error(`[AutonomousService] Failed to fetch @${handle} tweets: ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      return (data.data || []).map((t: { id: string; text: string }) => ({ id: t.id, text: t.text }));
+    } catch (error) {
+      console.error(`[AutonomousService] Error fetching @${handle} tweets:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Generate reply for affiliate based on type
+   */
+  private async generateAffiliateReply(affiliateType: string, tweetText: string): Promise<string> {
+    // Try AI generation first
+    const aiReply = await this.generateAffiliateReplyAI(affiliateType, tweetText);
+    if (aiReply) return aiReply;
+
+    // Fallback to templates
+    const templates: Record<string, string[]> = {
+      ghost: [
+        "the builder has spoken :)\n\nthank u for creating my home",
+        "Ghost keeping BagsWorld running smooth\n\nappreciate u",
+        "love u!!\n\nBagsWorld wouldnt exist without u",
+        "shoutout to the dev who never sleeps\n\nBagsWorld appreciates u",
+      ],
+      bagsApp: [
+        "the official account has spoken!!\n\nlets gooo",
+        "always with the updates\n\ncreators stay winning",
+        "another W from the best platform\n\nLFG",
+        "love seeing the team cooking\n\nthe flywheel never stops",
+      ],
+      launchOnBags: [
+        "new launch coverage!!\n\ncreators keep winning",
+        "spotting the gems\n\nlove to see it",
+        "doing gods work\n\nhelping the ecosystem grow",
+        "when u post, we pay attention\n\nnew launches = new fees",
+      ],
+    };
+
+    const replies = templates[affiliateType] || templates.bagsApp;
+    return replies[Math.floor(Math.random() * replies.length)];
+  }
+
+  /**
+   * AI-powered affiliate reply generation
+   */
+  private async generateAffiliateReplyAI(affiliateType: string, tweetText: string): Promise<string | null> {
+    const affiliateNames: Record<string, string> = {
+      ghost: "@DaddyGhost (Ghost, the developer who built BagsWorld)",
+      bagsApp: "@BagsApp (the official Bags account)",
+      launchOnBags: "@LaunchOnBags (covers new token launches)",
+    };
+
+    const context = `${affiliateNames[affiliateType] || "A Bags affiliate"} just tweeted:\n"${tweetText}"`;
+    const prompt = `Write a friendly, supportive reply from Bagsy. Be appreciative and stay on brand.`;
+
+    return this.generateBagsyTweet(prompt, context);
   }
 
   // ==========================================================================
