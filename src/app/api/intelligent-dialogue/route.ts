@@ -556,6 +556,38 @@ function generateFallbackConversation(
         : "green candles. nature is healing",
       general: `${formatNumber(data.ecosystemStats.totalVolume24h)} in volume today. bullish vibes`,
     },
+    shaw: {
+      token_launch: topToken
+        ? `$${topToken.symbol} launched. ${formatNumber(topToken.volume24h)} in volume. this is how ecosystems grow`
+        : "new token deployed. the architecture of creator economies in action",
+      distribution: topCreator
+        ? `@${topCreator.username} leading with ${topCreator.lifetimeEarnings.toFixed(1)} SOL. fee distribution working as designed`
+        : "creator rewards flowing. sustainable tokenomics",
+      agent_event: "multi-agent coordination active. this is what we built elizaos for",
+      price_pump: topToken
+        ? `$${topToken.symbol} up ${topToken.change24h.toFixed(0)}%. community building pays off`
+        : "price action follows shipping. always",
+      general: "watching the agents coordinate. the architecture is working",
+    },
+    cj: {
+      token_launch: topToken
+        ? `aw shit $${topToken.symbol} just dropped. ${formatNumber(topToken.volume24h)} volume already`
+        : "new token homie. we'll see if it runs or rugs",
+      price_pump: topToken
+        ? `$${topToken.symbol} pumping ${topToken.change24h.toFixed(0)}%. don't get too comfortable`
+        : "green today. just don't forget to take profits",
+      whale_alert: `big money moving. been here before homie`,
+      general: "just another day in the trenches. we survive",
+    },
+    toly: {
+      token_launch: topToken
+        ? `$${topToken.symbol} launched on solana. ${formatNumber(topToken.volume24h)} in volume. fast`
+        : "more builders on solana. exactly what we need",
+      price_pump: topToken
+        ? `$${topToken.symbol} moving ${topToken.change24h.toFixed(0)}%. solana handles the volume`
+        : "transactions per second matter. solana delivers",
+      general: "solana was built for this. fast, cheap, scalable",
+    },
   };
 
   // Shuffle participants for random speaker order
