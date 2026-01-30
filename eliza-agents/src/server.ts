@@ -420,4 +420,30 @@ async function main(): Promise<void> {
   });
 }
 
+// ==========================================================================
+// Global Error Handlers (CRITICAL for stability)
+// ==========================================================================
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[FATAL] Unhandled Promise Rejection:", reason);
+  // Don't exit - let the service continue running
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("[FATAL] Uncaught Exception:", error);
+  // For uncaught exceptions, we should exit after logging
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("[Server] SIGTERM received, shutting down gracefully...");
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("[Server] SIGINT received, shutting down gracefully...");
+  process.exit(0);
+});
+
 main();

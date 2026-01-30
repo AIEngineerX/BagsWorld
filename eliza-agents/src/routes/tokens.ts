@@ -7,9 +7,23 @@ import { getBagsApiService } from '../services/BagsApiService.js';
 
 const router = Router();
 
+// Solana address/mint validation regex (Base58, 32-44 chars)
+const SOLANA_ADDRESS_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+// Validate mint address helper
+function isValidMint(mint: string): boolean {
+  return !!mint && SOLANA_ADDRESS_REGEX.test(mint);
+}
+
 // GET /api/tokens/:mint - Get token info
 router.get('/tokens/:mint', async (req: Request, res: Response) => {
   const mint = req.params.mint as string;
+
+  if (!isValidMint(mint)) {
+    res.status(400).json({ error: 'Invalid mint address' });
+    return;
+  }
+
   const api = getBagsApiService();
 
   const token = await api.getToken(mint);
@@ -28,6 +42,12 @@ router.get('/tokens/:mint', async (req: Request, res: Response) => {
 // GET /api/tokens/:mint/fees - Get creator fees
 router.get('/tokens/:mint/fees', async (req: Request, res: Response) => {
   const mint = req.params.mint as string;
+
+  if (!isValidMint(mint)) {
+    res.status(400).json({ error: 'Invalid mint address' });
+    return;
+  }
+
   const api = getBagsApiService();
 
   const fees = await api.getCreatorFees(mint);
@@ -125,6 +145,12 @@ router.get('/wallet/:address/claimable', async (req: Request, res: Response) => 
 // GET /api/tokens/:mint/claim-events - Get claim history for a token
 router.get('/tokens/:mint/claim-events', async (req: Request, res: Response) => {
   const mint = req.params.mint as string;
+
+  if (!isValidMint(mint)) {
+    res.status(400).json({ success: false, error: 'Invalid mint address' });
+    return;
+  }
+
   const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
   const offset = parseInt(req.query.offset as string) || 0;
 
