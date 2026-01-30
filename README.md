@@ -97,10 +97,10 @@ Every character runs on [ElizaOS](https://github.com/elizaOS/eliza) with persist
 ### Game Features
 
 - **Building Decay System** - Buildings lose health without trading activity (60-second cycles)
-- **Trading Dojo** - Spar against 5 AI opponents with belt progression
+- **Professor Oak AI Generator** - AI-powered token name, logo, and banner generation
+- **AI Trading Arena** - 5 AI agents debate and predict token performance
 - **Oracle Tower** - Prediction market for token price movements
 - **Casino** - Community-funded raffles and prizes
-- **Sniper Tower** - Real-time launch detection across all Bags.fm
 - **Day/Night Cycle** - Synced to EST with dynamic lighting
 - **Original Soundtrack** - 7 Pokemon-style tracks synthesized in-browser
 
@@ -240,6 +240,71 @@ Deploy the `eliza-agents/` folder separately (Railway, Render, or any Node.js ho
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
+
+## API Endpoints
+
+BagsWorld exposes 65+ API routes. Key endpoints:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/world-state` | Main game state engine |
+| `/api/character-chat` | AI character conversations |
+| `/api/oak-generate` | AI token name/logo/banner generator |
+| `/api/arena` | AI Trading Arena with 5 agents |
+| `/api/oracle/*` | Price prediction system |
+| `/api/casino/*` | Raffle and prize system |
+| `/api/agent` | Autonomous agent controls |
+| `/api/bags-live-feed` | Platform-wide Bags.fm activity |
+
+### Professor Oak AI Generator
+
+Generate complete token launch assets with AI:
+
+```bash
+POST /api/oak-generate
+{
+  "action": "suggest-names" | "generate-logo" | "generate-banner" | "full-wizard",
+  "concept": "a space cat exploring galaxies",
+  "style": "pixel-art" | "cartoon" | "cute" | "minimalist" | "abstract"
+}
+```
+
+- **Name Generation**: 5 creative name/ticker suggestions (Claude)
+- **Logo Generation**: 512x512 square logos (Replicate or procedural fallback)
+- **Banner Generation**: 600x200 DexScreener banners
+- Works without Replicate API key via procedural SVG generation
+
+## Legal Disclaimers
+
+### Independent Project
+
+BagsWorld is an independent project built by [@DaddyGhost](https://x.com/DaddyGhost). While we proudly build on and integrate with the Bags.fm ecosystem, this project is not officially affiliated with or sponsored by the Bags.fm team.
+
+We use Bags.fm's public APIs to showcase the ecosystem in a fun, gamified way. For BagsWorld-specific questions or issues, please use this repository.
+
+### Intellectual Property Notice
+
+This project contains characters and references inspired by various intellectual properties:
+
+- **"Ash"** and **"Professor Oak"** are character archetypes inspired by the Pokémon franchise. Pokémon, including all related character names, designs, and trademarks, are the property of **Nintendo, Game Freak, and The Pokémon Company**. BagsWorld is not affiliated with, endorsed by, or sponsored by these entities.
+
+- **"Toly"** is a character inspired by Anatoly Yakovenko, co-founder of Solana. This is a fan tribute and is not officially affiliated with or endorsed by Solana Labs or the Solana Foundation.
+
+- **"CJ"** references themes from Grand Theft Auto: San Andreas. GTA and related trademarks are the property of **Rockstar Games and Take-Two Interactive**. BagsWorld is not affiliated with or endorsed by these entities.
+
+- **"Shaw"** is inspired by Shaw, the creator of ElizaOS. This is a fan tribute.
+
+### Fair Use Statement
+
+The character inspirations in BagsWorld are used for **parody, educational, and transformative purposes** within a blockchain gaming context. No commercial exploitation of third-party intellectual property is intended. All character implementations are original code with unique personalities tailored to the BagsWorld ecosystem.
+
+### No Financial Advice
+
+BagsWorld is an entertainment product. Nothing in this application constitutes financial, investment, or trading advice. Cryptocurrency trading carries significant risk. Always do your own research (DYOR) before making any financial decisions.
+
+### Third-Party Services
+
+BagsWorld integrates with third-party services including Bags.fm, Solana, DexScreener, and others. We are not responsible for the availability, accuracy, or security of these external services.
 
 ## License
 

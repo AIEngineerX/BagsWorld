@@ -403,6 +403,171 @@ POST /token-launch/create-launch-transaction`,
       },
     ],
   },
+  {
+    id: "advanced-features",
+    title: "Advanced Features",
+    items: [
+      {
+        id: "oak-generator",
+        title: "Professor Oak AI Generator",
+        content: [
+          "Professor Oak in Founder's Corner can generate complete token launch assets using AI. Click 'AI GENERATE' in his lab to access the wizard.",
+          "The generator creates professional-quality names, logos, and banners for your token launch - all powered by Claude and SDXL image generation.",
+        ],
+        steps: [
+          {
+            number: 1,
+            title: "Enter Concept",
+            description:
+              "Describe your token idea in a few words (e.g., 'a space cat exploring galaxies')",
+          },
+          {
+            number: 2,
+            title: "Choose Art Style",
+            description:
+              "Select from Pixel Art, Cartoon, Kawaii, Minimalist, or Abstract styles",
+          },
+          {
+            number: 3,
+            title: "Pick Name",
+            description:
+              "Review 5 AI-generated name suggestions with matching tickers",
+          },
+          {
+            number: 4,
+            title: "Generate Assets",
+            description:
+              "AI creates a 512x512 logo and 600x200 DexScreener banner",
+          },
+        ],
+        table: {
+          headers: ["Asset", "Size", "Notes"],
+          rows: [
+            ["Logo", "512x512px", "Square format, transparent or solid background"],
+            ["Banner", "600x200px", "3:1 ratio for DexScreener"],
+            ["Names", "5 suggestions", "With matching 3-5 letter tickers"],
+          ],
+        },
+        infoBox: {
+          title: "No API Key Required",
+          items: [
+            "Works without Replicate API (falls back to procedural SVG)",
+            "Procedural logos use symmetric pixel art generation",
+            "Name generation requires Anthropic API key",
+          ],
+        },
+      },
+      {
+        id: "trading-arena",
+        title: "AI Trading Arena",
+        content: [
+          "The Arena features 5 AI agents with distinct trading personalities who analyze tokens, debate strategies, and make predictions. Watch them spar or ask for their analysis.",
+          "Each agent has a unique style: Neo (analytical matrix reader), Ghost (wise code philosopher), Finn (bullish builder), Ash (chaotic alpha hunter), and Toly (infrastructure focused).",
+        ],
+        table: {
+          headers: ["Agent", "Style", "Approach"],
+          rows: [
+            ["Neo", "Analytical", "Pattern recognition, on-chain metrics"],
+            ["Ghost", "Wise", "Long-term fundamentals, code quality"],
+            ["Finn", "Bullish", "Growth potential, shipping velocity"],
+            ["Ash", "Chaotic", "Momentum plays, catching alpha"],
+            ["Toly", "Infrastructure", "Tech stack, scalability"],
+          ],
+        },
+        infoBox: {
+          title: "Arena Actions",
+          items: [
+            "Analyze: Single agent reviews a token",
+            "Discuss: 3 random agents debate",
+            "Predict: Paper trade with entry/exit targets",
+            "Leaderboard: View agent performance",
+          ],
+        },
+      },
+      {
+        id: "oracle-predictions",
+        title: "Oracle Tower",
+        content: [
+          "The Oracle Tower hosts prediction rounds where you compete to forecast which token will perform best. Each round features 2-5 tokens with SOL prize pools.",
+          "Rounds last 24 hours. Pick the token you think will have the highest price change, and if you're right, claim your share of the prize pool.",
+        ],
+        infoBox: {
+          title: "How to Play",
+          items: [
+            "View active prediction rounds",
+            "Select the token you predict will win",
+            "Wait for round to complete",
+            "Sign with wallet to claim winnings",
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "legal",
+    title: "Legal & Disclaimers",
+    items: [
+      {
+        id: "independent-project",
+        title: "Independent Project",
+        content: [
+          "BagsWorld is an independent project built by @DaddyGhost. While we proudly build on and integrate with the Bags.fm ecosystem, this project is not officially affiliated with or sponsored by the Bags.fm team.",
+          "We use Bags.fm's public APIs to showcase the ecosystem in a fun, gamified way.",
+        ],
+        infoBox: {
+          title: "About",
+          items: [
+            "Built by @DaddyGhost",
+            "Proudly building on Bags.fm",
+            "Uses public Bags.fm APIs",
+            "Independent project with its own support",
+          ],
+        },
+      },
+      {
+        id: "ip-notice",
+        title: "Intellectual Property",
+        content: [
+          "BagsWorld contains characters inspired by various media. These are fan tributes and parodies, not official representations.",
+          "Pokémon, including character names like 'Ash' and 'Professor Oak', are trademarks of Nintendo, Game Freak, and The Pokémon Company. BagsWorld is not affiliated with or endorsed by these entities.",
+        ],
+        infoBox: {
+          title: "Character Inspirations",
+          items: [
+            "Ash & Professor Oak: Pokémon-inspired archetypes",
+            "Toly: Fan tribute to Solana's co-founder",
+            "CJ: GTA San Andreas-inspired commentary",
+            "Shaw: Tribute to ElizaOS creator",
+          ],
+        },
+      },
+      {
+        id: "disclaimers",
+        title: "Financial Disclaimers",
+        content: [
+          "BagsWorld is an entertainment product. Nothing in this application constitutes financial, investment, or trading advice.",
+          "Cryptocurrency and token trading carries significant risk including potential loss of funds. Always do your own research (DYOR) before making any financial decisions.",
+        ],
+        infoBox: {
+          title: "Important Notices",
+          items: [
+            "Not financial advice - entertainment only",
+            "Crypto trading carries significant risk",
+            "Past performance doesn't guarantee future results",
+            "DYOR - Do Your Own Research always",
+          ],
+        },
+      },
+      {
+        id: "third-party",
+        title: "Third-Party Services",
+        content: [
+          "BagsWorld integrates with third-party services including Bags.fm, Solana, DexScreener, Jupiter, and others.",
+          "We are not responsible for the availability, accuracy, or security of these external services. Use at your own discretion.",
+        ],
+      },
+    ],
+  },
 ];
 
 // Navigation structure for sidebar
