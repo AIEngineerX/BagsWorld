@@ -187,30 +187,111 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   const totalBps = userTotalBps + ecosystemFee.bps; // Include ecosystem fee
   const isValidBps = totalBps === 10000; // Must equal exactly 100% (Bags.fm requirement)
 
+  // Image dimension warnings (not errors, just warnings)
+  const [logoWarning, setLogoWarning] = useState<string | null>(null);
+  const [bannerWarning, setBannerWarning] = useState<string | null>(null);
+
+  // Validate image dimensions and load it
+  const validateAndLoadImage = (
+    file: File,
+    expectedWidth: number,
+    expectedHeight: number,
+    setPreview: (url: string) => void,
+    setDataUrl: (url: string) => void,
+    setWarning: (warning: string | null) => void,
+    imageType: "logo" | "banner"
+  ) => {
+    // File size check (max 10MB)
+    const maxSizeMB = 10;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      setError(`${imageType === "logo" ? "Logo" : "Banner"} file is too large. Maximum size is ${maxSizeMB}MB.`);
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"];
+    if (!validTypes.includes(file.type)) {
+      setError(`Invalid file type. Please upload PNG, JPG, GIF, WEBP, or SVG.`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => {
+      setError(`Failed to read ${imageType} file. Please try again.`);
+    };
+    reader.onloadend = () => {
+      const result = reader.result as string;
+
+      // Create an Image to check dimensions
+      const img = new Image();
+      img.onload = () => {
+        const width = img.naturalWidth;
+        const height = img.naturalHeight;
+
+        // Check dimensions and set warning if not optimal
+        if (imageType === "logo") {
+          if (width !== height) {
+            setWarning(`Logo is ${width}x${height}px (not square). Recommended: 512x512px square.`);
+          } else if (width < 256) {
+            setWarning(`Logo is only ${width}x${height}px. Recommended: at least 512x512px for best quality.`);
+          } else if (width !== 512) {
+            setWarning(`Logo is ${width}x${height}px. Recommended: 512x512px.`);
+          } else {
+            setWarning(null);
+          }
+        } else {
+          // Banner: check 3:1 ratio
+          const ratio = width / height;
+          if (Math.abs(ratio - 3) > 0.1) {
+            setWarning(`Banner is ${width}x${height}px (${ratio.toFixed(1)}:1 ratio). Recommended: 600x200px (3:1 ratio) for DexScreener.`);
+          } else if (width < 600) {
+            setWarning(`Banner is only ${width}x${height}px. Recommended: at least 600x200px.`);
+          } else {
+            setWarning(null);
+          }
+        }
+
+        // Set the preview and data URL regardless of warnings
+        setPreview(result);
+        setDataUrl(result);
+      };
+      img.onerror = () => {
+        setError(`Failed to load ${imageType} image. The file may be corrupted.`);
+      };
+      img.src = result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setImagePreview(result);
-        // Keep the full data URL for API submission
-        setImageDataUrl(result);
-      };
-      reader.readAsDataURL(file);
+      setError(null);
+      validateAndLoadImage(
+        file,
+        512,
+        512,
+        setImagePreview,
+        setImageDataUrl,
+        setLogoWarning,
+        "logo"
+      );
     }
   };
 
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setBannerPreview(result);
-        setBannerDataUrl(result);
-      };
-      reader.readAsDataURL(file);
+      setError(null);
+      validateAndLoadImage(
+        file,
+        600,
+        200,
+        setBannerPreview,
+        setBannerDataUrl,
+        setBannerWarning,
+        "banner"
+      );
     }
   };
 
@@ -932,7 +1013,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <div className="space-y-1">
                 <p className="font-pixel text-[8px] text-gray-400 text-center">LOGO (512x512) *</p>
                 <label className="cursor-pointer block">
-                  <div className="aspect-square bg-bags-darker border-2 border-dashed border-bags-green flex items-center justify-center overflow-hidden hover:border-bags-gold transition-colors">
+                  <div className={`aspect-square bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
+                    logoWarning ? "border-yellow-500 hover:border-yellow-400" : "border-bags-green hover:border-bags-gold"
+                  }`}>
                     {imagePreview ? (
                       <img src={imagePreview} alt="Token" className="w-full h-full object-cover" />
                     ) : (
@@ -945,18 +1028,23 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   </div>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
                     onChange={handleImageChange}
                     className="hidden"
                   />
                 </label>
+                {logoWarning && (
+                  <p className="font-pixel text-[6px] text-yellow-400 text-center">⚠️ {logoWarning}</p>
+                )}
               </div>
 
               {/* Banner Upload */}
               <div className="space-y-1">
                 <p className="font-pixel text-[8px] text-gray-400 text-center">BANNER (600x200)</p>
                 <label className="cursor-pointer block">
-                  <div className="aspect-[3/1] bg-bags-darker border-2 border-dashed border-amber-600/50 flex items-center justify-center overflow-hidden hover:border-amber-500 transition-colors">
+                  <div className={`aspect-[3/1] bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
+                    bannerWarning ? "border-yellow-500 hover:border-yellow-400" : "border-amber-600/50 hover:border-amber-500"
+                  }`}>
                     {bannerPreview ? (
                       <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
                     ) : (
@@ -969,12 +1057,16 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   </div>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
                     onChange={handleBannerChange}
                     className="hidden"
                   />
                 </label>
-                <p className="font-pixel text-[6px] text-gray-500 text-center">3:1 ratio for DexScreener</p>
+                {bannerWarning ? (
+                  <p className="font-pixel text-[6px] text-yellow-400 text-center">⚠️ {bannerWarning}</p>
+                ) : (
+                  <p className="font-pixel text-[6px] text-gray-500 text-center">3:1 ratio for DexScreener</p>
+                )}
               </div>
             </div>
 

@@ -3,6 +3,7 @@
 // Uses Claude for creative text and Replicate for image generation
 
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 
 // =============================================================================
 // TYPES
@@ -456,7 +457,7 @@ function generateProceduralImage(
 }
 
 // =============================================================================
-// IMAGE RESIZING
+// IMAGE RESIZING (using sharp for high-quality resizing)
 // =============================================================================
 
 async function resizeImage(
@@ -464,25 +465,51 @@ async function resizeImage(
   targetWidth: number,
   targetHeight: number
 ): Promise<string> {
-  // For server-side, we'll use a canvas-like approach with SVG
-  // Extract the base64 data and return it wrapped in an SVG that scales it
-
   // Parse the data URL
   const matches = imageData.match(/^data:([^;]+);base64,(.+)$/);
   if (!matches) {
-    throw new Error("Invalid image data URL");
+    throw new Error("Invalid image data URL format");
   }
 
   const mimeType = matches[1];
   const base64Data = matches[2];
 
-  // Create an SVG that embeds the image at the target size
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${targetWidth}" height="${targetHeight}">
-    <image href="data:${mimeType};base64,${base64Data}" width="${targetWidth}" height="${targetHeight}" preserveAspectRatio="xMidYMid slice"/>
-  </svg>`;
+  // Convert base64 to buffer
+  const inputBuffer = Buffer.from(base64Data, "base64");
 
-  const svgBase64 = Buffer.from(svg).toString("base64");
-  return `data:image/svg+xml;base64,${svgBase64}`;
+  // Determine output format based on input mime type
+  let outputFormat: "png" | "jpeg" | "webp" = "png";
+  let outputMime = "image/png";
+
+  if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
+    outputFormat = "jpeg";
+    outputMime = "image/jpeg";
+  } else if (mimeType === "image/webp") {
+    outputFormat = "webp";
+    outputMime = "image/webp";
+  }
+
+  // Use sharp to resize the image with high quality
+  let pipeline = sharp(inputBuffer).resize(targetWidth, targetHeight, {
+    fit: "cover", // Cover the target dimensions, cropping if necessary
+    position: "center", // Center the crop
+    withoutEnlargement: false, // Allow enlargement if image is smaller
+  });
+
+  // Apply output format
+  if (outputFormat === "png") {
+    pipeline = pipeline.png({ quality: 100, compressionLevel: 6 });
+  } else if (outputFormat === "jpeg") {
+    pipeline = pipeline.jpeg({ quality: 90, mozjpeg: true });
+  } else {
+    pipeline = pipeline.webp({ quality: 90 });
+  }
+
+  const outputBuffer = await pipeline.toBuffer();
+
+  // Convert back to base64 data URL
+  const outputBase64 = outputBuffer.toString("base64");
+  return `data:${outputMime};base64,${outputBase64}`;
 }
 
 // =============================================================================
