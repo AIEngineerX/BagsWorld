@@ -33,11 +33,13 @@ npm start        # Start production server
 | `src/app/api/world-state/`      | Main API endpoint for WorldState                               |
 | `src/app/api/character-chat/`   | AI chatbot for character interactions                          |
 | `src/app/api/launch-token/`     | Token creation flow                                            |
+| `src/app/api/oak-generate/`     | Professor Oak AI Generator (names, logos, banners)             |
 | `src/game/scenes/BootScene.ts`  | Asset preloading + pixel art texture generation                |
 | `src/game/scenes/WorldScene.ts` | Main game logic, zone rendering, weather                       |
 | `src/lib/types.ts`              | Core types: WorldState, GameCharacter, GameBuilding, GameEvent |
 | `src/lib/store.ts`              | Zustand store                                                  |
 | `src/lib/bags-api.ts`           | BagsApiClient class                                            |
+| `src/components/ProfessorOakChat.tsx` | AI-powered token generation wizard                       |
 
 ### State Management
 
@@ -56,7 +58,8 @@ npm start        # Start production server
 **Optional:**
 
 - `NEXT_PUBLIC_SOLANA_RPC_URL` - Client-side RPC (defaults to Ankr public)
-- `ANTHROPIC_API_KEY` - Enables Claude-powered AI chat
+- `ANTHROPIC_API_KEY` - Enables Claude-powered AI chat and name generation
+- `REPLICATE_API_TOKEN` - Enables AI image generation (falls back to procedural if not set)
 - `BAGS_API_URL` - Defaults to `https://public-api-v2.bags.fm/api/v1`
 - `BITQUERY_API_KEY` - Enables platform-wide Bags.fm live feed (all launches, trades, whales)
 
@@ -150,8 +153,47 @@ Day/Night synced to EST timezone via `timeInfo` from API.
 | Alaa          | `alaa.character.ts`     | HQ               | Skunk Works, R&D                              |
 | Carlo         | `carlo.character.ts`    | HQ               | Ambassador, community                         |
 | BNN           | `bnn.character.ts`      | HQ               | News bot, announcements                       |
-| Professor Oak | `oak.character.ts`      | Founder's Corner | Token launch guide                            |
+| Professor Oak | `oak.character.ts`      | Founder's Corner | AI-powered token generator, launch guide      |
 | Bags Bot      | `bags-bot.character.ts` | All              | Commands, world features                      |
+
+## Professor Oak AI Generator
+
+Professor Oak can generate complete token launch assets using AI:
+
+**Capabilities:**
+- **Name Generation**: 5 creative name/ticker suggestions from a concept (requires `ANTHROPIC_API_KEY`)
+- **Logo Generation**: 512x512 square logos in 5 art styles
+- **Banner Generation**: 600x200 banners for DexScreener (3:1 ratio)
+- **Image Resize**: Resize uploaded images to correct dimensions
+
+**Art Styles:**
+- Pixel Art (16-bit retro aesthetic)
+- Cartoon (bold, playful mascot)
+- Kawaii (cute chibi style)
+- Minimalist (clean, modern shapes)
+- Abstract (geometric art)
+
+**Image Generation:**
+- With `REPLICATE_API_TOKEN`: Uses SDXL for high-quality generation
+- Without: Falls back to procedural SVG pixel art (free, instant)
+
+**API Endpoint:** `POST /api/oak-generate`
+```json
+{
+  "action": "suggest-names" | "generate-logo" | "generate-banner" | "resize-image" | "full-wizard",
+  "concept": "a space cat exploring galaxies",
+  "style": "pixel-art" | "cartoon" | "cute" | "minimalist" | "abstract"
+}
+```
+
+**UI Flow:**
+1. User clicks Professor Oak in Founder's Corner
+2. Clicks "AI GENERATE" button
+3. Enters token concept
+4. Selects art style
+5. Picks from 5 generated names
+6. Reviews generated logo and banner
+7. "USE & LAUNCH" pre-fills LaunchModal
 
 ## Community Funding Model
 

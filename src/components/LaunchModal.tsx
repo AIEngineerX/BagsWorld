@@ -97,7 +97,10 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [bannerDataUrl, setBannerDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
   const [launchStatus, setLaunchStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -138,6 +141,48 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
     setDuplicateWarning(warnings);
   }, [formData.name, formData.symbol]);
 
+  // Listen for pre-fill events from Professor Oak AI Generator
+  useEffect(() => {
+    const handlePrefill = (e: Event) => {
+      const event = e as CustomEvent<{
+        name?: string;
+        symbol?: string;
+        description?: string;
+        logo?: string;
+        banner?: string;
+      }>;
+
+      const { name, symbol, description, logo, banner } = event.detail;
+
+      // Update form data
+      setFormData(prev => ({
+        ...prev,
+        name: name || prev.name,
+        symbol: symbol || prev.symbol,
+        description: description || prev.description,
+      }));
+
+      // Set logo if provided
+      if (logo) {
+        setImagePreview(logo);
+        setImageDataUrl(logo);
+      }
+
+      // Set banner if provided
+      if (banner) {
+        setBannerPreview(banner);
+        setBannerDataUrl(banner);
+      }
+
+      setPrefilled(true);
+    };
+
+    window.addEventListener("bagsworld-launch-prefill", handlePrefill);
+    return () => {
+      window.removeEventListener("bagsworld-launch-prefill", handlePrefill);
+    };
+  }, []);
+
   const userTotalBps = feeShares.reduce((sum, f) => sum + (f.username ? f.bps : 0), 0);
   const totalBps = userTotalBps + ecosystemFee.bps; // Include ecosystem fee
   const isValidBps = totalBps === 10000; // Must equal exactly 100% (Bags.fm requirement)
@@ -151,6 +196,19 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         setImagePreview(result);
         // Keep the full data URL for API submission
         setImageDataUrl(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setBannerPreview(result);
+        setBannerDataUrl(result);
       };
       reader.readAsDataURL(file);
     }
@@ -859,27 +917,65 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               </div>
             </div>
 
-            {/* Image Upload */}
-            <div className="flex justify-center">
-              <label className="cursor-pointer">
-                <div className="w-24 h-24 bg-bags-darker border-2 border-dashed border-bags-green flex items-center justify-center overflow-hidden">
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="Token" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="font-pixel text-[8px] text-gray-500 text-center">
-                      CLICK TO
-                      <br />
-                      UPLOAD
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </label>
+            {/* AI Generated Notice */}
+            {prefilled && (
+              <div className="bg-purple-500/10 border border-purple-500/30 p-2 text-center">
+                <p className="font-pixel text-[8px] text-purple-400">
+                  🤖 Pre-filled by Professor Oak AI Generator
+                </p>
+              </div>
+            )}
+
+            {/* Image Upload - Logo and Banner side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Logo Upload */}
+              <div className="space-y-1">
+                <p className="font-pixel text-[8px] text-gray-400 text-center">LOGO (512x512) *</p>
+                <label className="cursor-pointer block">
+                  <div className="aspect-square bg-bags-darker border-2 border-dashed border-bags-green flex items-center justify-center overflow-hidden hover:border-bags-gold transition-colors">
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="Token" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-pixel text-[8px] text-gray-500 text-center">
+                        CLICK TO
+                        <br />
+                        UPLOAD
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Banner Upload */}
+              <div className="space-y-1">
+                <p className="font-pixel text-[8px] text-gray-400 text-center">BANNER (600x200)</p>
+                <label className="cursor-pointer block">
+                  <div className="aspect-[3/1] bg-bags-darker border-2 border-dashed border-amber-600/50 flex items-center justify-center overflow-hidden hover:border-amber-500 transition-colors">
+                    {bannerPreview ? (
+                      <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-pixel text-[7px] text-gray-500 text-center">
+                        FOR DEXSCREENER
+                        <br />
+                        (OPTIONAL)
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerChange}
+                    className="hidden"
+                  />
+                </label>
+                <p className="font-pixel text-[6px] text-gray-500 text-center">3:1 ratio for DexScreener</p>
+              </div>
             </div>
 
             {/* Name */}
@@ -1137,6 +1233,17 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         {step === "confirm" && (
           <div className="p-4 space-y-4">
             <div className="bg-bags-darker p-4 space-y-3">
+              {/* Banner Preview (if provided) */}
+              {bannerPreview && (
+                <div className="w-full aspect-[3/1] overflow-hidden border border-amber-600/30 mb-2">
+                  <img
+                    src={bannerPreview}
+                    alt="Banner"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
               <div className="flex items-center gap-4">
                 {imagePreview && (
                   <img
