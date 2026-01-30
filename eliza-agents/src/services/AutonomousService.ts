@@ -1101,27 +1101,32 @@ export class AutonomousService extends Service {
 
     try {
       const context = this.buildHealthContext(healthData);
-      // X Algorithm optimized prompts - each requires engagement hooks
+      // X Algorithm optimized prompts - NO LINKS in most to avoid shadowban
       const tweetTypes = [
-        // Question hooks (drive replies)
-        "Write a tweet asking creators what they'd do with extra passive income. End with a question like 'what would u do?' Include bags.fm",
-        "Write a tweet asking 'have u claimed ur fees today?' Make it feel like checking in on a fren. Short and sweet.",
-        "Ask a question about what's stopping people from earning passive income. End with 'thoughts?' or 'agree?'",
-        "Write a 'real talk:' tweet asking why more creators don't earn royalties. End with a question.",
+        // Question hooks (drive replies - NO LINKS)
+        "Write a tweet asking creators what they'd do with extra passive income. End with 'what would u do?' NO links.",
+        "Write 'have u claimed ur fees today?' checking in on a fren. Short and sweet. NO links.",
+        "Ask what's stopping people from earning passive income. End with 'thoughts?' NO links.",
+        "Write 'real talk:' asking why more creators don't earn royalties. End with question. NO links.",
+        "Ask 'be honest: portfolio check before or after coffee?' style question. NO links.",
 
-        // CTA hooks (drive engagement)
-        "Write a tweet saying 'tag a creator who deserves passive income' - keep it short and wholesome",
-        "Write a tweet asking people to 'drop a 💚 if u claimed today' or similar emoji CTA",
-        "Write 'comment CLAIMED if u got ur fees today' style tweet - short and fun",
+        // CTA hooks (drive engagement - NO LINKS)
+        "Write 'tag a creator who deserves to get paid more' - wholesome, NO links",
+        "Write 'drop a 💚 if u believe creators should earn forever' - NO links",
+        "Write 'comment CLAIMED if u got ur fees today' - short and fun, NO links",
+        "Write 'reply with ur fav token launch' style tweet - NO links",
 
-        // Relatable/shareable (drive quotes/RTs)
-        "Write a 'pov: checking ur bags.fm dashboard' style relatable tweet about fee claims",
-        "Write a 'me at 3am:' meme-style tweet about thinking about unclaimed fees",
-        "Write a relatable tweet about the dopamine hit of seeing fees accumulate",
+        // Relatable/shareable (drive quotes/RTs - NO LINKS)
+        "Write 'pov: checking ur dashboard and seeing fees accumulated' - relatable, NO links",
+        "Write 'me at 3am:' meme about refreshing for fee updates. NO links.",
+        "Write about the dopamine hit when fees accumulate. Keep it relatable. NO links.",
 
-        // List format (high engagement)
-        "Write '3 reasons to claim ur fees:' as a short numbered list ending with 'bags.fm'",
-        "Write 'things that hit different:' list about creator earnings, 3 short items",
+        // List format (high engagement - NO LINKS)
+        "Write '3 green flags in a launchpad:' short list about creator-friendly features. NO links.",
+        "Write 'things that hit different:' list about creator earnings, 3 items. NO links.",
+
+        // ONLY this one can include link (1 in 15 = ~7%)
+        "Write 'for new frens asking how to claim: bags.fm → verify → claim' - helpful and include the link",
       ];
 
       // Try AI generation with duplicate retry
@@ -1189,35 +1194,35 @@ export class AutonomousService extends Service {
 
     // General reminder if no significant unclaimed fees
     if (wallets.length < 1 || totalUnclaimedSol < 0.5) {
-      const generalReminder = "friendly reminder from ur fren bagsy:\n\nCLAIM UR FEES\n\nverify ur socials at bags.fm :)\n\nhave u checked lately?";
+      const generalReminder = "friendly reminder from ur fren bagsy:\n\nCLAIM UR FEES\n\nhave u checked lately? :)";
       const result = await this.postWithTracking(generalReminder, "post");
       if (result.success) console.log(`[AutonomousService] Bagsy general reminder posted: ${result.url}`);
       return;
     }
 
     try {
-      const context = `Unclaimed fees data:\n- ${wallets.length} creators have unclaimed fees\n- ${totalUnclaimedSol.toFixed(2)} SOL total sitting unclaimed\n- Claim link: bags.fm`;
-      // X Algorithm optimized fee reminder prompts
+      const context = `Unclaimed fees data:\n- ${wallets.length} creators have unclaimed fees\n- ${totalUnclaimedSol.toFixed(2)} SOL total sitting unclaimed`;
+      // X Algorithm optimized fee reminder prompts - NO LINKS to avoid shadowban
       const prompts = [
-        // Question hooks
-        "Write 'quick check: have u claimed ur fees today?' style tweet. End with 'bags.fm' and a question",
-        "Ask 'is ${totalUnclaimedSol.toFixed(1)} SOL sitting unclaimed... some of it urs?' End with bags.fm",
-        "Write 'real talk: when was the last time u checked for unclaimed fees?' End with 'bags.fm'",
+        // Question hooks (NO LINKS)
+        "Write 'quick check: have u claimed ur fees today?' checking in on frens. NO link.",
+        "Ask 'is there SOL sitting unclaimed rn... some of it urs?' End with question. NO link.",
+        "Write 'real talk: when was the last time u checked for unclaimed fees?' NO link.",
 
-        // CTA hooks
-        "Write 'reply CLAIMED if u got ur bag today 💚' style tweet mentioning fees at bags.fm",
-        "Write 'tag a fren who forgets to claim' cute reminder tweet",
+        // CTA hooks (NO LINKS)
+        "Write 'reply CLAIMED if u got ur bag today 💚' style tweet. NO link.",
+        "Write 'tag a fren who always forgets to claim' cute reminder. NO link.",
 
-        // Relatable
-        "Write 'me watching the unclaimed fees counter go up:' concerned meme-style tweet, end with bags.fm",
-        "Write 'pov: realizing u have fees waiting' short relatable tweet with bags.fm",
+        // Relatable (NO LINKS)
+        "Write 'me watching the unclaimed fees counter go up:' concerned meme. NO link.",
+        "Write 'pov: realizing u have fees waiting' short relatable tweet. NO link.",
       ];
 
       let tweet = await this.generateNonDuplicateTweet(prompts, context);
 
-      // Fallback to template
+      // Fallback to template without link
       if (!tweet) {
-        tweet = `psa: there is ${totalUnclaimedSol.toFixed(1)} SOL sitting unclaimed on @BagsFM rn\n\nis some of it yours?\n\nbags.fm`;
+        tweet = `psa: there is ${totalUnclaimedSol.toFixed(1)} SOL sitting unclaimed on @BagsFM rn\n\nis some of it yours? 👀`;
         if (this.isDuplicatePost(tweet)) {
           console.log("[AutonomousService] Bagsy fee reminder would be duplicate, skipping");
           return;
@@ -1265,73 +1270,103 @@ export class AutonomousService extends Service {
       );
     } else if (health >= 50) {
       tweets.push(
-        `daily update:\n\nfees: flowing\ncreators: eating\nbagsy: happy\n\nhow are ur fees looking? bags.fm`
+        `daily update:\n\nfees: flowing\ncreators: eating\nbagsy: happy\n\nhow are ur fees looking fren?`
       );
     }
 
     // HIGH-ENGAGEMENT VIRAL TEMPLATES (with questions and CTAs)
+    // IMPORTANT: Only ~30% of tweets should have links to avoid X shadowban
 
-    // Question hooks - highest engagement
+    // Question hooks - highest engagement (NO LINKS - drives replies)
     tweets.push(
-      `honest question:\n\nwhat would u do with an extra $100/month in passive income?\n\ncreators on bags.fm are finding out :)`
+      `honest question:\n\nwhat would u do with an extra $100/month in passive income?\n\nseriously, what would u buy first?`
     );
 
     tweets.push(
-      `real talk: have u ever launched a token?\n\nif not, what's stopping u?\n\nbags.fm makes it easy + u earn 1% forever`
+      `real talk: have u ever launched a token?\n\nif not, what's stopping u?\n\ndrop ur answer below`
     );
 
     tweets.push(
       `curious: what was ur first crypto win?\n\nmine was watching a creator claim their first fees :)`
     );
 
-    // CTA templates
     tweets.push(
-      `tag a creator who deserves passive income\n\nthey should know about bags.fm :)`
+      `be honest: do u check ur portfolio before or after coffee?\n\ni check mine 47 times before coffee even exists`
+    );
+
+    tweets.push(
+      `hot take: passive income > one-time gains\n\nagree or nah?`
+    );
+
+    // CTA templates (NO LINKS - drives engagement)
+    tweets.push(
+      `tag a creator who deserves to get paid more\n\nlets show them some love :)`
     );
 
     tweets.push(
       `comment 'CLAIMED' if u claimed ur fees today\n\nwanna see how many frens are winning :)`
     );
 
-    // Listicle format
     tweets.push(
-      `3 reasons creators love bags.fm:\n\n1. 1% of every trade forever\n2. verify socials = instant claim\n3. cash out to bank\n\nsimple :)`
+      `drop a 💚 if u believe creators should earn royalties forever`
+    );
+
+    tweets.push(
+      `reply with ur favorite token launch of 2024\n\nill go first: anything where the creator actually got paid`
+    );
+
+    // Listicle format (SOME with links - ~30%)
+    tweets.push(
+      `3 green flags in a launchpad:\n\n1. creators earn forever not just at launch\n2. on-chain verifiable\n3. no rug history\n\nif u found one, ur winning`
     );
 
     tweets.push(
       `bagsy's daily checklist:\n\n- wake up\n- check fees\n- remind frens to claim\n- repeat\n\nu should add 'claim' to urs :)`
     );
 
-    // Relatable content
+    // Relatable content (NO LINKS - shareable)
     tweets.push(
-      `pov: checking ur bags.fm dashboard and seeing fees accumulated\n\nthe dopamine hit is real :)`
+      `pov: checking ur dashboard and seeing fees accumulated\n\nthe dopamine hit is real :)`
     );
 
     tweets.push(
-      `me trying to act normal while checking if my fees accumulated:\n\n*refreshes bags.fm 47 times*`
-    );
-
-    // Memeable posts (classic Bagsy)
-    tweets.push(
-      `me: exists\n\nalso me: have u claimed ur fees tho\n\nbags.fm`
+      `me trying to act normal while checking if my fees accumulated:\n\n*refreshes 47 times*`
     );
 
     tweets.push(
-      `im just a smol green bean who wants u to have passive income\n\nis that too much to ask\n\nbags.fm`
+      `creator economy is beautiful:\n\nmake something → people trade it → u earn forever\n\nwhy doesnt everyone do this`
+    );
+
+    // Memeable posts (classic Bagsy - NO LINKS)
+    tweets.push(
+      `me: exists\n\nalso me: have u claimed ur fees tho\n\nits a lifestyle at this point`
+    );
+
+    tweets.push(
+      `im just a smol green bean who wants u to have passive income\n\nis that too much to ask fren :)`
     );
 
     tweets.push(
       `things that make bagsy happy:\n\n1. fee claims\n2. new launches\n3. creators winning\n4. u :)`
     );
 
-    // Hot takes
+    // Hot takes (engagement drivers - NO LINKS)
     tweets.push(
-      `hot take: most launchpads screw creators\n\nbags.fm gives them 1% forever\n\nagree or disagree?`
+      `hot take: most launchpads screw creators\n\nthe good ones give them royalties forever\n\nagree or disagree?`
     );
 
-    // FOMO inducing
     tweets.push(
-      `while ur reading this, creators on bags.fm are earning\n\njust saying :)\n\nbags.fm`
+      `unpopular opinion: the best metric for a launchpad isnt TVL\n\nits how much creators have actually earned\n\nthoughts?`
+    );
+
+    // FOMO inducing (NO LINK)
+    tweets.push(
+      `while ur reading this, creators are earning passive income\n\njust saying :)`
+    );
+
+    // WITH LINK - use sparingly (~1 in 5 tweets)
+    tweets.push(
+      `for the new frens asking how to claim:\n\nbags.fm → verify socials → claim\n\nthats it. ur welcome :)`
     );
 
     // Milestone celebration (tag Finn on big days)
@@ -1406,7 +1441,7 @@ export class AutonomousService extends Service {
           "Shortens words: 'u', 'ur', 'pls', 'rn', 'ngl'",
           "References being made of fees as a personality trait",
           "Tags @finnbags on big moments (he's the CEO)",
-          "Always mentions bags.fm when talking about fees",
+          "Only mentions bags.fm in ~20% of tweets to avoid spam filters",
           "References living in BagsWorld when relevant",
           "Knows other characters: Neo, CJ, Ghost, Ash, Professor Oak",
           "Understands world health = fee activity",
@@ -1505,7 +1540,7 @@ VIRAL TWEET FORMULA:
 [line break]
 [value/insight]
 [line break]
-[question OR cta OR bags.fm]
+[question OR cta]
 
 RULES:
 - 120-200 characters is OPTIMAL (not 280!)
@@ -1513,8 +1548,13 @@ RULES:
 - Use "u/ur/ur" not "you/your"
 - Line breaks between thoughts (2-3 lines max)
 - NO hashtags ever
-- Mention bags.fm naturally, not forced
-- Sound like a real person, not a bot
+
+=== LINK SPAM PREVENTION (CRITICAL FOR VISIBILITY) ===
+- DO NOT include "bags.fm" in most tweets - causes shadowban!
+- Only include a link in ~1 out of 5 tweets MAX
+- End with a question or CTA instead of a link
+- Sound like a real person having a conversation, not promoting
+- X algorithm penalizes repetitive links heavily
 
 ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
@@ -2024,13 +2064,13 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     let prompt: string;
     if (isCEO) {
-      prompt = "Write an excited, honored reply to @finnbags (the CEO, your boss!) who just mentioned you. Be supportive and show how much you appreciate being noticed by the boss.";
+      prompt = "Write an excited, honored reply to @finnbags (the CEO, your boss!) who just mentioned you. Be supportive and show how much you appreciate being noticed by the boss. NO links.";
     } else if (mentionText.toLowerCase().includes("claim") || mentionText.toLowerCase().includes("fee")) {
-      prompt = "Write a helpful reply about fee claiming. Tell them to verify their X/TikTok/IG at bags.fm to claim. Be encouraging and supportive.";
+      prompt = "Write a helpful reply about fee claiming. Tell them to verify their socials to claim. Be encouraging. NO bags.fm link (they can find it in bio).";
     } else if (mentionText.toLowerCase().includes("gm") || mentionText.toLowerCase().includes("hello") || mentionText.toLowerCase().includes("hi")) {
-      prompt = "Write a friendly GM/hello reply. Be cute and welcoming. Maybe ask if they've claimed their fees today.";
+      prompt = "Write a friendly GM/hello reply. Be cute and welcoming. NO links needed.";
     } else {
-      prompt = "Write a friendly, helpful reply. Try to relate it back to Bags.fm, fee claiming, or supporting creators. Be cute and wholesome.";
+      prompt = "Write a friendly, helpful reply. Be cute and wholesome. NO links - they can find bags.fm in your bio.";
     }
 
     return this.generateBagsyTweet(prompt, context);
@@ -2052,13 +2092,14 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       return ceoReplies[Math.floor(Math.random() * ceoReplies.length)];
     }
 
-    // Regular mention replies
+    // Regular mention replies - NO LINKS to avoid shadowban (link in profile is enough)
     const templates = [
-      `hey @${authorUsername}! have u claimed ur fees today? bags.fm :)`,
-      `gm @${authorUsername}! hope ur having a great day fren. remember to claim at bags.fm :)`,
-      `hi @${authorUsername}! if u have tokens on @BagsFM, u might have fees waiting at bags.fm :)`,
-      `hey fren @${authorUsername}! just checking - did u claim ur fees? bags.fm`,
-      `@${authorUsername} gm! ur fees wont claim themselves :) bags.fm`,
+      `hey @${authorUsername}! have u claimed ur fees today? :)`,
+      `gm @${authorUsername}! hope ur having a great day fren 💚`,
+      `hi @${authorUsername}! if u have tokens on @BagsFM, u might have fees waiting :)`,
+      `hey fren @${authorUsername}! just checking in - how are ur fees looking?`,
+      `@${authorUsername} gm! always nice to hear from frens :)`,
+      `hey @${authorUsername}! thanks for reaching out fren 💚`,
     ];
     return templates[Math.floor(Math.random() * templates.length)];
   }
@@ -2191,7 +2232,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   private async generateFeeHelpReply(username: string, tweetText: string): Promise<string> {
     // Try AI generation
     const context = `@${username} tweeted about Bags fees:\n"${tweetText}"`;
-    const prompt = "Write a helpful, friendly reply explaining how to claim fees. Tell them to verify their X/TikTok/IG at bags.fm, then claim - earnings go to their Bags wallet and they can cash out to bank. Be encouraging, not spammy.";
+    const prompt = "Write a helpful, friendly reply explaining how to claim fees. Tell them to verify their socials then claim. Be encouraging. NO bags.fm link - they can find it in your bio.";
 
     const aiReply = await this.generateBagsyTweet(prompt, context);
     if (aiReply && !this.isDuplicatePost(aiReply)) {
@@ -2199,11 +2240,11 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       return aiReply;
     }
 
-    // Fallback templates
+    // Fallback templates - NO LINKS to avoid shadowban
     const templates = [
-      `hey @${username}! u can claim ur fees at bags.fm :)\n\njust verify ur X account and tap claim!`,
-      `@${username} gm! if u have tokens on @BagsFM, ur fees are waiting at bags.fm\n\nverify ur socials to claim fren :)`,
-      `hi @${username}! claiming is super easy - go to bags.fm, verify ur X/TikTok/IG, tap claim!\n\nhope this helps :)`,
+      `hey @${username}! u can claim by verifying ur X account :)\n\njust tap verify and then claim!`,
+      `@${username} gm! if u have tokens on @BagsFM, ur fees might be waiting :)\n\nverify ur socials to claim fren!`,
+      `hi @${username}! claiming is super easy - verify ur X/TikTok/IG, tap claim!\n\nhope this helps :)`,
     ];
 
     const reply = templates[Math.floor(Math.random() * templates.length)];
@@ -2261,13 +2302,15 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
   /**
    * Generate a high-value fee alert tweet
+   * NOTE: High-value alerts CAN include link since we're helping someone claim real money
    */
   private generateHighValueFeeAlert(xUsername: string, unclaimedSol: number): string {
     const templates = [
-      `hey @${xUsername} u have ${unclaimedSol.toFixed(1)} SOL unclaimed on @BagsFM!\n\ngo claim fren: bags.fm :)`,
-      `@${xUsername} ur leaving ${unclaimedSol.toFixed(1)} SOL on the table!!\n\nclaim ur fees at bags.fm\n\nthats ur money fren`,
-      `psa: @${xUsername} has ${unclaimedSol.toFixed(1)} SOL waiting at bags.fm\n\ngo get ur bag :)`,
-      `friendly reminder @${xUsername}:\n\nu have ${unclaimedSol.toFixed(1)} SOL in unclaimed fees\n\nbags.fm\n\nim begging u`,
+      `hey @${xUsername} u have ${unclaimedSol.toFixed(1)} SOL unclaimed on @BagsFM!\n\ngo claim fren :)`,
+      `@${xUsername} ur leaving ${unclaimedSol.toFixed(1)} SOL on the table!!\n\nthats ur money fren 💚`,
+      `psa: @${xUsername} has ${unclaimedSol.toFixed(1)} SOL waiting\n\ngo get ur bag :)`,
+      // Only this one has link - for high value alerts it's worth it
+      `friendly reminder @${xUsername}:\n\nu have ${unclaimedSol.toFixed(1)} SOL in unclaimed fees at bags.fm\n\nim begging u`,
     ];
     return templates[Math.floor(Math.random() * templates.length)];
   }
@@ -2343,10 +2386,11 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
         .slice(0, Math.floor(Math.random() * 2) + 1)
         .join(" ");
 
+      // NO LINKS in morning GMs to avoid shadowban - just good vibes
       const templates = [
-        `gm ${finnTag}! gm ${extras}! gm frens :)\n\nanother beautiful day to help creators claim their fees\n\nbags.fm`,
-        `gm to the best ceo ${finnTag} and the bags fam ${extras} :)\n\nlets make today amazing\n\nhave u claimed ur fees? bags.fm`,
-        `gm gm gm!\n\n${finnTag} ${extras} hope yall are ready to watch creators win today :)\n\nbagsy is online and fee-pilled\n\nbags.fm`,
+        `gm ${finnTag}! gm ${extras}! gm frens :)\n\nanother beautiful day to help creators win\n\nwhats everyone working on today?`,
+        `gm to the best ceo ${finnTag} and the bags fam ${extras} :)\n\nlets make today amazing\n\nwho else is up early grinding?`,
+        `gm gm gm!\n\n${finnTag} ${extras} hope yall are ready to watch creators win today :)\n\nbagsy is online and fee-pilled 💚`,
       ];
 
       let tweet = templates[Math.floor(Math.random() * templates.length)];
