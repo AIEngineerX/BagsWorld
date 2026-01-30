@@ -24,7 +24,7 @@ const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 // Default trading configuration (BagBot-inspired, tuned for Bags.fm reality)
 // Reference: https://github.com/BagBotX/bagbot + DexScreener Bags runner analysis
-// Key insight: Bags runners have LOW mcap, HUGE vol/mcap ratios, run for days
+// Updated Jan 2025: Relaxed filters based on GAS token success patterns
 const DEFAULT_CONFIG = {
   enabled: false, // Must be explicitly enabled
   // Position sizing (BagBot uses 1 SOL max)
@@ -38,28 +38,28 @@ const DEFAULT_CONFIG = {
   // Risk management
   stopLossPercent: 15, // Cut losses at -15% (BagBot uses same)
   // Dead position detection
-  maxHoldTimeMinutes: 480, // 8 hours - Bags runners need time (LOBSTER ran for days)
+  maxHoldTimeMinutes: 480, // 8 hours - Bags runners need time
   minVolumeToHoldUsd: 500, // Need some volume to keep holding
   deadPositionDecayPercent: 25, // If down 25%+ and stale, consider dead
-  // Liquidity requirements - TUNED FOR BAGS REALITY
-  // Real runners: SLACKINT $21K mcap, RIZZLE $11K, ALBERTA $9K
-  minLiquidityUsd: 1000, // $1K minimum (Bags tokens have low liq but high volume)
+  // Liquidity requirements - BALANCED (BagBot uses $50K, but Bags tokens are smaller)
+  minLiquidityUsd: 5000, // $5K minimum - prevents bad fills from low liquidity
   minMarketCapUsd: 5000, // $5K minimum (runners can start small)
-  // Quality filters - balanced for Bags
+  // Quality filters - aligned with BagBot patterns
   maxCreatorFeeBps: 500, // 5% max (some Bags creators set higher)
-  minBuySellRatio: 1.1, // Slightly bullish (runners show 1.2-1.5x)
+  minBuySellRatio: 1.15, // Bullish pressure required (BagBot uses 1.2)
   minHolders: 5, // New tokens start with few holders
-  minVolume24hUsd: 10000, // $10K volume - KEY FILTER (runners have massive vol/mcap)
-  maxPriceImpactPercent: 8.0, // 8% impact for Bags micro-caps (low liq reality)
+  minVolume24hUsd: 5000, // $5K volume - lowered for more opportunities
+  maxPriceImpactPercent: 3.0, // 3% max - tighter for better execution (BagBot uses 1%)
   // Timing - EXPANDED (Bags runners are days old, not minutes)
   minLaunchAgeSec: 300, // 5 minutes minimum (avoid instant rugs)
-  maxLaunchAgeSec: 604800, // 7 DAYS max (LOBSTER, SLACKINT were 3-4 days old)
-  slippageBps: 500, // 5% slippage for low-liquidity Bags tokens
+  maxLaunchAgeSec: 604800, // 7 DAYS max
+  slippageBps: 300, // 3% slippage - tighter to match price impact limit
   // Bags-specific signals
-  requireTokenClaimed: false, // DISABLED - many runners don't have claims yet
+  requireTokenClaimed: false, // Not required - many good tokens don't have claims yet
   minLifetimeFeesSol: 0.0, // Don't require fees (volume is better indicator)
-  // NEW: Volume/MCap ratio is the KEY metric for Bags runners
-  minVolumeMcapRatio: 1.0, // 100% vol/mcap minimum (SLACKINT had 12x!)
+  // Volume/MCap ratio - used in SCORING, not as hard filter
+  // GAS token had 200% vol/mcap at peak, healthy tokens have 30-80%
+  minVolumeMcapRatio: 0.0, // DISABLED as hard filter - incorporated into scoring instead
 };
 
 // Top trader wallets to study (from Kolscan & GMGN leaderboards)
@@ -197,7 +197,7 @@ export interface GhostTraderConfig {
   minHolders: number;
   minVolume24hUsd: number;
   maxPriceImpactPercent: number;
-  minVolumeMcapRatio: number; // KEY METRIC: vol/mcap ratio (Bags runners have 1x-20x!)
+  minVolumeMcapRatio: number; // Set to 0 to disable hard filter (used in scoring instead)
   // Timing
   minLaunchAgeSec: number;
   maxLaunchAgeSec: number;
@@ -1020,13 +1020,11 @@ export class GhostTrader {
       return reject(`low volume ($${volume24hUsd.toFixed(0)} < $${this.config.minVolume24hUsd})`);
     }
 
-    // === VOLUME/MCAP RATIO - THE KEY BAGS RUNNER METRIC ===
-    // Real runners: SLACKINT 12x, ALBERTA 19x, LOBSTER 4x
-    if (volumeMcapRatio < this.config.minVolumeMcapRatio) {
-      return reject(`low vol/mcap ratio (${(volumeMcapRatio * 100).toFixed(0)}% < ${(this.config.minVolumeMcapRatio * 100).toFixed(0)}%)`);
-    }
+    // === VOLUME/MCAP RATIO ===
+    // No longer a hard filter - incorporated into scoring instead
+    // GAS token had 200% vol/mcap, healthy tokens have 30-80%, lower is fine if other signals strong
 
-    // Check buy/sell ratio (softer filter - runners show 1.1-1.5x)
+    // Check buy/sell ratio
     if (buySellRatio < this.config.minBuySellRatio) {
       return reject(`weak buy pressure (${buySellRatio.toFixed(2)} < ${this.config.minBuySellRatio})`);
     }
@@ -1061,115 +1059,126 @@ export class GhostTrader {
       return reject(`high price impact (est ${estimatedImpact.toFixed(1)}% > ${this.config.maxPriceImpactPercent}%)`);
     }
 
-    // === BAGS RUNNER SCORING (tuned from DexScreener analysis) ===
-    // Key insight: Bags runners have MASSIVE vol/mcap ratios (1x-20x)
+    // === SCORING SYSTEM (BagBot-aligned weights) ===
+    // Weights: Vol/MCap 25%, Buy/Sell 25%, Momentum 20%, Liquidity 15%, Age 15%
+    // Max possible: ~100 base + bonuses
 
-    // 1. VOLUME/MCAP RATIO (0-35 points) - THE KEY METRIC for Bags runners
-    // SLACKINT: 12x, ALBERTA: 19x, LOBSTER: 4x, RIZZLE: 6x
-    if (volumeMcapRatio >= 5.0) {
-      score += 35;
-      reasons.push(`insane vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%!) - runner alert`);
-    } else if (volumeMcapRatio >= 2.0) {
-      score += 30;
-      reasons.push(`massive vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
-    } else if (volumeMcapRatio >= 1.0) {
+    // 1. VOLUME/MCAP RATIO (0-25 points) - key activity indicator
+    // GAS token: 200% vol/mcap, healthy active tokens: 30-80%
+    if (volumeMcapRatio >= 2.0) {
       score += 25;
+      reasons.push(`exceptional vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
+    } else if (volumeMcapRatio >= 1.0) {
+      score += 22;
       reasons.push(`strong vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
     } else if (volumeMcapRatio >= 0.5) {
-      score += 15;
+      score += 18;
+      reasons.push(`good vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
+    } else if (volumeMcapRatio >= 0.3) {
+      score += 14;
       reasons.push(`healthy vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
+    } else if (volumeMcapRatio >= 0.1) {
+      score += 8;
+      reasons.push(`moderate vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
     } else {
-      score += 5;
+      score += 3;
       reasons.push(`low vol/mcap (${(volumeMcapRatio * 100).toFixed(0)}%)`);
     }
 
-    // 2. BUY/SELL PRESSURE (0-20 points) - momentum indicator
-    // Real runners: 1.2-1.5x typical, not extreme
+    // 2. BUY/SELL PRESSURE (0-25 points) - momentum indicator
     if (buySellRatio >= 1.5) {
-      score += 20;
+      score += 25;
       reasons.push("strong buy pressure");
     } else if (buySellRatio >= 1.3) {
-      score += 15;
+      score += 20;
       reasons.push("good buy pressure");
-    } else if (buySellRatio >= 1.1) {
+    } else if (buySellRatio >= 1.2) {
+      score += 15;
+      reasons.push("positive buy pressure");
+    } else if (buySellRatio >= 1.15) {
       score += 10;
-      reasons.push("positive buy/sell");
+      reasons.push("slight buy pressure");
     } else {
       score += 5;
-      reasons.push("neutral momentum");
+      reasons.push("neutral pressure");
     }
 
     // 3. MOMENTUM SIGNALS (0-20 points) - price action
-    // Bags runners pump 100-800%+ over days
     if (priceChange24h > 100 && priceChange24h < 500) {
       score += 20;
       reasons.push(`pumping (+${priceChange24h.toFixed(0)}%)`);
     } else if (priceChange24h > 50 && priceChange24h <= 100) {
-      score += 15;
+      score += 17;
       reasons.push(`strong momentum (+${priceChange24h.toFixed(0)}%)`);
     } else if (priceChange24h > 20 && priceChange24h <= 50) {
-      score += 12;
+      score += 14;
       reasons.push(`good momentum (+${priceChange24h.toFixed(0)}%)`);
-    } else if (priceChange24h > 0) {
-      score += 8;
+    } else if (priceChange24h > 5 && priceChange24h <= 20) {
+      score += 10;
       reasons.push(`positive (+${priceChange24h.toFixed(0)}%)`);
-    } else if (priceChange24h > -15) {
-      score += 5;
-      reasons.push("consolidating");
+    } else if (priceChange24h > -10) {
+      score += 6;
+      reasons.push("stable/consolidating");
+    } else if (priceChange24h > -20) {
+      score += 2;
+      reasons.push("slight dip");
     } else {
       redFlags.push(`dumping (${priceChange24h.toFixed(0)}%)`);
     }
 
-    // Don't penalize big pumps on Bags - they can keep running!
-    // LOBSTER went +790%, SLACKINT +473%
+    // Late entry warning for massive pumps
     if (priceChange24h > 500) {
-      // Already pumped a lot, still can enter but be careful
       reasons.push(`already pumped ${priceChange24h.toFixed(0)}% - late entry risk`);
     }
 
-    // 4. LIQUIDITY (0-10 points) - less important for Bags micro-caps
-    // Bags tokens have low liq but high volume
-    if (liquidityUsd >= 10000) {
+    // 4. LIQUIDITY (0-15 points) - execution quality
+    // Minimum is now $5K, reward higher liquidity
+    if (liquidityUsd >= 50000) {
+      score += 15;
+      reasons.push("excellent liquidity ($50K+)");
+    } else if (liquidityUsd >= 20000) {
+      score += 13;
+      reasons.push("strong liquidity ($20K+)");
+    } else if (liquidityUsd >= 10000) {
       score += 10;
       reasons.push("good liquidity ($10K+)");
     } else if (liquidityUsd >= 5000) {
-      score += 8;
-      reasons.push("decent liquidity ($5K+)");
-    } else if (liquidityUsd >= 2000) {
-      score += 6;
-      reasons.push("some liquidity ($2K+)");
-    } else if (liquidityUsd >= 1000) {
-      score += 4;
-      reasons.push("low liquidity ($1K+)");
+      score += 7;
+      reasons.push("adequate liquidity ($5K+)");
     } else {
-      score += 2;
-      reasons.push("minimal liquidity");
+      score += 3;
+      reasons.push("minimum liquidity");
     }
 
-    // 5. TOKEN AGE (0-10 points) - Bags runners are DAYS old, not minutes
-    // LOBSTER: 4 days, SLACKINT: 3 days, ALBERTA: 9 days
+    // 5. TOKEN AGE (0-15 points) - rug risk assessment
     const ageDays = ageSeconds / 86400;
-    if (ageDays >= 1 && ageDays <= 7) {
-      score += 10;
-      reasons.push(`good age (${ageDays.toFixed(1)} days)`);
+    if (ageDays >= 2 && ageDays <= 7) {
+      score += 15;
+      reasons.push(`established (${ageDays.toFixed(1)} days)`);
+    } else if (ageDays >= 1 && ageDays < 2) {
+      score += 12;
+      reasons.push(`young but proven (${ageDays.toFixed(1)} days)`);
     } else if (ageDays >= 0.25 && ageDays < 1) {
       score += 8;
-      reasons.push("young but established");
+      reasons.push("very young");
     } else if (ageDays < 0.25) {
-      score += 5;
-      reasons.push("very new - higher risk");
+      score += 4;
+      reasons.push("brand new - higher risk");
     } else {
-      score += 5;
+      score += 6;
       reasons.push(`older token (${ageDays.toFixed(0)} days)`);
     }
 
-    // Holder distribution bonus
+    // Holder distribution bonus (up to 5 points)
     if (holders >= 100) {
       score += 5;
       reasons.push("well distributed (100+ holders)");
-    } else if (holders >= 30) {
-      score += 3;
-      reasons.push("growing holder base");
+    } else if (holders >= 50) {
+      score += 4;
+      reasons.push("good holder base (50+)");
+    } else if (holders >= 20) {
+      score += 2;
+      reasons.push("growing holders");
     }
 
     // === BAGS-SPECIFIC BONUSES ===
@@ -1225,23 +1234,24 @@ export class GhostTrader {
     }
 
     // === FINAL DECISION ===
-    // Bags runner threshold: 60+ (balanced - not too strict)
-    // Max possible: ~130 (vol/mcap 35 + buy/sell 20 + momentum 20 + liq 10 + age 10 + holders 5 + bags 18 + smart 15)
-    const shouldBuy = score >= 60 && redFlags.length === 0;
+    // Threshold: 55+ to trade (relaxed from 60 for more opportunities)
+    // Max base score: ~100 (vol/mcap 25 + buy/sell 25 + momentum 20 + liq 15 + age 15)
+    // + bonuses: holders 5 + bags fees 18 + smart money 30 + learning adjustment
+    const shouldBuy = score >= 55 && redFlags.length === 0;
 
     // Calculate position size based on score (larger for higher conviction)
     const remainingExposure = this.config.maxTotalExposureSol - this.getTotalExposure();
     let suggestedAmount: number;
 
-    // Position sizing based on score (60-130 range)
-    if (score >= 100) {
-      suggestedAmount = this.config.maxPositionSol; // Max conviction - runner alert
-    } else if (score >= 85) {
+    // Position sizing based on score (55-120 range)
+    if (score >= 95) {
+      suggestedAmount = this.config.maxPositionSol; // Max conviction
+    } else if (score >= 80) {
       suggestedAmount = this.config.maxPositionSol * 0.75; // High conviction
-    } else if (score >= 70) {
+    } else if (score >= 65) {
       suggestedAmount = (this.config.minPositionSol + this.config.maxPositionSol) / 2; // Medium
     } else {
-      suggestedAmount = this.config.minPositionSol; // Minimum size for borderline
+      suggestedAmount = this.config.minPositionSol; // Minimum size for borderline (55-65)
     }
 
     suggestedAmount = Math.min(suggestedAmount, remainingExposure);
