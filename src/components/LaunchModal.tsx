@@ -1423,12 +1423,17 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             <div className="bg-bags-darker p-4 space-y-3">
               {/* Banner Preview (if provided) */}
               {bannerPreview && (
-                <div className="w-full aspect-[3/1] overflow-hidden border border-amber-600/30 mb-2">
-                  <img
-                    src={bannerPreview}
-                    alt="Banner"
-                    className="w-full h-full object-cover"
-                  />
+                <div className="space-y-1 mb-2">
+                  <div className="w-full aspect-[3/1] overflow-hidden border border-amber-600/30">
+                    <img
+                      src={bannerPreview}
+                      alt="Banner"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <p className="font-pixel text-[6px] text-amber-400/70 text-center">
+                    💾 Banner saved locally for DexScreener Enhanced Token Info ($299 separate process)
+                  </p>
                 </div>
               )}
 
