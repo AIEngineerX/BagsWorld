@@ -111,10 +111,16 @@ export function GhostTradingMini() {
   const isEnabled = status?.trading?.enabled || false;
   const openCount = status?.trading?.openPositions || 0;
   const walletAddress = status?.wallet?.address || null;
-  const walletBalance = status?.wallet?.balanceSol || 0;
-  const totalPnl = status?.performance?.totalPnlSol || 0;
   const totalTrades = status?.performance?.totalTrades || 0;
-  const exposure = status?.trading?.totalExposureSol || 0;
+
+  // Handle masked data (returns "***" for non-admin requests)
+  const rawBalance = status?.wallet?.balanceSol;
+  const rawPnl = status?.performance?.totalPnlSol;
+  const rawExposure = status?.trading?.totalExposureSol;
+
+  const walletBalance = typeof rawBalance === "number" ? rawBalance : null;
+  const totalPnl = typeof rawPnl === "number" ? rawPnl : null;
+  const exposure = typeof rawExposure === "number" ? rawExposure : null;
 
   // Format wallet for display (first 4 + last 4)
   const shortWallet = walletAddress
@@ -158,19 +164,22 @@ export function GhostTradingMini() {
         </div>
         <div>
           <p className="font-pixel text-[6px] text-gray-500">BALANCE</p>
-          <p className="font-pixel text-[10px] text-yellow-400">{walletBalance.toFixed(2)}</p>
+          <p className="font-pixel text-[10px] text-yellow-400">
+            {walletBalance !== null ? walletBalance.toFixed(2) : "***"}
+          </p>
         </div>
         <div>
           <p className="font-pixel text-[6px] text-gray-500">EXPOSURE</p>
-          <p className="font-pixel text-[10px] text-purple-300">{exposure.toFixed(2)}</p>
+          <p className="font-pixel text-[10px] text-purple-300">
+            {exposure !== null ? exposure.toFixed(2) : "***"}
+          </p>
         </div>
         <div>
           <p className="font-pixel text-[6px] text-gray-500">P&L</p>
           <p
-            className={`font-pixel text-[10px] ${totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+            className={`font-pixel text-[10px] ${totalPnl === null ? "text-gray-500" : totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
           >
-            {totalPnl >= 0 ? "+" : ""}
-            {totalPnl.toFixed(3)}
+            {totalPnl !== null ? `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(3)}` : "***"}
           </p>
         </div>
       </div>
