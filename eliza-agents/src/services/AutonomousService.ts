@@ -1911,7 +1911,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       const searchTerms = [
         "(bags.fm OR @BagsFM OR @BagsApp) (claim OR fees OR unclaimed)",
         '"claim fees" (solana OR SOL)',
-        '"bags fm" claim",
+        '"bags fm" claim',
       ];
 
       const query = encodeURIComponent(searchTerms[Math.floor(Math.random() * searchTerms.length)] + " -is:retweet -is:reply");
