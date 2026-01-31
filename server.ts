@@ -11,9 +11,8 @@ import next from "next";
 import WebSocket from "ws";
 import { startArenaEngine, stopArenaEngine, getArenaEngine } from "./src/lib/arena-engine";
 
-// Use WebSocket.Server which is the standard export
-const WebSocketServer = WebSocket.Server;
-type RawData = Buffer | ArrayBuffer | Buffer[];
+// Type alias for WebSocket data
+type RawData = WebSocket.Data;
 import { startArenaMonitor, stopArenaMonitor } from "./src/lib/arena-moltbook-monitor";
 import { getQueueStatus } from "./src/lib/arena-matchmaking";
 import type { MatchState, ArenaWSMessage } from "./src/lib/arena-types";
@@ -53,7 +52,7 @@ app.prepare().then(() => {
   });
 
   // Create WebSocket server on /api/arena-ws path
-  const wss = new WebSocketServer({
+  const wss = new WebSocket.Server({
     server,
     path: "/api/arena-ws",
   });
