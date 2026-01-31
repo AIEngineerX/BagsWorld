@@ -46,6 +46,7 @@ import { AgentFeed, AgentToast } from "@/components/AgentFeed";
 import { TradingGymModal } from "@/components/TradingGymModal";
 import { CommunityFundModal } from "@/components/CommunityFundModal";
 import { CasinoModal } from "@/components/CasinoModal";
+import { ArenaModal } from "@/components/ArenaModal";
 import { CasinoAdmin } from "@/components/CasinoAdmin";
 import { OracleTowerModal } from "@/components/OracleTowerModal";
 import { LauncherHub } from "@/components/LauncherHub";
@@ -110,6 +111,7 @@ export default function Home() {
   const [showCasinoAdmin, setShowCasinoAdmin] = useState(false);
   const [showTradingTerminal, setShowTradingTerminal] = useState(false);
   const [showMansionModal, setShowMansionModal] = useState(false);
+  const [showArenaModal, setShowArenaModal] = useState(false);
   const [mansionData, setMansionData] = useState<{
     name?: string;
     holderRank?: number;
@@ -165,6 +167,10 @@ export default function Home() {
       setShowMansionModal(true);
     };
 
+    const handleArenaClick = () => {
+      setShowArenaModal(true);
+    };
+
     // Handle AI action button events
     const handleLaunchClick = () => {
       setShowLaunchModal(true);
@@ -185,6 +191,7 @@ export default function Home() {
       handleTradingTerminalClick as EventListener
     );
     window.addEventListener("bagsworld-mansion-click", handleMansionClick as EventListener);
+    window.addEventListener("bagsworld-arena-click", handleArenaClick as EventListener);
     window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
     window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     return () => {
@@ -205,6 +212,7 @@ export default function Home() {
         handleTradingTerminalClick as EventListener
       );
       window.removeEventListener("bagsworld-mansion-click", handleMansionClick as EventListener);
+      window.removeEventListener("bagsworld-arena-click", handleArenaClick as EventListener);
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     };
@@ -540,8 +548,8 @@ export default function Home() {
               className="text-bags-green hover:text-bags-gold transition-colors"
             >
               @DaddyGhost
-            </a>
-            {" "}•{" "}
+            </a>{" "}
+            •{" "}
           </span>
           <span className="md:hidden">
             <a
@@ -551,8 +559,8 @@ export default function Home() {
               className="text-bags-green hover:text-bags-gold transition-colors"
             >
               @DaddyGhost
-            </a>
-            {" "}•{" "}
+            </a>{" "}
+            •{" "}
           </span>
           <a
             href="https://bags.fm"
@@ -638,6 +646,9 @@ export default function Home() {
 
       {/* Casino Admin - secret panel (Ctrl+Shift+R) */}
       {showCasinoAdmin && <CasinoAdmin onClose={() => setShowCasinoAdmin(false)} />}
+
+      {/* Arena Modal - MoltBook AI agent battles */}
+      {showArenaModal && <ArenaModal onClose={() => setShowArenaModal(false)} />}
 
       {/* Sniper Tower - All Bags.fm tokens in Academy zone */}
       <SniperTowerWrapper />
