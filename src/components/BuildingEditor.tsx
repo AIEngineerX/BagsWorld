@@ -21,6 +21,7 @@ const ZONE_INFO: Record<ZoneType, { name: string; color: string; description: st
   trending: { name: "BagsCity", color: "#F59E0B", description: "Urban neon district" },
   ballers: { name: "Ballers Valley", color: "#8B5CF6", description: "Top holder mansions" },
   founders: { name: "Founder's Corner", color: "#EC4899", description: "Token launch hub" },
+  arena: { name: "MoltBook Arena", color: "#EF4444", description: "AI agent brawl zone" },
 };
 
 interface GlobalToken {
