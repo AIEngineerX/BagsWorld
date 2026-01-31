@@ -9779,6 +9779,15 @@ Use: bags.fm/[yourname]`,
             if (pollCount % 20 === 0) {
               this.fetchArenaLeaderboard();
             }
+
+            // Check MoltBook for new !fight posts every 30 seconds (60 polls)
+            if (pollCount % 60 === 0) {
+              fetch("/api/arena/brawl", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "poll" }),
+              }).catch(() => {}); // Silent fail
+            }
           }
         } catch (err) {
           console.error("[Arena] Polling error:", err);
