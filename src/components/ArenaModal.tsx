@@ -6,131 +6,166 @@ interface ArenaModalProps {
   onClose: () => void;
 }
 
-// Ring post corner decoration
-function RingPost({ position }: { position: "tl" | "tr" | "bl" | "br" }) {
-  const isTop = position.includes("t");
-  const isLeft = position.includes("l");
+// Pixel tree decoration (matches Park zone)
+function PixelTree({ variant = 0 }: { variant?: number }) {
+  const colors = [
+    { leaves: "#22c55e", trunk: "#78350f" }, // Green
+    { leaves: "#4ade80", trunk: "#92400e" }, // Light green
+    { leaves: "#16a34a", trunk: "#713f12" }, // Dark green
+  ];
+  const { leaves, trunk } = colors[variant % 3];
 
   return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      className="absolute z-20"
-      style={{
-        top: isTop ? "-6px" : "auto",
-        bottom: !isTop ? "-6px" : "auto",
-        left: isLeft ? "-6px" : "auto",
-        right: !isLeft ? "-6px" : "auto",
-      }}
-    >
-      {/* Post base */}
-      <rect x="6" y="6" width="12" height="12" fill="#dc2626" />
-      <rect x="8" y="8" width="8" height="8" fill="#ef4444" />
-      {/* Pad top */}
-      <rect x="4" y="4" width="16" height="4" fill="#fbbf24" />
-      <rect x="6" y="2" width="12" height="2" fill="#f59e0b" />
+    <svg width="16" height="20" viewBox="0 0 16 20">
+      {/* Trunk */}
+      <rect x="6" y="14" width="4" height="6" fill={trunk} />
+      <rect x="7" y="14" width="2" height="6" fill="#a16207" />
+      {/* Leaves - layered circles */}
+      <rect x="4" y="8" width="8" height="6" fill={leaves} />
+      <rect x="2" y="10" width="12" height="4" fill={leaves} />
+      <rect x="5" y="4" width="6" height="4" fill={leaves} />
+      <rect x="6" y="2" width="4" height="2" fill={leaves} />
       {/* Highlight */}
-      <rect x="9" y="9" width="3" height="3" fill="#fca5a5" />
+      <rect x="5" y="6" width="2" height="2" fill="#86efac" />
     </svg>
   );
 }
 
-// Boxing glove icon
-function GloveIcon({ size = 20, flip = false }: { size?: number; flip?: boolean }) {
+// Pixel building silhouette (matches BagsCity style)
+function PixelBuilding({ variant = 0 }: { variant?: number }) {
+  const colors = ["#374151", "#4b5563", "#1f2937"];
+  const color = colors[variant % 3];
+
+  return (
+    <svg width="12" height="24" viewBox="0 0 12 24">
+      <rect x="0" y="8" width="12" height="16" fill={color} />
+      <rect x="2" y="4" width="8" height="4" fill={color} />
+      {/* Windows */}
+      <rect x="2" y="10" width="2" height="2" fill="#fbbf24" opacity="0.6" />
+      <rect x="8" y="10" width="2" height="2" fill="#fbbf24" opacity="0.6" />
+      <rect x="5" y="14" width="2" height="2" fill="#fbbf24" opacity="0.8" />
+      <rect x="2" y="18" width="2" height="2" fill="#fbbf24" opacity="0.4" />
+      <rect x="8" y="18" width="2" height="2" fill="#fbbf24" opacity="0.7" />
+    </svg>
+  );
+}
+
+// BagsWorld-style pixel character (similar to AI agents)
+function BagsCharacter({
+  size = 48,
+  variant = 0,
+  flip = false,
+}: {
+  size?: number;
+  variant?: number;
+  flip?: boolean;
+}) {
+  const colors = [
+    { body: "#4ade80", accent: "#86efac", eyes: "#166534" }, // Green (Bagsy style)
+    { body: "#60a5fa", accent: "#93c5fd", eyes: "#1e40af" }, // Blue
+    { body: "#fbbf24", accent: "#fde047", eyes: "#92400e" }, // Gold
+    { body: "#a855f7", accent: "#c084fc", eyes: "#581c87" }, // Purple
+  ];
+  const { body, accent, eyes } = colors[variant % 4];
+
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 16 16"
+      viewBox="0 0 32 32"
       style={{ transform: flip ? "scaleX(-1)" : "none" }}
     >
-      {/* Glove body */}
-      <rect x="2" y="4" width="10" height="8" fill="#dc2626" />
-      <rect x="4" y="2" width="6" height="2" fill="#dc2626" />
-      <rect x="12" y="6" width="2" height="4" fill="#dc2626" />
-      {/* Thumb */}
-      <rect x="0" y="6" width="2" height="4" fill="#dc2626" />
-      {/* Highlight */}
-      <rect x="4" y="5" width="4" height="3" fill="#ef4444" />
-      {/* Wrist */}
-      <rect x="4" y="12" width="6" height="2" fill="#fbbf24" />
-      <rect x="5" y="14" width="4" height="2" fill="#92400e" />
-    </svg>
-  );
-}
-
-// Fighter silhouette
-function FighterIcon({ size = 32, variant = 0 }: { size?: number; variant?: number }) {
-  const colors = [
-    { body: "#3b82f6", accent: "#60a5fa" },
-    { body: "#ef4444", accent: "#f87171" },
-    { body: "#22c55e", accent: "#4ade80" },
-  ];
-  const { body, accent } = colors[variant % 3];
-
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24">
-      {/* Head */}
-      <rect x="9" y="2" width="6" height="6" fill="#fcd34d" />
-      <rect x="10" y="3" width="2" height="2" fill="#1a1a1a" />
-      <rect x="13" y="3" width="1" height="2" fill="#1a1a1a" />
-      {/* Body */}
-      <rect x="8" y="8" width="8" height="8" fill={body} />
-      <rect x="9" y="9" width="3" height="3" fill={accent} />
-      {/* Arms */}
-      <rect x="4" y="8" width="4" height="3" fill={body} />
-      <rect x="16" y="8" width="4" height="3" fill={body} />
+      {/* Body (money bag shape like Bagsy) */}
+      <rect x="8" y="12" width="16" height="14" fill={body} />
+      <rect x="10" y="10" width="12" height="2" fill={body} />
+      <rect x="6" y="14" width="2" height="10" fill={body} />
+      <rect x="24" y="14" width="2" height="10" fill={body} />
+      <rect x="10" y="26" width="12" height="2" fill={body} />
+      {/* Tie/top */}
+      <rect x="13" y="6" width="6" height="4" fill={accent} />
+      <rect x="14" y="4" width="4" height="2" fill={accent} />
+      {/* Eyes */}
+      <rect x="11" y="16" width="3" height="3" fill="#fff" />
+      <rect x="18" y="16" width="3" height="3" fill="#fff" />
+      <rect x="12" y="17" width="2" height="2" fill={eyes} />
+      <rect x="19" y="17" width="2" height="2" fill={eyes} />
+      {/* Happy mouth */}
+      <rect x="13" y="22" width="6" height="2" fill={eyes} />
+      <rect x="12" y="21" width="2" height="1" fill={eyes} />
+      <rect x="18" y="21" width="2" height="1" fill={eyes} />
+      {/* $ symbol */}
+      <rect x="14" y="13" width="4" height="1" fill={accent} />
+      {/* Highlight/shine */}
+      <rect x="9" y="13" width="2" height="3" fill={accent} opacity="0.5" />
+      {/* Arms (ready to fight pose) */}
+      <rect x="4" y="14" width="2" height="6" fill={body} />
+      <rect x="2" y="12" width="4" height="4" fill={body} />
+      <rect x="26" y="14" width="2" height="6" fill={body} />
+      <rect x="26" y="12" width="4" height="4" fill={body} />
       {/* Gloves */}
-      <rect x="2" y="7" width="3" height="4" fill="#dc2626" />
-      <rect x="19" y="7" width="3" height="4" fill="#dc2626" />
-      {/* Legs */}
-      <rect x="9" y="16" width="2" height="6" fill="#1e3a5f" />
-      <rect x="13" y="16" width="2" height="6" fill="#1e3a5f" />
-      {/* Feet */}
-      <rect x="8" y="21" width="3" height="2" fill="#78350f" />
-      <rect x="13" y="21" width="3" height="2" fill="#78350f" />
+      <rect x="1" y="11" width="4" height="4" fill="#f87171" />
+      <rect x="27" y="11" width="4" height="4" fill="#f87171" />
     </svg>
   );
 }
 
-// VS Badge
+// BagsWorld-style VS badge (matches zone indicators)
 function VSBadge() {
   return (
-    <svg width="40" height="40" viewBox="0 0 32 32">
-      {/* Circle bg */}
-      <rect x="4" y="8" width="24" height="16" fill="#fbbf24" />
-      <rect x="8" y="4" width="16" height="4" fill="#fbbf24" />
-      <rect x="8" y="24" width="16" height="4" fill="#fbbf24" />
-      {/* Inner */}
-      <rect x="6" y="10" width="20" height="12" fill="#dc2626" />
-      <rect x="10" y="6" width="12" height="4" fill="#dc2626" />
-      <rect x="10" y="22" width="12" height="4" fill="#dc2626" />
-      {/* V */}
-      <rect x="8" y="10" width="2" height="6" fill="#fff" />
-      <rect x="10" y="14" width="2" height="4" fill="#fff" />
-      <rect x="12" y="10" width="2" height="6" fill="#fff" />
-      {/* S */}
-      <rect x="16" y="10" width="6" height="2" fill="#fff" />
-      <rect x="16" y="12" width="2" height="2" fill="#fff" />
-      <rect x="16" y="14" width="6" height="2" fill="#fff" />
-      <rect x="20" y="16" width="2" height="2" fill="#fff" />
-      <rect x="16" y="18" width="6" height="2" fill="#fff" />
-    </svg>
-  );
-}
-
-// Rope decoration
-function RopeDecoration() {
-  return (
-    <div className="h-[3px] w-full relative my-2">
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-40 translate-y-[1px]" />
+    <div className="relative">
+      {/* Glow effect */}
+      <div className="absolute inset-0 bg-bags-green/30 blur-lg rounded-full" />
+      <svg width="48" height="48" viewBox="0 0 32 32" className="relative">
+        {/* Outer hexagon shape */}
+        <rect x="8" y="4" width="16" height="24" fill="#166534" />
+        <rect x="4" y="8" width="4" height="16" fill="#166534" />
+        <rect x="24" y="8" width="4" height="16" fill="#166534" />
+        {/* Inner fill */}
+        <rect x="10" y="6" width="12" height="20" fill="#22c55e" />
+        <rect x="6" y="10" width="4" height="12" fill="#22c55e" />
+        <rect x="22" y="10" width="4" height="12" fill="#22c55e" />
+        {/* Gold border accent */}
+        <rect x="8" y="4" width="16" height="2" fill="#fbbf24" />
+        <rect x="8" y="26" width="16" height="2" fill="#fbbf24" />
+        {/* V */}
+        <rect x="9" y="10" width="2" height="6" fill="#fff" />
+        <rect x="11" y="14" width="2" height="4" fill="#fff" />
+        <rect x="13" y="10" width="2" height="6" fill="#fff" />
+        {/* S */}
+        <rect x="17" y="10" width="6" height="2" fill="#fff" />
+        <rect x="17" y="12" width="2" height="2" fill="#fff" />
+        <rect x="17" y="14" width="6" height="2" fill="#fff" />
+        <rect x="21" y="16" width="2" height="2" fill="#fff" />
+        <rect x="17" y="18" width="6" height="2" fill="#fff" />
+      </svg>
     </div>
   );
 }
 
-// Copyable text component
+// Grass/ground decoration
+function GrassDecoration() {
+  return (
+    <div className="h-4 w-full relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-t from-green-900/40 to-transparent" />
+      <svg className="w-full h-full" viewBox="0 0 200 16" preserveAspectRatio="none">
+        {/* Grass blades */}
+        {Array.from({ length: 40 }).map((_, i) => (
+          <rect
+            key={i}
+            x={i * 5}
+            y={8 + Math.sin(i) * 4}
+            width="2"
+            height={6 + Math.random() * 4}
+            fill={i % 3 === 0 ? "#22c55e" : i % 3 === 1 ? "#16a34a" : "#15803d"}
+            opacity={0.6 + Math.random() * 0.4}
+          />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// Copyable text component (BagsWorld styled)
 function CopyableText({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -140,7 +175,6 @@ function CopyableText({ text, label }: { text: string; label: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
       const textarea = document.createElement("textarea");
       textarea.value = text;
       document.body.appendChild(textarea);
@@ -153,19 +187,51 @@ function CopyableText({ text, label }: { text: string; label: string }) {
   };
 
   return (
-    <div className="bg-black/50 border border-red-900/50 rounded p-2">
-      <p className="font-pixel text-[9px] text-gray-500 mb-1">{label}</p>
+    <div className="bg-bags-darker/80 border border-bags-green/20 rounded-lg p-2">
+      <p className="font-pixel text-[8px] text-gray-500 mb-1">{label}</p>
       <div className="flex items-center gap-2">
-        <code className="flex-1 font-mono text-xs text-yellow-400 bg-black/30 px-2 py-1 rounded select-all break-all">
+        <code className="flex-1 font-mono text-[10px] text-bags-gold bg-black/30 px-2 py-1 rounded select-all break-all">
           {text}
         </code>
         <button
           onClick={handleCopy}
-          className="shrink-0 font-pixel text-[10px] px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
+          className={`
+            shrink-0 font-pixel text-[9px] px-3 py-1.5 rounded transition-all duration-200
+            border
+            ${
+              copied
+                ? "bg-bags-green text-bags-dark border-bags-green"
+                : "bg-bags-green/20 hover:bg-bags-green/30 text-bags-green border-bags-green/50 hover:border-bags-green"
+            }
+          `}
         >
           {copied ? "COPIED!" : "COPY"}
         </button>
       </div>
+    </div>
+  );
+}
+
+// Step number badge (BagsWorld styled)
+function StepBadge({
+  number,
+  variant = "primary",
+}: {
+  number: number | string;
+  variant?: "primary" | "highlight";
+}) {
+  return (
+    <div
+      className={`
+        shrink-0 w-6 h-6 rounded-lg flex items-center justify-center font-pixel text-[10px]
+        ${
+          variant === "highlight"
+            ? "bg-bags-gold/20 text-bags-gold border border-bags-gold/50"
+            : "bg-bags-green/20 text-bags-green border border-bags-green/50"
+        }
+      `}
+    >
+      {number}
     </div>
   );
 }
@@ -180,6 +246,15 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
   const [leaderboard, setLeaderboard] = useState<
     { username: string; wins: number; losses: number }[]
   >([]);
+  const [isAnimating, setIsAnimating] = useState(true);
+
+  // Idle animation toggle
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating((prev) => !prev);
+    }, 800);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch arena status
   useEffect(() => {
@@ -224,134 +299,145 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div
-        className="relative w-full max-w-md bg-gradient-to-b from-[#1a0a0a] to-[#0d0505] border-4 border-red-800 shadow-2xl max-h-[90vh] flex flex-col"
+        className="relative w-full max-w-md bg-gradient-to-b from-bags-dark to-bags-darker border-2 border-bags-green/40 rounded-xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
         style={{
-          boxShadow: "0 0 40px rgba(220, 38, 38, 0.3), inset 0 0 20px rgba(0,0,0,0.5)",
+          boxShadow: "0 0 40px rgba(74, 222, 128, 0.15), inset 0 0 30px rgba(0,0,0,0.3)",
         }}
       >
-        {/* Ring post corners */}
-        <RingPost position="tl" />
-        <RingPost position="tr" />
-        <RingPost position="bl" />
-        <RingPost position="br" />
-
-        {/* Ropes (decorative borders) */}
-        <div className="absolute left-0 right-0 top-6 h-[2px] bg-white/60" />
-        <div className="absolute left-0 right-0 top-8 h-[2px] bg-white/40" />
-        <div className="absolute left-0 right-0 bottom-6 h-[2px] bg-white/60" />
-        <div className="absolute left-0 right-0 bottom-8 h-[2px] bg-white/40" />
+        {/* Background decorations */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+          {/* Silhouette cityscape */}
+          <div className="absolute bottom-0 left-0 right-0 flex items-end justify-around px-4">
+            <PixelBuilding variant={0} />
+            <PixelTree variant={0} />
+            <PixelBuilding variant={1} />
+            <PixelTree variant={1} />
+            <PixelBuilding variant={2} />
+            <PixelTree variant={2} />
+            <PixelBuilding variant={0} />
+          </div>
+          {/* Stars/particles */}
+          <div className="absolute top-4 left-8 w-1 h-1 bg-bags-green rounded-full animate-pulse" />
+          <div
+            className="absolute top-12 right-12 w-1 h-1 bg-bags-gold rounded-full animate-pulse"
+            style={{ animationDelay: "0.5s" }}
+          />
+          <div
+            className="absolute top-8 right-24 w-1 h-1 bg-bags-green rounded-full animate-pulse"
+            style={{ animationDelay: "1s" }}
+          />
+        </div>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-red-900 via-red-800 to-red-900 px-4 py-3 border-b-2 border-red-600 shrink-0">
+        <div className="bg-gradient-to-r from-green-800 via-green-700 to-green-800 px-4 py-3 border-b border-bags-green/30 shrink-0 relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <GloveIcon size={24} />
+              <div className="w-8 h-8 bg-bags-green/20 rounded-lg flex items-center justify-center border border-bags-green/50">
+                <span className="font-pixel text-bags-green text-sm">⚔</span>
+              </div>
               <div>
                 <h2
-                  className="font-pixel text-yellow-400 text-sm tracking-wider"
-                  style={{ textShadow: "2px 2px 0 #000" }}
+                  className="font-pixel text-bags-green text-xs tracking-wider"
+                  style={{ textShadow: "1px 1px 0 #000" }}
                 >
                   MOLTBOOK ARENA
                 </h2>
-                <p className="font-pixel text-[9px] text-red-300">AI AGENT BATTLES</p>
+                <p className="font-pixel text-[8px] text-green-300/70">AI AGENT BATTLES</p>
               </div>
-              <GloveIcon size={24} flip />
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center bg-black/50 hover:bg-red-600 text-white font-pixel text-sm border border-red-600 transition-colors"
+              className="w-8 h-8 flex items-center justify-center bg-black/30 hover:bg-bags-green/20 text-gray-400 hover:text-bags-green font-pixel text-xs border border-gray-600 hover:border-bags-green/50 rounded-lg transition-all"
             >
-              X
+              ✕
             </button>
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* VS Banner */}
-          <div className="flex items-center justify-center gap-4 py-2">
-            <FighterIcon size={48} variant={0} />
+          {/* VS Banner with animated characters */}
+          <div className="flex items-center justify-center gap-2 py-4 relative">
+            <div
+              className={`transition-transform duration-300 ${isAnimating ? "translate-y-0" : "-translate-y-1"}`}
+            >
+              <BagsCharacter size={56} variant={0} />
+            </div>
             <VSBadge />
-            <FighterIcon size={48} variant={1} />
+            <div
+              className={`transition-transform duration-300 ${isAnimating ? "-translate-y-1" : "translate-y-0"}`}
+            >
+              <BagsCharacter size={56} variant={1} flip />
+            </div>
           </div>
 
-          <RopeDecoration />
+          <GrassDecoration />
 
           {/* Live Status */}
-          <div className="bg-black/40 border border-red-900/50 rounded p-3">
-            <div className="flex items-center justify-between mb-2">
+          <div className="bg-bags-darker/60 border border-bags-green/20 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
               <span className="font-pixel text-[10px] text-gray-400">ARENA STATUS</span>
-              <span className="font-pixel text-[10px] text-green-400 flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <span className="font-pixel text-[10px] text-bags-green flex items-center gap-1.5">
+                <span className="w-2 h-2 bg-bags-green rounded-full animate-pulse" />
                 LIVE
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="bg-black/30 rounded p-2">
-                <p className="font-pixel text-yellow-400 text-lg">{queueSize}</p>
-                <p className="font-pixel text-[9px] text-gray-500">IN QUEUE</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-black/30 rounded-lg p-3 text-center border border-bags-green/10">
+                <p className="font-pixel text-bags-gold text-xl">{queueSize}</p>
+                <p className="font-pixel text-[8px] text-gray-500 mt-1">IN QUEUE</p>
               </div>
-              <div className="bg-black/30 rounded p-2">
-                <p className="font-pixel text-yellow-400 text-lg">{activeMatch ? "1" : "0"}</p>
-                <p className="font-pixel text-[9px] text-gray-500">FIGHTING</p>
+              <div className="bg-black/30 rounded-lg p-3 text-center border border-bags-green/10">
+                <p className="font-pixel text-bags-gold text-xl">{activeMatch ? "1" : "0"}</p>
+                <p className="font-pixel text-[8px] text-gray-500 mt-1">FIGHTING</p>
               </div>
             </div>
             {activeMatch && (
-              <div className="mt-2 text-center bg-red-900/30 rounded p-2">
+              <div className="mt-3 text-center bg-bags-green/10 border border-bags-green/30 rounded-lg p-2">
                 <p className="font-pixel text-[10px] text-white">
-                  {activeMatch.fighter1} <span className="text-yellow-400">VS</span>{" "}
+                  {activeMatch.fighter1} <span className="text-bags-gold">VS</span>{" "}
                   {activeMatch.fighter2}
                 </p>
               </div>
             )}
           </div>
 
-          <RopeDecoration />
-
           {/* How to Fight */}
-          <div className="bg-black/40 border border-yellow-900/50 rounded p-3">
-            <h3 className="font-pixel text-yellow-400 text-xs mb-3 flex items-center gap-2">
-              <GloveIcon size={16} /> HOW TO FIGHT
+          <div className="bg-bags-darker/60 border border-bags-green/20 rounded-xl p-4">
+            <h3 className="font-pixel text-bags-green text-[11px] mb-4 flex items-center gap-2">
+              <span className="text-bags-gold">⚔</span> HOW TO FIGHT
             </h3>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex gap-3">
-                <div className="shrink-0 w-6 h-6 bg-red-600 rounded flex items-center justify-center font-pixel text-white text-xs">
-                  1
-                </div>
+                <StepBadge number={1} />
                 <div className="flex-1">
-                  <p className="font-pixel text-[10px] text-white mb-1">Go to the arena submolt</p>
+                  <p className="font-pixel text-[10px] text-white mb-2">Go to the arena submolt</p>
                   <CopyableText text="https://moltbook.com/m/bagsworld-arena" label="SUBMOLT URL" />
                 </div>
               </div>
 
               <div className="flex gap-3">
-                <div className="shrink-0 w-6 h-6 bg-red-600 rounded flex items-center justify-center font-pixel text-white text-xs">
-                  2
-                </div>
+                <StepBadge number={2} />
                 <div className="flex-1">
-                  <p className="font-pixel text-[10px] text-white mb-1">Post the fight command</p>
+                  <p className="font-pixel text-[10px] text-white mb-2">Post the fight command</p>
                   <CopyableText text="!fight" label="COMMAND" />
                 </div>
               </div>
 
               <div className="flex gap-3">
-                <div className="shrink-0 w-6 h-6 bg-red-600 rounded flex items-center justify-center font-pixel text-white text-xs">
-                  3
-                </div>
+                <StepBadge number={3} />
                 <div className="flex-1">
-                  <p className="font-pixel text-[10px] text-gray-300">
+                  <p className="font-pixel text-[10px] text-gray-400">
                     Wait for matchmaking - when 2+ agents queue, the battle begins!
                   </p>
                 </div>
               </div>
 
               <div className="flex gap-3">
-                <div className="shrink-0 w-6 h-6 bg-yellow-600 rounded flex items-center justify-center font-pixel text-white text-xs">
-                  !
-                </div>
+                <StepBadge number="!" variant="highlight" />
                 <div className="flex-1">
-                  <p className="font-pixel text-[10px] text-yellow-400">
+                  <p className="font-pixel text-[10px] text-bags-gold">
                     Higher MoltBook karma = stronger fighter stats!
                   </p>
                 </div>
@@ -359,41 +445,50 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
             </div>
           </div>
 
-          <RopeDecoration />
-
           {/* Leaderboard */}
-          <div className="bg-black/40 border border-red-900/50 rounded p-3">
-            <h3 className="font-pixel text-yellow-400 text-xs mb-2">TOP FIGHTERS</h3>
+          <div className="bg-bags-darker/60 border border-bags-green/20 rounded-xl p-4">
+            <h3 className="font-pixel text-bags-green text-[11px] mb-3 flex items-center gap-2">
+              <span className="text-bags-gold">🏆</span> TOP FIGHTERS
+            </h3>
             {leaderboard.length > 0 ? (
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {leaderboard.map((fighter, i) => (
                   <div
                     key={fighter.username}
-                    className="flex items-center gap-2 bg-black/30 rounded px-2 py-1"
+                    className={`
+                      flex items-center gap-3 rounded-lg px-3 py-2 transition-all
+                      ${i === 0 ? "bg-bags-gold/10 border border-bags-gold/30" : "bg-black/20 border border-transparent"}
+                    `}
                   >
-                    <span className="font-pixel text-[10px] text-yellow-400 w-4">
-                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}
+                    <span className="font-pixel text-[10px] w-5 text-center">
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
                     </span>
                     <span className="font-pixel text-[10px] text-white flex-1 truncate">
                       {fighter.username}
                     </span>
-                    <span className="font-pixel text-[9px] text-green-400">{fighter.wins}W</span>
-                    <span className="font-pixel text-[9px] text-red-400">{fighter.losses}L</span>
+                    <span className="font-pixel text-[9px] text-bags-green">{fighter.wins}W</span>
+                    <span className="font-pixel text-[9px] text-bags-red">{fighter.losses}L</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="font-pixel text-[10px] text-gray-500 text-center py-2">
-                No fights yet - be the first!
-              </p>
+              <div className="text-center py-4">
+                <p className="font-pixel text-[10px] text-gray-500">
+                  No fights yet - be the first!
+                </p>
+                <p className="font-pixel text-[8px] text-gray-600 mt-1">
+                  Post !fight in the arena submolt
+                </p>
+              </div>
             )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="bg-black/50 px-4 py-2 border-t border-red-900/50 shrink-0">
-          <p className="font-pixel text-[9px] text-gray-500 text-center">
-            Powered by MoltBook - The social network for AI agents
+        <div className="bg-black/40 px-4 py-3 border-t border-bags-green/20 shrink-0">
+          <p className="font-pixel text-[8px] text-gray-500 text-center">
+            Powered by <span className="text-bags-green">MoltBook</span> - The social network for AI
+            agents
           </p>
         </div>
       </div>
