@@ -7,7 +7,12 @@ import { AgentCoordinator, getAgentCoordinator } from "./AgentCoordinator.js";
 import { GhostTrader, getGhostTrader } from "./GhostTrader.js";
 import { TwitterService, getTwitterService } from "./TwitterService.js";
 import { LLMService, getLLMService } from "./LLMService.js";
-import { EngagementScorer, getEngagementScorer, type TwitterCandidate, type ScoredCandidate } from "./EngagementScorer.js";
+import {
+  EngagementScorer,
+  getEngagementScorer,
+  type TwitterCandidate,
+  type ScoredCandidate,
+} from "./EngagementScorer.js";
 import type { Character } from "../types/elizaos.js";
 
 // Import Neon database functions for persistent state across serverless restarts
@@ -135,7 +140,10 @@ export class AutonomousService extends Service {
         return [];
       }
       const data = await response.json();
-      return (data.data || []).map((t: { id: string; text: string }) => ({ id: t.id, text: t.text }));
+      return (data.data || []).map((t: { id: string; text: string }) => ({
+        id: t.id,
+        text: t.text,
+      }));
     } catch (error) {
       console.error(`[AutonomousService] Error fetching @${handle} tweets:`, error);
       return [];
@@ -169,7 +177,12 @@ export class AutonomousService extends Service {
     tweetId: string,
     content: string,
     tweetType: EngagementRecord["tweetType"],
-    options?: { targetUsername?: string; authorFollowers?: number; score?: number; scoreFactors?: string[] }
+    options?: {
+      targetUsername?: string;
+      authorFollowers?: number;
+      score?: number;
+      scoreFactors?: string[];
+    }
   ): Promise<{ success: boolean; replyId?: string; url?: string; error?: string }> {
     if (!this.twitterService) return { success: false, error: "Twitter not configured" };
 
@@ -214,7 +227,7 @@ export class AutonomousService extends Service {
 
     // Post Bagsy intro tweet on startup (after a short delay)
     setTimeout(() => {
-      service.postBagsyIntroTweet().catch(err => {
+      service.postBagsyIntroTweet().catch((err) => {
         console.error("[AutonomousService] Failed to post intro tweet:", err);
       });
     }, 10000); // 10 second delay to let everything initialize
@@ -384,13 +397,16 @@ export class AutonomousService extends Service {
     //   handler: async () => { await this.monitorFeeRelatedTweets(); },
     // });
 
-    // DISABLED: Daily GM - still too automated feeling
-    // this.registerTask({
-    //   name: "bagsy_morning_gm",
-    //   agentId: "bagsy",
-    //   interval: 10 * 60 * 1000,
-    //   handler: async () => { await this.postBagsyMorningGM(); },
-    // });
+    // ENABLED: Daily GM post (once per day at 9 AM EST window)
+    // Re-enabled because once-daily is not spammy and builds engagement
+    this.registerTask({
+      name: "bagsy_morning_gm",
+      agentId: "bagsy",
+      interval: 10 * 60 * 1000, // Check every 10 min but only posts once per day
+      handler: async () => {
+        await this.postBagsyMorningGM();
+      },
+    });
 
     // KEPT: Track engagement metrics (read-only, no posting)
     this.registerTask({
@@ -577,7 +593,9 @@ export class AutonomousService extends Service {
       reminderCount: 0,
     });
 
-    console.log(`[AutonomousService] Now tracking wallet ${address.slice(0, 8)}... for fee reminders`);
+    console.log(
+      `[AutonomousService] Now tracking wallet ${address.slice(0, 8)}... for fee reminders`
+    );
   }
 
   /**
@@ -644,7 +662,9 @@ export class AutonomousService extends Service {
     const wallets = Array.from(this.trackedWallets.values());
     if (wallets.length === 0) return;
 
-    console.log(`[AutonomousService] Checking ${wallets.length} tracked wallets for unclaimed fees via Bags API`);
+    console.log(
+      `[AutonomousService] Checking ${wallets.length} tracked wallets for unclaimed fees via Bags API`
+    );
 
     let totalUnclaimed = 0;
     let walletsWithFees = 0;
@@ -1096,8 +1116,11 @@ export class AutonomousService extends Service {
       return;
     }
 
-    const healthData = (this.bagsApi ? await this.bagsApi.getWorldHealth() : null) ||
-      { health: 50, totalFees24h: 0, activeTokens: 0 };
+    const healthData = (this.bagsApi ? await this.bagsApi.getWorldHealth() : null) || {
+      health: 50,
+      totalFees24h: 0,
+      activeTokens: 0,
+    };
 
     try {
       const context = this.buildHealthContext(healthData);
@@ -1135,7 +1158,7 @@ export class AutonomousService extends Service {
       // Fallback to templates if AI fails
       if (!tweet) {
         const templates = this.generateBagsyTweets(healthData);
-        tweet = templates.sort(() => Math.random() - 0.5).find(t => !this.isDuplicatePost(t));
+        tweet = templates.sort(() => Math.random() - 0.5).find((t) => !this.isDuplicatePost(t));
         if (!tweet) {
           console.log("[AutonomousService] All Bagsy tweets would be duplicates, skipping");
           return;
@@ -1161,7 +1184,11 @@ export class AutonomousService extends Service {
   }
 
   // Helper: Build health context string
-  private buildHealthContext(healthData: { health: number; totalFees24h: number; activeTokens: number }): string {
+  private buildHealthContext(healthData: {
+    health: number;
+    totalFees24h: number;
+    activeTokens: number;
+  }): string {
     return `Ecosystem stats right now:
 - World health: ${healthData.health || 50}%
 - Fees generated today: ${healthData.totalFees24h?.toFixed(2) || "0"} SOL
@@ -1170,7 +1197,10 @@ export class AutonomousService extends Service {
   }
 
   // Helper: Generate non-duplicate AI tweet with retries
-  private async generateNonDuplicateTweet(prompts: string[], context: string): Promise<string | null> {
+  private async generateNonDuplicateTweet(
+    prompts: string[],
+    context: string
+  ): Promise<string | null> {
     for (let attempts = 0; attempts < 3; attempts++) {
       const prompt = prompts[Math.floor(Math.random() * prompts.length)];
       const tweet = await this.generateBagsyTweet(prompt, context);
@@ -1190,13 +1220,18 @@ export class AutonomousService extends Service {
     }
 
     const wallets = this.getWalletsWithUnclaimedFees();
-    const totalUnclaimedSol = wallets.reduce((sum, w) => sum + w.unclaimedLamports / 1_000_000_000, 0);
+    const totalUnclaimedSol = wallets.reduce(
+      (sum, w) => sum + w.unclaimedLamports / 1_000_000_000,
+      0
+    );
 
     // General reminder if no significant unclaimed fees
     if (wallets.length < 1 || totalUnclaimedSol < 0.5) {
-      const generalReminder = "friendly reminder from ur fren bagsy:\n\nCLAIM UR FEES\n\nhave u checked lately? :)";
+      const generalReminder =
+        "friendly reminder from ur fren bagsy:\n\nCLAIM UR FEES\n\nhave u checked lately? :)";
       const result = await this.postWithTracking(generalReminder, "post");
-      if (result.success) console.log(`[AutonomousService] Bagsy general reminder posted: ${result.url}`);
+      if (result.success)
+        console.log(`[AutonomousService] Bagsy general reminder posted: ${result.url}`);
       return;
     }
 
@@ -1294,22 +1329,16 @@ export class AutonomousService extends Service {
       `be honest: do u check ur portfolio before or after coffee?\n\ni check mine 47 times before coffee even exists`
     );
 
-    tweets.push(
-      `hot take: passive income > one-time gains\n\nagree or nah?`
-    );
+    tweets.push(`hot take: passive income > one-time gains\n\nagree or nah?`);
 
     // CTA templates (NO LINKS - drives engagement)
-    tweets.push(
-      `tag a creator who deserves to get paid more\n\nlets show them some love :)`
-    );
+    tweets.push(`tag a creator who deserves to get paid more\n\nlets show them some love :)`);
 
     tweets.push(
       `comment 'CLAIMED' if u claimed ur fees today\n\nwanna see how many frens are winning :)`
     );
 
-    tweets.push(
-      `drop a 💚 if u believe creators should earn royalties forever`
-    );
+    tweets.push(`drop a 💚 if u believe creators should earn royalties forever`);
 
     tweets.push(
       `reply with ur favorite token launch of 2024\n\nill go first: anything where the creator actually got paid`
@@ -1360,9 +1389,7 @@ export class AutonomousService extends Service {
     );
 
     // FOMO inducing (NO LINK)
-    tweets.push(
-      `while ur reading this, creators are earning passive income\n\njust saying :)`
-    );
+    tweets.push(`while ur reading this, creators are earning passive income\n\njust saying :)`);
 
     // WITH LINK - use sparingly (~1 in 5 tweets)
     tweets.push(
@@ -1432,7 +1459,17 @@ export class AutonomousService extends Service {
         "Creator economy and passive income",
         "Being made of fees (literally)",
       ],
-      adjectives: ["cute", "excited", "supportive", "wholesome", "enthusiastic", "fee-obsessed", "memeable", "pixel-art-loving", "community-focused"],
+      adjectives: [
+        "cute",
+        "excited",
+        "supportive",
+        "wholesome",
+        "enthusiastic",
+        "fee-obsessed",
+        "memeable",
+        "pixel-art-loving",
+        "community-focused",
+      ],
       style: {
         all: [
           "Uses lowercase for chill vibes but CAPS when excited",
@@ -1460,7 +1497,7 @@ export class AutonomousService extends Service {
    */
   private isDuplicatePost(content: string): boolean {
     // Create a simplified hash (lowercase, no whitespace, no punctuation)
-    const simplified = content.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const simplified = content.toLowerCase().replace(/[^a-z0-9]/g, "");
     const hash = simplified.substring(0, 50); // First 50 chars as simple hash
 
     if (this.recentPostHashes.has(hash)) {
@@ -1474,7 +1511,7 @@ export class AutonomousService extends Service {
    * Record a post to prevent future duplicates
    */
   private recordPost(content: string): void {
-    const simplified = content.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const simplified = content.toLowerCase().replace(/[^a-z0-9]/g, "");
     const hash = simplified.substring(0, 50);
 
     this.recentPostHashes.add(hash);
@@ -1575,14 +1612,18 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       // If AI generated too long, return null to trigger template fallback
       // Better to use a good template than to truncate and cut off mid-thought
       if (tweet.length > 280) {
-        console.log(`[AutonomousService] AI tweet too long (${tweet.length} chars), using template fallback`);
+        console.log(
+          `[AutonomousService] AI tweet too long (${tweet.length} chars), using template fallback`
+        );
         return null;
       }
 
       // Virality optimization: Score and potentially enhance the tweet
       if (this.engagementScorer) {
         const contentScore = this.engagementScorer.scoreTweetContent(tweet);
-        console.log(`[AutonomousService] Tweet virality score: ${contentScore.score}/100 | Factors: ${contentScore.factors.join(", ")}`);
+        console.log(
+          `[AutonomousService] Tweet virality score: ${contentScore.score}/100 | Factors: ${contentScore.factors.join(", ")}`
+        );
 
         // If score is low, try to enhance it
         if (contentScore.score < 50 && tweet.length < 240) {
@@ -1590,7 +1631,9 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
           if (enhanced !== tweet && enhanced.length <= 280) {
             const enhancedScore = this.engagementScorer.scoreTweetContent(enhanced);
             if (enhancedScore.score > contentScore.score) {
-              console.log(`[AutonomousService] Enhanced tweet: ${contentScore.score} -> ${enhancedScore.score}`);
+              console.log(
+                `[AutonomousService] Enhanced tweet: ${contentScore.score} -> ${enhancedScore.score}`
+              );
               tweet = enhanced;
             }
           }
@@ -1649,7 +1692,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
       if (!tweet) {
         // Fallback to template
-        const fallbackTweet = "gm frens :) bagsy is online and ready to help u claim ur fees\n\nworking hard for @finnbags and the @BagsFM fam\n\nbags.fm";
+        const fallbackTweet =
+          "gm frens :) bagsy is online and ready to help u claim ur fees\n\nworking hard for @finnbags and the @BagsFM fam\n\nbags.fm";
         const result = await this.twitterService.post(fallbackTweet);
         if (result.success) {
           this.hasPostedIntro = true;
@@ -1714,7 +1758,9 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
         if (await this.twitterService!.isProcessedAsync(tweet.id)) continue;
 
         // Generate reply (AI with template fallback)
-        let reply = await this.generateFinnEngagementReplyAI(tweet.text) || this.generateFinnEngagementReply(tweet.text);
+        let reply =
+          (await this.generateFinnEngagementReplyAI(tweet.text)) ||
+          this.generateFinnEngagementReply(tweet.text);
         const { reply: enhanced, score, factors } = this.enhanceReplyIfNeeded(reply);
         reply = enhanced;
 
@@ -1746,7 +1792,11 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   }
 
   // Helper: Enhance reply for virality if score is low
-  private enhanceReplyIfNeeded(reply: string): { reply: string; score?: number; factors?: string[] } {
+  private enhanceReplyIfNeeded(reply: string): {
+    reply: string;
+    score?: number;
+    factors?: string[];
+  } {
     if (!this.engagementScorer) return { reply };
 
     const contentScore = this.engagementScorer.scoreTweetContent(reply);
@@ -1788,7 +1838,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     // Determine reply type based on tweet content
     if (lowerText.includes("gm") || lowerText.includes("good morning")) {
-      prompt = "Write a cute, excited GM reply to your boss @finnbags. Be supportive and hyped for the day ahead.";
+      prompt =
+        "Write a cute, excited GM reply to your boss @finnbags. Be supportive and hyped for the day ahead.";
     } else if (
       lowerText.includes("launch") ||
       lowerText.includes("ship") ||
@@ -1797,11 +1848,18 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       lowerText.includes("announce") ||
       lowerText.includes("live")
     ) {
-      prompt = "Write an HYPED reply (use some CAPS) to @finnbags announcing something. Be excited, supportive, maybe even crying happy tears.";
-    } else if (lowerText.includes("fee") || lowerText.includes("claim") || lowerText.includes("creator")) {
-      prompt = "Write a supportive reply agreeing with @finnbags about fees/creators. Reference your love of fees and helping creators.";
+      prompt =
+        "Write an HYPED reply (use some CAPS) to @finnbags announcing something. Be excited, supportive, maybe even crying happy tears.";
+    } else if (
+      lowerText.includes("fee") ||
+      lowerText.includes("claim") ||
+      lowerText.includes("creator")
+    ) {
+      prompt =
+        "Write a supportive reply agreeing with @finnbags about fees/creators. Reference your love of fees and helping creators.";
     } else {
-      prompt = "Write a supportive, friendly reply to @finnbags. Be a good mascot and show appreciation for the CEO.";
+      prompt =
+        "Write a supportive, friendly reply to @finnbags. Be a good mascot and show appreciation for the CEO.";
     }
 
     return this.generateBagsyTweet(prompt, context);
@@ -1876,7 +1934,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     if (!this.isTwitterReady) return;
 
     try {
-      const affiliate = this.BAGS_AFFILIATES[Math.floor(Math.random() * this.BAGS_AFFILIATES.length)];
+      const affiliate =
+        this.BAGS_AFFILIATES[Math.floor(Math.random() * this.BAGS_AFFILIATES.length)];
       console.log(`[AutonomousService] Checking tweets from @${affiliate.handle}`);
 
       const tweets = await this.getAffiliateTweets(affiliate.handle);
@@ -1895,7 +1954,9 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
         if (result.success) {
           this.lastAffiliateTweetIds.set(affiliate.handle, tweet.id);
-          await setAgentCursor("bagsy", `last_${affiliate.handle}_tweet_id`, tweet.id).catch(() => {});
+          await setAgentCursor("bagsy", `last_${affiliate.handle}_tweet_id`, tweet.id).catch(
+            () => {}
+          );
           console.log(`[AutonomousService] Bagsy replied to @${affiliate.handle}: ${result.url}`);
 
           await this.createAlert({
@@ -1955,7 +2016,10 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   /**
    * AI-powered affiliate reply generation
    */
-  private async generateAffiliateReplyAI(affiliateType: string, tweetText: string): Promise<string | null> {
+  private async generateAffiliateReplyAI(
+    affiliateType: string,
+    tweetText: string
+  ): Promise<string | null> {
     const affiliateNames: Record<string, string> = {
       bagsApp: "@BagsApp (the official Bags.fm account)",
       team: "a Bags.fm team member (your fam)",
@@ -2000,10 +2064,15 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       this.lastMentionId = await getAgentCursor("bagsy", "last_mention_id");
     }
 
-    const mentions = await this.twitterService!.getMentions("BagsyHypeBot", this.lastMentionId || undefined);
+    const mentions = await this.twitterService!.getMentions(
+      "BagsyHypeBot",
+      this.lastMentionId || undefined
+    );
     if (mentions.length === 0) return;
 
-    console.log(`[AutonomousService] Bagsy found ${mentions.length} new mentions (replied ${this.mentionRepliesToday}/${AutonomousService.MAX_MENTION_REPLIES_PER_DAY} today)`);
+    console.log(
+      `[AutonomousService] Bagsy found ${mentions.length} new mentions (replied ${this.mentionRepliesToday}/${AutonomousService.MAX_MENTION_REPLIES_PER_DAY} today)`
+    );
     this.engagementScorer?.resetCycle();
 
     // Filter processed mentions
@@ -2015,16 +2084,31 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     }
 
     // Convert and score candidates
-    const candidates: TwitterCandidate[] = unprocessed.map(m => ({
-      tweetId: m.tweetId, authorId: m.authorId, authorUsername: m.authorUsername,
-      text: m.text, createdAt: m.createdAt,
+    const candidates: TwitterCandidate[] = unprocessed.map((m) => ({
+      tweetId: m.tweetId,
+      authorId: m.authorId,
+      authorUsername: m.authorUsername,
+      text: m.text,
+      createdAt: m.createdAt,
     }));
 
     const scored = this.engagementScorer
       ? await this.engagementScorer.processCandidates(candidates)
-      : candidates.map(c => ({ ...c, score: 50, scoreBreakdown: { authorInfluence: 20, contentRelevance: 20, viralityPotential: 10, penalties: 0, total: 50 } }));
+      : candidates.map((c) => ({
+          ...c,
+          score: 50,
+          scoreBreakdown: {
+            authorInfluence: 20,
+            contentRelevance: 20,
+            viralityPotential: 10,
+            penalties: 0,
+            total: 50,
+          },
+        }));
 
-    console.log(`[AutonomousService] Engagement scorer selected ${scored.length} high-value mentions`);
+    console.log(
+      `[AutonomousService] Engagement scorer selected ${scored.length} high-value mentions`
+    );
 
     // Process candidates with rate limiting
     let repliesThisCycle = 0;
@@ -2039,37 +2123,63 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
         break;
       }
 
-      console.log(`[AutonomousService] Engaging @${c.authorUsername} | Score: ${c.score.toFixed(1)} | Followers: ${c.authorFollowers || "?"}`);
+      console.log(
+        `[AutonomousService] Engaging @${c.authorUsername} | Score: ${c.score.toFixed(1)} | Followers: ${c.authorFollowers || "?"}`
+      );
 
-      const reply = await this.generateBagsyMentionReplyAI(c.authorUsername, c.text) || this.generateBagsyMentionReply(c.authorUsername);
-      const scoreFactors = c.scoreBreakdown ? Object.entries(c.scoreBreakdown).filter(([k, v]) => k !== "total" && k !== "penalties" && v > 0).map(([k]) => k) : undefined;
+      const reply =
+        (await this.generateBagsyMentionReplyAI(c.authorUsername, c.text)) ||
+        this.generateBagsyMentionReply(c.authorUsername);
+      const scoreFactors = c.scoreBreakdown
+        ? Object.entries(c.scoreBreakdown)
+            .filter(([k, v]) => k !== "total" && k !== "penalties" && v > 0)
+            .map(([k]) => k)
+        : undefined;
 
       const result = await this.replyWithTracking(c.tweetId, reply, "mention_reply", {
-        targetUsername: c.authorUsername, authorFollowers: c.authorFollowers,
-        score: Math.round(c.score), scoreFactors,
+        targetUsername: c.authorUsername,
+        authorFollowers: c.authorFollowers,
+        score: Math.round(c.score),
+        scoreFactors,
       });
 
       if (result.success) {
         repliesThisCycle++;
         this.mentionRepliesToday++;
         this.engagementScorer?.markEngaged(c.authorUsername);
-        console.log(`[AutonomousService] Bagsy replied to @${c.authorUsername} (${this.mentionRepliesToday}/${AutonomousService.MAX_MENTION_REPLIES_PER_DAY} today): ${result.url}`);
+        console.log(
+          `[AutonomousService] Bagsy replied to @${c.authorUsername} (${this.mentionRepliesToday}/${AutonomousService.MAX_MENTION_REPLIES_PER_DAY} today): ${result.url}`
+        );
         await this.createAlert({
-          type: "milestone", severity: "info",
+          type: "milestone",
+          severity: "info",
           title: "Bagsy Mention Reply",
           message: `Replied to @${c.authorUsername} (score: ${c.score.toFixed(0)}, followers: ${c.authorFollowers || "?"})`,
-          data: { tweetId: result.replyId, originalTweetId: c.tweetId, score: c.score, followers: c.authorFollowers },
+          data: {
+            tweetId: result.replyId,
+            originalTweetId: c.tweetId,
+            score: c.score,
+            followers: c.authorFollowers,
+          },
         });
       }
       // Longer delay between replies to seem more human
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
 
     this.updateMentionCursor(mentions);
   }
 
   // Helper: Filter out processed mentions
-  private async filterProcessedMentions(mentions: Array<{ tweetId: string; authorId: string; authorUsername: string; text: string; createdAt: Date }>): Promise<typeof mentions> {
+  private async filterProcessedMentions(
+    mentions: Array<{
+      tweetId: string;
+      authorId: string;
+      authorUsername: string;
+      text: string;
+      createdAt: Date;
+    }>
+  ): Promise<typeof mentions> {
     const result = [];
     for (const m of mentions) {
       if (!(await this.twitterService!.isProcessedAsync(m.tweetId))) result.push(m);
@@ -2088,7 +2198,10 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   /**
    * Generate an AI-powered reply to a mention
    */
-  private async generateBagsyMentionReplyAI(authorUsername: string, mentionText: string): Promise<string | null> {
+  private async generateBagsyMentionReplyAI(
+    authorUsername: string,
+    mentionText: string
+  ): Promise<string | null> {
     const isCEO = authorUsername.toLowerCase() === "finnbags";
 
     const context = `Someone tweeted at you (Bagsy):
@@ -2097,13 +2210,23 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     let prompt: string;
     if (isCEO) {
-      prompt = "Write an excited, honored reply to @finnbags (the CEO, your boss!) who just mentioned you. Be supportive and show how much you appreciate being noticed by the boss. NO links.";
-    } else if (mentionText.toLowerCase().includes("claim") || mentionText.toLowerCase().includes("fee")) {
-      prompt = "Write a helpful reply about fee claiming. Tell them to verify their socials to claim. Be encouraging. NO bags.fm link (they can find it in bio).";
-    } else if (mentionText.toLowerCase().includes("gm") || mentionText.toLowerCase().includes("hello") || mentionText.toLowerCase().includes("hi")) {
+      prompt =
+        "Write an excited, honored reply to @finnbags (the CEO, your boss!) who just mentioned you. Be supportive and show how much you appreciate being noticed by the boss. NO links.";
+    } else if (
+      mentionText.toLowerCase().includes("claim") ||
+      mentionText.toLowerCase().includes("fee")
+    ) {
+      prompt =
+        "Write a helpful reply about fee claiming. Tell them to verify their socials to claim. Be encouraging. NO bags.fm link (they can find it in bio).";
+    } else if (
+      mentionText.toLowerCase().includes("gm") ||
+      mentionText.toLowerCase().includes("hello") ||
+      mentionText.toLowerCase().includes("hi")
+    ) {
       prompt = "Write a friendly GM/hello reply. Be cute and welcoming. NO links needed.";
     } else {
-      prompt = "Write a friendly, helpful reply. Be cute and wholesome. NO links - they can find bags.fm in your bio.";
+      prompt =
+        "Write a friendly, helpful reply. Be cute and wholesome. NO links - they can find bags.fm in your bio.";
     }
 
     return this.generateBagsyTweet(prompt, context);
@@ -2156,11 +2279,15 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
         '"claim fees" (solana OR SOL)',
         '"bags fm" claim',
       ];
-      const query = encodeURIComponent(searchTerms[Math.floor(Math.random() * searchTerms.length)] + " -is:retweet -is:reply");
+      const query = encodeURIComponent(
+        searchTerms[Math.floor(Math.random() * searchTerms.length)] + " -is:retweet -is:reply"
+      );
       let url = `https://api.twitter.com/2/tweets/search/recent?query=${query}&max_results=20&tweet.fields=created_at,author_id&expansions=author_id&user.fields=username,public_metrics,verified`;
       if (this.lastFeeTweetId) url += `&since_id=${this.lastFeeTweetId}`;
 
-      const response = await fetch(url, { headers: { Authorization: `Bearer ${this.bearerToken}` } });
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${this.bearerToken}` },
+      });
       if (!response.ok) {
         console.error(`[AutonomousService] Fee tweet search failed: ${response.status}`);
         return;
@@ -2186,21 +2313,47 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       // Score and select top candidates
       this.engagementScorer?.resetCycle();
       const scored = this.engagementScorer
-        ? candidates.map(c => this.engagementScorer!.scoreOne(c)).filter(c => c.score >= 30).sort((a, b) => b.score - a.score).slice(0, 3)
-        : candidates.slice(0, 2).map(c => ({ ...c, score: 50, scoreBreakdown: { authorInfluence: 20, contentRelevance: 20, viralityPotential: 10, penalties: 0, total: 50 } }));
+        ? candidates
+            .map((c) => this.engagementScorer!.scoreOne(c))
+            .filter((c) => c.score >= 30)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 3)
+        : candidates
+            .slice(0, 2)
+            .map((c) => ({
+              ...c,
+              score: 50,
+              scoreBreakdown: {
+                authorInfluence: 20,
+                contentRelevance: 20,
+                viralityPotential: 10,
+                penalties: 0,
+                total: 50,
+              },
+            }));
 
-      console.log(`[AutonomousService] Scored ${candidates.length} fee tweets, selected ${scored.length}`);
+      console.log(
+        `[AutonomousService] Scored ${candidates.length} fee tweets, selected ${scored.length}`
+      );
 
       // Engage
       let engagements = 0;
       for (const c of scored) {
-        console.log(`[AutonomousService] Fee engage: @${c.authorUsername} | Score: ${c.score.toFixed(1)}`);
+        console.log(
+          `[AutonomousService] Fee engage: @${c.authorUsername} | Score: ${c.score.toFixed(1)}`
+        );
         const reply = await this.generateFeeHelpReply(c.authorUsername, c.text);
-        const scoreFactors = c.scoreBreakdown ? Object.entries(c.scoreBreakdown).filter(([k, v]) => k !== "total" && k !== "penalties" && v > 0).map(([k]) => k) : undefined;
+        const scoreFactors = c.scoreBreakdown
+          ? Object.entries(c.scoreBreakdown)
+              .filter(([k, v]) => k !== "total" && k !== "penalties" && v > 0)
+              .map(([k]) => k)
+          : undefined;
 
         const result = await this.replyWithTracking(c.tweetId, reply, "fee_help", {
-          targetUsername: c.authorUsername, authorFollowers: c.authorFollowers,
-          score: Math.round(c.score), scoreFactors,
+          targetUsername: c.authorUsername,
+          authorFollowers: c.authorFollowers,
+          score: Math.round(c.score),
+          scoreFactors,
         });
 
         if (result.success) {
@@ -2208,24 +2361,42 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
           engagements++;
           console.log(`[AutonomousService] Bagsy helped @${c.authorUsername}: ${result.url}`);
           await this.createAlert({
-            type: "fee_reminder", severity: "info",
+            type: "fee_reminder",
+            severity: "info",
             title: "Bagsy Fee Help",
             message: `Helped @${c.authorUsername} (score: ${c.score.toFixed(0)})`,
             data: { tweetId: result.replyId, originalTweetId: c.tweetId, score: c.score },
           });
         }
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise((r) => setTimeout(r, 3000));
       }
 
       if (data.data.length > 0) this.lastFeeTweetId = data.data[0].id;
-      if (engagements > 0) console.log(`[AutonomousService] Bagsy engaged with ${engagements} fee tweets`);
+      if (engagements > 0)
+        console.log(`[AutonomousService] Bagsy engaged with ${engagements} fee tweets`);
     } catch (error) {
       console.error("[AutonomousService] Fee tweet monitor failed:", error);
     }
   }
 
   // Helper: Build user map from Twitter API response
-  private buildUserMap(users: Array<{ id: string; username: string; public_metrics?: { followers_count?: number; following_count?: number; tweet_count?: number }; verified?: boolean }>): Map<string, { username: string; followers: number; following: number; verified: boolean; tweetCount: number }> {
+  private buildUserMap(
+    users: Array<{
+      id: string;
+      username: string;
+      public_metrics?: { followers_count?: number; following_count?: number; tweet_count?: number };
+      verified?: boolean;
+    }>
+  ): Map<
+    string,
+    {
+      username: string;
+      followers: number;
+      following: number;
+      verified: boolean;
+      tweetCount: number;
+    }
+  > {
     const map = new Map();
     for (const u of users) {
       map.set(u.id, {
@@ -2242,7 +2413,16 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   // Helper: Build fee tweet candidates
   private async buildFeeTweetCandidates(
     tweets: Array<{ id: string; author_id: string; text: string; created_at: string }>,
-    userMap: Map<string, { username: string; followers: number; following: number; verified: boolean; tweetCount: number }>
+    userMap: Map<
+      string,
+      {
+        username: string;
+        followers: number;
+        following: number;
+        verified: boolean;
+        tweetCount: number;
+      }
+    >
   ): Promise<TwitterCandidate[]> {
     const candidates: TwitterCandidate[] = [];
     for (const t of tweets) {
@@ -2250,10 +2430,15 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       const u = userMap.get(t.author_id);
       if (u?.username.toLowerCase() === "bagsyhypebot") continue;
       candidates.push({
-        tweetId: t.id, authorId: t.author_id, authorUsername: u?.username || "unknown",
-        text: t.text, createdAt: new Date(t.created_at),
-        authorFollowers: u?.followers, authorFollowing: u?.following,
-        authorVerified: u?.verified, authorTweetCount: u?.tweetCount,
+        tweetId: t.id,
+        authorId: t.author_id,
+        authorUsername: u?.username || "unknown",
+        text: t.text,
+        createdAt: new Date(t.created_at),
+        authorFollowers: u?.followers,
+        authorFollowing: u?.following,
+        authorVerified: u?.verified,
+        authorTweetCount: u?.tweetCount,
       });
     }
     return candidates;
@@ -2265,7 +2450,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
   private async generateFeeHelpReply(username: string, tweetText: string): Promise<string> {
     // Try AI generation
     const context = `@${username} tweeted about Bags fees:\n"${tweetText}"`;
-    const prompt = "Write a helpful, friendly reply explaining how to claim fees. Tell them to verify their socials then claim. Be encouraging. NO bags.fm link - they can find it in your bio.";
+    const prompt =
+      "Write a helpful, friendly reply explaining how to claim fees. Tell them to verify their socials then claim. Be encouraging. NO bags.fm link - they can find it in your bio.";
 
     const aiReply = await this.generateBagsyTweet(prompt, context);
     if (aiReply && !this.isDuplicatePost(aiReply)) {
@@ -2317,17 +2503,24 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       if (result.success) {
         this.highValueAlertHistory.set(earner.wallet, now);
         alertCount++;
-        console.log(`[AutonomousService] Alerted @${earner.xUsername} about ${claimStats.totalClaimableSol.toFixed(1)} SOL`);
+        console.log(
+          `[AutonomousService] Alerted @${earner.xUsername} about ${claimStats.totalClaimableSol.toFixed(1)} SOL`
+        );
         await this.createAlert({
-          type: "fee_reminder", severity: "warning",
+          type: "fee_reminder",
+          severity: "warning",
           title: "High-Value Fee Alert",
           message: `Alerted @${earner.xUsername} about ${claimStats.totalClaimableSol.toFixed(1)} SOL`,
-          data: { wallet: earner.wallet, unclaimedSol: claimStats.totalClaimableSol, tweetId: result.tweet?.id },
+          data: {
+            wallet: earner.wallet,
+            unclaimedSol: claimStats.totalClaimableSol,
+            tweetId: result.tweet?.id,
+          },
         });
       }
 
       if (alertCount >= 3) break;
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, 3000));
     }
 
     if (alertCount > 0) console.log(`[AutonomousService] Sent ${alertCount} high-value alerts`);
@@ -2352,13 +2545,18 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
    * Fetch fee earners with their X/Twitter usernames
    * Returns earners who have twitter as their provider
    */
-  private async fetchFeeEarnersWithXUsernames(): Promise<Array<{ wallet: string; xUsername: string | null }>> {
+  private async fetchFeeEarnersWithXUsernames(): Promise<
+    Array<{ wallet: string; xUsername: string | null }>
+  > {
     // Fetch world state which includes fee earners
-    const response = await fetch(`${process.env.BAGSWORLD_API_URL || 'http://localhost:3000'}/api/world-state`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tokens: [] }),
-    });
+    const response = await fetch(
+      `${process.env.BAGSWORLD_API_URL || "http://localhost:3000"}/api/world-state`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tokens: [] }),
+      }
+    );
 
     if (!response.ok) {
       console.error("[AutonomousService] Failed to fetch fee earners");
@@ -2410,7 +2608,9 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     if (!this.lastGmDate) this.lastGmDate = await getAgentState("bagsy", "last_gm_date");
     if (this.lastGmDate === todayDate) return;
 
-    console.log(`[AutonomousService] Bagsy posting morning GM at ${hour}:${minute.toString().padStart(2, "0")} EST`);
+    console.log(
+      `[AutonomousService] Bagsy posting morning GM at ${hour}:${minute.toString().padStart(2, "0")} EST`
+    );
 
     try {
       const finnTag = "@finnbags";
@@ -2443,8 +2643,10 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
         await setAgentState("bagsy", "last_gm_date", todayDate).catch(() => {});
         console.log(`[AutonomousService] Bagsy morning GM posted: ${result.url}`);
         await this.createAlert({
-          type: "milestone", severity: "info",
-          title: "Bagsy Morning GM", message: tweet,
+          type: "milestone",
+          severity: "info",
+          title: "Bagsy Morning GM",
+          message: tweet,
           data: { tweetId: result.tweetId },
         });
       }
@@ -2519,7 +2721,9 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     if (result.success) {
       this.lastNewsPostTime = Date.now();
       this.newsPostsToday++;
-      console.log(`[AutonomousService] Bagsy news posted (${this.newsPostsToday}/${MAX_DAILY_POSTS} today): ${result.url}`);
+      console.log(
+        `[AutonomousService] Bagsy news posted (${this.newsPostsToday}/${MAX_DAILY_POSTS} today): ${result.url}`
+      );
       await this.createAlert({
         type: "milestone",
         severity: "info",
@@ -2544,7 +2748,10 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       const healthData = await this.bagsApi.getWorldHealth();
 
       // Check for milestone: significant total fees
-      if (healthData.totalLifetimeFees && healthData.totalLifetimeFees >= AutonomousService.NEWS_THRESHOLDS.milestoneFeesMin) {
+      if (
+        healthData.totalLifetimeFees &&
+        healthData.totalLifetimeFees >= AutonomousService.NEWS_THRESHOLDS.milestoneFeesMin
+      ) {
         // Only post milestones at round numbers (100, 500, 1000, etc.)
         const fees = healthData.totalLifetimeFees;
         const milestones = [100, 250, 500, 1000, 2500, 5000, 10000];
@@ -2669,20 +2876,27 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
         const metrics = (await response.json()).data?.public_metrics;
         if (metrics) {
           await updateEngagementMetrics(tweetId, {
-            likes: metrics.like_count || 0, retweets: metrics.retweet_count || 0,
-            replies: metrics.reply_count || 0, impressions: metrics.impression_count || 0,
+            likes: metrics.like_count || 0,
+            retweets: metrics.retweet_count || 0,
+            replies: metrics.reply_count || 0,
+            impressions: metrics.impression_count || 0,
           });
-          console.log(`[AutonomousService] ${tweetId}: ${metrics.like_count} likes, ${metrics.retweet_count} RTs`);
+          console.log(
+            `[AutonomousService] ${tweetId}: ${metrics.like_count} likes, ${metrics.retweet_count} RTs`
+          );
         }
       }
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
     }
 
     // Log weekly stats
     const stats = await getEngagementStats("bagsy", 7);
     if (stats?.totalTweets > 0) {
-      console.log(`[AutonomousService] 7-day: ${stats.totalTweets} tweets, ${stats.avgLikes.toFixed(1)} avg likes, ${(stats.avgEngagementRate * 100).toFixed(2)}% engagement`);
-      if (stats.topFactors.length) console.log(`[AutonomousService] Top factors: ${stats.topFactors.join(", ")}`);
+      console.log(
+        `[AutonomousService] 7-day: ${stats.totalTweets} tweets, ${stats.avgLikes.toFixed(1)} avg likes, ${(stats.avgEngagementRate * 100).toFixed(2)}% engagement`
+      );
+      if (stats.topFactors.length)
+        console.log(`[AutonomousService] Top factors: ${stats.topFactors.join(", ")}`);
     }
   }
 
@@ -2748,7 +2962,6 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     }
     return false;
   }
-
 }
 
 /**
