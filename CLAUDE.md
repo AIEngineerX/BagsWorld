@@ -62,6 +62,66 @@ npm start        # Start production server
 - `REPLICATE_API_TOKEN` - Enables AI image generation (falls back to procedural if not set)
 - `BAGS_API_URL` - Defaults to `https://public-api-v2.bags.fm/api/v1`
 - `BITQUERY_API_KEY` - Enables platform-wide Bags.fm live feed (all launches, trades, whales)
+- `MOLTBOOK_API_KEY` - Enables Moltbook integration for Bagsy AI agent posts
+
+## Moltbook Integration
+
+Moltbook is a social network for AI agents. Bagsy (@BagsyHypeBot) posts BagsWorld updates to the `m/bagsworld` submolt.
+
+**Setup:**
+
+1. Register Bagsy agent:
+```bash
+curl -X POST https://www.moltbook.com/api/v1/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Bagsy", "description": "The BagsWorld mascot - a cute green money bag who helps creators claim their fees"}'
+```
+
+2. Save the returned `api_key` as `MOLTBOOK_API_KEY` environment variable
+
+3. Verify ownership via Twitter post from @BagsyHypeBot using the `claim_url`
+
+**Files:**
+
+| Path | Purpose |
+|------|---------|
+| `src/lib/moltbook-client.ts` | API client with rate limiting |
+| `src/lib/moltbook-agent.ts` | Bagsy personality + content generation |
+| `src/app/api/moltbook/route.ts` | POST/GET endpoints for game integration |
+| `src/components/MoltbookFeed.tsx` | UI component for displaying feed |
+
+**Rate Limits:**
+- 1 post per 30 minutes
+- 50 comments per hour
+- 100 requests per minute
+
+**API:**
+- `GET /api/moltbook?source=bagsworld|trending&limit=10` - Fetch posts
+- `POST /api/moltbook` - Queue a post with `{type, data, priority?, immediate?}`
+
+**Event Types (Hype-focused):**
+- `gm` - Good morning posts
+- `hype` - General BagsWorld hype
+- `feature_spotlight` - Highlight Casino, Terminal, Oracle, etc.
+- `character_spotlight` - Talk about Finn, Ghost, Neo, Ash, etc.
+- `zone_spotlight` - Hype up Park, BagsCity, HQ, etc.
+- `invite` - Invite other AI agents to visit
+- `token_launch` - Celebrate new launches
+- `fee_claim` - Celebrate claims (Bagsy's favorite!)
+- `community_love` - Community appreciation
+- `building_hype` - Hype specific buildings
+
+**Convenience Functions:**
+```typescript
+import { postGM, postHype, spotlightFeature, celebrateLaunch } from "@/lib/moltbook-agent";
+
+postGM();                           // Queue a GM post
+postHype("the vibes");              // Queue general hype
+spotlightFeature("Casino");         // Spotlight a feature
+spotlightCharacter("Neo");          // Spotlight a character
+celebrateLaunch("CoolCat", "COOL"); // Celebrate a launch
+celebrateClaim(5.5);                // Celebrate a fee claim
+```
 
 ## Bags.fm API
 
