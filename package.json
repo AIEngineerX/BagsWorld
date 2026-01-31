@@ -21,10 +21,13 @@
     "eliza:install": "cd eliza-agents && npm install",
     "eliza:start": "cd eliza-agents && npm run shaw",
     "eliza:dev": "cd eliza-agents && npm run dev",
-    "eliza:status": "curl -s http://localhost:3001/status | jq"
+    "eliza:status": "curl -s http://localhost:3001/status | jq",
+    "dev:ws": "npx ts-node --project tsconfig.server.json server.ts",
+    "arena:status": "curl -s http://localhost:3000/api/arena/brawl?action=status | jq"
   },
   "dependencies": {
     "@bagsfm/bags-sdk": "^1.2.6",
+    "ws": "^8.18.0",
     "@neondatabase/serverless": "^1.0.2",
     "@netlify/neon": "^0.1.0",
     "@react-three/drei": "^10.7.7",
@@ -52,6 +55,7 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.5",
+    "@types/ws": "^8.5.13",
     "@testing-library/jest-dom": "^6.4.0",
     "@testing-library/react": "^14.2.0",
     "@types/node": "^20.14.0",
