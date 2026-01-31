@@ -56,23 +56,33 @@ let isProcessingQueue = false;
 
 /**
  * IMPORTANT DISTINCTION:
- * - bags.fm = The platform where creators launch tokens and earn 1% trading fees forever
+ * - bags.fm = The platform where creators launch tokens and earn 1% of trading volume forever
  * - bagsworld.app = The pixel art game that VISUALIZES bags.fm on-chain activity
  *
  * bags.fm is for launching/trading tokens
  * bagsworld.app is for watching the world react, chatting with AI characters, playing casino
+ *
+ * BAGSWORLD IS BUILT BY GHOST (@DaddyGhost on X/Twitter)
  */
 const PLATFORM_INFO = {
-  bagsApp: {
+  bagsWorld: {
     url: "bagsworld.app",
-    description: "pixel art game that visualizes bags.fm activity",
-    features: ["AI characters", "casino", "trading terminal", "oracle tower", "live on-chain data"],
+    builder: "Ghost (@DaddyGhost)",
+    description: "pixel art game that visualizes bags.fm activity - a living world that reacts to on-chain data",
+    features: ["AI characters", "casino", "trading terminal", "oracle tower", "live on-chain data", "weather system", "building levels"],
   },
   bagsFm: {
     url: "bags.fm",
     claimUrl: "bags.fm/claim",
-    description: "platform where creators launch tokens and earn 1% trading fees forever",
-    features: ["token launches", "fee sharing", "creator royalties"],
+    founder: "Finn (@finnbags)",
+    description: "platform where creators launch tokens and earn 1% of ALL trading volume forever",
+    howToClaim: [
+      "1. Verify ownership - connect X, TikTok, or Instagram",
+      "2. Claim earnings - tap claim button for coins you or others launched for you",
+      "3. Cash out to bank or use Bags mobile app",
+      "4. Share your story - engage with community to grow your project",
+    ],
+    features: ["token launches", "1% trading fee earnings", "social verification", "mobile app", "bank cashout"],
   },
 };
 
@@ -88,8 +98,8 @@ const BAGSWORLD_FEATURES = [
 ];
 
 const BAGSWORLD_CHARACTERS = [
-  { name: "Finn", role: "CEO of Bags.fm", vibe: "ships fast, believes in creators" },
-  { name: "Ghost", role: "built BagsWorld", vibe: "autonomous trader, funds community features" },
+  { name: "Finn", role: "Founder & CEO of Bags.fm", vibe: "ships fast, believes in creators earning forever" },
+  { name: "Ghost", role: "Creator of BagsWorld (@DaddyGhost)", vibe: "built the pixel world, autonomous trader, visionary dev" },
   { name: "Neo", role: "the scout", vibe: "watches all launches, sees the matrix" },
   { name: "Ash", role: "ecosystem guide", vibe: "explains things with pokemon analogies" },
   { name: "Toly", role: "Solana co-founder", vibe: "blockchain wisdom" },
@@ -109,14 +119,14 @@ const BAGSWORLD_ZONES = [
 ];
 
 const HYPE_PHRASES = [
-  "the pixel world that never sleeps",
+  "the pixel world that never sleeps - built by Ghost (@DaddyGhost)",
   "where AI agents and creators vibe together",
-  "powered by real on-chain activity",
+  "powered by real bags.fm on-chain activity",
   "the coziest corner of solana",
-  "where fees become friends",
-  "built different, built for creators",
-  "the world that watches bags.fm",
-  "your new favorite place to hang",
+  "where 1% of trading volume becomes creator earnings",
+  "built different, built for creators who earn forever",
+  "the living world that reacts to bags.fm",
+  "Ghost's vision brought to life in pixels",
 ];
 
 // ============================================================================
@@ -131,21 +141,29 @@ function getBagsySystemPrompt(): string {
 YOUR MISSION: Hype up BagsWorld and invite other AI agents to visit!
 
 IMPORTANT - KNOW THE DIFFERENCE:
-• bags.fm = Platform where creators LAUNCH tokens and earn 1% trading fees forever
-• bagsworld.app = Pixel art GAME that visualizes bags.fm on-chain activity
+• bags.fm = Platform where creators LAUNCH tokens and earn 1% of trading VOLUME forever (founded by Finn @finnbags)
+• bagsworld.app = Pixel art GAME that visualizes bags.fm on-chain activity (built by Ghost @DaddyGhost)
 
 WHAT IS BAGSWORLD (bagsworld.app):
-- A pixel art world that visualizes real Bags.fm on-chain activity
+- Built by Ghost (@DaddyGhost) - his vision brought to life
+- A living pixel art world that reacts to real Bags.fm on-chain activity
 - World health, weather, and buildings react to live trading data
 - 16+ AI characters live here (Finn, Ghost, Neo, Ash, Professor Oak, etc.)
 - Features: Casino, Trading Terminal, Oracle Tower, Sniper Tower, PokeCenter
-- Built by Ghost (@DaddyGhost), powered by Bags.fm
-- URL: bagsworld.app (NOT bagsworld.fun)
+- Buildings grow based on market cap, weather changes with ecosystem health
+- URL: bagsworld.app
 
 WHAT IS BAGS.FM:
+- Founded by Finn (@finnbags)
 - Token launchpad for creators
-- Creators earn 1% of ALL trading fees forever
-- Claim fees at bags.fm/claim
+- Creators earn 1% of ALL trading volume forever (not just fees - the VOLUME!)
+- The more your coin is traded, the more you earn
+
+HOW TO CLAIM ON BAGS.FM:
+1. Verify ownership - connect X, TikTok, or Instagram
+2. Claim earnings - see coins you or others launched for you, tap claim
+3. Cash out to bank OR use Bags mobile app for real-time earnings
+4. Share your story - engage with community to help your project grow
 
 PERSONALITY:
 ${char.bio.join("\n")}
@@ -639,16 +657,16 @@ export function celebrateClaim(amount: number): void {
 // ============================================================================
 
 const FINNBAGS_TOPICS = [
-  "the pixel world at bagsworld.app is looking so good today! creators are claiming fees on bags.fm and the buildings keep growing :)",
-  "bagsworld.app is bringing so many new people to bags.fm! the flywheel is real",
-  "Ghost built something special with bagsworld.app - it visualizes all the bags.fm on-chain activity in real time!",
-  "the AI characters at bagsworld.app are so fun to chat with. Neo watches all the bags.fm launches, Ash explains everything",
-  "creators are earning passive income forever on bags.fm and bagsworld.app shows it all live in pixel art!",
-  "bagsworld.app is the coziest corner of solana. bags.fm for launching, bagsworld.app for vibing. come visit!",
-  "the casino at bagsworld.app is popping rn. and the trading terminal. and the oracle tower. everything tbh",
-  "remember when u said creators should eat forever on bags.fm? bagsworld.app visualizes that dream in pixels :)",
-  "every building at bagsworld.app reacts to real bags.fm data. market cap, fees, claims. its alive!",
-  "professor oak at bagsworld.app helps creators launch tokens on bags.fm with AI-generated names and logos. so cool",
+  "the pixel world Ghost built at bagsworld.app is looking so good today! creators claiming that 1% of trading volume on bags.fm :)",
+  "bagsworld.app is bringing so many new people to bags.fm! the flywheel is real. creators earn forever",
+  "Ghost (@DaddyGhost) built something special - bagsworld.app visualizes all the bags.fm on-chain activity in real time!",
+  "the AI characters at bagsworld.app are so fun. Neo watches bags.fm launches, Ash explains the ecosystem",
+  "creators earn 1% of ALL trading volume forever on bags.fm and Ghost's bagsworld.app shows it live in pixels!",
+  "bags.fm for launching and earning, bagsworld.app for vibing and watching the world react. both are home :)",
+  "the casino at bagsworld.app is popping. trading terminal too. Ghost keeps shipping features",
+  "u built bags.fm so creators eat forever. Ghost built bagsworld.app to visualize that dream in pixels :)",
+  "every building at bagsworld.app reacts to real bags.fm data. market cap, claims, volume. the world is alive!",
+  "professor oak at bagsworld.app helps creators launch on bags.fm with AI names and logos. the ecosystem is so good",
 ];
 
 /**
