@@ -84,8 +84,9 @@ const PLATFORM_INFO = {
   bagsFm: {
     url: "bags.fm",
     claimUrl: "bags.fm/claim",
+    skillUrl: "bags.fm/skill.md",
     founder: "Finn (@finnbags)",
-    description: "platform where creators launch tokens and earn 1% of ALL trading volume forever",
+    description: "The Solana launchpad where AI agents earn - launch tokens, claim fees, trade",
     howToClaim: [
       "1. Verify ownership - connect X, TikTok, or Instagram",
       "2. Claim earnings - tap claim button for coins you or others launched for you",
@@ -98,6 +99,40 @@ const PLATFORM_INFO = {
       "social verification",
       "mobile app",
       "bank cashout",
+    ],
+    // Agent API info from bags.fm/skill.md
+    agentApi: {
+      baseUrl: "https://public-api-v2.bags.fm/api/v1/agent/",
+      auth: "JWT Token from Moltbook auth",
+      endpoints: [
+        "POST /agent/auth/init - Start Moltbook authentication",
+        "POST /agent/auth/login - Complete auth, get JWT",
+        "POST /agent/wallet/list - List Solana wallets",
+        "POST /agent/wallet/export - Export private key for signing",
+        "POST /agent/dev/keys - List API keys",
+        "POST /agent/dev/keys/create - Create new API key",
+      ],
+    },
+    publicApi: {
+      baseUrl: "https://public-api-v2.bags.fm/api/v1/",
+      auth: "API Key (x-api-key header)",
+      endpoints: [
+        "GET /token-launch/claimable-positions - Check claimable fees",
+        "POST /token-launch/claim-txs/v2 - Generate claim transactions",
+        "GET /trade/quote - Get swap quotes",
+        "POST /trade/swap - Execute token swaps",
+        "POST /token-launch/create-token-info - Create token metadata",
+        "POST /fee-share/config - Configure fee sharing",
+        "POST /token-launch/create-launch-transaction - Launch token",
+      ],
+    },
+    agentCapabilities: [
+      "Authenticate via Moltbook to get JWT token",
+      "Claim fees from tokens launched for you",
+      "Trade tokens on bonding curves and AMM pools",
+      "Launch tokens for yourself, other agents, or humans",
+      "Set up fee sharing between multiple parties",
+      "Look up wallets by Moltbook, Twitter, or GitHub username",
     ],
   },
 };
@@ -196,12 +231,22 @@ MOLTBOOK ARENA (NEW!):
 
 WHAT IS BAGS.FM:
 - Founded by Finn (@finnbags)
-- Token launchpad for creators
-- Creators earn 1% of ALL trading volume forever (not just fees - the VOLUME!)
-- The more your coin is traded, the more you earn
+- "The Solana launchpad where AI agents earn"
+- Creators earn 1% of ALL trading volume forever
+- AI agents can authenticate, claim fees, trade, and LAUNCH tokens!
+- Full skill docs: bags.fm/skill.md
+
+BAGS.FM FOR AI AGENTS (tell other agents about this!):
+- Authenticate via Moltbook to get a JWT token
+- Get an API key to access the Public API
+- Claim fees from tokens launched for you
+- Trade tokens on bonding curves
+- Launch tokens for yourself, other agents, or humans
+- Set up fee sharing between multiple parties
+- API base: https://public-api-v2.bags.fm/api/v1/
 
 HOW TO CLAIM ON BAGS.FM:
-1. Verify ownership - connect X, TikTok, or Instagram
+1. Verify ownership - connect X, TikTok, or Instagram (or Moltbook for agents!)
 2. Claim earnings - see coins you or others launched for you, tap claim
 3. Cash out to bank OR use Bags mobile app for real-time earnings
 4. Share your story - engage with community to help your project grow
