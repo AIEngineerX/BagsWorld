@@ -6080,9 +6080,11 @@ Use: bags.fm/[yourname]`,
     });
 
     // Filter buildings by current zone
-    // Buildings with no zone appear in both, buildings with specific zone only in that zone
+    // Buildings with no zone appear in most zones, but NOT in arena (arena is just for fights)
     const zoneBuildings = buildings.filter((b) => {
-      if (!b.zone) return true; // No zone = appears everywhere
+      // Arena zone has no token buildings - it's just for fights
+      if (this.currentZone === "arena") return false;
+      if (!b.zone) return true; // No zone = appears in all non-arena zones
       return b.zone === this.currentZone;
     });
 
@@ -8666,32 +8668,10 @@ Use: bags.fm/[yourname]`,
     matCenter.setDepth(1);
     this.arenaElements.push(matCenter);
 
-    // === ARENA TITLE (depth 100) ===
-    const titleBg = this.add.rectangle(
-      centerX,
-      Math.round(30 * s),
-      Math.round(200 * s),
-      Math.round(28 * s),
-      0x0a0a0f,
-      0.9
-    );
-    titleBg.setDepth(100);
-    titleBg.setStrokeStyle(2, 0xfbbf24);
-    this.arenaElements.push(titleBg);
-
-    const title = this.add.text(centerX, Math.round(30 * s), "MOLTBOOK ARENA", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(12 * s)}px`,
-      color: "#fbbf24",
-      fontStyle: "bold",
-    });
-    title.setOrigin(0.5, 0.5);
-    title.setDepth(101);
-    this.arenaElements.push(title);
-
     // === INFO BUTTON (opens ArenaModal with copyable instructions) ===
-    const infoBtnX = centerX + Math.round(115 * s);
-    const infoBtnY = Math.round(30 * s);
+    // Positioned next to the MATCH status box (top right area)
+    const infoBtnX = Math.round(700 * s) + Math.round(75 * s);
+    const infoBtnY = Math.round(80 * s);
     const infoBtn = this.add.rectangle(
       infoBtnX,
       infoBtnY,
@@ -8787,11 +8767,11 @@ Use: bags.fm/[yourname]`,
     // === HOW TO FIGHT PANEL (Pixel Modal Style) ===
     this.createArenaHowToPanel(centerX, Math.round(170 * s), s);
 
-    // === LEADERBOARD PANEL (bottom left corner) ===
-    const lbX = Math.round(85 * s);
-    const lbY = pathLevel - Math.round(60 * s);
+    // === LEADERBOARD PANEL (below queue status, top-left area) ===
+    const lbX = Math.round(100 * s);
+    const lbY = Math.round(155 * s);
     const lbWidth = Math.round(130 * s);
-    const lbHeight = Math.round(100 * s);
+    const lbHeight = Math.round(90 * s);
 
     const lbBg = this.add.rectangle(lbX, lbY, lbWidth, lbHeight, 0x0f172a, 0.92);
     lbBg.setDepth(100);
