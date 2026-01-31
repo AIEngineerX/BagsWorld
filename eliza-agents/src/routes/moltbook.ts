@@ -83,7 +83,7 @@ async function postToMoltbook(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[MoltBook] Post failed: ${response.status} - ${errorText}`);
-      return { success: false, error: `MoltBook API error: ${response.status}` };
+      return { success: false, error: `MoltBook API error: ${response.status} - ${errorText}` };
     }
 
     const post = (await response.json()) as MoltbookPost;
