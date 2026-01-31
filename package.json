@@ -5,9 +5,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && npx tsc --project tsconfig.server.json",
-    "start": "node dist/server.js",
-    "start:next": "next start",
+    "build": "next build",
+    "build:railway": "next build && npx tsc --project tsconfig.server.json",
+    "start": "next start",
+    "start:railway": "node dist/server.js",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,json}\"",
