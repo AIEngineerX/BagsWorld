@@ -1,5 +1,14 @@
-// TwitterService - Twitter/X posting and engagement for Finn
+// TwitterService - Twitter/X posting and engagement for Bagsy (@BagsyHypeBot)
 // Handles authentication, posting, rate limiting, and content moderation
+//
+// Required environment variables (set in Railway):
+//   TWITTER_USERNAME=BagsyHypeBot
+//   TWITTER_API_KEY=<consumer-key>
+//   TWITTER_API_SECRET=<consumer-secret>
+//   TWITTER_ACCESS_TOKEN=<bagsy-access-token>
+//   TWITTER_ACCESS_TOKEN_SECRET=<bagsy-access-secret>
+//   TWITTER_BEARER_TOKEN=<bearer-token-for-read>
+//   TWITTER_DRY_RUN=false
 
 import { Service, type IAgentRuntime } from "../types/elizaos.js";
 import OAuth from "oauth-1.0a";
@@ -246,13 +255,16 @@ export class TwitterService extends Service {
 
   async initialize(): Promise<void> {
     // Check for OAuth 1.0a credentials (required for posting)
-    const hasOAuthCredentials = this.apiKey && this.apiSecret && this.accessToken && this.accessTokenSecret;
+    const hasOAuthCredentials =
+      this.apiKey && this.apiSecret && this.accessToken && this.accessTokenSecret;
     const hasBearerToken = !!this.bearerToken;
     const hasUsername = !!this.config.username;
 
     if (!hasOAuthCredentials) {
       console.warn("[TwitterService] OAuth credentials not fully configured");
-      console.warn("[TwitterService] For posting, need: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET");
+      console.warn(
+        "[TwitterService] For posting, need: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET"
+      );
 
       // Allow dry run with just username (no API calls needed)
       if (!hasBearerToken && !hasUsername) {
@@ -270,7 +282,9 @@ export class TwitterService extends Service {
       await this.verifyCredentials();
       this.isAuthenticated = true;
       console.log(`[TwitterService] Authenticated as @${this.config.username || "unknown"}`);
-      console.log(`[TwitterService] OAuth posting: ${hasOAuthCredentials ? "ENABLED" : "DISABLED (dry run only)"}`);
+      console.log(
+        `[TwitterService] OAuth posting: ${hasOAuthCredentials ? "ENABLED" : "DISABLED (dry run only)"}`
+      );
       console.log(`[TwitterService] Dry run mode: ${this.config.dryRun ? "ENABLED" : "DISABLED"}`);
     } catch (error) {
       console.error("[TwitterService] Authentication failed:", error);
@@ -579,18 +593,15 @@ export class TwitterService extends Service {
     }
 
     // Map tweets to ProcessedMention format
-    const mentions: ProcessedMention[] = data.data.map((tweet: {
-      id: string;
-      text: string;
-      author_id: string;
-      created_at: string;
-    }) => ({
-      tweetId: tweet.id,
-      authorId: tweet.author_id,
-      authorUsername: userMap.get(tweet.author_id) || "unknown",
-      text: tweet.text,
-      createdAt: new Date(tweet.created_at),
-    }));
+    const mentions: ProcessedMention[] = data.data.map(
+      (tweet: { id: string; text: string; author_id: string; created_at: string }) => ({
+        tweetId: tweet.id,
+        authorId: tweet.author_id,
+        authorUsername: userMap.get(tweet.author_id) || "unknown",
+        text: tweet.text,
+        createdAt: new Date(tweet.created_at),
+      })
+    );
 
     console.log(`[TwitterService] Found ${mentions.length} mentions for @${username}`);
     return mentions;
@@ -688,7 +699,9 @@ export class TwitterService extends Service {
   private async postTweet(content: string, replyToId?: string): Promise<Tweet> {
     // OAuth 1.0a is required for posting tweets (Bearer token is read-only)
     if (!this.oauth || !this.accessToken || !this.accessTokenSecret) {
-      throw new Error("OAuth credentials not configured (need API key, secret, access token, and access token secret)");
+      throw new Error(
+        "OAuth credentials not configured (need API key, secret, access token, and access token secret)"
+      );
     }
 
     const url = "https://api.twitter.com/2/tweets";

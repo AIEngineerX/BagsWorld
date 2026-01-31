@@ -16,6 +16,11 @@ type RawData = WebSocket.Data;
 import { startArenaMonitor, stopArenaMonitor } from "./src/lib/arena-moltbook-monitor";
 import { getQueueStatus } from "./src/lib/arena-matchmaking";
 import type { MatchState, ArenaWSMessage } from "./src/lib/arena-types";
+import {
+  startMoltbookAutonomous,
+  stopMoltbookAutonomous,
+  getMoltbookAutonomousStatus,
+} from "./src/lib/moltbook-autonomous";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
@@ -116,7 +121,10 @@ app.prepare().then(() => {
   });
 
   // Handle client messages
-  async function handleClientMessage(client: ArenaClient, message: { type: string; matchId?: number }): Promise<void> {
+  async function handleClientMessage(
+    client: ArenaClient,
+    message: { type: string; matchId?: number }
+  ): Promise<void> {
     switch (message.type) {
       case "watch_match":
         if (typeof message.matchId === "number") {
@@ -153,7 +161,7 @@ app.prepare().then(() => {
 
         const queueResponse: ArenaWSMessage = {
           type: "queue_update",
-          data: queueStatus.fighters.map(f => ({
+          data: queueStatus.fighters.map((f) => ({
             id: 0,
             fighter_id: f.fighterId,
             moltbook_post_id: "",
@@ -214,7 +222,7 @@ app.prepare().then(() => {
 
     const queueMessage: ArenaWSMessage = {
       type: "queue_update",
-      data: queueStatus.fighters.map(f => ({
+      data: queueStatus.fighters.map((f) => ({
         id: 0,
         fighter_id: f.fighterId,
         moltbook_post_id: "",
@@ -250,6 +258,15 @@ app.prepare().then(() => {
     await broadcastQueueUpdate();
   });
 
+  // Start Bagsy's MoltBook autonomous posting service
+  startMoltbookAutonomous();
+  const moltbookStatus = getMoltbookAutonomousStatus();
+  if (moltbookStatus.moltbookConfigured) {
+    console.log(`> Bagsy MoltBook autonomous posting: ENABLED`);
+  } else {
+    console.log(`> Bagsy MoltBook: NOT CONFIGURED (set MOLTBOOK_API_KEY)`);
+  }
+
   // Periodic queue broadcast (every 5 seconds)
   setInterval(broadcastQueueUpdate, 5000);
 
@@ -258,6 +275,7 @@ app.prepare().then(() => {
     console.log("[Server] Shutting down...");
     stopArenaEngine();
     stopArenaMonitor();
+    stopMoltbookAutonomous();
 
     clients.forEach((client) => {
       client.ws.close(1001, "Server shutting down");
@@ -274,5 +292,6 @@ app.prepare().then(() => {
     console.log(`> Ready on http://${hostname}:${port}`);
     console.log(`> Arena WebSocket on ws://${hostname}:${port}/api/arena-ws`);
     console.log(`> MoltBook Arena monitoring m/bagsworld-arena`);
+    console.log(`> Bagsy status: GET /api/bagsy`);
   });
 });
