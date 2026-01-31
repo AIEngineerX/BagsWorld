@@ -8786,94 +8786,83 @@ Use: bags.fm/[yourname]`,
     lbEntries.setName("arenaLeaderboard");
     this.arenaElements.push(lbEntries);
 
-    // === DEMO FIGHT BUTTON (bottom right corner) ===
-    const demoX = GAME_WIDTH - Math.round(85 * s);
-    const demoY = pathLevel - Math.round(60 * s);
-    const demoWidth = Math.round(110 * s);
-    const demoHeight = Math.round(36 * s);
+    // === DEMO FIGHT BUTTON (development only) ===
+    const isDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    if (isDev) {
+      const demoX = GAME_WIDTH - Math.round(85 * s);
+      const demoY = pathLevel - Math.round(60 * s);
+      const demoWidth = Math.round(110 * s);
+      const demoHeight = Math.round(36 * s);
 
-    const demoBg = this.add.rectangle(demoX, demoY, demoWidth, demoHeight, 0x22c55e, 1);
-    demoBg.setDepth(100);
-    demoBg.setStrokeStyle(2, 0x16a34a);
-    demoBg.setInteractive({ useHandCursor: true });
-    this.arenaElements.push(demoBg);
+      const demoBg = this.add.rectangle(demoX, demoY, demoWidth, demoHeight, 0x22c55e, 1);
+      demoBg.setDepth(100);
+      demoBg.setStrokeStyle(2, 0x16a34a);
+      demoBg.setInteractive({ useHandCursor: true });
+      this.arenaElements.push(demoBg);
 
-    const demoText = this.add.text(demoX, demoY, "DEMO FIGHT", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(10 * s)}px`,
-      color: "#ffffff",
-      fontStyle: "bold",
-    });
-    demoText.setOrigin(0.5, 0.5);
-    demoText.setDepth(101);
-    this.arenaElements.push(demoText);
+      const demoText = this.add.text(demoX, demoY, "DEMO FIGHT", {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(10 * s)}px`,
+        color: "#ffffff",
+        fontStyle: "bold",
+      });
+      demoText.setOrigin(0.5, 0.5);
+      demoText.setDepth(101);
+      this.arenaElements.push(demoText);
 
-    // Demo button click handler
-    demoBg.on("pointerdown", async () => {
-      demoText.setText("STARTING...");
-      demoBg.setFillStyle(0x16a34a);
+      demoBg.on("pointerdown", async () => {
+        demoText.setText("STARTING...");
+        demoBg.setFillStyle(0x16a34a);
 
-      try {
-        // Create a simulated match
-        const response = await fetch("/api/arena/brawl", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "simulate_match" }),
-        });
-        const data = await response.json();
+        try {
+          const response = await fetch("/api/arena/brawl", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "simulate_match" }),
+          });
+          const data = await response.json();
 
-        if (data.success && data.matchId) {
-          demoText.setText("FIGHTING!");
-          const matchId = data.matchId;
+          if (data.success && data.matchId) {
+            demoText.setText("FIGHTING!");
+            const matchId = data.matchId;
 
-          // Run fight loop - tick and render until complete
-          const runFightLoop = async () => {
-            // Run some ticks
-            await fetch("/api/arena/brawl", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "tick", ticks: 5 }),
-            });
+            const runFightLoop = async () => {
+              await fetch("/api/arena/brawl", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "tick", ticks: 5 }),
+              });
 
-            // Fetch current match state
-            const stateResponse = await fetch(`/api/arena/brawl?action=match&matchId=${matchId}`);
-            const stateData = await stateResponse.json();
+              const stateResponse = await fetch(`/api/arena/brawl?action=match&matchId=${matchId}`);
+              const stateData = await stateResponse.json();
 
-            if (stateData.success && stateData.match) {
-              // Render the fighters
-              this.updateArenaMatch(stateData.match);
+              if (stateData.success && stateData.match) {
+                this.updateArenaMatch(stateData.match);
 
-              // Continue if still active
-              if (stateData.match.status === "active") {
-                this.time.delayedCall(100, runFightLoop);
-              } else {
-                // Fight complete
-                demoText.setText("DEMO FIGHT");
-                demoBg.setFillStyle(0x22c55e);
-                this.fetchArenaLeaderboard();
+                if (stateData.match.status === "active") {
+                  this.time.delayedCall(100, runFightLoop);
+                } else {
+                  demoText.setText("DEMO FIGHT");
+                  demoBg.setFillStyle(0x22c55e);
+                  this.fetchArenaLeaderboard();
+                }
               }
-            }
-          };
+            };
 
-          // Start the fight loop
-          runFightLoop();
-        } else {
+            runFightLoop();
+          } else {
+            demoText.setText("DEMO FIGHT");
+            demoBg.setFillStyle(0x22c55e);
+          }
+        } catch {
           demoText.setText("DEMO FIGHT");
           demoBg.setFillStyle(0x22c55e);
         }
-      } catch {
-        demoText.setText("DEMO FIGHT");
-        demoBg.setFillStyle(0x22c55e);
-      }
-    });
+      });
 
-    demoBg.on("pointerover", () => {
-      demoBg.setFillStyle(0x16a34a);
-    });
-
-    demoBg.on("pointerout", () => {
-      demoBg.setFillStyle(0x22c55e);
-    });
+      demoBg.on("pointerover", () => demoBg.setFillStyle(0x16a34a));
+      demoBg.on("pointerout", () => demoBg.setFillStyle(0x22c55e));
+    }
 
     // === VS DISPLAY for active match (depth 100) ===
     const vsDisplay = this.add.text(centerX, Math.round(70 * s), "", {
@@ -8906,7 +8895,8 @@ Use: bags.fm/[yourname]`,
 
       if (lbText && data.success && data.leaderboard) {
         if (data.leaderboard.length === 0) {
-          lbText.setText("No fights yet!\nClick DEMO FIGHT");
+          const isDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+          lbText.setText(isDev ? "No fights yet!\nClick DEMO FIGHT" : "No fights yet!\nPost !fight to m/bagsworld-arena");
         } else {
           const entries = data.leaderboard
             .slice(0, 4)
@@ -9276,8 +9266,8 @@ Use: bags.fm/[yourname]`,
       textureKey = `fighter_${variantIndex}_knockout`;
     }
 
-    // Calculate position on ring
-    const fighterX = ringCenterX + (fighter.x - 100) * s; // Convert arena coords to screen
+    // Calculate position on ring (arena coords: 0-400, center at 200)
+    const fighterX = ringCenterX + (fighter.x - 200) * s;
     const fighterY = ringY;
 
     // Sprite height offset (48px base sprite at SCALE)
