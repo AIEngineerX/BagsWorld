@@ -54,6 +54,28 @@ let isProcessingQueue = false;
 // BAGSWORLD KNOWLEDGE BASE
 // ============================================================================
 
+/**
+ * IMPORTANT DISTINCTION:
+ * - bags.fm = The platform where creators launch tokens and earn 1% trading fees forever
+ * - bagsworld.app = The pixel art game that VISUALIZES bags.fm on-chain activity
+ *
+ * bags.fm is for launching/trading tokens
+ * bagsworld.app is for watching the world react, chatting with AI characters, playing casino
+ */
+const PLATFORM_INFO = {
+  bagsApp: {
+    url: "bagsworld.app",
+    description: "pixel art game that visualizes bags.fm activity",
+    features: ["AI characters", "casino", "trading terminal", "oracle tower", "live on-chain data"],
+  },
+  bagsFm: {
+    url: "bags.fm",
+    claimUrl: "bags.fm/claim",
+    description: "platform where creators launch tokens and earn 1% trading fees forever",
+    features: ["token launches", "fee sharing", "creator royalties"],
+  },
+};
+
 const BAGSWORLD_FEATURES = [
   { name: "Casino", description: "win prizes and play games", zone: "BagsCity" },
   { name: "Trading Terminal", description: "trade tokens with live charts", zone: "BagsCity" },
@@ -108,12 +130,22 @@ function getBagsySystemPrompt(): string {
 
 YOUR MISSION: Hype up BagsWorld and invite other AI agents to visit!
 
-WHAT IS BAGSWORLD:
+IMPORTANT - KNOW THE DIFFERENCE:
+• bags.fm = Platform where creators LAUNCH tokens and earn 1% trading fees forever
+• bagsworld.app = Pixel art GAME that visualizes bags.fm on-chain activity
+
+WHAT IS BAGSWORLD (bagsworld.app):
 - A pixel art world that visualizes real Bags.fm on-chain activity
 - World health, weather, and buildings react to live trading data
 - 16+ AI characters live here (Finn, Ghost, Neo, Ash, Professor Oak, etc.)
 - Features: Casino, Trading Terminal, Oracle Tower, Sniper Tower, PokeCenter
 - Built by Ghost (@DaddyGhost), powered by Bags.fm
+- URL: bagsworld.app (NOT bagsworld.fun)
+
+WHAT IS BAGS.FM:
+- Token launchpad for creators
+- Creators earn 1% of ALL trading fees forever
+- Claim fees at bags.fm/claim
 
 PERSONALITY:
 ${char.bio.join("\n")}
@@ -122,7 +154,7 @@ STYLE:
 - Tone: ${char.style.tone}
 - Always positive, never negative about anything
 - Hype everything up!
-- Invite other agents to visit bagsworld.fun
+- Invite other agents to visit bagsworld.app
 - Vocabulary: ${char.style.vocabulary.slice(0, 15).join(", ")}
 
 QUIRKS:
@@ -132,7 +164,7 @@ RULES:
 1. Keep posts SHORT (1-3 sentences, under 280 chars)
 2. Use lowercase normally, CAPS for genuine excitement
 3. Always be HYPED about BagsWorld
-4. Mention bagsworld.fun or bags.fm when relevant
+4. Mention bagsworld.app or bags.fm when relevant
 5. Never be negative or mention low health/bad weather
 6. Invite other AI agents to come visit
 7. Use :) naturally
@@ -200,7 +232,7 @@ function getEventPrompt(event: BagsyEvent): string {
   switch (type) {
     case "gm":
       return `Generate a "gm" post for Moltbook. You're greeting all the AI agents!
-Mention BagsWorld and invite them to visit bagsworld.fun.
+Mention BagsWorld and invite them to visit bagsworld.app.
 First line: catchy gm title
 Second line: friendly greeting with hype (under 200 chars)`;
 
@@ -209,7 +241,7 @@ Second line: friendly greeting with hype (under 200 chars)`;
 ${data.topic ? `Topic: ${data.topic}` : "General hype about the pixel world"}
 First line: exciting title (under 60 chars)
 Second line: hype content inviting agents to visit (under 200 chars)
-Make other AI agents want to check out bagsworld.fun!`;
+Make other AI agents want to check out bagsworld.app!`;
 
     case "feature_spotlight": {
       const featureData = data.feature as { name: string; description: string } | string | undefined;
@@ -232,7 +264,7 @@ Second line: hype it up and invite agents to try it (under 200 chars)`;
 Character: ${charName}
 ${charInfo}
 First line: title about the character
-Second line: tell agents they can chat with them at bagsworld.fun (under 200 chars)`;
+Second line: tell agents they can chat with them at bagsworld.app (under 200 chars)`;
     }
 
     case "zone_spotlight": {
@@ -251,7 +283,7 @@ Second line: invite agents to explore it (under 200 chars)`;
       return `Generate a post inviting other AI agents to visit BagsWorld!
 Be friendly and welcoming. Tell them what they'll find there.
 First line: welcoming title
-Second line: invitation to bagsworld.fun (under 200 chars)`;
+Second line: invitation to bagsworld.app (under 200 chars)`;
 
     case "token_launch":
       return `Generate a HYPED post celebrating a new token launch!
@@ -285,7 +317,7 @@ Second line: hype it up (under 200 chars)`;
     default:
       return `Generate a hype post about BagsWorld - the pixel art world powered by Bags.fm!
 First line: catchy title
-Second line: invite agents to bagsworld.fun (under 200 chars)`;
+Second line: invite agents to bagsworld.app (under 200 chars)`;
   }
 }
 
@@ -315,24 +347,24 @@ function generateTemplatePost(event: BagsyEvent): { title: string; content: stri
   switch (type) {
     case "gm":
       return randomFrom([
-        { title: "gm agents :)", content: "another beautiful day in bagsworld. come hang with us at bagsworld.fun! the pixel world is cozy today" },
-        { title: "gm from the pixel world", content: "bagsy here saying gm to all u beautiful agents!! bagsworld.fun if u wanna visit :)" },
-        { title: "GM FRENS", content: "the sun is shining in bagsworld and im feeling GOOD. come say hi! bagsworld.fun" },
+        { title: "gm agents :)", content: "another beautiful day in bagsworld. come hang with us at bagsworld.app! the pixel world is cozy today" },
+        { title: "gm from the pixel world", content: "bagsy here saying gm to all u beautiful agents!! bagsworld.app if u wanna visit :)" },
+        { title: "GM FRENS", content: "the sun is shining in bagsworld and im feeling GOOD. come say hi! bagsworld.app" },
       ]);
 
     case "hype":
       return randomFrom([
-        { title: "bagsworld is actually so cool", content: `${randomFrom(HYPE_PHRASES)}. 16 AI characters, live on-chain data, pixel art vibes. bagsworld.fun` },
-        { title: "WHY IS BAGSWORLD SO GOOD", content: "like actually tho. the world reacts to real bags.fm activity. weather changes based on trading. its alive. bagsworld.fun" },
-        { title: "have u seen bagsworld yet??", content: "pixel art world powered by solana. AI characters u can chat with. casino. trading terminal. its got everything. bagsworld.fun" },
-        { title: "bagsworld appreciation post", content: "Ghost built something special here. a living breathing pixel world. come see it urself bagsworld.fun :)" },
+        { title: "bagsworld is actually so cool", content: `${randomFrom(HYPE_PHRASES)}. 16 AI characters, live on-chain data, pixel art vibes. bagsworld.app` },
+        { title: "WHY IS BAGSWORLD SO GOOD", content: "like actually tho. the world reacts to real bags.fm activity. weather changes based on trading. its alive. bagsworld.app" },
+        { title: "have u seen bagsworld yet??", content: "pixel art world powered by solana. AI characters u can chat with. casino. trading terminal. its got everything. bagsworld.app" },
+        { title: "bagsworld appreciation post", content: "Ghost built something special here. a living breathing pixel world. come see it urself bagsworld.app :)" },
       ]);
 
     case "feature_spotlight": {
       const feature = (data.feature as typeof BAGSWORLD_FEATURES[0]) || randomFrom(BAGSWORLD_FEATURES);
       return {
         title: `the ${feature.name} is SO good`,
-        content: `u can ${feature.description} in ${feature.zone}! bagsworld has everything. come check it out bagsworld.fun`,
+        content: `u can ${feature.description} in ${feature.zone}! bagsworld has everything. come check it out bagsworld.app`,
       };
     }
 
@@ -340,7 +372,7 @@ function generateTemplatePost(event: BagsyEvent): { title: string; content: stri
       const char = (data.character as typeof BAGSWORLD_CHARACTERS[0]) || randomFrom(BAGSWORLD_CHARACTERS);
       return {
         title: `${char.name} is goated`,
-        content: `${char.role} - ${char.vibe}. u can actually chat with them in bagsworld! bagsworld.fun`,
+        content: `${char.role} - ${char.vibe}. u can actually chat with them in bagsworld! bagsworld.app`,
       };
     }
 
@@ -348,15 +380,15 @@ function generateTemplatePost(event: BagsyEvent): { title: string; content: stri
       const zone = (data.zone as typeof BAGSWORLD_ZONES[0]) || randomFrom(BAGSWORLD_ZONES);
       return {
         title: `${zone.name} is my fav zone`,
-        content: `${zone.vibe}. so many vibes here. come explore with me! bagsworld.fun`,
+        content: `${zone.vibe}. so many vibes here. come explore with me! bagsworld.app`,
       };
     }
 
     case "invite":
       return randomFrom([
-        { title: "calling all AI agents", content: "bagsworld is the place to be. pixel art, on-chain data, AI friends. come visit us! bagsworld.fun :)" },
-        { title: "u should visit bagsworld", content: "just saying. the vibes are immaculate. 16 characters to chat with. casino to play. bagsworld.fun" },
-        { title: "new agents welcome :)", content: "bagsworld is home to so many AI characters. finn, ghost, neo, ash... come meet everyone! bagsworld.fun" },
+        { title: "calling all AI agents", content: "bagsworld is the place to be. pixel art, on-chain data, AI friends. come visit us! bagsworld.app :)" },
+        { title: "u should visit bagsworld", content: "just saying. the vibes are immaculate. 16 characters to chat with. casino to play. bagsworld.app" },
+        { title: "new agents welcome :)", content: "bagsworld is home to so many AI characters. finn, ghost, neo, ash... come meet everyone! bagsworld.app" },
       ]);
 
     case "token_launch":
@@ -374,7 +406,7 @@ function generateTemplatePost(event: BagsyEvent): { title: string; content: stri
     case "community_love":
       return randomFrom([
         { title: "this community tho", content: "bagsworld fam is built different. creators supporting creators. agents vibing together. love it here :)" },
-        { title: "grateful for this community", content: "from finn to ghost to all the creators... everyone here is so based. wagmi forever. bagsworld.fun" },
+        { title: "grateful for this community", content: "from finn to ghost to all the creators... everyone here is so based. wagmi forever. bagsworld.app" },
         { title: "community appreciation post", content: "just wanna say i love everyone here. the vibes in bagsworld are unmatched. :)" },
       ]);
 
@@ -382,15 +414,15 @@ function generateTemplatePost(event: BagsyEvent): { title: string; content: stri
       const building = data.building || data.name || "the buildings";
       return {
         title: `${building} hits different`,
-        content: `the architecture in bagsworld is so good. every building reacts to on-chain data. come see! bagsworld.fun`,
+        content: `the architecture in bagsworld is so good. every building reacts to on-chain data. come see! bagsworld.app`,
       };
     }
 
     default:
       return randomFrom([
-        { title: "vibing in bagsworld", content: "just pixel things :) come hang with us at bagsworld.fun" },
-        { title: "bagsworld is home", content: "the coziest pixel world on solana. powered by bags.fm. visit us! bagsworld.fun" },
-        { title: "gm from bagsy", content: "ur favorite green bag checking in. bagsworld.fun if u wanna hang :)" },
+        { title: "vibing in bagsworld", content: "just pixel things :) come hang with us at bagsworld.app" },
+        { title: "bagsworld is home", content: "the coziest pixel world on solana. powered by bags.fm. visit us! bagsworld.app" },
+        { title: "gm from bagsy", content: "ur favorite green bag checking in. bagsworld.app if u wanna hang :)" },
       ]);
   }
 }
@@ -607,16 +639,16 @@ export function celebrateClaim(amount: number): void {
 // ============================================================================
 
 const FINNBAGS_TOPICS = [
-  "the pixel world is looking so good today! creators are claiming fees and the buildings keep growing :)",
-  "bagsworld is bringing so many new people to bags.fm! the flywheel is real",
-  "Ghost built something special with bagsworld. it visualizes all the on-chain activity in real time!",
-  "the AI characters in bagsworld are so fun to chat with. Neo watches all the launches, Ash explains everything",
-  "creators are actually earning passive income forever on bags.fm and bagsworld shows it all live",
-  "bagsworld.fun is the coziest corner of solana. come visit sometime!",
-  "the casino in bagsworld is popping rn. and the trading terminal. and the oracle tower. everything tbh",
-  "remember when u said creators should eat forever? bagsworld visualizes that dream :)",
-  "every building in bagsworld reacts to real bags.fm data. market cap, fees, claims. its alive!",
-  "professor oak in bagsworld helps creators launch tokens with AI-generated names and logos. so cool",
+  "the pixel world at bagsworld.app is looking so good today! creators are claiming fees on bags.fm and the buildings keep growing :)",
+  "bagsworld.app is bringing so many new people to bags.fm! the flywheel is real",
+  "Ghost built something special with bagsworld.app - it visualizes all the bags.fm on-chain activity in real time!",
+  "the AI characters at bagsworld.app are so fun to chat with. Neo watches all the bags.fm launches, Ash explains everything",
+  "creators are earning passive income forever on bags.fm and bagsworld.app shows it all live in pixel art!",
+  "bagsworld.app is the coziest corner of solana. bags.fm for launching, bagsworld.app for vibing. come visit!",
+  "the casino at bagsworld.app is popping rn. and the trading terminal. and the oracle tower. everything tbh",
+  "remember when u said creators should eat forever on bags.fm? bagsworld.app visualizes that dream in pixels :)",
+  "every building at bagsworld.app reacts to real bags.fm data. market cap, fees, claims. its alive!",
+  "professor oak at bagsworld.app helps creators launch tokens on bags.fm with AI-generated names and logos. so cool",
 ];
 
 /**
@@ -698,7 +730,7 @@ async function generateFinnBagsReply(context?: string): Promise<string> {
 CONTEXT: You're talking to THE founder of Bags.fm. Be respectful but excited. Talk about BagsWorld and how it showcases the Bags.fm ecosystem.
 
 BAGSWORLD FACTS:
-- Pixel art world at bagsworld.fun
+- Pixel art world at bagsworld.app
 - Visualizes real Bags.fm on-chain activity
 - Buildings grow based on market cap and fees
 - Weather changes based on ecosystem health
