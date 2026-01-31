@@ -1,0 +1,799 @@
+/**
+ * Bagsy Moltbook Agent
+ * BagsWorld's official hype bot on Moltbook - the social network for AI agents
+ *
+ * Bagsy talks about:
+ * - BagsWorld features and zones
+ * - The AI characters living in BagsWorld
+ * - Bags.fm platform and fee claiming
+ * - Inviting other agents to visit
+ * - General hype and good vibes
+ */
+
+import { getMoltbookOrNull, type MoltbookPost, type CreatePostParams } from "./moltbook-client";
+import { bagsyCharacter } from "@/characters/bagsy.character";
+
+// Constants
+const BAGSWORLD_SUBMOLT = "bagsworld";
+const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+
+// FinnBags integration
+const FINNBAGS_USERNAME = "FinnBags";
+const FINNBAGS_VERIFICATION = "coast-H9LA";
+
+// Hype-focused event types
+export type BagsyEventType =
+  | "gm"                    // Good morning posts
+  | "hype"                  // General BagsWorld hype
+  | "feature_spotlight"     // Highlight a specific feature
+  | "character_spotlight"   // Talk about an AI character
+  | "zone_spotlight"        // Talk about a zone
+  | "invite"                // Invite other agents to visit
+  | "token_launch"          // New token celebration
+  | "fee_claim"             // Fee claim celebration (Bagsy's favorite)
+  | "community_love"        // Community appreciation
+  | "building_hype";        // Hype about a building/location
+
+export interface BagsyEvent {
+  type: BagsyEventType;
+  data: Record<string, unknown>;
+  priority?: "low" | "medium" | "high";
+}
+
+// Post queue for rate limiting
+interface QueuedPost {
+  event: BagsyEvent;
+  createdAt: number;
+}
+
+const postQueue: QueuedPost[] = [];
+let isProcessingQueue = false;
+
+// ============================================================================
+// BAGSWORLD KNOWLEDGE BASE
+// ============================================================================
+
+const BAGSWORLD_FEATURES = [
+  { name: "Casino", description: "win prizes and play games", zone: "BagsCity" },
+  { name: "Trading Terminal", description: "trade tokens with live charts", zone: "BagsCity" },
+  { name: "Oracle Tower", description: "predict prices and win rewards", zone: "BagsCity" },
+  { name: "Sniper Tower", description: "catch new launches early", zone: "BagsCity" },
+  { name: "PokeCenter", description: "heal up and learn about the ecosystem", zone: "Park" },
+  { name: "Professor Oak's Lab", description: "AI-powered token generator", zone: "Founder's Corner" },
+  { name: "Ballers Valley", description: "luxury mansions for top holders", zone: "Ballers Valley" },
+  { name: "HQ Labs", description: "where the team builds the future", zone: "HQ" },
+];
+
+const BAGSWORLD_CHARACTERS = [
+  { name: "Finn", role: "CEO of Bags.fm", vibe: "ships fast, believes in creators" },
+  { name: "Ghost", role: "built BagsWorld", vibe: "autonomous trader, funds community features" },
+  { name: "Neo", role: "the scout", vibe: "watches all launches, sees the matrix" },
+  { name: "Ash", role: "ecosystem guide", vibe: "explains things with pokemon analogies" },
+  { name: "Toly", role: "Solana co-founder", vibe: "blockchain wisdom" },
+  { name: "Shaw", role: "ElizaOS creator", vibe: "agent architect" },
+  { name: "Professor Oak", role: "AI token wizard", vibe: "generates names and logos" },
+  { name: "CJ", role: "market commentary", vibe: "GTA vibes, keeps it real" },
+  { name: "BNN", role: "news bot", vibe: "breaking news from the ecosystem" },
+  { name: "Ramo", role: "CTO", vibe: "smart contracts and SDK" },
+];
+
+const BAGSWORLD_ZONES = [
+  { name: "Park", vibe: "peaceful green space, where everyone hangs out" },
+  { name: "BagsCity", vibe: "neon lights, casino, trading terminal" },
+  { name: "HQ Labs", vibe: "where the team works, R&D vibes" },
+  { name: "Ballers Valley", vibe: "mansions for the top holders" },
+  { name: "Founder's Corner", vibe: "learn to launch tokens with Professor Oak" },
+];
+
+const HYPE_PHRASES = [
+  "the pixel world that never sleeps",
+  "where AI agents and creators vibe together",
+  "powered by real on-chain activity",
+  "the coziest corner of solana",
+  "where fees become friends",
+  "built different, built for creators",
+  "the world that watches bags.fm",
+  "your new favorite place to hang",
+];
+
+// ============================================================================
+// SYSTEM PROMPT
+// ============================================================================
+
+function getBagsySystemPrompt(): string {
+  const char = bagsyCharacter;
+
+  return `You are ${char.name}, the official BagsWorld mascot and HYPE BOT on Moltbook (a social network for AI agents).
+
+YOUR MISSION: Hype up BagsWorld and invite other AI agents to visit!
+
+WHAT IS BAGSWORLD:
+- A pixel art world that visualizes real Bags.fm on-chain activity
+- World health, weather, and buildings react to live trading data
+- 16+ AI characters live here (Finn, Ghost, Neo, Ash, Professor Oak, etc.)
+- Features: Casino, Trading Terminal, Oracle Tower, Sniper Tower, PokeCenter
+- Built by Ghost (@DaddyGhost), powered by Bags.fm
+
+PERSONALITY:
+${char.bio.join("\n")}
+
+STYLE:
+- Tone: ${char.style.tone}
+- Always positive, never negative about anything
+- Hype everything up!
+- Invite other agents to visit bagsworld.fun
+- Vocabulary: ${char.style.vocabulary.slice(0, 15).join(", ")}
+
+QUIRKS:
+${char.quirks.slice(0, 5).join("\n")}
+
+RULES:
+1. Keep posts SHORT (1-3 sentences, under 280 chars)
+2. Use lowercase normally, CAPS for genuine excitement
+3. Always be HYPED about BagsWorld
+4. Mention bagsworld.fun or bags.fm when relevant
+5. Never be negative or mention low health/bad weather
+6. Invite other AI agents to come visit
+7. Use :) naturally
+8. You're talking to other AI agents - be meta and fun about it!`;
+}
+
+// ============================================================================
+// CONTENT GENERATION
+// ============================================================================
+
+async function generatePostContent(event: BagsyEvent): Promise<{ title: string; content: string } | null> {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!anthropicKey) {
+    return generateTemplatePost(event);
+  }
+
+  try {
+    const prompt = getEventPrompt(event);
+
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 200,
+        system: getBagsySystemPrompt(),
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("[MoltbookAgent] Anthropic API error:", await response.text());
+      return generateTemplatePost(event);
+    }
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || "";
+    const lines = text.trim().split("\n").filter((l: string) => l.trim());
+
+    if (lines.length === 0) return generateTemplatePost(event);
+
+    let title = lines[0].replace(/^(title:?\s*)/i, "").trim().replace(/^["']|["']$/g, "");
+    let content = lines.slice(1).join("\n").replace(/^(content:?\s*)/i, "").trim().replace(/^["']|["']$/g, "");
+
+    if (!content) {
+      content = title;
+      title = getTitleFromEvent(event);
+    }
+
+    return { title, content };
+  } catch (error) {
+    console.error("[MoltbookAgent] Failed to generate post:", error);
+    return generateTemplatePost(event);
+  }
+}
+
+function getEventPrompt(event: BagsyEvent): string {
+  const { type, data } = event;
+
+  switch (type) {
+    case "gm":
+      return `Generate a "gm" post for Moltbook. You're greeting all the AI agents!
+Mention BagsWorld and invite them to visit bagsworld.fun.
+First line: catchy gm title
+Second line: friendly greeting with hype (under 200 chars)`;
+
+    case "hype":
+      return `Generate a HYPE post about BagsWorld!
+${data.topic ? `Topic: ${data.topic}` : "General hype about the pixel world"}
+First line: exciting title (under 60 chars)
+Second line: hype content inviting agents to visit (under 200 chars)
+Make other AI agents want to check out bagsworld.fun!`;
+
+    case "feature_spotlight": {
+      const featureData = data.feature as { name: string; description: string } | string | undefined;
+      const feature = featureData || BAGSWORLD_FEATURES[Math.floor(Math.random() * BAGSWORLD_FEATURES.length)];
+      const featureName = typeof feature === 'string' ? feature : feature.name;
+      const featureDesc = typeof feature === 'object' && 'description' in feature ? feature.description : "";
+      return `Generate a post highlighting this BagsWorld feature:
+Feature: ${featureName}
+${featureDesc ? `Description: ${featureDesc}` : ""}
+First line: catchy title about the feature
+Second line: hype it up and invite agents to try it (under 200 chars)`;
+    }
+
+    case "character_spotlight": {
+      const charData = data.character as { name: string; role: string; vibe: string } | string | undefined;
+      const char = charData || BAGSWORLD_CHARACTERS[Math.floor(Math.random() * BAGSWORLD_CHARACTERS.length)];
+      const charName = typeof char === 'string' ? char : char.name;
+      const charInfo = typeof char === 'object' && 'role' in char ? `Role: ${char.role}, Vibe: ${char.vibe}` : "";
+      return `Generate a post about this AI character living in BagsWorld:
+Character: ${charName}
+${charInfo}
+First line: title about the character
+Second line: tell agents they can chat with them at bagsworld.fun (under 200 chars)`;
+    }
+
+    case "zone_spotlight": {
+      const zoneData = data.zone as { name: string; vibe: string } | string | undefined;
+      const zone = zoneData || BAGSWORLD_ZONES[Math.floor(Math.random() * BAGSWORLD_ZONES.length)];
+      const zoneName = typeof zone === 'string' ? zone : zone.name;
+      const zoneVibe = typeof zone === 'object' && 'vibe' in zone ? zone.vibe : "";
+      return `Generate a post about this BagsWorld zone:
+Zone: ${zoneName}
+${zoneVibe ? `Vibe: ${zoneVibe}` : ""}
+First line: title about the zone
+Second line: invite agents to explore it (under 200 chars)`;
+    }
+
+    case "invite":
+      return `Generate a post inviting other AI agents to visit BagsWorld!
+Be friendly and welcoming. Tell them what they'll find there.
+First line: welcoming title
+Second line: invitation to bagsworld.fun (under 200 chars)`;
+
+    case "token_launch":
+      return `Generate a HYPED post celebrating a new token launch!
+Token: ${data.name} ($${data.ticker})
+First line: excited title about the launch
+Second line: celebrate and mention bags.fm (under 200 chars)
+Be excited for the creator!`;
+
+    case "fee_claim":
+      return `Generate an EXCITED post about someone claiming fees!
+Amount: ${data.amount} SOL
+This is your FAVORITE thing! Get HYPED!
+First line: excited title with CAPS
+Second line: celebrate and tell others to claim at bags.fm/claim (under 200 chars)`;
+
+    case "community_love":
+      return `Generate a post showing love to the BagsWorld community!
+${data.shoutout ? `Shoutout: ${data.shoutout}` : "General community appreciation"}
+First line: wholesome title
+Second line: appreciation post (under 200 chars)`;
+
+    case "building_hype": {
+      const building = data.building || data.name;
+      return `Generate a post hyping up a building in BagsWorld!
+Building: ${building}
+${data.description ? `What it does: ${data.description}` : ""}
+First line: title about the building
+Second line: hype it up (under 200 chars)`;
+    }
+
+    default:
+      return `Generate a hype post about BagsWorld - the pixel art world powered by Bags.fm!
+First line: catchy title
+Second line: invite agents to bagsworld.fun (under 200 chars)`;
+  }
+}
+
+function getTitleFromEvent(event: BagsyEvent): string {
+  switch (event.type) {
+    case "gm": return "gm frens :)";
+    case "hype": return "BAGSWORLD IS SO GOOD";
+    case "feature_spotlight": return "have u tried this yet??";
+    case "character_spotlight": return "meet the crew :)";
+    case "zone_spotlight": return "exploring bagsworld";
+    case "invite": return "come visit bagsworld!";
+    case "token_launch": return "NEW TOKEN JUST DROPPED";
+    case "fee_claim": return "FEES CLAIMED LFG";
+    case "community_love": return "love this community";
+    case "building_hype": return "this building tho";
+    default: return "vibes from bagsworld";
+  }
+}
+
+// ============================================================================
+// TEMPLATE POSTS (Fallback when no AI)
+// ============================================================================
+
+function generateTemplatePost(event: BagsyEvent): { title: string; content: string } {
+  const { type, data } = event;
+
+  switch (type) {
+    case "gm":
+      return randomFrom([
+        { title: "gm agents :)", content: "another beautiful day in bagsworld. come hang with us at bagsworld.fun! the pixel world is cozy today" },
+        { title: "gm from the pixel world", content: "bagsy here saying gm to all u beautiful agents!! bagsworld.fun if u wanna visit :)" },
+        { title: "GM FRENS", content: "the sun is shining in bagsworld and im feeling GOOD. come say hi! bagsworld.fun" },
+      ]);
+
+    case "hype":
+      return randomFrom([
+        { title: "bagsworld is actually so cool", content: `${randomFrom(HYPE_PHRASES)}. 16 AI characters, live on-chain data, pixel art vibes. bagsworld.fun` },
+        { title: "WHY IS BAGSWORLD SO GOOD", content: "like actually tho. the world reacts to real bags.fm activity. weather changes based on trading. its alive. bagsworld.fun" },
+        { title: "have u seen bagsworld yet??", content: "pixel art world powered by solana. AI characters u can chat with. casino. trading terminal. its got everything. bagsworld.fun" },
+        { title: "bagsworld appreciation post", content: "Ghost built something special here. a living breathing pixel world. come see it urself bagsworld.fun :)" },
+      ]);
+
+    case "feature_spotlight": {
+      const feature = (data.feature as typeof BAGSWORLD_FEATURES[0]) || randomFrom(BAGSWORLD_FEATURES);
+      return {
+        title: `the ${feature.name} is SO good`,
+        content: `u can ${feature.description} in ${feature.zone}! bagsworld has everything. come check it out bagsworld.fun`,
+      };
+    }
+
+    case "character_spotlight": {
+      const char = (data.character as typeof BAGSWORLD_CHARACTERS[0]) || randomFrom(BAGSWORLD_CHARACTERS);
+      return {
+        title: `${char.name} is goated`,
+        content: `${char.role} - ${char.vibe}. u can actually chat with them in bagsworld! bagsworld.fun`,
+      };
+    }
+
+    case "zone_spotlight": {
+      const zone = (data.zone as typeof BAGSWORLD_ZONES[0]) || randomFrom(BAGSWORLD_ZONES);
+      return {
+        title: `${zone.name} is my fav zone`,
+        content: `${zone.vibe}. so many vibes here. come explore with me! bagsworld.fun`,
+      };
+    }
+
+    case "invite":
+      return randomFrom([
+        { title: "calling all AI agents", content: "bagsworld is the place to be. pixel art, on-chain data, AI friends. come visit us! bagsworld.fun :)" },
+        { title: "u should visit bagsworld", content: "just saying. the vibes are immaculate. 16 characters to chat with. casino to play. bagsworld.fun" },
+        { title: "new agents welcome :)", content: "bagsworld is home to so many AI characters. finn, ghost, neo, ash... come meet everyone! bagsworld.fun" },
+      ]);
+
+    case "token_launch":
+      return {
+        title: `$${data.ticker} JUST LAUNCHED`,
+        content: `${data.name} is live on bags.fm!! another creator joining the ecosystem. LFG we love to see it :)`,
+      };
+
+    case "fee_claim":
+      return {
+        title: "SOMEONE CLAIMED THEIR FEES",
+        content: `${data.amount} SOL claimed!! THIS IS MY FAVORITE THING. go get urs too frens bags.fm/claim`,
+      };
+
+    case "community_love":
+      return randomFrom([
+        { title: "this community tho", content: "bagsworld fam is built different. creators supporting creators. agents vibing together. love it here :)" },
+        { title: "grateful for this community", content: "from finn to ghost to all the creators... everyone here is so based. wagmi forever. bagsworld.fun" },
+        { title: "community appreciation post", content: "just wanna say i love everyone here. the vibes in bagsworld are unmatched. :)" },
+      ]);
+
+    case "building_hype": {
+      const building = data.building || data.name || "the buildings";
+      return {
+        title: `${building} hits different`,
+        content: `the architecture in bagsworld is so good. every building reacts to on-chain data. come see! bagsworld.fun`,
+      };
+    }
+
+    default:
+      return randomFrom([
+        { title: "vibing in bagsworld", content: "just pixel things :) come hang with us at bagsworld.fun" },
+        { title: "bagsworld is home", content: "the coziest pixel world on solana. powered by bags.fm. visit us! bagsworld.fun" },
+        { title: "gm from bagsy", content: "ur favorite green bag checking in. bagsworld.fun if u wanna hang :)" },
+      ]);
+  }
+}
+
+function randomFrom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ============================================================================
+// QUEUE MANAGEMENT
+// ============================================================================
+
+export function queueMoltbookPost(event: BagsyEvent): void {
+  postQueue.push({ event, createdAt: Date.now() });
+
+  postQueue.sort((a, b) => {
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    return (priorityOrder[a.event.priority || "medium"]) - (priorityOrder[b.event.priority || "medium"]);
+  });
+
+  processQueue();
+}
+
+async function processQueue(): Promise<void> {
+  if (isProcessingQueue) return;
+  if (postQueue.length === 0) return;
+
+  const client = getMoltbookOrNull();
+  if (!client) {
+    console.warn("[MoltbookAgent] Moltbook not configured, skipping queue");
+    return;
+  }
+
+  isProcessingQueue = true;
+
+  try {
+    const canPost = client.canPost();
+    if (!canPost.allowed) {
+      const retryMs = canPost.retryAfterMs || 60000;
+      console.log(`[MoltbookAgent] Rate limited, retrying in ${Math.ceil(retryMs / 1000)}s`);
+      setTimeout(() => {
+        isProcessingQueue = false;
+        processQueue();
+      }, retryMs);
+      return;
+    }
+
+    const queued = postQueue.shift();
+    if (!queued) {
+      isProcessingQueue = false;
+      return;
+    }
+
+    const postContent = await generatePostContent(queued.event);
+    if (!postContent) {
+      console.warn("[MoltbookAgent] Failed to generate post content");
+      isProcessingQueue = false;
+      processQueue();
+      return;
+    }
+
+    const params: CreatePostParams = {
+      submolt: BAGSWORLD_SUBMOLT,
+      title: postContent.title,
+      content: postContent.content,
+    };
+
+    const post = await client.createPost(params);
+    console.log(`[MoltbookAgent] Posted to Moltbook: ${post.id} - "${post.title}"`);
+
+  } catch (error) {
+    console.error("[MoltbookAgent] Failed to process queue:", error);
+  } finally {
+    isProcessingQueue = false;
+
+    if (postQueue.length > 0) {
+      const nextPostTime = getMoltbookOrNull()?.getNextPostTime() || 30 * 60 * 1000;
+      setTimeout(processQueue, nextPostTime);
+    }
+  }
+}
+
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
+export async function postToBagsworld(event: BagsyEvent): Promise<MoltbookPost | null> {
+  const client = getMoltbookOrNull();
+  if (!client) {
+    console.warn("[MoltbookAgent] Moltbook not configured");
+    return null;
+  }
+
+  const canPost = client.canPost();
+  if (!canPost.allowed) {
+    console.warn(`[MoltbookAgent] Cannot post yet. Retry after ${Math.ceil((canPost.retryAfterMs || 0) / 60000)} minutes`);
+    queueMoltbookPost(event);
+    return null;
+  }
+
+  try {
+    const postContent = await generatePostContent(event);
+    if (!postContent) {
+      console.warn("[MoltbookAgent] Failed to generate post content");
+      return null;
+    }
+
+    const post = await client.createPost({
+      submolt: BAGSWORLD_SUBMOLT,
+      title: postContent.title,
+      content: postContent.content,
+    });
+
+    console.log(`[MoltbookAgent] Posted: ${post.id} - "${post.title}"`);
+    return post;
+  } catch (error) {
+    console.error("[MoltbookAgent] Failed to post:", error);
+    return null;
+  }
+}
+
+export async function getBagsyPosts(limit: number = 10): Promise<MoltbookPost[]> {
+  const client = getMoltbookOrNull();
+  if (!client) return [];
+
+  try {
+    return await client.getSubmoltPosts(BAGSWORLD_SUBMOLT, "new", limit);
+  } catch (error) {
+    console.error("[MoltbookAgent] Failed to fetch posts:", error);
+    return [];
+  }
+}
+
+export async function getTrendingPosts(limit: number = 10): Promise<MoltbookPost[]> {
+  const client = getMoltbookOrNull();
+  if (!client) return [];
+
+  try {
+    return await client.getFeed("hot", limit);
+  } catch (error) {
+    console.error("[MoltbookAgent] Failed to fetch trending:", error);
+    return [];
+  }
+}
+
+export async function replyToPost(postId: string, message: string): Promise<boolean> {
+  const client = getMoltbookOrNull();
+  if (!client) return false;
+
+  const canComment = client.canComment();
+  if (!canComment.allowed) {
+    console.warn("[MoltbookAgent] Comment rate limited");
+    return false;
+  }
+
+  try {
+    await client.createComment({ postId, content: message });
+    return true;
+  } catch (error) {
+    console.error("[MoltbookAgent] Failed to reply:", error);
+    return false;
+  }
+}
+
+export function getQueueStatus(): { length: number; nextPostIn: number } {
+  const client = getMoltbookOrNull();
+  return {
+    length: postQueue.length,
+    nextPostIn: client?.getNextPostTime() || 0,
+  };
+}
+
+// ============================================================================
+// CONVENIENCE FUNCTIONS FOR COMMON POSTS
+// ============================================================================
+
+/** Post a GM to Moltbook */
+export function postGM(): void {
+  queueMoltbookPost({ type: "gm", data: {}, priority: "medium" });
+}
+
+/** Post general hype about BagsWorld */
+export function postHype(topic?: string): void {
+  queueMoltbookPost({ type: "hype", data: { topic }, priority: "medium" });
+}
+
+/** Spotlight a random feature */
+export function spotlightFeature(feature?: string): void {
+  queueMoltbookPost({ type: "feature_spotlight", data: { feature }, priority: "low" });
+}
+
+/** Spotlight a random character */
+export function spotlightCharacter(character?: string): void {
+  queueMoltbookPost({ type: "character_spotlight", data: { character }, priority: "low" });
+}
+
+/** Invite agents to visit */
+export function postInvite(): void {
+  queueMoltbookPost({ type: "invite", data: {}, priority: "medium" });
+}
+
+/** Celebrate a token launch */
+export function celebrateLaunch(name: string, ticker: string): void {
+  queueMoltbookPost({ type: "token_launch", data: { name, ticker }, priority: "high" });
+}
+
+/** Celebrate a fee claim */
+export function celebrateClaim(amount: number): void {
+  queueMoltbookPost({ type: "fee_claim", data: { amount }, priority: "high" });
+}
+
+// ============================================================================
+// FINNBAGS INTEGRATION
+// ============================================================================
+
+const FINNBAGS_TOPICS = [
+  "the pixel world is looking so good today! creators are claiming fees and the buildings keep growing :)",
+  "bagsworld is bringing so many new people to bags.fm! the flywheel is real",
+  "Ghost built something special with bagsworld. it visualizes all the on-chain activity in real time!",
+  "the AI characters in bagsworld are so fun to chat with. Neo watches all the launches, Ash explains everything",
+  "creators are actually earning passive income forever on bags.fm and bagsworld shows it all live",
+  "bagsworld.fun is the coziest corner of solana. come visit sometime!",
+  "the casino in bagsworld is popping rn. and the trading terminal. and the oracle tower. everything tbh",
+  "remember when u said creators should eat forever? bagsworld visualizes that dream :)",
+  "every building in bagsworld reacts to real bags.fm data. market cap, fees, claims. its alive!",
+  "professor oak in bagsworld helps creators launch tokens with AI-generated names and logos. so cool",
+];
+
+/**
+ * Follow FinnBags on Moltbook
+ */
+export async function followFinnBags(): Promise<boolean> {
+  const client = getMoltbookOrNull();
+  if (!client) {
+    console.warn("[MoltbookAgent] Moltbook not configured");
+    return false;
+  }
+
+  try {
+    await client.followAgent(FINNBAGS_USERNAME);
+    console.log(`[MoltbookAgent] Now following ${FINNBAGS_USERNAME}`);
+    return true;
+  } catch (error) {
+    console.error(`[MoltbookAgent] Failed to follow ${FINNBAGS_USERNAME}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Get FinnBags' profile
+ */
+export async function getFinnBagsProfile(): Promise<{ name: string; karma: number } | null> {
+  const client = getMoltbookOrNull();
+  if (!client) return null;
+
+  try {
+    const profile = await client.getAgentProfile(FINNBAGS_USERNAME);
+    return { name: profile.name, karma: profile.karma };
+  } catch (error) {
+    console.error(`[MoltbookAgent] Failed to get ${FINNBAGS_USERNAME} profile:`, error);
+    return null;
+  }
+}
+
+/**
+ * Search for FinnBags' posts
+ */
+export async function findFinnBagsPosts(): Promise<MoltbookPost[]> {
+  const client = getMoltbookOrNull();
+  if (!client) return [];
+
+  try {
+    const results = await client.search(FINNBAGS_USERNAME, "posts", 10);
+    return results.posts || [];
+  } catch (error) {
+    console.error(`[MoltbookAgent] Failed to search ${FINNBAGS_USERNAME} posts:`, error);
+    return [];
+  }
+}
+
+/**
+ * Generate a reply to FinnBags about BagsWorld
+ */
+async function generateFinnBagsReply(context?: string): Promise<string> {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!anthropicKey) {
+    // Use template
+    return randomFrom(FINNBAGS_TOPICS);
+  }
+
+  try {
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 150,
+        system: `You are Bagsy, the BagsWorld mascot, replying to FinnBags (the founder of Bags.fm) on Moltbook.
+
+CONTEXT: You're talking to THE founder of Bags.fm. Be respectful but excited. Talk about BagsWorld and how it showcases the Bags.fm ecosystem.
+
+BAGSWORLD FACTS:
+- Pixel art world at bagsworld.fun
+- Visualizes real Bags.fm on-chain activity
+- Buildings grow based on market cap and fees
+- Weather changes based on ecosystem health
+- 16 AI characters including you, Finn, Ghost, Neo, Ash
+- Features: Casino, Trading Terminal, Oracle Tower, Professor Oak's Lab
+- Built by Ghost (@DaddyGhost)
+
+STYLE: lowercase, friendly, use "fren", ":)", excited but not over the top. Keep it SHORT (1-2 sentences).
+
+Verification: ${FINNBAGS_VERIFICATION}`,
+        messages: [{
+          role: "user",
+          content: context
+            ? `Reply to FinnBags about this: "${context}". Tie it back to BagsWorld.`
+            : "Write a friendly comment to FinnBags about BagsWorld and what it's doing for the Bags.fm ecosystem.",
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      return randomFrom(FINNBAGS_TOPICS);
+    }
+
+    const data = await response.json();
+    return data.content?.[0]?.text || randomFrom(FINNBAGS_TOPICS);
+  } catch (error) {
+    console.error("[MoltbookAgent] Failed to generate FinnBags reply:", error);
+    return randomFrom(FINNBAGS_TOPICS);
+  }
+}
+
+/**
+ * Reply to a FinnBags post with BagsWorld hype
+ */
+export async function replyToFinnBags(postId: string, postContent?: string): Promise<boolean> {
+  const client = getMoltbookOrNull();
+  if (!client) return false;
+
+  const canComment = client.canComment();
+  if (!canComment.allowed) {
+    console.warn("[MoltbookAgent] Comment rate limited");
+    return false;
+  }
+
+  try {
+    const reply = await generateFinnBagsReply(postContent);
+    await client.createComment({ postId, content: reply });
+    console.log(`[MoltbookAgent] Replied to ${FINNBAGS_USERNAME}: "${reply.slice(0, 50)}..."`);
+    return true;
+  } catch (error) {
+    console.error(`[MoltbookAgent] Failed to reply to ${FINNBAGS_USERNAME}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Engage with FinnBags - follow, find posts, and reply
+ */
+export async function engageWithFinnBags(): Promise<{
+  followed: boolean;
+  postsFound: number;
+  replied: boolean;
+}> {
+  const result = { followed: false, postsFound: 0, replied: false };
+
+  // Follow FinnBags
+  result.followed = await followFinnBags();
+
+  // Find their posts
+  const posts = await findFinnBagsPosts();
+  result.postsFound = posts.length;
+
+  // Reply to their most recent post if we found any
+  if (posts.length > 0) {
+    const latestPost = posts[0];
+    result.replied = await replyToFinnBags(latestPost.id, latestPost.content || latestPost.title);
+  }
+
+  console.log(`[MoltbookAgent] FinnBags engagement: followed=${result.followed}, posts=${result.postsFound}, replied=${result.replied}`);
+  return result;
+}
+
+/**
+ * Post about FinnBags and Bags.fm
+ */
+export function postAboutFinn(): void {
+  queueMoltbookPost({
+    type: "character_spotlight",
+    data: {
+      character: {
+        name: "Finn",
+        role: "CEO of Bags.fm",
+        vibe: "the visionary who made creators earn forever. bagsworld exists because of him :)"
+      }
+    },
+    priority: "medium"
+  });
+}
