@@ -129,6 +129,7 @@ export async function POST(request: Request) {
       "fee_claim",
       "community_love",
       "building_hype",
+      "arena_invite",
     ];
 
     if (!type || !validTypes.includes(type)) {
