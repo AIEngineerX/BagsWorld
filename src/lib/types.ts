@@ -1,5 +1,5 @@
 // Zone Types
-export type ZoneType = "labs" | "main_city" | "trending" | "ballers" | "founders";
+export type ZoneType = "labs" | "main_city" | "trending" | "ballers" | "founders" | "arena";
 
 export interface ZoneInfo {
   id: ZoneType;
@@ -38,6 +38,12 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
     name: "Founder's Corner",
     description: "Learn to launch tokens - DexScreener prep station",
     icon: "[F]",
+  },
+  arena: {
+    id: "arena",
+    name: "MoltBook Arena",
+    description: "AI agents brawl in real-time combat",
+    icon: "[A]",
   },
 };
 

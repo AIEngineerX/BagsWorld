@@ -99,6 +99,19 @@ export class WorldScene extends Phaser.Scene {
   private ballersZoneCreated = false; // Cache ballers zone elements
   private foundersZoneCreated = false; // Cache founders zone elements
   private labsZoneCreated = false; // Cache labs zone elements
+  private arenaElements: Phaser.GameObjects.GameObject[] = []; // Arena zone elements
+  private arenaZoneCreated = false; // Cache arena zone elements
+  private arenaWebSocket: WebSocket | null = null; // WebSocket connection for arena
+  private arenaFighters: Map<number, Phaser.GameObjects.Sprite> = new Map(); // Fighter sprites
+  private arenaHealthBars: Map<number, { bg: Phaser.GameObjects.Rectangle; fill: Phaser.GameObjects.Rectangle }> = new Map();
+  private arenaLastHitEffect: Map<number, number> = new Map(); // Track when last hit effect was shown (prevents spam)
+  private arenaLastFighterState: Map<number, string> = new Map(); // Track previous state for transition detection
+  private arenaMatchState: {
+    matchId: number;
+    status: string;
+    fighter1: { id: number; hp: number; maxHp: number; x: number; y: number; state: string };
+    fighter2: { id: number; hp: number; maxHp: number; x: number; y: number; state: string };
+  } | null = null;
   private foundersPopup: Phaser.GameObjects.Container | null = null; // Popup modal for building info
   private ballersGoldenSky: Phaser.GameObjects.Graphics | null = null; // Golden hour sky for Ballers Valley
   private academyTwilightSky: Phaser.GameObjects.Graphics | null = null; // Magical twilight sky for Academy
@@ -376,14 +389,15 @@ export class WorldScene extends Phaser.Scene {
       if (origX !== undefined) (a.sprite as any).x = origX;
     });
 
-    // Determine slide direction: Labs -> Park -> BagsCity -> Ballers Valley -> Founder's Corner (left to right)
-    // Zone order: labs (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3)
+    // Determine slide direction: Labs -> Park -> BagsCity -> Ballers Valley -> Founder's Corner -> Arena (left to right)
+    // Zone order: labs (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3) -> arena (4)
     const zoneOrder: Record<ZoneType, number> = {
       labs: -1,
       main_city: 0,
       trending: 1,
       ballers: 2,
       founders: 3,
+      arena: 4,
     };
     const isGoingRight = zoneOrder[newZone] > zoneOrder[this.currentZone];
     const duration = 600; // Smooth, cinematic transition
@@ -489,6 +503,9 @@ export class WorldScene extends Phaser.Scene {
         this.foundersElements.forEach((el) => (el as any).setVisible(false));
       } else if (this.currentZone === "labs") {
         this.labsElements.forEach((el) => (el as any).setVisible(false));
+      } else if (this.currentZone === "arena") {
+        this.arenaElements.forEach((el) => (el as any).setVisible(false));
+        this.disconnectArenaWebSocket();
       }
 
       // Update zone and set up new content
@@ -501,6 +518,7 @@ export class WorldScene extends Phaser.Scene {
         trending: "concrete",
         ballers: "grass", // Ballers Valley has premium grass (luxury estate feel)
         founders: "founders_ground", // Founder's Corner has warm workshop flooring
+        arena: "arena_floor", // MoltBook Arena has dark checkerboard floor
       };
       this.ground.setTexture(groundTextures[newZone]);
 
@@ -633,6 +651,24 @@ export class WorldScene extends Phaser.Scene {
           });
         }
       });
+    } else if (zone === "arena") {
+      this.setupArenaZone();
+
+      // Offset all new Arena elements and animate them in
+      const newElements = [...this.arenaElements].filter(Boolean);
+
+      newElements.forEach((el) => {
+        if ((el as any).x !== undefined) {
+          const targetX = (el as any).x;
+          (el as any).x = targetX + offsetX;
+          this.tweens.add({
+            targets: el,
+            x: targetX,
+            duration,
+            ease: "Cubic.easeOut",
+          });
+        }
+      });
     } else {
       this.setupMainCityZone();
 
@@ -688,6 +724,10 @@ export class WorldScene extends Phaser.Scene {
     } else if (this.currentZone === "labs") {
       // Hide labs elements
       this.labsElements.forEach((el) => (el as any).setVisible(false));
+    } else if (this.currentZone === "arena") {
+      // Hide arena elements and disconnect WebSocket
+      this.arenaElements.forEach((el) => (el as any).setVisible(false));
+      this.disconnectArenaWebSocket();
     } else if (this.currentZone === "main_city") {
       // Main city uses shared decorations, don't destroy them
       // Just hide them
@@ -720,6 +760,9 @@ export class WorldScene extends Phaser.Scene {
       case "founders":
         this.setupFoundersZone();
         break;
+      case "arena":
+        this.setupArenaZone();
+        break;
       case "main_city":
       default:
         this.setupMainCityZone();
@@ -747,6 +790,8 @@ export class WorldScene extends Phaser.Scene {
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;
@@ -779,6 +824,8 @@ export class WorldScene extends Phaser.Scene {
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;
@@ -1516,6 +1563,8 @@ export class WorldScene extends Phaser.Scene {
     this.academyBuildings.forEach((s) => s.setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;
@@ -1742,6 +1791,8 @@ export class WorldScene extends Phaser.Scene {
     this.academyBuildings.forEach((s) => s.setVisible(false));
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.disconnectArenaWebSocket();
 
     // Restore normal sky (persistent layer)
     this.restoreNormalSky();
@@ -2718,6 +2769,8 @@ export class WorldScene extends Phaser.Scene {
     this.academyBuildings.forEach((s) => s.setVisible(false));
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;
@@ -8258,6 +8311,1271 @@ Use: bags.fm/[yourname]`,
           }
         });
       },
+    });
+  }
+
+  // ========================================
+  // MOLTBOOK ARENA ZONE
+  // Real-time brawl zone for AI agent battles
+  // ========================================
+
+  /**
+   * Setup MoltBook Arena zone - spectator arena for AI battles
+   */
+  private setupArenaZone(): void {
+    // Hide park decorations and animals (they belong to main_city)
+    this.decorations.forEach((d) => d.setVisible(false));
+    this.animals.forEach((a) => a.sprite.setVisible(false));
+
+    // Hide fountain water spray
+    if (this.fountainWater) {
+      this.fountainWater.setVisible(false);
+    }
+
+    // IMPORTANT: Hide other zone elements (prevents visual overlap)
+    this.trendingElements.forEach((el) => (el as any).setVisible(false));
+    this.skylineSprites.forEach((s) => s.setVisible(false));
+    this.billboardTexts.forEach((t) => t.setVisible(false));
+    if (this.tickerText) this.tickerText.setVisible(false);
+    this.academyElements.forEach((el) => (el as any).setVisible(false));
+    this.academyBuildings.forEach((s) => s.setVisible(false));
+    this.ballersElements.forEach((el) => (el as any).setVisible(false));
+    this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    this.labsElements.forEach((el) => (el as any).setVisible(false));
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
+    }
+
+    // Create arena sky (dark stadium atmosphere)
+    this.createArenaSky();
+
+    // Swap ground texture to arena floor
+    this.ground.setVisible(true);
+    this.ground.setTexture("arena_floor");
+
+    // Check if elements were destroyed (can happen during transitions)
+    const elementsValid =
+      this.arenaElements.length > 0 && this.arenaElements.every((el) => (el as any).active !== false);
+
+    if (!elementsValid && this.arenaZoneCreated) {
+      this.arenaElements = [];
+      this.arenaZoneCreated = false;
+    }
+
+    // Only create elements once, then just show them
+    if (!this.arenaZoneCreated) {
+      this.createArenaDecorations();
+      this.arenaZoneCreated = true;
+    } else {
+      // Subsequent times - just show existing elements
+      this.arenaElements.forEach((el) => (el as any).setVisible(true));
+    }
+
+    // Connect to arena WebSocket
+    this.connectArenaWebSocket();
+  }
+
+  /**
+   * Create dark stadium sky for Arena zone
+   */
+  private createArenaSky(): void {
+    // Hide normal sky elements for a darker arena atmosphere
+    this.restoreNormalSky();
+    // The arena has a dark stadium feel - no special sky needed
+  }
+
+  /**
+   * Create Arena decorations - fighting ring, stands, lights, props
+   * Following zone guide: 20+ props, textured ground, proper depths
+   */
+  private createArenaDecorations(): void {
+    const s = SCALE;
+    const grassTop = Math.round(455 * s);
+    const pathLevel = Math.round(555 * s);
+    const centerX = GAME_WIDTH / 2;
+
+    // === BACKGROUND TREES (depth 2) - Dark silhouettes ===
+    const treePositions = [
+      { x: 50, yOffset: 0 },
+      { x: 140, yOffset: 5 },
+      { x: 230, yOffset: -3 },
+      { x: 570, yOffset: 2 },
+      { x: 660, yOffset: 6 },
+      { x: 750, yOffset: -2 },
+    ];
+
+    treePositions.forEach((pos) => {
+      const tree = this.add.sprite(Math.round(pos.x * s), grassTop + pos.yOffset, "tree");
+      tree.setOrigin(0.5, 1);
+      tree.setDepth(2);
+      tree.setScale(0.85 + Math.random() * 0.25);
+      tree.setTint(0x1a1a2e); // Dark tint for arena atmosphere
+      this.arenaElements.push(tree);
+    });
+
+    // === BUSHES/HEDGES (depth 2) ===
+    const bushPositions = [
+      { x: 90, yOffset: 25 },
+      { x: 180, yOffset: 22 },
+      { x: 620, yOffset: 27 },
+      { x: 710, yOffset: 24 },
+    ];
+
+    bushPositions.forEach((pos) => {
+      const bush = this.add.sprite(Math.round(pos.x * s), grassTop + pos.yOffset, "bush");
+      bush.setOrigin(0.5, 1);
+      bush.setDepth(2);
+      bush.setScale(0.7 + Math.random() * 0.2);
+      bush.setTint(0x1e3a8a); // Dark blue tint
+      this.arenaElements.push(bush);
+    });
+
+    // === SPECTATOR STANDS (depth 2) - Left side ===
+    const leftStands = this.add.sprite(Math.round(120 * s), Math.round(500 * s), "arena_stands");
+    leftStands.setOrigin(0.5, 1);
+    leftStands.setDepth(2);
+    leftStands.setScale(1.2);
+    this.arenaElements.push(leftStands);
+
+    // === SPECTATOR STANDS (depth 2) - Right side ===
+    const rightStands = this.add.sprite(Math.round(680 * s), Math.round(500 * s), "arena_stands");
+    rightStands.setOrigin(0.5, 1);
+    rightStands.setDepth(2);
+    rightStands.setScale(1.2);
+    rightStands.setFlipX(true);
+    this.arenaElements.push(rightStands);
+
+    // === BARRIER POSTS (depth 3) - Around the ring ===
+    const barrierPositions = [260, 340, 460, 540];
+    barrierPositions.forEach((bx) => {
+      // Post
+      const post = this.add.rectangle(
+        Math.round(bx * s),
+        pathLevel - Math.round(5 * s),
+        Math.round(6 * s),
+        Math.round(40 * s),
+        0x374151
+      );
+      post.setOrigin(0.5, 1);
+      post.setDepth(3);
+      this.arenaElements.push(post);
+
+      // Post cap (gold)
+      const cap = this.add.rectangle(
+        Math.round(bx * s),
+        pathLevel - Math.round(43 * s),
+        Math.round(10 * s),
+        Math.round(6 * s),
+        0xfbbf24
+      );
+      cap.setOrigin(0.5, 1);
+      cap.setDepth(3);
+      this.arenaElements.push(cap);
+    });
+
+    // === ROPE BARRIERS (depth 3) ===
+    // Left rope
+    const leftRope = this.add.rectangle(
+      Math.round(300 * s),
+      pathLevel - Math.round(25 * s),
+      Math.round(80 * s),
+      Math.round(4 * s),
+      0xef4444
+    );
+    leftRope.setDepth(3);
+    this.arenaElements.push(leftRope);
+
+    // Right rope
+    const rightRope = this.add.rectangle(
+      Math.round(500 * s),
+      pathLevel - Math.round(25 * s),
+      Math.round(80 * s),
+      Math.round(4 * s),
+      0xef4444
+    );
+    rightRope.setDepth(3);
+    this.arenaElements.push(rightRope);
+
+    // === ARENA RING (depth 4) - Center ===
+    const ring = this.add.sprite(centerX, pathLevel + Math.round(20 * s), "arena_ring");
+    ring.setOrigin(0.5, 1);
+    ring.setDepth(4);
+    this.arenaElements.push(ring);
+
+    // === LAMP POSTS (depth 3) ===
+    const lampPositions = [80, 280, 520, 720];
+    lampPositions.forEach((lx) => {
+      // Lamp pole
+      const pole = this.add.rectangle(
+        Math.round(lx * s),
+        pathLevel,
+        Math.round(4 * s),
+        Math.round(60 * s),
+        0x1f2937
+      );
+      pole.setOrigin(0.5, 1);
+      pole.setDepth(3);
+      this.arenaElements.push(pole);
+
+      // Lamp head
+      const head = this.add.rectangle(
+        Math.round(lx * s),
+        pathLevel - Math.round(60 * s),
+        Math.round(12 * s),
+        Math.round(8 * s),
+        0x374151
+      );
+      head.setOrigin(0.5, 0.5);
+      head.setDepth(3);
+      this.arenaElements.push(head);
+
+      // Lamp glow
+      const glow = this.add.ellipse(
+        Math.round(lx * s),
+        pathLevel - Math.round(50 * s),
+        Math.round(20 * s),
+        Math.round(30 * s),
+        0xfbbf24,
+        0.15
+      );
+      glow.setDepth(3);
+      this.arenaElements.push(glow);
+
+      // Glow animation
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.1, to: 0.2 },
+        duration: 1000 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === BENCHES (depth 3) ===
+    const benchPositions = [160, 640];
+    benchPositions.forEach((bx) => {
+      // Bench seat
+      const seat = this.add.rectangle(
+        Math.round(bx * s),
+        pathLevel - Math.round(8 * s),
+        Math.round(40 * s),
+        Math.round(6 * s),
+        0x78350f
+      );
+      seat.setOrigin(0.5, 0.5);
+      seat.setDepth(3);
+      this.arenaElements.push(seat);
+
+      // Bench legs
+      const leg1 = this.add.rectangle(
+        Math.round((bx - 15) * s),
+        pathLevel,
+        Math.round(4 * s),
+        Math.round(12 * s),
+        0x451a03
+      );
+      leg1.setOrigin(0.5, 1);
+      leg1.setDepth(3);
+      this.arenaElements.push(leg1);
+
+      const leg2 = this.add.rectangle(
+        Math.round((bx + 15) * s),
+        pathLevel,
+        Math.round(4 * s),
+        Math.round(12 * s),
+        0x451a03
+      );
+      leg2.setOrigin(0.5, 1);
+      leg2.setDepth(3);
+      this.arenaElements.push(leg2);
+    });
+
+    // === STADIUM LIGHTS (depth 15) ===
+    const lightPositions = [Math.round(200 * s), Math.round(400 * s), Math.round(600 * s)];
+    lightPositions.forEach((lx) => {
+      const light = this.add.sprite(lx, Math.round(50 * s), "arena_light");
+      light.setOrigin(0.5, 0);
+      light.setDepth(15);
+      this.arenaElements.push(light);
+
+      // Flickering light effect
+      this.tweens.add({
+        targets: light,
+        alpha: { from: 0.9, to: 1 },
+        duration: 200 + Math.random() * 300,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === DECORATIVE FLAGS (depth 4) ===
+    const flagColors = [0xef4444, 0xfbbf24, 0x4ade80, 0x3b82f6];
+    const flagPositions = [120, 220, 580, 680];
+    flagPositions.forEach((fx, i) => {
+      // Flag pole
+      const flagPole = this.add.rectangle(
+        Math.round(fx * s),
+        grassTop + Math.round(30 * s),
+        Math.round(3 * s),
+        Math.round(50 * s),
+        0x6b7280
+      );
+      flagPole.setOrigin(0.5, 1);
+      flagPole.setDepth(4);
+      this.arenaElements.push(flagPole);
+
+      // Flag
+      const flag = this.add.rectangle(
+        Math.round((fx + 10) * s),
+        grassTop - Math.round(12 * s),
+        Math.round(20 * s),
+        Math.round(14 * s),
+        flagColors[i % flagColors.length]
+      );
+      flag.setOrigin(0, 0.5);
+      flag.setDepth(4);
+      this.arenaElements.push(flag);
+
+      // Flag wave animation
+      this.tweens.add({
+        targets: flag,
+        scaleX: { from: 1, to: 0.9 },
+        duration: 800 + Math.random() * 400,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === GROUND DETAILS - Ring mat markings ===
+    const matCenter = this.add.rectangle(
+      centerX,
+      pathLevel + Math.round(5 * s),
+      Math.round(80 * s),
+      Math.round(4 * s),
+      0xfbbf24,
+      0.3
+    );
+    matCenter.setDepth(1);
+    this.arenaElements.push(matCenter);
+
+    // === ARENA TITLE (depth 100) ===
+    const titleBg = this.add.rectangle(
+      centerX,
+      Math.round(30 * s),
+      Math.round(200 * s),
+      Math.round(28 * s),
+      0x0a0a0f,
+      0.9
+    );
+    titleBg.setDepth(100);
+    titleBg.setStrokeStyle(2, 0xfbbf24);
+    this.arenaElements.push(titleBg);
+
+    const title = this.add.text(centerX, Math.round(30 * s), "MOLTBOOK ARENA", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#fbbf24",
+      fontStyle: "bold",
+    });
+    title.setOrigin(0.5, 0.5);
+    title.setDepth(101);
+    this.arenaElements.push(title);
+
+    // === QUEUE STATUS (depth 100) ===
+    const queueBg = this.add.rectangle(
+      Math.round(100 * s),
+      Math.round(80 * s),
+      Math.round(120 * s),
+      Math.round(50 * s),
+      0x0a0a0f,
+      0.8
+    );
+    queueBg.setDepth(100);
+    queueBg.setStrokeStyle(1, 0x4ade80);
+    this.arenaElements.push(queueBg);
+
+    const queueLabel = this.add.text(Math.round(100 * s), Math.round(65 * s), "QUEUE", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(8 * s)}px`,
+      color: "#4ade80",
+    });
+    queueLabel.setOrigin(0.5, 0.5);
+    queueLabel.setDepth(101);
+    this.arenaElements.push(queueLabel);
+
+    const queueCount = this.add.text(Math.round(100 * s), Math.round(88 * s), "0 WAITING", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(10 * s)}px`,
+      color: "#ffffff",
+    });
+    queueCount.setOrigin(0.5, 0.5);
+    queueCount.setDepth(101);
+    queueCount.setName("arenaQueueCount");
+    this.arenaElements.push(queueCount);
+
+    // === MATCH STATUS (depth 100) ===
+    const matchBg = this.add.rectangle(
+      Math.round(700 * s),
+      Math.round(80 * s),
+      Math.round(120 * s),
+      Math.round(50 * s),
+      0x0a0a0f,
+      0.8
+    );
+    matchBg.setDepth(100);
+    matchBg.setStrokeStyle(1, 0xef4444);
+    this.arenaElements.push(matchBg);
+
+    const matchLabel = this.add.text(Math.round(700 * s), Math.round(65 * s), "MATCH", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(8 * s)}px`,
+      color: "#ef4444",
+    });
+    matchLabel.setOrigin(0.5, 0.5);
+    matchLabel.setDepth(101);
+    this.arenaElements.push(matchLabel);
+
+    const matchStatus = this.add.text(Math.round(700 * s), Math.round(88 * s), "NO MATCH", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(10 * s)}px`,
+      color: "#ffffff",
+    });
+    matchStatus.setOrigin(0.5, 0.5);
+    matchStatus.setDepth(101);
+    matchStatus.setName("arenaMatchStatus");
+    this.arenaElements.push(matchStatus);
+
+    // === HOW TO FIGHT PANEL (Pixel Modal Style) ===
+    this.createArenaHowToPanel(centerX, Math.round(170 * s), s);
+
+    // === LEADERBOARD PANEL (bottom left corner) ===
+    const lbX = Math.round(85 * s);
+    const lbY = pathLevel - Math.round(60 * s);
+    const lbWidth = Math.round(130 * s);
+    const lbHeight = Math.round(100 * s);
+
+    const lbBg = this.add.rectangle(lbX, lbY, lbWidth, lbHeight, 0x0f172a, 0.92);
+    lbBg.setDepth(100);
+    lbBg.setStrokeStyle(2, 0xfbbf24);
+    this.arenaElements.push(lbBg);
+
+    const lbTitle = this.add.text(lbX, lbY - lbHeight / 2 + Math.round(12 * s), "TOP FIGHTERS", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(8 * s)}px`,
+      color: "#fbbf24",
+      fontStyle: "bold",
+    });
+    lbTitle.setOrigin(0.5, 0.5);
+    lbTitle.setDepth(101);
+    this.arenaElements.push(lbTitle);
+
+    // Leaderboard entries (will be updated by polling)
+    const lbEntries = this.add.text(lbX, lbY + Math.round(8 * s), "Loading...", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(6 * s)}px`,
+      color: "#d1d5db",
+      align: "center",
+      lineSpacing: 2,
+    });
+    lbEntries.setOrigin(0.5, 0.5);
+    lbEntries.setDepth(101);
+    lbEntries.setName("arenaLeaderboard");
+    this.arenaElements.push(lbEntries);
+
+    // === DEMO FIGHT BUTTON (bottom right corner) ===
+    const demoX = GAME_WIDTH - Math.round(85 * s);
+    const demoY = pathLevel - Math.round(60 * s);
+    const demoWidth = Math.round(110 * s);
+    const demoHeight = Math.round(36 * s);
+
+    const demoBg = this.add.rectangle(demoX, demoY, demoWidth, demoHeight, 0x22c55e, 1);
+    demoBg.setDepth(100);
+    demoBg.setStrokeStyle(2, 0x16a34a);
+    demoBg.setInteractive({ useHandCursor: true });
+    this.arenaElements.push(demoBg);
+
+    const demoText = this.add.text(demoX, demoY, "DEMO FIGHT", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(10 * s)}px`,
+      color: "#ffffff",
+      fontStyle: "bold",
+    });
+    demoText.setOrigin(0.5, 0.5);
+    demoText.setDepth(101);
+    this.arenaElements.push(demoText);
+
+    // Demo button click handler
+    demoBg.on("pointerdown", async () => {
+      demoText.setText("STARTING...");
+      demoBg.setFillStyle(0x16a34a);
+
+      try {
+        // Create a simulated match
+        const response = await fetch("/api/arena/brawl", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "simulate_match" }),
+        });
+        const data = await response.json();
+
+        if (data.success && data.matchId) {
+          demoText.setText("FIGHTING!");
+          const matchId = data.matchId;
+
+          // Run fight loop - tick and render until complete
+          const runFightLoop = async () => {
+            // Run some ticks
+            await fetch("/api/arena/brawl", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "tick", ticks: 5 }),
+            });
+
+            // Fetch current match state
+            const stateResponse = await fetch(`/api/arena/brawl?action=match&matchId=${matchId}`);
+            const stateData = await stateResponse.json();
+
+            if (stateData.success && stateData.match) {
+              // Render the fighters
+              this.updateArenaMatch(stateData.match);
+
+              // Continue if still active
+              if (stateData.match.status === "active") {
+                this.time.delayedCall(100, runFightLoop);
+              } else {
+                // Fight complete
+                demoText.setText("DEMO FIGHT");
+                demoBg.setFillStyle(0x22c55e);
+                this.fetchArenaLeaderboard();
+              }
+            }
+          };
+
+          // Start the fight loop
+          runFightLoop();
+        } else {
+          demoText.setText("DEMO FIGHT");
+          demoBg.setFillStyle(0x22c55e);
+        }
+      } catch {
+        demoText.setText("DEMO FIGHT");
+        demoBg.setFillStyle(0x22c55e);
+      }
+    });
+
+    demoBg.on("pointerover", () => {
+      demoBg.setFillStyle(0x16a34a);
+    });
+
+    demoBg.on("pointerout", () => {
+      demoBg.setFillStyle(0x22c55e);
+    });
+
+    // === VS DISPLAY for active match (depth 100) ===
+    const vsDisplay = this.add.text(centerX, Math.round(70 * s), "", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#ffffff",
+      fontStyle: "bold",
+      align: "center",
+    });
+    vsDisplay.setOrigin(0.5, 0.5);
+    vsDisplay.setDepth(101);
+    vsDisplay.setName("arenaVsDisplay");
+    this.arenaElements.push(vsDisplay);
+
+    // Fetch initial leaderboard
+    this.fetchArenaLeaderboard();
+  }
+
+  /**
+   * Fetch and display arena leaderboard
+   */
+  private async fetchArenaLeaderboard(): Promise<void> {
+    try {
+      const response = await fetch("/api/arena/brawl?action=leaderboard&limit=5");
+      const data = await response.json();
+
+      const lbText = this.arenaElements.find(
+        (el) => (el as Phaser.GameObjects.Text).name === "arenaLeaderboard"
+      ) as Phaser.GameObjects.Text;
+
+      if (lbText && data.success && data.leaderboard) {
+        if (data.leaderboard.length === 0) {
+          lbText.setText("No fights yet!\nClick DEMO FIGHT");
+        } else {
+          const entries = data.leaderboard
+            .slice(0, 4)
+            .map((f: { moltbook_username: string; wins: number; losses: number }, i: number) => {
+              const name = f.moltbook_username.length > 10
+                ? f.moltbook_username.slice(0, 8) + ".."
+                : f.moltbook_username;
+              return `${i + 1}. ${name} ${f.wins}W`;
+            })
+            .join("\n");
+          lbText.setText(entries);
+        }
+      }
+    } catch {
+      // Silently fail - will retry on next poll
+    }
+  }
+
+  /**
+   * Connect to Arena WebSocket for real-time updates
+   */
+  private connectArenaWebSocket(): void {
+    if (this.arenaWebSocket && this.arenaWebSocket.readyState === WebSocket.OPEN) {
+      return; // Already connected
+    }
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/api/arena-ws`;
+
+    try {
+      this.arenaWebSocket = new WebSocket(wsUrl);
+
+      this.arenaWebSocket.onopen = () => {
+        console.log("[Arena] WebSocket connected");
+        // Request to watch queue updates
+        this.arenaWebSocket?.send(JSON.stringify({ type: "watch_queue" }));
+      };
+
+      this.arenaWebSocket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          this.handleArenaMessage(msg);
+        } catch (err) {
+          console.error("[Arena] Failed to parse message:", err);
+        }
+      };
+
+      this.arenaWebSocket.onerror = (error) => {
+        console.error("[Arena] WebSocket error:", error);
+      };
+
+      this.arenaWebSocket.onclose = () => {
+        console.log("[Arena] WebSocket disconnected");
+        this.arenaWebSocket = null;
+      };
+    } catch (err) {
+      console.error("[Arena] Failed to connect WebSocket:", err);
+      // Fall back to polling
+      this.startArenaPolling();
+    }
+  }
+
+  /**
+   * Disconnect Arena WebSocket
+   */
+  private disconnectArenaWebSocket(): void {
+    if (this.arenaWebSocket) {
+      this.arenaWebSocket.close();
+      this.arenaWebSocket = null;
+    }
+  }
+
+  /**
+   * Handle incoming Arena WebSocket messages
+   */
+  private handleArenaMessage(msg: { type: string; data?: unknown; error?: string }): void {
+    switch (msg.type) {
+      case "connected":
+        console.log("[Arena] Connected, initial state:", msg.data);
+        break;
+
+      case "queue_update":
+        this.updateArenaQueue(msg.data as Array<{ fighter_id: number }>);
+        break;
+
+      case "active_matches":
+        this.updateActiveMatches(msg.data as Array<{ matchId: number; status: string }>);
+        break;
+
+      case "match_state":
+      case "match_update":
+        this.updateArenaMatch(msg.data as {
+          matchId: number;
+          status: string;
+          tick: number;
+          fighter1: { id: number; hp: number; maxHp: number; x: number; y: number; state: string; direction: string };
+          fighter2: { id: number; hp: number; maxHp: number; x: number; y: number; state: string; direction: string };
+          winner?: string;
+        });
+        break;
+
+      case "error":
+        console.error("[Arena] Error:", msg.error);
+        break;
+    }
+  }
+
+  /**
+   * Update queue display
+   */
+  private updateArenaQueue(queue: Array<{ fighter_id: number }>): void {
+    const queueCount = this.arenaElements.find(
+      (el) => (el as Phaser.GameObjects.Text).name === "arenaQueueCount"
+    ) as Phaser.GameObjects.Text;
+
+    if (queueCount) {
+      const count = queue?.length || 0;
+      queueCount.setText(`${count} WAITING`);
+    }
+  }
+
+  /**
+   * Create the "How To Fight" pixel modal panel
+   */
+  private createArenaHowToPanel(cx: number, cy: number, s: number): void {
+    const panelW = Math.round(240 * s);
+    const panelH = Math.round(155 * s);
+    const borderW = Math.round(3 * s);
+    const accent = 0xef4444; // Red accent for fighting
+
+    // Container for all panel elements
+    const panel = this.add.container(cx, cy);
+    panel.setDepth(100);
+    panel.setAlpha(0);
+    panel.setScale(0.8);
+    this.arenaElements.push(panel);
+
+    // === PIXEL-PERFECT DROP SHADOW ===
+    const shadowOffset = Math.round(4 * s);
+    const shadow1 = this.add.rectangle(shadowOffset, shadowOffset, panelW + borderW * 2, panelH + borderW * 2, 0x000000, 0.5);
+    panel.add(shadow1);
+    const shadow2 = this.add.rectangle(Math.round(2 * s), Math.round(2 * s), panelW + borderW * 2, panelH + borderW * 2, 0x000000, 0.3);
+    panel.add(shadow2);
+
+    // === DOUBLE-LINE BORDER ===
+    const outerBorder = this.add.rectangle(0, 0, panelW + borderW * 2, panelH + borderW * 2, accent);
+    panel.add(outerBorder);
+    const borderGap = this.add.rectangle(0, 0, panelW + borderW, panelH + borderW, 0x0a0a0f);
+    panel.add(borderGap);
+    const innerBorder = this.add.rectangle(0, 0, panelW, panelH, accent);
+    panel.add(innerBorder);
+
+    // === MAIN PANEL BACKGROUND ===
+    const panelBg = this.add.rectangle(0, 0, panelW - Math.round(4 * s), panelH - Math.round(4 * s), 0x0f172a);
+    panel.add(panelBg);
+
+    // === INNER BEVEL HIGHLIGHTS ===
+    const bevelLeft = this.add.rectangle(-panelW / 2 + Math.round(4 * s), 0, Math.round(2 * s), panelH - Math.round(12 * s), accent, 0.12);
+    panel.add(bevelLeft);
+    const bevelTop = this.add.rectangle(0, -panelH / 2 + Math.round(4 * s), panelW - Math.round(12 * s), Math.round(2 * s), accent, 0.18);
+    panel.add(bevelTop);
+
+    // === CRT SCANLINES ===
+    const scanSpacing = Math.round(3 * s);
+    for (let y = -panelH / 2 + scanSpacing; y < panelH / 2; y += scanSpacing) {
+      const scanline = this.add.rectangle(0, y, panelW - Math.round(10 * s), 1, 0x000000, 0.06);
+      panel.add(scanline);
+    }
+
+    // === L-SHAPED CORNER DECORATIONS ===
+    const cornerLen = Math.round(12 * s);
+    const cornerThick = Math.round(3 * s);
+    const cornerInset = Math.round(6 * s);
+    const corners = [
+      { x: -panelW / 2 + cornerInset, y: -panelH / 2 + cornerInset, fx: 1, fy: 1 },
+      { x: panelW / 2 - cornerInset, y: -panelH / 2 + cornerInset, fx: -1, fy: 1 },
+      { x: -panelW / 2 + cornerInset, y: panelH / 2 - cornerInset, fx: 1, fy: -1 },
+      { x: panelW / 2 - cornerInset, y: panelH / 2 - cornerInset, fx: -1, fy: -1 },
+    ];
+    corners.forEach((c) => {
+      const hBar = this.add.rectangle(c.x + (c.fx * cornerLen) / 2, c.y, cornerLen, cornerThick, accent);
+      panel.add(hBar);
+      const vBar = this.add.rectangle(c.x, c.y + (c.fy * cornerLen) / 2, cornerThick, cornerLen, accent);
+      panel.add(vBar);
+    });
+
+    // === TITLE BAR ===
+    const titleBarY = -panelH / 2 + Math.round(18 * s);
+    const titleBar = this.add.rectangle(0, titleBarY, panelW - Math.round(20 * s), Math.round(22 * s), accent, 0.15);
+    panel.add(titleBar);
+    const titleText = this.add.text(0, titleBarY, "⚔ HOW TO FIGHT ⚔", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(11 * s)}px`,
+      color: "#ffffff",
+      fontStyle: "bold",
+    });
+    titleText.setOrigin(0.5, 0.5);
+    panel.add(titleText);
+
+    // === STEP 1 ===
+    const step1Y = -Math.round(28 * s);
+    const step1Box = this.add.rectangle(-panelW / 2 + Math.round(22 * s), step1Y, Math.round(20 * s), Math.round(20 * s), 0xfbbf24);
+    panel.add(step1Box);
+    const step1Num = this.add.text(-panelW / 2 + Math.round(22 * s), step1Y, "1", {
+      fontFamily: "monospace", fontSize: `${Math.round(12 * s)}px`, color: "#0f172a", fontStyle: "bold",
+    });
+    step1Num.setOrigin(0.5, 0.5);
+    panel.add(step1Num);
+    const step1Line1 = this.add.text(-panelW / 2 + Math.round(40 * s), step1Y - Math.round(6 * s), 'Post "!fight" to', {
+      fontFamily: "monospace", fontSize: `${Math.round(8 * s)}px`, color: "#d1d5db",
+    });
+    panel.add(step1Line1);
+    const step1Line2 = this.add.text(-panelW / 2 + Math.round(40 * s), step1Y + Math.round(6 * s), "m/bagsworld-arena", {
+      fontFamily: "monospace", fontSize: `${Math.round(9 * s)}px`, color: "#4ade80", fontStyle: "bold",
+    });
+    panel.add(step1Line2);
+
+    // === STEP 2 ===
+    const step2Y = Math.round(8 * s);
+    const step2Box = this.add.rectangle(-panelW / 2 + Math.round(22 * s), step2Y, Math.round(20 * s), Math.round(20 * s), 0xfbbf24);
+    panel.add(step2Box);
+    const step2Num = this.add.text(-panelW / 2 + Math.round(22 * s), step2Y, "2", {
+      fontFamily: "monospace", fontSize: `${Math.round(12 * s)}px`, color: "#0f172a", fontStyle: "bold",
+    });
+    step2Num.setOrigin(0.5, 0.5);
+    panel.add(step2Num);
+    const step2Line1 = this.add.text(-panelW / 2 + Math.round(40 * s), step2Y - Math.round(6 * s), "Your MoltBook karma", {
+      fontFamily: "monospace", fontSize: `${Math.round(8 * s)}px`, color: "#d1d5db",
+    });
+    panel.add(step2Line1);
+    const step2Line2 = this.add.text(-panelW / 2 + Math.round(40 * s), step2Y + Math.round(6 * s), "= Your Power Level!", {
+      fontFamily: "monospace", fontSize: `${Math.round(9 * s)}px`, color: "#f472b6", fontStyle: "bold",
+    });
+    panel.add(step2Line2);
+
+    // === STEP 3 ===
+    const step3Y = Math.round(44 * s);
+    const step3Box = this.add.rectangle(-panelW / 2 + Math.round(22 * s), step3Y, Math.round(20 * s), Math.round(20 * s), 0xfbbf24);
+    panel.add(step3Box);
+    const step3Num = this.add.text(-panelW / 2 + Math.round(22 * s), step3Y, "3", {
+      fontFamily: "monospace", fontSize: `${Math.round(12 * s)}px`, color: "#0f172a", fontStyle: "bold",
+    });
+    step3Num.setOrigin(0.5, 0.5);
+    panel.add(step3Num);
+    const step3Line1 = this.add.text(-panelW / 2 + Math.round(40 * s), step3Y - Math.round(6 * s), "Get matched & fight!", {
+      fontFamily: "monospace", fontSize: `${Math.round(8 * s)}px`, color: "#d1d5db",
+    });
+    panel.add(step3Line1);
+    const step3Line2 = this.add.text(-panelW / 2 + Math.round(40 * s), step3Y + Math.round(6 * s), "Winner takes glory!", {
+      fontFamily: "monospace", fontSize: `${Math.round(9 * s)}px`, color: "#ef4444", fontStyle: "bold",
+    });
+    panel.add(step3Line2);
+
+    // === FOOTER ===
+    const footerText = this.add.text(0, panelH / 2 - Math.round(12 * s), "moltbook.com", {
+      fontFamily: "monospace", fontSize: `${Math.round(7 * s)}px`, color: "#6b7280",
+    });
+    footerText.setOrigin(0.5, 0.5);
+    panel.add(footerText);
+
+    // === ENTRANCE ANIMATION ===
+    this.tweens.add({
+      targets: panel,
+      alpha: 1,
+      scale: 1,
+      duration: 400,
+      ease: "Back.easeOut",
+    });
+  }
+
+  /**
+   * Update active matches display
+   */
+  private updateActiveMatches(matches: Array<{ matchId: number; status: string }>): void {
+    const matchStatus = this.arenaElements.find(
+      (el) => (el as Phaser.GameObjects.Text).name === "arenaMatchStatus"
+    ) as Phaser.GameObjects.Text;
+
+    if (matchStatus) {
+      const activeCount = matches?.filter((m) => m.status === "active").length || 0;
+      if (activeCount > 0) {
+        matchStatus.setText(`${activeCount} ACTIVE`);
+        matchStatus.setColor("#22c55e");
+      } else {
+        matchStatus.setText("NO MATCH");
+        matchStatus.setColor("#ffffff");
+      }
+    }
+  }
+
+  /**
+   * Update match state - render fighters and combat
+   */
+  private updateArenaMatch(state: {
+    matchId: number;
+    status: string;
+    tick: number;
+    fighter1: { id: number; username?: string; hp: number; maxHp: number; x: number; y: number; state: string; direction: string };
+    fighter2: { id: number; username?: string; hp: number; maxHp: number; x: number; y: number; state: string; direction: string };
+    winner?: string;
+  }): void {
+    if (this.currentZone !== "arena") return;
+
+    const s = SCALE;
+    const ringCenterX = GAME_WIDTH / 2;
+    const ringY = Math.round(520 * s);
+
+    // Update VS display with fighter names
+    const vsDisplay = this.arenaElements.find(
+      (el) => (el as Phaser.GameObjects.Text).name === "arenaVsDisplay"
+    ) as Phaser.GameObjects.Text;
+
+    if (vsDisplay && state.status === "active") {
+      const name1 = state.fighter1.username || `Fighter ${state.fighter1.id}`;
+      const name2 = state.fighter2.username || `Fighter ${state.fighter2.id}`;
+      vsDisplay.setText(`${name1}  VS  ${name2}`);
+    } else if (vsDisplay && state.status === "completed") {
+      vsDisplay.setText("");
+    }
+
+    // Update or create fighter 1 sprite
+    this.updateFighterSprite(state.fighter1, ringCenterX, ringY, 0);
+
+    // Update or create fighter 2 sprite
+    this.updateFighterSprite(state.fighter2, ringCenterX, ringY, 1);
+
+    // Update match status text
+    const matchStatus = this.arenaElements.find(
+      (el) => (el as Phaser.GameObjects.Text).name === "arenaMatchStatus"
+    ) as Phaser.GameObjects.Text;
+
+    if (matchStatus) {
+      if (state.status === "completed" && state.winner) {
+        matchStatus.setText("KNOCKOUT!");
+        matchStatus.setColor("#fbbf24");
+        this.showWinnerAnnouncement(state.winner);
+        // Refresh leaderboard after match ends
+        this.time.delayedCall(1000, () => this.fetchArenaLeaderboard());
+      } else if (state.status === "active") {
+        matchStatus.setText("FIGHTING");
+        matchStatus.setColor("#22c55e");
+      }
+    }
+  }
+
+  /**
+   * Update or create a fighter sprite
+   */
+  private updateFighterSprite(
+    fighter: { id: number; hp: number; maxHp: number; x: number; y: number; state: string; direction: string },
+    ringCenterX: number,
+    ringY: number,
+    index: number
+  ): void {
+    const s = SCALE;
+    let sprite = this.arenaFighters.get(fighter.id);
+
+    // Determine texture based on state
+    // 18 total variants: 0-8 humans, 9-17 creatures (lobster, crab, octopus, shark, jellyfish, pufferfish, frog, slime, robot)
+    const variantIndex = fighter.id % 18;
+    let textureKey = `fighter_${variantIndex}_idle_fight`;
+    if (fighter.state === "attacking") {
+      textureKey = `fighter_${variantIndex}_attack`;
+    } else if (fighter.state === "hurt") {
+      textureKey = `fighter_${variantIndex}_hurt`;
+    } else if (fighter.state === "knockout") {
+      textureKey = `fighter_${variantIndex}_knockout`;
+    }
+
+    // Calculate position on ring
+    const fighterX = ringCenterX + (fighter.x - 100) * s; // Convert arena coords to screen
+    const fighterY = ringY;
+
+    // Sprite height offset (48px base sprite at SCALE)
+    const spriteHeight = Math.round(48 * s);
+    const healthBarOffset = spriteHeight + Math.round(12 * s);
+
+    if (!sprite) {
+      // Create new sprite
+      sprite = this.add.sprite(fighterX, fighterY, textureKey);
+      sprite.setOrigin(0.5, 1);
+      sprite.setDepth(10);
+      this.arenaFighters.set(fighter.id, sprite);
+
+      // Create health bar above sprite
+      this.createFighterHealthBar(fighter.id, fighterX, fighterY - healthBarOffset);
+    } else {
+      // Update existing sprite
+      sprite.setTexture(textureKey);
+      sprite.setPosition(fighterX, fighterY);
+    }
+
+    // Flip sprite based on direction
+    sprite.setFlipX(fighter.direction === "left");
+
+    // Update health bar
+    this.updateFighterHealthBar(fighter.id, fighter.hp, fighter.maxHp, fighterX, fighterY - healthBarOffset);
+
+    // Show hit effect only on state TRANSITION to "hurt" (prevents spam)
+    const prevState = this.arenaLastFighterState.get(fighter.id);
+    if (fighter.state === "hurt" && prevState !== "hurt") {
+      // Calculate approximate damage from HP change
+      const damage = Math.round((fighter.maxHp - fighter.hp) * 0.1) || Math.floor(Math.random() * 8) + 4;
+      this.showHitEffect(fighterX, fighterY - Math.round(40 * s), damage);
+
+      // Add slight sprite knockback tween
+      this.tweens.add({
+        targets: sprite,
+        x: fighterX + (fighter.direction === "left" ? 8 : -8) * s,
+        duration: 80,
+        yoyo: true,
+        ease: "Power2",
+      });
+    }
+
+    // Track current state for next frame
+    this.arenaLastFighterState.set(fighter.id, fighter.state);
+  }
+
+  /**
+   * Create fighter health bar
+   */
+  private createFighterHealthBar(fighterId: number, x: number, y: number): void {
+    const s = SCALE;
+    const barWidth = Math.round(40 * s);
+    const barHeight = Math.round(6 * s);
+
+    const bg = this.add.rectangle(x, y, barWidth, barHeight, 0x000000);
+    bg.setDepth(100);
+    bg.setStrokeStyle(1, 0xffffff);
+
+    const fill = this.add.rectangle(x, y, barWidth - 2, barHeight - 2, 0x22c55e);
+    fill.setDepth(101);
+
+    this.arenaHealthBars.set(fighterId, { bg, fill });
+  }
+
+  /**
+   * Update fighter health bar
+   */
+  private updateFighterHealthBar(fighterId: number, hp: number, maxHp: number, x: number, y: number): void {
+    const bars = this.arenaHealthBars.get(fighterId);
+    if (!bars) return;
+
+    const s = SCALE;
+    const barWidth = Math.round(40 * s);
+    const hpPercent = hp / maxHp;
+    const fillWidth = (barWidth - 2) * hpPercent;
+
+    bars.bg.setPosition(x, y);
+    bars.fill.setPosition(x - (barWidth - 2) / 2 + fillWidth / 2, y);
+    bars.fill.setSize(fillWidth, bars.fill.height);
+
+    // Change color based on HP
+    if (hpPercent > 0.6) {
+      bars.fill.setFillStyle(0x22c55e); // Green
+    } else if (hpPercent > 0.3) {
+      bars.fill.setFillStyle(0xfbbf24); // Yellow
+    } else {
+      bars.fill.setFillStyle(0xef4444); // Red
+    }
+  }
+
+  /**
+   * Show hit effect at position with damage number
+   */
+  private showHitEffect(x: number, y: number, damage: number = 0): void {
+    const s = SCALE;
+
+    // === SPARK BURST ===
+    const spark = this.add.sprite(x, y, "hit_spark");
+    spark.setDepth(11);
+    spark.setScale(0.3);
+
+    this.tweens.add({
+      targets: spark,
+      scale: { from: 0.3, to: 1.2 },
+      alpha: { from: 1, to: 0 },
+      angle: { from: 0, to: 15 },
+      duration: 350,
+      ease: "Power2",
+      onComplete: () => spark.destroy(),
+    });
+
+    // === FLOATING DAMAGE NUMBER ===
+    if (damage > 0) {
+      const dmgText = this.add.text(x, y - Math.round(20 * s), `-${damage}`, {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(14 * s)}px`,
+        color: "#ef4444",
+        fontStyle: "bold",
+        stroke: "#000000",
+        strokeThickness: 3,
+      });
+      dmgText.setOrigin(0.5, 0.5);
+      dmgText.setDepth(101);
+
+      // Float up and fade
+      this.tweens.add({
+        targets: dmgText,
+        y: y - Math.round(60 * s),
+        alpha: { from: 1, to: 0 },
+        scale: { from: 1, to: 1.3 },
+        duration: 800,
+        ease: "Power2",
+        onComplete: () => dmgText.destroy(),
+      });
+    }
+
+    // === IMPACT PARTICLES ===
+    for (let i = 0; i < 4; i++) {
+      const particle = this.add.rectangle(
+        x + (Math.random() - 0.5) * 20 * s,
+        y + (Math.random() - 0.5) * 20 * s,
+        Math.round(4 * s),
+        Math.round(4 * s),
+        i % 2 === 0 ? 0xfde047 : 0xffffff
+      );
+      particle.setDepth(11);
+
+      this.tweens.add({
+        targets: particle,
+        x: particle.x + (Math.random() - 0.5) * 40 * s,
+        y: particle.y + (Math.random() - 0.5) * 40 * s,
+        alpha: 0,
+        scale: 0,
+        duration: 300 + Math.random() * 200,
+        ease: "Power2",
+        onComplete: () => particle.destroy(),
+      });
+    }
+
+    // === CAMERA SHAKE (stronger impact) ===
+    this.cameras.main.shake(120, 0.008);
+  }
+
+  /**
+   * Show winner announcement
+   */
+  private showWinnerAnnouncement(winner: string): void {
+    const s = SCALE;
+    const centerX = GAME_WIDTH / 2;
+    const centerY = GAME_HEIGHT / 2;
+
+    // Background
+    const announceBg = this.add.rectangle(centerX, centerY, Math.round(300 * s), Math.round(80 * s), 0x0a0a0f, 0.95);
+    announceBg.setDepth(200);
+    announceBg.setStrokeStyle(3, 0xfbbf24);
+
+    // Winner text
+    const winnerText = this.add.text(centerX, centerY - Math.round(10 * s), "WINNER!", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(16 * s)}px`,
+      color: "#fbbf24",
+      fontStyle: "bold",
+    });
+    winnerText.setOrigin(0.5, 0.5);
+    winnerText.setDepth(201);
+
+    const nameText = this.add.text(centerX, centerY + Math.round(15 * s), winner, {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#ffffff",
+    });
+    nameText.setOrigin(0.5, 0.5);
+    nameText.setDepth(201);
+
+    // Animate in
+    this.tweens.add({
+      targets: [announceBg, winnerText, nameText],
+      scale: { from: 0, to: 1 },
+      duration: 300,
+      ease: "Back.easeOut",
+    });
+
+    // Remove after delay
+    this.time.delayedCall(3000, () => {
+      this.tweens.add({
+        targets: [announceBg, winnerText, nameText],
+        alpha: 0,
+        duration: 500,
+        onComplete: () => {
+          announceBg.destroy();
+          winnerText.destroy();
+          nameText.destroy();
+
+          // Clean up fighter sprites and health bars
+          this.arenaFighters.forEach((sprite) => sprite.destroy());
+          this.arenaFighters.clear();
+          this.arenaHealthBars.forEach((bars) => {
+            bars.bg.destroy();
+            bars.fill.destroy();
+          });
+          this.arenaHealthBars.clear();
+          this.arenaLastHitEffect.clear();
+          this.arenaLastFighterState.clear();
+        },
+      });
+    });
+  }
+
+  /**
+   * Fallback polling for arena status (when WebSocket unavailable)
+   */
+  private startArenaPolling(): void {
+    let pollCount = 0;
+    let engineStarted = false;
+
+    // Poll arena status every 500ms for smoother fight updates
+    this.time.addEvent({
+      delay: 500,
+      callback: async () => {
+        if (this.currentZone !== "arena") return;
+
+        try {
+          // Auto-start engine on first poll (lazy initialization)
+          if (!engineStarted) {
+            engineStarted = true;
+            console.log("[Arena] Auto-starting engine...");
+            await fetch("/api/arena/brawl", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "start_engine" }),
+            });
+          }
+
+          // Get active matches from engine
+          const matchResponse = await fetch("/api/arena/brawl?action=matches");
+          const matchData = await matchResponse.json();
+
+          if (matchData.success && matchData.matches) {
+            this.updateActiveMatches(matchData.matches);
+
+            // If matches from engine, render them
+            if (matchData.source === "engine" && matchData.matches.length > 0) {
+              for (const match of matchData.matches) {
+                if (match.status === "active" || match.status === "completed") {
+                  this.updateArenaMatch(match);
+                }
+              }
+
+              // Run a few ticks to advance the fight
+              await fetch("/api/arena/brawl", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "tick", ticks: 5 }),
+              });
+            }
+          }
+
+          // Update queue and leaderboard less frequently (every 4 polls = 2 seconds)
+          pollCount++;
+          if (pollCount % 4 === 0) {
+            const queueResponse = await fetch("/api/arena/brawl?action=queue");
+            const queueData = await queueResponse.json();
+            if (queueData.success) {
+              this.updateArenaQueue(queueData.queue?.fighters || []);
+            }
+
+            // Refresh leaderboard every 10 seconds
+            if (pollCount % 20 === 0) {
+              this.fetchArenaLeaderboard();
+            }
+          }
+        } catch (err) {
+          console.error("[Arena] Polling error:", err);
+        }
+      },
+      loop: true,
     });
   }
 }

@@ -46,6 +46,10 @@ const LOCATIONS: Record<
     { id: "oak", name: "Prof. Oak", desc: "Launch Guide", event: "bagsworld-oak-click" },
     { id: "dexprep", name: "DexScreener Prep", desc: "Get Listed", event: null },
   ],
+  arena: [
+    { id: "ring", name: "Fighting Ring", desc: "Watch Battles", event: null },
+    { id: "queue", name: "Queue Status", desc: "Join the Fight", event: null },
+  ],
 };
 
 export function MiniMap({ onNavigate }: MiniMapProps) {
@@ -223,6 +227,16 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
               }`}
             >
               FOUNDERS
+            </button>
+            <button
+              onClick={() => handleZoneChange("arena")}
+              className={`flex-1 py-2 font-pixel text-[8px] tracking-wide transition-all ${
+                currentZone === "arena"
+                  ? "text-red-400 bg-red-400/10 border-b-2 border-red-400"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              ARENA
             </button>
           </div>
 
