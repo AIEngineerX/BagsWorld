@@ -7,7 +7,7 @@ const router = Router();
 
 // MoltBook API configuration
 const MOLTBOOK_API_URL = "https://www.moltbook.com/api/v1";
-const BAGSWORLD_SUBMOLT = "bagsworld";
+const BAGSWORLD_SUBMOLT = "bagsworld-arena";
 
 // Rate limiting state
 let lastPostTime = 0;
