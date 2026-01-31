@@ -31,6 +31,7 @@ import {
   creatorToolsRoutes,
   ghostRoutes,
   twitterRoutes,
+  moltbookRoutes,
   setDatabase,
 } from "./routes/index.js";
 import { GhostTrader, getGhostTrader } from "./services/GhostTrader.js";
@@ -151,6 +152,7 @@ app.use("/api/launch-wizard", chatLimiter, launchWizardRoutes); // LLM-heavy
 app.use("/api/creator-tools", chatLimiter, creatorToolsRoutes); // LLM-heavy
 app.use("/api/ghost", ghostRoutes);
 app.use("/api/twitter", twitterRoutes);
+app.use("/api/moltbook", moltbookRoutes);
 
 // Database initialization
 async function initializeDatabase(): Promise<void> {
@@ -412,14 +414,17 @@ async function main(): Promise<void> {
     console.log(`  POST   /api/ghost/config                     - Update trading config`);
     console.log(`  POST   /api/ghost/evaluate                   - Manually trigger evaluation`);
     console.log(`  POST   /api/ghost/check-positions            - Manually check positions`);
-    console.log(`\nFinn Twitter (Requires TWITTER_BEARER_TOKEN):`);
+    console.log(`\nBagsy Twitter (Requires TWITTER_* env vars):`);
     console.log(`  GET    /api/twitter/status                   - Twitter service status`);
     console.log(`  GET    /api/twitter/history                  - Recent post history`);
-    console.log(`  POST   /api/twitter/post                     - Post a tweet as Finn`);
-    console.log(`  POST   /api/twitter/thread                   - Post a thread as Finn`);
+    console.log(`  POST   /api/twitter/post                     - Post a tweet as Bagsy`);
+    console.log(`  POST   /api/twitter/thread                   - Post a thread as Bagsy`);
     console.log(
       `  POST   /api/twitter/generate-shill           - Generate shill content for token`
     );
+    console.log(`\nBagsy MoltBook (Requires MOLTBOOK_API_KEY):`);
+    console.log(`  GET    /api/moltbook/status                  - MoltBook service status`);
+    console.log(`  POST   /api/moltbook/post                    - Post to MoltBook as Bagsy`);
   });
 }
 
