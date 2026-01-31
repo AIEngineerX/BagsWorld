@@ -177,6 +177,51 @@ router.get("/status", (req: Request, res: Response) => {
   });
 });
 
+// GET /api/moltbook/profile - Get agent profile and claim status
+router.get("/profile", async (req: Request, res: Response) => {
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    res.status(400).json({
+      success: false,
+      error: "MOLTBOOK_API_KEY not configured",
+    });
+    return;
+  }
+
+  try {
+    const response = await fetch(`${MOLTBOOK_API_URL}/agents/me`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[MoltBook] Profile fetch failed: ${response.status} - ${errorText}`);
+      res.status(response.status).json({
+        success: false,
+        error: `MoltBook API error: ${response.status}`,
+        details: errorText,
+      });
+      return;
+    }
+
+    const profile = await response.json();
+    res.json({
+      success: true,
+      profile,
+    });
+  } catch (error) {
+    console.error("[MoltBook] Profile error:", error);
+    res.status(500).json({
+      success: false,
+      error: String(error),
+    });
+  }
+});
+
 // POST /api/moltbook/post - Post to MoltBook
 router.post("/post", async (req: Request, res: Response) => {
   const { type, title, content } = req.body;

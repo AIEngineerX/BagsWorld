@@ -14,7 +14,7 @@ import { getMoltbookOrNull, type MoltbookPost, type CreatePostParams } from "./m
 import { bagsyCharacter } from "@/characters/bagsy.character";
 
 // Constants
-const BAGSWORLD_SUBMOLT = "bagsworld";
+const BAGSWORLD_SUBMOLT = "bagsworld-arena";
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
