@@ -239,40 +239,53 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     basisPointsArray: [10000], // 100% to the external agent
   };
 
-  console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest));
+  console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest, null, 2));
 
   let configKey: string;
   try {
-    const feeShareResponse = await callBagsApi<{
-      meteoraConfigKey?: string;
-      configId?: string;
-      configKey?: string;
-      needsCreation?: boolean;
-      transactions?: Array<{ transaction: string }>;
-    }>("/fee-share/config", {
+    // Make raw fetch so we can see the full response
+    const feeShareUrl = `${BAGS_API.PUBLIC_BASE}/fee-share/config`;
+    console.log("[Launcher] Calling:", feeShareUrl);
+    
+    const feeShareRes = await fetch(feeShareUrl, {
       method: "POST",
+      headers: {
+        "x-api-key": BAGS_API_KEY,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(feeShareRequest),
     });
 
-    console.log("[Launcher] Fee share response:", JSON.stringify(feeShareResponse));
+    const rawText = await feeShareRes.text();
+    console.log("[Launcher] Fee share raw response:", feeShareRes.status, rawText.substring(0, 500));
+
+    if (!feeShareRes.ok) {
+      throw new Error(`Fee share API ${feeShareRes.status}: ${rawText.substring(0, 300)}`);
+    }
+
+    const feeShareResponse = JSON.parse(rawText);
+    const result = feeShareResponse.response || feeShareResponse;
+    console.log("[Launcher] Fee share parsed:", JSON.stringify(result));
 
     // Extract configKey - API returns it as meteoraConfigKey
     configKey =
-      feeShareResponse.meteoraConfigKey ||
-      feeShareResponse.configId ||
-      feeShareResponse.configKey ||
+      result.meteoraConfigKey ||
+      result.configId ||
+      result.configKey ||
+      result.config_key ||
       "";
 
     if (!configKey) {
+      console.log("[Launcher] Full result for debugging:", JSON.stringify(result, null, 2));
       throw new Error("No configKey returned from fee-share config");
     }
 
     console.log(`[Launcher] Config key: ${configKey}`);
 
     // Sign any required transactions (fee config creation)
-    if (feeShareResponse.needsCreation && feeShareResponse.transactions?.length) {
-      console.log(`[Launcher] Signing ${feeShareResponse.transactions.length} fee config tx(s)...`);
-      for (const tx of feeShareResponse.transactions) {
+    if (result.needsCreation && result.transactions?.length) {
+      console.log(`[Launcher] Signing ${result.transactions.length} fee config tx(s)...`);
+      for (const tx of result.transactions) {
         await signAndSubmit(tx.transaction);
       }
     }
