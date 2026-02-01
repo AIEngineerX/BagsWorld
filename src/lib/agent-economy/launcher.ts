@@ -104,7 +104,9 @@ async function callBagsApi<T>(
   const data = await response.json();
   
   if (!response.ok || data.success === false) {
-    throw new Error(data.error || `API error: ${response.status}`);
+    const errMsg = data.error || data.message || data.detail || JSON.stringify(data);
+    console.error('[Launcher] Bags API error:', response.status, errMsg);
+    throw new Error(errMsg);
   }
   
   return data.response || data;
