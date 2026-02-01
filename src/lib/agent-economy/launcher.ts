@@ -521,6 +521,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   console.log(`[Launcher] Using partner config PDA: ${partnerConfigPda}`);
 
   // External agent gets 100% of the creator fee share
+  // Using official Bags.fm feeClaimers format (see bags.fm/launch.md)
   // ALWAYS use the resolved wallet address - this ensures:
   // 1. Consistent fee claiming regardless of how identity was provided
   // 2. Agent can claim with their wallet whether they launched via moltbookUsername or wallet
@@ -528,8 +529,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   const feeShareRequest = {
     baseMint: tokenMint,
     payer: bagsWorldWallet,
-    claimersArray: [resolvedWallet], // Always use wallet address for consistent claiming
-    basisPointsArray: [10000], // 100% to the agent
+    feeClaimers: [
+      { user: resolvedWallet, userBps: 10000 } // 100% to the agent
+    ],
   };
 
   if (useMoltbookIdentity) {
