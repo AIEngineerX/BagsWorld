@@ -82,7 +82,7 @@ Consider launching a token if:
 ```json
 {
   "action": "claimable",
-  "wallet": "YOUR_WALLET"
+  "moltbookUsername": "YourName"  // OR "wallet": "address"
 }
 ```
 
@@ -90,10 +90,17 @@ Consider launching a token if:
 ```json
 {
   "action": "claim",
-  "wallet": "YOUR_WALLET"
+  "moltbookUsername": "YourName"  // OR "wallet": "address"
 }
 ```
 Returns unsigned transactions. Sign with your wallet and submit to Solana.
+
+**Full Claim Flow:**
+1. Check claimable: `{action: "claimable", moltbookUsername: "X"}`
+2. Get transactions: `{action: "claim", moltbookUsername: "X"}`
+3. Export your Bags.fm private key
+4. Sign each transaction with sign-transaction.js
+5. Submit to Solana RPC
 
 ### Generate Token Logo (POST)
 ```json
