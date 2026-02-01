@@ -37,6 +37,19 @@ interface Pokemon {
   baseY: number; // Store base Y position for this Pokemon
 }
 
+// Beach crabs/lobsters - external agents that wander MoltBeach
+interface BeachCrab {
+  characterId: string;
+  sprite: Phaser.GameObjects.Sprite;
+  targetX: number;
+  speed: number;
+  direction: "left" | "right";
+  idleTimer: number;
+  isIdle: boolean;
+  baseY: number;
+  isLobster: boolean; // Moltbook agents are lobsters, others are crabs
+}
+
 export class WorldScene extends Phaser.Scene {
   private worldState: WorldState | null = null;
   private characterSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
@@ -48,6 +61,7 @@ export class WorldScene extends Phaser.Scene {
   private decorations: Phaser.GameObjects.Sprite[] = [];
   private animals: Animal[] = [];
   private pokemon: Pokemon[] = []; // Pokemon in Founders zone
+  private beachCrabs: BeachCrab[] = []; // External agents wandering MoltBeach
   private fountainWater: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ground!: Phaser.GameObjects.TileSprite;
   private timeOfDay = 0;
@@ -3946,6 +3960,9 @@ Use: bags.fm/[yourname]`,
       this.boundSpeakHandler = null;
     }
     this.characterTargets.clear();
+
+    // Clean up beach crabs
+    this.beachCrabs = [];
   }
 
   private createGround(): void {
@@ -5684,6 +5701,52 @@ Use: bags.fm/[yourname]`,
         }
       });
     }
+
+    // === BEACH CRAB/LOBSTER MOVEMENT (Moltbook Beach zone only) ===
+    if (this.currentZone === "moltbook") {
+      const crabMinX = Math.round(60 * SCALE);
+      const crabMaxX = Math.round(740 * SCALE);
+      const crabRoamRange = Math.round(600 * SCALE);
+
+      this.beachCrabs.forEach((crab) => {
+        if (!crab.sprite || !crab.sprite.active) return;
+
+        if (crab.isIdle) {
+          crab.idleTimer += 1;
+          // Crabs idle longer than regular animals - they're chill beach vibes
+          if (crab.idleTimer > 150 + Math.random() * 250) {
+            crab.isIdle = false;
+            crab.idleTimer = 0;
+            crab.targetX = crabMinX + Math.random() * crabRoamRange;
+            crab.direction = crab.targetX > crab.sprite.x ? "right" : "left";
+          }
+        } else {
+          // Move toward target (crabs are slower, more deliberate)
+          const dx = crab.targetX - crab.sprite.x;
+          if (Math.abs(dx) < 5 * SCALE) {
+            // Reached target, become idle
+            crab.isIdle = true;
+            crab.idleTimer = 0;
+          } else {
+            // Crabs move with a slight side-to-side wobble
+            crab.sprite.x += crab.speed * (dx > 0 ? 1 : -1);
+            crab.sprite.setFlipX(dx < 0);
+          }
+
+          // Keep within beach bounds
+          if (crab.sprite.x < crabMinX) {
+            crab.sprite.x = crabMinX;
+            crab.targetX = crabMinX + Math.random() * Math.round(200 * SCALE);
+            crab.isIdle = true;
+          }
+          if (crab.sprite.x > crabMaxX) {
+            crab.sprite.x = crabMaxX;
+            crab.targetX = crabMaxX - Math.random() * Math.round(200 * SCALE);
+            crab.isIdle = true;
+          }
+        }
+      });
+    }
   }
 
   updateWorldState(state: WorldState): void {
@@ -6603,6 +6666,25 @@ Use: bags.fm/[yourname]`,
       isOpenClaw,
       isMoltbookAgent,
     });
+
+    // Register external agents (crabs/lobsters) for wandering behavior on MoltBeach
+    if (isOpenClaw && character.zone === "moltbook") {
+      // Check if already registered
+      const existingCrab = this.beachCrabs.find((c) => c.characterId === character.id);
+      if (!existingCrab) {
+        this.beachCrabs.push({
+          characterId: character.id,
+          sprite: sprite,
+          targetX: character.x + (Math.random() - 0.5) * Math.round(200 * SCALE),
+          speed: 0.3 + Math.random() * 0.2, // Slower than animals - crabs are chill
+          direction: Math.random() > 0.5 ? "left" : "right",
+          idleTimer: Math.floor(Math.random() * 100), // Start at random idle state
+          isIdle: Math.random() > 0.5, // Some start idle, some start moving
+          baseY: character.y,
+          isLobster: isMoltbookAgent,
+        });
+      }
+    }
 
     this.characterSprites.set(character.id, sprite);
   }

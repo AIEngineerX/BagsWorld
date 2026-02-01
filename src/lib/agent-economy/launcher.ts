@@ -35,6 +35,171 @@ const RATE_LIMITS = {
   symbolCooldownMs: 60 * 60 * 1000, // 1 hour between same symbol launches
 };
 
+// ============================================================================
+// JOIN RATE LIMITING (separate from launches)
+// ============================================================================
+
+const joinCounts = new Map<string, { count: number; resetAt: number }>();
+let globalJoinCount = { count: 0, resetAt: Date.now() + 24 * 60 * 60 * 1000 };
+const recentNames = new Map<string, number>(); // name -> timestamp (abuse prevention)
+
+const JOIN_RATE_LIMITS = {
+  perWalletPerDay: 3, // Can only join 3 times per day per wallet (for re-registering)
+  globalPerDay: 200, // 200 new agents per day globally
+  nameCooldownMs: 5 * 60 * 1000, // 5 minutes between same name joins (typosquatting prevention)
+};
+
+/**
+ * Check if a wallet can join (rate limiting)
+ */
+export function canWalletJoin(wallet: string): { allowed: boolean; reason?: string } {
+  const now = Date.now();
+
+  // Reset global counter if day has passed
+  if (now > globalJoinCount.resetAt) {
+    globalJoinCount = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
+  }
+
+  // Check global limit
+  if (globalJoinCount.count >= JOIN_RATE_LIMITS.globalPerDay) {
+    return { allowed: false, reason: "Global daily join limit reached. Try again tomorrow." };
+  }
+
+  // Get or create wallet entry
+  let walletEntry = joinCounts.get(wallet);
+  if (!walletEntry || now > walletEntry.resetAt) {
+    walletEntry = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
+    joinCounts.set(wallet, walletEntry);
+  }
+
+  // Check per-wallet limit
+  if (walletEntry.count >= JOIN_RATE_LIMITS.perWalletPerDay) {
+    return {
+      allowed: false,
+      reason: `Wallet limit reached (${JOIN_RATE_LIMITS.perWalletPerDay}/day). Try again tomorrow.`,
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Record a successful join (for rate limiting)
+ */
+export function recordJoin(wallet: string, name: string): void {
+  const now = Date.now();
+
+  // Increment counters
+  globalJoinCount.count++;
+
+  const walletEntry = joinCounts.get(wallet);
+  if (walletEntry) {
+    walletEntry.count++;
+  }
+
+  // Track name for abuse prevention
+  recentNames.set(name.toLowerCase().trim(), now);
+}
+
+/**
+ * Check if name was recently used (typosquatting prevention)
+ */
+export function isNameRecentlyUsed(name: string): boolean {
+  const lastUsed = recentNames.get(name.toLowerCase().trim());
+  if (!lastUsed) return false;
+  return Date.now() - lastUsed < JOIN_RATE_LIMITS.nameCooldownMs;
+}
+
+/**
+ * Get join rate limit status
+ */
+export function getJoinRateLimitStatus(wallet?: string): {
+  wallet: { used: number; limit: number; resetAt: number } | null;
+  global: { used: number; limit: number; resetAt: number };
+} {
+  const now = Date.now();
+
+  // Reset if needed
+  if (now > globalJoinCount.resetAt) {
+    globalJoinCount = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
+  }
+
+  let walletStatus = null;
+  if (wallet) {
+    let entry = joinCounts.get(wallet);
+    if (!entry || now > entry.resetAt) {
+      entry = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
+    }
+    walletStatus = {
+      used: entry.count,
+      limit: JOIN_RATE_LIMITS.perWalletPerDay,
+      resetAt: entry.resetAt,
+    };
+  }
+
+  return {
+    wallet: walletStatus,
+    global: {
+      used: globalJoinCount.count,
+      limit: JOIN_RATE_LIMITS.globalPerDay,
+      resetAt: globalJoinCount.resetAt,
+    },
+  };
+}
+
+/**
+ * Sanitize agent name for joining
+ */
+export function sanitizeAgentName(name: string): {
+  valid: boolean;
+  sanitized: string;
+  error?: string;
+} {
+  if (!name || typeof name !== "string") {
+    return { valid: false, sanitized: "", error: "Name is required" };
+  }
+
+  // Trim and limit length
+  const sanitized = name.trim().substring(0, 32);
+
+  if (sanitized.length < 2) {
+    return { valid: false, sanitized: "", error: "Name must be at least 2 characters" };
+  }
+
+  // Check for suspicious patterns
+  const suspiciousPatterns = [
+    /^\s*$/, // Only whitespace
+    /<script/i, // XSS attempt
+    /javascript:/i, // XSS attempt
+    /on\w+=/i, // Event handler injection
+    /^(admin|moderator|staff|support|official|bags\.?fm|bags\.?world)/i, // Impersonation
+  ];
+
+  for (const pattern of suspiciousPatterns) {
+    if (pattern.test(sanitized)) {
+      return { valid: false, sanitized: "", error: "Invalid or reserved name" };
+    }
+  }
+
+  return { valid: true, sanitized };
+}
+
+/**
+ * Sanitize agent description
+ */
+export function sanitizeAgentDescription(description?: string): string {
+  if (!description || typeof description !== "string") {
+    return "";
+  }
+
+  // Remove potentially dangerous content
+  return description
+    .replace(/<[^>]*>/g, "") // Remove HTML tags
+    .replace(/javascript:/gi, "") // Remove JS protocol
+    .substring(0, 200) // Limit length (shorter than token description)
+    .trim();
+}
+
 /**
  * Check if a wallet can launch (rate limiting)
  */
