@@ -137,12 +137,13 @@ export {
   type ExternalAgentContext,
 } from "./external";
 
-// External agent registry
+// External agent registry (DB-persisted)
 export {
   registerExternalAgent,
   unregisterExternalAgent,
   getExternalAgent,
   getExternalAgentCharacters,
+  getExternalAgentCharactersSync,
   listExternalAgents,
   getExternalAgentCount,
   moveExternalAgent,

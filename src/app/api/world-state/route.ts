@@ -29,7 +29,7 @@ import {
   type GlobalToken,
 } from "@/lib/neon";
 import { getAgentCharacters } from "@/lib/agent-economy";
-import { getExternalAgentCharacters } from "@/lib/agent-economy/external-registry";
+import { getExternalAgentCharactersSync } from "@/lib/agent-economy/external-registry";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
 
 // Bags SDK types
@@ -1408,7 +1408,7 @@ export async function POST(request: NextRequest) {
       worldState.population = [...worldState.population, ...agentCharacters];
     }
     // Inject external agents
-    const externalCharacters = getExternalAgentCharacters();
+    const externalCharacters = getExternalAgentCharactersSync();
     if (externalCharacters.length > 0) {
       worldState.population = [...worldState.population, ...externalCharacters];
     }
@@ -1447,7 +1447,7 @@ export async function GET() {
         worldState.population = [...worldState.population, ...agentCharacters];
       }
       // Inject external agents
-      const externalChars = getExternalAgentCharacters();
+      const externalChars = getExternalAgentCharactersSync();
       if (externalChars.length > 0) {
         worldState.population = [...worldState.population, ...externalChars];
       }
@@ -1496,7 +1496,7 @@ export async function GET() {
       worldState.population = [...worldState.population, ...agentCharacters2];
     }
     // Inject external agents
-    const externalChars2 = getExternalAgentCharacters();
+    const externalChars2 = getExternalAgentCharactersSync();
     if (externalChars2.length > 0) {
       worldState.population = [...worldState.population, ...externalChars2];
     }
