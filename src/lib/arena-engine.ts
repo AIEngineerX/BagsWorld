@@ -149,6 +149,82 @@ export class ArenaEngine {
     return true;
   }
 
+  // Add match directly with fighter data (no database lookup needed)
+  // Useful for serverless where we already have the data
+  addMatchDirect(
+    matchId: number,
+    fighter1Data: { id: number; username: string; karma: number },
+    fighter2Data: { id: number; username: string; karma: number }
+  ): boolean {
+    if (this.matches.has(matchId)) {
+      console.warn(`[ArenaEngine] Match ${matchId} already active`);
+      return false;
+    }
+
+    const stats1 = karmaToStats(fighter1Data.karma);
+    const stats2 = karmaToStats(fighter2Data.karma);
+
+    const fighter1: Fighter = {
+      id: fighter1Data.id,
+      username: fighter1Data.username,
+      karma: fighter1Data.karma,
+      stats: stats1,
+      x: ARENA_CONFIG.spawnXLeft,
+      y: ARENA_CONFIG.groundY,
+      state: "idle",
+      direction: "right",
+      lastAttackTick: -ARENA_CONFIG.attackCooldownTicks,
+      lastHurtTick: -10,
+      spriteVariant: usernameToSpriteVariant(fighter1Data.username),
+    };
+
+    const fighter2: Fighter = {
+      id: fighter2Data.id,
+      username: fighter2Data.username,
+      karma: fighter2Data.karma,
+      stats: stats2,
+      x: ARENA_CONFIG.spawnXRight,
+      y: ARENA_CONFIG.groundY,
+      state: "idle",
+      direction: "left",
+      lastAttackTick: -ARENA_CONFIG.attackCooldownTicks,
+      lastHurtTick: -10,
+      spriteVariant: usernameToSpriteVariant(fighter2Data.username),
+    };
+
+    const state: MatchState = {
+      matchId,
+      status: "active",
+      tick: 0,
+      fighter1,
+      fighter2,
+      events: [
+        {
+          tick: 0,
+          type: "match_start",
+          message: `${fighter1.username} vs ${fighter2.username}`,
+        },
+      ],
+      startedAt: Date.now(),
+    };
+
+    this.matches.set(matchId, {
+      state,
+      damageDealt1: 0,
+      damageDealt2: 0,
+    });
+
+    console.log(
+      `[ArenaEngine] Match ${matchId} added directly: ${fighter1.username} vs ${fighter2.username}`
+    );
+
+    if (this.onUpdate) {
+      this.onUpdate(state);
+    }
+
+    return true;
+  }
+
   // Remove a match (cleanup)
   removeMatch(matchId: number): void {
     this.matches.delete(matchId);
