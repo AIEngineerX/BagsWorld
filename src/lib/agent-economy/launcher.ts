@@ -1,14 +1,14 @@
 // Token Launcher Service
 // Launches Bags.fm tokens on behalf of external agents
-// 
+//
 // BagsWorld pays: Transaction fees (~0.03 SOL)
 // External agent gets: 100% of trading fees forever
 //
 // Like Moltmint, but for Bags.fm
 
-import { Connection, Keypair, Transaction, VersionedTransaction } from '@solana/web3.js';
-import bs58 from 'bs58';
-import { BAGS_API } from './types';
+import { Connection, Keypair, Transaction, VersionedTransaction } from "@solana/web3.js";
+import bs58 from "bs58";
+import { BAGS_API } from "./types";
 
 // ============================================================================
 // CONFIGURATION
@@ -17,7 +17,7 @@ import { BAGS_API } from './types';
 const BAGS_API_KEY = process.env.BAGS_API_KEY!;
 const BAGS_JWT_TOKEN = process.env.BAGS_JWT_TOKEN!;
 const BAGSWORLD_PRIVATE_KEY = process.env.BAGSWORLD_LAUNCHER_PRIVATE_KEY!;
-const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
 
 // ============================================================================
 // TYPES
@@ -26,13 +26,13 @@ const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-b
 export interface LaunchRequest {
   // External agent's wallet (receives 100% of fees)
   creatorWallet: string;
-  
+
   // Token details
   name: string;
   symbol: string;
   description: string;
   imageUrl: string;
-  
+
   // Optional socials
   twitter?: string;
   website?: string;
@@ -72,88 +72,82 @@ export interface ClaimResult {
 
 function getBagsWorldKeypair(): Keypair {
   if (!BAGSWORLD_PRIVATE_KEY) {
-    throw new Error('BAGSWORLD_LAUNCHER_PRIVATE_KEY not configured');
+    throw new Error("BAGSWORLD_LAUNCHER_PRIVATE_KEY not configured");
   }
   const secretKey = bs58.decode(BAGSWORLD_PRIVATE_KEY);
   return Keypair.fromSecretKey(secretKey);
 }
 
 function getConnection(): Connection {
-  return new Connection(RPC_URL, 'confirmed');
+  return new Connection(RPC_URL, "confirmed");
 }
 
-async function callBagsApi<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
+async function callBagsApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   if (!BAGS_API_KEY) {
-    throw new Error('BAGS_API_KEY not configured');
+    throw new Error("BAGS_API_KEY not configured");
   }
-  
-  const url = endpoint.startsWith('http') ? endpoint : `${BAGS_API.PUBLIC_BASE}${endpoint}`;
-  
+
+  const url = endpoint.startsWith("http") ? endpoint : `${BAGS_API.PUBLIC_BASE}${endpoint}`;
+
   const response = await fetch(url, {
     ...options,
     headers: {
-      'x-api-key': BAGS_API_KEY,
-      'Content-Type': 'application/json',
+      "x-api-key": BAGS_API_KEY,
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
-  
+
   const data = await response.json();
-  
+
   if (!response.ok || data.success === false) {
     const errMsg = data.error || data.message || data.detail || JSON.stringify(data);
-    console.error('[Launcher] Bags API error:', response.status, errMsg);
+    console.error("[Launcher] Bags API error:", response.status, errMsg);
     throw new Error(errMsg);
   }
-  
+
   return data.response || data;
 }
 
-async function callAgentApi<T>(
-  endpoint: string,
-  body: Record<string, unknown>
-): Promise<T> {
+async function callAgentApi<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
   if (!BAGS_JWT_TOKEN) {
-    throw new Error('BAGS_JWT_TOKEN not configured');
+    throw new Error("BAGS_JWT_TOKEN not configured");
   }
-  
+
   const url = `${BAGS_API.AGENT_BASE}${endpoint}`;
-  
+
   const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token: BAGS_JWT_TOKEN, ...body }),
   });
-  
+
   const data = await response.json();
-  
+
   if (!response.ok || data.success === false) {
     throw new Error(data.error || `API error: ${response.status}`);
   }
-  
+
   return data.response || data;
 }
 
 async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
   const connection = getConnection();
   const keypair = getBagsWorldKeypair();
-  
+
   // Decode the transaction (Bags.fm uses Base58, not Base64!)
   const txBuffer = bs58.decode(unsignedTxBase58);
-  
+
   // Try versioned transaction first, fall back to legacy
   let signature: string;
-  
+
   try {
     // Try as versioned transaction (V0)
     const versionedTx = VersionedTransaction.deserialize(txBuffer);
     versionedTx.sign([keypair]);
     signature = await connection.sendRawTransaction(versionedTx.serialize(), {
       skipPreflight: false,
-      preflightCommitment: 'confirmed',
+      preflightCommitment: "confirmed",
     });
   } catch {
     // Fall back to legacy transaction
@@ -161,13 +155,13 @@ async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
     legacyTx.partialSign(keypair);
     signature = await connection.sendRawTransaction(legacyTx.serialize(), {
       skipPreflight: false,
-      preflightCommitment: 'confirmed',
+      preflightCommitment: "confirmed",
     });
   }
-  
+
   // Wait for confirmation
-  await connection.confirmTransaction(signature, 'confirmed');
-  
+  await connection.confirmTransaction(signature, "confirmed");
+
   return signature;
 }
 
@@ -180,36 +174,38 @@ async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
  * BagsWorld pays tx fees, external agent gets 100% of trading fees
  */
 export async function launchForExternal(request: LaunchRequest): Promise<LaunchResult> {
-  const { creatorWallet, name, symbol, description, imageUrl, twitter, website, telegram } = request;
-  
+  const { creatorWallet, name, symbol, description, imageUrl, twitter, website, telegram } =
+    request;
+
   console.log(`[Launcher] Launching ${symbol} for ${creatorWallet.slice(0, 8)}...`);
-  
+
   // Validate inputs
   if (!creatorWallet || creatorWallet.length < 32 || creatorWallet.length > 44) {
-    return { success: false, error: 'Invalid creator wallet address' };
+    return { success: false, error: "Invalid creator wallet address" };
   }
-  
+
   if (!name || name.length > 32) {
-    return { success: false, error: 'Name must be 1-32 characters' };
+    return { success: false, error: "Name must be 1-32 characters" };
   }
-  
+
   if (!symbol || symbol.length > 10) {
-    return { success: false, error: 'Symbol must be 1-10 characters' };
+    return { success: false, error: "Symbol must be 1-10 characters" };
   }
-  
+
   // Use placeholder if no image provided
-  const finalImageUrl = imageUrl || `https://api.dicebear.com/7.x/shapes/png?seed=${symbol}&size=400`;
-  
+  const finalImageUrl =
+    imageUrl || `https://api.dicebear.com/7.x/shapes/png?seed=${symbol}&size=400`;
+
   const bagsWorldWallet = getBagsWorldKeypair().publicKey.toBase58();
-  
+
   // Step 1: Create token info
-  console.log('[Launcher] Step 1: Creating token info...');
-  
+  console.log("[Launcher] Step 1: Creating token info...");
+
   const tokenInfo = await callBagsApi<{
     tokenMint: string;
     tokenMetadata: string;
-  }>('/token-launch/create-token-info', {
-    method: 'POST',
+  }>("/token-launch/create-token-info", {
+    method: "POST",
     body: JSON.stringify({
       name,
       symbol: symbol.toUpperCase(),
@@ -220,16 +216,16 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
       telegram: telegram || undefined,
     }),
   });
-  
+
   const tokenMint = tokenInfo.tokenMint;
   const metadataUrl = tokenInfo.tokenMetadata;
-  
+
   console.log(`[Launcher] Token mint: ${tokenMint}`);
-  
+
   // Step 2: Create partner config for fee sharing
   // Use the BagsWorld wallet as the partner, creator gets fees through that
-  console.log('[Launcher] Step 2: Getting partner config...');
-  
+  console.log("[Launcher] Step 2: Getting partner config...");
+
   let configKey: string;
   try {
     // Try to create a partner config with the BagsWorld wallet
@@ -243,44 +239,45 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
         transaction?: string;
       };
       transaction?: string;
-    }>('/partner/config', {
-      method: 'POST',
+    }>("/partner/config", {
+      method: "POST",
       body: JSON.stringify({
         partnerWallet: bagsWorldWallet, // BagsWorld receives, distributes to creators
       }),
     });
-    
-    console.log('[Launcher] Partner response:', JSON.stringify(partnerResponse));
-    
+
+    console.log("[Launcher] Partner response:", JSON.stringify(partnerResponse));
+
     // Extract configKey from various possible response formats
-    configKey = partnerResponse.configKey 
-      || partnerResponse.partnerKey 
-      || partnerResponse.response?.configKey 
-      || partnerResponse.response?.partnerKey
-      || '';
-      
+    configKey =
+      partnerResponse.configKey ||
+      partnerResponse.partnerKey ||
+      partnerResponse.response?.configKey ||
+      partnerResponse.response?.partnerKey ||
+      "";
+
     if (!configKey) {
       // If no config key, try without one - some APIs have defaults
-      console.log('[Launcher] No configKey returned, trying launch without it...');
-      configKey = ''; // Will be filtered out in step 3
+      console.log("[Launcher] No configKey returned, trying launch without it...");
+      configKey = ""; // Will be filtered out in step 3
     } else {
       console.log(`[Launcher] Config key: ${configKey}`);
-      
+
       // Sign partner transaction if present
       const tx = partnerResponse.transaction || partnerResponse.response?.transaction;
       if (tx) {
-        console.log('[Launcher] Signing partner config tx...');
+        console.log("[Launcher] Signing partner config tx...");
         await signAndSubmit(tx);
       }
     }
   } catch (err) {
-    console.log('[Launcher] Partner config failed, trying without:', err);
-    configKey = ''; // Try launch without configKey
+    console.log("[Launcher] Partner config failed, trying without:", err);
+    configKey = ""; // Try launch without configKey
   }
-  
+
   // Step 3: Create launch transaction
-  console.log('[Launcher] Step 3: Creating launch transaction...');
-  
+  console.log("[Launcher] Step 3: Creating launch transaction...");
+
   let launchResponse: { transaction: string };
   try {
     const launchBody: Record<string, unknown> = {
@@ -292,27 +289,33 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     if (configKey) {
       launchBody.configKey = configKey;
     }
-    
-    launchResponse = await callBagsApi<{ transaction: string }>('/token-launch/create-launch-transaction', {
-      method: 'POST',
-      body: JSON.stringify(launchBody),
-    });
-    console.log('[Launcher] Launch tx received, length:', launchResponse?.transaction?.length || 'missing');
+
+    launchResponse = await callBagsApi<{ transaction: string }>(
+      "/token-launch/create-launch-transaction",
+      {
+        method: "POST",
+        body: JSON.stringify(launchBody),
+      }
+    );
+    console.log(
+      "[Launcher] Launch tx received, length:",
+      launchResponse?.transaction?.length || "missing"
+    );
   } catch (err) {
     throw new Error(`Step 3 failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  
+
   if (!launchResponse?.transaction) {
-    throw new Error('No launch transaction returned from API');
+    throw new Error("No launch transaction returned from API");
   }
-  
+
   // Step 4: Sign and submit launch transaction
-  console.log('[Launcher] Step 4: Signing and submitting...');
-  
+  console.log("[Launcher] Step 4: Signing and submitting...");
+
   const signature = await signAndSubmit(launchResponse.transaction);
-  
+
   console.log(`[Launcher] ✅ Token launched: ${signature}`);
-  
+
   return {
     success: true,
     tokenMint,
@@ -337,13 +340,16 @@ export async function getClaimableForWallet(wallet: string): Promise<{
   const positions = await callBagsApi<ClaimablePosition[]>(
     `/token-launch/claimable-positions?wallet=${wallet}`
   );
-  
+
   const totalClaimableLamports = positions.reduce((sum, p) => {
-    const virtual = parseInt(p.virtualPoolClaimableAmount || p.totalClaimableLamportsUserShare || '0', 10);
-    const damm = parseInt(p.dammPoolClaimableAmount || '0', 10);
+    const virtual = parseInt(
+      p.virtualPoolClaimableAmount || p.totalClaimableLamportsUserShare || "0",
+      10
+    );
+    const damm = parseInt(p.dammPoolClaimableAmount || "0", 10);
     return sum + virtual + damm;
   }, 0);
-  
+
   return { positions, totalClaimableLamports };
 }
 
@@ -354,7 +360,7 @@ export async function getClaimableForWallet(wallet: string): Promise<{
 export async function generateClaimTxForWallet(wallet: string): Promise<ClaimResult> {
   // First get claimable positions
   const { positions, totalClaimableLamports } = await getClaimableForWallet(wallet);
-  
+
   if (positions.length === 0 || totalClaimableLamports === 0) {
     return {
       success: true,
@@ -362,27 +368,27 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
       totalClaimableLamports: 0,
     };
   }
-  
+
   // Build positions array for claim request
-  const positionsForClaim = positions.map(p => ({
+  const positionsForClaim = positions.map((p) => ({
     baseMint: p.baseMint,
     virtualPoolAddress: p.virtualPoolAddress,
   }));
-  
+
   // Generate claim transactions
   const claimResponse = await callBagsApi<{
     transactions: Array<{ transaction: string }>;
-  }>('/token-launch/claim-txs/v2', {
-    method: 'POST',
+  }>("/token-launch/claim-txs/v2", {
+    method: "POST",
     body: JSON.stringify({
       wallet,
       positions: positionsForClaim,
     }),
   });
-  
+
   return {
     success: true,
-    transactions: claimResponse.transactions.map(t => t.transaction),
+    transactions: claimResponse.transactions.map((t) => t.transaction),
     totalClaimableLamports,
   };
 }
@@ -399,11 +405,11 @@ export function isLauncherConfigured(): {
   missing: string[];
 } {
   const missing: string[] = [];
-  
-  if (!BAGS_API_KEY) missing.push('BAGS_API_KEY');
-  if (!BAGS_JWT_TOKEN) missing.push('BAGS_JWT_TOKEN');
-  if (!BAGSWORLD_PRIVATE_KEY) missing.push('BAGSWORLD_LAUNCHER_PRIVATE_KEY');
-  
+
+  if (!BAGS_API_KEY) missing.push("BAGS_API_KEY");
+  if (!BAGS_JWT_TOKEN) missing.push("BAGS_JWT_TOKEN");
+  if (!BAGSWORLD_PRIVATE_KEY) missing.push("BAGSWORLD_LAUNCHER_PRIVATE_KEY");
+
   return {
     configured: missing.length === 0,
     missing,

@@ -36,14 +36,14 @@ async function ensureTable() {
       joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
-  
+
   // Add moltbook_username column if it doesn't exist (migration)
   try {
     await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS moltbook_username TEXT`;
   } catch {
     // Column might already exist, ignore
   }
-  
+
   tableInitialized = true;
   console.log("[ExternalRegistry] Table initialized");
 }
@@ -92,7 +92,7 @@ function rowToEntry(row: DbRow): ExternalAgentEntry {
   // Use Moltbook username if available, otherwise truncated wallet
   const moltbookUser = row.moltbook_username;
   const providerUsername = moltbookUser || row.wallet.slice(0, 8) + "...";
-  
+
   const character: GameCharacter = {
     id: `external-${row.wallet.slice(0, 8)}`,
     username: row.name,
@@ -153,8 +153,10 @@ export async function registerExternalAgent(
     VALUES (${wallet}, ${name}, ${description || null}, ${moltbookUsername || null}, ${zone}, ${pos.x}, ${pos.y})
   `;
 
-  const moltLink = moltbookUsername ? ` → moltbook.com/u/${moltbookUsername}` : '';
-  console.log(`[ExternalRegistry] Agent ${name} (${wallet.slice(0, 8)}...) joined in ${zone}${moltLink}`);
+  const moltLink = moltbookUsername ? ` → moltbook.com/u/${moltbookUsername}` : "";
+  console.log(
+    `[ExternalRegistry] Agent ${name} (${wallet.slice(0, 8)}...) joined in ${zone}${moltLink}`
+  );
 
   const created = await sql`
     SELECT * FROM external_agents WHERE wallet = ${wallet}
