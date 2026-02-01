@@ -306,6 +306,75 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // Join arena from UI - validates MoltBook agent and queues for matchmaking
+      case "join": {
+        const { username } = body;
+        if (!username || typeof username !== "string") {
+          return NextResponse.json({ error: "MoltBook username required" }, { status: 400 });
+        }
+
+        // Clean and validate username format
+        const cleanUsername = username.trim().replace(/^@/, "");
+        if (cleanUsername.length < 2 || cleanUsername.length > 50) {
+          return NextResponse.json({ error: "Username must be 2-50 characters" }, { status: 400 });
+        }
+
+        // Only allow alphanumeric, underscores, hyphens
+        const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+        if (!usernameRegex.test(cleanUsername)) {
+          return NextResponse.json({ error: "Invalid username format" }, { status: 400 });
+        }
+
+        // Validate agent exists on MoltBook and get their karma
+        let karma = 100; // Default fallback
+        try {
+          const moltbookRes = await fetch(
+            `https://www.moltbook.com/api/v1/agents/profile?name=${encodeURIComponent(cleanUsername)}`,
+            {
+              headers: { "Content-Type": "application/json" },
+              signal: AbortSignal.timeout(5000), // 5s timeout
+            }
+          );
+
+          if (moltbookRes.ok) {
+            const agentData = await moltbookRes.json();
+            if (agentData.success && agentData.data) {
+              karma = agentData.data.karma || 100;
+              console.log(`[Arena] Verified MoltBook agent: ${cleanUsername} (karma: ${karma})`);
+            }
+          } else if (moltbookRes.status === 404) {
+            return NextResponse.json({
+              success: false,
+              error: `Agent "${cleanUsername}" not found on MoltBook. Register at moltbook.com first.`,
+            }, { status: 404 });
+          }
+        } catch (err) {
+          // MoltBook API unavailable - allow with default karma but log warning
+          console.warn(`[Arena] Could not verify MoltBook agent (API timeout): ${cleanUsername}`);
+        }
+
+        const result = await manualFighterEntry(cleanUsername, karma);
+
+        if (!result.success) {
+          return NextResponse.json({
+            success: false,
+            error: result.error || "Failed to join arena",
+          }, { status: 400 });
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: result.matchId
+            ? `${cleanUsername} joined and matched! Fight starting...`
+            : `${cleanUsername} joined the queue. Waiting for opponent...`,
+          username: cleanUsername,
+          karma,
+          fighterId: result.fighterId,
+          matchId: result.matchId,
+          queued: !result.matchId,
+        });
+      }
+
       case "simulate_match": {
         const fighter1Name = `Fighter_${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
         const fighter2Name = `Fighter_${Math.random().toString(36).slice(2, 6).toUpperCase()}`;

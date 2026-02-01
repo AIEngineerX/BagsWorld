@@ -102,6 +102,9 @@ export class WorldScene extends Phaser.Scene {
   private arenaElements: Phaser.GameObjects.GameObject[] = []; // Arena zone elements
   private arenaZoneCreated = false; // Cache arena zone elements
   private arenaWebSocket: WebSocket | null = null; // WebSocket connection for arena
+  private arenaCrowdSprites: Phaser.GameObjects.Sprite[] = []; // Crowd sprites for cheer reactions
+  private arenaSpotlightCones: Phaser.GameObjects.Sprite[] = []; // Spotlight cone sprites
+  private arenaCrowdCheering = false; // Flag to track if crowd is cheering
   private arenaFighters: Map<number, Phaser.GameObjects.Sprite> = new Map(); // Fighter sprites
   private arenaHealthBars: Map<
     number,
@@ -8452,6 +8455,97 @@ Use: bags.fm/[yourname]`,
     rightStands.setFlipX(true);
     this.arenaElements.push(rightStands);
 
+    // === ANIMATED CROWD ON STANDS (depth 2.5) ===
+    this.arenaCrowdSprites = []; // Reset crowd array
+    const crowdPositions = [
+      // Left stands
+      { x: 60, y: 480 },
+      { x: 90, y: 475 },
+      { x: 120, y: 478 },
+      { x: 150, y: 472 },
+      { x: 80, y: 490 },
+      { x: 110, y: 488 },
+      { x: 140, y: 485 },
+      // Right stands
+      { x: 650, y: 480 },
+      { x: 680, y: 475 },
+      { x: 710, y: 478 },
+      { x: 740, y: 472 },
+      { x: 660, y: 490 },
+      { x: 690, y: 488 },
+      { x: 720, y: 485 },
+    ];
+
+    crowdPositions.forEach((pos, i) => {
+      const variant = i % 4;
+      const crowd = this.add.sprite(
+        Math.round(pos.x * s),
+        Math.round(pos.y * s),
+        `arena_crowd_idle_${variant}`
+      );
+      crowd.setOrigin(0.5, 1);
+      crowd.setDepth(2.5);
+      crowd.setScale(0.9 + Math.random() * 0.2);
+      crowd.setData("variant", variant);
+      this.arenaElements.push(crowd);
+      this.arenaCrowdSprites.push(crowd);
+
+      // Idle bob animation (subtle up/down)
+      this.tweens.add({
+        targets: crowd,
+        y: crowd.y - Math.round(3 * s),
+        duration: 1200 + Math.random() * 400,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+        delay: Math.random() * 500,
+      });
+    });
+
+    // === SPOTLIGHT CONES (depth 1, behind ring) ===
+    this.arenaSpotlightCones = [];
+    const spotlightPositions = [200, 400, 600];
+    spotlightPositions.forEach((lx) => {
+      const cone = this.add.sprite(Math.round(lx * s), Math.round(50 * s), "arena_spotlight_cone");
+      cone.setOrigin(0.5, 0);
+      cone.setDepth(1);
+      cone.setAlpha(0.6);
+      this.arenaElements.push(cone);
+      this.arenaSpotlightCones.push(cone);
+
+      // Subtle angle sway animation
+      this.tweens.add({
+        targets: cone,
+        angle: { from: -3, to: 3 },
+        duration: 2000 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+        delay: Math.random() * 1000,
+      });
+    });
+
+    // === COLORED CORNER POSTS (depth 4) ===
+    // Red corner (left fighter spawn point)
+    const redCorner = this.add.sprite(
+      Math.round(280 * s),
+      pathLevel + Math.round(5 * s),
+      "arena_corner_red"
+    );
+    redCorner.setOrigin(0.5, 1);
+    redCorner.setDepth(4);
+    this.arenaElements.push(redCorner);
+
+    // Blue corner (right fighter spawn point)
+    const blueCorner = this.add.sprite(
+      Math.round(520 * s),
+      pathLevel + Math.round(5 * s),
+      "arena_corner_blue"
+    );
+    blueCorner.setOrigin(0.5, 1);
+    blueCorner.setDepth(4);
+    this.arenaElements.push(blueCorner);
+
     // === BARRIER POSTS (depth 3) - Around the ring ===
     const barrierPositions = [260, 340, 460, 540];
     barrierPositions.forEach((bx) => {
@@ -8480,7 +8574,7 @@ Use: bags.fm/[yourname]`,
       this.arenaElements.push(cap);
     });
 
-    // === ROPE BARRIERS (depth 3) ===
+    // === ROPE BARRIERS (depth 3) - with sway animation ===
     // Left rope
     const leftRope = this.add.rectangle(
       Math.round(300 * s),
@@ -8492,6 +8586,16 @@ Use: bags.fm/[yourname]`,
     leftRope.setDepth(3);
     this.arenaElements.push(leftRope);
 
+    // Left rope sway animation
+    this.tweens.add({
+      targets: leftRope,
+      scaleY: { from: 1, to: 0.92 },
+      duration: 800 + Math.random() * 200,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
     // Right rope
     const rightRope = this.add.rectangle(
       Math.round(500 * s),
@@ -8502,6 +8606,17 @@ Use: bags.fm/[yourname]`,
     );
     rightRope.setDepth(3);
     this.arenaElements.push(rightRope);
+
+    // Right rope sway animation
+    this.tweens.add({
+      targets: rightRope,
+      scaleY: { from: 1, to: 0.92 },
+      duration: 900 + Math.random() * 200,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+      delay: 150,
+    });
 
     // === ARENA RING (depth 4) - Center ===
     const ring = this.add.sprite(centerX, pathLevel + Math.round(20 * s), "arena_ring");
@@ -8656,17 +8771,12 @@ Use: bags.fm/[yourname]`,
       });
     });
 
-    // === GROUND DETAILS - Ring mat markings ===
-    const matCenter = this.add.rectangle(
-      centerX,
-      pathLevel + Math.round(5 * s),
-      Math.round(80 * s),
-      Math.round(4 * s),
-      0xfbbf24,
-      0.3
-    );
-    matCenter.setDepth(1);
-    this.arenaElements.push(matCenter);
+    // === LOGO MAT - Center ring with $ symbol ===
+    const logoMat = this.add.sprite(centerX, pathLevel + Math.round(10 * s), "arena_logo_mat");
+    logoMat.setOrigin(0.5, 0.5);
+    logoMat.setDepth(1);
+    logoMat.setAlpha(0.9);
+    this.arenaElements.push(logoMat);
 
     // === INFO BUTTON (opens ArenaModal with copyable instructions) ===
     // Positioned next to the MATCH status box (top right area)
@@ -8801,85 +8911,6 @@ Use: bags.fm/[yourname]`,
     lbEntries.setName("arenaLeaderboard");
     this.arenaElements.push(lbEntries);
 
-    // === DEMO FIGHT BUTTON (development only) ===
-    const isDev =
-      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    if (isDev) {
-      const demoX = GAME_WIDTH - Math.round(85 * s);
-      const demoY = pathLevel - Math.round(60 * s);
-      const demoWidth = Math.round(110 * s);
-      const demoHeight = Math.round(36 * s);
-
-      const demoBg = this.add.rectangle(demoX, demoY, demoWidth, demoHeight, 0x22c55e, 1);
-      demoBg.setDepth(100);
-      demoBg.setStrokeStyle(2, 0x16a34a);
-      demoBg.setInteractive({ useHandCursor: true });
-      this.arenaElements.push(demoBg);
-
-      const demoText = this.add.text(demoX, demoY, "DEMO FIGHT", {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(10 * s)}px`,
-        color: "#ffffff",
-        fontStyle: "bold",
-      });
-      demoText.setOrigin(0.5, 0.5);
-      demoText.setDepth(101);
-      this.arenaElements.push(demoText);
-
-      demoBg.on("pointerdown", async () => {
-        demoText.setText("STARTING...");
-        demoBg.setFillStyle(0x16a34a);
-
-        try {
-          const response = await fetch("/api/arena/brawl", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "simulate_match" }),
-          });
-          const data = await response.json();
-
-          if (data.success && data.matchId) {
-            demoText.setText("FIGHTING!");
-            const matchId = data.matchId;
-
-            const runFightLoop = async () => {
-              await fetch("/api/arena/brawl", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "tick", ticks: 5 }),
-              });
-
-              const stateResponse = await fetch(`/api/arena/brawl?action=match&matchId=${matchId}`);
-              const stateData = await stateResponse.json();
-
-              if (stateData.success && stateData.match) {
-                this.updateArenaMatch(stateData.match);
-
-                if (stateData.match.status === "active") {
-                  this.time.delayedCall(100, runFightLoop);
-                } else {
-                  demoText.setText("DEMO FIGHT");
-                  demoBg.setFillStyle(0x22c55e);
-                  this.fetchArenaLeaderboard();
-                }
-              }
-            };
-
-            runFightLoop();
-          } else {
-            demoText.setText("DEMO FIGHT");
-            demoBg.setFillStyle(0x22c55e);
-          }
-        } catch {
-          demoText.setText("DEMO FIGHT");
-          demoBg.setFillStyle(0x22c55e);
-        }
-      });
-
-      demoBg.on("pointerover", () => demoBg.setFillStyle(0x16a34a));
-      demoBg.on("pointerout", () => demoBg.setFillStyle(0x22c55e));
-    }
-
     // === VS DISPLAY for active match (depth 100) ===
     const vsDisplay = this.add.text(centerX, Math.round(70 * s), "", {
       fontFamily: "monospace",
@@ -8911,13 +8942,7 @@ Use: bags.fm/[yourname]`,
 
       if (lbText && data.success && data.leaderboard) {
         if (data.leaderboard.length === 0) {
-          const isDev =
-            window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-          lbText.setText(
-            isDev
-              ? "No fights yet!\nClick DEMO FIGHT"
-              : "No fights yet!\nPost !fight to m/bagsworld-arena"
-          );
+          lbText.setText("No fights yet!\nClick ? to join");
         } else {
           const entries = data.leaderboard
             .slice(0, 4)
@@ -9578,6 +9603,15 @@ Use: bags.fm/[yourname]`,
   private showHitEffect(x: number, y: number, damage: number = 0): void {
     const s = SCALE;
 
+    // === TRIGGER CROWD CHEER ===
+    this.triggerCrowdCheer();
+
+    // === SHOW ACTION BUBBLE FOR BIG HITS ===
+    if (damage > 10) {
+      const bubbleType = damage > 20 ? "action_critical" : damage > 15 ? "action_bam" : "action_pow";
+      this.showActionBubble(x, y - Math.round(40 * s), bubbleType);
+    }
+
     // === SPARK BURST ===
     const spark = this.add.sprite(x, y, "hit_spark");
     spark.setDepth(11);
@@ -9641,8 +9675,10 @@ Use: bags.fm/[yourname]`,
       });
     }
 
-    // === CAMERA SHAKE (stronger impact) ===
-    this.cameras.main.shake(120, 0.008);
+    // === CAMERA SHAKE (intensity scales with damage) ===
+    const shakeIntensity = damage > 20 ? 0.015 : damage > 10 ? 0.012 : 0.008;
+    const shakeDuration = damage > 20 ? 180 : damage > 10 ? 150 : 120;
+    this.cameras.main.shake(shakeDuration, shakeIntensity);
   }
 
   /**
@@ -9652,6 +9688,9 @@ Use: bags.fm/[yourname]`,
     const s = SCALE;
     const centerX = GAME_WIDTH / 2;
     const centerY = GAME_HEIGHT / 2;
+
+    // Trigger victory confetti
+    this.playArenaConfetti();
 
     // Background
     const announceBg = this.add.rectangle(
@@ -9715,6 +9754,174 @@ Use: bags.fm/[yourname]`,
         },
       });
     });
+  }
+
+  /**
+   * Trigger crowd cheer animation - switches crowd to cheer poses temporarily
+   */
+  private triggerCrowdCheer(): void {
+    // Don't trigger if already cheering or no crowd sprites
+    if (this.arenaCrowdCheering || this.arenaCrowdSprites.length === 0) return;
+
+    this.arenaCrowdCheering = true;
+
+    // Switch random crowd members to cheer pose
+    this.arenaCrowdSprites.forEach((crowd) => {
+      if (Math.random() > 0.4) {
+        // 60% chance to cheer
+        const variant = crowd.getData("variant") as number;
+        const cheerPose = Math.random() > 0.5 ? "cheer1" : "cheer2";
+        crowd.setTexture(`arena_crowd_${cheerPose}_${variant}`);
+      }
+    });
+
+    // Reset to idle after delay
+    this.time.delayedCall(600, () => {
+      this.arenaCrowdSprites.forEach((crowd) => {
+        const variant = crowd.getData("variant") as number;
+        crowd.setTexture(`arena_crowd_idle_${variant}`);
+      });
+      this.arenaCrowdCheering = false;
+    });
+  }
+
+  /**
+   * Show comic-style action bubble (POW!, BAM!, CRIT!, MISS)
+   */
+  private showActionBubble(x: number, y: number, type: string): void {
+    const s = SCALE;
+
+    // Create action bubble sprite
+    const bubble = this.add.sprite(x, y, type);
+    bubble.setDepth(102);
+    bubble.setScale(0);
+    bubble.setAlpha(1);
+
+    // Pop-in animation
+    this.tweens.add({
+      targets: bubble,
+      scale: { from: 0, to: 1.2 },
+      duration: 150,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        // Hold then fade out
+        this.tweens.add({
+          targets: bubble,
+          scale: { from: 1.2, to: 1.5 },
+          alpha: { from: 1, to: 0 },
+          y: y - Math.round(30 * s),
+          duration: 400,
+          delay: 200,
+          ease: "Power2",
+          onComplete: () => bubble.destroy(),
+        });
+      },
+    });
+  }
+
+  /**
+   * Show center screen announcement text
+   */
+  private showArenaAnnouncement(text: string, color: string = "#fbbf24"): void {
+    const s = SCALE;
+    const centerX = GAME_WIDTH / 2;
+    const centerY = GAME_HEIGHT / 2 - Math.round(50 * s);
+
+    const announcement = this.add.text(centerX, centerY, text, {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(20 * s)}px`,
+      color: color,
+      fontStyle: "bold",
+      stroke: "#000000",
+      strokeThickness: 4,
+    });
+    announcement.setOrigin(0.5, 0.5);
+    announcement.setDepth(200);
+    announcement.setScale(0);
+
+    // Animate in
+    this.tweens.add({
+      targets: announcement,
+      scale: { from: 0, to: 1.2 },
+      duration: 200,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        this.tweens.add({
+          targets: announcement,
+          scale: 1,
+          duration: 100,
+          onComplete: () => {
+            // Fade out after delay
+            this.tweens.add({
+              targets: announcement,
+              alpha: 0,
+              y: centerY - Math.round(30 * s),
+              duration: 500,
+              delay: 1500,
+              onComplete: () => announcement.destroy(),
+            });
+          },
+        });
+      },
+    });
+  }
+
+  /**
+   * Play victory confetti effect - red, blue, and gold particles
+   */
+  private playArenaConfetti(): void {
+    const s = SCALE;
+    const confettiColors = [0xef4444, 0x3b82f6, 0xfbbf24, 0x22c55e, 0xa855f7]; // Red, blue, gold, green, purple
+    const centerX = GAME_WIDTH / 2;
+
+    // Create confetti burst from multiple spawn points
+    for (let wave = 0; wave < 3; wave++) {
+      this.time.delayedCall(wave * 150, () => {
+        for (let i = 0; i < 20; i++) {
+          const spawnX = centerX + (Math.random() - 0.5) * Math.round(200 * s);
+          const spawnY = Math.round(100 * s);
+          const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+
+          // Create confetti particle (small rectangle)
+          const confetti = this.add.rectangle(
+            spawnX,
+            spawnY,
+            Math.round((3 + Math.random() * 3) * s),
+            Math.round((6 + Math.random() * 4) * s),
+            color
+          );
+          confetti.setDepth(150);
+          confetti.setAngle(Math.random() * 360);
+
+          // Falling animation with flutter
+          const targetX = spawnX + (Math.random() - 0.5) * Math.round(300 * s);
+          const targetY = GAME_HEIGHT + Math.round(50 * s);
+          const duration = 2000 + Math.random() * 1500;
+
+          this.tweens.add({
+            targets: confetti,
+            x: targetX,
+            y: targetY,
+            angle: confetti.angle + (Math.random() > 0.5 ? 720 : -720),
+            duration: duration,
+            ease: "Sine.easeIn",
+            onComplete: () => confetti.destroy(),
+          });
+
+          // Add flutter effect (oscillating x)
+          this.tweens.add({
+            targets: confetti,
+            x: {
+              value: `+=${Math.round((Math.random() - 0.5) * 60 * s)}`,
+              duration: 300,
+              yoyo: true,
+              repeat: Math.floor(duration / 600),
+              ease: "Sine.easeInOut",
+            },
+          });
+        }
+      });
+    }
   }
 
   /**
