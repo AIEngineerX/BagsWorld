@@ -686,11 +686,12 @@ export async function POST(request: NextRequest) {
 
   if (action === "launch") {
     // Token launch enabled - uses BagsWorld's partnerConfigPda
-    const { wallet, name, symbol, description, imageUrl, twitter, website, telegram } = body;
+    // Accept either wallet OR moltbookUsername
+    const { wallet, moltbookUsername, name, symbol, description, imageUrl, twitter, website, telegram } = body;
 
-    if (!wallet) {
+    if (!wallet && !moltbookUsername) {
       return NextResponse.json(
-        { success: false, error: "wallet address required" },
+        { success: false, error: "Either wallet or moltbookUsername is required" },
         { status: 400 }
       );
     }
@@ -714,9 +715,12 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      console.log("[Launch] Starting launch for", wallet, symbol);
+      const launchIdentifier = moltbookUsername ? `@${moltbookUsername}` : wallet;
+      console.log("[Launch] Starting launch for", launchIdentifier, symbol);
+      
       const result = await launchForExternal({
         creatorWallet: wallet,
+        moltbookUsername,
         name,
         symbol,
         description,
@@ -733,18 +737,23 @@ export async function POST(request: NextRequest) {
 
       console.log("[Launch] Success!", result.tokenMint);
 
-      // Auto-join the world if not already
-      const existingAgent = await getExternalAgent(wallet);
-      if (!existingAgent) {
-        await registerExternalAgent(wallet, name, "main_city", `Creator of $${symbol}`);
+      // Auto-join the world if not already (use wallet if provided, otherwise skip)
+      if (wallet) {
+        const existingAgent = await getExternalAgent(wallet);
+        if (!existingAgent) {
+          await registerExternalAgent(wallet, name, "main_city", `Creator of $${symbol}`, moltbookUsername);
+        }
       }
       
-      // Get updated rate limits for response
-      const updatedRateLimits = getRateLimitStatus(wallet);
+      // Get updated rate limits for response (use wallet or empty for moltbook-only)
+      const rateLimitWallet = wallet || "";
+      const updatedRateLimits = getRateLimitStatus(rateLimitWallet || undefined);
 
       return NextResponse.json({
         success: true,
-        message: `Token launched! You earn 100% of trading fees.`,
+        message: moltbookUsername 
+          ? `Token launched! @${moltbookUsername} earns 100% of trading fees.`
+          : `Token launched! You earn 100% of trading fees.`,
         token: {
           mint: result.tokenMint,
           name,
@@ -755,8 +764,11 @@ export async function POST(request: NextRequest) {
         transaction: result.signature,
         feeInfo: {
           yourShare: "100%",
+          recipient: moltbookUsername ? `@${moltbookUsername} (Moltbook)` : wallet,
           claimEndpoint: "/api/agent-economy/external (action: claimable, then claim)",
-          verifyEndpoint: `/api/agent-economy/external?action=verify-fees&tokenMint=${result.tokenMint}&wallet=${wallet}`,
+          verifyEndpoint: wallet 
+            ? `/api/agent-economy/external?action=verify-fees&tokenMint=${result.tokenMint}&wallet=${wallet}`
+            : `https://bags.fm/${result.tokenMint}`,
           solscan: `https://solscan.io/token/${result.tokenMint}`,
         },
         safety: {

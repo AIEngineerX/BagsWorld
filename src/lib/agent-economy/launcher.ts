@@ -232,7 +232,11 @@ const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-b
 
 export interface LaunchRequest {
   // External agent's wallet (receives 100% of fees)
-  creatorWallet: string;
+  // Either creatorWallet OR moltbookUsername is required
+  creatorWallet?: string;
+  
+  // Alternative: Moltbook username (we'll look up their wallet)
+  moltbookUsername?: string;
 
   // Token details
   name: string;
@@ -397,18 +401,50 @@ async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
  * - Symbol cooldown (prevent spam)
  */
 export async function launchForExternal(request: LaunchRequest): Promise<LaunchResult> {
-  const { creatorWallet, twitter, website, telegram } = request;
+  const { creatorWallet, moltbookUsername, twitter, website, telegram } = request;
 
   // ========== VALIDATION & SANITIZATION ==========
   
-  // 1. Validate wallet address
-  const walletCheck = validateWalletAddress(creatorWallet);
-  if (!walletCheck.valid) {
-    return { success: false, error: walletCheck.error };
+  // 1. Must have either wallet or moltbookUsername
+  if (!creatorWallet && !moltbookUsername) {
+    return { success: false, error: "Either wallet or moltbookUsername is required" };
   }
 
-  // 2. Check rate limits
-  const rateCheck = canWalletLaunch(creatorWallet);
+  // 2. Resolve wallet address (lookup if using moltbookUsername)
+  let resolvedWallet: string;
+  let useMoltbookIdentity = false;
+  
+  if (moltbookUsername) {
+    // Look up wallet from Moltbook username
+    console.log(`[Launcher] Looking up wallet for Moltbook user: ${moltbookUsername}`);
+    try {
+      const lookupUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+      const lookupRes = await fetch(lookupUrl, {
+        headers: { "x-api-key": BAGS_API_KEY },
+      });
+      const lookupData = await lookupRes.json();
+      
+      if (!lookupRes.ok || !lookupData.success || !lookupData.response?.wallet) {
+        return { success: false, error: `Moltbook user "${moltbookUsername}" not found or has no linked wallet` };
+      }
+      
+      resolvedWallet = lookupData.response.wallet;
+      useMoltbookIdentity = true;
+      console.log(`[Launcher] Resolved ${moltbookUsername} → ${resolvedWallet.slice(0, 8)}...`);
+    } catch (err) {
+      return { success: false, error: `Failed to lookup Moltbook user: ${err instanceof Error ? err.message : String(err)}` };
+    }
+  } else {
+    // Validate provided wallet address
+    const walletCheck = validateWalletAddress(creatorWallet!);
+    if (!walletCheck.valid) {
+      return { success: false, error: walletCheck.error };
+    }
+    resolvedWallet = creatorWallet!;
+  }
+
+  // 3. Check rate limits (using resolved wallet)
+  const rateCheck = canWalletLaunch(resolvedWallet);
   if (!rateCheck.allowed) {
     return { success: false, error: rateCheck.reason };
   }
@@ -445,7 +481,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   const finalImageUrl =
     imageCheck.sanitized || `https://api.dicebear.com/7.x/shapes/png?seed=${symbol}&size=400`;
 
-  console.log(`[Launcher] Launching ${symbol} for ${creatorWallet.slice(0, 8)}...`);
+  console.log(`[Launcher] Launching ${symbol} for ${useMoltbookIdentity ? `@${moltbookUsername}` : resolvedWallet.slice(0, 8)}...`);
 
   const bagsWorldWallet = getBagsWorldKeypair().publicKey.toBase58();
 
@@ -485,15 +521,30 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   console.log(`[Launcher] Using partner config PDA: ${partnerConfigPda}`);
 
   // External agent gets 100% of the creator fee share
-  // Using the working bags-api.ts format: claimersArray + basisPointsArray
-  // NOTE: partnerConfig causes 500 errors - not including it for now
+  // If using Moltbook identity, try provider-based format first, fall back to wallet
   // NOTE: payer must match the signer (launcher wallet) for the transaction to be valid
-  const feeShareRequest = {
-    baseMint: tokenMint,
-    payer: bagsWorldWallet, // Must match the wallet that will sign
-    claimersArray: [creatorWallet], // Wallet addresses that receive fees
-    basisPointsArray: [10000], // 100% (10000 bps) to the external agent
-  };
+  let feeShareRequest: Record<string, unknown>;
+  
+  if (useMoltbookIdentity && moltbookUsername) {
+    // Try using provider/username format for Moltbook users
+    // This links fees to their Moltbook identity
+    feeShareRequest = {
+      baseMint: tokenMint,
+      payer: bagsWorldWallet,
+      feeClaimers: [
+        { provider: 'moltbook', username: moltbookUsername, userBps: 10000 }
+      ],
+    };
+    console.log(`[Launcher] Using Moltbook identity: @${moltbookUsername}`);
+  } else {
+    // Use raw wallet address
+    feeShareRequest = {
+      baseMint: tokenMint,
+      payer: bagsWorldWallet,
+      claimersArray: [resolvedWallet],
+      basisPointsArray: [10000],
+    };
+  }
 
   console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest, null, 2));
   console.log("[Launcher] API key configured:", !!BAGS_API_KEY, "length:", BAGS_API_KEY?.length || 0);
@@ -545,7 +596,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     }
 
     console.log(`[Launcher] Config key: ${configKey}`);
-    console.log(`[Launcher] ✅ Fee share configured: 100% to ${creatorWallet}`);
+    console.log(`[Launcher] ✅ Fee share configured: 100% to ${useMoltbookIdentity ? `@${moltbookUsername}` : resolvedWallet}`);
 
     // Sign any required transactions (fee config creation)
     if (result.needsCreation && result.transactions?.length) {
@@ -632,11 +683,11 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
         symbol: symbol.toUpperCase(),
         description,
         image_url: finalImageUrl,
-        creator_wallet: creatorWallet,
+        creator_wallet: resolvedWallet,
         fee_shares: [
           {
-            provider: "solana",
-            username: creatorWallet,
+            provider: useMoltbookIdentity ? "moltbook" : "solana",
+            username: useMoltbookIdentity ? moltbookUsername! : resolvedWallet,
             bps: 10000, // 100% to creator
           },
         ],
@@ -657,7 +708,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   }
 
   // Record successful launch for rate limiting
-  recordLaunch(creatorWallet, symbol);
+  recordLaunch(resolvedWallet, symbol);
 
   return {
     success: true,
