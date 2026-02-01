@@ -97,8 +97,10 @@ async function getSql(): Promise<SqlFunction | null> {
       const moduleName = "@netlify/neon";
       // eslint-disable-next-line
       const { neon } = require(moduleName);
+      console.log("[Arena DB] Using Netlify Neon integration");
       return neon();
-    } catch {
+    } catch (error) {
+      console.warn("[Arena DB] Netlify Neon module failed, trying direct connection:", error);
       // Fall through to direct connection
     }
   }
@@ -109,6 +111,7 @@ async function getSql(): Promise<SqlFunction | null> {
   if (directUrl) {
     try {
       const sql = neonServerless(directUrl);
+      console.log("[Arena DB] Using direct Neon connection");
       return sql as unknown as SqlFunction;
     } catch (error) {
       console.error("[Arena DB] Failed to connect:", error);
@@ -116,6 +119,7 @@ async function getSql(): Promise<SqlFunction | null> {
     }
   }
 
+  console.log("[Arena DB] No database URL configured");
   return null;
 }
 
@@ -199,7 +203,11 @@ export async function initializeArenaTables(): Promise<boolean> {
     return true;
   } catch (error) {
     console.error("[Arena DB] Error initializing tables:", error);
-    return false;
+    // Fall back to in-memory mode if database fails
+    console.log("[Arena DB] Falling back to in-memory store due to database error");
+    useMemoryStore = true;
+    arenaTablesInitialized = true;
+    return true;
   }
 }
 
