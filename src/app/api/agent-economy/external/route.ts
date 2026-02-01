@@ -119,10 +119,20 @@ export async function GET(request: NextRequest) {
     const testWallet = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC"; // Ghost's wallet
 
     const launcherStatus = isLauncherConfigured();
+    
+    // Debug info
+    const apiKey = process.env.BAGS_API_KEY;
+    const debugInfo = {
+      apiKeySet: !!apiKey,
+      apiKeyLength: apiKey?.length || 0,
+      apiKeyPrefix: apiKey?.substring(0, 10) || "none",
+    };
+    
     if (!launcherStatus.configured) {
       return NextResponse.json({
         success: false,
         error: `Launcher not configured. Missing: ${launcherStatus.missing.join(", ")}`,
+        debug: debugInfo,
       });
     }
 
@@ -137,7 +147,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (!result.success) {
-        return NextResponse.json({ success: false, error: result.error });
+        return NextResponse.json({ success: false, error: result.error, debug: debugInfo });
       }
 
       return NextResponse.json({
@@ -156,6 +166,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: false,
         error: err instanceof Error ? err.message : "Launch failed",
+        debug: debugInfo,
       });
     }
   }
