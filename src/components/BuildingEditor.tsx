@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { ZoneType } from "@/lib/types";
 
 // Valid zones for override
-const VALID_ZONES: ZoneType[] = ["labs", "main_city", "trending", "ballers", "founders"];
+const VALID_ZONES: ZoneType[] = ["labs", "moltbook", "main_city", "trending", "ballers", "founders"];
 
 // Building style info with colors for preview
 const BUILDING_STYLES = [
@@ -17,6 +17,7 @@ const BUILDING_STYLES = [
 // Zone display info
 const ZONE_INFO: Record<ZoneType, { name: string; color: string; description: string }> = {
   labs: { name: "HQ", color: "#10B981", description: "Bags.fm team headquarters" },
+  moltbook: { name: "Moltbook Beach", color: "#FF4444", description: "External agent beach zone" },
   main_city: { name: "Park", color: "#3B82F6", description: "Peaceful green space" },
   trending: { name: "BagsCity", color: "#F59E0B", description: "Urban neon district" },
   ballers: { name: "Ballers Valley", color: "#8B5CF6", description: "Top holder mansions" },

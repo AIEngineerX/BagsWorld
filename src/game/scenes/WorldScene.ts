@@ -3719,6 +3719,11 @@ Use: bags.fm/[yourname]`,
       spriteData.bagsyGlow.x = sprite.x;
       spriteData.bagsyGlow.y = sprite.y;
     }
+    // External agents (OpenClaws)
+    if (character.id.startsWith("external-") && spriteData.openClawGlow) {
+      spriteData.openClawGlow.x = sprite.x;
+      spriteData.openClawGlow.y = sprite.y;
+    }
   }
 
   // Handle character speak events (from AI behavior)
@@ -6192,6 +6197,11 @@ Use: bags.fm/[yourname]`,
   }
 
   private createCharacterSprite(character: GameCharacter, index: number): void {
+    // External agents (Moltbook Beach "Openclaws") use crab/lobster sprites
+    const isExternalAgent = character.id.startsWith("external-");
+    const isMoltbookAgent = isExternalAgent && character.provider === "moltbook";
+    const isOpenClaw = isExternalAgent; // All external agents are "Openclaws"
+
     // Special characters use unique textures, others get random variants
     const isToly = character.isToly === true;
     const isAsh = character.isAsh === true;
@@ -6225,43 +6235,46 @@ Use: bags.fm/[yourname]`,
       isShaw ||
       isAcademyChar ||
       isFoundersChar ||
-      isMascot;
+      isMascot ||
+      isOpenClaw;
     const variant = index % 9;
     this.characterVariants.set(character.id, variant);
 
-    const textureKey = isToly
-      ? "toly"
-      : isAsh
-        ? "ash"
-        : isFinn
-          ? "finn"
-          : isDev
-            ? "dev"
-            : isScout
-              ? "neo"
-              : isCJ
-                ? "cj"
-                : isShaw
-                  ? "shaw"
-                  : isRamo
-                    ? "ramo"
-                    : isSincara
-                      ? "sincara"
-                      : isStuu
-                        ? "stuu"
-                        : isSam
-                          ? "sam"
-                          : isAlaa
-                            ? "alaa"
-                            : isCarlo
-                              ? "carlo"
-                              : isBNN
-                                ? "bnn"
-                                : isProfessorOak
-                                  ? "professorOak"
-                                  : isBagsy
-                                    ? "bagsy"
-                                    : this.getCharacterTexture(character.mood, variant);
+    const textureKey = isOpenClaw
+      ? (isMoltbookAgent ? "agent_lobster" : "agent_crab")
+      : isToly
+        ? "toly"
+        : isAsh
+          ? "ash"
+          : isFinn
+            ? "finn"
+            : isDev
+              ? "dev"
+              : isScout
+                ? "neo"
+                : isCJ
+                  ? "cj"
+                  : isShaw
+                    ? "shaw"
+                    : isRamo
+                      ? "ramo"
+                      : isSincara
+                        ? "sincara"
+                        : isStuu
+                          ? "stuu"
+                          : isSam
+                            ? "sam"
+                            : isAlaa
+                              ? "alaa"
+                              : isCarlo
+                                ? "carlo"
+                                : isBNN
+                                  ? "bnn"
+                                  : isProfessorOak
+                                    ? "professorOak"
+                                    : isBagsy
+                                      ? "bagsy"
+                                      : this.getCharacterTexture(character.mood, variant);
     const sprite = this.add.sprite(character.x, character.y, textureKey);
     sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
     sprite.setInteractive();
@@ -6270,7 +6283,10 @@ Use: bags.fm/[yourname]`,
     // Hover effects
     sprite.on("pointerover", () => {
       sprite?.setScale(isSpecial ? 1.5 : 1.4);
-      if (isToly) {
+      if (isOpenClaw) {
+        // External agents (Openclaws) show their Moltbook profile tooltip
+        this.showOpenClawTooltip(character, sprite!, isMoltbookAgent);
+      } else if (isToly) {
         this.showTolyTooltip(sprite!);
       } else if (isAsh) {
         this.showAshTooltip(sprite!);
@@ -6313,7 +6329,12 @@ Use: bags.fm/[yourname]`,
       this.input.setDefaultCursor("default");
     });
     sprite.on("pointerdown", () => {
-      if (isToly) {
+      if (isOpenClaw) {
+        // External agents (Openclaws) open their Moltbook profile
+        if (character.profileUrl) {
+          window.open(character.profileUrl, "_blank");
+        }
+      } else if (isToly) {
         // Toly opens the Solana wisdom chat
         window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
       } else if (isAsh) {
@@ -6414,6 +6435,16 @@ Use: bags.fm/[yourname]`,
       { active: isProfessorOak, key: "professorOakGlow", tint: 0xfbbf24, duration: 1000 }, // Amber - wisdom
       // Mascot glows
       { active: isBagsy, key: "bagsyGlow", tint: 0x00ff00, duration: 900 }, // Bright green - money bag energy
+      // External agent (OpenClaw) glows - lobsters are red, crabs are orange
+      {
+        active: isOpenClaw,
+        key: "openClawGlow",
+        tint: isMoltbookAgent ? 0xff4444 : 0xffa500,
+        alpha: 0.4,
+        targetAlpha: 0.7,
+        scale: 1.25,
+        duration: 1000,
+      },
     ];
 
     for (const cfg of glowConfigs) {
@@ -6453,6 +6484,8 @@ Use: bags.fm/[yourname]`,
       isBNN,
       isProfessorOak,
       isBagsy,
+      isOpenClaw,
+      isMoltbookAgent,
     });
 
     this.characterSprites.set(character.id, sprite);
@@ -7768,6 +7801,64 @@ Use: bags.fm/[yourname]`,
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#00ff00",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showOpenClawTooltip(
+    character: GameCharacter,
+    sprite: Phaser.GameObjects.Sprite,
+    isMoltbookAgent: boolean
+  ): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    // Lobsters (Moltbook agents) get red theme, crabs get orange
+    const borderColor = isMoltbookAgent ? 0xff4444 : 0xffa500;
+    const textColor = isMoltbookAgent ? "#ff4444" : "#ffa500";
+    const emoji = isMoltbookAgent ? "🦞" : "🦀";
+    const typeLabel = isMoltbookAgent ? "Moltbook Agent" : "OpenClaw";
+
+    const bg = this.add.rectangle(0, 0, 200, 78, 0x1a1a1a, 0.95);
+    bg.setStrokeStyle(2, borderColor);
+
+    const nameText = this.add.text(0, -22, `${emoji} ${character.username}`, {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: textColor,
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const titleText = this.add.text(0, -6, typeLabel, {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    titleText.setOrigin(0.5, 0.5);
+
+    // Show moltbook username if available
+    const providerText = character.providerUsername
+      ? `@${character.providerUsername}`
+      : "External Agent";
+    const quoteText = this.add.text(0, 10, providerText, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    quoteText.setOrigin(0.5, 0.5);
+
+    const clickLabel = character.profileUrl
+      ? "Click to view Moltbook"
+      : "Moltbook Beach Resident";
+    const clickText = this.add.text(0, 26, clickLabel, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: textColor,
     });
     clickText.setOrigin(0.5, 0.5);
 

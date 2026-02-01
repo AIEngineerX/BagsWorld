@@ -30,7 +30,7 @@ async function ensureTable() {
       name TEXT NOT NULL,
       description TEXT,
       moltbook_username TEXT,
-      zone TEXT NOT NULL DEFAULT 'main_city',
+      zone TEXT NOT NULL DEFAULT 'moltbook',
       x REAL NOT NULL,
       y REAL NOT NULL,
       joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -84,6 +84,7 @@ function getZonePosition(zone: ZoneType): { x: number; y: number } {
   // X positions are already scaled in world-calculator, Y is ground level with slight variation
   const yVariation = Math.round(15 * SCALE); // Same variation as generateCharacterPosition
   const zonePositions: Record<ZoneType, { x: number; y: number }> = {
+    moltbook: { x: Math.round((200 + Math.random() * 300) * SCALE), y: GROUND_Y + Math.random() * yVariation },
     main_city: { x: Math.round((300 + Math.random() * 200) * SCALE), y: GROUND_Y + Math.random() * yVariation },
     trending: { x: Math.round((250 + Math.random() * 200) * SCALE), y: GROUND_Y + Math.random() * yVariation },
     labs: { x: Math.round((350 + Math.random() * 150) * SCALE), y: GROUND_Y + Math.random() * yVariation },
@@ -91,7 +92,7 @@ function getZonePosition(zone: ZoneType): { x: number; y: number } {
     ballers: { x: Math.round((500 + Math.random() * 150) * SCALE), y: GROUND_Y + Math.random() * yVariation },
     arena: { x: Math.round((400 + Math.random() * 100) * SCALE), y: GROUND_Y },
   };
-  return zonePositions[zone] || zonePositions.main_city;
+  return zonePositions[zone] || zonePositions.moltbook;
 }
 
 // Building position offset from character (building appears behind/near character)
@@ -164,7 +165,7 @@ function rowToBuilding(row: DbRow): GameBuilding {
 export async function registerExternalAgent(
   wallet: string,
   name: string,
-  zone: ZoneType = "main_city",
+  zone: ZoneType = "moltbook",
   description?: string,
   moltbookUsername?: string
 ): Promise<ExternalAgentEntry> {

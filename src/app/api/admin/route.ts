@@ -176,6 +176,8 @@ export async function POST(request: NextRequest) {
         return await handleAddToken(data);
       case "clear_cache":
         return await handleClearCache();
+      case "migrate_agents_to_moltbook":
+        return await handleMigrateAgentsToMoltbook();
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
@@ -704,4 +706,67 @@ async function handleClearCache() {
     success: true,
     message: "Cache invalidation triggered. Changes will reflect on next refresh.",
   });
+}
+
+// Handle migrating external agents from old zones to moltbook with correct Y positions
+async function handleMigrateAgentsToMoltbook() {
+  if (!isNeonConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+
+  try {
+    const sql = getNeonSQL();
+
+    // Scale factor and ground level must match WorldScene
+    const SCALE = 1.6;
+    const GROUND_Y = Math.round(550 * SCALE); // 880
+    const Y_VARIATION = Math.round(15 * SCALE); // 24
+
+    // Get all external agents not in moltbook zone
+    const agentsToMigrate = await sql`
+      SELECT wallet, name, zone, y FROM external_agents
+      WHERE zone != 'moltbook' OR y < ${GROUND_Y - 50}
+    `;
+
+    let migrated = 0;
+    for (const agent of agentsToMigrate) {
+      // Random X position for moltbook zone (200-500 * SCALE)
+      const newX = Math.round((200 + Math.random() * 300) * SCALE);
+      // Y at ground level with slight variation
+      const newY = GROUND_Y + Math.random() * Y_VARIATION;
+
+      await sql`
+        UPDATE external_agents
+        SET zone = 'moltbook', x = ${newX}, y = ${newY}
+        WHERE wallet = ${agent.wallet}
+      `;
+      migrated++;
+      console.log(`[Admin] Migrated agent ${agent.name} to moltbook (${newX}, ${newY})`);
+    }
+
+    // Also fix any agents with incorrect Y positions (floating agents)
+    const floatingAgents = await sql`
+      SELECT wallet, name, y FROM external_agents
+      WHERE zone = 'moltbook' AND (y < ${GROUND_Y - 50} OR y > ${GROUND_Y + Y_VARIATION + 10})
+    `;
+
+    for (const agent of floatingAgents) {
+      const newY = GROUND_Y + Math.random() * Y_VARIATION;
+      await sql`
+        UPDATE external_agents SET y = ${newY}
+        WHERE wallet = ${agent.wallet}
+      `;
+      console.log(`[Admin] Fixed Y position for ${agent.name}: ${agent.y} -> ${newY}`);
+    }
+
+    return NextResponse.json({
+      success: true,
+      migrated,
+      fixedYPositions: floatingAgents.length,
+      message: `Migrated ${migrated} agents to moltbook zone. Fixed ${floatingAgents.length} Y positions.`,
+    });
+  } catch (error) {
+    console.error("Migrate agents error:", error);
+    return NextResponse.json({ error: "Failed to migrate agents" }, { status: 500 });
+  }
 }
