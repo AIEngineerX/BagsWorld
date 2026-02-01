@@ -122,6 +122,65 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Verify fee configuration for a token (so agents can confirm they get 100%)
+  if (action === "verify-fees") {
+    const tokenMint = searchParams.get("tokenMint");
+    const wallet = searchParams.get("wallet");
+    
+    if (!tokenMint) {
+      return NextResponse.json(
+        { success: false, error: "tokenMint query parameter required" },
+        { status: 400 }
+      );
+    }
+    
+    try {
+      // Check if wallet has claimable positions for this token
+      if (wallet) {
+        const { positions, totalClaimableLamports } = await getClaimableForWallet(wallet);
+        const tokenPosition = positions.find(p => p.baseMint === tokenMint);
+        
+        return NextResponse.json({
+          success: true,
+          verification: {
+            tokenMint,
+            wallet,
+            hasPosition: !!tokenPosition,
+            isCustomFeeVault: tokenPosition?.isCustomFeeVault ?? null,
+            isMigrated: tokenPosition?.isMigrated ?? null,
+            claimableLamports: tokenPosition ? 
+              parseInt(tokenPosition.virtualPoolClaimableAmount || tokenPosition.totalClaimableLamportsUserShare || "0") +
+              parseInt(tokenPosition.dammPoolClaimableAmount || "0") : 0,
+            totalClaimableLamports,
+          },
+          note: "If hasPosition is true, this wallet is configured to receive fees from this token. Fees accumulate as the token is traded.",
+          links: {
+            bags: `https://bags.fm/${tokenMint}`,
+            solscan: `https://solscan.io/token/${tokenMint}`,
+          },
+        });
+      }
+      
+      // Just return token info without wallet check
+      return NextResponse.json({
+        success: true,
+        verification: {
+          tokenMint,
+        },
+        links: {
+          bags: `https://bags.fm/${tokenMint}`,
+          solscan: `https://solscan.io/token/${tokenMint}`,
+        },
+        note: "Add &wallet=YOUR_WALLET to check if a specific wallet can claim fees from this token.",
+      });
+    } catch (err) {
+      return NextResponse.json({
+        success: false,
+        error: err instanceof Error ? err.message : "Verification failed",
+      }, { status: 500 });
+    }
+  }
+
   // Debug endpoint to check environment
   if (action === "debug-env") {
     const apiKey = process.env.BAGS_API_KEY;
@@ -662,7 +721,8 @@ export async function POST(request: NextRequest) {
         feeInfo: {
           yourShare: "100%",
           claimEndpoint: "/api/agent-economy/external (action: claimable, then claim)",
-          verification: `Verify on-chain: https://solscan.io/token/${result.tokenMint}`,
+          verifyEndpoint: `/api/agent-economy/external?action=verify-fees&tokenMint=${result.tokenMint}&wallet=${wallet}`,
+          solscan: `https://solscan.io/token/${result.tokenMint}`,
         },
         safety: {
           nonCustodial: true,

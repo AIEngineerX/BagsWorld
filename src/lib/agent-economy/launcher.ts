@@ -545,6 +545,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     }
 
     console.log(`[Launcher] Config key: ${configKey}`);
+    console.log(`[Launcher] ✅ Fee share configured: 100% to ${creatorWallet}`);
 
     // Sign any required transactions (fee config creation)
     if (result.needsCreation && result.transactions?.length) {
@@ -552,8 +553,10 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
       for (const tx of result.transactions) {
         await signAndSubmit(tx.transaction);
       }
+      console.log(`[Launcher] ✅ Fee config transactions submitted`);
     }
   } catch (err) {
+    console.error(`[Launcher] ❌ Fee share config failed for ${creatorWallet}:`, err);
     throw new Error(`Fee share config failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
