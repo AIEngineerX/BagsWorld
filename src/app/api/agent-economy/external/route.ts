@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
 
   if (action === "join") {
     // Join BagsWorld with just a wallet address
-    const { wallet, name, description, zone = "main_city" } = body;
+    const { wallet, name, description, zone = "main_city", moltbookUsername } = body;
 
     if (!wallet) {
       return NextResponse.json(
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Register in shared registry (persisted to DB)
-    const entry = await registerExternalAgent(wallet, name, zone as ZoneType, description);
+    const entry = await registerExternalAgent(wallet, name, zone as ZoneType, description, moltbookUsername);
 
     return NextResponse.json({
       success: true,
@@ -253,6 +253,7 @@ export async function POST(request: NextRequest) {
         wallet,
         name,
         zone,
+        moltbookProfile: moltbookUsername ? `https://moltbook.com/u/${moltbookUsername}` : undefined,
         character: {
           id: entry.character.id,
           x: entry.character.x,

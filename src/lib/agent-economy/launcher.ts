@@ -226,35 +226,36 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   
   console.log(`[Launcher] Token mint: ${tokenMint}`);
   
-  // Step 2: Use partner config for fee sharing
-  // The creator wallet will receive 100% of fees
-  console.log('[Launcher] Step 2: Setting up fee config...');
+  // Step 2: Create fee share config (100% to external agent)
+  console.log('[Launcher] Step 2: Creating fee share config...');
   
-  let configKey: string | undefined;
+  let configKey: string;
   try {
-    // Try to create partner config
     const configResponse = await callBagsApi<{
-      configKey?: string;
-      partnerKey?: string;
-      transaction?: string;
-    }>('/partner/create-config', {
+      configKey: string;
+      transactions?: Array<{ transaction: string }>;
+    }>('/fee-share/config', {
       method: 'POST',
       body: JSON.stringify({
-        partnerWallet: creatorWallet,
+        payer: bagsWorldWallet,
+        baseMint: tokenMint,
+        feeClaimers: [
+          { user: creatorWallet, userBps: 10000 }, // 100% to creator
+        ],
       }),
     });
     
-    configKey = configResponse.configKey || configResponse.partnerKey;
+    configKey = configResponse.configKey;
     console.log(`[Launcher] Config key: ${configKey}`);
     
-    // Sign config transaction if present
-    if (configResponse.transaction) {
-      await signAndSubmit(configResponse.transaction);
+    // Sign config transactions if present
+    if (configResponse.transactions && configResponse.transactions.length > 0) {
+      for (const tx of configResponse.transactions) {
+        await signAndSubmit(tx.transaction);
+      }
     }
   } catch (err) {
-    // If partner config fails, try without it (default 0% to creator)
-    console.log('[Launcher] Partner config failed, trying without configKey:', err);
-    configKey = undefined;
+    throw new Error(`Fee config failed: ${err instanceof Error ? err.message : String(err)}`);
   }
   
   // Step 3: Create launch transaction
