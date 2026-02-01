@@ -417,7 +417,12 @@ export async function POST(request: NextRequest) {
         }
 
         const engine = getArenaEngine();
-        const added = await engine.addMatch(matchId);
+        // Use addMatchDirect to avoid database lookup issues in serverless
+        const added = engine.addMatchDirect(
+          matchId,
+          { id: fighter1.id, username: fighter1Name, karma: karma1 },
+          { id: fighter2.id, username: fighter2Name, karma: karma2 }
+        );
 
         let winner = null;
         let totalTicks = 0;
