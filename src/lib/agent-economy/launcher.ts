@@ -239,9 +239,8 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
       body: JSON.stringify({
         payer: bagsWorldWallet,
         baseMint: tokenMint,
-        feeClaimers: [
-          { user: creatorWallet, userBps: 10000 }, // 100% to creator
-        ],
+        claimersArray: [creatorWallet],
+        basisPointsArray: [10000], // 100% = 10000 bps
       }),
     });
     
