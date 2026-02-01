@@ -3,7 +3,15 @@
 import { useGameStore } from "@/lib/store";
 import { ZONES, ZoneType } from "@/lib/types";
 
-const ZONE_ORDER: ZoneType[] = ["labs", "moltbook", "main_city", "trending", "ballers", "founders", "arena"];
+const ZONE_ORDER: ZoneType[] = [
+  "labs",
+  "moltbook",
+  "main_city",
+  "trending",
+  "ballers",
+  "founders",
+  "arena",
+];
 
 export function ZoneNav() {
   const { currentZone, setZone } = useGameStore();

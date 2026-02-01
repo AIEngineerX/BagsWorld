@@ -51,9 +51,7 @@ async function setupTest(envOverrides: Record<string, string | undefined> = {}) 
 }
 
 // Helper to create RPC response for getTokenLargestAccounts
-function createLargestAccountsResponse(
-  accounts: Array<{ address: string; amount: string }>
-) {
+function createLargestAccountsResponse(accounts: Array<{ address: string; amount: string }>) {
   return {
     ok: true,
     json: () =>
@@ -194,9 +192,7 @@ describe("/api/bagsworld-holders", () => {
 
       // 25,000 tokens out of 100,000 = 25%
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "25000000000" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "25000000000" }])
       );
       mockFetchImpl.mockResolvedValueOnce(createTokenSupplyResponse("100000000000"));
       mockFetchImpl.mockResolvedValueOnce(createOwnerResponse("Owner1"));
@@ -299,9 +295,7 @@ describe("/api/bagsworld-holders", () => {
 
       // Secondary RPC succeeds
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "1000000000" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "1000000000" }])
       );
       mockFetchImpl.mockResolvedValueOnce(createTokenSupplyResponse("10000000000"));
       mockFetchImpl.mockResolvedValueOnce(createOwnerResponse("Owner1"));
@@ -324,9 +318,7 @@ describe("/api/bagsworld-holders", () => {
 
       // Secondary RPC succeeds
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "1000000000" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "1000000000" }])
       );
       mockFetchImpl.mockResolvedValueOnce(createTokenSupplyResponse("10000000000"));
       mockFetchImpl.mockResolvedValueOnce(createOwnerResponse("Owner1"));
@@ -348,9 +340,7 @@ describe("/api/bagsworld-holders", () => {
 
       // Secondary succeeds
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "1000000000" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "1000000000" }])
       );
       mockFetchImpl.mockResolvedValueOnce(createTokenSupplyResponse("10000000000"));
       mockFetchImpl.mockResolvedValueOnce(createOwnerResponse("Owner1"));
@@ -454,9 +444,7 @@ describe("/api/bagsworld-holders", () => {
       });
 
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "1000000000" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "1000000000" }])
       );
       // Total supply returns 0
       mockFetchImpl.mockResolvedValueOnce(createTokenSupplyResponse("0"));
@@ -475,9 +463,7 @@ describe("/api/bagsworld-holders", () => {
       });
 
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "not-a-number" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "not-a-number" }])
       );
       mockFetchImpl.mockResolvedValueOnce(createTokenSupplyResponse("10000000000"));
       mockFetchImpl.mockResolvedValueOnce(createOwnerResponse("Owner1"));
@@ -495,9 +481,7 @@ describe("/api/bagsworld-holders", () => {
       });
 
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "1000000000" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "1000000000" }])
       );
       // Token supply fails
       mockFetchImpl.mockResolvedValueOnce(createFailedResponse());
@@ -518,9 +502,7 @@ describe("/api/bagsworld-holders", () => {
       });
 
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "1000000000" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "1000000000" }])
       );
       mockFetchImpl.mockResolvedValueOnce(createTokenSupplyResponse("10000000000"));
       mockFetchImpl.mockResolvedValueOnce(createOwnerResponse("Owner1"));
@@ -558,9 +540,7 @@ describe("/api/bagsworld-holders", () => {
       });
 
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "1000000000" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "1000000000" }])
       );
       mockFetchImpl.mockResolvedValueOnce(createTokenSupplyResponse("10000000000"));
       mockFetchImpl.mockResolvedValueOnce(createOwnerResponse("Owner1"));
@@ -579,9 +559,7 @@ describe("/api/bagsworld-holders", () => {
       });
 
       mockFetchImpl.mockResolvedValueOnce(
-        createLargestAccountsResponse([
-          { address: "TokenAcct1", amount: "1000000000" },
-        ])
+        createLargestAccountsResponse([{ address: "TokenAcct1", amount: "1000000000" }])
       );
       mockFetchImpl.mockResolvedValueOnce(createTokenSupplyResponse("10000000000"));
       mockFetchImpl.mockResolvedValueOnce(createOwnerResponse("Owner1"));

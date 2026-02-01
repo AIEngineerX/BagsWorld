@@ -33,12 +33,14 @@ let nextFighterId = 1;
 const server = createServer((req, res) => {
   if (req.url === "/health") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({
-      status: "ok",
-      engine: getArenaEngine().getStatus(),
-      queue: queue.size,
-      clients: clients.size,
-    }));
+    res.end(
+      JSON.stringify({
+        status: "ok",
+        engine: getArenaEngine().getStatus(),
+        queue: queue.size,
+        clients: clients.size,
+      })
+    );
   } else {
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("MoltBook Arena Server");
@@ -140,7 +142,9 @@ function handleClientMessage(ws: WebSocket, message: ClientMessage): void {
       };
       queue.set(username, fighter);
 
-      console.log(`[Arena Server] ${username} joined queue (karma: ${karma}, queue size: ${queue.size})`);
+      console.log(
+        `[Arena Server] ${username} joined queue (karma: ${karma}, queue size: ${queue.size})`
+      );
 
       // Notify the player of their position
       sendMessage(ws, {
@@ -189,7 +193,9 @@ function startMatch(): void {
   queue.delete(fighter1Data.username);
   queue.delete(fighter2Data.username);
 
-  console.log(`[Arena Server] Starting match: ${fighter1Data.username} vs ${fighter2Data.username}`);
+  console.log(
+    `[Arena Server] Starting match: ${fighter1Data.username} vs ${fighter2Data.username}`
+  );
 
   // Create match in engine
   const matchState = engine.createMatch(

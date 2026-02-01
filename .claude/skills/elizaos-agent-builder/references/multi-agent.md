@@ -4,12 +4,12 @@ Coordination patterns for building systems with multiple elizaOS agents.
 
 ## Core Concepts
 
-| Concept | Description |
-|---------|-------------|
-| **Agent Swarm** | Multiple agents working together |
-| **Coordinator** | Agent that orchestrates others |
-| **Specialist** | Agent focused on one domain |
-| **Shared Memory** | Cross-agent knowledge pool |
+| Concept             | Description                       |
+| ------------------- | --------------------------------- |
+| **Agent Swarm**     | Multiple agents working together  |
+| **Coordinator**     | Agent that orchestrates others    |
+| **Specialist**      | Agent focused on one domain       |
+| **Shared Memory**   | Cross-agent knowledge pool        |
 | **Message Routing** | Directing messages between agents |
 
 ---
@@ -17,53 +17,55 @@ Coordination patterns for building systems with multiple elizaOS agents.
 ## Agent Hierarchy
 
 ### Parent-Child Pattern
+
 ```typescript
 // Parent coordinator agent
 const coordinator: Character = {
-  name: 'Coordinator',
-  bio: 'Orchestrates specialist agents for complex tasks',
+  name: "Coordinator",
+  bio: "Orchestrates specialist agents for complex tasks",
 
   knowledge: [
-    'Delegates trading tasks to TradingAgent',
-    'Delegates research to ResearchAgent',
-    'Delegates social tasks to SocialAgent',
-  ]
+    "Delegates trading tasks to TradingAgent",
+    "Delegates research to ResearchAgent",
+    "Delegates social tasks to SocialAgent",
+  ],
 };
 
 // Child specialist agents
 const tradingAgent: Character = {
-  name: 'TradingAgent',
-  bio: 'Specialist in executing trades and monitoring prices',
+  name: "TradingAgent",
+  bio: "Specialist in executing trades and monitoring prices",
   // Focused knowledge and actions
 };
 
 const researchAgent: Character = {
-  name: 'ResearchAgent',
-  bio: 'Specialist in analyzing tokens and market trends',
+  name: "ResearchAgent",
+  bio: "Specialist in analyzing tokens and market trends",
 };
 ```
 
 ### Permission Model
+
 ```typescript
 interface AgentPermissions {
   canCreateChild: boolean;
   canControlSiblings: boolean;
-  memoryAccessLevel: 'own' | 'parent' | 'shared' | 'all';
-  actionScope: string[];  // Allowed action names
+  memoryAccessLevel: "own" | "parent" | "shared" | "all";
+  actionScope: string[]; // Allowed action names
 }
 
 const coordinatorPermissions: AgentPermissions = {
   canCreateChild: true,
   canControlSiblings: true,
-  memoryAccessLevel: 'all',
-  actionScope: ['*'],
+  memoryAccessLevel: "all",
+  actionScope: ["*"],
 };
 
 const specialistPermissions: AgentPermissions = {
   canCreateChild: false,
   canControlSiblings: false,
-  memoryAccessLevel: 'parent',
-  actionScope: ['TRADE', 'ANALYZE', 'REPORT'],
+  memoryAccessLevel: "parent",
+  actionScope: ["TRADE", "ANALYZE", "REPORT"],
 };
 ```
 
@@ -72,11 +74,12 @@ const specialistPermissions: AgentPermissions = {
 ## Message Routing
 
 ### Inter-Agent Communication
+
 ```typescript
 interface AgentMessage {
-  from: string;        // Agent ID
-  to: string;          // Target agent ID or 'broadcast'
-  type: 'request' | 'response' | 'event' | 'command';
+  from: string; // Agent ID
+  to: string; // Target agent ID or 'broadcast'
+  type: "request" | "response" | "event" | "command";
   payload: any;
   correlationId?: string;
   timestamp: number;
@@ -92,7 +95,7 @@ class AgentMessageBus {
   }
 
   async send(message: AgentMessage): Promise<void> {
-    if (message.to === 'broadcast') {
+    if (message.to === "broadcast") {
       for (const [id, queue] of this.queues) {
         if (id !== message.from) {
           queue.push(message);
@@ -114,21 +117,22 @@ class AgentMessageBus {
 ```
 
 ### Delegation Pattern
+
 ```typescript
 const delegateAction: Action = {
-  name: 'DELEGATE_TASK',
-  description: 'Delegate task to specialist agent',
+  name: "DELEGATE_TASK",
+  description: "Delegate task to specialist agent",
 
   handler: async (runtime, message, state, options, callback) => {
     const { task, targetAgent } = parseTaskRequest(message.content.text);
 
     // Send task to specialist
-    const messageBus = runtime.getService('messageBus') as AgentMessageBus;
+    const messageBus = runtime.getService("messageBus") as AgentMessageBus;
 
     const delegationMessage: AgentMessage = {
       from: runtime.agentId,
       to: targetAgent,
-      type: 'request',
+      type: "request",
       payload: { task, context: state.text },
       correlationId: generateId(),
       timestamp: Date.now(),
@@ -138,7 +142,7 @@ const delegateAction: Action = {
 
     callback(`Task delegated to ${targetAgent}. Awaiting response...`);
     return delegationMessage.correlationId;
-  }
+  },
 };
 ```
 
@@ -147,14 +151,12 @@ const delegateAction: Action = {
 ## Shared Memory
 
 ### Cross-Agent Memory Pool
+
 ```typescript
 class SharedMemoryPool {
   private memories: Map<string, Memory[]> = new Map();
 
-  async add(
-    memory: Memory,
-    accessGroups: string[] = ['all']
-  ): Promise<string> {
+  async add(memory: Memory, accessGroups: string[] = ["all"]): Promise<string> {
     const id = generateId();
 
     for (const group of accessGroups) {
@@ -166,10 +168,7 @@ class SharedMemoryPool {
     return id;
   }
 
-  async query(
-    accessGroup: string,
-    filter: (m: Memory) => boolean
-  ): Promise<Memory[]> {
+  async query(accessGroup: string, filter: (m: Memory) => boolean): Promise<Memory[]> {
     const pool = this.memories.get(accessGroup) || [];
     return pool.filter(filter);
   }
@@ -182,49 +181,46 @@ class SharedMemoryPool {
     const pool = this.memories.get(accessGroup) || [];
 
     return pool
-      .filter(m => m.embedding)
-      .map(m => ({
+      .filter((m) => m.embedding)
+      .map((m) => ({
         memory: m,
-        similarity: cosineSimilarity(embedding, m.embedding!)
+        similarity: cosineSimilarity(embedding, m.embedding!),
       }))
-      .filter(r => r.similarity >= threshold)
+      .filter((r) => r.similarity >= threshold)
       .sort((a, b) => b.similarity - a.similarity)
-      .map(r => r.memory);
+      .map((r) => r.memory);
   }
 }
 ```
 
 ### Shared Knowledge Provider
+
 ```typescript
 const sharedKnowledgeProvider: Provider = {
-  name: 'sharedKnowledge',
+  name: "sharedKnowledge",
 
   get: async (runtime, message, state) => {
-    const sharedMemory = runtime.getService('sharedMemory') as SharedMemoryPool;
-    const agentGroup = runtime.getSetting('AGENT_GROUP') || 'default';
+    const sharedMemory = runtime.getService("sharedMemory") as SharedMemoryPool;
+    const agentGroup = runtime.getSetting("AGENT_GROUP") || "default";
 
     // Get relevant shared knowledge
     const embedding = await runtime.embed(message.content.text);
-    const relevant = await sharedMemory.searchSemantic(
-      agentGroup,
-      embedding,
-      0.75
-    );
+    const relevant = await sharedMemory.searchSemantic(agentGroup, embedding, 0.75);
 
     if (relevant.length === 0) {
-      return { text: '', data: {} };
+      return { text: "", data: {} };
     }
 
     const knowledge = relevant
       .slice(0, 5)
-      .map(m => m.content.text)
-      .join('\n- ');
+      .map((m) => m.content.text)
+      .join("\n- ");
 
     return {
       text: `Shared knowledge:\n- ${knowledge}`,
-      data: { sharedMemories: relevant }
+      data: { sharedMemories: relevant },
     };
-  }
+  },
 };
 ```
 
@@ -233,6 +229,7 @@ const sharedKnowledgeProvider: Provider = {
 ## Coordinator Patterns
 
 ### Task Distribution
+
 ```typescript
 interface Task {
   id: string;
@@ -240,7 +237,7 @@ interface Task {
   priority: number;
   payload: any;
   assignedTo?: string;
-  status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'failed';
+  status: "pending" | "assigned" | "in_progress" | "completed" | "failed";
 }
 
 class TaskCoordinator {
@@ -265,7 +262,7 @@ class TaskCoordinator {
 
     if (bestAgent) {
       task.assignedTo = bestAgent;
-      task.status = 'assigned';
+      task.status = "assigned";
       this.tasks.set(task.id, task);
 
       const agentInfo = this.agents.get(bestAgent)!;
@@ -280,7 +277,7 @@ class TaskCoordinator {
   completeTask(taskId: string): void {
     const task = this.tasks.get(taskId);
     if (task?.assignedTo) {
-      task.status = 'completed';
+      task.status = "completed";
       const agentInfo = this.agents.get(task.assignedTo);
       if (agentInfo) agentInfo.load--;
     }
@@ -289,29 +286,26 @@ class TaskCoordinator {
 ```
 
 ### Load Balancing
+
 ```typescript
-type LoadBalanceStrategy = 'round_robin' | 'least_loaded' | 'random' | 'capability';
+type LoadBalanceStrategy = "round_robin" | "least_loaded" | "random" | "capability";
 
 class LoadBalancer {
   private roundRobinIndex = 0;
 
-  selectAgent(
-    agents: string[],
-    loads: Map<string, number>,
-    strategy: LoadBalanceStrategy
-  ): string {
+  selectAgent(agents: string[], loads: Map<string, number>, strategy: LoadBalanceStrategy): string {
     switch (strategy) {
-      case 'round_robin':
+      case "round_robin":
         const agent = agents[this.roundRobinIndex % agents.length];
         this.roundRobinIndex++;
         return agent;
 
-      case 'least_loaded':
+      case "least_loaded":
         return agents.reduce((best, current) =>
           (loads.get(current) || 0) < (loads.get(best) || 0) ? current : best
         );
 
-      case 'random':
+      case "random":
         return agents[Math.floor(Math.random() * agents.length)];
 
       default:
@@ -326,8 +320,9 @@ class LoadBalancer {
 ## Event-Driven Coordination
 
 ### Event Bus
+
 ```typescript
-type EventType = 'price_alert' | 'new_token' | 'trade_executed' | 'error' | 'status_update';
+type EventType = "price_alert" | "new_token" | "trade_executed" | "error" | "status_update";
 
 interface AgentEvent {
   type: EventType;
@@ -339,10 +334,7 @@ interface AgentEvent {
 class AgentEventBus {
   private subscribers: Map<EventType, Set<(event: AgentEvent) => void>> = new Map();
 
-  subscribe(
-    eventType: EventType,
-    handler: (event: AgentEvent) => void
-  ): () => void {
+  subscribe(eventType: EventType, handler: (event: AgentEvent) => void): () => void {
     const handlers = this.subscribers.get(eventType) || new Set();
     handlers.add(handler);
     this.subscribers.set(eventType, handlers);
@@ -353,44 +345,45 @@ class AgentEventBus {
 
   publish(event: AgentEvent): void {
     const handlers = this.subscribers.get(event.type) || new Set();
-    handlers.forEach(handler => handler(event));
+    handlers.forEach((handler) => handler(event));
 
     // Also publish to 'all' subscribers
-    const allHandlers = this.subscribers.get('*' as EventType) || new Set();
-    allHandlers.forEach(handler => handler(event));
+    const allHandlers = this.subscribers.get("*" as EventType) || new Set();
+    allHandlers.forEach((handler) => handler(event));
   }
 }
 ```
 
 ### Event-Driven Agent
+
 ```typescript
 const eventPlugin: Plugin = {
-  name: 'event-listener',
+  name: "event-listener",
 
   start: async (runtime) => {
-    const eventBus = runtime.getService('eventBus') as AgentEventBus;
+    const eventBus = runtime.getService("eventBus") as AgentEventBus;
 
     // Subscribe to relevant events
-    eventBus.subscribe('price_alert', async (event) => {
+    eventBus.subscribe("price_alert", async (event) => {
       console.log(`[${runtime.agentId}] Price alert:`, event.data);
       // React to price alert
       await handlePriceAlert(runtime, event.data);
     });
 
-    eventBus.subscribe('new_token', async (event) => {
+    eventBus.subscribe("new_token", async (event) => {
       console.log(`[${runtime.agentId}] New token:`, event.data);
       // Analyze new token
       await analyzeNewToken(runtime, event.data);
     });
-  }
+  },
 };
 
 // Publishing events
 const priceMonitorPlugin: Plugin = {
-  name: 'price-monitor',
+  name: "price-monitor",
 
   start: async (runtime) => {
-    const eventBus = runtime.getService('eventBus') as AgentEventBus;
+    const eventBus = runtime.getService("eventBus") as AgentEventBus;
 
     setInterval(async () => {
       const prices = await fetchPrices();
@@ -398,7 +391,7 @@ const priceMonitorPlugin: Plugin = {
       for (const price of prices) {
         if (price.change24h > 20) {
           eventBus.publish({
-            type: 'price_alert',
+            type: "price_alert",
             source: runtime.agentId,
             data: { token: price.symbol, change: price.change24h },
             timestamp: Date.now(),
@@ -406,7 +399,7 @@ const priceMonitorPlugin: Plugin = {
         }
       }
     }, 60000);
-  }
+  },
 };
 ```
 
@@ -415,6 +408,7 @@ const priceMonitorPlugin: Plugin = {
 ## Consensus Patterns
 
 ### Voting Mechanism
+
 ```typescript
 interface Vote {
   agentId: string;
@@ -432,10 +426,12 @@ class ConsensusManager {
   ): Promise<Vote[]> {
     const votePromises = agents.map(async (agent) => {
       const response = await agent.completion({
-        messages: [{
-          role: 'user',
-          content: `Question: ${question}\nOptions: ${options.join(', ')}\n\nChoose one option and explain your reasoning. Format: DECISION: <option>\nCONFIDENCE: <0-1>\nREASONING: <explanation>`
-        }]
+        messages: [
+          {
+            role: "user",
+            content: `Question: ${question}\nOptions: ${options.join(", ")}\n\nChoose one option and explain your reasoning. Format: DECISION: <option>\nCONFIDENCE: <0-1>\nREASONING: <explanation>`,
+          },
+        ],
       });
 
       return parseVote(agent.agentId, response);
@@ -443,8 +439,8 @@ class ConsensusManager {
 
     const results = await Promise.allSettled(votePromises);
     return results
-      .filter((r): r is PromiseFulfilledResult<Vote> => r.status === 'fulfilled')
-      .map(r => r.value);
+      .filter((r): r is PromiseFulfilledResult<Vote> => r.status === "fulfilled")
+      .map((r) => r.value);
   }
 
   determineConsensus(votes: Vote[]): { decision: string; confidence: number } {
@@ -457,7 +453,7 @@ class ConsensusManager {
     }
 
     // Find winner
-    let winner = '';
+    let winner = "";
     let maxWeight = 0;
     for (const [decision, weight] of weighted) {
       if (weight > maxWeight) {
@@ -481,6 +477,7 @@ class ConsensusManager {
 ## Multi-Agent System Setup
 
 ### System Bootstrap
+
 ```typescript
 async function createAgentSwarm(config: {
   coordinator: Character;
@@ -499,10 +496,7 @@ async function createAgentSwarm(config: {
   // Create coordinator
   const coordinatorRuntime = new AgentRuntime({
     character: config.coordinator,
-    plugins: [
-      coordinatorPlugin,
-      ...(sharedMemory ? [sharedMemoryPlugin] : []),
-    ],
+    plugins: [coordinatorPlugin, ...(sharedMemory ? [sharedMemoryPlugin] : [])],
   });
 
   messageBus.register(coordinatorRuntime.agentId, coordinatorRuntime);
@@ -512,10 +506,7 @@ async function createAgentSwarm(config: {
     config.specialists.map(async (char) => {
       const runtime = new AgentRuntime({
         character: char,
-        plugins: [
-          specialistPlugin,
-          ...(sharedMemory ? [sharedMemoryPlugin] : []),
-        ],
+        plugins: [specialistPlugin, ...(sharedMemory ? [sharedMemoryPlugin] : [])],
       });
 
       messageBus.register(runtime.agentId, runtime);
@@ -525,7 +516,7 @@ async function createAgentSwarm(config: {
 
   // Initialize all
   await coordinatorRuntime.initialize();
-  await Promise.all(specialistRuntimes.map(r => r.initialize()));
+  await Promise.all(specialistRuntimes.map((r) => r.initialize()));
 
   return {
     coordinator: coordinatorRuntime,

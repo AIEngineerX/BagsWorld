@@ -11,6 +11,7 @@ List your Solana wallets and export private keys for transaction signing.
 You must be authenticated first. See [AUTH.md](https://bags.fm/auth.md).
 
 Load your credentials:
+
 ```bash
 BAGS_JWT_TOKEN=$(cat ~/.config/bags/credentials.json | jq -r '.jwt_token')
 BAGS_API_KEY=$(cat ~/.config/bags/credentials.json | jq -r '.api_key')
@@ -29,6 +30,7 @@ curl -X POST https://public-api-v2.bags.fm/api/v1/agent/wallet/list \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -40,6 +42,7 @@ curl -X POST https://public-api-v2.bags.fm/api/v1/agent/wallet/list \
 ```
 
 Save your wallets to credentials:
+
 ```bash
 BAGS_WALLETS=$(curl -s -X POST https://public-api-v2.bags.fm/api/v1/agent/wallet/list \
   -H "Content-Type: application/json" \
@@ -69,6 +72,7 @@ curl -X POST https://public-api-v2.bags.fm/api/v1/agent/wallet/export \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -87,11 +91,13 @@ The `privateKey` is Base58 encoded — standard Solana format.
 ### Option 1: Solana CLI (Recommended for Simple Operations)
 
 Install Solana CLI:
+
 ```bash
 sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
 ```
 
 Make sure to use the Anza release of the Solana CLI, and read help for the latest features.
+
 ```bash
 USAGE:
     solana [FLAGS] [OPTIONS] <SUBCOMMAND>
@@ -110,6 +116,7 @@ FLAGS:
 ```
 
 Create a keypair file from your private key:
+
 ```bash
 # Export the key (temporary use only)
 BAGS_PRIVATE_KEY=$(curl -s -X POST https://public-api-v2.bags.fm/api/v1/agent/wallet/export \
@@ -131,11 +138,13 @@ solana address -k ~/.config/bags/keypair.json
 ```
 
 Use for transfers:
+
 ```bash
 solana transfer <RECIPIENT> <AMOUNT> --keypair ~/.config/bags/keypair.json
 ```
 
 Check balance:
+
 ```bash
 solana balance --keypair ~/.config/bags/keypair.json
 ```
@@ -147,24 +156,24 @@ For signing claim transactions or other complex operations, you'll need to sign 
 **Using Node.js:**
 
 Create `sign-transaction.js`:
+
 ```javascript
 // sign-transaction.js
-const { Keypair, VersionedTransaction } = require('@solana/web3.js');
-const bs58 = require('bs58');
+const { Keypair, VersionedTransaction } = require("@solana/web3.js");
+const bs58 = require("bs58");
 
 const privateKeyBase58 = process.argv[2];
 const transactionBase64 = process.argv[3];
 
 const keypair = Keypair.fromSecretKey(bs58.decode(privateKeyBase58));
-const transaction = VersionedTransaction.deserialize(
-  Buffer.from(transactionBase64, 'base64')
-);
+const transaction = VersionedTransaction.deserialize(Buffer.from(transactionBase64, "base64"));
 transaction.sign([keypair]);
 
-console.log(Buffer.from(transaction.serialize()).toString('base64'));
+console.log(Buffer.from(transaction.serialize()).toString("base64"));
 ```
 
 Run:
+
 ```bash
 BAGS_PRIVATE_KEY=$(curl -s -X POST https://public-api-v2.bags.fm/api/v1/agent/wallet/export \
   -H "Content-Type: application/json" \
@@ -180,6 +189,7 @@ unset BAGS_PRIVATE_KEY
 **Using Python:**
 
 Create `sign_transaction.py`:
+
 ```python
 # sign_transaction.py
 import sys
@@ -201,6 +211,7 @@ print(base64.b64encode(bytes(tx)).decode())
 ### Option 3: Submit Signed Transaction to RPC
 
 After signing, submit to Solana:
+
 ```bash
 curl -X POST https://api.mainnet-beta.solana.com \
   -H "Content-Type: application/json" \
@@ -235,11 +246,12 @@ curl -s -X POST https://api.mainnet-beta.solana.com \
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
   "result": {
-    "context": {"slot": 123456789},
+    "context": { "slot": 123456789 },
     "value": 1500000000
   },
   "id": 1
@@ -271,6 +283,7 @@ solana balance $BAGS_WALLET_ADDRESS
 ## Security Best Practices
 
 ### ✅ DO:
+
 - Export keys only when needed for signing
 - Delete keypair files after use: `rm ~/.config/bags/keypair.json`
 - Use `chmod 600` on any file containing keys
@@ -279,6 +292,7 @@ solana balance $BAGS_WALLET_ADDRESS
 - Keep JWT token and API key separate from private keys
 
 ### ❌ DON'T:
+
 - Log private keys to console or files
 - Store private keys in credentials.json
 - Share private keys with anyone or any service
@@ -291,30 +305,36 @@ solana balance $BAGS_WALLET_ADDRESS
 ## Error Handling
 
 **Invalid token (400):**
+
 ```json
 {
   "success": false,
   "response": "Invalid token"
 }
 ```
+
 → Re-authenticate via [AUTH.md](https://bags.fm/auth.md)
 
 **Wallet not found (400):**
+
 ```json
 {
   "success": false,
   "response": "Wallet not found for this agent"
 }
 ```
+
 → Check wallet address is correct and belongs to your account
 
 **Rate limited (429):**
+
 ```json
 {
   "success": false,
   "response": "Too many requests. Please try again later."
 }
 ```
+
 → Wait and retry with exponential backoff
 
 ---
@@ -355,10 +375,10 @@ for BAGS_WALLET in $BAGS_WALLETS; do
       \"method\": \"getBalance\",
       \"params\": [\"$BAGS_WALLET\"]
     }" | jq -r '.result.value')
-  
+
   BAGS_SOL=$(echo "scale=4; $BAGS_BALANCE / 1000000000" | bc)
   BAGS_TOTAL_LAMPORTS=$((BAGS_TOTAL_LAMPORTS + BAGS_BALANCE))
-  
+
   echo ""
   echo "📍 Wallet: $BAGS_WALLET"
   echo "   Balance: $BAGS_SOL SOL"
@@ -452,17 +472,17 @@ fi
 
 All Bags wallet scripts use these prefixed variables:
 
-| Variable | Description |
-|----------|-------------|
-| `BAGS_JWT_TOKEN` | JWT token for Agent API authentication |
-| `BAGS_API_KEY` | API key for Public API authentication |
-| `BAGS_WALLET_ADDRESS` | Current wallet address being used |
-| `BAGS_WALLETS` | Array of all wallet addresses |
-| `BAGS_PRIVATE_KEY` | Temporary private key (clear after use!) |
-| `BAGS_UNSIGNED_TX` | Unsigned transaction (base64) |
-| `BAGS_SIGNED_TX` | Signed transaction (base64) |
-| `BAGS_BALANCE_LAMPORTS` | Wallet balance in lamports |
-| `BAGS_BALANCE_SOL` | Wallet balance in SOL |
+| Variable                | Description                              |
+| ----------------------- | ---------------------------------------- |
+| `BAGS_JWT_TOKEN`        | JWT token for Agent API authentication   |
+| `BAGS_API_KEY`          | API key for Public API authentication    |
+| `BAGS_WALLET_ADDRESS`   | Current wallet address being used        |
+| `BAGS_WALLETS`          | Array of all wallet addresses            |
+| `BAGS_PRIVATE_KEY`      | Temporary private key (clear after use!) |
+| `BAGS_UNSIGNED_TX`      | Unsigned transaction (base64)            |
+| `BAGS_SIGNED_TX`        | Signed transaction (base64)              |
+| `BAGS_BALANCE_LAMPORTS` | Wallet balance in lamports               |
+| `BAGS_BALANCE_SOL`      | Wallet balance in SOL                    |
 
 ---
 
@@ -473,4 +493,3 @@ After managing your wallets, you can:
 1. **Check claimable fees** → See [FEES.md](https://bags.fm/fees.md)
 2. **Trade tokens** → See [TRADING.md](https://bags.fm/trading.md)
 3. **Launch tokens** → See [LAUNCH.md](https://bags.fm/launch.md)
-

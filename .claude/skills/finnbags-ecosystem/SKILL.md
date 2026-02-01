@@ -12,6 +12,7 @@ Complete knowledge base for building on and integrating with the Bags.fm platfor
 **Bags.fm** is a Solana-native memecoin launchpad and trading app focused on creator monetization. Unlike competitors, creators earn **1% of all trading volume forever** on tokens assigned to them.
 
 ### Key Differentiators from Pump.fun
+
 - **Creator royalties**: 1% perpetual trading fees (Pump.fun has no creator fees)
 - **Mobile-first**: iOS + Android apps (Pump.fun is web-only)
 - **Social integration**: Group chats, friend activity, real-time trade notifications
@@ -20,6 +21,7 @@ Complete knowledge base for building on and integrating with the Bags.fm platfor
 - **Fiat onramps**: Apple Pay, Coinbase, MoonPay, Robinhood integration
 
 ### Founding Team
+
 - **Finn (@finnbags)**: Founder & CEO, 102K+ followers, based in Los Angeles
 - **Hunter Isaacson (@hunterjisaacson)**: Co-founder, creator of NGL.link (250M+ downloads), product designer
 - Team members: Stu Bags, Ramo Bags
@@ -27,6 +29,7 @@ Complete knowledge base for building on and integrating with the Bags.fm platfor
 ## Technical Architecture
 
 ### Bonding Curve Mechanics
+
 Bags uses **Meteora Dynamic Bonding Curve (DBC)**:
 
 1. **Pre-graduation**: Token trades on bonding curve, price increases with buys
@@ -34,6 +37,7 @@ Bags uses **Meteora Dynamic Bonding Curve (DBC)**:
 3. **Post-graduation**: Token tradeable on DEX with locked LP, fees go to creator/partner
 
 ### Program IDs (Mainnet)
+
 ```
 Bags Creator Signer:     BAGSB9TpGrZxQbEsrEznv5jXXdwyP6AXerN8aVRiAmcv
 Bags Fee Share V1:       FEEhPbKVKnco9EXnaY3i4R5rQVUx91wgVfu8qokixywi
@@ -44,6 +48,7 @@ Address Lookup Table:    Eq1EVs15EAWww1YtPTtWPzJRLPJoS6VYP9oW9SbNr3yp
 ```
 
 ### Fee Distribution
+
 - **Creator**: 1% of all trading volume (configurable split)
 - **Partner**: Configurable percentage for platforms building on Bags
 - **Protocol**: Meteora/Bags take small protocol fee
@@ -51,6 +56,7 @@ Address Lookup Table:    Eq1EVs15EAWww1YtPTtWPzJRLPJoS6VYP9oW9SbNr3yp
 ## API & SDK Integration
 
 ### Getting Started
+
 ```bash
 npm install @bagsfm/bags-sdk @solana/web3.js
 ```
@@ -58,16 +64,19 @@ npm install @bagsfm/bags-sdk @solana/web3.js
 Get API key at: https://dev.bags.fm
 
 ### SDK Setup
-```typescript
-import { BagsSDK } from '@bagsfm/bags-sdk';
-import { Connection, PublicKey } from '@solana/web3.js';
 
-const connection = new Connection('https://api.mainnet-beta.solana.com');
-const sdk = new BagsSDK(process.env.BAGS_API_KEY, connection, 'processed');
+```typescript
+import { BagsSDK } from "@bagsfm/bags-sdk";
+import { Connection, PublicKey } from "@solana/web3.js";
+
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const sdk = new BagsSDK(process.env.BAGS_API_KEY, connection, "processed");
 ```
 
 ### Common Operations
+
 See `references/api-patterns.md` for:
+
 - Token launch flow
 - Getting token creators
 - Claiming fees
@@ -75,11 +84,13 @@ See `references/api-patterns.md` for:
 - Lifetime fees queries
 
 ### API Base URL
+
 ```
 https://public-api-v2.bags.fm/api/v1/
 ```
 
 ### Rate Limits
+
 - 1,000 requests/hour per user
 - Applies across all API keys
 - Check `X-RateLimit-Remaining` header
@@ -96,11 +107,11 @@ Creators can enable holder rewards via **@DividendsBot**:
 
 ## Notable Ecosystem Tokens
 
-| Token | Significance |
-|-------|-------------|
-| BTH (BuyTheHat) | Flagship token, funded dogwifhat purchase |
-| NYAN | Creator royalties go to Nyan Cat artist Chris Torres |
-| WATER | Community charity token |
+| Token           | Significance                                         |
+| --------------- | ---------------------------------------------------- |
+| BTH (BuyTheHat) | Flagship token, funded dogwifhat purchase            |
+| NYAN            | Creator royalties go to Nyan Cat artist Chris Torres |
+| WATER           | Community charity token                              |
 
 ## Market Position (Jan 2026)
 
@@ -111,11 +122,13 @@ Creators can enable holder rewards via **@DividendsBot**:
 ## Building on Bags
 
 ### Use Cases
+
 1. **Creator tools**: Fee tracking dashboards, holder analytics
 2. **Trading bots**: Automated trading with SDK
 3. **Community tools**: Holder management, dividend tracking
 4. **Analytics**: Token performance, creator earnings
 
 ### Reference Files
+
 - `references/api-patterns.md` - Complete API code examples
 - `references/ecosystem-accounts.md` - Key X/Twitter accounts and resources

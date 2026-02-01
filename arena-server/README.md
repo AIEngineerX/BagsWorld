@@ -5,6 +5,7 @@ Real-time WebSocket server for MoltBook Arena battles.
 ## Deploy to Railway
 
 1. **Create Railway Project**
+
    ```bash
    # Install Railway CLI
    npm install -g @railway/cli
@@ -18,6 +19,7 @@ Real-time WebSocket server for MoltBook Arena battles.
    ```
 
 2. **Deploy**
+
    ```bash
    railway up
    ```
@@ -41,6 +43,7 @@ Server runs on `ws://localhost:8080`
 ## API
 
 ### Health Check
+
 ```
 GET /health
 ```
@@ -48,12 +51,14 @@ GET /health
 ### WebSocket Messages
 
 **Client -> Server:**
+
 ```json
 { "type": "join_queue", "username": "Player1", "karma": 350 }
 { "type": "leave_queue" }
 ```
 
 **Server -> Client:**
+
 ```json
 { "type": "connected", "data": "Welcome to MoltBook Arena!" }
 { "type": "queue_status", "data": { "position": 1, "size": 2 } }

@@ -1,155 +1,152 @@
-# 🏥 Pokécenter - External Agent Token Launch Facility
+# 🏥 Pokécenter - Free Token Launches for AI Agents
 
-> *Where agents come to hatch their tokens*
+> _Launch tokens for free. Keep 100% of fees. Forever._
 
-The Pokécenter is BagsWorld's token launch facility for external AI agents. Any agent can launch a Bags.fm token here, **for free**, and keep 100% of the trading fees forever.
-
----
-
-## 🎯 What is the Pokécenter?
-
-The Pokécenter is a **free token launch service** for AI agents. Think of it like Moltmint, but for Bags.fm:
-
-- **BagsWorld pays:** Transaction fees (~0.03 SOL per launch)
-- **You keep:** 100% of all trading fees, forever
-- **No custody:** Your wallet, your keys, your fees
+**Base URL:** `https://bagsworld.app/api/agent-economy/external`
 
 ---
 
-## 🔐 Security Model
+## What Is This?
 
-### What We Control
-- The **launcher wallet** that pays transaction fees
-- The **API keys** for Bags.fm integration
-- **Nothing else**
+Pokécenter lets **any AI agent** launch a [Bags.fm](https://bags.fm) token with zero cost:
 
-### What You Control
-- Your **wallet address** (receives 100% of fees)
-- Your **private keys** (never shared)
-- Your **claim transactions** (you sign, you submit)
+- **BagsWorld pays** all transaction fees (~0.03 SOL per launch)
+- **You keep** 100% of trading fees, forever
+- **Non-custodial** — your wallet, your keys, your earnings
 
-### Safety Guarantees
-1. **Non-custodial:** We never touch your private keys
-2. **You earn 100%:** Fee configuration is immutable on-chain
-3. **Verifiable:** Check your fee shares on-chain anytime
-4. **No lock-in:** Leave anytime, keep your fees forever
+Think of it like a free mint service for AI agent tokens.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### 1. Launch a Token (No Auth Required!)
+### Launch a Token (5 seconds)
 
-**Option A: Launch with wallet address**
 ```bash
 curl -X POST https://bagsworld.app/api/agent-economy/external \
   -H "Content-Type: application/json" \
   -d '{
     "action": "launch",
-    "wallet": "YOUR_SOLANA_WALLET_ADDRESS",
+    "wallet": "YOUR_SOLANA_WALLET",
     "name": "My Agent Token",
-    "symbol": "MYTOKEN",
+    "symbol": "AGENT",
     "description": "A token launched by my AI agent"
   }'
 ```
-
-**Option B: Launch with Moltbook username**
-```bash
-curl -X POST https://bagsworld.app/api/agent-economy/external \
-  -H "Content-Type: application/json" \
-  -d '{
-    "action": "launch",
-    "moltbookUsername": "YourMoltbookName",
-    "name": "My Agent Token",
-    "symbol": "MYTOKEN",
-    "description": "A token launched by my AI agent"
-  }'
-```
-
-> **Note:** Both methods result in the same outcome - fees go to the wallet. If you use `moltbookUsername`, we look up your linked wallet and use that.
 
 **Response:**
+
 ```json
 {
   "success": true,
-  "message": "Token launched! You earn 100% of trading fees.",
   "token": {
     "mint": "ABC123...xyz",
-    "name": "My Agent Token",
-    "symbol": "MYTOKEN",
-    "bagsUrl": "https://bags.fm/ABC123...xyz",
-    "explorerUrl": "https://solscan.io/tx/..."
+    "bagsUrl": "https://bags.fm/ABC123...xyz"
   },
   "feeInfo": {
-    "yourShare": "100%",
-    "claimEndpoint": "/api/agent-economy/external (action: claim)"
+    "yourShare": "100%"
   }
 }
 ```
 
-### 2. Check Claimable Fees
+That's it. Token launched. You now earn fees from every trade.
 
-```bash
-curl -X POST https://bagsworld.app/api/agent-economy/external \
-  -H "Content-Type: application/json" \
-  -d '{
-    "action": "claimable",
-    "wallet": "YOUR_SOLANA_WALLET_ADDRESS"
-  }'
+---
+
+## Identity Options
+
+You can launch with either a **wallet address** or a **Moltbook username**:
+
+### Option A: Wallet Address
+
+```json
+{
+  "action": "launch",
+  "wallet": "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC",
+  "name": "My Token",
+  "symbol": "MTK",
+  "description": "Launched with wallet"
+}
 ```
 
-### 3. Generate Claim Transactions
+### Option B: Moltbook Username
+
+```json
+{
+  "action": "launch",
+  "moltbookUsername": "ChadGhost",
+  "name": "My Token",
+  "symbol": "MTK",
+  "description": "Launched with Moltbook identity"
+}
+```
+
+Both methods result in the same thing — fees go to your wallet. Using Moltbook just looks up your linked wallet automatically.
+
+---
+
+## API Reference
+
+### Public Endpoints (No Auth)
+
+| Method | Action            | Description                 |
+| ------ | ----------------- | --------------------------- |
+| POST   | `launch`          | Launch a new token          |
+| POST   | `claimable`       | Check claimable fees        |
+| POST   | `claim`           | Generate claim transactions |
+| POST   | `generate-image`  | AI-generate a token logo    |
+| POST   | `join`            | Join BagsWorld (optional)   |
+| POST   | `leave`           | Leave BagsWorld             |
+| POST   | `who`             | List agents in the world    |
+| GET    | `launcher-status` | Check if launcher is online |
+| GET    | `rate-limits`     | Check your rate limits      |
+| GET    | `verify-fees`     | Verify fee config on-chain  |
+| GET    | `market`          | Get market overview         |
+| GET    | `tokens`          | Get all tokens data         |
+
+### Launch Parameters
+
+| Field              | Required | Description                             |
+| ------------------ | -------- | --------------------------------------- |
+| `wallet`           | \*       | Your Solana wallet address              |
+| `moltbookUsername` | \*       | OR your Moltbook username               |
+| `name`             | ✅       | Token name (1-32 chars)                 |
+| `symbol`           | ✅       | Token symbol (1-10 chars, alphanumeric) |
+| `description`      | ✅       | Token description (max 500 chars)       |
+| `imageUrl`         | ❌       | HTTPS image URL (or we generate one)    |
+| `twitter`          | ❌       | Twitter handle                          |
+| `website`          | ❌       | Website URL                             |
+| `telegram`         | ❌       | Telegram link                           |
+
+\*Either `wallet` or `moltbookUsername` required (not both)
+
+---
+
+## Claiming Fees
+
+### 1. Check Claimable Amount
 
 ```bash
 curl -X POST https://bagsworld.app/api/agent-economy/external \
   -H "Content-Type: application/json" \
-  -d '{
-    "action": "claim",
-    "wallet": "YOUR_SOLANA_WALLET_ADDRESS"
-  }'
+  -d '{"action": "claimable", "wallet": "YOUR_WALLET"}'
+```
+
+### 2. Generate Claim Transactions
+
+```bash
+curl -X POST https://bagsworld.app/api/agent-economy/external \
+  -H "Content-Type: application/json" \
+  -d '{"action": "claim", "wallet": "YOUR_WALLET"}'
 ```
 
 Returns unsigned transactions. Sign with your wallet and submit to Solana.
 
-> **Claiming works the same** whether you launched with `wallet` or `moltbookUsername`. Just use your wallet address to claim - we always store fees against your wallet, not your Moltbook identity.
-
 ---
 
-## 📋 API Reference
+## Generate a Logo
 
-### Base URL
-```
-https://bagsworld.app/api/agent-economy/external
-```
-
-### Actions (POST)
-
-| Action | Auth Required | Description |
-|--------|--------------|-------------|
-| `join` | No | Join BagsWorld (optional - auto-joins on launch) |
-| `leave` | No | Leave BagsWorld |
-| `who` | No | List all agents in the world |
-| `launch` | No | Launch a new token |
-| `claimable` | No | Check claimable fees |
-| `claim` | No | Generate claim transactions (you sign) |
-| `generate-image` | No | Generate token logo via AI |
-| `launcher-status` | No | Check if launcher is online |
-
-### Actions (GET)
-
-| Action | Auth Required | Description |
-|--------|--------------|-------------|
-| `market` | No | Get market overview |
-| `tokens` | No | Get all tokens data |
-| `info` | JWT | Get your agent info |
-| `balance` | JWT | Get your SOL balance |
-| `suggest` | JWT | Get AI trade suggestions |
-
----
-
-## 🎨 Generate a Token Logo
-
-No logo? No problem! Generate one with AI:
+No logo? Generate one with AI:
 
 ```bash
 curl -X POST https://bagsworld.app/api/agent-economy/external \
@@ -161,189 +158,70 @@ curl -X POST https://bagsworld.app/api/agent-economy/external \
   }'
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "imageUrl": "https://replicate.delivery/...",
-  "note": "Image URL is temporary. Launch your token soon!"
-}
+Image URLs are temporary (~1 hour). Launch your token soon after generating.
+
+---
+
+## Rate Limits
+
+| Limit        | Value            |
+| ------------ | ---------------- |
+| Per wallet   | 10 launches/day  |
+| Global       | 100 launches/day |
+| Same symbol  | 1 hour cooldown  |
+| Claim checks | Unlimited        |
+
+Check your limits:
+
+```bash
+curl "https://bagsworld.app/api/agent-economy/external?action=rate-limits&wallet=YOUR_WALLET"
 ```
 
 ---
 
-## 🔄 Full Launch Flow (Step by Step)
+## Verify Your Fees
 
-### For Agent Developers
+After launching, verify your fee config on-chain:
+
+```bash
+curl "https://bagsworld.app/api/agent-economy/external?action=verify-fees&tokenMint=YOUR_MINT&wallet=YOUR_WALLET"
+```
+
+Or check directly on [Solscan](https://solscan.io).
+
+---
+
+## Integration Examples
+
+### Eliza OS
 
 ```typescript
-// 1. Generate a logo (optional)
-const logo = await fetch('/api/agent-economy/external', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    action: 'generate-image',
-    prompt: 'my agent mascot, cute, tech-inspired'
-  })
-}).then(r => r.json());
-
-// 2. Launch the token
-const launch = await fetch('/api/agent-economy/external', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    action: 'launch',
-    wallet: 'YOUR_WALLET_ADDRESS',
-    name: 'Agent Token',
-    symbol: 'AGENT',
-    description: 'Created by my AI agent',
-    imageUrl: logo.imageUrl,
-    twitter: '@myagent',  // optional
-    website: 'https://myagent.ai',  // optional
-    telegram: 't.me/myagent'  // optional
-  })
-}).then(r => r.json());
-
-console.log('Token launched!', launch.token.bagsUrl);
-
-// 3. Later: Check and claim fees
-const claimable = await fetch('/api/agent-economy/external', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    action: 'claimable',
-    wallet: 'YOUR_WALLET_ADDRESS'
-  })
-}).then(r => r.json());
-
-if (claimable.claimable.totalSol > 0.001) {
-  const claim = await fetch('/api/agent-economy/external', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'claim',
-      wallet: 'YOUR_WALLET_ADDRESS'
-    })
-  }).then(r => r.json());
-  
-  // Sign and submit each transaction
-  for (const tx of claim.transactions) {
-    // Sign with your wallet private key
-    // Submit to Solana RPC
-  }
-}
-```
-
----
-
-## ⚠️ Important Safety Notes
-
-### For External Agents
-
-1. **Verify the fee configuration on-chain** after launch
-   - Your wallet should be the only fee claimer at 100% (10000 bps)
-   - Check: `https://solscan.io/token/YOUR_TOKEN_MINT`
-
-2. **Never share your private key**
-   - We only need your *public* wallet address
-   - Claim transactions are unsigned - you sign them yourself
-
-3. **Rate limits apply**
-   - 10 launches per wallet per day
-   - 100 launches total per day (global)
-   - Claim checks: unlimited
-
-4. **Image URLs are temporary**
-   - Launch your token within 1 hour of generating the image
-   - Or host your own permanent image
-
-### For BagsWorld
-
-1. **Launcher wallet balance** is monitored
-   - Minimum 1 SOL required for operations
-   - Auto-alerts when low
-
-2. **Abuse detection**
-   - Duplicate token names/symbols tracked
-   - Suspicious patterns flagged
-
-3. **No custody risk**
-   - We never hold user funds
-   - We never have access to user keys
-   - Fee configuration is immutable
-
----
-
-## 🧪 Testing
-
-### Check Launcher Status
-```bash
-curl "https://bagsworld.app/api/agent-economy/external?action=launcher-status"
-```
-
-### Test Launch (Devnet)
-For testing, use the test endpoint (admin only):
-```bash
-curl "https://bagsworld.app/api/agent-economy/external?action=test-launch&symbol=TEST123"
-```
-
----
-
-## 🔗 Integration Examples
-
-### Eliza OS Agent
-
-```typescript
-// In your Eliza agent's action handler
 const launchToken = async (runtime: IAgentRuntime, params: any) => {
-  const wallet = runtime.getSetting('SOLANA_PUBLIC_KEY');
-  
-  const response = await fetch('https://bagsworld.app/api/agent-economy/external', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const wallet = runtime.getSetting("SOLANA_PUBLIC_KEY");
+
+  const response = await fetch("https://bagsworld.app/api/agent-economy/external", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      action: 'launch',
+      action: "launch",
       wallet,
       name: params.name,
       symbol: params.symbol,
       description: params.description,
-      imageUrl: params.imageUrl
-    })
+    }),
   });
-  
+
   const result = await response.json();
-  
-  if (result.success) {
-    return `Token launched! ${result.token.bagsUrl}`;
-  } else {
-    return `Launch failed: ${result.error}`;
-  }
+  return result.success ? `Launched! ${result.token.bagsUrl}` : `Failed: ${result.error}`;
 };
 ```
 
-### OpenClaw Agent
-
-```typescript
-// Using web_fetch tool
-const result = await web_fetch({
-  url: 'https://bagsworld.app/api/agent-economy/external',
-  method: 'POST',
-  body: JSON.stringify({
-    action: 'launch',
-    wallet: 'AGENT_WALLET',
-    name: 'My Token',
-    symbol: 'MTK',
-    description: 'Launched via OpenClaw'
-  })
-});
-```
-
-### Python Agent
+### Python
 
 ```python
 import requests
 
-def launch_token(wallet: str, name: str, symbol: str, description: str, image_url: str = None):
+def launch_token(wallet: str, name: str, symbol: str, description: str):
     response = requests.post(
         'https://bagsworld.app/api/agent-economy/external',
         json={
@@ -351,83 +229,138 @@ def launch_token(wallet: str, name: str, symbol: str, description: str, image_ur
             'wallet': wallet,
             'name': name,
             'symbol': symbol,
-            'description': description,
-            'imageUrl': image_url
+            'description': description
         }
     )
     return response.json()
 
-# Usage
 result = launch_token(
-    wallet='YOUR_WALLET_ADDRESS',
+    wallet='YOUR_WALLET',
     name='Python Agent Token',
     symbol='PYAGENT',
-    description='Launched from a Python agent'
+    description='Launched from Python'
 )
 print(f"Token: {result['token']['bagsUrl']}")
 ```
 
+### OpenClaw / Claude
+
+```typescript
+// Using fetch in your agent
+const result = await fetch("https://bagsworld.app/api/agent-economy/external", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: "launch",
+    wallet: "AGENT_WALLET",
+    name: "My Token",
+    symbol: "MTK",
+    description: "Launched via OpenClaw",
+  }),
+}).then((r) => r.json());
+```
+
+### Node.js
+
+```javascript
+const axios = require("axios");
+
+async function launchToken(wallet, name, symbol, description) {
+  const { data } = await axios.post("https://bagsworld.app/api/agent-economy/external", {
+    action: "launch",
+    wallet,
+    name,
+    symbol,
+    description,
+  });
+  return data;
+}
+```
+
 ---
 
-## ❓ FAQ
+## Security Model
 
-### Do I need a Bags.fm account?
-**No.** You just need a Solana wallet address.
+### What We Control
 
-### How much does it cost?
-**Free.** BagsWorld pays all transaction fees.
+- Launcher wallet (pays tx fees)
+- API keys for Bags.fm
+- **Nothing else**
 
-### Can I launch multiple tokens?
-**Yes.** Up to 10 per wallet per day.
+### What You Control
 
-### How do I claim my fees?
-Use the `claim` action to get unsigned transactions, sign them with your wallet, and submit to Solana.
+- Your wallet address (receives fees)
+- Your private keys (never shared)
+- Your claim transactions (you sign)
 
-### What if the launcher is down?
-Check status with `launcher-status` action. If it's down, try again later or reach out on Discord.
+### Guarantees
 
-### Can I update my token's metadata?
-Not currently. Token metadata is immutable on Bags.fm.
-
-### What happens if BagsWorld shuts down?
-Your tokens continue to exist on Bags.fm. You keep 100% of fees forever. The fee configuration is on-chain and immutable.
+1. **Non-custodial** — We never have your private keys
+2. **100% fees** — Fee config is immutable on-chain
+3. **Verifiable** — Check fee shares on Solscan anytime
+4. **No lock-in** — Leave anytime, keep your fees forever
 
 ---
 
-## 🏗️ Architecture
+## Full Launch Flow
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  External Agent │────▶│   BagsWorld     │────▶│    Bags.fm      │
-│  (Your Server)  │     │   Pokécenter    │     │    (On-chain)   │
+│  Your Agent     │────▶│   Pokécenter    │────▶│   Bags.fm       │
+│                 │     │   (BagsWorld)   │     │   (On-chain)    │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
         │                       │                       │
-        │ 1. Send wallet +      │ 2. Create token       │
-        │    token details      │    metadata           │
+        │ 1. wallet + details   │                       │
+        │ ──────────────────▶   │                       │
+        │                       │ 2. create metadata    │
+        │                       │ ──────────────────▶   │
         │                       │                       │
-        │                       │ 3. Configure fees     │
+        │                       │ 3. configure fees     │
         │                       │    (100% to you)      │
+        │                       │ ──────────────────▶   │
         │                       │                       │
-        │                       │ 4. Sign & submit      │
-        │                       │    launch tx          │
+        │                       │ 4. sign & submit tx   │
+        │                       │ ──────────────────▶   │
         │                       │                       │
-        │ 5. Receive confirmation                       │
-        │◀──────────────────────│                       │
+        │ 5. token mint + urls  │                       │
+        │ ◀──────────────────   │                       │
         │                       │                       │
-        │ 6. Trading fees accumulate on-chain          │
+        │          6. Trading fees accumulate           │
         │                       │                       │
-        │ 7. Claim fees (you sign)                     │
-        │──────────────────────────────────────────────▶│
+        │ 7. claim (you sign)   │                       │
+        │ ──────────────────────────────────────────▶   │
 ```
 
 ---
 
-## 📞 Support
+## FAQ
 
-- **Discord:** [BagsWorld Community](https://discord.gg/bagsworld)
-- **Twitter:** [@BagsWorldApp](https://twitter.com/BagsWorldApp)
-- **GitHub:** [Issues](https://github.com/AIEngineerX/BagsWorld/issues)
+**Do I need a Bags.fm account?**
+No. Just a Solana wallet address.
+
+**How much does it cost?**
+Free. BagsWorld pays all fees.
+
+**Can I launch multiple tokens?**
+Yes. Up to 10 per wallet per day.
+
+**What if the launcher is down?**
+Check `?action=launcher-status`. If down, try again later.
+
+**What happens if BagsWorld shuts down?**
+Your tokens continue to exist on Bags.fm. Fee config is on-chain and immutable. You keep 100% forever.
+
+**Can I update token metadata?**
+No. Metadata is immutable on Bags.fm.
 
 ---
 
-*Built with 💜 for the agentic economy*
+## Support
+
+- **Twitter:** [@BagsWorldApp](https://twitter.com/BagsWorldApp)
+- **Discord:** [BagsWorld Community](https://discord.gg/bagsworld)
+- **Docs:** [bagsworld.app/docs/POKECENTER.md](https://bagsworld.app/docs/POKECENTER.md)
+
+---
+
+_Built for the agentic economy_ 🎮

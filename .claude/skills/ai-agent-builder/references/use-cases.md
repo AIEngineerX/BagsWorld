@@ -5,10 +5,10 @@
 Monitors token prices and alerts on threshold.
 
 ```javascript
-import Anthropic from '@anthropic-ai/sdk';
+import Anthropic from "@anthropic-ai/sdk";
 
 const CONFIG = {
-  tokenAddress: 'YOUR_TOKEN_ADDRESS',
+  tokenAddress: "YOUR_TOKEN_ADDRESS",
   alertThresholds: { above: 0.01, below: 0.005 },
   checkInterval: 60000, // 1 minute
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
@@ -23,21 +23,21 @@ async function getPrice(tokenAddress) {
 
 async function sendAlert(message) {
   await fetch(`https://api.telegram.org/bot${CONFIG.telegramBotToken}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: CONFIG.telegramChatId, text: message }),
   });
 }
 
 async function monitor() {
   let lastAlert = 0;
-  
+
   setInterval(async () => {
     const price = await getPrice(CONFIG.tokenAddress);
     const now = Date.now();
-    
+
     if (now - lastAlert < 300000) return; // 5 min cooldown
-    
+
     if (price > CONFIG.alertThresholds.above) {
       await sendAlert(`🚀 Price above $${CONFIG.alertThresholds.above}: $${price}`);
       lastAlert = now;
@@ -57,16 +57,20 @@ Posts content and engages on Twitter/X.
 
 ```javascript
 const CONFIG = {
-  objective: 'Post daily crypto insights and engage with community',
-  postSchedule: '0 9,15,21 * * *', // 9am, 3pm, 9pm
+  objective: "Post daily crypto insights and engage with community",
+  postSchedule: "0 9,15,21 * * *", // 9am, 3pm, 9pm
 };
 
 const tools = [
-  { name: 'compose_tweet', description: 'Write a tweet', input: { topic: 'string' } },
-  { name: 'post_tweet', description: 'Post to Twitter', input: { content: 'string' } },
-  { name: 'search_mentions', description: 'Find mentions to reply to' },
-  { name: 'reply_tweet', description: 'Reply to a tweet', input: { tweetId: 'string', content: 'string' } },
-  { name: 'analyze_engagement', description: 'Check recent post performance' },
+  { name: "compose_tweet", description: "Write a tweet", input: { topic: "string" } },
+  { name: "post_tweet", description: "Post to Twitter", input: { content: "string" } },
+  { name: "search_mentions", description: "Find mentions to reply to" },
+  {
+    name: "reply_tweet",
+    description: "Reply to a tweet",
+    input: { tweetId: "string", content: "string" },
+  },
+  { name: "analyze_engagement", description: "Check recent post performance" },
 ];
 
 async function runSocialAgent(claude) {
@@ -86,35 +90,35 @@ Rules:
   // Daily routine
   const routine = async () => {
     // 1. Check engagement on recent posts
-    const engagement = await executeAction('analyze_engagement');
-    
+    const engagement = await executeAction("analyze_engagement");
+
     // 2. Compose new content based on trends
     const topic = await claude.decide(
       systemPrompt,
       `Current engagement: ${engagement}\nWhat topic should I post about?`,
       tools
     );
-    
+
     // 3. Post
-    if (topic.tool === 'compose_tweet') {
+    if (topic.tool === "compose_tweet") {
       const tweet = await claude.decide(
         systemPrompt,
         `Write a tweet about: ${topic.input.topic}`,
         tools
       );
-      await executeAction('post_tweet', tweet.input);
+      await executeAction("post_tweet", tweet.input);
     }
-    
+
     // 4. Engage with mentions
-    const mentions = await executeAction('search_mentions');
+    const mentions = await executeAction("search_mentions");
     for (const mention of mentions.slice(0, 5)) {
       const reply = await claude.decide(
         systemPrompt,
         `Reply to this mention: "${mention.text}"`,
         tools
       );
-      if (reply.tool === 'reply_tweet') {
-        await executeAction('reply_tweet', reply.input);
+      if (reply.tool === "reply_tweet") {
+        await executeAction("reply_tweet", reply.input);
       }
     }
   };
@@ -130,12 +134,20 @@ Gathers and synthesizes information from multiple sources.
 
 ```javascript
 const tools = [
-  { name: 'web_search', description: 'Search the web', input: { query: 'string' } },
-  { name: 'fetch_page', description: 'Get page content', input: { url: 'string' } },
-  { name: 'extract_data', description: 'Extract structured data', input: { content: 'string', schema: 'string' } },
-  { name: 'save_finding', description: 'Save a research finding', input: { finding: 'string', source: 'string' } },
-  { name: 'generate_report', description: 'Compile findings into report' },
-  { name: 'complete', description: 'Research complete', input: { summary: 'string' } },
+  { name: "web_search", description: "Search the web", input: { query: "string" } },
+  { name: "fetch_page", description: "Get page content", input: { url: "string" } },
+  {
+    name: "extract_data",
+    description: "Extract structured data",
+    input: { content: "string", schema: "string" },
+  },
+  {
+    name: "save_finding",
+    description: "Save a research finding",
+    input: { finding: "string", source: "string" },
+  },
+  { name: "generate_report", description: "Compile findings into report" },
+  { name: "complete", description: "Research complete", input: { summary: "string" } },
 ];
 
 async function researchAgent(claude, topic) {
@@ -166,11 +178,11 @@ Be thorough but efficient. Cite sources.
     memory.addAction(decision.tool, decision.input);
     memory.addObservation(result);
 
-    if (decision.tool === 'save_finding') {
+    if (decision.tool === "save_finding") {
       findings.push(decision.input);
     }
 
-    if (decision.tool === 'complete') {
+    if (decision.tool === "complete") {
       return { findings, summary: decision.input.summary };
     }
   }
@@ -183,8 +195,8 @@ Analyzes market data and generates trading signals.
 
 ```javascript
 const CONFIG = {
-  tokens: ['TOKEN1_ADDRESS', 'TOKEN2_ADDRESS'],
-  indicators: ['price_change', 'volume_spike', 'holder_growth'],
+  tokens: ["TOKEN1_ADDRESS", "TOKEN2_ADDRESS"],
+  indicators: ["price_change", "volume_spike", "holder_growth"],
   signalThresholds: {
     bullish: { priceChange: 10, volumeSpike: 200 },
     bearish: { priceChange: -10, volumeSpike: 150 },
@@ -193,11 +205,11 @@ const CONFIG = {
 
 async function getMarketData(tokenAddress) {
   const [dex, holders] = await Promise.all([
-    fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`).then(r => r.json()),
+    fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`).then((r) => r.json()),
     fetch(`https://api.helius.xyz/v0/token-metadata?api-key=${process.env.HELIUS_KEY}`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ mintAccounts: [tokenAddress] }),
-    }).then(r => r.json()),
+    }).then((r) => r.json()),
   ]);
 
   const pair = dex.pairs?.[0];
@@ -225,7 +237,13 @@ Output format: { signal: 'bullish'|'bearish'|'neutral', confidence: 0-100, reaso
   const response = await claude.decide(
     systemPrompt,
     `Market data:\n${JSON.stringify(marketData, null, 2)}`,
-    [{ name: 'generate_signal', description: 'Output trading signal', input: { signal: 'string', confidence: 'number', reasoning: 'string' } }]
+    [
+      {
+        name: "generate_signal",
+        description: "Output trading signal",
+        input: { signal: "string", confidence: "number", reasoning: "string" },
+      },
+    ]
   );
 
   return response.input;
@@ -235,9 +253,11 @@ async function tradingAgent() {
   for (const token of CONFIG.tokens) {
     const data = await getMarketData(token);
     const signal = await analyzeSignals(claude, data);
-    
+
     if (signal.confidence > 70) {
-      await sendAlert(`${signal.signal.toUpperCase()} signal for ${token}\nConfidence: ${signal.confidence}%\n${signal.reasoning}`);
+      await sendAlert(
+        `${signal.signal.toUpperCase()} signal for ${token}\nConfidence: ${signal.confidence}%\n${signal.reasoning}`
+      );
     }
   }
 }
@@ -250,12 +270,16 @@ Automatically fills web forms.
 ```javascript
 async function formFillerAgent(page, claude, formData) {
   const tools = [
-    { name: 'identify_fields', description: 'Find form fields on page' },
-    { name: 'fill_field', description: 'Fill a form field', input: { selector: 'string', value: 'string' } },
-    { name: 'click_button', description: 'Click button', input: { selector: 'string' } },
-    { name: 'verify_filled', description: 'Check if form is complete' },
-    { name: 'submit', description: 'Submit the form' },
-    { name: 'complete', description: 'Done', input: { summary: 'string' } },
+    { name: "identify_fields", description: "Find form fields on page" },
+    {
+      name: "fill_field",
+      description: "Fill a form field",
+      input: { selector: "string", value: "string" },
+    },
+    { name: "click_button", description: "Click button", input: { selector: "string" } },
+    { name: "verify_filled", description: "Check if form is complete" },
+    { name: "submit", description: "Submit the form" },
+    { name: "complete", description: "Done", input: { summary: "string" } },
   ];
 
   const systemPrompt = `
@@ -274,7 +298,7 @@ Rules:
   const memory = new ShortTermMemory();
 
   for (let step = 0; step < 20; step++) {
-    const screenshot = await page.screenshot({ encoding: 'base64' });
+    const screenshot = await page.screenshot({ encoding: "base64" });
     const html = await page.content();
 
     const decision = await claude.decide(
@@ -283,13 +307,13 @@ Rules:
       tools
     );
 
-    if (decision.tool === 'fill_field') {
+    if (decision.tool === "fill_field") {
       await page.fill(decision.input.selector, decision.input.value);
-    } else if (decision.tool === 'click_button') {
+    } else if (decision.tool === "click_button") {
       await page.click(decision.input.selector);
-    } else if (decision.tool === 'submit') {
+    } else if (decision.tool === "submit") {
       await page.click('button[type="submit"], input[type="submit"]');
-    } else if (decision.tool === 'complete') {
+    } else if (decision.tool === "complete") {
       return { success: true, summary: decision.input.summary };
     }
 

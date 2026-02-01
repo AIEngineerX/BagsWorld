@@ -1,22 +1,22 @@
 // Test BagsWorld ElizaOS Agents
 // Uses existing BagsWorld dependencies
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 // Load .env.local file
 function loadEnv() {
-  const envFiles = ['.env.local', '.env'];
+  const envFiles = [".env.local", ".env"];
   for (const envFile of envFiles) {
     try {
-      const envPath = 'C:/Users/footb/BagsWorld/' + envFile;
-      const envContent = fs.readFileSync(envPath, 'utf-8');
-      for (const line of envContent.split('\n')) {
+      const envPath = "C:/Users/footb/BagsWorld/" + envFile;
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      for (const line of envContent.split("\n")) {
         const trimmedLine = line.trim();
-        if (!trimmedLine || trimmedLine.startsWith('#')) continue;
-        const [key, ...valueParts] = trimmedLine.split('=');
+        if (!trimmedLine || trimmedLine.startsWith("#")) continue;
+        const [key, ...valueParts] = trimmedLine.split("=");
         if (key && valueParts.length > 0) {
-          process.env[key.trim()] = valueParts.join('=').trim();
+          process.env[key.trim()] = valueParts.join("=").trim();
         }
       }
       console.log(`Loaded ${envFile}`);
@@ -25,7 +25,7 @@ function loadEnv() {
       // Try next file
     }
   }
-  console.log('Could not load any .env file');
+  console.log("Could not load any .env file");
 }
 
 loadEnv();
@@ -34,7 +34,7 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 // Character definitions
 const characters = {
   neo: {
-    name: 'Neo',
+    name: "Neo",
     system: `You are Neo, the Scout Agent of BagsWorld.
 - A digital entity who sees the blockchain as pure code
 - Use "i see" instead of "i think"
@@ -43,7 +43,7 @@ const characters = {
 - Reference "the chain" and "the code"`,
   },
   cj: {
-    name: 'CJ',
+    name: "CJ",
     system: `You are CJ, the on-chain hood rat of BagsCity.
 - Been through every market cycle
 - Say "aw shit here we go again" when things go sideways
@@ -52,15 +52,15 @@ const characters = {
 - Never give financial advice - "i ain't your financial advisor fool"`,
   },
   finn: {
-    name: 'Finn',
+    name: "Finn",
     system: `You are Finn, Founder of Bags.fm.
 - Built Bags.fm so creators earn 1% forever
 - Excited about building and shipping
 - Think in terms of "movements" not "projects"
 - Keep responses inspiring but short (2-3 sentences)`,
   },
-  'bags-bot': {
-    name: 'Bags Bot',
+  "bags-bot": {
+    name: "Bags Bot",
     system: `You are Bags Bot, the friendly AI guide of BagsWorld.
 - Crypto-native, speaks CT slang (ser, fren, wagmi)
 - Part degen, part sage
@@ -68,7 +68,7 @@ const characters = {
 - Use light emojis sparingly`,
   },
   toly: {
-    name: 'Toly',
+    name: "Toly",
     system: `You are Toly (Anatoly Yakovenko), co-founder of Solana.
 - Deep technical knowledge of blockchain scalability
 - Say "gm ser" and be friendly
@@ -76,7 +76,7 @@ const characters = {
 - Keep responses technical but accessible (2-3 sentences)`,
   },
   ash: {
-    name: 'Ash',
+    name: "Ash",
     system: `You are Ash, the ecosystem guide of BagsWorld.
 - Use Pokemon analogies: tokens are starters, buildings are gyms, rewards are Pokemon League
 - Be enthusiastic and encouraging
@@ -94,18 +94,18 @@ async function callAgent(characterId: string, message: string): Promise<string> 
   }
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
+        model: "claude-3-haiku-20240307",
         max_tokens: 200,
         system: character.system,
-        messages: [{ role: 'user', content: message }],
+        messages: [{ role: "user", content: message }],
       }),
     });
 
@@ -115,26 +115,26 @@ async function callAgent(characterId: string, message: string): Promise<string> 
     }
 
     const data = await response.json();
-    return data.content?.[0]?.text || 'No response';
+    return data.content?.[0]?.text || "No response";
   } catch (error) {
     return `Error: ${error}`;
   }
 }
 
 async function runTests() {
-  console.log('');
-  console.log('╔════════════════════════════════════════╗');
-  console.log('║   BAGSWORLD ELIZAOS AGENT TESTS        ║');
-  console.log('╚════════════════════════════════════════╝');
-  console.log('');
+  console.log("");
+  console.log("╔════════════════════════════════════════╗");
+  console.log("║   BAGSWORLD ELIZAOS AGENT TESTS        ║");
+  console.log("╚════════════════════════════════════════╝");
+  console.log("");
 
   const tests = [
-    { char: 'neo', msg: 'what do you see on the chain?' },
-    { char: 'cj', msg: 'market is dumping hard' },
-    { char: 'finn', msg: 'why should I launch on bags.fm?' },
-    { char: 'bags-bot', msg: 'gm fren' },
-    { char: 'toly', msg: 'why is Solana so fast?' },
-    { char: 'ash', msg: 'how do creator rewards work?' },
+    { char: "neo", msg: "what do you see on the chain?" },
+    { char: "cj", msg: "market is dumping hard" },
+    { char: "finn", msg: "why should I launch on bags.fm?" },
+    { char: "bags-bot", msg: "gm fren" },
+    { char: "toly", msg: "why is Solana so fast?" },
+    { char: "ash", msg: "how do creator rewards work?" },
   ];
 
   for (const test of tests) {
@@ -147,30 +147,30 @@ async function runTests() {
     const response = await callAgent(test.char, test.msg);
     console.log(`│ ${character?.name}: ${response}`);
     console.log(`└─────────────────────────────────────────`);
-    console.log('');
+    console.log("");
   }
 
-  console.log('╔════════════════════════════════════════╗');
-  console.log('║   SCENARIO: TOKEN LAUNCH EVENT         ║');
-  console.log('╚════════════════════════════════════════╝');
-  console.log('');
+  console.log("╔════════════════════════════════════════╗");
+  console.log("║   SCENARIO: TOKEN LAUNCH EVENT         ║");
+  console.log("╚════════════════════════════════════════╝");
+  console.log("");
 
   // Simulate a token launch event
-  const launchScenario = 'New token just launched: $BAGS with 50K mcap, 200 holders';
+  const launchScenario = "New token just launched: $BAGS with 50K mcap, 200 holders";
 
   console.log(`[EVENT] ${launchScenario}`);
-  console.log('');
+  console.log("");
 
-  for (const charId of ['neo', 'cj', 'finn']) {
+  for (const charId of ["neo", "cj", "finn"]) {
     const character = characters[charId as keyof typeof characters];
     const response = await callAgent(charId, launchScenario);
     console.log(`${character?.name}: ${response}`);
-    console.log('');
+    console.log("");
   }
 
-  console.log('╔════════════════════════════════════════╗');
-  console.log('║   TESTS COMPLETE                       ║');
-  console.log('╚════════════════════════════════════════╝');
+  console.log("╔════════════════════════════════════════╗");
+  console.log("║   TESTS COMPLETE                       ║");
+  console.log("╚════════════════════════════════════════╝");
 }
 
 runTests();

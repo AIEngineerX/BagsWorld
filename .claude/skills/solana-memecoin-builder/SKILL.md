@@ -10,7 +10,9 @@ Build production-ready Solana memecoin websites from concept to deployment.
 ## Workflow
 
 ### 1. Gather Requirements
+
 Extract from user's idea:
+
 - Core functionality (launch page, dashboard, utility, game)
 - Data needs (price, volume, holders, transactions)
 - Wallet interactions (connect only, sign, transact)
@@ -19,16 +21,19 @@ Extract from user's idea:
 ### 2. Architecture Decision
 
 **Static Site (HTML/CSS/JS)** — Use when:
+
 - Single page, no routing needed
 - Simple wallet connect + data display
 - Maximum performance, minimal complexity
 
 **React/Vite SPA** — Use when:
+
 - Multiple pages/views
 - Complex state management
 - Heavy interactivity or real-time updates
 
 ### 3. Implementation Order
+
 1. Project scaffold with wallet adapter setup
 2. Core UI layout and styling
 3. Wallet connection flow
@@ -40,14 +45,15 @@ Extract from user's idea:
 ## Core Patterns
 
 ### Wallet Connection (Phantom)
+
 ```javascript
 // Check and connect
 const getProvider = () => {
-  if ('phantom' in window) {
+  if ("phantom" in window) {
     const provider = window.phantom?.solana;
     if (provider?.isPhantom) return provider;
   }
-  window.open('https://phantom.app/', '_blank');
+  window.open("https://phantom.app/", "_blank");
 };
 
 const connect = async () => {
@@ -64,15 +70,16 @@ const disconnect = async () => {
 ```
 
 ### Read Token Balance
+
 ```javascript
-import { Connection, PublicKey } from '@solana/web3.js';
-import { getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
+import { Connection, PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddress, getAccount } from "@solana/spl-token";
 
 const getTokenBalance = async (walletAddress, tokenMint) => {
-  const connection = new Connection('https://api.mainnet-beta.solana.com');
+  const connection = new Connection("https://api.mainnet-beta.solana.com");
   const wallet = new PublicKey(walletAddress);
   const mint = new PublicKey(tokenMint);
-  
+
   const ata = await getAssociatedTokenAddress(mint, wallet);
   try {
     const account = await getAccount(connection, ata);
@@ -84,6 +91,7 @@ const getTokenBalance = async (walletAddress, tokenMint) => {
 ```
 
 ### DexScreener API (Primary Data Source)
+
 ```javascript
 // Token data by address
 const getTokenData = async (tokenAddress) => {
@@ -96,15 +104,18 @@ const getTokenData = async (tokenAddress) => {
 ```
 
 ### PumpPortal WebSocket (Pump.fun Data)
+
 ```javascript
-const ws = new WebSocket('wss://pumpportal.fun/api/data');
+const ws = new WebSocket("wss://pumpportal.fun/api/data");
 
 ws.onopen = () => {
   // Subscribe to token trades
-  ws.send(JSON.stringify({
-    method: 'subscribeTokenTrade',
-    keys: ['TOKEN_MINT_ADDRESS']
-  }));
+  ws.send(
+    JSON.stringify({
+      method: "subscribeTokenTrade",
+      keys: ["TOKEN_MINT_ADDRESS"],
+    })
+  );
 };
 
 ws.onmessage = (event) => {
@@ -116,6 +127,7 @@ ws.onmessage = (event) => {
 ## File Structure
 
 ### Static Site
+
 ```
 project/
 ├── index.html
@@ -126,6 +138,7 @@ project/
 ```
 
 ### React/Vite
+
 ```
 project/
 ├── index.html

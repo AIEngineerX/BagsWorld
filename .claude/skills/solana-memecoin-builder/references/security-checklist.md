@@ -5,18 +5,21 @@ Mandatory pre-deployment security audit for Solana web applications.
 ## Critical (Must Pass)
 
 ### Private Key Security
+
 - [ ] No private keys anywhere in codebase
 - [ ] No seed phrases in codebase
 - [ ] No `.env` files committed to git
 - [ ] `.gitignore` includes: `.env`, `.env.local`, `*.pem`, `*.key`
 
 ### API Key Protection
+
 - [ ] No API keys hardcoded in frontend JavaScript
 - [ ] RPC endpoints with API keys are proxied through serverless functions
 - [ ] All sensitive keys are in environment variables
 - [ ] Netlify env vars are properly configured
 
 ### Wallet Security
+
 - [ ] Never auto-sign transactions without user confirmation
 - [ ] Always display transaction details before signing
 - [ ] Validate recipient addresses before transactions
@@ -27,6 +30,7 @@ Mandatory pre-deployment security audit for Solana web applications.
 ## High Priority
 
 ### Input Validation
+
 ```javascript
 // Always validate wallet addresses
 const isValidSolanaAddress = (address) => {
@@ -46,6 +50,7 @@ const isValidAmount = (amount, max) => {
 ```
 
 ### XSS Prevention
+
 - [ ] All user inputs are sanitized before display
 - [ ] Token names/symbols are escaped (can contain malicious content)
 - [ ] No `dangerouslySetInnerHTML` without sanitization
@@ -54,16 +59,17 @@ const isValidAmount = (amount, max) => {
 ```javascript
 // Sanitize displayed text
 const sanitize = (str) => {
-  const div = document.createElement('div');
+  const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
 };
 
 // Use in React
-<span>{sanitize(token.name)}</span>
+<span>{sanitize(token.name)}</span>;
 ```
 
 ### Content Security Policy
+
 ```toml
 # netlify.toml
 [[headers]]
@@ -84,26 +90,27 @@ const sanitize = (str) => {
 ## Medium Priority
 
 ### Rate Limiting
+
 ```javascript
 // Client-side rate limiter
 const createRateLimiter = (maxRequests, windowMs) => {
   const requests = [];
-  
+
   return async (fn) => {
     const now = Date.now();
     const windowStart = now - windowMs;
-    
+
     // Remove old requests
     while (requests.length && requests[0] < windowStart) {
       requests.shift();
     }
-    
+
     if (requests.length >= maxRequests) {
       const waitTime = requests[0] + windowMs - now;
-      await new Promise(r => setTimeout(r, waitTime));
+      await new Promise((r) => setTimeout(r, waitTime));
       return createRateLimiter(maxRequests, windowMs)(fn);
     }
-    
+
     requests.push(now);
     return fn();
   };
@@ -113,6 +120,7 @@ const rateLimitedFetch = createRateLimiter(10, 1000); // 10 req/sec
 ```
 
 ### Error Handling
+
 - [ ] All async operations have try/catch
 - [ ] Errors don't expose sensitive information
 - [ ] User-friendly error messages displayed
@@ -123,13 +131,14 @@ const safeAsyncCall = async (fn, fallback = null) => {
   try {
     return await fn();
   } catch (err) {
-    console.error('Operation failed:', err.message);
+    console.error("Operation failed:", err.message);
     return fallback;
   }
 };
 ```
 
 ### HTTPS Enforcement
+
 ```toml
 # netlify.toml
 [[redirects]]
@@ -144,26 +153,27 @@ const safeAsyncCall = async (fn, fallback = null) => {
 ## Data Security
 
 ### Local Storage
+
 - [ ] No private keys in localStorage
 - [ ] No API keys in localStorage
 - [ ] Sensitive session data uses sessionStorage (clears on tab close)
 - [ ] Consider not storing wallet state (re-check on load)
 
 ### URL Parameters
+
 - [ ] No sensitive data in URL parameters
 - [ ] Token addresses in URLs are validated before use
 
 ### External Data
+
 - [ ] API responses are validated before use
 - [ ] Images from external sources use `referrerpolicy="no-referrer"`
 - [ ] Untrusted links have `rel="noopener noreferrer"`
 
 ```html
-<a href={externalUrl} target="_blank" rel="noopener noreferrer">
-  External Link
-</a>
+<a href="{externalUrl}" target="_blank" rel="noopener noreferrer"> External Link </a>
 
-<img src={tokenImage} referrerpolicy="no-referrer" alt={token.name} />
+<img src="{tokenImage}" referrerpolicy="no-referrer" alt="{token.name}" />
 ```
 
 ---
@@ -171,6 +181,7 @@ const safeAsyncCall = async (fn, fallback = null) => {
 ## Deployment Security
 
 ### Environment Variables (Netlify)
+
 ```bash
 # Set via Netlify UI or CLI
 netlify env:set BAGS_API_KEY "your-key-here"
@@ -178,36 +189,38 @@ netlify env:set RPC_URL "https://your-rpc-endpoint"
 ```
 
 ### Serverless Function for Sensitive APIs
+
 ```javascript
 // netlify/functions/proxy-rpc.js
 export async function handler(event) {
   const { method, params } = JSON.parse(event.body);
-  
+
   // Validate request
-  const allowedMethods = ['getBalance', 'getTokenAccountsByOwner'];
+  const allowedMethods = ["getBalance", "getTokenAccountsByOwner"];
   if (!allowedMethods.includes(method)) {
-    return { statusCode: 403, body: 'Method not allowed' };
+    return { statusCode: 403, body: "Method not allowed" };
   }
-  
+
   const response = await fetch(process.env.RPC_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: 1,
       method,
-      params
-    })
+      params,
+    }),
   });
-  
+
   return {
     statusCode: 200,
-    body: await response.text()
+    body: await response.text(),
   };
 }
 ```
 
 ### Build Security
+
 - [ ] Dependencies audited (`npm audit`)
 - [ ] No known vulnerabilities in production deps
 - [ ] Lock file committed (package-lock.json)
@@ -235,9 +248,10 @@ Run through before every deployment:
 ## Common Vulnerabilities to Avoid
 
 ### ❌ Bad Patterns
+
 ```javascript
 // Hardcoded keys
-const RPC = 'https://mainnet.helius-rpc.com/?api-key=abc123';
+const RPC = "https://mainnet.helius-rpc.com/?api-key=abc123";
 
 // Unsanitized display
 element.innerHTML = tokenData.name;
@@ -246,10 +260,11 @@ element.innerHTML = tokenData.name;
 await wallet.signTransaction(tx); // Without user confirmation
 
 // Trusting URL params
-const amount = urlParams.get('amount'); // Use directly
+const amount = urlParams.get("amount"); // Use directly
 ```
 
 ### ✅ Good Patterns
+
 ```javascript
 // Env vars (server-side only)
 const RPC = process.env.RPC_URL;
@@ -263,8 +278,8 @@ if (confirm(`Send ${amount} SOL to ${address}?`)) {
 }
 
 // Validate URL params
-const amount = parseFloat(urlParams.get('amount'));
+const amount = parseFloat(urlParams.get("amount"));
 if (isNaN(amount) || amount <= 0 || amount > MAX_AMOUNT) {
-  throw new Error('Invalid amount');
+  throw new Error("Invalid amount");
 }
 ```

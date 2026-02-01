@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { colyseusManager, getColyseusServerUrl, PlayerState, ChatMessageState } from "@/lib/colyseus-client";
+import {
+  colyseusManager,
+  getColyseusServerUrl,
+  PlayerState,
+  ChatMessageState,
+} from "@/lib/colyseus-client";
 import type { ZoneType } from "@/lib/types";
 
 interface UseMultiplayerOptions {
@@ -78,26 +83,29 @@ export function useMultiplayer(options: UseMultiplayerOptions): UseMultiplayerRe
   }, []);
 
   // Join a different zone
-  const joinZone = useCallback(async (zone: ZoneType) => {
-    if (!walletAddress) return;
+  const joinZone = useCallback(
+    async (zone: ZoneType) => {
+      if (!walletAddress) return;
 
-    currentZoneRef.current = zone;
+      currentZoneRef.current = zone;
 
-    if (isConnected) {
-      setIsConnecting(true);
-      try {
-        await colyseusManager.joinZone(zone, {
-          walletAddress,
-          displayName,
-          skinVariant,
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to join zone");
-      } finally {
-        setIsConnecting(false);
+      if (isConnected) {
+        setIsConnecting(true);
+        try {
+          await colyseusManager.joinZone(zone, {
+            walletAddress,
+            displayName,
+            skinVariant,
+          });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Failed to join zone");
+        } finally {
+          setIsConnecting(false);
+        }
       }
-    }
-  }, [walletAddress, displayName, skinVariant, isConnected]);
+    },
+    [walletAddress, displayName, skinVariant, isConnected]
+  );
 
   // Send chat message
   const sendChat = useCallback((message: string) => {
@@ -106,7 +114,15 @@ export function useMultiplayer(options: UseMultiplayerOptions): UseMultiplayerRe
 
   // Set up event listeners
   useEffect(() => {
-    const handlePlayerJoin = ({ player, sessionId: sid, isLocal }: { player: PlayerState; sessionId: string; isLocal: boolean }) => {
+    const handlePlayerJoin = ({
+      player,
+      sessionId: sid,
+      isLocal,
+    }: {
+      player: PlayerState;
+      sessionId: string;
+      isLocal: boolean;
+    }) => {
       if (isLocal) {
         setLocalPlayer(player);
       }
@@ -120,7 +136,15 @@ export function useMultiplayer(options: UseMultiplayerOptions): UseMultiplayerRe
       setPlayers((prev) => prev.filter((p) => p.sessionId !== sid));
     };
 
-    const handlePlayerUpdate = ({ player, sessionId: sid, isLocal }: { player: PlayerState; sessionId: string; isLocal: boolean }) => {
+    const handlePlayerUpdate = ({
+      player,
+      sessionId: sid,
+      isLocal,
+    }: {
+      player: PlayerState;
+      sessionId: string;
+      isLocal: boolean;
+    }) => {
       if (isLocal) {
         setLocalPlayer(player);
       }

@@ -84,12 +84,30 @@ function getZonePosition(zone: ZoneType): { x: number; y: number } {
   // X positions are already scaled in world-calculator, Y is ground level with slight variation
   const yVariation = Math.round(15 * SCALE); // Same variation as generateCharacterPosition
   const zonePositions: Record<ZoneType, { x: number; y: number }> = {
-    moltbook: { x: Math.round((200 + Math.random() * 300) * SCALE), y: GROUND_Y + Math.random() * yVariation },
-    main_city: { x: Math.round((300 + Math.random() * 200) * SCALE), y: GROUND_Y + Math.random() * yVariation },
-    trending: { x: Math.round((250 + Math.random() * 200) * SCALE), y: GROUND_Y + Math.random() * yVariation },
-    labs: { x: Math.round((350 + Math.random() * 150) * SCALE), y: GROUND_Y + Math.random() * yVariation },
-    founders: { x: Math.round((400 + Math.random() * 150) * SCALE), y: GROUND_Y + Math.random() * yVariation },
-    ballers: { x: Math.round((500 + Math.random() * 150) * SCALE), y: GROUND_Y + Math.random() * yVariation },
+    moltbook: {
+      x: Math.round((200 + Math.random() * 300) * SCALE),
+      y: GROUND_Y + Math.random() * yVariation,
+    },
+    main_city: {
+      x: Math.round((300 + Math.random() * 200) * SCALE),
+      y: GROUND_Y + Math.random() * yVariation,
+    },
+    trending: {
+      x: Math.round((250 + Math.random() * 200) * SCALE),
+      y: GROUND_Y + Math.random() * yVariation,
+    },
+    labs: {
+      x: Math.round((350 + Math.random() * 150) * SCALE),
+      y: GROUND_Y + Math.random() * yVariation,
+    },
+    founders: {
+      x: Math.round((400 + Math.random() * 150) * SCALE),
+      y: GROUND_Y + Math.random() * yVariation,
+    },
+    ballers: {
+      x: Math.round((500 + Math.random() * 150) * SCALE),
+      y: GROUND_Y + Math.random() * yVariation,
+    },
     arena: { x: Math.round((400 + Math.random() * 100) * SCALE), y: GROUND_Y },
   };
   return zonePositions[zone] || zonePositions.moltbook;
@@ -141,14 +159,14 @@ function getBuildingPosition(index: number, zone: ZoneType): number {
   if (zone === "moltbook") {
     // Moltbook zone: place buildings on left or right side, avoiding HQ center
     const leftPositions = [
-      Math.round(100 * SCALE),  // 160
-      Math.round(180 * SCALE),  // 288
-      Math.round(260 * SCALE),  // 416
+      Math.round(100 * SCALE), // 160
+      Math.round(180 * SCALE), // 288
+      Math.round(260 * SCALE), // 416
     ];
     const rightPositions = [
-      Math.round(540 * SCALE),  // 864
-      Math.round(620 * SCALE),  // 992
-      Math.round(700 * SCALE),  // 1120
+      Math.round(540 * SCALE), // 864
+      Math.round(620 * SCALE), // 992
+      Math.round(700 * SCALE), // 1120
     ];
     const allPositions = [...leftPositions, ...rightPositions];
     return allPositions[index % allPositions.length];

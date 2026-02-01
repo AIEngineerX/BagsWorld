@@ -10,6 +10,7 @@ Build CT-native products that fit the BAGS ecosystem meta.
 ## What Fits BAGS
 
 Products that provide real utility to trenchers:
+
 - **Launchpads/Flywheels** — Fee mechanisms that burn $BAGS
 - **Trench Utilities** — Scanners, trackers, alpha tools
 - **Holder-Gated Features** — Token-gate content, Discord, utilities
@@ -29,22 +30,22 @@ Products that provide real utility to trenchers:
 Core pattern: Fees → Buy $BAGS → Burn
 
 ```javascript
-const BAGS_TOKEN = 'BAGSxQcgw5N1BHRdFvFLsSTQGKpPLonUd57g8hoUF2ep';
-const FEE_WALLET = 'YOUR_FEE_WALLET';
+const BAGS_TOKEN = "BAGSxQcgw5N1BHRdFvFLsSTQGKpPLonUd57g8hoUF2ep";
+const FEE_WALLET = "YOUR_FEE_WALLET";
 
 async function registerWithFee(connection, payer, registrationData) {
   const feeAmount = 0.1 * LAMPORTS_PER_SOL; // 0.1 SOL fee
-  
+
   // 1. Collect fee
   const feeIx = SystemProgram.transfer({
     fromPubkey: payer.publicKey,
     toPubkey: new PublicKey(FEE_WALLET),
     lamports: feeAmount,
   });
-  
+
   // 2. Backend: Use collected fees to buy $BAGS on Jupiter
   // 3. Backend: Burn purchased $BAGS
-  
+
   return await sendTransaction(connection, [feeIx], payer);
 }
 ```
@@ -54,7 +55,7 @@ See `references/flywheel-mechanics.md` for full patterns.
 ## Bags.fm SDK Integration
 
 ```javascript
-const BAGS_API = 'https://api.bags.fm';
+const BAGS_API = "https://api.bags.fm";
 
 async function getBagsToken(mint) {
   const res = await fetch(`${BAGS_API}/token/${mint}`);
@@ -85,9 +86,9 @@ async function checkHolderAccess(walletAddress) {
   const connection = new Connection(RPC_URL);
   const wallet = new PublicKey(walletAddress);
   const mint = new PublicKey(BAGS_TOKEN);
-  
+
   const ata = await getAssociatedTokenAddress(mint, wallet);
-  
+
   try {
     const account = await getAccount(connection, ata);
     const balance = Number(account.amount) / 1e6;
@@ -114,19 +115,17 @@ See `references/holder-gating.md` for tiered access patterns.
 ```javascript
 async function trackWhales(tokenMint, threshold = 100000) {
   const holders = await getHolders(tokenMint);
-  return holders
-    .filter(h => h.balance >= threshold)
-    .sort((a, b) => b.balance - a.balance);
+  return holders.filter((h) => h.balance >= threshold).sort((a, b) => b.balance - a.balance);
 }
 ```
 
 ### New Token Scanner
 
 ```javascript
-const ws = new WebSocket('wss://pumpportal.fun/api/data');
+const ws = new WebSocket("wss://pumpportal.fun/api/data");
 
 ws.onopen = () => {
-  ws.send(JSON.stringify({ method: 'subscribeNewToken' }));
+  ws.send(JSON.stringify({ method: "subscribeNewToken" }));
 };
 
 ws.onmessage = (event) => {
@@ -142,12 +141,13 @@ ws.onmessage = (event) => {
 ```javascript
 async function analyzeHolders(tokenMint) {
   const holders = await getHolders(tokenMint);
-  
+
   return {
     total: holders.length,
-    top10Pct: holders.slice(0, Math.ceil(holders.length * 0.1))
-      .reduce((sum, h) => sum + h.balance, 0) / getTotalSupply(),
-    whales: holders.filter(h => h.balance > 50000).length,
+    top10Pct:
+      holders.slice(0, Math.ceil(holders.length * 0.1)).reduce((sum, h) => sum + h.balance, 0) /
+      getTotalSupply(),
+    whales: holders.filter((h) => h.balance > 50000).length,
   };
 }
 ```
@@ -170,7 +170,10 @@ async function analyzeHolders(tokenMint) {
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
 }
 ```
 

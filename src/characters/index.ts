@@ -184,7 +184,14 @@ export function getCharacterIdsByZone(
 // CHARACTER METADATA - For UI display, organized by zone
 // ============================================================================
 
-export type ZoneType = "labs" | "moltbook" | "main_city" | "trending" | "ballers" | "founders" | "arena";
+export type ZoneType =
+  | "labs"
+  | "moltbook"
+  | "main_city"
+  | "trending"
+  | "ballers"
+  | "founders"
+  | "arena";
 
 export interface CharacterMeta {
   displayName: string;

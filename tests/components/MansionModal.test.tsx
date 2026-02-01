@@ -282,10 +282,7 @@ describe("MansionModal Component", () => {
         />
       );
       const link = screen.getByText("VIEW ON SOLSCAN").closest("a");
-      expect(link).toHaveAttribute(
-        "href",
-        "https://solscan.io/account/RealWallet123"
-      );
+      expect(link).toHaveAttribute("href", "https://solscan.io/account/RealWallet123");
       expect(link).toHaveAttribute("target", "_blank");
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
     });
@@ -437,9 +434,7 @@ describe("MansionModal Component", () => {
           holderBalance={10000000}
         />
       );
-      expect(
-        screen.getByText(/top 5 holders of \$BagsWorld token/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/top 5 holders of \$BagsWorld token/i)).toBeInTheDocument();
     });
 
     it("should display Wallet label", () => {

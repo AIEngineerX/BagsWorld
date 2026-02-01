@@ -349,10 +349,11 @@ describe("Token Registry", () => {
       mockFetch.mockReset();
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          configured: true,
-          tokens: [{ mint: "cached", name: "Cached", symbol: "CACHE", creator_wallet: "c" }],
-        }),
+        json: () =>
+          Promise.resolve({
+            configured: true,
+            tokens: [{ mint: "cached", name: "Cached", symbol: "CACHE", creator_wallet: "c" }],
+          }),
       });
 
       // Call fetchGlobalTokens - it should return tokens
@@ -367,10 +368,11 @@ describe("Token Registry", () => {
       // First call succeeds to populate cache
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          configured: true,
-          tokens: [],
-        }),
+        json: () =>
+          Promise.resolve({
+            configured: true,
+            tokens: [],
+          }),
       });
 
       await fetchGlobalTokens();
@@ -427,18 +429,19 @@ describe("Token Registry", () => {
       mockFetch.mockReset();
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          configured: true,
-          tokens: [
-            {
-              mint: "fees-token-test",
-              name: "Fees Token",
-              symbol: "FEES",
-              creator_wallet: "creator",
-              fee_shares: [{ provider: "twitter", username: "user1", bps: 5000 }],
-            },
-          ],
-        }),
+        json: () =>
+          Promise.resolve({
+            configured: true,
+            tokens: [
+              {
+                mint: "fees-token-test",
+                name: "Fees Token",
+                symbol: "FEES",
+                creator_wallet: "creator",
+                fee_shares: [{ provider: "twitter", username: "user1", bps: 5000 }],
+              },
+            ],
+          }),
       });
 
       const tokens = await fetchGlobalTokens();
@@ -450,18 +453,19 @@ describe("Token Registry", () => {
       mockFetch.mockReset();
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          configured: true,
-          tokens: [
-            {
-              mint: "bad-fees-test",
-              name: "Bad Fees",
-              symbol: "BAD",
-              creator_wallet: "creator",
-              fee_shares: "not valid json",
-            },
-          ],
-        }),
+        json: () =>
+          Promise.resolve({
+            configured: true,
+            tokens: [
+              {
+                mint: "bad-fees-test",
+                name: "Bad Fees",
+                symbol: "BAD",
+                creator_wallet: "creator",
+                fee_shares: "not valid json",
+              },
+            ],
+          }),
       });
 
       const consoleSpy = jest.spyOn(console, "error").mockImplementation();
@@ -581,9 +585,7 @@ describe("Token Registry", () => {
         json: () =>
           Promise.resolve({
             configured: true,
-            tokens: [
-              { mint: "fresh-global", name: "Fresh", symbol: "FRSH", creator_wallet: "c" },
-            ],
+            tokens: [{ mint: "fresh-global", name: "Fresh", symbol: "FRSH", creator_wallet: "c" }],
           }),
       });
 

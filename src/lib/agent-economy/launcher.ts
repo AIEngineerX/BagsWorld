@@ -40,29 +40,32 @@ const RATE_LIMITS = {
  */
 export function canWalletLaunch(wallet: string): { allowed: boolean; reason?: string } {
   const now = Date.now();
-  
+
   // Reset global counter if day has passed
   if (now > globalLaunchCount.resetAt) {
     globalLaunchCount = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
   }
-  
+
   // Check global limit
   if (globalLaunchCount.count >= RATE_LIMITS.globalPerDay) {
     return { allowed: false, reason: "Global daily launch limit reached. Try again tomorrow." };
   }
-  
+
   // Get or create wallet entry
   let walletEntry = launchCounts.get(wallet);
   if (!walletEntry || now > walletEntry.resetAt) {
     walletEntry = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
     launchCounts.set(wallet, walletEntry);
   }
-  
+
   // Check per-wallet limit
   if (walletEntry.count >= RATE_LIMITS.perWalletPerDay) {
-    return { allowed: false, reason: `Wallet limit reached (${RATE_LIMITS.perWalletPerDay}/day). Try again tomorrow.` };
+    return {
+      allowed: false,
+      reason: `Wallet limit reached (${RATE_LIMITS.perWalletPerDay}/day). Try again tomorrow.`,
+    };
   }
-  
+
   return { allowed: true };
 }
 
@@ -71,15 +74,15 @@ export function canWalletLaunch(wallet: string): { allowed: boolean; reason?: st
  */
 function recordLaunch(wallet: string, symbol: string): void {
   const now = Date.now();
-  
+
   // Increment counters
   globalLaunchCount.count++;
-  
+
   const walletEntry = launchCounts.get(wallet);
   if (walletEntry) {
     walletEntry.count++;
   }
-  
+
   // Track symbol
   recentSymbols.set(symbol.toUpperCase(), now);
 }
@@ -97,53 +100,64 @@ function isSymbolRecentlyUsed(symbol: string): boolean {
  * Sanitize and validate token name
  */
 function sanitizeTokenName(name: string): { valid: boolean; sanitized: string; error?: string } {
-  if (!name || typeof name !== 'string') {
-    return { valid: false, sanitized: '', error: 'Name is required' };
+  if (!name || typeof name !== "string") {
+    return { valid: false, sanitized: "", error: "Name is required" };
   }
-  
+
   // Trim and limit length
   const sanitized = name.trim().substring(0, 32);
-  
+
   if (sanitized.length < 1) {
-    return { valid: false, sanitized: '', error: 'Name must be at least 1 character' };
+    return { valid: false, sanitized: "", error: "Name must be at least 1 character" };
   }
-  
+
   // Check for suspicious patterns
   const suspiciousPatterns = [
-    /^\s*$/,  // Only whitespace
-    /<script/i,  // XSS attempt
-    /javascript:/i,  // XSS attempt
-    /on\w+=/i,  // Event handler injection
+    /^\s*$/, // Only whitespace
+    /<script/i, // XSS attempt
+    /javascript:/i, // XSS attempt
+    /on\w+=/i, // Event handler injection
   ];
-  
+
   for (const pattern of suspiciousPatterns) {
     if (pattern.test(sanitized)) {
-      return { valid: false, sanitized: '', error: 'Invalid characters in name' };
+      return { valid: false, sanitized: "", error: "Invalid characters in name" };
     }
   }
-  
+
   return { valid: true, sanitized };
 }
 
 /**
  * Sanitize and validate token symbol
  */
-function sanitizeTokenSymbol(symbol: string): { valid: boolean; sanitized: string; error?: string } {
-  if (!symbol || typeof symbol !== 'string') {
-    return { valid: false, sanitized: '', error: 'Symbol is required' };
+function sanitizeTokenSymbol(symbol: string): {
+  valid: boolean;
+  sanitized: string;
+  error?: string;
+} {
+  if (!symbol || typeof symbol !== "string") {
+    return { valid: false, sanitized: "", error: "Symbol is required" };
   }
-  
+
   // Uppercase, remove non-alphanumeric, limit length
-  const sanitized = symbol.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 10);
-  
+  const sanitized = symbol
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .substring(0, 10);
+
   if (sanitized.length < 1) {
-    return { valid: false, sanitized: '', error: 'Symbol must be at least 1 alphanumeric character' };
+    return {
+      valid: false,
+      sanitized: "",
+      error: "Symbol must be at least 1 alphanumeric character",
+    };
   }
-  
+
   if (sanitized.length > 10) {
-    return { valid: false, sanitized: '', error: 'Symbol must be 10 characters or less' };
+    return { valid: false, sanitized: "", error: "Symbol must be 10 characters or less" };
   }
-  
+
   return { valid: true, sanitized };
 }
 
@@ -151,21 +165,21 @@ function sanitizeTokenSymbol(symbol: string): { valid: boolean; sanitized: strin
  * Validate Solana wallet address
  */
 function validateWalletAddress(wallet: string): { valid: boolean; error?: string } {
-  if (!wallet || typeof wallet !== 'string') {
-    return { valid: false, error: 'Wallet address is required' };
+  if (!wallet || typeof wallet !== "string") {
+    return { valid: false, error: "Wallet address is required" };
   }
-  
+
   // Basic format check
   if (wallet.length < 32 || wallet.length > 44) {
-    return { valid: false, error: 'Invalid wallet address length' };
+    return { valid: false, error: "Invalid wallet address length" };
   }
-  
+
   // Check for valid base58 characters
   const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
   if (!base58Regex.test(wallet)) {
-    return { valid: false, error: 'Invalid wallet address format (must be base58)' };
+    return { valid: false, error: "Invalid wallet address format (must be base58)" };
   }
-  
+
   return { valid: true };
 }
 
@@ -173,15 +187,15 @@ function validateWalletAddress(wallet: string): { valid: boolean; error?: string
  * Sanitize description
  */
 function sanitizeDescription(description: string): string {
-  if (!description || typeof description !== 'string') {
-    return '';
+  if (!description || typeof description !== "string") {
+    return "";
   }
-  
+
   // Remove potentially dangerous content
   return description
-    .replace(/<[^>]*>/g, '')  // Remove HTML tags
-    .replace(/javascript:/gi, '')  // Remove JS protocol
-    .substring(0, 500)  // Limit length
+    .replace(/<[^>]*>/g, "") // Remove HTML tags
+    .replace(/javascript:/gi, "") // Remove JS protocol
+    .substring(0, 500) // Limit length
     .trim();
 }
 
@@ -189,30 +203,30 @@ function sanitizeDescription(description: string): string {
  * Validate image URL
  */
 function validateImageUrl(url: string): { valid: boolean; sanitized: string; error?: string } {
-  if (!url || typeof url !== 'string') {
+  if (!url || typeof url !== "string") {
     // Return placeholder if no URL
-    return { valid: true, sanitized: '' };
+    return { valid: true, sanitized: "" };
   }
-  
+
   const trimmed = url.trim();
-  
+
   // Must be https
-  if (!trimmed.startsWith('https://')) {
-    return { valid: false, sanitized: '', error: 'Image URL must use HTTPS' };
+  if (!trimmed.startsWith("https://")) {
+    return { valid: false, sanitized: "", error: "Image URL must use HTTPS" };
   }
-  
+
   // Basic URL validation
   try {
     new URL(trimmed);
   } catch {
-    return { valid: false, sanitized: '', error: 'Invalid image URL format' };
+    return { valid: false, sanitized: "", error: "Invalid image URL format" };
   }
-  
+
   // Block data URLs (potential XSS)
-  if (trimmed.startsWith('data:')) {
-    return { valid: false, sanitized: '', error: 'Data URLs not allowed' };
+  if (trimmed.startsWith("data:")) {
+    return { valid: false, sanitized: "", error: "Data URLs not allowed" };
   }
-  
+
   return { valid: true, sanitized: trimmed };
 }
 
@@ -223,7 +237,8 @@ function validateImageUrl(url: string): { valid: boolean; sanitized: string; err
 const BAGS_API_KEY = process.env.BAGS_API_KEY!;
 const BAGS_JWT_TOKEN = process.env.BAGS_JWT_TOKEN || ""; // Optional - only for agent API
 // Fall back to AGENT_WALLET_PRIVATE_KEY if no dedicated launcher key
-const BAGSWORLD_PRIVATE_KEY = process.env.BAGSWORLD_LAUNCHER_PRIVATE_KEY || process.env.AGENT_WALLET_PRIVATE_KEY!;
+const BAGSWORLD_PRIVATE_KEY =
+  process.env.BAGSWORLD_LAUNCHER_PRIVATE_KEY || process.env.AGENT_WALLET_PRIVATE_KEY!;
 const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
 
 // ============================================================================
@@ -234,7 +249,7 @@ export interface LaunchRequest {
   // External agent's wallet (receives 100% of fees)
   // Either creatorWallet OR moltbookUsername is required
   creatorWallet?: string;
-  
+
   // Alternative: Moltbook username (we'll look up their wallet)
   moltbookUsername?: string;
 
@@ -393,7 +408,7 @@ async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
 /**
  * Launch a token for an external agent
  * BagsWorld pays tx fees, external agent gets 100% of trading fees
- * 
+ *
  * SAFETY CHECKS:
  * - Wallet address validation
  * - Rate limiting (per wallet + global)
@@ -404,7 +419,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   const { creatorWallet, moltbookUsername, twitter, website, telegram } = request;
 
   // ========== VALIDATION & SANITIZATION ==========
-  
+
   // 1. Must have either wallet or moltbookUsername
   if (!creatorWallet && !moltbookUsername) {
     return { success: false, error: "Either wallet or moltbookUsername is required" };
@@ -413,7 +428,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   // 2. Resolve wallet address (lookup if using moltbookUsername)
   let resolvedWallet: string;
   let useMoltbookIdentity = false;
-  
+
   if (moltbookUsername) {
     // Look up wallet from Moltbook username
     console.log(`[Launcher] Looking up wallet for Moltbook user: ${moltbookUsername}`);
@@ -423,16 +438,22 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
         headers: { "x-api-key": BAGS_API_KEY },
       });
       const lookupData = await lookupRes.json();
-      
+
       if (!lookupRes.ok || !lookupData.success || !lookupData.response?.wallet) {
-        return { success: false, error: `Moltbook user "${moltbookUsername}" not found or has no linked wallet` };
+        return {
+          success: false,
+          error: `Moltbook user "${moltbookUsername}" not found or has no linked wallet`,
+        };
       }
-      
+
       resolvedWallet = lookupData.response.wallet;
       useMoltbookIdentity = true;
       console.log(`[Launcher] Resolved ${moltbookUsername} → ${resolvedWallet.slice(0, 8)}...`);
     } catch (err) {
-      return { success: false, error: `Failed to lookup Moltbook user: ${err instanceof Error ? err.message : String(err)}` };
+      return {
+        success: false,
+        error: `Failed to lookup Moltbook user: ${err instanceof Error ? err.message : String(err)}`,
+      };
     }
   } else {
     // Validate provided wallet address
@@ -465,14 +486,18 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
 
   // 5. Check symbol cooldown (prevent rapid same-symbol launches)
   if (isSymbolRecentlyUsed(symbol)) {
-    return { success: false, error: `Symbol ${symbol} was recently used. Try a different symbol or wait 1 hour.` };
+    return {
+      success: false,
+      error: `Symbol ${symbol} was recently used. Try a different symbol or wait 1 hour.`,
+    };
   }
 
   // 6. Sanitize description
-  const description = sanitizeDescription(request.description) || `Token launched via BagsWorld Pokécenter`;
+  const description =
+    sanitizeDescription(request.description) || `Token launched via BagsWorld Pokécenter`;
 
   // 7. Validate image URL
-  const imageCheck = validateImageUrl(request.imageUrl || '');
+  const imageCheck = validateImageUrl(request.imageUrl || "");
   if (!imageCheck.valid) {
     return { success: false, error: imageCheck.error };
   }
@@ -481,7 +506,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   const finalImageUrl =
     imageCheck.sanitized || `https://api.dicebear.com/7.x/shapes/png?seed=${symbol}&size=400`;
 
-  console.log(`[Launcher] Launching ${symbol} for ${useMoltbookIdentity ? `@${moltbookUsername}` : resolvedWallet.slice(0, 8)}...`);
+  console.log(
+    `[Launcher] Launching ${symbol} for ${useMoltbookIdentity ? `@${moltbookUsername}` : resolvedWallet.slice(0, 8)}...`
+  );
 
   const bagsWorldWallet = getBagsWorldKeypair().publicKey.toBase58();
 
@@ -511,7 +538,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   console.log(`[Launcher] Metadata URL: ${metadataUrl}`);
 
   // Small delay to allow Bags.fm to propagate the token info
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 
   // Step 2: Create fee share config for the external agent
   // Uses BagsWorld's existing partnerConfigPda - external agent gets 100% of creator fees
@@ -530,22 +557,29 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     baseMint: tokenMint,
     payer: bagsWorldWallet,
     feeClaimers: [
-      { user: resolvedWallet, userBps: 10000 } // 100% to the agent
+      { user: resolvedWallet, userBps: 10000 }, // 100% to the agent
     ],
   };
 
   if (useMoltbookIdentity) {
-    console.log(`[Launcher] Moltbook @${moltbookUsername} → wallet ${resolvedWallet.slice(0, 8)}...`);
+    console.log(
+      `[Launcher] Moltbook @${moltbookUsername} → wallet ${resolvedWallet.slice(0, 8)}...`
+    );
   }
   console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest, null, 2));
-  console.log("[Launcher] API key configured:", !!BAGS_API_KEY, "length:", BAGS_API_KEY?.length || 0);
+  console.log(
+    "[Launcher] API key configured:",
+    !!BAGS_API_KEY,
+    "length:",
+    BAGS_API_KEY?.length || 0
+  );
 
   let configKey: string;
   try {
     // Make raw fetch so we can see the full response
     const feeShareUrl = `${BAGS_API.PUBLIC_BASE}/fee-share/config`;
     console.log("[Launcher] Calling:", feeShareUrl);
-    
+
     const feeShareRes = await fetch(feeShareUrl, {
       method: "POST",
       headers: {
@@ -556,7 +590,11 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     });
 
     const rawText = await feeShareRes.text();
-    console.log("[Launcher] Fee share raw response:", feeShareRes.status, rawText.substring(0, 500));
+    console.log(
+      "[Launcher] Fee share raw response:",
+      feeShareRes.status,
+      rawText.substring(0, 500)
+    );
 
     if (!feeShareRes.ok) {
       // Include request details in error for debugging
@@ -566,7 +604,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
         apiKeyPrefix: BAGS_API_KEY?.substring(0, 10),
         apiKeyLen: BAGS_API_KEY?.length,
       });
-      throw new Error(`Fee share API ${feeShareRes.status}: ${rawText.substring(0, 200)} | DEBUG: ${debugDetails}`);
+      throw new Error(
+        `Fee share API ${feeShareRes.status}: ${rawText.substring(0, 200)} | DEBUG: ${debugDetails}`
+      );
     }
 
     const feeShareResponse = JSON.parse(rawText);
@@ -575,11 +615,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
 
     // Extract configKey - API returns it as meteoraConfigKey
     configKey =
-      result.meteoraConfigKey ||
-      result.configId ||
-      result.configKey ||
-      result.config_key ||
-      "";
+      result.meteoraConfigKey || result.configId || result.configKey || result.config_key || "";
 
     if (!configKey) {
       console.log("[Launcher] Full result for debugging:", JSON.stringify(result, null, 2));
@@ -587,7 +623,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     }
 
     console.log(`[Launcher] Config key: ${configKey}`);
-    console.log(`[Launcher] ✅ Fee share configured: 100% to ${useMoltbookIdentity ? `@${moltbookUsername}` : resolvedWallet}`);
+    console.log(
+      `[Launcher] ✅ Fee share configured: 100% to ${useMoltbookIdentity ? `@${moltbookUsername}` : resolvedWallet}`
+    );
 
     // Sign any required transactions (fee config creation)
     if (result.needsCreation && result.transactions?.length) {
@@ -621,7 +659,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     // Make raw fetch to see full response
     const launchUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/create-launch-transaction`;
     console.log("[Launcher] Calling launch endpoint:", launchUrl);
-    
+
     const launchRes = await fetch(launchUrl, {
       method: "POST",
       headers: {
@@ -632,7 +670,11 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     });
 
     const rawLaunchText = await launchRes.text();
-    console.log("[Launcher] Launch raw response:", launchRes.status, rawLaunchText.substring(0, 500));
+    console.log(
+      "[Launcher] Launch raw response:",
+      launchRes.status,
+      rawLaunchText.substring(0, 500)
+    );
 
     if (!launchRes.ok) {
       throw new Error(`Launch API ${launchRes.status}: ${rawLaunchText.substring(0, 300)}`);
@@ -640,14 +682,12 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
 
     const launchData = JSON.parse(rawLaunchText);
     console.log("[Launcher] Launch parsed keys:", Object.keys(launchData));
-    
+
     // Extract transaction from various possible response formats
     const result = launchData.response || launchData;
-    launchTransaction = 
-      result.transaction || 
-      result.tx || 
-      (typeof result === "string" ? result : "");
-    
+    launchTransaction =
+      result.transaction || result.tx || (typeof result === "string" ? result : "");
+
     console.log("[Launcher] Launch tx length:", launchTransaction?.length || "missing");
   } catch (err) {
     throw new Error(`Step 3 failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -694,7 +734,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
       // Don't fail the launch if registration fails - token is still launched on-chain
     }
   } else {
-    console.log(`[Launcher] Neon not configured - token won't appear as building until manually added`);
+    console.log(
+      `[Launcher] Neon not configured - token won't appear as building until manually added`
+    );
   }
 
   // Record successful launch for rate limiting
@@ -754,7 +796,7 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
   }
 
   console.log(`[Launcher] Generating claim txs for ${positions.length} positions...`);
-  
+
   // Build positions array for claim request - per Bags FEES.md documentation
   // API expects: { wallet: string, positions: [{baseMint, virtualPoolAddress}] }
   const positionsForClaim = positions.map((p) => ({
@@ -777,22 +819,22 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
 
   const rawText = await claimRes.text();
   console.log("[Launcher] Claim response:", claimRes.status, rawText.substring(0, 300));
-  
+
   if (!claimRes.ok) {
     throw new Error(`Claim API ${claimRes.status}: ${rawText.substring(0, 200)}`);
   }
 
   const claimData = JSON.parse(rawText);
   const txs = claimData.response?.transactions || claimData.transactions || [];
-  
+
   const allTransactions: string[] = [];
   for (const tx of txs) {
     const txString = typeof tx === "string" ? tx : tx.transaction;
     if (txString) allTransactions.push(txString);
   }
-  
+
   console.log(`[Launcher] Got ${allTransactions.length} claim transaction(s)`);
-  
+
   return {
     success: true,
     transactions: allTransactions,
@@ -815,7 +857,8 @@ export function isLauncherConfigured(): {
 
   if (!BAGS_API_KEY) missing.push("BAGS_API_KEY");
   // BAGS_JWT_TOKEN is optional - only needed for agent-specific API calls
-  if (!BAGSWORLD_PRIVATE_KEY) missing.push("BAGSWORLD_LAUNCHER_PRIVATE_KEY or AGENT_WALLET_PRIVATE_KEY");
+  if (!BAGSWORLD_PRIVATE_KEY)
+    missing.push("BAGSWORLD_LAUNCHER_PRIVATE_KEY or AGENT_WALLET_PRIVATE_KEY");
 
   return {
     configured: missing.length === 0,
@@ -849,12 +892,12 @@ export function getRateLimitStatus(wallet?: string): {
   wallet?: { used: number; limit: number; resetsAt: string };
 } {
   const now = Date.now();
-  
+
   // Reset global if needed
   if (now > globalLaunchCount.resetAt) {
     globalLaunchCount = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
   }
-  
+
   const result: ReturnType<typeof getRateLimitStatus> = {
     global: {
       used: globalLaunchCount.count,
@@ -862,7 +905,7 @@ export function getRateLimitStatus(wallet?: string): {
       resetsAt: new Date(globalLaunchCount.resetAt).toISOString(),
     },
   };
-  
+
   if (wallet) {
     const walletEntry = launchCounts.get(wallet);
     if (walletEntry && now <= walletEntry.resetAt) {
@@ -879,6 +922,6 @@ export function getRateLimitStatus(wallet?: string): {
       };
     }
   }
-  
+
   return result;
 }

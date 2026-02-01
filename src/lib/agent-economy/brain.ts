@@ -81,7 +81,12 @@ export interface TradeDecision {
   riskLevel: "low" | "medium" | "high";
 }
 
-export type StrategyType = "conservative" | "diversify" | "follow_whales" | "aggressive" | "reinvest_bagsworld";
+export type StrategyType =
+  | "conservative"
+  | "diversify"
+  | "follow_whales"
+  | "aggressive"
+  | "reinvest_bagsworld";
 
 // BagsWorld token mint - target for reinvestment strategy
 const BAGSWORLD_TOKEN_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
@@ -919,8 +924,8 @@ async function reinvestBagsWorldStrategy(
   }
 
   // Check if BagsWorld token exists in market data
-  const bagsWorldToken = market.tokens.find(t => t.mint === BAGSWORLD_TOKEN_MINT);
-  
+  const bagsWorldToken = market.tokens.find((t) => t.mint === BAGSWORLD_TOKEN_MINT);
+
   if (!bagsWorldToken) {
     // Even without market data, we can still buy with the known mint
     return {
@@ -935,7 +940,7 @@ async function reinvestBagsWorldStrategy(
   }
 
   // With market data, we can provide more context
-  const existingPosition = portfolio.positions.find(p => p.mint === BAGSWORLD_TOKEN_MINT);
+  const existingPosition = portfolio.positions.find((p) => p.mint === BAGSWORLD_TOKEN_MINT);
   const currentHolding = existingPosition?.valueSol || 0;
 
   return {

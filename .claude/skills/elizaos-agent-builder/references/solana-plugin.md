@@ -92,45 +92,45 @@ Token Prices:
 ## Custom Solana Actions
 
 ```typescript
-import { Action, IAgentRuntime } from '@elizaos/core';
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import { Action, IAgentRuntime } from "@elizaos/core";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 
 const customSolanaAction: Action = {
-  name: 'STAKE_SOL',
-  description: 'Stake SOL with a validator',
-  similes: ['stake', 'delegate'],
-  
+  name: "STAKE_SOL",
+  description: "Stake SOL with a validator",
+  similes: ["stake", "delegate"],
+
   validate: async (runtime) => {
-    return !!runtime.getSetting('SOLANA_PRIVATE_KEY');
+    return !!runtime.getSetting("SOLANA_PRIVATE_KEY");
   },
-  
+
   handler: async (runtime, message, state, options, callback) => {
     const connection = new Connection(
-      runtime.getSetting('RPC_URL') || 'https://api.mainnet-beta.solana.com'
+      runtime.getSetting("RPC_URL") || "https://api.mainnet-beta.solana.com"
     );
-    
+
     // Parse amount from message
     const amount = extractAmount(message.content.text);
-    
+
     // Build staking transaction
     const tx = await buildStakeTransaction(connection, amount);
-    
+
     // Sign and send
     const wallet = getWalletFromRuntime(runtime);
     const signature = await sendAndConfirmTransaction(connection, tx, [wallet]);
-    
+
     callback?.({
       text: `Staked ${amount} SOL! Tx: ${signature}`,
-      action: 'STAKE_SOL'
+      action: "STAKE_SOL",
     });
-    
+
     return true;
   },
-  
+
   examples: [
     [
-      { user: '{{user1}}', content: { text: 'stake 5 SOL' } },
-      { user: '{{agentName}}', content: { text: 'Staking 5 SOL...', action: 'STAKE_SOL' } },
+      { user: "{{user1}}", content: { text: "stake 5 SOL" } },
+      { user: "{{agentName}}", content: { text: "Staking 5 SOL...", action: "STAKE_SOL" } },
     ],
   ],
 };
@@ -139,7 +139,7 @@ const customSolanaAction: Action = {
 ## Using Jupiter for Swaps
 
 ```typescript
-import { Jupiter } from '@jup-ag/api';
+import { Jupiter } from "@jup-ag/api";
 
 async function executeSwap(
   connection: Connection,
@@ -149,18 +149,18 @@ async function executeSwap(
   amount: number
 ) {
   const jupiter = await Jupiter.load({ connection });
-  
+
   const routes = await jupiter.computeRoutes({
     inputMint: new PublicKey(inputMint),
     outputMint: new PublicKey(outputMint),
     amount,
     slippageBps: 50, // 0.5%
   });
-  
+
   const { execute } = await jupiter.exchange({
     routeInfo: routes.routesInfos[0],
   });
-  
+
   const result = await execute();
   return result;
 }
@@ -176,8 +176,8 @@ async function getTokenMetadata(mint: string) {
   const response = await fetch(
     `https://api.helius.xyz/v0/token-metadata?api-key=${HELIUS_API_KEY}`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mintAccounts: [mint] }),
     }
   );
@@ -195,26 +195,25 @@ async function getWalletTokens(wallet: string) {
 // Subscribe to transactions
 function subscribeToWallet(wallet: string, callback: (tx: any) => void) {
   const ws = new WebSocket(`wss://atlas-mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
-  
+
   ws.onopen = () => {
-    ws.send(JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'transactionSubscribe',
-      params: [
-        { accountInclude: [wallet] },
-        { commitment: 'confirmed' }
-      ]
-    }));
+    ws.send(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "transactionSubscribe",
+        params: [{ accountInclude: [wallet] }, { commitment: "confirmed" }],
+      })
+    );
   };
-  
+
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
     if (data.params?.result) {
       callback(data.params.result);
     }
   };
-  
+
   return ws;
 }
 ```
@@ -253,10 +252,11 @@ if (trustScore > 0.7) {
 
 ```typescript
 // Good: Require confirmation for large amounts
-if (amount > 1) { // > 1 SOL
+if (amount > 1) {
+  // > 1 SOL
   callback?.({
     text: `This will send ${amount} SOL ($${amount * solPrice}). Reply "confirm" to proceed.`,
-    action: 'CONFIRM_REQUIRED'
+    action: "CONFIRM_REQUIRED",
   });
   return false; // Wait for confirmation
 }

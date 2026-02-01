@@ -7,11 +7,13 @@ Data APIs for Solana memecoin applications.
 Free, no auth required. Best for price, volume, liquidity data.
 
 ### Base URL
+
 ```
 https://api.dexscreener.com
 ```
 
 ### Get Token Data
+
 ```javascript
 const getTokenData = async (tokenAddress) => {
   const res = await fetch(
@@ -46,6 +48,7 @@ const getTokenData = async (tokenAddress) => {
 ```
 
 ### Search Tokens
+
 ```javascript
 const searchTokens = async (query) => {
   const res = await fetch(
@@ -57,18 +60,18 @@ const searchTokens = async (query) => {
 ```
 
 ### Get Multiple Tokens
+
 ```javascript
 const getMultipleTokens = async (addresses) => {
   // Max 30 addresses per request
-  const res = await fetch(
-    `https://api.dexscreener.com/latest/dex/tokens/${addresses.join(',')}`
-  );
+  const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${addresses.join(",")}`);
   const data = await res.json();
   return data.pairs;
 };
 ```
 
 ### Rate Limits
+
 - 300 requests per minute
 - No auth required
 
@@ -79,23 +82,25 @@ const getMultipleTokens = async (addresses) => {
 Free WebSocket API for real-time pump.fun data. Trading API has 0.5% fee.
 
 ### WebSocket Connection
+
 ```javascript
 const connectPumpPortal = (onMessage) => {
-  const ws = new WebSocket('wss://pumpportal.fun/api/data');
-  
-  ws.onopen = () => console.log('PumpPortal connected');
+  const ws = new WebSocket("wss://pumpportal.fun/api/data");
+
+  ws.onopen = () => console.log("PumpPortal connected");
   ws.onmessage = (event) => onMessage(JSON.parse(event.data));
-  ws.onerror = (err) => console.error('PumpPortal error:', err);
+  ws.onerror = (err) => console.error("PumpPortal error:", err);
   ws.onclose = () => {
-    console.log('PumpPortal disconnected, reconnecting...');
+    console.log("PumpPortal disconnected, reconnecting...");
     setTimeout(() => connectPumpPortal(onMessage), 3000);
   };
-  
+
   return ws;
 };
 ```
 
 ### Subscribe to New Tokens
+
 ```javascript
 ws.send(JSON.stringify({
   method: 'subscribeNewToken'
@@ -115,6 +120,7 @@ ws.send(JSON.stringify({
 ```
 
 ### Subscribe to Token Trades
+
 ```javascript
 ws.send(JSON.stringify({
   method: 'subscribeTokenTrade',
@@ -134,23 +140,31 @@ ws.send(JSON.stringify({
 ```
 
 ### Subscribe to Account Trades
+
 ```javascript
-ws.send(JSON.stringify({
-  method: 'subscribeAccountTrade',
-  keys: ['WALLET_ADDRESS_1', 'WALLET_ADDRESS_2']
-}));
+ws.send(
+  JSON.stringify({
+    method: "subscribeAccountTrade",
+    keys: ["WALLET_ADDRESS_1", "WALLET_ADDRESS_2"],
+  })
+);
 ```
 
 ### Unsubscribe
-```javascript
-ws.send(JSON.stringify({
-  method: 'unsubscribeNewToken'
-}));
 
-ws.send(JSON.stringify({
-  method: 'unsubscribeTokenTrade',
-  keys: ['TOKEN_MINT']
-}));
+```javascript
+ws.send(
+  JSON.stringify({
+    method: "unsubscribeNewToken",
+  })
+);
+
+ws.send(
+  JSON.stringify({
+    method: "unsubscribeTokenTrade",
+    keys: ["TOKEN_MINT"],
+  })
+);
 ```
 
 ---
@@ -160,24 +174,23 @@ ws.send(JSON.stringify({
 Official SDK for Bags.fm launchpad integration. Requires API key from `dev.bags.fm`.
 
 ### Installation
+
 ```bash
 npm install @bagsfm/bags-sdk @solana/web3.js
 ```
 
 ### Setup
-```javascript
-import { BagsSDK } from '@bagsfm/bags-sdk';
-import { Connection, PublicKey } from '@solana/web3.js';
 
-const connection = new Connection('https://api.mainnet-beta.solana.com');
-const sdk = new BagsSDK(
-  process.env.BAGS_API_KEY,
-  connection,
-  'processed'
-);
+```javascript
+import { BagsSDK } from "@bagsfm/bags-sdk";
+import { Connection, PublicKey } from "@solana/web3.js";
+
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const sdk = new BagsSDK(process.env.BAGS_API_KEY, connection, "processed");
 ```
 
 ### Get Token Creators
+
 ```javascript
 const getTokenCreators = async (mintAddress) => {
   const mint = new PublicKey(mintAddress);
@@ -187,18 +200,20 @@ const getTokenCreators = async (mintAddress) => {
 ```
 
 ### REST API (Alternative)
+
 ```javascript
 const bagsApiCall = async (endpoint) => {
   const res = await fetch(`https://public-api-v2.bags.fm/api/v1/${endpoint}`, {
     headers: {
-      'x-api-key': process.env.BAGS_API_KEY
-    }
+      "x-api-key": process.env.BAGS_API_KEY,
+    },
   });
   return res.json();
 };
 ```
 
 ### Rate Limits
+
 - Varies by endpoint
 - Implement exponential backoff
 
@@ -207,6 +222,7 @@ const bagsApiCall = async (endpoint) => {
 ## Utility Functions
 
 ### Price Formatting
+
 ```javascript
 const formatPrice = (price) => {
   const num = parseFloat(price);
@@ -214,11 +230,12 @@ const formatPrice = (price) => {
   if (num < 0.01) return num.toFixed(6);
   if (num < 1) return num.toFixed(4);
   if (num < 1000) return num.toFixed(2);
-  return num.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return num.toLocaleString("en-US", { maximumFractionDigits: 0 });
 };
 ```
 
 ### Volume Formatting
+
 ```javascript
 const formatVolume = (volume) => {
   if (volume >= 1e9) return `$${(volume / 1e9).toFixed(2)}B`;
@@ -229,19 +246,21 @@ const formatVolume = (volume) => {
 ```
 
 ### Percentage Change
+
 ```javascript
 const formatChange = (change) => {
   const num = parseFloat(change);
-  const sign = num >= 0 ? '+' : '';
+  const sign = num >= 0 ? "+" : "";
   return `${sign}${num.toFixed(2)}%`;
 };
 
 const getChangeColor = (change) => {
-  return parseFloat(change) >= 0 ? '#00ff88' : '#ff4444';
+  return parseFloat(change) >= 0 ? "#00ff88" : "#ff4444";
 };
 ```
 
 ### Polling Pattern
+
 ```javascript
 const createPoller = (fetchFn, intervalMs = 10000) => {
   let timer = null;
@@ -250,9 +269,9 @@ const createPoller = (fetchFn, intervalMs = 10000) => {
   const poll = async () => {
     try {
       const data = await fetchFn();
-      subscribers.forEach(cb => cb(data));
+      subscribers.forEach((cb) => cb(data));
     } catch (err) {
-      console.error('Poll error:', err);
+      console.error("Poll error:", err);
     }
   };
 
@@ -264,20 +283,20 @@ const createPoller = (fetchFn, intervalMs = 10000) => {
         timer = setInterval(poll, intervalMs);
       }
       return () => {
-        subscribers = subscribers.filter(cb => cb !== callback);
+        subscribers = subscribers.filter((cb) => cb !== callback);
         if (subscribers.length === 0) {
           clearInterval(timer);
           timer = null;
         }
       };
-    }
+    },
   };
 };
 
 // Usage
 const pricePoller = createPoller(() => getTokenData(TOKEN_ADDRESS), 15000);
 const unsubscribe = pricePoller.subscribe((data) => {
-  console.log('New price:', data.priceUsd);
+  console.log("New price:", data.priceUsd);
 });
 ```
 
@@ -289,7 +308,7 @@ const unsubscribe = pricePoller.subscribe((data) => {
 const getFullTokenData = async (tokenAddress) => {
   const [dexData, holders] = await Promise.all([
     getTokenData(tokenAddress),
-    getTopHolders(tokenAddress)
+    getTopHolders(tokenAddress),
   ]);
 
   return {
@@ -302,7 +321,7 @@ const getFullTokenData = async (tokenAddress) => {
     buys24h: dexData?.txns?.h24?.buys,
     sells24h: dexData?.txns?.h24?.sells,
     topHolders: holders,
-    image: dexData?.info?.imageUrl
+    image: dexData?.info?.imageUrl,
   };
 };
 ```

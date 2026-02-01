@@ -7,9 +7,9 @@
 ```typescript
 const PALETTE = {
   // Backgrounds & Darks
-  void: 0x0a0a0f,      // Darkest - UI backgrounds
-  night: 0x1a1a2e,     // Dark blue-black
-  shadow: 0x16213e,    // Shadow blue
+  void: 0x0a0a0f, // Darkest - UI backgrounds
+  night: 0x1a1a2e, // Dark blue-black
+  shadow: 0x16213e, // Shadow blue
 
   // Grays (buildings, concrete)
   darkGray: 0x1f2937,
@@ -22,7 +22,7 @@ const PALETTE = {
   darkGreen: 0x14532d,
   forest: 0x166534,
   green: 0x22c55e,
-  bagsGreen: 0x4ade80,  // Primary brand color
+  bagsGreen: 0x4ade80, // Primary brand color
   mint: 0x86efac,
 
   // Blues (water, tech, corporate)
@@ -68,12 +68,12 @@ const PALETTE = {
 
 ```typescript
 const SKIN_TONES = [
-  PALETTE.skinLight,   // 0xffdbac
-  PALETTE.skinTan,     // 0xf1c27d
-  PALETTE.skinMedium,  // 0xe0ac69
-  PALETTE.skinOlive,   // 0xc68642
-  PALETTE.skinBrown,   // 0x8d5524
-  PALETTE.skinDark,    // 0x5c3317
+  PALETTE.skinLight, // 0xffdbac
+  PALETTE.skinTan, // 0xf1c27d
+  PALETTE.skinMedium, // 0xe0ac69
+  PALETTE.skinOlive, // 0xc68642
+  PALETTE.skinBrown, // 0x8d5524
+  PALETTE.skinDark, // 0x5c3317
 ];
 ```
 
@@ -81,15 +81,15 @@ const SKIN_TONES = [
 
 ```typescript
 const HAIR_COLORS = [
-  0x090806,            // Black
-  0x2c1810,            // Dark brown
-  0x6a4e42,            // Brown
-  0xb55239,            // Auburn
-  0xd6c4c2,            // Blonde
-  0xe5e5e5,            // White/Gray
-  0xff6b6b,            // Pink (dyed)
-  0x4ecdc4,            // Teal (dyed)
-  PALETTE.lavender,    // Purple (dyed)
+  0x090806, // Black
+  0x2c1810, // Dark brown
+  0x6a4e42, // Brown
+  0xb55239, // Auburn
+  0xd6c4c2, // Blonde
+  0xe5e5e5, // White/Gray
+  0xff6b6b, // Pink (dyed)
+  0x4ecdc4, // Teal (dyed)
+  PALETTE.lavender, // Purple (dyed)
 ];
 ```
 
@@ -97,26 +97,26 @@ const HAIR_COLORS = [
 
 ```typescript
 const SHIRT_COLORS = [
-  PALETTE.bagsGreen,   // 0x4ade80
-  PALETTE.sky,         // 0x3b82f6
-  PALETTE.brightRed,   // 0xef4444
-  PALETTE.gold,        // 0xfbbf24
-  PALETTE.lavender,    // 0xa855f7
-  0xec4899,            // Pink
-  PALETTE.cyan,        // 0x06b6d4
-  PALETTE.orange,      // 0xf97316
-  PALETTE.lightGray,   // 0x6b7280
+  PALETTE.bagsGreen, // 0x4ade80
+  PALETTE.sky, // 0x3b82f6
+  PALETTE.brightRed, // 0xef4444
+  PALETTE.gold, // 0xfbbf24
+  PALETTE.lavender, // 0xa855f7
+  0xec4899, // Pink
+  PALETTE.cyan, // 0x06b6d4
+  PALETTE.orange, // 0xf97316
+  PALETTE.lightGray, // 0x6b7280
 ];
 ```
 
 ## Zone Color Themes
 
-| Zone | Primary | Secondary | Accent |
-|------|---------|-----------|--------|
-| Park (main_city) | forest, green | brown, cream | gold, brightRed |
-| BagsCity (trending) | darkGray, gray | navy, cyan | bagsGreen, gold |
-| Ballers Valley | cream, white | gold, amber | deepPurple |
-| Founders Corner | brown, cream | forest | amber, gold |
+| Zone                | Primary        | Secondary    | Accent          |
+| ------------------- | -------------- | ------------ | --------------- |
+| Park (main_city)    | forest, green  | brown, cream | gold, brightRed |
+| BagsCity (trending) | darkGray, gray | navy, cyan   | bagsGreen, gold |
+| Ballers Valley      | cream, white   | gold, amber  | deepPurple      |
+| Founders Corner     | brown, cream   | forest       | amber, gold     |
 
 ## Color Helper Functions
 
@@ -142,15 +142,15 @@ function lighten(color: number, amount: number): number {
 
 ```typescript
 // 3D depth effect
-g.fillStyle(PALETTE.gray);                    // Base
-g.fillStyle(lighten(PALETTE.gray, 0.2));      // Left highlight
-g.fillStyle(darken(PALETTE.gray, 0.25));      // Right shadow
+g.fillStyle(PALETTE.gray); // Base
+g.fillStyle(lighten(PALETTE.gray, 0.2)); // Left highlight
+g.fillStyle(darken(PALETTE.gray, 0.25)); // Right shadow
 
 // Window glow
-g.fillStyle(PALETTE.gold, 0.3);               // Glow aura
-g.fillStyle(PALETTE.gold);                    // Window fill
-g.fillStyle(lighten(PALETTE.gold, 0.4));      // Highlight
+g.fillStyle(PALETTE.gold, 0.3); // Glow aura
+g.fillStyle(PALETTE.gold); // Window fill
+g.fillStyle(lighten(PALETTE.gold, 0.4)); // Highlight
 
 // Drop shadow
-g.fillStyle(PALETTE.void, 0.5);               // Semi-transparent black
+g.fillStyle(PALETTE.void, 0.5); // Semi-transparent black
 ```

@@ -5,6 +5,7 @@ Expert pixel art and retro game content creation for BagsWorld - a Phaser-based 
 ## Triggers
 
 Invoke this skill when:
+
 - "create a building for..."
 - "design a new zone..."
 - "add props to..."
@@ -18,6 +19,7 @@ Invoke this skill when:
 ### Two-Step Texture Creation Process
 
 **Step 1: Generate Texture (BootScene.ts)**
+
 ```typescript
 const g = this.make.graphics({ x: 0, y: 0 });
 g.fillStyle(0xColorHex);
@@ -27,6 +29,7 @@ g.destroy();
 ```
 
 **Step 2: Place Sprite (WorldScene.ts)**
+
 ```typescript
 const sprite = this.add.sprite(x, y, "texture_name");
 sprite.setOrigin(0.5, 1);
@@ -35,33 +38,37 @@ this.zoneElements.push(sprite);
 ```
 
 ### Scale Factor
+
 Always use `const s = SCALE;` (1.6x) and multiply all pixel values by `s`.
 
 ## Phaser Graphics API
 
 ### Drawing Methods
-| Method | Usage |
-|--------|-------|
-| `fillStyle(color, alpha?)` | Set fill color (hex) and optional alpha |
-| `fillRect(x, y, w, h)` | Draw rectangle |
-| `fillTriangle(x1,y1, x2,y2, x3,y3)` | Draw triangle (roofs, peaks) |
-| `fillCircle(cx, cy, radius)` | Draw circle (foliage, domes) |
-| `fillEllipse(cx, cy, w, h)` | Draw ellipse (bodies, leaves) |
-| `lineStyle(width, color, alpha)` | Set stroke style |
-| `strokeRect(x, y, w, h)` | Stroke rectangle outline |
+
+| Method                              | Usage                                   |
+| ----------------------------------- | --------------------------------------- |
+| `fillStyle(color, alpha?)`          | Set fill color (hex) and optional alpha |
+| `fillRect(x, y, w, h)`              | Draw rectangle                          |
+| `fillTriangle(x1,y1, x2,y2, x3,y3)` | Draw triangle (roofs, peaks)            |
+| `fillCircle(cx, cy, radius)`        | Draw circle (foliage, domes)            |
+| `fillEllipse(cx, cy, w, h)`         | Draw ellipse (bodies, leaves)           |
+| `lineStyle(width, color, alpha)`    | Set stroke style                        |
+| `strokeRect(x, y, w, h)`            | Stroke rectangle outline                |
 
 ### Color Helpers
+
 ```typescript
 // Darken a color by percentage (0-1)
-function darken(color: number, amount: number): number
+function darken(color: number, amount: number): number;
 
 // Lighten a color by percentage (0-1)
-function lighten(color: number, amount: number): number
+function lighten(color: number, amount: number): number;
 ```
 
 ## Pixel Art Techniques
 
 ### 3D Depth Effect (REQUIRED for buildings)
+
 ```typescript
 // Main body
 g.fillStyle(baseColor);
@@ -77,6 +84,7 @@ g.fillRect(x + width - 6 * s, y, 6 * s, height);
 ```
 
 ### Dithering Pattern (texture detail)
+
 ```typescript
 g.fillStyle(darken(baseColor, 0.08));
 for (let py = 0; py < height; py += 4 * s) {
@@ -89,6 +97,7 @@ for (let py = 0; py < height; py += 4 * s) {
 ```
 
 ### Glowing Windows
+
 ```typescript
 // Glow aura (semi-transparent)
 g.fillStyle(windowColor, 0.3);
@@ -104,6 +113,7 @@ g.fillRect(wx, wy, 2, 3);
 ```
 
 ### Drop Shadow
+
 ```typescript
 g.fillStyle(PALETTE.void, 0.5);
 g.fillRect(x + 6 * s, y + 6 * s, width - 2 * s, height);
@@ -111,28 +121,28 @@ g.fillRect(x + 6 * s, y + 6 * s, width - 2 * s, height);
 
 ## Layer/Depth System
 
-| Depth | Layer | Contents |
-|-------|-------|----------|
-| -2 | Sky gradient | Day/night - DO NOT MODIFY |
-| -1 | Stars | Night only |
-| 0 | Ground/grass | Zone-specific texture |
-| 1 | Path | Walking surface |
-| 2 | Trees, bushes, flowers | Low props |
-| 3 | Lamps, benches | Street furniture |
-| 4 | Ground animals | Dogs, cats, squirrels |
-| 5-9 | Buildings | Main structures |
-| 10 | Characters | Player/NPCs |
-| 15 | Flying elements | Birds, butterflies |
-| 20 | Particles | Fireflies, sparkles |
+| Depth | Layer                  | Contents                  |
+| ----- | ---------------------- | ------------------------- |
+| -2    | Sky gradient           | Day/night - DO NOT MODIFY |
+| -1    | Stars                  | Night only                |
+| 0     | Ground/grass           | Zone-specific texture     |
+| 1     | Path                   | Walking surface           |
+| 2     | Trees, bushes, flowers | Low props                 |
+| 3     | Lamps, benches         | Street furniture          |
+| 4     | Ground animals         | Dogs, cats, squirrels     |
+| 5-9   | Buildings              | Main structures           |
+| 10    | Characters             | Player/NPCs               |
+| 15    | Flying elements        | Birds, butterflies        |
+| 20    | Particles              | Fireflies, sparkles       |
 
 ## Y-Position Reference
 
 ```typescript
 const s = SCALE;
-const grassTop = 455 * s;     // Top of grass area
-const pathLevel = 555 * s;    // Character walk height
-const groundY = 540 * s;      // Ground tileSprite Y
-const pathY = 570 * s;        // Path tileSprite Y
+const grassTop = 455 * s; // Top of grass area
+const pathLevel = 555 * s; // Character walk height
+const groundY = 540 * s; // Ground tileSprite Y
+const pathY = 570 * s; // Path tileSprite Y
 ```
 
 ## Zone Setup Pattern
@@ -175,6 +185,7 @@ private setupMyZone(): void {
 ## Minimum Content Requirements
 
 Every zone MUST contain:
+
 - **3+ Buildings** with full pixel art detail (walls, windows, doors, roofs)
 - **5+ Props** (trees, lamps, signs, benches, decorations)
 - **Textured ground** (not solid flat colors)
@@ -183,6 +194,7 @@ Every zone MUST contain:
 ## Quality Checklist
 
 Before completing any content:
+
 - [ ] Uses 3D depth effect (light left, dark right edges)?
 - [ ] Has dithering or texture detail?
 - [ ] Windows have glow effect?
@@ -193,15 +205,16 @@ Before completing any content:
 
 ## Files to Modify
 
-| Content Type | File |
-|--------------|------|
-| Textures | `src/game/scenes/BootScene.ts` |
-| Zone logic | `src/game/scenes/WorldScene.ts` |
-| Zone types | `src/lib/types.ts` |
+| Content Type | File                            |
+| ------------ | ------------------------------- |
+| Textures     | `src/game/scenes/BootScene.ts`  |
+| Zone logic   | `src/game/scenes/WorldScene.ts` |
+| Zone types   | `src/lib/types.ts`              |
 
 ## References
 
 See the `references/` folder for:
+
 - `color-palette.md` - Full PALETTE constant
 - `building-patterns.md` - Building generator examples
 - `prop-library.md` - Prop texture examples

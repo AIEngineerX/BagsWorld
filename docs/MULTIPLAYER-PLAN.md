@@ -9,6 +9,7 @@
 3. **Talk to other players** - See other players in real-time, send/receive chat messages
 
 **What we're NOT building:**
+
 - Combat system
 - Inventory/items
 - Leveling/XP
@@ -21,15 +22,15 @@
 
 ### What Exists Today
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Phaser 3 renderer | Working | 1280x960 canvas, pixel art, 5 zones |
-| 17 NPC characters | Working | AI-driven movement, Claude-powered chat |
-| Zone system | Working | 5 zones with smooth transitions |
-| Day/night cycle | Working | Synced to EST timezone |
-| Weather system | Working | Based on world health metrics |
-| State management | Working | Zustand + 60s API polling |
-| Agent WebSocket bridge | Exists | `src/lib/agent-websocket-bridge.ts` - for NPC AI |
+| Component              | Status  | Notes                                            |
+| ---------------------- | ------- | ------------------------------------------------ |
+| Phaser 3 renderer      | Working | 1280x960 canvas, pixel art, 5 zones              |
+| 17 NPC characters      | Working | AI-driven movement, Claude-powered chat          |
+| Zone system            | Working | 5 zones with smooth transitions                  |
+| Day/night cycle        | Working | Synced to EST timezone                           |
+| Weather system         | Working | Based on world health metrics                    |
+| State management       | Working | Zustand + 60s API polling                        |
+| Agent WebSocket bridge | Exists  | `src/lib/agent-websocket-bridge.ts` - for NPC AI |
 
 ### Key Files
 
@@ -140,16 +141,16 @@ update(): void {
 import { Schema, type } from "@colyseus/schema";
 
 export class Player extends Schema {
-  @type("string") sessionId: string;      // Colyseus session ID
-  @type("string") odisplayName: string;     // Player's chosen name
-  @type("string") odisplayName: string;     // Player's chosen name
-  @type("string") walletAddress: string;  // Optional: Solana wallet for identity
-  @type("number") x: number;              // Position X
-  @type("number") y: number;              // Position Y
-  @type("string") zone: string;           // Current zone
-  @type("string") direction: string;      // "left" | "right"
-  @type("boolean") isMoving: boolean;     // Animation state
-  @type("number") skinVariant: number;    // Which character skin (0-8)
+  @type("string") sessionId: string; // Colyseus session ID
+  @type("string") odisplayName: string; // Player's chosen name
+  @type("string") odisplayName: string; // Player's chosen name
+  @type("string") walletAddress: string; // Optional: Solana wallet for identity
+  @type("number") x: number; // Position X
+  @type("number") y: number; // Position Y
+  @type("string") zone: string; // Current zone
+  @type("string") direction: string; // "left" | "right"
+  @type("boolean") isMoving: boolean; // Animation state
+  @type("number") skinVariant: number; // Which character skin (0-8)
 }
 
 // packages/server/src/rooms/schema/ChatMessage.ts
@@ -167,7 +168,7 @@ import { Schema, MapSchema, ArraySchema, type } from "@colyseus/schema";
 export class BagsRoomState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
   @type([ChatMessage]) recentMessages = new ArraySchema<ChatMessage>();
-  @type("string") zone: string;           // Which zone this room represents
+  @type("string") zone: string; // Which zone this room represents
 }
 ```
 
@@ -179,7 +180,7 @@ import { Room, Client } from "colyseus";
 import { BagsRoomState, Player, ChatMessage } from "./schema";
 
 export class BagsRoom extends Room<BagsRoomState> {
-  maxClients = 50;  // Per zone
+  maxClients = 50; // Per zone
 
   onCreate(options: { zone: string }) {
     this.setState(new BagsRoomState());
@@ -198,7 +199,7 @@ export class BagsRoom extends Room<BagsRoomState> {
 
       // Clamp to world bounds
       player.x = Math.max(50, Math.min(1230, player.x));
-      player.y = Math.max(500, Math.min(620, player.y));  // Path level only
+      player.y = Math.max(500, Math.min(620, player.y)); // Path level only
 
       player.direction = input.left ? "left" : input.right ? "right" : player.direction;
       player.isMoving = input.left || input.right || input.up || input.down;
@@ -213,7 +214,7 @@ export class BagsRoom extends Room<BagsRoomState> {
       msg.id = `${Date.now()}-${client.sessionId}`;
       msg.senderId = client.sessionId;
       msg.senderName = player.displayName;
-      msg.message = data.message.slice(0, 200);  // Limit length
+      msg.message = data.message.slice(0, 200); // Limit length
       msg.timestamp = Date.now();
 
       // Keep last 50 messages
@@ -229,7 +230,7 @@ export class BagsRoom extends Room<BagsRoomState> {
     player.sessionId = client.sessionId;
     player.displayName = options.displayName || `Player${client.sessionId.slice(0, 4)}`;
     player.x = 400 + Math.random() * 200;
-    player.y = 555 * 1.6;  // pathLevel * SCALE
+    player.y = 555 * 1.6; // pathLevel * SCALE
     player.zone = this.state.zone;
     player.direction = "right";
     player.isMoving = false;
@@ -334,7 +335,7 @@ class ColyseusManager {
   }
 
   private emit(event: string, data: unknown) {
-    this.listeners.get(event)?.forEach(cb => cb(data));
+    this.listeners.get(event)?.forEach((cb) => cb(data));
   }
 }
 
@@ -455,6 +456,7 @@ applyLocalInput(input: { left: boolean; right: boolean; up: boolean; down: boole
 ## 6. Implementation Phases
 
 ### Phase 1: Local Player Movement (No Server)
+
 **Goal:** Walk around the existing world with keyboard controls
 
 - [ ] Add keyboard input capture to WorldScene
@@ -466,10 +468,11 @@ applyLocalInput(input: { left: boolean; right: boolean; up: boolean; down: boole
 **Deliverable:** Single-player BagsWorld where YOU control a character
 
 **Zone Edge Detection:**
+
 ```typescript
 // Zone boundaries (x coordinates)
 const ZONE_BOUNDARIES = {
-  left: 50,    // Walk past left edge -> previous zone
+  left: 50, // Walk past left edge -> previous zone
   right: 1230, // Walk past right edge -> next zone
 };
 
@@ -488,6 +491,7 @@ if (player.x >= ZONE_BOUNDARIES.right) {
 ```
 
 **NPC Proximity Interaction:**
+
 ```typescript
 // Check distance to NPCs each frame
 const INTERACTION_RADIUS = 100;  // pixels
@@ -513,6 +517,7 @@ checkNPCProximity(): GameCharacter | null {
 ---
 
 ### Phase 2: Colyseus Server Setup
+
 **Goal:** Running multiplayer server
 
 - [ ] Create new `bagsworld-server/` directory
@@ -527,6 +532,7 @@ checkNPCProximity(): GameCharacter | null {
 ---
 
 ### Phase 3: Client-Server Integration
+
 **Goal:** See other players moving in real-time
 
 - [ ] Create `colyseus-client.ts` connection manager
@@ -541,6 +547,7 @@ checkNPCProximity(): GameCharacter | null {
 ---
 
 ### Phase 4: Player Identity
+
 **Goal:** Unique player names and appearances
 
 - [ ] PlayerNameModal on first visit (stored in localStorage)
@@ -551,6 +558,7 @@ checkNPCProximity(): GameCharacter | null {
 **Deliverable:** Players identified by wallet, can choose appearance
 
 **Implementation Details:**
+
 - Require Phantom/Solflare wallet connection before entering world
 - Player ID = wallet public key (truncated for display: `7xKp...3mF9`)
 - Store skin preference in localStorage keyed by wallet
@@ -559,6 +567,7 @@ checkNPCProximity(): GameCharacter | null {
 ---
 
 ### Phase 5: Chat System
+
 **Goal:** Players can talk to each other
 
 - [ ] ChatPanel component (input + scrollable history)
@@ -570,9 +579,10 @@ checkNPCProximity(): GameCharacter | null {
 **Deliverable:** Working in-game chat between players
 
 **Chat Moderation Implementation:**
+
 ```typescript
 // Rate limiting (server-side)
-const RATE_LIMIT_MS = 1000;  // 1 message per second
+const RATE_LIMIT_MS = 1000; // 1 message per second
 const lastMessageTime = new Map<string, number>();
 
 onMessage("chat", (client, data) => {
@@ -580,12 +590,12 @@ onMessage("chat", (client, data) => {
   const lastTime = lastMessageTime.get(client.sessionId) || 0;
 
   if (now - lastTime < RATE_LIMIT_MS) {
-    return;  // Silently ignore spam
+    return; // Silently ignore spam
   }
   lastMessageTime.set(client.sessionId, now);
 
   // Profanity filter (use 'bad-words' npm package)
-  const Filter = require('bad-words');
+  const Filter = require("bad-words");
   const filter = new Filter();
   const cleanMessage = filter.clean(data.message);
 
@@ -596,6 +606,7 @@ onMessage("chat", (client, data) => {
 ---
 
 ### Phase 6: Polish & Deploy
+
 **Goal:** Production-ready multiplayer
 
 - [ ] Deploy Colyseus server to Railway/Render
@@ -606,31 +617,33 @@ onMessage("chat", (client, data) => {
 - [ ] Performance testing with 30 concurrent players
 
 **Virtual Joystick Options:**
+
 1. `phaser3-rex-plugins` VirtualJoystick - built for Phaser
 2. `nipplejs` - standalone library, integrate with Phaser input
 3. Custom implementation - HTML overlay + touch events
 
 **Recommended: nipplejs** (simpler, works outside Phaser canvas)
+
 ```typescript
-import nipplejs from 'nipplejs';
+import nipplejs from "nipplejs";
 
 // Create joystick (only on mobile)
 if (isMobile) {
   const joystick = nipplejs.create({
-    zone: document.getElementById('joystick-zone'),
-    mode: 'static',
-    position: { left: '80px', bottom: '80px' },
-    color: 'rgba(255, 255, 255, 0.5)',
+    zone: document.getElementById("joystick-zone"),
+    mode: "static",
+    position: { left: "80px", bottom: "80px" },
+    color: "rgba(255, 255, 255, 0.5)",
     size: 120,
   });
 
-  joystick.on('move', (evt, data) => {
+  joystick.on("move", (evt, data) => {
     // data.direction.angle: "up", "down", "left", "right"
     // data.force: 0-1 for analog control
     sendInputFromJoystick(data);
   });
 
-  joystick.on('end', () => {
+  joystick.on("end", () => {
     sendInputFromJoystick({ direction: null });
   });
 }
@@ -642,13 +655,13 @@ if (isMobile) {
 
 ## 7. Server Hosting Options
 
-| Platform | Cost | WebSocket Support | Notes |
-|----------|------|-------------------|-------|
-| **Railway** | ~$5/mo | Yes | Easy deploy, auto-scaling |
-| **Render** | $7/mo | Yes | Free tier has sleep issues |
-| **Fly.io** | ~$5/mo | Yes | Good for real-time apps |
-| **DigitalOcean App Platform** | $5/mo | Yes | Predictable pricing |
-| **Colyseus Cloud** | $20/mo | Native | Managed, zero-config |
+| Platform                      | Cost   | WebSocket Support | Notes                      |
+| ----------------------------- | ------ | ----------------- | -------------------------- |
+| **Railway**                   | ~$5/mo | Yes               | Easy deploy, auto-scaling  |
+| **Render**                    | $7/mo  | Yes               | Free tier has sleep issues |
+| **Fly.io**                    | ~$5/mo | Yes               | Good for real-time apps    |
+| **DigitalOcean App Platform** | $5/mo  | Yes               | Predictable pricing        |
+| **Colyseus Cloud**            | $20/mo | Native            | Managed, zero-config       |
 
 **Recommendation:** Start with Railway for simplicity. Colyseus Cloud if budget allows.
 
@@ -697,12 +710,12 @@ if (isMobile) {
 
 ### Technical Risks
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Colyseus version compatibility with Phaser | Medium | Use proven versions from official tutorial |
-| Mobile performance with multiplayer | High | Test early, consider reducing player cap on mobile |
-| Zone transition sync issues | Medium | Leave old room BEFORE transition animation, join new room AFTER |
-| Chat spam/abuse | Medium | Rate limiting, message length limits, optional moderation |
+| Risk                                       | Impact | Mitigation                                                      |
+| ------------------------------------------ | ------ | --------------------------------------------------------------- |
+| Colyseus version compatibility with Phaser | Medium | Use proven versions from official tutorial                      |
+| Mobile performance with multiplayer        | High   | Test early, consider reducing player cap on mobile              |
+| Zone transition sync issues                | Medium | Leave old room BEFORE transition animation, join new room AFTER |
+| Chat spam/abuse                            | Medium | Rate limiting, message length limits, optional moderation       |
 
 ### Unknowns to Resolve
 
@@ -728,30 +741,30 @@ if (isMobile) {
 
 ## 10. Design Decisions (Confirmed)
 
-| Decision | Choice | Implementation Notes |
-|----------|--------|---------------------|
-| **Player collision** | No collision | Players walk through each other - simpler, no stuck issues |
-| **Zone transitions** | Walk to edge | Auto-trigger when player reaches zone boundary |
-| **Max players/zone** | 30 | `maxClients = 30` in BagsRoom |
-| **Mobile controls** | Virtual joystick | Use `phaser3-rex-plugins` or custom joystick component |
-| **Identity** | Wallet required | Phantom/Solflare connect, wallet address = player ID |
-| **NPC proximity** | Must be near | ~100px radius to interact, shows "Press E to talk" prompt |
-| **Chat moderation** | Filter + rate limit | Profanity filter library + 1 msg/sec rate limit |
-| **Combat system** | Health bars | Players have HP, punch (J) / kick (K), knockback on hit |
-| **Jump** | W key | W/Up = jump with gravity physics |
+| Decision             | Choice              | Implementation Notes                                       |
+| -------------------- | ------------------- | ---------------------------------------------------------- |
+| **Player collision** | No collision        | Players walk through each other - simpler, no stuck issues |
+| **Zone transitions** | Walk to edge        | Auto-trigger when player reaches zone boundary             |
+| **Max players/zone** | 30                  | `maxClients = 30` in BagsRoom                              |
+| **Mobile controls**  | Virtual joystick    | Use `phaser3-rex-plugins` or custom joystick component     |
+| **Identity**         | Wallet required     | Phantom/Solflare connect, wallet address = player ID       |
+| **NPC proximity**    | Must be near        | ~100px radius to interact, shows "Press E to talk" prompt  |
+| **Chat moderation**  | Filter + rate limit | Profanity filter library + 1 msg/sec rate limit            |
+| **Combat system**    | Health bars         | Players have HP, punch (J) / kick (K), knockback on hit    |
+| **Jump**             | W key               | W/Up = jump with gravity physics                           |
 
 ---
 
 ## 11. Estimated Effort by Phase
 
-| Phase | Complexity | Files Changed | New Files |
-|-------|------------|---------------|-----------|
-| 1. Local Movement | Low | WorldScene.ts | 1 |
-| 2. Colyseus Server | Medium | - | 5-6 (new project) |
-| 3. Client-Server | Medium | WorldScene.ts, GameCanvas.tsx | 2 |
-| 4. Player Identity | Low | - | 2 components |
-| 5. Chat System | Medium | WorldScene.ts | 2 components |
-| 6. Deploy & Polish | Medium | configs | - |
+| Phase              | Complexity | Files Changed                 | New Files         |
+| ------------------ | ---------- | ----------------------------- | ----------------- |
+| 1. Local Movement  | Low        | WorldScene.ts                 | 1                 |
+| 2. Colyseus Server | Medium     | -                             | 5-6 (new project) |
+| 3. Client-Server   | Medium     | WorldScene.ts, GameCanvas.tsx | 2                 |
+| 4. Player Identity | Low        | -                             | 2 components      |
+| 5. Chat System     | Medium     | WorldScene.ts                 | 2 components      |
+| 6. Deploy & Polish | Medium     | configs                       | -                 |
 
 ---
 

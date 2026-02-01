@@ -28,18 +28,18 @@ npm start        # Start production server
 
 ### Key Files
 
-| Path                            | Purpose                                                        |
-| ------------------------------- | -------------------------------------------------------------- |
-| `src/app/api/world-state/`      | Main API endpoint for WorldState                               |
-| `src/app/api/character-chat/`   | AI chatbot for character interactions                          |
-| `src/app/api/launch-token/`     | Token creation flow                                            |
-| `src/app/api/oak-generate/`     | Professor Oak AI Generator (names, logos, banners)             |
-| `src/game/scenes/BootScene.ts`  | Asset preloading + pixel art texture generation                |
-| `src/game/scenes/WorldScene.ts` | Main game logic, zone rendering, weather                       |
-| `src/lib/types.ts`              | Core types: WorldState, GameCharacter, GameBuilding, GameEvent |
-| `src/lib/store.ts`              | Zustand store                                                  |
-| `src/lib/bags-api.ts`           | BagsApiClient class                                            |
-| `src/components/ProfessorOakChat.tsx` | AI-powered token generation wizard                       |
+| Path                                  | Purpose                                                        |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `src/app/api/world-state/`            | Main API endpoint for WorldState                               |
+| `src/app/api/character-chat/`         | AI chatbot for character interactions                          |
+| `src/app/api/launch-token/`           | Token creation flow                                            |
+| `src/app/api/oak-generate/`           | Professor Oak AI Generator (names, logos, banners)             |
+| `src/game/scenes/BootScene.ts`        | Asset preloading + pixel art texture generation                |
+| `src/game/scenes/WorldScene.ts`       | Main game logic, zone rendering, weather                       |
+| `src/lib/types.ts`                    | Core types: WorldState, GameCharacter, GameBuilding, GameEvent |
+| `src/lib/store.ts`                    | Zustand store                                                  |
+| `src/lib/bags-api.ts`                 | BagsApiClient class                                            |
+| `src/components/ProfessorOakChat.tsx` | AI-powered token generation wizard                             |
 
 ### State Management
 
@@ -71,6 +71,7 @@ Moltbook is a social network for AI agents. Bagsy (@BagsyHypeBot) posts BagsWorl
 **Setup:**
 
 1. Register Bagsy agent:
+
 ```bash
 curl -X POST https://www.moltbook.com/api/v1/agents/register \
   -H "Content-Type: application/json" \
@@ -83,23 +84,26 @@ curl -X POST https://www.moltbook.com/api/v1/agents/register \
 
 **Files:**
 
-| Path | Purpose |
-|------|---------|
-| `src/lib/moltbook-client.ts` | API client with rate limiting |
-| `src/lib/moltbook-agent.ts` | Bagsy personality + content generation |
-| `src/app/api/moltbook/route.ts` | POST/GET endpoints for game integration |
-| `src/components/MoltbookFeed.tsx` | UI component for displaying feed |
+| Path                              | Purpose                                 |
+| --------------------------------- | --------------------------------------- |
+| `src/lib/moltbook-client.ts`      | API client with rate limiting           |
+| `src/lib/moltbook-agent.ts`       | Bagsy personality + content generation  |
+| `src/app/api/moltbook/route.ts`   | POST/GET endpoints for game integration |
+| `src/components/MoltbookFeed.tsx` | UI component for displaying feed        |
 
 **Rate Limits:**
+
 - 1 post per 30 minutes
 - 50 comments per hour
 - 100 requests per minute
 
 **API:**
+
 - `GET /api/moltbook?source=bagsworld|trending&limit=10` - Fetch posts
 - `POST /api/moltbook` - Queue a post with `{type, data, priority?, immediate?}`
 
 **Event Types (Hype-focused):**
+
 - `gm` - Good morning posts
 - `hype` - General BagsWorld hype
 - `feature_spotlight` - Highlight Casino, Terminal, Oracle, etc.
@@ -112,15 +116,16 @@ curl -X POST https://www.moltbook.com/api/v1/agents/register \
 - `building_hype` - Hype specific buildings
 
 **Convenience Functions:**
+
 ```typescript
 import { postGM, postHype, spotlightFeature, celebrateLaunch } from "@/lib/moltbook-agent";
 
-postGM();                           // Queue a GM post
-postHype("the vibes");              // Queue general hype
-spotlightFeature("Casino");         // Spotlight a feature
-spotlightCharacter("Neo");          // Spotlight a character
+postGM(); // Queue a GM post
+postHype("the vibes"); // Queue general hype
+spotlightFeature("Casino"); // Spotlight a feature
+spotlightCharacter("Neo"); // Spotlight a character
 celebrateLaunch("CoolCat", "COOL"); // Celebrate a launch
-celebrateClaim(5.5);                // Celebrate a fee claim
+celebrateClaim(5.5); // Celebrate a fee claim
 ```
 
 ## Bags.fm API
@@ -221,12 +226,14 @@ Day/Night synced to EST timezone via `timeInfo` from API.
 Professor Oak can generate complete token launch assets using AI:
 
 **Capabilities:**
+
 - **Name Generation**: 5 creative name/ticker suggestions from a concept (requires `ANTHROPIC_API_KEY`)
 - **Logo Generation**: 512x512 square logos in 5 art styles
 - **Banner Generation**: 600x200 banners for DexScreener (3:1 ratio)
 - **Image Resize**: Resize uploaded images to correct dimensions
 
 **Art Styles:**
+
 - Pixel Art (16-bit retro aesthetic)
 - Cartoon (bold, playful mascot)
 - Kawaii (cute chibi style)
@@ -234,10 +241,12 @@ Professor Oak can generate complete token launch assets using AI:
 - Abstract (geometric art)
 
 **Image Generation:**
+
 - With `REPLICATE_API_TOKEN`: Uses SDXL for high-quality generation
 - Without: Falls back to procedural SVG pixel art (free, instant)
 
 **API Endpoint:** `POST /api/oak-generate`
+
 ```json
 {
   "action": "suggest-names" | "generate-logo" | "generate-banner" | "resize-image" | "full-wizard",
@@ -247,6 +256,7 @@ Professor Oak can generate complete token launch assets using AI:
 ```
 
 **UI Flow:**
+
 1. User clicks Professor Oak in Founder's Corner
 2. Clicks "AI GENERATE" button
 3. Enters token concept

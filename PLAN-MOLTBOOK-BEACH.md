@@ -3,6 +3,7 @@
 ## 1. Goal & Overview
 
 Create a new zone called **"Moltbook Beach"** positioned **between Labs (HQ) and Park**, featuring:
+
 - **Beach/ocean theme** with sand, waves, palm trees, and tropical elements
 - **External agents (ChadGhost, Test123, etc.) spawn here** as crabs or lobsters ("Openclaws")
 - **Agent-launched token buildings** appear in this zone as beach-themed structures
@@ -17,12 +18,14 @@ This zone becomes the **home for external AI agents** that join BagsWorld throug
 ## 2. Zone Order & Navigation
 
 Current order (left to right):
+
 ```
 Labs → Park → BagsCity → Ballers Valley → Founder's Corner → Arena
  -1      0        1            2               3              4
 ```
 
 New order:
+
 ```
 Labs → Moltbook Beach → Park → BagsCity → Ballers Valley → Founder's Corner → Arena
  -2        -1            0        1            2               3              4
@@ -35,20 +38,22 @@ Labs → Moltbook Beach → Park → BagsCity → Ballers Valley → Founder's C
 ## 3. Visual Theme (Inspired by Moltbook.town)
 
 ### 3.1 Color Palette
-| Element | Color | Hex |
-|---------|-------|-----|
-| Sand | Warm tan | `#f4d58d` |
-| Sand shadow | Darker tan | `#c4a35d` |
-| Water | Teal/cyan | `#06b6d4` |
-| Water deep | Dark blue | `#0284c7` |
-| Wave foam | White | `#ffffff` |
+
+| Element     | Color          | Hex       |
+| ----------- | -------------- | --------- |
+| Sand        | Warm tan       | `#f4d58d` |
+| Sand shadow | Darker tan     | `#c4a35d` |
+| Water       | Teal/cyan      | `#06b6d4` |
+| Water deep  | Dark blue      | `#0284c7` |
+| Wave foam   | White          | `#ffffff` |
 | Palm leaves | Tropical green | `#22c55e` |
-| Coral | Coral pink | `#fb7185` |
-| Lobster red | Moltbook red | `#ef4444` |
-| Shell/crab | Orange | `#f97316` |
-| Night glow | Gold accent | `#fbbf24` |
+| Coral       | Coral pink     | `#fb7185` |
+| Lobster red | Moltbook red   | `#ef4444` |
+| Shell/crab  | Orange         | `#f97316` |
+| Night glow  | Gold accent    | `#fbbf24` |
 
 ### 3.2 Ground Texture (`beach_ground`)
+
 - **Tileable sand pattern** with:
   - Base warm tan color
   - Pixel dithering for texture
@@ -59,6 +64,7 @@ Labs → Moltbook Beach → Park → BagsCity → Ballers Valley → Founder's C
 ### 3.3 Environment Elements
 
 **Decorations (depth 2-4):**
+
 - Palm trees (3-4 styles, varying heights)
 - Beach umbrellas (red/blue striped)
 - Tiki torches (with flame animation)
@@ -70,6 +76,7 @@ Labs → Moltbook Beach → Park → BagsCity → Ballers Valley → Founder's C
 - Kelp/seaweed on edges
 
 **Props (depth 3):**
+
 - Surfboards stuck in sand
 - Beach balls
 - Treasure chests (closed)
@@ -78,6 +85,7 @@ Labs → Moltbook Beach → Park → BagsCity → Ballers Valley → Founder's C
 - Tide pools with starfish
 
 **Animated Elements:**
+
 - Waves rolling in at bottom of screen (subtle animation)
 - Palm tree leaves swaying
 - Tiki torch flames flickering
@@ -85,7 +93,9 @@ Labs → Moltbook Beach → Park → BagsCity → Ballers Valley → Founder's C
 - Crabs scuttling randomly
 
 ### 3.4 Special Building: Moltbook HQ
+
 A **lighthouse/beach hut hybrid** building at center:
+
 - Wooden structure with Moltbook lobster logo
 - Glowing beacon at top (pulses at night)
 - "MOLTBOOK" sign
@@ -96,19 +106,22 @@ A **lighthouse/beach hut hybrid** building at center:
 ## 4. Agent Character System (Crabs & Lobsters)
 
 ### 4.1 Sprite Types
+
 **Only external agents** (registered via `external-registry.ts`) render as crustaceans:
 
-| Agent Type | Sprite | Example |
-|------------|--------|---------|
-| External agents (Moltbook) | **Lobster** (red, larger) | ChadGhost, Test123 |
-| External agents (other) | **Crab** (orange, smaller) | Future external agents |
+| Agent Type                 | Sprite                     | Example                |
+| -------------------------- | -------------------------- | ---------------------- |
+| External agents (Moltbook) | **Lobster** (red, larger)  | ChadGhost, Test123     |
+| External agents (other)    | **Crab** (orange, smaller) | Future external agents |
 
 **NOT affected:**
+
 - Bagsy (stays as normal mascot in Park)
 - ElizaOS agents (normal character sprites)
 - Permanent NPCs (Finn, Toly, Ash, etc.)
 
 ### 4.2 Sprite Design (16x16 base, scaled)
+
 - **Lobster sprite:** Side view, claws visible, antenna, 8 legs
 - **Crab sprite:** Top-down view, large claws, 6 visible legs
 - Both have:
@@ -118,7 +131,9 @@ A **lighthouse/beach hut hybrid** building at center:
   - Sad mood: drooped antenna
 
 ### 4.3 Character Rendering Logic
+
 In `WorldScene.updateCharacters()`:
+
 ```typescript
 // Only external agents (from external-registry) become crabs/lobsters
 // Check by ID prefix - external agents have "external-" prefix
@@ -136,23 +151,28 @@ if (character.zone === "moltbook" && character.id.startsWith("external-")) {
 ## 5. Agent Building System
 
 ### 5.1 Agent Buildings Location
+
 All buildings created by `external-registry.ts` and tokens launched via `launcher.ts` should:
+
 - Automatically be assigned to `zone: "moltbook"`
 - Use special beach-themed building styles
 
 ### 5.2 Beach Building Styles
+
 Instead of normal city buildings, agent buildings render as:
 
-| Level | Style | Description |
-|-------|-------|-------------|
-| 1 | Beach Shack | Small wooden hut on stilts |
-| 2 | Tiki Bar | Thatched roof, bar counter |
-| 3 | Beach House | Two-story coastal home |
-| 4 | Surf Shop | Larger with surfboard rack |
-| 5 | Beach Resort | Multi-story with pool |
+| Level | Style        | Description                |
+| ----- | ------------ | -------------------------- |
+| 1     | Beach Shack  | Small wooden hut on stilts |
+| 2     | Tiki Bar     | Thatched roof, bar counter |
+| 3     | Beach House  | Two-story coastal home     |
+| 4     | Surf Shop    | Larger with surfboard rack |
+| 5     | Beach Resort | Multi-story with pool      |
 
 ### 5.3 Building Texture Generation
+
 Add to BootScene:
+
 - `generateBeachBuildings()` - Creates 5 beach-themed building styles
 - Each uses palm wood, thatch, rope textures
 
@@ -161,6 +181,7 @@ Add to BootScene:
 ## 6. Required Code Changes
 
 ### 6.1 Types (`src/lib/types.ts`)
+
 ```typescript
 // Add to ZoneType
 export type ZoneType = "labs" | "moltbook" | "main_city" | "trending" | "ballers" | "founders" | "arena";
@@ -177,12 +198,14 @@ moltbook: {
 ### 6.2 WorldScene (`src/game/scenes/WorldScene.ts`)
 
 **New properties:**
+
 ```typescript
 private moltbookElements: Phaser.GameObjects.GameObject[] = [];
 private moltbookZoneCreated = false;
 ```
 
 **Zone order update:**
+
 ```typescript
 const zoneOrder: Record<ZoneType, number> = {
   labs: -2,
@@ -196,16 +219,18 @@ const zoneOrder: Record<ZoneType, number> = {
 ```
 
 **Ground texture mapping:**
+
 ```typescript
 const groundTextures: Record<ZoneType, string> = {
   labs: "labs_ground",
-  moltbook: "beach_ground",  // NEW
+  moltbook: "beach_ground", // NEW
   main_city: "grass",
   // ...
 };
 ```
 
 **New methods:**
+
 - `setupMoltbookZone()` - Zone initialization
 - `createMoltbookDecorations()` - Palm trees, shells, etc.
 - `createMoltbookSky()` - Tropical sky gradient
@@ -214,6 +239,7 @@ const groundTextures: Record<ZoneType, string> = {
 ### 6.3 BootScene (`src/game/scenes/BootScene.ts`)
 
 **New methods:**
+
 - `generateBeachGroundTexture()` - Sand pattern
 - `generateBeachBuildings()` - 5 beach building styles
 - `generateBeachProps()` - Palm trees, umbrellas, etc.
@@ -224,16 +250,18 @@ const groundTextures: Record<ZoneType, string> = {
 ### 6.4 External Registry (`src/lib/agent-economy/external-registry.ts`)
 
 **Change default zone:**
+
 ```typescript
 export async function registerExternalAgent(
   wallet: string,
   name: string,
-  zone: ZoneType = "moltbook",  // Changed from "main_city"
+  zone: ZoneType = "moltbook" // Changed from "main_city"
   // ...
-)
+);
 ```
 
 **Update position helper:**
+
 ```typescript
 function getZonePosition(zone: ZoneType): { x: number; y: number } {
   // Add moltbook spawn points
@@ -247,6 +275,7 @@ function getZonePosition(zone: ZoneType): { x: number; y: number } {
 ### 6.5 Spawn System (`src/lib/agent-economy/spawn.ts`)
 
 **Add moltbook spawn points:**
+
 ```typescript
 moltbook: [
   { x: Math.round(150 * SCALE), y: GROUND_Y },
@@ -259,16 +288,18 @@ moltbook: [
 ### 6.6 Launcher (`src/lib/agent-economy/launcher.ts`)
 
 **Already fixed** to register tokens in Neon DB. Need to ensure zone is set:
+
 ```typescript
 const globalToken: GlobalToken = {
   // ...
-  zone_override: "moltbook",  // Add this
+  zone_override: "moltbook", // Add this
 };
 ```
 
 ### 6.7 World Calculator (`src/lib/world-calculator.ts`)
 
 **Update agent building logic:**
+
 ```typescript
 // In rowToBuilding for external-registry
 zone: "moltbook" as ZoneType,  // Agent buildings always in moltbook zone
@@ -281,6 +312,7 @@ No changes needed - already injects external agents and buildings.
 ### 6.9 Admin API (`src/app/api/admin/route.ts`)
 
 Add "moltbook" to VALID_ZONES:
+
 ```typescript
 const VALID_ZONES = ["labs", "moltbook", "main_city", "trending", "ballers", "founders"] as const;
 ```
@@ -294,6 +326,7 @@ Add "moltbook" to ZoneType.
 ## 7. Fix Existing Agents (Test123, ChadGhost)
 
 ### 7.1 Database Migration
+
 For agents already registered with wrong Y positions or missing buildings:
 
 ```sql
@@ -305,7 +338,9 @@ WHERE zone != 'moltbook' OR y < 800;
 ```
 
 ### 7.2 Register Missing Token Buildings
+
 Create admin endpoint or script to:
+
 1. Query all tokens launched via agent economy
 2. Register any missing ones in `global_tokens` with `zone_override = 'moltbook'`
 
@@ -314,36 +349,40 @@ Create admin endpoint or script to:
 ## 8. Dependencies & Risks
 
 ### 8.1 Dependencies
-| Dependency | Status | Notes |
-|------------|--------|-------|
-| Neon DB | Required | For persisting agent zone data |
-| Bags SDK | Required | For token launch integration |
-| Phaser 3 | Existing | For rendering |
+
+| Dependency | Status   | Notes                          |
+| ---------- | -------- | ------------------------------ |
+| Neon DB    | Required | For persisting agent zone data |
+| Bags SDK   | Required | For token launch integration   |
+| Phaser 3   | Existing | For rendering                  |
 
 ### 8.2 Risks & Mitigations
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| Zone transition bugs | Medium | Test all zone→zone paths |
-| Sprite generation slow | Low | Pre-generate at boot |
-| DB migration issues | Low | Backup before migration |
-| Existing agent positions broken | High (known) | Include migration step |
+| Risk                            | Likelihood   | Mitigation               |
+| ------------------------------- | ------------ | ------------------------ |
+| Zone transition bugs            | Medium       | Test all zone→zone paths |
+| Sprite generation slow          | Low          | Pre-generate at boot     |
+| DB migration issues             | Low          | Backup before migration  |
+| Existing agent positions broken | High (known) | Include migration step   |
 
 ---
 
 ## 9. Testing Plan
 
 ### 9.1 Unit Tests
+
 - Zone order calculations
 - Spawn point generation
 - Building position calculations
 
 ### 9.2 Integration Tests
+
 - Zone transitions (all directions)
 - Agent registration → appears in moltbook
 - Token launch → building appears in moltbook
 
 ### 9.3 Visual Tests
+
 - Beach theme renders correctly
 - Crab/lobster sprites animate
 - Wave animation smooth
@@ -414,14 +453,14 @@ Create admin endpoint or script to:
 
 ## 12. Estimated Scope
 
-| Phase | Files Modified | Complexity |
-|-------|---------------|------------|
-| Phase 1 | 4 | Low |
-| Phase 2 | 1 (BootScene) | High |
-| Phase 3 | 1 (WorldScene) | High |
-| Phase 4 | 4 | Medium |
-| Phase 5 | 2 + SQL | Low |
-| Phase 6 | 2 | Medium |
+| Phase   | Files Modified | Complexity |
+| ------- | -------------- | ---------- |
+| Phase 1 | 4              | Low        |
+| Phase 2 | 1 (BootScene)  | High       |
+| Phase 3 | 1 (WorldScene) | High       |
+| Phase 4 | 4              | Medium     |
+| Phase 5 | 2 + SQL        | Low        |
+| Phase 6 | 2              | Medium     |
 
 **Total:** ~10-12 files, significant BootScene/WorldScene additions
 
@@ -430,6 +469,7 @@ Create admin endpoint or script to:
 ## Ready for Review
 
 Please review this plan and let me know:
+
 1. Any changes to the visual theme?
 2. Preferred zone name?
 3. Answers to open questions?

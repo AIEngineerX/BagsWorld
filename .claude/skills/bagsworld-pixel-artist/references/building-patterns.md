@@ -6,13 +6,13 @@ Real examples from BagsWorld's BootScene.ts for creating buildings.
 
 Buildings scale by market cap:
 
-| Level | Market Cap | Height | Width | Examples |
-|-------|------------|--------|-------|----------|
-| 1 | < $100K | 40 * s | 30 * s | corner_store, taco_stand, coffee_shop, arcade |
-| 2 | $100K-$500K | 55 * s | 34 * s | tech_startup, law_office, coworking, design_studio |
-| 3 | $500K-$2M | 75 * s | 38 * s | corporate_hq, bank, media_tower, pharma_lab |
-| 4 | $2M-$10M | 100 * s | 42 * s | modern_tower, art_deco, glass_spire, tech_campus |
-| 5 | $10M+ | 130 * s | 48 * s | bags_hq, diamond_tower, gold_citadel, neon_megacorp |
+| Level | Market Cap  | Height   | Width   | Examples                                            |
+| ----- | ----------- | -------- | ------- | --------------------------------------------------- |
+| 1     | < $100K     | 40 \* s  | 30 \* s | corner_store, taco_stand, coffee_shop, arcade       |
+| 2     | $100K-$500K | 55 \* s  | 34 \* s | tech_startup, law_office, coworking, design_studio  |
+| 3     | $500K-$2M   | 75 \* s  | 38 \* s | corporate_hq, bank, media_tower, pharma_lab         |
+| 4     | $2M-$10M    | 100 \* s | 42 \* s | modern_tower, art_deco, glass_spire, tech_campus    |
+| 5     | $10M+       | 130 \* s | 48 \* s | bags_hq, diamond_tower, gold_citadel, neon_megacorp |
 
 ## Standard Building Structure
 
@@ -229,10 +229,34 @@ private drawDoor(g, style, level, bWidth, canvasHeight, s): void {
 ```typescript
 // Level 1 styles
 const level1Styles = [
-  { name: "corner_store", base: PALETTE.violet, roof: PALETTE.gold, accent: PALETTE.gold, awningColor: PALETTE.brightRed },
-  { name: "taco_stand", base: PALETTE.cream, roof: PALETTE.orange, accent: PALETTE.orange, awningColor: PALETTE.brightRed },
-  { name: "coffee_shop", base: PALETTE.brown, roof: PALETTE.cream, accent: PALETTE.amber, awningColor: PALETTE.darkBrown },
-  { name: "arcade", base: PALETTE.night, roof: PALETTE.lavender, accent: PALETTE.cyan, awningColor: PALETTE.solanaPurple },
+  {
+    name: "corner_store",
+    base: PALETTE.violet,
+    roof: PALETTE.gold,
+    accent: PALETTE.gold,
+    awningColor: PALETTE.brightRed,
+  },
+  {
+    name: "taco_stand",
+    base: PALETTE.cream,
+    roof: PALETTE.orange,
+    accent: PALETTE.orange,
+    awningColor: PALETTE.brightRed,
+  },
+  {
+    name: "coffee_shop",
+    base: PALETTE.brown,
+    roof: PALETTE.cream,
+    accent: PALETTE.amber,
+    awningColor: PALETTE.darkBrown,
+  },
+  {
+    name: "arcade",
+    base: PALETTE.night,
+    roof: PALETTE.lavender,
+    accent: PALETTE.cyan,
+    awningColor: PALETTE.solanaPurple,
+  },
 ];
 
 // Level 5 styles
@@ -240,7 +264,12 @@ const level5Styles = [
   { name: "bags_hq", base: PALETTE.night, roof: PALETTE.bagsGreen, accent: PALETTE.bagsGreen },
   { name: "diamond_tower", base: PALETTE.navy, roof: PALETTE.cyan, accent: PALETTE.lightBlue },
   { name: "gold_citadel", base: PALETTE.night, roof: PALETTE.gold, accent: PALETTE.amber },
-  { name: "neon_megacorp", base: PALETTE.deepPurple, roof: PALETTE.solanaPurple, accent: PALETTE.lavender },
+  {
+    name: "neon_megacorp",
+    base: PALETTE.deepPurple,
+    roof: PALETTE.solanaPurple,
+    accent: PALETTE.lavender,
+  },
 ];
 ```
 

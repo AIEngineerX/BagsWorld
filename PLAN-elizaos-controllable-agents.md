@@ -5,6 +5,7 @@
 Migrate BagsWorld agents to official `@elizaos/core` (v1.7.2) and add autonomous behavior with a custom tick loop, goal system, and bidirectional game synchronization.
 
 **User Requirements:**
+
 - Budget: Moderate ($50-100/mo) → 70% rules-based, 30% LLM decisions
 - Control: Fully autonomous → Agents decide everything, users observe
 - SDK: Migrate to `@elizaos/core`
@@ -28,16 +29,17 @@ For autonomous behavior, we MUST implement our own tick loop.
 
 **Core Components:**
 
-| Component | Purpose | Our Migration |
-|-----------|---------|---------------|
-| `AgentRuntime` | Central orchestrator | Replace our mock runtime |
-| `Actions` | Agent capabilities (execute tasks) | Migrate our 11 actions |
-| `Providers` | Data sources (context injection) | Migrate our 5 providers |
-| `Evaluators` | Post-processing (memory, reflection) | Migrate our 7 evaluators |
-| `Services` | Long-running connections | Add WebSocket bridge service |
-| `Memory` | Persistence with embeddings | Replace our conversation_messages |
+| Component      | Purpose                              | Our Migration                     |
+| -------------- | ------------------------------------ | --------------------------------- |
+| `AgentRuntime` | Central orchestrator                 | Replace our mock runtime          |
+| `Actions`      | Agent capabilities (execute tasks)   | Migrate our 11 actions            |
+| `Providers`    | Data sources (context injection)     | Migrate our 5 providers           |
+| `Evaluators`   | Post-processing (memory, reflection) | Migrate our 7 evaluators          |
+| `Services`     | Long-running connections             | Add WebSocket bridge service      |
+| `Memory`       | Persistence with embeddings          | Replace our conversation_messages |
 
 **Package Details:**
+
 - Latest: `@elizaos/core@1.7.2`
 - Dependencies: zod, uuid, dotenv, handlebars, @langchain/core
 - Dual build: Node.js + Browser
@@ -46,6 +48,7 @@ For autonomous behavior, we MUST implement our own tick loop.
 ### Gaming + elizaOS Precedents
 
 From [OAK Research](https://oakresearch.io/en/analyses/innovations/gaming-x-ai-agents-emerging-trend-for-2025):
+
 - **Smolworld** (Treasure/Mage): AI agents evolve in virtual Tamagotchi environment
 - **GAME framework**: Defines agent personality, decision-making, virtual world interactions
 - **Roblox experiment**: AI agent left to operate autonomously in simulated environment
@@ -74,12 +77,14 @@ export const bagsWorldPlugin: Plugin = {
 ```
 
 **What works:**
+
 - Character definitions are already elizaOS-compatible
 - Action/Provider/Evaluator signatures match official types
 - AgentCoordinator handles inter-agent messaging
 - AutonomousService has scheduled tasks (Neo scans, Ghost checks)
 
 **What's missing:**
+
 - No AgentRuntime (using mock)
 - No continuous decision loop
 - No spatial awareness
@@ -90,19 +95,11 @@ export const bagsWorldPlugin: Plugin = {
 
 ```typescript
 // NEW: Using official @elizaos/core
-import {
-  AgentRuntime,
-  Action,
-  Provider,
-  Evaluator,
-  Service,
-  Memory,
-  State
-} from '@elizaos/core';
+import { AgentRuntime, Action, Provider, Evaluator, Service, Memory, State } from "@elizaos/core";
 
 // NEW: Autonomous behavior service
 class AutonomousAgentService extends Service {
-  static serviceType = 'bagsworld_autonomous';
+  static serviceType = "bagsworld_autonomous";
 
   private tickInterval: NodeJS.Timeout;
   private worldState: AgentWorldState;
@@ -274,22 +271,22 @@ class AutonomousAgentService extends Service {
 
 ```typescript
 type GoalType =
-  | 'patrol'          // Walk through zone randomly
-  | 'visit_zone'      // Go to specific zone
-  | 'visit_building'  // Go to specific building
-  | 'interact_agent'  // Walk to and talk to another agent
-  | 'observe'         // Stand near something and watch
-  | 'announce'        // Make a public statement (speech bubble)
-  | 'scan'            // Neo: Check for new launches
-  | 'verify'          // Ghost: Verify on-chain activity
-  | 'greet'           // Ash: Welcome newcomers
-  | 'respond_event';  // React to a triggered event
+  | "patrol" // Walk through zone randomly
+  | "visit_zone" // Go to specific zone
+  | "visit_building" // Go to specific building
+  | "interact_agent" // Walk to and talk to another agent
+  | "observe" // Stand near something and watch
+  | "announce" // Make a public statement (speech bubble)
+  | "scan" // Neo: Check for new launches
+  | "verify" // Ghost: Verify on-chain activity
+  | "greet" // Ash: Welcome newcomers
+  | "respond_event"; // React to a triggered event
 
 interface AgentGoal {
   id: string;
   type: GoalType;
-  priority: number;           // 1-10
-  status: 'pending' | 'active' | 'completed' | 'failed';
+  priority: number; // 1-10
+  status: "pending" | "active" | "completed" | "failed";
   target?: {
     agentId?: string;
     buildingId?: string;
@@ -304,16 +301,16 @@ interface AgentGoal {
 
 ### Character Goal Profiles
 
-| Character | Default Goals | Triggered Goals | Zone Preference |
-|-----------|---------------|-----------------|-----------------|
-| **Neo** | Patrol BagsCity, Scan (every 2min) | Alert on suspicious activity | trending |
-| **Ghost** | Observe HQ, Check rewards | Verify large transactions | labs |
-| **Finn** | Visit all zones, Inspire | Announce new features | main_city |
-| **Ash** | Patrol Park, Greet newcomers | Help lost trainers | main_city |
-| **CJ** | Patrol trending zone | React to market dumps | trending |
-| **Shaw** | Work in HQ, Coordinate | Respond to tech questions | labs |
-| **Toly** | Visit Founders Corner | Explain Solana concepts | founders |
-| **Bags Bot** | Roam all zones | Respond to commands | any |
+| Character    | Default Goals                      | Triggered Goals              | Zone Preference |
+| ------------ | ---------------------------------- | ---------------------------- | --------------- |
+| **Neo**      | Patrol BagsCity, Scan (every 2min) | Alert on suspicious activity | trending        |
+| **Ghost**    | Observe HQ, Check rewards          | Verify large transactions    | labs            |
+| **Finn**     | Visit all zones, Inspire           | Announce new features        | main_city       |
+| **Ash**      | Patrol Park, Greet newcomers       | Help lost trainers           | main_city       |
+| **CJ**       | Patrol trending zone               | React to market dumps        | trending        |
+| **Shaw**     | Work in HQ, Coordinate             | Respond to tech questions    | labs            |
+| **Toly**     | Visit Founders Corner              | Explain Solana concepts      | founders        |
+| **Bags Bot** | Roam all zones                     | Respond to commands          | any             |
 
 ### Goal Selection Logic (Rules-Based)
 
@@ -372,24 +369,24 @@ interface DecisionRule {
 const NEO_RULES: DecisionRule[] = [
   {
     priority: 10,
-    condition: (p) => p.messages.some(m => m.priority === 'urgent'),
-    action: () => ({ action: 'respond', message: p.messages[0] })
+    condition: (p) => p.messages.some((m) => m.priority === "urgent"),
+    action: () => ({ action: "respond", message: p.messages[0] }),
   },
   {
     priority: 8,
     condition: (p) => p.timeSinceLastScan > 120000, // 2 minutes
-    action: () => ({ action: 'scan', goal: 'scan_launches' })
+    action: () => ({ action: "scan", goal: "scan_launches" }),
   },
   {
     priority: 5,
     condition: (p) => p.nearbyAgents.length > 0 && Math.random() < 0.3,
-    action: () => ({ action: 'interact', target: p.nearbyAgents[0] })
+    action: () => ({ action: "interact", target: p.nearbyAgents[0] }),
   },
   {
     priority: 2,
     condition: () => true, // Default
-    action: () => ({ action: 'patrol', zone: 'trending' })
-  }
+    action: () => ({ action: "patrol", zone: "trending" }),
+  },
 ];
 
 function ruleBasedDecision(agentId: string, perception: Perception): Decision {
@@ -404,7 +401,7 @@ function ruleBasedDecision(agentId: string, perception: Perception): Decision {
     }
   }
 
-  return { action: 'idle' };
+  return { action: "idle" };
 }
 ```
 
@@ -424,12 +421,18 @@ async function llmDecision(
 
 CURRENT SITUATION:
 - Location: ${perception.zone} zone
-- Nearby agents: ${perception.nearbyAgents.join(', ') || 'none'}
-- Recent events: ${perception.events.slice(0, 3).map(e => e.type).join(', ')}
-- Current goal: ${perception.activeGoal?.type || 'none'}
+- Nearby agents: ${perception.nearbyAgents.join(", ") || "none"}
+- Recent events: ${perception.events
+    .slice(0, 3)
+    .map((e) => e.type)
+    .join(", ")}
+- Current goal: ${perception.activeGoal?.type || "none"}
 
 RECENT MEMORY:
-${perception.memories.slice(0, 3).map(m => `- ${m.content.text}`).join('\n')}
+${perception.memories
+  .slice(0, 3)
+  .map((m) => `- ${m.content.text}`)
+  .join("\n")}
 
 What should you do next? Choose ONE action:
 1. MOVE to [zone/position] - Walk somewhere
@@ -441,8 +444,8 @@ What should you do next? Choose ONE action:
 Respond with just the action type and target. Stay in character.`;
 
   const response = await runtime.completion({
-    messages: [{ role: 'user', content: prompt }],
-    maxTokens: 100
+    messages: [{ role: "user", content: prompt }],
+    maxTokens: 100,
   });
 
   return parseDecisionFromResponse(response);
@@ -466,9 +469,7 @@ async function decide(
   const useLLM = Math.random() < 0.3;
 
   // But only use LLM in social situations
-  const isSocialSituation =
-    perception.nearbyAgents.length > 0 ||
-    perception.recentUserInteraction;
+  const isSocialSituation = perception.nearbyAgents.length > 0 || perception.recentUserInteraction;
 
   if (useLLM && isSocialSituation) {
     return llmDecision(runtime, agentId, perception);
@@ -490,6 +491,7 @@ npm install @elizaos/core@1.7.2
 ```
 
 **Files to modify:**
+
 - `package.json` - Add dependency
 - `tsconfig.json` - Update module resolution if needed
 
@@ -515,6 +517,7 @@ import type {
 ```
 
 **Files to modify:**
+
 - `src/types/elizaos.ts` → Delete (or keep as re-exports)
 - `src/characters/index.ts` → Update imports
 - `src/actions/*.ts` → Update signatures
@@ -527,8 +530,8 @@ Replace mock runtime with real AgentRuntime per agent:
 
 ```typescript
 // NEW: eliza-agents/src/services/AgentRuntimeManager.ts
-import { AgentRuntime } from '@elizaos/core';
-import { characters } from '../characters';
+import { AgentRuntime } from "@elizaos/core";
+import { characters } from "../characters";
 
 class AgentRuntimeManager {
   private runtimes: Map<string, AgentRuntime> = new Map();
@@ -538,7 +541,7 @@ class AgentRuntimeManager {
       const runtime = new AgentRuntime({
         character,
         databaseAdapter: this.dbAdapter,
-        modelProvider: 'anthropic',
+        modelProvider: "anthropic",
         conversationLength: 10,
         // ... other config
       });
@@ -560,8 +563,8 @@ WebSocket bridge between game and agents:
 
 ```typescript
 // NEW: eliza-agents/src/services/WorldSyncService.ts
-import { Service } from '@elizaos/core';
-import WebSocket from 'ws';
+import { Service } from "@elizaos/core";
+import WebSocket from "ws";
 
 interface AgentWorldState {
   position: { x: number; y: number };
@@ -571,7 +574,7 @@ interface AgentWorldState {
 }
 
 class WorldSyncService extends Service {
-  static serviceType = 'bagsworld_sync';
+  static serviceType = "bagsworld_sync";
 
   private wss: WebSocket.Server;
   private agentStates: Map<string, AgentWorldState> = new Map();
@@ -580,10 +583,10 @@ class WorldSyncService extends Service {
   async initialize(runtime: IAgentRuntime): Promise<void> {
     this.wss = new WebSocket.Server({ noServer: true });
 
-    this.wss.on('connection', (ws) => {
-      ws.on('message', (data) => {
+    this.wss.on("connection", (ws) => {
+      ws.on("message", (data) => {
         const update = JSON.parse(data.toString());
-        if (update.type === 'world-state-update') {
+        if (update.type === "world-state-update") {
           this.processWorldStateUpdate(update);
         }
       });
@@ -602,7 +605,7 @@ class WorldSyncService extends Service {
         position: { x: state.x, y: state.y },
         zone: update.zone,
         isMoving: state.isMoving,
-        nearbyAgents
+        nearbyAgents,
       });
     }
   }
@@ -627,10 +630,10 @@ The tick loop that drives autonomous behavior:
 
 ```typescript
 // NEW: eliza-agents/src/services/AutonomousAgentService.ts
-import { Service, IAgentRuntime } from '@elizaos/core';
+import { Service, IAgentRuntime } from "@elizaos/core";
 
 class AutonomousAgentService extends Service {
-  static serviceType = 'bagsworld_autonomous';
+  static serviceType = "bagsworld_autonomous";
 
   private tickInterval: NodeJS.Timeout;
   private worldSync: WorldSyncService;
@@ -639,8 +642,8 @@ class AutonomousAgentService extends Service {
 
   async initialize(runtime: IAgentRuntime): Promise<void> {
     // Get dependencies
-    this.worldSync = runtime.getService('bagsworld_sync');
-    this.runtimeManager = runtime.getService('bagsworld_runtimes');
+    this.worldSync = runtime.getService("bagsworld_sync");
+    this.runtimeManager = runtime.getService("bagsworld_runtimes");
     this.goalSystem = new GoalSystem();
 
     // Initialize default goals for each agent
@@ -660,7 +663,7 @@ class AutonomousAgentService extends Service {
     const BATCH_SIZE = 4;
     for (let i = 0; i < agentIds.length; i += BATCH_SIZE) {
       const batch = agentIds.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map(id => this.processAgent(id)));
+      await Promise.all(batch.map((id) => this.processAgent(id)));
     }
   }
 
@@ -684,7 +687,7 @@ class AutonomousAgentService extends Service {
     const alerts = AutonomousService.getAlerts({ limit: 5 });
     const memories = await runtime.messageManager.getMemories({
       roomId: agentId,
-      count: 10
+      count: 10,
     });
 
     return {
@@ -694,7 +697,7 @@ class AutonomousAgentService extends Service {
       alerts,
       memories,
       activeGoal: this.goalSystem.getActiveGoal(agentId),
-      nearbyAgents: worldState?.nearbyAgents || []
+      nearbyAgents: worldState?.nearbyAgents || [],
     };
   }
 
@@ -707,39 +710,35 @@ class AutonomousAgentService extends Service {
     return decide(runtime, agentId, perception);
   }
 
-  private async act(
-    agentId: string,
-    runtime: AgentRuntime,
-    decision: Decision
-  ): Promise<void> {
+  private async act(agentId: string, runtime: AgentRuntime, decision: Decision): Promise<void> {
     switch (decision.action) {
-      case 'move':
+      case "move":
         this.worldSync.sendCommand({
-          type: 'character-behavior',
+          type: "character-behavior",
           characterId: agentId,
-          action: 'moveTo',
-          target: { type: 'position', x: decision.x, y: decision.y }
+          action: "moveTo",
+          target: { type: "position", x: decision.x, y: decision.y },
         });
         break;
 
-      case 'speak':
+      case "speak":
         this.worldSync.sendCommand({
-          type: 'character-speak',
+          type: "character-speak",
           characterId: agentId,
           message: decision.message,
-          emotion: decision.emotion
+          emotion: decision.emotion,
         });
         break;
 
-      case 'interact':
+      case "interact":
         // First move toward target agent
         const targetState = this.worldSync.getAgentState(decision.target);
         if (targetState) {
           this.worldSync.sendCommand({
-            type: 'character-behavior',
+            type: "character-behavior",
             characterId: agentId,
-            action: 'moveTo',
-            target: { type: 'character', id: decision.target }
+            action: "moveTo",
+            target: { type: "character", id: decision.target },
           });
         }
         break;
@@ -750,10 +749,10 @@ class AutonomousAgentService extends Service {
       await runtime.messageManager.createMemory({
         content: {
           text: `${decision.action}: ${decision.description}`,
-          action: decision.action
+          action: decision.action,
         },
         roomId: agentId,
-        userId: agentId
+        userId: agentId,
       });
     }
 
@@ -777,15 +776,15 @@ class GoalSystem {
   }
 
   getActiveGoal(agentId: string): AgentGoal | undefined {
-    return this.getGoals(agentId).find(g => g.status === 'active');
+    return this.getGoals(agentId).find((g) => g.status === "active");
   }
 
-  addGoal(agentId: string, goal: Omit<AgentGoal, 'id' | 'status'>): string {
+  addGoal(agentId: string, goal: Omit<AgentGoal, "id" | "status">): string {
     const id = crypto.randomUUID();
     const fullGoal: AgentGoal = {
       ...goal,
       id,
-      status: 'pending'
+      status: "pending",
     };
 
     const agentGoals = this.goals.get(agentId) || [];
@@ -801,22 +800,22 @@ class GoalSystem {
     if (!goals) return;
 
     // Deactivate current active goal
-    goals.forEach(g => {
-      if (g.status === 'active') g.status = 'pending';
+    goals.forEach((g) => {
+      if (g.status === "active") g.status = "pending";
     });
 
     // Activate new goal
-    const goal = goals.find(g => g.id === goalId);
-    if (goal) goal.status = 'active';
+    const goal = goals.find((g) => g.id === goalId);
+    if (goal) goal.status = "active";
   }
 
   completeGoal(agentId: string, goalId: string): void {
     const goals = this.goals.get(agentId);
     if (!goals) return;
 
-    const goal = goals.find(g => g.id === goalId);
+    const goal = goals.find((g) => g.id === goalId);
     if (goal) {
-      goal.status = 'completed';
+      goal.status = "completed";
       goal.onComplete?.();
     }
   }
@@ -825,7 +824,7 @@ class GoalSystem {
     const goals = this.goals.get(agentId);
     if (!goals) return;
 
-    const goal = goals.find(g => g.id === goalId);
+    const goal = goals.find((g) => g.id === goalId);
     if (goal && goal.completionCondition) {
       // Check if goal is now complete
       const worldState = WorldSyncService.getAgentState(agentId);
@@ -840,24 +839,24 @@ class GoalSystem {
 
     // Add character-specific default goals
     switch (agentId) {
-      case 'neo':
+      case "neo":
         this.addGoal(agentId, {
-          type: 'patrol',
+          type: "patrol",
           priority: 3,
-          target: { zone: 'trending' }
+          target: { zone: "trending" },
         });
         this.addGoal(agentId, {
-          type: 'scan',
+          type: "scan",
           priority: 7,
-          expiresAt: Date.now() + 120000 // Recurring every 2 min
+          expiresAt: Date.now() + 120000, // Recurring every 2 min
         });
         break;
 
-      case 'ash':
+      case "ash":
         this.addGoal(agentId, {
-          type: 'patrol',
+          type: "patrol",
           priority: 3,
-          target: { zone: 'main_city' }
+          target: { zone: "main_city" },
         });
         break;
 
@@ -951,27 +950,27 @@ private handleAgentCommand(command: any): void {
 
 ### New Files
 
-| File | Purpose |
-|------|---------|
-| `eliza-agents/src/services/AgentRuntimeManager.ts` | Manages AgentRuntime per character |
-| `eliza-agents/src/services/WorldSyncService.ts` | WebSocket bridge to game |
-| `eliza-agents/src/services/AutonomousAgentService.ts` | Tick loop + Perceive/Think/Act |
-| `eliza-agents/src/services/GoalSystem.ts` | Goal queue and templates |
-| `eliza-agents/src/services/DecisionEngine.ts` | Rules + LLM decision logic |
-| `eliza-agents/src/routes/websocket.ts` | WebSocket route handler |
+| File                                                  | Purpose                            |
+| ----------------------------------------------------- | ---------------------------------- |
+| `eliza-agents/src/services/AgentRuntimeManager.ts`    | Manages AgentRuntime per character |
+| `eliza-agents/src/services/WorldSyncService.ts`       | WebSocket bridge to game           |
+| `eliza-agents/src/services/AutonomousAgentService.ts` | Tick loop + Perceive/Think/Act     |
+| `eliza-agents/src/services/GoalSystem.ts`             | Goal queue and templates           |
+| `eliza-agents/src/services/DecisionEngine.ts`         | Rules + LLM decision logic         |
+| `eliza-agents/src/routes/websocket.ts`                | WebSocket route handler            |
 
 ### Modified Files
 
-| File | Changes |
-|------|---------|
-| `eliza-agents/package.json` | Add @elizaos/core dependency |
-| `eliza-agents/src/types/elizaos.ts` | Remove (or re-export from @elizaos/core) |
-| `eliza-agents/src/characters/index.ts` | Update imports to @elizaos/core |
-| `eliza-agents/src/actions/*.ts` | Update to @elizaos/core signatures |
-| `eliza-agents/src/providers/*.ts` | Update to @elizaos/core signatures |
-| `eliza-agents/src/evaluators/*.ts` | Update to @elizaos/core signatures |
-| `eliza-agents/src/server.ts` | Add WebSocket upgrade, initialize new services |
-| `src/game/scenes/WorldScene.ts` | Add WebSocket client |
+| File                                   | Changes                                        |
+| -------------------------------------- | ---------------------------------------------- |
+| `eliza-agents/package.json`            | Add @elizaos/core dependency                   |
+| `eliza-agents/src/types/elizaos.ts`    | Remove (or re-export from @elizaos/core)       |
+| `eliza-agents/src/characters/index.ts` | Update imports to @elizaos/core                |
+| `eliza-agents/src/actions/*.ts`        | Update to @elizaos/core signatures             |
+| `eliza-agents/src/providers/*.ts`      | Update to @elizaos/core signatures             |
+| `eliza-agents/src/evaluators/*.ts`     | Update to @elizaos/core signatures             |
+| `eliza-agents/src/server.ts`           | Add WebSocket upgrade, initialize new services |
+| `src/game/scenes/WorldScene.ts`        | Add WebSocket client                           |
 
 ---
 
@@ -979,13 +978,14 @@ private handleAgentCommand(command: any): void {
 
 ### LLM Usage (Moderate Budget)
 
-| Decision Type | Frequency | Cost per Call | Monthly Cost |
-|---------------|-----------|---------------|--------------|
-| Complex decisions (30%) | ~250/hour | ~$0.003 | ~$55/month |
-| Agent dialogues | ~50/hour | ~$0.005 | ~$18/month |
-| **Total** | | | **~$73/month** |
+| Decision Type           | Frequency | Cost per Call | Monthly Cost   |
+| ----------------------- | --------- | ------------- | -------------- |
+| Complex decisions (30%) | ~250/hour | ~$0.003       | ~$55/month     |
+| Agent dialogues         | ~50/hour  | ~$0.005       | ~$18/month     |
+| **Total**               |           |               | **~$73/month** |
 
 Assumptions:
+
 - 16 agents, 1 tick every 4 seconds = 14,400 ticks/hour
 - 30% use LLM = 4,320 LLM calls/hour
 - But only ~5% are social situations = ~250 actual LLM calls/hour
@@ -1018,24 +1018,24 @@ The implementation is complete when:
 
 ## 10. Risks & Mitigations
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| @elizaos/core API breaking changes | High | Pin to v1.7.2, test in staging first |
-| WebSocket reliability | Medium | Auto-reconnect, fallback to polling |
-| LLM costs exceed budget | Medium | Strict rate limiting, more rules |
-| Agent behavior feels random | High | Strong character-specific rule biases |
-| Performance degradation | Medium | Batch processing, skip idle agents |
+| Risk                               | Impact | Mitigation                            |
+| ---------------------------------- | ------ | ------------------------------------- |
+| @elizaos/core API breaking changes | High   | Pin to v1.7.2, test in staging first  |
+| WebSocket reliability              | Medium | Auto-reconnect, fallback to polling   |
+| LLM costs exceed budget            | Medium | Strict rate limiting, more rules      |
+| Agent behavior feels random        | High   | Strong character-specific rule biases |
+| Performance degradation            | Medium | Batch processing, skip idle agents    |
 
 ---
 
 ## 11. Questions Resolved
 
-| Question | Answer |
-|----------|--------|
-| LLM Budget | $50-100/mo → 70% rules, 30% LLM |
-| User Control | Fully autonomous |
-| SDK | Migrate to @elizaos/core |
-| Tick Rate | 3-5 seconds |
+| Question     | Answer                          |
+| ------------ | ------------------------------- |
+| LLM Budget   | $50-100/mo → 70% rules, 30% LLM |
+| User Control | Fully autonomous                |
+| SDK          | Migrate to @elizaos/core        |
+| Tick Rate    | 3-5 seconds                     |
 
 ---
 
@@ -1052,11 +1052,12 @@ The implementation is complete when:
 
 ---
 
-*Plan Version: 2.0*
-*Last Updated: 2026-01-27*
-*Author: Claude (elizaOS Agent Builder)*
+_Plan Version: 2.0_
+_Last Updated: 2026-01-27_
+_Author: Claude (elizaOS Agent Builder)_
 
 **Sources:**
+
 - [elizaOS Documentation](https://docs.elizaos.ai)
 - [@elizaos/core npm](https://www.npmjs.com/package/@elizaos/core)
 - [elizaOS GitHub](https://github.com/elizaOS/eliza)

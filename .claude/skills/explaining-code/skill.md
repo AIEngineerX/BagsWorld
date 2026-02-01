@@ -16,6 +16,7 @@ When the user invokes this skill, provide clear and thorough explanations of cod
 ## Output Format
 
 Structure explanations with:
+
 - A summary section
 - Detailed breakdown with code references
 - Any relevant notes about edge cases or gotchas

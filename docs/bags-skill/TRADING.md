@@ -22,11 +22,11 @@ BAGS_WALLET=$(cat ~/.config/bags/credentials.json | jq -r '.wallets[0]')
 
 ## Common Token Addresses
 
-| Token | Mint Address |
-|-------|--------------|
-| SOL (Wrapped) | `So11111111111111111111111111111111111111112` |
-| USDC | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
-| USDT | `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB` |
+| Token         | Mint Address                                   |
+| ------------- | ---------------------------------------------- |
+| SOL (Wrapped) | `So11111111111111111111111111111111111111112`  |
+| USDC          | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
+| USDT          | `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB` |
 
 ---
 
@@ -48,6 +48,7 @@ slippageMode=auto" \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -78,26 +79,26 @@ slippageMode=auto" \
 
 ### Quote Parameters
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `inputMint` | ✅ | Token mint address you're swapping from |
-| `outputMint` | ✅ | Token mint address you're swapping to |
-| `amount` | ✅ | Amount in smallest unit (e.g., lamports) |
-| `slippageMode` | ✅ | `auto` or `manual` |
-| `slippageBps` | If manual | Slippage tolerance in basis points |
+| Parameter      | Required  | Description                              |
+| -------------- | --------- | ---------------------------------------- |
+| `inputMint`    | ✅        | Token mint address you're swapping from  |
+| `outputMint`   | ✅        | Token mint address you're swapping to    |
+| `amount`       | ✅        | Amount in smallest unit (e.g., lamports) |
+| `slippageMode` | ✅        | `auto` or `manual`                       |
+| `slippageBps`  | If manual | Slippage tolerance in basis points       |
 
 ### Quote Response Fields
 
-| Field | Description |
-|-------|-------------|
-| `requestId` | Unique identifier for this quote |
-| `inAmount` | Input amount (what you're spending) |
-| `outAmount` | Expected output amount |
-| `minOutAmount` | Minimum output accounting for slippage |
-| `priceImpactPct` | Price impact percentage |
-| `slippageBps` | Slippage tolerance in basis points |
-| `routePlan` | Array of swap legs through DEXs/pools |
-| `platformFee` | Fee information (if applicable) |
+| Field            | Description                            |
+| ---------------- | -------------------------------------- |
+| `requestId`      | Unique identifier for this quote       |
+| `inAmount`       | Input amount (what you're spending)    |
+| `outAmount`      | Expected output amount                 |
+| `minOutAmount`   | Minimum output accounting for slippage |
+| `priceImpactPct` | Price impact percentage                |
+| `slippageBps`    | Slippage tolerance in basis points     |
+| `routePlan`      | Array of swap legs through DEXs/pools  |
+| `platformFee`    | Fee information (if applicable)        |
 
 ---
 
@@ -120,12 +121,12 @@ slippageMode=manual&slippageBps=100
 ```
 
 | slippageBps | Percentage |
-|-------------|------------|
-| 50 | 0.5% |
-| 100 | 1% |
-| 300 | 3% |
-| 500 | 5% |
-| 1000 | 10% |
+| ----------- | ---------- |
+| 50          | 0.5%       |
+| 100         | 1%         |
+| 300         | 3%         |
+| 500         | 5%         |
+| 1000        | 10%        |
 
 ---
 
@@ -160,6 +161,7 @@ BAGS_SWAP_RESPONSE=$(curl -s -X POST "https://public-api-v2.bags.fm/api/v1/trade
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -383,6 +385,7 @@ echo "$BAGS_QUOTE" | jq '.response | {
 ## Error Handling
 
 **Quote not available (400):**
+
 ```json
 {
   "success": false,
@@ -391,6 +394,7 @@ echo "$BAGS_QUOTE" | jq '.response | {
 ```
 
 **Insufficient balance (400):**
+
 ```json
 {
   "success": false,
@@ -399,6 +403,7 @@ echo "$BAGS_QUOTE" | jq '.response | {
 ```
 
 **Invalid API key (401):**
+
 ```json
 {
   "success": false,
@@ -407,6 +412,7 @@ echo "$BAGS_QUOTE" | jq '.response | {
 ```
 
 **Rate limited (429):**
+
 ```json
 {
   "success": false,
@@ -415,6 +421,7 @@ echo "$BAGS_QUOTE" | jq '.response | {
 ```
 
 **Transaction failure (on-chain):**
+
 - Slippage exceeded — price moved beyond tolerance
 - Blockhash expired — transaction took too long
 - Insufficient SOL — not enough for transaction fees
@@ -423,24 +430,24 @@ echo "$BAGS_QUOTE" | jq '.response | {
 
 ## Environment Variables Reference
 
-| Variable | Description |
-|----------|-------------|
-| `BAGS_JWT_TOKEN` | JWT token for Agent API |
-| `BAGS_API_KEY` | API key for Public API |
-| `BAGS_WALLET` | Your wallet address |
-| `BAGS_INPUT_MINT` | Token mint to swap from |
-| `BAGS_OUTPUT_MINT` | Token mint to swap to |
-| `BAGS_AMOUNT` | Amount in smallest unit |
-| `BAGS_QUOTE` | Quote response object |
-| `BAGS_OUT_AMOUNT` | Expected output amount |
-| `BAGS_MIN_OUT` | Minimum output (with slippage) |
-| `BAGS_PRICE_IMPACT` | Price impact percentage |
-| `BAGS_SLIPPAGE` | Slippage in basis points |
-| `BAGS_SWAP_RESPONSE` | Swap transaction response |
-| `BAGS_UNSIGNED_TX` | Unsigned transaction (base64) |
-| `BAGS_SIGNED_TX` | Signed transaction (base64) |
-| `BAGS_PRIVATE_KEY` | Temporary private key (clear after use!) |
-| `BAGS_SIGNATURE` | Transaction signature |
+| Variable             | Description                              |
+| -------------------- | ---------------------------------------- |
+| `BAGS_JWT_TOKEN`     | JWT token for Agent API                  |
+| `BAGS_API_KEY`       | API key for Public API                   |
+| `BAGS_WALLET`        | Your wallet address                      |
+| `BAGS_INPUT_MINT`    | Token mint to swap from                  |
+| `BAGS_OUTPUT_MINT`   | Token mint to swap to                    |
+| `BAGS_AMOUNT`        | Amount in smallest unit                  |
+| `BAGS_QUOTE`         | Quote response object                    |
+| `BAGS_OUT_AMOUNT`    | Expected output amount                   |
+| `BAGS_MIN_OUT`       | Minimum output (with slippage)           |
+| `BAGS_PRICE_IMPACT`  | Price impact percentage                  |
+| `BAGS_SLIPPAGE`      | Slippage in basis points                 |
+| `BAGS_SWAP_RESPONSE` | Swap transaction response                |
+| `BAGS_UNSIGNED_TX`   | Unsigned transaction (base64)            |
+| `BAGS_SIGNED_TX`     | Signed transaction (base64)              |
+| `BAGS_PRIVATE_KEY`   | Temporary private key (clear after use!) |
+| `BAGS_SIGNATURE`     | Transaction signature                    |
 
 ---
 
@@ -449,4 +456,3 @@ echo "$BAGS_QUOTE" | jq '.response | {
 - **Claim fees first** → See [FEES.md](https://bags.fm/fees.md)
 - **Launch tokens** → See [LAUNCH.md](https://bags.fm/launch.md)
 - **Check balances** → See [WALLETS.md](https://bags.fm/wallets.md)
-

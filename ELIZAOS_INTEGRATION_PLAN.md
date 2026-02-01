@@ -13,31 +13,34 @@ This document outlines the plan to integrate all BagsWorld AI agents into the of
 You have **14 agent character files** across two locations:
 
 #### Primary Agents (ElizaOS-ready format) - `eliza-agents/src/characters/`
-| Agent | Role | Username | Key Trait |
-|-------|------|----------|-----------|
-| **Toly** | Solana Co-Founder | @aeyakovenko | Technical blockchain expert |
-| **Finn** | Bags.fm CEO | @finnbags | Visionary founder energy |
-| **Ash** | Ecosystem Guide | @ash_bagsworld | Pokemon analogies for onboarding |
-| **Ghost** | The Dev | @DaddyGhost | Rewards system, on-chain verification |
-| **Neo** | Scout Agent | @neo_scout | Matrix-themed chain scanner |
-| **CJ** | Hood Rat | @cj_bagsworld | Street wisdom, market survivor |
-| **Shaw** | ElizaOS Creator | @shawmakesmagic | Agent architecture expert |
-| **Bags Bot** | Main Guide | @bags_bot | Friendly degen, CT culture |
+
+| Agent        | Role              | Username        | Key Trait                             |
+| ------------ | ----------------- | --------------- | ------------------------------------- |
+| **Toly**     | Solana Co-Founder | @aeyakovenko    | Technical blockchain expert           |
+| **Finn**     | Bags.fm CEO       | @finnbags       | Visionary founder energy              |
+| **Ash**      | Ecosystem Guide   | @ash_bagsworld  | Pokemon analogies for onboarding      |
+| **Ghost**    | The Dev           | @DaddyGhost     | Rewards system, on-chain verification |
+| **Neo**      | Scout Agent       | @neo_scout      | Matrix-themed chain scanner           |
+| **CJ**       | Hood Rat          | @cj_bagsworld   | Street wisdom, market survivor        |
+| **Shaw**     | ElizaOS Creator   | @shawmakesmagic | Agent architecture expert             |
+| **Bags Bot** | Main Guide        | @bags_bot       | Friendly degen, CT culture            |
 
 #### Extended Team (BagsWorld format) - `src/characters/`
-| Agent | Role | Key Trait |
-|-------|------|-----------|
-| **Alaa** | Skunk Works | Mysterious R&D, stealth projects |
-| **BNN** | News Network | Breaking news, professional reporter |
-| **Carlo** | Community Ambassador | Welcoming, "gm" energy |
-| **Ramo** | CTO | German engineering, security-focused |
-| **Sam** | Growth Lead | Marketing, viral content |
-| **Sincara** | Frontend Engineer | UI/UX, pixel-perfect |
-| **Stuu** | Operations | Support, troubleshooting |
+
+| Agent       | Role                 | Key Trait                            |
+| ----------- | -------------------- | ------------------------------------ |
+| **Alaa**    | Skunk Works          | Mysterious R&D, stealth projects     |
+| **BNN**     | News Network         | Breaking news, professional reporter |
+| **Carlo**   | Community Ambassador | Welcoming, "gm" energy               |
+| **Ramo**    | CTO                  | German engineering, security-focused |
+| **Sam**     | Growth Lead          | Marketing, viral content             |
+| **Sincara** | Frontend Engineer    | UI/UX, pixel-perfect                 |
+| **Stuu**    | Operations           | Support, troubleshooting             |
 
 ### Character Format Comparison
 
 **Your ElizaOS format (`eliza-agents/`):**
+
 ```typescript
 {
   name: string,
@@ -53,6 +56,7 @@ You have **14 agent character files** across two locations:
 ```
 
 **Official ElizaOS format:**
+
 ```typescript
 {
   name: string,
@@ -72,6 +76,7 @@ You have **14 agent character files** across two locations:
 ```
 
 **BagsWorld format (`src/characters/`):**
+
 ```typescript
 {
   name: string,
@@ -94,7 +99,9 @@ You have **14 agent character files** across two locations:
 ## 2. Goal Definition
 
 ### Primary Objective
+
 Create a production-ready ElizaOS plugin (`@elizaos/plugin-bagsworld`) that:
+
 1. Registers all 14 BagsWorld agents as proper ElizaOS characters
 2. Provides custom actions for Bags.fm API interactions
 3. Provides data providers that inject live chain data into agent context
@@ -102,6 +109,7 @@ Create a production-ready ElizaOS plugin (`@elizaos/plugin-bagsworld`) that:
 5. Deploys as a standalone server or integrates with existing ElizaOS installations
 
 ### Success Criteria
+
 - [x] 8 primary agents load and respond correctly in ElizaOS (Phase 1 complete)
 - [x] Agents can query live Bags.fm API data (tokens, fees, creators)
 - [x] Agents reference each other naturally (cross-agent lore via agentContext provider)
@@ -115,6 +123,7 @@ Create a production-ready ElizaOS plugin (`@elizaos/plugin-bagsworld`) that:
 ## 3. Architecture
 
 ### Package Structure
+
 ```
 @elizaos/plugin-bagsworld/
 ├── package.json
@@ -161,6 +170,7 @@ Create a production-ready ElizaOS plugin (`@elizaos/plugin-bagsworld`) that:
 ```
 
 ### Data Flow
+
 ```
 User Message
     │
@@ -203,23 +213,24 @@ Response to User
 
 ### Technical Constraints
 
-| Constraint | Impact | Mitigation |
-|------------|--------|------------|
+| Constraint                          | Impact                  | Mitigation                            |
+| ----------------------------------- | ----------------------- | ------------------------------------- |
 | ElizaOS requires Node.js v23+ / Bun | Must use modern runtime | Docker container with correct version |
-| Character format differences | Need converter | Build `characterConverter.ts` utility |
-| Bags.fm API rate limits | Throttle requests | CacheService with 30s TTL |
-| ElizaOS plugin validation | Must pass schema | Test against `validateCharacter()` |
-| 14 agents = memory overhead | ~1GB RAM for all | Lazy loading, selective deployment |
+| Character format differences        | Need converter          | Build `characterConverter.ts` utility |
+| Bags.fm API rate limits             | Throttle requests       | CacheService with 30s TTL             |
+| ElizaOS plugin validation           | Must pass schema        | Test against `validateCharacter()`    |
+| 14 agents = memory overhead         | ~1GB RAM for all        | Lazy loading, selective deployment    |
 
 ### Dependencies
 
 **Required NPM Packages:**
+
 ```json
 {
   "dependencies": {
-    "@elizaos/core": "workspace:*",  // If in monorepo
+    "@elizaos/core": "workspace:*", // If in monorepo
     // OR
-    "@elizaos/core": "^1.7.0"        // If standalone
+    "@elizaos/core": "^1.7.0" // If standalone
   },
   "peerDependencies": {
     "@elizaos/plugin-sql": "^1.7.0",
@@ -229,6 +240,7 @@ Response to User
 ```
 
 **Environment Variables:**
+
 ```bash
 # Required
 ANTHROPIC_API_KEY=sk-...           # Or OPENAI_API_KEY
@@ -245,14 +257,14 @@ LOG_LEVEL=debug
 
 ### Edge Cases
 
-| Scenario | Handling |
-|----------|----------|
-| Bags.fm API down | Graceful fallback to cached data |
-| User asks about unknown token | Action returns "Token not found" |
-| Cross-agent reference loop | Max depth limit on agent mentions |
-| Rate limit exceeded | Exponential backoff + queue |
-| Invalid character format | Validation errors at startup |
-| Memory exhaustion | Conversation pruning at 50 messages |
+| Scenario                      | Handling                            |
+| ----------------------------- | ----------------------------------- |
+| Bags.fm API down              | Graceful fallback to cached data    |
+| User asks about unknown token | Action returns "Token not found"    |
+| Cross-agent reference loop    | Max depth limit on agent mentions   |
+| Rate limit exceeded           | Exponential backoff + queue         |
+| Invalid character format      | Validation errors at startup        |
+| Memory exhaustion             | Conversation pruning at 50 messages |
 
 ---
 
@@ -263,6 +275,7 @@ LOG_LEVEL=debug
 The BagsWorld characters use a different format. Conversion needed:
 
 **Before (BagsWorld):**
+
 ```typescript
 {
   name: "Alaa",
@@ -284,6 +297,7 @@ The BagsWorld characters use a different format. Conversion needed:
 ```
 
 **After (ElizaOS):**
+
 ```typescript
 {
   name: "Alaa",
@@ -335,6 +349,7 @@ RULES:
 ## 6. Implementation Phases
 
 ### Phase 1: Core Plugin Structure (Week 1)
+
 - [ ] Create package.json, tsconfig.json
 - [ ] Set up directory structure
 - [ ] Implement character converter utility
@@ -342,24 +357,28 @@ RULES:
 - [ ] Create character registry with getters
 
 ### Phase 2: Bags.fm Integration (Week 1-2)
+
 - [ ] Implement BagsApiService (API client)
 - [ ] Implement CacheService (30s TTL)
 - [ ] Create actions: lookupToken, getCreatorFees, getTopCreators
 - [ ] Create providers: worldState, tokenData
 
 ### Phase 3: Multi-Agent Features (Week 2)
+
 - [ ] Implement agentContext provider
 - [ ] Add cross-agent lore injection
 - [ ] Create agent handoff logic
 - [ ] Test multi-agent conversations
 
 ### Phase 4: Testing & Validation (Week 2)
+
 - [ ] Write unit tests for character validation
 - [ ] Integration tests with mock API
 - [ ] Load testing with all 14 agents
 - [ ] Validate against ElizaOS schema
 
 ### Phase 5: Deployment (Week 3)
+
 - [ ] Create standalone server entry point
 - [ ] Docker configuration
 - [ ] Railway/Render deployment config
@@ -369,13 +388,13 @@ RULES:
 
 ## 7. Risks & Unknowns
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| ElizaOS API changes | Medium | High | Pin to specific version, monitor releases |
-| Character format incompatibility | Low | Medium | Thorough converter testing |
-| Bags.fm API instability | Medium | High | Robust caching, fallback responses |
-| Memory/performance issues | Medium | Medium | Selective agent loading, pruning |
-| LLM costs with 14 agents | High | Medium | Shared context, rate limiting |
+| Risk                             | Probability | Impact | Mitigation                                |
+| -------------------------------- | ----------- | ------ | ----------------------------------------- |
+| ElizaOS API changes              | Medium      | High   | Pin to specific version, monitor releases |
+| Character format incompatibility | Low         | Medium | Thorough converter testing                |
+| Bags.fm API instability          | Medium      | High   | Robust caching, fallback responses        |
+| Memory/performance issues        | Medium      | Medium | Selective agent loading, pruning          |
+| LLM costs with 14 agents         | High        | Medium | Shared context, rate limiting             |
 
 ### Open Questions
 
@@ -390,6 +409,7 @@ RULES:
 ## 8. Deliverables
 
 ### Package Files
+
 ```
 @elizaos/plugin-bagsworld/
 ├── package.json
@@ -408,6 +428,7 @@ RULES:
 ```
 
 ### API Endpoints (Standalone Server)
+
 ```
 GET  /health                    - Health check
 GET  /api/agents                - List all agents
@@ -435,20 +456,20 @@ Once approved, I'll begin Phase 1 implementation.
 
 ## Appendix: Character Quick Reference
 
-| Agent | Personality | Example Response |
-|-------|-------------|------------------|
-| Toly | Technical, "gm ser" | "Proof of History creates a cryptographic clock - 65k TPS, 400ms finality" |
-| Finn | Founder energy | "1% of all trading volume. forever. that's real passive income" |
-| Ash | Pokemon analogies | "think of it like Pokemon! your token is your starter" |
-| Ghost | On-chain verification | "check the wallet on solscan. all on-chain" |
-| Neo | Matrix cryptic | "i see the chain. the code never lies" |
-| CJ | Hood wisdom | "aw shit here we go again. been here before homie" |
-| Shaw | Architect | "character files are the DNA of an agent" |
-| Bags Bot | Degen friendly | "gm fren! another day another chance to make it" |
-| Alaa | Mysterious R&D | "Can't say yet. But imagine if [redacted]" |
-| BNN | News anchor | "BREAKING: New fee record set today" |
-| Carlo | Welcoming | "gm! Welcome to Bags. First time here?" |
-| Ramo | German engineering | "Triple audited contracts, no admin keys" |
-| Sam | Marketing hype | "Content, consistency, community. Growth is a grind" |
-| Sincara | UI/UX obsessed | "Optimistic updates, skeleton loaders, details matter" |
-| Stuu | Support | "Drop your wallet address and I'll check" |
+| Agent    | Personality           | Example Response                                                           |
+| -------- | --------------------- | -------------------------------------------------------------------------- |
+| Toly     | Technical, "gm ser"   | "Proof of History creates a cryptographic clock - 65k TPS, 400ms finality" |
+| Finn     | Founder energy        | "1% of all trading volume. forever. that's real passive income"            |
+| Ash      | Pokemon analogies     | "think of it like Pokemon! your token is your starter"                     |
+| Ghost    | On-chain verification | "check the wallet on solscan. all on-chain"                                |
+| Neo      | Matrix cryptic        | "i see the chain. the code never lies"                                     |
+| CJ       | Hood wisdom           | "aw shit here we go again. been here before homie"                         |
+| Shaw     | Architect             | "character files are the DNA of an agent"                                  |
+| Bags Bot | Degen friendly        | "gm fren! another day another chance to make it"                           |
+| Alaa     | Mysterious R&D        | "Can't say yet. But imagine if [redacted]"                                 |
+| BNN      | News anchor           | "BREAKING: New fee record set today"                                       |
+| Carlo    | Welcoming             | "gm! Welcome to Bags. First time here?"                                    |
+| Ramo     | German engineering    | "Triple audited contracts, no admin keys"                                  |
+| Sam      | Marketing hype        | "Content, consistency, community. Growth is a grind"                       |
+| Sincara  | UI/UX obsessed        | "Optimistic updates, skeleton loaders, details matter"                     |
+| Stuu     | Support               | "Drop your wallet address and I'll check"                                  |

@@ -70,13 +70,7 @@ describe("Signature Verification Security", () => {
       const message = createAdminMessage(action, timestamp);
       const signature = signMessage(message, adminKeypair);
 
-      const result = verifyAdminSignature(
-        adminWallet,
-        signature,
-        action,
-        timestamp,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, signature, action, timestamp, adminWallet);
 
       expect(result.verified).toBe(true);
       expect(result.error).toBeUndefined();
@@ -90,13 +84,7 @@ describe("Signature Verification Security", () => {
         const message = createAdminMessage(action, timestamp);
         const signature = signMessage(message, adminKeypair);
 
-        const result = verifyAdminSignature(
-          adminWallet,
-          signature,
-          action,
-          timestamp,
-          adminWallet
-        );
+        const result = verifyAdminSignature(adminWallet, signature, action, timestamp, adminWallet);
 
         expect(result.verified).toBe(true);
       });
@@ -109,13 +97,7 @@ describe("Signature Verification Security", () => {
       const message = createAdminMessage("test", timestamp);
       const signature = signMessage(message, adminKeypair);
 
-      const result = verifyAdminSignature(
-        adminWallet,
-        signature,
-        "test",
-        timestamp,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, adminWallet);
 
       expect(result.verified).toBe(true);
     });
@@ -216,13 +198,7 @@ describe("Signature Verification Security", () => {
     it("should reject empty signature", () => {
       const timestamp = Date.now();
 
-      const result = verifyAdminSignature(
-        adminWallet,
-        "",
-        "test",
-        timestamp,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, "", "test", timestamp, adminWallet);
 
       expect(result.verified).toBe(false);
     });
@@ -334,13 +310,7 @@ describe("Signature Verification Security", () => {
     it("should reject wallet address that's too short", () => {
       const timestamp = Date.now();
 
-      const result = verifyAdminSignature(
-        "short",
-        "signature",
-        "test",
-        timestamp,
-        "short"
-      );
+      const result = verifyAdminSignature("short", "signature", "test", timestamp, "short");
 
       expect(result.verified).toBe(false);
     });
@@ -388,13 +358,7 @@ describe("Signature Verification Security", () => {
       const message = createAdminMessage(action, timestamp);
       const signature = signMessage(message, adminKeypair);
 
-      const result = verifyAdminSignature(
-        adminWallet,
-        signature,
-        action,
-        timestamp,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, signature, action, timestamp, adminWallet);
 
       expect(result.verified).toBe(true);
     });
@@ -405,13 +369,7 @@ describe("Signature Verification Security", () => {
       const message = createAdminMessage(action, timestamp);
       const signature = signMessage(message, adminKeypair);
 
-      const result = verifyAdminSignature(
-        adminWallet,
-        signature,
-        action,
-        timestamp,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, signature, action, timestamp, adminWallet);
 
       expect(result.verified).toBe(true);
     });
@@ -422,26 +380,14 @@ describe("Signature Verification Security", () => {
       const message = createAdminMessage(action, timestamp);
       const signature = signMessage(message, adminKeypair);
 
-      const result = verifyAdminSignature(
-        adminWallet,
-        signature,
-        action,
-        timestamp,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, signature, action, timestamp, adminWallet);
 
       expect(result.verified).toBe(true);
     });
 
     it("should handle timestamp at epoch (0)", () => {
       // This should fail due to age check (way more than 5 minutes old)
-      const result = verifyAdminSignature(
-        adminWallet,
-        "signature",
-        "test",
-        0,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, "signature", "test", 0, adminWallet);
 
       expect(result.verified).toBe(false);
       expect(result.error).toBe("Signature expired");
@@ -461,13 +407,7 @@ describe("Signature Verification Security", () => {
     });
 
     it("should handle negative timestamp", () => {
-      const result = verifyAdminSignature(
-        adminWallet,
-        "signature",
-        "test",
-        -1000,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, "signature", "test", -1000, adminWallet);
 
       expect(result.verified).toBe(false);
     });
@@ -497,13 +437,7 @@ describe("Signature Verification Security", () => {
       const manipulatedMessage = `admin-casino:test:${timestamp}`; // Wrong prefix order
       const signature = signMessage(manipulatedMessage, adminKeypair);
 
-      const result = verifyAdminSignature(
-        adminWallet,
-        signature,
-        "test",
-        timestamp,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, adminWallet);
 
       expect(result.verified).toBe(false);
     });
@@ -514,13 +448,7 @@ describe("Signature Verification Security", () => {
       const extendedMessage = createAdminMessage("test", timestamp) + ":extra";
       const signature = signMessage(extendedMessage, adminKeypair);
 
-      const result = verifyAdminSignature(
-        adminWallet,
-        signature,
-        "test",
-        timestamp,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, adminWallet);
 
       expect(result.verified).toBe(false);
     });
@@ -532,13 +460,7 @@ describe("Signature Verification Security", () => {
       const message = createAdminMessage(action, timestamp);
       const signature = signMessage(message, adminKeypair);
 
-      const result = verifyAdminSignature(
-        adminWallet,
-        signature,
-        action,
-        timestamp,
-        adminWallet
-      );
+      const result = verifyAdminSignature(adminWallet, signature, action, timestamp, adminWallet);
 
       expect(result.verified).toBe(true);
     });

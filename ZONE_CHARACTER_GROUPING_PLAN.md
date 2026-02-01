@@ -5,6 +5,7 @@
 **Goal:** Ensure AI agents/characters are grouped by zone so they "live" only in specific areas of BagsWorld.
 
 **Current State:** Zone-based character filtering **already exists** but is incomplete:
+
 - Special characters have zone assignments in `SPECIAL_CHARACTERS` config
 - Zone filtering logic exists in `WorldScene.ts`
 - BUT: 2 zones (`ballers`, `founders`) have no assigned characters
@@ -27,13 +28,13 @@
 
 ### Character Zone Assignments (`src/lib/world-calculator.ts:343-451`)
 
-| Zone | Characters Currently Assigned |
-|------|------------------------------|
-| **main_city (Park)** | Toly, Ash, Dev (Ghost), Shaw |
-| **trending (BagsCity)** | Neo (Scout), CJ |
-| **academy (Academy)** | Finn, Ramo, Sincara, Stuu, Sam, Alaa, Carlo, BNN |
-| **ballers** | NONE |
-| **founders** | NONE |
+| Zone                    | Characters Currently Assigned                    |
+| ----------------------- | ------------------------------------------------ |
+| **main_city (Park)**    | Toly, Ash, Dev (Ghost), Shaw                     |
+| **trending (BagsCity)** | Neo (Scout), CJ                                  |
+| **academy (Academy)**   | Finn, Ramo, Sincara, Stuu, Sam, Alaa, Carlo, BNN |
+| **ballers**             | NONE                                             |
+| **founders**            | NONE                                             |
 
 ### Type Limitation Issue
 
@@ -65,13 +66,15 @@ This logic works correctly but only receives characters that were assigned zones
 ### Problem 1: Zone Type Mismatch
 
 The `SPECIAL_CHARACTERS` config restricts zone to 3 values:
+
 ```typescript
-zone: "main_city" | "trending" | "academy"
+zone: "main_city" | "trending" | "academy";
 ```
 
 But `ZoneType` in `types.ts` has 5 values:
+
 ```typescript
-type ZoneType = "main_city" | "trending" | "academy" | "ballers" | "founders"
+type ZoneType = "main_city" | "trending" | "academy" | "ballers" | "founders";
 ```
 
 **Impact:** Cannot assign characters to `ballers` or `founders` zones.
@@ -83,6 +86,7 @@ type ZoneType = "main_city" | "trending" | "academy" | "ballers" | "founders"
 ### Problem 3: Regular Fee Earners Clustering
 
 All non-special characters (procedural fee earners) default to `main_city`, causing:
+
 - Park zone feels overcrowded
 - Other zones feel empty
 - No variety in zone populations
@@ -90,6 +94,7 @@ All non-special characters (procedural fee earners) default to `main_city`, caus
 ### Problem 4: No Zone-Character Mapping Visibility
 
 There's no clear "zone roster" that shows which characters belong where, making it hard to:
+
 - Plan new character additions
 - Balance zone populations
 - Understand the world design
@@ -103,6 +108,7 @@ Before implementation, I need decisions on:
 ### Q1: Ballers Valley Population
 
 Should `ballers` zone have NPC characters? Options:
+
 1. **No characters** - Just mansions (current)
 2. **Mansion owners as characters** - Top 5 $BagsWorld holders become clickable NPCs
 3. **Dedicated luxury characters** - Create new "butler", "valet", "concierge" NPCs
@@ -111,6 +117,7 @@ Should `ballers` zone have NPC characters? Options:
 ### Q2: Founder's Corner Population
 
 Should `founders` zone have NPC characters? Options:
+
 1. **No characters** - Just educational buildings (current)
 2. **Teacher/Guide character** - Create "Professor" or "Mentor" NPC
 3. **Existing character teaches** - Shaw (ElizaOS creator) or another dev character
@@ -119,6 +126,7 @@ Should `founders` zone have NPC characters? Options:
 ### Q3: Fee Earner Distribution
 
 How should regular (procedural) fee earners be distributed? Options:
+
 1. **All in Park** - Keep current behavior (main_city only)
 2. **Hash-based distribution** - Deterministic split across main_city + trending
 3. **Activity-based** - High earners go to trending, low earners to park
@@ -127,6 +135,7 @@ How should regular (procedural) fee earners be distributed? Options:
 ### Q4: Character Exclusivity
 
 Should characters be exclusive to one zone? Options:
+
 1. **Strict exclusivity** - Character ONLY appears in their assigned zone
 2. **Primary zone + visits** - Character has home zone but occasionally appears elsewhere
 3. **Multi-zone presence** - Some characters (like BagsWorld HQ building) appear in all zones
@@ -134,6 +143,7 @@ Should characters be exclusive to one zone? Options:
 ### Q5: Zone Population Targets
 
 What's the ideal character count per zone? Options:
+
 1. **Equal distribution** - Same number per zone
 2. **Theme-based** - Park: 5, BagsCity: 4, Academy: 8, Ballers: 3, Founders: 2
 3. **Dynamic** - Based on zone activity/popularity
@@ -147,10 +157,12 @@ What's the ideal character count per zone? Options:
 **Scope:** Fix the type mismatch, no new content
 
 **Changes:**
+
 1. Update `SPECIAL_CHARACTERS` zone type to include all 5 zones
 2. No new characters added
 
 **Files Modified:**
+
 - `src/lib/world-calculator.ts` (1 line type change)
 
 **Pros:** Minimal risk, enables future additions
@@ -163,6 +175,7 @@ What's the ideal character count per zone? Options:
 **Scope:** Fix types + add characters to empty zones
 
 **Changes:**
+
 1. Fix zone type to include all 5 zones
 2. Create character definitions for new zone inhabitants
 3. Add to SPECIAL_CHARACTERS config
@@ -170,10 +183,12 @@ What's the ideal character count per zone? Options:
 5. Generate sprites in BootScene
 
 **New Characters Needed:**
+
 - `ballers`: 1-3 characters (butler/valet/concierge OR mansion owners)
 - `founders`: 1-2 characters (mentor/teacher)
 
 **Files Modified:**
+
 - `src/lib/types.ts` - Add new character flags
 - `src/lib/world-calculator.ts` - Add zone type + new character configs
 - `src/characters/` - New character definition files
@@ -193,6 +208,7 @@ What's the ideal character count per zone? Options:
 **Scope:** Comprehensive overhaul with configuration-driven zones
 
 **Changes:**
+
 1. Create a centralized `ZONE_CONFIG` that defines:
    - Zone metadata
    - Resident characters list
@@ -203,6 +219,7 @@ What's the ideal character count per zone? Options:
 4. Optional: Character "visiting" system
 
 **New Architecture:**
+
 ```typescript
 // New: src/lib/zone-config.ts
 export const ZONE_CONFIG: Record<ZoneType, ZoneDefinition> = {
@@ -225,6 +242,7 @@ export const ZONE_CONFIG: Record<ZoneType, ZoneDefinition> = {
 ```
 
 **Files Modified:**
+
 - New file: `src/lib/zone-config.ts`
 - `src/lib/types.ts` - Zone definition types
 - `src/lib/world-calculator.ts` - Refactor to use zone config
@@ -242,6 +260,7 @@ export const ZONE_CONFIG: Record<ZoneType, ZoneDefinition> = {
 **Recommendation: Option B (Zone Type Fix + Empty Zone Characters)**
 
 Rationale:
+
 1. Fixes immediate type issue
 2. Brings empty zones to life
 3. Manageable scope
@@ -250,10 +269,12 @@ Rationale:
 ### Proposed Implementation Steps
 
 **Phase 1: Type Alignment (15 min)**
+
 1. Update `SPECIAL_CHARACTERS` zone type to `ZoneType`
 2. Verify no TypeScript errors
 
 **Phase 2: Ballers Valley Character (if approved)**
+
 1. Design character(s) - butler? concierge? whale mascot?
 2. Create character definition file
 3. Add to SPECIAL_CHARACTERS
@@ -261,6 +282,7 @@ Rationale:
 5. Generate sprite
 
 **Phase 3: Founder's Corner Character (if approved)**
+
 1. Design character - mentor? professor? guide?
 2. Create character definition file
 3. Add to SPECIAL_CHARACTERS
@@ -268,6 +290,7 @@ Rationale:
 5. Generate sprite
 
 **Phase 4: Fee Earner Distribution (optional)**
+
 1. Modify `transformFeeEarnerToCharacter` to assign zones
 2. Use hash-based or activity-based distribution
 
@@ -317,13 +340,13 @@ Proposed Flow:
 
 ## Risks & Mitigations
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Empty zones feel lifeless | Medium | Add at least 1 character per zone |
-| New characters need sprites | Low | Follow existing sprite generation patterns in BootScene |
-| Chat components needed | Low | Copy existing chat component structure |
-| Type changes break builds | Low | Run `npm run build` after type changes |
-| Zone overcrowding | Medium | Set per-zone population limits |
+| Risk                        | Impact | Mitigation                                              |
+| --------------------------- | ------ | ------------------------------------------------------- |
+| Empty zones feel lifeless   | Medium | Add at least 1 character per zone                       |
+| New characters need sprites | Low    | Follow existing sprite generation patterns in BootScene |
+| Chat components needed      | Low    | Copy existing chat component structure                  |
+| Type changes break builds   | Low    | Run `npm run build` after type changes                  |
+| Zone overcrowding           | Medium | Set per-zone population limits                          |
 
 ---
 
@@ -357,6 +380,7 @@ Proposed Flow:
 ## Next Steps
 
 Awaiting your decisions on:
+
 1. Character choices for empty zones
 2. Fee earner distribution preference
 3. Implementation priority/scope

@@ -9,11 +9,11 @@
 ## Executive Summary
 
 | Severity | Count |
-|----------|-------|
-| CRITICAL | 1 |
-| HIGH | 2 |
-| MEDIUM | 4 |
-| LOW | 3 |
+| -------- | ----- |
+| CRITICAL | 1     |
+| HIGH     | 2     |
+| MEDIUM   | 4     |
+| LOW      | 3     |
 
 **Overall Risk Level:** MEDIUM-HIGH
 
@@ -39,6 +39,7 @@ function isAdminRequest(request: NextRequest): boolean {
 **Impact:** Complete takeover of world configuration - attackers can change building limits, decay rates, weather thresholds, and all game mechanics.
 
 **Proof of Concept:**
+
 ```bash
 curl -X POST https://bagsworld.netlify.app/api/admin/config \
   -H "Content-Type: application/json" \
@@ -47,6 +48,7 @@ curl -X POST https://bagsworld.netlify.app/api/admin/config \
 ```
 
 **Remediation:** Implement cryptographic signature verification:
+
 1. Require admin to sign a challenge message with their wallet
 2. Verify the signature server-side using `@solana/web3.js`
 3. Use short-lived session tokens after verification
@@ -65,13 +67,14 @@ function isAuthorized(request: Request): boolean {
 
   // If no secret configured, allow (for local dev)
   if (!agentSecret) {
-    return true;  // DANGER: Allows all requests
+    return true; // DANGER: Allows all requests
   }
   // ...
 }
 ```
 
 **Issue:** If `AGENT_SECRET` environment variable is not set (common in quick deployments), the agent API is completely open. Attackers can:
+
 - Start/stop the auto-claim agent
 - Trigger claims from the agent wallet
 - Modify agent configuration
@@ -79,13 +82,14 @@ function isAuthorized(request: Request): boolean {
 **Impact:** Unauthorized control of autonomous trading operations, potential fund theft.
 
 **Remediation:**
+
 ```typescript
 function isAuthorized(request: Request): boolean {
   const agentSecret = process.env.AGENT_SECRET;
 
   if (!agentSecret) {
     console.error("AGENT_SECRET not configured - rejecting request");
-    return false;  // Fail closed, not open
+    return false; // Fail closed, not open
   }
   // ...
 }
@@ -119,11 +123,13 @@ export async function GET() {
 **Issue:** No rate limiting implemented on any endpoint. APIs can be flooded with requests.
 
 **Impact:**
+
 - Denial of Service attacks
 - API cost amplification (Bags API, Anthropic API)
 - Brute force attacks on auth flows
 
 **Remediation:** Implement rate limiting using `@upstash/ratelimit` or similar:
+
 ```typescript
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
@@ -141,7 +147,7 @@ const ratelimit = new Ratelimit({
 ```typescript
 const messages = chatHistory.slice(-6).map((m) => ({
   role: m.role as "user" | "assistant",
-  content: m.content,  // User content passed directly
+  content: m.content, // User content passed directly
 }));
 messages.push({ role: "user", content: userMessage });
 ```
@@ -151,6 +157,7 @@ messages.push({ role: "user", content: userMessage });
 **Impact:** Characters could be manipulated to say inappropriate things or leak system prompt details.
 
 **Remediation:**
+
 - Add input validation/sanitization
 - Implement content filtering
 - Consider character limits on user messages
@@ -168,6 +175,7 @@ messages.push({ role: "user", content: userMessage });
 ### 7. Debug Logging Contains Sensitive Data
 
 **Files:** Multiple routes including:
+
 - `src/lib/bags-api.ts:90` - Logs full API responses
 - `src/app/api/launch-token/route.ts:171` - Logs fee configuration
 - `src/app/api/launch-token/route.ts:209` - Logs launch transaction data
@@ -177,6 +185,7 @@ messages.push({ role: "user", content: userMessage });
 **Impact:** Information leakage through logs, potential compliance issues.
 
 **Remediation:**
+
 - Remove debug logging for production
 - Use environment-aware logging (debug only in dev)
 - Redact sensitive fields before logging
@@ -190,6 +199,7 @@ messages.push({ role: "user", content: userMessage });
 **Issue:** Supabase uses anon key exposed to client. Row Level Security policies should be reviewed to ensure proper access control.
 
 **Recommendation:** Audit Supabase RLS policies to ensure:
+
 - Users can only read/write their own data
 - Public data is read-only for anonymous users
 - Admin operations require service role key
@@ -244,16 +254,19 @@ return NextResponse.json(
 ## Remediation Priority
 
 ### Immediate (Before Production)
+
 1. Fix admin authentication (cryptographic wallet verification)
 2. Change agent auth to fail closed when secret not set
 3. Add rate limiting to all endpoints
 
 ### Short Term (Within 1 Week)
+
 4. Remove/gate debug logging
 5. Add input sanitization to chat endpoints
 6. Review and tighten Supabase RLS policies
 
 ### Medium Term (Within 1 Month)
+
 7. Implement proper session management
 8. Add monitoring and alerting for suspicious activity
 9. Consider Web Application Firewall (WAF)

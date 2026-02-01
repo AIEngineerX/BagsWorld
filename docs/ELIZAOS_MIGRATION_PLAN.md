@@ -37,6 +37,7 @@ The `plugin-bagsworld` in your elizaOS repo IS a proper ElizaOS plugin with Serv
 ```
 
 ### What's Missing
+
 - **No memory**: Each request is stateless
 - **No provider injection**: World state passed manually per-request
 - **No action execution**: Agents can't perform tool calls
@@ -66,6 +67,7 @@ The `plugin-bagsworld` in your elizaOS repo IS a proper ElizaOS plugin with Serv
 ```
 
 ### What You Gain
+
 - **Conversation memory**: Agents remember past interactions
 - **Automatic context**: Providers inject world state into every response
 - **Tool use**: Agents can call Actions to look up real data
@@ -78,6 +80,7 @@ The `plugin-bagsworld` in your elizaOS repo IS a proper ElizaOS plugin with Serv
 Your character files are **already ElizaOS-compatible**. Compare:
 
 ### Current (eliza-agents/src/characters/finn.ts)
+
 ```typescript
 export const finnCharacter: Character = {
   name: "Finnbags",
@@ -89,6 +92,7 @@ export const finnCharacter: Character = {
 ```
 
 ### Plugin-bagsworld (same structure)
+
 ```typescript
 export const finn: Character = {
   name: 'Finn',
@@ -113,6 +117,7 @@ export const finn: Character = {
    - Location: `elizaOS/packages/plugin-bagsworld/src/characters/`
 
 2. **Build the plugin**
+
    ```bash
    cd elizaOS/packages/plugin-bagsworld
    npm install
@@ -130,17 +135,17 @@ export const finn: Character = {
 Create `runtime-server.ts`:
 
 ```typescript
-import { AgentRuntime, elizaLogger, ModelProviderName } from '@elizaos/core';
-import { PostgresDatabaseAdapter } from '@elizaos/adapter-postgres';
-import express from 'express';
-import cors from 'cors';
+import { AgentRuntime, elizaLogger, ModelProviderName } from "@elizaos/core";
+import { PostgresDatabaseAdapter } from "@elizaos/adapter-postgres";
+import express from "express";
+import cors from "cors";
 
-import { bagsWorldPlugin, allCharacters } from './index.js';
+import { bagsWorldPlugin, allCharacters } from "./index.js";
 
-const PORT = parseInt(process.env.PORT || '3001', 10);
+const PORT = parseInt(process.env.PORT || "3001", 10);
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'] }));
+app.use(cors({ origin: process.env.CORS_ORIGINS?.split(",") || ["http://localhost:3000"] }));
 
 // Store agent runtimes
 const agentRuntimes = new Map<string, AgentRuntime>();
@@ -149,7 +154,7 @@ async function initializeAgents() {
   const dbUrl = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL;
 
   for (const character of allCharacters) {
-    const agentId = character.name.toLowerCase().replace(/\s+/g, '-');
+    const agentId = character.name.toLowerCase().replace(/\s+/g, "-");
 
     const runtime = new AgentRuntime({
       character,
@@ -166,12 +171,12 @@ async function initializeAgents() {
 }
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', agents: agentRuntimes.size });
+app.get("/health", (req, res) => {
+  res.json({ status: "healthy", agents: agentRuntimes.size });
 });
 
 // Chat endpoint (same API as standalone-server)
-app.post('/api/agents/:agentId/chat', async (req, res) => {
+app.post("/api/agents/:agentId/chat", async (req, res) => {
   const { agentId } = req.params;
   const { message, sessionId } = req.body;
 
@@ -183,7 +188,7 @@ app.post('/api/agents/:agentId/chat', async (req, res) => {
   // ElizaOS handles memory, providers, and response generation
   const response = await runtime.processMessage({
     content: { text: message },
-    userId: sessionId || 'anonymous',
+    userId: sessionId || "anonymous",
     roomId: `${agentId}-${sessionId}`,
   });
 
@@ -197,7 +202,7 @@ app.post('/api/agents/:agentId/chat', async (req, res) => {
 
 // Start server
 initializeAgents().then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, "0.0.0.0", () => {
     elizaLogger.info(`ElizaOS BagsWorld server running on port ${PORT}`);
   });
 });
@@ -206,6 +211,7 @@ initializeAgents().then(() => {
 ### Phase 3: Test Locally
 
 1. **Set environment variables**
+
    ```bash
    export ANTHROPIC_API_KEY=your_key
    export DATABASE_URL=your_neon_url
@@ -213,6 +219,7 @@ initializeAgents().then(() => {
    ```
 
 2. **Run the ElizaOS server**
+
    ```bash
    cd elizaOS/packages/plugin-bagsworld
    npm run start:runtime  # Add this script to package.json
@@ -229,6 +236,7 @@ initializeAgents().then(() => {
 ### Phase 4: Deploy to Railway
 
 1. **Update Dockerfile**
+
    ```dockerfile
    FROM node:20-alpine
    WORKDIR /app
@@ -238,6 +246,7 @@ initializeAgents().then(() => {
    ```
 
 2. **Update railway.toml**
+
    ```toml
    [build]
    builder = "DOCKERFILE"
@@ -267,12 +276,12 @@ const memories = await runtime.messageManager.getMemories({
 
 ## API Compatibility Matrix
 
-| Endpoint | Current Response | ElizaOS Response | Compatible? |
-|----------|------------------|------------------|-------------|
-| `GET /health` | `{ status: 'healthy' }` | Same | Yes |
-| `GET /api/agents` | `{ agents: [...] }` | Same | Yes |
-| `POST /api/agents/:id/chat` | `{ response, agentName }` | Same | Yes |
-| `POST /api/dialogue` | `{ dialogue: { turns } }` | Same | Yes |
+| Endpoint                    | Current Response          | ElizaOS Response | Compatible? |
+| --------------------------- | ------------------------- | ---------------- | ----------- |
+| `GET /health`               | `{ status: 'healthy' }`   | Same             | Yes         |
+| `GET /api/agents`           | `{ agents: [...] }`       | Same             | Yes         |
+| `POST /api/agents/:id/chat` | `{ response, agentName }` | Same             | Yes         |
+| `POST /api/dialogue`        | `{ dialogue: { turns } }` | Same             | Yes         |
 
 **No changes needed in BagsWorld Next.js routes** - they proxy to the same endpoints.
 
@@ -280,14 +289,14 @@ const memories = await runtime.messageManager.getMemories({
 
 ## What Changes
 
-| Feature | Before | After |
-|---------|--------|-------|
-| Memory | None (stateless) | Per-user persistent |
-| Context | Manual injection | Automatic via Providers |
-| Tools | None | Actions (lookupToken, etc.) |
-| Multi-agent | Custom DialogueManager | ElizaOS native |
-| Logging | console.log | elizaLogger |
-| Model config | Hardcoded | Per-character settings |
+| Feature      | Before                 | After                       |
+| ------------ | ---------------------- | --------------------------- |
+| Memory       | None (stateless)       | Per-user persistent         |
+| Context      | Manual injection       | Automatic via Providers     |
+| Tools        | None                   | Actions (lookupToken, etc.) |
+| Multi-agent  | Custom DialogueManager | ElizaOS native              |
+| Logging      | console.log            | elizaLogger                 |
+| Model config | Hardcoded              | Per-character settings      |
 
 ---
 
@@ -310,6 +319,7 @@ If issues arise after migration:
    - Keep the working Dockerfile
 
 2. **Quick rollback**
+
    ```bash
    # In Railway, revert to previous Dockerfile
    git revert <migration-commit>
@@ -326,13 +336,13 @@ If issues arise after migration:
 
 ## Timeline Estimate
 
-| Phase | Work |
-|-------|------|
+| Phase   | Work                           |
+| ------- | ------------------------------ |
 | Phase 1 | Merge characters, verify tests |
-| Phase 2 | Build runtime-server.ts |
-| Phase 3 | Local testing |
-| Phase 4 | Railway deployment |
-| Phase 5 | Enable memory features |
+| Phase 2 | Build runtime-server.ts        |
+| Phase 3 | Local testing                  |
+| Phase 4 | Railway deployment             |
+| Phase 5 | Enable memory features         |
 
 ---
 

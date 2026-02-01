@@ -25,11 +25,11 @@ Request #1 (Instance A)          Request #2 (Instance B - cold start)
 
 ### Root Cause Locations
 
-| File | Line | Issue |
-|------|------|-------|
-| `src/app/api/world-state/route.ts` | 103 | `let previousState: WorldState \| null = null` - Module memory |
-| `src/lib/world-calculator.ts` | 592 | `const previousHealth = existingBuilding?.health ?? 50` - Default on miss |
-| `src/lib/neon.ts` | 32-36 | Schema has `health_override` but no `current_health` column |
+| File                               | Line  | Issue                                                                     |
+| ---------------------------------- | ----- | ------------------------------------------------------------------------- |
+| `src/app/api/world-state/route.ts` | 103   | `let previousState: WorldState \| null = null` - Module memory            |
+| `src/lib/world-calculator.ts`      | 592   | `const previousHealth = existingBuilding?.health ?? 50` - Default on miss |
+| `src/lib/neon.ts`                  | 32-36 | Schema has `health_override` but no `current_health` column               |
 
 ### Why It Matters
 
@@ -64,13 +64,13 @@ Request #1 (Instance A)          Request #2 (Instance B - cold start)
 
 ### Existing Infrastructure
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Neon DB | ✅ Configured | `tokens` table exists with admin override columns |
-| `getGlobalTokens()` | ✅ Working | Fetches all tokens from DB |
-| `saveGlobalToken()` | ✅ Working | Upserts token data |
-| `updateTokenStats()` | ✅ Working | Updates `lifetime_fees`, `market_cap`, `volume_24h` |
-| Admin `health_override` | ✅ Working | Column exists, passed through to calculator |
+| Component               | Status        | Notes                                               |
+| ----------------------- | ------------- | --------------------------------------------------- |
+| Neon DB                 | ✅ Configured | `tokens` table exists with admin override columns   |
+| `getGlobalTokens()`     | ✅ Working    | Fetches all tokens from DB                          |
+| `saveGlobalToken()`     | ✅ Working    | Upserts token data                                  |
+| `updateTokenStats()`    | ✅ Working    | Updates `lifetime_fees`, `market_cap`, `volume_24h` |
+| Admin `health_override` | ✅ Working    | Column exists, passed through to calculator         |
 
 ### Database Schema (Current)
 
@@ -89,12 +89,12 @@ CREATE TABLE tokens (
 
 ### Timing Constraints
 
-| Operation | Current | Budget |
-|-----------|---------|--------|
-| API response time | ~200-400ms | <500ms total |
-| DB read (getGlobalTokens) | ~50-100ms | Already happening |
-| DB write (new) | ~50-100ms | Acceptable addition |
-| Client refresh interval | 60 seconds | Decay rate calibrated to this |
+| Operation                 | Current    | Budget                        |
+| ------------------------- | ---------- | ----------------------------- |
+| API response time         | ~200-400ms | <500ms total                  |
+| DB read (getGlobalTokens) | ~50-100ms  | Already happening             |
+| DB write (new)            | ~50-100ms  | Acceptable addition           |
+| Client refresh interval   | 60 seconds | Decay rate calibrated to this |
 
 ---
 
@@ -175,26 +175,26 @@ The `tokens` table already stores per-token data and is read on every request. A
 **File**: `src/lib/neon.ts`
 
 1. Add migration in `initializeDatabase()`:
+
    ```typescript
    await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS current_health INTEGER DEFAULT 50`;
    await sql`ALTER TABLE tokens ADD COLUMN IF NOT EXISTS health_updated_at TIMESTAMP WITH TIME ZONE`;
    ```
 
 2. Update `GlobalToken` interface:
+
    ```typescript
    export interface GlobalToken {
      // ... existing fields ...
-     current_health?: number;       // Computed health (0-100)
-     health_updated_at?: string;    // Last decay calculation
+     current_health?: number; // Computed health (0-100)
+     health_updated_at?: string; // Last decay calculation
    }
    ```
 
 3. Add new function `updateBuildingHealth()`:
+
    ```typescript
-   export async function updateBuildingHealth(
-     mint: string,
-     health: number
-   ): Promise<void> {
+   export async function updateBuildingHealth(mint: string, health: number): Promise<void> {
      const sql = await getSql();
      if (!sql) return;
 
@@ -221,9 +221,10 @@ The `tokens` table already stores per-token data and is read on every request. A
 **File**: `src/lib/world-calculator.ts`
 
 1. Update `transformTokenToBuilding()` to accept `dbHealth` parameter:
+
    ```typescript
    export function transformTokenToBuilding(
-     token: TokenInfo & { currentHealth?: number },  // Add DB health
+     token: TokenInfo & { currentHealth?: number }, // Add DB health
      index: number,
      existingBuilding?: GameBuilding
    ): GameBuilding {
@@ -240,6 +241,7 @@ The `tokens` table already stores per-token data and is read on every request. A
 **File**: `src/app/api/world-state/route.ts`
 
 1. Modify token enrichment to include `current_health`:
+
    ```typescript
    // In the globalTokens merge section (lines 713-735)
    registeredTokens = registeredTokens.map((token) => {
@@ -248,23 +250,24 @@ The `tokens` table already stores per-token data and is read on every request. A
      return {
        ...token,
        // ... existing overrides ...
-       currentHealth: gt.current_health,  // Add this
+       currentHealth: gt.current_health, // Add this
      };
    });
    ```
 
 2. After building WorldState, save updated health values:
+
    ```typescript
    // After line 1094 (worldState built)
 
    // Persist updated health values to database
    const healthUpdates = worldState.buildings
-     .filter(b => !b.isPermanent && !b.isFloating)
-     .map(b => ({ mint: b.id, health: b.health }));
+     .filter((b) => !b.isPermanent && !b.isFloating)
+     .map((b) => ({ mint: b.id, health: b.health }));
 
    if (healthUpdates.length > 0 && isNeonConfigured()) {
-     batchUpdateBuildingHealth(healthUpdates).catch(err => {
-       console.warn('[WorldState] Failed to persist health:', err);
+     batchUpdateBuildingHealth(healthUpdates).catch((err) => {
+       console.warn("[WorldState] Failed to persist health:", err);
      });
    }
    ```
@@ -298,13 +301,13 @@ The `tokens` table already stores per-token data and is read on every request. A
 
 ## 7. Risk Assessment
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Migration fails on production | Low | High | Run migration manually first, test on staging |
-| Performance regression | Medium | Medium | Batch updates, async writes, measure before/after |
-| Health resets during rollout | Medium | Low | Default 50 is safe starting point |
-| Race condition causes wrong health | Low | Low | Timestamp guard, eventual consistency acceptable |
-| Admin override stops working | Low | High | Test explicitly, override takes precedence in code |
+| Risk                               | Probability | Impact | Mitigation                                         |
+| ---------------------------------- | ----------- | ------ | -------------------------------------------------- |
+| Migration fails on production      | Low         | High   | Run migration manually first, test on staging      |
+| Performance regression             | Medium      | Medium | Batch updates, async writes, measure before/after  |
+| Health resets during rollout       | Medium      | Low    | Default 50 is safe starting point                  |
+| Race condition causes wrong health | Low         | Low    | Timestamp guard, eventual consistency acceptable   |
+| Admin override stops working       | Low         | High   | Test explicitly, override takes precedence in code |
 
 ---
 
@@ -318,6 +321,7 @@ The `tokens` table already stores per-token data and is read on every request. A
 ### New Tests Required
 
 1. **Database persistence test**:
+
    ```typescript
    it("should persist health to database after calculation", async () => {
      // Setup: Token with current_health = 50 in DB
@@ -394,14 +398,15 @@ All changes have been implemented and tested:
 
 ### Files Modified
 
-| File | Changes |
-|------|---------|
-| `src/lib/neon.ts` | Added `current_health`, `health_updated_at` columns; `updateBuildingHealth()`, `batchUpdateBuildingHealth()`, `getBuildingHealthData()` functions |
-| `src/lib/types.ts` | Added `currentHealth`, `healthUpdatedAt` to `TokenInfo` interface |
-| `src/lib/world-calculator.ts` | Modified `calculateBuildingHealth()` for time-based decay with `lastHealthUpdate` parameter; returns `cyclesApplied` |
-| `src/app/api/world-state/route.ts` | Load health from DB, merge into tokens, persist updated health after WorldState built |
+| File                               | Changes                                                                                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/neon.ts`                  | Added `current_health`, `health_updated_at` columns; `updateBuildingHealth()`, `batchUpdateBuildingHealth()`, `getBuildingHealthData()` functions |
+| `src/lib/types.ts`                 | Added `currentHealth`, `healthUpdatedAt` to `TokenInfo` interface                                                                                 |
+| `src/lib/world-calculator.ts`      | Modified `calculateBuildingHealth()` for time-based decay with `lastHealthUpdate` parameter; returns `cyclesApplied`                              |
+| `src/app/api/world-state/route.ts` | Load health from DB, merge into tokens, persist updated health after WorldState built                                                             |
 
 ### Build & Test Results
+
 - **Build**: ✅ Compiled successfully
 - **Tests**: ✅ 107/107 tests passed (all existing tests still work)
 
@@ -409,26 +414,26 @@ All changes have been implemented and tested:
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/lib/neon.ts` | Add columns, `updateBuildingHealth()`, `batchUpdateBuildingHealth()` |
-| `src/lib/world-calculator.ts` | Accept `currentHealth` in token, pass to health calc |
-| `src/app/api/world-state/route.ts` | Read DB health, write updated health after calc |
-| `src/lib/types.ts` | Add `currentHealth` to `TokenInfo` interface (optional) |
-| `tests/lib/world-calculator.test.ts` | Add persistence tests |
+| File                                 | Changes                                                              |
+| ------------------------------------ | -------------------------------------------------------------------- |
+| `src/lib/neon.ts`                    | Add columns, `updateBuildingHealth()`, `batchUpdateBuildingHealth()` |
+| `src/lib/world-calculator.ts`        | Accept `currentHealth` in token, pass to health calc                 |
+| `src/app/api/world-state/route.ts`   | Read DB health, write updated health after calc                      |
+| `src/lib/types.ts`                   | Add `currentHealth` to `TokenInfo` interface (optional)              |
+| `tests/lib/world-calculator.test.ts` | Add persistence tests                                                |
 
 ---
 
 ## Estimated Effort
 
-| Phase | Time |
-|-------|------|
-| Schema migration | 30 min |
-| neon.ts functions | 45 min |
-| world-calculator.ts changes | 30 min |
-| route.ts integration | 45 min |
-| Testing & debugging | 1-2 hours |
-| **Total** | **3-4 hours** |
+| Phase                       | Time          |
+| --------------------------- | ------------- |
+| Schema migration            | 30 min        |
+| neon.ts functions           | 45 min        |
+| world-calculator.ts changes | 30 min        |
+| route.ts integration        | 45 min        |
+| Testing & debugging         | 1-2 hours     |
+| **Total**                   | **3-4 hours** |
 
 ---
 

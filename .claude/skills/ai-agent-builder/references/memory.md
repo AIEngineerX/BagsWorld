@@ -15,28 +15,26 @@ class ShortTermMemory {
       content,
       timestamp: Date.now(),
     });
-    
+
     if (this.entries.length > this.maxEntries) {
       this.entries.shift();
     }
   }
 
   addAction(action, params) {
-    this.add('action', `${action}(${JSON.stringify(params)})`);
+    this.add("action", `${action}(${JSON.stringify(params)})`);
   }
 
   addObservation(observation) {
-    this.add('observation', observation);
+    this.add("observation", observation);
   }
 
   addThought(thought) {
-    this.add('thought', thought);
+    this.add("thought", thought);
   }
 
   getContext() {
-    return this.entries
-      .map(e => `[${e.type.toUpperCase()}] ${e.content}`)
-      .join('\n');
+    return this.entries.map((e) => `[${e.type.toUpperCase()}] ${e.content}`).join("\n");
   }
 
   getRecent(n = 5) {
@@ -52,10 +50,10 @@ class ShortTermMemory {
 ## Long-Term Memory (SQLite)
 
 ```javascript
-import Database from 'better-sqlite3';
+import Database from "better-sqlite3";
 
 class LongTermMemory {
-  constructor(dbPath = './agent-memory.db') {
+  constructor(dbPath = "./agent-memory.db") {
     this.db = new Database(dbPath);
     this.init();
   }
@@ -93,56 +91,66 @@ class LongTermMemory {
   }
 
   startSession(objective) {
-    const result = this.db.prepare(
-      'INSERT INTO sessions (objective) VALUES (?)'
-    ).run(objective);
+    const result = this.db.prepare("INSERT INTO sessions (objective) VALUES (?)").run(objective);
     return result.lastInsertRowid;
   }
 
   logAction(sessionId, action, params, result) {
-    this.db.prepare(
-      'INSERT INTO actions (session_id, action, params, result) VALUES (?, ?, ?, ?)'
-    ).run(sessionId, action, JSON.stringify(params), result);
+    this.db
+      .prepare("INSERT INTO actions (session_id, action, params, result) VALUES (?, ?, ?, ?)")
+      .run(sessionId, action, JSON.stringify(params), result);
   }
 
   endSession(sessionId, success, summary) {
-    this.db.prepare(
-      'UPDATE sessions SET completed_at = CURRENT_TIMESTAMP, success = ?, summary = ? WHERE id = ?'
-    ).run(success ? 1 : 0, summary, sessionId);
+    this.db
+      .prepare(
+        "UPDATE sessions SET completed_at = CURRENT_TIMESTAMP, success = ?, summary = ? WHERE id = ?"
+      )
+      .run(success ? 1 : 0, summary, sessionId);
   }
 
   getSimilarSessions(objective, limit = 5) {
-    return this.db.prepare(`
+    return this.db
+      .prepare(
+        `
       SELECT * FROM sessions 
       WHERE objective LIKE ? 
       ORDER BY started_at DESC 
       LIMIT ?
-    `).all(`%${objective}%`, limit);
+    `
+      )
+      .all(`%${objective}%`, limit);
   }
 
   recordPattern(type, trigger, response, success) {
-    const existing = this.db.prepare(
-      'SELECT * FROM patterns WHERE pattern_type = ? AND trigger = ?'
-    ).get(type, trigger);
+    const existing = this.db
+      .prepare("SELECT * FROM patterns WHERE pattern_type = ? AND trigger = ?")
+      .get(type, trigger);
 
     if (existing) {
-      const col = success ? 'success_count' : 'fail_count';
+      const col = success ? "success_count" : "fail_count";
       this.db.prepare(`UPDATE patterns SET ${col} = ${col} + 1 WHERE id = ?`).run(existing.id);
     } else {
-      this.db.prepare(
-        'INSERT INTO patterns (pattern_type, trigger, response, success_count, fail_count) VALUES (?, ?, ?, ?, ?)'
-      ).run(type, trigger, response, success ? 1 : 0, success ? 0 : 1);
+      this.db
+        .prepare(
+          "INSERT INTO patterns (pattern_type, trigger, response, success_count, fail_count) VALUES (?, ?, ?, ?, ?)"
+        )
+        .run(type, trigger, response, success ? 1 : 0, success ? 0 : 1);
     }
   }
 
   getBestPattern(type, trigger) {
-    return this.db.prepare(`
+    return this.db
+      .prepare(
+        `
       SELECT *, (success_count * 1.0 / (success_count + fail_count + 1)) as success_rate
       FROM patterns 
       WHERE pattern_type = ? AND trigger LIKE ?
       ORDER BY success_rate DESC
       LIMIT 1
-    `).get(type, `%${trigger}%`);
+    `
+      )
+      .get(type, `%${trigger}%`);
   }
 }
 ```
@@ -159,14 +167,14 @@ class VectorMemory {
   }
 
   async embed(text) {
-    const res = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
+    const res = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
-        model: 'text-embedding-3-small',
+        model: "text-embedding-3-small",
         input: text,
       }),
     });
@@ -188,8 +196,8 @@ class VectorMemory {
 
   async search(query, topK = 5) {
     const queryEmbedding = await this.embed(query);
-    
-    const scored = this.memories.map(m => ({
+
+    const scored = this.memories.map((m) => ({
       ...m,
       score: this.cosineSimilarity(queryEmbedding, m.embedding),
     }));
@@ -225,12 +233,12 @@ class MemoryManager {
     this.shortTerm.add(type, content);
 
     // Log to long-term if available
-    if (this.longTerm && this.sessionId && type === 'action') {
+    if (this.longTerm && this.sessionId && type === "action") {
       this.longTerm.logAction(this.sessionId, metadata.action, metadata.params, content);
     }
 
     // Add to vector memory if available
-    if (this.vector && type === 'observation') {
+    if (this.vector && type === "observation") {
       await this.vector.add(content, metadata);
     }
   }
@@ -241,8 +249,8 @@ class MemoryManager {
     if (this.vector) {
       const similar = await this.vector.search(query, 3);
       if (similar.length) {
-        context += '\n\nRELEVANT PAST EXPERIENCES:\n';
-        context += similar.map(s => `- ${s.content}`).join('\n');
+        context += "\n\nRELEVANT PAST EXPERIENCES:\n";
+        context += similar.map((s) => `- ${s.content}`).join("\n");
       }
     }
 

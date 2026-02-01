@@ -29,7 +29,10 @@ import {
   type GlobalToken,
 } from "@/lib/neon";
 import { getAgentCharacters } from "@/lib/agent-economy";
-import { getExternalAgentCharactersSync, getExternalAgentBuildingsSync } from "@/lib/agent-economy/external-registry";
+import {
+  getExternalAgentCharactersSync,
+  getExternalAgentBuildingsSync,
+} from "@/lib/agent-economy/external-registry";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
 
 // Bags SDK types

@@ -48,9 +48,7 @@ describe("World State API Integration (Logic)", () => {
     it("should return valid weather type", () => {
       const state = buildWorldState([], []);
 
-      expect(["sunny", "cloudy", "rain", "storm", "apocalypse"]).toContain(
-        state.weather
-      );
+      expect(["sunny", "cloudy", "rain", "storm", "apocalypse"]).toContain(state.weather);
     });
 
     it("should return arrays for population and buildings", () => {
@@ -411,9 +409,7 @@ describe("World State API Integration (Logic)", () => {
       };
 
       const newState = buildWorldState(earners, [], previousState);
-      const character = newState.population.find(
-        (c) => c.id === "stable-character"
-      );
+      const character = newState.population.find((c) => c.id === "stable-character");
 
       expect(character?.x).toBe(999);
       expect(character?.y).toBe(888);

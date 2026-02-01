@@ -1,12 +1,13 @@
 # Plan: Upgrading All AI to ElizaOS Full Functions
 
 ## DECISIONS CONFIRMED
-| Question | Answer |
-|----------|--------|
-| Hosting Strategy | **A: Separate server (Render/Railway)** |
-| Platform Connector | **Telegram Bot** |
-| Priority Feature | **Multi-agent coordination** |
-| Database | **Existing Neon DB** |
+
+| Question           | Answer                                  |
+| ------------------ | --------------------------------------- |
+| Hosting Strategy   | **A: Separate server (Render/Railway)** |
+| Platform Connector | **Telegram Bot**                        |
+| Priority Feature   | **Multi-agent coordination**            |
+| Database           | **Existing Neon DB**                    |
 
 ---
 
@@ -15,6 +16,7 @@
 **Objective**: Migrate all 7 BagsWorld AI characters from the current hybrid Claude/ElizaOS system to a **fully autonomous ElizaOS runtime** with complete feature parity.
 
 **Current State**:
+
 - 7 characters exist: Neo, CJ, Finn, Bags-Bot, Toly, Ash, Shaw
 - Only Shaw runs on TRUE ElizaOS runtime (port 3001)
 - Others use Claude Opus 4.5 fallback with character definitions
@@ -22,6 +24,7 @@
 - Package.json missing core ElizaOS dependencies (@elizaos/core not installed)
 
 **Target State**:
+
 - ALL characters run on ElizaOS with persistent memory
 - Multi-agent coordination (characters can talk to each other)
 - Telegram bot connector for external access
@@ -35,25 +38,28 @@
 ## 2. Constraints & Dependencies
 
 ### Technical Constraints
-| Constraint | Impact |
-|------------|--------|
-| ElizaOS requires Node.js 23+ or Bun | May need runtime upgrade |
-| Separate server process (port 3001) | Operational complexity on Netlify |
-| SQLite default (PostgreSQL for prod) | Database migration needed |
-| Twitter API rate limits | Autonomous posting frequency limited |
-| ANTHROPIC_API_KEY or OPENAI_API_KEY required | Cost implications per message |
+
+| Constraint                                   | Impact                               |
+| -------------------------------------------- | ------------------------------------ |
+| ElizaOS requires Node.js 23+ or Bun          | May need runtime upgrade             |
+| Separate server process (port 3001)          | Operational complexity on Netlify    |
+| SQLite default (PostgreSQL for prod)         | Database migration needed            |
+| Twitter API rate limits                      | Autonomous posting frequency limited |
+| ANTHROPIC_API_KEY or OPENAI_API_KEY required | Cost implications per message        |
 
 ### Dependencies
-| Dependency | Version | Purpose |
-|------------|---------|---------|
-| @elizaos/core | ^1.7.2 | Agent runtime |
-| @elizaos/plugin-bootstrap | latest | Core communication |
-| @elizaos/plugin-sql | latest | PostgreSQL/SQLite memory |
-| @elizaos/plugin-twitter (optional) | latest | Autonomous Twitter posting |
-| @elizaos/plugin-discord (optional) | latest | Discord bot |
-| Bun runtime | 1.0+ | Required by ElizaOS |
+
+| Dependency                         | Version | Purpose                    |
+| ---------------------------------- | ------- | -------------------------- |
+| @elizaos/core                      | ^1.7.2  | Agent runtime              |
+| @elizaos/plugin-bootstrap          | latest  | Core communication         |
+| @elizaos/plugin-sql                | latest  | PostgreSQL/SQLite memory   |
+| @elizaos/plugin-twitter (optional) | latest  | Autonomous Twitter posting |
+| @elizaos/plugin-discord (optional) | latest  | Discord bot                |
+| Bun runtime                        | 1.0+    | Required by ElizaOS        |
 
 ### Infrastructure Requirements
+
 - **Local Dev**: ElizaOS server must run alongside Next.js (port 3001)
 - **Production**: Either:
   - Co-located process (Render, Railway, Fly.io)
@@ -97,6 +103,7 @@
 ## 4. Architecture Design
 
 ### Current Architecture (Hybrid)
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    BagsWorld Frontend                        │
@@ -118,6 +125,7 @@
 ```
 
 ### Target Architecture (Full ElizaOS)
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    BagsWorld Frontend                        │
@@ -161,6 +169,7 @@
 ```
 
 ### Data Flow (Chat Request)
+
 ```
 1. User types message in FinnChat component
 2. POST /api/agents { character: "finn", message: "how do fees work?" }
@@ -179,6 +188,7 @@
 ```
 
 ### Data Flow (Autonomous Event)
+
 ```
 1. New token launched on Bags.fm
 2. World State API detects event
@@ -198,67 +208,75 @@
 ## 5. Implementation Tasks
 
 ### Phase 1: Foundation (Required)
-| Task | Description | Files |
-|------|-------------|-------|
-| 1.1 | Complete missing character files in eliza-agents | `eliza-agents/src/characters/*.ts` |
-| 1.2 | Consolidate character definitions (single source) | Remove duplicates from `src/characters/` |
-| 1.3 | Complete Bags.fm service implementation | `eliza-agents/src/plugins/bags-fm/bags-service.ts` |
-| 1.4 | Add database adapter (PostgreSQL) | `eliza-agents/src/db/` |
-| 1.5 | Update package.json with all ElizaOS deps | `eliza-agents/package.json` |
-| 1.6 | Create unified API route | `src/app/api/agents/route.ts` |
+
+| Task | Description                                       | Files                                              |
+| ---- | ------------------------------------------------- | -------------------------------------------------- |
+| 1.1  | Complete missing character files in eliza-agents  | `eliza-agents/src/characters/*.ts`                 |
+| 1.2  | Consolidate character definitions (single source) | Remove duplicates from `src/characters/`           |
+| 1.3  | Complete Bags.fm service implementation           | `eliza-agents/src/plugins/bags-fm/bags-service.ts` |
+| 1.4  | Add database adapter (PostgreSQL)                 | `eliza-agents/src/db/`                             |
+| 1.5  | Update package.json with all ElizaOS deps         | `eliza-agents/package.json`                        |
+| 1.6  | Create unified API route                          | `src/app/api/agents/route.ts`                      |
 
 ### Phase 2: Migration (Required)
-| Task | Description | Files |
-|------|-------------|-------|
-| 2.1 | Update all chat components to use new endpoint | `src/components/*Chat.tsx` |
-| 2.2 | Implement graceful fallback to Claude | `src/app/api/agents/route.ts` |
-| 2.3 | Add health check polling | `src/hooks/useElizaStatus.ts` |
-| 2.4 | Migrate behavior system to ElizaOS events | `src/lib/character-behavior.ts` |
-| 2.5 | Deprecate old API routes | `src/app/api/character-chat/`, `agent-chat/`, `eliza-agent/` |
+
+| Task | Description                                    | Files                                                        |
+| ---- | ---------------------------------------------- | ------------------------------------------------------------ |
+| 2.1  | Update all chat components to use new endpoint | `src/components/*Chat.tsx`                                   |
+| 2.2  | Implement graceful fallback to Claude          | `src/app/api/agents/route.ts`                                |
+| 2.3  | Add health check polling                       | `src/hooks/useElizaStatus.ts`                                |
+| 2.4  | Migrate behavior system to ElizaOS events      | `src/lib/character-behavior.ts`                              |
+| 2.5  | Deprecate old API routes                       | `src/app/api/character-chat/`, `agent-chat/`, `eliza-agent/` |
 
 ### Phase 3: Autonomous Features (Optional)
-| Task | Description | Files |
-|------|-------------|-------|
-| 3.1 | Add Twitter plugin configuration | `eliza-agents/.env`, character configs |
-| 3.2 | Implement event-driven autonomous posting | `eliza-agents/src/plugins/bags-fm/events.ts` |
-| 3.3 | Add Discord bot connector | Character configs |
-| 3.4 | Multi-agent coordination (cross-character awareness) | `eliza-agents/src/coordination/` |
-| 3.5 | Scheduled world reports | Cron/interval system |
+
+| Task | Description                                          | Files                                        |
+| ---- | ---------------------------------------------------- | -------------------------------------------- |
+| 3.1  | Add Twitter plugin configuration                     | `eliza-agents/.env`, character configs       |
+| 3.2  | Implement event-driven autonomous posting            | `eliza-agents/src/plugins/bags-fm/events.ts` |
+| 3.3  | Add Discord bot connector                            | Character configs                            |
+| 3.4  | Multi-agent coordination (cross-character awareness) | `eliza-agents/src/coordination/`             |
+| 3.5  | Scheduled world reports                              | Cron/interval system                         |
 
 ### Phase 4: Production (Required for Deploy)
-| Task | Description | Files |
-|------|-------------|-------|
-| 4.1 | Docker configuration for ElizaOS | `eliza-agents/Dockerfile` |
-| 4.2 | Production database setup (Neon/Supabase) | Environment variables |
-| 4.3 | Process management (PM2 or similar) | Deployment config |
-| 4.4 | Monitoring and logging | Observability setup |
-| 4.5 | Rate limiting per user | Middleware |
+
+| Task | Description                               | Files                     |
+| ---- | ----------------------------------------- | ------------------------- |
+| 4.1  | Docker configuration for ElizaOS          | `eliza-agents/Dockerfile` |
+| 4.2  | Production database setup (Neon/Supabase) | Environment variables     |
+| 4.3  | Process management (PM2 or similar)       | Deployment config         |
+| 4.4  | Monitoring and logging                    | Observability setup       |
+| 4.5  | Rate limiting per user                    | Middleware                |
 
 ---
 
 ## 6. Unknowns & Risks
 
 ### High Risk
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| ElizaOS API breaking changes | Medium | High | Pin versions, maintain fallback |
-| Production hosting complexity | High | High | Consider serverless alternative |
-| Cost explosion (LLM calls) | Medium | High | Implement caching, rate limits |
+
+| Risk                          | Likelihood | Impact | Mitigation                      |
+| ----------------------------- | ---------- | ------ | ------------------------------- |
+| ElizaOS API breaking changes  | Medium     | High   | Pin versions, maintain fallback |
+| Production hosting complexity | High       | High   | Consider serverless alternative |
+| Cost explosion (LLM calls)    | Medium     | High   | Implement caching, rate limits  |
 
 ### Medium Risk
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Memory consistency issues | Medium | Medium | Regular cleanup, TTL on memories |
-| Character personality drift | Low | Medium | Strong character files, examples |
-| Multi-agent conflicts | Medium | Medium | Coordination layer, locks |
+
+| Risk                        | Likelihood | Impact | Mitigation                       |
+| --------------------------- | ---------- | ------ | -------------------------------- |
+| Memory consistency issues   | Medium     | Medium | Regular cleanup, TTL on memories |
+| Character personality drift | Low        | Medium | Strong character files, examples |
+| Multi-agent conflicts       | Medium     | Medium | Coordination layer, locks        |
 
 ### Low Risk
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Twitter API suspension | Low | Low | Graceful degradation |
-| Discord bot issues | Low | Low | Optional feature |
+
+| Risk                   | Likelihood | Impact | Mitigation           |
+| ---------------------- | ---------- | ------ | -------------------- |
+| Twitter API suspension | Low        | Low    | Graceful degradation |
+| Discord bot issues     | Low        | Low    | Optional feature     |
 
 ### Unknown (Requires Investigation)
+
 1. **Netlify Compatibility**: Can ElizaOS run as a Netlify Function or does it need a separate server?
 2. **Bun on Windows**: Development workflow on Windows with Bun requirement
 3. **Memory Limits**: How much memory does 7 concurrent agents require?
@@ -302,26 +320,31 @@ Before implementation, please confirm:
 Given the complexity, I recommend a **phased rollout**:
 
 ### Week 1: Foundation
+
 - Complete Phase 1 tasks
 - Get all 7 agents running on ElizaOS locally
 - Verify Bags.fm plugin works with all characters
 
 ### Week 2: Migration
+
 - Create unified `/api/agents` endpoint
 - Update chat components one by one
 - Maintain Claude fallback for reliability
 
 ### Week 3: Testing & Stability
+
 - Load testing with multiple concurrent users
 - Memory leak detection
 - Character consistency verification
 
 ### Week 4: Production (if needed)
+
 - Set up production ElizaOS hosting
 - Database migration
 - Monitoring setup
 
 ### Future: Autonomous Features
+
 - Twitter/Discord connectors
 - Event-driven posting
 - Multi-agent coordination
@@ -331,6 +354,7 @@ Given the complexity, I recommend a **phased rollout**:
 ## 9. File Changes Summary
 
 ### New Files
+
 ```
 src/app/api/agents/route.ts           # Unified agent API
 src/app/api/agents/event/route.ts     # Event dispatch endpoint
@@ -341,6 +365,7 @@ eliza-agents/Dockerfile               # Production container
 ```
 
 ### Modified Files
+
 ```
 eliza-agents/package.json             # Add missing deps
 eliza-agents/src/characters/*.ts      # Complete all 7 characters
@@ -350,6 +375,7 @@ src/lib/character-behavior.ts         # Migrate to ElizaOS events
 ```
 
 ### Deprecated (Remove Later)
+
 ```
 src/app/api/character-chat/route.ts   # Legacy
 src/app/api/agent-chat/route.ts       # Replaced by /api/agents
@@ -362,6 +388,7 @@ src/characters/*.character.ts         # Duplicates of eliza-agents
 ## 10. Decision Required
 
 Please review this plan and answer the clarification questions in Section 7. Once I understand your preferences for:
+
 - Hosting strategy
 - Platform connectors
 - Memory persistence

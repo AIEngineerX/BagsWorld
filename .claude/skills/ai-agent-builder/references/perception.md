@@ -3,7 +3,7 @@
 ## Browser Automation (Playwright)
 
 ```javascript
-import { chromium } from 'playwright';
+import { chromium } from "playwright";
 
 class BrowserPerception {
   async init(headless = true) {
@@ -13,7 +13,7 @@ class BrowserPerception {
   }
 
   async navigate(url) {
-    await this.page.goto(url, { waitUntil: 'networkidle' });
+    await this.page.goto(url, { waitUntil: "networkidle" });
     return this.page.url();
   }
 
@@ -21,12 +21,12 @@ class BrowserPerception {
     return {
       url: this.page.url(),
       title: await this.page.title(),
-      text: await this.page.innerText('body'),
+      text: await this.page.innerText("body"),
     };
   }
 
   async screenshot() {
-    return await this.page.screenshot({ encoding: 'base64' });
+    return await this.page.screenshot({ encoding: "base64" });
   }
 
   async waitForSelector(selector, timeout = 5000) {
@@ -79,7 +79,7 @@ class WebSocketPerception {
 
   connect() {
     this.ws = new WebSocket(this.url);
-    
+
     this.ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       const handler = this.handlers.get(data.type);
@@ -105,10 +105,10 @@ class WebSocketPerception {
 ## Solana Blockchain
 
 ```javascript
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey } from "@solana/web3.js";
 
 class SolanaPerception {
-  constructor(rpc = 'https://api.mainnet-beta.solana.com') {
+  constructor(rpc = "https://api.mainnet-beta.solana.com") {
     this.connection = new Connection(rpc);
   }
 
@@ -120,7 +120,7 @@ class SolanaPerception {
   async getTokenAccounts(address) {
     const pubkey = new PublicKey(address);
     return this.connection.getParsedTokenAccountsByOwner(pubkey, {
-      programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+      programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
     });
   }
 
@@ -138,14 +138,16 @@ const getDexScreenerData = async (tokenAddress) => {
   const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
   const data = await res.json();
   const pair = data.pairs?.[0];
-  
-  return pair ? {
-    price: pair.priceUsd,
-    priceChange24h: pair.priceChange?.h24,
-    volume24h: pair.volume?.h24,
-    liquidity: pair.liquidity?.usd,
-    fdv: pair.fdv,
-    pairAddress: pair.pairAddress,
-  } : null;
+
+  return pair
+    ? {
+        price: pair.priceUsd,
+        priceChange24h: pair.priceChange?.h24,
+        volume24h: pair.volume?.h24,
+        liquidity: pair.liquidity?.usd,
+        fdv: pair.fdv,
+        pairAddress: pair.pairAddress,
+      }
+    : null;
 };
 ```

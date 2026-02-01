@@ -1,13 +1,13 @@
 // jest.setup.js
-import '@testing-library/jest-dom';
-import { TextEncoder, TextDecoder } from 'util';
+import "@testing-library/jest-dom";
+import { TextEncoder, TextDecoder } from "util";
 
 // Polyfill TextEncoder/TextDecoder for @noble/curves and Solana libs
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
 
 // Mock next/navigation
-jest.mock('next/navigation', () => ({
+jest.mock("next/navigation", () => ({
   useRouter: () => ({
     push: jest.fn(),
     replace: jest.fn(),
@@ -15,11 +15,11 @@ jest.mock('next/navigation', () => ({
     back: jest.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
-  usePathname: () => '/',
+  usePathname: () => "/",
 }));
 
 // Mock Solana wallet adapter
-jest.mock('@solana/wallet-adapter-react', () => ({
+jest.mock("@solana/wallet-adapter-react", () => ({
   useWallet: () => ({
     publicKey: null,
     connected: false,
@@ -33,7 +33,7 @@ jest.mock('@solana/wallet-adapter-react', () => ({
     connection: {
       getBalance: jest.fn().mockResolvedValue(1000000000),
       getLatestBlockhash: jest.fn().mockResolvedValue({
-        blockhash: 'mock-blockhash',
+        blockhash: "mock-blockhash",
         lastValidBlockHeight: 100,
       }),
     },
@@ -41,16 +41,16 @@ jest.mock('@solana/wallet-adapter-react', () => ({
 }));
 
 // Mock Phaser (heavy library, not needed for unit tests)
-jest.mock('phaser', () => ({
+jest.mock("phaser", () => ({
   Game: jest.fn(),
   Scene: jest.fn(),
-  AUTO: 'AUTO',
+  AUTO: "AUTO",
 }));
 
 // Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: jest.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -69,7 +69,7 @@ const localStorageMock = {
   removeItem: jest.fn(),
   clear: jest.fn(),
 };
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
 // Mock fetch for API tests
 global.fetch = jest.fn();

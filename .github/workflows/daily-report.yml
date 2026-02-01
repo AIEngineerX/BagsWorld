@@ -3,15 +3,15 @@ name: Daily Report
 on:
   # Run daily at 6 PM EST (11 PM UTC)
   schedule:
-    - cron: '0 23 * * *'
+    - cron: "0 23 * * *"
 
   # Allow manual trigger
   workflow_dispatch:
     inputs:
       action:
-        description: 'Action to perform'
+        description: "Action to perform"
         required: true
-        default: 'post'
+        default: "post"
         type: choice
         options:
           - preview

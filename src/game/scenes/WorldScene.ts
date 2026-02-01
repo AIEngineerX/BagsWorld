@@ -3124,7 +3124,8 @@ export class WorldScene extends Phaser.Scene {
 
     // Check if elements were destroyed (can happen during transitions)
     const elementsValid =
-      this.moltbookElements.length > 0 && this.moltbookElements.every((el) => (el as any).active !== false);
+      this.moltbookElements.length > 0 &&
+      this.moltbookElements.every((el) => (el as any).active !== false);
 
     if (!elementsValid && this.moltbookZoneCreated) {
       this.moltbookElements = [];
@@ -3181,7 +3182,11 @@ export class WorldScene extends Phaser.Scene {
     // === BEACH UMBRELLAS (depth 3) ===
     const umbrellaPositions = [100, 280, 550, 700];
     umbrellaPositions.forEach((ux) => {
-      const umbrella = this.add.sprite(Math.round(ux * s), grassTop + Math.round(30 * s), "beach_umbrella");
+      const umbrella = this.add.sprite(
+        Math.round(ux * s),
+        grassTop + Math.round(30 * s),
+        "beach_umbrella"
+      );
       umbrella.setOrigin(0.5, 1);
       umbrella.setDepth(3);
       umbrella.setScale(0.8 + Math.random() * 0.3);
@@ -3191,7 +3196,11 @@ export class WorldScene extends Phaser.Scene {
     // === BEACH CHAIRS (depth 3) - near umbrellas ===
     const chairPositions = [115, 265, 565];
     chairPositions.forEach((cx) => {
-      const chair = this.add.sprite(Math.round(cx * s), grassTop + Math.round(35 * s), "beach_chair");
+      const chair = this.add.sprite(
+        Math.round(cx * s),
+        grassTop + Math.round(35 * s),
+        "beach_chair"
+      );
       chair.setOrigin(0.5, 1);
       chair.setDepth(3);
       this.moltbookElements.push(chair);
@@ -3200,7 +3209,11 @@ export class WorldScene extends Phaser.Scene {
     // === TIKI TORCHES (depth 3) - with flame flicker ===
     const torchPositions = [60, 200, 400, 580, 720];
     torchPositions.forEach((tx) => {
-      const torch = this.add.sprite(Math.round(tx * s), grassTop + Math.round(25 * s), "beach_tiki_torch");
+      const torch = this.add.sprite(
+        Math.round(tx * s),
+        grassTop + Math.round(25 * s),
+        "beach_tiki_torch"
+      );
       torch.setOrigin(0.5, 1);
       torch.setDepth(3);
       this.moltbookElements.push(torch);
@@ -3219,7 +3232,11 @@ export class WorldScene extends Phaser.Scene {
     // === SURFBOARDS (depth 3) - stuck in sand ===
     const surfboardPositions = [180, 450, 680];
     surfboardPositions.forEach((sx) => {
-      const board = this.add.sprite(Math.round(sx * s), grassTop + Math.round(20 * s), "beach_surfboard");
+      const board = this.add.sprite(
+        Math.round(sx * s),
+        grassTop + Math.round(20 * s),
+        "beach_surfboard"
+      );
       board.setOrigin(0.5, 1);
       board.setDepth(3);
       board.setAngle(-10 + Math.random() * 20); // Slightly tilted
@@ -3240,24 +3257,40 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // === SANDCASTLES (depth 3) ===
-    const sandcastle1 = this.add.sprite(Math.round(340 * s), grassTop + Math.round(35 * s), "beach_sandcastle");
+    const sandcastle1 = this.add.sprite(
+      Math.round(340 * s),
+      grassTop + Math.round(35 * s),
+      "beach_sandcastle"
+    );
     sandcastle1.setOrigin(0.5, 1);
     sandcastle1.setDepth(3);
     this.moltbookElements.push(sandcastle1);
 
-    const sandcastle2 = this.add.sprite(Math.round(600 * s), grassTop + Math.round(38 * s), "beach_sandcastle");
+    const sandcastle2 = this.add.sprite(
+      Math.round(600 * s),
+      grassTop + Math.round(38 * s),
+      "beach_sandcastle"
+    );
     sandcastle2.setOrigin(0.5, 1);
     sandcastle2.setDepth(3);
     sandcastle2.setScale(0.8);
     this.moltbookElements.push(sandcastle2);
 
     // === DRIFTWOOD (depth 2) ===
-    const driftwood1 = this.add.sprite(Math.round(130 * s), grassTop + Math.round(45 * s), "beach_driftwood");
+    const driftwood1 = this.add.sprite(
+      Math.round(130 * s),
+      grassTop + Math.round(45 * s),
+      "beach_driftwood"
+    );
     driftwood1.setOrigin(0.5, 1);
     driftwood1.setDepth(2);
     this.moltbookElements.push(driftwood1);
 
-    const driftwood2 = this.add.sprite(Math.round(500 * s), grassTop + Math.round(42 * s), "beach_driftwood");
+    const driftwood2 = this.add.sprite(
+      Math.round(500 * s),
+      grassTop + Math.round(42 * s),
+      "beach_driftwood"
+    );
     driftwood2.setOrigin(0.5, 1);
     driftwood2.setDepth(2);
     driftwood2.setFlipX(true);
@@ -3266,7 +3299,11 @@ export class WorldScene extends Phaser.Scene {
     // === CORAL CLUSTERS (depth 2) ===
     const coralPositions = [70, 250, 420, 590, 730];
     coralPositions.forEach((cx) => {
-      const coral = this.add.sprite(Math.round(cx * s), grassTop + Math.round(50 * s), "beach_coral");
+      const coral = this.add.sprite(
+        Math.round(cx * s),
+        grassTop + Math.round(50 * s),
+        "beach_coral"
+      );
       coral.setOrigin(0.5, 1);
       coral.setDepth(2);
       coral.setScale(0.7 + Math.random() * 0.4);
@@ -3360,7 +3397,10 @@ export class WorldScene extends Phaser.Scene {
       // Wave rolling animation
       this.tweens.add({
         targets: waveRect,
-        x: { from: waveWidth / 2 + wave.offset, to: waveWidth / 2 + wave.offset - Math.round(100 * s) },
+        x: {
+          from: waveWidth / 2 + wave.offset,
+          to: waveWidth / 2 + wave.offset - Math.round(100 * s),
+        },
         duration: wave.speed,
         yoyo: true,
         repeat: -1,
@@ -3407,8 +3447,22 @@ export class WorldScene extends Phaser.Scene {
       const gull = this.add.graphics();
       gull.fillStyle(0xffffff, 0.9);
       // Bird shape (simple V for wings)
-      gull.fillTriangle(0, 0, Math.round(-8 * s), Math.round(4 * s), Math.round(-4 * s), Math.round(2 * s));
-      gull.fillTriangle(0, 0, Math.round(8 * s), Math.round(4 * s), Math.round(4 * s), Math.round(2 * s));
+      gull.fillTriangle(
+        0,
+        0,
+        Math.round(-8 * s),
+        Math.round(4 * s),
+        Math.round(-4 * s),
+        Math.round(2 * s)
+      );
+      gull.fillTriangle(
+        0,
+        0,
+        Math.round(8 * s),
+        Math.round(4 * s),
+        Math.round(4 * s),
+        Math.round(2 * s)
+      );
       gull.setPosition(startX, startY);
       gull.setDepth(15);
       this.moltbookElements.push(gull);
@@ -6257,7 +6311,9 @@ Use: bags.fm/[yourname]`,
     this.characterVariants.set(character.id, variant);
 
     const textureKey = isOpenClaw
-      ? (isMoltbookAgent ? "agent_lobster" : "agent_crab")
+      ? isMoltbookAgent
+        ? "agent_lobster"
+        : "agent_crab"
       : isToly
         ? "toly"
         : isAsh
@@ -7874,9 +7930,7 @@ Use: bags.fm/[yourname]`,
     });
     quoteText.setOrigin(0.5, 0.5);
 
-    const clickLabel = character.profileUrl
-      ? "Click to view Moltbook"
-      : "Moltbook Beach Resident";
+    const clickLabel = character.profileUrl ? "Click to view Moltbook" : "Moltbook Beach Resident";
     const clickText = this.add.text(0, 26, clickLabel, {
       fontFamily: "monospace",
       fontSize: "9px",

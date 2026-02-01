@@ -549,9 +549,7 @@ describe("generateBuildingPosition", () => {
       const pos0 = generateBuildingPosition(0, 10);
       const pos1 = generateBuildingPosition(1, 10);
 
-      const distance = Math.sqrt(
-        Math.pow(pos1.x - pos0.x, 2) + Math.pow(pos1.y - pos0.y, 2)
-      );
+      const distance = Math.sqrt(Math.pow(pos1.x - pos0.x, 2) + Math.pow(pos1.y - pos0.y, 2));
       // Minimum spacing should be maintained (BUILDING_SPACING = 120 * SCALE)
       expect(distance).toBeGreaterThan(100 * SCALE);
     });
@@ -660,9 +658,7 @@ describe("getCachedBuildingPosition", () => {
         "TokenMint555555555555555555555555555555555",
       ];
 
-      const positions = mints.map((mint) =>
-        getCachedBuildingPosition(mint, existingBuildings)
-      );
+      const positions = mints.map((mint) => getCachedBuildingPosition(mint, existingBuildings));
 
       // Should have varied positions (hash distributes across slots)
       const uniqueSlots = new Set(positions.map((p) => Math.round(p.x / 80)));
@@ -848,10 +844,10 @@ describe("transformTokenToBuilding", () => {
 
   it("should calculate building level from market cap", () => {
     const tokens = [
-      { ...baseToken, marketCap: 50000 },    // Level 1
-      { ...baseToken, marketCap: 100000 },   // Level 2
-      { ...baseToken, marketCap: 500000 },   // Level 3
-      { ...baseToken, marketCap: 2000000 },  // Level 4
+      { ...baseToken, marketCap: 50000 }, // Level 1
+      { ...baseToken, marketCap: 100000 }, // Level 2
+      { ...baseToken, marketCap: 500000 }, // Level 3
+      { ...baseToken, marketCap: 2000000 }, // Level 4
       { ...baseToken, marketCap: 10000000 }, // Level 5
     ];
 
