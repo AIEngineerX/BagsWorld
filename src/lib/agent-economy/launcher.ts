@@ -224,6 +224,10 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   const metadataUrl = tokenInfo.tokenMetadata;
 
   console.log(`[Launcher] Token mint: ${tokenMint}`);
+  console.log(`[Launcher] Metadata URL: ${metadataUrl}`);
+
+  // Small delay to allow Bags.fm to propagate the token info
+  await new Promise(resolve => setTimeout(resolve, 2000));
 
   // Step 2: Create fee share config for the external agent
   // Uses BagsWorld's existing partnerConfigPda - external agent gets 100% of creator fees
@@ -242,6 +246,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   };
 
   console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest, null, 2));
+  console.log("[Launcher] API key configured:", !!BAGS_API_KEY, "length:", BAGS_API_KEY?.length || 0);
 
   let configKey: string;
   try {
