@@ -714,7 +714,10 @@ export async function getMatch(matchId: number): Promise<ArenaMatch | null> {
     return parseMatchRow(rows[0] as RawMatchRow);
   } catch (error) {
     console.error("[Arena DB] Error fetching match:", error);
-    return null;
+    // Fall back to in-memory mode
+    console.log("[Arena DB] Switching to in-memory mode for match lookup");
+    useMemoryStore = true;
+    return memoryStore.matches.get(matchId) || null;
   }
 }
 
