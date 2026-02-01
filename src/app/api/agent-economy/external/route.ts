@@ -98,6 +98,21 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Debug endpoint to check environment
+  if (action === "debug-env") {
+    const apiKey = process.env.BAGS_API_KEY;
+    const launcherKey = process.env.BAGSWORLD_LAUNCHER_PRIVATE_KEY || process.env.AGENT_WALLET_PRIVATE_KEY;
+    return NextResponse.json({
+      success: true,
+      debug: {
+        bagsApiKey: apiKey ? `${apiKey.substring(0, 10)}... (${apiKey.length} chars)` : "NOT SET",
+        launcherKey: launcherKey ? `${launcherKey.substring(0, 4)}... (${launcherKey.length} chars)` : "NOT SET",
+        launcherConfigured: isLauncherConfigured(),
+        nodeEnv: process.env.NODE_ENV,
+      },
+    });
+  }
+
   // Admin test launch (no auth - for testing only)
   if (action === "test-launch") {
     const symbol = searchParams.get("symbol") || "TEST" + Math.floor(Math.random() * 10000);
