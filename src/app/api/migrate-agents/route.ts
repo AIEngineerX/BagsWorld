@@ -8,11 +8,11 @@ function isNeonConfigured(): boolean {
 function getNeonSQL() {
   if (process.env.NETLIFY) {
     const moduleName = "@netlify/neon";
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line
     const { neon } = require(moduleName);
     return neon();
   }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line
   const { neon } = require("@neondatabase/serverless");
   return neon(process.env.DATABASE_URL!);
 }
