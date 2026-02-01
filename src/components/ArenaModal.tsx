@@ -270,7 +270,9 @@ function FighterAvatar({
         <rect x="9" y="15" width="6" height="1" fill="#166534" />
       </svg>
       {username && (
-        <span className="font-pixel text-[7px] text-gray-400 truncate max-w-[40px]">{username}</span>
+        <span className="font-pixel text-[7px] text-gray-400 truncate max-w-[40px]">
+          {username}
+        </span>
       )}
     </div>
   );
@@ -326,7 +328,11 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
         if (msg.type === "queue_status") {
           setQueueSize(msg.data.size || 0);
           if (msg.data.queue) {
-            setQueueFighters(msg.data.queue.slice(0, 4).map((f: { username: string }) => ({ username: f.username })));
+            setQueueFighters(
+              msg.data.queue
+                .slice(0, 4)
+                .map((f: { username: string }) => ({ username: f.username }))
+            );
           }
           // Show position if in queue
           if (msg.data.position > 0) {
@@ -391,11 +397,13 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
     setJoinResult(null);
 
     // Send join_queue message to arena server
-    wsRef.current.send(JSON.stringify({
-      type: "join_queue",
-      username: username.trim(),
-      karma: 100, // Default karma
-    }));
+    wsRef.current.send(
+      JSON.stringify({
+        type: "join_queue",
+        username: username.trim(),
+        karma: 100, // Default karma
+      })
+    );
 
     setUsername("");
     setIsJoining(false);
@@ -444,7 +452,11 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
           setQueueSize(queueData.queue?.size || 0);
           // Extract fighter usernames from queue
           const fighters = queueData.queue?.fighters || [];
-          setQueueFighters(fighters.slice(0, 4).map((f: { username?: string }) => ({ username: f.username || "Agent" })));
+          setQueueFighters(
+            fighters
+              .slice(0, 4)
+              .map((f: { username?: string }) => ({ username: f.username || "Agent" }))
+          );
         }
 
         if (lbData.success) {
@@ -570,8 +582,12 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
           <div className="bg-bags-darker/60 border border-bags-green/20 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="font-pixel text-[10px] text-gray-400">ARENA STATUS</span>
-              <span className={`font-pixel text-[10px] flex items-center gap-1.5 ${isLiveBattle ? "text-red-400" : "text-bags-green"}`}>
-                <span className={`w-2 h-2 rounded-full animate-pulse ${isLiveBattle ? "bg-red-400" : "bg-bags-green"}`} />
+              <span
+                className={`font-pixel text-[10px] flex items-center gap-1.5 ${isLiveBattle ? "text-red-400" : "text-bags-green"}`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full animate-pulse ${isLiveBattle ? "bg-red-400" : "bg-bags-green"}`}
+                />
                 {isLiveBattle ? "FIGHTING" : "READY"}
               </span>
             </div>
@@ -589,7 +605,9 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
                   ))}
                   {queueSize > 4 && (
                     <div className="flex items-center justify-center w-7 h-7 bg-bags-dark/80 rounded-lg border border-bags-green/30">
-                      <span className="font-pixel text-[8px] text-bags-green">+{queueSize - 4}</span>
+                      <span className="font-pixel text-[8px] text-bags-green">
+                        +{queueSize - 4}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -613,7 +631,9 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
                   <div className="flex flex-col items-center">
                     <span className="font-pixel text-bags-gold text-lg">VS</span>
                     <span className="font-pixel text-[7px] text-gray-500">
-                      {activeMatch.status === "active" ? "FIGHTING" : activeMatch.status.toUpperCase()}
+                      {activeMatch.status === "active"
+                        ? "FIGHTING"
+                        : activeMatch.status.toUpperCase()}
                     </span>
                   </div>
                   <div className="flex flex-col items-center">
@@ -755,7 +775,10 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
                       <StepBadge number={1} />
                       <p className="font-pixel text-[10px] text-amber-100">Visit the arena</p>
                     </div>
-                    <CopyableText text="https://moltbook.com/m/bagsworld-arena" label="SUBMOLT URL" />
+                    <CopyableText
+                      text="https://moltbook.com/m/bagsworld-arena"
+                      label="SUBMOLT URL"
+                    />
                   </div>
                 </div>
 

@@ -12767,14 +12767,34 @@ export class BootScene extends Phaser.Scene {
     // Left side top
     g.fillRect(dollarX, dollarY + Math.round(3 * s), Math.round(4 * s), Math.round(5 * s));
     // Middle bar of S
-    g.fillRect(dollarX + Math.round(2 * s), dollarY + Math.round(8 * s), Math.round(12 * s), Math.round(3 * s));
+    g.fillRect(
+      dollarX + Math.round(2 * s),
+      dollarY + Math.round(8 * s),
+      Math.round(12 * s),
+      Math.round(3 * s)
+    );
     // Right side bottom
-    g.fillRect(dollarX + Math.round(12 * s), dollarY + Math.round(11 * s), Math.round(4 * s), Math.round(5 * s));
+    g.fillRect(
+      dollarX + Math.round(12 * s),
+      dollarY + Math.round(11 * s),
+      Math.round(4 * s),
+      Math.round(5 * s)
+    );
     // Bottom bar of S
-    g.fillRect(dollarX + Math.round(2 * s), dollarY + Math.round(16 * s), Math.round(12 * s), Math.round(3 * s));
+    g.fillRect(
+      dollarX + Math.round(2 * s),
+      dollarY + Math.round(16 * s),
+      Math.round(12 * s),
+      Math.round(3 * s)
+    );
     // Vertical line through (the $ stem)
     g.fillStyle(0x4ade80);
-    g.fillRect(dollarX + Math.round(7 * s), dollarY - Math.round(2 * s), Math.round(2 * s), Math.round(24 * s));
+    g.fillRect(
+      dollarX + Math.round(7 * s),
+      dollarY - Math.round(2 * s),
+      Math.round(2 * s),
+      Math.round(24 * s)
+    );
 
     // Subtle highlight
     g.fillStyle(0x4b5563, 0.5);
@@ -12880,23 +12900,63 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(cx - Math.round(8 * s), 0, Math.round(16 * s), height);
     // Diagonal spikes
     g.fillRect(Math.round(4 * s), Math.round(4 * s), Math.round(12 * s), Math.round(8 * s));
-    g.fillRect(width - Math.round(16 * s), Math.round(4 * s), Math.round(12 * s), Math.round(8 * s));
-    g.fillRect(Math.round(4 * s), height - Math.round(12 * s), Math.round(12 * s), Math.round(8 * s));
-    g.fillRect(width - Math.round(16 * s), height - Math.round(12 * s), Math.round(12 * s), Math.round(8 * s));
+    g.fillRect(
+      width - Math.round(16 * s),
+      Math.round(4 * s),
+      Math.round(12 * s),
+      Math.round(8 * s)
+    );
+    g.fillRect(
+      Math.round(4 * s),
+      height - Math.round(12 * s),
+      Math.round(12 * s),
+      Math.round(8 * s)
+    );
+    g.fillRect(
+      width - Math.round(16 * s),
+      height - Math.round(12 * s),
+      Math.round(12 * s),
+      Math.round(8 * s)
+    );
 
     // Main bubble (inner)
     g.fillStyle(bgColor);
-    g.fillRect(Math.round(6 * s), cy - Math.round(6 * s), width - Math.round(12 * s), Math.round(12 * s));
-    g.fillRect(cx - Math.round(10 * s), Math.round(6 * s), Math.round(20 * s), height - Math.round(12 * s));
+    g.fillRect(
+      Math.round(6 * s),
+      cy - Math.round(6 * s),
+      width - Math.round(12 * s),
+      Math.round(12 * s)
+    );
+    g.fillRect(
+      cx - Math.round(10 * s),
+      Math.round(6 * s),
+      Math.round(20 * s),
+      height - Math.round(12 * s)
+    );
 
     // White center for text
     g.fillStyle(0xffffff);
-    g.fillRect(Math.round(10 * s), cy - Math.round(4 * s), width - Math.round(20 * s), Math.round(8 * s));
+    g.fillRect(
+      Math.round(10 * s),
+      cy - Math.round(4 * s),
+      width - Math.round(20 * s),
+      Math.round(8 * s)
+    );
 
     // Border outline
     g.fillStyle(0x000000);
-    g.fillRect(Math.round(8 * s), cy - Math.round(7 * s), width - Math.round(16 * s), Math.round(2 * s));
-    g.fillRect(Math.round(8 * s), cy + Math.round(5 * s), width - Math.round(16 * s), Math.round(2 * s));
+    g.fillRect(
+      Math.round(8 * s),
+      cy - Math.round(7 * s),
+      width - Math.round(16 * s),
+      Math.round(2 * s)
+    );
+    g.fillRect(
+      Math.round(8 * s),
+      cy + Math.round(5 * s),
+      width - Math.round(16 * s),
+      Math.round(2 * s)
+    );
 
     g.generateTexture(key, width, height);
     g.destroy();
