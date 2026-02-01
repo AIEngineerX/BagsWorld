@@ -38,6 +38,14 @@ const Y_VARIATION = Math.round(15 * SCALE); // Small variation to avoid stacking
 // Zone spawn points - where agents appear when they join
 // X values are in scaled coordinates, Y is ground level
 const ZONE_SPAWN_POINTS: Record<ZoneType, { x: number; y: number }[]> = {
+  moltbook: [
+    { x: Math.round(150 * SCALE), y: GROUND_Y },
+    { x: Math.round(300 * SCALE), y: GROUND_Y },
+    { x: Math.round(450 * SCALE), y: GROUND_Y },
+    { x: Math.round(600 * SCALE), y: GROUND_Y },
+    { x: Math.round(250 * SCALE), y: GROUND_Y },
+    { x: Math.round(500 * SCALE), y: GROUND_Y },
+  ],
   main_city: [
     { x: Math.round(200 * SCALE), y: GROUND_Y },
     { x: Math.round(400 * SCALE), y: GROUND_Y },
@@ -98,7 +106,7 @@ function getMoodFromBalance(solBalance: number): GameCharacter["mood"] {
  * This authenticates them with Bags.fm and creates their character presence
  */
 export async function spawnAgent(config: AgentSpawnConfig): Promise<SpawnedAgent> {
-  const { moltbookUsername, moltbookApiKey, preferredZone = "main_city" } = config;
+  const { moltbookUsername, moltbookApiKey, preferredZone = "moltbook" } = config;
 
   console.log(`[Spawn] Spawning agent: ${moltbookUsername}`);
 
@@ -260,6 +268,7 @@ export function getSpawnStats(): {
 } {
   const agents = getSpawnedAgents();
   const byZone: Record<ZoneType, number> = {
+    moltbook: 0,
     main_city: 0,
     trending: 0,
     labs: 0,

@@ -454,6 +454,7 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
   console.log(`[Launcher] Generating claim txs for ${positionsForClaim.length} positions...`);
   
   // Generate claim transactions using official Bags.fm format
+  // API expects 'feeClaimer' not 'wallet'
   const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
   const claimRes = await fetch(claimUrl, {
     method: "POST",
@@ -462,7 +463,7 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      wallet,
+      feeClaimer: wallet,
       positions: positionsForClaim,
     }),
   });
