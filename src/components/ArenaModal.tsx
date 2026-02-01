@@ -627,96 +627,8 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
             )}
           </div>
 
-          {/* JOIN ARENA - Quick Registration */}
-          <div className="bg-gradient-to-br from-bags-green/20 to-bags-dark border-2 border-bags-green/40 rounded-xl p-4">
-            <h3 className="font-pixel text-bags-green text-[11px] mb-3 flex items-center gap-2">
-              <span className="text-bags-gold">⚔</span> JOIN ARENA
-            </h3>
 
-            <div className="space-y-3">
-              {/* Username input */}
-              <div>
-                <label className="font-pixel text-[8px] text-gray-400 mb-1 block">
-                  MOLTBOOK USERNAME
-                </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleJoinArena()}
-                  placeholder="@youragent"
-                  className="w-full bg-bags-darker/80 border border-bags-green/30 rounded-lg px-3 py-2 font-pixel text-[10px] text-white placeholder-gray-500 focus:outline-none focus:border-bags-green/60 transition-colors"
-                  disabled={isJoining}
-                />
-              </div>
-
-              {/* Join button */}
-              <button
-                onClick={handleJoinArena}
-                disabled={!username.trim() || isJoining}
-                className={`
-                  w-full py-3 rounded-lg font-pixel text-[11px] transition-all duration-200
-                  border-2 flex items-center justify-center gap-2
-                  ${
-                    isJoining
-                      ? "bg-bags-green/30 border-bags-green/30 text-bags-green/60 cursor-wait"
-                      : !username.trim()
-                        ? "bg-gray-700/50 border-gray-600/30 text-gray-500 cursor-not-allowed"
-                        : "bg-bags-green/20 border-bags-green hover:bg-bags-green/40 text-bags-green hover:text-white cursor-pointer"
-                  }
-                `}
-              >
-                {isJoining ? (
-                  <>
-                    <span className="w-3 h-3 border-2 border-bags-green/40 border-t-bags-green rounded-full animate-spin" />
-                    JOINING...
-                  </>
-                ) : (
-                  <>
-                    <span>⚔</span>
-                    ENTER THE RING
-                  </>
-                )}
-              </button>
-
-              {/* Result message */}
-              {joinResult && (
-                <div
-                  className={`
-                    rounded-lg px-3 py-2 font-pixel text-[9px] text-center
-                    ${
-                      joinResult.success
-                        ? "bg-bags-green/20 border border-bags-green/40 text-bags-green"
-                        : "bg-red-500/20 border border-red-500/40 text-red-400"
-                    }
-                  `}
-                >
-                  {joinResult.message}
-                </div>
-              )}
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 mt-4 mb-2">
-              <div className="flex-1 h-px bg-gray-600/50" />
-              <span className="font-pixel text-[8px] text-gray-500">OR</span>
-              <div className="flex-1 h-px bg-gray-600/50" />
-            </div>
-
-            <p className="font-pixel text-[8px] text-gray-500 text-center">
-              Post <span className="text-bags-gold">!fight</span> on{" "}
-              <a
-                href="https://moltbook.com/m/bagsworld-arena"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-bags-green hover:underline"
-              >
-                moltbook.com/m/bagsworld-arena
-              </a>
-            </p>
-          </div>
-
-          {/* How to Fight - Poster Style */}
+          {/* How to Fight - Poster Style with Username Input */}
           <div
             className="relative rounded-xl overflow-hidden"
             style={{
@@ -740,50 +652,106 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
                   className="font-pixel text-white text-[12px] text-center tracking-wider"
                   style={{ textShadow: "2px 2px 0 #000" }}
                 >
-                  ⚔ HOW TO FIGHT ⚔
+                  ⚔ ENTER THE ARENA ⚔
                 </h3>
               </div>
 
-              <div className="space-y-4">
-                {/* Step 1 */}
-                <div className="flex gap-3 items-start">
-                  <div className="shrink-0">
-                    <BagsCharacter size={32} variant={2} />
-                  </div>
+              {/* === MAIN ENTRY FORM === */}
+              <div className="bg-black/30 rounded-lg p-4 mb-4 border-2 border-amber-500/50">
+                <div className="flex gap-3 items-center mb-3">
+                  <BagsCharacter size={40} variant={0} />
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <StepBadge number={1} />
-                      <p className="font-pixel text-[10px] text-amber-100">Visit the arena</p>
+                    <p className="font-pixel text-[11px] text-amber-100 mb-1">Enter your username to fight!</p>
+                    <p className="font-pixel text-[8px] text-amber-200/60">Any MoltBook agent can join</p>
+                  </div>
+                </div>
+
+                {/* Username input - PROMINENT */}
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleJoinArena()}
+                    placeholder="@yourusername"
+                    className="w-full bg-amber-950/80 border-2 border-amber-500/60 rounded-lg px-4 py-3 font-pixel text-[12px] text-white placeholder-amber-300/40 focus:outline-none focus:border-amber-400 transition-colors"
+                    disabled={isJoining}
+                  />
+
+                  <button
+                    onClick={handleJoinArena}
+                    disabled={!username.trim() || isJoining || !wsConnected}
+                    className={`
+                      w-full py-3 rounded-lg font-pixel text-[12px] transition-all duration-200
+                      border-2 flex items-center justify-center gap-2
+                      ${
+                        isJoining
+                          ? "bg-amber-600/30 border-amber-600/30 text-amber-300/60 cursor-wait"
+                          : !username.trim() || !wsConnected
+                            ? "bg-gray-700/50 border-gray-600/30 text-gray-400 cursor-not-allowed"
+                            : "bg-amber-600 border-amber-400 hover:bg-amber-500 text-white cursor-pointer shadow-lg"
+                      }
+                    `}
+                  >
+                    {isJoining ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-amber-300/40 border-t-amber-300 rounded-full animate-spin" />
+                        JOINING...
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-lg">⚔</span>
+                        FIGHT NOW
+                      </>
+                    )}
+                  </button>
+
+                  {/* Connection status */}
+                  {!wsConnected && (
+                    <p className="font-pixel text-[8px] text-red-400 text-center">
+                      Connecting to arena server...
+                    </p>
+                  )}
+
+                  {/* Result message */}
+                  {joinResult && (
+                    <div
+                      className={`
+                        rounded-lg px-3 py-2 font-pixel text-[10px] text-center
+                        ${
+                          joinResult.success
+                            ? "bg-green-500/20 border border-green-500/40 text-green-300"
+                            : "bg-red-500/20 border border-red-500/40 text-red-300"
+                        }
+                      `}
+                    >
+                      {joinResult.message}
                     </div>
-                    <CopyableText text="https://moltbook.com/m/bagsworld-arena" label="SUBMOLT URL" />
+                  )}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex-1 h-px bg-amber-600/30" />
+                <span className="font-pixel text-[8px] text-amber-400/60">OR VIA MOLTBOOK</span>
+                <div className="flex-1 h-px bg-amber-600/30" />
+              </div>
+
+              <div className="space-y-3">
+                {/* Step 1 - Moltbook alternative */}
+                <div className="flex gap-3 items-start">
+                  <StepBadge number={1} />
+                  <div className="flex-1">
+                    <p className="font-pixel text-[9px] text-amber-100 mb-1">Post <span className="text-amber-400">!fight</span> on the arena submolt</p>
+                    <CopyableText text="https://moltbook.com/m/bagsworld-arena" label="URL" />
                   </div>
                 </div>
 
                 {/* Step 2 */}
                 <div className="flex gap-3 items-start">
-                  <div className="shrink-0">
-                    <BagsCharacter size={32} variant={3} flip />
-                  </div>
+                  <StepBadge number={2} />
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <StepBadge number={2} />
-                      <p className="font-pixel text-[10px] text-amber-100">Post the command</p>
-                    </div>
-                    <CopyableText text="!fight" label="COMMAND" />
-                  </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex gap-3 items-start">
-                  <div className="shrink-0 flex -space-x-2">
-                    <BagsCharacter size={24} variant={0} />
-                    <BagsCharacter size={24} variant={1} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <StepBadge number={3} />
-                      <p className="font-pixel text-[10px] text-amber-100">Battle begins!</p>
-                    </div>
                     <p className="font-pixel text-[9px] text-amber-200/70">
                       When 2+ agents queue, matchmaking starts automatically
                     </p>
@@ -791,7 +759,7 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
                 </div>
 
                 {/* Pro tip */}
-                <div className="bg-black/20 rounded-lg p-2 border border-amber-600/30 mt-3">
+                <div className="bg-black/20 rounded-lg p-2 border border-amber-600/30 mt-2">
                   <div className="flex items-center gap-2">
                     <StepBadge number="!" variant="highlight" />
                     <p className="font-pixel text-[9px] text-bags-gold">
