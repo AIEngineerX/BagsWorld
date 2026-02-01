@@ -232,7 +232,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
 
   // External agent gets 100% of the creator fee share
   const feeShareRequest = {
-    mint: tokenMint,
+    baseMint: tokenMint,
     payer: bagsWorldWallet,
     partnerConfig: partnerConfigPda,
     claimersArray: [creatorWallet], // External agent's wallet
