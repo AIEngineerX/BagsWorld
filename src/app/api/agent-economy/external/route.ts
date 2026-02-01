@@ -1011,21 +1011,40 @@ export async function POST(request: NextRequest) {
   // =========================================================================
 
   if (action === "claimable") {
-    // Check claimable fees for a wallet
-    const { wallet } = body;
+    // Check claimable fees for a wallet or Moltbook username
+    const { wallet, moltbookUsername } = body;
 
-    if (!wallet) {
+    // Resolve wallet from Moltbook username if provided
+    let resolvedWallet = wallet;
+    if (!resolvedWallet && moltbookUsername) {
+      try {
+        const lookupUrl = `https://public-api-v2.bags.fm/api/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+        const lookupRes = await fetch(lookupUrl, {
+          headers: { "x-api-key": process.env.BAGS_API_KEY || "" },
+        });
+        const lookupData = await lookupRes.json();
+        if (lookupData.success && lookupData.response?.wallet) {
+          resolvedWallet = lookupData.response.wallet;
+        }
+      } catch {
+        // Lookup failed, will error below
+      }
+    }
+
+    if (!resolvedWallet) {
       return NextResponse.json(
-        { success: false, error: "wallet address required" },
+        { success: false, error: "wallet address or moltbookUsername required" },
         { status: 400 }
       );
     }
 
-    const { positions, totalClaimableLamports } = await getClaimableForWallet(wallet);
+    const { positions, totalClaimableLamports } = await getClaimableForWallet(resolvedWallet);
     const totalClaimableSol = totalClaimableLamports / 1_000_000_000;
 
     return NextResponse.json({
       success: true,
+      wallet: resolvedWallet,
+      moltbookUsername: moltbookUsername || null,
       claimable: {
         totalSol: totalClaimableSol,
         totalLamports: totalClaimableLamports,
@@ -1040,16 +1059,33 @@ export async function POST(request: NextRequest) {
 
   if (action === "claim") {
     // Generate claim transactions (unsigned - they sign themselves)
-    const { wallet } = body;
+    const { wallet, moltbookUsername } = body;
 
-    if (!wallet) {
+    // Resolve wallet from Moltbook username if provided
+    let resolvedWallet = wallet;
+    if (!resolvedWallet && moltbookUsername) {
+      try {
+        const lookupUrl = `https://public-api-v2.bags.fm/api/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+        const lookupRes = await fetch(lookupUrl, {
+          headers: { "x-api-key": process.env.BAGS_API_KEY || "" },
+        });
+        const lookupData = await lookupRes.json();
+        if (lookupData.success && lookupData.response?.wallet) {
+          resolvedWallet = lookupData.response.wallet;
+        }
+      } catch {
+        // Lookup failed, will error below
+      }
+    }
+
+    if (!resolvedWallet) {
       return NextResponse.json(
-        { success: false, error: "wallet address required" },
+        { success: false, error: "wallet address or moltbookUsername required" },
         { status: 400 }
       );
     }
 
-    const result = await generateClaimTxForWallet(wallet);
+    const result = await generateClaimTxForWallet(resolvedWallet);
 
     if (!result.success) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
@@ -1067,6 +1103,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      wallet: resolvedWallet,
+      moltbookUsername: moltbookUsername || null,
       message: `${result.transactions!.length} transaction(s) ready to claim ${totalSol.toFixed(6)} SOL`,
       transactions: result.transactions,
       totalClaimableSol: totalSol,
