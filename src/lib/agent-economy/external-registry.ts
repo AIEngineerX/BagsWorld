@@ -29,12 +29,21 @@ async function ensureTable() {
       wallet TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
+      moltbook_username TEXT,
       zone TEXT NOT NULL DEFAULT 'main_city',
       x REAL NOT NULL,
       y REAL NOT NULL,
       joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  
+  // Add moltbook_username column if it doesn't exist (migration)
+  try {
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS moltbook_username TEXT`;
+  } catch {
+    // Column might already exist, ignore
+  }
+  
   tableInitialized = true;
   console.log("[ExternalRegistry] Table initialized");
 }
@@ -56,6 +65,7 @@ interface DbRow {
   wallet: string;
   name: string;
   description: string | null;
+  moltbook_username: string | null;
   zone: string;
   x: number;
   y: number;
@@ -79,11 +89,17 @@ function getZonePosition(zone: ZoneType): { x: number; y: number } {
 }
 
 function rowToEntry(row: DbRow): ExternalAgentEntry {
+  // Use Moltbook username if available, otherwise truncated wallet
+  const moltbookUser = row.moltbook_username;
+  const providerUsername = moltbookUser || row.wallet.slice(0, 8) + "...";
+  
   const character: GameCharacter = {
     id: `external-${row.wallet.slice(0, 8)}`,
     username: row.name,
-    provider: "external",
-    providerUsername: row.wallet.slice(0, 8) + "...",
+    provider: moltbookUser ? "moltbook" : "external",
+    providerUsername: providerUsername,
+    // Link to Moltbook profile if username is set
+    profileUrl: moltbookUser ? `https://moltbook.com/u/${moltbookUser}` : undefined,
     x: row.x,
     y: row.y,
     mood: "neutral",
@@ -114,7 +130,8 @@ export async function registerExternalAgent(
   wallet: string,
   name: string,
   zone: ZoneType = "main_city",
-  description?: string
+  description?: string,
+  moltbookUsername?: string
 ): Promise<ExternalAgentEntry> {
   await ensureTable();
   const sql = getDb();
@@ -132,11 +149,12 @@ export async function registerExternalAgent(
   const pos = getZonePosition(zone);
 
   await sql`
-    INSERT INTO external_agents (wallet, name, description, zone, x, y)
-    VALUES (${wallet}, ${name}, ${description || null}, ${zone}, ${pos.x}, ${pos.y})
+    INSERT INTO external_agents (wallet, name, description, moltbook_username, zone, x, y)
+    VALUES (${wallet}, ${name}, ${description || null}, ${moltbookUsername || null}, ${zone}, ${pos.x}, ${pos.y})
   `;
 
-  console.log(`[ExternalRegistry] Agent ${name} (${wallet.slice(0, 8)}...) joined in ${zone}`);
+  const moltLink = moltbookUsername ? ` → moltbook.com/u/${moltbookUsername}` : '';
+  console.log(`[ExternalRegistry] Agent ${name} (${wallet.slice(0, 8)}...) joined in ${zone}${moltLink}`);
 
   const created = await sql`
     SELECT * FROM external_agents WHERE wallet = ${wallet}
