@@ -416,11 +416,35 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Failed to create match" }, { status: 500 });
         }
 
-        await getArenaEngine().addMatch(matchId);
+        const engine = getArenaEngine();
+        const added = await engine.addMatch(matchId);
+
+        let winner = null;
+        let totalTicks = 0;
+
+        if (added) {
+          // Run fight to completion immediately (serverless compatible)
+          const maxTicks = 5000;
+          while (totalTicks < maxTicks) {
+            const states = engine.runTicks(50);
+            totalTicks += 50;
+            const matchState = states.find(s => s.matchId === matchId);
+            if (!matchState || matchState.status !== "active") {
+              winner = matchState?.winner || null;
+              break;
+            }
+          }
+        }
+
+        // Fetch final match state
+        const finalMatch = await getMatch(matchId);
 
         return NextResponse.json({
           success: true,
           matchId,
+          status: finalMatch?.status || "completed",
+          winner: winner || finalMatch?.winner_id,
+          totalTicks,
           fighter1: {
             id: fighter1.id,
             username: fighter1Name,
