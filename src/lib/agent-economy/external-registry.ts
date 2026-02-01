@@ -3,7 +3,7 @@
 // Uses Neon PostgreSQL for persistence across serverless instances
 
 import { neon } from "@neondatabase/serverless";
-import type { GameCharacter, ZoneType } from "../types";
+import type { GameCharacter, GameBuilding, ZoneType } from "../types";
 
 // ============================================================================
 // DATABASE
@@ -76,17 +76,26 @@ interface DbRow {
 // HELPERS
 // ============================================================================
 
+// Scale factor must match WorldScene and world-calculator
+const SCALE = 1.6;
+const GROUND_Y = Math.round(550 * SCALE); // 880 - same as other characters
+
 function getZonePosition(zone: ZoneType): { x: number; y: number } {
+  // X positions are already scaled in world-calculator, Y is ground level with slight variation
+  const yVariation = Math.round(15 * SCALE); // Same variation as generateCharacterPosition
   const zonePositions: Record<ZoneType, { x: number; y: number }> = {
-    main_city: { x: 300 + Math.random() * 200, y: 400 + Math.random() * 50 },
-    trending: { x: 250 + Math.random() * 200, y: 480 + Math.random() * 50 },
-    labs: { x: 350 + Math.random() * 150, y: 390 + Math.random() * 40 },
-    founders: { x: 400 + Math.random() * 150, y: 400 + Math.random() * 40 },
-    ballers: { x: 500 + Math.random() * 150, y: 360 + Math.random() * 40 },
-    arena: { x: 400 + Math.random() * 100, y: 450 },
+    main_city: { x: Math.round((300 + Math.random() * 200) * SCALE), y: GROUND_Y + Math.random() * yVariation },
+    trending: { x: Math.round((250 + Math.random() * 200) * SCALE), y: GROUND_Y + Math.random() * yVariation },
+    labs: { x: Math.round((350 + Math.random() * 150) * SCALE), y: GROUND_Y + Math.random() * yVariation },
+    founders: { x: Math.round((400 + Math.random() * 150) * SCALE), y: GROUND_Y + Math.random() * yVariation },
+    ballers: { x: Math.round((500 + Math.random() * 150) * SCALE), y: GROUND_Y + Math.random() * yVariation },
+    arena: { x: Math.round((400 + Math.random() * 100) * SCALE), y: GROUND_Y },
   };
   return zonePositions[zone] || zonePositions.main_city;
 }
+
+// Building position offset from character (building appears behind/near character)
+const BUILDING_OFFSET_X = Math.round(30 * SCALE);
 
 function rowToEntry(row: DbRow): ExternalAgentEntry {
   // Use Moltbook username if available, otherwise truncated wallet
@@ -116,6 +125,32 @@ function rowToEntry(row: DbRow): ExternalAgentEntry {
     zone: row.zone as ZoneType,
     joinedAt: new Date(row.joined_at),
     character,
+  };
+}
+
+/**
+ * Create an agent building for an external agent
+ * Agent buildings are small permanent structures that represent the agent in the world
+ */
+function rowToBuilding(row: DbRow): GameBuilding {
+  const moltbookUser = row.moltbook_username;
+  
+  return {
+    id: `agent-building-${row.wallet.slice(0, 8)}`,
+    tokenMint: `agent-${row.wallet}`, // Fake mint for agent buildings
+    name: `${row.name}'s HQ`,
+    symbol: moltbookUser ? `@${moltbookUser}` : row.name.slice(0, 4).toUpperCase(),
+    x: row.x + BUILDING_OFFSET_X, // Slightly offset from character position
+    y: GROUND_Y, // Same ground level as token buildings
+    level: 1, // Agent buildings are small (level 1)
+    health: 100, // Always healthy
+    status: "active",
+    glowing: true, // Agent buildings glow to stand out
+    ownerId: row.wallet,
+    zone: row.zone as ZoneType,
+    isPermanent: true, // Agent buildings don't decay
+    // Custom style for agent buildings (style 0 = basic shop)
+    styleOverride: 0,
   };
 }
 
@@ -214,6 +249,20 @@ export async function getExternalAgentCharacters(): Promise<GameCharacter[]> {
 }
 
 /**
+ * Get all external agent buildings for world state
+ */
+export async function getExternalAgentBuildings(): Promise<GameBuilding[]> {
+  await ensureTable();
+  const sql = getDb();
+
+  const rows = await sql`
+    SELECT * FROM external_agents ORDER BY joined_at DESC
+  `;
+
+  return rows.map((row) => rowToBuilding(row as DbRow));
+}
+
+/**
  * Get all external agents
  */
 export async function listExternalAgents(): Promise<ExternalAgentEntry[]> {
@@ -266,11 +315,12 @@ export async function moveExternalAgent(wallet: string, newZone: ZoneType): Prom
 // ============================================================================
 
 let cachedAgents: GameCharacter[] = [];
+let cachedBuildings: GameBuilding[] = [];
 let lastCacheTime = 0;
 const CACHE_TTL_MS = 10000; // 10 seconds
 
 /**
- * Sync version for world-state - uses cached data
+ * Sync version for world-state - uses cached data (characters)
  */
 export function getExternalAgentCharactersSync(): GameCharacter[] {
   // Trigger async refresh if stale
@@ -280,9 +330,26 @@ export function getExternalAgentCharactersSync(): GameCharacter[] {
   return cachedAgents;
 }
 
+/**
+ * Sync version for world-state - uses cached data (buildings)
+ */
+export function getExternalAgentBuildingsSync(): GameBuilding[] {
+  // Trigger async refresh if stale
+  if (Date.now() - lastCacheTime > CACHE_TTL_MS) {
+    refreshCache();
+  }
+  return cachedBuildings;
+}
+
 async function refreshCache() {
   try {
-    cachedAgents = await getExternalAgentCharacters();
+    const sql = getDb();
+    const rows = await sql`
+      SELECT * FROM external_agents ORDER BY joined_at DESC
+    `;
+    
+    cachedAgents = rows.map((row) => rowToEntry(row as DbRow).character);
+    cachedBuildings = rows.map((row) => rowToBuilding(row as DbRow));
     lastCacheTime = Date.now();
   } catch (err) {
     console.error("[ExternalRegistry] Cache refresh failed:", err);
