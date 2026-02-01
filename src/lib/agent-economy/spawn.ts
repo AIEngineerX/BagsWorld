@@ -30,37 +30,43 @@ export interface SpawnedAgent {
 // In-memory registry of spawned agents (would be DB in production)
 const spawnedAgents: Map<string, SpawnedAgent> = new Map();
 
+// Scale factor must match WorldScene and world-calculator
+const SCALE = 1.6;
+const GROUND_Y = Math.round(550 * SCALE); // 880 - same as other characters
+const Y_VARIATION = Math.round(15 * SCALE); // Small variation to avoid stacking
+
 // Zone spawn points - where agents appear when they join
+// X values are in scaled coordinates, Y is ground level
 const ZONE_SPAWN_POINTS: Record<ZoneType, { x: number; y: number }[]> = {
   main_city: [
-    { x: 200, y: 400 },
-    { x: 400, y: 420 },
-    { x: 600, y: 380 },
-    { x: 300, y: 450 },
+    { x: Math.round(200 * SCALE), y: GROUND_Y },
+    { x: Math.round(400 * SCALE), y: GROUND_Y },
+    { x: Math.round(600 * SCALE), y: GROUND_Y },
+    { x: Math.round(300 * SCALE), y: GROUND_Y },
   ],
   trending: [
-    { x: 150, y: 500 },
-    { x: 350, y: 480 },
-    { x: 550, y: 520 },
-    { x: 450, y: 460 },
+    { x: Math.round(150 * SCALE), y: GROUND_Y },
+    { x: Math.round(350 * SCALE), y: GROUND_Y },
+    { x: Math.round(550 * SCALE), y: GROUND_Y },
+    { x: Math.round(450 * SCALE), y: GROUND_Y },
   ],
   labs: [
-    { x: 250, y: 380 },
-    { x: 450, y: 400 },
-    { x: 350, y: 420 },
+    { x: Math.round(250 * SCALE), y: GROUND_Y },
+    { x: Math.round(450 * SCALE), y: GROUND_Y },
+    { x: Math.round(350 * SCALE), y: GROUND_Y },
   ],
   founders: [
-    { x: 300, y: 400 },
-    { x: 500, y: 420 },
-    { x: 400, y: 380 },
+    { x: Math.round(300 * SCALE), y: GROUND_Y },
+    { x: Math.round(500 * SCALE), y: GROUND_Y },
+    { x: Math.round(400 * SCALE), y: GROUND_Y },
   ],
   ballers: [
-    { x: 400, y: 350 },
-    { x: 600, y: 380 },
+    { x: Math.round(400 * SCALE), y: GROUND_Y },
+    { x: Math.round(600 * SCALE), y: GROUND_Y },
   ],
   arena: [
-    { x: 300, y: 450 },
-    { x: 500, y: 450 },
+    { x: Math.round(300 * SCALE), y: GROUND_Y },
+    { x: Math.round(500 * SCALE), y: GROUND_Y },
   ],
 };
 
@@ -70,10 +76,10 @@ const ZONE_SPAWN_POINTS: Record<ZoneType, { x: number; y: number }[]> = {
 function getSpawnPoint(zone: ZoneType): { x: number; y: number } {
   const points = ZONE_SPAWN_POINTS[zone] || ZONE_SPAWN_POINTS.main_city;
   const point = points[Math.floor(Math.random() * points.length)];
-  // Add some randomness to avoid stacking
+  // Add some randomness to X to avoid stacking, keep Y at ground level with slight variation
   return {
-    x: point.x + (Math.random() - 0.5) * 50,
-    y: point.y + (Math.random() - 0.5) * 30,
+    x: point.x + (Math.random() - 0.5) * Math.round(50 * SCALE),
+    y: GROUND_Y + Math.random() * Y_VARIATION, // Stay at ground level
   };
 }
 
