@@ -138,28 +138,38 @@ async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
   const connection = getConnection();
   const keypair = getBagsWorldKeypair();
 
-  // Decode the transaction (Bags.fm uses Base58, not Base64!)
+  // Decode the transaction (Bags.fm uses Base58)
   const txBuffer = bs58.decode(unsignedTxBase58);
 
-  // Try versioned transaction first, fall back to legacy
   let signature: string;
 
+  // Check if it's a versioned transaction (first byte indicates version)
+  const isVersioned = txBuffer[0] === 128 || txBuffer[0] === 0x80;
+
   try {
-    // Try as versioned transaction (V0)
-    const versionedTx = VersionedTransaction.deserialize(txBuffer);
-    versionedTx.sign([keypair]);
-    signature = await connection.sendRawTransaction(versionedTx.serialize(), {
-      skipPreflight: false,
-      preflightCommitment: "confirmed",
-    });
-  } catch {
-    // Fall back to legacy transaction
-    const legacyTx = Transaction.from(txBuffer);
-    legacyTx.partialSign(keypair);
-    signature = await connection.sendRawTransaction(legacyTx.serialize(), {
-      skipPreflight: false,
-      preflightCommitment: "confirmed",
-    });
+    if (isVersioned) {
+      // Versioned transaction (V0)
+      const versionedTx = VersionedTransaction.deserialize(txBuffer);
+      versionedTx.sign([keypair]);
+      signature = await connection.sendRawTransaction(versionedTx.serialize(), {
+        skipPreflight: true, // Skip preflight for speed
+        preflightCommitment: "confirmed",
+        maxRetries: 3,
+      });
+    } else {
+      // Legacy transaction
+      const legacyTx = Transaction.from(txBuffer);
+      legacyTx.partialSign(keypair);
+      signature = await connection.sendRawTransaction(legacyTx.serialize(), {
+        skipPreflight: true,
+        preflightCommitment: "confirmed",
+        maxRetries: 3,
+      });
+    }
+  } catch (err) {
+    console.error("[Launcher] Transaction sign/submit error:", err);
+    console.log("[Launcher] Tx buffer first bytes:", Array.from(txBuffer.slice(0, 10)).join(", "));
+    throw err;
   }
 
   // Wait for confirmation
