@@ -559,7 +559,7 @@ async function handleSetHealth(data: { mint: string; health: number | null }) {
 }
 
 // Valid zone types for zone override
-const VALID_ZONES = ["labs", "main_city", "trending", "ballers", "founders"] as const;
+const VALID_ZONES = ["labs", "moltbook", "main_city", "trending", "ballers", "founders", "arena"] as const;
 
 // Handle set building zone override
 async function handleSetZone(data: { mint: string; zone: string | null }) {

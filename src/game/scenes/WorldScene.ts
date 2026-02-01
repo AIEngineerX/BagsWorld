@@ -94,11 +94,13 @@ export class WorldScene extends Phaser.Scene {
   private ballersElements: Phaser.GameObjects.GameObject[] = []; // Ballers Valley zone elements
   private foundersElements: Phaser.GameObjects.GameObject[] = []; // Founder's Corner zone elements
   private labsElements: Phaser.GameObjects.GameObject[] = []; // Tech Labs zone elements
+  private moltbookElements: Phaser.GameObjects.GameObject[] = []; // Moltbook Beach zone elements
   private trendingZoneCreated = false; // Cache trending zone elements
   private academyZoneCreated = false; // Cache academy zone elements
   private ballersZoneCreated = false; // Cache ballers zone elements
   private foundersZoneCreated = false; // Cache founders zone elements
   private labsZoneCreated = false; // Cache labs zone elements
+  private moltbookZoneCreated = false; // Cache moltbook zone elements
   private arenaElements: Phaser.GameObjects.GameObject[] = []; // Arena zone elements
   private arenaZoneCreated = false; // Cache arena zone elements
   private arenaWebSocket: WebSocket | null = null; // WebSocket connection for arena
@@ -397,10 +399,11 @@ export class WorldScene extends Phaser.Scene {
       if (origX !== undefined) (a.sprite as any).x = origX;
     });
 
-    // Determine slide direction: Labs -> Park -> BagsCity -> Ballers Valley -> Founder's Corner -> Arena (left to right)
-    // Zone order: labs (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3) -> arena (4)
+    // Determine slide direction: Labs -> Moltbook Beach -> Park -> BagsCity -> Ballers Valley -> Founder's Corner -> Arena (left to right)
+    // Zone order: labs (-2) -> moltbook (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3) -> arena (4)
     const zoneOrder: Record<ZoneType, number> = {
-      labs: -1,
+      labs: -2,
+      moltbook: -1,
       main_city: 0,
       trending: 1,
       ballers: 2,
@@ -511,6 +514,8 @@ export class WorldScene extends Phaser.Scene {
         this.foundersElements.forEach((el) => (el as any).setVisible(false));
       } else if (this.currentZone === "labs") {
         this.labsElements.forEach((el) => (el as any).setVisible(false));
+      } else if (this.currentZone === "moltbook") {
+        this.moltbookElements.forEach((el) => (el as any).setVisible(false));
       } else if (this.currentZone === "arena") {
         this.arenaElements.forEach((el) => (el as any).setVisible(false));
         this.disconnectArenaWebSocket();
@@ -522,6 +527,7 @@ export class WorldScene extends Phaser.Scene {
       // Change ground texture based on zone
       const groundTextures: Record<ZoneType, string> = {
         labs: "labs_ground", // Tech Labs has futuristic floor tiles
+        moltbook: "beach_ground", // Moltbook Beach has sand
         main_city: "grass",
         trending: "concrete",
         ballers: "grass", // Ballers Valley has premium grass (luxury estate feel)
@@ -659,6 +665,24 @@ export class WorldScene extends Phaser.Scene {
           });
         }
       });
+    } else if (zone === "moltbook") {
+      this.setupMoltbookZone();
+
+      // Offset all new Moltbook Beach elements and animate them in
+      const newElements = [...this.moltbookElements].filter(Boolean);
+
+      newElements.forEach((el) => {
+        if ((el as any).x !== undefined) {
+          const targetX = (el as any).x;
+          (el as any).x = targetX + offsetX;
+          this.tweens.add({
+            targets: el,
+            x: targetX,
+            duration,
+            ease: "Cubic.easeOut",
+          });
+        }
+      });
     } else if (zone === "arena") {
       this.setupArenaZone();
 
@@ -759,6 +783,9 @@ export class WorldScene extends Phaser.Scene {
       case "labs":
         this.setupLabsZone();
         break;
+      case "moltbook":
+        this.setupMoltbookZone();
+        break;
       case "trending":
         this.setupTrendingZone();
         break;
@@ -798,6 +825,7 @@ export class WorldScene extends Phaser.Scene {
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
@@ -832,6 +860,7 @@ export class WorldScene extends Phaser.Scene {
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
@@ -1571,6 +1600,7 @@ export class WorldScene extends Phaser.Scene {
     this.academyBuildings.forEach((s) => s.setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
@@ -1799,6 +1829,7 @@ export class WorldScene extends Phaser.Scene {
     this.academyBuildings.forEach((s) => s.setVisible(false));
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
 
@@ -3050,6 +3081,360 @@ export class WorldScene extends Phaser.Scene {
     // Reuse the founders popup system with labs-specific content
     // For now, dispatch a custom event that can be handled by UI
     window.dispatchEvent(new CustomEvent(`bagsworld-${type}-click`));
+  }
+
+  // ========================================
+  // MOLTBOOK BEACH ZONE
+  // Tropical paradise for AI agents (external agents spawn as crabs/lobsters)
+  // ========================================
+
+  private setupMoltbookZone(): void {
+    // Hide park decorations and animals (they belong to main_city)
+    this.decorations.forEach((d) => d.setVisible(false));
+    this.animals.forEach((a) => a.sprite.setVisible(false));
+
+    // Hide fountain water spray
+    if (this.fountainWater) {
+      this.fountainWater.setVisible(false);
+    }
+
+    // Hide other zone elements (prevents visual overlap)
+    this.trendingElements.forEach((el) => (el as any).setVisible(false));
+    this.skylineSprites.forEach((s) => s.setVisible(false));
+    this.billboardTexts.forEach((t) => t.setVisible(false));
+    if (this.tickerText) this.tickerText.setVisible(false);
+    this.academyElements.forEach((el) => (el as any).setVisible(false));
+    this.academyBuildings.forEach((s) => s.setVisible(false));
+    this.ballersElements.forEach((el) => (el as any).setVisible(false));
+    this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.disconnectArenaWebSocket();
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
+    }
+
+    // Restore normal sky (beach has sunny tropical sky)
+    this.restoreNormalSky();
+
+    // Swap ground texture to beach sand
+    this.ground.setVisible(true);
+    this.ground.setTexture("beach_ground");
+
+    // Check if elements were destroyed (can happen during transitions)
+    const elementsValid =
+      this.moltbookElements.length > 0 && this.moltbookElements.every((el) => (el as any).active !== false);
+
+    if (!elementsValid && this.moltbookZoneCreated) {
+      this.moltbookElements = [];
+      this.moltbookZoneCreated = false;
+    }
+
+    // Only create elements once, then just show them
+    if (!this.moltbookZoneCreated) {
+      this.createMoltbookDecorations();
+      this.moltbookZoneCreated = true;
+    } else {
+      // Subsequent times - just show existing elements
+      this.moltbookElements.forEach((el) => (el as any).setVisible(true));
+    }
+  }
+
+  /**
+   * Create Moltbook Beach decorations - tropical paradise
+   * Features palm trees, beach items, Moltbook HQ, and wave animation
+   */
+  private createMoltbookDecorations(): void {
+    const s = SCALE;
+    const grassTop = Math.round(455 * s);
+    const pathLevel = Math.round(555 * s);
+
+    // === PALM TREES (depth 2) - Multiple variants ===
+    const palmPositions = [
+      { x: 40, type: 1 },
+      { x: 150, type: 2 },
+      { x: 320, type: 3 },
+      { x: 480, type: 1 },
+      { x: 620, type: 2 },
+      { x: 750, type: 3 },
+    ];
+
+    palmPositions.forEach((pos) => {
+      const palm = this.add.sprite(Math.round(pos.x * s), grassTop, `palm_tree_${pos.type}`);
+      palm.setOrigin(0.5, 1);
+      palm.setDepth(2);
+      palm.setScale(0.9 + Math.random() * 0.2);
+      this.moltbookElements.push(palm);
+
+      // Gentle swaying animation
+      this.tweens.add({
+        targets: palm,
+        angle: { from: -2, to: 2 },
+        duration: 3000 + Math.random() * 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // === BEACH UMBRELLAS (depth 3) ===
+    const umbrellaPositions = [100, 280, 550, 700];
+    umbrellaPositions.forEach((ux) => {
+      const umbrella = this.add.sprite(Math.round(ux * s), grassTop + Math.round(30 * s), "beach_umbrella");
+      umbrella.setOrigin(0.5, 1);
+      umbrella.setDepth(3);
+      umbrella.setScale(0.8 + Math.random() * 0.3);
+      this.moltbookElements.push(umbrella);
+    });
+
+    // === BEACH CHAIRS (depth 3) - near umbrellas ===
+    const chairPositions = [115, 265, 565];
+    chairPositions.forEach((cx) => {
+      const chair = this.add.sprite(Math.round(cx * s), grassTop + Math.round(35 * s), "beach_chair");
+      chair.setOrigin(0.5, 1);
+      chair.setDepth(3);
+      this.moltbookElements.push(chair);
+    });
+
+    // === TIKI TORCHES (depth 3) - with flame flicker ===
+    const torchPositions = [60, 200, 400, 580, 720];
+    torchPositions.forEach((tx) => {
+      const torch = this.add.sprite(Math.round(tx * s), grassTop + Math.round(25 * s), "beach_tiki_torch");
+      torch.setOrigin(0.5, 1);
+      torch.setDepth(3);
+      this.moltbookElements.push(torch);
+
+      // Flame flicker animation
+      this.tweens.add({
+        targets: torch,
+        scaleX: { from: 0.95, to: 1.05 },
+        scaleY: { from: 1.0, to: 1.05 },
+        duration: 150 + Math.random() * 100,
+        yoyo: true,
+        repeat: -1,
+      });
+    });
+
+    // === SURFBOARDS (depth 3) - stuck in sand ===
+    const surfboardPositions = [180, 450, 680];
+    surfboardPositions.forEach((sx) => {
+      const board = this.add.sprite(Math.round(sx * s), grassTop + Math.round(20 * s), "beach_surfboard");
+      board.setOrigin(0.5, 1);
+      board.setDepth(3);
+      board.setAngle(-10 + Math.random() * 20); // Slightly tilted
+      this.moltbookElements.push(board);
+    });
+
+    // === SEASHELLS (depth 2) - scattered ===
+    const shellPositions = [90, 230, 350, 520, 640, 760];
+    shellPositions.forEach((shx) => {
+      const shells = this.add.sprite(
+        Math.round(shx * s),
+        grassTop + Math.round(40 * s) + Math.random() * Math.round(15 * s),
+        "beach_shells"
+      );
+      shells.setOrigin(0.5, 1);
+      shells.setDepth(2);
+      this.moltbookElements.push(shells);
+    });
+
+    // === SANDCASTLES (depth 3) ===
+    const sandcastle1 = this.add.sprite(Math.round(340 * s), grassTop + Math.round(35 * s), "beach_sandcastle");
+    sandcastle1.setOrigin(0.5, 1);
+    sandcastle1.setDepth(3);
+    this.moltbookElements.push(sandcastle1);
+
+    const sandcastle2 = this.add.sprite(Math.round(600 * s), grassTop + Math.round(38 * s), "beach_sandcastle");
+    sandcastle2.setOrigin(0.5, 1);
+    sandcastle2.setDepth(3);
+    sandcastle2.setScale(0.8);
+    this.moltbookElements.push(sandcastle2);
+
+    // === DRIFTWOOD (depth 2) ===
+    const driftwood1 = this.add.sprite(Math.round(130 * s), grassTop + Math.round(45 * s), "beach_driftwood");
+    driftwood1.setOrigin(0.5, 1);
+    driftwood1.setDepth(2);
+    this.moltbookElements.push(driftwood1);
+
+    const driftwood2 = this.add.sprite(Math.round(500 * s), grassTop + Math.round(42 * s), "beach_driftwood");
+    driftwood2.setOrigin(0.5, 1);
+    driftwood2.setDepth(2);
+    driftwood2.setFlipX(true);
+    this.moltbookElements.push(driftwood2);
+
+    // === CORAL CLUSTERS (depth 2) ===
+    const coralPositions = [70, 250, 420, 590, 730];
+    coralPositions.forEach((cx) => {
+      const coral = this.add.sprite(Math.round(cx * s), grassTop + Math.round(50 * s), "beach_coral");
+      coral.setOrigin(0.5, 1);
+      coral.setDepth(2);
+      coral.setScale(0.7 + Math.random() * 0.4);
+      this.moltbookElements.push(coral);
+    });
+
+    // === MOLTBOOK HQ (depth 5) - Central lighthouse building ===
+    const hqX = Math.round(400 * s); // Center of zone
+    const moltbookHQ = this.add.sprite(hqX, pathLevel, "moltbook_hq");
+    moltbookHQ.setOrigin(0.5, 1);
+    moltbookHQ.setDepth(5);
+    this.moltbookElements.push(moltbookHQ);
+
+    // Make HQ interactive
+    moltbookHQ.setInteractive({ useHandCursor: true });
+    moltbookHQ.on("pointerdown", () => {
+      window.open("https://moltbook.town", "_blank");
+    });
+    moltbookHQ.on("pointerover", () => {
+      moltbookHQ.setTint(0xfff0e0); // Warm glow on hover
+    });
+    moltbookHQ.on("pointerout", () => {
+      moltbookHQ.clearTint();
+    });
+
+    // HQ beacon glow animation
+    this.tweens.add({
+      targets: moltbookHQ,
+      alpha: { from: 1, to: 0.9 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // === MOLTBOOK HQ LABEL ===
+    const labelBg = this.add.rectangle(
+      hqX,
+      pathLevel - Math.round(150 * s),
+      Math.round(120 * s),
+      Math.round(24 * s),
+      0x1a1a2e,
+      0.9
+    );
+    labelBg.setDepth(6);
+    this.moltbookElements.push(labelBg);
+
+    const label = this.add.text(hqX, pathLevel - Math.round(150 * s), "MOLTBOOK HQ", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#ef4444",
+      align: "center",
+    });
+    label.setOrigin(0.5, 0.5);
+    label.setDepth(6);
+    this.moltbookElements.push(label);
+
+    // === WAVE ANIMATION (depth 1) - at bottom of screen ===
+    this.createWaveAnimation(s);
+
+    // === SEAGULLS (depth 15) - flying overhead ===
+    this.createSeagulls(s);
+  }
+
+  /**
+   * Create animated wave effect at the bottom of the beach zone
+   */
+  private createWaveAnimation(s: number): void {
+    const waveY = Math.round(580 * s);
+    const waveWidth = GAME_WIDTH;
+
+    // Create multiple wave layers for parallax effect
+    const waveColors = [
+      { color: 0x06b6d4, alpha: 0.4, speed: 2000, offset: 0 },
+      { color: 0x0284c7, alpha: 0.3, speed: 2500, offset: Math.round(100 * s) },
+      { color: 0x0369a1, alpha: 0.2, speed: 3000, offset: Math.round(200 * s) },
+    ];
+
+    waveColors.forEach((wave, i) => {
+      const waveRect = this.add.rectangle(
+        waveWidth / 2 + wave.offset,
+        waveY + i * Math.round(3 * s),
+        waveWidth + Math.round(400 * s),
+        Math.round(8 * s),
+        wave.color,
+        wave.alpha
+      );
+      waveRect.setDepth(1);
+      this.moltbookElements.push(waveRect);
+
+      // Wave rolling animation
+      this.tweens.add({
+        targets: waveRect,
+        x: { from: waveWidth / 2 + wave.offset, to: waveWidth / 2 + wave.offset - Math.round(100 * s) },
+        duration: wave.speed,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
+    // Foam line at water's edge
+    const foam = this.add.rectangle(
+      waveWidth / 2,
+      waveY - Math.round(5 * s),
+      waveWidth,
+      Math.round(4 * s),
+      0xffffff,
+      0.5
+    );
+    foam.setDepth(1);
+    this.moltbookElements.push(foam);
+
+    // Foam animation
+    this.tweens.add({
+      targets: foam,
+      alpha: { from: 0.5, to: 0.2 },
+      scaleX: { from: 1, to: 1.02 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  /**
+   * Create flying seagulls for the beach atmosphere
+   */
+  private createSeagulls(s: number): void {
+    // Create simple seagull shapes (white birds)
+    const seagullCount = 4;
+
+    for (let i = 0; i < seagullCount; i++) {
+      const startX = Math.round((-100 + Math.random() * 200) * s);
+      const startY = Math.round((80 + Math.random() * 100) * s);
+
+      // Simple seagull (small white shape)
+      const gull = this.add.graphics();
+      gull.fillStyle(0xffffff, 0.9);
+      // Bird shape (simple V for wings)
+      gull.fillTriangle(0, 0, Math.round(-8 * s), Math.round(4 * s), Math.round(-4 * s), Math.round(2 * s));
+      gull.fillTriangle(0, 0, Math.round(8 * s), Math.round(4 * s), Math.round(4 * s), Math.round(2 * s));
+      gull.setPosition(startX, startY);
+      gull.setDepth(15);
+      this.moltbookElements.push(gull);
+
+      // Flying animation - move across screen
+      this.tweens.add({
+        targets: gull,
+        x: GAME_WIDTH + Math.round(100 * s),
+        duration: 15000 + Math.random() * 10000,
+        delay: i * 3000,
+        repeat: -1,
+        onRepeat: () => {
+          gull.setPosition(Math.round(-100 * s), Math.round((60 + Math.random() * 120) * s));
+        },
+      });
+
+      // Bobbing animation (simulates wing flapping)
+      this.tweens.add({
+        targets: gull,
+        y: startY + Math.round(15 * s),
+        duration: 800 + Math.random() * 400,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
   }
 
   /**

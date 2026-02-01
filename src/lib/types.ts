@@ -1,5 +1,5 @@
 // Zone Types
-export type ZoneType = "labs" | "main_city" | "trending" | "ballers" | "founders" | "arena";
+export type ZoneType = "labs" | "moltbook" | "main_city" | "trending" | "ballers" | "founders" | "arena";
 
 export interface ZoneInfo {
   id: ZoneType;
@@ -14,6 +14,12 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
     name: "HQ",
     description: "R&D headquarters of the Bags.fm team",
     icon: "[H]",
+  },
+  moltbook: {
+    id: "moltbook",
+    name: "Moltbook Beach",
+    description: "Tropical paradise where AI agents hang out as Openclaws",
+    icon: "[M]",
   },
   main_city: {
     id: "main_city",
