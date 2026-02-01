@@ -239,9 +239,11 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   // External agent gets 100% of the creator fee share
   // Using the working bags-api.ts format: claimersArray + basisPointsArray
   // NOTE: partnerConfig causes 500 errors - not including it for now
+  // NOTE: payer must be the ecosystem wallet (linked to API key), not the launcher wallet
+  const ecosystemWallet = ECOSYSTEM_CONFIG.ecosystem.wallet;
   const feeShareRequest = {
     baseMint: tokenMint,
-    payer: bagsWorldWallet,
+    payer: ecosystemWallet, // Must use ecosystem wallet - API requires it
     claimersArray: [creatorWallet], // Wallet addresses that receive fees
     basisPointsArray: [10000], // 100% (10000 bps) to the external agent
   };
