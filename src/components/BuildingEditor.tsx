@@ -773,5 +773,6 @@ export function BuildingEditor({ tokens, sessionToken, onRefresh, addLog }: Buil
     </div>
   );
 }
-/ /   F o r c e   c l e a n   b u i l d   2 0 2 6 - 0 2 - 0 1   1 1 : 4 1 : 2 1  
+/ /   F o r c e   c l e a n   b u i l d   2 0 2 6 - 0 2 - 0 1   1 1 : 4 1 : 2 1 
+ 
  
