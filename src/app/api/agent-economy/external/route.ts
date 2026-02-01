@@ -152,7 +152,21 @@ export async function GET(request: NextRequest) {
     console.log("[Test Claim+Reinvest] Starting for wallet:", wallet);
 
     // Step 1: Check claimable
-    const { positions, totalClaimableLamports } = await getClaimableForWallet(wallet);
+    let positions: Awaited<ReturnType<typeof getClaimableForWallet>>["positions"] = [];
+    let totalClaimableLamports = 0;
+    
+    try {
+      const result = await getClaimableForWallet(wallet);
+      positions = result.positions;
+      totalClaimableLamports = result.totalClaimableLamports;
+    } catch (err) {
+      console.error("[Test Claim+Reinvest] Error getting claimable:", err);
+      return NextResponse.json({
+        success: false,
+        error: `Failed to get claimable: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+    
     const claimableSol = totalClaimableLamports / 1_000_000_000;
     
     console.log(`[Test Claim+Reinvest] Claimable: ${claimableSol.toFixed(6)} SOL from ${positions.length} positions`);
@@ -168,7 +182,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 2: Generate claim transactions (unsigned - wallet owner must sign)
-    const claimResult = await generateClaimTxForWallet(wallet);
+    let claimResult: Awaited<ReturnType<typeof generateClaimTxForWallet>>;
+    try {
+      claimResult = await generateClaimTxForWallet(wallet);
+    } catch (err) {
+      console.error("[Test Claim+Reinvest] Error generating claim tx:", err);
+      return NextResponse.json({
+        success: false,
+        error: `Failed to generate claim tx: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
     
     if (!claimResult.transactions || claimResult.transactions.length === 0) {
       return NextResponse.json({
@@ -180,13 +203,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 3: Get reinvestment decision
-    const decision = await makeTradeDecision(
-      `external-${wallet.slice(0, 8)}`,
-      "reinvest_bagsworld",
-      claimableSol * 0.95, // Leave some for fees
-      { minTradeSol: 0.001, maxPositionSol: 1.0 }
-    );
-
+    const BAGSWORLD_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
+    const reinvestAmount = claimableSol * 0.95; // Leave some for fees
+    
     return NextResponse.json({
       success: true,
       step: "ready",
@@ -198,12 +217,12 @@ export async function GET(request: NextRequest) {
         transactions: claimResult.transactions.length,
       },
       reinvestDecision: {
-        action: decision.action,
-        tokenMint: decision.tokenMint,
-        tokenSymbol: decision.tokenSymbol,
-        amountSol: decision.amountSol,
-        reason: decision.reason,
-        confidence: decision.confidence,
+        action: "buy",
+        tokenMint: BAGSWORLD_MINT,
+        tokenSymbol: "BAGSWORLD",
+        amountSol: reinvestAmount,
+        reason: `Reinvesting ${reinvestAmount.toFixed(6)} SOL into BagsWorld token`,
+        confidence: 95,
       },
       note: "External wallets must sign their own transactions. This endpoint shows what WOULD happen.",
     });
