@@ -9026,7 +9026,11 @@ Use: bags.fm/[yourname]`,
 
       case "queue_status": {
         // Arena server format: { position, size, queue: [{username, karma}] }
-        const status = msg.data as { position: number; size: number; queue?: Array<{ username: string }> };
+        const status = msg.data as {
+          position: number;
+          size: number;
+          queue?: Array<{ username: string }>;
+        };
         this.updateArenaQueue(status.queue?.map((_, i) => ({ fighter_id: i })) || []);
         break;
       }
@@ -9109,8 +9113,24 @@ Use: bags.fm/[yourname]`,
             matchId: number;
             status: string;
             tick: number;
-            fighter1: { id: number; hp: number; maxHp: number; x: number; y: number; state: string; direction: string };
-            fighter2: { id: number; hp: number; maxHp: number; x: number; y: number; state: string; direction: string };
+            fighter1: {
+              id: number;
+              hp: number;
+              maxHp: number;
+              x: number;
+              y: number;
+              state: string;
+              direction: string;
+            };
+            fighter2: {
+              id: number;
+              hp: number;
+              maxHp: number;
+              x: number;
+              y: number;
+              state: string;
+              direction: string;
+            };
             winner?: string;
           }
         );
@@ -9164,7 +9184,13 @@ Use: bags.fm/[yourname]`,
     panel.add(shadow);
 
     // === OUTER BORDER ===
-    const outerBorder = this.add.rectangle(0, 0, panelW + borderW * 2, panelH + borderW * 2, accent);
+    const outerBorder = this.add.rectangle(
+      0,
+      0,
+      panelW + borderW * 2,
+      panelH + borderW * 2,
+      accent
+    );
     panel.add(outerBorder);
 
     // === MAIN BACKGROUND ===
@@ -9186,7 +9212,13 @@ Use: bags.fm/[yourname]`,
     const btnH = Math.round(50 * s);
     const btnY = Math.round(5 * s);
 
-    const btnShadow = this.add.rectangle(Math.round(3 * s), btnY + Math.round(3 * s), btnW, btnH, 0x166534);
+    const btnShadow = this.add.rectangle(
+      Math.round(3 * s),
+      btnY + Math.round(3 * s),
+      btnW,
+      btnH,
+      0x166534
+    );
     panel.add(btnShadow);
 
     const btnBg = this.add.rectangle(0, btnY, btnW, btnH, 0x22c55e);
@@ -9203,11 +9235,16 @@ Use: bags.fm/[yourname]`,
     panel.add(btnText);
 
     // === SUBTITLE ===
-    const subText = this.add.text(0, panelH / 2 - Math.round(18 * s), "Enter your username to join the queue", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(8 * s)}px`,
-      color: "#9ca3af",
-    });
+    const subText = this.add.text(
+      0,
+      panelH / 2 - Math.round(18 * s),
+      "Enter your username to join the queue",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(8 * s)}px`,
+        color: "#9ca3af",
+      }
+    );
     subText.setOrigin(0.5, 0.5);
     panel.add(subText);
 
@@ -9485,82 +9522,106 @@ Use: bags.fm/[yourname]`,
   private showHitEffect(x: number, y: number, damage: number = 0): void {
     const s = SCALE;
 
+    // === SCREEN SHAKE FOR IMPACT ===
+    const shakeIntensity = Math.min(damage * 0.5, 8); // More damage = more shake
+    this.cameras.main.shake(150, shakeIntensity * 0.001);
+
     // === TRIGGER CROWD CHEER ===
     this.triggerCrowdCheer();
 
-    // === SHOW ACTION BUBBLE FOR BIG HITS ===
-    if (damage > 10) {
-      const bubbleType = damage > 20 ? "action_critical" : damage > 15 ? "action_bam" : "action_pow";
-      this.showActionBubble(x, y - Math.round(40 * s), bubbleType);
+    // === SHOW ACTION BUBBLE FOR ALL HITS ===
+    const bubbleType = damage > 12 ? "action_critical" : damage > 8 ? "action_bam" : "action_pow";
+    this.showActionBubble(x, y - Math.round(50 * s), bubbleType);
+
+    // === MULTIPLE SPARK BURSTS ===
+    for (let i = 0; i < 3; i++) {
+      const spark = this.add.sprite(
+        x + (Math.random() - 0.5) * 30 * s,
+        y + (Math.random() - 0.5) * 20 * s,
+        "hit_spark"
+      );
+      spark.setDepth(11);
+      spark.setScale(0.2 + Math.random() * 0.3);
+      spark.setAngle(Math.random() * 360);
+
+      this.tweens.add({
+        targets: spark,
+        scale: { from: spark.scale, to: spark.scale * 2.5 },
+        alpha: { from: 1, to: 0 },
+        angle: spark.angle + (Math.random() - 0.5) * 60,
+        duration: 250 + Math.random() * 150,
+        ease: "Power2",
+        delay: i * 50,
+        onComplete: () => spark.destroy(),
+      });
     }
 
-    // === SPARK BURST ===
-    const spark = this.add.sprite(x, y, "hit_spark");
-    spark.setDepth(11);
-    spark.setScale(0.3);
-
-    this.tweens.add({
-      targets: spark,
-      scale: { from: 0.3, to: 1.2 },
-      alpha: { from: 1, to: 0 },
-      angle: { from: 0, to: 15 },
-      duration: 350,
-      ease: "Power2",
-      onComplete: () => spark.destroy(),
-    });
-
-    // === FLOATING DAMAGE NUMBER ===
+    // === FLOATING DAMAGE NUMBER - BIGGER ===
     if (damage > 0) {
+      const isCrit = damage > 10;
       const dmgText = this.add.text(x, y - Math.round(20 * s), `-${damage}`, {
         fontFamily: "monospace",
-        fontSize: `${Math.round(14 * s)}px`,
-        color: "#ef4444",
+        fontSize: `${Math.round(isCrit ? 20 : 16) * s}px`,
+        color: isCrit ? "#fbbf24" : "#ef4444",
         fontStyle: "bold",
         stroke: "#000000",
-        strokeThickness: 3,
+        strokeThickness: 4,
       });
       dmgText.setOrigin(0.5, 0.5);
       dmgText.setDepth(101);
 
-      // Float up and fade
+      // Bounce up then fade
       this.tweens.add({
         targets: dmgText,
-        y: y - Math.round(60 * s),
+        y: y - Math.round(80 * s),
         alpha: { from: 1, to: 0 },
-        scale: { from: 1, to: 1.3 },
-        duration: 800,
-        ease: "Power2",
+        scale: { from: 1.2, to: 1.5 },
+        duration: 1000,
+        ease: "Bounce.easeOut",
         onComplete: () => dmgText.destroy(),
       });
     }
 
-    // === IMPACT PARTICLES ===
-    for (let i = 0; i < 4; i++) {
+    // === IMPACT PARTICLES - MORE DRAMATIC ===
+    const particleColors = [0xfde047, 0xffffff, 0xef4444, 0xfbbf24, 0xff6b6b];
+    for (let i = 0; i < 8; i++) {
       const particle = this.add.rectangle(
-        x + (Math.random() - 0.5) * 20 * s,
-        y + (Math.random() - 0.5) * 20 * s,
-        Math.round(4 * s),
-        Math.round(4 * s),
-        i % 2 === 0 ? 0xfde047 : 0xffffff
+        x + (Math.random() - 0.5) * 30 * s,
+        y + (Math.random() - 0.5) * 30 * s,
+        Math.round((3 + Math.random() * 4) * s),
+        Math.round((3 + Math.random() * 4) * s),
+        particleColors[i % particleColors.length]
       );
       particle.setDepth(11);
+      particle.setAngle(Math.random() * 360);
 
+      // Explode outward
+      const angle = (Math.PI * 2 * i) / 8;
+      const distance = 60 + Math.random() * 40;
       this.tweens.add({
         targets: particle,
-        x: particle.x + (Math.random() - 0.5) * 40 * s,
-        y: particle.y + (Math.random() - 0.5) * 40 * s,
+        x: particle.x + Math.cos(angle) * distance * s,
+        y: particle.y + Math.sin(angle) * distance * s - 20 * s, // Arc upward
         alpha: 0,
         scale: 0,
-        duration: 300 + Math.random() * 200,
+        angle: particle.angle + (Math.random() - 0.5) * 180,
+        duration: 400 + Math.random() * 200,
         ease: "Power2",
         onComplete: () => particle.destroy(),
       });
     }
 
-    // === CAMERA SHAKE (intensity scales with damage) ===
-    const shakeIntensity = damage > 20 ? 0.015 : damage > 10 ? 0.012 : 0.008;
-    const shakeDuration = damage > 20 ? 180 : damage > 10 ? 150 : 120;
-    this.cameras.main.shake(shakeDuration, shakeIntensity);
+    // === FLASH EFFECT ===
+    const flash = this.add.rectangle(x, y, 100 * s, 100 * s, 0xffffff, 0.6);
+    flash.setDepth(10);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scale: 2,
+      duration: 150,
+      ease: "Power2",
+      onComplete: () => flash.destroy(),
+    });
   }
 
   /**

@@ -113,7 +113,9 @@ export class ArenaEngine {
       damageDealt2: 0,
     });
 
-    console.log(`[ArenaEngine] Match ${matchId} created: ${fighter1.username} vs ${fighter2.username}`);
+    console.log(
+      `[ArenaEngine] Match ${matchId} created: ${fighter1.username} vs ${fighter2.username}`
+    );
 
     return state;
   }
@@ -204,6 +206,11 @@ export class ArenaEngine {
 
     // In attack range and can attack
     if (distance <= ARENA_CONFIG.attackRange && canAttack && opponent.stats.hp > 0) {
+      // Lunge forward before attacking!
+      const lungeDir = opponent.x > fighter.x ? 1 : -1;
+      fighter.x += lungeDir * 8; // Quick lunge
+      fighter.x = Math.max(20, Math.min(ARENA_CONFIG.arenaWidth - 20, fighter.x));
+
       this.performAttack(fighter, opponent, state, activeMatch, fighterNum);
       return;
     }
@@ -213,13 +220,13 @@ export class ArenaEngine {
       fighter.state = "walking";
       const moveDir = opponent.x > fighter.x ? 1 : -1;
       fighter.direction = moveDir > 0 ? "right" : "left";
-      fighter.x += moveDir * ARENA_CONFIG.moveSpeed;
+      fighter.x += moveDir * ARENA_CONFIG.moveSpeed * 1.5; // Faster movement
 
       // Clamp to arena bounds
       fighter.x = Math.max(20, Math.min(ARENA_CONFIG.arenaWidth - 20, fighter.x));
 
-      // Add move event (every 5 ticks)
-      if (state.tick % 5 === 0) {
+      // Add move event (every 3 ticks for smoother animation)
+      if (state.tick % 3 === 0) {
         state.events.push({
           tick: state.tick,
           type: "move",
@@ -229,8 +236,16 @@ export class ArenaEngine {
         });
       }
     } else {
-      // In range but waiting for cooldown
+      // In range but waiting for cooldown - shuffle around!
       fighter.state = "idle";
+
+      // Random shuffle movement to look alive
+      if (state.tick % 8 === 0) {
+        const shuffleDir = Math.random() > 0.5 ? 1 : -1;
+        const shuffleAmount = Math.random() * 6 + 2;
+        fighter.x += shuffleDir * shuffleAmount;
+        fighter.x = Math.max(20, Math.min(ARENA_CONFIG.arenaWidth - 20, fighter.x));
+      }
     }
   }
 
@@ -256,12 +271,23 @@ export class ArenaEngine {
       activeMatch.damageDealt2 += damage;
     }
 
-    // Defender reacts
+    // Defender reacts - knockback!
     if (defender.stats.hp > 0) {
       defender.state = "hurt";
       defender.lastHurtTick = state.tick;
+
+      // Knockback - push defender away from attacker
+      const knockbackDir = defender.x > attacker.x ? 1 : -1;
+      const knockbackAmount = 15 + Math.random() * 10; // 15-25 pixels
+      defender.x += knockbackDir * knockbackAmount;
+      defender.x = Math.max(20, Math.min(ARENA_CONFIG.arenaWidth - 20, defender.x));
     } else {
       defender.state = "knockout";
+
+      // Big knockback on knockout
+      const knockbackDir = defender.x > attacker.x ? 1 : -1;
+      defender.x += knockbackDir * 30;
+      defender.x = Math.max(20, Math.min(ARENA_CONFIG.arenaWidth - 20, defender.x));
     }
 
     // Add damage event
