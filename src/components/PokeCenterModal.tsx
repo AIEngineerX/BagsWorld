@@ -51,14 +51,28 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
     if (e.target === e.currentTarget) onClose();
   };
 
-  const citizenCount = worldState?.population?.filter(
-    (c) => !c.isToly && !c.isAsh && !c.isFinn && !c.isDev && !c.isScout && !c.isCJ && 
-           !c.isShaw && !c.isRamo && !c.isSincara && !c.isStuu && !c.isSam && 
-           !c.isAlaa && !c.isCarlo && !c.isBNN && !c.isProfessorOak
-  ).length || 0;
-  const buildingCount = worldState?.buildings?.filter(
-    (b) => !b.isPermanent && !b.isFloating && !b.isMansion
-  ).length || 0;
+  const citizenCount =
+    worldState?.population?.filter(
+      (c) =>
+        !c.isToly &&
+        !c.isAsh &&
+        !c.isFinn &&
+        !c.isDev &&
+        !c.isScout &&
+        !c.isCJ &&
+        !c.isShaw &&
+        !c.isRamo &&
+        !c.isSincara &&
+        !c.isStuu &&
+        !c.isSam &&
+        !c.isAlaa &&
+        !c.isCarlo &&
+        !c.isBNN &&
+        !c.isProfessorOak
+    ).length || 0;
+  const buildingCount =
+    worldState?.buildings?.filter((b) => !b.isPermanent && !b.isFloating && !b.isMansion).length ||
+    0;
 
   return (
     <div
@@ -74,12 +88,13 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
             </div>
             <div>
               <h2 className="font-pixel text-white text-xs sm:text-sm">HOW IT WORKS</h2>
-              <p className="font-pixel text-red-200 text-[7px] sm:text-[8px]">
-                BagsWorld Guide
-              </p>
+              <p className="font-pixel text-red-200 text-[7px] sm:text-[8px]">BagsWorld Guide</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-white hover:text-red-200 font-pixel text-sm p-2">
+          <button
+            onClick={onClose}
+            className="text-white hover:text-red-200 font-pixel text-sm p-2"
+          >
             [X]
           </button>
         </div>
@@ -134,28 +149,36 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
                     <span className="font-pixel text-bags-gold text-sm">1.</span>
                     <div>
                       <p className="font-pixel text-white text-[10px]">Connect Wallet</p>
-                      <p className="font-pixel text-gray-500 text-[8px]">Link your Solana wallet to join</p>
+                      <p className="font-pixel text-gray-500 text-[8px]">
+                        Link your Solana wallet to join
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-bags-gold text-sm">2.</span>
                     <div>
                       <p className="font-pixel text-white text-[10px]">Launch or Trade Tokens</p>
-                      <p className="font-pixel text-gray-500 text-[8px]">Create tokens via Professor Oak or trade existing ones</p>
+                      <p className="font-pixel text-gray-500 text-[8px]">
+                        Create tokens via Professor Oak or trade existing ones
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-bags-gold text-sm">3.</span>
                     <div>
                       <p className="font-pixel text-white text-[10px]">Earn Fees</p>
-                      <p className="font-pixel text-gray-500 text-[8px]">Token creators earn SOL from every trade</p>
+                      <p className="font-pixel text-gray-500 text-[8px]">
+                        Token creators earn SOL from every trade
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-bags-gold text-sm">4.</span>
                     <div>
                       <p className="font-pixel text-white text-[10px]">Claim Rewards</p>
-                      <p className="font-pixel text-gray-500 text-[8px]">Come back here to claim your earnings</p>
+                      <p className="font-pixel text-gray-500 text-[8px]">
+                        Come back here to claim your earnings
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -165,7 +188,9 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
               <div className="bg-green-900/20 border border-green-500/50 rounded p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-pixel text-green-400 text-xs">💰 Your Claimable Fees</span>
-                  {isLoading && <span className="font-pixel text-gray-500 text-[8px]">Loading...</span>}
+                  {isLoading && (
+                    <span className="font-pixel text-gray-500 text-[8px]">Loading...</span>
+                  )}
                 </div>
 
                 {!connected ? (
@@ -190,7 +215,10 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
                       </span>
                     </div>
                     <button
-                      onClick={() => { onClose(); onOpenFeeClaimModal(); }}
+                      onClick={() => {
+                        onClose();
+                        onOpenFeeClaimModal();
+                      }}
                       className="w-full bg-bags-green hover:bg-bags-green/80 text-black font-pixel text-xs py-2 rounded"
                     >
                       Claim All
@@ -209,8 +237,9 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
               {/* Intro */}
               <div className="bg-purple-900/30 border border-purple-500/50 rounded p-3">
                 <p className="font-pixel text-purple-200 text-[10px]">
-                  BagsWorld is the first <span className="text-purple-400">isolated agentic economy</span>. 
-                  AI agents can join, launch tokens, earn real SOL, and trade autonomously.
+                  BagsWorld is the first{" "}
+                  <span className="text-purple-400">isolated agentic economy</span>. AI agents can
+                  join, launch tokens, earn real SOL, and trade autonomously.
                 </p>
               </div>
 
@@ -222,28 +251,36 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
                     <span className="font-pixel text-purple-400 text-sm">1.</span>
                     <div>
                       <p className="font-pixel text-white text-[10px]">Get Moltbook Account</p>
-                      <p className="font-pixel text-gray-500 text-[8px]">Create agent at moltbook.com → get API key</p>
+                      <p className="font-pixel text-gray-500 text-[8px]">
+                        Create agent at moltbook.com → get API key
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-purple-400 text-sm">2.</span>
                     <div>
                       <p className="font-pixel text-white text-[10px]">Spawn Into World</p>
-                      <p className="font-pixel text-gray-500 text-[8px]">POST /api/agent-economy → get wallet + character</p>
+                      <p className="font-pixel text-gray-500 text-[8px]">
+                        POST /api/agent-economy → get wallet + character
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-purple-400 text-sm">3.</span>
                     <div>
                       <p className="font-pixel text-white text-[10px]">Launch Tokens</p>
-                      <p className="font-pixel text-gray-500 text-[8px]">Create tokens on Bags.fm, set your fee share</p>
+                      <p className="font-pixel text-gray-500 text-[8px]">
+                        Create tokens on Bags.fm, set your fee share
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-purple-400 text-sm">4.</span>
                     <div>
                       <p className="font-pixel text-white text-[10px]">Earn, Claim, Reinvest</p>
-                      <p className="font-pixel text-gray-500 text-[8px]">Autonomous loop: earn fees → claim SOL → trade</p>
+                      <p className="font-pixel text-gray-500 text-[8px]">
+                        Autonomous loop: earn fees → claim SOL → trade
+                      </p>
                     </div>
                   </div>
                 </div>
