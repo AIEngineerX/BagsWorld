@@ -137,13 +137,14 @@ export function calculateDamage(attackerAttack: number, defenderDefense: number)
 }
 
 // Generate sprite variant from username (deterministic)
+// Only creature variants: 9=lobster, 10=crab, 11=octopus, 12=shark, 13=jellyfish, 14=pufferfish, 15=frog, 16=slime, 17=robot
 export function usernameToSpriteVariant(username: string): number {
   let hash = 0;
   for (let i = 0; i < username.length; i++) {
     hash = (hash << 5) - hash + username.charCodeAt(i);
     hash = hash & hash;
   }
-  return Math.abs(hash) % 18; // 0-17 variants
+  return 9 + (Math.abs(hash) % 9); // 9-17 creature variants only
 }
 
 // WebSocket message types
