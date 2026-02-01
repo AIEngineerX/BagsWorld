@@ -6,7 +6,7 @@
 //
 // Like Moltmint, but for Bags.fm
 
-import { Connection, Keypair, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, Keypair, Transaction, VersionedTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { BAGS_API } from './types';
 
@@ -143,16 +143,27 @@ async function signAndSubmit(unsignedTxBase64: string): Promise<string> {
   
   // Decode the transaction
   const txBuffer = Buffer.from(unsignedTxBase64, 'base64');
-  const transaction = Transaction.from(txBuffer);
   
-  // Sign with our keypair
-  transaction.partialSign(keypair);
+  // Try versioned transaction first, fall back to legacy
+  let signature: string;
   
-  // Submit
-  const signature = await connection.sendRawTransaction(transaction.serialize(), {
-    skipPreflight: false,
-    preflightCommitment: 'confirmed',
-  });
+  try {
+    // Try as versioned transaction (V0)
+    const versionedTx = VersionedTransaction.deserialize(txBuffer);
+    versionedTx.sign([keypair]);
+    signature = await connection.sendRawTransaction(versionedTx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+    });
+  } catch {
+    // Fall back to legacy transaction
+    const legacyTx = Transaction.from(txBuffer);
+    legacyTx.partialSign(keypair);
+    signature = await connection.sendRawTransaction(legacyTx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+    });
+  }
   
   // Wait for confirmation
   await connection.confirmTransaction(signature, 'confirmed');
