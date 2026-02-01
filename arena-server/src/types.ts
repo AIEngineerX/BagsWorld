@@ -117,7 +117,8 @@ export function karmaToStats(karma: number): FighterStats {
 
   const hp = KARMA_TIERS.baseHp + Math.min(tier * 8, KARMA_TIERS.maxHpBonus);
   const attack = KARMA_TIERS.baseAttack + Math.min(tier * 1.5, KARMA_TIERS.maxAttackBonus);
-  const defense = KARMA_TIERS.baseDefense + Math.min(Math.floor(tier * 0.8), KARMA_TIERS.maxDefenseBonus);
+  const defense =
+    KARMA_TIERS.baseDefense + Math.min(Math.floor(tier * 0.8), KARMA_TIERS.maxDefenseBonus);
   const speed = Math.max(10, KARMA_TIERS.baseSpeed - Math.floor(tier / 3));
 
   return {
