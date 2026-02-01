@@ -6038,6 +6038,12 @@ Use: bags.fm/[yourname]`,
         "alaaGlow",
         "carloGlow",
         "bnnGlow",
+        // Founder's Corner
+        "professorOakGlow",
+        // Mascots
+        "bagsyGlow",
+        // External agents (OpenClaws)
+        "openClawGlow",
       ];
       glowKeys.forEach((key) => {
         const glow = (sprite as any)[key];
@@ -6144,6 +6150,12 @@ Use: bags.fm/[yourname]`,
       "alaaGlow",
       "carloGlow",
       "bnnGlow",
+      // Founder's Corner
+      "professorOakGlow",
+      // Mascots
+      "bagsyGlow",
+      // External agents (OpenClaws)
+      "openClawGlow",
     ];
     glowKeys.forEach((key) => {
       const glow = (sprite as any)[key];
@@ -6153,7 +6165,10 @@ Use: bags.fm/[yourname]`,
       }
     });
 
-    // Update texture based on mood (skip for special characters including Academy)
+    // External agents (OpenClaws) - don't change their texture
+    const isOpenClaw = character.id.startsWith("external-");
+
+    // Update texture based on mood (skip for special characters including Academy and OpenClaws)
     const isToly = character.isToly === true;
     const isAsh = character.isAsh === true;
     const isFinn = character.isFinn === true;
@@ -6186,7 +6201,8 @@ Use: bags.fm/[yourname]`,
       !isShaw &&
       !isAcademyChar &&
       !isFoundersChar &&
-      !isMascot
+      !isMascot &&
+      !isOpenClaw
     ) {
       const variant = this.characterVariants.get(character.id) ?? 0;
       const expectedTexture = this.getCharacterTexture(character.mood, variant);
