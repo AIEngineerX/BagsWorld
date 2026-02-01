@@ -397,8 +397,19 @@ export async function POST(request: NextRequest) {
   // =========================================================================
 
   if (action === "launch") {
-    // Launch a token for an external agent
-    // BagsWorld pays tx fees, they get 100% of trading fees
+    // Token launch - coming soon!
+    // Requires Bags.fm fee-share API access
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Token launch coming soon! We're finalizing Bags.fm integration.",
+        status: "coming_soon",
+        available: ["join", "claimable", "who", "generate-image"],
+      },
+      { status: 503 }
+    );
+
+    /* DISABLED - Waiting for Bags.fm fee-share API access
     const { wallet, name, symbol, description, imageUrl, twitter, website, telegram } = body;
 
     if (!wallet) {
@@ -415,7 +426,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if launcher is configured
     const launcherStatus = isLauncherConfigured();
     if (!launcherStatus.configured) {
       return NextResponse.json(
@@ -427,7 +437,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Launch the token
     try {
       console.log("[Launch] Starting launch for", wallet, symbol);
       const result = await launchForExternal({
@@ -477,6 +486,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+    END DISABLED */
   }
 
   // =========================================================================
