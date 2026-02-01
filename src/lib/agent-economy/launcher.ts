@@ -232,14 +232,13 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   console.log(`[Launcher] Using partner config PDA: ${partnerConfigPda}`);
 
   // External agent gets 100% of the creator fee share
-  const partnerWallet = ECOSYSTEM_CONFIG.ecosystem.wallet;
+  // Using the official Bags.fm fee-share/config format from docs
   const feeShareRequest = {
-    baseMint: tokenMint,
     payer: bagsWorldWallet,
-    partner: partnerWallet, // BagsWorld partner wallet
-    partnerConfig: partnerConfigPda, // Partner config PDA
-    claimersArray: [creatorWallet], // External agent's wallet
-    basisPointsArray: [10000], // 100% to the external agent
+    baseMint: tokenMint,
+    feeClaimers: [
+      { user: creatorWallet, userBps: 10000 } // 100% to the external agent
+    ],
   };
 
   console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest, null, 2));
@@ -299,12 +298,13 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   // Step 3: Create launch transaction
   console.log("[Launcher] Step 3: Creating launch transaction...");
 
+  // Using official Bags.fm launch format from docs
   const launchBody = {
-    ipfs: metadataUrl,
+    metadataUrl: metadataUrl, // IPFS URL from create-token-info
     tokenMint,
     wallet: bagsWorldWallet,
     initialBuyLamports: 0,
-    configKey, // Required - from fee share config
+    configKey, // From fee-share/config
   };
 
   console.log("[Launcher] Launch body:", JSON.stringify(launchBody));
@@ -356,6 +356,39 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   const signature = await signAndSubmit(launchTransaction);
 
   console.log(`[Launcher] ✅ Token launched: ${signature}`);
+
+  // Step 5: Register token in BagsWorld's global registry so it appears as a building
+  if (isNeonConfigured()) {
+    try {
+      const globalToken: GlobalToken = {
+        mint: tokenMint,
+        name,
+        symbol: symbol.toUpperCase(),
+        description,
+        image_url: finalImageUrl,
+        creator_wallet: creatorWallet,
+        fee_shares: [
+          {
+            provider: "solana",
+            username: creatorWallet,
+            bps: 10000, // 100% to creator
+          },
+        ],
+      };
+
+      const registered = await saveGlobalToken(globalToken);
+      if (registered) {
+        console.log(`[Launcher] Token registered in BagsWorld: ${symbol}`);
+      } else {
+        console.warn(`[Launcher] Failed to register token in BagsWorld database`);
+      }
+    } catch (err) {
+      console.error(`[Launcher] Token registration error:`, err);
+      // Don't fail the launch if registration fails - token is still launched on-chain
+    }
+  } else {
+    console.log(`[Launcher] Neon not configured - token won't appear as building until manually added`);
+  }
 
   return {
     success: true,
@@ -410,51 +443,48 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
     };
   }
 
-  // Generate individual claim tx for each position
-  // The v2 endpoint expects a single position at a time
-  const transactions: string[] = [];
-  
-  for (const position of positions) {
-    const claimAmount = parseInt(
-      position.virtualPoolClaimableAmount || position.totalClaimableLamportsUserShare || "0",
-      10
-    ) + parseInt(position.dammPoolClaimableAmount || "0", 10);
-    
-    if (claimAmount === 0) continue;
-    
-    // Generate claim tx for this position
-    const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
-    console.log(`[Launcher] Generating claim tx for ${position.baseMint}...`);
-    
-    const claimRes = await fetch(claimUrl, {
-      method: "POST",
-      headers: {
-        "x-api-key": BAGS_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        wallet,
-        positions: [position.baseMint], // Just send the mint as string array
-      }),
-    });
+  // Build positions array for claim request - using official Bags.fm format
+  // Each position needs baseMint and virtualPoolAddress
+  const positionsForClaim = positions.map((p) => ({
+    baseMint: p.baseMint,
+    virtualPoolAddress: p.virtualPoolAddress,
+  }));
 
-    const rawText = await claimRes.text();
-    console.log("[Launcher] Claim response:", claimRes.status, rawText.substring(0, 200));
-    
-    if (claimRes.ok) {
-      const data = JSON.parse(rawText);
-      const txs = data.response?.transactions || data.transactions || [];
-      for (const tx of txs) {
-        transactions.push(typeof tx === 'string' ? tx : tx.transaction);
-      }
-    }
-  }
+  console.log(`[Launcher] Generating claim txs for ${positionsForClaim.length} positions...`);
   
-  const claimResponse = { transactions: transactions.map(t => ({ transaction: t })) };
+  // Generate claim transactions using official Bags.fm format
+  const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
+  const claimRes = await fetch(claimUrl, {
+    method: "POST",
+    headers: {
+      "x-api-key": BAGS_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      wallet,
+      positions: positionsForClaim,
+    }),
+  });
+
+  const rawText = await claimRes.text();
+  console.log("[Launcher] Claim response:", claimRes.status, rawText.substring(0, 300));
+  
+  if (!claimRes.ok) {
+    throw new Error(`Claim API ${claimRes.status}: ${rawText.substring(0, 200)}`);
+  }
+
+  const claimData = JSON.parse(rawText);
+  const claimResponse = {
+    transactions: (claimData.response?.transactions || claimData.transactions || []).map(
+      (tx: string | { transaction: string }) => ({
+        transaction: typeof tx === "string" ? tx : tx.transaction,
+      })
+    ),
+  };
 
   return {
     success: true,
-    transactions: claimResponse.transactions.map((t) => t.transaction),
+    transactions: claimResponse.transactions.map((t: { transaction: string }) => t.transaction),
     totalClaimableLamports,
   };
 }
