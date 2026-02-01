@@ -9444,26 +9444,206 @@ Use: bags.fm/[yourname]`,
       fighterY - healthBarOffset
     );
 
-    // Show hit effect only on state TRANSITION to "hurt" (prevents spam)
+    // Show dramatic animations on state TRANSITIONS
     const prevState = this.arenaLastFighterState.get(fighter.id);
+
+    // === ATTACK ANIMATION - Jump/Lunge forward ===
+    if (fighter.state === "attacking" && prevState !== "attacking") {
+      const attackDir = fighter.direction === "right" ? 1 : -1;
+
+      // Jump and lunge forward
+      this.tweens.add({
+        targets: sprite,
+        y: fighterY - 30 * s, // Jump up
+        x: fighterX + attackDir * 25 * s, // Lunge forward
+        scaleX: 1.2,
+        scaleY: 0.9,
+        duration: 120,
+        ease: "Power2.easeOut",
+        yoyo: true,
+        onUpdate: () => {
+          // Add motion blur effect
+          if (Math.random() > 0.6) {
+            const blur = this.add.sprite(sprite.x, sprite.y, sprite.texture.key);
+            blur.setOrigin(0.5, 1);
+            blur.setAlpha(0.4);
+            blur.setTint(0xffffff);
+            blur.setDepth(9);
+            blur.setFlipX(sprite.flipX);
+            this.tweens.add({
+              targets: blur,
+              alpha: 0,
+              duration: 150,
+              onComplete: () => blur.destroy(),
+            });
+          }
+        },
+      });
+
+      // Add attack slash effect
+      this.showAttackSlash(fighterX + attackDir * 40 * s, fighterY - 30 * s, attackDir);
+    }
+
+    // === HURT ANIMATION - Dramatic knockback with spin ===
     if (fighter.state === "hurt" && prevState !== "hurt") {
-      // Calculate approximate damage from HP change
       const damage =
         Math.round((fighter.maxHp - fighter.hp) * 0.1) || Math.floor(Math.random() * 8) + 4;
       this.showHitEffect(fighterX, fighterY - Math.round(40 * s), damage);
 
-      // Add slight sprite knockback tween
+      const knockDir = fighter.direction === "left" ? 1 : -1;
+
+      // Dramatic knockback with spin and squash
       this.tweens.add({
         targets: sprite,
-        x: fighterX + (fighter.direction === "left" ? 8 : -8) * s,
-        duration: 80,
-        yoyo: true,
-        ease: "Power2",
+        x: fighterX + knockDir * 35 * s,
+        y: fighterY - 20 * s,
+        angle: knockDir * 25,
+        scaleX: 0.8,
+        scaleY: 1.3,
+        duration: 150,
+        ease: "Power2.easeOut",
+        onComplete: () => {
+          // Bounce back
+          this.tweens.add({
+            targets: sprite,
+            x: fighterX,
+            y: fighterY,
+            angle: 0,
+            scaleX: 1,
+            scaleY: 1,
+            duration: 200,
+            ease: "Bounce.easeOut",
+          });
+        },
       });
+    }
+
+    // === KNOCKOUT ANIMATION - Spin and fall ===
+    if (fighter.state === "knockout" && prevState !== "knockout") {
+      const fallDir = fighter.direction === "left" ? 1 : -1;
+
+      // Epic knockout spin and fall
+      this.tweens.add({
+        targets: sprite,
+        x: fighterX + fallDir * 60 * s,
+        y: fighterY + 10 * s,
+        angle: fallDir * 720, // Multiple spins!
+        scaleX: 0.5,
+        scaleY: 0.5,
+        alpha: 0.7,
+        duration: 800,
+        ease: "Power2.easeIn",
+        onComplete: () => {
+          // Show KO stars
+          this.showKOStars(sprite.x, sprite.y - 30 * s);
+        },
+      });
+
+      // Big screen shake for knockout
+      this.cameras.main.shake(400, 0.02);
     }
 
     // Track current state for next frame
     this.arenaLastFighterState.set(fighter.id, fighter.state);
+  }
+
+  /**
+   * Show attack slash effect
+   */
+  private showAttackSlash(x: number, y: number, direction: number): void {
+    const s = SCALE;
+
+    // Create slash lines
+    for (let i = 0; i < 5; i++) {
+      const angle = -30 + i * 15 + (direction > 0 ? 0 : 180);
+      const length = 40 + Math.random() * 30;
+
+      const slash = this.add.graphics();
+      slash.setDepth(15);
+      slash.lineStyle(3 * s, 0xffffff, 0.9);
+      slash.beginPath();
+      slash.moveTo(x, y);
+      const endX = x + Math.cos((angle * Math.PI) / 180) * length * s;
+      const endY = y + Math.sin((angle * Math.PI) / 180) * length * s;
+      slash.lineTo(endX, endY);
+      slash.strokePath();
+
+      this.tweens.add({
+        targets: slash,
+        alpha: 0,
+        scaleX: 1.5,
+        scaleY: 1.5,
+        duration: 200,
+        delay: i * 30,
+        onComplete: () => slash.destroy(),
+      });
+    }
+
+    // Add impact ring
+    const ring = this.add.circle(x, y, 10 * s, 0xffffff, 0);
+    ring.setStrokeStyle(3 * s, 0xfbbf24);
+    ring.setDepth(14);
+
+    this.tweens.add({
+      targets: ring,
+      radius: 50 * s,
+      alpha: 0,
+      duration: 250,
+      ease: "Power2.easeOut",
+      onComplete: () => ring.destroy(),
+    });
+  }
+
+  /**
+   * Show KO stars above defeated fighter
+   */
+  private showKOStars(x: number, y: number): void {
+    const s = SCALE;
+    const starCount = 5;
+
+    for (let i = 0; i < starCount; i++) {
+      const star = this.add.text(x, y, "★", {
+        fontSize: `${Math.round(12 * s)}px`,
+        color: "#fbbf24",
+      });
+      star.setOrigin(0.5, 0.5);
+      star.setDepth(20);
+
+      const angle = (i / starCount) * Math.PI * 2;
+      const radius = 25 * s;
+
+      // Orbit animation
+      this.tweens.add({
+        targets: star,
+        x: x + Math.cos(angle) * radius,
+        y: y + Math.sin(angle) * radius * 0.5,
+        duration: 300,
+        ease: "Power2.easeOut",
+        onComplete: () => {
+          // Continue orbiting
+          this.tweens.add({
+            targets: star,
+            angle: 360,
+            duration: 1500,
+            repeat: 2,
+            onUpdate: () => {
+              const t = (Date.now() / 500 + i) % (Math.PI * 2);
+              star.x = x + Math.cos(t) * radius;
+              star.y = y + Math.sin(t) * radius * 0.5 - 10 * s;
+            },
+            onComplete: () => {
+              this.tweens.add({
+                targets: star,
+                alpha: 0,
+                y: star.y - 20 * s,
+                duration: 300,
+                onComplete: () => star.destroy(),
+              });
+            },
+          });
+        },
+      });
+    }
   }
 
   /**
