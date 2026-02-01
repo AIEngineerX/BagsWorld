@@ -468,49 +468,51 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
     };
   }
 
-  // Build positions array for claim request - using official Bags.fm format
-  // Each position needs baseMint and virtualPoolAddress
-  const positionsForClaim = positions.map((p) => ({
-    baseMint: p.baseMint,
-    virtualPoolAddress: p.virtualPoolAddress,
-  }));
-
-  console.log(`[Launcher] Generating claim txs for ${positionsForClaim.length} positions...`);
+  console.log(`[Launcher] Generating claim txs for ${positions.length} positions...`);
   
-  // Generate claim transactions using official Bags.fm format
-  // API expects 'feeClaimer' not 'wallet'
+  // Generate claim transactions - one per token
+  // API expects: { feeClaimer: string, tokenMint: string }
   const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
-  const claimRes = await fetch(claimUrl, {
-    method: "POST",
-    headers: {
-      "x-api-key": BAGS_API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      feeClaimer: wallet,
-      positions: positionsForClaim,
-    }),
-  });
-
-  const rawText = await claimRes.text();
-  console.log("[Launcher] Claim response:", claimRes.status, rawText.substring(0, 300));
+  const allTransactions: string[] = [];
   
-  if (!claimRes.ok) {
-    throw new Error(`Claim API ${claimRes.status}: ${rawText.substring(0, 200)}`);
+  for (const position of positions) {
+    try {
+      const claimRes = await fetch(claimUrl, {
+        method: "POST",
+        headers: {
+          "x-api-key": BAGS_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          feeClaimer: wallet,
+          tokenMint: position.baseMint,
+        }),
+      });
+
+      const rawText = await claimRes.text();
+      
+      if (!claimRes.ok) {
+        console.log(`[Launcher] Claim failed for ${position.baseMint}: ${rawText.substring(0, 100)}`);
+        continue; // Skip this position, try others
+      }
+
+      const claimData = JSON.parse(rawText);
+      const txs = claimData.response?.transactions || claimData.transactions || [];
+      
+      for (const tx of txs) {
+        const txString = typeof tx === "string" ? tx : tx.transaction;
+        if (txString) allTransactions.push(txString);
+      }
+      
+      console.log(`[Launcher] Got ${txs.length} tx(s) for ${position.baseMint.slice(0, 8)}...`);
+    } catch (err) {
+      console.error(`[Launcher] Error claiming ${position.baseMint}:`, err);
+    }
   }
-
-  const claimData = JSON.parse(rawText);
-  const claimResponse = {
-    transactions: (claimData.response?.transactions || claimData.transactions || []).map(
-      (tx: string | { transaction: string }) => ({
-        transaction: typeof tx === "string" ? tx : tx.transaction,
-      })
-    ),
-  };
-
+  
   return {
     success: true,
-    transactions: claimResponse.transactions.map((t: { transaction: string }) => t.transaction),
+    transactions: allTransactions,
     totalClaimableLamports,
   };
 }
