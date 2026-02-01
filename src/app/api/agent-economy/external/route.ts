@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
     if (!resolvedWallet && moltbookUsername) {
       try {
         const BAGS_API_KEY = process.env.BAGS_API_KEY;
-        const lookupUrl = `https://api.bags.fm/api/public/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+        const lookupUrl = `https://public-api-v2.bags.fm/api/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
         const lookupRes = await fetch(lookupUrl, {
           headers: { "x-api-key": BAGS_API_KEY || "" },
         });
