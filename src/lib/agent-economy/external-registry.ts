@@ -129,19 +129,56 @@ function rowToEntry(row: DbRow): ExternalAgentEntry {
   };
 }
 
+// Moltbook HQ is at x = 640 (400 * 1.6), avoid placing buildings there
+const HQ_CENTER_X = Math.round(400 * SCALE); // 640
+const HQ_AVOID_RADIUS = Math.round(100 * SCALE); // 160px radius to avoid
+
+/**
+ * Get a building position that avoids the HQ area
+ * Buildings are spread across left and right sides of the zone
+ */
+function getBuildingPosition(index: number, zone: ZoneType): number {
+  if (zone === "moltbook") {
+    // Moltbook zone: place buildings on left or right side, avoiding HQ center
+    const leftPositions = [
+      Math.round(100 * SCALE),  // 160
+      Math.round(180 * SCALE),  // 288
+      Math.round(260 * SCALE),  // 416
+    ];
+    const rightPositions = [
+      Math.round(540 * SCALE),  // 864
+      Math.round(620 * SCALE),  // 992
+      Math.round(700 * SCALE),  // 1120
+    ];
+    const allPositions = [...leftPositions, ...rightPositions];
+    return allPositions[index % allPositions.length];
+  }
+  // Default: use character position with offset
+  return Math.round((200 + index * 100) * SCALE);
+}
+
+// Track building index for positioning
+let buildingIndex = 0;
+
 /**
  * Create an agent building for an external agent
  * Agent buildings are small permanent structures that represent the agent in the world
  */
 function rowToBuilding(row: DbRow): GameBuilding {
   const moltbookUser = row.moltbook_username;
-  
+  const isMoltbookZone = row.zone === "moltbook";
+
+  // Get position avoiding HQ
+  const buildingX = isMoltbookZone
+    ? getBuildingPosition(buildingIndex++, row.zone as ZoneType)
+    : row.x + BUILDING_OFFSET_X;
+
   return {
     id: `agent-building-${row.wallet.slice(0, 8)}`,
     tokenMint: `agent-${row.wallet}`, // Fake mint for agent buildings
     name: `${row.name}'s HQ`,
     symbol: moltbookUser ? `@${moltbookUser}` : row.name.slice(0, 4).toUpperCase(),
-    x: row.x + BUILDING_OFFSET_X, // Slightly offset from character position
+    x: buildingX,
     y: GROUND_Y, // Same ground level as token buildings
     level: 1, // Agent buildings are small (level 1)
     health: 100, // Always healthy
@@ -150,8 +187,9 @@ function rowToBuilding(row: DbRow): GameBuilding {
     ownerId: row.wallet,
     zone: row.zone as ZoneType,
     isPermanent: true, // Agent buildings don't decay
-    // Custom style for agent buildings (style 0 = basic shop)
-    styleOverride: 0,
+    // Beach-themed buildings for moltbook zone
+    styleOverride: isMoltbookZone ? -1 : 0, // -1 signals beach theme
+    isBeachTheme: isMoltbookZone, // Custom flag for beach building rendering
   };
 }
 
@@ -260,6 +298,8 @@ export async function getExternalAgentBuildings(): Promise<GameBuilding[]> {
     SELECT * FROM external_agents ORDER BY joined_at DESC
   `;
 
+  // Reset building index for consistent positioning
+  buildingIndex = 0;
   return rows.map((row) => rowToBuilding(row as DbRow));
 }
 
@@ -348,8 +388,10 @@ async function refreshCache() {
     const rows = await sql`
       SELECT * FROM external_agents ORDER BY joined_at DESC
     `;
-    
+
     cachedAgents = rows.map((row) => rowToEntry(row as DbRow).character);
+    // Reset building index for consistent positioning
+    buildingIndex = 0;
     cachedBuildings = rows.map((row) => rowToBuilding(row as DbRow));
     lastCacheTime = Date.now();
   } catch (err) {
