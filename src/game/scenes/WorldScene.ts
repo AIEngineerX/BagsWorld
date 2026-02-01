@@ -6742,6 +6742,10 @@ Use: bags.fm/[yourname]`,
     const mansionStyleIndex = isMansion ? Math.min((building.holderRank || 1) - 1, 4) : 0;
 
     const styleIndex = getBuildingStyle(building.id);
+    // Beach-themed buildings for Moltbook Beach zone
+    const isBeachBuilding = building.isBeachTheme || building.zone === "moltbook";
+    const beachBuildingLevel = Math.min(Math.max(building.level, 1), 5); // Clamp to 1-5
+
     const buildingTexture = isBagsWorldHQ
       ? "bagshq"
       : isMansion
@@ -6756,7 +6760,9 @@ Use: bags.fm/[yourname]`,
                 ? "terminal"
                 : isOracle
                   ? "oracle_tower"
-                  : `building_${building.level}_${styleIndex}`;
+                  : isBeachBuilding
+                    ? `beach_building_${beachBuildingLevel}`
+                    : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data

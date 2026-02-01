@@ -250,6 +250,8 @@ export interface GameBuilding {
   holderAddress?: string; // Wallet address of the holder
   holderBalance?: number; // Token balance held
   mansionScale?: number; // Scale multiplier for mansion display (1.5 for #1, 1.3 for #2-3, etc.)
+  // Beach theme (Moltbook Beach)
+  isBeachTheme?: boolean; // True for beach-themed buildings in moltbook zone
 }
 
 export type GameEventType =
