@@ -242,17 +242,17 @@ export async function GET(request: NextRequest) {
           success: true,
           market: {
             tokenCount: market.tokens.length,
-            topByVolume: market.topByVolume.slice(0, 5).map(t => ({
+            topByVolume: market.topByVolume.slice(0, 5).map((t) => ({
               symbol: t.symbol,
               volume24h: t.volume24h,
               feeYieldPercent: t.feeYieldPercent,
             })),
-            topByFees: market.topByFees.slice(0, 5).map(t => ({
+            topByFees: market.topByFees.slice(0, 5).map((t) => ({
               symbol: t.symbol,
               lifetimeFees: t.lifetimeFees,
               feeYieldPercent: t.feeYieldPercent,
             })),
-            topByYield: market.topByYield.slice(0, 5).map(t => ({
+            topByYield: market.topByYield.slice(0, 5).map((t) => ({
               symbol: t.symbol,
               feeYieldPercent: t.feeYieldPercent,
               marketCap: t.marketCap,
@@ -268,7 +268,7 @@ export async function GET(request: NextRequest) {
         if (!agentId) {
           return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
         }
-        
+
         const portfolio = await getPortfolioState(agentId);
         return NextResponse.json({
           success: true,
@@ -278,7 +278,7 @@ export async function GET(request: NextRequest) {
             positionCount: portfolio.positionCount,
             largestPositionPercent: portfolio.largestPositionPercent,
             diversificationScore: portfolio.diversificationScore,
-            positions: portfolio.positions.map(p => ({
+            positions: portfolio.positions.map((p) => ({
               symbol: p.symbol,
               valueSol: p.valueSol,
               percentOfPortfolio: p.percentOfPortfolio,
@@ -292,10 +292,14 @@ export async function GET(request: NextRequest) {
         if (!agentId) {
           return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
         }
-        
-        const strategy = (searchParams.get("strategy") || "conservative") as "conservative" | "diversify" | "follow_whales" | "aggressive";
+
+        const strategy = (searchParams.get("strategy") || "conservative") as
+          | "conservative"
+          | "diversify"
+          | "follow_whales"
+          | "aggressive";
         const budget = parseFloat(searchParams.get("budget") || "0.1");
-        
+
         const decision = await makeTradeDecision(agentId, strategy, budget);
         return NextResponse.json({
           success: true,

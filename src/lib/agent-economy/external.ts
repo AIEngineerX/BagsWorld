@@ -8,8 +8,14 @@
 // - We validate and use it for the request, then forget it
 // - No credentials stored, no custody
 
-import { Connection, PublicKey } from '@solana/web3.js';
-import { BAGS_API, lamportsToSol, solToLamports, type TradeQuote, type ClaimablePosition } from './types';
+import { Connection, PublicKey } from "@solana/web3.js";
+import {
+  BAGS_API,
+  lamportsToSol,
+  solToLamports,
+  type TradeQuote,
+  type ClaimablePosition,
+} from "./types";
 
 // ============================================================================
 // JWT VALIDATION
@@ -24,11 +30,11 @@ interface BagsJwtPayload {
 }
 
 function decodeJwt(token: string): BagsJwtPayload | null {
-  const parts = token.split('.');
+  const parts = token.split(".");
   if (parts.length !== 3) return null;
-  
+
   const payload = parts[1];
-  const decoded = Buffer.from(payload, 'base64url').toString('utf-8');
+  const decoded = Buffer.from(payload, "base64url").toString("utf-8");
   return JSON.parse(decoded);
 }
 
@@ -38,22 +44,22 @@ export function validateExternalJwt(jwt: string): {
   error?: string;
 } {
   const payload = decodeJwt(jwt);
-  
+
   if (!payload) {
-    return { valid: false, error: 'Invalid JWT format' };
+    return { valid: false, error: "Invalid JWT format" };
   }
-  
+
   // Check expiration
   const now = Math.floor(Date.now() / 1000);
   if (payload.exp && payload.exp < now) {
-    return { valid: false, error: 'JWT expired' };
+    return { valid: false, error: "JWT expired" };
   }
-  
+
   // Check required fields
   if (!payload.wallets || payload.wallets.length === 0) {
-    return { valid: false, error: 'JWT missing wallet information' };
+    return { valid: false, error: "JWT missing wallet information" };
   }
-  
+
   return { valid: true, payload };
 }
 
@@ -71,13 +77,13 @@ export interface ExternalAgentContext {
 
 export function createExternalContext(jwt: string): ExternalAgentContext {
   const validation = validateExternalJwt(jwt);
-  
+
   if (!validation.valid || !validation.payload) {
-    throw new Error(validation.error || 'Invalid JWT');
+    throw new Error(validation.error || "Invalid JWT");
   }
-  
+
   const payload = validation.payload;
-  
+
   return {
     jwt,
     username: payload.username,
@@ -97,22 +103,22 @@ async function callBagsApi<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${BAGS_API.AGENT_BASE}${endpoint}`;
-  
+
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${ctx.jwt}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${ctx.jwt}`,
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
-  
+
   const data = await response.json();
-  
+
   if (!response.ok || data.success === false) {
     throw new Error(data.error || `API error: ${response.status}`);
   }
-  
+
   return data.response || data;
 }
 
@@ -127,9 +133,9 @@ export async function getExternalBalance(ctx: ExternalAgentContext): Promise<{
   totalSol: number;
   wallets: Array<{ address: string; sol: number }>;
 }> {
-  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-  const connection = new Connection(rpcUrl, 'confirmed');
-  
+  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+  const connection = new Connection(rpcUrl, "confirmed");
+
   const balances = await Promise.all(
     ctx.wallets.map(async (address) => {
       const pubkey = new PublicKey(address);
@@ -137,9 +143,9 @@ export async function getExternalBalance(ctx: ExternalAgentContext): Promise<{
       return { address, sol: lamportsToSol(lamports) };
     })
   );
-  
+
   const totalSol = balances.reduce((sum, b) => sum + b.sol, 0);
-  
+
   return { totalSol, wallets: balances };
 }
 
@@ -150,17 +156,14 @@ export async function getExternalClaimable(ctx: ExternalAgentContext): Promise<{
   positions: ClaimablePosition[];
   totalClaimableSol: number;
 }> {
-  const data = await callBagsApi<{ positions: ClaimablePosition[] }>(
-    ctx,
-    '/fees/claimable'
-  );
-  
+  const data = await callBagsApi<{ positions: ClaimablePosition[] }>(ctx, "/fees/claimable");
+
   const positions = data.positions || [];
   const totalClaimableSol = positions.reduce(
     (sum, p) => sum + lamportsToSol(p.totalClaimableLamports),
     0
   );
-  
+
   return { positions, totalClaimableSol };
 }
 
@@ -174,8 +177,8 @@ export async function generateExternalClaimTx(ctx: ExternalAgentContext): Promis
   const data = await callBagsApi<{
     transactions: string[];
     totalClaimableLamports: number;
-  }>(ctx, '/fees/claim', { method: 'POST' });
-  
+  }>(ctx, "/fees/claim", { method: "POST" });
+
   return data;
 }
 
@@ -192,7 +195,7 @@ export async function getExternalQuote(
     ctx,
     `/swap/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amountLamports}&slippageBps=100`
   );
-  
+
   return data;
 }
 
@@ -203,18 +206,14 @@ export async function createExternalSwapTx(
   ctx: ExternalAgentContext,
   quote: TradeQuote
 ): Promise<{ transaction: string }> {
-  const data = await callBagsApi<{ transaction: string }>(
-    ctx,
-    '/swap/transaction',
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        requestId: quote.requestId,
-        userPublicKey: ctx.primaryWallet,
-      }),
-    }
-  );
-  
+  const data = await callBagsApi<{ transaction: string }>(ctx, "/swap/transaction", {
+    method: "POST",
+    body: JSON.stringify({
+      requestId: quote.requestId,
+      userPublicKey: ctx.primaryWallet,
+    }),
+  });
+
   return data;
 }
 
@@ -225,15 +224,11 @@ export async function submitExternalTransaction(
   ctx: ExternalAgentContext,
   signedTransaction: string
 ): Promise<{ signature: string }> {
-  const data = await callBagsApi<{ signature: string }>(
-    ctx,
-    '/transaction/submit',
-    {
-      method: 'POST',
-      body: JSON.stringify({ signedTransaction }),
-    }
-  );
-  
+  const data = await callBagsApi<{ signature: string }>(ctx, "/transaction/submit", {
+    method: "POST",
+    body: JSON.stringify({ signedTransaction }),
+  });
+
   return data;
 }
 
@@ -247,87 +242,97 @@ export async function submitExternalTransaction(
  */
 export class ExternalAgent {
   private ctx: ExternalAgentContext;
-  
+
   constructor(jwt: string) {
     this.ctx = createExternalContext(jwt);
   }
-  
+
   get username(): string {
     return this.ctx.username;
   }
-  
+
   get wallet(): string {
     return this.ctx.primaryWallet;
   }
-  
+
   get wallets(): string[] {
     return this.ctx.wallets;
   }
-  
+
   /**
    * Get SOL balance
    */
-  async getBalance(): Promise<{ totalSol: number; wallets: Array<{ address: string; sol: number }> }> {
+  async getBalance(): Promise<{
+    totalSol: number;
+    wallets: Array<{ address: string; sol: number }>;
+  }> {
     return getExternalBalance(this.ctx);
   }
-  
+
   /**
    * Get claimable fees
    */
   async getClaimable(): Promise<{ positions: ClaimablePosition[]; totalClaimableSol: number }> {
     return getExternalClaimable(this.ctx);
   }
-  
+
   /**
    * Generate claim transactions (external agent signs themselves)
    */
-  async generateClaimTransactions(): Promise<{ transactions: string[]; totalClaimableLamports: number }> {
+  async generateClaimTransactions(): Promise<{
+    transactions: string[];
+    totalClaimableLamports: number;
+  }> {
     return generateExternalClaimTx(this.ctx);
   }
-  
+
   /**
    * Get quote for a swap
    */
-  async getQuote(inputMint: string, outputMint: string, amountLamports: number): Promise<TradeQuote> {
+  async getQuote(
+    inputMint: string,
+    outputMint: string,
+    amountLamports: number
+  ): Promise<TradeQuote> {
     return getExternalQuote(this.ctx, inputMint, outputMint, amountLamports);
   }
-  
+
   /**
    * Create swap transaction (external agent signs themselves)
    */
   async createSwapTransaction(quote: TradeQuote): Promise<{ transaction: string }> {
     return createExternalSwapTx(this.ctx, quote);
   }
-  
+
   /**
    * Submit a signed transaction
    */
   async submitTransaction(signedTransaction: string): Promise<{ signature: string }> {
     return submitExternalTransaction(this.ctx, signedTransaction);
   }
-  
+
   /**
    * Get token balances
    */
   async getTokenBalances(): Promise<Array<{ mint: string; balance: number }>> {
-    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-    const connection = new Connection(rpcUrl, 'confirmed');
-    
+    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+    const connection = new Connection(rpcUrl, "confirmed");
+
     const publicKey = new PublicKey(this.ctx.primaryWallet);
-    
+
     const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
-      programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+      programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
     });
-    
+
     return tokenAccounts.value
-      .map(account => {
+      .map((account) => {
         const info = account.account.data.parsed.info;
         return {
           mint: info.mint,
-          balance: parseFloat(info.tokenAmount.uiAmountString || '0'),
+          balance: parseFloat(info.tokenAmount.uiAmountString || "0"),
         };
       })
-      .filter(t => t.balance > 0);
+      .filter((t) => t.balance > 0);
   }
 }
 
@@ -335,7 +340,4 @@ export class ExternalAgent {
 // EXPORTS
 // ============================================================================
 
-export {
-  decodeJwt,
-  callBagsApi,
-};
+export { decodeJwt, callBagsApi };

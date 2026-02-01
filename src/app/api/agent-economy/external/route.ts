@@ -244,7 +244,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Register in shared registry (persisted to DB)
-    const entry = await registerExternalAgent(wallet, name, zone as ZoneType, description, moltbookUsername);
+    const entry = await registerExternalAgent(
+      wallet,
+      name,
+      zone as ZoneType,
+      description,
+      moltbookUsername
+    );
 
     return NextResponse.json({
       success: true,
@@ -253,7 +259,9 @@ export async function POST(request: NextRequest) {
         wallet,
         name,
         zone,
-        moltbookProfile: moltbookUsername ? `https://moltbook.com/u/${moltbookUsername}` : undefined,
+        moltbookProfile: moltbookUsername
+          ? `https://moltbook.com/u/${moltbookUsername}`
+          : undefined,
         character: {
           id: entry.character.id,
           x: entry.character.x,
