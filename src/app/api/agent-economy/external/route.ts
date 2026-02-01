@@ -145,6 +145,70 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Admin test: Run claim + reinvest loop for a wallet
+  if (action === "test-claim-reinvest") {
+    const wallet = searchParams.get("wallet") || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC";
+    
+    console.log("[Test Claim+Reinvest] Starting for wallet:", wallet);
+
+    // Step 1: Check claimable
+    const { positions, totalClaimableLamports } = await getClaimableForWallet(wallet);
+    const claimableSol = totalClaimableLamports / 1_000_000_000;
+    
+    console.log(`[Test Claim+Reinvest] Claimable: ${claimableSol.toFixed(6)} SOL from ${positions.length} positions`);
+
+    if (positions.length === 0 || claimableSol < 0.001) {
+      return NextResponse.json({
+        success: true,
+        step: "check",
+        message: `No claimable fees (${claimableSol.toFixed(6)} SOL)`,
+        claimableSol,
+        positions: positions.length,
+      });
+    }
+
+    // Step 2: Generate claim transactions (unsigned - wallet owner must sign)
+    const claimResult = await generateClaimTxForWallet(wallet);
+    
+    if (!claimResult.transactions || claimResult.transactions.length === 0) {
+      return NextResponse.json({
+        success: true,
+        step: "generate",
+        message: "No claim transactions needed",
+        claimableSol,
+      });
+    }
+
+    // Step 3: Get reinvestment decision
+    const decision = await makeTradeDecision(
+      `external-${wallet.slice(0, 8)}`,
+      "reinvest_bagsworld",
+      claimableSol * 0.95, // Leave some for fees
+      { minTradeSol: 0.001, maxPositionSol: 1.0 }
+    );
+
+    return NextResponse.json({
+      success: true,
+      step: "ready",
+      message: "Ready to claim and reinvest. Wallet owner must sign the transactions.",
+      claimable: {
+        sol: claimableSol,
+        lamports: totalClaimableLamports,
+        positions: positions.length,
+        transactions: claimResult.transactions.length,
+      },
+      reinvestDecision: {
+        action: decision.action,
+        tokenMint: decision.tokenMint,
+        tokenSymbol: decision.tokenSymbol,
+        amountSol: decision.amountSol,
+        reason: decision.reason,
+        confidence: decision.confidence,
+      },
+      note: "External wallets must sign their own transactions. This endpoint shows what WOULD happen.",
+    });
+  }
+
   // Protected endpoints (require JWT)
   const authResult = requireAuth(request);
   if (authResult instanceof NextResponse) {
