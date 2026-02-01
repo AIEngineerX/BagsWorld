@@ -80,14 +80,26 @@ export async function attemptMatchmaking(): Promise<number | null> {
       `[Matchmaking] Created match ${matchId}: ${fighter1.moltbook_username} (karma: ${fighter1.moltbook_karma}) vs ${fighter2.moltbook_username} (karma: ${fighter2.moltbook_karma})`
     );
 
-    // Add match to arena engine
+    // Add match to arena engine and run to completion immediately
+    // This is necessary for serverless environments where state doesn't persist
     const engine = getArenaEngine();
     const added = await engine.addMatch(matchId);
-    if (!added) {
+    if (added) {
+      // Run the fight to completion (max 5000 ticks to prevent infinite loops)
+      let ticksRun = 0;
+      const maxTicks = 5000;
+      while (ticksRun < maxTicks) {
+        const states = engine.runTicks(50);
+        ticksRun += 50;
+        // Check if match is complete
+        const matchState = states.find(s => s.matchId === matchId);
+        if (!matchState || matchState.status !== "active") {
+          console.log(`[Matchmaking] Match ${matchId} completed after ${ticksRun} ticks`);
+          break;
+        }
+      }
+    } else {
       console.error(`[Matchmaking] Failed to add match ${matchId} to arena engine`);
-      // Match is created in DB but not running - this is a partial failure
-      // The match will show as "active" in DB but won't progress
-      // This could be recovered by a cleanup job
     }
 
     return matchId;
