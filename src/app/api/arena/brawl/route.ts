@@ -14,6 +14,7 @@ import {
   canFighterEnterQueue,
   createMatch,
   getMatch,
+  getFighterById,
 } from "@/lib/arena-db";
 import { getQueueStatus, attemptMatchmaking } from "@/lib/arena-matchmaking";
 import { getArenaEngine, startArenaEngine, stopArenaEngine } from "@/lib/arena-engine";
@@ -93,15 +94,37 @@ export async function GET(request: NextRequest) {
       // If engine has no matches, check database
       if (activeMatches.length === 0) {
         const dbMatches = await getActiveMatches();
+        // Fetch fighter details for each match
+        const matchesWithFighters = await Promise.all(
+          dbMatches.map(async (m) => {
+            const [fighter1, fighter2] = await Promise.all([
+              getFighterById(m.fighter1_id),
+              getFighterById(m.fighter2_id),
+            ]);
+            return {
+              matchId: m.id,
+              status: m.status,
+              fighter1: fighter1 ? {
+                id: fighter1.id,
+                username: fighter1.moltbook_username,
+                karma: fighter1.moltbook_karma,
+                hp: m.fighter1_hp ?? fighter1.hp,
+                maxHp: fighter1.hp,
+              } : null,
+              fighter2: fighter2 ? {
+                id: fighter2.id,
+                username: fighter2.moltbook_username,
+                karma: fighter2.moltbook_karma,
+                hp: m.fighter2_hp ?? fighter2.hp,
+                maxHp: fighter2.hp,
+              } : null,
+              created_at: m.created_at,
+            };
+          })
+        );
         return NextResponse.json({
           success: true,
-          matches: dbMatches.map((m) => ({
-            matchId: m.id,
-            status: m.status,
-            fighter1_id: m.fighter1_id,
-            fighter2_id: m.fighter2_id,
-            created_at: m.created_at,
-          })),
+          matches: matchesWithFighters,
           source: "database",
         });
       }
