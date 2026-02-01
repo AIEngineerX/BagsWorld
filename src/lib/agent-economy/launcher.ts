@@ -257,18 +257,26 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   // Step 3: Create launch transaction
   console.log('[Launcher] Step 3: Creating launch transaction...');
   
-  const launchResponse = await callBagsApi<{
-    transaction: string;
-  }>('/token-launch/create-launch-transaction', {
-    method: 'POST',
-    body: JSON.stringify({
-      metadataUrl,
-      tokenMint,
-      wallet: bagsWorldWallet,
-      initialBuyLamports: 0, // No initial buy
-      configKey,
-    }),
-  });
+  let launchResponse: { transaction: string };
+  try {
+    launchResponse = await callBagsApi<{ transaction: string }>('/token-launch/create-launch-transaction', {
+      method: 'POST',
+      body: JSON.stringify({
+        metadataUrl,
+        tokenMint,
+        wallet: bagsWorldWallet,
+        initialBuyLamports: 0, // No initial buy
+        configKey,
+      }),
+    });
+    console.log('[Launcher] Launch tx received, length:', launchResponse?.transaction?.length || 'missing');
+  } catch (err) {
+    throw new Error(`Step 3 failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  
+  if (!launchResponse?.transaction) {
+    throw new Error('No launch transaction returned from API');
+  }
   
   // Step 4: Sign and submit launch transaction
   console.log('[Launcher] Step 4: Signing and submitting...');
