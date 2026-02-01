@@ -231,10 +231,12 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   console.log(`[Launcher] Using partner config PDA: ${partnerConfigPda}`);
 
   // External agent gets 100% of the creator fee share
+  const partnerWallet = ECOSYSTEM_CONFIG.ecosystem.wallet;
   const feeShareRequest = {
     baseMint: tokenMint,
     payer: bagsWorldWallet,
-    partnerConfig: partnerConfigPda,
+    partner: partnerWallet, // BagsWorld partner wallet
+    partnerConfig: partnerConfigPda, // Partner config PDA
     claimersArray: [creatorWallet], // External agent's wallet
     basisPointsArray: [10000], // 100% to the external agent
   };
