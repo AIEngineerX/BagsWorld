@@ -10,6 +10,7 @@ import { Connection, Keypair, Transaction, VersionedTransaction } from "@solana/
 import bs58 from "bs58";
 import { BAGS_API } from "./types";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { saveGlobalToken, isNeonConfigured, type GlobalToken } from "@/lib/neon";
 
 // ============================================================================
 // CONFIGURATION
@@ -409,22 +410,47 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
     };
   }
 
-  // Build positions array for claim request
-  const positionsForClaim = positions.map((p) => ({
-    baseMint: p.baseMint,
-    virtualPoolAddress: p.virtualPoolAddress,
-  }));
+  // Generate individual claim tx for each position
+  // The v2 endpoint expects a single position at a time
+  const transactions: string[] = [];
+  
+  for (const position of positions) {
+    const claimAmount = parseInt(
+      position.virtualPoolClaimableAmount || position.totalClaimableLamportsUserShare || "0",
+      10
+    ) + parseInt(position.dammPoolClaimableAmount || "0", 10);
+    
+    if (claimAmount === 0) continue;
+    
+    // Generate claim tx for this position
+    const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
+    console.log(`[Launcher] Generating claim tx for ${position.baseMint}...`);
+    
+    const claimRes = await fetch(claimUrl, {
+      method: "POST",
+      headers: {
+        "x-api-key": BAGS_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        wallet,
+        positions: [position.baseMint], // Just send the mint as string array
+      }),
+    });
 
-  // Generate claim transactions
-  const claimResponse = await callBagsApi<{
-    transactions: Array<{ transaction: string }>;
-  }>("/token-launch/claim-txs/v2", {
-    method: "POST",
-    body: JSON.stringify({
-      wallet,
-      positions: positionsForClaim,
-    }),
-  });
+    const rawText = await claimRes.text();
+    console.log("[Launcher] Claim response:", claimRes.status, rawText.substring(0, 200));
+    
+    if (claimRes.ok) {
+      const data = JSON.parse(rawText);
+      const txs = data.response?.transactions || data.transactions || [];
+      for (const tx of txs) {
+        transactions.push(typeof tx === 'string' ? tx : tx.transaction);
+      }
+    }
+  }
+  
+  const claimResponse = { transactions: transactions.map(t => ({ transaction: t })) };
 
   return {
     success: true,
