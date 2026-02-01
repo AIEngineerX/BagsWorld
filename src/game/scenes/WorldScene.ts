@@ -8810,57 +8810,6 @@ Use: bags.fm/[yourname]`,
     infoText.setDepth(102);
     this.arenaElements.push(infoText);
 
-    // === ENTER ARENA BUTTON (prominent, bottom center) ===
-    const enterBtnX = centerX;
-    const enterBtnY = pathLevel + Math.round(50 * s);
-    const enterBtnWidth = Math.round(160 * s);
-    const enterBtnHeight = Math.round(40 * s);
-
-    const enterBtnBg = this.add.rectangle(
-      enterBtnX,
-      enterBtnY,
-      enterBtnWidth,
-      enterBtnHeight,
-      0x22c55e,
-      1
-    );
-    enterBtnBg.setDepth(100);
-    enterBtnBg.setStrokeStyle(3, 0x16a34a);
-    enterBtnBg.setInteractive({ useHandCursor: true });
-    this.arenaElements.push(enterBtnBg);
-
-    const enterBtnText = this.add.text(enterBtnX, enterBtnY, "⚔ ENTER ARENA", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(12 * s)}px`,
-      color: "#ffffff",
-      fontStyle: "bold",
-    });
-    enterBtnText.setOrigin(0.5, 0.5);
-    enterBtnText.setDepth(101);
-    this.arenaElements.push(enterBtnText);
-
-    // Glow effect animation
-    this.tweens.add({
-      targets: enterBtnBg,
-      alpha: { from: 1, to: 0.85 },
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
-
-    enterBtnBg.on("pointerover", () => {
-      enterBtnBg.setFillStyle(0x16a34a);
-      enterBtnBg.setStrokeStyle(3, 0x22c55e);
-    });
-    enterBtnBg.on("pointerout", () => {
-      enterBtnBg.setFillStyle(0x22c55e);
-      enterBtnBg.setStrokeStyle(3, 0x16a34a);
-    });
-    enterBtnBg.on("pointerdown", () => {
-      window.dispatchEvent(new CustomEvent("bagsworld-arena-click"));
-    });
-
     // === QUEUE STATUS (depth 100) ===
     const queueBg = this.add.rectangle(
       Math.round(100 * s),
@@ -9021,16 +8970,15 @@ Use: bags.fm/[yourname]`,
       return; // Already connected
     }
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/api/arena-ws`;
+    // Connect to arena server (Railway in production, localhost in dev)
+    const wsUrl = process.env.NEXT_PUBLIC_ARENA_WS_URL || "ws://localhost:8080";
 
     try {
       this.arenaWebSocket = new WebSocket(wsUrl);
 
       this.arenaWebSocket.onopen = () => {
-        console.log("[Arena] WebSocket connected");
-        // Request to watch queue updates
-        this.arenaWebSocket?.send(JSON.stringify({ type: "watch_queue" }));
+        console.log("[Arena] WebSocket connected to arena server");
+        // Arena server sends queue_status automatically on connect
       };
 
       this.arenaWebSocket.onmessage = (event) => {
@@ -9073,8 +9021,15 @@ Use: bags.fm/[yourname]`,
   private handleArenaMessage(msg: { type: string; data?: unknown; error?: string }): void {
     switch (msg.type) {
       case "connected":
-        console.log("[Arena] Connected, initial state:", msg.data);
+        console.log("[Arena] Connected to arena server:", msg.data);
         break;
+
+      case "queue_status": {
+        // Arena server format: { position, size, queue: [{username, karma}] }
+        const status = msg.data as { position: number; size: number; queue?: Array<{ username: string }> };
+        this.updateArenaQueue(status.queue?.map((_, i) => ({ fighter_id: i })) || []);
+        break;
+      }
 
       case "queue_update":
         this.updateArenaQueue(msg.data as Array<{ fighter_id: number }>);
@@ -9084,31 +9039,78 @@ Use: bags.fm/[yourname]`,
         this.updateActiveMatches(msg.data as Array<{ matchId: number; status: string }>);
         break;
 
-      case "match_state":
+      case "match_start":
       case "match_update":
+      case "match_end": {
+        // Arena server sends full fighter objects with stats
+        const matchData = msg.data as {
+          matchId: number;
+          status: string;
+          tick: number;
+          fighter1: {
+            id: number;
+            username: string;
+            stats: { hp: number; maxHp: number };
+            x: number;
+            y: number;
+            state: string;
+            direction: string;
+            spriteVariant: number;
+          };
+          fighter2: {
+            id: number;
+            username: string;
+            stats: { hp: number; maxHp: number };
+            x: number;
+            y: number;
+            state: string;
+            direction: string;
+            spriteVariant: number;
+          };
+          winner?: string;
+        };
+
+        // Transform to expected format for updateArenaMatch
+        this.updateArenaMatch({
+          matchId: matchData.matchId,
+          status: matchData.status,
+          tick: matchData.tick,
+          fighter1: {
+            id: matchData.fighter1.id,
+            hp: matchData.fighter1.stats.hp,
+            maxHp: matchData.fighter1.stats.maxHp,
+            x: matchData.fighter1.x,
+            y: matchData.fighter1.y,
+            state: matchData.fighter1.state,
+            direction: matchData.fighter1.direction,
+          },
+          fighter2: {
+            id: matchData.fighter2.id,
+            hp: matchData.fighter2.stats.hp,
+            maxHp: matchData.fighter2.stats.maxHp,
+            x: matchData.fighter2.x,
+            y: matchData.fighter2.y,
+            state: matchData.fighter2.state,
+            direction: matchData.fighter2.direction,
+          },
+          winner: matchData.winner,
+        });
+
+        // Trigger crowd cheer on match start
+        if (msg.type === "match_start") {
+          this.triggerCrowdCheer();
+        }
+        break;
+      }
+
+      case "match_state":
         this.updateArenaMatch(
           msg.data as {
             matchId: number;
             status: string;
             tick: number;
-            fighter1: {
-              id: number;
-              hp: number;
-              maxHp: number;
-              x: number;
-              y: number;
-              state: string;
-              direction: string;
-            };
-            fighter2: {
-              id: number;
-              hp: number;
-              maxHp: number;
-              x: number;
-              y: number;
-              state: string;
-              direction: string;
-            };
+            fighter1: { id: number; hp: number; maxHp: number; x: number; y: number; state: string; direction: string };
+            fighter2: { id: number; hp: number; maxHp: number; x: number; y: number; state: string; direction: string };
             winner?: string;
           }
         );
@@ -9138,8 +9140,10 @@ Use: bags.fm/[yourname]`,
    * Create the "How To Fight" pixel modal panel
    */
   private createArenaHowToPanel(cx: number, cy: number, s: number): void {
-    const panelW = Math.round(280 * s);
-    const panelH = Math.round(145 * s);
+    const panelW = Math.round(240 * s);
+    const panelH = Math.round(155 * s);
+    const borderW = Math.round(3 * s);
+    const accent = 0xef4444; // Red accent for fighting
 
     // Container for all panel elements
     const panel = this.add.container(cx, cy);
@@ -9148,174 +9152,268 @@ Use: bags.fm/[yourname]`,
     panel.setScale(0.8);
     this.arenaElements.push(panel);
 
-    // === N64 STYLE NEON GLOW LAYERS (outer to inner) ===
-    const glowOuter3 = this.add.rectangle(0, 0, panelW + 24 * s, panelH + 24 * s, 0xff00ff, 0.08);
-    panel.add(glowOuter3);
-    const glowOuter2 = this.add.rectangle(0, 0, panelW + 16 * s, panelH + 16 * s, 0x00ffff, 0.12);
-    panel.add(glowOuter2);
-    const glowOuter1 = this.add.rectangle(0, 0, panelW + 10 * s, panelH + 10 * s, 0xff00ff, 0.15);
-    panel.add(glowOuter1);
+    // === PIXEL-PERFECT DROP SHADOW ===
+    const shadowOffset = Math.round(4 * s);
+    const shadow1 = this.add.rectangle(
+      shadowOffset,
+      shadowOffset,
+      panelW + borderW * 2,
+      panelH + borderW * 2,
+      0x000000,
+      0.5
+    );
+    panel.add(shadow1);
+    const shadow2 = this.add.rectangle(
+      Math.round(2 * s),
+      Math.round(2 * s),
+      panelW + borderW * 2,
+      panelH + borderW * 2,
+      0x000000,
+      0.3
+    );
+    panel.add(shadow2);
 
-    // === 3D DEPTH EFFECT (N64 style beveled edges) ===
-    const depth3 = this.add.rectangle(6 * s, 6 * s, panelW, panelH, 0x000000, 0.6);
-    panel.add(depth3);
-    const depth2 = this.add.rectangle(4 * s, 4 * s, panelW, panelH, 0x1a0a2e, 0.8);
-    panel.add(depth2);
-    const depth1 = this.add.rectangle(2 * s, 2 * s, panelW, panelH, 0x2d1b4e, 0.9);
-    panel.add(depth1);
+    // === DOUBLE-LINE BORDER ===
+    const outerBorder = this.add.rectangle(
+      0,
+      0,
+      panelW + borderW * 2,
+      panelH + borderW * 2,
+      accent
+    );
+    panel.add(outerBorder);
+    const borderGap = this.add.rectangle(0, 0, panelW + borderW, panelH + borderW, 0x0a0a0f);
+    panel.add(borderGap);
+    const innerBorder = this.add.rectangle(0, 0, panelW, panelH, accent);
+    panel.add(innerBorder);
 
-    // === MAIN PANEL WITH GRADIENT SIMULATION ===
-    const mainBg = this.add.rectangle(0, 0, panelW, panelH, 0x1e1b4b);
-    panel.add(mainBg);
-    const topHighlight = this.add.rectangle(0, -panelH / 2 + 8 * s, panelW - 4 * s, 12 * s, 0x4c1d95, 0.6);
-    panel.add(topHighlight);
+    // === MAIN PANEL BACKGROUND ===
+    const panelBg = this.add.rectangle(
+      0,
+      0,
+      panelW - Math.round(4 * s),
+      panelH - Math.round(4 * s),
+      0x0f172a
+    );
+    panel.add(panelBg);
 
-    // === NEON BORDER FRAME ===
-    const neonOuter = this.add.rectangle(0, 0, panelW - 2 * s, panelH - 2 * s);
-    neonOuter.setStrokeStyle(3 * s, 0xff00ff);
-    neonOuter.setFillStyle(0x000000, 0);
-    panel.add(neonOuter);
-    const neonInner = this.add.rectangle(0, 0, panelW - 10 * s, panelH - 10 * s);
-    neonInner.setStrokeStyle(2 * s, 0x00ffff);
-    neonInner.setFillStyle(0x000000, 0);
-    panel.add(neonInner);
+    // === INNER BEVEL HIGHLIGHTS ===
+    const bevelLeft = this.add.rectangle(
+      -panelW / 2 + Math.round(4 * s),
+      0,
+      Math.round(2 * s),
+      panelH - Math.round(12 * s),
+      accent,
+      0.12
+    );
+    panel.add(bevelLeft);
+    const bevelTop = this.add.rectangle(
+      0,
+      -panelH / 2 + Math.round(4 * s),
+      panelW - Math.round(12 * s),
+      Math.round(2 * s),
+      accent,
+      0.18
+    );
+    panel.add(bevelTop);
 
-    // === CORNER ACCENTS (N64 style) ===
-    const cornerSize = 12 * s;
-    const cornerOffsetX = panelW / 2 - 8 * s;
-    const cornerOffsetY = panelH / 2 - 8 * s;
-    const cornerPositions = [
-      { x: -cornerOffsetX, y: -cornerOffsetY },
-      { x: cornerOffsetX, y: -cornerOffsetY },
-      { x: -cornerOffsetX, y: cornerOffsetY },
-      { x: cornerOffsetX, y: cornerOffsetY },
+    // === CRT SCANLINES ===
+    const scanSpacing = Math.round(3 * s);
+    for (let y = -panelH / 2 + scanSpacing; y < panelH / 2; y += scanSpacing) {
+      const scanline = this.add.rectangle(0, y, panelW - Math.round(10 * s), 1, 0x000000, 0.06);
+      panel.add(scanline);
+    }
+
+    // === L-SHAPED CORNER DECORATIONS ===
+    const cornerLen = Math.round(12 * s);
+    const cornerThick = Math.round(3 * s);
+    const cornerInset = Math.round(6 * s);
+    const corners = [
+      { x: -panelW / 2 + cornerInset, y: -panelH / 2 + cornerInset, fx: 1, fy: 1 },
+      { x: panelW / 2 - cornerInset, y: -panelH / 2 + cornerInset, fx: -1, fy: 1 },
+      { x: -panelW / 2 + cornerInset, y: panelH / 2 - cornerInset, fx: 1, fy: -1 },
+      { x: panelW / 2 - cornerInset, y: panelH / 2 - cornerInset, fx: -1, fy: -1 },
     ];
-    const cornerElements: Phaser.GameObjects.Rectangle[] = [];
-    cornerPositions.forEach((pos) => {
-      const corner = this.add.rectangle(pos.x, pos.y, cornerSize, cornerSize, 0xfbbf24);
-      panel.add(corner);
-      cornerElements.push(corner);
-      const cornerInner = this.add.rectangle(pos.x, pos.y, cornerSize - 4 * s, cornerSize - 4 * s, 0xff6b00);
-      panel.add(cornerInner);
-      cornerElements.push(cornerInner);
+    corners.forEach((c) => {
+      const hBar = this.add.rectangle(
+        c.x + (c.fx * cornerLen) / 2,
+        c.y,
+        cornerLen,
+        cornerThick,
+        accent
+      );
+      panel.add(hBar);
+      const vBar = this.add.rectangle(
+        c.x,
+        c.y + (c.fy * cornerLen) / 2,
+        cornerThick,
+        cornerLen,
+        accent
+      );
+      panel.add(vBar);
     });
 
-    // === TITLE BANNER (smooth N64 style) ===
-    const bannerY = -panelH / 2 + 28 * s;
-    const bannerGlow = this.add.rectangle(0, bannerY, panelW - 30 * s, 28 * s, 0xfbbf24, 0.3);
-    panel.add(bannerGlow);
-    const bannerShadow = this.add.rectangle(2 * s, bannerY + 2 * s, panelW - 34 * s, 24 * s, 0x000000, 0.5);
-    panel.add(bannerShadow);
-    const bannerBg = this.add.rectangle(0, bannerY, panelW - 34 * s, 24 * s, 0xb91c1c);
-    panel.add(bannerBg);
-    const bannerHighlight = this.add.rectangle(0, bannerY - 6 * s, panelW - 40 * s, 6 * s, 0xef4444, 0.7);
-    panel.add(bannerHighlight);
-
-    // Title text with shadow
-    const titleGlow = this.add.text(1 * s, bannerY + 1 * s, "MOLTBOOK ARENA", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(14 * s)}px`,
-      color: "#000000",
-    });
-    titleGlow.setOrigin(0.5, 0.5);
-    titleGlow.setAlpha(0.5);
-    panel.add(titleGlow);
-    const titleText = this.add.text(0, bannerY, "MOLTBOOK ARENA", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(14 * s)}px`,
-      color: "#fef08a",
-      fontStyle: "bold",
-    });
-    titleText.setOrigin(0.5, 0.5);
-    panel.add(titleText);
-
-    // === FIGHT BUTTON (N64 style with depth) ===
-    const btnW = Math.round(180 * s);
-    const btnH = Math.round(36 * s);
-    const btnY = Math.round(12 * s);
-
-    const btnShadow = this.add.rectangle(3 * s, btnY + 3 * s, btnW, btnH, 0x000000, 0.5);
-    panel.add(btnShadow);
-    const btnBase = this.add.rectangle(0, btnY, btnW, btnH, 0x065f46);
-    panel.add(btnBase);
-    const btnFace = this.add.rectangle(0, btnY - 2 * s, btnW - 4 * s, btnH - 6 * s, 0x10b981);
-    btnFace.setInteractive({ useHandCursor: true });
-    panel.add(btnFace);
-    const btnShine = this.add.rectangle(0, btnY - btnH / 2 + 4 * s, btnW - 8 * s, 4 * s, 0x34d399, 0.8);
-    panel.add(btnShine);
-
-    const btnTextShadow = this.add.text(1 * s, btnY - 1 * s, "⚔ CLICK TO FIGHT ⚔", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(11 * s)}px`,
-      color: "#000000",
-    });
-    btnTextShadow.setOrigin(0.5, 0.5);
-    btnTextShadow.setAlpha(0.4);
-    panel.add(btnTextShadow);
-    const btnText = this.add.text(0, btnY - 2 * s, "⚔ CLICK TO FIGHT ⚔", {
+    // === TITLE BAR ===
+    const titleBarY = -panelH / 2 + Math.round(18 * s);
+    const titleBar = this.add.rectangle(
+      0,
+      titleBarY,
+      panelW - Math.round(20 * s),
+      Math.round(22 * s),
+      accent,
+      0.15
+    );
+    panel.add(titleBar);
+    const titleText = this.add.text(0, titleBarY, "⚔ HOW TO FIGHT ⚔", {
       fontFamily: "monospace",
       fontSize: `${Math.round(11 * s)}px`,
       color: "#ffffff",
       fontStyle: "bold",
     });
-    btnText.setOrigin(0.5, 0.5);
-    panel.add(btnText);
+    titleText.setOrigin(0.5, 0.5);
+    panel.add(titleText);
 
-    // Button interactions
-    btnFace.on("pointerover", () => {
-      btnFace.setFillStyle(0x34d399);
-      btnText.setColor("#fbbf24");
+    // === STEP 1 ===
+    const step1Y = -Math.round(28 * s);
+    const step1Box = this.add.rectangle(
+      -panelW / 2 + Math.round(22 * s),
+      step1Y,
+      Math.round(20 * s),
+      Math.round(20 * s),
+      0xfbbf24
+    );
+    panel.add(step1Box);
+    const step1Num = this.add.text(-panelW / 2 + Math.round(22 * s), step1Y, "1", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#0f172a",
+      fontStyle: "bold",
     });
-    btnFace.on("pointerout", () => {
-      btnFace.setFillStyle(0x10b981);
-      btnText.setColor("#ffffff");
-    });
-    btnFace.on("pointerdown", () => {
-      window.dispatchEvent(new CustomEvent("bagsworld-arena-click"));
-    });
+    step1Num.setOrigin(0.5, 0.5);
+    panel.add(step1Num);
+    const step1Line1 = this.add.text(
+      -panelW / 2 + Math.round(40 * s),
+      step1Y - Math.round(6 * s),
+      'Post "!fight" to',
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(8 * s)}px`,
+        color: "#d1d5db",
+      }
+    );
+    panel.add(step1Line1);
+    const step1Line2 = this.add.text(
+      -panelW / 2 + Math.round(40 * s),
+      step1Y + Math.round(6 * s),
+      "m/bagsworld-arena",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(9 * s)}px`,
+        color: "#4ade80",
+        fontStyle: "bold",
+      }
+    );
+    panel.add(step1Line2);
 
-    // === SUBTITLE ===
-    const subText = this.add.text(0, Math.round(44 * s), "Enter your MoltBook username", {
+    // === STEP 2 ===
+    const step2Y = Math.round(8 * s);
+    const step2Box = this.add.rectangle(
+      -panelW / 2 + Math.round(22 * s),
+      step2Y,
+      Math.round(20 * s),
+      Math.round(20 * s),
+      0xfbbf24
+    );
+    panel.add(step2Box);
+    const step2Num = this.add.text(-panelW / 2 + Math.round(22 * s), step2Y, "2", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#0f172a",
+      fontStyle: "bold",
+    });
+    step2Num.setOrigin(0.5, 0.5);
+    panel.add(step2Num);
+    const step2Line1 = this.add.text(
+      -panelW / 2 + Math.round(40 * s),
+      step2Y - Math.round(6 * s),
+      "Your MoltBook karma",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(8 * s)}px`,
+        color: "#d1d5db",
+      }
+    );
+    panel.add(step2Line1);
+    const step2Line2 = this.add.text(
+      -panelW / 2 + Math.round(40 * s),
+      step2Y + Math.round(6 * s),
+      "= Your Power Level!",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(9 * s)}px`,
+        color: "#f472b6",
+        fontStyle: "bold",
+      }
+    );
+    panel.add(step2Line2);
+
+    // === STEP 3 ===
+    const step3Y = Math.round(44 * s);
+    const step3Box = this.add.rectangle(
+      -panelW / 2 + Math.round(22 * s),
+      step3Y,
+      Math.round(20 * s),
+      Math.round(20 * s),
+      0xfbbf24
+    );
+    panel.add(step3Box);
+    const step3Num = this.add.text(-panelW / 2 + Math.round(22 * s), step3Y, "3", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#0f172a",
+      fontStyle: "bold",
+    });
+    step3Num.setOrigin(0.5, 0.5);
+    panel.add(step3Num);
+    const step3Line1 = this.add.text(
+      -panelW / 2 + Math.round(40 * s),
+      step3Y - Math.round(6 * s),
+      "Get matched & fight!",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(8 * s)}px`,
+        color: "#d1d5db",
+      }
+    );
+    panel.add(step3Line1);
+    const step3Line2 = this.add.text(
+      -panelW / 2 + Math.round(40 * s),
+      step3Y + Math.round(6 * s),
+      "Winner takes glory!",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(9 * s)}px`,
+        color: "#ef4444",
+        fontStyle: "bold",
+      }
+    );
+    panel.add(step3Line2);
+
+    // === FOOTER ===
+    const footerText = this.add.text(0, panelH / 2 - Math.round(12 * s), "moltbook.com", {
       fontFamily: "monospace",
       fontSize: `${Math.round(7 * s)}px`,
-      color: "#a78bfa",
+      color: "#6b7280",
     });
-    subText.setOrigin(0.5, 0.5);
-    panel.add(subText);
-
-    // === NEON FLICKER ANIMATIONS ===
-    this.tweens.add({
-      targets: [neonOuter, glowOuter1],
-      alpha: { from: 1, to: 0.6 },
-      duration: 100,
-      yoyo: true,
-      repeat: -1,
-      repeatDelay: 2000,
-    });
-    this.tweens.add({
-      targets: [neonInner, glowOuter2],
-      alpha: { from: 1, to: 0.7 },
-      duration: 80,
-      yoyo: true,
-      repeat: -1,
-      repeatDelay: 3000,
-      delay: 500,
-    });
-    this.tweens.add({
-      targets: cornerElements,
-      alpha: { from: 1, to: 0.7 },
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
-    });
+    footerText.setOrigin(0.5, 0.5);
+    panel.add(footerText);
 
     // === ENTRANCE ANIMATION ===
     this.tweens.add({
       targets: panel,
       alpha: 1,
       scale: 1,
-      duration: 500,
+      duration: 400,
       ease: "Back.easeOut",
     });
   }
