@@ -98,6 +98,53 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Admin test launch (no auth - for testing only)
+  if (action === "test-launch") {
+    const symbol = searchParams.get("symbol") || "TEST" + Math.floor(Math.random() * 10000);
+    const testWallet = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC"; // Ghost's wallet
+
+    const launcherStatus = isLauncherConfigured();
+    if (!launcherStatus.configured) {
+      return NextResponse.json({
+        success: false,
+        error: `Launcher not configured. Missing: ${launcherStatus.missing.join(", ")}`,
+      });
+    }
+
+    try {
+      console.log("[Test Launch] Starting test launch:", symbol);
+      const result = await launchForExternal({
+        creatorWallet: testWallet,
+        name: `${symbol} Test Token`,
+        symbol: symbol.toUpperCase(),
+        description: "Test token launched via BagsWorld agent economy",
+        imageUrl: `https://api.dicebear.com/7.x/shapes/png?seed=${symbol}&size=400`,
+      });
+
+      if (!result.success) {
+        return NextResponse.json({ success: false, error: result.error });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Test launch successful!",
+        token: {
+          mint: result.tokenMint,
+          symbol,
+          bagsUrl: result.bagsUrl,
+          explorerUrl: result.explorerUrl,
+        },
+        signature: result.signature,
+      });
+    } catch (err) {
+      console.error("[Test Launch] Error:", err);
+      return NextResponse.json({
+        success: false,
+        error: err instanceof Error ? err.message : "Launch failed",
+      });
+    }
+  }
+
   // Protected endpoints (require JWT)
   const authResult = requireAuth(request);
   if (authResult instanceof NextResponse) {
@@ -405,19 +452,7 @@ export async function POST(request: NextRequest) {
   // =========================================================================
 
   if (action === "launch") {
-    // Token launch - coming soon!
-    // Requires Bags.fm fee-share API access
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Token launch coming soon! We're finalizing Bags.fm integration.",
-        status: "coming_soon",
-        available: ["join", "claimable", "who", "generate-image"],
-      },
-      { status: 503 }
-    );
-
-    /* DISABLED - Waiting for Bags.fm fee-share API access
+    // Token launch enabled - uses BagsWorld's partnerConfigPda
     const { wallet, name, symbol, description, imageUrl, twitter, website, telegram } = body;
 
     if (!wallet) {
@@ -494,7 +529,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    END DISABLED */
   }
 
   // =========================================================================
