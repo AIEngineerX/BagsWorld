@@ -407,9 +407,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!name || !symbol || !description || !imageUrl) {
+    if (!name || !symbol || !description) {
       return NextResponse.json(
-        { success: false, error: "name, symbol, description, and imageUrl required" },
+        { success: false, error: "name, symbol, and description required" },
         { status: 400 }
       );
     }
