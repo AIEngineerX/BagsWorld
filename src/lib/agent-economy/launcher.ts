@@ -238,13 +238,12 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
 
   // External agent gets 100% of the creator fee share
   // Using the working bags-api.ts format: claimersArray + basisPointsArray
-  // Must include partnerConfig for proper Meteora bonding curve linking
+  // NOTE: partnerConfig causes 500 errors - not including it for now
   const feeShareRequest = {
     baseMint: tokenMint,
     payer: bagsWorldWallet,
     claimersArray: [creatorWallet], // Wallet addresses that receive fees
     basisPointsArray: [10000], // 100% (10000 bps) to the external agent
-    partnerConfig: partnerConfigPda, // Required for proper fee routing
   };
 
   console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest, null, 2));
