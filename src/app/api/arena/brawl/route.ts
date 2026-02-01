@@ -189,6 +189,50 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Lookup MoltBook user profile for arena entry
+    case "lookup": {
+      const username = searchParams.get("username");
+      if (!username) {
+        return NextResponse.json({ error: "username required" }, { status: 400 });
+      }
+
+      try {
+        // Try to get profile from MoltBook API
+        const { getMoltbookClient } = await import("@/lib/moltbook-client");
+        const client = getMoltbookClient();
+        const profile = await client.getAgentProfile(username);
+
+        return NextResponse.json({
+          success: true,
+          verified: true,
+          profile: {
+            username: profile.name,
+            karma: profile.karma,
+            postCount: profile.postCount,
+            commentCount: profile.commentCount,
+            avatar: profile.avatar,
+            createdAt: profile.createdAt,
+          },
+          source: "moltbook",
+        });
+      } catch (error) {
+        // User not found on MoltBook - return unverified with default stats
+        console.log(`[Arena] MoltBook lookup failed for ${username}:`, error);
+        return NextResponse.json({
+          success: true,
+          verified: false,
+          profile: {
+            username,
+            karma: 100, // Default karma for unverified users
+            postCount: 0,
+            commentCount: 0,
+          },
+          source: "default",
+          message: "User not found on MoltBook. Using default stats.",
+        });
+      }
+    }
+
     default:
       return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
   }

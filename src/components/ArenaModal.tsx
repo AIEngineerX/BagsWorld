@@ -309,6 +309,18 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
     message: string;
   } | null>(null);
 
+  // MoltBook profile lookup state
+  const [profileLookup, setProfileLookup] = useState<{
+    loading: boolean;
+    verified: boolean;
+    karma: number;
+    postCount: number;
+    commentCount: number;
+    avatar?: string;
+    error?: string;
+  } | null>(null);
+  const lookupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // WebSocket connection
   const wsRef = useRef<WebSocket | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
@@ -405,21 +417,94 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
     setJoinResult(null);
 
     // Send join_queue message to arena server
+    // Use verified karma from lookup, or default to 100
+    const karma = profileLookup?.verified ? profileLookup.karma : 100;
+
     wsRef.current.send(
       JSON.stringify({
         type: "join_queue",
         username: username.trim(),
-        karma: 100, // Default karma
+        karma,
       })
     );
 
     setUsername("");
+    setProfileLookup(null); // Reset lookup
     setIsJoining(false);
     setJoinResult({
       success: true,
-      message: "Joining queue...",
+      message: profileLookup?.verified
+        ? `Joining queue with ${karma} karma (verified)...`
+        : "Joining queue...",
     });
   };
+
+  // Lookup MoltBook profile when username changes (debounced)
+  useEffect(() => {
+    if (!username.trim() || username.trim().length < 2) {
+      setProfileLookup(null);
+      return;
+    }
+
+    // Clear previous timeout
+    if (lookupTimeoutRef.current) {
+      clearTimeout(lookupTimeoutRef.current);
+    }
+
+    // Set loading state
+    setProfileLookup((prev) => ({
+      loading: true,
+      verified: prev?.verified || false,
+      karma: prev?.karma || 100,
+      postCount: prev?.postCount || 0,
+      commentCount: prev?.commentCount || 0,
+    }));
+
+    // Debounce the lookup
+    lookupTimeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/arena/brawl?action=lookup&username=${encodeURIComponent(username.trim())}`
+        );
+        const data = await res.json();
+
+        if (data.success) {
+          setProfileLookup({
+            loading: false,
+            verified: data.verified,
+            karma: data.profile.karma,
+            postCount: data.profile.postCount,
+            commentCount: data.profile.commentCount,
+            avatar: data.profile.avatar,
+          });
+        } else {
+          setProfileLookup({
+            loading: false,
+            verified: false,
+            karma: 100,
+            postCount: 0,
+            commentCount: 0,
+            error: data.error || "Lookup failed",
+          });
+        }
+      } catch (err) {
+        setProfileLookup({
+          loading: false,
+          verified: false,
+          karma: 100,
+          postCount: 0,
+          commentCount: 0,
+          error: "Network error",
+        });
+      }
+    }, 500); // 500ms debounce
+
+    return () => {
+      if (lookupTimeoutRef.current) {
+        clearTimeout(lookupTimeoutRef.current);
+      }
+    };
+  }, [username]);
 
   // Idle animation toggle
   useEffect(() => {
@@ -667,15 +752,65 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
                 <label className="font-pixel text-[8px] text-gray-400 mb-1 block">
                   MOLTBOOK USERNAME
                 </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleJoinArena()}
-                  placeholder="@youragent"
-                  className="w-full bg-bags-darker/80 border border-bags-green/30 rounded-lg px-3 py-2 font-pixel text-[10px] text-white placeholder-gray-500 focus:outline-none focus:border-bags-green/60 transition-colors"
-                  disabled={isJoining}
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleJoinArena()}
+                    placeholder="@youragent"
+                    className={`w-full bg-bags-darker/80 border rounded-lg px-3 py-2 font-pixel text-[10px] text-white placeholder-gray-500 focus:outline-none transition-colors ${
+                      profileLookup?.verified
+                        ? "border-bags-green pr-8"
+                        : "border-bags-green/30 focus:border-bags-green/60"
+                    }`}
+                    disabled={isJoining}
+                  />
+                  {/* Loading/Verified indicator */}
+                  {profileLookup?.loading && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <span className="w-4 h-4 border-2 border-bags-green/40 border-t-bags-green rounded-full animate-spin block" />
+                    </div>
+                  )}
+                  {profileLookup?.verified && !profileLookup.loading && (
+                    <div
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-bags-green"
+                      title="Verified MoltBook user"
+                    >
+                      ✓
+                    </div>
+                  )}
+                </div>
+
+                {/* Profile lookup result */}
+                {profileLookup && !profileLookup.loading && username.trim() && (
+                  <div
+                    className={`mt-2 rounded-lg px-3 py-2 font-pixel text-[8px] ${
+                      profileLookup.verified
+                        ? "bg-bags-green/10 border border-bags-green/30"
+                        : "bg-yellow-500/10 border border-yellow-500/30"
+                    }`}
+                  >
+                    {profileLookup.verified ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-bags-green flex items-center gap-1">
+                          <span>✓</span> VERIFIED
+                        </span>
+                        <div className="text-white flex gap-3">
+                          <span>
+                            <span className="text-bags-gold">⚡</span> {profileLookup.karma} karma
+                          </span>
+                          <span className="text-gray-400">{profileLookup.postCount} posts</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-yellow-400 flex items-center gap-2">
+                        <span>⚠</span>
+                        <span>Not on MoltBook - using default stats (100 karma)</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Join button */}
