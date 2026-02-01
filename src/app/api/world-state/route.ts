@@ -28,6 +28,7 @@ import {
   setEventsClearedTimestamp,
   type GlobalToken,
 } from "@/lib/neon";
+import { getAgentCharacters } from "@/lib/agent-economy";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
 
 // Bags SDK types
@@ -1399,6 +1400,12 @@ export async function POST(request: NextRequest) {
 
     previousState = worldState;
 
+    // Inject agent characters into population
+    const agentCharacters = getAgentCharacters();
+    if (agentCharacters.length > 0) {
+      worldState.population = [...worldState.population, ...agentCharacters];
+    }
+
     return NextResponse.json(worldState);
   } catch {
     return NextResponse.json({ error: "Failed to build world state" }, { status: 500 });
@@ -1425,6 +1432,12 @@ export async function GET() {
 
       if (previousState) {
         worldState.events = previousState.events;
+      }
+
+      // Inject agent characters into population
+      const agentCharacters = getAgentCharacters();
+      if (agentCharacters.length > 0) {
+        worldState.population = [...worldState.population, ...agentCharacters];
       }
 
       return NextResponse.json(worldState);
@@ -1464,6 +1477,12 @@ export async function GET() {
     earnerCache = { data: earners, timestamp: now };
 
     previousState = worldState;
+
+    // Inject agent characters into population
+    const agentCharacters2 = getAgentCharacters();
+    if (agentCharacters2.length > 0) {
+      worldState.population = [...worldState.population, ...agentCharacters2];
+    }
 
     return NextResponse.json(worldState);
   } catch {

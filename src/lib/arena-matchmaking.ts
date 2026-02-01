@@ -114,7 +114,7 @@ export async function attemptMatchmaking(): Promise<number | null> {
         const states = engine.runTicks(50);
         ticksRun += 50;
         // Check if match is complete
-        const matchState = states.find(s => s.matchId === matchId);
+        const matchState = states.find((s) => s.matchId === matchId);
         if (!matchState || matchState.status !== "active") {
           console.log(`[Matchmaking] Match ${matchId} completed after ${ticksRun} ticks`);
           // Store the result for the caller

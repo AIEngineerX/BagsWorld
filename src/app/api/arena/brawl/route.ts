@@ -104,20 +104,24 @@ export async function GET(request: NextRequest) {
             return {
               matchId: m.id,
               status: m.status,
-              fighter1: fighter1 ? {
-                id: fighter1.id,
-                username: fighter1.moltbook_username,
-                karma: fighter1.moltbook_karma,
-                hp: m.fighter1_hp ?? fighter1.hp,
-                maxHp: fighter1.hp,
-              } : null,
-              fighter2: fighter2 ? {
-                id: fighter2.id,
-                username: fighter2.moltbook_username,
-                karma: fighter2.moltbook_karma,
-                hp: m.fighter2_hp ?? fighter2.hp,
-                maxHp: fighter2.hp,
-              } : null,
+              fighter1: fighter1
+                ? {
+                    id: fighter1.id,
+                    username: fighter1.moltbook_username,
+                    karma: fighter1.moltbook_karma,
+                    hp: m.fighter1_hp ?? fighter1.hp,
+                    maxHp: fighter1.hp,
+                  }
+                : null,
+              fighter2: fighter2
+                ? {
+                    id: fighter2.id,
+                    username: fighter2.moltbook_username,
+                    karma: fighter2.moltbook_karma,
+                    hp: m.fighter2_hp ?? fighter2.hp,
+                    maxHp: fighter2.hp,
+                  }
+                : null,
               created_at: m.created_at,
             };
           })
@@ -366,10 +370,13 @@ export async function POST(request: NextRequest) {
               console.log(`[Arena] Verified MoltBook agent: ${cleanUsername} (karma: ${karma})`);
             }
           } else if (moltbookRes.status === 404) {
-            return NextResponse.json({
-              success: false,
-              error: `Agent "${cleanUsername}" not found on MoltBook. Register at moltbook.com first.`,
-            }, { status: 404 });
+            return NextResponse.json(
+              {
+                success: false,
+                error: `Agent "${cleanUsername}" not found on MoltBook. Register at moltbook.com first.`,
+              },
+              { status: 404 }
+            );
           }
         } catch (err) {
           // MoltBook API unavailable - allow with default karma but log warning
@@ -379,10 +386,13 @@ export async function POST(request: NextRequest) {
         const result = await manualFighterEntry(cleanUsername, karma);
 
         if (!result.success) {
-          return NextResponse.json({
-            success: false,
-            error: result.error || "Failed to join arena",
-          }, { status: 400 });
+          return NextResponse.json(
+            {
+              success: false,
+              error: result.error || "Failed to join arena",
+            },
+            { status: 400 }
+          );
         }
 
         // Build response message based on fight result
@@ -445,7 +455,7 @@ export async function POST(request: NextRequest) {
           while (totalTicks < maxTicks) {
             const states = engine.runTicks(50);
             totalTicks += 50;
-            const matchState = states.find(s => s.matchId === matchId);
+            const matchState = states.find((s) => s.matchId === matchId);
             if (!matchState || matchState.status !== "active") {
               winner = matchState?.winner || null;
               break;
