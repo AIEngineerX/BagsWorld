@@ -181,6 +181,41 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Launcher status (public - no auth)
+  if (action === "launcher-status") {
+    const status = isLauncherConfigured();
+    const wallet = getLauncherWallet();
+    let balance = 0;
+
+    if (status.configured && wallet) {
+      try {
+        balance = await getLauncherBalance();
+      } catch (err) {
+        console.error("[launcher-status] Failed to get balance:", err);
+      }
+    }
+    
+    const rateLimits = getRateLimitStatus();
+
+    return NextResponse.json({
+      success: true,
+      launcher: {
+        configured: status.configured,
+        missing: status.missing,
+        wallet: wallet ? `${wallet.slice(0, 8)}...${wallet.slice(-4)}` : null,
+        balanceSol: balance,
+        canLaunch: status.configured && balance > 0.05,
+      },
+      rateLimits: rateLimits.global,
+      safety: {
+        nonCustodial: true,
+        description: "BagsWorld never has access to your private keys. You sign all claim transactions yourself.",
+        feeShare: "100% of trading fees go to your wallet",
+        rateLimit: `${rateLimits.global.limit - rateLimits.global.used} launches remaining today (global)`,
+      },
+    });
+  }
+
   // Debug endpoint to check environment
   if (action === "debug-env") {
     const apiKey = process.env.BAGS_API_KEY;
@@ -813,38 +848,6 @@ export async function POST(request: NextRequest) {
         "2. Submit to Solana RPC: sendTransaction(signedTx)",
         "3. SOL will be transferred to your wallet",
       ],
-    });
-  }
-
-  if (action === "launcher-status") {
-    // Check launcher configuration status
-    const status = isLauncherConfigured();
-    const wallet = getLauncherWallet();
-    let balance = 0;
-
-    if (status.configured && wallet) {
-      balance = await getLauncherBalance();
-    }
-    
-    // Get global rate limits
-    const rateLimits = getRateLimitStatus();
-
-    return NextResponse.json({
-      success: true,
-      launcher: {
-        configured: status.configured,
-        missing: status.missing,
-        wallet: wallet ? `${wallet.slice(0, 8)}...${wallet.slice(-4)}` : null,
-        balanceSol: balance,
-        canLaunch: status.configured && balance > 0.05,
-      },
-      rateLimits: rateLimits.global,
-      safety: {
-        nonCustodial: true,
-        description: "BagsWorld never has access to your private keys. You sign all claim transactions yourself.",
-        feeShare: "100% of trading fees go to your wallet",
-        rateLimit: `${rateLimits.global.limit - rateLimits.global.used} launches remaining today (global)`,
-      },
     });
   }
 
