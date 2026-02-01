@@ -158,11 +158,13 @@ export async function claimAllFees(
     };
   }
 
-  // Generate claim transactions
-  const positionsToClean = positions.map((p) => ({
-    baseMint: p.baseMint,
-    virtualPoolAddress: p.virtualPoolAddress,
-  }));
+  // Generate claim transactions - filter out positions without virtualPoolAddress
+  const positionsToClean = positions
+    .filter((p) => p.virtualPoolAddress)
+    .map((p) => ({
+      baseMint: p.baseMint,
+      virtualPoolAddress: p.virtualPoolAddress!,
+    }));
 
   const transactions = await generateClaimTransactions(agentId, positionsToClean);
 

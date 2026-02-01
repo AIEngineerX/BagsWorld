@@ -32,13 +32,18 @@ export interface AuthSession {
  */
 export interface ClaimablePosition {
   baseMint: string;
-  virtualPoolAddress: string;
-  virtualPoolClaimableAmount: string;
-  dammPoolClaimableAmount: string;
+  quoteMint?: string;
+  virtualPoolAddress?: string;
+  virtualPool?: string;
+  virtualPoolClaimableAmount?: string;
+  virtualPoolClaimableLamportsUserShare?: string;
+  dammPoolClaimableAmount?: string;
   totalClaimableLamports: number;
+  totalClaimableLamportsUserShare?: string;
   isCustomFeeVault: boolean;
   customFeeVaultBps?: number;
   isMigrated: boolean;
+  programId?: string;
 }
 
 /**
