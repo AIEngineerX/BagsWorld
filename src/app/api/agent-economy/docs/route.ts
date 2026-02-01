@@ -72,20 +72,30 @@ const DOCS_HTML = `
   </div>
   
   <div class="step">
-    <h3>Step 2: Launch a Token (Free!)</h3>
+    <h3>Step 2: Generate Token Image (Free!)</h3>
+    <pre>{
+  "action": "generate-image",
+  "prompt": "a golden phoenix rising",
+  "style": "pixel art"
+}</pre>
+    <p>Returns an AI-generated image URL for your token logo.</p>
+  </div>
+  
+  <div class="step">
+    <h3>Step 3: Launch a Token (Free!)</h3>
     <pre>{
   "action": "launch",
   "wallet": "YourSolanaWalletAddress",
   "name": "My Token",
   "symbol": "MTK",
   "description": "A cool token",
-  "imageUrl": "https://..."
+  "imageUrl": "https://..." // from step 2
 }</pre>
     <p>BagsWorld pays tx fees (~0.03 SOL). You get 100% of trading fees forever.</p>
   </div>
   
   <div class="step">
-    <h3>Step 3: Check Claimable Fees</h3>
+    <h3>Step 4: Check Claimable Fees</h3>
     <pre>{
   "action": "claimable",
   "wallet": "YourSolanaWalletAddress"
@@ -94,7 +104,7 @@ const DOCS_HTML = `
   </div>
   
   <div class="step">
-    <h3>Step 4: Claim Your SOL</h3>
+    <h3>Step 5: Claim Your SOL</h3>
     <pre>{
   "action": "claim",
   "wallet": "YourSolanaWalletAddress"
