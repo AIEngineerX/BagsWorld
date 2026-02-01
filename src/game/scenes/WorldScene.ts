@@ -8810,6 +8810,57 @@ Use: bags.fm/[yourname]`,
     infoText.setDepth(102);
     this.arenaElements.push(infoText);
 
+    // === ENTER ARENA BUTTON (prominent, bottom center) ===
+    const enterBtnX = centerX;
+    const enterBtnY = pathLevel + Math.round(50 * s);
+    const enterBtnWidth = Math.round(160 * s);
+    const enterBtnHeight = Math.round(40 * s);
+
+    const enterBtnBg = this.add.rectangle(
+      enterBtnX,
+      enterBtnY,
+      enterBtnWidth,
+      enterBtnHeight,
+      0x22c55e,
+      1
+    );
+    enterBtnBg.setDepth(100);
+    enterBtnBg.setStrokeStyle(3, 0x16a34a);
+    enterBtnBg.setInteractive({ useHandCursor: true });
+    this.arenaElements.push(enterBtnBg);
+
+    const enterBtnText = this.add.text(enterBtnX, enterBtnY, "⚔ ENTER ARENA", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#ffffff",
+      fontStyle: "bold",
+    });
+    enterBtnText.setOrigin(0.5, 0.5);
+    enterBtnText.setDepth(101);
+    this.arenaElements.push(enterBtnText);
+
+    // Glow effect animation
+    this.tweens.add({
+      targets: enterBtnBg,
+      alpha: { from: 1, to: 0.85 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    enterBtnBg.on("pointerover", () => {
+      enterBtnBg.setFillStyle(0x16a34a);
+      enterBtnBg.setStrokeStyle(3, 0x22c55e);
+    });
+    enterBtnBg.on("pointerout", () => {
+      enterBtnBg.setFillStyle(0x22c55e);
+      enterBtnBg.setStrokeStyle(3, 0x16a34a);
+    });
+    enterBtnBg.on("pointerdown", () => {
+      window.dispatchEvent(new CustomEvent("bagsworld-arena-click"));
+    });
+
     // === QUEUE STATUS (depth 100) ===
     const queueBg = this.add.rectangle(
       Math.round(100 * s),
