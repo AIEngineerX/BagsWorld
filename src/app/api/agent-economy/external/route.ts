@@ -312,6 +312,86 @@ export async function POST(request: NextRequest) {
   }
 
   // =========================================================================
+  // IMAGE GENERATION (Free - for token logos)
+  // =========================================================================
+
+  if (action === "generate-image") {
+    const { prompt, style = "pixel art" } = body;
+
+    if (!prompt) {
+      return NextResponse.json({ success: false, error: "prompt required" }, { status: 400 });
+    }
+
+    const replicateToken = process.env.REPLICATE_API_TOKEN;
+    if (!replicateToken) {
+      return NextResponse.json(
+        { success: false, error: "Image generation not configured" },
+        { status: 503 }
+      );
+    }
+
+    try {
+      // Use Replicate's SDXL for high quality token images
+      const fullPrompt = `${prompt}, ${style}, token logo, cryptocurrency coin design, centered, clean background, high quality`;
+
+      // Start the prediction
+      const createResponse = await fetch("https://api.replicate.com/v1/predictions", {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${replicateToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+          input: {
+            prompt: fullPrompt,
+            width: 512,
+            height: 512,
+            num_outputs: 1,
+          },
+        }),
+      });
+
+      const prediction = await createResponse.json();
+
+      if (!createResponse.ok) {
+        throw new Error(prediction.detail || "Failed to start image generation");
+      }
+
+      // Poll for completion (max 60 seconds)
+      let result = prediction;
+      const maxAttempts = 30;
+      for (let i = 0; i < maxAttempts; i++) {
+        if (result.status === "succeeded") break;
+        if (result.status === "failed") throw new Error("Image generation failed");
+
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const pollResponse = await fetch(result.urls.get, {
+          headers: { Authorization: `Token ${replicateToken}` },
+        });
+        result = await pollResponse.json();
+      }
+
+      if (result.status !== "succeeded" || !result.output?.[0]) {
+        throw new Error("Image generation timed out");
+      }
+
+      return NextResponse.json({
+        success: true,
+        imageUrl: result.output[0],
+        prompt: fullPrompt,
+        note: "Image URL is temporary. Launch your token soon!",
+      });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Image generation failed" },
+        { status: 500 }
+      );
+    }
+  }
+
+  // =========================================================================
   // TOKEN LAUNCH (Free - BagsWorld pays tx fees)
   // =========================================================================
 
