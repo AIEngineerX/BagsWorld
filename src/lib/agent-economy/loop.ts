@@ -4,7 +4,7 @@
 // Flow:
 // 1. Check each agent's claimable fees
 // 2. Claim if above threshold
-// 3. Make reinvestment decisions
+// 3. Make reinvestment decisions using the brain
 // 4. Execute trades
 // 5. Update agent state
 // 6. Repeat
@@ -16,11 +16,14 @@ import {
   updateAgentCharacter,
   type SpawnedAgent,
 } from "./spawn";
-import { logAgentAction, getAgentActions } from "./credentials";
-import { getClaimablePositions } from "./fees";
-import { lamportsToSol } from "./types";
+import { logAgentAction } from "./credentials";
+import { lamportsToSol, DEFAULT_AGENT_ECONOMY_CONFIG } from "./types";
+import { makeTradeDecision, type StrategyType, type TradeDecision } from "./brain";
 
-// Loop configuration
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
 export interface EconomyLoopConfig {
   // How often to run the loop (ms)
   intervalMs: number;
@@ -44,27 +47,39 @@ export interface EconomyLoopConfig {
   enableClaiming: boolean;
 
   // Strategy for reinvestment
-  strategy: "random" | "diversify" | "follow_whales" | "conservative";
+  strategy: StrategyType;
+
+  // Minimum confidence to execute a trade (0-100)
+  minConfidence: number;
+
+  // Maximum risk level to accept
+  maxRiskLevel: "low" | "medium" | "high";
 }
 
 export const DEFAULT_LOOP_CONFIG: EconomyLoopConfig = {
   intervalMs: 60_000, // 1 minute
   minClaimThresholdSol: 0.001, // Claim anything over 0.001 SOL
   reinvestmentRate: 50, // Reinvest 50% of earnings
-  minTradeAmountSol: 0.001,
-  maxTradeAmountSol: 0.1,
+  minTradeAmountSol: 0.005,
+  maxTradeAmountSol: 0.5,
   enableTrading: false, // Start with dry run
   enableClaiming: true,
   strategy: "conservative",
+  minConfidence: 60, // Only trade if confidence >= 60%
+  maxRiskLevel: "medium", // Don't take high-risk trades by default
 };
 
-// Loop state
+// ============================================================================
+// LOOP STATE
+// ============================================================================
+
 interface LoopState {
   isRunning: boolean;
   lastRun: Date | null;
   totalRuns: number;
   totalClaimed: number;
   totalTraded: number;
+  tradesExecuted: number;
   errors: number;
   intervalHandle: NodeJS.Timeout | null;
 }
@@ -75,300 +90,401 @@ const loopState: LoopState = {
   totalRuns: 0,
   totalClaimed: 0,
   totalTraded: 0,
+  tradesExecuted: 0,
   errors: 0,
   intervalHandle: null,
 };
 
-// Agent decision result
-interface AgentDecision {
+// ============================================================================
+// DECISION RESULT TYPES
+// ============================================================================
+
+interface AgentCycleResult {
   agentId: string;
-  action: "claim" | "buy" | "sell" | "hold" | "skip";
-  amount?: number;
-  tokenMint?: string;
-  reason: string;
-  executed: boolean;
-  signature?: string;
-  error?: string;
+  username: string;
+  claimResult?: {
+    claimed: boolean;
+    amount: number;
+    signatures: string[];
+  };
+  tradeDecision: TradeDecision;
+  tradeResult?: {
+    executed: boolean;
+    signature?: string;
+    error?: string;
+  };
+  errors: string[];
 }
 
-/**
- * Process a single agent's economic cycle
- */
+// ============================================================================
+// RISK LEVEL COMPARISON
+// ============================================================================
+
+const RISK_LEVELS: Record<string, number> = {
+  low: 1,
+  medium: 2,
+  high: 3,
+};
+
+function isRiskAcceptable(
+  tradeRisk: "low" | "medium" | "high",
+  maxRisk: "low" | "medium" | "high"
+): boolean {
+  return RISK_LEVELS[tradeRisk] <= RISK_LEVELS[maxRisk];
+}
+
+// ============================================================================
+// AGENT PROCESSING
+// ============================================================================
+
 async function processAgent(
   agent: SpawnedAgent,
   config: EconomyLoopConfig
-): Promise<AgentDecision[]> {
-  const decisions: AgentDecision[] = [];
+): Promise<AgentCycleResult> {
+  const result: AgentCycleResult = {
+    agentId: agent.agentId,
+    username: agent.username,
+    tradeDecision: { action: "hold", reason: "Not processed", confidence: 0, riskLevel: "low" },
+    errors: [],
+  };
+
   const economy = await AgentEconomy.get(agent.agentId);
 
   if (!economy) {
-    decisions.push({
-      agentId: agent.agentId,
-      action: "skip",
-      reason: "Agent not found in economy system",
-      executed: false,
-    });
-    return decisions;
+    result.errors.push("Agent not found in economy system");
+    return result;
   }
 
-  try {
-    // Step 1: Check claimable fees
+  // =========================================================================
+  // STEP 1: CHECK AND CLAIM FEES
+  // =========================================================================
+
+  if (config.enableClaiming) {
     const { positions, totalSol: claimableSol } = await economy.getClaimableFees();
 
-    console.log(`[Loop] Agent ${agent.username}: ${claimableSol.toFixed(4)} SOL claimable`);
-
-    // Step 2: Claim if above threshold
-    if (claimableSol >= config.minClaimThresholdSol && config.enableClaiming) {
-      console.log(`[Loop] Agent ${agent.username}: Claiming ${claimableSol.toFixed(4)} SOL...`);
-
-      try {
-        const claimResult = await economy.claimFees();
-
-        decisions.push({
-          agentId: agent.agentId,
-          action: "claim",
-          amount: claimResult.amount,
-          reason: `Claimed ${claimResult.amount.toFixed(4)} SOL from ${positions.length} positions`,
-          executed: claimResult.claimed,
-          signature: claimResult.signatures[0],
-        });
-
-        if (claimResult.claimed) {
-          loopState.totalClaimed += claimResult.amount;
-
-          // Log the action
-          await logAgentAction(
-            agent.agentId,
-            "claim",
-            {
-              amount: claimResult.amount,
-              positions: positions.length,
-              signatures: claimResult.signatures,
-            },
-            true,
-            claimResult.signatures[0]
-          );
-
-          // Update agent mood (they just earned!)
-          await updateAgentCharacter(agent.agentId, {
-            mood: "celebrating",
-            earnings24h: claimResult.amount,
-          });
-        }
-      } catch (error) {
-        decisions.push({
-          agentId: agent.agentId,
-          action: "claim",
-          amount: claimableSol,
-          reason: "Claim failed",
-          executed: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    }
-
-    // Step 3: Get current balance for reinvestment decisions
-    const { sol: currentBalance } = await economy.getBalance();
-    const reinvestAmount = currentBalance * (config.reinvestmentRate / 100);
-
     console.log(
-      `[Loop] Agent ${agent.username}: Balance ${currentBalance.toFixed(4)} SOL, reinvest amount ${reinvestAmount.toFixed(4)} SOL`
+      `[Loop] ${agent.username}: ${claimableSol.toFixed(6)} SOL claimable from ${positions.length} positions`
     );
 
-    // Step 4: Make reinvestment decision
-    if (
-      reinvestAmount >= config.minTradeAmountSol &&
-      reinvestAmount <= config.maxTradeAmountSol &&
-      config.enableTrading
-    ) {
-      const decision = await makeReinvestmentDecision(economy, reinvestAmount, config);
+    if (claimableSol >= config.minClaimThresholdSol) {
+      console.log(`[Loop] ${agent.username}: Claiming ${claimableSol.toFixed(6)} SOL...`);
 
-      if (decision.action === "buy" && decision.tokenMint) {
-        try {
-          console.log(
-            `[Loop] Agent ${agent.username}: Buying ${decision.tokenMint} with ${reinvestAmount.toFixed(4)} SOL...`
-          );
+      const claimResult = await economy.claimFees();
 
-          const buyResult = await economy.buy(decision.tokenMint, reinvestAmount);
+      result.claimResult = {
+        claimed: claimResult.claimed,
+        amount: claimResult.amount,
+        signatures: claimResult.signatures,
+      };
 
-          decisions.push({
-            agentId: agent.agentId,
-            action: "buy",
-            amount: reinvestAmount,
-            tokenMint: decision.tokenMint,
-            reason: decision.reason,
-            executed: buyResult.success,
-            signature: buyResult.signature,
-            error: buyResult.error,
-          });
+      if (claimResult.claimed) {
+        loopState.totalClaimed += claimResult.amount;
 
-          if (buyResult.success) {
-            loopState.totalTraded += reinvestAmount;
+        // Log the action
+        await logAgentAction(
+          agent.agentId,
+          "claim",
+          {
+            amount: claimResult.amount,
+            positions: positions.length,
+            signatures: claimResult.signatures,
+          },
+          true,
+          claimResult.signatures[0]
+        );
 
-            await logAgentAction(
-              agent.agentId,
-              "buy",
-              {
-                tokenMint: decision.tokenMint,
-                amount: reinvestAmount,
-              },
-              true,
-              buyResult.signature
-            );
-          }
-        } catch (error) {
-          decisions.push({
-            agentId: agent.agentId,
-            action: "buy",
-            amount: reinvestAmount,
-            tokenMint: decision.tokenMint,
-            reason: decision.reason,
-            executed: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          });
-        }
-      } else {
-        decisions.push({
-          agentId: agent.agentId,
-          action: "hold",
-          reason: decision.reason,
-          executed: true,
+        // Update agent mood (they just earned!)
+        await updateAgentCharacter(agent.agentId, {
+          mood: "celebrating",
+          earnings24h: claimResult.amount,
         });
+
+        console.log(
+          `[Loop] ${agent.username}: Claimed ${claimResult.amount.toFixed(6)} SOL successfully`
+        );
       }
-    } else {
-      decisions.push({
-        agentId: agent.agentId,
-        action: "hold",
-        reason: `Balance ${currentBalance.toFixed(4)} SOL - below trade threshold or trading disabled`,
-        executed: true,
-      });
     }
+  }
 
-    // Step 5: Refresh agent mood based on final balance
-    await refreshAgentMood(agent.agentId);
-  } catch (error) {
-    console.error(`[Loop] Error processing agent ${agent.username}:`, error);
-    loopState.errors++;
+  // =========================================================================
+  // STEP 2: GET BALANCE FOR TRADING
+  // =========================================================================
 
-    decisions.push({
-      agentId: agent.agentId,
-      action: "skip",
-      reason: `Error: ${error instanceof Error ? error.message : "Unknown"}`,
-      executed: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+  const { sol: currentBalance } = await economy.getBalance();
+  const reinvestAmount = currentBalance * (config.reinvestmentRate / 100);
+
+  console.log(
+    `[Loop] ${agent.username}: Balance ${currentBalance.toFixed(6)} SOL, reinvest budget ${reinvestAmount.toFixed(6)} SOL`
+  );
+
+  // =========================================================================
+  // STEP 3: MAKE TRADING DECISION
+  // =========================================================================
+
+  // Check if we have enough to trade
+  if (reinvestAmount < config.minTradeAmountSol) {
+    result.tradeDecision = {
+      action: "hold",
+      reason: `Reinvest budget ${reinvestAmount.toFixed(6)} SOL below minimum ${config.minTradeAmountSol} SOL`,
+      confidence: 100,
+      riskLevel: "low",
+    };
+  } else {
+    // Cap at max trade amount
+    const tradeBudget = Math.min(reinvestAmount, config.maxTradeAmountSol);
+
+    // Get decision from brain
+    result.tradeDecision = await makeTradeDecision(agent.agentId, config.strategy, tradeBudget, {
+      minTradeSol: config.minTradeAmountSol,
+      maxPositionSol: config.maxTradeAmountSol,
+    });
+
+    console.log(`[Loop] ${agent.username}: Brain decision:`, {
+      action: result.tradeDecision.action,
+      token: result.tradeDecision.tokenSymbol,
+      amount: result.tradeDecision.amountSol?.toFixed(6),
+      confidence: result.tradeDecision.confidence,
+      risk: result.tradeDecision.riskLevel,
+      reason: result.tradeDecision.reason,
     });
   }
 
-  return decisions;
-}
+  // =========================================================================
+  // STEP 4: EXECUTE TRADE IF APPROVED
+  // =========================================================================
 
-/**
- * Make a reinvestment decision based on strategy
- */
-async function makeReinvestmentDecision(
-  economy: AgentEconomy,
-  amount: number,
-  config: EconomyLoopConfig
-): Promise<{ action: "buy" | "sell" | "hold"; tokenMint?: string; reason: string }> {
-  switch (config.strategy) {
-    case "conservative":
-      // Conservative: Only buy into established tokens, hold most of the time
-      // For now, just hold - we'd need market data to make smart decisions
-      return {
-        action: "hold",
-        reason: "Conservative strategy: Holding SOL",
+  const decision = result.tradeDecision;
+
+  if (decision.action !== "hold" && config.enableTrading) {
+    // Check confidence threshold
+    if (decision.confidence < config.minConfidence) {
+      console.log(
+        `[Loop] ${agent.username}: Skipping trade - confidence ${decision.confidence}% below threshold ${config.minConfidence}%`
+      );
+      result.tradeResult = {
+        executed: false,
+        error: `Confidence ${decision.confidence}% below threshold ${config.minConfidence}%`,
+      };
+    }
+    // Check risk threshold
+    else if (!isRiskAcceptable(decision.riskLevel, config.maxRiskLevel)) {
+      console.log(
+        `[Loop] ${agent.username}: Skipping trade - risk ${decision.riskLevel} exceeds max ${config.maxRiskLevel}`
+      );
+      result.tradeResult = {
+        executed: false,
+        error: `Risk level ${decision.riskLevel} exceeds max allowed ${config.maxRiskLevel}`,
+      };
+    }
+    // Execute the trade
+    else if (decision.action === "buy" && decision.tokenMint && decision.amountSol) {
+      console.log(
+        `[Loop] ${agent.username}: Executing BUY ${decision.tokenSymbol} for ${decision.amountSol.toFixed(6)} SOL...`
+      );
+
+      const buyResult = await economy.buy(decision.tokenMint, decision.amountSol);
+
+      result.tradeResult = {
+        executed: buyResult.success,
+        signature: buyResult.signature,
+        error: buyResult.error,
       };
 
-    case "diversify":
-      // Diversify: Spread across multiple tokens
-      // Would need to check existing positions and find new tokens
-      return {
-        action: "hold",
-        reason: "Diversify strategy: Analyzing positions...",
+      if (buyResult.success) {
+        loopState.totalTraded += decision.amountSol;
+        loopState.tradesExecuted++;
+
+        await logAgentAction(
+          agent.agentId,
+          "buy",
+          {
+            tokenMint: decision.tokenMint,
+            tokenSymbol: decision.tokenSymbol,
+            amount: decision.amountSol,
+            reason: decision.reason,
+            confidence: decision.confidence,
+          },
+          true,
+          buyResult.signature
+        );
+
+        // Update mood based on trade
+        await updateAgentCharacter(agent.agentId, { mood: "happy" });
+
+        console.log(`[Loop] ${agent.username}: BUY successful - ${buyResult.signature}`);
+      } else {
+        result.errors.push(`Buy failed: ${buyResult.error}`);
+        console.log(`[Loop] ${agent.username}: BUY failed - ${buyResult.error}`);
+      }
+    } else if (decision.action === "sell" && decision.tokenMint && decision.amountSol) {
+      console.log(
+        `[Loop] ${agent.username}: Executing SELL ${decision.tokenSymbol} for ~${decision.amountSol.toFixed(6)} SOL...`
+      );
+
+      // For sells, amountSol is the target SOL value - we need to calculate token amount
+      // This is handled internally by the sell function which takes token amount
+      // For now, we'll estimate based on the decision
+      // The brain should provide the token amount, but we can estimate from value
+
+      const sellResult = await economy.sell(decision.tokenMint, decision.amountSol);
+
+      result.tradeResult = {
+        executed: sellResult.success,
+        signature: sellResult.signature,
+        error: sellResult.error,
       };
 
-    case "follow_whales":
-      // Follow whales: Buy what big earners are buying
-      // Would need whale tracking data
-      return {
-        action: "hold",
-        reason: "Whale strategy: Monitoring whale activity...",
-      };
+      if (sellResult.success) {
+        loopState.totalTraded += decision.amountSol;
+        loopState.tradesExecuted++;
 
-    case "random":
-      // Random: Pick a random token (for testing)
-      // In production, you'd get a list of tradeable tokens
-      return {
-        action: "hold",
-        reason: "Random strategy: No tokens available",
-      };
+        await logAgentAction(
+          agent.agentId,
+          "sell",
+          {
+            tokenMint: decision.tokenMint,
+            tokenSymbol: decision.tokenSymbol,
+            estimatedSol: decision.amountSol,
+            reason: decision.reason,
+            confidence: decision.confidence,
+          },
+          true,
+          sellResult.signature
+        );
 
-    default:
-      return {
-        action: "hold",
-        reason: "Unknown strategy",
-      };
+        console.log(`[Loop] ${agent.username}: SELL successful - ${sellResult.signature}`);
+      } else {
+        result.errors.push(`Sell failed: ${sellResult.error}`);
+        console.log(`[Loop] ${agent.username}: SELL failed - ${sellResult.error}`);
+      }
+    }
+  } else if (decision.action !== "hold") {
+    result.tradeResult = {
+      executed: false,
+      error: "Trading disabled (dry run mode)",
+    };
+    console.log(
+      `[Loop] ${agent.username}: Would ${decision.action} ${decision.tokenSymbol} (dry run)`
+    );
   }
+
+  // =========================================================================
+  // STEP 5: REFRESH AGENT STATE
+  // =========================================================================
+
+  await refreshAgentMood(agent.agentId);
+
+  return result;
 }
 
-/**
- * Run one iteration of the economy loop
- */
+// ============================================================================
+// LOOP ITERATION
+// ============================================================================
+
 export async function runLoopIteration(config: EconomyLoopConfig = DEFAULT_LOOP_CONFIG): Promise<{
   processedAgents: number;
-  decisions: AgentDecision[];
+  results: AgentCycleResult[];
   duration: number;
+  summary: {
+    totalClaimed: number;
+    totalTraded: number;
+    tradesExecuted: number;
+    errors: number;
+  };
 }> {
   const startTime = Date.now();
   const agents = getSpawnedAgents();
-  const allDecisions: AgentDecision[] = [];
+  const results: AgentCycleResult[] = [];
 
-  console.log(`[Loop] Starting iteration - ${agents.length} agents to process`);
+  let iterationClaimed = 0;
+  let iterationTraded = 0;
+  let iterationTrades = 0;
+  let iterationErrors = 0;
+
+  console.log(`[Loop] ========== Starting iteration ==========`);
+  console.log(
+    `[Loop] Config: strategy=${config.strategy}, trading=${config.enableTrading}, claiming=${config.enableClaiming}`
+  );
+  console.log(`[Loop] Agents to process: ${agents.length}`);
 
   for (const agent of agents) {
-    const decisions = await processAgent(agent, config);
-    allDecisions.push(...decisions);
+    console.log(`[Loop] --- Processing ${agent.username} ---`);
+
+    const result = await processAgent(agent, config);
+    results.push(result);
+
+    if (result.claimResult?.claimed) {
+      iterationClaimed += result.claimResult.amount;
+    }
+
+    if (result.tradeResult?.executed) {
+      iterationTrades++;
+      if (result.tradeDecision.amountSol) {
+        iterationTraded += result.tradeDecision.amountSol;
+      }
+    }
+
+    iterationErrors += result.errors.length;
   }
 
   loopState.lastRun = new Date();
   loopState.totalRuns++;
+  loopState.errors += iterationErrors;
 
   const duration = Date.now() - startTime;
-  console.log(
-    `[Loop] Iteration complete - ${agents.length} agents, ${allDecisions.length} decisions, ${duration}ms`
-  );
+
+  console.log(`[Loop] ========== Iteration complete ==========`);
+  console.log(`[Loop] Duration: ${duration}ms`);
+  console.log(`[Loop] Claimed: ${iterationClaimed.toFixed(6)} SOL`);
+  console.log(`[Loop] Traded: ${iterationTraded.toFixed(6)} SOL in ${iterationTrades} trades`);
+  console.log(`[Loop] Errors: ${iterationErrors}`);
 
   return {
     processedAgents: agents.length,
-    decisions: allDecisions,
+    results,
     duration,
+    summary: {
+      totalClaimed: iterationClaimed,
+      totalTraded: iterationTraded,
+      tradesExecuted: iterationTrades,
+      errors: iterationErrors,
+    },
   };
 }
 
-/**
- * Start the economy loop
- */
+// ============================================================================
+// LOOP CONTROL
+// ============================================================================
+
 export function startEconomyLoop(config: EconomyLoopConfig = DEFAULT_LOOP_CONFIG): void {
   if (loopState.isRunning) {
     console.log("[Loop] Already running");
     return;
   }
 
-  console.log(`[Loop] Starting economy loop (interval: ${config.intervalMs}ms)`);
+  console.log(`[Loop] Starting economy loop`);
+  console.log(`[Loop] Interval: ${config.intervalMs}ms`);
+  console.log(`[Loop] Strategy: ${config.strategy}`);
+  console.log(`[Loop] Trading: ${config.enableTrading ? "ENABLED" : "DRY RUN"}`);
+  console.log(`[Loop] Claiming: ${config.enableClaiming ? "ENABLED" : "DISABLED"}`);
+
   loopState.isRunning = true;
 
   // Run immediately
-  runLoopIteration(config).catch(console.error);
+  runLoopIteration(config).catch((err) => {
+    console.error("[Loop] Iteration error:", err);
+    loopState.errors++;
+  });
 
   // Then run on interval
   loopState.intervalHandle = setInterval(() => {
-    runLoopIteration(config).catch(console.error);
+    runLoopIteration(config).catch((err) => {
+      console.error("[Loop] Iteration error:", err);
+      loopState.errors++;
+    });
   }, config.intervalMs);
 }
 
-/**
- * Stop the economy loop
- */
 export function stopEconomyLoop(): void {
   if (!loopState.isRunning) {
     console.log("[Loop] Not running");
@@ -385,30 +501,33 @@ export function stopEconomyLoop(): void {
   loopState.isRunning = false;
 }
 
-/**
- * Get loop status
- */
 export function getLoopStatus(): {
   isRunning: boolean;
   lastRun: Date | null;
   totalRuns: number;
   totalClaimed: number;
   totalTraded: number;
+  tradesExecuted: number;
   errors: number;
   activeAgents: number;
 } {
   return {
-    ...loopState,
+    isRunning: loopState.isRunning,
+    lastRun: loopState.lastRun,
+    totalRuns: loopState.totalRuns,
+    totalClaimed: loopState.totalClaimed,
+    totalTraded: loopState.totalTraded,
+    tradesExecuted: loopState.tradesExecuted,
+    errors: loopState.errors,
     activeAgents: getSpawnedAgents().length,
   };
 }
 
-/**
- * Reset loop statistics
- */
 export function resetLoopStats(): void {
   loopState.totalRuns = 0;
   loopState.totalClaimed = 0;
   loopState.totalTraded = 0;
+  loopState.tradesExecuted = 0;
   loopState.errors = 0;
+  console.log("[Loop] Stats reset");
 }

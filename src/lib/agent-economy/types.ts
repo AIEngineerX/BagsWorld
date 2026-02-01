@@ -131,6 +131,7 @@ export interface AgentEconomyConfig {
   maxPositionSol: number; // Max SOL per trade
   maxTotalExposureSol: number; // Max total open positions
   minClaimThresholdSol: number; // Min amount to bother claiming
+  minTradeSol: number; // Min SOL for a trade to be worth executing
 
   // Trading
   defaultSlippageBps: number;
@@ -149,6 +150,7 @@ export const DEFAULT_AGENT_ECONOMY_CONFIG: AgentEconomyConfig = {
   maxPositionSol: 0.15,
   maxTotalExposureSol: 1.5,
   minClaimThresholdSol: 0.001,
+  minTradeSol: 0.005,
   defaultSlippageBps: 100, // 1%
   maxPriceImpactPct: 5,
   autoClaimEnabled: true,

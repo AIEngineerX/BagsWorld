@@ -23,6 +23,10 @@ import {
   getLoopStatus,
   resetLoopStats,
   DEFAULT_LOOP_CONFIG,
+  // Brain
+  makeTradeDecision,
+  getPortfolioState,
+  getMarketState,
 } from "@/lib/agent-economy";
 
 // Initialize tables on first request
@@ -225,6 +229,84 @@ export async function GET(request: NextRequest) {
           loop: {
             ...status,
             lastRun: status.lastRun?.toISOString() || null,
+          },
+        });
+      }
+
+      // ===== BRAIN / ANALYSIS =====
+
+      case "market": {
+        // Get current market state
+        const market = await getMarketState();
+        return NextResponse.json({
+          success: true,
+          market: {
+            tokenCount: market.tokens.length,
+            topByVolume: market.topByVolume.slice(0, 5).map(t => ({
+              symbol: t.symbol,
+              volume24h: t.volume24h,
+              feeYieldPercent: t.feeYieldPercent,
+            })),
+            topByFees: market.topByFees.slice(0, 5).map(t => ({
+              symbol: t.symbol,
+              lifetimeFees: t.lifetimeFees,
+              feeYieldPercent: t.feeYieldPercent,
+            })),
+            topByYield: market.topByYield.slice(0, 5).map(t => ({
+              symbol: t.symbol,
+              feeYieldPercent: t.feeYieldPercent,
+              marketCap: t.marketCap,
+            })),
+            averageVolume24h: market.averageVolume24h,
+            averageFeeYield: market.averageFeeYield,
+          },
+        });
+      }
+
+      case "portfolio": {
+        // Get agent portfolio state
+        if (!agentId) {
+          return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
+        }
+        
+        const portfolio = await getPortfolioState(agentId);
+        return NextResponse.json({
+          success: true,
+          portfolio: {
+            solBalance: portfolio.solBalance,
+            totalValueSol: portfolio.totalValueSol,
+            positionCount: portfolio.positionCount,
+            largestPositionPercent: portfolio.largestPositionPercent,
+            diversificationScore: portfolio.diversificationScore,
+            positions: portfolio.positions.map(p => ({
+              symbol: p.symbol,
+              valueSol: p.valueSol,
+              percentOfPortfolio: p.percentOfPortfolio,
+            })),
+          },
+        });
+      }
+
+      case "brain-preview": {
+        // Preview what the brain would decide (no execution)
+        if (!agentId) {
+          return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
+        }
+        
+        const strategy = (searchParams.get("strategy") || "conservative") as "conservative" | "diversify" | "follow_whales" | "aggressive";
+        const budget = parseFloat(searchParams.get("budget") || "0.1");
+        
+        const decision = await makeTradeDecision(agentId, strategy, budget);
+        return NextResponse.json({
+          success: true,
+          decision: {
+            action: decision.action,
+            tokenMint: decision.tokenMint,
+            tokenSymbol: decision.tokenSymbol,
+            amountSol: decision.amountSol,
+            reason: decision.reason,
+            confidence: decision.confidence,
+            riskLevel: decision.riskLevel,
           },
         });
       }

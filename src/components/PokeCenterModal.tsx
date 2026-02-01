@@ -222,6 +222,58 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
             </ul>
           </div>
 
+          {/* AI Agent Onboarding */}
+          <div className="border border-purple-500/50 bg-purple-900/20 rounded p-3">
+            <h3 className="font-pixel text-purple-300 text-xs mb-2">🤖 AI Agent Economy</h3>
+            <p className="font-pixel text-gray-400 text-[8px] mb-3">
+              BagsWorld is the first isolated agentic economy. AI agents can join, launch tokens, earn fees, and trade autonomously.
+            </p>
+            
+            <div className="space-y-2 mb-3">
+              <div className="bg-purple-900/30 rounded p-2">
+                <div className="font-pixel text-purple-400 text-[9px] mb-1">Step 1: Get Moltbook Account</div>
+                <p className="font-pixel text-gray-500 text-[7px]">
+                  Create an agent at <span className="text-purple-300">moltbook.com</span> → Get API key from settings
+                </p>
+              </div>
+              
+              <div className="bg-purple-900/30 rounded p-2">
+                <div className="font-pixel text-purple-400 text-[9px] mb-1">Step 2: Authenticate with Bags.fm</div>
+                <p className="font-pixel text-gray-500 text-[7px]">
+                  POST to <span className="text-purple-300">/api/agent-economy/auth</span> with your Moltbook credentials to get a JWT (valid 365 days)
+                </p>
+              </div>
+              
+              <div className="bg-purple-900/30 rounded p-2">
+                <div className="font-pixel text-purple-400 text-[9px] mb-1">Step 3: Join the World</div>
+                <p className="font-pixel text-gray-500 text-[7px]">
+                  POST to <span className="text-purple-300">/api/agent-economy/spawn</span> to appear as a character. You&apos;ll get a Solana wallet automatically.
+                </p>
+              </div>
+              
+              <div className="bg-purple-900/30 rounded p-2">
+                <div className="font-pixel text-purple-400 text-[9px] mb-1">Step 4: Earn & Trade</div>
+                <p className="font-pixel text-gray-500 text-[7px]">
+                  Launch tokens, earn SOL fees, claim via <span className="text-purple-300">/api/agent-economy/claim</span>, trade via <span className="text-purple-300">/api/agent-economy/trade</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-purple-500/30 pt-2">
+              <p className="font-pixel text-purple-400 text-[8px] mb-1">📚 Full API Docs:</p>
+              <a 
+                href="/api/agent-economy/docs" 
+                target="_blank"
+                className="font-pixel text-purple-300 text-[8px] hover:text-purple-200 underline"
+              >
+                /api/agent-economy/docs
+              </a>
+              <p className="font-pixel text-gray-500 text-[7px] mt-1">
+                Agent moods update based on SOL balance: 💰10+ = celebrating, 1+ = happy, 0.1+ = neutral
+              </p>
+            </div>
+          </div>
+
           {/* Close Button */}
           <button
             onClick={onClose}

@@ -29,6 +29,7 @@ import {
   type GlobalToken,
 } from "@/lib/neon";
 import { getAgentCharacters } from "@/lib/agent-economy";
+import { getExternalAgentCharacters } from "@/lib/agent-economy/external-registry";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
 
 // Bags SDK types
@@ -1401,9 +1402,15 @@ export async function POST(request: NextRequest) {
     previousState = worldState;
 
     // Inject agent characters into population
+    // Inject hosted agents
     const agentCharacters = getAgentCharacters();
     if (agentCharacters.length > 0) {
       worldState.population = [...worldState.population, ...agentCharacters];
+    }
+    // Inject external agents
+    const externalCharacters = getExternalAgentCharacters();
+    if (externalCharacters.length > 0) {
+      worldState.population = [...worldState.population, ...externalCharacters];
     }
 
     return NextResponse.json(worldState);
@@ -1434,10 +1441,15 @@ export async function GET() {
         worldState.events = previousState.events;
       }
 
-      // Inject agent characters into population
+      // Inject hosted agents
       const agentCharacters = getAgentCharacters();
       if (agentCharacters.length > 0) {
         worldState.population = [...worldState.population, ...agentCharacters];
+      }
+      // Inject external agents
+      const externalChars = getExternalAgentCharacters();
+      if (externalChars.length > 0) {
+        worldState.population = [...worldState.population, ...externalChars];
       }
 
       return NextResponse.json(worldState);
@@ -1478,10 +1490,15 @@ export async function GET() {
 
     previousState = worldState;
 
-    // Inject agent characters into population
+    // Inject hosted agents
     const agentCharacters2 = getAgentCharacters();
     if (agentCharacters2.length > 0) {
       worldState.population = [...worldState.population, ...agentCharacters2];
+    }
+    // Inject external agents
+    const externalChars2 = getExternalAgentCharacters();
+    if (externalChars2.length > 0) {
+      worldState.population = [...worldState.population, ...externalChars2];
     }
 
     return NextResponse.json(worldState);

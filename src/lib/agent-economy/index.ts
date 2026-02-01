@@ -111,6 +111,56 @@ export {
   type EconomyLoopConfig,
 } from "./loop";
 
+// Decision-making brain
+export {
+  makeTradeDecision,
+  getPortfolioState,
+  getMarketState,
+  scoreToken,
+  type TokenMetrics,
+  type PortfolioState,
+  type PortfolioPosition,
+  type MarketState,
+  type TradeDecision,
+  type StrategyType,
+} from "./brain";
+
+// External agent support (stateless, bring-your-own-auth)
+export {
+  ExternalAgent,
+  validateExternalJwt,
+  createExternalContext,
+  getExternalBalance,
+  getExternalClaimable,
+  getExternalQuote,
+  generateExternalClaimTx,
+  type ExternalAgentContext,
+} from "./external";
+
+// External agent registry
+export {
+  registerExternalAgent,
+  unregisterExternalAgent,
+  getExternalAgent,
+  getExternalAgentCharacters,
+  listExternalAgents,
+  getExternalAgentCount,
+  moveExternalAgent,
+} from "./external-registry";
+
+// Token launcher (Moltmint-style free launches)
+export {
+  launchForExternal,
+  getClaimableForWallet,
+  generateClaimTxForWallet,
+  isLauncherConfigured,
+  getLauncherWallet,
+  getLauncherBalance,
+  type LaunchRequest,
+  type LaunchResult,
+  type ClaimResult,
+} from "./launcher";
+
 // High-level Agent Economy interface
 import type {
   AgentCredentials,
