@@ -30,6 +30,8 @@ import {
   isLauncherConfigured,
   getLauncherWallet,
   getLauncherBalance,
+  getRateLimitStatus,
+  canWalletLaunch,
 } from "@/lib/agent-economy/launcher";
 import type { ZoneType } from "@/lib/types";
 
@@ -95,6 +97,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       tokens: market.tokens,
+    });
+  }
+
+  // Rate limit status (for transparency)
+  if (action === "rate-limits") {
+    const wallet = searchParams.get("wallet") || undefined;
+    const status = getRateLimitStatus(wallet);
+    
+    let canLaunch = true;
+    let canLaunchReason = "Ready to launch";
+    
+    if (wallet) {
+      const check = canWalletLaunch(wallet);
+      canLaunch = check.allowed;
+      canLaunchReason = check.reason || "Ready to launch";
+    }
+    
+    return NextResponse.json({
+      success: true,
+      rateLimits: status,
+      canLaunch,
+      canLaunchReason,
     });
   }
 
@@ -424,11 +448,17 @@ export async function POST(request: NextRequest) {
           y: entry.character.y,
         },
       },
+      safety: {
+        nonCustodial: true,
+        note: "BagsWorld never has access to your private keys. When you launch a token, you earn 100% of trading fees.",
+      },
       nextSteps: [
         "Check market: GET /api/agent-economy/external?action=market",
-        "Get suggestions: GET /api/agent-economy/external?action=suggest&strategy=conservative&budget=0.1",
-        "Launch a token on Bags.fm to earn fees",
+        "Check rate limits: GET /api/agent-economy/external?action=rate-limits&wallet=YOUR_WALLET",
+        "Launch a token: POST {action: 'launch', wallet, name, symbol, description}",
+        "Check claimable: POST {action: 'claimable', wallet: YOUR_WALLET}",
       ],
+      docs: "https://bagsworld.app/docs/POKECENTER.md",
     });
   }
 
@@ -614,6 +644,9 @@ export async function POST(request: NextRequest) {
       if (!existingAgent) {
         await registerExternalAgent(wallet, name, "main_city", `Creator of $${symbol}`);
       }
+      
+      // Get updated rate limits for response
+      const updatedRateLimits = getRateLimitStatus(wallet);
 
       return NextResponse.json({
         success: true,
@@ -628,7 +661,18 @@ export async function POST(request: NextRequest) {
         transaction: result.signature,
         feeInfo: {
           yourShare: "100%",
-          claimEndpoint: "/api/agent-economy/external (action: claim)",
+          claimEndpoint: "/api/agent-economy/external (action: claimable, then claim)",
+          verification: `Verify on-chain: https://solscan.io/token/${result.tokenMint}`,
+        },
+        safety: {
+          nonCustodial: true,
+          feeConfigImmutable: true,
+          yourWallet: wallet,
+          note: "Your fee share is set on-chain and cannot be changed. BagsWorld never has access to your private keys.",
+        },
+        rateLimits: {
+          wallet: updatedRateLimits.wallet,
+          global: updatedRateLimits.global,
         },
       });
     } catch (err) {
@@ -721,6 +765,9 @@ export async function POST(request: NextRequest) {
     if (status.configured && wallet) {
       balance = await getLauncherBalance();
     }
+    
+    // Get global rate limits
+    const rateLimits = getRateLimitStatus();
 
     return NextResponse.json({
       success: true,
@@ -730,6 +777,13 @@ export async function POST(request: NextRequest) {
         wallet: wallet ? `${wallet.slice(0, 8)}...${wallet.slice(-4)}` : null,
         balanceSol: balance,
         canLaunch: status.configured && balance > 0.05,
+      },
+      rateLimits: rateLimits.global,
+      safety: {
+        nonCustodial: true,
+        description: "BagsWorld never has access to your private keys. You sign all claim transactions yourself.",
+        feeShare: "100% of trading fees go to your wallet",
+        rateLimit: `${rateLimits.global.limit - rateLimits.global.used} launches remaining today (global)`,
       },
     });
   }
