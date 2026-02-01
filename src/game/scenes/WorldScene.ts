@@ -3283,7 +3283,7 @@ export class WorldScene extends Phaser.Scene {
     // Make HQ interactive
     moltbookHQ.setInteractive({ useHandCursor: true });
     moltbookHQ.on("pointerdown", () => {
-      window.open("https://moltbook.town", "_blank");
+      window.open("https://moltbook.com", "_blank");
     });
     moltbookHQ.on("pointerover", () => {
       moltbookHQ.setTint(0xfff0e0); // Warm glow on hover
