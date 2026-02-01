@@ -186,9 +186,8 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     return { success: false, error: 'Symbol must be 1-10 characters' };
   }
   
-  if (!imageUrl) {
-    return { success: false, error: 'Image URL is required' };
-  }
+  // Use placeholder if no image provided
+  const finalImageUrl = imageUrl || `https://api.dicebear.com/7.x/shapes/png?seed=${symbol}&size=400`;
   
   const bagsWorldWallet = getBagsWorldKeypair().publicKey.toBase58();
   
@@ -204,7 +203,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
       name,
       symbol: symbol.toUpperCase(),
       description,
-      imageUrl,
+      imageUrl: finalImageUrl,
       twitter: twitter || undefined,
       website: website || undefined,
       telegram: telegram || undefined,
