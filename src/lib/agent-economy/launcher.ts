@@ -143,21 +143,19 @@ async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
 
   let signature: string;
 
-  // Check if it's a versioned transaction (first byte indicates version)
-  const isVersioned = txBuffer[0] === 128 || txBuffer[0] === 0x80;
-
+  // Try versioned transaction first (most common now), fall back to legacy
   try {
-    if (isVersioned) {
-      // Versioned transaction (V0)
-      const versionedTx = VersionedTransaction.deserialize(txBuffer);
-      versionedTx.sign([keypair]);
-      signature = await connection.sendRawTransaction(versionedTx.serialize(), {
-        skipPreflight: true, // Skip preflight for speed
-        preflightCommitment: "confirmed",
-        maxRetries: 3,
-      });
-    } else {
-      // Legacy transaction
+    const versionedTx = VersionedTransaction.deserialize(txBuffer);
+    versionedTx.sign([keypair]);
+    signature = await connection.sendRawTransaction(versionedTx.serialize(), {
+      skipPreflight: true,
+      preflightCommitment: "confirmed",
+      maxRetries: 3,
+    });
+    console.log("[Launcher] Sent versioned transaction:", signature);
+  } catch (versionedErr) {
+    // Fall back to legacy transaction
+    try {
       const legacyTx = Transaction.from(txBuffer);
       legacyTx.partialSign(keypair);
       signature = await connection.sendRawTransaction(legacyTx.serialize(), {
@@ -165,11 +163,13 @@ async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
         preflightCommitment: "confirmed",
         maxRetries: 3,
       });
+      console.log("[Launcher] Sent legacy transaction:", signature);
+    } catch (legacyErr) {
+      console.error("[Launcher] Both versioned and legacy parsing failed");
+      console.error("[Launcher] Versioned error:", versionedErr);
+      console.error("[Launcher] Legacy error:", legacyErr);
+      throw versionedErr; // Throw the original error
     }
-  } catch (err) {
-    console.error("[Launcher] Transaction sign/submit error:", err);
-    console.log("[Launcher] Tx buffer first bytes:", Array.from(txBuffer.slice(0, 10)).join(", "));
-    throw err;
   }
 
   // Wait for confirmation
