@@ -132,54 +132,59 @@ export type ArenaWSMessageType =
 // WebSocket message structure
 export interface ArenaWSMessage {
   type: ArenaWSMessageType;
-  data?: MatchState | MatchState[] | ArenaQueueEntry[] | string | {
-    activeMatches?: MatchState[];
-    queueSize?: number;
-  };
+  data?:
+    | MatchState
+    | MatchState[]
+    | ArenaQueueEntry[]
+    | string
+    | {
+        activeMatches?: MatchState[];
+        queueSize?: number;
+      };
   matchId?: number;
   error?: string;
 }
 
 // Arena engine configuration
 export interface ArenaConfig {
-  tickMs: number;              // Game loop interval (100ms)
-  attackRange: number;         // Pixels for melee attack (50)
+  tickMs: number; // Game loop interval (100ms)
+  attackRange: number; // Pixels for melee attack (50)
   attackCooldownTicks: number; // Ticks between attacks (10 = 1 sec)
-  moveSpeed: number;           // Pixels per tick (3)
-  arenaWidth: number;          // Combat area width (400)
-  arenaHeight: number;         // Combat area height (200)
-  spawnXLeft: number;          // Left fighter spawn X (80)
-  spawnXRight: number;         // Right fighter spawn X (320)
-  groundY: number;             // Ground level Y (150)
-  damageVariance: number;      // Damage randomness factor (0.2 = ±20%)
+  moveSpeed: number; // Pixels per tick (3)
+  arenaWidth: number; // Combat area width (400)
+  arenaHeight: number; // Combat area height (200)
+  spawnXLeft: number; // Left fighter spawn X (80)
+  spawnXRight: number; // Right fighter spawn X (320)
+  groundY: number; // Ground level Y (150)
+  damageVariance: number; // Damage randomness factor (0.2 = ±20%)
 }
 
 // Default arena configuration
 // Tuned for ~30 second cinematic fights
 export const ARENA_CONFIG: ArenaConfig = {
-  tickMs: 100,              // 100ms per tick (10 ticks = 1 second)
-  attackRange: 60,          // Pixels for melee attack (slightly wider for drama)
-  attackCooldownTicks: 15,  // 1.5 seconds between attacks (more dramatic pacing)
-  moveSpeed: 2,             // Slower movement for buildup (2 pixels per tick)
+  tickMs: 100, // 100ms per tick (10 ticks = 1 second)
+  attackRange: 60, // Pixels for melee attack (slightly wider for drama)
+  attackCooldownTicks: 15, // 1.5 seconds between attacks (more dramatic pacing)
+  moveSpeed: 2, // Slower movement for buildup (2 pixels per tick)
   arenaWidth: 400,
   arenaHeight: 200,
-  spawnXLeft: 60,           // Start further apart for longer approach
+  spawnXLeft: 60, // Start further apart for longer approach
   spawnXRight: 340,
   groundY: 150,
-  damageVariance: 0.15,     // Slightly less random for consistent pacing
+  damageVariance: 0.15, // Slightly less random for consistent pacing
 };
 
 // Karma tier thresholds for stat calculation
 // Tuned for ~30 second fights with dramatic pacing
 export const KARMA_TIERS = {
-  tierSize: 100,       // Karma per tier
-  maxHpBonus: 150,     // Max HP bonus from karma (less scaling)
-  maxAttackBonus: 30,  // Max attack bonus (reduced for longer fights)
+  tierSize: 100, // Karma per tier
+  maxHpBonus: 150, // Max HP bonus from karma (less scaling)
+  maxAttackBonus: 30, // Max attack bonus (reduced for longer fights)
   maxDefenseBonus: 15, // Max defense bonus
-  baseHp: 150,         // Higher base HP for longer fights
-  baseAttack: 12,      // Slightly higher base attack
-  baseDefense: 6,      // Balanced defense
-  baseSpeed: 15,       // Base attack cooldown in ticks (1.5 sec)
+  baseHp: 150, // Higher base HP for longer fights
+  baseAttack: 12, // Slightly higher base attack
+  baseDefense: 6, // Balanced defense
+  baseSpeed: 15, // Base attack cooldown in ticks (1.5 sec)
 };
 
 // Calculate fighter stats from MoltBook karma
@@ -192,7 +197,8 @@ export function karmaToStats(karma: number): FighterStats {
   // Attack scales moderately
   const attack = KARMA_TIERS.baseAttack + Math.min(tier * 1.5, KARMA_TIERS.maxAttackBonus);
   // Defense scales slowly (keeps fights interesting)
-  const defense = KARMA_TIERS.baseDefense + Math.min(Math.floor(tier * 0.8), KARMA_TIERS.maxDefenseBonus);
+  const defense =
+    KARMA_TIERS.baseDefense + Math.min(Math.floor(tier * 0.8), KARMA_TIERS.maxDefenseBonus);
   // Speed scales very slowly - min 10 ticks (1 sec) between attacks
   const speed = Math.max(10, KARMA_TIERS.baseSpeed - Math.floor(tier / 3));
 
@@ -217,7 +223,7 @@ export function calculateDamage(attackerAttack: number, defenderDefense: number)
 export function usernameToSpriteVariant(username: string): number {
   let hash = 0;
   for (let i = 0; i < username.length; i++) {
-    hash = ((hash << 5) - hash) + username.charCodeAt(i);
+    hash = (hash << 5) - hash + username.charCodeAt(i);
     hash = hash & hash; // Convert to 32-bit integer
   }
   return Math.abs(hash) % 18; // 0-17 variants (humans + creatures)
@@ -226,13 +232,13 @@ export function usernameToSpriteVariant(username: string): number {
 // Arena zone visual constants
 export const ARENA_VISUAL = {
   // Colors matching existing PALETTE
-  floor: 0x374151,      // gray
-  floorAlt: 0x4b5563,   // lighter gray for checkerboard
-  ring: 0xa8754b,       // brown wood
+  floor: 0x374151, // gray
+  floorAlt: 0x4b5563, // lighter gray for checkerboard
+  ring: 0xa8754b, // brown wood
   ringPlatform: 0x78350f, // dark brown
   cornerPost: 0xef4444, // red
-  ropes: 0xffffff,      // white
-  lightGlow: 0xfde047,  // yellow
+  ropes: 0xffffff, // white
+  lightGlow: 0xfde047, // yellow
   lightHousing: 0x1f2937, // dark gray
   crowdSilhouette: 0x6b7280, // medium gray
   titleColor: 0xfbbf24, // gold

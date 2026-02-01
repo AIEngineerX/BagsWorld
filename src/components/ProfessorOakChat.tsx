@@ -34,7 +34,15 @@ interface GeneratedContent {
   bannerUrl?: string;
 }
 
-type WizardStep = "idle" | "concept" | "style" | "generating-names" | "select-name" | "generating-images" | "preview" | "ready";
+type WizardStep =
+  | "idle"
+  | "concept"
+  | "style"
+  | "generating-names"
+  | "select-name"
+  | "generating-images"
+  | "preview"
+  | "ready";
 
 type ArtStyle = "pixel-art" | "cartoon" | "minimalist" | "abstract" | "cute";
 
@@ -452,12 +460,15 @@ export function ProfessorOakChat() {
     if (logoSuccess && bannerSuccess) {
       resultMessage = "Your token assets are ready! Review them below:";
     } else if (logoSuccess && !bannerSuccess) {
-      resultMessage = "Logo generated successfully! Banner generation had an issue - you can try regenerating it or upload your own later.";
+      resultMessage =
+        "Logo generated successfully! Banner generation had an issue - you can try regenerating it or upload your own later.";
     } else if (!logoSuccess && bannerSuccess) {
-      resultMessage = "Banner generated successfully! Logo generation had an issue - you can try regenerating it.";
+      resultMessage =
+        "Banner generated successfully! Logo generation had an issue - you can try regenerating it.";
       setGenerationError("Logo generation failed");
     } else {
-      resultMessage = "Hmm, both images had generation issues. You can try regenerating them or upload your own images in the Launch Modal.";
+      resultMessage =
+        "Hmm, both images had generation issues. You can try regenerating them or upload your own images in the Launch Modal.";
       setGenerationError("Image generation failed");
     }
 
@@ -504,7 +515,8 @@ export function ProfessorOakChat() {
       addMessage({
         id: `${Date.now()}-oak`,
         type: "oak",
-        message: "Hmm, the logo generation encountered an issue. Try again or upload your own in the Launch Modal!",
+        message:
+          "Hmm, the logo generation encountered an issue. Try again or upload your own in the Launch Modal!",
         timestamp: Date.now(),
       });
       return;
@@ -561,7 +573,8 @@ export function ProfessorOakChat() {
       addMessage({
         id: `${Date.now()}-oak`,
         type: "oak",
-        message: "Hmm, the banner generation encountered an issue. Try again or upload your own in the Launch Modal!",
+        message:
+          "Hmm, the banner generation encountered an issue. Try again or upload your own in the Launch Modal!",
         timestamp: Date.now(),
       });
       return;
@@ -642,7 +655,8 @@ export function ProfessorOakChat() {
     addMessage({
       id: `${Date.now()}-oak`,
       type: "oak",
-      message: "No problem! Click 'AI GENERATE' anytime to start fresh, or ask me anything about token launches!",
+      message:
+        "No problem! Click 'AI GENERATE' anytime to start fresh, or ask me anything about token launches!",
       timestamp: Date.now(),
     });
   };
@@ -856,9 +870,13 @@ export function ProfessorOakChat() {
                   </button>
                 )}
               </div>
-              <div className={`aspect-square bg-gray-800 border flex items-center justify-center overflow-hidden ${
-                isRegenerating === "logo" ? "border-amber-500 animate-pulse" : "border-amber-600/30"
-              }`}>
+              <div
+                className={`aspect-square bg-gray-800 border flex items-center justify-center overflow-hidden ${
+                  isRegenerating === "logo"
+                    ? "border-amber-500 animate-pulse"
+                    : "border-amber-600/30"
+                }`}
+              >
                 {isRegenerating === "logo" ? (
                   <div className="font-pixel text-[8px] text-amber-400 animate-pulse">
                     Regenerating...
@@ -874,9 +892,7 @@ export function ProfessorOakChat() {
                     Generating...
                   </div>
                 ) : (
-                  <div className="font-pixel text-[8px] text-red-400">
-                    Failed
-                  </div>
+                  <div className="font-pixel text-[8px] text-red-400">Failed</div>
                 )}
               </div>
               {wizardStep === "preview" && (
@@ -896,7 +912,9 @@ export function ProfessorOakChat() {
                 <p className="font-pixel text-[7px] text-gray-400">Banner (600x200)</p>
                 {generatedBanner && wizardStep === "preview" && (
                   <button
-                    onClick={() => downloadImage(generatedBanner, `${selectedName.ticker}-banner.png`)}
+                    onClick={() =>
+                      downloadImage(generatedBanner, `${selectedName.ticker}-banner.png`)
+                    }
                     className="font-pixel text-[6px] text-blue-400 hover:text-blue-300"
                     title="Download banner"
                   >
@@ -904,9 +922,13 @@ export function ProfessorOakChat() {
                   </button>
                 )}
               </div>
-              <div className={`aspect-[3/1] bg-gray-800 border flex items-center justify-center overflow-hidden ${
-                isRegenerating === "banner" ? "border-amber-500 animate-pulse" : "border-amber-600/30"
-              }`}>
+              <div
+                className={`aspect-[3/1] bg-gray-800 border flex items-center justify-center overflow-hidden ${
+                  isRegenerating === "banner"
+                    ? "border-amber-500 animate-pulse"
+                    : "border-amber-600/30"
+                }`}
+              >
                 {isRegenerating === "banner" ? (
                   <div className="font-pixel text-[8px] text-amber-400 animate-pulse">
                     Regenerating...
@@ -922,9 +944,7 @@ export function ProfessorOakChat() {
                     Generating...
                   </div>
                 ) : (
-                  <div className="font-pixel text-[7px] text-gray-500">
-                    Optional
-                  </div>
+                  <div className="font-pixel text-[7px] text-gray-500">Optional</div>
                 )}
               </div>
               {wizardStep === "preview" && (

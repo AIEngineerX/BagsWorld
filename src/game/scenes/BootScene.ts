@@ -10550,10 +10550,22 @@ export class BootScene extends Phaser.Scene {
       const hairColor = HAIR_COLORS[i % HAIR_COLORS.length];
       const shirtColor = SHIRT_COLORS[i % SHIRT_COLORS.length];
 
-      this.createFighterSprite(`fighter_${i}_idle_fight`, skinTone, hairColor, shirtColor, "idle_fight");
+      this.createFighterSprite(
+        `fighter_${i}_idle_fight`,
+        skinTone,
+        hairColor,
+        shirtColor,
+        "idle_fight"
+      );
       this.createFighterSprite(`fighter_${i}_attack`, skinTone, hairColor, shirtColor, "attack");
       this.createFighterSprite(`fighter_${i}_hurt`, skinTone, hairColor, shirtColor, "hurt");
-      this.createFighterSprite(`fighter_${i}_knockout`, skinTone, hairColor, shirtColor, "knockout");
+      this.createFighterSprite(
+        `fighter_${i}_knockout`,
+        skinTone,
+        hairColor,
+        shirtColor,
+        "knockout"
+      );
     }
 
     // Generate FUN CREATURE fighters (9-17)
@@ -10579,15 +10591,15 @@ export class BootScene extends Phaser.Scene {
   private generateCreatureFighters(): void {
     // Creature types with their colors
     const creatures = [
-      { name: "lobster", primary: 0xdc2626, secondary: 0xfca5a5, accent: 0x991b1b },      // Red lobster
-      { name: "crab", primary: 0xf97316, secondary: 0xfed7aa, accent: 0xc2410c },         // Orange crab
-      { name: "octopus", primary: 0x8b5cf6, secondary: 0xddd6fe, accent: 0x6d28d9 },      // Purple octopus
-      { name: "shark", primary: 0x64748b, secondary: 0xcbd5e1, accent: 0x334155 },        // Gray shark
-      { name: "jellyfish", primary: 0xec4899, secondary: 0xfbcfe8, accent: 0xbe185d },    // Pink jellyfish
-      { name: "pufferfish", primary: 0xfbbf24, secondary: 0xfef3c7, accent: 0xd97706 },   // Yellow pufferfish
-      { name: "frog", primary: 0x22c55e, secondary: 0xbbf7d0, accent: 0x15803d },         // Green frog
-      { name: "slime", primary: 0x06b6d4, secondary: 0xa5f3fc, accent: 0x0891b2 },        // Cyan slime
-      { name: "robot", primary: 0x71717a, secondary: 0xe4e4e7, accent: 0x3f3f46 },        // Metal robot
+      { name: "lobster", primary: 0xdc2626, secondary: 0xfca5a5, accent: 0x991b1b }, // Red lobster
+      { name: "crab", primary: 0xf97316, secondary: 0xfed7aa, accent: 0xc2410c }, // Orange crab
+      { name: "octopus", primary: 0x8b5cf6, secondary: 0xddd6fe, accent: 0x6d28d9 }, // Purple octopus
+      { name: "shark", primary: 0x64748b, secondary: 0xcbd5e1, accent: 0x334155 }, // Gray shark
+      { name: "jellyfish", primary: 0xec4899, secondary: 0xfbcfe8, accent: 0xbe185d }, // Pink jellyfish
+      { name: "pufferfish", primary: 0xfbbf24, secondary: 0xfef3c7, accent: 0xd97706 }, // Yellow pufferfish
+      { name: "frog", primary: 0x22c55e, secondary: 0xbbf7d0, accent: 0x15803d }, // Green frog
+      { name: "slime", primary: 0x06b6d4, secondary: 0xa5f3fc, accent: 0x0891b2 }, // Cyan slime
+      { name: "robot", primary: 0x71717a, secondary: 0xe4e4e7, accent: 0x3f3f46 }, // Metal robot
     ];
 
     creatures.forEach((creature, index) => {
@@ -10686,7 +10698,12 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(Math.round(18 * s), Math.round(38 * s), Math.round(12 * s), Math.round(8 * s));
     g.fillStyle(c.accent);
     for (let i = 0; i < 4; i++) {
-      g.fillRect(Math.round(18 * s), Math.round((40 + i * 2) * s), Math.round(12 * s), Math.round(1 * s));
+      g.fillRect(
+        Math.round(18 * s),
+        Math.round((40 + i * 2) * s),
+        Math.round(12 * s),
+        Math.round(1 * s)
+      );
     }
     // Body highlight
     g.fillStyle(c.secondary);
@@ -10755,8 +10772,18 @@ export class BootScene extends Phaser.Scene {
     // Legs
     g.fillStyle(c.accent);
     for (let i = 0; i < 3; i++) {
-      g.fillRect(Math.round(12 * s), Math.round((28 + i * 5) * s), Math.round(4 * s), Math.round(3 * s));
-      g.fillRect(Math.round(32 * s), Math.round((28 + i * 5) * s), Math.round(4 * s), Math.round(3 * s));
+      g.fillRect(
+        Math.round(12 * s),
+        Math.round((28 + i * 5) * s),
+        Math.round(4 * s),
+        Math.round(3 * s)
+      );
+      g.fillRect(
+        Math.round(32 * s),
+        Math.round((28 + i * 5) * s),
+        Math.round(4 * s),
+        Math.round(3 * s)
+      );
     }
   }
 
@@ -10836,8 +10863,18 @@ export class BootScene extends Phaser.Scene {
     // Legs (6 total)
     g.fillStyle(c.accent);
     for (let i = 0; i < 3; i++) {
-      g.fillRect(Math.round(6 * s), Math.round((36 + i * 3) * s), Math.round(6 * s), Math.round(2 * s));
-      g.fillRect(Math.round(36 * s), Math.round((36 + i * 3) * s), Math.round(6 * s), Math.round(2 * s));
+      g.fillRect(
+        Math.round(6 * s),
+        Math.round((36 + i * 3) * s),
+        Math.round(6 * s),
+        Math.round(2 * s)
+      );
+      g.fillRect(
+        Math.round(36 * s),
+        Math.round((36 + i * 3) * s),
+        Math.round(6 * s),
+        Math.round(2 * s)
+      );
     }
   }
 
@@ -10857,7 +10894,12 @@ export class BootScene extends Phaser.Scene {
       // Tentacles limp
       g.fillStyle(c.accent);
       for (let i = 0; i < 4; i++) {
-        g.fillRect(Math.round((8 + i * 10) * s), Math.round(38 * s), Math.round(4 * s), Math.round(8 * s));
+        g.fillRect(
+          Math.round((8 + i * 10) * s),
+          Math.round(38 * s),
+          Math.round(4 * s),
+          Math.round(8 * s)
+        );
       }
       // X eyes
       g.fillStyle(PALETTE.void);
@@ -10876,8 +10918,14 @@ export class BootScene extends Phaser.Scene {
 
     // 8 tentacles!
     const tentaclePositions = [
-      { x: 8, y: 28 }, { x: 14, y: 30 }, { x: 20, y: 32 }, { x: 26, y: 32 },
-      { x: 32, y: 30 }, { x: 38, y: 28 }, { x: 12, y: 26 }, { x: 34, y: 26 }
+      { x: 8, y: 28 },
+      { x: 14, y: 30 },
+      { x: 20, y: 32 },
+      { x: 26, y: 32 },
+      { x: 32, y: 30 },
+      { x: 38, y: 28 },
+      { x: 12, y: 26 },
+      { x: 34, y: 26 },
     ];
 
     if (pose === "attack") {
@@ -10885,7 +10933,12 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(c.primary);
       tentaclePositions.forEach((pos, i) => {
         const wave = i % 2 === 0 ? 2 : -2;
-        g.fillRect(Math.round(pos.x * s), Math.round(pos.y * s), Math.round(5 * s), Math.round(16 * s + wave * s));
+        g.fillRect(
+          Math.round(pos.x * s),
+          Math.round(pos.y * s),
+          Math.round(5 * s),
+          Math.round(16 * s + wave * s)
+        );
       });
       // Two attack tentacles
       g.fillStyle(c.accent);
@@ -10897,7 +10950,12 @@ export class BootScene extends Phaser.Scene {
       // Tentacles curled in
       g.fillStyle(c.primary);
       tentaclePositions.forEach((pos) => {
-        g.fillRect(Math.round(pos.x * s), Math.round((pos.y + 4) * s), Math.round(5 * s), Math.round(10 * s));
+        g.fillRect(
+          Math.round(pos.x * s),
+          Math.round((pos.y + 4) * s),
+          Math.round(5 * s),
+          Math.round(10 * s)
+        );
       });
       g.fillStyle(PALETTE.yellow);
       g.fillRect(Math.round(8 * s), Math.round(8 * s), Math.round(4 * s), Math.round(4 * s));
@@ -10907,12 +10965,22 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(c.primary);
       tentaclePositions.forEach((pos, i) => {
         const wave = i % 2 === 0 ? 14 : 16;
-        g.fillRect(Math.round(pos.x * s), Math.round(pos.y * s), Math.round(5 * s), Math.round(wave * s));
+        g.fillRect(
+          Math.round(pos.x * s),
+          Math.round(pos.y * s),
+          Math.round(5 * s),
+          Math.round(wave * s)
+        );
       });
       g.fillStyle(c.accent);
       tentaclePositions.forEach((pos, i) => {
         const wave = i % 2 === 0 ? 12 : 14;
-        g.fillRect(Math.round((pos.x + 1) * s), Math.round((pos.y + wave) * s), Math.round(3 * s), Math.round(4 * s));
+        g.fillRect(
+          Math.round((pos.x + 1) * s),
+          Math.round((pos.y + wave) * s),
+          Math.round(3 * s),
+          Math.round(4 * s)
+        );
       });
     }
 
@@ -10981,7 +11049,12 @@ export class BootScene extends Phaser.Scene {
     if (pose === "attack") {
       g.fillStyle(PALETTE.white);
       for (let i = 0; i < 5; i++) {
-        g.fillRect(Math.round((2 + i * 2) * s), Math.round(26 * s), Math.round(2 * s), Math.round(4 * s));
+        g.fillRect(
+          Math.round((2 + i * 2) * s),
+          Math.round(26 * s),
+          Math.round(2 * s),
+          Math.round(4 * s)
+        );
       }
       // Bite effect
       g.fillStyle(PALETTE.yellow);
@@ -11021,7 +11094,12 @@ export class BootScene extends Phaser.Scene {
       // Limp tentacles
       g.fillStyle(c.accent, 0.6);
       for (let i = 0; i < 6; i++) {
-        g.fillRect(Math.round((12 + i * 5) * s), Math.round(36 * s), Math.round(2 * s), Math.round(8 * s));
+        g.fillRect(
+          Math.round((12 + i * 5) * s),
+          Math.round(36 * s),
+          Math.round(2 * s),
+          Math.round(8 * s)
+        );
       }
       g.fillStyle(PALETTE.yellow);
       g.fillRect(Math.round(18 * s), Math.round(26 * s), Math.round(4 * s), Math.round(4 * s));
@@ -11095,26 +11173,56 @@ export class BootScene extends Phaser.Scene {
 
     // Round body
     g.fillStyle(c.primary);
-    g.fillEllipse(Math.round(24 * s), Math.round(24 * s), Math.round(radius * s), Math.round(radius * s));
+    g.fillEllipse(
+      Math.round(24 * s),
+      Math.round(24 * s),
+      Math.round(radius * s),
+      Math.round(radius * s)
+    );
     // Belly
     g.fillStyle(c.secondary);
-    g.fillEllipse(Math.round(24 * s), Math.round(28 * s), Math.round((radius - 4) * s), Math.round((radius - 6) * s));
+    g.fillEllipse(
+      Math.round(24 * s),
+      Math.round(28 * s),
+      Math.round((radius - 4) * s),
+      Math.round((radius - 6) * s)
+    );
 
     // SPIKES when puffed!
     if (puffed) {
       g.fillStyle(c.accent);
       // Top spikes
       for (let i = 0; i < 5; i++) {
-        g.fillRect(Math.round((12 + i * 6) * s), Math.round(4 * s), Math.round(3 * s), Math.round(6 * s));
+        g.fillRect(
+          Math.round((12 + i * 6) * s),
+          Math.round(4 * s),
+          Math.round(3 * s),
+          Math.round(6 * s)
+        );
       }
       // Side spikes
       for (let i = 0; i < 4; i++) {
-        g.fillRect(Math.round(4 * s), Math.round((12 + i * 6) * s), Math.round(6 * s), Math.round(3 * s));
-        g.fillRect(Math.round(38 * s), Math.round((12 + i * 6) * s), Math.round(6 * s), Math.round(3 * s));
+        g.fillRect(
+          Math.round(4 * s),
+          Math.round((12 + i * 6) * s),
+          Math.round(6 * s),
+          Math.round(3 * s)
+        );
+        g.fillRect(
+          Math.round(38 * s),
+          Math.round((12 + i * 6) * s),
+          Math.round(6 * s),
+          Math.round(3 * s)
+        );
       }
       // Bottom spikes
       for (let i = 0; i < 5; i++) {
-        g.fillRect(Math.round((12 + i * 6) * s), Math.round(38 * s), Math.round(3 * s), Math.round(6 * s));
+        g.fillRect(
+          Math.round((12 + i * 6) * s),
+          Math.round(38 * s),
+          Math.round(3 * s),
+          Math.round(6 * s)
+        );
       }
     }
 
@@ -11254,11 +11362,21 @@ export class BootScene extends Phaser.Scene {
     // Blobby body (jiggly!)
     const squish = pose === "attack" ? 4 : pose === "hurt" ? -2 : 0;
     g.fillStyle(c.primary, 0.85);
-    g.fillEllipse(Math.round(24 * s), Math.round((28 + squish) * s), Math.round((16 - squish) * s), Math.round((16 + squish) * s));
+    g.fillEllipse(
+      Math.round(24 * s),
+      Math.round((28 + squish) * s),
+      Math.round((16 - squish) * s),
+      Math.round((16 + squish) * s)
+    );
 
     // Inner glow
     g.fillStyle(c.secondary, 0.6);
-    g.fillEllipse(Math.round(22 * s), Math.round((24 + squish) * s), Math.round(10 * s), Math.round(10 * s));
+    g.fillEllipse(
+      Math.round(22 * s),
+      Math.round((24 + squish) * s),
+      Math.round(10 * s),
+      Math.round(10 * s)
+    );
 
     // Shine spots
     g.fillStyle(PALETTE.white, 0.7);
@@ -12113,7 +12231,12 @@ export class BootScene extends Phaser.Scene {
 
     // Platform shadow
     g.fillStyle(PALETTE.void);
-    g.fillRect(Math.round(10 * s), platformY + platformH - Math.round(5 * s), canvasW - Math.round(20 * s), Math.round(10 * s));
+    g.fillRect(
+      Math.round(10 * s),
+      platformY + platformH - Math.round(5 * s),
+      canvasW - Math.round(20 * s),
+      Math.round(10 * s)
+    );
 
     // Platform side (3D depth)
     g.fillStyle(darken(0xa8754b, 0.3));
@@ -12121,11 +12244,21 @@ export class BootScene extends Phaser.Scene {
 
     // Platform top
     g.fillStyle(0xa8754b); // Brown wood
-    g.fillRect(Math.round(5 * s), platformY - Math.round(5 * s), canvasW - Math.round(10 * s), Math.round(10 * s));
+    g.fillRect(
+      Math.round(5 * s),
+      platformY - Math.round(5 * s),
+      canvasW - Math.round(10 * s),
+      Math.round(10 * s)
+    );
 
     // Platform highlight
     g.fillStyle(lighten(0xa8754b, 0.2));
-    g.fillRect(Math.round(5 * s), platformY - Math.round(5 * s), canvasW - Math.round(10 * s), Math.round(3 * s));
+    g.fillRect(
+      Math.round(5 * s),
+      platformY - Math.round(5 * s),
+      canvasW - Math.round(10 * s),
+      Math.round(3 * s)
+    );
 
     // Ring mat
     const matX = Math.round(15 * s);
@@ -12149,7 +12282,12 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(lighten(postColor, 0.3));
     g.fillRect(Math.round(10 * s), Math.round(20 * s), Math.round(3 * s), postH);
     g.fillStyle(darken(postColor, 0.2));
-    g.fillRect(Math.round(10 * s) + postW - Math.round(2 * s), Math.round(20 * s), Math.round(2 * s), postH);
+    g.fillRect(
+      Math.round(10 * s) + postW - Math.round(2 * s),
+      Math.round(20 * s),
+      Math.round(2 * s),
+      postH
+    );
 
     // Right post
     g.fillStyle(postColor);
@@ -12162,10 +12300,20 @@ export class BootScene extends Phaser.Scene {
     // Post caps
     g.fillStyle(PALETTE.gold);
     g.fillRect(Math.round(8 * s), Math.round(16 * s), Math.round(12 * s), Math.round(6 * s));
-    g.fillRect(canvasW - Math.round(20 * s), Math.round(16 * s), Math.round(12 * s), Math.round(6 * s));
+    g.fillRect(
+      canvasW - Math.round(20 * s),
+      Math.round(16 * s),
+      Math.round(12 * s),
+      Math.round(6 * s)
+    );
     g.fillStyle(PALETTE.yellow);
     g.fillRect(Math.round(8 * s), Math.round(16 * s), Math.round(12 * s), Math.round(2 * s));
-    g.fillRect(canvasW - Math.round(20 * s), Math.round(16 * s), Math.round(12 * s), Math.round(2 * s));
+    g.fillRect(
+      canvasW - Math.round(20 * s),
+      Math.round(16 * s),
+      Math.round(12 * s),
+      Math.round(2 * s)
+    );
 
     // Ropes (3 levels)
     const ropeY = [Math.round(30 * s), Math.round(45 * s), Math.round(60 * s)];
@@ -12187,7 +12335,11 @@ export class BootScene extends Phaser.Scene {
     const g = this.make.graphics({ x: 0, y: 0 });
 
     // Tiered seating
-    const rowColors = [PALETTE.deepPurple, darken(PALETTE.deepPurple, 0.1), darken(PALETTE.deepPurple, 0.2)];
+    const rowColors = [
+      PALETTE.deepPurple,
+      darken(PALETTE.deepPurple, 0.1),
+      darken(PALETTE.deepPurple, 0.2),
+    ];
     const rowH = Math.round(20 * s);
 
     for (let i = 0; i < 3; i++) {
@@ -12204,17 +12356,26 @@ export class BootScene extends Phaser.Scene {
 
       // Silhouette spectators
       const spectatorSpacing = Math.round(12 * s);
-      for (let x = xOffset + Math.round(8 * s); x < canvasW - xOffset - Math.round(8 * s); x += spectatorSpacing) {
+      for (
+        let x = xOffset + Math.round(8 * s);
+        x < canvasW - xOffset - Math.round(8 * s);
+        x += spectatorSpacing
+      ) {
         // Random variation
-        const headY = y + Math.round(5 * s) + ((x % 3) * Math.round(2 * s));
-        const headSize = Math.round(6 * s) + ((x % 2) * Math.round(2 * s));
+        const headY = y + Math.round(5 * s) + (x % 3) * Math.round(2 * s);
+        const headSize = Math.round(6 * s) + (x % 2) * Math.round(2 * s);
 
         // Head
         g.fillStyle(PALETTE.void);
         g.fillRect(x, headY, headSize, headSize);
 
         // Body hint
-        g.fillRect(x - Math.round(1 * s), headY + headSize, headSize + Math.round(2 * s), Math.round(8 * s));
+        g.fillRect(
+          x - Math.round(1 * s),
+          headY + headSize,
+          headSize + Math.round(2 * s),
+          Math.round(8 * s)
+        );
       }
     }
 
@@ -12279,30 +12440,105 @@ export class BootScene extends Phaser.Scene {
     // === STARBURST RAYS ===
     g.fillStyle(PALETTE.orange);
     // Cardinal directions
-    g.fillRect(cx - Math.round(14 * s), cy - Math.round(2 * s), Math.round(10 * s), Math.round(4 * s));
-    g.fillRect(cx + Math.round(4 * s), cy - Math.round(2 * s), Math.round(10 * s), Math.round(4 * s));
-    g.fillRect(cx - Math.round(2 * s), cy - Math.round(14 * s), Math.round(4 * s), Math.round(10 * s));
-    g.fillRect(cx - Math.round(2 * s), cy + Math.round(4 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(
+      cx - Math.round(14 * s),
+      cy - Math.round(2 * s),
+      Math.round(10 * s),
+      Math.round(4 * s)
+    );
+    g.fillRect(
+      cx + Math.round(4 * s),
+      cy - Math.round(2 * s),
+      Math.round(10 * s),
+      Math.round(4 * s)
+    );
+    g.fillRect(
+      cx - Math.round(2 * s),
+      cy - Math.round(14 * s),
+      Math.round(4 * s),
+      Math.round(10 * s)
+    );
+    g.fillRect(
+      cx - Math.round(2 * s),
+      cy + Math.round(4 * s),
+      Math.round(4 * s),
+      Math.round(10 * s)
+    );
     // Diagonal rays (smaller)
-    g.fillRect(cx - Math.round(10 * s), cy - Math.round(10 * s), Math.round(6 * s), Math.round(3 * s));
-    g.fillRect(cx + Math.round(4 * s), cy - Math.round(10 * s), Math.round(6 * s), Math.round(3 * s));
-    g.fillRect(cx - Math.round(10 * s), cy + Math.round(7 * s), Math.round(6 * s), Math.round(3 * s));
-    g.fillRect(cx + Math.round(4 * s), cy + Math.round(7 * s), Math.round(6 * s), Math.round(3 * s));
+    g.fillRect(
+      cx - Math.round(10 * s),
+      cy - Math.round(10 * s),
+      Math.round(6 * s),
+      Math.round(3 * s)
+    );
+    g.fillRect(
+      cx + Math.round(4 * s),
+      cy - Math.round(10 * s),
+      Math.round(6 * s),
+      Math.round(3 * s)
+    );
+    g.fillRect(
+      cx - Math.round(10 * s),
+      cy + Math.round(7 * s),
+      Math.round(6 * s),
+      Math.round(3 * s)
+    );
+    g.fillRect(
+      cx + Math.round(4 * s),
+      cy + Math.round(7 * s),
+      Math.round(6 * s),
+      Math.round(3 * s)
+    );
 
     // === YELLOW INNER BURST ===
     g.fillStyle(PALETTE.yellow);
-    g.fillRect(cx - Math.round(6 * s), cy - Math.round(6 * s), Math.round(12 * s), Math.round(12 * s));
+    g.fillRect(
+      cx - Math.round(6 * s),
+      cy - Math.round(6 * s),
+      Math.round(12 * s),
+      Math.round(12 * s)
+    );
     // Yellow ray highlights
-    g.fillRect(cx - Math.round(12 * s), cy - Math.round(1 * s), Math.round(8 * s), Math.round(2 * s));
-    g.fillRect(cx + Math.round(4 * s), cy - Math.round(1 * s), Math.round(8 * s), Math.round(2 * s));
-    g.fillRect(cx - Math.round(1 * s), cy - Math.round(12 * s), Math.round(2 * s), Math.round(8 * s));
-    g.fillRect(cx - Math.round(1 * s), cy + Math.round(4 * s), Math.round(2 * s), Math.round(8 * s));
+    g.fillRect(
+      cx - Math.round(12 * s),
+      cy - Math.round(1 * s),
+      Math.round(8 * s),
+      Math.round(2 * s)
+    );
+    g.fillRect(
+      cx + Math.round(4 * s),
+      cy - Math.round(1 * s),
+      Math.round(8 * s),
+      Math.round(2 * s)
+    );
+    g.fillRect(
+      cx - Math.round(1 * s),
+      cy - Math.round(12 * s),
+      Math.round(2 * s),
+      Math.round(8 * s)
+    );
+    g.fillRect(
+      cx - Math.round(1 * s),
+      cy + Math.round(4 * s),
+      Math.round(2 * s),
+      Math.round(8 * s)
+    );
 
     // === WHITE HOT CENTER ===
     g.fillStyle(PALETTE.white);
-    g.fillRect(cx - Math.round(4 * s), cy - Math.round(4 * s), Math.round(8 * s), Math.round(8 * s));
+    g.fillRect(
+      cx - Math.round(4 * s),
+      cy - Math.round(4 * s),
+      Math.round(8 * s),
+      Math.round(8 * s)
+    );
     // Extra bright core
-    g.fillRect(cx - Math.round(2 * s), cy - Math.round(2 * s), Math.round(4 * s), Math.round(4 * s));
+    g.fillRect(
+      cx - Math.round(2 * s),
+      cy - Math.round(2 * s),
+      Math.round(4 * s),
+      Math.round(4 * s)
+    );
 
     // === FLYING SPARK PARTICLES ===
     g.fillStyle(PALETTE.yellow);

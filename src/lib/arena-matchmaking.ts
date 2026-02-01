@@ -91,7 +91,6 @@ export async function attemptMatchmaking(): Promise<number | null> {
     }
 
     return matchId;
-
   } finally {
     isProcessing = false;
   }

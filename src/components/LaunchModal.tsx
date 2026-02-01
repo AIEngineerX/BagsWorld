@@ -155,7 +155,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       const { name, symbol, description, logo, banner } = event.detail;
 
       // Update form data
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         name: name || prev.name,
         symbol: symbol || prev.symbol,
@@ -206,7 +206,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
     // File size check (max 10MB)
     const maxSizeMB = 10;
     if (file.size > maxSizeMB * 1024 * 1024) {
-      setError(`${imageType === "logo" ? "Logo" : "Banner"} file is too large. Maximum size is ${maxSizeMB}MB.`);
+      setError(
+        `${imageType === "logo" ? "Logo" : "Banner"} file is too large. Maximum size is ${maxSizeMB}MB.`
+      );
       return;
     }
 
@@ -235,7 +237,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           if (width !== height) {
             setWarning(`Logo is ${width}x${height}px (not square). Recommended: 512x512px square.`);
           } else if (width < 256) {
-            setWarning(`Logo is only ${width}x${height}px. Recommended: at least 512x512px for best quality.`);
+            setWarning(
+              `Logo is only ${width}x${height}px. Recommended: at least 512x512px for best quality.`
+            );
           } else if (width !== 512) {
             setWarning(`Logo is ${width}x${height}px. Recommended: 512x512px.`);
           } else {
@@ -245,7 +249,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           // Banner: check 3:1 ratio
           const ratio = width / height;
           if (Math.abs(ratio - 3) > 0.1) {
-            setWarning(`Banner is ${width}x${height}px (${ratio.toFixed(1)}:1 ratio). Recommended: 600x200px (3:1 ratio) for DexScreener.`);
+            setWarning(
+              `Banner is ${width}x${height}px (${ratio.toFixed(1)}:1 ratio). Recommended: 600x200px (3:1 ratio) for DexScreener.`
+            );
           } else if (width < 600) {
             setWarning(`Banner is only ${width}x${height}px. Recommended: at least 600x200px.`);
           } else {
@@ -1085,11 +1091,19 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <div className="space-y-1">
                 <p className="font-pixel text-[8px] text-gray-400 text-center">LOGO (512x512) *</p>
                 <label className="cursor-pointer block">
-                  <div className={`aspect-square bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
-                    isResizingLogo ? "border-amber-500 animate-pulse" : logoWarning ? "border-yellow-500 hover:border-yellow-400" : "border-bags-green hover:border-bags-gold"
-                  }`}>
+                  <div
+                    className={`aspect-square bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
+                      isResizingLogo
+                        ? "border-amber-500 animate-pulse"
+                        : logoWarning
+                          ? "border-yellow-500 hover:border-yellow-400"
+                          : "border-bags-green hover:border-bags-gold"
+                    }`}
+                  >
                     {isResizingLogo ? (
-                      <span className="font-pixel text-[8px] text-amber-400 animate-pulse">Resizing...</span>
+                      <span className="font-pixel text-[8px] text-amber-400 animate-pulse">
+                        Resizing...
+                      </span>
                     ) : imagePreview ? (
                       <img src={imagePreview} alt="Token" className="w-full h-full object-cover" />
                     ) : (
@@ -1109,7 +1123,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 </label>
                 {logoWarning && (
                   <div className="space-y-1">
-                    <p className="font-pixel text-[6px] text-yellow-400 text-center">⚠️ {logoWarning}</p>
+                    <p className="font-pixel text-[6px] text-yellow-400 text-center">
+                      ⚠️ {logoWarning}
+                    </p>
                     <button
                       type="button"
                       onClick={handleResizeLogo}
@@ -1126,13 +1142,25 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               <div className="space-y-1">
                 <p className="font-pixel text-[8px] text-gray-400 text-center">BANNER (600x200)</p>
                 <label className="cursor-pointer block">
-                  <div className={`aspect-[3/1] bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
-                    isResizingBanner ? "border-amber-500 animate-pulse" : bannerWarning ? "border-yellow-500 hover:border-yellow-400" : "border-amber-600/50 hover:border-amber-500"
-                  }`}>
+                  <div
+                    className={`aspect-[3/1] bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
+                      isResizingBanner
+                        ? "border-amber-500 animate-pulse"
+                        : bannerWarning
+                          ? "border-yellow-500 hover:border-yellow-400"
+                          : "border-amber-600/50 hover:border-amber-500"
+                    }`}
+                  >
                     {isResizingBanner ? (
-                      <span className="font-pixel text-[7px] text-amber-400 animate-pulse">Resizing...</span>
+                      <span className="font-pixel text-[7px] text-amber-400 animate-pulse">
+                        Resizing...
+                      </span>
                     ) : bannerPreview ? (
-                      <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
+                      <img
+                        src={bannerPreview}
+                        alt="Banner"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <span className="font-pixel text-[7px] text-gray-500 text-center">
                         FOR DEXSCREENER
@@ -1150,7 +1178,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 </label>
                 {bannerWarning ? (
                   <div className="space-y-1">
-                    <p className="font-pixel text-[6px] text-yellow-400 text-center">⚠️ {bannerWarning}</p>
+                    <p className="font-pixel text-[6px] text-yellow-400 text-center">
+                      ⚠️ {bannerWarning}
+                    </p>
                     <button
                       type="button"
                       onClick={handleResizeBanner}
@@ -1161,7 +1191,9 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                     </button>
                   </div>
                 ) : (
-                  <p className="font-pixel text-[6px] text-gray-500 text-center">3:1 ratio for DexScreener</p>
+                  <p className="font-pixel text-[6px] text-gray-500 text-center">
+                    3:1 ratio for DexScreener
+                  </p>
                 )}
               </div>
             </div>
@@ -1425,14 +1457,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               {bannerPreview && (
                 <div className="space-y-1 mb-2">
                   <div className="w-full aspect-[3/1] overflow-hidden border border-amber-600/30">
-                    <img
-                      src={bannerPreview}
-                      alt="Banner"
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
                   </div>
                   <p className="font-pixel text-[6px] text-amber-400/70 text-center">
-                    💾 Banner saved locally for DexScreener Enhanced Token Info ($299 separate process)
+                    💾 Banner saved locally for DexScreener Enhanced Token Info ($299 separate
+                    process)
                   </p>
                 </div>
               )}

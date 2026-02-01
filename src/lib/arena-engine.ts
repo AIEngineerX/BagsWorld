@@ -121,11 +121,13 @@ export class ArenaEngine {
       tick: 0,
       fighter1,
       fighter2,
-      events: [{
-        tick: 0,
-        type: "match_start",
-        message: `${fighter1.username} vs ${fighter2.username}`,
-      }],
+      events: [
+        {
+          tick: 0,
+          type: "match_start",
+          message: `${fighter1.username} vs ${fighter2.username}`,
+        },
+      ],
       startedAt: Date.now(),
     };
 
@@ -135,7 +137,9 @@ export class ArenaEngine {
       damageDealt2: 0,
     });
 
-    console.log(`[ArenaEngine] Match ${matchId} added: ${fighter1.username} vs ${fighter2.username}`);
+    console.log(
+      `[ArenaEngine] Match ${matchId} added: ${fighter1.username} vs ${fighter2.username}`
+    );
 
     // Broadcast initial state
     if (this.onUpdate) {
@@ -345,30 +349,17 @@ export class ArenaEngine {
       message: `${winner.username} wins!`,
     });
 
-    console.log(`[ArenaEngine] Match ${matchId} ended: ${winner.username} defeats ${loser.username}`);
+    console.log(
+      `[ArenaEngine] Match ${matchId} ended: ${winner.username} defeats ${loser.username}`
+    );
 
     // Update database
-    await completeMatch(
-      matchId,
-      winner.id,
-      state.tick,
-      state.events
-    );
+    await completeMatch(matchId, winner.id, state.tick, state.events);
 
     // Update fighter stats
     const winner1 = f1.stats.hp > 0;
-    await updateFighterStats(
-      f1.id,
-      winner1,
-      damageDealt1,
-      f1.stats.maxHp - f1.stats.hp
-    );
-    await updateFighterStats(
-      f2.id,
-      !winner1,
-      damageDealt2,
-      f2.stats.maxHp - f2.stats.hp
-    );
+    await updateFighterStats(f1.id, winner1, damageDealt1, f1.stats.maxHp - f1.stats.hp);
+    await updateFighterStats(f2.id, !winner1, damageDealt2, f2.stats.maxHp - f2.stats.hp);
 
     // Broadcast final state
     if (this.onUpdate) {

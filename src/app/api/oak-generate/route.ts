@@ -360,7 +360,8 @@ function generateProceduralImage(
           Math.abs(x - halfWidth / 2) / (halfWidth / 2) +
           Math.abs(y - gridHeight / 2) / (gridHeight / 2);
         const fillProbability = Math.max(0, 0.7 - distFromCenter * 0.4);
-        pattern[y][x] = random() < fillProbability ? Math.floor(random() * (colors.length - 1)) + 1 : 0;
+        pattern[y][x] =
+          random() < fillProbability ? Math.floor(random() * (colors.length - 1)) + 1 : 0;
       }
     }
 
@@ -550,7 +551,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<GenerateR
   const { action, concept, style = "pixel-art", imageData, targetWidth, targetHeight } = body;
 
   if (!action) {
-    return NextResponse.json({ success: false, error: "Missing action parameter" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "Missing action parameter" },
+      { status: 400 }
+    );
   }
 
   switch (action) {
@@ -645,7 +649,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<GenerateR
     }
 
     default:
-      return NextResponse.json({ success: false, error: `Unknown action: ${action}` }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: `Unknown action: ${action}` },
+        { status: 400 }
+      );
   }
 }
 
@@ -657,6 +664,12 @@ export async function GET(): Promise<NextResponse> {
       nameGeneration: ANTHROPIC_API_KEY ? "claude" : "fallback",
       imageGeneration: REPLICATE_API_TOKEN ? "replicate" : "procedural",
     },
-    capabilities: ["suggest-names", "generate-logo", "generate-banner", "resize-image", "full-wizard"],
+    capabilities: [
+      "suggest-names",
+      "generate-logo",
+      "generate-banner",
+      "resize-image",
+      "full-wizard",
+    ],
   });
 }

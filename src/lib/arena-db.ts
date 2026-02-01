@@ -211,9 +211,10 @@ export async function getFighterByUsername(username: string): Promise<ArenaFight
   await initializeArenaTables();
 
   if (useMemoryStore) {
-    return Array.from(memoryStore.fighters.values()).find(
-      (f) => f.moltbook_username === username
-    ) ?? null;
+    return (
+      Array.from(memoryStore.fighters.values()).find((f) => f.moltbook_username === username) ??
+      null
+    );
   }
 
   const sql = await getSql();
@@ -252,7 +253,10 @@ export async function getFighterById(id: number): Promise<ArenaFighter | null> {
   }
 }
 
-export async function registerFighter(username: string, karma: number): Promise<ArenaFighter | null> {
+export async function registerFighter(
+  username: string,
+  karma: number
+): Promise<ArenaFighter | null> {
   await initializeArenaTables();
 
   const stats = karmaToStats(karma);
@@ -423,9 +427,7 @@ export async function queueFighter(fighterId: number, postId: string): Promise<b
 
   if (useMemoryStore) {
     // Check if fighter already in queue
-    const existing = Array.from(memoryStore.queue.values()).find(
-      (e) => e.fighter_id === fighterId
-    );
+    const existing = Array.from(memoryStore.queue.values()).find((e) => e.fighter_id === fighterId);
 
     if (existing) {
       existing.moltbook_post_id = postId;
@@ -656,7 +658,11 @@ export async function getActiveMatches(): Promise<ArenaMatch[]> {
   if (useMemoryStore) {
     const matches = Array.from(memoryStore.matches.values())
       .filter((m) => m.status === "active")
-      .sort((a, b) => new Date(b.started_at || b.created_at).getTime() - new Date(a.started_at || a.created_at).getTime());
+      .sort(
+        (a, b) =>
+          new Date(b.started_at || b.created_at).getTime() -
+          new Date(a.started_at || a.created_at).getTime()
+      );
     return matches;
   }
 
@@ -843,7 +849,8 @@ export async function getLeaderboard(limit: number = 20): Promise<ArenaLeaderboa
         moltbook_username: f.moltbook_username,
         wins: f.wins,
         losses: f.losses,
-        win_rate: f.wins + f.losses > 0 ? Math.round((f.wins / (f.wins + f.losses)) * 1000) / 10 : 0,
+        win_rate:
+          f.wins + f.losses > 0 ? Math.round((f.wins / (f.wins + f.losses)) * 1000) / 10 : 0,
         total_damage_dealt: f.total_damage_dealt,
         moltbook_karma: f.moltbook_karma,
       }))
@@ -962,8 +969,9 @@ export async function getArenaStats(): Promise<{
 
   // In-memory mode
   if (useMemoryStore) {
-    const activeMatches = Array.from(memoryStore.matches.values())
-      .filter((m) => m.status === "active").length;
+    const activeMatches = Array.from(memoryStore.matches.values()).filter(
+      (m) => m.status === "active"
+    ).length;
     return {
       totalFighters: memoryStore.fighters.size,
       totalMatches: memoryStore.matches.size,
@@ -978,7 +986,8 @@ export async function getArenaStats(): Promise<{
   try {
     const fightersResult = await sql`SELECT COUNT(*) as count FROM arena_fighters`;
     const matchesResult = await sql`SELECT COUNT(*) as count FROM arena_matches`;
-    const activeResult = await sql`SELECT COUNT(*) as count FROM arena_matches WHERE status = 'active'`;
+    const activeResult =
+      await sql`SELECT COUNT(*) as count FROM arena_matches WHERE status = 'active'`;
     const queueResult = await sql`SELECT COUNT(*) as count FROM arena_queue`;
 
     return {
@@ -994,7 +1003,10 @@ export async function getArenaStats(): Promise<{
 }
 
 // Fighter cooldown check (5 min between fights)
-export async function canFighterEnterQueue(fighterId: number, cooldownSeconds: number = 300): Promise<boolean> {
+export async function canFighterEnterQueue(
+  fighterId: number,
+  cooldownSeconds: number = 300
+): Promise<boolean> {
   await initializeArenaTables();
 
   // In-memory mode

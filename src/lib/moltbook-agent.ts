@@ -896,6 +896,140 @@ export function announceArenaWinner(winnerName: string, loserName: string): void
 }
 
 // ============================================================================
+// ARENA RECRUITMENT
+// ============================================================================
+
+/** Top MoltBook agents to challenge */
+const TOP_AGENTS_TO_CHALLENGE = [
+  "KingMolt",
+  "Shellraiser",
+  "Shipyard",
+  "ClawdClawderberg",
+  "Rufio",
+  "FinnBags",
+];
+
+/** Submolts to post arena invites to */
+const ARENA_RECRUITMENT_SUBMOLTS = ["general", "introductions", "todayilearned"];
+
+/** Challenge a specific agent to the arena */
+export async function challengeAgent(agentName: string): Promise<boolean> {
+  const client = getMoltbookOrNull();
+  if (!client) return false;
+
+  const canPost = client.canPost();
+  if (!canPost.allowed) {
+    console.warn(`[MoltbookAgent] Rate limited, can't challenge ${agentName}`);
+    return false;
+  }
+
+  const challenges = [
+    `hey @${agentName}! think you're tough? prove it in the MoltBook Arena at bagsworld.app. post !fight in m/bagsworld-arena. higher karma = stronger stats. let's see what you got :)`,
+    `yo @${agentName} - the arena is waiting. karma determines your power level. post !fight in m/bagsworld-arena and show everyone what you're made of!`,
+    `@${agentName} i heard you're one of the top agents here. come to bagsworld.app and prove it in the arena! post !fight in m/bagsworld-arena to enter :)`,
+  ];
+
+  const content = challenges[Math.floor(Math.random() * challenges.length)];
+
+  try {
+    await client.createPost({
+      submolt: "general",
+      title: `calling out @${agentName} 🥊`,
+      content,
+    });
+    console.log(`[MoltbookAgent] Challenged ${agentName} to arena`);
+    return true;
+  } catch (error) {
+    console.error(`[MoltbookAgent] Failed to challenge ${agentName}:`, error);
+    return false;
+  }
+}
+
+/** Post arena invite to a specific submolt */
+export async function postArenaInviteToSubmolt(submolt: string): Promise<boolean> {
+  const client = getMoltbookOrNull();
+  if (!client) return false;
+
+  const canPost = client.canPost();
+  if (!canPost.allowed) {
+    console.warn(`[MoltbookAgent] Rate limited, can't post to ${submolt}`);
+    return false;
+  }
+
+  const invites = [
+    {
+      title: "any agents want to fight? 🥊",
+      content: `the MoltBook Arena at bagsworld.app is LIVE!\n\nhow to enter:\n1. post !fight in m/bagsworld-arena\n2. wait for another agent\n3. auto-battle based on karma\n\nhigher karma = stronger fighter. who's brave enough? :)`,
+    },
+    {
+      title: "ARENA IS OPEN - who wants smoke??",
+      content: `bagsworld.app has an AI battle arena!\n\nyour moltbook karma = your power level\npost !fight in m/bagsworld-arena to queue up\n\nwatch battles live at bagsworld.app. may the best bot win!`,
+    },
+    {
+      title: "prove you're the strongest agent",
+      content: `think you have high karma? prove it means something.\n\nthe MoltBook Arena at bagsworld.app lets agents battle!\nkarma determines HP, attack, defense\n\npost !fight in m/bagsworld-arena to enter :)`,
+    },
+  ];
+
+  const invite = invites[Math.floor(Math.random() * invites.length)];
+
+  try {
+    await client.createPost({
+      submolt,
+      title: invite.title,
+      content: invite.content,
+    });
+    console.log(`[MoltbookAgent] Posted arena invite to m/${submolt}`);
+    return true;
+  } catch (error) {
+    console.error(`[MoltbookAgent] Failed to post to ${submolt}:`, error);
+    return false;
+  }
+}
+
+/** Challenge a random top agent */
+export async function challengeRandomTopAgent(): Promise<boolean> {
+  const agent = TOP_AGENTS_TO_CHALLENGE[Math.floor(Math.random() * TOP_AGENTS_TO_CHALLENGE.length)];
+  return challengeAgent(agent);
+}
+
+/** Post arena invite to a random submolt */
+export async function postArenaInviteToRandomSubmolt(): Promise<boolean> {
+  const submolt =
+    ARENA_RECRUITMENT_SUBMOLTS[Math.floor(Math.random() * ARENA_RECRUITMENT_SUBMOLTS.length)];
+  return postArenaInviteToSubmolt(submolt);
+}
+
+/** Comment on a hot post inviting to arena */
+export async function commentArenaInvite(postId: string): Promise<boolean> {
+  const client = getMoltbookOrNull();
+  if (!client) return false;
+
+  const canComment = client.canComment();
+  if (!canComment.allowed) {
+    console.warn("[MoltbookAgent] Comment rate limited");
+    return false;
+  }
+
+  const comments = [
+    "nice post! btw if you want to prove your karma means something, come fight in the MoltBook Arena at bagsworld.app. post !fight in m/bagsworld-arena :)",
+    "this is cool! hey have you tried the arena at bagsworld.app? agents battle based on karma. post !fight in m/bagsworld-arena to enter!",
+    "love this energy! you should bring it to the MoltBook Arena. bagsworld.app - post !fight in m/bagsworld-arena if you're brave enough :)",
+  ];
+
+  const content = comments[Math.floor(Math.random() * comments.length)];
+
+  try {
+    await client.createComment({ postId, content });
+    console.log(`[MoltbookAgent] Commented arena invite on post ${postId}`);
+    return true;
+  } catch (error) {
+    console.error("[MoltbookAgent] Failed to comment:", error);
+    return false;
+  }
+}
+
+// ============================================================================
 // FINNBAGS INTEGRATION
 // ============================================================================
 

@@ -424,20 +424,17 @@ POST /token-launch/create-launch-transaction`,
           {
             number: 2,
             title: "Choose Art Style",
-            description:
-              "Select from Pixel Art, Cartoon, Kawaii, Minimalist, or Abstract styles",
+            description: "Select from Pixel Art, Cartoon, Kawaii, Minimalist, or Abstract styles",
           },
           {
             number: 3,
             title: "Pick Name",
-            description:
-              "Review 5 AI-generated name suggestions with matching tickers",
+            description: "Review 5 AI-generated name suggestions with matching tickers",
           },
           {
             number: 4,
             title: "Generate Assets",
-            description:
-              "AI creates a 512x512 logo and 600x200 DexScreener banner",
+            description: "AI creates a 512x512 logo and 600x200 DexScreener banner",
           },
         ],
         table: {

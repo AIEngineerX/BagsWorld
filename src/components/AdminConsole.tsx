@@ -1664,7 +1664,9 @@ export function AdminConsole() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="bg-bags-darker p-3 border border-bags-green/30">
                         <p className="font-pixel text-[8px] text-gray-500">Status</p>
-                        <p className={`font-pixel text-sm ${telegramStatus.enabled ? "text-green-400" : "text-red-400"}`}>
+                        <p
+                          className={`font-pixel text-sm ${telegramStatus.enabled ? "text-green-400" : "text-red-400"}`}
+                        >
                           {telegramStatus.enabled ? "ENABLED" : "DISABLED"}
                         </p>
                       </div>
@@ -1682,7 +1684,9 @@ export function AdminConsole() {
                       </div>
                       <div className="bg-bags-darker p-3 border border-bags-green/30">
                         <p className="font-pixel text-[8px] text-gray-500">Rate Limited</p>
-                        <p className={`font-pixel text-sm ${telegramStatus.stats.rateLimited ? "text-red-400" : "text-green-400"}`}>
+                        <p
+                          className={`font-pixel text-sm ${telegramStatus.stats.rateLimited ? "text-red-400" : "text-green-400"}`}
+                        >
                           {telegramStatus.stats.rateLimited ? "YES" : "NO"}
                         </p>
                       </div>
@@ -1694,7 +1698,8 @@ export function AdminConsole() {
 
                       {!telegramStatus.configured ? (
                         <div className="p-3 bg-yellow-500/20 border border-yellow-500 text-yellow-300 font-pixel text-[9px]">
-                          Telegram not configured. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID in eliza-agents.
+                          Telegram not configured. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHANNEL_ID in
+                          eliza-agents.
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1702,14 +1707,18 @@ export function AdminConsole() {
                           <div className="flex items-center gap-3">
                             <button
                               onClick={async () => {
-                                const agentsUrl = process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
+                                const agentsUrl =
+                                  process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
                                 const adminKey = prompt("Enter Ghost Admin Key:");
                                 if (!adminKey) return;
                                 const action = telegramStatus.enabled ? "disable" : "enable";
-                                const res = await fetch(`${agentsUrl}/api/ghost/telegram/${action}`, {
-                                  method: "POST",
-                                  headers: { "x-ghost-admin-key": adminKey },
-                                });
+                                const res = await fetch(
+                                  `${agentsUrl}/api/ghost/telegram/${action}`,
+                                  {
+                                    method: "POST",
+                                    headers: { "x-ghost-admin-key": adminKey },
+                                  }
+                                );
                                 if (res.ok) {
                                   addLog(`Telegram ${action}d`, "success");
                                   fetchTelegramStatus();
@@ -1723,12 +1732,15 @@ export function AdminConsole() {
                                   : "bg-green-500/20 border-green-500 text-green-300 hover:bg-green-500/30"
                               }`}
                             >
-                              {telegramStatus.enabled ? "DISABLE BROADCASTING" : "ENABLE BROADCASTING"}
+                              {telegramStatus.enabled
+                                ? "DISABLE BROADCASTING"
+                                : "ENABLE BROADCASTING"}
                             </button>
 
                             <button
                               onClick={async () => {
-                                const agentsUrl = process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
+                                const agentsUrl =
+                                  process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
                                 const adminKey = prompt("Enter Ghost Admin Key:");
                                 if (!adminKey) return;
                                 const res = await fetch(`${agentsUrl}/api/ghost/telegram/test`, {
@@ -1750,7 +1762,9 @@ export function AdminConsole() {
 
                           {/* Min Score */}
                           <div className="flex items-center gap-3">
-                            <span className="font-pixel text-[9px] text-gray-400">Min Score to Post:</span>
+                            <span className="font-pixel text-[9px] text-gray-400">
+                              Min Score to Post:
+                            </span>
                             <input
                               type="number"
                               min="0"
@@ -1761,7 +1775,8 @@ export function AdminConsole() {
                             />
                             <button
                               onClick={async () => {
-                                const agentsUrl = process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
+                                const agentsUrl =
+                                  process.env.NEXT_PUBLIC_AGENTS_API_URL || "http://localhost:3001";
                                 const adminKey = prompt("Enter Ghost Admin Key:");
                                 if (!adminKey) return;
                                 const res = await fetch(`${agentsUrl}/api/ghost/telegram/config`, {
@@ -1793,7 +1808,9 @@ export function AdminConsole() {
                       <p className="font-pixel text-[9px] text-gray-400 mb-2">HOW IT WORKS</p>
                       <ul className="space-y-1 font-pixel text-[8px] text-gray-500">
                         <li>• Ghost broadcasts entry signals to Telegram when enabled</li>
-                        <li>• Only trades with score ≥ {telegramStatus.minScoreToPost} are posted</li>
+                        <li>
+                          • Only trades with score ≥ {telegramStatus.minScoreToPost} are posted
+                        </li>
                         <li>• Rate limited to 20 messages/minute to avoid Telegram limits</li>
                         <li>• Each token is only posted once per hour (no spam)</li>
                         <li>• Messages include: ticker, CA, risk level, and reasoning</li>

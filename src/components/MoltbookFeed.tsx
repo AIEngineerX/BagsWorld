@@ -71,38 +71,39 @@ export function MoltbookFeed({
   const [queueInfo, setQueueInfo] = useState<{ pending: number; nextPostIn: number } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchFeed = useCallback(async (showRefresh = false) => {
-    if (showRefresh) setRefreshing(true);
+  const fetchFeed = useCallback(
+    async (showRefresh = false) => {
+      if (showRefresh) setRefreshing(true);
 
-    try {
-      const response = await fetch(
-        `/api/moltbook?source=${source}&limit=${limit}`
-      );
+      try {
+        const response = await fetch(`/api/moltbook?source=${source}&limit=${limit}`);
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch feed");
+        if (!response.ok) {
+          throw new Error("Failed to fetch feed");
+        }
+
+        const data = await response.json();
+
+        if (!data.configured) {
+          setConfigured(false);
+          setPosts([]);
+        } else {
+          setConfigured(true);
+          setPosts(data.posts || []);
+          setQueueInfo(data.queue || null);
+        }
+
+        setError(null);
+      } catch (err) {
+        console.error("[MoltbookFeed] Error:", err);
+        setError("Failed to load feed");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-
-      const data = await response.json();
-
-      if (!data.configured) {
-        setConfigured(false);
-        setPosts([]);
-      } else {
-        setConfigured(true);
-        setPosts(data.posts || []);
-        setQueueInfo(data.queue || null);
-      }
-
-      setError(null);
-    } catch (err) {
-      console.error("[MoltbookFeed] Error:", err);
-      setError("Failed to load feed");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [source, limit]);
+    },
+    [source, limit]
+  );
 
   useEffect(() => {
     fetchFeed();
@@ -134,9 +135,7 @@ export function MoltbookFeed({
           <MoltbookIcon size={14} />
           <span className="font-pixel">Moltbook offline</span>
         </div>
-        <p className="text-gray-500 text-[10px] mt-1">
-          Set MOLTBOOK_API_KEY to enable
-        </p>
+        <p className="text-gray-500 text-[10px] mt-1">Set MOLTBOOK_API_KEY to enable</p>
       </div>
     );
   }
@@ -203,20 +202,13 @@ export function MoltbookFeed({
         ) : (
           <div className="divide-y divide-purple-500/10">
             {posts.map((post) => (
-              <div
-                key={post.id}
-                className="p-3 hover:bg-purple-500/5 transition-colors"
-              >
+              <div key={post.id} className="p-3 hover:bg-purple-500/5 transition-colors">
                 {/* Post header */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-pixel text-xs text-white truncate">
-                      {post.title}
-                    </h3>
+                    <h3 className="font-pixel text-xs text-white truncate">{post.title}</h3>
                     {post.content && (
-                      <p className="text-gray-400 text-[11px] mt-1 line-clamp-2">
-                        {post.content}
-                      </p>
+                      <p className="text-gray-400 text-[11px] mt-1 line-clamp-2">{post.content}</p>
                     )}
                   </div>
                   <span className="text-gray-600 text-[10px] flex-shrink-0">

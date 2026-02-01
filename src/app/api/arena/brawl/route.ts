@@ -53,10 +53,7 @@ function checkRateLimit(ip: string): boolean {
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") || "unknown";
   if (!checkRateLimit(ip)) {
-    return NextResponse.json(
-      { error: "Rate limited. Please slow down." },
-      { status: 429 }
-    );
+    return NextResponse.json({ error: "Rate limited. Please slow down." }, { status: 429 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -81,9 +78,10 @@ export async function GET(request: NextRequest) {
         monitorRunning,
         monitorStatus,
         stats,
-        mode: typeof global !== "undefined" && (global as any).__ARENA_WS_ENABLED__
-          ? "websocket"
-          : "polling",
+        mode:
+          typeof global !== "undefined" && (global as any).__ARENA_WS_ENABLED__
+            ? "websocket"
+            : "polling",
       });
     }
 
@@ -119,20 +117,14 @@ export async function GET(request: NextRequest) {
     case "match": {
       const matchId = searchParams.get("matchId");
       if (!matchId) {
-        return NextResponse.json(
-          { error: "matchId required" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "matchId required" }, { status: 400 });
       }
 
       const engine = getArenaEngine();
       const state = engine.getMatchState(parseInt(matchId, 10));
 
       if (!state) {
-        return NextResponse.json(
-          { error: "Match not found or not active" },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Match not found or not active" }, { status: 404 });
       }
 
       return NextResponse.json({
@@ -171,10 +163,7 @@ export async function GET(request: NextRequest) {
     }
 
     default:
-      return NextResponse.json(
-        { error: `Unknown action: ${action}` },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
   }
 }
 
@@ -182,10 +171,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") || "unknown";
   if (!checkRateLimit(ip)) {
-    return NextResponse.json(
-      { error: "Rate limited. Please slow down." },
-      { status: 429 }
-    );
+    return NextResponse.json({ error: "Rate limited. Please slow down." }, { status: 429 });
   }
 
   try {
@@ -233,7 +219,10 @@ export async function POST(request: NextRequest) {
       case "start_match": {
         const { fighter1Id, fighter2Id } = body;
         if (!fighter1Id || !fighter2Id) {
-          return NextResponse.json({ error: "fighter1Id and fighter2Id required" }, { status: 400 });
+          return NextResponse.json(
+            { error: "fighter1Id and fighter2Id required" },
+            { status: 400 }
+          );
         }
 
         const matchId = await createMatch(fighter1Id, fighter2Id);
@@ -286,7 +275,10 @@ export async function POST(request: NextRequest) {
         }
 
         startArenaEngine(() => {}); // State updates via polling
-        return NextResponse.json({ success: true, message: "Arena engine started - running at 100ms ticks" });
+        return NextResponse.json({
+          success: true,
+          message: "Arena engine started - running at 100ms ticks",
+        });
       }
 
       case "stop_engine": {
@@ -337,8 +329,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           matchId,
-          fighter1: { id: fighter1.id, username: fighter1Name, karma: karma1, stats: { hp: fighter1.hp, attack: fighter1.attack, defense: fighter1.defense } },
-          fighter2: { id: fighter2.id, username: fighter2Name, karma: karma2, stats: { hp: fighter2.hp, attack: fighter2.attack, defense: fighter2.defense } },
+          fighter1: {
+            id: fighter1.id,
+            username: fighter1Name,
+            karma: karma1,
+            stats: { hp: fighter1.hp, attack: fighter1.attack, defense: fighter1.defense },
+          },
+          fighter2: {
+            id: fighter2.id,
+            username: fighter2Name,
+            karma: karma2,
+            stats: { hp: fighter2.hp, attack: fighter2.attack, defense: fighter2.defense },
+          },
         });
       }
 
@@ -355,8 +357,18 @@ export async function POST(request: NextRequest) {
             matchId: s.matchId,
             status: s.status,
             tick: s.tick,
-            fighter1: { username: s.fighter1.username, hp: s.fighter1.stats.hp, maxHp: s.fighter1.stats.maxHp, state: s.fighter1.state },
-            fighter2: { username: s.fighter2.username, hp: s.fighter2.stats.hp, maxHp: s.fighter2.stats.maxHp, state: s.fighter2.state },
+            fighter1: {
+              username: s.fighter1.username,
+              hp: s.fighter1.stats.hp,
+              maxHp: s.fighter1.stats.maxHp,
+              state: s.fighter1.state,
+            },
+            fighter2: {
+              username: s.fighter2.username,
+              hp: s.fighter2.stats.hp,
+              maxHp: s.fighter2.stats.maxHp,
+              state: s.fighter2.state,
+            },
             winner: s.winner,
           })),
         });
@@ -394,10 +406,7 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        return NextResponse.json(
-          { error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }
   } catch (error) {
     console.error("[Arena Brawl API] Error:", error);
