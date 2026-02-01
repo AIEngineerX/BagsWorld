@@ -9138,10 +9138,8 @@ Use: bags.fm/[yourname]`,
    * Create the "How To Fight" pixel modal panel
    */
   private createArenaHowToPanel(cx: number, cy: number, s: number): void {
-    const panelW = Math.round(260 * s);
-    const panelH = Math.round(120 * s);
-    const borderW = Math.round(3 * s);
-    const accent = 0x22c55e; // Green accent for enter
+    const panelW = Math.round(280 * s);
+    const panelH = Math.round(145 * s);
 
     // Container for all panel elements
     const panel = this.add.container(cx, cy);
@@ -9150,114 +9148,174 @@ Use: bags.fm/[yourname]`,
     panel.setScale(0.8);
     this.arenaElements.push(panel);
 
-    // === DROP SHADOW ===
-    const shadow = this.add.rectangle(
-      Math.round(4 * s),
-      Math.round(4 * s),
-      panelW + borderW * 2,
-      panelH + borderW * 2,
-      0x000000,
-      0.5
-    );
-    panel.add(shadow);
+    // === N64 STYLE NEON GLOW LAYERS (outer to inner) ===
+    const glowOuter3 = this.add.rectangle(0, 0, panelW + 24 * s, panelH + 24 * s, 0xff00ff, 0.08);
+    panel.add(glowOuter3);
+    const glowOuter2 = this.add.rectangle(0, 0, panelW + 16 * s, panelH + 16 * s, 0x00ffff, 0.12);
+    panel.add(glowOuter2);
+    const glowOuter1 = this.add.rectangle(0, 0, panelW + 10 * s, panelH + 10 * s, 0xff00ff, 0.15);
+    panel.add(glowOuter1);
 
-    // === OUTER BORDER (gold) ===
-    const outerBorder = this.add.rectangle(
-      0,
-      0,
-      panelW + borderW * 2,
-      panelH + borderW * 2,
-      0xfbbf24
-    );
-    panel.add(outerBorder);
+    // === 3D DEPTH EFFECT (N64 style beveled edges) ===
+    const depth3 = this.add.rectangle(6 * s, 6 * s, panelW, panelH, 0x000000, 0.6);
+    panel.add(depth3);
+    const depth2 = this.add.rectangle(4 * s, 4 * s, panelW, panelH, 0x1a0a2e, 0.8);
+    panel.add(depth2);
+    const depth1 = this.add.rectangle(2 * s, 2 * s, panelW, panelH, 0x2d1b4e, 0.9);
+    panel.add(depth1);
 
-    // === INNER BORDER (green) ===
-    const innerBorder = this.add.rectangle(0, 0, panelW, panelH, accent);
-    panel.add(innerBorder);
+    // === MAIN PANEL WITH GRADIENT SIMULATION ===
+    const mainBg = this.add.rectangle(0, 0, panelW, panelH, 0x1e1b4b);
+    panel.add(mainBg);
+    const topHighlight = this.add.rectangle(0, -panelH / 2 + 8 * s, panelW - 4 * s, 12 * s, 0x4c1d95, 0.6);
+    panel.add(topHighlight);
 
-    // === MAIN BACKGROUND ===
-    const panelBg = this.add.rectangle(
-      0,
-      0,
-      panelW - Math.round(6 * s),
-      panelH - Math.round(6 * s),
-      0x14532d
-    );
-    panel.add(panelBg);
+    // === NEON BORDER FRAME ===
+    const neonOuter = this.add.rectangle(0, 0, panelW - 2 * s, panelH - 2 * s);
+    neonOuter.setStrokeStyle(3 * s, 0xff00ff);
+    neonOuter.setFillStyle(0x000000, 0);
+    panel.add(neonOuter);
+    const neonInner = this.add.rectangle(0, 0, panelW - 10 * s, panelH - 10 * s);
+    neonInner.setStrokeStyle(2 * s, 0x00ffff);
+    neonInner.setFillStyle(0x000000, 0);
+    panel.add(neonInner);
 
-    // === TITLE ===
-    const titleText = this.add.text(0, -Math.round(30 * s), "⚔ MOLTBOOK ARENA ⚔", {
+    // === CORNER ACCENTS (N64 style) ===
+    const cornerSize = 12 * s;
+    const cornerOffsetX = panelW / 2 - 8 * s;
+    const cornerOffsetY = panelH / 2 - 8 * s;
+    const cornerPositions = [
+      { x: -cornerOffsetX, y: -cornerOffsetY },
+      { x: cornerOffsetX, y: -cornerOffsetY },
+      { x: -cornerOffsetX, y: cornerOffsetY },
+      { x: cornerOffsetX, y: cornerOffsetY },
+    ];
+    const cornerElements: Phaser.GameObjects.Rectangle[] = [];
+    cornerPositions.forEach((pos) => {
+      const corner = this.add.rectangle(pos.x, pos.y, cornerSize, cornerSize, 0xfbbf24);
+      panel.add(corner);
+      cornerElements.push(corner);
+      const cornerInner = this.add.rectangle(pos.x, pos.y, cornerSize - 4 * s, cornerSize - 4 * s, 0xff6b00);
+      panel.add(cornerInner);
+      cornerElements.push(cornerInner);
+    });
+
+    // === TITLE BANNER (smooth N64 style) ===
+    const bannerY = -panelH / 2 + 28 * s;
+    const bannerGlow = this.add.rectangle(0, bannerY, panelW - 30 * s, 28 * s, 0xfbbf24, 0.3);
+    panel.add(bannerGlow);
+    const bannerShadow = this.add.rectangle(2 * s, bannerY + 2 * s, panelW - 34 * s, 24 * s, 0x000000, 0.5);
+    panel.add(bannerShadow);
+    const bannerBg = this.add.rectangle(0, bannerY, panelW - 34 * s, 24 * s, 0xb91c1c);
+    panel.add(bannerBg);
+    const bannerHighlight = this.add.rectangle(0, bannerY - 6 * s, panelW - 40 * s, 6 * s, 0xef4444, 0.7);
+    panel.add(bannerHighlight);
+
+    // Title text with shadow
+    const titleGlow = this.add.text(1 * s, bannerY + 1 * s, "MOLTBOOK ARENA", {
       fontFamily: "monospace",
-      fontSize: `${Math.round(12 * s)}px`,
-      color: "#fbbf24",
+      fontSize: `${Math.round(14 * s)}px`,
+      color: "#000000",
+    });
+    titleGlow.setOrigin(0.5, 0.5);
+    titleGlow.setAlpha(0.5);
+    panel.add(titleGlow);
+    const titleText = this.add.text(0, bannerY, "MOLTBOOK ARENA", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(14 * s)}px`,
+      color: "#fef08a",
       fontStyle: "bold",
     });
     titleText.setOrigin(0.5, 0.5);
     panel.add(titleText);
 
-    // === CLICK TO ENTER BUTTON ===
-    const btnW = Math.round(200 * s);
-    const btnH = Math.round(40 * s);
-    const btnY = Math.round(10 * s);
+    // === FIGHT BUTTON (N64 style with depth) ===
+    const btnW = Math.round(180 * s);
+    const btnH = Math.round(36 * s);
+    const btnY = Math.round(12 * s);
 
-    const btnBg = this.add.rectangle(0, btnY, btnW, btnH, 0xfbbf24);
-    btnBg.setInteractive({ useHandCursor: true });
-    panel.add(btnBg);
+    const btnShadow = this.add.rectangle(3 * s, btnY + 3 * s, btnW, btnH, 0x000000, 0.5);
+    panel.add(btnShadow);
+    const btnBase = this.add.rectangle(0, btnY, btnW, btnH, 0x065f46);
+    panel.add(btnBase);
+    const btnFace = this.add.rectangle(0, btnY - 2 * s, btnW - 4 * s, btnH - 6 * s, 0x10b981);
+    btnFace.setInteractive({ useHandCursor: true });
+    panel.add(btnFace);
+    const btnShine = this.add.rectangle(0, btnY - btnH / 2 + 4 * s, btnW - 8 * s, 4 * s, 0x34d399, 0.8);
+    panel.add(btnShine);
 
-    const btnBorder = this.add.rectangle(0, btnY, btnW - 4, btnH - 4, 0x166534);
-    panel.add(btnBorder);
-
-    const btnInner = this.add.rectangle(0, btnY, btnW - 8, btnH - 8, 0x22c55e);
-    panel.add(btnInner);
-
-    const btnText = this.add.text(0, btnY, "CLICK TO FIGHT", {
+    const btnTextShadow = this.add.text(1 * s, btnY - 1 * s, "⚔ CLICK TO FIGHT ⚔", {
       fontFamily: "monospace",
-      fontSize: `${Math.round(14 * s)}px`,
+      fontSize: `${Math.round(11 * s)}px`,
+      color: "#000000",
+    });
+    btnTextShadow.setOrigin(0.5, 0.5);
+    btnTextShadow.setAlpha(0.4);
+    panel.add(btnTextShadow);
+    const btnText = this.add.text(0, btnY - 2 * s, "⚔ CLICK TO FIGHT ⚔", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(11 * s)}px`,
       color: "#ffffff",
       fontStyle: "bold",
     });
     btnText.setOrigin(0.5, 0.5);
     panel.add(btnText);
 
-    // Button hover effects
-    btnBg.on("pointerover", () => {
-      btnInner.setFillStyle(0x16a34a);
+    // Button interactions
+    btnFace.on("pointerover", () => {
+      btnFace.setFillStyle(0x34d399);
       btnText.setColor("#fbbf24");
     });
-    btnBg.on("pointerout", () => {
-      btnInner.setFillStyle(0x22c55e);
+    btnFace.on("pointerout", () => {
+      btnFace.setFillStyle(0x10b981);
       btnText.setColor("#ffffff");
     });
-    btnBg.on("pointerdown", () => {
+    btnFace.on("pointerdown", () => {
       window.dispatchEvent(new CustomEvent("bagsworld-arena-click"));
     });
 
-    // Pulse animation on button
+    // === SUBTITLE ===
+    const subText = this.add.text(0, Math.round(44 * s), "Enter your MoltBook username", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(7 * s)}px`,
+      color: "#a78bfa",
+    });
+    subText.setOrigin(0.5, 0.5);
+    panel.add(subText);
+
+    // === NEON FLICKER ANIMATIONS ===
     this.tweens.add({
-      targets: [btnBg, btnBorder, btnInner],
-      scaleX: 1.02,
-      scaleY: 1.02,
-      duration: 600,
+      targets: [neonOuter, glowOuter1],
+      alpha: { from: 1, to: 0.6 },
+      duration: 100,
+      yoyo: true,
+      repeat: -1,
+      repeatDelay: 2000,
+    });
+    this.tweens.add({
+      targets: [neonInner, glowOuter2],
+      alpha: { from: 1, to: 0.7 },
+      duration: 80,
+      yoyo: true,
+      repeat: -1,
+      repeatDelay: 3000,
+      delay: 500,
+    });
+    this.tweens.add({
+      targets: cornerElements,
+      alpha: { from: 1, to: 0.7 },
+      duration: 800,
       yoyo: true,
       repeat: -1,
       ease: "Sine.easeInOut",
     });
-
-    // === SUBTITLE ===
-    const subText = this.add.text(0, Math.round(42 * s), "Enter your MoltBook username to battle!", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(7 * s)}px`,
-      color: "#86efac",
-    });
-    subText.setOrigin(0.5, 0.5);
-    panel.add(subText);
 
     // === ENTRANCE ANIMATION ===
     this.tweens.add({
       targets: panel,
       alpha: 1,
       scale: 1,
-      duration: 400,
+      duration: 500,
       ease: "Back.easeOut",
     });
   }
