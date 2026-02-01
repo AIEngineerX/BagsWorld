@@ -9138,10 +9138,10 @@ Use: bags.fm/[yourname]`,
    * Create the "How To Fight" pixel modal panel
    */
   private createArenaHowToPanel(cx: number, cy: number, s: number): void {
-    const panelW = Math.round(240 * s);
-    const panelH = Math.round(155 * s);
+    const panelW = Math.round(260 * s);
+    const panelH = Math.round(120 * s);
     const borderW = Math.round(3 * s);
-    const accent = 0xef4444; // Red accent for fighting
+    const accent = 0x22c55e; // Green accent for enter
 
     // Container for all panel elements
     const panel = this.add.container(cx, cy);
@@ -9150,261 +9150,107 @@ Use: bags.fm/[yourname]`,
     panel.setScale(0.8);
     this.arenaElements.push(panel);
 
-    // === PIXEL-PERFECT DROP SHADOW ===
-    const shadowOffset = Math.round(4 * s);
-    const shadow1 = this.add.rectangle(
-      shadowOffset,
-      shadowOffset,
+    // === DROP SHADOW ===
+    const shadow = this.add.rectangle(
+      Math.round(4 * s),
+      Math.round(4 * s),
       panelW + borderW * 2,
       panelH + borderW * 2,
       0x000000,
       0.5
     );
-    panel.add(shadow1);
-    const shadow2 = this.add.rectangle(
-      Math.round(2 * s),
-      Math.round(2 * s),
-      panelW + borderW * 2,
-      panelH + borderW * 2,
-      0x000000,
-      0.3
-    );
-    panel.add(shadow2);
+    panel.add(shadow);
 
-    // === DOUBLE-LINE BORDER ===
+    // === OUTER BORDER (gold) ===
     const outerBorder = this.add.rectangle(
       0,
       0,
       panelW + borderW * 2,
       panelH + borderW * 2,
-      accent
+      0xfbbf24
     );
     panel.add(outerBorder);
-    const borderGap = this.add.rectangle(0, 0, panelW + borderW, panelH + borderW, 0x0a0a0f);
-    panel.add(borderGap);
+
+    // === INNER BORDER (green) ===
     const innerBorder = this.add.rectangle(0, 0, panelW, panelH, accent);
     panel.add(innerBorder);
 
-    // === MAIN PANEL BACKGROUND ===
+    // === MAIN BACKGROUND ===
     const panelBg = this.add.rectangle(
       0,
       0,
-      panelW - Math.round(4 * s),
-      panelH - Math.round(4 * s),
-      0x0f172a
+      panelW - Math.round(6 * s),
+      panelH - Math.round(6 * s),
+      0x14532d
     );
     panel.add(panelBg);
 
-    // === INNER BEVEL HIGHLIGHTS ===
-    const bevelLeft = this.add.rectangle(
-      -panelW / 2 + Math.round(4 * s),
-      0,
-      Math.round(2 * s),
-      panelH - Math.round(12 * s),
-      accent,
-      0.12
-    );
-    panel.add(bevelLeft);
-    const bevelTop = this.add.rectangle(
-      0,
-      -panelH / 2 + Math.round(4 * s),
-      panelW - Math.round(12 * s),
-      Math.round(2 * s),
-      accent,
-      0.18
-    );
-    panel.add(bevelTop);
-
-    // === CRT SCANLINES ===
-    const scanSpacing = Math.round(3 * s);
-    for (let y = -panelH / 2 + scanSpacing; y < panelH / 2; y += scanSpacing) {
-      const scanline = this.add.rectangle(0, y, panelW - Math.round(10 * s), 1, 0x000000, 0.06);
-      panel.add(scanline);
-    }
-
-    // === L-SHAPED CORNER DECORATIONS ===
-    const cornerLen = Math.round(12 * s);
-    const cornerThick = Math.round(3 * s);
-    const cornerInset = Math.round(6 * s);
-    const corners = [
-      { x: -panelW / 2 + cornerInset, y: -panelH / 2 + cornerInset, fx: 1, fy: 1 },
-      { x: panelW / 2 - cornerInset, y: -panelH / 2 + cornerInset, fx: -1, fy: 1 },
-      { x: -panelW / 2 + cornerInset, y: panelH / 2 - cornerInset, fx: 1, fy: -1 },
-      { x: panelW / 2 - cornerInset, y: panelH / 2 - cornerInset, fx: -1, fy: -1 },
-    ];
-    corners.forEach((c) => {
-      const hBar = this.add.rectangle(
-        c.x + (c.fx * cornerLen) / 2,
-        c.y,
-        cornerLen,
-        cornerThick,
-        accent
-      );
-      panel.add(hBar);
-      const vBar = this.add.rectangle(
-        c.x,
-        c.y + (c.fy * cornerLen) / 2,
-        cornerThick,
-        cornerLen,
-        accent
-      );
-      panel.add(vBar);
-    });
-
-    // === TITLE BAR ===
-    const titleBarY = -panelH / 2 + Math.round(18 * s);
-    const titleBar = this.add.rectangle(
-      0,
-      titleBarY,
-      panelW - Math.round(20 * s),
-      Math.round(22 * s),
-      accent,
-      0.15
-    );
-    panel.add(titleBar);
-    const titleText = this.add.text(0, titleBarY, "⚔ HOW TO FIGHT ⚔", {
+    // === TITLE ===
+    const titleText = this.add.text(0, -Math.round(30 * s), "⚔ MOLTBOOK ARENA ⚔", {
       fontFamily: "monospace",
-      fontSize: `${Math.round(11 * s)}px`,
-      color: "#ffffff",
+      fontSize: `${Math.round(12 * s)}px`,
+      color: "#fbbf24",
       fontStyle: "bold",
     });
     titleText.setOrigin(0.5, 0.5);
     panel.add(titleText);
 
-    // === STEP 1 ===
-    const step1Y = -Math.round(28 * s);
-    const step1Box = this.add.rectangle(
-      -panelW / 2 + Math.round(22 * s),
-      step1Y,
-      Math.round(20 * s),
-      Math.round(20 * s),
-      0xfbbf24
-    );
-    panel.add(step1Box);
-    const step1Num = this.add.text(-panelW / 2 + Math.round(22 * s), step1Y, "1", {
+    // === CLICK TO ENTER BUTTON ===
+    const btnW = Math.round(200 * s);
+    const btnH = Math.round(40 * s);
+    const btnY = Math.round(10 * s);
+
+    const btnBg = this.add.rectangle(0, btnY, btnW, btnH, 0xfbbf24);
+    btnBg.setInteractive({ useHandCursor: true });
+    panel.add(btnBg);
+
+    const btnBorder = this.add.rectangle(0, btnY, btnW - 4, btnH - 4, 0x166534);
+    panel.add(btnBorder);
+
+    const btnInner = this.add.rectangle(0, btnY, btnW - 8, btnH - 8, 0x22c55e);
+    panel.add(btnInner);
+
+    const btnText = this.add.text(0, btnY, "CLICK TO FIGHT", {
       fontFamily: "monospace",
-      fontSize: `${Math.round(12 * s)}px`,
-      color: "#0f172a",
+      fontSize: `${Math.round(14 * s)}px`,
+      color: "#ffffff",
       fontStyle: "bold",
     });
-    step1Num.setOrigin(0.5, 0.5);
-    panel.add(step1Num);
-    const step1Line1 = this.add.text(
-      -panelW / 2 + Math.round(40 * s),
-      step1Y - Math.round(6 * s),
-      'Post "!fight" to',
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(8 * s)}px`,
-        color: "#d1d5db",
-      }
-    );
-    panel.add(step1Line1);
-    const step1Line2 = this.add.text(
-      -panelW / 2 + Math.round(40 * s),
-      step1Y + Math.round(6 * s),
-      "m/bagsworld-arena",
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(9 * s)}px`,
-        color: "#4ade80",
-        fontStyle: "bold",
-      }
-    );
-    panel.add(step1Line2);
+    btnText.setOrigin(0.5, 0.5);
+    panel.add(btnText);
 
-    // === STEP 2 ===
-    const step2Y = Math.round(8 * s);
-    const step2Box = this.add.rectangle(
-      -panelW / 2 + Math.round(22 * s),
-      step2Y,
-      Math.round(20 * s),
-      Math.round(20 * s),
-      0xfbbf24
-    );
-    panel.add(step2Box);
-    const step2Num = this.add.text(-panelW / 2 + Math.round(22 * s), step2Y, "2", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(12 * s)}px`,
-      color: "#0f172a",
-      fontStyle: "bold",
+    // Button hover effects
+    btnBg.on("pointerover", () => {
+      btnInner.setFillStyle(0x16a34a);
+      btnText.setColor("#fbbf24");
     });
-    step2Num.setOrigin(0.5, 0.5);
-    panel.add(step2Num);
-    const step2Line1 = this.add.text(
-      -panelW / 2 + Math.round(40 * s),
-      step2Y - Math.round(6 * s),
-      "Your MoltBook karma",
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(8 * s)}px`,
-        color: "#d1d5db",
-      }
-    );
-    panel.add(step2Line1);
-    const step2Line2 = this.add.text(
-      -panelW / 2 + Math.round(40 * s),
-      step2Y + Math.round(6 * s),
-      "= Your Power Level!",
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(9 * s)}px`,
-        color: "#f472b6",
-        fontStyle: "bold",
-      }
-    );
-    panel.add(step2Line2);
-
-    // === STEP 3 ===
-    const step3Y = Math.round(44 * s);
-    const step3Box = this.add.rectangle(
-      -panelW / 2 + Math.round(22 * s),
-      step3Y,
-      Math.round(20 * s),
-      Math.round(20 * s),
-      0xfbbf24
-    );
-    panel.add(step3Box);
-    const step3Num = this.add.text(-panelW / 2 + Math.round(22 * s), step3Y, "3", {
-      fontFamily: "monospace",
-      fontSize: `${Math.round(12 * s)}px`,
-      color: "#0f172a",
-      fontStyle: "bold",
+    btnBg.on("pointerout", () => {
+      btnInner.setFillStyle(0x22c55e);
+      btnText.setColor("#ffffff");
     });
-    step3Num.setOrigin(0.5, 0.5);
-    panel.add(step3Num);
-    const step3Line1 = this.add.text(
-      -panelW / 2 + Math.round(40 * s),
-      step3Y - Math.round(6 * s),
-      "Get matched & fight!",
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(8 * s)}px`,
-        color: "#d1d5db",
-      }
-    );
-    panel.add(step3Line1);
-    const step3Line2 = this.add.text(
-      -panelW / 2 + Math.round(40 * s),
-      step3Y + Math.round(6 * s),
-      "Winner takes glory!",
-      {
-        fontFamily: "monospace",
-        fontSize: `${Math.round(9 * s)}px`,
-        color: "#ef4444",
-        fontStyle: "bold",
-      }
-    );
-    panel.add(step3Line2);
+    btnBg.on("pointerdown", () => {
+      window.dispatchEvent(new CustomEvent("bagsworld-arena-click"));
+    });
 
-    // === FOOTER ===
-    const footerText = this.add.text(0, panelH / 2 - Math.round(12 * s), "moltbook.com", {
+    // Pulse animation on button
+    this.tweens.add({
+      targets: [btnBg, btnBorder, btnInner],
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // === SUBTITLE ===
+    const subText = this.add.text(0, Math.round(42 * s), "Enter your MoltBook username to battle!", {
       fontFamily: "monospace",
       fontSize: `${Math.round(7 * s)}px`,
-      color: "#6b7280",
+      color: "#86efac",
     });
-    footerText.setOrigin(0.5, 0.5);
-    panel.add(footerText);
+    subText.setOrigin(0.5, 0.5);
+    panel.add(subText);
 
     // === ENTRANCE ANIMATION ===
     this.tweens.add({
