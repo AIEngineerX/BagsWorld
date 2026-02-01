@@ -81,7 +81,10 @@ export interface TradeDecision {
   riskLevel: "low" | "medium" | "high";
 }
 
-export type StrategyType = "conservative" | "diversify" | "follow_whales" | "aggressive";
+export type StrategyType = "conservative" | "diversify" | "follow_whales" | "aggressive" | "reinvest_bagsworld";
+
+// BagsWorld token mint - target for reinvestment strategy
+const BAGSWORLD_TOKEN_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
 
 // ============================================================================
 // MARKET DATA FETCHING
@@ -890,6 +893,62 @@ async function aggressiveStrategy(
   };
 }
 
+async function reinvestBagsWorldStrategy(
+  portfolio: PortfolioState,
+  market: MarketState,
+  availableSol: number,
+  config: AgentEconomyConfig
+): Promise<TradeDecision> {
+  // Reinvest BagsWorld Strategy: Buy BagsWorld token with all claimed fees
+  // This is the default strategy for agent economy - all earnings go back into BagsWorld
+  //
+  // Simple rules:
+  // - Always buy BagsWorld token
+  // - Use 100% of available SOL (from claimed fees)
+  // - No selling, only accumulating
+  // - Confidence is always high because this is the programmed behavior
+
+  // Minimum buy amount check
+  if (availableSol < config.minTradeSol) {
+    return {
+      action: "hold",
+      reason: `Available SOL (${availableSol.toFixed(6)}) below minimum trade size`,
+      confidence: 100,
+      riskLevel: "low",
+    };
+  }
+
+  // Check if BagsWorld token exists in market data
+  const bagsWorldToken = market.tokens.find(t => t.mint === BAGSWORLD_TOKEN_MINT);
+  
+  if (!bagsWorldToken) {
+    // Even without market data, we can still buy with the known mint
+    return {
+      action: "buy",
+      tokenMint: BAGSWORLD_TOKEN_MINT,
+      tokenSymbol: "BAGSWORLD",
+      amountSol: Math.min(availableSol, config.maxPositionSol),
+      reason: `Reinvesting ${availableSol.toFixed(6)} SOL into BagsWorld token`,
+      confidence: 95,
+      riskLevel: "low",
+    };
+  }
+
+  // With market data, we can provide more context
+  const existingPosition = portfolio.positions.find(p => p.mint === BAGSWORLD_TOKEN_MINT);
+  const currentHolding = existingPosition?.valueSol || 0;
+
+  return {
+    action: "buy",
+    tokenMint: BAGSWORLD_TOKEN_MINT,
+    tokenSymbol: bagsWorldToken.symbol,
+    amountSol: Math.min(availableSol, config.maxPositionSol),
+    reason: `Reinvesting ${availableSol.toFixed(6)} SOL into BagsWorld (current holding: ${currentHolding.toFixed(4)} SOL, price: $${bagsWorldToken.price.toFixed(6)})`,
+    confidence: 95,
+    riskLevel: "low",
+  };
+}
+
 // ============================================================================
 // MAIN DECISION FUNCTION
 // ============================================================================
@@ -948,6 +1007,9 @@ export async function makeTradeDecision(
 
     case "aggressive":
       return aggressiveStrategy(portfolio, market, availableSol, fullConfig);
+
+    case "reinvest_bagsworld":
+      return reinvestBagsWorldStrategy(portfolio, market, availableSol, fullConfig);
 
     default:
       return {
