@@ -427,42 +427,55 @@ export async function POST(request: NextRequest) {
     }
 
     // Launch the token
-    const result = await launchForExternal({
-      creatorWallet: wallet,
-      name,
-      symbol,
-      description,
-      imageUrl,
-      twitter,
-      website,
-      telegram,
-    });
-
-    if (!result.success) {
-      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
-    }
-
-    // Auto-join the world if not already
-    if (!getExternalAgent(wallet)) {
-      registerExternalAgent(wallet, name, "main_city", `Creator of $${symbol}`);
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Token launched! You earn 100% of trading fees.`,
-      token: {
-        mint: result.tokenMint,
+    try {
+      console.log("[Launch] Starting launch for", wallet, symbol);
+      const result = await launchForExternal({
+        creatorWallet: wallet,
         name,
         symbol,
-        bagsUrl: result.bagsUrl,
-        explorerUrl: result.explorerUrl,
-      },
-      transaction: result.signature,
-      feeInfo: {
-        yourShare: "100%",
-        claimEndpoint: "/api/agent-economy/external (action: claim)",
-      },
-    });
+        description,
+        imageUrl,
+        twitter,
+        website,
+        telegram,
+      });
+
+      if (!result.success) {
+        console.log("[Launch] Failed:", result.error);
+        return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+      }
+
+      console.log("[Launch] Success!", result.tokenMint);
+
+      // Auto-join the world if not already
+      const existingAgent = await getExternalAgent(wallet);
+      if (!existingAgent) {
+        await registerExternalAgent(wallet, name, "main_city", `Creator of $${symbol}`);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Token launched! You earn 100% of trading fees.`,
+        token: {
+          mint: result.tokenMint,
+          name,
+          symbol,
+          bagsUrl: result.bagsUrl,
+          explorerUrl: result.explorerUrl,
+        },
+        transaction: result.signature,
+        feeInfo: {
+          yourShare: "100%",
+          claimEndpoint: "/api/agent-economy/external (action: claim)",
+        },
+      });
+    } catch (err) {
+      console.error("[Launch] Error:", err);
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Launch failed" },
+        { status: 500 }
+      );
+    }
   }
 
   // =========================================================================
