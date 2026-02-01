@@ -15498,6 +15498,110 @@ export class BootScene extends Phaser.Scene {
     this.generatePalmTrees();
     this.generateBeachDecorations();
     this.generateMoltbookHQ();
+    this.generateBeachHut();
+  }
+
+  private generateBeachHut(): void {
+    const s = SCALE;
+    const w = Math.round(80 * s);
+    const h = Math.round(70 * s);
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Colors
+    const thatchLight = 0xc4a35d;
+    const thatchDark = 0x8b7355;
+    const thatchShadow = 0x654321;
+    const woodBase = 0xa0522d;
+    const woodDark = 0x8b4513;
+    const woodLight = 0xcd853f;
+
+    // === THATCHED ROOF ===
+    const roofTop = Math.round(5 * s);
+    const roofBottom = Math.round(35 * s);
+    const roofWidth = Math.round(75 * s);
+    const roofCenterX = w / 2;
+
+    // Roof layers (thatch effect)
+    for (let layer = 0; layer < 6; layer++) {
+      const layerY = roofTop + layer * Math.round(5 * s);
+      const layerWidth = roofWidth - layer * Math.round(8 * s);
+      const layerX = roofCenterX - layerWidth / 2;
+
+      g.fillStyle(layer % 2 === 0 ? thatchLight : thatchDark);
+      g.fillRect(layerX, layerY, layerWidth, Math.round(7 * s));
+
+      // Thatch texture
+      g.fillStyle(thatchShadow);
+      for (let tx = layerX; tx < layerX + layerWidth; tx += Math.round(6 * s)) {
+        g.fillRect(tx, layerY + Math.round(2 * s), Math.round(2 * s), Math.round(4 * s));
+      }
+    }
+
+    // Roof peak
+    g.fillStyle(thatchDark);
+    g.fillRect(
+      roofCenterX - Math.round(15 * s),
+      roofTop - Math.round(3 * s),
+      Math.round(30 * s),
+      Math.round(5 * s)
+    );
+
+    // === WOODEN STRUCTURE ===
+    const hutTop = Math.round(32 * s);
+    const hutBottom = h;
+    const hutWidth = Math.round(50 * s);
+    const hutX = roofCenterX - hutWidth / 2;
+
+    // Back wall
+    g.fillStyle(woodBase);
+    g.fillRect(hutX, hutTop, hutWidth, hutBottom - hutTop);
+
+    // Wood planks
+    g.fillStyle(woodDark);
+    for (let py = hutTop; py < hutBottom; py += Math.round(8 * s)) {
+      g.fillRect(hutX, py, hutWidth, Math.round(2 * s));
+    }
+
+    // Vertical supports
+    g.fillStyle(woodLight);
+    g.fillRect(hutX, hutTop, Math.round(4 * s), hutBottom - hutTop);
+    g.fillRect(hutX + hutWidth - Math.round(4 * s), hutTop, Math.round(4 * s), hutBottom - hutTop);
+
+    // Door opening
+    const doorWidth = Math.round(18 * s);
+    const doorHeight = Math.round(30 * s);
+    const doorX = roofCenterX - doorWidth / 2;
+    const doorY = hutBottom - doorHeight;
+
+    g.fillStyle(0x1a1a2e);
+    g.fillRect(doorX, doorY, doorWidth, doorHeight);
+
+    // Door frame
+    g.fillStyle(woodLight);
+    g.fillRect(doorX - Math.round(2 * s), doorY, Math.round(2 * s), doorHeight);
+    g.fillRect(doorX + doorWidth, doorY, Math.round(2 * s), doorHeight);
+    g.fillRect(
+      doorX - Math.round(2 * s),
+      doorY - Math.round(2 * s),
+      doorWidth + Math.round(4 * s),
+      Math.round(2 * s)
+    );
+
+    // Warm light glow from inside
+    g.fillStyle(0xfde047, 0.4);
+    g.fillRect(
+      doorX + Math.round(3 * s),
+      doorY + Math.round(3 * s),
+      doorWidth - Math.round(6 * s),
+      doorHeight - Math.round(6 * s)
+    );
+
+    // Counter/shelf at bottom
+    g.fillStyle(woodBase);
+    g.fillRect(hutX, hutBottom - Math.round(8 * s), hutWidth, Math.round(4 * s));
+
+    g.generateTexture("beach_hut", w, h);
+    g.destroy();
   }
 
   private generateBeachGround(): void {

@@ -3361,6 +3361,50 @@ export class WorldScene extends Phaser.Scene {
     label.setDepth(6);
     this.moltbookElements.push(label);
 
+    // === AGENT HUT (depth 5) - Next to Moltbook HQ ===
+    const hutX = Math.round(550 * s);
+    const agentHut = this.add.sprite(hutX, pathLevel, "beach_hut");
+    agentHut.setOrigin(0.5, 1);
+    agentHut.setDepth(5);
+    agentHut.setScale(0.85);
+    this.moltbookElements.push(agentHut);
+
+    // Make Hut interactive - opens Agent Hut Modal
+    agentHut.setInteractive({ useHandCursor: true });
+    agentHut.on("pointerdown", () => {
+      window.dispatchEvent(new CustomEvent("bagsworld-agenthut-click"));
+    });
+    agentHut.on("pointerover", () => {
+      agentHut.setTint(0xfff5e0);
+      agentHut.setScale(0.9);
+    });
+    agentHut.on("pointerout", () => {
+      agentHut.clearTint();
+      agentHut.setScale(0.85);
+    });
+
+    // Agent Hut label
+    const hutLabelBg = this.add.rectangle(
+      hutX,
+      pathLevel - Math.round(85 * s),
+      Math.round(90 * s),
+      Math.round(22 * s),
+      0x92400e,
+      0.9
+    );
+    hutLabelBg.setDepth(6);
+    this.moltbookElements.push(hutLabelBg);
+
+    const hutLabel = this.add.text(hutX, pathLevel - Math.round(85 * s), "🛖 AGENT HUT", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(10 * s)}px`,
+      color: "#fef3c7",
+      align: "center",
+    });
+    hutLabel.setOrigin(0.5, 0.5);
+    hutLabel.setDepth(6);
+    this.moltbookElements.push(hutLabel);
+
     // === WAVE ANIMATION (depth 1) - at bottom of screen ===
     this.createWaveAnimation(s);
 
