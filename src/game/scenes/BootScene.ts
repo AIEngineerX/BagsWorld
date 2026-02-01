@@ -10581,6 +10581,13 @@ export class BootScene extends Phaser.Scene {
     // Generate combat effect textures
     this.generateHitSpark();
     this.generateDamageParticle();
+
+    // Generate enhanced arena effects (crowd, spotlights, action bubbles)
+    this.generateArenaCrowd();
+    this.generateSpotlightCone();
+    this.generateLogoMat();
+    this.generateCornerPosts();
+    this.generateActionBubbles();
   }
 
   // ========================================
@@ -12581,6 +12588,317 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(Math.round(1 * s), Math.round(1 * s), Math.round(3 * s), Math.round(3 * s));
 
     g.generateTexture("damage_particle", size, size);
+    g.destroy();
+  }
+
+  // ========================================
+  // ENHANCED ARENA EFFECTS
+  // Crowd, spotlights, action bubbles
+  // ========================================
+
+  /**
+   * Generate animated crowd sprites for arena stands
+   */
+  private generateArenaCrowd(): void {
+    const s = SCALE;
+    const width = Math.round(16 * s);
+    const height = Math.round(20 * s);
+
+    // Crowd colors for variety
+    const crowdColors = [0x4b5563, 0x374151, 0x1f2937, 0x3f3f46];
+
+    // Generate idle crowd member (silhouette with small head bump)
+    for (let i = 0; i < 4; i++) {
+      const g = this.make.graphics({ x: 0, y: 0 });
+      const color = crowdColors[i];
+
+      // Body (sitting silhouette)
+      g.fillStyle(color);
+      g.fillRect(Math.round(3 * s), Math.round(10 * s), Math.round(10 * s), Math.round(10 * s));
+
+      // Head
+      g.fillRect(Math.round(5 * s), Math.round(4 * s), Math.round(6 * s), Math.round(6 * s));
+
+      // Shoulders
+      g.fillRect(Math.round(1 * s), Math.round(12 * s), Math.round(14 * s), Math.round(4 * s));
+
+      // Slight highlight for depth
+      g.fillStyle(lighten(color, 0.1));
+      g.fillRect(Math.round(5 * s), Math.round(4 * s), Math.round(2 * s), Math.round(2 * s));
+
+      g.generateTexture(`arena_crowd_idle_${i}`, width, height);
+      g.destroy();
+    }
+
+    // Generate cheer pose 1 (arms up)
+    for (let i = 0; i < 4; i++) {
+      const g = this.make.graphics({ x: 0, y: 0 });
+      const color = crowdColors[i];
+
+      // Body
+      g.fillStyle(color);
+      g.fillRect(Math.round(3 * s), Math.round(10 * s), Math.round(10 * s), Math.round(10 * s));
+
+      // Head
+      g.fillRect(Math.round(5 * s), Math.round(4 * s), Math.round(6 * s), Math.round(6 * s));
+
+      // Arms raised up (left)
+      g.fillRect(Math.round(1 * s), Math.round(2 * s), Math.round(3 * s), Math.round(10 * s));
+
+      // Arms raised up (right)
+      g.fillRect(Math.round(12 * s), Math.round(2 * s), Math.round(3 * s), Math.round(10 * s));
+
+      // Highlight
+      g.fillStyle(lighten(color, 0.15));
+      g.fillRect(Math.round(5 * s), Math.round(4 * s), Math.round(2 * s), Math.round(2 * s));
+
+      g.generateTexture(`arena_crowd_cheer1_${i}`, width, height);
+      g.destroy();
+    }
+
+    // Generate cheer pose 2 (arms angled)
+    for (let i = 0; i < 4; i++) {
+      const g = this.make.graphics({ x: 0, y: 0 });
+      const color = crowdColors[i];
+
+      // Body
+      g.fillStyle(color);
+      g.fillRect(Math.round(3 * s), Math.round(10 * s), Math.round(10 * s), Math.round(10 * s));
+
+      // Head
+      g.fillRect(Math.round(5 * s), Math.round(4 * s), Math.round(6 * s), Math.round(6 * s));
+
+      // Arms angled out (left - diagonal)
+      g.fillRect(Math.round(0 * s), Math.round(6 * s), Math.round(4 * s), Math.round(3 * s));
+      g.fillRect(Math.round(0 * s), Math.round(4 * s), Math.round(2 * s), Math.round(4 * s));
+
+      // Arms angled out (right - diagonal)
+      g.fillRect(Math.round(12 * s), Math.round(6 * s), Math.round(4 * s), Math.round(3 * s));
+      g.fillRect(Math.round(14 * s), Math.round(4 * s), Math.round(2 * s), Math.round(4 * s));
+
+      // Highlight
+      g.fillStyle(lighten(color, 0.15));
+      g.fillRect(Math.round(5 * s), Math.round(4 * s), Math.round(2 * s), Math.round(2 * s));
+
+      g.generateTexture(`arena_crowd_cheer2_${i}`, width, height);
+      g.destroy();
+    }
+  }
+
+  /**
+   * Generate spotlight cone effect
+   */
+  private generateSpotlightCone(): void {
+    const s = SCALE;
+    const width = Math.round(60 * s);
+    const height = Math.round(200 * s);
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Create gradient cone effect using multiple layers
+    const cx = width / 2;
+
+    // Outer glow (very faint)
+    g.fillStyle(0xfbbf24, 0.02);
+    g.beginPath();
+    g.moveTo(cx, 0);
+    g.lineTo(0, height);
+    g.lineTo(width, height);
+    g.closePath();
+    g.fillPath();
+
+    // Mid glow
+    g.fillStyle(0xfbbf24, 0.05);
+    g.beginPath();
+    g.moveTo(cx, 0);
+    g.lineTo(Math.round(10 * s), height);
+    g.lineTo(width - Math.round(10 * s), height);
+    g.closePath();
+    g.fillPath();
+
+    // Inner glow
+    g.fillStyle(0xfde047, 0.08);
+    g.beginPath();
+    g.moveTo(cx, 0);
+    g.lineTo(Math.round(20 * s), height);
+    g.lineTo(width - Math.round(20 * s), height);
+    g.closePath();
+    g.fillPath();
+
+    // Core (brightest center)
+    g.fillStyle(0xfef9c3, 0.1);
+    g.beginPath();
+    g.moveTo(cx, 0);
+    g.lineTo(Math.round(25 * s), height);
+    g.lineTo(width - Math.round(25 * s), height);
+    g.closePath();
+    g.fillPath();
+
+    g.generateTexture("arena_spotlight_cone", width, height);
+    g.destroy();
+  }
+
+  /**
+   * Generate logo mat for ring center
+   */
+  private generateLogoMat(): void {
+    const s = SCALE;
+    const width = Math.round(120 * s);
+    const height = Math.round(40 * s);
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Mat base (dark gray)
+    g.fillStyle(0x374151);
+    g.fillRect(0, 0, width, height);
+
+    // Border
+    g.fillStyle(0x4b5563);
+    g.fillRect(0, 0, width, Math.round(2 * s));
+    g.fillRect(0, height - Math.round(2 * s), width, Math.round(2 * s));
+    g.fillRect(0, 0, Math.round(2 * s), height);
+    g.fillRect(width - Math.round(2 * s), 0, Math.round(2 * s), height);
+
+    // $ symbol in Bags green (centered)
+    const dollarX = width / 2 - Math.round(8 * s);
+    const dollarY = height / 2 - Math.round(12 * s);
+    g.fillStyle(0x22c55e);
+
+    // Top bar of S
+    g.fillRect(dollarX + Math.round(2 * s), dollarY, Math.round(12 * s), Math.round(3 * s));
+    // Left side top
+    g.fillRect(dollarX, dollarY + Math.round(3 * s), Math.round(4 * s), Math.round(5 * s));
+    // Middle bar of S
+    g.fillRect(dollarX + Math.round(2 * s), dollarY + Math.round(8 * s), Math.round(12 * s), Math.round(3 * s));
+    // Right side bottom
+    g.fillRect(dollarX + Math.round(12 * s), dollarY + Math.round(11 * s), Math.round(4 * s), Math.round(5 * s));
+    // Bottom bar of S
+    g.fillRect(dollarX + Math.round(2 * s), dollarY + Math.round(16 * s), Math.round(12 * s), Math.round(3 * s));
+    // Vertical line through (the $ stem)
+    g.fillStyle(0x4ade80);
+    g.fillRect(dollarX + Math.round(7 * s), dollarY - Math.round(2 * s), Math.round(2 * s), Math.round(24 * s));
+
+    // Subtle highlight
+    g.fillStyle(0x4b5563, 0.5);
+    g.fillRect(Math.round(4 * s), Math.round(4 * s), Math.round(30 * s), Math.round(2 * s));
+
+    g.generateTexture("arena_logo_mat", width, height);
+    g.destroy();
+  }
+
+  /**
+   * Generate colored corner posts for fighter spawn points
+   */
+  private generateCornerPosts(): void {
+    const s = SCALE;
+    const width = Math.round(12 * s);
+    const height = Math.round(60 * s);
+
+    // Red corner post
+    const gRed = this.make.graphics({ x: 0, y: 0 });
+    // Post structure
+    gRed.fillStyle(0x374151);
+    gRed.fillRect(Math.round(3 * s), 0, Math.round(6 * s), height);
+    // Red padding
+    gRed.fillStyle(0xef4444);
+    gRed.fillRect(0, Math.round(10 * s), Math.round(12 * s), Math.round(40 * s));
+    // Highlight
+    gRed.fillStyle(0xf87171);
+    gRed.fillRect(0, Math.round(10 * s), Math.round(3 * s), Math.round(40 * s));
+    // Shadow
+    gRed.fillStyle(0xb91c1c);
+    gRed.fillRect(Math.round(9 * s), Math.round(10 * s), Math.round(3 * s), Math.round(40 * s));
+    // Gold cap
+    gRed.fillStyle(0xfbbf24);
+    gRed.fillRect(Math.round(1 * s), Math.round(6 * s), Math.round(10 * s), Math.round(6 * s));
+
+    gRed.generateTexture("arena_corner_red", width, height);
+    gRed.destroy();
+
+    // Blue corner post
+    const gBlue = this.make.graphics({ x: 0, y: 0 });
+    // Post structure
+    gBlue.fillStyle(0x374151);
+    gBlue.fillRect(Math.round(3 * s), 0, Math.round(6 * s), height);
+    // Blue padding
+    gBlue.fillStyle(0x3b82f6);
+    gBlue.fillRect(0, Math.round(10 * s), Math.round(12 * s), Math.round(40 * s));
+    // Highlight
+    gBlue.fillStyle(0x60a5fa);
+    gBlue.fillRect(0, Math.round(10 * s), Math.round(3 * s), Math.round(40 * s));
+    // Shadow
+    gBlue.fillStyle(0x1d4ed8);
+    gBlue.fillRect(Math.round(9 * s), Math.round(10 * s), Math.round(3 * s), Math.round(40 * s));
+    // Gold cap
+    gBlue.fillStyle(0xfbbf24);
+    gBlue.fillRect(Math.round(1 * s), Math.round(6 * s), Math.round(10 * s), Math.round(6 * s));
+
+    gBlue.generateTexture("arena_corner_blue", width, height);
+    gBlue.destroy();
+  }
+
+  /**
+   * Generate comic-style action bubbles for fight effects
+   */
+  private generateActionBubbles(): void {
+    const s = SCALE;
+    const width = Math.round(48 * s);
+    const height = Math.round(32 * s);
+
+    // POW! bubble (yellow/orange burst)
+    this.createActionBubble("action_pow", "POW!", 0xfbbf24, 0xf97316, width, height);
+
+    // BAM! bubble (red burst)
+    this.createActionBubble("action_bam", "BAM!", 0xef4444, 0xdc2626, width, height);
+
+    // CRITICAL! bubble (purple/gold)
+    this.createActionBubble("action_critical", "CRIT!", 0xa855f7, 0xfbbf24, width, height);
+
+    // DODGE! bubble (blue/cyan)
+    this.createActionBubble("action_dodge", "MISS", 0x3b82f6, 0x06b6d4, width, height);
+  }
+
+  /**
+   * Helper to create comic-style action bubble
+   */
+  private createActionBubble(
+    key: string,
+    text: string,
+    bgColor: number,
+    accentColor: number,
+    width: number,
+    height: number
+  ): void {
+    const s = SCALE;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const cx = width / 2;
+    const cy = height / 2;
+
+    // Starburst background
+    g.fillStyle(accentColor);
+    // Horizontal spike
+    g.fillRect(0, cy - Math.round(8 * s), width, Math.round(16 * s));
+    // Vertical spike
+    g.fillRect(cx - Math.round(8 * s), 0, Math.round(16 * s), height);
+    // Diagonal spikes
+    g.fillRect(Math.round(4 * s), Math.round(4 * s), Math.round(12 * s), Math.round(8 * s));
+    g.fillRect(width - Math.round(16 * s), Math.round(4 * s), Math.round(12 * s), Math.round(8 * s));
+    g.fillRect(Math.round(4 * s), height - Math.round(12 * s), Math.round(12 * s), Math.round(8 * s));
+    g.fillRect(width - Math.round(16 * s), height - Math.round(12 * s), Math.round(12 * s), Math.round(8 * s));
+
+    // Main bubble (inner)
+    g.fillStyle(bgColor);
+    g.fillRect(Math.round(6 * s), cy - Math.round(6 * s), width - Math.round(12 * s), Math.round(12 * s));
+    g.fillRect(cx - Math.round(10 * s), Math.round(6 * s), Math.round(20 * s), height - Math.round(12 * s));
+
+    // White center for text
+    g.fillStyle(0xffffff);
+    g.fillRect(Math.round(10 * s), cy - Math.round(4 * s), width - Math.round(20 * s), Math.round(8 * s));
+
+    // Border outline
+    g.fillStyle(0x000000);
+    g.fillRect(Math.round(8 * s), cy - Math.round(7 * s), width - Math.round(16 * s), Math.round(2 * s));
+    g.fillRect(Math.round(8 * s), cy + Math.round(5 * s), width - Math.round(16 * s), Math.round(2 * s));
+
+    g.generateTexture(key, width, height);
     g.destroy();
   }
 

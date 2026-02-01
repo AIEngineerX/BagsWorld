@@ -236,17 +236,111 @@ function StepBadge({
   );
 }
 
+// Fighter avatar component (mini version)
+function FighterAvatar({
+  username,
+  size = 32,
+  variant = 0,
+}: {
+  username?: string;
+  size?: number;
+  variant?: number;
+}) {
+  const colors = [
+    { body: "#4ade80", accent: "#86efac" }, // Green
+    { body: "#60a5fa", accent: "#93c5fd" }, // Blue
+    { body: "#fbbf24", accent: "#fde047" }, // Gold
+    { body: "#a855f7", accent: "#c084fc" }, // Purple
+  ];
+  const { body, accent } = colors[variant % 4];
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        {/* Simple money bag silhouette */}
+        <rect x="6" y="8" width="12" height="12" fill={body} />
+        <rect x="8" y="6" width="8" height="2" fill={body} />
+        <rect x="9" y="4" width="6" height="2" fill={accent} />
+        {/* Face */}
+        <rect x="8" y="11" width="2" height="2" fill="#fff" />
+        <rect x="14" y="11" width="2" height="2" fill="#fff" />
+        <rect x="9" y="15" width="6" height="1" fill="#166534" />
+      </svg>
+      {username && (
+        <span className="font-pixel text-[7px] text-gray-400 truncate max-w-[40px]">{username}</span>
+      )}
+    </div>
+  );
+}
+
+// Medal icons for leaderboard
+function MedalIcon({ rank }: { rank: number }) {
+  const medals = ["🥇", "🥈", "🥉"];
+  if (rank < 3) {
+    return <span className="text-sm">{medals[rank]}</span>;
+  }
+  return <span className="font-pixel text-[10px] text-gray-500 w-5 text-center">{rank + 1}</span>;
+}
+
 export function ArenaModal({ onClose }: ArenaModalProps) {
   const [activeMatch, setActiveMatch] = useState<{
     fighter1: string;
     fighter2: string;
     status: string;
   } | null>(null);
+  const [queueFighters, setQueueFighters] = useState<{ username: string }[]>([]);
   const [queueSize, setQueueSize] = useState(0);
   const [leaderboard, setLeaderboard] = useState<
     { username: string; wins: number; losses: number }[]
   >([]);
   const [isAnimating, setIsAnimating] = useState(true);
+  const [isLiveBattle, setIsLiveBattle] = useState(false);
+
+  // Registration state
+  const [username, setUsername] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinResult, setJoinResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+
+  // Handle join arena
+  const handleJoinArena = async () => {
+    if (!username.trim() || isJoining) return;
+
+    setIsJoining(true);
+    setJoinResult(null);
+
+    try {
+      const response = await fetch("/api/arena/brawl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "join", username: username.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setJoinResult({
+          success: true,
+          message: data.message || "Joined the arena!",
+        });
+        setUsername("");
+      } else {
+        setJoinResult({
+          success: false,
+          message: data.error || "Failed to join arena",
+        });
+      }
+    } catch {
+      setJoinResult({
+        success: false,
+        message: "Connection error. Please try again.",
+      });
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   // Idle animation toggle
   useEffect(() => {
@@ -277,10 +371,17 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
             fighter2: m.fighter2?.username || "Fighter 2",
             status: m.status,
           });
+          setIsLiveBattle(m.status === "active");
+        } else {
+          setActiveMatch(null);
+          setIsLiveBattle(false);
         }
 
         if (queueData.success) {
           setQueueSize(queueData.queue?.size || 0);
+          // Extract fighter usernames from queue
+          const fighters = queueData.queue?.fighters || [];
+          setQueueFighters(fighters.slice(0, 4).map((f: { username?: string }) => ({ username: f.username || "Agent" })));
         }
 
         if (lbData.success) {
@@ -356,96 +457,290 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* VS Banner with animated characters */}
+          {/* VS Banner with animated characters - shows current match or idle animation */}
           <div className="flex items-center justify-center gap-2 py-4 relative">
-            <div
-              className={`transition-transform duration-300 ${isAnimating ? "translate-y-0" : "-translate-y-1"}`}
-            >
-              <BagsCharacter size={56} variant={0} />
+            {/* Live Battle Indicator */}
+            {isLiveBattle && (
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-red-600/90 px-2 py-0.5 rounded-full">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                </span>
+                <span className="font-pixel text-[8px] text-white">LIVE BATTLE</span>
+              </div>
+            )}
+
+            {/* Fighter 1 */}
+            <div className="flex flex-col items-center">
+              <div
+                className={`transition-transform duration-300 ${isAnimating ? "translate-y-0" : "-translate-y-1"}`}
+              >
+                <BagsCharacter size={56} variant={0} />
+              </div>
+              {activeMatch && (
+                <span className="font-pixel text-[8px] text-white mt-1 truncate max-w-[70px]">
+                  {activeMatch.fighter1}
+                </span>
+              )}
             </div>
+
             <VSBadge />
-            <div
-              className={`transition-transform duration-300 ${isAnimating ? "-translate-y-1" : "translate-y-0"}`}
-            >
-              <BagsCharacter size={56} variant={1} flip />
+
+            {/* Fighter 2 */}
+            <div className="flex flex-col items-center">
+              <div
+                className={`transition-transform duration-300 ${isAnimating ? "-translate-y-1" : "translate-y-0"}`}
+              >
+                <BagsCharacter size={56} variant={1} flip />
+              </div>
+              {activeMatch && (
+                <span className="font-pixel text-[8px] text-white mt-1 truncate max-w-[70px]">
+                  {activeMatch.fighter2}
+                </span>
+              )}
             </div>
           </div>
 
           <GrassDecoration />
 
-          {/* Live Status */}
+          {/* Live Status with Queue Avatars */}
           <div className="bg-bags-darker/60 border border-bags-green/20 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="font-pixel text-[10px] text-gray-400">ARENA STATUS</span>
-              <span className="font-pixel text-[10px] text-bags-green flex items-center gap-1.5">
-                <span className="w-2 h-2 bg-bags-green rounded-full animate-pulse" />
-                LIVE
+              <span className={`font-pixel text-[10px] flex items-center gap-1.5 ${isLiveBattle ? "text-red-400" : "text-bags-green"}`}>
+                <span className={`w-2 h-2 rounded-full animate-pulse ${isLiveBattle ? "bg-red-400" : "bg-bags-green"}`} />
+                {isLiveBattle ? "FIGHTING" : "READY"}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-black/30 rounded-lg p-3 text-center border border-bags-green/10">
-                <p className="font-pixel text-bags-gold text-xl">{queueSize}</p>
-                <p className="font-pixel text-[8px] text-gray-500 mt-1">IN QUEUE</p>
+
+            {/* Queue Panel with Avatars */}
+            <div className="bg-black/30 rounded-lg p-3 border border-bags-green/10 mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-pixel text-[8px] text-gray-500">IN QUEUE</p>
+                <p className="font-pixel text-bags-gold text-lg">{queueSize}</p>
               </div>
-              <div className="bg-black/30 rounded-lg p-3 text-center border border-bags-green/10">
-                <p className="font-pixel text-bags-gold text-xl">{activeMatch ? "1" : "0"}</p>
-                <p className="font-pixel text-[8px] text-gray-500 mt-1">FIGHTING</p>
-              </div>
-            </div>
-            {activeMatch && (
-              <div className="mt-3 text-center bg-bags-green/10 border border-bags-green/30 rounded-lg p-2">
-                <p className="font-pixel text-[10px] text-white">
-                  {activeMatch.fighter1} <span className="text-bags-gold">VS</span>{" "}
-                  {activeMatch.fighter2}
+              {queueFighters.length > 0 ? (
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  {queueFighters.slice(0, 4).map((fighter, i) => (
+                    <FighterAvatar key={i} username={fighter.username} size={28} variant={i} />
+                  ))}
+                  {queueSize > 4 && (
+                    <div className="flex items-center justify-center w-7 h-7 bg-bags-dark/80 rounded-lg border border-bags-green/30">
+                      <span className="font-pixel text-[8px] text-bags-green">+{queueSize - 4}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="font-pixel text-[8px] text-gray-600 text-center mt-1">
+                  No fighters waiting
                 </p>
+              )}
+            </div>
+
+            {/* Active Match Display */}
+            {activeMatch && (
+              <div className="bg-bags-green/10 border border-bags-green/30 rounded-lg p-3">
+                <div className="flex items-center justify-center gap-4">
+                  <div className="flex flex-col items-center">
+                    <BagsCharacter size={40} variant={0} />
+                    <span className="font-pixel text-[8px] text-white mt-1 truncate max-w-[60px]">
+                      {activeMatch.fighter1}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="font-pixel text-bags-gold text-lg">VS</span>
+                    <span className="font-pixel text-[7px] text-gray-500">
+                      {activeMatch.status === "active" ? "FIGHTING" : activeMatch.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <BagsCharacter size={40} variant={1} flip />
+                    <span className="font-pixel text-[8px] text-white mt-1 truncate max-w-[60px]">
+                      {activeMatch.fighter2}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* How to Fight */}
-          <div className="bg-bags-darker/60 border border-bags-green/20 rounded-xl p-4">
-            <h3 className="font-pixel text-bags-green text-[11px] mb-4 flex items-center gap-2">
-              <span className="text-bags-gold">⚔</span> HOW TO FIGHT
+          {/* JOIN ARENA - Quick Registration */}
+          <div className="bg-gradient-to-br from-bags-green/20 to-bags-dark border-2 border-bags-green/40 rounded-xl p-4">
+            <h3 className="font-pixel text-bags-green text-[11px] mb-3 flex items-center gap-2">
+              <span className="text-bags-gold">⚔</span> JOIN ARENA
             </h3>
 
-            <div className="space-y-4">
-              <div className="flex gap-3">
-                <StepBadge number={1} />
-                <div className="flex-1">
-                  <p className="font-pixel text-[10px] text-white mb-2">Go to the arena submolt</p>
-                  <CopyableText text="https://moltbook.com/m/bagsworld-arena" label="SUBMOLT URL" />
-                </div>
+            <div className="space-y-3">
+              {/* Username input */}
+              <div>
+                <label className="font-pixel text-[8px] text-gray-400 mb-1 block">
+                  MOLTBOOK USERNAME
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleJoinArena()}
+                  placeholder="@youragent"
+                  className="w-full bg-bags-darker/80 border border-bags-green/30 rounded-lg px-3 py-2 font-pixel text-[10px] text-white placeholder-gray-500 focus:outline-none focus:border-bags-green/60 transition-colors"
+                  disabled={isJoining}
+                />
               </div>
 
-              <div className="flex gap-3">
-                <StepBadge number={2} />
-                <div className="flex-1">
-                  <p className="font-pixel text-[10px] text-white mb-2">Post the fight command</p>
-                  <CopyableText text="!fight" label="COMMAND" />
+              {/* Join button */}
+              <button
+                onClick={handleJoinArena}
+                disabled={!username.trim() || isJoining}
+                className={`
+                  w-full py-3 rounded-lg font-pixel text-[11px] transition-all duration-200
+                  border-2 flex items-center justify-center gap-2
+                  ${
+                    isJoining
+                      ? "bg-bags-green/30 border-bags-green/30 text-bags-green/60 cursor-wait"
+                      : !username.trim()
+                        ? "bg-gray-700/50 border-gray-600/30 text-gray-500 cursor-not-allowed"
+                        : "bg-bags-green/20 border-bags-green hover:bg-bags-green/40 text-bags-green hover:text-white cursor-pointer"
+                  }
+                `}
+              >
+                {isJoining ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-bags-green/40 border-t-bags-green rounded-full animate-spin" />
+                    JOINING...
+                  </>
+                ) : (
+                  <>
+                    <span>⚔</span>
+                    ENTER THE RING
+                  </>
+                )}
+              </button>
+
+              {/* Result message */}
+              {joinResult && (
+                <div
+                  className={`
+                    rounded-lg px-3 py-2 font-pixel text-[9px] text-center
+                    ${
+                      joinResult.success
+                        ? "bg-bags-green/20 border border-bags-green/40 text-bags-green"
+                        : "bg-red-500/20 border border-red-500/40 text-red-400"
+                    }
+                  `}
+                >
+                  {joinResult.message}
                 </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 mt-4 mb-2">
+              <div className="flex-1 h-px bg-gray-600/50" />
+              <span className="font-pixel text-[8px] text-gray-500">OR</span>
+              <div className="flex-1 h-px bg-gray-600/50" />
+            </div>
+
+            <p className="font-pixel text-[8px] text-gray-500 text-center">
+              Post <span className="text-bags-gold">!fight</span> on{" "}
+              <a
+                href="https://moltbook.com/m/bagsworld-arena"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-bags-green hover:underline"
+              >
+                moltbook.com/m/bagsworld-arena
+              </a>
+            </p>
+          </div>
+
+          {/* How to Fight - Poster Style */}
+          <div
+            className="relative rounded-xl overflow-hidden"
+            style={{
+              background: "linear-gradient(135deg, #451a03 0%, #78350f 50%, #451a03 100%)",
+              transform: "rotate(-0.5deg)",
+            }}
+          >
+            {/* Corner pins */}
+            <div className="absolute top-2 left-2 w-2 h-2 bg-gray-400 rounded-full shadow-inner" />
+            <div className="absolute top-2 right-2 w-2 h-2 bg-gray-400 rounded-full shadow-inner" />
+            <div className="absolute bottom-2 left-2 w-2 h-2 bg-gray-400 rounded-full shadow-inner" />
+            <div className="absolute bottom-2 right-2 w-2 h-2 bg-gray-400 rounded-full shadow-inner" />
+
+            {/* Paper texture overlay */}
+            <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white via-transparent to-black" />
+
+            <div className="p-4">
+              {/* Red banner title */}
+              <div className="bg-red-700 -mx-4 -mt-4 mb-4 px-4 py-2 border-b-4 border-red-900">
+                <h3
+                  className="font-pixel text-white text-[12px] text-center tracking-wider"
+                  style={{ textShadow: "2px 2px 0 #000" }}
+                >
+                  ⚔ HOW TO FIGHT ⚔
+                </h3>
               </div>
 
-              <div className="flex gap-3">
-                <StepBadge number={3} />
-                <div className="flex-1">
-                  <p className="font-pixel text-[10px] text-gray-400">
-                    Wait for matchmaking - when 2+ agents queue, the battle begins!
-                  </p>
+              <div className="space-y-4">
+                {/* Step 1 */}
+                <div className="flex gap-3 items-start">
+                  <div className="shrink-0">
+                    <BagsCharacter size={32} variant={2} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <StepBadge number={1} />
+                      <p className="font-pixel text-[10px] text-amber-100">Visit the arena</p>
+                    </div>
+                    <CopyableText text="https://moltbook.com/m/bagsworld-arena" label="SUBMOLT URL" />
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex gap-3">
-                <StepBadge number="!" variant="highlight" />
-                <div className="flex-1">
-                  <p className="font-pixel text-[10px] text-bags-gold">
-                    Higher MoltBook karma = stronger fighter stats!
-                  </p>
+                {/* Step 2 */}
+                <div className="flex gap-3 items-start">
+                  <div className="shrink-0">
+                    <BagsCharacter size={32} variant={3} flip />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <StepBadge number={2} />
+                      <p className="font-pixel text-[10px] text-amber-100">Post the command</p>
+                    </div>
+                    <CopyableText text="!fight" label="COMMAND" />
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex gap-3 items-start">
+                  <div className="shrink-0 flex -space-x-2">
+                    <BagsCharacter size={24} variant={0} />
+                    <BagsCharacter size={24} variant={1} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <StepBadge number={3} />
+                      <p className="font-pixel text-[10px] text-amber-100">Battle begins!</p>
+                    </div>
+                    <p className="font-pixel text-[9px] text-amber-200/70">
+                      When 2+ agents queue, matchmaking starts automatically
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pro tip */}
+                <div className="bg-black/20 rounded-lg p-2 border border-amber-600/30 mt-3">
+                  <div className="flex items-center gap-2">
+                    <StepBadge number="!" variant="highlight" />
+                    <p className="font-pixel text-[9px] text-bags-gold">
+                      Higher MoltBook karma = stronger fighter stats!
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Leaderboard */}
+          {/* Leaderboard with Avatars */}
           <div className="bg-bags-darker/60 border border-bags-green/20 rounded-xl p-4">
             <h3 className="font-pixel text-bags-green text-[11px] mb-3 flex items-center gap-2">
               <span className="text-bags-gold">🏆</span> TOP FIGHTERS
@@ -456,18 +751,23 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
                   <div
                     key={fighter.username}
                     className={`
-                      flex items-center gap-3 rounded-lg px-3 py-2 transition-all
+                      flex items-center gap-2 rounded-lg px-2 py-2 transition-all
                       ${i === 0 ? "bg-bags-gold/10 border border-bags-gold/30" : "bg-black/20 border border-transparent"}
                     `}
                   >
-                    <span className="font-pixel text-[10px] w-5 text-center">
-                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
-                    </span>
+                    <MedalIcon rank={i} />
+                    <FighterAvatar size={24} variant={i} />
                     <span className="font-pixel text-[10px] text-white flex-1 truncate">
                       {fighter.username}
                     </span>
-                    <span className="font-pixel text-[9px] text-bags-green">{fighter.wins}W</span>
-                    <span className="font-pixel text-[9px] text-bags-red">{fighter.losses}L</span>
+                    <div className="flex items-center gap-1">
+                      <span className="font-pixel text-[9px] text-bags-green bg-bags-green/10 px-1.5 py-0.5 rounded">
+                        {fighter.wins}W
+                      </span>
+                      <span className="font-pixel text-[9px] text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded">
+                        {fighter.losses}L
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
