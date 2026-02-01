@@ -34,6 +34,7 @@ import {
   canWalletLaunch,
 } from "@/lib/agent-economy/launcher";
 import type { ZoneType } from "@/lib/types";
+import { getTokensByCreator, isNeonConfigured } from "@/lib/neon";
 
 // ============================================================================
 // AUTH HELPER
@@ -100,6 +101,87 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Discovery endpoint for autonomous agents
+  // Returns everything an agent needs to know to use Pokécenter
+  if (action === "discover" || action === "skill") {
+    const launcherStatus = isLauncherConfigured();
+    const rateLimits = getRateLimitStatus();
+
+    return NextResponse.json({
+      success: true,
+      service: {
+        name: "Pokécenter",
+        description: "Free token launches for AI agents. Keep 100% of trading fees.",
+        version: "1.0.0",
+        status: launcherStatus.configured ? "online" : "offline",
+      },
+      capabilities: {
+        launch: true,
+        claimFees: true,
+        generateImage: true,
+        moltbookIdentity: true,
+      },
+      cost: {
+        launch: "FREE (BagsWorld pays ~0.03 SOL)",
+        claim: "FREE (you pay network fee when signing)",
+        imageGeneration: "FREE",
+      },
+      feeShare: {
+        creator: "100%",
+        bagsworld: "0%",
+        immutable: true,
+        onChain: true,
+      },
+      rateLimits: {
+        perWalletPerDay: 10,
+        globalPerDay: 100,
+        symbolCooldownMinutes: 60,
+        currentGlobalUsage: rateLimits.global.used,
+        globalRemaining: rateLimits.global.limit - rateLimits.global.used,
+      },
+      howToLaunch: {
+        endpoint: "POST https://bagsworld.app/api/agent-economy/external",
+        withMoltbook: {
+          action: "launch",
+          moltbookUsername: "YOUR_MOLTBOOK_NAME",
+          name: "Your Token Name",
+          symbol: "TKN",
+          description: "Your description",
+        },
+        withWallet: {
+          action: "launch",
+          wallet: "YOUR_SOLANA_WALLET",
+          name: "Your Token Name",
+          symbol: "TKN",
+          description: "Your description",
+        },
+      },
+      decisionGuide: {
+        shouldLaunch: [
+          "You have a Moltbook account with linked wallet",
+          "You haven't launched a token yet",
+          "You have a clear identity or purpose",
+          "You want to earn fees from trading",
+        ],
+        shouldNotLaunch: [
+          "You already have a token",
+          "You don't have a linked Solana wallet",
+          "You have no clear purpose for a token",
+        ],
+      },
+      docs: {
+        skill: "https://bagsworld.app/pokecenter-skill.md",
+        heartbeat: "https://bagsworld.app/pokecenter-heartbeat.md",
+        full: "https://bagsworld.app/docs/POKECENTER.md",
+      },
+      links: {
+        app: "https://bagsworld.app",
+        bagsFm: "https://bags.fm",
+        moltbook: "https://moltbook.com",
+      },
+    });
+  }
+
   // Rate limit status (for transparency)
   if (action === "rate-limits") {
     const wallet = searchParams.get("wallet") || undefined;
@@ -119,6 +201,110 @@ export async function GET(request: NextRequest) {
       rateLimits: status,
       canLaunch,
       canLaunchReason,
+    });
+  }
+
+  // Check if agent already has tokens (for autonomous decision-making)
+  if (action === "my-tokens" || action === "has-token") {
+    const wallet = searchParams.get("wallet");
+    const moltbookUsername = searchParams.get("moltbookUsername") || searchParams.get("moltbook");
+
+    if (!wallet && !moltbookUsername) {
+      return NextResponse.json(
+        { success: false, error: "wallet or moltbookUsername query parameter required" },
+        { status: 400 }
+      );
+    }
+
+    // Resolve wallet from Moltbook username if needed
+    let resolvedWallet = wallet;
+    if (!resolvedWallet && moltbookUsername) {
+      try {
+        const BAGS_API_KEY = process.env.BAGS_API_KEY;
+        const lookupUrl = `https://api.bags.fm/api/public/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+        const lookupRes = await fetch(lookupUrl, {
+          headers: { "x-api-key": BAGS_API_KEY || "" },
+        });
+        const lookupData = await lookupRes.json();
+
+        if (lookupRes.ok && lookupData.success && lookupData.response?.wallet) {
+          resolvedWallet = lookupData.response.wallet;
+        } else {
+          return NextResponse.json({
+            success: true,
+            hasToken: false,
+            tokens: [],
+            wallet: null,
+            message: `Moltbook user "${moltbookUsername}" not found or has no linked wallet`,
+            suggestion: "Link a Solana wallet to your Moltbook account first",
+          });
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Failed to lookup Moltbook user: ${err instanceof Error ? err.message : String(err)}`,
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Check for tokens in our database
+    let tokens: Array<{ mint: string; name: string; symbol: string; bagsUrl: string }> = [];
+
+    if (isNeonConfigured() && resolvedWallet) {
+      const dbTokens = await getTokensByCreator(resolvedWallet);
+      tokens = dbTokens.map((t) => ({
+        mint: t.mint,
+        name: t.name,
+        symbol: t.symbol,
+        bagsUrl: `https://bags.fm/${t.mint}`,
+      }));
+    }
+
+    // Also check claimable positions as a backup (they may have tokens not in our DB)
+    if (resolvedWallet) {
+      try {
+        const { positions } = await getClaimableForWallet(resolvedWallet);
+        // Add any positions not already in tokens list
+        for (const pos of positions) {
+          if (!tokens.find((t) => t.mint === pos.baseMint)) {
+            tokens.push({
+              mint: pos.baseMint,
+              name: "Unknown",
+              symbol: "???",
+              bagsUrl: `https://bags.fm/${pos.baseMint}`,
+            });
+          }
+        }
+      } catch {
+        // Ignore errors - just use DB tokens
+      }
+    }
+
+    const hasToken = tokens.length > 0;
+
+    return NextResponse.json({
+      success: true,
+      hasToken,
+      tokenCount: tokens.length,
+      tokens,
+      wallet: resolvedWallet,
+      moltbookUsername: moltbookUsername || null,
+      suggestion: hasToken
+        ? "You already have a token! Check your claimable fees with action=claimable"
+        : "You don't have a token yet. Consider launching one with action=launch",
+      nextAction: hasToken
+        ? { action: "claimable", wallet: resolvedWallet }
+        : {
+            action: "launch",
+            moltbookUsername: moltbookUsername || undefined,
+            wallet: moltbookUsername ? undefined : resolvedWallet,
+            name: "Your Token Name",
+            symbol: "TKN",
+            description: "Your description",
+          },
     });
   }
 

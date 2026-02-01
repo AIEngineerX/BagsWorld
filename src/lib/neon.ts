@@ -269,6 +269,26 @@ export async function getFeaturedTokens(): Promise<GlobalToken[]> {
   }
 }
 
+// Get tokens by creator wallet
+export async function getTokensByCreator(creatorWallet: string): Promise<GlobalToken[]> {
+  const sql = await getSql();
+  if (!sql) {
+    return [];
+  }
+
+  try {
+    const rows = await sql`
+      SELECT * FROM tokens
+      WHERE creator_wallet = ${creatorWallet}
+      ORDER BY created_at DESC
+    `;
+    return rows as GlobalToken[];
+  } catch (error) {
+    console.error("Error fetching tokens by creator:", error);
+    return [];
+  }
+}
+
 // Update token stats (called by world-state API)
 export async function updateTokenStats(
   mint: string,
