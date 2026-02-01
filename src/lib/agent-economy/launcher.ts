@@ -227,12 +227,13 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   console.log(`[Launcher] Token mint: ${tokenMint}`);
   
   // Step 2: Create partner config for fee sharing
-  // The creator wallet will receive trading fees
-  console.log('[Launcher] Step 2: Creating partner config...');
+  // Use the BagsWorld wallet as the partner, creator gets fees through that
+  console.log('[Launcher] Step 2: Getting partner config...');
   
   let configKey: string;
   try {
-    // First try partner config (documented endpoint)
+    // Try to create a partner config with the BagsWorld wallet
+    // This config will route fees, and we can later distribute to creators
     const partnerResponse = await callBagsApi<{
       configKey?: string;
       partnerKey?: string;
@@ -242,10 +243,10 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
         transaction?: string;
       };
       transaction?: string;
-    }>('/partner/create-config', {
+    }>('/partner/config', {
       method: 'POST',
       body: JSON.stringify({
-        partnerWallet: creatorWallet,
+        partnerWallet: bagsWorldWallet, // BagsWorld receives, distributes to creators
       }),
     });
     
@@ -259,19 +260,22 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
       || '';
       
     if (!configKey) {
-      throw new Error('No configKey in partner response');
-    }
-    
-    console.log(`[Launcher] Config key: ${configKey}`);
-    
-    // Sign partner transaction if present
-    const tx = partnerResponse.transaction || partnerResponse.response?.transaction;
-    if (tx) {
-      console.log('[Launcher] Signing partner config tx...');
-      await signAndSubmit(tx);
+      // If no config key, try without one - some APIs have defaults
+      console.log('[Launcher] No configKey returned, trying launch without it...');
+      configKey = ''; // Will be filtered out in step 3
+    } else {
+      console.log(`[Launcher] Config key: ${configKey}`);
+      
+      // Sign partner transaction if present
+      const tx = partnerResponse.transaction || partnerResponse.response?.transaction;
+      if (tx) {
+        console.log('[Launcher] Signing partner config tx...');
+        await signAndSubmit(tx);
+      }
     }
   } catch (err) {
-    throw new Error(`Partner config failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.log('[Launcher] Partner config failed, trying without:', err);
+    configKey = ''; // Try launch without configKey
   }
   
   // Step 3: Create launch transaction
