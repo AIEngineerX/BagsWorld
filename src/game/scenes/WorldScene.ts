@@ -112,6 +112,8 @@ export class WorldScene extends Phaser.Scene {
   > = new Map();
   private arenaLastHitEffect: Map<number, number> = new Map(); // Track when last hit effect was shown (prevents spam)
   private arenaLastFighterState: Map<number, string> = new Map(); // Track previous state for transition detection
+  private arenaComboCount: Map<number, number> = new Map(); // Track combo hits per fighter
+  private arenaLastAttacker: number = 0; // Track who attacked last for combo system
   private arenaMatchState: {
     matchId: number;
     status: string;
@@ -9451,6 +9453,14 @@ Use: bags.fm/[yourname]`,
     if (fighter.state === "attacking" && prevState !== "attacking") {
       const attackDir = fighter.direction === "right" ? 1 : -1;
 
+      // 30% chance to play charge sound for variety
+      if (Math.random() < 0.3) {
+        this.playFightSound("charge");
+      }
+
+      // Dust cloud at feet when launching attack
+      this.showDustCloud(fighterX, fighterY);
+
       // Jump and lunge forward
       this.tweens.add({
         targets: sprite,
@@ -9488,7 +9498,13 @@ Use: bags.fm/[yourname]`,
     if (fighter.state === "hurt" && prevState !== "hurt") {
       const damage =
         Math.round((fighter.maxHp - fighter.hp) * 0.1) || Math.floor(Math.random() * 8) + 4;
-      this.showHitEffect(fighterX, fighterY - Math.round(40 * s), damage);
+      // The attacker is the OTHER fighter (not the one getting hurt)
+      const attackerId = this.arenaMatchState
+        ? this.arenaMatchState.fighter1.id === fighter.id
+          ? this.arenaMatchState.fighter2.id
+          : this.arenaMatchState.fighter1.id
+        : 0;
+      this.showHitEffect(fighterX, fighterY - Math.round(40 * s), damage, attackerId);
 
       const knockDir = fighter.direction === "left" ? 1 : -1;
 
@@ -9522,6 +9538,13 @@ Use: bags.fm/[yourname]`,
     if (fighter.state === "knockout" && prevState !== "knockout") {
       const fallDir = fighter.direction === "left" ? 1 : -1;
 
+      // === PLAY KO SOUND ===
+      this.playFightSound("ko");
+
+      // Reset combo counters on KO
+      this.arenaComboCount.clear();
+      this.arenaLastAttacker = 0;
+
       // Epic knockout spin and fall
       this.tweens.add({
         targets: sprite,
@@ -9536,8 +9559,13 @@ Use: bags.fm/[yourname]`,
         onComplete: () => {
           // Show KO stars
           this.showKOStars(sprite.x, sprite.y - 30 * s);
+          // Show ground crack where they fell
+          this.showGroundCrack(sprite.x, sprite.y);
         },
       });
+
+      // Big shockwave for knockout
+      this.showShockwave(fighterX, fighterY, 0xef4444);
 
       // Big screen shake for knockout
       this.cameras.main.shake(400, 0.02);
@@ -9547,11 +9575,430 @@ Use: bags.fm/[yourname]`,
     this.arenaLastFighterState.set(fighter.id, fighter.state);
   }
 
+  // ============================================================================
+  // FIGHT SOUND EFFECTS
+  // ============================================================================
+
+  /**
+   * Play randomized fight sound effect
+   */
+  private playFightSound(type: "whoosh" | "hit" | "critical" | "ko" | "block" | "charge"): void {
+    if (!this.audioContext) {
+      // Create audio context if needed
+      try {
+        this.audioContext = new (
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        )();
+        this.gainNode = this.audioContext.createGain();
+        this.gainNode.connect(this.audioContext.destination);
+        this.gainNode.gain.value = 0.3;
+      } catch {
+        return;
+      }
+    }
+
+    const ctx = this.audioContext;
+    const now = ctx.currentTime;
+
+    // Randomize pitch slightly for variety
+    const pitchVariation = 0.9 + Math.random() * 0.2;
+
+    switch (type) {
+      case "whoosh": {
+        // Swoosh sound - noise burst with filter sweep
+        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+        const noise = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noise.length; i++) {
+          noise[i] = (Math.random() * 2 - 1) * (1 - i / noise.length);
+        }
+        const noiseSource = ctx.createBufferSource();
+        noiseSource.buffer = noiseBuffer;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(2000 * pitchVariation, now);
+        filter.frequency.exponentialRampToValueAtTime(500, now + 0.15);
+        filter.Q.value = 2;
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+        noiseSource.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.gainNode!);
+        noiseSource.start(now);
+        break;
+      }
+
+      case "hit": {
+        // Punch sound - low thump + mid crack
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        const gain2 = ctx.createGain();
+
+        // Low thump
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(150 * pitchVariation, now);
+        osc1.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+        gain1.gain.setValueAtTime(0.4, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+        // Mid crack - random between punch types
+        const crackFreq = [400, 500, 600, 350][Math.floor(Math.random() * 4)];
+        osc2.type = "triangle";
+        osc2.frequency.setValueAtTime(crackFreq * pitchVariation, now);
+        osc2.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+        gain2.gain.setValueAtTime(0.25, now);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        osc1.connect(gain1);
+        osc2.connect(gain2);
+        gain1.connect(this.gainNode!);
+        gain2.connect(this.gainNode!);
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.15);
+        osc2.stop(now + 0.1);
+        break;
+      }
+
+      case "critical": {
+        // Big impact - layered hits + reverb-like decay
+        for (let i = 0; i < 3; i++) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const filter = ctx.createBiquadFilter();
+
+          osc.type = i === 0 ? "sine" : "triangle";
+          const baseFreq = [100, 200, 400][i] * pitchVariation;
+          osc.frequency.setValueAtTime(baseFreq, now);
+          osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.3, now + 0.2);
+
+          filter.type = "lowpass";
+          filter.frequency.value = 1500;
+
+          gain.gain.setValueAtTime([0.5, 0.3, 0.2][i], now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25 - i * 0.05);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.gainNode!);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        }
+
+        // Add noise burst
+        const noiseLen = 0.08;
+        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * noiseLen, ctx.sampleRate);
+        const noise = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noise.length; i++) {
+          noise[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / noise.length, 2);
+        }
+        const noiseSource = ctx.createBufferSource();
+        noiseSource.buffer = noiseBuffer;
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.value = 0.2;
+        noiseSource.connect(noiseGain);
+        noiseGain.connect(this.gainNode!);
+        noiseSource.start(now);
+        break;
+      }
+
+      case "ko": {
+        // Dramatic KO sound - descending tone + impact
+        const notes = [600, 500, 400, 200, 100];
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "square";
+          osc.frequency.value = freq * pitchVariation;
+          gain.gain.setValueAtTime(0.15, now + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.1);
+          osc.connect(gain);
+          gain.connect(this.gainNode!);
+          osc.start(now + i * 0.08);
+          osc.stop(now + i * 0.08 + 0.15);
+        });
+
+        // Final thud
+        const thud = ctx.createOscillator();
+        const thudGain = ctx.createGain();
+        thud.type = "sine";
+        thud.frequency.setValueAtTime(80, now + 0.4);
+        thud.frequency.exponentialRampToValueAtTime(30, now + 0.6);
+        thudGain.gain.setValueAtTime(0.5, now + 0.4);
+        thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        thud.connect(thudGain);
+        thudGain.connect(this.gainNode!);
+        thud.start(now + 0.4);
+        thud.stop(now + 0.7);
+        break;
+      }
+
+      case "block": {
+        // Metallic clang
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(800 * pitchVariation, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.connect(gain);
+        gain.connect(this.gainNode!);
+        osc.start(now);
+        osc.stop(now + 0.15);
+        break;
+      }
+
+      case "charge": {
+        // Power-up sound - rising tone
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.exponentialRampToValueAtTime(800 * pitchVariation, now + 0.2);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.connect(gain);
+        gain.connect(this.gainNode!);
+        osc.start(now);
+        osc.stop(now + 0.3);
+        break;
+      }
+    }
+  }
+
+  // ============================================================================
+  // ADDITIONAL VISUAL EFFECTS
+  // ============================================================================
+
+  /**
+   * Show dust cloud effect (random chance on movement/attacks)
+   */
+  private showDustCloud(x: number, y: number): void {
+    const s = SCALE;
+    const dustCount = 3 + Math.floor(Math.random() * 3);
+
+    for (let i = 0; i < dustCount; i++) {
+      const dust = this.add.circle(
+        x + (Math.random() - 0.5) * 30 * s,
+        y + Math.random() * 10 * s,
+        (4 + Math.random() * 6) * s,
+        0xd4a574,
+        0.4 + Math.random() * 0.3
+      );
+      dust.setDepth(9);
+
+      const driftX = (Math.random() - 0.5) * 40 * s;
+      const driftY = -20 - Math.random() * 30;
+
+      this.tweens.add({
+        targets: dust,
+        x: dust.x + driftX,
+        y: dust.y + driftY * s,
+        alpha: 0,
+        scale: 2 + Math.random(),
+        duration: 400 + Math.random() * 200,
+        ease: "Power1.easeOut",
+        onComplete: () => dust.destroy(),
+      });
+    }
+  }
+
+  /**
+   * Show energy burst effect (for attacks)
+   */
+  private showEnergyBurst(x: number, y: number, color: number = 0xfbbf24): void {
+    const s = SCALE;
+
+    // Central glow
+    const glow = this.add.circle(x, y, 15 * s, color, 0.6);
+    glow.setDepth(12);
+
+    this.tweens.add({
+      targets: glow,
+      radius: 40 * s,
+      alpha: 0,
+      duration: 200,
+      ease: "Power2.easeOut",
+      onComplete: () => glow.destroy(),
+    });
+
+    // Energy rays
+    const rayCount = 6 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < rayCount; i++) {
+      const angle = (i / rayCount) * Math.PI * 2 + Math.random() * 0.3;
+      const length = (30 + Math.random() * 20) * s;
+
+      const ray = this.add.graphics();
+      ray.setDepth(11);
+      ray.lineStyle(2 * s, color, 0.8);
+      ray.beginPath();
+      ray.moveTo(x, y);
+      ray.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+      ray.strokePath();
+
+      this.tweens.add({
+        targets: ray,
+        alpha: 0,
+        duration: 150 + Math.random() * 100,
+        delay: i * 20,
+        onComplete: () => ray.destroy(),
+      });
+    }
+  }
+
+  /**
+   * Show shockwave ring effect
+   */
+  private showShockwave(x: number, y: number, color: number = 0xffffff): void {
+    const s = SCALE;
+
+    for (let i = 0; i < 2; i++) {
+      const ring = this.add.circle(x, y, 5 * s, 0x000000, 0);
+      ring.setStrokeStyle((3 - i) * s, color, 0.8 - i * 0.3);
+      ring.setDepth(10);
+
+      this.tweens.add({
+        targets: ring,
+        radius: (60 + i * 20) * s,
+        alpha: 0,
+        duration: 300 + i * 100,
+        delay: i * 50,
+        ease: "Power2.easeOut",
+        onComplete: () => ring.destroy(),
+      });
+    }
+  }
+
+  /**
+   * Show speed lines effect
+   */
+  private showSpeedLines(x: number, y: number, direction: number): void {
+    const s = SCALE;
+    const lineCount = 5 + Math.floor(Math.random() * 4);
+
+    for (let i = 0; i < lineCount; i++) {
+      const startY = y + (Math.random() - 0.5) * 50 * s;
+      const lineLength = (40 + Math.random() * 30) * s;
+      const startX = x - direction * 20 * s;
+
+      const line = this.add.graphics();
+      line.setDepth(8);
+      line.lineStyle(2 * s, 0xffffff, 0.6 + Math.random() * 0.3);
+      line.beginPath();
+      line.moveTo(startX, startY);
+      line.lineTo(startX - direction * lineLength, startY);
+      line.strokePath();
+
+      this.tweens.add({
+        targets: line,
+        alpha: 0,
+        x: -direction * 30 * s,
+        duration: 150 + Math.random() * 100,
+        delay: i * 15,
+        onComplete: () => line.destroy(),
+      });
+    }
+  }
+
+  /**
+   * Show ground crack effect (for heavy hits)
+   */
+  private showGroundCrack(x: number, y: number): void {
+    const s = SCALE;
+    const crackCount = 4 + Math.floor(Math.random() * 3);
+
+    for (let i = 0; i < crackCount; i++) {
+      const angle = (i / crackCount) * Math.PI + Math.random() * 0.5;
+      const length = (20 + Math.random() * 25) * s;
+
+      const crack = this.add.graphics();
+      crack.setDepth(1);
+
+      // Draw jagged crack line
+      crack.lineStyle(2 * s, 0x1a1a1a, 0.8);
+      crack.beginPath();
+      crack.moveTo(x, y);
+
+      let curX = x;
+      let curY = y;
+      const segments = 3 + Math.floor(Math.random() * 3);
+      for (let j = 0; j < segments; j++) {
+        const segLen = length / segments;
+        curX += Math.cos(angle + (Math.random() - 0.5) * 0.5) * segLen;
+        curY += Math.sin(angle + (Math.random() - 0.5) * 0.5) * segLen;
+        crack.lineTo(curX, curY);
+      }
+      crack.strokePath();
+
+      // Fade out slowly
+      this.tweens.add({
+        targets: crack,
+        alpha: 0,
+        duration: 2000,
+        delay: 500,
+        onComplete: () => crack.destroy(),
+      });
+    }
+  }
+
+  /**
+   * Show combo counter
+   */
+  private showComboCounter(x: number, y: number, comboCount: number): void {
+    if (comboCount < 2) return;
+
+    const s = SCALE;
+
+    const comboText = this.add.text(x, y - 60 * s, `${comboCount} HIT COMBO!`, {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(14 * s)}px`,
+      color: comboCount >= 5 ? "#ff6b6b" : comboCount >= 3 ? "#fbbf24" : "#ffffff",
+      fontStyle: "bold",
+      stroke: "#000000",
+      strokeThickness: 4,
+    });
+    comboText.setOrigin(0.5, 0.5);
+    comboText.setDepth(102);
+
+    // Pulse and fade
+    this.tweens.add({
+      targets: comboText,
+      scale: { from: 0.5, to: 1.2 },
+      y: y - 90 * s,
+      duration: 200,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        this.tweens.add({
+          targets: comboText,
+          alpha: 0,
+          y: comboText.y - 20 * s,
+          duration: 800,
+          delay: 300,
+          onComplete: () => comboText.destroy(),
+        });
+      },
+    });
+  }
+
   /**
    * Show attack slash effect
    */
   private showAttackSlash(x: number, y: number, direction: number): void {
     const s = SCALE;
+
+    // === PLAY WHOOSH SOUND ===
+    this.playFightSound("whoosh");
+
+    // Randomize slash color
+    const slashColors = [0xffffff, 0xfbbf24, 0xff6b6b, 0x60a5fa, 0xa78bfa];
+    const slashColor = slashColors[Math.floor(Math.random() * slashColors.length)];
 
     // Create slash lines
     for (let i = 0; i < 5; i++) {
@@ -9560,7 +10007,7 @@ Use: bags.fm/[yourname]`,
 
       const slash = this.add.graphics();
       slash.setDepth(15);
-      slash.lineStyle(3 * s, 0xffffff, 0.9);
+      slash.lineStyle(3 * s, slashColor, 0.9);
       slash.beginPath();
       slash.moveTo(x, y);
       const endX = x + Math.cos((angle * Math.PI) / 180) * length * s;
@@ -9581,7 +10028,7 @@ Use: bags.fm/[yourname]`,
 
     // Add impact ring
     const ring = this.add.circle(x, y, 10 * s, 0xffffff, 0);
-    ring.setStrokeStyle(3 * s, 0xfbbf24);
+    ring.setStrokeStyle(3 * s, slashColor);
     ring.setDepth(14);
 
     this.tweens.add({
@@ -9592,6 +10039,22 @@ Use: bags.fm/[yourname]`,
       ease: "Power2.easeOut",
       onComplete: () => ring.destroy(),
     });
+
+    // === RANDOM EXTRA EFFECTS ===
+    // 40% chance for speed lines
+    if (Math.random() < 0.4) {
+      this.showSpeedLines(x, y, direction);
+    }
+
+    // 30% chance for energy burst
+    if (Math.random() < 0.3) {
+      this.showEnergyBurst(x, y, slashColor);
+    }
+
+    // 25% chance for dust cloud at feet
+    if (Math.random() < 0.25) {
+      this.showDustCloud(x, y + 40 * s);
+    }
   }
 
   /**
@@ -9699,8 +10162,30 @@ Use: bags.fm/[yourname]`,
   /**
    * Show hit effect at position with damage number
    */
-  private showHitEffect(x: number, y: number, damage: number = 0): void {
+  private showHitEffect(x: number, y: number, damage: number = 0, attackerId: number = 0): void {
     const s = SCALE;
+    const isCrit = damage > 10;
+
+    // === PLAY HIT SOUND (randomized) ===
+    if (isCrit) {
+      this.playFightSound("critical");
+    } else {
+      this.playFightSound("hit");
+    }
+
+    // === COMBO SYSTEM ===
+    if (attackerId > 0) {
+      if (this.arenaLastAttacker === attackerId) {
+        // Same attacker - increment combo
+        const currentCombo = this.arenaComboCount.get(attackerId) || 0;
+        this.arenaComboCount.set(attackerId, currentCombo + 1);
+        this.showComboCounter(x, y, currentCombo + 1);
+      } else {
+        // Different attacker - reset their combo, start new one
+        this.arenaComboCount.set(attackerId, 1);
+      }
+      this.arenaLastAttacker = attackerId;
+    }
 
     // === SCREEN SHAKE FOR IMPACT ===
     const shakeIntensity = Math.min(damage * 0.5, 8); // More damage = more shake
@@ -9709,12 +10194,16 @@ Use: bags.fm/[yourname]`,
     // === TRIGGER CROWD CHEER ===
     this.triggerCrowdCheer();
 
-    // === SHOW ACTION BUBBLE FOR ALL HITS ===
-    const bubbleType = damage > 12 ? "action_critical" : damage > 8 ? "action_bam" : "action_pow";
+    // === SHOW ACTION BUBBLE (randomized) ===
+    const bubbleTypes = isCrit
+      ? ["action_critical", "action_bam", "action_pow"]
+      : ["action_pow", "action_bam", "action_pow"];
+    const bubbleType = bubbleTypes[Math.floor(Math.random() * bubbleTypes.length)];
     this.showActionBubble(x, y - Math.round(50 * s), bubbleType);
 
     // === MULTIPLE SPARK BURSTS ===
-    for (let i = 0; i < 3; i++) {
+    const sparkCount = isCrit ? 5 : 3;
+    for (let i = 0; i < sparkCount; i++) {
       const spark = this.add.sprite(
         x + (Math.random() - 0.5) * 30 * s,
         y + (Math.random() - 0.5) * 20 * s,
@@ -9738,10 +10227,9 @@ Use: bags.fm/[yourname]`,
 
     // === FLOATING DAMAGE NUMBER - BIGGER ===
     if (damage > 0) {
-      const isCrit = damage > 10;
       const dmgText = this.add.text(x, y - Math.round(20 * s), `-${damage}`, {
         fontFamily: "monospace",
-        fontSize: `${Math.round(isCrit ? 20 : 16) * s}px`,
+        fontSize: `${Math.round(isCrit ? 24 : 16) * s}px`,
         color: isCrit ? "#fbbf24" : "#ef4444",
         fontStyle: "bold",
         stroke: "#000000",
@@ -9764,7 +10252,8 @@ Use: bags.fm/[yourname]`,
 
     // === IMPACT PARTICLES - MORE DRAMATIC ===
     const particleColors = [0xfde047, 0xffffff, 0xef4444, 0xfbbf24, 0xff6b6b];
-    for (let i = 0; i < 8; i++) {
+    const particleCount = isCrit ? 12 : 8;
+    for (let i = 0; i < particleCount; i++) {
       const particle = this.add.rectangle(
         x + (Math.random() - 0.5) * 30 * s,
         y + (Math.random() - 0.5) * 30 * s,
@@ -9776,7 +10265,7 @@ Use: bags.fm/[yourname]`,
       particle.setAngle(Math.random() * 360);
 
       // Explode outward
-      const angle = (Math.PI * 2 * i) / 8;
+      const angle = (Math.PI * 2 * i) / particleCount;
       const distance = 60 + Math.random() * 40;
       this.tweens.add({
         targets: particle,
@@ -9792,7 +10281,8 @@ Use: bags.fm/[yourname]`,
     }
 
     // === FLASH EFFECT ===
-    const flash = this.add.rectangle(x, y, 100 * s, 100 * s, 0xffffff, 0.6);
+    const flashColor = isCrit ? 0xfbbf24 : 0xffffff;
+    const flash = this.add.rectangle(x, y, 100 * s, 100 * s, flashColor, isCrit ? 0.8 : 0.6);
     flash.setDepth(10);
     this.tweens.add({
       targets: flash,
@@ -9802,6 +10292,28 @@ Use: bags.fm/[yourname]`,
       ease: "Power2",
       onComplete: () => flash.destroy(),
     });
+
+    // === RANDOM EXTRA EFFECTS ===
+    // 50% chance for shockwave on big hits
+    if (isCrit || Math.random() < 0.3) {
+      this.showShockwave(x, y, isCrit ? 0xfbbf24 : 0xffffff);
+    }
+
+    // 20% chance for ground crack on critical hits
+    if (isCrit && Math.random() < 0.4) {
+      this.showGroundCrack(x, y + 50 * s);
+    }
+
+    // 35% chance for energy burst
+    if (Math.random() < 0.35) {
+      const burstColors = [0xef4444, 0xfbbf24, 0x60a5fa, 0xa78bfa, 0x22c55e];
+      this.showEnergyBurst(x, y, burstColors[Math.floor(Math.random() * burstColors.length)]);
+    }
+
+    // 25% chance for dust cloud
+    if (Math.random() < 0.25) {
+      this.showDustCloud(x, y + 30 * s);
+    }
   }
 
   /**
