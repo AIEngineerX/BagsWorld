@@ -304,6 +304,14 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
     message: string;
   } | null>(null);
 
+  // Fight result state
+  const [fightResult, setFightResult] = useState<{
+    winner: string;
+    fighter1: string;
+    fighter2: string;
+    isWinner: boolean;
+  } | null>(null);
+
   // Handle join arena
   const handleJoinArena = async () => {
     if (!username.trim() || isJoining) return;
@@ -325,6 +333,18 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
           success: true,
           message: data.message || "Joined the arena!",
         });
+        // Check if there was a fight result
+        if (data.fightResult) {
+          const isWinner = data.fightResult.winner === data.username;
+          setFightResult({
+            winner: data.fightResult.winner,
+            fighter1: data.fightResult.fighter1,
+            fighter2: data.fightResult.fighter2,
+            isWinner,
+          });
+          // Clear fight result after 10 seconds
+          setTimeout(() => setFightResult(null), 10000);
+        }
         setUsername("");
       } else {
         setJoinResult({
@@ -559,6 +579,35 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
                       {activeMatch.fighter2}
                     </span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Fight Result Display */}
+            {fightResult && (
+              <div className={`rounded-lg p-4 border-2 ${fightResult.isWinner ? 'bg-bags-gold/20 border-bags-gold' : 'bg-red-500/20 border-red-500'}`}>
+                <div className="text-center">
+                  <p className="font-pixel text-lg mb-2">
+                    {fightResult.isWinner ? '🏆 VICTORY! 🏆' : '💀 DEFEAT 💀'}
+                  </p>
+                  <div className="flex items-center justify-center gap-4 mb-2">
+                    <div className="flex flex-col items-center">
+                      <BagsCharacter size={48} variant={0} />
+                      <span className={`font-pixel text-[10px] mt-1 ${fightResult.winner === fightResult.fighter1 ? 'text-bags-gold' : 'text-gray-400'}`}>
+                        {fightResult.fighter1}
+                      </span>
+                    </div>
+                    <span className="font-pixel text-bags-gold text-xl">VS</span>
+                    <div className="flex flex-col items-center">
+                      <BagsCharacter size={48} variant={1} flip />
+                      <span className={`font-pixel text-[10px] mt-1 ${fightResult.winner === fightResult.fighter2 ? 'text-bags-gold' : 'text-gray-400'}`}>
+                        {fightResult.fighter2}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="font-pixel text-[12px] text-white">
+                    Winner: <span className="text-bags-gold">{fightResult.winner}</span>
+                  </p>
                 </div>
               </div>
             )}

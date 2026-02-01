@@ -20,6 +20,24 @@ const KARMA_TIER_SIZE = 200; // Group fighters into karma tiers for better match
 // Matchmaking state
 let isProcessing = false;
 
+// Store the last match result for immediate retrieval
+let lastMatchResult: {
+  matchId: number;
+  winner: string;
+  fighter1: string;
+  fighter2: string;
+  totalTicks: number;
+} | null = null;
+
+/**
+ * Get the last match result (for immediate retrieval after matchmaking)
+ */
+export function getLastMatchResult() {
+  const result = lastMatchResult;
+  lastMatchResult = null; // Clear after retrieval
+  return result;
+}
+
 /**
  * Attempt to create a match from the current queue
  * Returns the match ID if successful, null if not enough fighters
@@ -80,10 +98,14 @@ export async function attemptMatchmaking(): Promise<number | null> {
       `[Matchmaking] Created match ${matchId}: ${fighter1.moltbook_username} (karma: ${fighter1.moltbook_karma}) vs ${fighter2.moltbook_username} (karma: ${fighter2.moltbook_karma})`
     );
 
-    // Add match to arena engine and run to completion immediately
-    // This is necessary for serverless environments where state doesn't persist
+    // Add match to arena engine using addMatchDirect (avoids database lookup issues)
     const engine = getArenaEngine();
-    const added = await engine.addMatch(matchId);
+    const added = engine.addMatchDirect(
+      matchId,
+      { id: fighter1.id, username: fighter1.moltbook_username, karma: fighter1.moltbook_karma },
+      { id: fighter2.id, username: fighter2.moltbook_username, karma: fighter2.moltbook_karma }
+    );
+
     if (added) {
       // Run the fight to completion (max 5000 ticks to prevent infinite loops)
       let ticksRun = 0;
@@ -95,6 +117,16 @@ export async function attemptMatchmaking(): Promise<number | null> {
         const matchState = states.find(s => s.matchId === matchId);
         if (!matchState || matchState.status !== "active") {
           console.log(`[Matchmaking] Match ${matchId} completed after ${ticksRun} ticks`);
+          // Store the result for the caller
+          if (matchState?.winner) {
+            lastMatchResult = {
+              matchId,
+              winner: matchState.winner,
+              fighter1: fighter1.moltbook_username,
+              fighter2: fighter2.moltbook_username,
+              totalTicks: ticksRun,
+            };
+          }
           break;
         }
       }

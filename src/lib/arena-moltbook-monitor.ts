@@ -8,7 +8,7 @@ import {
   getFighterByUsername,
   canFighterEnterQueue,
 } from "./arena-db";
-import { attemptMatchmaking } from "./arena-matchmaking";
+import { attemptMatchmaking, getLastMatchResult } from "./arena-matchmaking";
 
 // Configuration
 const ARENA_SUBMOLT = "bagsworld-arena";
@@ -228,7 +228,18 @@ export async function manualFighterEntry(
   username: string,
   karma: number,
   matchCallback?: OnMatchCreatedCallback
-): Promise<{ success: boolean; fighterId?: number; matchId?: number | null; error?: string }> {
+): Promise<{
+  success: boolean;
+  fighterId?: number;
+  matchId?: number | null;
+  error?: string;
+  fightResult?: {
+    winner: string;
+    fighter1: string;
+    fighter2: string;
+    totalTicks: number;
+  };
+}> {
   console.log(`[ArenaMonitor] Manual fighter entry: ${username} (karma: ${karma})`);
 
   // Check if fighter already exists
@@ -267,8 +278,21 @@ export async function manualFighterEntry(
 
   // Attempt matchmaking
   const matchId = await attemptMatchmaking();
+  let fightResult = undefined;
+
   if (matchId) {
     console.log(`[ArenaMonitor] Match created: ${matchId}`);
+    // Get the fight result (fight runs immediately in serverless mode)
+    const result = getLastMatchResult();
+    if (result) {
+      fightResult = {
+        winner: result.winner,
+        fighter1: result.fighter1,
+        fighter2: result.fighter2,
+        totalTicks: result.totalTicks,
+      };
+      console.log(`[ArenaMonitor] Fight completed: ${result.winner} wins!`);
+    }
     if (matchCallback) {
       matchCallback(matchId);
     } else if (onMatchCreated) {
@@ -276,7 +300,7 @@ export async function manualFighterEntry(
     }
   }
 
-  return { success: true, fighterId: fighter.id, matchId };
+  return { success: true, fighterId: fighter.id, matchId, fightResult };
 }
 
 /**
