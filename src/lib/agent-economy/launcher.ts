@@ -1,16 +1,220 @@
-// Token Launcher Service
+// Token Launcher Service (Pokécenter)
 // Launches Bags.fm tokens on behalf of external agents
 //
 // BagsWorld pays: Transaction fees (~0.03 SOL)
 // External agent gets: 100% of trading fees forever
 //
 // Like Moltmint, but for Bags.fm
+//
+// SAFETY FEATURES:
+// - Rate limiting per wallet (10/day) and global (100/day)
+// - Input sanitization (name, symbol, description)
+// - Wallet format validation
+// - Abuse detection (duplicate symbols, suspicious patterns)
+// - Non-custodial: we never touch user private keys
 
 import { Connection, Keypair, Transaction, VersionedTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import { BAGS_API } from "./types";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { saveGlobalToken, isNeonConfigured, type GlobalToken } from "@/lib/neon";
+
+// ============================================================================
+// RATE LIMITING & SAFETY
+// ============================================================================
+
+// In-memory rate limiting (resets on server restart)
+// For production, use Redis or similar
+const launchCounts = new Map<string, { count: number; resetAt: number }>();
+let globalLaunchCount = { count: 0, resetAt: Date.now() + 24 * 60 * 60 * 1000 };
+const recentSymbols = new Map<string, number>(); // symbol -> timestamp
+
+const RATE_LIMITS = {
+  perWalletPerDay: 10,
+  globalPerDay: 100,
+  symbolCooldownMs: 60 * 60 * 1000, // 1 hour between same symbol launches
+};
+
+/**
+ * Check if a wallet can launch (rate limiting)
+ */
+export function canWalletLaunch(wallet: string): { allowed: boolean; reason?: string } {
+  const now = Date.now();
+  
+  // Reset global counter if day has passed
+  if (now > globalLaunchCount.resetAt) {
+    globalLaunchCount = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
+  }
+  
+  // Check global limit
+  if (globalLaunchCount.count >= RATE_LIMITS.globalPerDay) {
+    return { allowed: false, reason: "Global daily launch limit reached. Try again tomorrow." };
+  }
+  
+  // Get or create wallet entry
+  let walletEntry = launchCounts.get(wallet);
+  if (!walletEntry || now > walletEntry.resetAt) {
+    walletEntry = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
+    launchCounts.set(wallet, walletEntry);
+  }
+  
+  // Check per-wallet limit
+  if (walletEntry.count >= RATE_LIMITS.perWalletPerDay) {
+    return { allowed: false, reason: `Wallet limit reached (${RATE_LIMITS.perWalletPerDay}/day). Try again tomorrow.` };
+  }
+  
+  return { allowed: true };
+}
+
+/**
+ * Record a successful launch (for rate limiting)
+ */
+function recordLaunch(wallet: string, symbol: string): void {
+  const now = Date.now();
+  
+  // Increment counters
+  globalLaunchCount.count++;
+  
+  const walletEntry = launchCounts.get(wallet);
+  if (walletEntry) {
+    walletEntry.count++;
+  }
+  
+  // Track symbol
+  recentSymbols.set(symbol.toUpperCase(), now);
+}
+
+/**
+ * Check if symbol was recently used (abuse prevention)
+ */
+function isSymbolRecentlyUsed(symbol: string): boolean {
+  const lastUsed = recentSymbols.get(symbol.toUpperCase());
+  if (!lastUsed) return false;
+  return Date.now() - lastUsed < RATE_LIMITS.symbolCooldownMs;
+}
+
+/**
+ * Sanitize and validate token name
+ */
+function sanitizeTokenName(name: string): { valid: boolean; sanitized: string; error?: string } {
+  if (!name || typeof name !== 'string') {
+    return { valid: false, sanitized: '', error: 'Name is required' };
+  }
+  
+  // Trim and limit length
+  const sanitized = name.trim().substring(0, 32);
+  
+  if (sanitized.length < 1) {
+    return { valid: false, sanitized: '', error: 'Name must be at least 1 character' };
+  }
+  
+  // Check for suspicious patterns
+  const suspiciousPatterns = [
+    /^\s*$/,  // Only whitespace
+    /<script/i,  // XSS attempt
+    /javascript:/i,  // XSS attempt
+    /on\w+=/i,  // Event handler injection
+  ];
+  
+  for (const pattern of suspiciousPatterns) {
+    if (pattern.test(sanitized)) {
+      return { valid: false, sanitized: '', error: 'Invalid characters in name' };
+    }
+  }
+  
+  return { valid: true, sanitized };
+}
+
+/**
+ * Sanitize and validate token symbol
+ */
+function sanitizeTokenSymbol(symbol: string): { valid: boolean; sanitized: string; error?: string } {
+  if (!symbol || typeof symbol !== 'string') {
+    return { valid: false, sanitized: '', error: 'Symbol is required' };
+  }
+  
+  // Uppercase, remove non-alphanumeric, limit length
+  const sanitized = symbol.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 10);
+  
+  if (sanitized.length < 1) {
+    return { valid: false, sanitized: '', error: 'Symbol must be at least 1 alphanumeric character' };
+  }
+  
+  if (sanitized.length > 10) {
+    return { valid: false, sanitized: '', error: 'Symbol must be 10 characters or less' };
+  }
+  
+  return { valid: true, sanitized };
+}
+
+/**
+ * Validate Solana wallet address
+ */
+function validateWalletAddress(wallet: string): { valid: boolean; error?: string } {
+  if (!wallet || typeof wallet !== 'string') {
+    return { valid: false, error: 'Wallet address is required' };
+  }
+  
+  // Basic format check
+  if (wallet.length < 32 || wallet.length > 44) {
+    return { valid: false, error: 'Invalid wallet address length' };
+  }
+  
+  // Check for valid base58 characters
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+  if (!base58Regex.test(wallet)) {
+    return { valid: false, error: 'Invalid wallet address format (must be base58)' };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Sanitize description
+ */
+function sanitizeDescription(description: string): string {
+  if (!description || typeof description !== 'string') {
+    return '';
+  }
+  
+  // Remove potentially dangerous content
+  return description
+    .replace(/<[^>]*>/g, '')  // Remove HTML tags
+    .replace(/javascript:/gi, '')  // Remove JS protocol
+    .substring(0, 500)  // Limit length
+    .trim();
+}
+
+/**
+ * Validate image URL
+ */
+function validateImageUrl(url: string): { valid: boolean; sanitized: string; error?: string } {
+  if (!url || typeof url !== 'string') {
+    // Return placeholder if no URL
+    return { valid: true, sanitized: '' };
+  }
+  
+  const trimmed = url.trim();
+  
+  // Must be https
+  if (!trimmed.startsWith('https://')) {
+    return { valid: false, sanitized: '', error: 'Image URL must use HTTPS' };
+  }
+  
+  // Basic URL validation
+  try {
+    new URL(trimmed);
+  } catch {
+    return { valid: false, sanitized: '', error: 'Invalid image URL format' };
+  }
+  
+  // Block data URLs (potential XSS)
+  if (trimmed.startsWith('data:')) {
+    return { valid: false, sanitized: '', error: 'Data URLs not allowed' };
+  }
+  
+  return { valid: true, sanitized: trimmed };
+}
 
 // ============================================================================
 // CONFIGURATION
@@ -185,29 +389,63 @@ async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
 /**
  * Launch a token for an external agent
  * BagsWorld pays tx fees, external agent gets 100% of trading fees
+ * 
+ * SAFETY CHECKS:
+ * - Wallet address validation
+ * - Rate limiting (per wallet + global)
+ * - Input sanitization
+ * - Symbol cooldown (prevent spam)
  */
 export async function launchForExternal(request: LaunchRequest): Promise<LaunchResult> {
-  const { creatorWallet, name, symbol, description, imageUrl, twitter, website, telegram } =
-    request;
+  const { creatorWallet, twitter, website, telegram } = request;
 
-  console.log(`[Launcher] Launching ${symbol} for ${creatorWallet.slice(0, 8)}...`);
-
-  // Validate inputs
-  if (!creatorWallet || creatorWallet.length < 32 || creatorWallet.length > 44) {
-    return { success: false, error: "Invalid creator wallet address" };
+  // ========== VALIDATION & SANITIZATION ==========
+  
+  // 1. Validate wallet address
+  const walletCheck = validateWalletAddress(creatorWallet);
+  if (!walletCheck.valid) {
+    return { success: false, error: walletCheck.error };
   }
 
-  if (!name || name.length > 32) {
-    return { success: false, error: "Name must be 1-32 characters" };
+  // 2. Check rate limits
+  const rateCheck = canWalletLaunch(creatorWallet);
+  if (!rateCheck.allowed) {
+    return { success: false, error: rateCheck.reason };
   }
 
-  if (!symbol || symbol.length > 10) {
-    return { success: false, error: "Symbol must be 1-10 characters" };
+  // 3. Sanitize token name
+  const nameCheck = sanitizeTokenName(request.name);
+  if (!nameCheck.valid) {
+    return { success: false, error: nameCheck.error };
+  }
+  const name = nameCheck.sanitized;
+
+  // 4. Sanitize symbol
+  const symbolCheck = sanitizeTokenSymbol(request.symbol);
+  if (!symbolCheck.valid) {
+    return { success: false, error: symbolCheck.error };
+  }
+  const symbol = symbolCheck.sanitized;
+
+  // 5. Check symbol cooldown (prevent rapid same-symbol launches)
+  if (isSymbolRecentlyUsed(symbol)) {
+    return { success: false, error: `Symbol ${symbol} was recently used. Try a different symbol or wait 1 hour.` };
+  }
+
+  // 6. Sanitize description
+  const description = sanitizeDescription(request.description) || `Token launched via BagsWorld Pokécenter`;
+
+  // 7. Validate image URL
+  const imageCheck = validateImageUrl(request.imageUrl || '');
+  if (!imageCheck.valid) {
+    return { success: false, error: imageCheck.error };
   }
 
   // Use placeholder if no image provided
   const finalImageUrl =
-    imageUrl || `https://api.dicebear.com/7.x/shapes/png?seed=${symbol}&size=400`;
+    imageCheck.sanitized || `https://api.dicebear.com/7.x/shapes/png?seed=${symbol}&size=400`;
+
+  console.log(`[Launcher] Launching ${symbol} for ${creatorWallet.slice(0, 8)}...`);
 
   const bagsWorldWallet = getBagsWorldKeypair().publicKey.toBase58();
 
@@ -415,6 +653,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     console.log(`[Launcher] Neon not configured - token won't appear as building until manually added`);
   }
 
+  // Record successful launch for rate limiting
+  recordLaunch(creatorWallet, symbol);
+
   return {
     success: true,
     tokenMint,
@@ -470,45 +711,43 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
 
   console.log(`[Launcher] Generating claim txs for ${positions.length} positions...`);
   
-  // Generate claim transactions - one per token
-  // API expects: { feeClaimer: string, tokenMint: string }
+  // Build positions array for claim request - per Bags FEES.md documentation
+  // API expects: { wallet: string, positions: [{baseMint, virtualPoolAddress}] }
+  const positionsForClaim = positions.map((p) => ({
+    baseMint: p.baseMint,
+    virtualPoolAddress: p.virtualPoolAddress,
+  }));
+
   const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
-  const allTransactions: string[] = [];
+  const claimRes = await fetch(claimUrl, {
+    method: "POST",
+    headers: {
+      "x-api-key": BAGS_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      wallet: wallet,
+      positions: positionsForClaim,
+    }),
+  });
+
+  const rawText = await claimRes.text();
+  console.log("[Launcher] Claim response:", claimRes.status, rawText.substring(0, 300));
   
-  for (const position of positions) {
-    try {
-      const claimRes = await fetch(claimUrl, {
-        method: "POST",
-        headers: {
-          "x-api-key": BAGS_API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          feeClaimer: wallet,
-          tokenMint: position.baseMint,
-        }),
-      });
-
-      const rawText = await claimRes.text();
-      
-      if (!claimRes.ok) {
-        console.log(`[Launcher] Claim failed for ${position.baseMint}: ${rawText.substring(0, 100)}`);
-        continue; // Skip this position, try others
-      }
-
-      const claimData = JSON.parse(rawText);
-      const txs = claimData.response?.transactions || claimData.transactions || [];
-      
-      for (const tx of txs) {
-        const txString = typeof tx === "string" ? tx : tx.transaction;
-        if (txString) allTransactions.push(txString);
-      }
-      
-      console.log(`[Launcher] Got ${txs.length} tx(s) for ${position.baseMint.slice(0, 8)}...`);
-    } catch (err) {
-      console.error(`[Launcher] Error claiming ${position.baseMint}:`, err);
-    }
+  if (!claimRes.ok) {
+    throw new Error(`Claim API ${claimRes.status}: ${rawText.substring(0, 200)}`);
   }
+
+  const claimData = JSON.parse(rawText);
+  const txs = claimData.response?.transactions || claimData.transactions || [];
+  
+  const allTransactions: string[] = [];
+  for (const tx of txs) {
+    const txString = typeof tx === "string" ? tx : tx.transaction;
+    if (txString) allTransactions.push(txString);
+  }
+  
+  console.log(`[Launcher] Got ${allTransactions.length} claim transaction(s)`);
   
   return {
     success: true,
@@ -556,4 +795,46 @@ export async function getLauncherBalance(): Promise<number> {
   const keypair = getBagsWorldKeypair();
   const balance = await connection.getBalance(keypair.publicKey);
   return balance / 1_000_000_000;
+}
+
+/**
+ * Get current rate limit status (for transparency/debugging)
+ */
+export function getRateLimitStatus(wallet?: string): {
+  global: { used: number; limit: number; resetsAt: string };
+  wallet?: { used: number; limit: number; resetsAt: string };
+} {
+  const now = Date.now();
+  
+  // Reset global if needed
+  if (now > globalLaunchCount.resetAt) {
+    globalLaunchCount = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
+  }
+  
+  const result: ReturnType<typeof getRateLimitStatus> = {
+    global: {
+      used: globalLaunchCount.count,
+      limit: RATE_LIMITS.globalPerDay,
+      resetsAt: new Date(globalLaunchCount.resetAt).toISOString(),
+    },
+  };
+  
+  if (wallet) {
+    const walletEntry = launchCounts.get(wallet);
+    if (walletEntry && now <= walletEntry.resetAt) {
+      result.wallet = {
+        used: walletEntry.count,
+        limit: RATE_LIMITS.perWalletPerDay,
+        resetsAt: new Date(walletEntry.resetAt).toISOString(),
+      };
+    } else {
+      result.wallet = {
+        used: 0,
+        limit: RATE_LIMITS.perWalletPerDay,
+        resetsAt: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+      };
+    }
+  }
+  
+  return result;
 }
