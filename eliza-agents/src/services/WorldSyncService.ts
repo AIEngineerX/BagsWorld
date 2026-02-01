@@ -11,11 +11,13 @@ import type {
 
 // Zone walking boundaries (pixels, based on BagsWorld's coordinate system)
 const ZONE_BOUNDS: Record<ZoneType, { minX: number; maxX: number; walkY: number }> = {
+  labs: { minX: 80, maxX: 720, walkY: 555 },
+  moltbook: { minX: 80, maxX: 720, walkY: 555 },
   main_city: { minX: 80, maxX: 720, walkY: 555 },
   trending: { minX: 80, maxX: 720, walkY: 555 },
-  labs: { minX: 80, maxX: 720, walkY: 555 },
-  founders: { minX: 80, maxX: 720, walkY: 555 },
   ballers: { minX: 80, maxX: 720, walkY: 555 },
+  founders: { minX: 80, maxX: 720, walkY: 555 },
+  arena: { minX: 80, maxX: 720, walkY: 555 },
 };
 
 // Distance threshold for "nearby" agents (pixels)

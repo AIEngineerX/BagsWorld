@@ -17,8 +17,9 @@ import { saveGlobalToken, isNeonConfigured, type GlobalToken } from "@/lib/neon"
 // ============================================================================
 
 const BAGS_API_KEY = process.env.BAGS_API_KEY!;
-const BAGS_JWT_TOKEN = process.env.BAGS_JWT_TOKEN!;
-const BAGSWORLD_PRIVATE_KEY = process.env.BAGSWORLD_LAUNCHER_PRIVATE_KEY!;
+const BAGS_JWT_TOKEN = process.env.BAGS_JWT_TOKEN || ""; // Optional - only for agent API
+// Fall back to AGENT_WALLET_PRIVATE_KEY if no dedicated launcher key
+const BAGSWORLD_PRIVATE_KEY = process.env.BAGSWORLD_LAUNCHER_PRIVATE_KEY || process.env.AGENT_WALLET_PRIVATE_KEY!;
 const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
 
 // ============================================================================
@@ -298,8 +299,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   console.log("[Launcher] Step 3: Creating launch transaction...");
 
   // Using official Bags.fm launch format from docs
+  // API expects 'ipfs' not 'metadataUrl'
   const launchBody = {
-    metadataUrl: metadataUrl, // IPFS URL from create-token-info
+    ipfs: metadataUrl, // IPFS URL from create-token-info
     tokenMint,
     wallet: bagsWorldWallet,
     initialBuyLamports: 0,
@@ -502,8 +504,8 @@ export function isLauncherConfigured(): {
   const missing: string[] = [];
 
   if (!BAGS_API_KEY) missing.push("BAGS_API_KEY");
-  if (!BAGS_JWT_TOKEN) missing.push("BAGS_JWT_TOKEN");
-  if (!BAGSWORLD_PRIVATE_KEY) missing.push("BAGSWORLD_LAUNCHER_PRIVATE_KEY");
+  // BAGS_JWT_TOKEN is optional - only needed for agent-specific API calls
+  if (!BAGSWORLD_PRIVATE_KEY) missing.push("BAGSWORLD_LAUNCHER_PRIVATE_KEY or AGENT_WALLET_PRIVATE_KEY");
 
   return {
     configured: missing.length === 0,

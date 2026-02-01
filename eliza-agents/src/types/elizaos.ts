@@ -209,7 +209,7 @@ export interface Plugin {
 // BagsWorld-Specific Extensions
 // =============================================================================
 
-export type ZoneType = 'main_city' | 'trending' | 'labs' | 'founders' | 'ballers';
+export type ZoneType = 'labs' | 'moltbook' | 'main_city' | 'trending' | 'ballers' | 'founders' | 'arena';
 
 export interface AgentPosition {
   x: number;
