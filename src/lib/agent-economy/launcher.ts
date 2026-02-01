@@ -521,31 +521,20 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   console.log(`[Launcher] Using partner config PDA: ${partnerConfigPda}`);
 
   // External agent gets 100% of the creator fee share
-  // If using Moltbook identity, try provider-based format first, fall back to wallet
+  // ALWAYS use the resolved wallet address - this ensures:
+  // 1. Consistent fee claiming regardless of how identity was provided
+  // 2. Agent can claim with their wallet whether they launched via moltbookUsername or wallet
   // NOTE: payer must match the signer (launcher wallet) for the transaction to be valid
-  let feeShareRequest: Record<string, unknown>;
-  
-  if (useMoltbookIdentity && moltbookUsername) {
-    // Try using provider/username format for Moltbook users
-    // This links fees to their Moltbook identity
-    feeShareRequest = {
-      baseMint: tokenMint,
-      payer: bagsWorldWallet,
-      feeClaimers: [
-        { provider: 'moltbook', username: moltbookUsername, userBps: 10000 }
-      ],
-    };
-    console.log(`[Launcher] Using Moltbook identity: @${moltbookUsername}`);
-  } else {
-    // Use raw wallet address
-    feeShareRequest = {
-      baseMint: tokenMint,
-      payer: bagsWorldWallet,
-      claimersArray: [resolvedWallet],
-      basisPointsArray: [10000],
-    };
-  }
+  const feeShareRequest = {
+    baseMint: tokenMint,
+    payer: bagsWorldWallet,
+    claimersArray: [resolvedWallet], // Always use wallet address for consistent claiming
+    basisPointsArray: [10000], // 100% to the agent
+  };
 
+  if (useMoltbookIdentity) {
+    console.log(`[Launcher] Moltbook @${moltbookUsername} → wallet ${resolvedWallet.slice(0, 8)}...`);
+  }
   console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest, null, 2));
   console.log("[Launcher] API key configured:", !!BAGS_API_KEY, "length:", BAGS_API_KEY?.length || 0);
 
