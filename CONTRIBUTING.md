@@ -46,6 +46,7 @@ SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
 ```
 
 For AI character chat:
+
 ```env
 ANTHROPIC_API_KEY=your_anthropic_key
 ```
@@ -131,14 +132,14 @@ BagsWorld/
 
 ### Key Files to Know
 
-| File | Purpose |
-|------|---------|
-| `src/game/scenes/WorldScene.ts` | Main game logic, zone rendering, weather |
-| `src/game/scenes/BootScene.ts` | Texture generation (buildings, props) |
-| `src/lib/world-calculator.ts` | Transforms API data into game entities |
-| `src/lib/types.ts` | All TypeScript interfaces |
-| `src/app/api/world-state/route.ts` | Main API endpoint for game state |
-| `eliza-agents/src/server.ts` | ElizaOS agent server |
+| File                               | Purpose                                  |
+| ---------------------------------- | ---------------------------------------- |
+| `src/game/scenes/WorldScene.ts`    | Main game logic, zone rendering, weather |
+| `src/game/scenes/BootScene.ts`     | Texture generation (buildings, props)    |
+| `src/lib/world-calculator.ts`      | Transforms API data into game entities   |
+| `src/lib/types.ts`                 | All TypeScript interfaces                |
+| `src/app/api/world-state/route.ts` | Main API endpoint for game state         |
+| `eliza-agents/src/server.ts`       | ElizaOS agent server                     |
 
 ### Data Flow
 
@@ -172,13 +173,7 @@ Zones are the different areas of the game world. Each zone has unique buildings,
 In `src/lib/types.ts`, add your zone to the `ZoneType` union:
 
 ```typescript
-export type ZoneType =
-  | "main_city"
-  | "trending"
-  | "ballers"
-  | "founders"
-  | "labs"
-  | "your_new_zone";  // Add here
+export type ZoneType = "main_city" | "trending" | "ballers" | "founders" | "labs" | "your_new_zone"; // Add here
 ```
 
 Also add to the `ZONES` constant:
@@ -271,14 +266,14 @@ private setupYourZone(): void {
 
 ### Zone Layer Guide
 
-| Depth | Y Position | Layer | Contents |
-|-------|------------|-------|----------|
-| -2 | 0-430 | Sky | Day/night gradient (don't modify) |
-| 0 | 540 * SCALE | Ground | Zone-specific terrain |
-| 1 | 570 * SCALE | Path | Walking surface |
-| 2-4 | Variable | Props | Trees, benches, decorations |
-| 5+ | Variable | Buildings | Main structures |
-| 10 | 555 * SCALE | Characters | NPCs walking |
+| Depth | Y Position   | Layer      | Contents                          |
+| ----- | ------------ | ---------- | --------------------------------- |
+| -2    | 0-430        | Sky        | Day/night gradient (don't modify) |
+| 0     | 540 \* SCALE | Ground     | Zone-specific terrain             |
+| 1     | 570 \* SCALE | Path       | Walking surface                   |
+| 2-4   | Variable     | Props      | Trees, benches, decorations       |
+| 5+    | Variable     | Buildings  | Main structures                   |
+| 10    | 555 \* SCALE | Characters | NPCs walking                      |
 
 ### Zone Requirements
 
@@ -293,6 +288,7 @@ private setupYourZone(): void {
 ## Adding a New Character
 
 Characters exist in two places:
+
 - `src/characters/` - UI metadata (name, color, icon, zone)
 - `eliza-agents/src/characters/definitions/` - Full AI personality
 
@@ -307,16 +303,12 @@ export const yourCharacter: Partial<GameCharacter> = {
   id: "your_character",
   name: "Your Character",
   role: "What they do",
-  zone: "main_city",  // Which zone they appear in
-  color: "#3498db",   // Theme color for chat UI
-  icon: "Y",          // Single letter icon
+  zone: "main_city", // Which zone they appear in
+  color: "#3498db", // Theme color for chat UI
+  icon: "Y", // Single letter icon
   bio: "A brief description of who they are.",
   personality: "How they talk and behave.",
-  topics: [
-    "topic1",
-    "topic2",
-    "topic3",
-  ],
+  topics: ["topic1", "topic2", "topic3"],
 };
 ```
 
@@ -345,18 +337,10 @@ export const yourCharacter: Character = {
     "Second line with more detail.",
     "Third line about their expertise.",
   ],
-  lore: [
-    "Interesting fact about them.",
-    "Another piece of lore.",
-  ],
+  lore: ["Interesting fact about them.", "Another piece of lore."],
   style: {
-    all: [
-      "How they speak in general.",
-      "Tone and manner.",
-    ],
-    chat: [
-      "Specific chat behaviors.",
-    ],
+    all: ["How they speak in general.", "Tone and manner."],
+    chat: ["Specific chat behaviors."],
   },
   messageExamples: [
     [
@@ -364,16 +348,8 @@ export const yourCharacter: Character = {
       { user: "Your Character", content: { text: "Example response in their voice." } },
     ],
   ],
-  topics: [
-    "topic1",
-    "topic2",
-    "topic3",
-  ],
-  adjectives: [
-    "friendly",
-    "knowledgeable",
-    "helpful",
-  ],
+  topics: ["topic1", "topic2", "topic3"],
+  adjectives: ["friendly", "knowledgeable", "helpful"],
 };
 ```
 
@@ -399,13 +375,13 @@ npm run start:dev
 
 Server runs on `http://localhost:3001` with these endpoints:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check |
-| `/api/agents` | GET | List all agents |
-| `/api/agents/:id` | GET | Get agent info |
-| `/api/agents/:id/chat` | POST | Chat with agent |
-| `/api/dialogue` | POST | Multi-agent dialogue |
+| Endpoint               | Method | Description          |
+| ---------------------- | ------ | -------------------- |
+| `/health`              | GET    | Health check         |
+| `/api/agents`          | GET    | List all agents      |
+| `/api/agents/:id`      | GET    | Get agent info       |
+| `/api/agents/:id/chat` | POST   | Chat with agent      |
+| `/api/dialogue`        | POST   | Multi-agent dialogue |
 
 ### Adding Services
 
@@ -418,6 +394,7 @@ Services in `eliza-agents/src/services/` handle autonomous behaviors:
 ### Database
 
 Agents use Neon PostgreSQL for persistence. Set `DATABASE_URL` to enable:
+
 - Conversation history
 - Session management
 - Agent memory
@@ -448,6 +425,7 @@ Agents use Neon PostgreSQL for persistence. Set `DATABASE_URL` to enable:
 ### Commits
 
 Use conventional commit format:
+
 ```
 feat: Add new casino feature
 fix: Resolve wallet connection issue

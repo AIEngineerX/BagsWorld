@@ -159,12 +159,14 @@ private setupMainCityZone(): void {
 ## Phase 4: Validation Checklist
 
 ### Content Requirements
+
 - [ ] **3+ Buildings** with walls, windows, doors, roofs
 - [ ] **5+ Props** (lamps, benches, signs, trees, decorations)
 - [ ] **Textured ground** (not solid flat color)
 - [ ] **No empty spaces** between elements
 
 ### Technical Requirements
+
 - [ ] Zone type added to `types.ts`
 - [ ] Textures generated in `BootScene.ts`
 - [ ] Cache variables declared at class level
@@ -174,6 +176,7 @@ private setupMainCityZone(): void {
 - [ ] Uses `Math.round()` for all pixel positions
 
 ### Visual Quality
+
 - [ ] Buildings use 3D depth effect (light left, dark right)
 - [ ] Windows have glow effect
 - [ ] Uses PALETTE colors
@@ -181,6 +184,7 @@ private setupMainCityZone(): void {
 - [ ] Matches Park/BagsCity quality level
 
 ### Layer/Depth Check
+
 - [ ] Ground at depth 0
 - [ ] Path elements at depth 1
 - [ ] Props at depth 2-4
@@ -191,6 +195,7 @@ private setupMainCityZone(): void {
 ## Quick Reference
 
 ### Y Positions
+
 ```typescript
 const grassTop = 455 * SCALE;
 const pathLevel = 555 * SCALE;
@@ -199,10 +204,11 @@ const pathY = 570 * SCALE;
 ```
 
 ### Common Patterns
+
 ```typescript
 // Sprite placement
 const sprite = this.add.sprite(x, pathLevel, "texture");
-sprite.setOrigin(0.5, 1);  // Bottom-center origin
+sprite.setOrigin(0.5, 1); // Bottom-center origin
 sprite.setDepth(5);
 this.myZoneElements.push(sprite);
 
@@ -217,7 +223,7 @@ this.myZoneElements.push(g);
 const text = this.add.text(x, y, "TEXT", {
   fontFamily: "monospace",
   fontSize: `${Math.round(16 * SCALE)}px`,
-  color: "#ffffff"
+  color: "#ffffff",
 });
 text.setOrigin(0.5);
 text.setDepth(10);
@@ -225,17 +231,18 @@ this.myZoneElements.push(text);
 ```
 
 ### Hide All Other Zones Pattern
+
 ```typescript
 // In your setup method, hide everything else
-this.decorations.forEach(d => d.setVisible(false));
-this.animals.forEach(a => a.sprite.setVisible(false));
+this.decorations.forEach((d) => d.setVisible(false));
+this.animals.forEach((a) => a.sprite.setVisible(false));
 if (this.fountainWater) this.fountainWater.setVisible(false);
-this.trendingElements.forEach(el => (el as any).setVisible(false));
-this.skylineSprites.forEach(s => s.setVisible(false));
-this.billboardTexts.forEach(t => t.setVisible(false));
+this.trendingElements.forEach((el) => (el as any).setVisible(false));
+this.skylineSprites.forEach((s) => s.setVisible(false));
+this.billboardTexts.forEach((t) => t.setVisible(false));
 if (this.tickerText) this.tickerText.setVisible(false);
-this.ballersElements.forEach(el => (el as any).setVisible(false));
-this.foundersElements.forEach(el => (el as any).setVisible(false));
+this.ballersElements.forEach((el) => (el as any).setVisible(false));
+this.foundersElements.forEach((el) => (el as any).setVisible(false));
 // Add any new zones here
 ```
 

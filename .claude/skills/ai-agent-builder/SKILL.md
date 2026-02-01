@@ -32,24 +32,24 @@ agent/
 
 ## Perception Layer
 
-| Target | Tool | Use When |
-|--------|------|----------|
-| Modern web apps | Playwright | JS-heavy, SPAs, auth required |
-| Static sites | Cheerio + fetch | Simple scraping, speed priority |
-| APIs | fetch/axios | Direct API access available |
-| Real-time data | WebSockets | Live feeds, trading, notifications |
-| Blockchain | @solana/web3.js, ethers | On-chain data, wallet ops |
+| Target          | Tool                    | Use When                           |
+| --------------- | ----------------------- | ---------------------------------- |
+| Modern web apps | Playwright              | JS-heavy, SPAs, auth required      |
+| Static sites    | Cheerio + fetch         | Simple scraping, speed priority    |
+| APIs            | fetch/axios             | Direct API access available        |
+| Real-time data  | WebSockets              | Live feeds, trading, notifications |
+| Blockchain      | @solana/web3.js, ethers | On-chain data, wallet ops          |
 
 See `references/perception.md` for implementation patterns.
 
 ## Brain Layer
 
-| Provider | Model | Best For |
-|----------|-------|----------|
-| Anthropic | Claude 3.5/4 | Complex reasoning, tool use |
-| OpenAI | GPT-4o | General tasks, vision |
-| Groq | Llama/Mixtral | Speed-critical |
-| Local | Ollama | Privacy, no API costs |
+| Provider  | Model         | Best For                    |
+| --------- | ------------- | --------------------------- |
+| Anthropic | Claude 3.5/4  | Complex reasoning, tool use |
+| OpenAI    | GPT-4o        | General tasks, vision       |
+| Groq      | Llama/Mixtral | Speed-critical              |
+| Local     | Ollama        | Privacy, no API costs       |
 
 See `references/brain.md` for LLM integration and prompt patterns.
 
@@ -59,13 +59,13 @@ Actions are tools the LLM can call:
 
 ```javascript
 const tools = [
-  { name: 'navigate', description: 'Go to URL', input: { url: 'string' } },
-  { name: 'click', description: 'Click element', input: { selector: 'string' } },
-  { name: 'type', description: 'Type text', input: { selector: 'string', text: 'string' } },
-  { name: 'extract', description: 'Get text from element', input: { selector: 'string' } },
-  { name: 'screenshot', description: 'Capture page state' },
-  { name: 'wait', description: 'Wait milliseconds', input: { ms: 'number' } },
-  { name: 'complete', description: 'Mark task done', input: { summary: 'string' } },
+  { name: "navigate", description: "Go to URL", input: { url: "string" } },
+  { name: "click", description: "Click element", input: { selector: "string" } },
+  { name: "type", description: "Type text", input: { selector: "string", text: "string" } },
+  { name: "extract", description: "Get text from element", input: { selector: "string" } },
+  { name: "screenshot", description: "Capture page state" },
+  { name: "wait", description: "Wait milliseconds", input: { ms: "number" } },
+  { name: "complete", description: "Mark task done", input: { summary: "string" } },
 ];
 ```
 
@@ -83,14 +83,14 @@ class Memory {
     this.history = [];
     this.maxHistory = maxHistory;
   }
-  
+
   add(entry) {
     this.history.push({ ...entry, timestamp: Date.now() });
     if (this.history.length > this.maxHistory) this.history.shift();
   }
-  
+
   getContext() {
-    return this.history.map(h => `[${h.type}] ${h.content}`).join('\n');
+    return this.history.map((h) => `[${h.type}] ${h.content}`).join("\n");
   }
 }
 ```
@@ -104,28 +104,28 @@ The core decision loop:
 ```javascript
 async function agentLoop(objective, maxSteps = 50) {
   const memory = new Memory();
-  
+
   for (let step = 0; step < maxSteps; step++) {
     // 1. Build prompt with objective + memory
     const prompt = buildPrompt(objective, memory.getContext());
-    
+
     // 2. Get LLM decision (tool call)
     const decision = await brain.decide(prompt, tools);
-    
+
     // 3. Execute action
     const result = await executeAction(decision.tool, decision.input);
-    
+
     // 4. Store in memory
-    memory.add({ type: 'action', content: `${decision.tool}: ${JSON.stringify(decision.input)}` });
-    memory.add({ type: 'observation', content: result });
-    
+    memory.add({ type: "action", content: `${decision.tool}: ${JSON.stringify(decision.input)}` });
+    memory.add({ type: "observation", content: result });
+
     // 5. Check completion
-    if (decision.tool === 'complete') {
+    if (decision.tool === "complete") {
       return { success: true, summary: decision.input.summary };
     }
   }
-  
-  return { success: false, reason: 'max_steps_exceeded' };
+
+  return { success: false, reason: "max_steps_exceeded" };
 }
 ```
 

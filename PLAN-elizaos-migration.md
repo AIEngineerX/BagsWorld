@@ -73,7 +73,7 @@ export type {
   Plugin,
   Service,
   HandlerCallback,
-} from '@elizaos/core';
+} from "@elizaos/core";
 
 // BagsWorld-specific extensions
 export interface ActionResult {
@@ -101,10 +101,10 @@ Run this across all files:
 
 ```typescript
 // BEFORE
-import type { Character, Action } from './types/elizaos.js';
+import type { Character, Action } from "./types/elizaos.js";
 
 // AFTER (same import, but now comes from @elizaos/core)
-import type { Character, Action } from './types/elizaos.js';
+import type { Character, Action } from "./types/elizaos.js";
 ```
 
 No changes needed since we're re-exporting!
@@ -120,11 +120,11 @@ Based on eliza-town's `convex/aiTown/agent.ts`:
 **File: `eliza-agents/src/services/AgentState.ts`**
 
 ```typescript
-import type { GameId } from './types';
+import type { GameId } from "./types";
 
 export interface AgentState {
   id: string;
-  playerId: string;  // Sprite ID in Phaser
+  playerId: string; // Sprite ID in Phaser
 
   // Position from game
   position: { x: number; y: number };
@@ -162,17 +162,17 @@ export interface WorldState {
 **File: `eliza-agents/src/services/AgentTickService.ts`**
 
 ```typescript
-import { Service } from '@elizaos/core';
-import type { AgentState, WorldState } from './AgentState';
-import { WorldSyncService } from './WorldSyncService';
-import { AgentCoordinator } from './AgentCoordinator';
+import { Service } from "@elizaos/core";
+import type { AgentState, WorldState } from "./AgentState";
+import { WorldSyncService } from "./WorldSyncService";
+import { AgentCoordinator } from "./AgentCoordinator";
 
 // Constants (from eliza-town)
-const ACTION_TIMEOUT = 60_000;           // 60s timeout for operations
-const CONVERSATION_COOLDOWN = 30_000;    // 30s after conversation ends
-const ACTIVITY_COOLDOWN = 15_000;        // 15s after activity ends
-const CONVERSATION_DISTANCE = 100;       // Pixels to start conversation
-const TICK_INTERVAL = 4_000;             // 4 second tick (your requirement)
+const ACTION_TIMEOUT = 60_000; // 60s timeout for operations
+const CONVERSATION_COOLDOWN = 30_000; // 30s after conversation ends
+const ACTIVITY_COOLDOWN = 15_000; // 15s after activity ends
+const CONVERSATION_DISTANCE = 100; // Pixels to start conversation
+const TICK_INTERVAL = 4_000; // 4 second tick (your requirement)
 
 export class AgentTickService {
   private worldSync: WorldSyncService;
@@ -188,7 +188,7 @@ export class AgentTickService {
   start(): void {
     if (this.tickInterval) return;
 
-    console.log('[AgentTick] Starting tick loop (4s interval)');
+    console.log("[AgentTick] Starting tick loop (4s interval)");
     this.tickInterval = setInterval(() => this.tick(), TICK_INTERVAL);
 
     // Run first tick after 2 seconds
@@ -207,7 +207,7 @@ export class AgentTickService {
     const worldState = this.worldSync.getWorldState();
 
     if (!worldState) {
-      console.log('[AgentTick] No world state, skipping tick');
+      console.log("[AgentTick] No world state, skipping tick");
       return;
     }
 
@@ -252,14 +252,13 @@ export class AgentTickService {
     // Check cooldowns
     const justLeftConversation =
       state.lastConversation && now < state.lastConversation + CONVERSATION_COOLDOWN;
-    const recentActivity =
-      state.lastActivity && now < state.lastActivity + ACTIVITY_COOLDOWN;
+    const recentActivity = state.lastActivity && now < state.lastActivity + ACTIVITY_COOLDOWN;
 
     // DECISION: What should this agent do?
     if (!doingActivity && !state.isMoving) {
       await this.agentDoSomething(agentId, state, worldState, now, {
         justLeftConversation,
-        recentActivity
+        recentActivity,
       });
     }
   }
@@ -293,48 +292,63 @@ export class AgentTickService {
   ): AgentDecision {
     // Character-specific rules
     switch (agentId) {
-      case 'neo':
+      case "neo":
         // Neo: Prioritize scanning, then patrol
         if (!context.recentActivity && Math.random() < 0.4) {
-          return { type: 'activity', description: 'Scanning the chain...', emoji: '👁️', duration: 10000 };
+          return {
+            type: "activity",
+            description: "Scanning the chain...",
+            emoji: "👁️",
+            duration: 10000,
+          };
         }
-        return { type: 'wander', zone: 'trending' };
+        return { type: "wander", zone: "trending" };
 
-      case 'ash':
+      case "ash":
         // Ash: Greet nearby agents, patrol park
         if (nearbyAgents.length > 0 && !context.justLeftConversation) {
-          return { type: 'approach', targetAgentId: nearbyAgents[0] };
+          return { type: "approach", targetAgentId: nearbyAgents[0] };
         }
-        return { type: 'wander', zone: 'main_city' };
+        return { type: "wander", zone: "main_city" };
 
-      case 'ghost':
+      case "ghost":
         // Ghost: Observe, verify
         if (Math.random() < 0.3) {
-          return { type: 'activity', description: 'Verifying on-chain data...', emoji: '🔍', duration: 8000 };
+          return {
+            type: "activity",
+            description: "Verifying on-chain data...",
+            emoji: "🔍",
+            duration: 8000,
+          };
         }
-        return { type: 'wander', zone: 'labs' };
+        return { type: "wander", zone: "labs" };
 
-      case 'finn':
+      case "finn":
         // Finn: Visit zones, interact
         if (nearbyAgents.length > 0 && Math.random() < 0.5) {
-          return { type: 'approach', targetAgentId: nearbyAgents[0] };
+          return { type: "approach", targetAgentId: nearbyAgents[0] };
         }
-        const zones = ['main_city', 'trending', 'labs', 'founders'];
-        return { type: 'wander', zone: zones[Math.floor(Math.random() * zones.length)] };
+        const zones = ["main_city", "trending", "labs", "founders"];
+        return { type: "wander", zone: zones[Math.floor(Math.random() * zones.length)] };
 
-      case 'cj':
+      case "cj":
         // CJ: Street patrol, react to events
-        return { type: 'wander', zone: 'trending' };
+        return { type: "wander", zone: "trending" };
 
-      case 'shaw':
+      case "shaw":
         // Shaw: Work in HQ
         if (Math.random() < 0.4) {
-          return { type: 'activity', description: 'Reviewing agent architectures...', emoji: '🏗️', duration: 12000 };
+          return {
+            type: "activity",
+            description: "Reviewing agent architectures...",
+            emoji: "🏗️",
+            duration: 12000,
+          };
         }
-        return { type: 'wander', zone: 'labs' };
+        return { type: "wander", zone: "labs" };
 
       default:
-        return { type: 'wander' };
+        return { type: "wander" };
     }
   }
 
@@ -351,54 +365,58 @@ export class AgentTickService {
 
   private async executeDecision(agentId: string, decision: AgentDecision): Promise<void> {
     switch (decision.type) {
-      case 'wander':
+      case "wander":
         const destination = this.getWanderDestination(decision.zone);
         this.worldSync.sendCommand({
-          type: 'character-behavior',
+          type: "character-behavior",
           characterId: agentId,
-          action: 'moveTo',
-          target: { type: 'position', x: destination.x, y: destination.y }
+          action: "moveTo",
+          target: { type: "position", x: destination.x, y: destination.y },
         });
         break;
 
-      case 'approach':
+      case "approach":
         this.worldSync.sendCommand({
-          type: 'character-behavior',
+          type: "character-behavior",
           characterId: agentId,
-          action: 'moveTo',
-          target: { type: 'character', id: decision.targetAgentId! }
+          action: "moveTo",
+          target: { type: "character", id: decision.targetAgentId! },
         });
         break;
 
-      case 'activity':
+      case "activity":
         const state = this.agentStates.get(agentId);
         if (state) {
           state.currentActivity = {
             description: decision.description!,
             emoji: decision.emoji!,
-            until: Date.now() + (decision.duration || 10000)
+            until: Date.now() + (decision.duration || 10000),
           };
         }
         this.worldSync.sendCommand({
-          type: 'character-speak',
+          type: "character-speak",
           characterId: agentId,
           message: `${decision.emoji} ${decision.description}`,
-          emotion: 'neutral'
+          emotion: "neutral",
         });
         break;
 
-      case 'speak':
+      case "speak":
         this.worldSync.sendCommand({
-          type: 'character-speak',
+          type: "character-speak",
           characterId: agentId,
           message: decision.message!,
-          emotion: decision.emotion || 'neutral'
+          emotion: decision.emotion || "neutral",
         });
         break;
     }
   }
 
-  private findNearbyAgents(agentId: string, position: { x: number; y: number }, worldState: WorldState): string[] {
+  private findNearbyAgents(
+    agentId: string,
+    position: { x: number; y: number },
+    worldState: WorldState
+  ): string[] {
     const nearby: string[] = [];
 
     for (const [otherId, otherState] of worldState.agents) {
@@ -430,7 +448,7 @@ export class AgentTickService {
 
     return {
       x: area.minX + Math.floor(Math.random() * (area.maxX - area.minX)),
-      y: area.y
+      y: area.y,
     };
   }
 
@@ -440,15 +458,15 @@ export class AgentTickService {
       id: agentId,
       playerId: agentId,
       position: { x: 400, y: 555 },
-      zone: 'main_city',
+      zone: "main_city",
       isMoving: false,
-      ...initialState
+      ...initialState,
     });
   }
 }
 
 interface AgentDecision {
-  type: 'wander' | 'approach' | 'activity' | 'speak' | 'idle';
+  type: "wander" | "approach" | "activity" | "speak" | "idle";
   zone?: string;
   targetAgentId?: string;
   message?: string;
@@ -468,11 +486,11 @@ interface AgentDecision {
 **File: `eliza-agents/src/services/WorldSyncService.ts`**
 
 ```typescript
-import WebSocket, { WebSocketServer } from 'ws';
-import type { Server } from 'http';
+import WebSocket, { WebSocketServer } from "ws";
+import type { Server } from "http";
 
 export interface GameCommand {
-  type: 'character-behavior' | 'character-speak' | 'zone-transition';
+  type: "character-behavior" | "character-speak" | "zone-transition";
   characterId: string;
   action?: string;
   target?: { type: string; x?: number; y?: number; id?: string };
@@ -481,14 +499,17 @@ export interface GameCommand {
 }
 
 export interface WorldStateUpdate {
-  type: 'world-state-update';
+  type: "world-state-update";
   timestamp: number;
   zone: string;
-  characters: Record<string, {
-    x: number;
-    y: number;
-    isMoving: boolean;
-  }>;
+  characters: Record<
+    string,
+    {
+      x: number;
+      y: number;
+      isMoving: boolean;
+    }
+  >;
   weather?: string;
   health?: number;
 }
@@ -499,37 +520,37 @@ export class WorldSyncService {
   private worldState: WorldStateUpdate | null = null;
 
   initialize(server: Server): void {
-    this.wss = new WebSocketServer({ server, path: '/ws' });
+    this.wss = new WebSocketServer({ server, path: "/ws" });
 
-    this.wss.on('connection', (ws) => {
-      console.log('[WorldSync] Client connected');
+    this.wss.on("connection", (ws) => {
+      console.log("[WorldSync] Client connected");
       this.clients.add(ws);
 
-      ws.on('message', (data) => {
+      ws.on("message", (data) => {
         try {
           const message = JSON.parse(data.toString());
           this.handleMessage(message);
         } catch (error) {
-          console.error('[WorldSync] Invalid message:', error);
+          console.error("[WorldSync] Invalid message:", error);
         }
       });
 
-      ws.on('close', () => {
-        console.log('[WorldSync] Client disconnected');
+      ws.on("close", () => {
+        console.log("[WorldSync] Client disconnected");
         this.clients.delete(ws);
       });
 
-      ws.on('error', (error) => {
-        console.error('[WorldSync] WebSocket error:', error);
+      ws.on("error", (error) => {
+        console.error("[WorldSync] WebSocket error:", error);
         this.clients.delete(ws);
       });
     });
 
-    console.log('[WorldSync] WebSocket server initialized on /ws');
+    console.log("[WorldSync] WebSocket server initialized on /ws");
   }
 
   private handleMessage(message: any): void {
-    if (message.type === 'world-state-update') {
+    if (message.type === "world-state-update") {
       this.worldState = message as WorldStateUpdate;
     }
   }
@@ -562,12 +583,12 @@ export class WorldSyncService {
 **File: `eliza-agents/src/server.ts` (modifications)**
 
 ```typescript
-import express from 'express';
-import cors from 'cors';
-import { createServer } from 'http';
-import { WorldSyncService } from './services/WorldSyncService';
-import { AgentTickService } from './services/AgentTickService';
-import { AgentCoordinator } from './services/AgentCoordinator';
+import express from "express";
+import cors from "cors";
+import { createServer } from "http";
+import { WorldSyncService } from "./services/WorldSyncService";
+import { AgentTickService } from "./services/AgentTickService";
+import { AgentCoordinator } from "./services/AgentCoordinator";
 
 const app = express();
 const server = createServer(app);
@@ -581,8 +602,8 @@ const tickService = new AgentTickService(worldSync, coordinator);
 worldSync.initialize(server);
 
 // Register all agents
-const AGENT_IDS = ['neo', 'ghost', 'finn', 'ash', 'cj', 'shaw', 'toly', 'bags-bot'];
-AGENT_IDS.forEach(id => tickService.registerAgent(id, { zone: 'main_city' }));
+const AGENT_IDS = ["neo", "ghost", "finn", "ash", "cj", "shaw", "toly", "bags-bot"];
+AGENT_IDS.forEach((id) => tickService.registerAgent(id, { zone: "main_city" }));
 
 // Start tick loop
 tickService.start();
@@ -744,9 +765,9 @@ Add to server startup:
 ```typescript
 // Log tick stats every minute
 setInterval(() => {
-  console.log('[Stats] Active agents:', tickService.getActiveCount());
-  console.log('[Stats] WS clients:', worldSync.getClientCount());
-  console.log('[Stats] Last tick:', tickService.getLastTickTime());
+  console.log("[Stats] Active agents:", tickService.getActiveCount());
+  console.log("[Stats] WS clients:", worldSync.getClientCount());
+  console.log("[Stats] Last tick:", tickService.getLastTickTime());
 }, 60000);
 ```
 
@@ -755,17 +776,20 @@ setInterval(() => {
 ## File Changes Summary
 
 ### New Files
+
 - `eliza-agents/src/services/AgentTickService.ts`
 - `eliza-agents/src/services/WorldSyncService.ts`
 - `eliza-agents/src/services/AgentState.ts`
 
 ### Modified Files
+
 - `eliza-agents/package.json` - Add @elizaos/core, ws
 - `eliza-agents/src/types/elizaos.ts` - Re-export from @elizaos/core
 - `eliza-agents/src/server.ts` - Initialize WebSocket, tick service
 - `src/game/scenes/WorldScene.ts` - Add WebSocket client
 
 ### No Changes Needed
+
 - `eliza-agents/src/characters/*` - Already compatible
 - `eliza-agents/src/actions/*` - Already compatible
 - `eliza-agents/src/providers/*` - Already compatible
@@ -775,14 +799,14 @@ setInterval(() => {
 
 ## Timeline
 
-| Day | Task |
-|-----|------|
-| 1 | Install @elizaos/core, update types |
-| 2 | Create AgentState, start AgentTickService |
-| 3 | Implement tick logic, rules-based decisions |
-| 4 | Create WorldSyncService, WebSocket server |
-| 5 | Update WorldScene.ts, WebSocket client |
-| 6 | Test, tune, fix issues |
+| Day | Task                                        |
+| --- | ------------------------------------------- |
+| 1   | Install @elizaos/core, update types         |
+| 2   | Create AgentState, start AgentTickService   |
+| 3   | Implement tick logic, rules-based decisions |
+| 4   | Create WorldSyncService, WebSocket server   |
+| 5   | Update WorldScene.ts, WebSocket client      |
+| 6   | Test, tune, fix issues                      |
 
 ---
 

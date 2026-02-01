@@ -3,6 +3,7 @@
 This file contains the saved Sniper Tower building configuration for future use.
 
 ## Sprites Generated (in BootScene.ts)
+
 - `sniper_tower` - Main tower texture (keep this)
 - `academy_0` - Academy building style 0 (optional)
 - `academy_1` - Academy building style 1 (optional)
@@ -11,6 +12,7 @@ This file contains the saved Sniper Tower building configuration for future use.
 ## Sniper Tower Code Reference
 
 ### Click Handler to Open Modal
+
 ```typescript
 sniperTower.on("pointerdown", () => {
   useGameStore.getState().openSniperTower();
@@ -18,6 +20,7 @@ sniperTower.on("pointerdown", () => {
 ```
 
 ### Hover Effect
+
 ```typescript
 sniperTower.on("pointerover", () => {
   sniperTower.setTint(0x88ff88);
@@ -42,6 +45,7 @@ sniperTower.on("pointerout", () => {
 ```
 
 ### Label Configuration
+
 ```typescript
 // Background
 const towerLabelBg = this.add.rectangle(
@@ -76,6 +80,7 @@ subLabel.setDepth(7);
 ```
 
 ### Radar Sweep Animation
+
 ```typescript
 private createRadarSweepAnimation(x: number, y: number): void {
   const beam = this.add.graphics();
@@ -148,6 +153,7 @@ private createRadarSweepAnimation(x: number, y: number): void {
 ```
 
 ## Store State (in store.ts)
+
 ```typescript
 isSniperTowerOpen: false,
 openSniperTower: () => set({ isSniperTowerOpen: true }),
@@ -155,9 +161,11 @@ closeSniperTower: () => set({ isSniperTowerOpen: false }),
 ```
 
 ## Component (SniperTower.tsx)
+
 The SniperTower component at `src/components/SniperTower.tsx` is still available.
 
 ## Page Integration (page.tsx)
+
 ```typescript
 function SniperTowerWrapper() {
   const { isSniperTowerOpen, closeSniperTower } = useGameStore();

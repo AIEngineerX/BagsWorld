@@ -1,5 +1,12 @@
 // Zone Types
-export type ZoneType = "labs" | "moltbook" | "main_city" | "trending" | "ballers" | "founders" | "arena";
+export type ZoneType =
+  | "labs"
+  | "moltbook"
+  | "main_city"
+  | "trending"
+  | "ballers"
+  | "founders"
+  | "arena";
 
 export interface ZoneInfo {
   id: ZoneType;

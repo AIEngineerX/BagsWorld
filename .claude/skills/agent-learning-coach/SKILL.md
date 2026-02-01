@@ -32,6 +32,7 @@ python3 scripts/init_coach.py
 ```
 
 Then edit `~/.agent-coach/profile.md` with your details:
+
 - Background (tech experience, languages, frameworks)
 - Current goals (what you're trying to learn/build)
 - Preferred style (verbose/concise, languages, frameworks)
@@ -41,6 +42,7 @@ Then edit `~/.agent-coach/profile.md` with your details:
 ### During Sessions
 
 When building agents or coding, the coach:
+
 1. Reads your profile and past patterns on startup
 2. Observes your decisions and approaches
 3. Notes what works and what doesn't
@@ -55,6 +57,7 @@ python3 scripts/reflect.py
 ```
 
 This analyzes recent sessions and updates:
+
 - Effective patterns you've discovered
 - Anti-patterns to avoid
 - Your prompting evolution
@@ -80,6 +83,7 @@ log_outcome("failure", "Agent got stuck in loop", {"cause": "ambiguous objective
 ### Prompting Patterns
 
 Tracks how your prompting style evolves:
+
 - System prompt structures that work for you
 - How you phrase objectives
 - Tool definition styles
@@ -88,6 +92,7 @@ Tracks how your prompting style evolves:
 ### Architecture Patterns
 
 Tracks your technical decisions:
+
 - When you choose certain tools/frameworks
 - How you structure agent loops
 - Memory management approaches
@@ -96,6 +101,7 @@ Tracks your technical decisions:
 ### Debugging Patterns
 
 Tracks how you solve problems:
+
 - Common errors you encounter
 - Debugging approaches that work
 - Time-to-resolution trends
@@ -116,6 +122,7 @@ Based on your patterns, the coach suggests:
 ### Exercises
 
 Small, focused challenges:
+
 - "Build an agent with only 3 tools"
 - "Refactor this prompt to be half the length"
 - "Add error recovery to your last agent"
@@ -123,6 +130,7 @@ Small, focused challenges:
 ### Focus Areas
 
 Bigger themes to work on:
+
 - "Your objectives tend to be vague - practice specificity"
 - "You rarely use memory - try adding short-term context"
 - "Your agents lack safety limits - add max_steps"

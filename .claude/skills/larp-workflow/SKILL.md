@@ -20,6 +20,7 @@ This skill defines a numbered workflow system (1-0) for taking projects from con
 Before writing any code, analyze the problem space thoroughly.
 
 **Requirements:**
+
 1. Clarify the goal - what exactly needs to be built and why
 2. Identify constraints, dependencies, and edge cases
 3. Research existing patterns, APIs, or libraries that apply
@@ -37,12 +38,14 @@ Before writing any code, analyze the problem space thoroughly.
 Execute the agreed plan step-by-step.
 
 **Requirements:**
+
 1. Follow the plan sequentially, noting any deviations
 2. Write real, functional code - no stubs, placeholders, or TODOs
 3. Handle errors and edge cases as you go
 4. Commit logical chunks with clear explanations
 
 **Rules:**
+
 - If blockers arise or the plan needs revision, stop and discuss before proceeding
 - No try/catch or fallbacks unless genuinely necessary
 - No stubbed code, TODOs, or simplifications
@@ -57,11 +60,13 @@ Execute the agreed plan step-by-step.
 Continue working through all remaining tasks until complete.
 
 **Process:**
+
 - For each item: implement fully → verify it works → move to next
 - Don't stop to ask permission between items
 - Provide final summary of completed work and any blocked items
 
 **Rules:**
+
 - Fully finished, production-ready code only
 - No defensive programming unless necessary
 - No stubs, TODOs, or simplifications
@@ -76,6 +81,7 @@ Continue working through all remaining tasks until complete.
 Review and refactor current code for quality.
 
 **Criteria:**
+
 1. **Compact** - Remove dead code, redundancy, over-abstraction
 2. **Concise** - Simplify verbose logic, use idiomatic patterns
 3. **Clean** - Consistent naming, clear structure, proper formatting
@@ -92,6 +98,7 @@ Review and refactor current code for quality.
 Review and expand test coverage beyond the happy path.
 
 **Requirements:**
+
 1. Test boundary conditions and edge cases
 2. Test error handling and invalid inputs
 3. Test integration points with real dependencies where possible
@@ -109,6 +116,7 @@ Review and expand test coverage beyond the happy path.
 Critically evaluate whether this code is real or performative.
 
 **Check for:**
+
 1. Stubbed functions that return fake data
 2. Hardcoded values masquerading as dynamic behavior
 3. Tests that mock away the actual logic being tested
@@ -118,12 +126,13 @@ Critically evaluate whether this code is real or performative.
 7. Any code path that hasn't been executed and verified
 
 **Process:**
+
 1. Report findings honestly
 2. Flag anything that looks functional but isn't proven
 3. Create TODOs for all issues found
 4. Fix every issue, from most complicated to simplest
 
-*This is the most important validation phase - run repeatedly to find issues.*
+_This is the most important validation phase - run repeatedly to find issues._
 
 ---
 
@@ -134,6 +143,7 @@ Critically evaluate whether this code is real or performative.
 Remove AI-generated cruft and over-engineering.
 
 **Target for removal:**
+
 1. Unnecessary abstractions and wrapper functions
 2. Verbose comments that restate the obvious
 3. Defensive code for impossible conditions
@@ -153,6 +163,7 @@ Remove AI-generated cruft and over-engineering.
 Final checklist before deployment.
 
 **Verify with evidence (not assertions):**
+
 1. All tests pass with real execution, not mocked
 2. Error handling covers failure modes with proper logging
 3. Configuration is externalized, no hardcoded secrets
@@ -172,6 +183,7 @@ Final checklist before deployment.
 Audit what was just completed.
 
 **Questions to answer:**
+
 1. Does it actually work - did you verify the output?
 2. Does it solve the original problem or just part of it?
 3. Did anything get skipped or deferred?
@@ -189,6 +201,7 @@ Audit what was just completed.
 Systematically resolve everything outstanding.
 
 **Process:**
+
 1. List every open issue - bugs, TODOs, skipped tests, known limitations
 2. Prioritize by impact
 3. Fix each one completely before moving to the next
@@ -202,6 +215,7 @@ Systematically resolve everything outstanding.
 ## Core Principles
 
 ### What "Real Code" Means
+
 - Functions that perform actual operations, not return hardcoded values
 - API calls that hit real endpoints
 - Database operations that read/write actual data
@@ -209,6 +223,7 @@ Systematically resolve everything outstanding.
 - Error handling that surfaces problems, not hides them
 
 ### What to Avoid
+
 - `// TODO: implement later`
 - `return mockData;`
 - `catch (e) { /* ignore */ }`
@@ -218,6 +233,7 @@ Systematically resolve everything outstanding.
 - Comments that describe what code obviously does
 
 ### Testing Philosophy
+
 - Integration tests over unit tests with mocks
 - Real dependencies over test doubles
 - Actual execution over coverage metrics
@@ -231,7 +247,7 @@ Simply reference the phase number or keyword during development:
 User: 1
 Claude: [Enters planning mode, asks clarifying questions]
 
-User: 2  
+User: 2
 Claude: [Implements the agreed plan]
 
 User: 6

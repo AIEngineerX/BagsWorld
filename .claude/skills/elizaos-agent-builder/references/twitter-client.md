@@ -5,6 +5,7 @@ Twitter/X integration patterns for elizaOS agents.
 ## Setup
 
 ### Environment Variables
+
 ```bash
 # Required
 TWITTER_USERNAME=your_bot_username
@@ -18,27 +19,28 @@ TWITTER_DRY_RUN=false                 # Test mode
 ```
 
 ### Character Configuration
+
 ```typescript
 export const character: Character = {
-  name: 'TwitterBot',
-  clients: ['twitter'],
+  name: "TwitterBot",
+  clients: ["twitter"],
 
   // Twitter-specific style
   style: {
-    all: ['Be authentic', 'Engage genuinely'],
+    all: ["Be authentic", "Engage genuinely"],
     post: [
-      'Keep under 280 characters',
-      'Use 1-3 hashtags maximum',
-      'Use emojis sparingly',
-      'Hook readers in first line',
-      'Use line breaks for readability'
-    ]
+      "Keep under 280 characters",
+      "Use 1-3 hashtags maximum",
+      "Use emojis sparingly",
+      "Hook readers in first line",
+      "Use line breaks for readability",
+    ],
   },
 
   postExamples: [
     "Just shipped a major update.\n\nWhat's new:\n- Feature A\n- Feature B\n- Feature C\n\nThread below for details",
     "Hot take: Most crypto projects fail because they focus on token price instead of product.\n\nBuild something people want first.",
-  ]
+  ],
 };
 ```
 
@@ -47,46 +49,48 @@ export const character: Character = {
 ## Post Patterns
 
 ### Basic Post
+
 ```typescript
 const postAction: Action = {
-  name: 'POST_TWEET',
-  description: 'Post a tweet',
+  name: "POST_TWEET",
+  description: "Post a tweet",
 
   handler: async (runtime, message, state, options, callback) => {
     const content = message.content.text;
 
     // Validate length
     if (content.length > 280) {
-      callback('Tweet too long. Please shorten to 280 characters.');
-      return 'too_long';
+      callback("Tweet too long. Please shorten to 280 characters.");
+      return "too_long";
     }
 
-    const twitterService = runtime.getService('twitter');
+    const twitterService = runtime.getService("twitter");
     const result = await twitterService.post(content);
 
     callback(`Tweet posted! ${result.url}`);
     return result.id;
-  }
+  },
 };
 ```
 
 ### Thread Posting
+
 ```typescript
 const threadAction: Action = {
-  name: 'POST_THREAD',
-  description: 'Post a Twitter thread',
+  name: "POST_THREAD",
+  description: "Post a Twitter thread",
 
   handler: async (runtime, message, state, options, callback) => {
     const content = message.content.text;
     const tweets = splitIntoThread(content);
 
-    const twitterService = runtime.getService('twitter');
+    const twitterService = runtime.getService("twitter");
     const results = [];
     let replyToId: string | null = null;
 
     for (const tweet of tweets) {
       const result = await twitterService.post(tweet, {
-        replyTo: replyToId
+        replyTo: replyToId,
       });
       results.push(result);
       replyToId = result.id;
@@ -94,16 +98,16 @@ const threadAction: Action = {
 
     callback(`Thread posted (${tweets.length} tweets)! ${results[0].url}`);
     return results;
-  }
+  },
 };
 
 function splitIntoThread(content: string, maxLength = 270): string[] {
-  const paragraphs = content.split('\n\n');
+  const paragraphs = content.split("\n\n");
   const tweets: string[] = [];
-  let current = '';
+  let current = "";
 
   for (const para of paragraphs) {
-    if ((current + '\n\n' + para).length <= maxLength) {
+    if ((current + "\n\n" + para).length <= maxLength) {
       current = current ? `${current}\n\n${para}` : para;
     } else {
       if (current) tweets.push(current);
@@ -121,20 +125,21 @@ function splitIntoThread(content: string, maxLength = 270): string[] {
 ```
 
 ### Quote Tweet
+
 ```typescript
 const quoteAction: Action = {
-  name: 'QUOTE_TWEET',
-  description: 'Quote tweet with comment',
+  name: "QUOTE_TWEET",
+  description: "Quote tweet with comment",
 
   handler: async (runtime, message, state, options, callback) => {
     const { tweetUrl, comment } = parseQuoteRequest(message.content.text);
 
-    const twitterService = runtime.getService('twitter');
+    const twitterService = runtime.getService("twitter");
     const result = await twitterService.quote(tweetUrl, comment);
 
     callback(`Quote tweet posted! ${result.url}`);
     return result.id;
-  }
+  },
 };
 ```
 
@@ -143,38 +148,39 @@ const quoteAction: Action = {
 ## Reply Patterns
 
 ### Reply to Mentions
+
 ```typescript
 const replyAction: Action = {
-  name: 'REPLY_TWEET',
-  description: 'Reply to a tweet',
+  name: "REPLY_TWEET",
+  description: "Reply to a tweet",
 
   handler: async (runtime, message, state, options, callback) => {
     const { tweetId, reply } = parseReplyRequest(message.content.text);
 
     if (reply.length > 280) {
-      callback('Reply too long');
-      return 'too_long';
+      callback("Reply too long");
+      return "too_long";
     }
 
-    const twitterService = runtime.getService('twitter');
+    const twitterService = runtime.getService("twitter");
     const result = await twitterService.reply(tweetId, reply);
 
     callback(`Replied! ${result.url}`);
     return result.id;
-  }
+  },
 };
 ```
 
 ### Mention Handler
+
 ```typescript
 // In plugin
 const twitterPlugin: Plugin = {
-  name: 'twitter-handler',
+  name: "twitter-handler",
 
   // Handle incoming mentions
   beforeMessage: async (message, runtime) => {
-    if (message.metadata?.source === 'twitter' &&
-        message.metadata?.type === 'mention') {
+    if (message.metadata?.source === "twitter" && message.metadata?.type === "mention") {
       // Add context about the mention
       return {
         ...message,
@@ -185,12 +191,12 @@ const twitterPlugin: Plugin = {
             isTwitterMention: true,
             tweetId: message.metadata.tweetId,
             authorUsername: message.metadata.author,
-          }
-        }
+          },
+        },
       };
     }
     return message;
-  }
+  },
 };
 ```
 
@@ -199,33 +205,35 @@ const twitterPlugin: Plugin = {
 ## Search & Monitor
 
 ### Search Tweets
+
 ```typescript
 const searchProvider: Provider = {
-  name: 'twitterSearch',
+  name: "twitterSearch",
 
   get: async (runtime, message, state) => {
     const query = extractSearchQuery(message.content.text);
-    if (!query) return { text: '', data: {} };
+    if (!query) return { text: "", data: {} };
 
-    const twitterService = runtime.getService('twitter');
+    const twitterService = runtime.getService("twitter");
     const results = await twitterService.search(query, { count: 10 });
 
-    const formatted = results.map(tweet =>
-      `@${tweet.author}: ${tweet.text.slice(0, 100)}...`
-    ).join('\n');
+    const formatted = results
+      .map((tweet) => `@${tweet.author}: ${tweet.text.slice(0, 100)}...`)
+      .join("\n");
 
     return {
       text: `Recent tweets about "${query}":\n${formatted}`,
-      data: { tweets: results }
+      data: { tweets: results },
     };
-  }
+  },
 };
 ```
 
 ### Monitor Keywords
+
 ```typescript
 class TwitterMonitorService extends Service {
-  static serviceType = 'TWITTER_MONITOR';
+  static serviceType = "TWITTER_MONITOR";
   private interval?: NodeJS.Timer;
   private lastSeen: Record<string, string> = {};
 
@@ -237,13 +245,13 @@ class TwitterMonitorService extends Service {
   }
 
   async start(): Promise<void> {
-    this.status = 'running';
+    this.status = "running";
 
     this.interval = setInterval(() => this.checkKeywords(), 60000);
   }
 
   private async checkKeywords(): Promise<void> {
-    const twitterService = this.runtime.getService('twitter');
+    const twitterService = this.runtime.getService("twitter");
 
     for (const keyword of this.keywords) {
       const results = await twitterService.search(keyword, { count: 5 });
@@ -268,7 +276,7 @@ class TwitterMonitorService extends Service {
 
   async stop(): Promise<void> {
     if (this.interval) clearInterval(this.interval);
-    this.status = 'stopped';
+    this.status = "stopped";
   }
 }
 ```
@@ -278,43 +286,45 @@ class TwitterMonitorService extends Service {
 ## Engagement Patterns
 
 ### Like Action
+
 ```typescript
 const likeAction: Action = {
-  name: 'LIKE_TWEET',
-  description: 'Like a tweet',
+  name: "LIKE_TWEET",
+  description: "Like a tweet",
 
   validate: async (runtime, message, state) => {
     // Only allow liking if explicitly requested
-    return message.content.text.toLowerCase().includes('like');
+    return message.content.text.toLowerCase().includes("like");
   },
 
   handler: async (runtime, message, state, options, callback) => {
     const tweetId = extractTweetId(message.content.text);
 
-    const twitterService = runtime.getService('twitter');
+    const twitterService = runtime.getService("twitter");
     await twitterService.like(tweetId);
 
-    callback('Tweet liked!');
+    callback("Tweet liked!");
     return tweetId;
-  }
+  },
 };
 ```
 
 ### Retweet Action
+
 ```typescript
 const retweetAction: Action = {
-  name: 'RETWEET',
-  description: 'Retweet a tweet',
+  name: "RETWEET",
+  description: "Retweet a tweet",
 
   handler: async (runtime, message, state, options, callback) => {
     const tweetId = extractTweetId(message.content.text);
 
-    const twitterService = runtime.getService('twitter');
+    const twitterService = runtime.getService("twitter");
     await twitterService.retweet(tweetId);
 
-    callback('Retweeted!');
+    callback("Retweeted!");
     return tweetId;
-  }
+  },
 };
 ```
 
@@ -323,6 +333,7 @@ const retweetAction: Action = {
 ## Rate Limiting
 
 ### Rate Limit Handler
+
 ```typescript
 class TwitterRateLimiter {
   private limits: Map<string, { remaining: number; reset: number }> = new Map();
@@ -362,16 +373,16 @@ class TwitterRateLimiter {
 const rateLimiter = new TwitterRateLimiter();
 
 async function postTweet(content: string): Promise<any> {
-  if (!await rateLimiter.checkLimit('tweets')) {
-    await rateLimiter.waitForReset('tweets');
+  if (!(await rateLimiter.checkLimit("tweets"))) {
+    await rateLimiter.waitForReset("tweets");
   }
 
   const response = await twitterClient.post(content);
 
   rateLimiter.updateLimit(
-    'tweets',
-    parseInt(response.headers['x-rate-limit-remaining']),
-    parseInt(response.headers['x-rate-limit-reset']) * 1000
+    "tweets",
+    parseInt(response.headers["x-rate-limit-remaining"]),
+    parseInt(response.headers["x-rate-limit-reset"]) * 1000
   );
 
   return response.data;
@@ -383,6 +394,7 @@ async function postTweet(content: string): Promise<any> {
 ## Content Guidelines
 
 ### Auto-Generated Post Rules
+
 ```typescript
 interface PostValidation {
   valid: boolean;
@@ -406,13 +418,13 @@ function validatePost(content: string): PostValidation {
   // URL check
   const urls = content.match(/https?:\/\/\S+/g) || [];
   if (urls.length > 2) {
-    issues.push('Too many URLs');
+    issues.push("Too many URLs");
   }
 
   // Mention spam check
   const mentions = content.match(/@\w+/g) || [];
   if (mentions.length > 5) {
-    issues.push('Too many mentions');
+    issues.push("Too many mentions");
   }
 
   // Duplicate content check (would need history)
@@ -420,18 +432,19 @@ function validatePost(content: string): PostValidation {
 
   return {
     valid: issues.length === 0,
-    issues
+    issues,
   };
 }
 ```
 
 ### Content Moderation
+
 ```typescript
-const BANNED_WORDS = ['spam', 'scam', 'guaranteed'];
+const BANNED_WORDS = ["spam", "scam", "guaranteed"];
 const RISKY_PATTERNS = [
-  /\$\d+/,           // Dollar amounts
-  /\d+x/,            // Multipliers
-  /guaranteed/i,     // Guarantees
+  /\$\d+/, // Dollar amounts
+  /\d+x/, // Multipliers
+  /guaranteed/i, // Guarantees
 ];
 
 function moderateContent(content: string): { safe: boolean; reason?: string } {
@@ -458,27 +471,28 @@ function moderateContent(content: string): { safe: boolean; reason?: string } {
 ## Error Handling
 
 ### Twitter-Specific Errors
+
 ```typescript
 function handleTwitterError(error: any): string {
   const code = error.code || error.response?.data?.errors?.[0]?.code;
 
   switch (code) {
     case 187:
-      return 'Duplicate tweet. Already posted this content.';
+      return "Duplicate tweet. Already posted this content.";
     case 186:
-      return 'Tweet is too long.';
+      return "Tweet is too long.";
     case 179:
-      return 'Cannot view this tweet (protected account).';
+      return "Cannot view this tweet (protected account).";
     case 144:
-      return 'Tweet not found.';
+      return "Tweet not found.";
     case 88:
-      return 'Rate limit exceeded. Please wait.';
+      return "Rate limit exceeded. Please wait.";
     case 89:
-      return 'Invalid or expired token. Please re-authenticate.';
+      return "Invalid or expired token. Please re-authenticate.";
     case 326:
-      return 'Account temporarily locked. Manual review required.';
+      return "Account temporarily locked. Manual review required.";
     case 32:
-      return 'Authentication failed.';
+      return "Authentication failed.";
     default:
       return `Twitter error: ${error.message}`;
   }
@@ -499,12 +513,13 @@ function handleTwitterError(error: any): string {
 8. **Implement cooldowns** — Don't post too frequently
 
 ### Posting Frequency Guidelines
+
 ```typescript
 const COOLDOWNS = {
-  post: 15 * 60 * 1000,      // 15 min between posts
-  reply: 2 * 60 * 1000,      // 2 min between replies
-  like: 30 * 1000,           // 30s between likes
-  retweet: 5 * 60 * 1000,    // 5 min between retweets
+  post: 15 * 60 * 1000, // 15 min between posts
+  reply: 2 * 60 * 1000, // 2 min between replies
+  like: 30 * 1000, // 30s between likes
+  retweet: 5 * 60 * 1000, // 5 min between retweets
 };
 
 class TwitterCooldown {

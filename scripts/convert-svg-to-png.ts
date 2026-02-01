@@ -15,10 +15,7 @@ const BANNERS_DIR = path.join(ASSETS_DIR, "banners");
 async function convertSvgToPng(svgPath: string, pngPath: string, width: number, height: number) {
   const svgContent = fs.readFileSync(svgPath);
 
-  await sharp(svgContent)
-    .resize(width, height)
-    .png()
-    .toFile(pngPath);
+  await sharp(svgContent).resize(width, height).png().toFile(pngPath);
 
   console.log(`  ✓ ${path.basename(pngPath)}`);
 }
@@ -28,7 +25,7 @@ async function main() {
 
   // Convert profiles (512x512)
   console.log("📷 Profiles (512x512):");
-  const profileFiles = fs.readdirSync(PROFILES_DIR).filter(f => f.endsWith(".svg"));
+  const profileFiles = fs.readdirSync(PROFILES_DIR).filter((f) => f.endsWith(".svg"));
   for (const file of profileFiles) {
     const svgPath = path.join(PROFILES_DIR, file);
     const pngPath = path.join(PROFILES_DIR, file.replace(".svg", ".png"));
@@ -37,7 +34,7 @@ async function main() {
 
   // Convert banners (1500x500)
   console.log("\n🖼️  Banners (1500x500):");
-  const bannerFiles = fs.readdirSync(BANNERS_DIR).filter(f => f.endsWith(".svg"));
+  const bannerFiles = fs.readdirSync(BANNERS_DIR).filter((f) => f.endsWith(".svg"));
   for (const file of bannerFiles) {
     const svgPath = path.join(BANNERS_DIR, file);
     const pngPath = path.join(BANNERS_DIR, file.replace(".svg", ".png"));

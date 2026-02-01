@@ -3,7 +3,7 @@
 ## Claude Integration (Anthropic)
 
 ```javascript
-import Anthropic from '@anthropic-ai/sdk';
+import Anthropic from "@anthropic-ai/sdk";
 
 class ClaudeBrain {
   constructor(apiKey) {
@@ -12,27 +12,27 @@ class ClaudeBrain {
 
   async decide(systemPrompt, userContext, tools) {
     const response = await this.client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: "claude-sonnet-4-20250514",
       max_tokens: 1024,
       system: systemPrompt,
-      tools: tools.map(t => ({
+      tools: tools.map((t) => ({
         name: t.name,
         description: t.description,
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: t.input || {},
           required: Object.keys(t.input || {}),
         },
       })),
-      messages: [{ role: 'user', content: userContext }],
+      messages: [{ role: "user", content: userContext }],
     });
 
-    const toolUse = response.content.find(c => c.type === 'tool_use');
+    const toolUse = response.content.find((c) => c.type === "tool_use");
     if (toolUse) {
       return { tool: toolUse.name, input: toolUse.input };
     }
-    
-    const text = response.content.find(c => c.type === 'text');
+
+    const text = response.content.find((c) => c.type === "text");
     return { tool: null, reasoning: text?.text };
   }
 }
@@ -41,7 +41,7 @@ class ClaudeBrain {
 ## OpenAI Integration
 
 ```javascript
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 class OpenAIBrain {
   constructor(apiKey) {
@@ -50,18 +50,18 @@ class OpenAIBrain {
 
   async decide(systemPrompt, userContext, tools) {
     const response = await this.client.chat.completions.create({
-      model: 'gpt-4o',
+      model: "gpt-4o",
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userContext },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContext },
       ],
-      tools: tools.map(t => ({
-        type: 'function',
+      tools: tools.map((t) => ({
+        type: "function",
         function: {
           name: t.name,
           description: t.description,
           parameters: {
-            type: 'object',
+            type: "object",
             properties: t.input || {},
             required: Object.keys(t.input || {}),
           },
@@ -76,7 +76,7 @@ class OpenAIBrain {
         input: JSON.parse(toolCall.function.arguments),
       };
     }
-    
+
     return { tool: null, reasoning: response.choices[0].message.content };
   }
 }
@@ -89,7 +89,7 @@ const buildSystemPrompt = (objective, allowedActions) => `
 You are an autonomous agent. Your objective: ${objective}
 
 You can use these actions:
-${allowedActions.map(a => `- ${a.name}: ${a.description}`).join('\n')}
+${allowedActions.map((a) => `- ${a.name}: ${a.description}`).join("\n")}
 
 Rules:
 1. Take one action at a time

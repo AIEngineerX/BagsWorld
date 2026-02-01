@@ -86,9 +86,12 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Migrate agents error:", error);
-    return NextResponse.json({
-      error: "Failed to migrate agents",
-      details: String(error)
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Failed to migrate agents",
+        details: String(error),
+      },
+      { status: 500 }
+    );
   }
 }

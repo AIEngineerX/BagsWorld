@@ -5,7 +5,7 @@
 ```javascript
 const browserActions = {
   async navigate(page, { url }) {
-    await page.goto(url, { waitUntil: 'networkidle' });
+    await page.goto(url, { waitUntil: "networkidle" });
     return `Navigated to ${url}`;
   },
 
@@ -25,12 +25,12 @@ const browserActions = {
   },
 
   async screenshot(page) {
-    const base64 = await page.screenshot({ encoding: 'base64' });
+    const base64 = await page.screenshot({ encoding: "base64" });
     return `Screenshot captured (${base64.length} bytes)`;
   },
 
-  async scroll(page, { direction = 'down', amount = 500 }) {
-    const delta = direction === 'down' ? amount : -amount;
+  async scroll(page, { direction = "down", amount = 500 }) {
+    const delta = direction === "down" ? amount : -amount;
     await page.mouse.wheel(0, delta);
     return `Scrolled ${direction} by ${amount}px`;
   },
@@ -59,8 +59,8 @@ const apiActions = {
 
   async httpPost({ url, body, headers = {} }) {
     const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -68,7 +68,7 @@ const apiActions = {
   },
 
   async delay({ ms }) {
-    await new Promise(resolve => setTimeout(resolve, ms));
+    await new Promise((resolve) => setTimeout(resolve, ms));
     return `Waited ${ms}ms`;
   },
 };
@@ -77,8 +77,8 @@ const apiActions = {
 ## Solana Actions
 
 ```javascript
-import { Connection, PublicKey, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
-import { getAssociatedTokenAddress, createTransferInstruction } from '@solana/spl-token';
+import { Connection, PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { getAssociatedTokenAddress, createTransferInstruction } from "@solana/spl-token";
 
 const solanaActions = {
   async getBalance(connection, { address }) {
@@ -91,26 +91,26 @@ const solanaActions = {
     const wallet = new PublicKey(walletAddress);
     const mint = new PublicKey(tokenMint);
     const ata = await getAssociatedTokenAddress(mint, wallet);
-    
+
     try {
       const account = await connection.getTokenAccountBalance(ata);
       return `Token balance: ${account.value.uiAmount}`;
     } catch {
-      return 'Token balance: 0';
+      return "Token balance: 0";
     }
   },
 
   async transferToken(connection, wallet, { tokenMint, toAddress, amount, decimals }) {
     const mint = new PublicKey(tokenMint);
     const to = new PublicKey(toAddress);
-    
+
     const fromAta = await getAssociatedTokenAddress(mint, wallet.publicKey);
     const toAta = await getAssociatedTokenAddress(mint, to);
-    
+
     const tx = new Transaction().add(
-      createTransferInstruction(fromAta, toAta, wallet.publicKey, amount * (10 ** decimals))
+      createTransferInstruction(fromAta, toAta, wallet.publicKey, amount * 10 ** decimals)
     );
-    
+
     const sig = await sendAndConfirmTransaction(connection, tx, [wallet]);
     return `Transfer complete: ${sig}`;
   },
@@ -124,23 +124,23 @@ const notificationActions = {
   async sendTelegram({ botToken, chatId, message }) {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
     await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text: message }),
     });
-    return 'Telegram message sent';
+    return "Telegram message sent";
   },
 
   async sendDiscordWebhook({ webhookUrl, content }) {
     await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
     });
-    return 'Discord message sent';
+    return "Discord message sent";
   },
 
-  async log({ message, level = 'info' }) {
+  async log({ message, level = "info" }) {
     console[level](`[AGENT] ${message}`);
     return `Logged: ${message}`;
   },

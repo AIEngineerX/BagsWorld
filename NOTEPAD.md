@@ -3,6 +3,7 @@
 ## Code Review Summary - Jan 17, 2026
 
 ### Recent Updates (5 commits)
+
 - PokeCenter Hub modal with world stats and claim integration
 - Building position stability via mint-based caching
 - Duplicate name/symbol warnings in LaunchModal
@@ -13,11 +14,13 @@
 ### Wallet & Launch Security Audit
 
 **Wallet Connection: PASS**
+
 - Using latest Solana wallet-adapter packages (v0.15-0.19)
 - Phantom + Solflare adapters configured correctly
 - autoConnect enabled, proper provider nesting
 
 **Token Launch Flow: PASS**
+
 - Transactions signed client-side (keys never leave wallet)
 - API key protected server-side only
 - Input validation on required fields and BPS limits
@@ -25,11 +28,13 @@
 - Preflight checks enabled, reasonable retry limits
 
 **Protocol Versions: UP TO DATE**
+
 - @solana/web3.js: 1.98.4
 - Bags.fm API: v2 (public-api-v2.bags.fm)
 - Wallet Adapter: 0.15-0.19 range
 
 **Minor Recommendations:**
+
 1. Add API rate limiting for production
 2. Remove/gate console.log debug statements
 3. Consider image size limits before base64 processing
@@ -43,6 +48,7 @@
 ### Competitor Analysis
 
 **Axiom (axiom.trade)** - Market Leader
+
 - Y Combinator backed, $10M/month revenue
 - ~400ms execution (next block on Solana)
 - Features: Sniper mode, Buy/Sell on Migration, Limit Orders, Copy Trading
@@ -51,6 +57,7 @@
 - Fiat on-ramp via Coinbase (no KYC up to $500/week)
 
 **Photon (photon-sol.tinyastro.io)** - Speed Focus
+
 - Sub-0.3 second execution
 - Data updates 5-10x faster than Dexscreener
 - One-click buy/sell, multi-wallet support (up to 5)
@@ -59,6 +66,7 @@
 - 1% fee per transaction
 
 **Padre/Terminal (trade.padre.gg)** - Acquired by Pump.fun Oct 2025
+
 - ~5% Solana bot market share
 - Multi-chain: Solana, Ethereum, Base, BNB
 - Trenches view for bonding curve tokens (Pump.fun, Four.Meme)
@@ -92,6 +100,7 @@
 ```
 
 **Button Style Guide:**
+
 - [A] BUY = Green pixel button (like Game Boy A button)
 - [B] INFO = Red pixel button (like Game Boy B button)
 - Tab buttons = Pokemon menu style (red/green/blue pokeballs)
@@ -138,6 +147,7 @@
 **Actions:**
 
 1. **trending** - Get trending tokens by volume
+
    ```bash
    # GET
    curl /api/terminal?action=trending&limit=10
@@ -145,18 +155,23 @@
    # POST
    curl -X POST /api/terminal -d '{"action":"trending","data":{"limit":10}}'
    ```
+
    Returns: `{ trending: TrendingToken[], total, limit, offset }`
 
 2. **new-pairs** - Get newly launched tokens with safety scores
+
    ```bash
    curl /api/terminal?action=new-pairs&limit=10
    ```
+
    Returns: `{ pairs: NewPair[], total }`
 
 3. **token-safety** - Get detailed safety check for a token
+
    ```bash
    curl /api/terminal?action=token-safety&mint=<TOKEN_MINT>
    ```
+
    Returns: `{ mint, safety: TokenSafety }`
 
 4. **quick-quote** - Get quick trade quote
@@ -169,6 +184,7 @@
    Returns: `{ quote, inputAmount, inputSymbol }`
 
 **Safety Check Features:**
+
 - Mint authority status (can mint more tokens?)
 - Freeze authority status (can freeze accounts?)
 - Top 10 holder concentration %
@@ -176,6 +192,7 @@
 - Warning messages array
 
 **Types Added:** `src/lib/types.ts`
+
 - `TrendingToken`
 - `NewPair`
 - `TokenSafety`

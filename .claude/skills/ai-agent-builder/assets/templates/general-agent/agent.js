@@ -1,15 +1,15 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { chromium } from 'playwright';
+import Anthropic from "@anthropic-ai/sdk";
+import { chromium } from "playwright";
 
 // ============================================
 // CONFIGURATION
 // ============================================
 
 const CONFIG = {
-  objective: process.argv[2] || 'Navigate to example.com and extract the page title',
+  objective: process.argv[2] || "Navigate to example.com and extract the page title",
   maxSteps: 50,
   headless: true,
-  model: 'claude-sonnet-4-20250514',
+  model: "claude-sonnet-4-20250514",
 };
 
 // ============================================
@@ -18,65 +18,65 @@ const CONFIG = {
 
 const TOOLS = [
   {
-    name: 'navigate',
-    description: 'Navigate browser to a URL',
+    name: "navigate",
+    description: "Navigate browser to a URL",
     input_schema: {
-      type: 'object',
-      properties: { url: { type: 'string', description: 'URL to navigate to' } },
-      required: ['url'],
+      type: "object",
+      properties: { url: { type: "string", description: "URL to navigate to" } },
+      required: ["url"],
     },
   },
   {
-    name: 'click',
-    description: 'Click on an element',
+    name: "click",
+    description: "Click on an element",
     input_schema: {
-      type: 'object',
-      properties: { selector: { type: 'string', description: 'CSS selector' } },
-      required: ['selector'],
+      type: "object",
+      properties: { selector: { type: "string", description: "CSS selector" } },
+      required: ["selector"],
     },
   },
   {
-    name: 'type',
-    description: 'Type text into an input field',
+    name: "type",
+    description: "Type text into an input field",
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        selector: { type: 'string', description: 'CSS selector' },
-        text: { type: 'string', description: 'Text to type' },
+        selector: { type: "string", description: "CSS selector" },
+        text: { type: "string", description: "Text to type" },
       },
-      required: ['selector', 'text'],
+      required: ["selector", "text"],
     },
   },
   {
-    name: 'extract',
-    description: 'Extract text content from an element',
+    name: "extract",
+    description: "Extract text content from an element",
     input_schema: {
-      type: 'object',
-      properties: { selector: { type: 'string', description: 'CSS selector' } },
-      required: ['selector'],
+      type: "object",
+      properties: { selector: { type: "string", description: "CSS selector" } },
+      required: ["selector"],
     },
   },
   {
-    name: 'screenshot',
-    description: 'Take a screenshot of the current page',
-    input_schema: { type: 'object', properties: {} },
+    name: "screenshot",
+    description: "Take a screenshot of the current page",
+    input_schema: { type: "object", properties: {} },
   },
   {
-    name: 'wait',
-    description: 'Wait for specified milliseconds',
+    name: "wait",
+    description: "Wait for specified milliseconds",
     input_schema: {
-      type: 'object',
-      properties: { ms: { type: 'number', description: 'Milliseconds to wait' } },
-      required: ['ms'],
+      type: "object",
+      properties: { ms: { type: "number", description: "Milliseconds to wait" } },
+      required: ["ms"],
     },
   },
   {
-    name: 'complete',
-    description: 'Mark the objective as complete',
+    name: "complete",
+    description: "Mark the objective as complete",
     input_schema: {
-      type: 'object',
-      properties: { summary: { type: 'string', description: 'Summary of what was accomplished' } },
-      required: ['summary'],
+      type: "object",
+      properties: { summary: { type: "string", description: "Summary of what was accomplished" } },
+      required: ["summary"],
     },
   },
 ];
@@ -97,7 +97,7 @@ class Memory {
   }
 
   getContext() {
-    return this.entries.map(e => `[${e.type.toUpperCase()}] ${e.content}`).join('\n');
+    return this.entries.map((e) => `[${e.type.toUpperCase()}] ${e.content}`).join("\n");
   }
 }
 
@@ -118,7 +118,7 @@ class Agent {
     this.browser = await chromium.launch({ headless: this.config.headless });
     const context = await this.browser.newContext();
     this.page = await context.newPage();
-    console.log('🤖 Agent initialized');
+    console.log("🤖 Agent initialized");
   }
 
   async run() {
@@ -130,16 +130,16 @@ class Agent {
         console.log(`\n--- Step ${step + 1} ---`);
 
         const decision = await this.decide();
-        console.log(`🧠 Decision: ${decision.tool}`, decision.input || '');
+        console.log(`🧠 Decision: ${decision.tool}`, decision.input || "");
 
         const result = await this.execute(decision);
-        console.log(`📝 Result: ${result.slice(0, 200)}${result.length > 200 ? '...' : ''}`);
+        console.log(`📝 Result: ${result.slice(0, 200)}${result.length > 200 ? "..." : ""}`);
 
-        this.memory.add('action', `${decision.tool}(${JSON.stringify(decision.input || {})})`);
-        this.memory.add('observation', result);
+        this.memory.add("action", `${decision.tool}(${JSON.stringify(decision.input || {})})`);
+        this.memory.add("observation", result);
 
-        if (decision.tool === 'complete') {
-          console.log('\n✅ Objective complete!');
+        if (decision.tool === "complete") {
+          console.log("\n✅ Objective complete!");
           console.log(`Summary: ${decision.input.summary}`);
           break;
         }
@@ -167,20 +167,20 @@ Rules:
       tools: TOOLS,
       messages: [
         {
-          role: 'user',
+          role: "user",
           content: this.memory.entries.length
             ? `History:\n${this.memory.getContext()}\n\nWhat's your next action?`
-            : 'Begin working on the objective. What\'s your first action?',
+            : "Begin working on the objective. What's your first action?",
         },
       ],
     });
 
-    const toolUse = response.content.find(c => c.type === 'tool_use');
+    const toolUse = response.content.find((c) => c.type === "tool_use");
     if (toolUse) {
       return { tool: toolUse.name, input: toolUse.input };
     }
 
-    return { tool: 'complete', input: { summary: 'No clear action determined' } };
+    return { tool: "complete", input: { summary: "No clear action determined" } };
   }
 
   async execute(decision) {
@@ -188,31 +188,31 @@ Rules:
 
     try {
       switch (tool) {
-        case 'navigate':
-          await this.page.goto(input.url, { waitUntil: 'networkidle' });
+        case "navigate":
+          await this.page.goto(input.url, { waitUntil: "networkidle" });
           return `Navigated to ${input.url}. Title: ${await this.page.title()}`;
 
-        case 'click':
+        case "click":
           await this.page.click(input.selector);
           return `Clicked ${input.selector}`;
 
-        case 'type':
+        case "type":
           await this.page.fill(input.selector, input.text);
           return `Typed "${input.text}" into ${input.selector}`;
 
-        case 'extract':
+        case "extract":
           const text = await this.page.innerText(input.selector);
           return `Extracted: ${text}`;
 
-        case 'screenshot':
-          await this.page.screenshot({ path: 'screenshot.png' });
-          return 'Screenshot saved to screenshot.png';
+        case "screenshot":
+          await this.page.screenshot({ path: "screenshot.png" });
+          return "Screenshot saved to screenshot.png";
 
-        case 'wait':
-          await new Promise(r => setTimeout(r, input.ms));
+        case "wait":
+          await new Promise((r) => setTimeout(r, input.ms));
           return `Waited ${input.ms}ms`;
 
-        case 'complete':
+        case "complete":
           return input.summary;
 
         default:
@@ -226,7 +226,7 @@ Rules:
   async cleanup() {
     if (this.browser) {
       await this.browser.close();
-      console.log('🔒 Browser closed');
+      console.log("🔒 Browser closed");
     }
   }
 }

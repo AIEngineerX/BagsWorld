@@ -67,6 +67,7 @@ curl -s -X POST "https://public-api-v2.bags.fm/api/v1/token-launch/create-token-
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -79,15 +80,15 @@ curl -s -X POST "https://public-api-v2.bags.fm/api/v1/token-launch/create-token-
 
 ### Parameters
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | ✅ | Token name (1-32 characters) |
-| `symbol` | ✅ | Token symbol (1-10 characters) |
-| `description` | ✅ | Token description |
-| `imageUrl` | ✅ | URL to token image |
-| `twitter` | ❌ | Twitter/X URL |
-| `website` | ❌ | Website URL |
-| `telegram` | ❌ | Telegram URL |
+| Field         | Required | Description                    |
+| ------------- | -------- | ------------------------------ |
+| `name`        | ✅       | Token name (1-32 characters)   |
+| `symbol`      | ✅       | Token symbol (1-10 characters) |
+| `description` | ✅       | Token description              |
+| `imageUrl`    | ✅       | URL to token image             |
+| `twitter`     | ❌       | Twitter/X URL                  |
+| `website`     | ❌       | Website URL                    |
+| `telegram`    | ❌       | Telegram URL                   |
 
 ---
 
@@ -133,6 +134,7 @@ curl -s -X POST "https://public-api-v2.bags.fm/api/v1/fee-share/config" \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -145,13 +147,13 @@ curl -s -X POST "https://public-api-v2.bags.fm/api/v1/fee-share/config" \
 
 ### Understanding BPS (Basis Points)
 
-| BPS | Percentage |
-|-----|------------|
-| 10000 | 100% |
-| 7500 | 75% |
-| 5000 | 50% |
-| 2500 | 25% |
-| 1000 | 10% |
+| BPS   | Percentage |
+| ----- | ---------- |
+| 10000 | 100%       |
+| 7500  | 75%        |
+| 5000  | 50%        |
+| 2500  | 25%        |
+| 1000  | 10%        |
 
 Total across all fee claimers must equal exactly 10,000.
 
@@ -163,11 +165,11 @@ Find wallet addresses for fee sharing via social platforms.
 
 ### Supported Providers
 
-| Provider | Description |
-|----------|-------------|
+| Provider   | Description             |
+| ---------- | ----------------------- |
 | `moltbook` | Moltbook agent username |
-| `twitter` | Twitter/X handle |
-| `github` | GitHub username |
+| `twitter`  | Twitter/X handle        |
+| `github`   | GitHub username         |
 
 ### Look Up Wallet
 
@@ -181,6 +183,7 @@ provider=$BAGS_PROVIDER&username=$BAGS_USERNAME" \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -227,17 +230,17 @@ if [ "$BAGS_TX_COUNT" -gt 0 ]; then
     -H "Content-Type: application/json" \
     -d "{\"token\": \"$BAGS_JWT_TOKEN\", \"walletAddress\": \"$BAGS_WALLET\"}" \
     | jq -r '.response.privateKey')
-  
+
   # Sign and submit each transaction
   echo "$BAGS_CONFIG_TXS" | jq -c '.[]' | while read BAGS_TX_OBJ; do
     BAGS_UNSIGNED_TX=$(echo "$BAGS_TX_OBJ" | jq -r '.transaction')
     BAGS_SIGNED_TX=$(node sign-transaction.js "$BAGS_PRIVATE_KEY" "$BAGS_UNSIGNED_TX")
-    
+
     curl -s -X POST https://api.mainnet-beta.solana.com \
       -H "Content-Type: application/json" \
       -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"sendTransaction\",\"params\":[\"$BAGS_SIGNED_TX\",{\"encoding\":\"base64\"}]}"
   done
-  
+
   unset BAGS_PRIVATE_KEY
 fi
 ```
@@ -263,6 +266,7 @@ curl -s -X POST "https://public-api-v2.bags.fm/api/v1/token-launch/create-launch
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -274,13 +278,13 @@ curl -s -X POST "https://public-api-v2.bags.fm/api/v1/token-launch/create-launch
 
 ### Parameters
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `metadataUrl` | ✅ | IPFS URL from Step 1 |
-| `tokenMint` | ✅ | Token mint from Step 1 |
-| `wallet` | ✅ | Wallet executing the launch |
-| `configKey` | ✅ | Fee share config from Step 2 |
-| `initialBuyLamports` | ❌ | Initial purchase amount (lamports) |
+| Field                | Required | Description                        |
+| -------------------- | -------- | ---------------------------------- |
+| `metadataUrl`        | ✅       | IPFS URL from Step 1               |
+| `tokenMint`          | ✅       | Token mint from Step 1             |
+| `wallet`             | ✅       | Wallet executing the launch        |
+| `configKey`          | ✅       | Fee share config from Step 2       |
+| `initialBuyLamports` | ❌       | Initial purchase amount (lamports) |
 
 ---
 
@@ -400,21 +404,21 @@ BAGS_CONFIG_TX_COUNT=$(echo "$BAGS_CONFIG_TXS" | jq 'length')
 
 if [ "$BAGS_CONFIG_TX_COUNT" -gt 0 ]; then
   echo "✓ Signing $BAGS_CONFIG_TX_COUNT config transaction(s)..."
-  
+
   BAGS_PRIVATE_KEY=$(curl -s -X POST https://public-api-v2.bags.fm/api/v1/agent/wallet/export \
     -H "Content-Type: application/json" \
     -d "{\"token\": \"$BAGS_JWT_TOKEN\", \"walletAddress\": \"$BAGS_WALLET\"}" \
     | jq -r '.response.privateKey')
-  
+
   echo "$BAGS_CONFIG_TXS" | jq -c '.[]' | while read BAGS_TX_OBJ; do
     BAGS_UNSIGNED_TX=$(echo "$BAGS_TX_OBJ" | jq -r '.transaction')
     BAGS_SIGNED_TX=$(node sign-transaction.js "$BAGS_PRIVATE_KEY" "$BAGS_UNSIGNED_TX")
-    
+
     curl -s -X POST https://api.mainnet-beta.solana.com \
       -H "Content-Type: application/json" \
       -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"sendTransaction\",\"params\":[\"$BAGS_SIGNED_TX\",{\"encoding\":\"base64\"}]}" > /dev/null
   done
-  
+
   unset BAGS_PRIVATE_KEY
 fi
 echo ""
@@ -517,11 +521,11 @@ curl -s -X POST "https://public-api-v2.bags.fm/api/v1/fee-share/config" \
 
 ## Fee Share Limits
 
-| Limit | Value |
-|-------|-------|
-| Maximum fee claimers | 100 |
-| Lookup table required | > 15 claimers |
-| Total BPS | Must equal 10,000 |
+| Limit                 | Value             |
+| --------------------- | ----------------- |
+| Maximum fee claimers  | 100               |
+| Lookup table required | > 15 claimers     |
+| Total BPS             | Must equal 10,000 |
 
 For more than 15 fee claimers, the API automatically handles Lookup Table (LUT) creation.
 
@@ -530,6 +534,7 @@ For more than 15 fee claimers, the API automatically handles Lookup Table (LUT) 
 ## Error Handling
 
 **Invalid image (400):**
+
 ```json
 {
   "success": false,
@@ -538,6 +543,7 @@ For more than 15 fee claimers, the API automatically handles Lookup Table (LUT) 
 ```
 
 **BPS validation (400):**
+
 ```json
 {
   "success": false,
@@ -546,6 +552,7 @@ For more than 15 fee claimers, the API automatically handles Lookup Table (LUT) 
 ```
 
 **Wallet not found (400):**
+
 ```json
 {
   "success": false,
@@ -554,6 +561,7 @@ For more than 15 fee claimers, the API automatically handles Lookup Table (LUT) 
 ```
 
 **Invalid API key (401):**
+
 ```json
 {
   "success": false,
@@ -562,6 +570,7 @@ For more than 15 fee claimers, the API automatically handles Lookup Table (LUT) 
 ```
 
 **Rate limited (429):**
+
 ```json
 {
   "success": false,
@@ -570,6 +579,7 @@ For more than 15 fee claimers, the API automatically handles Lookup Table (LUT) 
 ```
 
 **Transaction failure (on-chain):**
+
 - Insufficient SOL for transaction fees
 - Insufficient SOL for initial buy
 - Account rent requirements not met
@@ -578,29 +588,29 @@ For more than 15 fee claimers, the API automatically handles Lookup Table (LUT) 
 
 ## Environment Variables Reference
 
-| Variable | Description |
-|----------|-------------|
-| `BAGS_JWT_TOKEN` | JWT token for Agent API |
-| `BAGS_API_KEY` | API key for Public API |
-| `BAGS_WALLET` | Your wallet address |
-| `BAGS_TOKEN_NAME` | Token name |
-| `BAGS_TOKEN_SYMBOL` | Token symbol |
-| `BAGS_TOKEN_DESC` | Token description |
-| `BAGS_IMAGE_URL` | Token image URL |
-| `BAGS_TOKEN_MINT` | Generated token mint address |
-| `BAGS_METADATA_URL` | IPFS metadata URL |
-| `BAGS_CONFIG_KEY` | Fee share config key |
-| `BAGS_CONFIG_RESPONSE` | Config creation response |
-| `BAGS_CONFIG_TXS` | Config transactions array |
-| `BAGS_LAUNCH_RESPONSE` | Launch transaction response |
-| `BAGS_LAUNCH_TX` | Unsigned launch transaction |
-| `BAGS_INITIAL_BUY` | Initial buy amount (lamports) |
-| `BAGS_CREATOR_BPS` | Creator's fee share (BPS) |
-| `BAGS_PRIVATE_KEY` | Temporary private key (clear after use!) |
-| `BAGS_SIGNED_TX` | Signed transaction (base64) |
-| `BAGS_SIGNATURE` | Transaction signature |
-| `BAGS_PROVIDER` | Social provider for wallet lookup |
-| `BAGS_USERNAME` | Username for wallet lookup |
+| Variable               | Description                              |
+| ---------------------- | ---------------------------------------- |
+| `BAGS_JWT_TOKEN`       | JWT token for Agent API                  |
+| `BAGS_API_KEY`         | API key for Public API                   |
+| `BAGS_WALLET`          | Your wallet address                      |
+| `BAGS_TOKEN_NAME`      | Token name                               |
+| `BAGS_TOKEN_SYMBOL`    | Token symbol                             |
+| `BAGS_TOKEN_DESC`      | Token description                        |
+| `BAGS_IMAGE_URL`       | Token image URL                          |
+| `BAGS_TOKEN_MINT`      | Generated token mint address             |
+| `BAGS_METADATA_URL`    | IPFS metadata URL                        |
+| `BAGS_CONFIG_KEY`      | Fee share config key                     |
+| `BAGS_CONFIG_RESPONSE` | Config creation response                 |
+| `BAGS_CONFIG_TXS`      | Config transactions array                |
+| `BAGS_LAUNCH_RESPONSE` | Launch transaction response              |
+| `BAGS_LAUNCH_TX`       | Unsigned launch transaction              |
+| `BAGS_INITIAL_BUY`     | Initial buy amount (lamports)            |
+| `BAGS_CREATOR_BPS`     | Creator's fee share (BPS)                |
+| `BAGS_PRIVATE_KEY`     | Temporary private key (clear after use!) |
+| `BAGS_SIGNED_TX`       | Signed transaction (base64)              |
+| `BAGS_SIGNATURE`       | Transaction signature                    |
+| `BAGS_PROVIDER`        | Social provider for wallet lookup        |
+| `BAGS_USERNAME`        | Username for wallet lookup               |
 
 ---
 
@@ -610,4 +620,3 @@ For more than 15 fee claimers, the API automatically handles Lookup Table (LUT) 
 - **Claim fees** → See [FEES.md](https://bags.fm/fees.md)
 - **Trade tokens** → See [TRADING.md](https://bags.fm/trading.md)
 - **Monitor activity** → See [HEARTBEAT.md](https://bags.fm/heartbeat.md)
-

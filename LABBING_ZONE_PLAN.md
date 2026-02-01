@@ -5,6 +5,7 @@
 Create a new **"Founder's Corner"** zone - a cozy educational hub that teaches creators how to properly prepare their token for DexScreener listing.
 
 ## User Decisions
+
 - **Zone Name:** Founder's Corner
 - **Interactivity:** Clickable popups (buildings open detail modals)
 - **Content Scope:** DexScreener requirements only (focused)
@@ -17,13 +18,14 @@ Create a new **"Founder's Corner"** zone - a cozy educational hub that teaches c
 
 **Source:** [DexScreener Marketplace](https://marketplace.dexscreener.com/product/token-info)
 
-| Item | Specification |
-|------|---------------|
-| **Cost** | $299 USD (discounted from $499) |
-| **Payment** | Crypto or credit card |
+| Item           | Specification                   |
+| -------------- | ------------------------------- |
+| **Cost**       | $299 USD (discounted from $499) |
+| **Payment**    | Crypto or credit card           |
 | **Processing** | Usually minutes, up to 12 hours |
 
 **Logo Requirements:**
+
 - Format: PNG, JPG, WEBP, or GIF
 - Aspect Ratio: 1:1 (square)
 - Minimum Size: 100px width
@@ -31,18 +33,21 @@ Create a new **"Founder's Corner"** zone - a cozy educational hub that teaches c
 - Best Practice: 512x512px or 1024x1024px for crisp display
 
 **Header/Banner Requirements:**
+
 - Format: PNG, JPG, WEBP, or GIF
 - Aspect Ratio: 3:1 (rectangle)
 - Minimum Size: 600px wide
 - Recommended: 600x200px or 1500x500px
 
 **Required Social Links:**
+
 - Website URL
 - Twitter/X handle
 - Telegram group (optional)
 - Discord server (optional)
 
 **Other Requirements:**
+
 - Token description
 - Team information (optional)
 - Roadmap (optional)
@@ -54,10 +59,10 @@ Create a new **"Founder's Corner"** zone - a cozy educational hub that teaches c
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/lib/types.ts` | Add `"founders"` to ZoneType, add ZONES entry |
-| `src/game/scenes/BootScene.ts` | Generate building textures, props, ground texture |
+| File                            | Changes                                              |
+| ------------------------------- | ---------------------------------------------------- |
+| `src/lib/types.ts`              | Add `"founders"` to ZoneType, add ZONES entry        |
+| `src/game/scenes/BootScene.ts`  | Generate building textures, props, ground texture    |
 | `src/game/scenes/WorldScene.ts` | Zone setup, switching, element caching, popup system |
 
 ### Layer Architecture (CRITICAL - From Spec)
@@ -85,35 +90,37 @@ Create a new **"Founder's Corner"** zone - a cozy educational hub that teaches c
 
 ```typescript
 const SCALE = 1.6;
-const grassTop = 455 * SCALE;    // Top of grass area (728px)
-const pathLevel = 555 * SCALE;   // Where characters walk (888px)
-const groundY = 540 * SCALE;     // Ground tileSprite Y (864px)
-const pathY = 570 * SCALE;       // Path tileSprite Y (912px)
+const grassTop = 455 * SCALE; // Top of grass area (728px)
+const pathLevel = 555 * SCALE; // Where characters walk (888px)
+const groundY = 540 * SCALE; // Ground tileSprite Y (864px)
+const pathY = 570 * SCALE; // Path tileSprite Y (912px)
 ```
 
 ### Depth Reference
 
-| Depth | Contents |
-|-------|----------|
-| -2 | Sky gradient (DO NOT TOUCH) |
-| -1 | Stars (DO NOT TOUCH) |
-| 0 | Ground/grass layer |
-| 1 | Path layer |
-| 2 | Trees, bushes, flowers, workbenches |
-| 3 | Lamps, benches, easels |
-| 4 | Ground props, crates |
-| 5+ | Buildings |
-| 10 | Characters |
+| Depth | Contents                            |
+| ----- | ----------------------------------- |
+| -2    | Sky gradient (DO NOT TOUCH)         |
+| -1    | Stars (DO NOT TOUCH)                |
+| 0     | Ground/grass layer                  |
+| 1     | Path layer                          |
+| 2     | Trees, bushes, flowers, workbenches |
+| 3     | Lamps, benches, easels              |
+| 4     | Ground props, crates                |
+| 5+    | Buildings                           |
+| 10    | Characters                          |
 
 ### Zone Theme: "Founder's Corner"
 
 **Aesthetic:**
+
 - Cozy workshop/study environment
 - Warm wood tones (browns: 0x8b4513, 0xa0522d, 0x6b4423)
 - Amber lighting, chalkboard accents
 - Workbenches, blueprints, bulletin boards
 
 **Ground Texture (generate in BootScene):**
+
 - Cobblestone pattern with warm tones
 - Visible stone detail (not solid color)
 - Tileable 32x32 texture
@@ -127,12 +134,14 @@ const pathY = 570 * SCALE;       // Path tileSprite Y (912px)
 **Purpose:** Central educational building - DexScreener overview & checklist
 
 **Visual Elements:**
+
 - Cozy workshop building with warm wood exterior
 - Large chalkboard/bulletin board on facade
 - DexScreener green accents
 - Welcoming entrance with "LEARN HERE" sign
 
 **Popup Content (on click):**
+
 ```
 ╔═══════════════════════════════════════╗
 ║     DEXSCREENER ENHANCED TOKEN INFO   ║
@@ -157,12 +166,14 @@ const pathY = 570 * SCALE;       // Path tileSprite Y (912px)
 **Purpose:** Visual assets requirements - logo and header specs
 
 **Visual Elements:**
+
 - Artist studio with easel/canvas aesthetic
 - Display showing square vs rectangle visual
 - Paint splashes, creative vibe
 - "ASSETS" sign
 
 **Popup Content (on click):**
+
 ```
 ╔═══════════════════════════════════════╗
 ║         VISUAL ASSETS GUIDE           ║
@@ -190,12 +201,14 @@ const pathY = 570 * SCALE;       // Path tileSprite Y (912px)
 **Purpose:** Social media requirements and best practices
 
 **Visual Elements:**
+
 - Bulletin board/community center style
 - Social media icons (Twitter, Telegram, Discord)
 - Connection lines/network visual
 - "CONNECT" sign
 
 **Popup Content (on click):**
+
 ```
 ╔═══════════════════════════════════════╗
 ║       SOCIAL LINKS REQUIREMENTS       ║
@@ -223,6 +236,7 @@ const pathY = 570 * SCALE;       // Path tileSprite Y (912px)
 ## Props & Decorations (Per Spec Density Requirements)
 
 ### Required Density (from CLAUDE.md)
+
 - **Trees/tall props:** 4-6 elements
 - **Ground cover:** 4-6 bushes/hedges
 - **Lighting:** 2-4 lamps
@@ -232,17 +246,17 @@ const pathY = 570 * SCALE;       // Path tileSprite Y (912px)
 
 ### Prop Inventory with Y-Positions
 
-| Prop | Count | X Positions | Y Position | Depth |
-|------|-------|-------------|------------|-------|
-| Trees | 4 | 80, 250, 550, 720 | grassTop (±5) | 2 |
-| Hedges | 4 | 150, 350, 450, 650 | grassTop + 25 | 2 |
-| Lanterns | 3 | 200, 400, 600 | pathLevel | 3 |
-| Benches | 2 | 300, 500 | pathLevel - 5 | 3 |
-| Workbenches | 2 | 180, 580 | grassTop + 30 | 3 |
-| Easels | 2 | 320, 480 | grassTop + 20 | 3 |
-| Crates | 3 | 100, 400, 700 | pathLevel + 5 | 4 |
-| Flowers | 5 | 130, 280, 420, 560, 680 | grassTop + 32 | 2 |
-| Chalkboard Sign | 1 | GAME_WIDTH/2 | grassTop - 10 | 2 |
+| Prop            | Count | X Positions             | Y Position    | Depth |
+| --------------- | ----- | ----------------------- | ------------- | ----- |
+| Trees           | 4     | 80, 250, 550, 720       | grassTop (±5) | 2     |
+| Hedges          | 4     | 150, 350, 450, 650      | grassTop + 25 | 2     |
+| Lanterns        | 3     | 200, 400, 600           | pathLevel     | 3     |
+| Benches         | 2     | 300, 500                | pathLevel - 5 | 3     |
+| Workbenches     | 2     | 180, 580                | grassTop + 30 | 3     |
+| Easels          | 2     | 320, 480                | grassTop + 20 | 3     |
+| Crates          | 3     | 100, 400, 700           | pathLevel + 5 | 4     |
+| Flowers         | 5     | 130, 280, 420, 560, 680 | grassTop + 32 | 2     |
+| Chalkboard Sign | 1     | GAME_WIDTH/2            | grassTop - 10 | 2     |
 
 ### Ground Texture Generation (BootScene.ts)
 
@@ -279,6 +293,7 @@ private generateFoundersGround(): void {
 ```
 
 ### Lighting Style
+
 - Warm amber glow (0xfbbf24)
 - Semi-transparent aura: `fillStyle(0xfbbf24, 0.3)`
 - Lantern housing: dark wood (0x451a03)
@@ -306,14 +321,16 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
 ### Step 2: BootScene.ts - Texture Generation
 
 **Required Generators:**
+
 ```typescript
 // Add to generatePlaceholderAssets()
-this.generateFoundersGround();      // Cobblestone tileable texture
-this.generateFoundersBuildings();   // 3 workshop buildings
-this.generateFoundersProps();       // Workbench, easel, crate, lantern
+this.generateFoundersGround(); // Cobblestone tileable texture
+this.generateFoundersBuildings(); // 3 workshop buildings
+this.generateFoundersProps(); // Workbench, easel, crate, lantern
 ```
 
 **Building Generation Pattern (with 3D depth):**
+
 ```typescript
 private generateFoundersBuildings(): void {
   const s = SCALE;
@@ -403,6 +420,7 @@ private generateFoundersBuildings(): void {
 ### Step 3: WorldScene.ts - Zone Setup
 
 **Class Variables:**
+
 ```typescript
 private foundersElements: Phaser.GameObjects.GameObject[] = [];
 private foundersZoneCreated = false;
@@ -410,6 +428,7 @@ private foundersPopup: Phaser.GameObjects.Container | null = null;
 ```
 
 **Zone Switch Case:**
+
 ```typescript
 case "founders":
   // HIDE all other zone elements first
@@ -432,6 +451,7 @@ case "founders":
 ```
 
 **Setup Method:**
+
 ```typescript
 private setupFoundersZone(): void {
   const s = SCALE;
@@ -586,17 +606,20 @@ private getFoundersPopupContent(type: string): string {
 Buildings are clickable. When clicked, a modal overlay appears with detailed information.
 
 **Modal Design:**
+
 - Semi-transparent dark background overlay
 - Centered content panel with pixel art border
 - Close button (X) in corner
 - Building-specific content
 
 **UI Components Needed:**
+
 1. `showFoundersPopup(type: string)` - Display modal
 2. `hideFoundersPopup()` - Close modal
 3. Modal container (Phaser container with graphics + text)
 
 ### Modal Visual Style
+
 ```
 ┌────────────────────────────────────────┐
 │  [X]                                   │  ← Close button
@@ -614,6 +637,7 @@ Buildings are clickable. When clicked, a modal overlay appears with detailed inf
 ```
 
 ### Interaction Flow
+
 1. Player clicks building → Modal appears
 2. Modal displays building-specific DexScreener info
 3. Player clicks X or outside modal → Modal closes
@@ -624,16 +648,19 @@ Buildings are clickable. When clicked, a modal overlay appears with detailed inf
 ## Risks & Unknowns
 
 ### Risks
+
 1. **DexScreener requirements may change** - Info should be easy to update
 2. **Screen text readability** - Pixel font size must be legible
 3. **Information density** - Too much text could be overwhelming
 
 ### Mitigations
+
 1. Store display text in constants for easy updates
 2. Test font sizes at multiple resolutions
 3. Prioritize most critical info, use buildings to segment content
 
 ### Unknowns
+
 1. Should buildings be interactive (clickable for more info)?
 2. Should there be a "graduate" path showing token progression?
 3. Integration with actual token launch flow?
@@ -645,17 +672,21 @@ Buildings are clickable. When clicked, a modal overlay appears with detailed inf
 ## Visual Standards (Per CLAUDE.md)
 
 ### Pixel Art Requirements
+
 - [ ] Hard pixel edges only - no anti-aliasing
 - [ ] No smooth gradients - use dithering or solid color blocks
 - [ ] 3D depth: Light left edges, dark right edges on buildings
 - [ ] Window glow: Semi-transparent aura + highlight corner
 
 ### Day/Night Compatibility
+
 Zone colors must work against BOTH sky gradients:
+
 - **Day Sky:** Top 0x1e90ff → Bottom 0x87ceeb
 - **Night Sky:** Top 0x0f172a → Bottom 0x1e293b
 
 **Color Choices (tested for contrast):**
+
 - Building base: 0x8b4513 (SaddleBrown) ✓ Works day/night
 - Roof: 0x78350f (Dark brown) ✓ Works day/night
 - Accents: 0x4ade80 (Green), 0xfbbf24 (Amber) ✓ Bright enough
@@ -665,6 +696,7 @@ Zone colors must work against BOTH sky gradients:
 ## Implementation Checklist (From CLAUDE.md Spec)
 
 ### Technical Setup
+
 - [ ] Add `"founders"` to ZoneType in `src/lib/types.ts`
 - [ ] Add founders entry to ZONES record
 - [ ] Add `foundersElements[]` array in WorldScene.ts
@@ -677,18 +709,21 @@ Zone colors must work against BOTH sky gradients:
 - [ ] Add founders case to zone switch handler
 
 ### Layer Rules (CRITICAL)
+
 - [ ] **Sky (depth -2):** DO NOT TOUCH
 - [ ] **Ground (depth 0):** Use `setTexture("founders_ground")`
-- [ ] **Path (depth 1):** Keep at Y = 570 * SCALE
+- [ ] **Path (depth 1):** Keep at Y = 570 \* SCALE
 - [ ] **Buildings (depth 5+):** Use pre-generated textures
 - [ ] **All elements:** Push to `foundersElements[]`
 
 ### Ground Layer
+
 - [ ] Generate tileable cobblestone texture (32x32)
 - [ ] Texture has visible detail (stone pattern, not solid)
-- [ ] Character walk path at ~555 * SCALE
+- [ ] Character walk path at ~555 \* SCALE
 
 ### Content Requirements
+
 - [ ] 3 detailed buildings (workshop, studio, social hub)
 - [ ] Buildings have: walls, windows, doors, roof, sign
 - [ ] 4 trees at grassTop Y-level
@@ -700,12 +735,14 @@ Zone colors must work against BOTH sky gradients:
 - [ ] Zone title banner
 
 ### Pixel Art Quality
+
 - [ ] 3D depth on buildings (light left, dark right)
 - [ ] Dithering texture on building walls
 - [ ] Window glow with semi-transparent aura
 - [ ] Color progression (base → highlight → shadow)
 
 ### Zone Switching
+
 - [ ] Hide park decorations
 - [ ] Hide animals
 - [ ] Hide other zone elements (trending, academy, ballers)
@@ -713,6 +750,7 @@ Zone colors must work against BOTH sky gradients:
 - [ ] Toggle visibility with `setVisible()`
 
 ### Popup System
+
 - [ ] Click handler on buildings
 - [ ] Hover effect (tint change)
 - [ ] Modal overlay (semi-transparent dark)
@@ -721,6 +759,7 @@ Zone colors must work against BOTH sky gradients:
 - [ ] Building-specific content
 
 ### Final Validation
+
 - [ ] Does zone match Park/BagsCity quality?
 - [ ] Test in BOTH day and night states
 - [ ] Verify characters walk correctly on path
@@ -731,16 +770,16 @@ Zone colors must work against BOTH sky gradients:
 
 ## Estimated Scope
 
-| Component | Complexity | Lines |
-|-----------|------------|-------|
-| types.ts changes | Low | ~10 |
-| BootScene: ground texture | Low | ~30 |
-| BootScene: 3 buildings | Medium | ~200 |
-| BootScene: props (workbench, easel, lantern, crate) | Medium | ~150 |
-| WorldScene: zone setup | Medium | ~200 |
-| WorldScene: prop placement | Medium | ~100 |
-| WorldScene: popup system | Medium | ~100 |
-| WorldScene: hide other zones | Low | ~20 |
+| Component                                           | Complexity | Lines |
+| --------------------------------------------------- | ---------- | ----- |
+| types.ts changes                                    | Low        | ~10   |
+| BootScene: ground texture                           | Low        | ~30   |
+| BootScene: 3 buildings                              | Medium     | ~200  |
+| BootScene: props (workbench, easel, lantern, crate) | Medium     | ~150  |
+| WorldScene: zone setup                              | Medium     | ~200  |
+| WorldScene: prop placement                          | Medium     | ~100  |
+| WorldScene: popup system                            | Medium     | ~100  |
+| WorldScene: hide other zones                        | Low        | ~20   |
 
 **Total:** ~800-900 lines of new code
 

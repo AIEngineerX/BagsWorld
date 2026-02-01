@@ -104,16 +104,16 @@ export async function GET(request: NextRequest) {
   if (action === "rate-limits") {
     const wallet = searchParams.get("wallet") || undefined;
     const status = getRateLimitStatus(wallet);
-    
+
     let canLaunch = true;
     let canLaunchReason = "Ready to launch";
-    
+
     if (wallet) {
       const check = canWalletLaunch(wallet);
       canLaunch = check.allowed;
       canLaunchReason = check.reason || "Ready to launch";
     }
-    
+
     return NextResponse.json({
       success: true,
       rateLimits: status,
@@ -126,20 +126,20 @@ export async function GET(request: NextRequest) {
   if (action === "verify-fees") {
     const tokenMint = searchParams.get("tokenMint");
     const wallet = searchParams.get("wallet");
-    
+
     if (!tokenMint) {
       return NextResponse.json(
         { success: false, error: "tokenMint query parameter required" },
         { status: 400 }
       );
     }
-    
+
     try {
       // Check if wallet has claimable positions for this token
       if (wallet) {
         const { positions, totalClaimableLamports } = await getClaimableForWallet(wallet);
-        const tokenPosition = positions.find(p => p.baseMint === tokenMint);
-        
+        const tokenPosition = positions.find((p) => p.baseMint === tokenMint);
+
         return NextResponse.json({
           success: true,
           verification: {
@@ -148,9 +148,13 @@ export async function GET(request: NextRequest) {
             hasPosition: !!tokenPosition,
             isCustomFeeVault: tokenPosition?.isCustomFeeVault ?? null,
             isMigrated: tokenPosition?.isMigrated ?? null,
-            claimableLamports: tokenPosition ? 
-              parseInt(tokenPosition.virtualPoolClaimableAmount || tokenPosition.totalClaimableLamportsUserShare || "0") +
-              parseInt(tokenPosition.dammPoolClaimableAmount || "0") : 0,
+            claimableLamports: tokenPosition
+              ? parseInt(
+                  tokenPosition.virtualPoolClaimableAmount ||
+                    tokenPosition.totalClaimableLamportsUserShare ||
+                    "0"
+                ) + parseInt(tokenPosition.dammPoolClaimableAmount || "0")
+              : 0,
             totalClaimableLamports,
           },
           note: "If hasPosition is true, this wallet is configured to receive fees from this token. Fees accumulate as the token is traded.",
@@ -160,7 +164,7 @@ export async function GET(request: NextRequest) {
           },
         });
       }
-      
+
       // Just return token info without wallet check
       return NextResponse.json({
         success: true,
@@ -174,10 +178,13 @@ export async function GET(request: NextRequest) {
         note: "Add &wallet=YOUR_WALLET to check if a specific wallet can claim fees from this token.",
       });
     } catch (err) {
-      return NextResponse.json({
-        success: false,
-        error: err instanceof Error ? err.message : "Verification failed",
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: err instanceof Error ? err.message : "Verification failed",
+        },
+        { status: 500 }
+      );
     }
   }
 
@@ -194,7 +201,7 @@ export async function GET(request: NextRequest) {
         console.error("[launcher-status] Failed to get balance:", err);
       }
     }
-    
+
     const rateLimits = getRateLimitStatus();
 
     return NextResponse.json({
@@ -209,7 +216,8 @@ export async function GET(request: NextRequest) {
       rateLimits: rateLimits.global,
       safety: {
         nonCustodial: true,
-        description: "BagsWorld never has access to your private keys. You sign all claim transactions yourself.",
+        description:
+          "BagsWorld never has access to your private keys. You sign all claim transactions yourself.",
         feeShare: "100% of trading fees go to your wallet",
         rateLimit: `${rateLimits.global.limit - rateLimits.global.used} launches remaining today (global)`,
       },
@@ -219,12 +227,15 @@ export async function GET(request: NextRequest) {
   // Debug endpoint to check environment
   if (action === "debug-env") {
     const apiKey = process.env.BAGS_API_KEY;
-    const launcherKey = process.env.BAGSWORLD_LAUNCHER_PRIVATE_KEY || process.env.AGENT_WALLET_PRIVATE_KEY;
+    const launcherKey =
+      process.env.BAGSWORLD_LAUNCHER_PRIVATE_KEY || process.env.AGENT_WALLET_PRIVATE_KEY;
     return NextResponse.json({
       success: true,
       debug: {
         bagsApiKey: apiKey ? `${apiKey.substring(0, 10)}... (${apiKey.length} chars)` : "NOT SET",
-        launcherKey: launcherKey ? `${launcherKey.substring(0, 4)}... (${launcherKey.length} chars)` : "NOT SET",
+        launcherKey: launcherKey
+          ? `${launcherKey.substring(0, 4)}... (${launcherKey.length} chars)`
+          : "NOT SET",
         launcherConfigured: isLauncherConfigured(),
         nodeEnv: process.env.NODE_ENV,
       },
@@ -237,7 +248,7 @@ export async function GET(request: NextRequest) {
     const testWallet = "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC"; // Ghost's wallet
 
     const launcherStatus = isLauncherConfigured();
-    
+
     // Debug info
     const apiKey = process.env.BAGS_API_KEY;
     const debugInfo = {
@@ -245,7 +256,7 @@ export async function GET(request: NextRequest) {
       apiKeyLength: apiKey?.length || 0,
       apiKeyPrefix: apiKey?.substring(0, 10) || "none",
     };
-    
+
     if (!launcherStatus.configured) {
       return NextResponse.json({
         success: false,
@@ -292,13 +303,13 @@ export async function GET(request: NextRequest) {
   // Admin test: Run claim + reinvest loop for a wallet
   if (action === "test-claim-reinvest") {
     const wallet = searchParams.get("wallet") || "9Luwe53R7V5ohS8dmconp38w9FoKsUgBjVwEPPU8iFUC";
-    
+
     console.log("[Test Claim+Reinvest] Starting for wallet:", wallet);
 
     // Step 1: Check claimable
     let positions: Awaited<ReturnType<typeof getClaimableForWallet>>["positions"] = [];
     let totalClaimableLamports = 0;
-    
+
     try {
       const result = await getClaimableForWallet(wallet);
       positions = result.positions;
@@ -310,10 +321,12 @@ export async function GET(request: NextRequest) {
         error: `Failed to get claimable: ${err instanceof Error ? err.message : String(err)}`,
       });
     }
-    
+
     const claimableSol = totalClaimableLamports / 1_000_000_000;
-    
-    console.log(`[Test Claim+Reinvest] Claimable: ${claimableSol.toFixed(6)} SOL from ${positions.length} positions`);
+
+    console.log(
+      `[Test Claim+Reinvest] Claimable: ${claimableSol.toFixed(6)} SOL from ${positions.length} positions`
+    );
 
     if (positions.length === 0 || claimableSol < 0.001) {
       return NextResponse.json({
@@ -336,7 +349,7 @@ export async function GET(request: NextRequest) {
         error: `Failed to generate claim tx: ${err instanceof Error ? err.message : String(err)}`,
       });
     }
-    
+
     if (!claimResult.transactions || claimResult.transactions.length === 0) {
       return NextResponse.json({
         success: true,
@@ -349,7 +362,7 @@ export async function GET(request: NextRequest) {
     // Step 3: Get reinvestment decision
     const BAGSWORLD_MINT = "9auyeHWESnJiH74n4UHP4FYfWMcrbxSuHsSSAaZkBAGS";
     const reinvestAmount = claimableSol * 0.95; // Leave some for fees
-    
+
     return NextResponse.json({
       success: true,
       step: "ready",
@@ -687,7 +700,17 @@ export async function POST(request: NextRequest) {
   if (action === "launch") {
     // Token launch enabled - uses BagsWorld's partnerConfigPda
     // Accept either wallet OR moltbookUsername
-    const { wallet, moltbookUsername, name, symbol, description, imageUrl, twitter, website, telegram } = body;
+    const {
+      wallet,
+      moltbookUsername,
+      name,
+      symbol,
+      description,
+      imageUrl,
+      twitter,
+      website,
+      telegram,
+    } = body;
 
     if (!wallet && !moltbookUsername) {
       return NextResponse.json(
@@ -717,7 +740,7 @@ export async function POST(request: NextRequest) {
     try {
       const launchIdentifier = moltbookUsername ? `@${moltbookUsername}` : wallet;
       console.log("[Launch] Starting launch for", launchIdentifier, symbol);
-      
+
       const result = await launchForExternal({
         creatorWallet: wallet,
         moltbookUsername,
@@ -741,17 +764,23 @@ export async function POST(request: NextRequest) {
       if (wallet) {
         const existingAgent = await getExternalAgent(wallet);
         if (!existingAgent) {
-          await registerExternalAgent(wallet, name, "main_city", `Creator of $${symbol}`, moltbookUsername);
+          await registerExternalAgent(
+            wallet,
+            name,
+            "main_city",
+            `Creator of $${symbol}`,
+            moltbookUsername
+          );
         }
       }
-      
+
       // Get updated rate limits for response (use wallet or empty for moltbook-only)
       const rateLimitWallet = wallet || "";
       const updatedRateLimits = getRateLimitStatus(rateLimitWallet || undefined);
 
       return NextResponse.json({
         success: true,
-        message: moltbookUsername 
+        message: moltbookUsername
           ? `Token launched! @${moltbookUsername} earns 100% of trading fees.`
           : `Token launched! You earn 100% of trading fees.`,
         token: {
@@ -766,7 +795,7 @@ export async function POST(request: NextRequest) {
           yourShare: "100%",
           recipient: moltbookUsername ? `@${moltbookUsername} (Moltbook)` : wallet,
           claimEndpoint: "/api/agent-economy/external (action: claimable, then claim)",
-          verifyEndpoint: wallet 
+          verifyEndpoint: wallet
             ? `/api/agent-economy/external?action=verify-fees&tokenMint=${result.tokenMint}&wallet=${wallet}`
             : `https://bags.fm/${result.tokenMint}`,
           solscan: `https://solscan.io/token/${result.tokenMint}`,

@@ -24,112 +24,128 @@ const CHARACTERS = [
   {
     id: "ghost",
     name: "Ghost",
-    description: "Mysterious developer with dark hoodie and hood up, glasses, purple ghost icon on chest, hacker aesthetic, nocturnal coder vibes",
+    description:
+      "Mysterious developer with dark hoodie and hood up, glasses, purple ghost icon on chest, hacker aesthetic, nocturnal coder vibes",
     colors: ["#1a1a2e", "#4a0080", "#9945ff"],
     style: "cyberpunk hacker",
   },
   {
     id: "ash",
     name: "Ash",
-    description: "Pokemon trainer inspired, red cap with white front, blue vest over black shirt, spiky black hair, Z-marks on cheeks, determined expression",
+    description:
+      "Pokemon trainer inspired, red cap with white front, blue vest over black shirt, spiky black hair, Z-marks on cheeks, determined expression",
     colors: ["#ef4444", "#3b82f6", "#000000"],
     style: "anime pokemon trainer",
   },
   {
     id: "professor-oak",
     name: "Professor Oak",
-    description: "Elderly professor with white lab coat, gray hair, kind grandfatherly face, glasses, holding a clipboard or pokeball, wise expression",
+    description:
+      "Elderly professor with white lab coat, gray hair, kind grandfatherly face, glasses, holding a clipboard or pokeball, wise expression",
     colors: ["#ffffff", "#6b7280", "#78716c"],
     style: "anime professor scientist",
   },
   {
     id: "finn",
     name: "Finn",
-    description: "Crypto founder with pink beanie hat, emerald green Bags hoodie, confident smile, startup CEO vibes, money bag icon",
+    description:
+      "Crypto founder with pink beanie hat, emerald green Bags hoodie, confident smile, startup CEO vibes, money bag icon",
     colors: ["#ec4899", "#4ade80", "#ffffff"],
     style: "tech startup founder",
   },
   {
     id: "toly",
     name: "Toly",
-    description: "Solana co-founder inspired, purple Solana hoodie, beard, Solana green glow aura, blockchain visionary, technical genius look",
+    description:
+      "Solana co-founder inspired, purple Solana hoodie, beard, Solana green glow aura, blockchain visionary, technical genius look",
     colors: ["#9945ff", "#14f195", "#1a1a2e"],
     style: "tech visionary blockchain",
   },
   {
     id: "shaw",
     name: "Shaw",
-    description: "AI agent architect, casual tech style, ElizaOS creator, thoughtful expression, glasses, coding on laptop, futuristic AI vibes",
+    description:
+      "AI agent architect, casual tech style, ElizaOS creator, thoughtful expression, glasses, coding on laptop, futuristic AI vibes",
     colors: ["#3b82f6", "#1e293b", "#f8fafc"],
     style: "AI researcher developer",
   },
   {
     id: "neo",
     name: "Neo",
-    description: "Matrix-inspired scout, long black coat, sunglasses, seeing code in the matrix, on-chain data visualizer, mysterious watcher",
+    description:
+      "Matrix-inspired scout, long black coat, sunglasses, seeing code in the matrix, on-chain data visualizer, mysterious watcher",
     colors: ["#000000", "#22c55e", "#1a1a2e"],
     style: "matrix cyberpunk hacker",
   },
   {
     id: "cj",
     name: "CJ",
-    description: "GTA San Andreas inspired, white tank top, gold chain, bandana, street smart expression, Los Santos vibes, confident pose",
+    description:
+      "GTA San Andreas inspired, white tank top, gold chain, bandana, street smart expression, Los Santos vibes, confident pose",
     colors: ["#ffffff", "#fbbf24", "#1f2937"],
     style: "GTA gangster street",
   },
   {
     id: "ramo",
     name: "Ramo",
-    description: "CTO developer, smart casual, coding at multiple monitors, backend wizard, serious focused expression, tech lead vibes",
+    description:
+      "CTO developer, smart casual, coding at multiple monitors, backend wizard, serious focused expression, tech lead vibes",
     colors: ["#3b82f6", "#1e293b", "#4ade80"],
     style: "senior software engineer",
   },
   {
     id: "sincara",
     name: "Sincara",
-    description: "Frontend engineer, creative designer aesthetic, colorful outfit, working on UI designs, artistic and technical, modern style",
+    description:
+      "Frontend engineer, creative designer aesthetic, colorful outfit, working on UI designs, artistic and technical, modern style",
     colors: ["#ec4899", "#8b5cf6", "#06b6d4"],
     style: "creative UI designer",
   },
   {
     id: "stuu",
     name: "Stuu",
-    description: "Operations manager, professional but approachable, headset for support, organized desk, helpful expression, community support vibes",
+    description:
+      "Operations manager, professional but approachable, headset for support, organized desk, helpful expression, community support vibes",
     colors: ["#4ade80", "#1e293b", "#ffffff"],
     style: "customer support professional",
   },
   {
     id: "sam",
     name: "Sam",
-    description: "Growth marketer, energetic expression, social media icons around, megaphone or phone, marketing genius, viral content creator",
+    description:
+      "Growth marketer, energetic expression, social media icons around, megaphone or phone, marketing genius, viral content creator",
     colors: ["#f97316", "#fbbf24", "#1e293b"],
     style: "social media marketer",
   },
   {
     id: "alaa",
     name: "Alaa",
-    description: "Skunk works R&D, lab coat with goggles, experimental gadgets, mad scientist vibes but friendly, innovation focused",
+    description:
+      "Skunk works R&D, lab coat with goggles, experimental gadgets, mad scientist vibes but friendly, innovation focused",
     colors: ["#8b5cf6", "#4ade80", "#1a1a2e"],
     style: "mad scientist inventor",
   },
   {
     id: "carlo",
     name: "Carlo",
-    description: "Community ambassador, welcoming smile, Bags branded shirt, helping newcomers, friendly guide, community leader vibes",
+    description:
+      "Community ambassador, welcoming smile, Bags branded shirt, helping newcomers, friendly guide, community leader vibes",
     colors: ["#4ade80", "#fbbf24", "#1e293b"],
     style: "community manager friendly",
   },
   {
     id: "bnn",
     name: "BNN",
-    description: "News anchor bot, professional news desk, microphone, breaking news graphics, robotic but charismatic, news network style",
+    description:
+      "News anchor bot, professional news desk, microphone, breaking news graphics, robotic but charismatic, news network style",
     colors: ["#ef4444", "#1e293b", "#ffffff"],
     style: "news anchor broadcaster",
   },
   {
     id: "bags-bot",
     name: "Bags Bot",
-    description: "Friendly mascot robot, Bags green color scheme, helpful assistant vibes, cute but capable, pixel art robot aesthetic",
+    description:
+      "Friendly mascot robot, Bags green color scheme, helpful assistant vibes, cute but capable, pixel art robot aesthetic",
     colors: ["#4ade80", "#1a1a2e", "#ffffff"],
     style: "cute helpful robot mascot",
   },
@@ -150,7 +166,7 @@ function ensureDirectories() {
 }
 
 // Generate procedural pixel art SVG (fallback when no API)
-function generateProceduralProfile(character: typeof CHARACTERS[0]): string {
+function generateProceduralProfile(character: (typeof CHARACTERS)[0]): string {
   const seed = character.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
   const random = (i: number) => {
     const x = Math.sin(seed * 9999 + i) * 10000;
@@ -191,13 +207,13 @@ function generateProceduralProfile(character: typeof CHARACTERS[0]): string {
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <rect width="${size}" height="${size}" fill="#0a0a0f"/>
   ${pixels}
-  <text x="${size/2}" y="${size/2 + 40}" font-family="monospace" font-size="120" font-weight="bold" fill="${primary}" text-anchor="middle" opacity="0.8">${initial}</text>
-  <text x="${size/2}" y="${size - 30}" font-family="monospace" font-size="28" fill="#ffffff" text-anchor="middle" opacity="0.6">${character.name}</text>
+  <text x="${size / 2}" y="${size / 2 + 40}" font-family="monospace" font-size="120" font-weight="bold" fill="${primary}" text-anchor="middle" opacity="0.8">${initial}</text>
+  <text x="${size / 2}" y="${size - 30}" font-family="monospace" font-size="28" fill="#ffffff" text-anchor="middle" opacity="0.6">${character.name}</text>
 </svg>`;
 }
 
 // Generate procedural banner SVG
-function generateProceduralBanner(character: typeof CHARACTERS[0]): string {
+function generateProceduralBanner(character: (typeof CHARACTERS)[0]): string {
   const seed = character.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
   const random = (i: number) => {
     const x = Math.sin(seed * 7777 + i) * 10000;
@@ -224,7 +240,7 @@ function generateProceduralBanner(character: typeof CHARACTERS[0]): string {
     path += ` L ${width} ${height} L 0 ${height} Z`;
 
     const color = i % 3 === 0 ? primary : i % 3 === 1 ? secondary : accent;
-    const opacity = 0.1 + (i * 0.1);
+    const opacity = 0.1 + i * 0.1;
     waves += `<path d="${path}" fill="${color}" opacity="${opacity}"/>`;
   }
 
@@ -238,16 +254,20 @@ function generateProceduralBanner(character: typeof CHARACTERS[0]): string {
   </defs>
   <rect width="${width}" height="${height}" fill="url(#bg-${character.id})"/>
   ${waves}
-  <text x="80" y="${height/2 + 20}" font-family="monospace" font-size="72" font-weight="bold" fill="${primary}">${character.name}</text>
-  <text x="80" y="${height/2 + 70}" font-family="monospace" font-size="24" fill="#888888">${character.style}</text>
-  <circle cx="${width - 150}" cy="${height/2}" r="80" fill="${primary}" opacity="0.3"/>
-  <circle cx="${width - 150}" cy="${height/2}" r="50" fill="${secondary}" opacity="0.5"/>
-  <text x="${width - 150}" y="${height/2 + 20}" font-family="monospace" font-size="64" font-weight="bold" fill="#ffffff" text-anchor="middle">${character.name[0]}</text>
+  <text x="80" y="${height / 2 + 20}" font-family="monospace" font-size="72" font-weight="bold" fill="${primary}">${character.name}</text>
+  <text x="80" y="${height / 2 + 70}" font-family="monospace" font-size="24" fill="#888888">${character.style}</text>
+  <circle cx="${width - 150}" cy="${height / 2}" r="80" fill="${primary}" opacity="0.3"/>
+  <circle cx="${width - 150}" cy="${height / 2}" r="50" fill="${secondary}" opacity="0.5"/>
+  <text x="${width - 150}" y="${height / 2 + 20}" font-family="monospace" font-size="64" font-weight="bold" fill="#ffffff" text-anchor="middle">${character.name[0]}</text>
 </svg>`;
 }
 
 // Convert SVG to PNG using Replicate (if available)
-async function svgToPngWithReplicate(svgContent: string, width: number, height: number): Promise<Buffer | null> {
+async function svgToPngWithReplicate(
+  svgContent: string,
+  width: number,
+  height: number
+): Promise<Buffer | null> {
   const apiToken = process.env.REPLICATE_API_TOKEN;
   if (!apiToken) return null;
 
@@ -317,15 +337,11 @@ async function generateWithSDXL(
             await new Promise((r) => setTimeout(r, 2000));
 
             const pollResult = await new Promise<any>((pollResolve) => {
-              https.get(
-                pollUrl,
-                { headers: { Authorization: `Token ${apiToken}` } },
-                (pollRes) => {
-                  let pollData = "";
-                  pollRes.on("data", (c) => (pollData += c));
-                  pollRes.on("end", () => pollResolve(JSON.parse(pollData)));
-                }
-              );
+              https.get(pollUrl, { headers: { Authorization: `Token ${apiToken}` } }, (pollRes) => {
+                let pollData = "";
+                pollRes.on("data", (c) => (pollData += c));
+                pollRes.on("end", () => pollResolve(JSON.parse(pollData)));
+              });
             });
 
             if (pollResult.status === "succeeded" && pollResult.output?.[0]) {

@@ -44,9 +44,7 @@ function createWrapper() {
   });
 
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -107,9 +105,7 @@ describe("useWorldState Hook", () => {
   describe("Initial loading", () => {
     it("should load tokens from registry on mount", async () => {
       (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue(mockTokens);
-      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(
-        mockTokens
-      );
+      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(mockTokens);
 
       let hookResult: any;
       await act(async () => {
@@ -151,9 +147,7 @@ describe("useWorldState Hook", () => {
       ];
 
       (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue(mockTokens);
-      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(
-        globalTokens
-      );
+      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(globalTokens);
 
       await act(async () => {
         renderHook(() => useWorldState(), {
@@ -168,9 +162,7 @@ describe("useWorldState Hook", () => {
   describe("Fetch world state", () => {
     it("should POST tokens to /api/world-state", async () => {
       (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue(mockTokens);
-      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(
-        mockTokens
-      );
+      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(mockTokens);
 
       await act(async () => {
         renderHook(() => useWorldState(), {
@@ -188,9 +180,7 @@ describe("useWorldState Hook", () => {
 
     it("should update store with fetched world state", async () => {
       (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue(mockTokens);
-      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(
-        mockTokens
-      );
+      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(mockTokens);
 
       await act(async () => {
         renderHook(() => useWorldState(), {
@@ -446,9 +436,7 @@ describe("useWorldState Hook", () => {
       ];
 
       (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue(tokens1);
-      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(
-        tokens1
-      );
+      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(tokens1);
 
       await act(async () => {
         renderHook(() => useWorldState(), {
@@ -568,9 +556,7 @@ describe("useWorldState Hook", () => {
 
     it("should return tokenCount", async () => {
       (tokenRegistry.getAllWorldTokens as jest.Mock).mockReturnValue(mockTokens);
-      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(
-        mockTokens
-      );
+      (tokenRegistry.getAllWorldTokensAsync as jest.Mock).mockResolvedValue(mockTokens);
 
       let hookResult: any;
       await act(async () => {
@@ -603,10 +589,7 @@ describe("useWorldState Hook", () => {
         unmountFn!();
       });
 
-      expect(removeEventListenerSpy).toHaveBeenCalledWith(
-        "storage",
-        expect.any(Function)
-      );
+      expect(removeEventListenerSpy).toHaveBeenCalledWith("storage", expect.any(Function));
       expect(removeEventListenerSpy).toHaveBeenCalledWith(
         "bagsworld-token-update",
         expect.any(Function)

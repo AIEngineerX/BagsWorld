@@ -38,14 +38,14 @@ BagsWorld transforms abstract DeFi data into a living, breathing pixel art game.
 
 ## Core Mechanics
 
-| On-Chain Event | In-Game Effect |
-|----------------|----------------|
-| Token launched on Bags.fm | Building appears in world |
-| Market cap grows | Building levels up (1→5) |
-| No trading activity | Building decays and crumbles |
-| Fee claims spike | World health increases, sun comes out |
-| Whale moves 10+ SOL | Storm clouds roll in |
-| Price pumps 20%+ | Characters celebrate |
+| On-Chain Event            | In-Game Effect                        |
+| ------------------------- | ------------------------------------- |
+| Token launched on Bags.fm | Building appears in world             |
+| Market cap grows          | Building levels up (1→5)              |
+| No trading activity       | Building decays and crumbles          |
+| Fee claims spike          | World health increases, sun comes out |
+| Whale moves 10+ SOL       | Storm clouds roll in                  |
+| Price pumps 20%+          | Characters celebrate                  |
 
 ### World Health Formula
 
@@ -63,36 +63,36 @@ Health = (0.6 × 24h_claim_volume) + (0.3 × lifetime_fees) + (0.1 × active_tok
 
 ### 5 Unique Zones
 
-| Zone | Theme | Highlights |
-|------|-------|------------|
-| **HQ** | Futuristic R&D | Bags.fm team HQ, meet Ramo, Sincara, Stuu |
-| **Park** | Peaceful green | PokeCenter, Toly, Ash, Shaw |
-| **BagsCity** | Neon urban | Casino, Trading Terminal, Neo, CJ |
-| **Ballers Valley** | Luxury mansions | Top holder showcases |
-| **Founder's Corner** | Learning hub | Professor Oak's token launch guidance |
+| Zone                 | Theme           | Highlights                                |
+| -------------------- | --------------- | ----------------------------------------- |
+| **HQ**               | Futuristic R&D  | Bags.fm team HQ, meet Ramo, Sincara, Stuu |
+| **Park**             | Peaceful green  | PokeCenter, Toly, Ash, Shaw               |
+| **BagsCity**         | Neon urban      | Casino, Trading Terminal, Neo, CJ         |
+| **Ballers Valley**   | Luxury mansions | Top holder showcases                      |
+| **Founder's Corner** | Learning hub    | Professor Oak's token launch guidance     |
 
 ### 16 AI Characters (ElizaOS)
 
 Every character runs on [ElizaOS](https://github.com/elizaOS/eliza) with persistent memory and distinct personalities:
 
-| Character | Role | Zone |
-|-----------|------|------|
-| **Finn** | Bags.fm CEO | Park |
-| **Toly** | Solana Co-founder | Park |
-| **Shaw** | ElizaOS Creator | Park |
-| **Ghost** | Community Funder | Park |
-| **Neo** | Launch Scout | BagsCity |
-| **CJ** | Market Commentary | BagsCity |
-| **Professor Oak** | Launch Wizard | Founder's Corner |
-| **Ramo** | CTO | HQ |
-| **Sincara** | Frontend Engineer | HQ |
-| **Stuu** | Operations | HQ |
-| **Sam** | Growth | HQ |
-| **Alaa** | Skunk Works | HQ |
-| **Carlo** | Ambassador | HQ |
-| **BNN** | News Network | HQ |
-| **Ash** | Ecosystem Guide | Park |
-| **Bags Bot** | World Guide | All |
+| Character         | Role              | Zone             |
+| ----------------- | ----------------- | ---------------- |
+| **Finn**          | Bags.fm CEO       | Park             |
+| **Toly**          | Solana Co-founder | Park             |
+| **Shaw**          | ElizaOS Creator   | Park             |
+| **Ghost**         | Community Funder  | Park             |
+| **Neo**           | Launch Scout      | BagsCity         |
+| **CJ**            | Market Commentary | BagsCity         |
+| **Professor Oak** | Launch Wizard     | Founder's Corner |
+| **Ramo**          | CTO               | HQ               |
+| **Sincara**       | Frontend Engineer | HQ               |
+| **Stuu**          | Operations        | HQ               |
+| **Sam**           | Growth            | HQ               |
+| **Alaa**          | Skunk Works       | HQ               |
+| **Carlo**         | Ambassador        | HQ               |
+| **BNN**           | News Network      | HQ               |
+| **Ash**           | Ecosystem Guide   | Park             |
+| **Bags Bot**      | World Guide       | All              |
 
 ### Game Features
 
@@ -146,13 +146,13 @@ This starts the agent server on port 3001. The main app connects automatically v
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `BAGS_API_KEY` | Yes | Bags.fm API key |
-| `SOLANA_RPC_URL` | Yes | Helius RPC for transactions |
-| `ANTHROPIC_API_KEY` | For AI | Claude API for character chat |
-| `DATABASE_URL` | For persistence | Neon PostgreSQL connection |
-| `BITQUERY_API_KEY` | Optional | Platform-wide Bags.fm feed |
+| Variable            | Required        | Description                   |
+| ------------------- | --------------- | ----------------------------- |
+| `BAGS_API_KEY`      | Yes             | Bags.fm API key               |
+| `SOLANA_RPC_URL`    | Yes             | Helius RPC for transactions   |
+| `ANTHROPIC_API_KEY` | For AI          | Claude API for character chat |
+| `DATABASE_URL`      | For persistence | Neon PostgreSQL connection    |
+| `BITQUERY_API_KEY`  | Optional        | Platform-wide Bags.fm feed    |
 
 See [.env.example](.env.example) for full configuration.
 
@@ -202,15 +202,15 @@ BagsWorld/
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Next.js 14 (App Router) |
-| Game Engine | Phaser 3.80 |
-| AI Agents | ElizaOS + Claude/GPT |
-| Blockchain | Solana Web3.js, Bags.fm SDK |
-| Database | Neon PostgreSQL |
-| State | Zustand + TanStack Query |
-| Styling | Tailwind CSS |
+| Layer       | Technology                  |
+| ----------- | --------------------------- |
+| Framework   | Next.js 14 (App Router)     |
+| Game Engine | Phaser 3.80                 |
+| AI Agents   | ElizaOS + Claude/GPT        |
+| Blockchain  | Solana Web3.js, Bags.fm SDK |
+| Database    | Neon PostgreSQL             |
+| State       | Zustand + TanStack Query    |
+| Styling     | Tailwind CSS                |
 
 ## Community Funding
 
@@ -245,16 +245,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
 
 BagsWorld exposes 65+ API routes. Key endpoints:
 
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/world-state` | Main game state engine |
-| `/api/character-chat` | AI character conversations |
-| `/api/oak-generate` | AI token name/logo/banner generator |
-| `/api/arena` | AI Trading Arena with 5 agents |
-| `/api/oracle/*` | Price prediction system |
-| `/api/casino/*` | Raffle and prize system |
-| `/api/agent` | Autonomous agent controls |
-| `/api/bags-live-feed` | Platform-wide Bags.fm activity |
+| Endpoint              | Purpose                             |
+| --------------------- | ----------------------------------- |
+| `/api/world-state`    | Main game state engine              |
+| `/api/character-chat` | AI character conversations          |
+| `/api/oak-generate`   | AI token name/logo/banner generator |
+| `/api/arena`          | AI Trading Arena with 5 agents      |
+| `/api/oracle/*`       | Price prediction system             |
+| `/api/casino/*`       | Raffle and prize system             |
+| `/api/agent`          | Autonomous agent controls           |
+| `/api/bags-live-feed` | Platform-wide Bags.fm activity      |
 
 ### Professor Oak AI Generator
 

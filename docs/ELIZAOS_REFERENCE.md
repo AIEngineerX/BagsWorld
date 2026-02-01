@@ -12,7 +12,7 @@ Source: https://docs.elizaos.ai/llms-full.txt
 The central orchestrator that manages an agent's lifecycle, memory, and capabilities.
 
 ```typescript
-import { AgentRuntime, ModelProviderName } from '@elizaos/core';
+import { AgentRuntime, ModelProviderName } from "@elizaos/core";
 
 const runtime = new AgentRuntime({
   character: myCharacter,
@@ -26,6 +26,7 @@ await runtime.initialize();
 ```
 
 Key methods:
+
 - `runtime.processMessage(message)` - Process user input and generate response
 - `runtime.getService<T>(serviceType)` - Get registered service
 - `runtime.getSetting(key)` - Get configuration value
@@ -64,11 +65,11 @@ export const myPlugin: Plugin = {
 Long-running singletons that provide capabilities to agents.
 
 ```typescript
-import { Service, IAgentRuntime } from '@elizaos/core';
+import { Service, IAgentRuntime } from "@elizaos/core";
 
 export class MyService extends Service {
-  static readonly serviceType = 'my_service';
-  readonly capabilityDescription = 'What this service does';
+  static readonly serviceType = "my_service";
+  readonly capabilityDescription = "What this service does";
 
   // Lifecycle: start
   static async start(runtime: IAgentRuntime): Promise<MyService> {
@@ -84,12 +85,12 @@ export class MyService extends Service {
 
   // Custom methods
   async doSomething(): Promise<string> {
-    return 'result';
+    return "result";
   }
 }
 
 // Access in other code
-const service = runtime.getService<MyService>('my_service');
+const service = runtime.getService<MyService>("my_service");
 ```
 
 ---
@@ -99,11 +100,11 @@ const service = runtime.getService<MyService>('my_service');
 Supply context that gets injected into agent prompts. Run in parallel.
 
 ```typescript
-import { Provider, IAgentRuntime, Memory, State } from '@elizaos/core';
+import { Provider, IAgentRuntime, Memory, State } from "@elizaos/core";
 
 export const worldStateProvider: Provider = {
-  name: 'worldState',
-  description: 'Current BagsWorld state',
+  name: "worldState",
+  description: "Current BagsWorld state",
 
   get: async (runtime: IAgentRuntime, message: Memory, state: State): Promise<string> => {
     const worldData = await fetchWorldState();
@@ -126,19 +127,19 @@ Multiple providers run in parallel; their outputs are concatenated into the syst
 Tools that agents can invoke during conversation.
 
 ```typescript
-import { Action, IAgentRuntime, Memory, State, HandlerCallback } from '@elizaos/core';
+import { Action, IAgentRuntime, Memory, State, HandlerCallback } from "@elizaos/core";
 
 export const lookupTokenAction: Action = {
-  name: 'LOOKUP_TOKEN',
-  description: 'Look up information about a Bags.fm token',
+  name: "LOOKUP_TOKEN",
+  description: "Look up information about a Bags.fm token",
 
   // When should this action be considered?
-  similes: ['check token', 'find token', 'token info'],
+  similes: ["check token", "find token", "token info"],
 
   // Validation: should this action run?
   validate: async (runtime: IAgentRuntime, message: Memory): Promise<boolean> => {
-    const text = message.content.text?.toLowerCase() || '';
-    return text.includes('token') || text.includes('look up');
+    const text = message.content.text?.toLowerCase() || "";
+    return text.includes("token") || text.includes("look up");
   },
 
   // Execute the action
@@ -149,7 +150,7 @@ export const lookupTokenAction: Action = {
     options: any,
     callback: HandlerCallback
   ): Promise<void> => {
-    const bagsApi = runtime.getService<BagsApiService>('bags_api');
+    const bagsApi = runtime.getService<BagsApiService>("bags_api");
     const tokenData = await bagsApi.getTokenInfo(options.mint);
 
     callback({
@@ -159,8 +160,8 @@ export const lookupTokenAction: Action = {
 
   examples: [
     [
-      { user: 'user', content: { text: 'Look up the BAGS token' } },
-      { user: 'agent', content: { text: 'Let me check that token for you...' } },
+      { user: "user", content: { text: "Look up the BAGS token" } },
+      { user: "agent", content: { text: "Let me check that token for you..." } },
     ],
   ],
 };
@@ -173,40 +174,37 @@ export const lookupTokenAction: Action = {
 Define agent personality and behavior.
 
 ```typescript
-import type { Character } from '@elizaos/core';
+import type { Character } from "@elizaos/core";
 
 export const myCharacter: Character = {
-  name: 'MyAgent',
+  name: "MyAgent",
 
   // Background and knowledge
-  bio: [
-    'First line of background',
-    'Second line of background',
-  ],
+  bio: ["First line of background", "Second line of background"],
 
   // Communication style
   style: {
-    all: ['Uses technical language', 'Stays concise'],
-    chat: ['Friendly tone', 'Uses emojis sparingly'],
+    all: ["Uses technical language", "Stays concise"],
+    chat: ["Friendly tone", "Uses emojis sparingly"],
   },
 
   // Areas of expertise
-  topics: ['Solana', 'DeFi', 'Trading'],
+  topics: ["Solana", "DeFi", "Trading"],
 
   // Personality traits
-  adjectives: ['helpful', 'knowledgeable', 'witty'],
+  adjectives: ["helpful", "knowledgeable", "witty"],
 
   // System prompt (optional, overrides auto-generated)
-  system: 'You are MyAgent, an expert in...',
+  system: "You are MyAgent, an expert in...",
 
   // Model settings
   settings: {
-    model: 'claude-sonnet-4-20250514',
+    model: "claude-sonnet-4-20250514",
     maxTokens: 1024,
   },
 
   // Plugin configuration
-  plugins: ['@elizaos/plugin-bagsworld'],
+  plugins: ["@elizaos/plugin-bagsworld"],
 };
 ```
 
@@ -220,25 +218,25 @@ ElizaOS stores conversation history and can retrieve relevant context.
 // Store a memory
 await runtime.messageManager.createMemory({
   id: uuidv4(),
-  userId: 'user-123',
+  userId: "user-123",
   agentId: runtime.agentId,
-  roomId: 'room-456',
-  content: { text: 'User message here' },
+  roomId: "room-456",
+  content: { text: "User message here" },
   createdAt: Date.now(),
 });
 
 // Retrieve recent memories
 const memories = await runtime.messageManager.getMemories({
-  roomId: 'room-456',
+  roomId: "room-456",
   count: 10,
   unique: true,
 });
 
 // Search memories by embedding similarity
-const relevantMemories = await runtime.messageManager.searchMemoriesByEmbedding(
-  embedding,
-  { roomId: 'room-456', count: 5 }
-);
+const relevantMemories = await runtime.messageManager.searchMemoriesByEmbedding(embedding, {
+  roomId: "room-456",
+  count: 5,
+});
 ```
 
 ---
@@ -249,14 +247,14 @@ ElizaOS supports multiple databases:
 
 ```typescript
 // PostgreSQL (Neon)
-import { PostgresDatabaseAdapter } from '@elizaos/adapter-postgres';
+import { PostgresDatabaseAdapter } from "@elizaos/adapter-postgres";
 const adapter = new PostgresDatabaseAdapter({
   connectionString: process.env.DATABASE_URL,
 });
 
 // SQLite (local development)
-import { SqliteDatabaseAdapter } from '@elizaos/adapter-sqlite';
-const adapter = new SqliteDatabaseAdapter('./data/agent.db');
+import { SqliteDatabaseAdapter } from "@elizaos/adapter-sqlite";
+const adapter = new SqliteDatabaseAdapter("./data/agent.db");
 ```
 
 ---
@@ -266,7 +264,7 @@ const adapter = new SqliteDatabaseAdapter('./data/agent.db');
 ### Anthropic (Claude)
 
 ```typescript
-import { ModelProviderName } from '@elizaos/core';
+import { ModelProviderName } from "@elizaos/core";
 
 const runtime = new AgentRuntime({
   modelProvider: ModelProviderName.ANTHROPIC,
@@ -276,6 +274,7 @@ const runtime = new AgentRuntime({
 ```
 
 Available models:
+
 - `claude-sonnet-4-20250514` (recommended)
 - `claude-3-5-sonnet-20241022`
 - `claude-3-haiku-20240307`
@@ -296,14 +295,14 @@ const runtime = new AgentRuntime({
 
 Common ElizaOS plugins:
 
-| Plugin | Purpose |
-|--------|---------|
-| `@elizaos/plugin-solana` | Solana blockchain integration |
-| `@elizaos/plugin-telegram` | Telegram bot client |
-| `@elizaos/plugin-discord` | Discord bot client |
-| `@elizaos/plugin-twitter` | Twitter/X integration |
-| `@elizaos/adapter-postgres` | PostgreSQL database |
-| `@elizaos/adapter-sqlite` | SQLite database |
+| Plugin                      | Purpose                       |
+| --------------------------- | ----------------------------- |
+| `@elizaos/plugin-solana`    | Solana blockchain integration |
+| `@elizaos/plugin-telegram`  | Telegram bot client           |
+| `@elizaos/plugin-discord`   | Discord bot client            |
+| `@elizaos/plugin-twitter`   | Twitter/X integration         |
+| `@elizaos/adapter-postgres` | PostgreSQL database           |
+| `@elizaos/adapter-sqlite`   | SQLite database               |
 
 ---
 
@@ -318,7 +317,7 @@ const agents = new Map<string, AgentRuntime>();
 for (const character of characters) {
   const runtime = new AgentRuntime({
     character,
-    databaseAdapter: sharedDatabase,  // Shared database for cross-agent memory
+    databaseAdapter: sharedDatabase, // Shared database for cross-agent memory
     plugins: [sharedPlugin],
   });
   await runtime.initialize();
@@ -326,7 +325,7 @@ for (const character of characters) {
 }
 
 // Route messages to appropriate agent
-app.post('/chat/:agentId', async (req, res) => {
+app.post("/chat/:agentId", async (req, res) => {
   const runtime = agents.get(req.params.agentId);
   const response = await runtime.processMessage(req.body);
   res.json(response);
@@ -338,12 +337,12 @@ app.post('/chat/:agentId', async (req, res) => {
 ## Logging
 
 ```typescript
-import { elizaLogger } from '@elizaos/core';
+import { elizaLogger } from "@elizaos/core";
 
-elizaLogger.info('Information message');
-elizaLogger.warn('Warning message');
-elizaLogger.error('Error message', error);
-elizaLogger.debug('Debug details', { data });
+elizaLogger.info("Information message");
+elizaLogger.warn("Warning message");
+elizaLogger.error("Error message", error);
+elizaLogger.debug("Debug details", { data });
 ```
 
 ---
@@ -379,15 +378,18 @@ CORS_ORIGINS=http://localhost:3000
 Your `plugin-bagsworld` includes:
 
 ### Services
+
 - `BagsApiService` - Bags.fm API integration
 - `LLMService` - Claude/OpenAI API wrapper
 
 ### Providers
+
 - `worldStateProvider` - Injects current world health/weather
 - `tokenDataProvider` - Injects relevant token data
 - `topCreatorsProvider` - Injects creator leaderboard
 
 ### Actions
+
 - `lookupToken` - Look up token by mint address
 - `getCreatorFees` - Get fee data for a creator
 - `getTopCreators` - Get top creators leaderboard
@@ -395,6 +397,7 @@ Your `plugin-bagsworld` includes:
 - `checkWorldHealth` - Get current world state
 
 ### Characters (8 agents)
+
 - `toly` - Solana co-founder, blockchain expert
 - `finn` - Bags.fm CEO, creator monetization
 - `ash` - Pokemon-themed guide

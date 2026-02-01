@@ -32,16 +32,17 @@ cp .env.example .env.local
 
 Edit `.env.local` and add your API keys:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `BAGS_API_KEY` | Yes | Bags.fm API key for token data |
-| `ANTHROPIC_API_KEY` | No | Enables Claude AI chat |
-| `AGENT_SECRET` | No | Required for agent API (any string for local dev) |
-| `AGENT_WALLET_PRIVATE_KEY` | No | Required for agent transactions |
+| Variable                   | Required | Description                                       |
+| -------------------------- | -------- | ------------------------------------------------- |
+| `BAGS_API_KEY`             | Yes      | Bags.fm API key for token data                    |
+| `ANTHROPIC_API_KEY`        | No       | Enables Claude AI chat                            |
+| `AGENT_SECRET`             | No       | Required for agent API (any string for local dev) |
+| `AGENT_WALLET_PRIVATE_KEY` | No       | Required for agent transactions                   |
 
 ### Mock Mode
 
 Set `NEXT_PUBLIC_MOCK_MODE=true` in `.env.local` to enable mock mode:
+
 - Disables real API calls
 - Uses mock data for all endpoints
 - Safe for testing without real transactions
@@ -112,11 +113,13 @@ bagsworld/
 The agents can be tested locally without GitHub Actions:
 
 1. **Start the dev server:**
+
    ```bash
    npm run dev
    ```
 
 2. **Test via API calls:**
+
    ```bash
    # Check status
    curl -X POST http://localhost:3000/api/agent \
@@ -135,28 +138,30 @@ The agents can be tested locally without GitHub Actions:
 
 ### Agent API Actions
 
-| Action | Method | Description |
-|--------|--------|-------------|
-| `status` | POST | Get auto-claim agent status |
-| `start` | POST | Start auto-claim agent |
-| `stop` | POST | Stop auto-claim agent |
-| `trigger` | POST | Manually trigger claim |
-| `config` | POST | Get/update config |
-| `buyback-status` | POST | Get buyback agent status |
-| `buyback-trigger` | POST | Manually trigger buyback |
-| `scout-status` | POST | Get scout agent status |
-| `scout-launches` | POST | Get recent token launches |
+| Action            | Method | Description                 |
+| ----------------- | ------ | --------------------------- |
+| `status`          | POST   | Get auto-claim agent status |
+| `start`           | POST   | Start auto-claim agent      |
+| `stop`            | POST   | Stop auto-claim agent       |
+| `trigger`         | POST   | Manually trigger claim      |
+| `config`          | POST   | Get/update config           |
+| `buyback-status`  | POST   | Get buyback agent status    |
+| `buyback-trigger` | POST   | Manually trigger buyback    |
+| `scout-status`    | POST   | Get scout agent status      |
+| `scout-launches`  | POST   | Get recent token launches   |
 
 ### With a Test Wallet
 
 For testing actual transactions (devnet recommended):
 
 1. **Generate a test wallet:**
+
    ```bash
    solana-keygen new --no-bip39-passphrase -o test-wallet.json
    ```
 
 2. **Convert to base58:**
+
    ```bash
    cat test-wallet.json | node -e "
      const bs58 = require('bs58');
@@ -166,6 +171,7 @@ For testing actual transactions (devnet recommended):
    ```
 
 3. **Add to `.env.local`:**
+
    ```
    AGENT_WALLET_PRIVATE_KEY=<your-base58-key>
    ```
@@ -182,17 +188,17 @@ For testing actual transactions (devnet recommended):
 Use the mock helpers in `tests/mocks/bags-api.ts`:
 
 ```typescript
-import { mockWorldState, setupMockFetch } from '../mocks/bags-api';
+import { mockWorldState, setupMockFetch } from "../mocks/bags-api";
 
-describe('MyComponent', () => {
+describe("MyComponent", () => {
   beforeEach(() => {
     setupMockFetch({
-      '/api/world-state': mockWorldState,
+      "/api/world-state": mockWorldState,
     });
   });
 
-  it('should fetch world state', async () => {
-    const response = await fetch('/api/world-state');
+  it("should fetch world state", async () => {
+    const response = await fetch("/api/world-state");
     const data = await response.json();
     expect(data.health).toBeDefined();
   });
@@ -218,6 +224,7 @@ describe('MyComponent', () => {
 ### GitHub Actions
 
 Tests run automatically on:
+
 - Pull requests to `main`
 - Pushes to `main`
 
@@ -238,11 +245,13 @@ echo "npm test" > .husky/pre-commit
 ### Tests Failing?
 
 1. **Clear Jest cache:**
+
    ```bash
    npx jest --clearCache
    ```
 
 2. **Check Node version:**
+
    ```bash
    node --version  # Should be 18+
    ```
@@ -263,11 +272,11 @@ Ensure `NEXT_PUBLIC_MOCK_MODE=true` is set and restart the dev server.
 
 ## Coverage Goals
 
-| Area | Target |
-|------|--------|
-| Agents | 80%+ |
-| API Routes | 70%+ |
-| Components | 60%+ |
-| Utilities | 90%+ |
+| Area       | Target |
+| ---------- | ------ |
+| Agents     | 80%+   |
+| API Routes | 70%+   |
+| Components | 60%+   |
+| Utilities  | 90%+   |
 
 Run `npm run test:coverage` to see current coverage.

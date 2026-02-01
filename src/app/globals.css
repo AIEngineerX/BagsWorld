@@ -19,7 +19,9 @@ html {
 }
 
 /* Ensure proper sizing on mobile */
-html, body, #__next {
+html,
+body,
+#__next {
   min-height: 100dvh;
   min-height: -webkit-fill-available;
 }
@@ -33,7 +35,7 @@ html, body, #__next {
 body {
   background: var(--bags-darker);
   color: white;
-  font-family: var(--font-pixel), 'Press Start 2P', monospace;
+  font-family: var(--font-pixel), "Press Start 2P", monospace;
   touch-action: manipulation; /* Allow touch, prevent double-tap zoom */
   -webkit-touch-callout: none; /* Disable callout on long press */
   -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
@@ -68,8 +70,8 @@ body {
   @apply px-4 py-2 bg-bags-green text-bags-dark font-pixel text-xs;
   box-shadow:
     4px 4px 0 #166534,
-    inset -2px -2px 0 rgba(0,0,0,0.2),
-    inset 2px 2px 0 rgba(255,255,255,0.2);
+    inset -2px -2px 0 rgba(0, 0, 0, 0.2),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.2);
   transition: all 0.1s;
 }
 
@@ -77,8 +79,8 @@ body {
   transform: translate(2px, 2px);
   box-shadow:
     2px 2px 0 #166534,
-    inset -2px -2px 0 rgba(0,0,0,0.2),
-    inset 2px 2px 0 rgba(255,255,255,0.2);
+    inset -2px -2px 0 rgba(0, 0, 0, 0.2),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.2);
 }
 
 .btn-retro:active {
@@ -89,7 +91,8 @@ body {
 /* Pixel border */
 .pixel-border {
   border: 4px solid;
-  border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='2' height='2' fill='%234ade80'/%3E%3Crect x='2' width='2' height='2' fill='%234ade80'/%3E%3Crect x='4' width='2' height='2' fill='%234ade80'/%3E%3Crect y='2' width='2' height='2' fill='%234ade80'/%3E%3Crect x='4' y='2' width='2' height='2' fill='%234ade80'/%3E%3Crect y='4' width='2' height='2' fill='%234ade80'/%3E%3Crect x='2' y='4' width='2' height='2' fill='%234ade80'/%3E%3Crect x='4' y='4' width='2' height='2' fill='%234ade80'/%3E%3C/svg%3E") 2 stretch;
+  border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='2' height='2' fill='%234ade80'/%3E%3Crect x='2' width='2' height='2' fill='%234ade80'/%3E%3Crect x='4' width='2' height='2' fill='%234ade80'/%3E%3Crect y='2' width='2' height='2' fill='%234ade80'/%3E%3Crect x='4' y='2' width='2' height='2' fill='%234ade80'/%3E%3Crect y='4' width='2' height='2' fill='%234ade80'/%3E%3Crect x='2' y='4' width='2' height='2' fill='%234ade80'/%3E%3Crect x='4' y='4' width='2' height='2' fill='%234ade80'/%3E%3C/svg%3E")
+    2 stretch;
 }
 
 /* Health bar styles */
@@ -117,7 +120,8 @@ body {
 }
 
 @keyframes pulse-danger {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -182,7 +186,9 @@ body {
   }
 
   /* Ensure tap highlight is visible */
-  button, a, [role="button"] {
+  button,
+  a,
+  [role="button"] {
     -webkit-tap-highlight-color: rgba(74, 222, 128, 0.3);
   }
 }
@@ -198,22 +204,21 @@ body {
     justify-content: center;
     box-shadow:
       3px 3px 0 #166534,
-      inset -1px -1px 0 rgba(0,0,0,0.2),
-      inset 1px 1px 0 rgba(255,255,255,0.2);
+      inset -1px -1px 0 rgba(0, 0, 0, 0.2),
+      inset 1px 1px 0 rgba(255, 255, 255, 0.2);
   }
 
   .btn-retro:hover {
     transform: none; /* Disable hover transform on touch */
     box-shadow:
       3px 3px 0 #166534,
-      inset -1px -1px 0 rgba(0,0,0,0.2),
-      inset 1px 1px 0 rgba(255,255,255,0.2);
+      inset -1px -1px 0 rgba(0, 0, 0, 0.2),
+      inset 1px 1px 0 rgba(255, 255, 255, 0.2);
   }
 
   .btn-retro:active {
     transform: translate(2px, 2px);
-    box-shadow:
-      1px 1px 0 #166534;
+    box-shadow: 1px 1px 0 #166534;
   }
 }
 
@@ -260,10 +265,8 @@ body {
   }
 
   .safe-area-all {
-    padding: max(0.5rem, env(safe-area-inset-top))
-             max(0.5rem, env(safe-area-inset-right))
-             max(0.5rem, env(safe-area-inset-bottom))
-             max(0.5rem, env(safe-area-inset-left));
+    padding: max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right))
+      max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
   }
 
   .pb-safe {
@@ -304,7 +307,9 @@ body {
 /* Touch-friendly improvements */
 @media (pointer: coarse) {
   /* Larger touch targets on touch devices */
-  button, a, [role="button"] {
+  button,
+  a,
+  [role="button"] {
     min-height: 44px;
     min-width: 44px;
   }
@@ -339,7 +344,8 @@ body {
   }
 
   @keyframes pulse-danger {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
     }
   }
@@ -506,11 +512,16 @@ body {
 }
 
 @keyframes glow-pulse {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(251, 191, 36, 0.5), 0 0 10px rgba(251, 191, 36, 0.3);
+  0%,
+  100% {
+    box-shadow:
+      0 0 5px rgba(251, 191, 36, 0.5),
+      0 0 10px rgba(251, 191, 36, 0.3);
   }
   50% {
-    box-shadow: 0 0 10px rgba(251, 191, 36, 0.8), 0 0 20px rgba(251, 191, 36, 0.5);
+    box-shadow:
+      0 0 10px rgba(251, 191, 36, 0.8),
+      0 0 20px rgba(251, 191, 36, 0.5);
   }
 }
 
