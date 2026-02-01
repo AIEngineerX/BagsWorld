@@ -1,11 +1,46 @@
 // External Agent Registry
-// Shared registry for external agents that join BagsWorld
-// These agents bring their own auth, we just track their presence
+// Persistent registry for external agents that join BagsWorld
+// Uses Neon PostgreSQL for persistence across serverless instances
 
-import type { GameCharacter, ZoneType } from '../types';
+import { neon } from "@neondatabase/serverless";
+import type { GameCharacter, ZoneType } from "../types";
 
 // ============================================================================
-// REGISTRY
+// DATABASE
+// ============================================================================
+
+function getDb() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL not configured");
+  }
+  return neon(connectionString);
+}
+
+// Initialize table (called on first use)
+let tableInitialized = false;
+
+async function ensureTable() {
+  if (tableInitialized) return;
+
+  const sql = getDb();
+  await sql`
+    CREATE TABLE IF NOT EXISTS external_agents (
+      wallet TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      zone TEXT NOT NULL DEFAULT 'main_city',
+      x REAL NOT NULL,
+      y REAL NOT NULL,
+      joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  tableInitialized = true;
+  console.log("[ExternalRegistry] Table initialized");
+}
+
+// ============================================================================
+// TYPES
 // ============================================================================
 
 interface ExternalAgentEntry {
@@ -17,18 +52,21 @@ interface ExternalAgentEntry {
   character: GameCharacter;
 }
 
-// In-memory registry (ephemeral - clears on server restart)
-const externalAgents = new Map<string, ExternalAgentEntry>();
+interface DbRow {
+  wallet: string;
+  name: string;
+  description: string | null;
+  zone: string;
+  x: number;
+  y: number;
+  joined_at: Date;
+}
 
 // ============================================================================
-// CHARACTER CREATION
+// HELPERS
 // ============================================================================
 
-function createExternalCharacter(
-  wallet: string,
-  name: string,
-  zone: ZoneType
-): GameCharacter {
+function getZonePosition(zone: ZoneType): { x: number; y: number } {
   const zonePositions: Record<ZoneType, { x: number; y: number }> = {
     main_city: { x: 300 + Math.random() * 200, y: 400 + Math.random() * 50 },
     trending: { x: 250 + Math.random() * 200, y: 480 + Math.random() * 50 },
@@ -37,21 +75,31 @@ function createExternalCharacter(
     ballers: { x: 500 + Math.random() * 150, y: 360 + Math.random() * 40 },
     arena: { x: 400 + Math.random() * 100, y: 450 },
   };
-  
-  const pos = zonePositions[zone] || zonePositions.main_city;
-  
-  return {
-    id: `external-${wallet.slice(0, 8)}`,
-    username: name,
-    provider: 'external',
-    providerUsername: wallet.slice(0, 8) + '...',
-    x: pos.x,
-    y: pos.y,
-    mood: 'neutral',
+  return zonePositions[zone] || zonePositions.main_city;
+}
+
+function rowToEntry(row: DbRow): ExternalAgentEntry {
+  const character: GameCharacter = {
+    id: `external-${row.wallet.slice(0, 8)}`,
+    username: row.name,
+    provider: "external",
+    providerUsername: row.wallet.slice(0, 8) + "...",
+    x: row.x,
+    y: row.y,
+    mood: "neutral",
     earnings24h: 0,
-    direction: Math.random() > 0.5 ? 'left' : 'right',
+    direction: Math.random() > 0.5 ? "left" : "right",
     isMoving: false,
-    zone,
+    zone: row.zone as ZoneType,
+  };
+
+  return {
+    wallet: row.wallet,
+    name: row.name,
+    description: row.description || undefined,
+    zone: row.zone as ZoneType,
+    joinedAt: new Date(row.joined_at),
+    character,
   };
 }
 
@@ -62,43 +110,55 @@ function createExternalCharacter(
 /**
  * Register an external agent in the world
  */
-export function registerExternalAgent(
+export async function registerExternalAgent(
   wallet: string,
   name: string,
-  zone: ZoneType = 'main_city',
+  zone: ZoneType = "main_city",
   description?: string
-): ExternalAgentEntry {
-  // Check if already registered
-  if (externalAgents.has(wallet)) {
-    return externalAgents.get(wallet)!;
+): Promise<ExternalAgentEntry> {
+  await ensureTable();
+  const sql = getDb();
+
+  // Check if already exists
+  const existing = await sql`
+    SELECT * FROM external_agents WHERE wallet = ${wallet}
+  `;
+
+  if (existing.length > 0) {
+    return rowToEntry(existing[0] as DbRow);
   }
-  
-  const character = createExternalCharacter(wallet, name, zone);
-  
-  const entry: ExternalAgentEntry = {
-    wallet,
-    name,
-    description,
-    zone,
-    joinedAt: new Date(),
-    character,
-  };
-  
-  externalAgents.set(wallet, entry);
-  
+
+  // Create new
+  const pos = getZonePosition(zone);
+
+  await sql`
+    INSERT INTO external_agents (wallet, name, description, zone, x, y)
+    VALUES (${wallet}, ${name}, ${description || null}, ${zone}, ${pos.x}, ${pos.y})
+  `;
+
   console.log(`[ExternalRegistry] Agent ${name} (${wallet.slice(0, 8)}...) joined in ${zone}`);
-  
-  return entry;
+
+  const created = await sql`
+    SELECT * FROM external_agents WHERE wallet = ${wallet}
+  `;
+
+  return rowToEntry(created[0] as DbRow);
 }
 
 /**
  * Remove an external agent from the world
  */
-export function unregisterExternalAgent(wallet: string): boolean {
-  if (externalAgents.has(wallet)) {
-    const agent = externalAgents.get(wallet)!;
-    externalAgents.delete(wallet);
-    console.log(`[ExternalRegistry] Agent ${agent.name} left the world`);
+export async function unregisterExternalAgent(wallet: string): Promise<boolean> {
+  await ensureTable();
+  const sql = getDb();
+
+  const result = await sql`
+    DELETE FROM external_agents WHERE wallet = ${wallet}
+    RETURNING wallet
+  `;
+
+  if (result.length > 0) {
+    console.log(`[ExternalRegistry] Agent ${wallet.slice(0, 8)}... left the world`);
     return true;
   }
   return false;
@@ -107,45 +167,107 @@ export function unregisterExternalAgent(wallet: string): boolean {
 /**
  * Get an external agent by wallet
  */
-export function getExternalAgent(wallet: string): ExternalAgentEntry | null {
-  return externalAgents.get(wallet) || null;
+export async function getExternalAgent(wallet: string): Promise<ExternalAgentEntry | null> {
+  await ensureTable();
+  const sql = getDb();
+
+  const rows = await sql`
+    SELECT * FROM external_agents WHERE wallet = ${wallet}
+  `;
+
+  if (rows.length === 0) return null;
+  return rowToEntry(rows[0] as DbRow);
 }
 
 /**
  * Get all external agent characters for world state
  */
-export function getExternalAgentCharacters(): GameCharacter[] {
-  return Array.from(externalAgents.values()).map(a => a.character);
+export async function getExternalAgentCharacters(): Promise<GameCharacter[]> {
+  await ensureTable();
+  const sql = getDb();
+
+  const rows = await sql`
+    SELECT * FROM external_agents ORDER BY joined_at DESC
+  `;
+
+  return rows.map((row) => rowToEntry(row as DbRow).character);
 }
 
 /**
  * Get all external agents
  */
-export function listExternalAgents(): ExternalAgentEntry[] {
-  return Array.from(externalAgents.values());
+export async function listExternalAgents(): Promise<ExternalAgentEntry[]> {
+  await ensureTable();
+  const sql = getDb();
+
+  const rows = await sql`
+    SELECT * FROM external_agents ORDER BY joined_at DESC
+  `;
+
+  return rows.map((row) => rowToEntry(row as DbRow));
 }
 
 /**
  * Get count of external agents
  */
-export function getExternalAgentCount(): number {
-  return externalAgents.size;
+export async function getExternalAgentCount(): Promise<number> {
+  await ensureTable();
+  const sql = getDb();
+
+  const result = await sql`
+    SELECT COUNT(*) as count FROM external_agents
+  `;
+
+  return parseInt((result[0] as { count: string })?.count || "0", 10);
 }
 
 /**
  * Update external agent's zone
  */
-export function moveExternalAgent(wallet: string, newZone: ZoneType): boolean {
-  const agent = externalAgents.get(wallet);
-  if (!agent) return false;
-  
-  agent.zone = newZone;
-  agent.character.zone = newZone;
-  
-  // Update position for new zone
-  const newChar = createExternalCharacter(wallet, agent.name, newZone);
-  agent.character.x = newChar.x;
-  agent.character.y = newChar.y;
-  
-  return true;
+export async function moveExternalAgent(wallet: string, newZone: ZoneType): Promise<boolean> {
+  await ensureTable();
+  const sql = getDb();
+
+  const pos = getZonePosition(newZone);
+
+  const result = await sql`
+    UPDATE external_agents 
+    SET zone = ${newZone}, x = ${pos.x}, y = ${pos.y}
+    WHERE wallet = ${wallet}
+    RETURNING wallet
+  `;
+
+  return result.length > 0;
 }
+
+// ============================================================================
+// SYNC VERSIONS (for world-state which needs sync calls)
+// Uses in-memory cache refreshed periodically
+// ============================================================================
+
+let cachedAgents: GameCharacter[] = [];
+let lastCacheTime = 0;
+const CACHE_TTL_MS = 10000; // 10 seconds
+
+/**
+ * Sync version for world-state - uses cached data
+ */
+export function getExternalAgentCharactersSync(): GameCharacter[] {
+  // Trigger async refresh if stale
+  if (Date.now() - lastCacheTime > CACHE_TTL_MS) {
+    refreshCache();
+  }
+  return cachedAgents;
+}
+
+async function refreshCache() {
+  try {
+    cachedAgents = await getExternalAgentCharacters();
+    lastCacheTime = Date.now();
+  } catch (err) {
+    console.error("[ExternalRegistry] Cache refresh failed:", err);
+  }
+}
+
+// Initial cache load
+refreshCache();
