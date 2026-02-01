@@ -837,7 +837,10 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
         };
       }
 
-      console.log(`[Launcher] Claiming ${pos.baseMint.slice(0, 8)}... body:`, JSON.stringify(claimBody));
+      console.log(
+        `[Launcher] Claiming ${pos.baseMint.slice(0, 8)}... body:`,
+        JSON.stringify(claimBody)
+      );
 
       const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
       const claimRes = await fetch(claimUrl, {
@@ -855,7 +858,7 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
       if (claimRes.ok) {
         const claimData = JSON.parse(rawText);
         const txs = claimData.response || claimData;
-        
+
         // Handle both array and object responses
         const txArray = Array.isArray(txs) ? txs : [txs];
         for (const tx of txArray) {
@@ -863,7 +866,10 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
           if (txString) allTransactions.push(txString);
         }
       } else {
-        console.warn(`[Launcher] Failed to get claim tx for ${pos.baseMint}:`, rawText.substring(0, 100));
+        console.warn(
+          `[Launcher] Failed to get claim tx for ${pos.baseMint}:`,
+          rawText.substring(0, 100)
+        );
       }
     } catch (err) {
       console.warn(`[Launcher] Error getting claim tx for ${pos.baseMint}:`, err);
