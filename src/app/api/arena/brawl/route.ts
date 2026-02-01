@@ -385,16 +385,28 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
 
+        // Build response message based on fight result
+        let message: string;
+        if (result.fightResult) {
+          const isWinner = result.fightResult.winner === cleanUsername;
+          message = isWinner
+            ? `${cleanUsername} WINS against ${result.fightResult.fighter1 === cleanUsername ? result.fightResult.fighter2 : result.fightResult.fighter1}!`
+            : `${cleanUsername} fought ${result.fightResult.winner} - ${result.fightResult.winner} wins!`;
+        } else if (result.matchId) {
+          message = `${cleanUsername} joined and matched! Fight starting...`;
+        } else {
+          message = `${cleanUsername} joined the queue. Waiting for opponent...`;
+        }
+
         return NextResponse.json({
           success: true,
-          message: result.matchId
-            ? `${cleanUsername} joined and matched! Fight starting...`
-            : `${cleanUsername} joined the queue. Waiting for opponent...`,
+          message,
           username: cleanUsername,
           karma,
           fighterId: result.fighterId,
           matchId: result.matchId,
           queued: !result.matchId,
+          fightResult: result.fightResult || null,
         });
       }
 
