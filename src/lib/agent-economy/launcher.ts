@@ -229,35 +229,33 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   // Step 2: Create fee share config (100% to external agent)
   console.log('[Launcher] Step 2: Creating fee share config...');
   
-  const configResponse = await callBagsApi<{
-    configKey: string;
-    transactions?: Array<{ transaction: string }>;
-  }>('/fee-share/config', {
-    method: 'POST',
-    body: JSON.stringify({
-      payer: bagsWorldWallet,
-      baseMint: tokenMint,
-      claimersArray: [creatorWallet],      // Array of wallet addresses
-      basisPointsArray: [10000],            // 100% = 10000 bps
-    }),
-  });
-  
-  const configKey = configResponse.configKey;
-  console.log(`[Launcher] Config key: ${configKey}`);
-  
-  // Sign and submit config transactions if needed
-  if (configResponse.transactions && configResponse.transactions.length > 0) {
-    console.log(`[Launcher] Signing ${configResponse.transactions.length} config tx(s)...`);
+  let configKey: string;
+  try {
+    const configResponse = await callBagsApi<{
+      configKey: string;
+      transactions?: Array<{ transaction: string }>;
+    }>('/fee-share/config', {
+      method: 'POST',
+      body: JSON.stringify({
+        payer: bagsWorldWallet,
+        baseMint: tokenMint,
+        claimersArray: [creatorWallet],
+        basisPointsArray: [10000],
+      }),
+    });
     
-    for (let i = 0; i < configResponse.transactions.length; i++) {
-      const tx = configResponse.transactions[i];
-      try {
-        console.log(`[Launcher] Config tx ${i + 1} length:`, tx?.transaction?.length || 'missing');
+    configKey = configResponse.configKey;
+    console.log(`[Launcher] Config key: ${configKey}`);
+    
+    // Sign config transactions if needed
+    if (configResponse.transactions && configResponse.transactions.length > 0) {
+      for (let i = 0; i < configResponse.transactions.length; i++) {
+        const tx = configResponse.transactions[i];
         await signAndSubmit(tx.transaction);
-      } catch (err) {
-        throw new Error(`Step 2 (config tx ${i + 1}) failed: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
+  } catch (err) {
+    throw new Error(`Step 2 (fee config) failed: ${err instanceof Error ? err.message : String(err)}`);
   }
   
   // Step 3: Create launch transaction
@@ -268,10 +266,10 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     launchResponse = await callBagsApi<{ transaction: string }>('/token-launch/create-launch-transaction', {
       method: 'POST',
       body: JSON.stringify({
-        metadataUrl,
+        ipfs: metadataUrl,  // API expects 'ipfs' not 'metadataUrl'
         tokenMint,
         wallet: bagsWorldWallet,
-        initialBuyLamports: 0, // No initial buy
+        initialBuyLamports: 0,
         configKey,
       }),
     });
