@@ -643,9 +643,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   // Step 3: Create launch transaction
   console.log("[Launcher] Step 3: Creating launch transaction...");
 
-  // Using official Bags.fm launch format from docs (bags.fm/launch.md)
+  // Bags.fm API updated: uses 'ipfs' instead of 'metadataUrl'
   const launchBody = {
-    metadataUrl, // IPFS URL from create-token-info (official field name per docs)
+    ipfs: metadataUrl, // IPFS URL from create-token-info
     tokenMint,
     wallet: bagsWorldWallet,
     initialBuyLamports: 0,
