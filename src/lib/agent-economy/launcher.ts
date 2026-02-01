@@ -9,6 +9,7 @@
 import { Connection, Keypair, Transaction, VersionedTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import { BAGS_API } from "./types";
+import { ECOSYSTEM_CONFIG } from "@/lib/config";
 
 // ============================================================================
 // CONFIGURATION
@@ -222,74 +223,78 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
 
   console.log(`[Launcher] Token mint: ${tokenMint}`);
 
-  // Step 2: Create partner config for fee sharing
-  // Use the BagsWorld wallet as the partner, creator gets fees through that
-  console.log("[Launcher] Step 2: Getting partner config...");
+  // Step 2: Create fee share config for the external agent
+  // Uses BagsWorld's existing partnerConfigPda - external agent gets 100% of creator fees
+  console.log("[Launcher] Step 2: Creating fee share config...");
+
+  const partnerConfigPda = ECOSYSTEM_CONFIG.ecosystem.partnerConfigPda;
+  console.log(`[Launcher] Using partner config PDA: ${partnerConfigPda}`);
+
+  // External agent gets 100% of the creator fee share
+  const feeShareRequest = {
+    mint: tokenMint,
+    payer: bagsWorldWallet,
+    partnerConfig: partnerConfigPda,
+    claimersArray: [creatorWallet], // External agent's wallet
+    basisPointsArray: [10000], // 100% to the external agent
+  };
+
+  console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest));
 
   let configKey: string;
   try {
-    // Try to create a partner config with the BagsWorld wallet
-    // This config will route fees, and we can later distribute to creators
-    const partnerResponse = await callBagsApi<{
+    const feeShareResponse = await callBagsApi<{
+      meteoraConfigKey?: string;
+      configId?: string;
       configKey?: string;
-      partnerKey?: string;
-      response?: {
-        configKey?: string;
-        partnerKey?: string;
-        transaction?: string;
-      };
-      transaction?: string;
-    }>("/partner/config", {
+      needsCreation?: boolean;
+      transactions?: Array<{ transaction: string }>;
+    }>("/fee-share/config", {
       method: "POST",
-      body: JSON.stringify({
-        partnerWallet: bagsWorldWallet, // BagsWorld receives, distributes to creators
-      }),
+      body: JSON.stringify(feeShareRequest),
     });
 
-    console.log("[Launcher] Partner response:", JSON.stringify(partnerResponse));
+    console.log("[Launcher] Fee share response:", JSON.stringify(feeShareResponse));
 
-    // Extract configKey from various possible response formats
+    // Extract configKey - API returns it as meteoraConfigKey
     configKey =
-      partnerResponse.configKey ||
-      partnerResponse.partnerKey ||
-      partnerResponse.response?.configKey ||
-      partnerResponse.response?.partnerKey ||
+      feeShareResponse.meteoraConfigKey ||
+      feeShareResponse.configId ||
+      feeShareResponse.configKey ||
       "";
 
     if (!configKey) {
-      // If no config key, try without one - some APIs have defaults
-      console.log("[Launcher] No configKey returned, trying launch without it...");
-      configKey = ""; // Will be filtered out in step 3
-    } else {
-      console.log(`[Launcher] Config key: ${configKey}`);
+      throw new Error("No configKey returned from fee-share config");
+    }
 
-      // Sign partner transaction if present
-      const tx = partnerResponse.transaction || partnerResponse.response?.transaction;
-      if (tx) {
-        console.log("[Launcher] Signing partner config tx...");
-        await signAndSubmit(tx);
+    console.log(`[Launcher] Config key: ${configKey}`);
+
+    // Sign any required transactions (fee config creation)
+    if (feeShareResponse.needsCreation && feeShareResponse.transactions?.length) {
+      console.log(`[Launcher] Signing ${feeShareResponse.transactions.length} fee config tx(s)...`);
+      for (const tx of feeShareResponse.transactions) {
+        await signAndSubmit(tx.transaction);
       }
     }
   } catch (err) {
-    console.log("[Launcher] Partner config failed, trying without:", err);
-    configKey = ""; // Try launch without configKey
+    throw new Error(`Fee share config failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // Step 3: Create launch transaction
   console.log("[Launcher] Step 3: Creating launch transaction...");
 
+  const launchBody = {
+    ipfs: metadataUrl,
+    tokenMint,
+    wallet: bagsWorldWallet,
+    initialBuyLamports: 0,
+    configKey, // Required - from fee share config
+  };
+
+  console.log("[Launcher] Launch body:", JSON.stringify(launchBody));
+
   let launchResponse: { transaction: string };
   try {
-    const launchBody: Record<string, unknown> = {
-      ipfs: metadataUrl,
-      tokenMint,
-      wallet: bagsWorldWallet,
-      initialBuyLamports: 0,
-    };
-    if (configKey) {
-      launchBody.configKey = configKey;
-    }
-
     launchResponse = await callBagsApi<{ transaction: string }>(
       "/token-launch/create-launch-transaction",
       {
