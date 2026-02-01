@@ -308,31 +308,51 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
 
   console.log("[Launcher] Launch body:", JSON.stringify(launchBody));
 
-  let launchResponse: { transaction: string };
+  let launchTransaction: string;
   try {
-    launchResponse = await callBagsApi<{ transaction: string }>(
-      "/token-launch/create-launch-transaction",
-      {
-        method: "POST",
-        body: JSON.stringify(launchBody),
-      }
-    );
-    console.log(
-      "[Launcher] Launch tx received, length:",
-      launchResponse?.transaction?.length || "missing"
-    );
+    // Make raw fetch to see full response
+    const launchUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/create-launch-transaction`;
+    console.log("[Launcher] Calling launch endpoint:", launchUrl);
+    
+    const launchRes = await fetch(launchUrl, {
+      method: "POST",
+      headers: {
+        "x-api-key": BAGS_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(launchBody),
+    });
+
+    const rawLaunchText = await launchRes.text();
+    console.log("[Launcher] Launch raw response:", launchRes.status, rawLaunchText.substring(0, 500));
+
+    if (!launchRes.ok) {
+      throw new Error(`Launch API ${launchRes.status}: ${rawLaunchText.substring(0, 300)}`);
+    }
+
+    const launchData = JSON.parse(rawLaunchText);
+    console.log("[Launcher] Launch parsed keys:", Object.keys(launchData));
+    
+    // Extract transaction from various possible response formats
+    const result = launchData.response || launchData;
+    launchTransaction = 
+      result.transaction || 
+      result.tx || 
+      (typeof result === "string" ? result : "");
+    
+    console.log("[Launcher] Launch tx length:", launchTransaction?.length || "missing");
   } catch (err) {
     throw new Error(`Step 3 failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  if (!launchResponse?.transaction) {
-    throw new Error("No launch transaction returned from API");
+  if (!launchTransaction || launchTransaction.length < 100) {
+    throw new Error("No valid launch transaction returned from API");
   }
 
   // Step 4: Sign and submit launch transaction
   console.log("[Launcher] Step 4: Signing and submitting...");
 
-  const signature = await signAndSubmit(launchResponse.transaction);
+  const signature = await signAndSubmit(launchTransaction);
 
   console.log(`[Launcher] ✅ Token launched: ${signature}`);
 

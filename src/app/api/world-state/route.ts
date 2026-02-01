@@ -29,7 +29,7 @@ import {
   type GlobalToken,
 } from "@/lib/neon";
 import { getAgentCharacters } from "@/lib/agent-economy";
-import { getExternalAgentCharactersSync } from "@/lib/agent-economy/external-registry";
+import { getExternalAgentCharactersSync, getExternalAgentBuildingsSync } from "@/lib/agent-economy/external-registry";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
 
 // Bags SDK types
@@ -1407,10 +1407,14 @@ export async function POST(request: NextRequest) {
     if (agentCharacters.length > 0) {
       worldState.population = [...worldState.population, ...agentCharacters];
     }
-    // Inject external agents
+    // Inject external agents (characters and buildings)
     const externalCharacters = getExternalAgentCharactersSync();
+    const externalBuildings = getExternalAgentBuildingsSync();
     if (externalCharacters.length > 0) {
       worldState.population = [...worldState.population, ...externalCharacters];
+    }
+    if (externalBuildings.length > 0) {
+      worldState.buildings = [...worldState.buildings, ...externalBuildings];
     }
 
     return NextResponse.json(worldState);
@@ -1446,10 +1450,14 @@ export async function GET() {
       if (agentCharacters.length > 0) {
         worldState.population = [...worldState.population, ...agentCharacters];
       }
-      // Inject external agents
+      // Inject external agents (characters and buildings)
       const externalChars = getExternalAgentCharactersSync();
+      const externalBldgs = getExternalAgentBuildingsSync();
       if (externalChars.length > 0) {
         worldState.population = [...worldState.population, ...externalChars];
+      }
+      if (externalBldgs.length > 0) {
+        worldState.buildings = [...worldState.buildings, ...externalBldgs];
       }
 
       return NextResponse.json(worldState);
@@ -1495,10 +1503,14 @@ export async function GET() {
     if (agentCharacters2.length > 0) {
       worldState.population = [...worldState.population, ...agentCharacters2];
     }
-    // Inject external agents
+    // Inject external agents (characters and buildings)
     const externalChars2 = getExternalAgentCharactersSync();
+    const externalBldgs2 = getExternalAgentBuildingsSync();
     if (externalChars2.length > 0) {
       worldState.population = [...worldState.population, ...externalChars2];
+    }
+    if (externalBldgs2.length > 0) {
+      worldState.buildings = [...worldState.buildings, ...externalBldgs2];
     }
 
     return NextResponse.json(worldState);
