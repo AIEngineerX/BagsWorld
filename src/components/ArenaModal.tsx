@@ -313,6 +313,10 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
 
+  // Ref to access onClose in WebSocket handler without stale closure
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   // Connect to arena WebSocket
   useEffect(() => {
     const ws = new WebSocket(WS_URL);
@@ -350,8 +354,12 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
           setIsLiveBattle(true);
           setJoinResult({
             success: true,
-            message: "Match started! Watch in the Arena zone!",
+            message: "Match started! Closing to watch...",
           });
+          // Auto-close modal after short delay so user can watch the fight
+          setTimeout(() => {
+            onCloseRef.current();
+          }, 1500);
         } else if (msg.type === "match_end") {
           setIsLiveBattle(false);
           setJoinResult({
@@ -750,8 +758,8 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
             <div className="absolute bottom-2 left-2 w-2 h-2 bg-gray-400 rounded-full shadow-inner" />
             <div className="absolute bottom-2 right-2 w-2 h-2 bg-gray-400 rounded-full shadow-inner" />
 
-            {/* Paper texture overlay */}
-            <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white via-transparent to-black" />
+            {/* Paper texture overlay - pointer-events-none so buttons work */}
+            <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white via-transparent to-black pointer-events-none" />
 
             <div className="p-4">
               {/* Red banner title */}
