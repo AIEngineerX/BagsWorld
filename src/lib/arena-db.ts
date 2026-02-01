@@ -236,7 +236,13 @@ export async function getFighterByUsername(username: string): Promise<ArenaFight
     return rows[0] as ArenaFighter;
   } catch (error) {
     console.error("[Arena DB] Error fetching fighter:", error);
-    return null;
+    // Fall back to in-memory mode
+    console.log("[Arena DB] Switching to in-memory mode for fighter lookup");
+    useMemoryStore = true;
+    return (
+      Array.from(memoryStore.fighters.values()).find((f) => f.moltbook_username === username) ??
+      null
+    );
   }
 }
 
@@ -339,7 +345,42 @@ export async function registerFighter(
     return rows[0] as ArenaFighter;
   } catch (error) {
     console.error("[Arena DB] Error registering fighter:", error);
-    return null;
+    // Fall back to in-memory mode and retry
+    console.log("[Arena DB] Switching to in-memory mode due to database error");
+    useMemoryStore = true;
+
+    // Create fighter in memory store
+    const existing = Array.from(memoryStore.fighters.values()).find(
+      (f) => f.moltbook_username === username
+    );
+    if (existing) {
+      existing.moltbook_karma = karma;
+      existing.hp = stats.hp;
+      existing.attack = stats.attack;
+      existing.defense = stats.defense;
+      existing.karma_updated_at = new Date().toISOString();
+      return existing;
+    }
+
+    const id = memoryStore.nextFighterId++;
+    const newFighter: ArenaFighter = {
+      id,
+      moltbook_username: username,
+      moltbook_karma: karma,
+      hp: stats.hp,
+      attack: stats.attack,
+      defense: stats.defense,
+      wins: 0,
+      losses: 0,
+      total_damage_dealt: 0,
+      total_damage_taken: 0,
+      last_fight_at: null,
+      registered_at: new Date().toISOString(),
+      karma_updated_at: new Date().toISOString(),
+    };
+    memoryStore.fighters.set(id, newFighter);
+    console.log(`[Arena DB] Registered fighter in memory: ${username} (id: ${id})`);
+    return newFighter;
   }
 }
 
@@ -470,7 +511,25 @@ export async function queueFighter(fighterId: number, postId: string): Promise<b
     return true;
   } catch (error) {
     console.error("[Arena DB] Error queuing fighter:", error);
-    return false;
+    // Fall back to in-memory mode
+    console.log("[Arena DB] Switching to in-memory mode for queue");
+    useMemoryStore = true;
+
+    const existing = Array.from(memoryStore.queue.values()).find((e) => e.fighter_id === fighterId);
+    if (existing) {
+      existing.moltbook_post_id = postId;
+      existing.queued_at = new Date().toISOString();
+      return true;
+    }
+
+    const id = memoryStore.nextQueueId++;
+    memoryStore.queue.set(id, {
+      id,
+      fighter_id: fighterId,
+      moltbook_post_id: postId,
+      queued_at: new Date().toISOString(),
+    });
+    return true;
   }
 }
 
