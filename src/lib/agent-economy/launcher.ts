@@ -232,13 +232,12 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   console.log(`[Launcher] Using partner config PDA: ${partnerConfigPda}`);
 
   // External agent gets 100% of the creator fee share
-  // Using the official Bags.fm fee-share/config format from docs
+  // Using the working bags-api.ts format: claimersArray + basisPointsArray
   const feeShareRequest = {
-    payer: bagsWorldWallet,
     baseMint: tokenMint,
-    feeClaimers: [
-      { user: creatorWallet, userBps: 10000 } // 100% to the external agent
-    ],
+    payer: bagsWorldWallet,
+    claimersArray: [creatorWallet], // Wallet addresses that receive fees
+    basisPointsArray: [10000], // 100% (10000 bps) to the external agent
   };
 
   console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest, null, 2));
