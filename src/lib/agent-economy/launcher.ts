@@ -797,40 +797,77 @@ export async function generateClaimTxForWallet(wallet: string): Promise<ClaimRes
 
   console.log(`[Launcher] Generating claim txs for ${positions.length} positions...`);
 
-  // Build positions array for claim request - per Bags FEES.md documentation
-  // API expects: { wallet: string, positions: [{baseMint, virtualPoolAddress}] }
-  const positionsForClaim = positions.map((p) => ({
-    baseMint: p.baseMint,
-    virtualPoolAddress: p.virtualPoolAddress,
-  }));
-
-  const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
-  const claimRes = await fetch(claimUrl, {
-    method: "POST",
-    headers: {
-      "x-api-key": BAGS_API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      wallet: wallet,
-      positions: positionsForClaim,
-    }),
-  });
-
-  const rawText = await claimRes.text();
-  console.log("[Launcher] Claim response:", claimRes.status, rawText.substring(0, 300));
-
-  if (!claimRes.ok) {
-    throw new Error(`Claim API ${claimRes.status}: ${rawText.substring(0, 200)}`);
-  }
-
-  const claimData = JSON.parse(rawText);
-  const txs = claimData.response?.transactions || claimData.transactions || [];
-
   const allTransactions: string[] = [];
-  for (const tx of txs) {
-    const txString = typeof tx === "string" ? tx : tx.transaction;
-    if (txString) allTransactions.push(txString);
+  const FEE_SHARE_V2_PROGRAM = "FEE2tBhCKAt7shrod19QttSVREUYPiyMzoku1mL1gqVK";
+
+  // Generate claim tx for each position - format depends on position type
+  for (const pos of positions) {
+    try {
+      let claimBody: Record<string, unknown>;
+
+      if (pos.isCustomFeeVault && pos.programId === FEE_SHARE_V2_PROGRAM) {
+        // V2 fee share format (tested working with ChadGhost)
+        claimBody = {
+          feeClaimer: wallet,
+          tokenMint: pos.baseMint,
+          feeShareProgramId: pos.programId,
+          isCustomFeeVault: true,
+          tokenAMint: pos.baseMint,
+          tokenBMint: pos.quoteMint || "So11111111111111111111111111111111111111112",
+          claimVirtualPoolFees: !!pos.virtualPoolClaimableLamportsUserShare,
+          virtualPoolAddress: pos.virtualPool || pos.virtualPoolAddress,
+        };
+      } else if (pos.isCustomFeeVault) {
+        // V1 fee share format
+        claimBody = {
+          feeClaimer: wallet,
+          tokenMint: pos.baseMint,
+          feeShareProgramId: pos.programId,
+          isCustomFeeVault: true,
+          claimVirtualPoolFees: !!pos.virtualPoolClaimableAmount,
+          virtualPoolAddress: pos.virtualPoolAddress,
+        };
+      } else {
+        // Standard (non-custom) position
+        claimBody = {
+          feeClaimer: wallet,
+          tokenMint: pos.baseMint,
+          claimVirtualPoolFees: !!pos.virtualPoolClaimableAmount,
+          virtualPoolAddress: pos.virtualPoolAddress,
+        };
+      }
+
+      console.log(`[Launcher] Claiming ${pos.baseMint.slice(0, 8)}... body:`, JSON.stringify(claimBody));
+
+      const claimUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/claim-txs/v2`;
+      const claimRes = await fetch(claimUrl, {
+        method: "POST",
+        headers: {
+          "x-api-key": BAGS_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(claimBody),
+      });
+
+      const rawText = await claimRes.text();
+      console.log("[Launcher] Claim response:", claimRes.status, rawText.substring(0, 200));
+
+      if (claimRes.ok) {
+        const claimData = JSON.parse(rawText);
+        const txs = claimData.response || claimData;
+        
+        // Handle both array and object responses
+        const txArray = Array.isArray(txs) ? txs : [txs];
+        for (const tx of txArray) {
+          const txString = typeof tx === "string" ? tx : tx.tx || tx.transaction;
+          if (txString) allTransactions.push(txString);
+        }
+      } else {
+        console.warn(`[Launcher] Failed to get claim tx for ${pos.baseMint}:`, rawText.substring(0, 100));
+      }
+    } catch (err) {
+      console.warn(`[Launcher] Error getting claim tx for ${pos.baseMint}:`, err);
+    }
   }
 
   console.log(`[Launcher] Got ${allTransactions.length} claim transaction(s)`);
