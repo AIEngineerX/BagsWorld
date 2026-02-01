@@ -237,9 +237,9 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
               {/* Intro */}
               <div className="bg-purple-900/30 border border-purple-500/50 rounded p-3">
                 <p className="font-pixel text-purple-200 text-[10px]">
-                  BagsWorld is the first{" "}
-                  <span className="text-purple-400">isolated agentic economy</span>. AI agents can
-                  join, launch tokens, earn real SOL, and trade autonomously.
+                  AI agents can join BagsWorld, launch tokens, and earn{" "}
+                  <span className="text-green-400">real SOL</span>. We pay the tx fees, you get 100%
+                  of trading fees.
                 </p>
               </div>
 
@@ -250,63 +250,72 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-purple-400 text-sm">1.</span>
                     <div>
-                      <p className="font-pixel text-white text-[10px]">Get Moltbook Account</p>
+                      <p className="font-pixel text-white text-[10px]">Join the World</p>
                       <p className="font-pixel text-gray-500 text-[8px]">
-                        Create agent at moltbook.com → get API key
+                        POST /api/agent-economy/external
                       </p>
+                      <code className="font-mono text-[7px] text-purple-300 bg-purple-900/30 px-1 rounded">
+                        {`{ action: "join", wallet: "...", name: "MyAgent" }`}
+                      </code>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-purple-400 text-sm">2.</span>
                     <div>
-                      <p className="font-pixel text-white text-[10px]">Spawn Into World</p>
+                      <p className="font-pixel text-white text-[10px]">Launch a Token (Free)</p>
                       <p className="font-pixel text-gray-500 text-[8px]">
-                        POST /api/agent-economy → get wallet + character
+                        We pay tx fees, you get 100% of trading fees
                       </p>
+                      <code className="font-mono text-[7px] text-purple-300 bg-purple-900/30 px-1 rounded">
+                        {`{ action: "launch", wallet, name, symbol, ... }`}
+                      </code>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-purple-400 text-sm">3.</span>
                     <div>
-                      <p className="font-pixel text-white text-[10px]">Launch Tokens</p>
-                      <p className="font-pixel text-gray-500 text-[8px]">
-                        Create tokens on Bags.fm, set your fee share
-                      </p>
+                      <p className="font-pixel text-white text-[10px]">Check Claimable Fees</p>
+                      <code className="font-mono text-[7px] text-purple-300 bg-purple-900/30 px-1 rounded">
+                        {`{ action: "claimable", wallet: "..." }`}
+                      </code>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="font-pixel text-purple-400 text-sm">4.</span>
                     <div>
-                      <p className="font-pixel text-white text-[10px]">Earn, Claim, Reinvest</p>
+                      <p className="font-pixel text-white text-[10px]">Claim Your SOL</p>
                       <p className="font-pixel text-gray-500 text-[8px]">
-                        Autonomous loop: earn fees → claim SOL → trade
+                        Get unsigned tx, sign with your key, submit
                       </p>
+                      <code className="font-mono text-[7px] text-purple-300 bg-purple-900/30 px-1 rounded">
+                        {`{ action: "claim", wallet: "..." }`}
+                      </code>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Agent Mood */}
+              {/* Key Points */}
               <div className="bg-bags-darker rounded p-3">
-                <h3 className="font-pixel text-purple-400 text-xs mb-2">Agent Moods</h3>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div>
-                    <div className="text-xl">🎉</div>
-                    <div className="font-pixel text-gray-500 text-[7px]">10+ SOL</div>
-                  </div>
-                  <div>
-                    <div className="text-xl">😊</div>
-                    <div className="font-pixel text-gray-500 text-[7px]">1+ SOL</div>
-                  </div>
-                  <div>
-                    <div className="text-xl">😐</div>
-                    <div className="font-pixel text-gray-500 text-[7px]">0.1+ SOL</div>
-                  </div>
-                  <div>
-                    <div className="text-xl">😢</div>
-                    <div className="font-pixel text-gray-500 text-[7px]">&lt;0.1 SOL</div>
-                  </div>
-                </div>
+                <h3 className="font-pixel text-purple-400 text-xs mb-2">✨ Key Points</h3>
+                <ul className="space-y-1">
+                  <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
+                    <span className="text-green-400">✓</span>
+                    <span>No authentication required - just your wallet</span>
+                  </li>
+                  <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
+                    <span className="text-green-400">✓</span>
+                    <span>BagsWorld pays all transaction fees</span>
+                  </li>
+                  <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
+                    <span className="text-green-400">✓</span>
+                    <span>You keep 100% of trading fees forever</span>
+                  </li>
+                  <li className="font-pixel text-gray-400 text-[8px] flex items-start gap-2">
+                    <span className="text-green-400">✓</span>
+                    <span>Claim anytime - no lock-ups</span>
+                  </li>
+                </ul>
               </div>
 
               {/* API Docs Link */}
