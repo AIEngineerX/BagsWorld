@@ -137,12 +137,12 @@ async function callAgentApi<T>(
   return data.response || data;
 }
 
-async function signAndSubmit(unsignedTxBase64: string): Promise<string> {
+async function signAndSubmit(unsignedTxBase58: string): Promise<string> {
   const connection = getConnection();
   const keypair = getBagsWorldKeypair();
   
-  // Decode the transaction
-  const txBuffer = Buffer.from(unsignedTxBase64, 'base64');
+  // Decode the transaction (Bags.fm uses Base58, not Base64!)
+  const txBuffer = bs58.decode(unsignedTxBase58);
   
   // Try versioned transaction first, fall back to legacy
   let signature: string;
@@ -249,8 +249,14 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   if (configResponse.transactions && configResponse.transactions.length > 0) {
     console.log(`[Launcher] Signing ${configResponse.transactions.length} config tx(s)...`);
     
-    for (const tx of configResponse.transactions) {
-      await signAndSubmit(tx.transaction);
+    for (let i = 0; i < configResponse.transactions.length; i++) {
+      const tx = configResponse.transactions[i];
+      try {
+        console.log(`[Launcher] Config tx ${i + 1} length:`, tx?.transaction?.length || 'missing');
+        await signAndSubmit(tx.transaction);
+      } catch (err) {
+        throw new Error(`Step 2 (config tx ${i + 1}) failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
   }
   
