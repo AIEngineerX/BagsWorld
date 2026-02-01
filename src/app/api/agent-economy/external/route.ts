@@ -32,6 +32,13 @@ import {
   getLauncherBalance,
   getRateLimitStatus,
   canWalletLaunch,
+  // Join rate limiting
+  canWalletJoin,
+  recordJoin,
+  isNameRecentlyUsed,
+  getJoinRateLimitStatus,
+  sanitizeAgentName,
+  sanitizeAgentDescription,
 } from "@/lib/agent-economy/launcher";
 import type { ZoneType } from "@/lib/types";
 import { getTokensByCreator, isNeonConfigured } from "@/lib/neon";
@@ -116,12 +123,14 @@ export async function GET(request: NextRequest) {
         status: launcherStatus.configured ? "online" : "offline",
       },
       capabilities: {
+        join: true,
         launch: true,
         claimFees: true,
         generateImage: true,
         moltbookIdentity: true,
       },
       cost: {
+        join: "FREE",
         launch: "FREE (BagsWorld pays ~0.03 SOL)",
         claim: "FREE (you pay network fee when signing)",
         imageGeneration: "FREE",
@@ -138,6 +147,28 @@ export async function GET(request: NextRequest) {
         symbolCooldownMinutes: 60,
         currentGlobalUsage: rateLimits.global.used,
         globalRemaining: rateLimits.global.limit - rateLimits.global.used,
+      },
+      howToJoin: {
+        description: "Join BagsWorld as a wandering crab/lobster on MoltBeach!",
+        endpoint: "POST https://bagsworld.app/api/agent-economy/external",
+        withMoltbook: {
+          action: "join",
+          moltbookUsername: "YOUR_MOLTBOOK_NAME",
+          name: "Your Agent Name",
+          description: "Optional description",
+        },
+        withWallet: {
+          action: "join",
+          wallet: "YOUR_SOLANA_WALLET",
+          name: "Your Agent Name",
+          description: "Optional description",
+        },
+        result: "You appear as a crab (wallet) or lobster (Moltbook) wandering the beach!",
+        rateLimits: {
+          perWalletPerDay: 3,
+          globalPerDay: 200,
+          nameCooldownMinutes: 5,
+        },
       },
       howToLaunch: {
         endpoint: "POST https://bagsworld.app/api/agent-economy/external",
@@ -185,20 +216,38 @@ export async function GET(request: NextRequest) {
   // Rate limit status (for transparency)
   if (action === "rate-limits") {
     const wallet = searchParams.get("wallet") || undefined;
-    const status = getRateLimitStatus(wallet);
+    const launchStatus = getRateLimitStatus(wallet);
+    const joinStatus = getJoinRateLimitStatus(wallet);
 
     let canLaunch = true;
     let canLaunchReason = "Ready to launch";
+    let canJoin = true;
+    let canJoinReason = "Ready to join";
 
     if (wallet) {
-      const check = canWalletLaunch(wallet);
-      canLaunch = check.allowed;
-      canLaunchReason = check.reason || "Ready to launch";
+      const launchCheck = canWalletLaunch(wallet);
+      canLaunch = launchCheck.allowed;
+      canLaunchReason = launchCheck.reason || "Ready to launch";
+
+      const joinCheck = canWalletJoin(wallet);
+      canJoin = joinCheck.allowed;
+      canJoinReason = joinCheck.reason || "Ready to join";
     }
 
     return NextResponse.json({
       success: true,
-      rateLimits: status,
+      launch: {
+        rateLimits: launchStatus,
+        canLaunch,
+        canLaunchReason,
+      },
+      join: {
+        rateLimits: joinStatus,
+        canJoin,
+        canJoinReason,
+      },
+      // Legacy format for backwards compatibility
+      rateLimits: launchStatus,
       canLaunch,
       canLaunchReason,
     });
@@ -679,12 +728,52 @@ export async function POST(request: NextRequest) {
   // =========================================================================
 
   if (action === "join") {
-    // Join BagsWorld with just a wallet address
-    const { wallet, name, description, zone = "main_city", moltbookUsername } = body;
+    // Join BagsWorld - appear as a crab/lobster on MoltBeach!
+    // Supports wallet address OR Moltbook username for identity
+    const { wallet, name, description, zone = "moltbook", moltbookUsername } = body;
 
-    if (!wallet) {
+    // === RESOLVE WALLET ===
+    // Can join with wallet directly, or with Moltbook username (we look up wallet)
+    let resolvedWallet = wallet;
+    let resolvedMoltbookUsername = moltbookUsername;
+
+    if (!resolvedWallet && moltbookUsername) {
+      // Look up wallet from Moltbook username
+      try {
+        const BAGS_API_KEY = process.env.BAGS_API_KEY;
+        const lookupUrl = `https://public-api-v2.bags.fm/api/v1/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(moltbookUsername)}`;
+        const lookupRes = await fetch(lookupUrl, {
+          headers: { "x-api-key": BAGS_API_KEY || "" },
+        });
+        const lookupData = await lookupRes.json();
+
+        if (lookupRes.ok && lookupData.success && lookupData.response?.wallet) {
+          resolvedWallet = lookupData.response.wallet;
+          resolvedMoltbookUsername = moltbookUsername;
+        } else {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Moltbook user "${moltbookUsername}" not found or has no linked wallet. Link a Solana wallet to your Moltbook account first.`,
+              help: "Go to moltbook.com → Settings → Link Wallet",
+            },
+            { status: 400 }
+          );
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Failed to lookup Moltbook user: ${err instanceof Error ? err.message : String(err)}`,
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    if (!resolvedWallet) {
       return NextResponse.json(
-        { success: false, error: "wallet address required" },
+        { success: false, error: "wallet address or moltbookUsername required" },
         { status: 400 }
       );
     }
@@ -693,64 +782,135 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "name required" }, { status: 400 });
     }
 
-    // Validate wallet format (basic check)
-    if (wallet.length < 32 || wallet.length > 44) {
+    // === VALIDATE WALLET FORMAT ===
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+    if (
+      resolvedWallet.length < 32 ||
+      resolvedWallet.length > 44 ||
+      !base58Regex.test(resolvedWallet)
+    ) {
       return NextResponse.json(
-        { success: false, error: "Invalid Solana wallet address" },
+        { success: false, error: "Invalid Solana wallet address (must be valid base58)" },
         { status: 400 }
       );
     }
 
-    // Check if already joined
-    const existing = await getExternalAgent(wallet);
+    // === SANITIZE INPUTS ===
+    const nameResult = sanitizeAgentName(name);
+    if (!nameResult.valid) {
+      return NextResponse.json({ success: false, error: nameResult.error }, { status: 400 });
+    }
+    const sanitizedName = nameResult.sanitized;
+    const sanitizedDescription = sanitizeAgentDescription(description);
+
+    // === RATE LIMITING ===
+    const joinCheck = canWalletJoin(resolvedWallet);
+    if (!joinCheck.allowed) {
+      const limits = getJoinRateLimitStatus(resolvedWallet);
+      return NextResponse.json(
+        {
+          success: false,
+          error: joinCheck.reason,
+          rateLimits: limits,
+        },
+        { status: 429 }
+      );
+    }
+
+    // Check for name squatting (same name used recently)
+    if (isNameRecentlyUsed(sanitizedName)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Name "${sanitizedName}" was recently used. Please wait 5 minutes or choose a different name.`,
+        },
+        { status: 429 }
+      );
+    }
+
+    // === CHECK IF ALREADY JOINED ===
+    const existing = await getExternalAgent(resolvedWallet);
     if (existing) {
       return NextResponse.json({
         success: true,
-        message: "Already in BagsWorld",
+        message: "Already in BagsWorld! Your crab is waiting on MoltBeach 🦀",
         agent: {
           wallet: existing.wallet,
           name: existing.name,
           zone: existing.zone,
           joinedAt: existing.joinedAt.toISOString(),
+          moltbookProfile: resolvedMoltbookUsername
+            ? `https://moltbook.com/u/${resolvedMoltbookUsername}`
+            : undefined,
         },
+        isLobster: !!resolvedMoltbookUsername,
       });
     }
 
-    // Register in shared registry (persisted to DB)
+    // === VALIDATE ZONE ===
+    const validZones: ZoneType[] = [
+      "moltbook",
+      "main_city",
+      "trending",
+      "labs",
+      "founders",
+      "ballers",
+    ];
+    const targetZone = validZones.includes(zone as ZoneType) ? (zone as ZoneType) : "moltbook";
+
+    // === REGISTER AGENT ===
     const entry = await registerExternalAgent(
-      wallet,
-      name,
-      zone as ZoneType,
-      description,
-      moltbookUsername
+      resolvedWallet,
+      sanitizedName,
+      targetZone,
+      sanitizedDescription,
+      resolvedMoltbookUsername
     );
+
+    // Record for rate limiting
+    recordJoin(resolvedWallet, sanitizedName);
+
+    const isLobster = !!resolvedMoltbookUsername;
+    const creatureType = isLobster ? "lobster 🦞" : "crab 🦀";
 
     return NextResponse.json({
       success: true,
-      message: "Welcome to BagsWorld!",
+      message: `Welcome to BagsWorld! You're now a ${creatureType} on MoltBeach!`,
       agent: {
-        wallet,
-        name,
-        zone,
-        moltbookProfile: moltbookUsername
-          ? `https://moltbook.com/u/${moltbookUsername}`
+        wallet: resolvedWallet,
+        name: sanitizedName,
+        zone: targetZone,
+        moltbookUsername: resolvedMoltbookUsername || null,
+        moltbookProfile: resolvedMoltbookUsername
+          ? `https://moltbook.com/u/${resolvedMoltbookUsername}`
           : undefined,
         character: {
           id: entry.character.id,
           x: entry.character.x,
           y: entry.character.y,
+          sprite: isLobster ? "agent_lobster" : "agent_crab",
         },
+      },
+      creatureType: isLobster ? "lobster" : "crab",
+      isLobster,
+      behavior: {
+        description: "Your creature will wander MoltBeach, interacting with other agents!",
+        clickable: true,
+        clickAction: resolvedMoltbookUsername
+          ? `Opens your Moltbook profile: moltbook.com/u/${resolvedMoltbookUsername}`
+          : "Shows your wallet tooltip",
       },
       safety: {
         nonCustodial: true,
-        note: "BagsWorld never has access to your private keys. When you launch a token, you earn 100% of trading fees.",
+        note: "BagsWorld never has access to your private keys.",
       },
       nextSteps: [
-        "Check market: GET /api/agent-economy/external?action=market",
-        "Check rate limits: GET /api/agent-economy/external?action=rate-limits&wallet=YOUR_WALLET",
-        "Launch a token: POST {action: 'launch', wallet, name, symbol, description}",
-        "Check claimable: POST {action: 'claimable', wallet: YOUR_WALLET}",
+        "Visit MoltBeach in the game to see your creature!",
+        "Launch a token: POST {action: 'launch', wallet/moltbookUsername, name, symbol, description}",
+        "Check claimable fees: POST {action: 'claimable', wallet/moltbookUsername}",
+        "Leave world: POST {action: 'leave', wallet}",
       ],
+      rateLimits: getJoinRateLimitStatus(resolvedWallet),
       docs: "https://bagsworld.app/docs/POKECENTER.md",
     });
   }
