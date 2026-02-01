@@ -553,17 +553,12 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   // 1. Consistent fee claiming regardless of how identity was provided
   // 2. Agent can claim with their wallet whether they launched via moltbookUsername or wallet
   // NOTE: payer must match the signer (launcher wallet) for the transaction to be valid
-  // Bags.fm API updated: uses basisPointsArray instead of feeClaimers
+  // Bags.fm API updated: uses basisPointsArray (numbers) + wallets (addresses) instead of feeClaimers
   const feeShareRequest = {
     baseMint: tokenMint,
     payer: bagsWorldWallet,
-    // Try both formats for compatibility
-    feeClaimers: [
-      { user: resolvedWallet, userBps: 10000 }, // 100% to the agent
-    ],
-    basisPointsArray: [
-      { user: resolvedWallet, userBps: 10000 }, // 100% to the agent
-    ],
+    basisPointsArray: [10000], // 100% to the agent
+    wallets: [resolvedWallet], // Agent's wallet
   };
 
   if (useMoltbookIdentity) {
