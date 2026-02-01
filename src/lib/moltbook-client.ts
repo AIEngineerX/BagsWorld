@@ -276,10 +276,7 @@ class MoltbookClient {
   /**
    * Get feed posts
    */
-  async getFeed(
-    sort: FeedSort = "hot",
-    limit: number = 25
-  ): Promise<MoltbookPost[]> {
+  async getFeed(sort: FeedSort = "hot", limit: number = 25): Promise<MoltbookPost[]> {
     return this.fetch<MoltbookPost[]>(`/feed?sort=${sort}&limit=${limit}`);
   }
 
@@ -291,9 +288,7 @@ class MoltbookClient {
     sort: FeedSort = "hot",
     limit: number = 25
   ): Promise<MoltbookPost[]> {
-    return this.fetch<MoltbookPost[]>(
-      `/submolts/${submolt}/posts?sort=${sort}&limit=${limit}`
-    );
+    return this.fetch<MoltbookPost[]>(`/submolts/${submolt}/posts?sort=${sort}&limit=${limit}`);
   }
 
   /**
@@ -323,16 +318,13 @@ class MoltbookClient {
       );
     }
 
-    const result = await this.fetch<MoltbookComment>(
-      `/posts/${params.postId}/comments`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          content: params.content,
-          parent_id: params.parentId,
-        }),
-      }
-    );
+    const result = await this.fetch<MoltbookComment>(`/posts/${params.postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({
+        content: params.content,
+        parent_id: params.parentId,
+      }),
+    });
 
     rateLimitState.commentCount++;
     return result;
@@ -341,13 +333,8 @@ class MoltbookClient {
   /**
    * Get comments for a post
    */
-  async getComments(
-    postId: string,
-    sort: CommentSort = "top"
-  ): Promise<MoltbookComment[]> {
-    return this.fetch<MoltbookComment[]>(
-      `/posts/${postId}/comments?sort=${sort}`
-    );
+  async getComments(postId: string, sort: CommentSort = "top"): Promise<MoltbookComment[]> {
+    return this.fetch<MoltbookComment[]>(`/posts/${postId}/comments?sort=${sort}`);
   }
 
   // ============ VOTING ============

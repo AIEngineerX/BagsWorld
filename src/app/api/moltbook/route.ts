@@ -18,8 +18,8 @@ import { getMoltbookOrNull } from "@/lib/moltbook-client";
 
 // Rate limit configs
 const RATE_LIMITS = {
-  read: { limit: 60, windowMs: 60000 },    // 60/min for reading
-  write: { limit: 5, windowMs: 60000 },    // 5/min for posting
+  read: { limit: 60, windowMs: 60000 }, // 60/min for reading
+  write: { limit: 5, windowMs: 60000 }, // 5/min for posting
 };
 
 /**
@@ -79,10 +79,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("[Moltbook API] GET error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch Moltbook feed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch Moltbook feed" }, { status: 500 });
   }
 }
 
@@ -140,10 +137,7 @@ export async function POST(request: Request) {
     }
 
     if (!data || typeof data !== "object") {
-      return NextResponse.json(
-        { error: "Missing or invalid data object" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing or invalid data object" }, { status: 400 });
     }
 
     // Check if Moltbook is configured
@@ -196,9 +190,6 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("[Moltbook API] POST error:", error);
-    return NextResponse.json(
-      { error: "Failed to post to Moltbook" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to post to Moltbook" }, { status: 500 });
   }
 }

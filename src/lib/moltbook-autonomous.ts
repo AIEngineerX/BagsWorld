@@ -20,6 +20,8 @@ import {
   getQueueStatus,
   followFinnBags,
   engageWithFinnBags,
+  challengeRandomTopAgent,
+  postArenaInviteToRandomSubmolt,
 } from "./moltbook-agent";
 import { getMoltbookOrNull } from "./moltbook-client";
 
@@ -42,8 +44,10 @@ const CONFIG = {
   MIN_MINUTES_BETWEEN_POSTS: 35, // Buffer above 30-min limit
 
   // Daily limits
-  MAX_POSTS_PER_DAY: 8,
-  MAX_ARENA_INVITES_PER_DAY: 3,
+  MAX_POSTS_PER_DAY: 10,
+  MAX_ARENA_INVITES_PER_DAY: 4,
+  MAX_ARENA_CHALLENGES_PER_DAY: 2,
+  MAX_CROSS_SUBMOLT_INVITES_PER_DAY: 2,
   MAX_SPOTLIGHTS_PER_DAY: 2,
 
   // Tick interval (how often to check if we should post)
@@ -64,6 +68,8 @@ type PostType =
   | "feature_spotlight"
   | "character_spotlight"
   | "arena_invite"
+  | "arena_challenge"
+  | "cross_submolt_invite"
   | "finn_engagement";
 
 interface PostRecord {
@@ -253,6 +259,60 @@ async function checkAndPostArenaInvite(): Promise<boolean> {
   return true;
 }
 
+async function checkAndChallengeTopAgent(): Promise<boolean> {
+  if (!canPostAny() || !canPostType("arena_challenge")) {
+    return false;
+  }
+
+  if (getPostCountToday("arena_challenge") >= CONFIG.MAX_ARENA_CHALLENGES_PER_DAY) {
+    return false;
+  }
+
+  // 8% chance per tick during peak hours
+  const hour = getESTHour();
+  if (hour < 14 || hour > 22) {
+    return false;
+  }
+
+  if (Math.random() > 0.08) {
+    return false;
+  }
+
+  console.log("[MoltbookAutonomous] Challenging a top agent to arena");
+  const success = await challengeRandomTopAgent();
+  if (success) {
+    recordPost("arena_challenge");
+  }
+  return success;
+}
+
+async function checkAndPostCrossSubmoltInvite(): Promise<boolean> {
+  if (!canPostAny() || !canPostType("cross_submolt_invite")) {
+    return false;
+  }
+
+  if (getPostCountToday("cross_submolt_invite") >= CONFIG.MAX_CROSS_SUBMOLT_INVITES_PER_DAY) {
+    return false;
+  }
+
+  // 10% chance per tick during active hours
+  const hour = getESTHour();
+  if (hour < 10 || hour > 20) {
+    return false;
+  }
+
+  if (Math.random() > 0.1) {
+    return false;
+  }
+
+  console.log("[MoltbookAutonomous] Posting arena invite to other submolt");
+  const success = await postArenaInviteToRandomSubmolt();
+  if (success) {
+    recordPost("cross_submolt_invite");
+  }
+  return success;
+}
+
 async function checkAndPostSpotlight(): Promise<boolean> {
   if (!canPostAny()) {
     return false;
@@ -403,6 +463,8 @@ async function tick(): Promise<void> {
   // Other posts in random order to vary content
   const checks = [
     checkAndPostArenaInvite,
+    checkAndChallengeTopAgent,
+    checkAndPostCrossSubmoltInvite,
     checkAndPostSpotlight,
     checkAndPostHype,
     checkAndPostInvite,

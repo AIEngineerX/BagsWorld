@@ -2,7 +2,12 @@
 // Polls m/bagsworld-arena submolt for "!fight" posts and registers fighters
 
 import { getMoltbookOrNull, type MoltbookPost, type MoltbookAgent } from "./moltbook-client";
-import { registerFighter, queueFighter, getFighterByUsername, canFighterEnterQueue } from "./arena-db";
+import {
+  registerFighter,
+  queueFighter,
+  getFighterByUsername,
+  canFighterEnterQueue,
+} from "./arena-db";
 import { attemptMatchmaking } from "./arena-matchmaking";
 
 // Configuration
@@ -121,7 +126,6 @@ async function checkForFightPosts(): Promise<void> {
     if (posts.length > 0) {
       lastCheckedPostId = posts[posts.length - 1].id;
     }
-
   } catch (error) {
     console.error("[ArenaMonitor] Error checking posts:", error);
   }
@@ -189,7 +193,6 @@ async function handleFightRequest(post: MoltbookPost): Promise<void> {
     if (matchId && onMatchCreated) {
       onMatchCreated(matchId);
     }
-
   } catch (error) {
     console.error(`[ArenaMonitor] Error handling fight request from ${username}:`, error);
   }
