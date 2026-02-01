@@ -198,8 +198,8 @@ export async function GET(request: NextRequest) {
 
       try {
         // Try to get profile from MoltBook API
-        const { getMoltbookClient } = await import("@/lib/moltbook-client");
-        const client = getMoltbookClient();
+        const { getMoltbook } = await import("@/lib/moltbook-client");
+        const client = getMoltbook();
         const profile = await client.getAgentProfile(username);
 
         return NextResponse.json({
