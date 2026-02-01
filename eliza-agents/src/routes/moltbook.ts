@@ -222,6 +222,47 @@ router.get("/profile", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/moltbook/claim-status - Check agent claim status
+router.get("/claim-status", async (req: Request, res: Response) => {
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    res.status(400).json({
+      success: false,
+      error: "MOLTBOOK_API_KEY not configured",
+    });
+    return;
+  }
+
+  try {
+    const response = await fetch(`${MOLTBOOK_API_URL}/agents/status`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    const data = await response.json();
+
+    res.json({
+      success: response.ok,
+      status: response.status,
+      data,
+      hint: data.status === "pending_claim"
+        ? "Agent is registered but not yet claimed. The human owner needs to visit the claim URL and post the verification tweet."
+        : data.status === "claimed"
+        ? "Agent is fully claimed and ready to post!"
+        : "Unknown status",
+    });
+  } catch (error) {
+    console.error("[MoltBook] Claim status error:", error);
+    res.status(500).json({
+      success: false,
+      error: String(error),
+    });
+  }
+});
+
 // POST /api/moltbook/post - Post to MoltBook
 router.post("/post", async (req: Request, res: Response) => {
   const { type, title, content } = req.body;
