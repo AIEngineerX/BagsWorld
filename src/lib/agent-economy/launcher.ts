@@ -268,7 +268,14 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     console.log("[Launcher] Fee share raw response:", feeShareRes.status, rawText.substring(0, 500));
 
     if (!feeShareRes.ok) {
-      throw new Error(`Fee share API ${feeShareRes.status}: ${rawText.substring(0, 300)}`);
+      // Include request details in error for debugging
+      const debugDetails = JSON.stringify({
+        url: feeShareUrl,
+        request: feeShareRequest,
+        apiKeyPrefix: BAGS_API_KEY?.substring(0, 10),
+        apiKeyLen: BAGS_API_KEY?.length,
+      });
+      throw new Error(`Fee share API ${feeShareRes.status}: ${rawText.substring(0, 200)} | DEBUG: ${debugDetails}`);
     }
 
     const feeShareResponse = JSON.parse(rawText);
