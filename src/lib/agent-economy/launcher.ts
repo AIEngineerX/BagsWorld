@@ -277,12 +277,16 @@ export interface LaunchResult {
 
 export interface ClaimablePosition {
   baseMint: string;
-  virtualPoolAddress: string;
+  quoteMint?: string;
+  virtualPoolAddress?: string;
+  virtualPool?: string;
   virtualPoolClaimableAmount?: string;
+  virtualPoolClaimableLamportsUserShare?: string;
   dammPoolClaimableAmount?: string;
   totalClaimableLamportsUserShare?: string;
   isCustomFeeVault: boolean;
   isMigrated: boolean;
+  programId?: string;
 }
 
 export interface ClaimResult {
@@ -492,9 +496,15 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     };
   }
 
-  // 6. Sanitize description
-  const description =
-    sanitizeDescription(request.description) || `Token launched via BagsWorld Pokécenter`;
+  // 6. Sanitize description and add creator attribution
+  const baseDescription =
+    sanitizeDescription(request.description) || `The official token of ${name}`;
+
+  // Build description with Moltbook + BagsWorld attribution
+  const creatorAttribution = useMoltbookIdentity
+    ? `🏥 Launched by @${moltbookUsername} via bagsworld.app`
+    : `🏥 Launched via bagsworld.app`;
+  const description = `${baseDescription}\n\n${creatorAttribution}`;
 
   // 7. Validate image URL
   const imageCheck = validateImageUrl(request.imageUrl || "");
@@ -505,6 +515,10 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   // Use placeholder if no image provided
   const finalImageUrl =
     imageCheck.sanitized || `https://api.dicebear.com/7.x/shapes/png?seed=${symbol}&size=400`;
+
+  // Set website to Moltbook profile if using Moltbook identity and no website provided
+  const finalWebsite =
+    useMoltbookIdentity && !website ? `https://moltbook.com/u/${moltbookUsername}` : website;
 
   console.log(
     `[Launcher] Launching ${symbol} for ${useMoltbookIdentity ? `@${moltbookUsername}` : resolvedWallet.slice(0, 8)}...`
@@ -526,7 +540,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
       description,
       imageUrl: finalImageUrl,
       twitter: twitter || undefined,
-      website: website || undefined,
+      website: finalWebsite || undefined,
       telegram: telegram || undefined,
     }),
   });
