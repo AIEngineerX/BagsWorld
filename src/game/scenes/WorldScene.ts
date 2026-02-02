@@ -4199,7 +4199,7 @@ export class WorldScene extends Phaser.Scene {
     barLabelBg.setDepth(6);
     this.moltbookElements.push(barLabelBg);
 
-    const barLabel = this.add.text(barX, pathLevel - Math.round(115 * s), "🍹 MOLT BAR", {
+    const barLabel = this.add.text(barX, pathLevel - Math.round(115 * s), "🔥 ALPHA", {
       fontFamily: "monospace",
       fontSize: `${Math.round(11 * s)}px`,
       color: "#fde047",

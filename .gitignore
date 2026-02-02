@@ -49,3 +49,8 @@ node_modules
 .netlify
 # Trigger redeploy Mon, Jan 19, 2026  9:09:54 AM
 # Helius RPC configured Mon, Jan 19, 2026  9:24:37 AM
+
+# Local-only agent dashboard
+/src/app/agents/
+/src/components/MoltbookDashboard.tsx
+/src/app/api/agent-dashboard/

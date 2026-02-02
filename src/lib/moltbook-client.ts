@@ -498,7 +498,7 @@ export function initMoltbook(apiKey: string): MoltbookClient {
 
 export function getMoltbook(): MoltbookClient {
   if (!moltbookClient) {
-    const apiKey = process.env.MOLTBOOK_API_KEY;
+    const apiKey = process.env.MOLTBOOK_BAGSY_KEY || process.env.MOLTBOOK_API_KEY;
     if (!apiKey) {
       throw new Error("MOLTBOOK_API_KEY not configured");
     }
