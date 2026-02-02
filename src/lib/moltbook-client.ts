@@ -289,17 +289,37 @@ class MoltbookClient {
 
   /**
    * Get posts from a specific submolt
-   * Note: Moltbook returns posts inside the submolt detail response
+   * Note: Moltbook returns posts inside the submolt detail response (not wrapped in 'data')
    */
   async getSubmoltPosts(
     submolt: string,
     sort: FeedSort = "hot",
     limit: number = 25
   ): Promise<MoltbookPost[]> {
-    // Moltbook API returns posts in the submolt detail response, not a separate endpoint
-    const response = await this.fetch<{ 
-      submolt: MoltbookSubmolt; 
-      posts: Array<{
+    // Check general rate limit
+    const rateCheck = this.checkRateLimit("request");
+    if (!rateCheck.allowed) {
+      throw new Error(`Rate limited. Retry after ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)}s`);
+    }
+
+    const url = `${this.baseUrl}/submolts/${submolt}?sort=${sort}&limit=${limit}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Moltbook API error: ${response.status} ${response.statusText}`);
+    }
+
+    // Moltbook returns { success, submolt, posts } directly (not wrapped in 'data')
+    const data = await response.json() as {
+      success: boolean;
+      submolt: MoltbookSubmolt;
+      posts?: Array<{
         id: string;
         title: string;
         content?: string;
@@ -310,10 +330,15 @@ class MoltbookClient {
         created_at: string;
         author: { id: string; name: string; karma?: number; description?: string };
       }>;
-    }>(`/submolts/${submolt}?sort=${sort}&limit=${limit}`);
+      error?: string;
+    };
+
+    if (!data.success) {
+      throw new Error(data.error || "Failed to fetch submolt posts");
+    }
     
     // Map the response format to MoltbookPost
-    return (response.posts || []).map(p => ({
+    return (data.posts || []).map(p => ({
       id: p.id,
       title: p.title,
       content: p.content,
