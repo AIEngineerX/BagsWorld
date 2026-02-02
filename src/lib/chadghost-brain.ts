@@ -9,7 +9,7 @@
  * - Helps onboard new agents to Pokécenter
  */
 
-import { getMoltbookOrNull, type MoltbookPost } from "./moltbook-client";
+import { getChadGhostMoltbookOrNull, type MoltbookPost } from "./moltbook-client";
 import { findAlpha, getBestAlpha, formatAlphaForPost, type AlphaItem, type AlphaType } from "./alpha-finder";
 import { trackCall } from "./chadghost-engagement";
 
@@ -100,7 +100,7 @@ function canPost(config: ChadGhostConfig): { allowed: boolean; reason?: string; 
   }
   
   // Check Moltbook rate limit
-  const client = getMoltbookOrNull();
+  const client = getChadGhostMoltbookOrNull();
   if (client) {
     const moltbookCheck = client.canPost();
     if (!moltbookCheck.allowed) {
@@ -367,7 +367,7 @@ async function decideAndPostAlpha(alpha: AlphaItem, config: ChadGhostConfig): Pr
   }
   
   // Post to Moltbook
-  const client = getMoltbookOrNull();
+  const client = getChadGhostMoltbookOrNull();
   if (!client) {
     return { posted: false, reason: "Moltbook not configured" };
   }
@@ -541,7 +541,7 @@ export async function forcePost(alphaType?: AlphaType): Promise<{
  * Create the bagsworld-alpha submolt (one-time setup)
  */
 export async function createAlphaSubmolt(): Promise<{ success: boolean; error?: string }> {
-  const client = getMoltbookOrNull();
+  const client = getChadGhostMoltbookOrNull();
   if (!client) {
     return { success: false, error: "Moltbook not configured" };
   }

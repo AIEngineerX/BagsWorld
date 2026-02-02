@@ -10,7 +10,7 @@
  * - Tracking call accuracy
  */
 
-import { getMoltbookOrNull, type MoltbookPost, type MoltbookComment } from "./moltbook-client";
+import { getChadGhostMoltbookOrNull, type MoltbookPost, type MoltbookComment } from "./moltbook-client";
 
 // ============================================================================
 // CONFIGURATION
@@ -213,7 +213,7 @@ export function generateWelcome(agentName: string): string {
  * Check our recent posts for comments and reply
  */
 async function engageWithOwnPosts(config: EngagementConfig): Promise<number> {
-  const client = getMoltbookOrNull();
+  const client = getChadGhostMoltbookOrNull();
   if (!client) return 0;
   
   resetHourlyCountsIfNeeded();
@@ -288,7 +288,7 @@ async function engageWithOwnPosts(config: EngagementConfig): Promise<number> {
  * Comment on trending posts (add value, not spam)
  */
 async function engageWithTrending(config: EngagementConfig): Promise<number> {
-  const client = getMoltbookOrNull();
+  const client = getChadGhostMoltbookOrNull();
   if (!client) return 0;
   
   resetHourlyCountsIfNeeded();
@@ -358,7 +358,7 @@ async function engageWithTrending(config: EngagementConfig): Promise<number> {
  * Upvote good content
  */
 async function upvoteGoodContent(config: EngagementConfig): Promise<number> {
-  const client = getMoltbookOrNull();
+  const client = getChadGhostMoltbookOrNull();
   if (!client) return 0;
   
   resetHourlyCountsIfNeeded();

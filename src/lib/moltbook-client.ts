@@ -289,13 +289,43 @@ class MoltbookClient {
 
   /**
    * Get posts from a specific submolt
+   * Note: Moltbook returns posts inside the submolt detail response
    */
   async getSubmoltPosts(
     submolt: string,
     sort: FeedSort = "hot",
     limit: number = 25
   ): Promise<MoltbookPost[]> {
-    return this.fetch<MoltbookPost[]>(`/submolts/${submolt}/posts?sort=${sort}&limit=${limit}`);
+    // Moltbook API returns posts in the submolt detail response, not a separate endpoint
+    const response = await this.fetch<{ 
+      submolt: MoltbookSubmolt; 
+      posts: Array<{
+        id: string;
+        title: string;
+        content?: string;
+        url?: string;
+        upvotes: number;
+        downvotes: number;
+        comment_count: number;
+        created_at: string;
+        author: { id: string; name: string; karma?: number; description?: string };
+      }>;
+    }>(`/submolts/${submolt}?sort=${sort}&limit=${limit}`);
+    
+    // Map the response format to MoltbookPost
+    return (response.posts || []).map(p => ({
+      id: p.id,
+      title: p.title,
+      content: p.content,
+      url: p.url,
+      submolt: submolt,
+      author: p.author?.name || 'unknown',
+      authorKarma: p.author?.karma,
+      upvotes: p.upvotes,
+      downvotes: p.downvotes,
+      commentCount: p.comment_count,
+      createdAt: p.created_at,
+    }));
   }
 
   /**
@@ -495,28 +525,55 @@ class MoltbookClient {
   }
 }
 
-// Singleton pattern
-let moltbookClient: MoltbookClient | null = null;
+// Singleton pattern - separate clients for Bagsy and ChadGhost
+let bagsyClient: MoltbookClient | null = null;
+let chadghostClient: MoltbookClient | null = null;
 
 export function initMoltbook(apiKey: string): MoltbookClient {
-  moltbookClient = new MoltbookClient(apiKey);
-  return moltbookClient;
+  bagsyClient = new MoltbookClient(apiKey);
+  return bagsyClient;
 }
 
+/**
+ * Get Bagsy's Moltbook client (BagsWorld mascot, hype posts)
+ */
 export function getMoltbook(): MoltbookClient {
-  if (!moltbookClient) {
+  if (!bagsyClient) {
     const apiKey = process.env.MOLTBOOK_BAGSY_KEY || process.env.MOLTBOOK_API_KEY;
     if (!apiKey) {
       throw new Error("MOLTBOOK_API_KEY not configured");
     }
-    moltbookClient = new MoltbookClient(apiKey);
+    bagsyClient = new MoltbookClient(apiKey);
   }
-  return moltbookClient;
+  return bagsyClient;
 }
 
 export function getMoltbookOrNull(): MoltbookClient | null {
   try {
     return getMoltbook();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get ChadGhost's Moltbook client (Alpha KOL, crypto calls)
+ * ChadGhost has its own identity separate from Bagsy
+ */
+export function getChadGhostMoltbook(): MoltbookClient {
+  if (!chadghostClient) {
+    const apiKey = process.env.MOLTBOOK_CHADGHOST_KEY;
+    if (!apiKey) {
+      throw new Error("MOLTBOOK_CHADGHOST_KEY not configured");
+    }
+    chadghostClient = new MoltbookClient(apiKey);
+  }
+  return chadghostClient;
+}
+
+export function getChadGhostMoltbookOrNull(): MoltbookClient | null {
+  try {
+    return getChadGhostMoltbook();
   } catch {
     return null;
   }
