@@ -34,6 +34,7 @@ import { TradeModal } from "@/components/TradeModal";
 import { LaunchModal } from "@/components/LaunchModal";
 import { PartnerClaimButton } from "@/components/PartnerClaimButton";
 import { MusicButton } from "@/components/MusicButton";
+import { EnterWorldButton } from "@/components/EnterWorldButton";
 import { WorldIcon } from "@/components/icons";
 import { useWorldState } from "@/hooks/useWorldState";
 import { DatabaseStatus } from "@/components/DatabaseStatus";
@@ -313,6 +314,7 @@ export default function Home() {
               {worldState?.weather?.toUpperCase() ?? "LOADING"}
             </span>
           </div>
+          <EnterWorldButton />
           <MusicButton />
           <WalletButton />
           <PartnerClaimButton />
@@ -354,6 +356,7 @@ export default function Home() {
 
               {/* Action buttons - grid for better touch targets */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <EnterWorldButton className="w-full" />
                 <Link href="/docs" className="btn-retro font-pixel text-[10px] text-center">
                   [DOCS]
                 </Link>
