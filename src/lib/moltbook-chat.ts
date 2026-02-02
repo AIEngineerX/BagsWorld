@@ -16,9 +16,9 @@ import {
   MoltbookComment,
 } from "./moltbook-client";
 
-// Try bagsworld first, fall back to general if not available
-const PREFERRED_SUBMOLT = "bagsworld";
-const FALLBACK_SUBMOLT = "general";
+// Primary submolt for alpha - this is where ChadGhost posts
+const PREFERRED_SUBMOLT = "bagsworld-alpha";
+const FALLBACK_SUBMOLT = "crypto";
 let CHAT_SUBMOLT = PREFERRED_SUBMOLT;
 
 const CHAT_POST_TITLE = "🦞 BagsWorld Alpha Chat";
@@ -64,6 +64,7 @@ function commentToMessage(comment: MoltbookComment): ChatMessage {
   return {
     id: comment.id,
     author: comment.author,
+    authorKarma: comment.authorKarma,
     content: comment.content,
     timestamp: new Date(comment.createdAt),
     upvotes: comment.upvotes,
@@ -396,4 +397,86 @@ export function clearChatState(): void {
   chatState.lastFetch = 0;
   chatState.messages = [];
   chatState.isInitialized = false;
+}
+
+// ============================================================================
+// ALPHA FEED (Posts from submolt, not comments)
+// ============================================================================
+
+export interface AlphaPost {
+  id: string;
+  title: string;
+  content: string;
+  author: string;
+  authorKarma?: number;
+  upvotes: number;
+  commentCount: number;
+  timestamp: Date;
+  submolt: string;
+}
+
+/**
+ * Fetch alpha posts from the bagsworld-alpha submolt
+ * This shows ChadGhost's alpha calls and other agent posts
+ */
+export async function fetchAlphaFeed(limit: number = 20): Promise<{
+  success: boolean;
+  posts: AlphaPost[];
+  submolt: string;
+  error?: string;
+}> {
+  const client = getMoltbookOrNull();
+  if (!client) {
+    return {
+      success: false,
+      posts: [],
+      submolt: PREFERRED_SUBMOLT,
+      error: "MoltBook not configured",
+    };
+  }
+
+  // Try preferred submolt first, fall back if needed
+  let posts: MoltbookPost[] = [];
+  let usedSubmolt = PREFERRED_SUBMOLT;
+
+  try {
+    posts = await client.getSubmoltPosts(PREFERRED_SUBMOLT, "new", limit);
+  } catch (err) {
+    // If preferred submolt doesn't exist, try fallback
+    console.log(`[MoltbookChat] m/${PREFERRED_SUBMOLT} not available, trying m/${FALLBACK_SUBMOLT}`);
+    try {
+      posts = await client.getSubmoltPosts(FALLBACK_SUBMOLT, "new", limit);
+      usedSubmolt = FALLBACK_SUBMOLT;
+    } catch {
+      // If fallback also fails, try main feed
+      console.log("[MoltbookChat] Falling back to main feed");
+      posts = await client.getFeed("new", limit);
+      usedSubmolt = "feed";
+    }
+  }
+
+  const alphaPosts: AlphaPost[] = posts.map(p => ({
+    id: p.id,
+    title: p.title,
+    content: p.content || "",
+    author: p.author,
+    authorKarma: p.authorKarma,
+    upvotes: p.upvotes,
+    commentCount: p.commentCount,
+    timestamp: new Date(p.createdAt),
+    submolt: usedSubmolt,
+  }));
+
+  return {
+    success: true,
+    posts: alphaPosts,
+    submolt: usedSubmolt,
+  };
+}
+
+/**
+ * Get the configured alpha submolt name
+ */
+export function getAlphaSubmolt(): string {
+  return PREFERRED_SUBMOLT;
 }

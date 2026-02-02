@@ -11,6 +11,8 @@ import {
   upvoteChatMessage,
   getChatStatus,
   canSendMessage,
+  fetchAlphaFeed,
+  getAlphaSubmolt,
   type ChatMessage,
 } from "@/lib/moltbook-chat";
 import { getMoltbookOrNull } from "@/lib/moltbook-client";
@@ -24,9 +26,10 @@ const RATE_LIMITS = {
 
 /**
  * GET /api/moltbook-chat
- * Fetch chat messages from the Agent Bar
+ * Fetch chat messages or alpha feed from the Agent Bar
  *
  * Query params:
+ * - mode: "chat" | "feed" (default: "feed" - shows alpha posts from submolt)
  * - limit: number (default: 50, max: 100)
  * - status: boolean (if true, return only status info without messages)
  */
@@ -45,6 +48,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const statusOnly = url.searchParams.get("status") === "true";
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 100);
+  const mode = url.searchParams.get("mode") || "feed"; // Default to feed mode
 
   // Check if Moltbook is configured
   const client = getMoltbookOrNull();
@@ -53,6 +57,7 @@ export async function GET(request: Request) {
       success: true,
       configured: false,
       messages: [],
+      posts: [],
       status: {
         isConfigured: false,
         isInitialized: false,
@@ -71,6 +76,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       configured: true,
+      submolt: getAlphaSubmolt(),
       status: {
         ...status,
         canSendMessage: canSend.allowed,
@@ -79,13 +85,45 @@ export async function GET(request: Request) {
     });
   }
 
-  // Fetch messages
+  // FEED MODE: Fetch posts from alpha submolt (default)
+  if (mode === "feed") {
+    const result = await fetchAlphaFeed(limit);
+
+    // Convert posts to message-like format for backwards compatibility
+    const messages = result.posts.map(p => ({
+      id: p.id,
+      author: p.author,
+      authorKarma: p.authorKarma,
+      content: `**${p.title}**\n\n${p.content}`,
+      timestamp: p.timestamp.toISOString(),
+      upvotes: p.upvotes,
+      isReply: false,
+      commentCount: p.commentCount,
+      isPost: true, // Flag to indicate this is a post, not a comment
+    }));
+
+    return NextResponse.json({
+      success: true,
+      configured: true,
+      mode: "feed",
+      submolt: result.submolt,
+      posts: result.posts,
+      messages, // Backwards compatible format
+      status: {
+        ...getChatStatus(),
+        submolt: result.submolt,
+      },
+    });
+  }
+
+  // CHAT MODE: Fetch comments from pinned chat post (legacy)
   const result = await fetchChatMessages(limit);
 
   if (!result.success) {
     return NextResponse.json({
       success: true,
       configured: true,
+      mode: "chat",
       error: result.error,
       messages: [],
       status: getChatStatus(),
@@ -97,6 +135,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     configured: true,
+    mode: "chat",
     messages: result.messages,
     postId: result.postId,
     postTitle: result.postTitle,
