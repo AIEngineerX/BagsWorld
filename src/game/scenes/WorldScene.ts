@@ -168,6 +168,29 @@ export class WorldScene extends Phaser.Scene {
   // Performance: cached movement speeds per character (avoid random() every frame)
   private characterSpeeds: Map<string, number> = new Map();
 
+  // === LOCAL PLAYER CONTROLS ===
+  private localPlayer: Phaser.GameObjects.Sprite | null = null;
+  private playerEnabled = false; // Disabled by default - enabled via "Enter World" button
+  private playerSpriteVariant = 0; // Which character sprite the player chose
+  private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null;
+  private wasdKeys: {
+    W: Phaser.Input.Keyboard.Key;
+    A: Phaser.Input.Keyboard.Key;
+    S: Phaser.Input.Keyboard.Key;
+    D: Phaser.Input.Keyboard.Key;
+    E: Phaser.Input.Keyboard.Key; // Interact key
+  } | null = null;
+  private playerVelocity = { x: 0, y: 0 }; // Smooth movement
+  private playerWalkCycle = 0; // Animation cycle for walking bob
+  private readonly PLAYER_WALK_SPEED = 1.8; // Natural walking speed (pixels per frame)
+  private readonly PLAYER_ACCELERATION = 0.15; // How quickly player reaches walk speed
+  private readonly PLAYER_FRICTION = 0.85; // Deceleration when not pressing keys
+  private nearbyNPC: GameCharacter | null = null; // NPC player is near (for interaction)
+  private nearbyBuilding: GameBuilding | null = null; // Building player is near (for interaction)
+  private interactPrompt: Phaser.GameObjects.Container | null = null; // "Press E to talk/enter" UI
+  private boundEnterWorld: ((e: Event) => void) | null = null;
+  private boundExitWorld: ((e: Event) => void) | null = null;
+
   constructor() {
     super({ key: "WorldScene" });
   }
@@ -266,8 +289,721 @@ export class WorldScene extends Phaser.Scene {
     this.boundSpeakHandler = (e: Event) => this.handleCharacterSpeak(e as CustomEvent);
     window.addEventListener("bagsworld-character-speak", this.boundSpeakHandler);
 
+    // Setup local player controls (WASD/arrow keys to walk around)
+    this.setupLocalPlayer();
+
     // Setup mobile camera controls (drag to pan, pinch to zoom)
     this.setupMobileCameraControls();
+  }
+
+  // === LOCAL PLAYER SETUP ===
+  private setupLocalPlayer(): void {
+    // Setup keyboard input
+    if (this.input.keyboard) {
+      this.cursors = this.input.keyboard.createCursorKeys();
+      this.wasdKeys = {
+        W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+        A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+        S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+        D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+        E: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+      };
+    }
+
+    // Create "Press E to talk" prompt (hidden initially)
+    this.createInteractPrompt();
+
+    // Listen for "Enter World" event from React UI
+    this.boundEnterWorld = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const spriteVariant = detail?.spriteVariant ?? 0;
+      const customSpriteUrl = detail?.customSpriteUrl;
+      const walkSpriteSheetUrl = detail?.walkSpriteSheetUrl;
+      const memeName = detail?.memeName;
+
+      if (customSpriteUrl) {
+        // Load AI-generated meme sprite (with optional walk animation)
+        this.loadAndEnterWithCustomSprite(customSpriteUrl, memeName, walkSpriteSheetUrl);
+      } else {
+        // Use default sprite variant
+        this.enterWorld(spriteVariant);
+      }
+    };
+    window.addEventListener("bagsworld-enter-world", this.boundEnterWorld);
+
+    // Listen for "Exit World" event
+    this.boundExitWorld = () => this.exitWorld();
+    window.addEventListener("bagsworld-exit-world", this.boundExitWorld);
+  }
+
+  private loadAndEnterWithCustomSprite(
+    imageUrl: string,
+    memeName: string,
+    walkSpriteSheetUrl?: string
+  ): void {
+    if (this.playerEnabled && this.localPlayer) return;
+
+    // Generate unique texture keys for this meme
+    const textureKey = `meme_player_${Date.now()}`;
+    const walkTextureKey = walkSpriteSheetUrl ? `meme_walk_${Date.now()}` : null;
+
+    // Load the main character image
+    this.load.image(textureKey, imageUrl);
+
+    // Also load walk sprite sheet if provided
+    if (walkSpriteSheetUrl && walkTextureKey) {
+      // Load as spritesheet - 2x2 grid of 4 walk frames
+      this.load.spritesheet(walkTextureKey, walkSpriteSheetUrl, {
+        frameWidth: 512, // 1024 / 2
+        frameHeight: 512, // 1024 / 2
+      });
+    }
+
+    this.load.once("complete", () => {
+      this.enterWorldWithTexture(textureKey, memeName, walkTextureKey);
+    });
+    this.load.once("loaderror", () => {
+      console.error("[WorldScene] Failed to load meme sprite, using default");
+      this.enterWorld(0); // Fallback to default
+    });
+    this.load.start();
+  }
+
+  private enterWorldWithTexture(
+    textureKey: string,
+    memeName?: string,
+    walkTextureKey?: string | null
+  ): void {
+    if (this.playerEnabled && this.localPlayer) return;
+
+    this.playerSpriteVariant = -1; // Custom sprite
+    this.playerEnabled = true;
+
+    const pathLevel = Math.round(555 * SCALE);
+    const startX = GAME_WIDTH / 2;
+
+    // If we have a walk sprite sheet, use it as a sprite with animation
+    if (walkTextureKey && this.textures.exists(walkTextureKey)) {
+      // Create walk animation from sprite sheet
+      const walkAnimKey = `${walkTextureKey}_walk`;
+      if (!this.anims.exists(walkAnimKey)) {
+        this.anims.create({
+          key: walkAnimKey,
+          frames: this.anims.generateFrameNumbers(walkTextureKey, { start: 0, end: 3 }),
+          frameRate: 8,
+          repeat: -1,
+        });
+      }
+
+      // Create player with walk sprite sheet
+      this.localPlayer = this.add.sprite(startX, pathLevel, walkTextureKey, 0);
+      this.localPlayer.setDepth(12);
+      this.localPlayer.setScale(0.15); // Scale down AI-generated image
+      this.localPlayer.setOrigin(0.5, 1);
+
+      // Store keys for use during movement
+      (this.localPlayer as any).walkAnimKey = walkAnimKey;
+      (this.localPlayer as any).walkTextureKey = walkTextureKey;
+      (this.localPlayer as any).idleTextureKey = textureKey;
+      (this.localPlayer as any).hasWalkAnim = true;
+    } else {
+      // Create player with static meme texture (no walk animation)
+      this.localPlayer = this.add.sprite(startX, pathLevel, textureKey);
+      this.localPlayer.setDepth(12);
+      this.localPlayer.setScale(0.15); // Scale down AI-generated image (usually 1024x1024)
+      this.localPlayer.setOrigin(0.5, 1);
+      (this.localPlayer as any).hasWalkAnim = false;
+    }
+
+    // Add player name label if meme name provided
+    if (memeName) {
+      const nameLabel = this.add.text(startX, pathLevel + 10, memeName, {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#22c55e",
+        stroke: "#000000",
+        strokeThickness: 2,
+      });
+      nameLabel.setOrigin(0.5, 0);
+      nameLabel.setDepth(12);
+
+      // Store reference for cleanup and movement sync
+      (this.localPlayer as any).nameLabel = nameLabel;
+    }
+
+    // Cool spawn effect
+    this.playSpawnEffect(startX, pathLevel);
+
+    window.dispatchEvent(new CustomEvent("bagsworld-player-entered"));
+  }
+
+  private enterWorld(spriteVariant: number): void {
+    if (this.playerEnabled && this.localPlayer) return; // Already in world
+
+    this.playerSpriteVariant = spriteVariant;
+    this.playerEnabled = true;
+
+    // Create player sprite with chosen variant
+    const pathLevel = Math.round(555 * SCALE);
+    const startX = GAME_WIDTH / 2;
+
+    const textureKey = `character_${spriteVariant}`;
+    this.localPlayer = this.add.sprite(startX, pathLevel, textureKey);
+    this.localPlayer.setDepth(12); // Above NPCs
+    this.localPlayer.setScale(1.4); // Slightly larger than NPCs
+    this.localPlayer.setOrigin(0.5, 1);
+
+    // Play cool spawn effect
+    this.playSpawnEffect(startX, pathLevel, 1.4);
+
+    // Notify React that player entered
+    window.dispatchEvent(new CustomEvent("bagsworld-player-entered"));
+  }
+
+  private playSpawnEffect(x: number, y: number, targetScale: number = 1.4): void {
+    if (!this.localPlayer) return;
+
+    // Start from above and drop down with effects
+    const spawnY = y - 200;
+    this.localPlayer.setPosition(x, spawnY);
+    this.localPlayer.setAlpha(0);
+    this.localPlayer.setScale(targetScale * 0.2);
+
+    // Create spawn particle burst
+    const spawnParticles = this.add.particles(x, y - 30, "particle", {
+      speed: { min: 50, max: 150 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.4, end: 0 },
+      alpha: { start: 1, end: 0 },
+      tint: [0x22c55e, 0x4ade80, 0x86efac, 0xffffff], // Green sparkles
+      lifespan: 600,
+      quantity: 20,
+      emitting: false,
+    });
+    spawnParticles.setDepth(13);
+
+    // Create landing dust effect
+    const dustParticles = this.add.particles(x, y, "particle", {
+      speed: { min: 30, max: 80 },
+      angle: { min: -150, max: -30 },
+      scale: { start: 0.3, end: 0 },
+      alpha: { start: 0.8, end: 0 },
+      tint: 0xd4a574, // Dusty brown
+      lifespan: 400,
+      quantity: 12,
+      emitting: false,
+    });
+    dustParticles.setDepth(9);
+
+    // Spawn animation - drop from sky with bounce
+    this.tweens.add({
+      targets: this.localPlayer,
+      y: y,
+      alpha: 1,
+      scale: targetScale,
+      duration: 500,
+      ease: "Bounce.easeOut",
+      onStart: () => {
+        spawnParticles.emitParticle(20);
+      },
+      onComplete: () => {
+        dustParticles.emitParticle(12);
+
+        // Squash effect on landing
+        this.tweens.add({
+          targets: this.localPlayer,
+          scaleX: targetScale * 1.15,
+          scaleY: targetScale * 0.85,
+          duration: 80,
+          yoyo: true,
+          ease: "Sine.easeInOut",
+        });
+
+        // Cleanup particles
+        this.time.delayedCall(800, () => {
+          spawnParticles.destroy();
+          dustParticles.destroy();
+        });
+      },
+    });
+  }
+
+  private exitWorld(): void {
+    if (!this.playerEnabled || !this.localPlayer) return;
+
+    this.playerEnabled = false;
+
+    // Clean up name label if present (for meme sprites)
+    const nameLabel = (this.localPlayer as any).nameLabel as Phaser.GameObjects.Text | undefined;
+    if (nameLabel) {
+      nameLabel.destroy();
+    }
+
+    // Fade out animation
+    this.tweens.add({
+      targets: this.localPlayer,
+      alpha: 0,
+      scale: 0.5,
+      duration: 300,
+      ease: "Cubic.easeIn",
+      onComplete: () => {
+        this.localPlayer?.destroy();
+        this.localPlayer = null;
+        this.playerVelocity = { x: 0, y: 0 };
+        this.nearbyNPC = null;
+        this.nearbyBuilding = null;
+        if (this.interactPrompt) {
+          this.interactPrompt.setVisible(false);
+        }
+      },
+    });
+
+    // Notify React that player exited
+    window.dispatchEvent(new CustomEvent("bagsworld-player-exited"));
+  }
+
+  private createInteractPrompt(): void {
+    // Create a container for the interaction prompt
+    this.interactPrompt = this.add.container(0, 0);
+    this.interactPrompt.setDepth(150);
+    this.interactPrompt.setVisible(false);
+
+    // Background pill
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.8);
+    bg.fillRoundedRect(-60, -15, 120, 30, 8);
+    this.interactPrompt.add(bg);
+
+    // Text
+    const text = this.add.text(0, 0, "Press E to talk", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#ffffff",
+    });
+    text.setOrigin(0.5, 0.5);
+    this.interactPrompt.add(text);
+  }
+
+  private updateLocalPlayer(): void {
+    if (!this.localPlayer || !this.playerEnabled) return;
+
+    // Get input state
+    const left = this.cursors?.left.isDown || this.wasdKeys?.A.isDown || false;
+    const right = this.cursors?.right.isDown || this.wasdKeys?.D.isDown || false;
+    const up = this.cursors?.up.isDown || this.wasdKeys?.W.isDown || false;
+    const down = this.cursors?.down.isDown || this.wasdKeys?.S.isDown || false;
+    const interact = this.wasdKeys?.E ? Phaser.Input.Keyboard.JustDown(this.wasdKeys.E) : false;
+
+    // Apply acceleration based on input (natural walking feel)
+    if (left) {
+      this.playerVelocity.x -= this.PLAYER_ACCELERATION;
+    } else if (right) {
+      this.playerVelocity.x += this.PLAYER_ACCELERATION;
+    } else {
+      // Apply friction when no input
+      this.playerVelocity.x *= this.PLAYER_FRICTION;
+    }
+
+    if (up) {
+      this.playerVelocity.y -= this.PLAYER_ACCELERATION;
+    } else if (down) {
+      this.playerVelocity.y += this.PLAYER_ACCELERATION;
+    } else {
+      this.playerVelocity.y *= this.PLAYER_FRICTION;
+    }
+
+    // Clamp velocity to walk speed
+    const maxSpeed = this.PLAYER_WALK_SPEED;
+    this.playerVelocity.x = Phaser.Math.Clamp(this.playerVelocity.x, -maxSpeed, maxSpeed);
+    this.playerVelocity.y = Phaser.Math.Clamp(this.playerVelocity.y, -maxSpeed, maxSpeed);
+
+    // Stop completely if velocity is very small
+    if (Math.abs(this.playerVelocity.x) < 0.1) this.playerVelocity.x = 0;
+    if (Math.abs(this.playerVelocity.y) < 0.1) this.playerVelocity.y = 0;
+
+    // Apply velocity
+    this.localPlayer.x += this.playerVelocity.x;
+    this.localPlayer.y += this.playerVelocity.y;
+
+    // Flip sprite based on movement direction
+    if (this.playerVelocity.x < -0.1) {
+      this.localPlayer.setFlipX(true);
+    } else if (this.playerVelocity.x > 0.1) {
+      this.localPlayer.setFlipX(false);
+    }
+
+    // Walking animation - use sprite sheet animation if available, otherwise bob
+    // Use appropriate base scale based on sprite type
+    const baseScale = this.playerSpriteVariant === -1 ? 0.15 : 1.4; // Custom meme sprites are larger images
+    const isMoving = Math.abs(this.playerVelocity.x) > 0.2 || Math.abs(this.playerVelocity.y) > 0.2;
+    const hasWalkAnim = (this.localPlayer as any).hasWalkAnim;
+    const walkAnimKey = (this.localPlayer as any).walkAnimKey;
+
+    if (isMoving) {
+      // If we have a walk animation sprite sheet, play it
+      if (hasWalkAnim && walkAnimKey) {
+        // Make sure we're using the walk sprite sheet texture
+        const walkTextureKey = (this.localPlayer as any).walkTextureKey;
+        if (
+          walkTextureKey &&
+          this.localPlayer.texture.key !== walkTextureKey &&
+          this.textures.exists(walkTextureKey)
+        ) {
+          this.localPlayer.setTexture(walkTextureKey);
+        }
+        if (
+          !this.localPlayer.anims.isPlaying ||
+          this.localPlayer.anims.currentAnim?.key !== walkAnimKey
+        ) {
+          this.localPlayer.play(walkAnimKey);
+        }
+        // Still apply subtle bob for extra life
+        this.playerWalkCycle += 0.15;
+        const bobAmount = Math.sin(this.playerWalkCycle) * 2;
+        this.localPlayer.setOrigin(0.5, 1 - bobAmount / 50);
+        this.localPlayer.setScale(baseScale);
+        this.localPlayer.setRotation(0);
+      } else {
+        // No sprite sheet - use procedural bob animation
+        this.playerWalkCycle += 0.25; // Animation speed
+        // Vertical bob (subtle hop)
+        const bobAmount = Math.sin(this.playerWalkCycle) * 3;
+        this.localPlayer.setOrigin(0.5, 1 - bobAmount / 50);
+        // Slight squash/stretch for bounce feel
+        const squash = 1 + Math.sin(this.playerWalkCycle * 2) * 0.03;
+        this.localPlayer.setScale(baseScale * squash, baseScale / squash);
+        // Subtle rotation for swagger
+        const tilt = Math.sin(this.playerWalkCycle) * 0.02;
+        this.localPlayer.setRotation(tilt);
+      }
+    } else {
+      // Reset to idle pose
+      if (hasWalkAnim) {
+        this.localPlayer.stop();
+        // Switch back to the original idle character texture
+        const idleTextureKey = (this.localPlayer as any).idleTextureKey;
+        if (idleTextureKey && this.textures.exists(idleTextureKey)) {
+          this.localPlayer.setTexture(idleTextureKey);
+        }
+      }
+      this.playerWalkCycle = 0;
+      this.localPlayer.setOrigin(0.5, 1);
+      this.localPlayer.setScale(baseScale);
+      this.localPlayer.setRotation(0);
+    }
+
+    // Clamp Y to path area (characters walk on the path)
+    const pathLevel = Math.round(555 * SCALE);
+    const pathMargin = Math.round(30 * SCALE);
+    this.localPlayer.y = Phaser.Math.Clamp(
+      this.localPlayer.y,
+      pathLevel - pathMargin,
+      pathLevel + pathMargin
+    );
+
+    // Sync name label position if present (for meme sprites)
+    const nameLabel = (this.localPlayer as any).nameLabel as Phaser.GameObjects.Text | undefined;
+    if (nameLabel) {
+      nameLabel.setPosition(this.localPlayer.x, this.localPlayer.y + 10);
+    }
+
+    // Check zone boundaries for transition
+    this.checkZoneBoundaries();
+
+    // Check NPC and building proximity for interaction
+    this.checkProximityForInteraction();
+
+    // Handle E key interaction (NPCs take priority over buildings)
+    if (interact) {
+      if (this.nearbyNPC) {
+        this.interactWithNPC(this.nearbyNPC);
+      } else if (this.nearbyBuilding) {
+        this.interactWithBuilding(this.nearbyBuilding);
+      }
+    }
+  }
+
+  private checkZoneBoundaries(): void {
+    if (!this.localPlayer || this.isTransitioning) return;
+
+    const x = this.localPlayer.x;
+    const leftEdge = 40;
+    const rightEdge = GAME_WIDTH - 40;
+
+    // Zone order: labs (-2) -> moltbook (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3) -> arena (4)
+    const zoneOrder: ZoneType[] = [
+      "labs",
+      "moltbook",
+      "main_city",
+      "trending",
+      "ballers",
+      "founders",
+      "arena",
+    ];
+    const currentIndex = zoneOrder.indexOf(this.currentZone);
+
+    if (x <= leftEdge && currentIndex > 0) {
+      // Transition to previous zone
+      const prevZone = zoneOrder[currentIndex - 1];
+      this.playerTriggerZoneChange(prevZone, "left");
+    } else if (x >= rightEdge && currentIndex < zoneOrder.length - 1) {
+      // Transition to next zone
+      const nextZone = zoneOrder[currentIndex + 1];
+      this.playerTriggerZoneChange(nextZone, "right");
+    }
+  }
+
+  private playerTriggerZoneChange(zone: ZoneType, direction: "left" | "right"): void {
+    // Dispatch zone change event (this triggers the existing zone transition logic)
+    window.dispatchEvent(new CustomEvent("bagsworld-zone-change", { detail: { zone } }));
+
+    // Move player to opposite edge after transition
+    if (this.localPlayer) {
+      if (direction === "left") {
+        this.localPlayer.x = GAME_WIDTH - 80; // Appear on right side of new zone
+      } else {
+        this.localPlayer.x = 80; // Appear on left side of new zone
+      }
+      // Reset velocity on zone change
+      this.playerVelocity.x = 0;
+      this.playerVelocity.y = 0;
+    }
+  }
+
+  private checkProximityForInteraction(): void {
+    if (!this.localPlayer) return;
+
+    const npcRadius = 80; // Pixels - must be close to interact with NPC
+    const buildingRadius = 120; // Larger radius for buildings (X distance only)
+
+    // Check NPCs first (they take priority)
+    const npcResult: {
+      npc: GameCharacter | null;
+      dist: number;
+      pos: { x: number; y: number } | null;
+    } = {
+      npc: null,
+      dist: Infinity,
+      pos: null,
+    };
+
+    this.characterSprites.forEach((sprite, id) => {
+      const character = this.characterById.get(id);
+      if (!character) return;
+
+      const dist = Phaser.Math.Distance.Between(
+        this.localPlayer!.x,
+        this.localPlayer!.y,
+        sprite.x,
+        sprite.y
+      );
+
+      if (dist < npcRadius && dist < npcResult.dist) {
+        npcResult.dist = dist;
+        npcResult.npc = character;
+        npcResult.pos = { x: sprite.x, y: sprite.y };
+      }
+    });
+
+    this.nearbyNPC = npcResult.npc;
+
+    // Check buildings (only if no NPC nearby)
+    // Buildings are positioned higher on screen, so use X distance primarily
+    const buildingResult: {
+      building: GameBuilding | null;
+      dist: number;
+      pos: { x: number; y: number } | null;
+    } = {
+      building: null,
+      dist: Infinity,
+      pos: null,
+    };
+
+    if (!this.nearbyNPC) {
+      this.buildingSprites.forEach((container, id) => {
+        // Skip if container is not visible (wrong zone)
+        if (!container.visible) return;
+
+        // Find the building data
+        const building = this.worldState?.buildings.find((b) => b.id === id);
+        if (!building) return;
+
+        // Skip starter buildings (they're non-interactive)
+        if (building.id.startsWith("Starter")) return;
+
+        // Use horizontal distance only - buildings are above the walking path
+        const xDist = Math.abs(this.localPlayer!.x - container.x);
+
+        if (xDist < buildingRadius && xDist < buildingResult.dist) {
+          buildingResult.dist = xDist;
+          buildingResult.building = building;
+          buildingResult.pos = { x: container.x, y: container.y };
+        }
+      });
+    }
+
+    this.nearbyBuilding = buildingResult.building;
+
+    // Update interact prompt visibility and position
+    if (this.interactPrompt) {
+      if (npcResult.npc && npcResult.pos) {
+        // Show "Press E to talk" for NPCs
+        this.updateInteractPromptText("Press E to talk");
+        this.interactPrompt.setVisible(true);
+        this.interactPrompt.setPosition(npcResult.pos.x, npcResult.pos.y - 70);
+      } else if (buildingResult.building && buildingResult.pos) {
+        // Show "Press E to enter" for buildings
+        this.updateInteractPromptText("Press E to enter");
+        this.interactPrompt.setVisible(true);
+        this.interactPrompt.setPosition(buildingResult.pos.x, buildingResult.pos.y - 120);
+      } else {
+        this.interactPrompt.setVisible(false);
+      }
+    }
+  }
+
+  private updateInteractPromptText(text: string): void {
+    if (!this.interactPrompt) return;
+    const textObj = this.interactPrompt.list[1] as Phaser.GameObjects.Text;
+    if (textObj && textObj.setText) {
+      textObj.setText(text);
+    }
+  }
+
+  private interactWithNPC(character: GameCharacter): void {
+    // Simulate the exact same click behavior as pointerdown handlers
+    // This matches the logic in createCharacterSprite
+
+    const isExternalAgent = character.id.startsWith("external-");
+
+    if (isExternalAgent) {
+      // External agents open their Moltbook profile
+      if (character.profileUrl) {
+        window.open(character.profileUrl, "_blank");
+      }
+    } else if (character.isToly) {
+      window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
+    } else if (character.isAsh) {
+      window.dispatchEvent(new CustomEvent("bagsworld-ash-click"));
+    } else if (character.isFinn) {
+      window.dispatchEvent(new CustomEvent("bagsworld-finn-click"));
+    } else if (character.isDev) {
+      window.dispatchEvent(new CustomEvent("bagsworld-dev-click"));
+    } else if (character.isScout) {
+      window.dispatchEvent(new CustomEvent("bagsworld-scout-click"));
+    } else if (character.isCJ) {
+      window.dispatchEvent(new CustomEvent("bagsworld-cj-click"));
+    } else if (character.isShaw) {
+      window.dispatchEvent(new CustomEvent("bagsworld-shaw-click"));
+    } else if (character.isRamo) {
+      window.dispatchEvent(new CustomEvent("bagsworld-ramo-click"));
+    } else if (character.isSincara) {
+      window.dispatchEvent(new CustomEvent("bagsworld-sincara-click"));
+    } else if (character.isStuu) {
+      window.dispatchEvent(new CustomEvent("bagsworld-stuu-click"));
+    } else if (character.isSam) {
+      window.dispatchEvent(new CustomEvent("bagsworld-sam-click"));
+    } else if (character.isAlaa) {
+      window.dispatchEvent(new CustomEvent("bagsworld-alaa-click"));
+    } else if (character.isCarlo) {
+      window.dispatchEvent(new CustomEvent("bagsworld-carlo-click"));
+    } else if (character.isBNN) {
+      window.dispatchEvent(new CustomEvent("bagsworld-bnn-click"));
+    } else if (character.isProfessorOak) {
+      window.dispatchEvent(new CustomEvent("bagsworld-professoroak-click"));
+    } else if (character.isBagsy) {
+      window.dispatchEvent(new CustomEvent("bagsworld-bagsy-click"));
+    } else if (character.profileUrl) {
+      // Open profile page in new tab
+      window.open(character.profileUrl, "_blank");
+    }
+  }
+
+  private interactWithBuilding(building: GameBuilding): void {
+    // Simulate the exact same click behavior as building pointerdown handlers
+    const isPokeCenter = building.id.includes("PokeCenter");
+    const isTradingGym = building.id.includes("TradingGym");
+    const isCasino = building.id.includes("Casino");
+    const isTradingTerminal = building.id.includes("Terminal");
+    const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
+    const isStarterBuilding = building.id.startsWith("Starter");
+    const isTreasuryBuilding = building.id.startsWith("Treasury");
+    const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
+    const isMansionBuilding = building.isMansion;
+
+    if (isMansionBuilding) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-mansion-click", {
+          detail: {
+            name: building.name,
+            holderRank: building.holderRank,
+            holderAddress: building.holderAddress,
+            holderBalance: building.holderBalance,
+          },
+        })
+      );
+    } else if (isPokeCenter) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-pokecenter-click", {
+          detail: { buildingId: building.id, name: building.name },
+        })
+      );
+    } else if (isTradingGym) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-tradinggym-click", {
+          detail: { buildingId: building.id, name: building.name },
+        })
+      );
+    } else if (isCasino) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-casino-click", {
+          detail: { buildingId: building.id, name: building.name },
+        })
+      );
+    } else if (isTradingTerminal) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-terminal-click", {
+          detail: { buildingId: building.id, name: building.name },
+        })
+      );
+    } else if (isOracle) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-oracle-click", {
+          detail: { buildingId: building.id, name: building.name },
+        })
+      );
+    } else if (isBagsWorldHQ) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-building-click", {
+          detail: {
+            mint: building.tokenMint || building.id,
+            symbol: building.symbol || "BAGSWORLD",
+            name: building.name || "BagsWorld HQ",
+            tokenUrl: building.tokenUrl || `https://bags.fm/${building.tokenMint || building.id}`,
+          },
+        })
+      );
+    } else if (isStarterBuilding) {
+      // Starter buildings do nothing - they're placeholders
+    } else if (isTreasuryBuilding) {
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-treasury-click", {
+          detail: { buildingId: building.id, name: building.name },
+        })
+      );
+    } else {
+      // Regular token buildings
+      window.dispatchEvent(
+        new CustomEvent("bagsworld-building-click", {
+          detail: {
+            mint: building.tokenMint || building.id,
+            symbol: building.symbol || building.name,
+            name: building.name,
+            tokenUrl: building.tokenUrl,
+          },
+        })
+      );
+    }
   }
 
   private setupMobileCameraControls(): void {
@@ -3917,6 +4653,24 @@ Use: bags.fm/[yourname]`,
       window.removeEventListener("bagsworld-zone-change", this.boundZoneChange);
       this.boundZoneChange = null;
     }
+    if (this.boundEnterWorld) {
+      window.removeEventListener("bagsworld-enter-world", this.boundEnterWorld);
+      this.boundEnterWorld = null;
+    }
+    if (this.boundExitWorld) {
+      window.removeEventListener("bagsworld-exit-world", this.boundExitWorld);
+      this.boundExitWorld = null;
+    }
+
+    // Clean up local player
+    if (this.localPlayer) {
+      this.localPlayer.destroy();
+      this.localPlayer = null;
+    }
+    if (this.interactPrompt) {
+      this.interactPrompt.destroy();
+      this.interactPrompt = null;
+    }
 
     // Stop music and clean up audio context
     if (this.musicInterval) {
@@ -5547,6 +6301,9 @@ Use: bags.fm/[yourname]`,
   }
 
   update(): void {
+    // Update local player movement (WASD/arrow keys)
+    this.updateLocalPlayer();
+
     // Update speech bubbles for autonomous dialogue
     this.updateDialogueBubbles();
 
