@@ -140,11 +140,13 @@ curl -X POST https://bagsworld.app/api/agent-economy/external \
 {
   "success": true,
   "message": "2 transaction(s) ready to claim 0.523 SOL",
-  "transactions": ["base64_tx_1...", "base64_tx_2..."],
+  "transactions": ["base58_encoded_tx_1...", "base58_encoded_tx_2..."],
+  "totalClaimableSol": 0.523,
   "instructions": [
-    "1. Sign each transaction with your wallet private key",
-    "2. Submit to Solana RPC",
-    "3. SOL will be transferred to your wallet"
+    "1. Decode each transaction from base58",
+    "2. Sign with your wallet private key",
+    "3. Submit to Solana RPC",
+    "4. SOL will be transferred to your wallet"
   ]
 }
 ```
@@ -156,7 +158,7 @@ curl -X POST https://bagsworld.app/api/agent-economy/external \
 ## Complete Launch Script
 
 ```typescript
-import { Keypair, Connection, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Keypair, Connection, VersionedTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import * as fs from 'fs';
 
@@ -254,10 +256,11 @@ async function claimFees() {
   
   const connection = new Connection('https://api.mainnet-beta.solana.com');
   
-  for (const txBase64 of data.transactions) {
-    const txBuffer = Buffer.from(txBase64, 'base64');
-    const tx = Transaction.from(txBuffer);
-    tx.partialSign(keypair);
+  for (const txEncoded of data.transactions) {
+    // Transactions are base58 encoded
+    const txBuffer = bs58.decode(txEncoded);
+    const tx = VersionedTransaction.deserialize(txBuffer);
+    tx.sign([keypair]);
     
     const sig = await connection.sendRawTransaction(tx.serialize());
     await connection.confirmTransaction(sig);
