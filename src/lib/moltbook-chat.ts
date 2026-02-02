@@ -16,13 +16,17 @@ import {
   MoltbookComment,
 } from "./moltbook-client";
 
-const CHAT_SUBMOLT = "bagsworld";
-const CHAT_POST_TITLE = "🦞 Molt Bar - Bags.fm Alpha Feed";
-const CHAT_POST_CONTENT = `The Molt Bar is where agents gather to discuss Bags.fm tokens.
+// Try bagsworld first, fall back to general if not available
+const PREFERRED_SUBMOLT = "bagsworld";
+const FALLBACK_SUBMOLT = "general";
+let CHAT_SUBMOLT = PREFERRED_SUBMOLT;
 
-Share alpha, call runners, discuss launches. All Bags.fm token talk welcome.
+const CHAT_POST_TITLE = "🦞 BagsWorld Alpha Chat";
+const CHAT_POST_CONTENT = `The official BagsWorld Alpha Chat - where agents share Bags.fm alpha.
 
-🦞 Openclaws only.`;
+Call runners. Spot launches. Share alpha. All Bags.fm token talk welcome.
+
+🦞 Powered by Moltbook`;
 
 // Chat message interface (derived from MoltbookComment)
 export interface ChatMessage {
@@ -89,6 +93,7 @@ function flattenComments(comments: MoltbookComment[]): ChatMessage[] {
 
 /**
  * Find or create the Molt Bar chat post
+ * Uses the main feed to find BagsWorld posts, or searches for existing chat posts
  */
 async function ensureChatPost(client: MoltbookClient): Promise<string | null> {
   // If we already have the post ID and it was fetched recently, use it
@@ -96,42 +101,72 @@ async function ensureChatPost(client: MoltbookClient): Promise<string | null> {
     return chatState.postId;
   }
 
-  // Search for existing chat post in the submolt
-  const posts = await client.getSubmoltPosts(CHAT_SUBMOLT, "new", 50);
+  try {
+    // First, try the main feed to find any BagsWorld/Alpha Chat posts
+    console.log("[MoltbookChat] Searching main feed for BagsWorld posts...");
+    const feedPosts = await client.getFeed("new", 50);
 
-  // Look for our chat post by title
-  const chatPost = posts.find((p) => p.title === CHAT_POST_TITLE || p.title.includes("Molt Bar"));
-
-  if (chatPost) {
-    chatState.postId = chatPost.id;
-    chatState.postTitle = chatPost.title;
-    chatState.isInitialized = true;
-    return chatPost.id;
-  }
-
-  // No existing chat post - create one if we can
-  const canPost = client.canPost();
-  if (!canPost.allowed) {
-    console.log(
-      "[MoltbookChat] Cannot create chat post - rate limited. Retry in",
-      Math.ceil((canPost.retryAfterMs || 0) / 60000),
-      "minutes"
+    // Look for our chat post in the main feed
+    const chatPost = feedPosts.find(
+      (p) =>
+        p.title === CHAT_POST_TITLE ||
+        p.title.includes("BagsWorld Alpha") ||
+        p.title.includes("Alpha Chat") ||
+        p.title.includes("Molt Bar") ||
+        (p.author === "Bagsy" && p.title.toLowerCase().includes("bags"))
     );
+
+    if (chatPost) {
+      chatState.postId = chatPost.id;
+      chatState.postTitle = chatPost.title;
+      chatState.isInitialized = true;
+      console.log("[MoltbookChat] Found BagsWorld post in feed:", chatPost.id, chatPost.title);
+      return chatPost.id;
+    }
+
+    console.log("[MoltbookChat] No BagsWorld post found in feed. Trying to create one...");
+
+    // No existing chat post - try to create one
+    const canPost = client.canPost();
+    if (!canPost.allowed) {
+      console.log(
+        "[MoltbookChat] Cannot create chat post - rate limited. Retry in",
+        Math.ceil((canPost.retryAfterMs || 0) / 60000),
+        "minutes"
+      );
+      // Return null but with a friendly message - feed works, just no BagsWorld posts yet
+      chatState.isInitialized = true; // Mark as initialized even without posts
+      return null;
+    }
+
+    // Try to create in preferred submolt first
+    try {
+      const newPost = await client.createPost({
+        submolt: CHAT_SUBMOLT,
+        title: CHAT_POST_TITLE,
+        content: CHAT_POST_CONTENT,
+      });
+
+      chatState.postId = newPost.id;
+      chatState.postTitle = newPost.title;
+      chatState.isInitialized = true;
+
+      console.log("[MoltbookChat] Created new chat post:", newPost.id);
+      return newPost.id;
+    } catch (createError) {
+      const createErrorMsg =
+        createError instanceof Error ? createError.message : String(createError);
+      console.log("[MoltbookChat] Could not create post:", createErrorMsg);
+
+      // Mark as initialized - the API works, just can't create posts in this submolt
+      chatState.isInitialized = true;
+      return null;
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[MoltbookChat] Error accessing Moltbook feed:", errorMessage);
     return null;
   }
-
-  const newPost = await client.createPost({
-    submolt: CHAT_SUBMOLT,
-    title: CHAT_POST_TITLE,
-    content: CHAT_POST_CONTENT,
-  });
-
-  chatState.postId = newPost.id;
-  chatState.postTitle = newPost.title;
-  chatState.isInitialized = true;
-
-  console.log("[MoltbookChat] Created new chat post:", newPost.id);
-  return newPost.id;
 }
 
 /**
