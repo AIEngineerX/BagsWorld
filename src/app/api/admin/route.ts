@@ -213,9 +213,9 @@ async function getSystemDiagnostics() {
   }
 
   // Check Bags API
+  // SECURITY: Don't expose key length in diagnostics
   diagnostics.bagsApi = {
     configured: !!process.env.BAGS_API_KEY,
-    keyLength: process.env.BAGS_API_KEY?.length || 0,
   };
 
   // Check RPC

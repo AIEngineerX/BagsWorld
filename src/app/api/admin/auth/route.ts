@@ -61,12 +61,6 @@ export async function GET(request: NextRequest) {
   }
 
   // Check if wallet is an admin before generating challenge
-  // Debug logging for admin auth issues
-  console.log("[AdminAuth] Checking wallet:", wallet);
-  console.log("[AdminAuth] ADMIN_WALLETS env:", process.env.ADMIN_WALLETS);
-  console.log("[AdminAuth] NETLIFY env:", process.env.NETLIFY);
-  console.log("[AdminAuth] isAdmin result:", isAdmin(wallet));
-
   if (!isAdmin(wallet)) {
     // Return same error as invalid wallet to prevent enumeration
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

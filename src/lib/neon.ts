@@ -582,9 +582,9 @@ export async function resetRewardsCycle(): Promise<boolean> {
 // ============================================
 
 // Get admin wallets from environment (uses same config as general admin)
+// SECURITY: Only use server-side env vars, never NEXT_PUBLIC_ for admin wallets
 export function getCasinoAdminWallets(): string[] {
-  const adminWalletsEnv =
-    process.env.ADMIN_WALLETS || process.env.ADMIN_WALLET || process.env.NEXT_PUBLIC_ADMIN_WALLET;
+  const adminWalletsEnv = process.env.ADMIN_WALLETS || process.env.ADMIN_WALLET;
   if (adminWalletsEnv) {
     return adminWalletsEnv
       .split(",")
