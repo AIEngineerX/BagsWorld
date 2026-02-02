@@ -220,3 +220,104 @@ export function isValidBps(bps: unknown, min: number = 0, max: number = 10000): 
 
   return bps >= min && bps <= max;
 }
+
+/**
+ * SSRF Protection - Blocked IP ranges and hostnames
+ * These should never be accessed via user-controlled URLs
+ */
+const BLOCKED_IP_PATTERNS = [
+  /^127\./, // Loopback (127.0.0.0/8)
+  /^10\./, // Private Class A (10.0.0.0/8)
+  /^172\.(1[6-9]|2\d|3[01])\./, // Private Class B (172.16.0.0/12)
+  /^192\.168\./, // Private Class C (192.168.0.0/16)
+  /^169\.254\./, // Link-local (169.254.0.0/16)
+  /^0\./, // Current network (0.0.0.0/8)
+  /^100\.(6[4-9]|[7-9]\d|1[0-1]\d|12[0-7])\./, // Carrier-grade NAT (100.64.0.0/10)
+  /^::1$/, // IPv6 loopback
+  /^fc00:/i, // IPv6 unique local
+  /^fe80:/i, // IPv6 link-local
+];
+
+const BLOCKED_HOSTNAMES = [
+  "localhost",
+  "127.0.0.1",
+  "0.0.0.0",
+  "::1",
+  "[::1]",
+  "metadata.google.internal", // GCP metadata
+  "169.254.169.254", // AWS/GCP/Azure metadata endpoint
+  "metadata.google",
+];
+
+/**
+ * Validate URL for SSRF protection.
+ *
+ * Checks that a URL:
+ * 1. Is a valid URL
+ * 2. Uses allowed protocol (http/https/ipfs)
+ * 3. Does not point to internal/private IPs
+ * 4. Does not use blocked hostnames
+ *
+ * @param urlString - The URL to validate
+ * @param options - Validation options
+ * @returns Object with isValid and optional error message
+ */
+export function validateUrlSafe(
+  urlString: string,
+  options: {
+    allowedProtocols?: string[];
+    maxLength?: number;
+  } = {}
+): { isValid: boolean; error?: string } {
+  const { allowedProtocols = ["https:", "http:", "ipfs:"], maxLength = 2048 } = options;
+
+  // Check length
+  if (urlString.length > maxLength) {
+    return { isValid: false, error: "URL too long" };
+  }
+
+  // Parse URL
+  let url: URL;
+  try {
+    url = new URL(urlString);
+  } catch {
+    return { isValid: false, error: "Invalid URL format" };
+  }
+
+  // Check protocol
+  if (!allowedProtocols.includes(url.protocol)) {
+    return { isValid: false, error: `Protocol not allowed: ${url.protocol}` };
+  }
+
+  // Check for blocked hostnames
+  const hostname = url.hostname.toLowerCase();
+  if (BLOCKED_HOSTNAMES.includes(hostname)) {
+    return { isValid: false, error: "Blocked hostname" };
+  }
+
+  // Check for blocked IP patterns
+  for (const pattern of BLOCKED_IP_PATTERNS) {
+    if (pattern.test(hostname)) {
+      return { isValid: false, error: "Internal IP addresses not allowed" };
+    }
+  }
+
+  // Check for IP-like hostnames that might bypass DNS
+  // Match IPv4-like patterns
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+    // It's an IP address - check if it's in private ranges
+    const parts = hostname.split(".").map(Number);
+    if (
+      parts[0] === 10 ||
+      parts[0] === 127 ||
+      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+      (parts[0] === 192 && parts[1] === 168) ||
+      (parts[0] === 169 && parts[1] === 254) ||
+      parts[0] === 0
+    ) {
+      return { isValid: false, error: "Internal IP addresses not allowed" };
+    }
+  }
+
+  return { isValid: true };
+}

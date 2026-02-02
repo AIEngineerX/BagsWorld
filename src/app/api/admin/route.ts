@@ -5,7 +5,7 @@ import { isAdmin } from "@/lib/config";
 import { getGlobalTokens, saveGlobalToken, isNeonConfigured, type GlobalToken } from "@/lib/neon";
 import { verifySessionToken } from "@/lib/wallet-auth";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
-import { sanitizeString } from "@/lib/env-utils";
+import { sanitizeString, validateUrlSafe } from "@/lib/env-utils";
 
 /**
  * Validate that a string is a valid Solana public key
@@ -313,15 +313,17 @@ async function handleUpdateToken(data: { mint: string; updates: Partial<GlobalTo
     image_url: data.updates.image_url,
   };
 
-  // Validate image URL format if provided
+  // Validate image URL format if provided (with SSRF protection)
   if (sanitizedUpdates.image_url) {
-    try {
-      const url = new URL(sanitizedUpdates.image_url);
-      if (!["http:", "https:", "ipfs:"].includes(url.protocol)) {
-        return NextResponse.json({ error: "Invalid image URL protocol" }, { status: 400 });
-      }
-    } catch {
-      return NextResponse.json({ error: "Invalid image URL format" }, { status: 400 });
+    const urlValidation = validateUrlSafe(sanitizedUpdates.image_url, {
+      allowedProtocols: ["https:", "http:", "ipfs:"],
+      maxLength: 500,
+    });
+    if (!urlValidation.isValid) {
+      return NextResponse.json(
+        { error: urlValidation.error || "Invalid image URL" },
+        { status: 400 }
+      );
     }
   }
 
