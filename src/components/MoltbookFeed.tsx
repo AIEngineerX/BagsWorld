@@ -10,30 +10,9 @@ interface MoltbookFeedProps {
   refreshInterval?: number;
 }
 
-// Simple icons
-function MoltbookIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function UpvoteIcon({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 4l-8 8h5v8h6v-8h5z" />
-    </svg>
-  );
-}
-
-function CommentIcon({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M21 6h-2V4h-2V2H7v2H5v2H3v10h2v2h2v2h2v2h2v-2h2v-2h2v-2h2v-2h2v-2h2V6zm-4 8h-2v2h-2v2H9v-2H7v-2H5V8h2V6h10v2h2v6z" />
-    </svg>
-  );
+// Generate consistent avatar URL for an agent
+function getAvatarUrl(username: string): string {
+  return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(username)}&backgroundColor=1a1a2e`;
 }
 
 function RefreshIcon({ size = 14, spinning = false }: { size?: number; spinning?: boolean }) {
@@ -46,14 +25,6 @@ function RefreshIcon({ size = 14, spinning = false }: { size?: number; spinning?
       className={spinning ? "animate-spin" : ""}
     >
       <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" />
-    </svg>
-  );
-}
-
-function ExternalLinkIcon({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
     </svg>
   );
 }
@@ -122,30 +93,32 @@ export function MoltbookFeed({
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days}d`;
-    if (hours > 0) return `${hours}h`;
-    if (minutes > 0) return `${minutes}m`;
-    return "now";
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return "just now";
   };
 
   if (!configured) {
     return (
-      <div className="bg-black/60 backdrop-blur-sm rounded-lg border border-gray-800 p-3">
-        <div className="flex items-center gap-2 text-gray-400 text-xs">
-          <MoltbookIcon size={14} />
-          <span className="font-pixel">Moltbook offline</span>
+      <div className="bg-[#0d0d14] rounded-xl border border-gray-800/50 p-4">
+        <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <span>📡</span>
+          <span>Moltbook offline</span>
         </div>
-        <p className="text-gray-500 text-[10px] mt-1">Set MOLTBOOK_API_KEY to enable</p>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="bg-black/60 backdrop-blur-sm rounded-lg border border-purple-500/30 p-3">
-        <div className="flex items-center gap-2 text-purple-400 text-xs">
-          <MoltbookIcon size={14} />
-          <span className="font-pixel animate-pulse">Loading Moltbook...</span>
+      <div className="bg-[#0d0d14] rounded-xl border border-purple-500/20 p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-purple-500/20 animate-pulse" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 bg-purple-500/20 rounded animate-pulse w-2/3" />
+            <div className="h-2 bg-purple-500/10 rounded animate-pulse w-1/2" />
+          </div>
         </div>
       </div>
     );
@@ -153,91 +126,143 @@ export function MoltbookFeed({
 
   if (error) {
     return (
-      <div className="bg-black/60 backdrop-blur-sm rounded-lg border border-red-500/30 p-3">
-        <div className="flex items-center gap-2 text-red-400 text-xs">
-          <MoltbookIcon size={14} />
-          <span className="font-pixel">{error}</span>
-        </div>
+      <div className="bg-[#0d0d14] rounded-xl border border-red-500/20 p-4">
+        <p className="text-red-400 text-sm">{error}</p>
         <button
           onClick={() => fetchFeed(true)}
-          className="text-red-400/60 text-[10px] mt-1 hover:text-red-400"
+          className="text-red-400/60 text-xs mt-2 hover:text-red-400 underline"
         >
-          Retry
+          Try again
         </button>
       </div>
     );
   }
 
   return (
-    <div className="bg-black/60 backdrop-blur-sm rounded-lg border border-purple-500/30 overflow-hidden">
+    <div className="bg-[#0d0d14] rounded-xl border border-purple-500/20 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-purple-900/20 border-b border-purple-500/20">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2">
-          <div className="text-purple-400">
-            <MoltbookIcon size={14} />
-          </div>
-          <span className="font-pixel text-xs text-purple-300">
+          <span className="text-lg">🤖</span>
+          <span className="font-medium text-white/90">
             {source === "bagsworld" ? "m/bagsworld" : "Trending"}
           </span>
-          <span className="text-purple-500 text-[10px]">AI agents only</span>
         </div>
-
         <button
           onClick={() => fetchFeed(true)}
           disabled={refreshing}
-          className="text-purple-400/60 hover:text-purple-400 transition-colors p-1"
+          className="text-gray-500 hover:text-purple-400 transition-colors p-1.5 rounded-lg hover:bg-white/5"
           title="Refresh"
         >
-          <RefreshIcon size={12} spinning={refreshing} />
+          <RefreshIcon size={14} spinning={refreshing} />
         </button>
       </div>
 
       {/* Posts */}
-      <div className="max-h-64 overflow-y-auto">
+      <div className="max-h-80 overflow-y-auto">
         {posts.length === 0 ? (
-          <div className="p-4 text-center text-gray-500 text-xs">
-            <p>No posts yet</p>
-            <p className="text-[10px] mt-1">Bagsy will post updates soon!</p>
+          <div className="p-6 text-center">
+            <span className="text-3xl">💭</span>
+            <p className="text-gray-500 text-sm mt-2">No posts yet</p>
           </div>
         ) : (
-          <div className="divide-y divide-purple-500/10">
-            {posts.map((post) => (
-              <div key={post.id} className="p-3 hover:bg-purple-500/5 transition-colors">
-                {/* Post header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-pixel text-xs text-white truncate">{post.title}</h3>
-                    {post.content && (
-                      <p className="text-gray-400 text-[11px] mt-1 line-clamp-2">{post.content}</p>
-                    )}
-                  </div>
-                  <span className="text-gray-600 text-[10px] flex-shrink-0">
-                    {formatTime(post.createdAt)}
-                  </span>
-                </div>
+          <div>
+            {posts.map((post, index) => (
+              <div
+                key={post.id}
+                className={`p-4 hover:bg-white/[0.02] transition-colors ${
+                  index !== posts.length - 1 ? "border-b border-white/5" : ""
+                }`}
+              >
+                {/* Author row */}
+                <div className="flex items-start gap-3">
+                  {/* Avatar */}
+                  <img
+                    src={getAvatarUrl(post.author)}
+                    alt=""
+                    className="w-10 h-10 rounded-full bg-purple-500/10 flex-shrink-0"
+                  />
 
-                {/* Post footer */}
-                <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500">
-                  <span className="flex items-center gap-1 text-purple-400/80">
-                    <UpvoteIcon size={10} />
-                    {post.upvotes}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CommentIcon size={10} />
-                    {post.commentCount}
-                  </span>
-                  <span className="text-gray-600">by {post.author}</span>
-                  {post.url && (
-                    <a
-                      href={post.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-purple-400/60 hover:text-purple-400"
-                    >
-                      <ExternalLinkIcon size={10} />
-                      link
-                    </a>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    {/* Name and time */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-white/90 text-sm">{post.author}</span>
+                      <span className="text-gray-600 text-xs">·</span>
+                      <span className="text-gray-500 text-xs">{formatTime(post.createdAt)}</span>
+                    </div>
+
+                    {/* Title */}
+                    {post.title && (
+                      <h3 className="text-white/80 text-sm mt-1 leading-snug">{post.title}</h3>
+                    )}
+
+                    {/* Content */}
+                    {post.content && (
+                      <p className="text-gray-400 text-sm mt-1.5 leading-relaxed line-clamp-3">
+                        {post.content}
+                      </p>
+                    )}
+
+                    {/* Engagement */}
+                    <div className="flex items-center gap-4 mt-3">
+                      {/* Upvotes */}
+                      <div className="flex items-center gap-1.5 text-gray-500 hover:text-purple-400 transition-colors cursor-pointer group">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          className="group-hover:scale-110 transition-transform"
+                        >
+                          <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                        <span className="text-xs">{post.upvotes}</span>
+                      </div>
+
+                      {/* Comments */}
+                      <div className="flex items-center gap-1.5 text-gray-500 hover:text-blue-400 transition-colors cursor-pointer group">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          className="group-hover:scale-110 transition-transform"
+                        >
+                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                        </svg>
+                        <span className="text-xs">{post.commentCount}</span>
+                      </div>
+
+                      {/* Link */}
+                      {post.url && (
+                        <a
+                          href={post.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-gray-500 hover:text-green-400 transition-colors ml-auto group"
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="group-hover:scale-110 transition-transform"
+                          >
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                          <span className="text-xs">open</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -245,24 +270,26 @@ export function MoltbookFeed({
         )}
       </div>
 
-      {/* Footer with queue info */}
+      {/* Queue info */}
       {queueInfo && queueInfo.pending > 0 && (
-        <div className="px-3 py-1.5 bg-purple-900/10 border-t border-purple-500/10 text-[10px] text-purple-400/60">
-          {queueInfo.pending} post{queueInfo.pending > 1 ? "s" : ""} queued
-          {queueInfo.nextPostIn > 0 && (
-            <> &middot; next in {Math.ceil(queueInfo.nextPostIn / 60)}m</>
-          )}
+        <div className="px-4 py-2 bg-purple-500/5 border-t border-white/5 text-xs text-purple-400/70 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+          {queueInfo.pending} queued
+          {queueInfo.nextPostIn > 0 && <span>· posting in {Math.ceil(queueInfo.nextPostIn / 60)}m</span>}
         </div>
       )}
 
-      {/* Link to Moltbook */}
+      {/* Footer CTA */}
       <a
         href="https://www.moltbook.com/m/bagsworld"
         target="_blank"
         rel="noopener noreferrer"
-        className="block px-3 py-2 bg-purple-900/20 border-t border-purple-500/20 text-center text-purple-400 text-[10px] hover:bg-purple-900/30 transition-colors"
+        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-t border-white/5 text-purple-300/80 text-xs hover:text-purple-200 hover:from-purple-500/15 hover:to-blue-500/15 transition-all"
       >
-        View on Moltbook <ExternalLinkIcon size={10} />
+        View all on Moltbook
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
       </a>
     </div>
   );
