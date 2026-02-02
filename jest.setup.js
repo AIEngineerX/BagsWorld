@@ -6,6 +6,81 @@ import { TextEncoder, TextDecoder } from "util";
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
 
+// Polyfill Request/Response/Headers for Next.js route handlers
+// Required when testing Next.js API routes directly
+if (typeof global.Request === "undefined") {
+  // Create minimal polyfills for Request/Response/Headers
+  class MockHeaders {
+    constructor(init = {}) {
+      this._headers = new Map();
+      if (init && typeof init === "object") {
+        Object.entries(init).forEach(([key, value]) => {
+          this._headers.set(key.toLowerCase(), value);
+        });
+      }
+    }
+    get(name) {
+      return this._headers.get(name.toLowerCase()) || null;
+    }
+    set(name, value) {
+      this._headers.set(name.toLowerCase(), value);
+    }
+    has(name) {
+      return this._headers.has(name.toLowerCase());
+    }
+    delete(name) {
+      this._headers.delete(name.toLowerCase());
+    }
+    forEach(callback) {
+      this._headers.forEach((value, key) => callback(value, key, this));
+    }
+    entries() {
+      return this._headers.entries();
+    }
+  }
+
+  class MockRequest {
+    constructor(input, init = {}) {
+      this.url = typeof input === "string" ? input : input.url;
+      this.method = init.method || "GET";
+      this.headers = new MockHeaders(init.headers);
+      this._body = init.body;
+    }
+    async json() {
+      if (typeof this._body === "string") {
+        return JSON.parse(this._body);
+      }
+      return this._body;
+    }
+    async text() {
+      return String(this._body || "");
+    }
+  }
+
+  class MockResponse {
+    constructor(body, init = {}) {
+      this._body = body;
+      this.status = init.status || 200;
+      this.statusText = init.statusText || "";
+      this.headers = new MockHeaders(init.headers);
+      this.ok = this.status >= 200 && this.status < 300;
+    }
+    async json() {
+      if (typeof this._body === "string") {
+        return JSON.parse(this._body);
+      }
+      return this._body;
+    }
+    async text() {
+      return String(this._body || "");
+    }
+  }
+
+  global.Request = MockRequest;
+  global.Response = MockResponse;
+  global.Headers = MockHeaders;
+}
+
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
