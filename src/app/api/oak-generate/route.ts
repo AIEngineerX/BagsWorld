@@ -54,6 +54,27 @@ const FAL_KEY = process.env.FAL_KEY;
 // Image provider priority: FAL (Flux) > Replicate > Procedural
 const IMAGE_PROVIDER = FAL_KEY ? "fal" : REPLICATE_API_TOKEN ? "replicate" : "procedural";
 
+// SSRF Protection: Only allow image fetches from trusted AI provider CDNs
+const TRUSTED_IMAGE_DOMAINS = [
+  "fal.media",
+  "fal-cdn.bathroomreader.info",
+  "v3.fal.media",
+  "replicate.delivery",
+  "pbxt.replicate.delivery",
+];
+
+function isAllowedImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    return TRUSTED_IMAGE_DOMAINS.some(
+      (domain) => parsed.hostname === domain || parsed.hostname.endsWith("." + domain)
+    );
+  } catch {
+    return false;
+  }
+}
+
 // Style-specific prompt modifiers for image generation
 const STYLE_PROMPTS: Record<string, string> = {
   "pixel-art":
@@ -266,7 +287,13 @@ async function generateImageWithFal(
   }
 
   // fal.ai returns a URL - fetch and convert to base64
+  // SSRF Protection: Validate URL is from trusted CDN
   const imageUrl = result.images[0].url;
+  if (!isAllowedImageUrl(imageUrl)) {
+    console.error("[oak-generate] Untrusted image URL from fal.ai:", imageUrl);
+    throw new Error("Image URL from untrusted domain");
+  }
+
   const imageResponse = await fetch(imageUrl);
 
   if (!imageResponse.ok) {
@@ -321,6 +348,12 @@ async function generateImageWithFalPro(
 
   const result = await response.json();
   const imageUrl = result.images[0].url;
+
+  // SSRF Protection: Validate URL is from trusted CDN
+  if (!isAllowedImageUrl(imageUrl)) {
+    console.error("[oak-generate] Untrusted image URL from fal.ai:", imageUrl);
+    throw new Error("Image URL from untrusted domain");
+  }
 
   // Fetch and convert to base64
   const imageResponse = await fetch(imageUrl);
@@ -393,8 +426,14 @@ async function generateImageWithReplicate(
     const status = await statusResponse.json();
 
     if (status.status === "succeeded" && status.output?.[0]) {
-      // Fetch the image and convert to base64
+      // SSRF Protection: Validate URL is from trusted CDN
       const imageUrl = status.output[0];
+      if (!isAllowedImageUrl(imageUrl)) {
+        console.error("[oak-generate] Untrusted image URL from Replicate:", imageUrl);
+        return generateProceduralImage(prompt, width, height, style);
+      }
+
+      // Fetch the image and convert to base64
       const imageResponse = await fetch(imageUrl);
       const imageBuffer = await imageResponse.arrayBuffer();
       const base64 = Buffer.from(imageBuffer).toString("base64");
