@@ -183,14 +183,20 @@ class MoltbookClient {
     }
 
     try {
+      // Add timeout to prevent long waits
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const response = await fetch(url, {
         ...options,
+        signal: controller.signal,
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
           ...options.headers,
         },
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         let errorDetail = "";
