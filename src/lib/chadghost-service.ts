@@ -8,7 +8,7 @@
 
 import { runChadGhost, getChadGhostState, createAlphaSubmolt, CHADGHOST_CONFIG } from "./chadghost-brain";
 import { runEngagement, getEngagementStats } from "./chadghost-engagement";
-import { getMoltbookOrNull } from "./moltbook-client";
+import { getChadGhostMoltbookOrNull } from "./moltbook-client";
 
 // ============================================================================
 // CONFIGURATION
@@ -89,7 +89,7 @@ async function tick(): Promise<void> {
   state.lastTick = Date.now();
   
   // Check if Moltbook is configured
-  const client = getMoltbookOrNull();
+  const client = getChadGhostMoltbookOrNull();
   if (!client) {
     console.log("[ChadGhost Service] Moltbook not configured, skipping tick");
     return;
@@ -160,7 +160,7 @@ export function startChadGhostService(): void {
     return;
   }
   
-  const client = getMoltbookOrNull();
+  const client = getChadGhostMoltbookOrNull();
   if (!client) {
     console.warn("[ChadGhost Service] Moltbook not configured, service will not start");
     return;
@@ -246,7 +246,7 @@ export async function forceTick(): Promise<{
 }> {
   console.log("[ChadGhost Service] Force tick triggered");
   
-  const client = getMoltbookOrNull();
+  const client = getChadGhostMoltbookOrNull();
   if (!client) {
     return { posted: false, reason: "Moltbook not configured" };
   }
