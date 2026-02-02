@@ -410,8 +410,17 @@ const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-b
 // TYPES
 // ============================================================================
 
+export interface FeeRecipient {
+  // One of these is required
+  wallet?: string;
+  moltbookUsername?: string;
+  twitter?: string;
+  // Basis points (10000 = 100%, must total 10000 across all recipients)
+  bps: number;
+}
+
 export interface LaunchRequest {
-  // External agent's wallet (receives 100% of fees)
+  // External agent's wallet (receives 100% of fees if no feeRecipients specified)
   // Either creatorWallet OR moltbookUsername is required
   creatorWallet?: string;
 
@@ -428,6 +437,11 @@ export interface LaunchRequest {
   twitter?: string;
   website?: string;
   telegram?: string;
+
+  // Optional: Custom fee recipients (if not specified, 100% goes to creator)
+  // Each recipient needs one of: wallet, moltbookUsername, or twitter
+  // bps values must total 10000 (100%)
+  feeRecipients?: FeeRecipient[];
 }
 
 export interface LaunchResult {
@@ -720,31 +734,93 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
   // Step 2: Create fee share config for the external agent
-  // Uses BagsWorld's existing partnerConfigPda - external agent gets 100% of creator fees
+  // Uses BagsWorld's existing partnerConfigPda
   console.log("[Launcher] Step 2: Creating fee share config...");
 
   const partnerConfigPda = ECOSYSTEM_CONFIG.ecosystem.partnerConfigPda;
   console.log(`[Launcher] Using partner config PDA: ${partnerConfigPda}`);
 
-  // External agent gets 100% of the creator fee share
-  // Using official Bags.fm feeClaimers format (see bags.fm/launch.md)
-  // ALWAYS use the resolved wallet address - this ensures:
-  // 1. Consistent fee claiming regardless of how identity was provided
-  // 2. Agent can claim with their wallet whether they launched via moltbookUsername or wallet
+  // Build fee recipients list
+  // If custom feeRecipients provided, resolve them; otherwise 100% to creator
+  let basisPointsArray: number[] = [];
+  let claimersArray: string[] = [];
+
+  if (request.feeRecipients && request.feeRecipients.length > 0) {
+    // Custom fee recipients - resolve each one
+    console.log(`[Launcher] Custom fee recipients: ${request.feeRecipients.length}`);
+
+    // Validate BPS total
+    const totalBps = request.feeRecipients.reduce((sum, r) => sum + r.bps, 0);
+    if (totalBps !== 10000) {
+      throw new Error(`Fee shares must total 10000 BPS (100%). Got ${totalBps}.`);
+    }
+
+    for (const recipient of request.feeRecipients) {
+      let wallet: string | null = null;
+
+      if (recipient.wallet) {
+        // Direct wallet address
+        wallet = recipient.wallet;
+      } else if (recipient.moltbookUsername) {
+        // Look up by Moltbook
+        const lookupUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/fee-share/wallet/v2?provider=moltbook&username=${encodeURIComponent(recipient.moltbookUsername)}`;
+        const response = await fetch(lookupUrl, {
+          headers: { "x-api-key": BAGS_API_KEY },
+        });
+        const data = await response.json();
+
+        if (data.success && data.response?.wallet) {
+          wallet = data.response.wallet;
+          console.log(`[Launcher] Resolved @${recipient.moltbookUsername} → ${wallet!.slice(0, 8)}...`);
+        } else {
+          throw new Error(`Moltbook user @${recipient.moltbookUsername} not found or not onboarded`);
+        }
+      } else if (recipient.twitter) {
+        // Look up by Twitter
+        const lookupUrl = `${BAGS_API.PUBLIC_BASE}/token-launch/fee-share/wallet/v2?provider=twitter&username=${encodeURIComponent(recipient.twitter)}`;
+        const response = await fetch(lookupUrl, {
+          headers: { "x-api-key": BAGS_API_KEY },
+        });
+        const data = await response.json();
+
+        if (data.success && data.response?.wallet) {
+          wallet = data.response.wallet;
+          console.log(`[Launcher] Resolved @${recipient.twitter} (Twitter) → ${wallet!.slice(0, 8)}...`);
+        } else {
+          throw new Error(`Twitter user @${recipient.twitter} not found`);
+        }
+      } else {
+        throw new Error("Each fee recipient must have wallet, moltbookUsername, or twitter");
+      }
+
+      if (!wallet) {
+        throw new Error("Failed to resolve wallet for fee recipient");
+      }
+
+      basisPointsArray.push(recipient.bps);
+      claimersArray.push(wallet);
+    }
+
+    console.log(`[Launcher] Fee split: ${request.feeRecipients.map((r, i) => `${r.moltbookUsername || r.twitter || r.wallet?.slice(0, 8)}=${r.bps / 100}%`).join(", ")}`);
+  } else {
+    // Default: 100% to creator
+    basisPointsArray = [10000];
+    claimersArray = [resolvedWallet];
+
+    if (useMoltbookIdentity) {
+      console.log(`[Launcher] 100% fees → @${moltbookUsername} (${resolvedWallet.slice(0, 8)}...)`);
+    } else {
+      console.log(`[Launcher] 100% fees → ${resolvedWallet.slice(0, 8)}...`);
+    }
+  }
+
   // NOTE: payer must match the signer (launcher wallet) for the transaction to be valid
-  // Bags.fm API updated: uses basisPointsArray + claimersArray
   const feeShareRequest = {
     baseMint: tokenMint,
     payer: bagsWorldWallet,
-    basisPointsArray: [10000], // 100% to the agent
-    claimersArray: [resolvedWallet], // Agent's wallet
+    basisPointsArray,
+    claimersArray,
   };
-
-  if (useMoltbookIdentity) {
-    console.log(
-      `[Launcher] Moltbook @${moltbookUsername} → wallet ${resolvedWallet.slice(0, 8)}...`
-    );
-  }
   console.log("[Launcher] Fee share request:", JSON.stringify(feeShareRequest, null, 2));
   console.log(
     "[Launcher] API key configured:",

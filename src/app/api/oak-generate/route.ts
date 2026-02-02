@@ -49,6 +49,10 @@ interface GenerateResponse {
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
+const FAL_KEY = process.env.FAL_KEY;
+
+// Image provider priority: FAL (Flux) > Replicate > Procedural
+const IMAGE_PROVIDER = FAL_KEY ? "fal" : REPLICATE_API_TOKEN ? "replicate" : "procedural";
 
 // Style-specific prompt modifiers for image generation
 const STYLE_PROMPTS: Record<string, string> = {
@@ -184,7 +188,7 @@ function generateFallbackNames(concept: string): NameSuggestion[] {
 }
 
 // =============================================================================
-// IMAGE GENERATION (Replicate or Procedural Fallback)
+// IMAGE GENERATION (fal.ai Flux > Replicate > Procedural Fallback)
 // =============================================================================
 
 async function generateImage(
@@ -193,13 +197,138 @@ async function generateImage(
   height: number,
   style: string
 ): Promise<string> {
-  // If Replicate is configured, use it
-  if (REPLICATE_API_TOKEN) {
-    return generateImageWithReplicate(prompt, width, height, style);
+  // Priority: fal.ai (Flux) > Replicate > Procedural
+  if (FAL_KEY) {
+    try {
+      return await generateImageWithFal(prompt, width, height, style);
+    } catch (error) {
+      console.error("[oak-generate] fal.ai error, falling back:", error);
+    }
   }
 
-  // Otherwise use procedural generation
+  if (REPLICATE_API_TOKEN) {
+    try {
+      return await generateImageWithReplicate(prompt, width, height, style);
+    } catch (error) {
+      console.error("[oak-generate] Replicate error, falling back:", error);
+    }
+  }
+
+  // Fallback to procedural generation
   return generateProceduralImage(prompt, width, height, style);
+}
+
+// =============================================================================
+// FAL.AI FLUX GENERATION (Recommended - Fast & High Quality)
+// =============================================================================
+
+async function generateImageWithFal(
+  prompt: string,
+  width: number,
+  height: number,
+  style: string
+): Promise<string> {
+  const styleModifier = STYLE_PROMPTS[style] || STYLE_PROMPTS["pixel-art"];
+
+  const fullPrompt = `${prompt}, ${styleModifier}, high quality, professional, centered composition, solid background`;
+
+  // Use schnell for fast generation, dev for higher quality
+  // schnell is ~10x faster and cheaper
+  const model = "fal-ai/flux/schnell";
+
+  const response = await fetch(`https://fal.run/${model}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${FAL_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      prompt: fullPrompt,
+      image_size: { width, height },
+      num_images: 1,
+      num_inference_steps: 4, // schnell uses fewer steps
+      enable_safety_checker: true,
+      output_format: "png",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("[oak-generate] fal.ai API error:", response.status, errorText);
+    throw new Error(`fal.ai error: ${response.status}`);
+  }
+
+  const result = await response.json();
+
+  if (!result.images?.[0]?.url) {
+    console.error("[oak-generate] fal.ai no image in response:", result);
+    throw new Error("No image returned from fal.ai");
+  }
+
+  // fal.ai returns a URL - fetch and convert to base64
+  const imageUrl = result.images[0].url;
+  const imageResponse = await fetch(imageUrl);
+
+  if (!imageResponse.ok) {
+    throw new Error(`Failed to fetch generated image: ${imageResponse.status}`);
+  }
+
+  const imageBuffer = await imageResponse.arrayBuffer();
+  const base64 = Buffer.from(imageBuffer).toString("base64");
+  const contentType = imageResponse.headers.get("content-type") || "image/png";
+
+  return `data:${contentType};base64,${base64}`;
+}
+
+// =============================================================================
+// FAL.AI FLUX PRO (Higher Quality Option)
+// =============================================================================
+
+async function generateImageWithFalPro(
+  prompt: string,
+  width: number,
+  height: number,
+  style: string
+): Promise<string> {
+  const styleModifier = STYLE_PROMPTS[style] || STYLE_PROMPTS["pixel-art"];
+
+  const fullPrompt = `${prompt}, ${styleModifier}, high quality, professional, centered composition, solid background`;
+
+  // Use flux/dev for higher quality (slower but better)
+  const model = "fal-ai/flux/dev";
+
+  const response = await fetch(`https://fal.run/${model}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${FAL_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      prompt: fullPrompt,
+      image_size: { width, height },
+      num_images: 1,
+      num_inference_steps: 28, // dev uses more steps for quality
+      guidance_scale: 3.5,
+      enable_safety_checker: true,
+      output_format: "png",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`fal.ai error: ${response.status} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  const imageUrl = result.images[0].url;
+
+  // Fetch and convert to base64
+  const imageResponse = await fetch(imageUrl);
+  const imageBuffer = await imageResponse.arrayBuffer();
+  const base64 = Buffer.from(imageBuffer).toString("base64");
+  const contentType = imageResponse.headers.get("content-type") || "image/png";
+
+  return `data:${contentType};base64,${base64}`;
 }
 
 async function generateImageWithReplicate(
@@ -662,7 +791,12 @@ export async function GET(): Promise<NextResponse> {
     status: "ready",
     features: {
       nameGeneration: ANTHROPIC_API_KEY ? "claude" : "fallback",
-      imageGeneration: REPLICATE_API_TOKEN ? "replicate" : "procedural",
+      imageGeneration: IMAGE_PROVIDER,
+    },
+    providers: {
+      fal: FAL_KEY ? "configured" : "not configured",
+      replicate: REPLICATE_API_TOKEN ? "configured" : "not configured",
+      anthropic: ANTHROPIC_API_KEY ? "configured" : "not configured",
     },
     capabilities: [
       "suggest-names",
@@ -671,5 +805,10 @@ export async function GET(): Promise<NextResponse> {
       "resize-image",
       "full-wizard",
     ],
+    notes: {
+      fal: "Flux via fal.ai - fastest, best quality for stylized images",
+      replicate: "SDXL - good quality, slower (requires polling)",
+      procedural: "SVG fallback - free, basic pixel art",
+    },
   });
 }
