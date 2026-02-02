@@ -109,12 +109,12 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
 
   if (activeTokens.length === 0) {
     return (
-      <div className="p-4 text-center">
-        <div className="text-2xl mb-2">🏗️</div>
-        <p className="font-pixel text-[10px] text-gray-400 mb-2">No active buildings</p>
-        <p className="font-pixel text-[8px] text-gray-500">
-          Launch a token to add a building to the world
-        </p>
+      <div className="px-3 py-4 text-center">
+        <div className="w-8 h-8 mx-auto mb-2 border border-dashed border-gray-600 flex items-center justify-center">
+          <span className="font-pixel text-gray-600 text-lg">+</span>
+        </div>
+        <p className="font-pixel text-[9px] text-gray-500">No active buildings</p>
+        <p className="font-pixel text-[7px] text-gray-600 mt-1">Launch a token to add one</p>
       </div>
     );
   }
@@ -122,27 +122,26 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
   return (
     <div className="flex flex-col h-full">
       <div
-        className="p-2 border-b border-bags-green/30 flex items-center justify-between cursor-pointer hover:bg-bags-green/5"
+        className="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-bags-green/5 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm">🏢</span>
-          <span className="font-pixel text-[10px] text-bags-green">WORLD BUILDINGS</span>
-          <span className="font-pixel text-[8px] text-gray-500">({activeTokens.length})</span>
+          <span className="font-pixel text-[9px] text-bags-green">BUILDINGS</span>
+          <span className="font-pixel text-[8px] text-gray-600">({activeTokens.length})</span>
         </div>
-        <span className="font-pixel text-[10px] text-gray-500">{isExpanded ? "▼" : "▶"}</span>
+        <span className="font-pixel text-[8px] text-gray-600">{isExpanded ? "−" : "+"}</span>
       </div>
 
       {isExpanded && (
-        <div className="flex-1 overflow-y-auto">
-          {activeTokens.map((token, index) => (
+        <div className="flex-1 overflow-y-auto max-h-36">
+          {activeTokens.map((token) => (
             <div
               key={token.mint}
-              className="p-3 border-b border-bags-green/10 hover:bg-bags-green/5 group"
+              className="px-3 py-2 border-t border-bags-green/10 hover:bg-bags-green/5 group transition-colors"
             >
-              <div className="flex items-start gap-3">
-                {/* Building Icon/Image */}
-                <div className="w-10 h-10 bg-bags-darker border border-bags-green/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="flex items-center gap-2">
+                {/* Token Icon */}
+                <div className="w-7 h-7 bg-black/40 border border-bags-green/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {token.imageUrl ? (
                     <img
                       src={token.imageUrl}
@@ -150,69 +149,48 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-lg">
-                      {index === 0 ? "🏦" : index === 1 ? "🏢" : index === 2 ? "🏠" : "🏚️"}
+                    <span className="font-pixel text-[8px] text-bags-green">
+                      {token.symbol.charAt(0)}
                     </span>
                   )}
                 </div>
 
                 {/* Token Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-pixel text-[10px] text-bags-gold">${token.symbol}</span>
-                    <span className="font-pixel text-[8px] text-gray-500">
-                      {formatAge(token.createdAt)}
-                    </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-pixel text-[9px] text-bags-gold">${token.symbol}</span>
+                    {token.lifetimeFees && token.lifetimeFees > 0 && (
+                      <span className="font-pixel text-[7px] text-bags-green">
+                        +{token.lifetimeFees.toFixed(2)}
+                      </span>
+                    )}
                   </div>
-                  <p className="font-pixel text-[8px] text-gray-400 truncate">{token.name}</p>
-                  {token.lifetimeFees && token.lifetimeFees > 0 ? (
-                    <p className="font-pixel text-[8px] text-bags-green mt-1">
-                      +{token.lifetimeFees.toFixed(2)} SOL fees
-                    </p>
-                  ) : null}
+                  <p className="font-pixel text-[7px] text-gray-500 truncate">{token.name}</p>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Action Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTradeToken(token);
+                  }}
+                  className="font-pixel text-[7px] px-2 py-1 text-bags-green hover:text-bags-gold opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  TRADE
+                </button>
+                {isUserAdmin && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setTradeToken(token);
+                      handleRemove(token.mint);
                     }}
-                    className="font-pixel text-[7px] px-2 py-1 bg-bags-green/20 text-bags-green hover:bg-bags-green/30 border border-bags-green/30"
-                    title="Trade token"
+                    className="font-pixel text-[7px] px-1 text-red-400/50 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                    title="Remove"
                   >
-                    TRADE
+                    ×
                   </button>
-                  {/* Only admin can delete buildings */}
-                  {isUserAdmin && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemove(token.mint);
-                      }}
-                      className="font-pixel text-[7px] px-2 py-1 text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                      title="Remove building (Admin only)"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
-
-              {/* Fee Shares */}
-              {token.feeShares && token.feeShares.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {token.feeShares.slice(0, 3).map((share, i) => (
-                    <span
-                      key={i}
-                      className="font-pixel text-[7px] px-1 py-0.5 bg-bags-green/10 text-bags-green rounded"
-                    >
-                      @{share.username} {(share.bps / 100).toFixed(0)}%
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
         </div>
