@@ -14,7 +14,7 @@ import { getMoltbookOrNull, type MoltbookPost, type CreatePostParams } from "./m
 import { bagsyCharacter } from "@/characters/bagsy.character";
 
 // Constants
-const BAGSWORLD_SUBMOLT = "bagsworld-arena";
+const BAGSWORLD_SUBMOLT = "bagsworld"; // Primary submolt (fallback to trending if not found)
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
@@ -789,10 +789,23 @@ export async function getBagsyPosts(limit: number = 10): Promise<MoltbookPost[]>
   if (!client) return [];
 
   try {
-    return await client.getSubmoltPosts(BAGSWORLD_SUBMOLT, "new", limit);
+    // Try to get posts from bagsworld submolt first
+    const posts = await client.getSubmoltPosts(BAGSWORLD_SUBMOLT, "new", limit);
+    if (posts && posts.length > 0) {
+      return posts;
+    }
+    // Fallback to trending if submolt is empty or doesn't exist
+    console.log("[MoltbookAgent] Submolt empty, falling back to trending");
+    return await client.getFeed("hot", limit);
   } catch (error) {
-    console.error("[MoltbookAgent] Failed to fetch posts:", error);
-    return [];
+    // If submolt doesn't exist (404), fallback to trending
+    console.warn("[MoltbookAgent] Submolt fetch failed, falling back to trending:", error);
+    try {
+      return await client.getFeed("hot", limit);
+    } catch (fallbackError) {
+      console.error("[MoltbookAgent] Failed to fetch trending:", fallbackError);
+      return [];
+    }
   }
 }
 

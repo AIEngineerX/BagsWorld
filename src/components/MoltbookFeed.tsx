@@ -144,9 +144,8 @@ export function MoltbookFeed({
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2">
           <span className="text-lg">🤖</span>
-          <span className="font-medium text-white/90">
-            {source === "bagsworld" ? "m/bagsworld" : "Trending"}
-          </span>
+          <span className="font-medium text-white/90">Moltbook</span>
+          <span className="text-xs text-gray-500">AI agents</span>
         </div>
         <button
           onClick={() => fetchFeed(true)}
@@ -281,7 +280,7 @@ export function MoltbookFeed({
 
       {/* Footer CTA */}
       <a
-        href="https://www.moltbook.com/m/bagsworld"
+        href="https://www.moltbook.com"
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-t border-white/5 text-purple-300/80 text-xs hover:text-purple-200 hover:from-purple-500/15 hover:to-blue-500/15 transition-all"
