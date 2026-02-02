@@ -5099,121 +5099,368 @@ Use: bags.fm/[yourname]`,
   }
 
   private createDistantSkyline(): void {
-    const skyline = this.add.graphics();
-    skyline.setDepth(-1.5);
-
-    // Ground level where buildings should extend to (just above the grass)
     const groundLevel = Math.round(440 * SCALE);
 
-    // Subtle dark silhouette color
-    const silhouetteColor = 0x1a2535;
+    // === LAYER 1: Atmospheric haze/glow at horizon ===
+    const hazeLayer = this.add.graphics();
+    hazeLayer.setDepth(-2.5);
 
-    // Draw distant buildings - heights calculated from top to groundLevel
-    skyline.fillStyle(silhouetteColor, 0.5);
+    // Gradient haze from horizon upward (gives depth)
+    for (let i = 0; i < 8; i++) {
+      const alpha = 0.15 - i * 0.015;
+      const y = groundLevel - Math.round(i * 12 * SCALE);
+      hazeLayer.fillStyle(0x87ceeb, Math.max(0, alpha)); // Sky blue haze
+      hazeLayer.fillRect(0, y, GAME_WIDTH, Math.round(15 * SCALE));
+    }
 
-    // Helper function to draw building from top to ground
-    const drawBuilding = (x: number, topY: number, width: number) => {
-      const height = groundLevel - topY;
-      skyline.fillRect(x, topY, width, height);
+    // === LAYER 2: Far distant buildings (very faded, smaller) ===
+    const farSkyline = this.add.graphics();
+    farSkyline.setDepth(-2);
+    farSkyline.fillStyle(0x2d3748, 0.25); // Very faded
+
+    const drawFarBuilding = (x: number, topY: number, width: number) => {
+      farSkyline.fillRect(x, topY, width, groundLevel - topY);
     };
 
-    // Left cluster (shorter buildings on edges)
-    drawBuilding(Math.round(15 * SCALE), Math.round(380 * SCALE), Math.round(18 * SCALE));
-    drawBuilding(Math.round(38 * SCALE), Math.round(360 * SCALE), Math.round(22 * SCALE));
-    drawBuilding(Math.round(65 * SCALE), Math.round(375 * SCALE), Math.round(16 * SCALE));
-    drawBuilding(Math.round(88 * SCALE), Math.round(355 * SCALE), Math.round(20 * SCALE));
-    drawBuilding(Math.round(115 * SCALE), Math.round(370 * SCALE), Math.round(18 * SCALE));
+    // Scattered far buildings (smaller, behind main skyline)
+    drawFarBuilding(Math.round(30 * SCALE), Math.round(395 * SCALE), Math.round(12 * SCALE));
+    drawFarBuilding(Math.round(100 * SCALE), Math.round(385 * SCALE), Math.round(15 * SCALE));
+    drawFarBuilding(Math.round(180 * SCALE), Math.round(375 * SCALE), Math.round(14 * SCALE));
+    drawFarBuilding(Math.round(280 * SCALE), Math.round(365 * SCALE), Math.round(18 * SCALE));
+    drawFarBuilding(Math.round(380 * SCALE), Math.round(355 * SCALE), Math.round(20 * SCALE));
+    drawFarBuilding(Math.round(480 * SCALE), Math.round(370 * SCALE), Math.round(16 * SCALE));
+    drawFarBuilding(Math.round(580 * SCALE), Math.round(380 * SCALE), Math.round(14 * SCALE));
+    drawFarBuilding(Math.round(680 * SCALE), Math.round(375 * SCALE), Math.round(15 * SCALE));
+    drawFarBuilding(Math.round(760 * SCALE), Math.round(390 * SCALE), Math.round(12 * SCALE));
+
+    // === LAYER 3: Main skyline buildings (medium opacity) ===
+    const mainSkyline = this.add.graphics();
+    mainSkyline.setDepth(-1.8);
+
+    const drawBuilding = (
+      g: Phaser.GameObjects.Graphics,
+      x: number,
+      topY: number,
+      width: number,
+      color: number,
+      alpha: number
+    ) => {
+      g.fillStyle(color, alpha);
+      g.fillRect(x, topY, width, groundLevel - topY);
+    };
+
+    // Left cluster
+    drawBuilding(
+      mainSkyline,
+      Math.round(15 * SCALE),
+      Math.round(380 * SCALE),
+      Math.round(18 * SCALE),
+      0x1e293b,
+      0.45
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(38 * SCALE),
+      Math.round(360 * SCALE),
+      Math.round(22 * SCALE),
+      0x1a2535,
+      0.5
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(65 * SCALE),
+      Math.round(375 * SCALE),
+      Math.round(16 * SCALE),
+      0x1e293b,
+      0.45
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(88 * SCALE),
+      Math.round(355 * SCALE),
+      Math.round(20 * SCALE),
+      0x1a2535,
+      0.5
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(115 * SCALE),
+      Math.round(370 * SCALE),
+      Math.round(18 * SCALE),
+      0x1e293b,
+      0.45
+    );
 
     // Center-left cluster
-    drawBuilding(Math.round(165 * SCALE), Math.round(350 * SCALE), Math.round(20 * SCALE));
-    drawBuilding(Math.round(192 * SCALE), Math.round(330 * SCALE), Math.round(28 * SCALE));
-    drawBuilding(Math.round(228 * SCALE), Math.round(355 * SCALE), Math.round(18 * SCALE));
-    drawBuilding(Math.round(253 * SCALE), Math.round(340 * SCALE), Math.round(24 * SCALE));
+    drawBuilding(
+      mainSkyline,
+      Math.round(165 * SCALE),
+      Math.round(350 * SCALE),
+      Math.round(20 * SCALE),
+      0x1a2535,
+      0.5
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(192 * SCALE),
+      Math.round(330 * SCALE),
+      Math.round(28 * SCALE),
+      0x0f172a,
+      0.55
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(228 * SCALE),
+      Math.round(355 * SCALE),
+      Math.round(18 * SCALE),
+      0x1e293b,
+      0.45
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(253 * SCALE),
+      Math.round(340 * SCALE),
+      Math.round(24 * SCALE),
+      0x1a2535,
+      0.5
+    );
 
-    // Center cluster (tallest - focal point)
-    drawBuilding(Math.round(320 * SCALE), Math.round(310 * SCALE), Math.round(26 * SCALE));
-    drawBuilding(Math.round(355 * SCALE), Math.round(280 * SCALE), Math.round(35 * SCALE)); // Tallest
-    drawBuilding(Math.round(400 * SCALE), Math.round(295 * SCALE), Math.round(30 * SCALE));
-    drawBuilding(Math.round(440 * SCALE), Math.round(320 * SCALE), Math.round(22 * SCALE));
-    drawBuilding(Math.round(470 * SCALE), Math.round(345 * SCALE), Math.round(18 * SCALE));
+    // Center cluster (tallest - most prominent)
+    drawBuilding(
+      mainSkyline,
+      Math.round(320 * SCALE),
+      Math.round(310 * SCALE),
+      Math.round(26 * SCALE),
+      0x0f172a,
+      0.6
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(355 * SCALE),
+      Math.round(280 * SCALE),
+      Math.round(35 * SCALE),
+      0x0f172a,
+      0.65
+    ); // Tallest
+    drawBuilding(
+      mainSkyline,
+      Math.round(400 * SCALE),
+      Math.round(295 * SCALE),
+      Math.round(30 * SCALE),
+      0x0f172a,
+      0.6
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(440 * SCALE),
+      Math.round(320 * SCALE),
+      Math.round(22 * SCALE),
+      0x1a2535,
+      0.55
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(470 * SCALE),
+      Math.round(345 * SCALE),
+      Math.round(18 * SCALE),
+      0x1e293b,
+      0.5
+    );
 
     // Center-right cluster
-    drawBuilding(Math.round(525 * SCALE), Math.round(355 * SCALE), Math.round(20 * SCALE));
-    drawBuilding(Math.round(555 * SCALE), Math.round(335 * SCALE), Math.round(26 * SCALE));
-    drawBuilding(Math.round(590 * SCALE), Math.round(360 * SCALE), Math.round(18 * SCALE));
+    drawBuilding(
+      mainSkyline,
+      Math.round(525 * SCALE),
+      Math.round(355 * SCALE),
+      Math.round(20 * SCALE),
+      0x1e293b,
+      0.45
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(555 * SCALE),
+      Math.round(335 * SCALE),
+      Math.round(26 * SCALE),
+      0x1a2535,
+      0.5
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(590 * SCALE),
+      Math.round(360 * SCALE),
+      Math.round(18 * SCALE),
+      0x1e293b,
+      0.45
+    );
 
     // Right cluster
-    drawBuilding(Math.round(645 * SCALE), Math.round(350 * SCALE), Math.round(20 * SCALE));
-    drawBuilding(Math.round(675 * SCALE), Math.round(330 * SCALE), Math.round(28 * SCALE));
-    drawBuilding(Math.round(712 * SCALE), Math.round(355 * SCALE), Math.round(22 * SCALE));
-    drawBuilding(Math.round(742 * SCALE), Math.round(340 * SCALE), Math.round(24 * SCALE));
-    drawBuilding(Math.round(775 * SCALE), Math.round(365 * SCALE), Math.round(20 * SCALE));
+    drawBuilding(
+      mainSkyline,
+      Math.round(645 * SCALE),
+      Math.round(350 * SCALE),
+      Math.round(20 * SCALE),
+      0x1a2535,
+      0.5
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(675 * SCALE),
+      Math.round(330 * SCALE),
+      Math.round(28 * SCALE),
+      0x0f172a,
+      0.55
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(712 * SCALE),
+      Math.round(355 * SCALE),
+      Math.round(22 * SCALE),
+      0x1e293b,
+      0.45
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(742 * SCALE),
+      Math.round(340 * SCALE),
+      Math.round(24 * SCALE),
+      0x1a2535,
+      0.5
+    );
+    drawBuilding(
+      mainSkyline,
+      Math.round(775 * SCALE),
+      Math.round(365 * SCALE),
+      Math.round(20 * SCALE),
+      0x1e293b,
+      0.45
+    );
 
-    // Add subtle window lights (very sparse and dim)
-    const windowColor = 0xffd700;
-    skyline.fillStyle(windowColor, 0.2);
+    // === LAYER 4: Building details (spires, antennas, rooftop features) ===
+    const detailsLayer = this.add.graphics();
+    detailsLayer.setDepth(-1.7);
+    detailsLayer.fillStyle(0x0f172a, 0.6);
 
-    // A few random lit windows
-    const windowPositions = [
-      {
-        x: Math.round(198 * SCALE),
-        y: Math.round(350 * SCALE),
-        w: Math.round(4 * SCALE),
-        h: Math.round(5 * SCALE),
-      },
-      {
-        x: Math.round(198 * SCALE),
-        y: Math.round(370 * SCALE),
-        w: Math.round(4 * SCALE),
-        h: Math.round(5 * SCALE),
-      },
-      {
-        x: Math.round(362 * SCALE),
-        y: Math.round(310 * SCALE),
-        w: Math.round(5 * SCALE),
-        h: Math.round(6 * SCALE),
-      },
-      {
-        x: Math.round(370 * SCALE),
-        y: Math.round(340 * SCALE),
-        w: Math.round(5 * SCALE),
-        h: Math.round(6 * SCALE),
-      },
-      {
-        x: Math.round(370 * SCALE),
-        y: Math.round(380 * SCALE),
-        w: Math.round(5 * SCALE),
-        h: Math.round(6 * SCALE),
-      },
-      {
-        x: Math.round(408 * SCALE),
-        y: Math.round(330 * SCALE),
-        w: Math.round(4 * SCALE),
-        h: Math.round(5 * SCALE),
-      },
-      {
-        x: Math.round(562 * SCALE),
-        y: Math.round(360 * SCALE),
-        w: Math.round(4 * SCALE),
-        h: Math.round(5 * SCALE),
-      },
-      {
-        x: Math.round(682 * SCALE),
-        y: Math.round(355 * SCALE),
-        w: Math.round(4 * SCALE),
-        h: Math.round(5 * SCALE),
-      },
-      {
-        x: Math.round(682 * SCALE),
-        y: Math.round(385 * SCALE),
-        w: Math.round(4 * SCALE),
-        h: Math.round(5 * SCALE),
-      },
+    // Spire on tallest building
+    detailsLayer.fillRect(
+      Math.round(370 * SCALE),
+      Math.round(260 * SCALE),
+      Math.round(5 * SCALE),
+      Math.round(20 * SCALE)
+    );
+    // Antenna details
+    detailsLayer.fillRect(
+      Math.round(205 * SCALE),
+      Math.round(318 * SCALE),
+      Math.round(2 * SCALE),
+      Math.round(12 * SCALE)
+    );
+    detailsLayer.fillRect(
+      Math.round(412 * SCALE),
+      Math.round(283 * SCALE),
+      Math.round(2 * SCALE),
+      Math.round(12 * SCALE)
+    );
+    detailsLayer.fillRect(
+      Math.round(688 * SCALE),
+      Math.round(318 * SCALE),
+      Math.round(2 * SCALE),
+      Math.round(12 * SCALE)
+    );
+    // Rooftop boxes (AC units, etc.)
+    detailsLayer.fillRect(
+      Math.round(360 * SCALE),
+      Math.round(278 * SCALE),
+      Math.round(8 * SCALE),
+      Math.round(4 * SCALE)
+    );
+    detailsLayer.fillRect(
+      Math.round(378 * SCALE),
+      Math.round(278 * SCALE),
+      Math.round(6 * SCALE),
+      Math.round(4 * SCALE)
+    );
+
+    // === LAYER 5: Window lights (varied brightness, more of them) ===
+    const windowsLayer = this.add.graphics();
+    windowsLayer.setDepth(-1.6);
+
+    // Window definitions: x, y, brightness (0.15-0.4)
+    const windows = [
+      // Tall center building - lots of windows
+      { x: 362, y: 290, b: 0.35 },
+      { x: 370, y: 290, b: 0.25 },
+      { x: 378, y: 290, b: 0.3 },
+      { x: 362, y: 310, b: 0.2 },
+      { x: 370, y: 310, b: 0.4 },
+      { x: 378, y: 310, b: 0.15 },
+      { x: 362, y: 330, b: 0.3 },
+      { x: 370, y: 330, b: 0.2 },
+      { x: 378, y: 330, b: 0.35 },
+      { x: 362, y: 350, b: 0.25 },
+      { x: 370, y: 350, b: 0.3 },
+      { x: 378, y: 350, b: 0.2 },
+      { x: 362, y: 370, b: 0.15 },
+      { x: 370, y: 370, b: 0.25 },
+      { x: 378, y: 370, b: 0.4 },
+      { x: 362, y: 390, b: 0.3 },
+      { x: 370, y: 390, b: 0.2 },
+      // Second tall building
+      { x: 405, y: 305, b: 0.25 },
+      { x: 415, y: 305, b: 0.35 },
+      { x: 405, y: 325, b: 0.4 },
+      { x: 415, y: 325, b: 0.2 },
+      { x: 405, y: 345, b: 0.15 },
+      { x: 415, y: 345, b: 0.3 },
+      { x: 405, y: 365, b: 0.25 },
+      // Left buildings
+      { x: 45, y: 370, b: 0.2 },
+      { x: 45, y: 390, b: 0.3 },
+      { x: 95, y: 365, b: 0.35 },
+      { x: 95, y: 385, b: 0.2 },
+      { x: 198, y: 340, b: 0.3 },
+      { x: 206, y: 340, b: 0.2 },
+      { x: 198, y: 360, b: 0.25 },
+      { x: 206, y: 360, b: 0.4 },
+      { x: 198, y: 380, b: 0.15 },
+      // Right buildings
+      { x: 560, y: 345, b: 0.3 },
+      { x: 568, y: 345, b: 0.2 },
+      { x: 560, y: 365, b: 0.25 },
+      { x: 568, y: 365, b: 0.35 },
+      { x: 682, y: 340, b: 0.4 },
+      { x: 690, y: 340, b: 0.2 },
+      { x: 682, y: 360, b: 0.15 },
+      { x: 690, y: 360, b: 0.3 },
+      { x: 682, y: 380, b: 0.25 },
+      { x: 690, y: 380, b: 0.35 },
+      { x: 750, y: 350, b: 0.3 },
+      { x: 750, y: 370, b: 0.2 },
     ];
 
-    for (const win of windowPositions) {
-      skyline.fillRect(win.x, win.y, win.w, win.h);
-    }
+    windows.forEach((w) => {
+      windowsLayer.fillStyle(0xffeaa7, w.b); // Warm yellow light
+      windowsLayer.fillRect(
+        Math.round(w.x * SCALE),
+        Math.round(w.y * SCALE),
+        Math.round(4 * SCALE),
+        Math.round(5 * SCALE)
+      );
+    });
+
+    // === LAYER 6: Subtle glow beneath some windows ===
+    const glowLayer = this.add.graphics();
+    glowLayer.setDepth(-1.65);
+
+    // Add small glow spots beneath brightest windows
+    const brightWindows = windows.filter((w) => w.b >= 0.35);
+    brightWindows.forEach((w) => {
+      glowLayer.fillStyle(0xffeaa7, 0.08);
+      glowLayer.fillCircle(
+        Math.round((w.x + 2) * SCALE),
+        Math.round((w.y + 8) * SCALE),
+        Math.round(6 * SCALE)
+      );
+    });
   }
 
   private createDecorations(): void {
