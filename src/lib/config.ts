@@ -30,16 +30,9 @@ import { isProduction, isDevelopment } from "./env-utils";
  * Supports multiple wallets via comma-separated ADMIN_WALLETS env var.
  */
 function getAdminWallets(): string[] {
-  // Check multiple env var names for backwards compatibility
-  const adminWalletEnv =
-    process.env.ADMIN_WALLETS || process.env.ADMIN_WALLET || process.env.NEXT_PUBLIC_ADMIN_WALLET;
-
-  // Debug logging
-  console.log("[Config] getAdminWallets called");
-  console.log("[Config] ADMIN_WALLETS:", process.env.ADMIN_WALLETS);
-  console.log("[Config] ADMIN_WALLET:", process.env.ADMIN_WALLET);
-  console.log("[Config] NEXT_PUBLIC_ADMIN_WALLET:", process.env.NEXT_PUBLIC_ADMIN_WALLET);
-  console.log("[Config] Combined value:", adminWalletEnv);
+  // SECURITY: Only use server-side env vars, never NEXT_PUBLIC_ for admin wallets
+  // The NEXT_PUBLIC_ prefix exposes values to the client bundle
+  const adminWalletEnv = process.env.ADMIN_WALLETS || process.env.ADMIN_WALLET;
 
   if (adminWalletEnv) {
     // Support comma-separated list of admin wallets
@@ -47,7 +40,6 @@ function getAdminWallets(): string[] {
       .split(",")
       .map((wallet) => wallet.trim())
       .filter(Boolean);
-    console.log("[Config] Parsed admin wallets:", wallets);
     return wallets;
   }
 
