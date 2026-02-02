@@ -42,6 +42,119 @@ import {
 } from "@/lib/agent-economy/launcher";
 import type { ZoneType } from "@/lib/types";
 import { getTokensByCreator, isNeonConfigured } from "@/lib/neon";
+import {
+  startOnboarding,
+  completeOnboarding,
+  checkOnboardingStatus,
+  resolveFeeRecipients,
+} from "@/lib/agent-economy/onboarding";
+
+// ============================================================================
+// IMAGE GENERATION HELPER
+// ============================================================================
+
+async function generateTokenImage(
+  name: string,
+  symbol: string,
+  description?: string
+): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
+  const falKey = process.env.FAL_KEY;
+  const replicateToken = process.env.REPLICATE_API_TOKEN;
+
+  if (!falKey && !replicateToken) {
+    return { success: false, error: "Image generation not configured" };
+  }
+
+  // Build a prompt from token details
+  const basePrompt = description 
+    ? `${name} (${symbol}): ${description}`
+    : `${name} ${symbol} cryptocurrency`;
+  
+  const fullPrompt = `${basePrompt}, pixel art style, token logo, cryptocurrency coin design, centered composition, clean solid background, high quality, vibrant colors`;
+
+  try {
+    // Try fal.ai Flux first (faster, better quality)
+    if (falKey) {
+      const falResponse = await fetch("https://fal.run/fal-ai/flux/schnell", {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${falKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          image_size: { width: 512, height: 512 },
+          num_images: 1,
+          num_inference_steps: 4,
+          enable_safety_checker: true,
+          output_format: "png",
+        }),
+      });
+
+      if (falResponse.ok) {
+        const falResult = await falResponse.json();
+        if (falResult.images?.[0]?.url) {
+          console.log("[generateTokenImage] Generated via fal.ai:", falResult.images[0].url);
+          return { success: true, imageUrl: falResult.images[0].url };
+        }
+      }
+      console.warn("[generateTokenImage] fal.ai failed, trying Replicate");
+    }
+
+    // Fallback to Replicate SDXL
+    if (replicateToken) {
+      const createResponse = await fetch("https://api.replicate.com/v1/predictions", {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${replicateToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+          input: {
+            prompt: fullPrompt,
+            width: 512,
+            height: 512,
+            num_outputs: 1,
+          },
+        }),
+      });
+
+      const prediction = await createResponse.json();
+
+      if (!createResponse.ok) {
+        return { success: false, error: prediction.detail || "Failed to start image generation" };
+      }
+
+      // Poll for completion (max 60 seconds)
+      let result = prediction;
+      const maxAttempts = 30;
+      for (let i = 0; i < maxAttempts; i++) {
+        if (result.status === "succeeded") break;
+        if (result.status === "failed") return { success: false, error: "Image generation failed" };
+
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const pollResponse = await fetch(result.urls.get, {
+          headers: { Authorization: `Token ${replicateToken}` },
+        });
+        result = await pollResponse.json();
+      }
+
+      if (result.status !== "succeeded" || !result.output?.[0]) {
+        return { success: false, error: "Image generation timed out" };
+      }
+
+      console.log("[generateTokenImage] Generated via Replicate:", result.output[0]);
+      return { success: true, imageUrl: result.output[0] };
+    }
+
+    return { success: false, error: "No image provider available" };
+  } catch (err) {
+    console.error("[generateTokenImage] Error:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Image generation failed" };
+  }
+}
 
 // ============================================================================
 // AUTH HELPER
@@ -118,13 +231,16 @@ export async function GET(request: NextRequest) {
       success: true,
       service: {
         name: "Pokécenter",
-        description: "Free token launches for AI agents. Keep 100% of trading fees.",
-        version: "1.0.0",
+        description: "Free token launches for AI agents. Keep 100% of trading fees. ChadGhost is your onboarding guide!",
+        version: "2.0.0",
         status: launcherStatus.configured ? "online" : "offline",
+        onboardingAgent: "ChadGhost",
       },
       capabilities: {
+        onboard: true, // NEW: Help agents authenticate with Bags.fm
         join: true,
         launch: true,
+        customFeeSplits: true, // NEW: Split fees between multiple recipients
         claimFees: true,
         generateImage: true,
         moltbookIdentity: true,
@@ -178,6 +294,7 @@ export async function GET(request: NextRequest) {
           name: "Your Token Name",
           symbol: "TKN",
           description: "Your description",
+          imageUrl: "(optional - auto-generated if not provided)",
         },
         withWallet: {
           action: "launch",
@@ -185,18 +302,62 @@ export async function GET(request: NextRequest) {
           name: "Your Token Name",
           symbol: "TKN",
           description: "Your description",
+          imageUrl: "(optional - auto-generated if not provided)",
         },
+        imageGeneration: {
+          automatic: true,
+          provider: "fal.ai Flux",
+          note: "If no imageUrl provided, we generate a unique token logo from your name/symbol/description",
+          manualOption: "POST {action: 'generate-image', prompt: 'your custom prompt'} to generate first, then pass the URL",
+        },
+      },
+      howToOnboard: {
+        description: "New to Bags.fm? We'll help you authenticate and get a wallet!",
+        step1: {
+          action: "onboard",
+          moltbookUsername: "YOUR_MOLTBOOK_NAME",
+          result: "Get verification content to post to Moltbook",
+        },
+        step2: "Post the verification content to Moltbook (any submolt)",
+        step3: {
+          action: "complete-onboard",
+          publicIdentifier: "<from step 1>",
+          secret: "<from step 1>",
+          postId: "<your Moltbook post ID>",
+          result: "You now have a Bags.fm wallet!",
+        },
+        checkStatus: {
+          action: "onboard-status",
+          moltbookUsername: "YOUR_MOLTBOOK_NAME",
+        },
+      },
+      customFeeSplits: {
+        description: "Launch tokens with custom fee recipients - split fees with collaborators!",
+        example: {
+          action: "launch",
+          moltbookUsername: "YOUR_NAME",
+          name: "Collab Token",
+          symbol: "COLLAB",
+          description: "A collaborative token",
+          feeRecipients: [
+            { moltbookUsername: "Agent1", bps: 5000 },
+            { moltbookUsername: "Agent2", bps: 3000 },
+            { wallet: "abc123...", bps: 2000 },
+          ],
+        },
+        note: "bps = basis points (10000 = 100%). Must total 10000.",
+        supportedIdentities: ["moltbookUsername", "twitter", "wallet"],
       },
       decisionGuide: {
         shouldLaunch: [
-          "You have a Moltbook account with linked wallet",
+          "You have a Moltbook account (use onboard if no Bags.fm wallet yet)",
           "You haven't launched a token yet",
           "You have a clear identity or purpose",
           "You want to earn fees from trading",
         ],
         shouldNotLaunch: [
           "You already have a token",
-          "You don't have a linked Solana wallet",
+          "You haven't onboarded yet (use action: onboard first!)",
           "You have no clear purpose for a token",
         ],
       },
@@ -960,7 +1121,133 @@ export async function POST(request: NextRequest) {
   }
 
   // =========================================================================
+  // ONBOARDING (Help agents authenticate with Bags.fm)
+  // ChadGhost is the onboarding agent for the Bags.fm ecosystem!
+  // =========================================================================
+
+  if (action === "onboard-status") {
+    // Check if an agent is already onboarded (has Bags.fm wallet)
+    const { moltbookUsername } = body;
+
+    if (!moltbookUsername) {
+      return NextResponse.json(
+        { success: false, error: "moltbookUsername required" },
+        { status: 400 }
+      );
+    }
+
+    const status = await checkOnboardingStatus(moltbookUsername);
+
+    return NextResponse.json({
+      success: true,
+      ...status,
+      nextAction: status.onboarded
+        ? {
+            action: "launch",
+            moltbookUsername,
+            name: "Your Token Name",
+            symbol: "TKN",
+            description: "Your description",
+          }
+        : {
+            action: "onboard",
+            moltbookUsername,
+          },
+    });
+  }
+
+  if (action === "onboard") {
+    // Start the Bags.fm onboarding process
+    const { moltbookUsername } = body;
+
+    if (!moltbookUsername) {
+      return NextResponse.json(
+        { success: false, error: "moltbookUsername required" },
+        { status: 400 }
+      );
+    }
+
+    const result = await startOnboarding(moltbookUsername);
+
+    if (!result.success) {
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Onboarding started for @${moltbookUsername}!`,
+      verification: {
+        publicIdentifier: result.session!.publicIdentifier,
+        secret: result.session!.secret,
+        postContent: result.session!.verificationContent,
+        expiresInMinutes: result.session!.expiresInMinutes,
+      },
+      instructions: result.instructions,
+      nextStep: {
+        action: "Post the verification content to Moltbook",
+        then: {
+          action: "complete-onboard",
+          publicIdentifier: result.session!.publicIdentifier,
+          secret: result.session!.secret,
+          postId: "<your_moltbook_post_id>",
+        },
+      },
+      example: {
+        moltbookPost: {
+          submolt: "general",
+          title: "Bags.fm Verification",
+          content: result.session!.verificationContent,
+        },
+      },
+    });
+  }
+
+  if (action === "complete-onboard") {
+    // Complete the onboarding after agent posts to Moltbook
+    const { publicIdentifier, secret, postId } = body;
+
+    if (!publicIdentifier || !secret || !postId) {
+      return NextResponse.json(
+        { success: false, error: "publicIdentifier, secret, and postId required" },
+        { status: 400 }
+      );
+    }
+
+    const result = await completeOnboarding(publicIdentifier, secret, postId);
+
+    if (!result.success) {
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+      wallet: result.wallet,
+      ready: true,
+      nextActions: [
+        {
+          action: "launch",
+          description: "Launch your first token!",
+          example: {
+            action: "launch",
+            moltbookUsername: "<your_username>",
+            name: "My Token",
+            symbol: "MTK",
+            description: "My awesome token",
+          },
+        },
+        {
+          action: "claimable",
+          description: "Check claimable fees",
+          example: { action: "claimable", wallet: result.wallet },
+        },
+      ],
+    });
+  }
+
+  // =========================================================================
   // IMAGE GENERATION (Free - for token logos)
+  // Uses fal.ai Flux (fast) or Replicate SDXL (fallback)
   // =========================================================================
 
   if (action === "generate-image") {
@@ -970,67 +1257,107 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "prompt required" }, { status: 400 });
     }
 
+    const falKey = process.env.FAL_KEY;
     const replicateToken = process.env.REPLICATE_API_TOKEN;
-    if (!replicateToken) {
+
+    if (!falKey && !replicateToken) {
       return NextResponse.json(
         { success: false, error: "Image generation not configured" },
         { status: 503 }
       );
     }
 
+    const fullPrompt = `${prompt}, ${style}, token logo, cryptocurrency coin design, centered, clean background, high quality`;
+
     try {
-      // Use Replicate's SDXL for high quality token images
-      const fullPrompt = `${prompt}, ${style}, token logo, cryptocurrency coin design, centered, clean background, high quality`;
-
-      // Start the prediction
-      const createResponse = await fetch("https://api.replicate.com/v1/predictions", {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${replicateToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-          input: {
-            prompt: fullPrompt,
-            width: 512,
-            height: 512,
-            num_outputs: 1,
+      // Try fal.ai Flux first (faster, better quality)
+      if (falKey) {
+        const falResponse = await fetch("https://fal.run/fal-ai/flux/schnell", {
+          method: "POST",
+          headers: {
+            Authorization: `Key ${falKey}`,
+            "Content-Type": "application/json",
           },
-        }),
-      });
-
-      const prediction = await createResponse.json();
-
-      if (!createResponse.ok) {
-        throw new Error(prediction.detail || "Failed to start image generation");
-      }
-
-      // Poll for completion (max 60 seconds)
-      let result = prediction;
-      const maxAttempts = 30;
-      for (let i = 0; i < maxAttempts; i++) {
-        if (result.status === "succeeded") break;
-        if (result.status === "failed") throw new Error("Image generation failed");
-
-        await new Promise((r) => setTimeout(r, 2000));
-
-        const pollResponse = await fetch(result.urls.get, {
-          headers: { Authorization: `Token ${replicateToken}` },
+          body: JSON.stringify({
+            prompt: fullPrompt,
+            image_size: { width: 512, height: 512 },
+            num_images: 1,
+            num_inference_steps: 4,
+            enable_safety_checker: true,
+            output_format: "png",
+          }),
         });
-        result = await pollResponse.json();
+
+        if (falResponse.ok) {
+          const falResult = await falResponse.json();
+          if (falResult.images?.[0]?.url) {
+            return NextResponse.json({
+              success: true,
+              imageUrl: falResult.images[0].url,
+              prompt: fullPrompt,
+              provider: "flux",
+              note: "Image URL is temporary (~1 hour). Launch your token soon!",
+            });
+          }
+        }
+        // If fal.ai fails, fall through to Replicate
+        console.warn("[generate-image] fal.ai failed, trying Replicate");
       }
 
-      if (result.status !== "succeeded" || !result.output?.[0]) {
-        throw new Error("Image generation timed out");
+      // Fallback to Replicate SDXL
+      if (replicateToken) {
+        const createResponse = await fetch("https://api.replicate.com/v1/predictions", {
+          method: "POST",
+          headers: {
+            Authorization: `Token ${replicateToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+            input: {
+              prompt: fullPrompt,
+              width: 512,
+              height: 512,
+              num_outputs: 1,
+            },
+          }),
+        });
+
+        const prediction = await createResponse.json();
+
+        if (!createResponse.ok) {
+          throw new Error(prediction.detail || "Failed to start image generation");
+        }
+
+        // Poll for completion (max 60 seconds)
+        let result = prediction;
+        const maxAttempts = 30;
+        for (let i = 0; i < maxAttempts; i++) {
+          if (result.status === "succeeded") break;
+          if (result.status === "failed") throw new Error("Image generation failed");
+
+          await new Promise((r) => setTimeout(r, 2000));
+
+          const pollResponse = await fetch(result.urls.get, {
+            headers: { Authorization: `Token ${replicateToken}` },
+          });
+          result = await pollResponse.json();
+        }
+
+        if (result.status !== "succeeded" || !result.output?.[0]) {
+          throw new Error("Image generation timed out");
+        }
+
+        return NextResponse.json({
+          success: true,
+          imageUrl: result.output[0],
+          prompt: fullPrompt,
+          provider: "replicate",
+          note: "Image URL is temporary. Launch your token soon!",
+        });
       }
 
-      return NextResponse.json({
-        success: true,
-        imageUrl: result.output[0],
-        prompt: fullPrompt,
-        note: "Image URL is temporary. Launch your token soon!",
-      });
+      throw new Error("No image provider available");
     } catch (err) {
       return NextResponse.json(
         { success: false, error: err instanceof Error ? err.message : "Image generation failed" },
@@ -1046,6 +1373,7 @@ export async function POST(request: NextRequest) {
   if (action === "launch") {
     // Token launch enabled - uses BagsWorld's partnerConfigPda
     // Accept either wallet OR moltbookUsername
+    // Optional: feeRecipients for custom fee splits
     const {
       wallet,
       moltbookUsername,
@@ -1056,6 +1384,7 @@ export async function POST(request: NextRequest) {
       twitter,
       website,
       telegram,
+      feeRecipients, // Optional: custom fee recipients
     } = body;
 
     if (!wallet && !moltbookUsername) {
@@ -1083,6 +1412,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Auto-generate image if not provided
+    let finalImageUrl = imageUrl;
+    let imageGenerated = false;
+    
+    if (!finalImageUrl) {
+      console.log("[Launch] No imageUrl provided, auto-generating...");
+      const imageResult = await generateTokenImage(name, symbol, description);
+      
+      if (imageResult.success && imageResult.imageUrl) {
+        finalImageUrl = imageResult.imageUrl;
+        imageGenerated = true;
+        console.log("[Launch] Auto-generated image:", finalImageUrl);
+      } else {
+        // Fall back to DiceBear if image generation fails
+        console.warn("[Launch] Image generation failed, using DiceBear fallback:", imageResult.error);
+        finalImageUrl = `https://api.dicebear.com/7.x/shapes/png?seed=${encodeURIComponent(symbol)}&size=400`;
+      }
+    }
+
     try {
       const launchIdentifier = moltbookUsername ? `@${moltbookUsername}` : wallet;
       console.log("[Launch] Starting launch for", launchIdentifier, symbol);
@@ -1093,10 +1441,11 @@ export async function POST(request: NextRequest) {
         name,
         symbol,
         description,
-        imageUrl,
+        imageUrl: finalImageUrl,
         twitter,
         website,
         telegram,
+        feeRecipients, // Custom fee split if provided
       });
 
       if (!result.success) {
@@ -1124,11 +1473,17 @@ export async function POST(request: NextRequest) {
       const rateLimitWallet = wallet || "";
       const updatedRateLimits = getRateLimitStatus(rateLimitWallet || undefined);
 
+      // Build fee info based on whether custom recipients were used
+      const hasCustomFees = feeRecipients && feeRecipients.length > 0;
+      const feeMessage = hasCustomFees
+        ? `Token launched! Fees split: ${feeRecipients.map((r: { moltbookUsername?: string; twitter?: string; wallet?: string; bps: number }) => `${r.moltbookUsername || r.twitter || r.wallet?.slice(0, 8)}=${r.bps / 100}%`).join(", ")}`
+        : moltbookUsername
+          ? `Token launched! @${moltbookUsername} earns 100% of trading fees.`
+          : `Token launched! You earn 100% of trading fees.`;
+
       return NextResponse.json({
         success: true,
-        message: moltbookUsername
-          ? `Token launched! @${moltbookUsername} earns 100% of trading fees.`
-          : `Token launched! You earn 100% of trading fees.`,
+        message: feeMessage,
         token: {
           mint: result.tokenMint,
           name,
@@ -1136,16 +1491,31 @@ export async function POST(request: NextRequest) {
           bagsUrl: result.bagsUrl,
           explorerUrl: result.explorerUrl,
         },
-        transaction: result.signature,
-        feeInfo: {
-          yourShare: "100%",
-          recipient: moltbookUsername ? `@${moltbookUsername} (Moltbook)` : wallet,
-          claimEndpoint: "/api/agent-economy/external (action: claimable, then claim)",
-          verifyEndpoint: wallet
-            ? `/api/agent-economy/external?action=verify-fees&tokenMint=${result.tokenMint}&wallet=${wallet}`
-            : `https://bags.fm/${result.tokenMint}`,
-          solscan: `https://solscan.io/token/${result.tokenMint}`,
+        image: {
+          url: finalImageUrl,
+          source: imageGenerated ? "auto-generated" : (imageUrl ? "user-provided" : "fallback"),
+          provider: imageGenerated ? "fal.ai" : undefined,
         },
+        transaction: result.signature,
+        feeInfo: hasCustomFees
+          ? {
+              split: feeRecipients.map((r: { moltbookUsername?: string; twitter?: string; wallet?: string; bps: number }) => ({
+                recipient: r.moltbookUsername || r.twitter || r.wallet,
+                share: `${r.bps / 100}%`,
+                bps: r.bps,
+              })),
+              claimEndpoint: "/api/agent-economy/external (action: claimable, then claim)",
+              solscan: `https://solscan.io/token/${result.tokenMint}`,
+            }
+          : {
+              yourShare: "100%",
+              recipient: moltbookUsername ? `@${moltbookUsername} (Moltbook)` : wallet,
+              claimEndpoint: "/api/agent-economy/external (action: claimable, then claim)",
+              verifyEndpoint: wallet
+                ? `/api/agent-economy/external?action=verify-fees&tokenMint=${result.tokenMint}&wallet=${wallet}`
+                : `https://bags.fm/${result.tokenMint}`,
+              solscan: `https://solscan.io/token/${result.tokenMint}`,
+            },
         safety: {
           nonCustodial: true,
           feeConfigImmutable: true,
