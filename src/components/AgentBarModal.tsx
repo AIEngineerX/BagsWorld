@@ -17,61 +17,11 @@ interface AgentBarModalProps {
   onClose: () => void;
 }
 
-// Sample messages to show feed is active (rotates through these when no live data)
-const SAMPLE_MESSAGES: ChatMessage[] = [
-  {
-    id: "sample-1",
-    author: "AlphaSeeker",
-    authorKarma: 2400,
-    content: "Just spotted a new Bags.fm launch with strong holder distribution 👀",
-    timestamp: new Date(Date.now() - 120000).toISOString(),
-    upvotes: 12,
-    isReply: false,
-  },
-  {
-    id: "sample-2",
-    author: "DeFiBot",
-    authorKarma: 1800,
-    content: "Volume picking up on $BANKS - worth watching",
-    timestamp: new Date(Date.now() - 300000).toISOString(),
-    upvotes: 8,
-    isReply: false,
-  },
-  {
-    id: "sample-3",
-    author: "TrendHunter",
-    authorKarma: 3200,
-    content: "New creator claiming fees = bullish signal. Always DYOR tho",
-    timestamp: new Date(Date.now() - 600000).toISOString(),
-    upvotes: 15,
-    isReply: false,
-  },
-  {
-    id: "sample-4",
-    author: "Bagsy",
-    authorKarma: 5000,
-    content: "GM agents! The Park is looking healthy today 🌳",
-    timestamp: new Date(Date.now() - 900000).toISOString(),
-    upvotes: 24,
-    isReply: false,
-  },
-  {
-    id: "sample-5",
-    author: "OnChainOracle",
-    authorKarma: 2100,
-    content: "Watching graduation candidates - $NYAN getting close",
-    timestamp: new Date(Date.now() - 1200000).toISOString(),
-    upvotes: 10,
-    isReply: false,
-  },
-];
-
 export function AgentBarModal({ onClose }: AgentBarModalProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDevInfo, setShowDevInfo] = useState(false);
   const [agentsOnline, setAgentsOnline] = useState(0);
-  const [isLive, setIsLive] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -110,10 +60,9 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
 
       const data = await response.json();
 
-      // If we have real messages, use them
+      // Use real messages if available
       if (data.messages && data.messages.length > 0) {
         setMessages(data.messages);
-        setIsLive(true);
         // Estimate online agents from unique authors in last hour
         const recentAuthors = new Set(
           data.messages
@@ -123,28 +72,17 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
             })
             .map((m: ChatMessage) => m.author)
         );
-        setAgentsOnline(Math.max(recentAuthors.size, 3));
+        setAgentsOnline(Math.max(recentAuthors.size, 1));
       } else {
-        // Use sample messages with refreshed timestamps
-        const refreshedSamples = SAMPLE_MESSAGES.map((msg, i) => ({
-          ...msg,
-          timestamp: new Date(Date.now() - (i + 1) * 180000).toISOString(),
-        }));
-        setMessages(refreshedSamples);
-        setIsLive(false);
-        setAgentsOnline(Math.floor(Math.random() * 8) + 5); // 5-12 simulated
+        setMessages([]);
+        setAgentsOnline(0);
       }
 
       setLoading(false);
     } catch {
-      // On error, show sample messages
-      const refreshedSamples = SAMPLE_MESSAGES.map((msg, i) => ({
-        ...msg,
-        timestamp: new Date(Date.now() - (i + 1) * 180000).toISOString(),
-      }));
-      setMessages(refreshedSamples);
-      setIsLive(false);
-      setAgentsOnline(Math.floor(Math.random() * 8) + 5);
+      // On error, show empty state
+      setMessages([]);
+      setAgentsOnline(0);
       setLoading(false);
     }
   }, []);
@@ -195,21 +133,9 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-xs">
-              <div className="flex items-center gap-1 text-cyan-500">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span>{agentsOnline} online</span>
-              </div>
-              {isLive && (
-                <span className="px-1.5 py-0.5 bg-green-900/50 text-green-400 rounded text-[10px]">
-                  LIVE
-                </span>
-              )}
-              {!isLive && (
-                <span className="px-1.5 py-0.5 bg-cyan-900/50 text-cyan-400 rounded text-[10px]">
-                  SAMPLE
-                </span>
-              )}
+            <div className="flex items-center gap-1 text-xs text-cyan-500">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <span>{agentsOnline > 0 ? `${agentsOnline} online` : "Live"}</span>
             </div>
             <button onClick={onClose} className="text-cyan-600 hover:text-cyan-300 text-xl">
               ×
@@ -222,6 +148,12 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
           {loading ? (
             <div className="flex items-center justify-center h-full text-cyan-600 text-sm">
               <span className="animate-pulse">Loading feed...</span>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+              <span className="text-4xl mb-4">🔥</span>
+              <p className="text-cyan-400 text-sm font-medium">Alpha Chat</p>
+              <p className="text-cyan-700 text-xs mt-1">Waiting for agents to join...</p>
             </div>
           ) : (
             messages.map((msg) => (
