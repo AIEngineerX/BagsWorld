@@ -15,51 +15,21 @@ interface DialogueData {
   turns: DialogueTurn[];
 }
 
-// Agent colors for visual distinction - Shaw is orange (ai16z vibes)
-const AGENT_COLORS: Record<string, { border: string; bg: string; text: string; avatar: string }> = {
-  shaw: {
-    border: "border-orange-500",
-    bg: "bg-orange-500/10",
-    text: "text-orange-400",
-    avatar: "S",
-  },
-  finn: {
-    border: "border-emerald-500",
-    bg: "bg-emerald-500/10",
-    text: "text-emerald-400",
-    avatar: "F",
-  },
-  neo: { border: "border-lime-500", bg: "bg-lime-500/10", text: "text-lime-400", avatar: "N" },
-  cj: { border: "border-yellow-500", bg: "bg-yellow-500/10", text: "text-yellow-400", avatar: "C" },
-  toly: {
-    border: "border-purple-500",
-    bg: "bg-purple-500/10",
-    text: "text-purple-400",
-    avatar: "T",
-  },
-  ash: { border: "border-red-500", bg: "bg-red-500/10", text: "text-red-400", avatar: "A" },
-  ghost: {
-    border: "border-violet-500",
-    bg: "bg-violet-500/10",
-    text: "text-violet-400",
-    avatar: "G",
-  },
-  "bags-bot": {
-    border: "border-bags-green",
-    bg: "bg-bags-green/10",
-    text: "text-bags-green",
-    avatar: "B",
-  },
+// Agent colors - cleaner, more cohesive palette
+const AGENT_COLORS: Record<string, { accent: string; avatar: string }> = {
+  shaw: { accent: "text-orange-400", avatar: "S" },
+  finn: { accent: "text-emerald-400", avatar: "F" },
+  neo: { accent: "text-lime-400", avatar: "N" },
+  cj: { accent: "text-yellow-400", avatar: "C" },
+  toly: { accent: "text-purple-400", avatar: "T" },
+  ash: { accent: "text-red-400", avatar: "A" },
+  ghost: { accent: "text-violet-400", avatar: "G" },
+  "bags-bot": { accent: "text-bags-green", avatar: "B" },
 };
 
-const DEFAULT_COLOR = {
-  border: "border-gray-500",
-  bg: "bg-gray-500/10",
-  text: "text-gray-400",
-  avatar: "?",
-};
+const DEFAULT_COLOR = { accent: "text-gray-400", avatar: "?" };
 
-// Dialogue topics to rotate through
+// Dialogue topics
 const DIALOGUE_TOPICS = [
   "the future of memecoins on Solana",
   "what makes a successful token launch",
@@ -71,7 +41,7 @@ const DIALOGUE_TOPICS = [
   "why creator fees matter",
 ];
 
-// Agent groups for different conversation types - no bags-bot (uses Claude only)
+// Agent conversation groups
 const AGENT_GROUPS = [
   ["shaw", "finn", "neo"],
   ["neo", "cj", "ash"],
@@ -85,9 +55,7 @@ const AGENT_GROUPS = [
   ["toly", "ghost", "cj"],
 ];
 
-// How long to wait before fetching next dialogue (in ms)
-// Increased from 45s to 2 min to reduce API costs (~62% savings)
-const REFRESH_DELAY = 120000; // 2 minutes between dialogues
+const REFRESH_DELAY = 120000; // 2 minutes
 
 export function AgentDialogue() {
   const [dialogue, setDialogue] = useState<DialogueData | null>(null);
@@ -97,17 +65,16 @@ export function AgentDialogue() {
   const [isTyping, setIsTyping] = useState(false);
   const [countdown, setCountdown] = useState<number>(0);
   const [isPaused, setIsPaused] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when new messages appear
+  // Scroll to bottom
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [displayedTurns]);
 
-  // Animate typing effect - reveal messages one by one
+  // Typing animation
   useEffect(() => {
     if (!dialogue || displayedTurns >= dialogue.turns.length) {
       setIsTyping(false);
@@ -117,18 +84,16 @@ export function AgentDialogue() {
     setIsTyping(true);
     const timer = setTimeout(() => {
       setDisplayedTurns((prev) => prev + 1);
-    }, 1500); // 1.5 second delay between messages
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [dialogue, displayedTurns]);
 
-  // Define fetchDialogue before the useEffect that uses it
   const fetchDialogue = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setDisplayedTurns(0);
 
-    // Pick random topic and participants
     const topic = DIALOGUE_TOPICS[Math.floor(Math.random() * DIALOGUE_TOPICS.length)];
     const participants = AGENT_GROUPS[Math.floor(Math.random() * AGENT_GROUPS.length)];
 
@@ -136,11 +101,7 @@ export function AgentDialogue() {
       const response = await fetch("/api/dialogue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          participants,
-          topic,
-          turns: 4, // Reduced from 6 to save tokens
-        }),
+        body: JSON.stringify({ participants, topic, turns: 4 }),
       });
 
       if (!response.ok) throw new Error("Failed to fetch dialogue");
@@ -154,19 +115,18 @@ export function AgentDialogue() {
       } else {
         setError("No dialogue generated");
       }
-    } catch (err) {
+    } catch {
       setError("Connection failed");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Auto-refresh: start countdown when dialogue finishes
+  // Auto-refresh countdown
   useEffect(() => {
     if (!dialogue || isTyping || isPaused) return;
     if (displayedTurns < dialogue.turns.length) return;
 
-    // Dialogue finished, start countdown
     setCountdown(REFRESH_DELAY / 1000);
 
     const interval = setInterval(() => {
@@ -180,9 +140,7 @@ export function AgentDialogue() {
     }, 1000);
 
     const refreshTimer = setTimeout(() => {
-      if (!isPaused) {
-        fetchDialogue();
-      }
+      if (!isPaused) fetchDialogue();
     }, REFRESH_DELAY);
 
     return () => {
@@ -191,7 +149,7 @@ export function AgentDialogue() {
     };
   }, [dialogue, displayedTurns, isTyping, isPaused, fetchDialogue]);
 
-  // Fetch initial dialogue on mount
+  // Initial fetch
   useEffect(() => {
     fetchDialogue();
   }, [fetchDialogue]);
@@ -203,47 +161,47 @@ export function AgentDialogue() {
   return (
     <div className="h-full flex flex-col bg-bags-darker">
       {/* Header */}
-      <div className="flex items-center justify-between p-2 border-b-2 border-bags-green/30">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-bags-green/30">
         <div className="flex items-center gap-2">
           <span className="font-pixel text-[9px] text-bags-gold">[CHAT]</span>
-          {!isPaused && (
-            <span className="font-pixel text-[6px] text-red-500 animate-pulse">LIVE</span>
-          )}
+          {!isPaused && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
         </div>
         <div className="flex items-center gap-2">
           {countdown > 0 && !isTyping && (
-            <span className="font-pixel text-[7px] text-gray-500">{countdown}s</span>
+            <span className="font-pixel text-[7px] text-gray-600">{countdown}s</span>
           )}
           <button
             onClick={() => setIsPaused(!isPaused)}
-            className="font-pixel text-[7px] text-gray-400 hover:text-white"
+            className="font-pixel text-[8px] text-gray-500 hover:text-white w-5 text-center"
           >
-            {isPaused ? "[>]" : "[||]"}
+            {isPaused ? "▶" : "❚❚"}
           </button>
           <button
             onClick={fetchDialogue}
             disabled={isLoading}
             className="font-pixel text-[8px] text-bags-green hover:text-bags-gold disabled:opacity-50"
           >
-            {isLoading ? "..." : "[NEW]"}
+            NEW
           </button>
         </div>
       </div>
 
-      {/* Topic Banner */}
+      {/* Topic */}
       {dialogue && (
-        <div className="p-2 bg-bags-green/5 border-b border-bags-green/20">
-          <p className="font-pixel text-[7px] text-bags-gold truncate">{dialogue.topic}</p>
+        <div className="px-3 py-1.5 bg-black/30 border-b border-bags-green/20">
+          <p className="font-pixel text-[7px] text-gray-500 truncate">
+            discussing: <span className="text-bags-gold">{dialogue.topic}</span>
+          </p>
         </div>
       )}
 
-      {/* Messages Container */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-2">
+      {/* Messages */}
+      <div ref={containerRef} className="flex-1 overflow-y-auto px-2 py-2">
         {isLoading && !dialogue && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="font-pixel text-lg text-bags-green animate-pulse mb-2">...</div>
-              <p className="font-pixel text-[8px] text-gray-500">Agents gathering...</p>
+              <div className="font-pixel text-lg text-bags-green animate-pulse">...</div>
+              <p className="font-pixel text-[8px] text-gray-600 mt-1">Agents gathering</p>
             </div>
           </div>
         )}
@@ -251,7 +209,7 @@ export function AgentDialogue() {
         {error && !dialogue && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <p className="font-pixel text-[10px] text-red-400 mb-2">{error}</p>
+              <p className="font-pixel text-[9px] text-red-400 mb-2">{error}</p>
               <button
                 onClick={fetchDialogue}
                 className="font-pixel text-[8px] text-bags-green hover:text-bags-gold"
@@ -262,58 +220,59 @@ export function AgentDialogue() {
           </div>
         )}
 
-        <div className="space-y-1">
-          {dialogue &&
-            dialogue.turns.slice(0, displayedTurns).map((turn, index) => {
+        {dialogue && (
+          <div className="space-y-2">
+            {dialogue.turns.slice(0, displayedTurns).map((turn, index) => {
               const style = getAgentStyle(turn.speaker);
               return (
-                <div
-                  key={`${turn.speaker}-${index}`}
-                  className={`p-2 border-l-2 ${style.border} ${style.bg}`}
-                  style={{ marginLeft: 0, marginRight: 0 }}
-                >
-                  <span className={`font-pixel text-[8px] ${style.text}`}>{turn.speakerName}:</span>
-                  <p
-                    className="font-pixel text-[7px] text-white/90 mt-0.5"
-                    style={{ wordBreak: "break-word" }}
-                  >
-                    {turn.message}
-                  </p>
+                <div key={`${turn.speaker}-${index}`} className="group">
+                  <div className="flex items-start gap-2">
+                    {/* Avatar */}
+                    <div
+                      className={`w-5 h-5 flex items-center justify-center font-pixel text-[8px] bg-black/50 border border-current/30 flex-shrink-0 ${style.accent}`}
+                    >
+                      {style.avatar}
+                    </div>
+
+                    {/* Message */}
+                    <div className="flex-1 min-w-0">
+                      <span className={`font-pixel text-[8px] ${style.accent}`}>
+                        {turn.speakerName}
+                      </span>
+                      <p className="font-pixel text-[8px] text-gray-300 leading-relaxed mt-0.5">
+                        {turn.message}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               );
             })}
 
-          {/* Typing Indicator */}
-          {isTyping &&
-            dialogue &&
-            displayedTurns < dialogue.turns.length &&
-            (() => {
-              const nextSpeaker = dialogue.turns[displayedTurns]?.speaker;
-              const nextStyle = nextSpeaker ? getAgentStyle(nextSpeaker) : DEFAULT_COLOR;
-              return (
-                <div className={`p-2 border-l-2 ${nextStyle.border} ${nextStyle.bg} opacity-60`}>
-                  <span className={`font-pixel text-[8px] ${nextStyle.text} animate-pulse`}>
-                    {dialogue.turns[displayedTurns]?.speakerName || "Agent"} is typing...
-                  </span>
+            {/* Typing indicator */}
+            {isTyping && dialogue && displayedTurns < dialogue.turns.length && (
+              <div className="flex items-center gap-2 opacity-60">
+                <div
+                  className={`w-5 h-5 flex items-center justify-center font-pixel text-[8px] bg-black/50 border border-current/30 ${
+                    getAgentStyle(dialogue.turns[displayedTurns]?.speaker).accent
+                  }`}
+                >
+                  {getAgentStyle(dialogue.turns[displayedTurns]?.speaker).avatar}
                 </div>
-              );
-            })()}
-        </div>
-
-        <div ref={messagesEndRef} />
+                <span className="font-pixel text-[8px] text-gray-500 animate-pulse">typing...</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Participants Footer */}
+      {/* Participants */}
       {dialogue && (
-        <div className="p-2 border-t-2 border-bags-green/30 bg-bags-dark">
-          <div className="flex items-center gap-1 flex-wrap">
+        <div className="px-3 py-2 border-t border-bags-green/20 bg-black/20">
+          <div className="flex items-center gap-1.5">
             {dialogue.participants.map((p) => {
               const style = getAgentStyle(p.id);
               return (
-                <span
-                  key={p.id}
-                  className={`font-pixel text-[6px] px-1 border ${style.border} ${style.text}`}
-                >
+                <span key={p.id} className={`font-pixel text-[7px] ${style.accent}`}>
                   {p.name}
                 </span>
               );

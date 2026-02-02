@@ -96,95 +96,92 @@ export function Leaderboard() {
   };
 
   return (
-    <div className="h-full flex flex-col p-2">
-      <h2 className="font-pixel text-xs text-bags-green mb-2 px-2 flex items-center gap-2">
-        <TrophyIcon className="text-bags-gold" size={14} /> TOP EARNERS
-      </h2>
+    <div className="h-full flex flex-col bg-bags-darker">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-bags-green/30">
+        <div className="flex items-center gap-2">
+          <TrophyIcon className="text-bags-gold" size={12} />
+          <span className="font-pixel text-[9px] text-bags-gold">TOP EARNERS</span>
+        </div>
+        <span className="font-pixel text-[7px] text-gray-600">24h</span>
+      </div>
 
-      <div className="flex-1 overflow-y-auto space-y-1">
+      <div className="flex-1 overflow-y-auto">
         {population.length === 0 ? (
-          <div className="text-center py-8 px-4">
-            <div className="text-3xl mb-2">👥</div>
-            <p className="font-pixel text-[10px] text-gray-500 mb-1">No citizens yet</p>
-            <p className="font-pixel text-[8px] text-gray-600">
-              Launch a token to populate the world!
-            </p>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center py-4">
+              <p className="font-pixel text-[9px] text-gray-500">No earners yet</p>
+              <p className="font-pixel text-[7px] text-gray-600 mt-1">Launch a token to populate</p>
+            </div>
           </div>
         ) : (
-          population.map((character, index) => (
-            <div
-              key={character.id}
-              className={`w-full p-2 rounded transition-all ${
-                selectedCharacter?.id === character.id
-                  ? "bg-bags-green/20 border border-bags-green"
-                  : "hover:bg-white/5"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="font-pixel text-[10px] text-gray-500 w-5 flex items-center justify-center">
-                  {getRankBadge(index + 1) || `#${index + 1}`}
-                </span>
+          <div className="divide-y divide-bags-green/10">
+            {population.map((character, index) => (
+              <div
+                key={character.id}
+                onClick={() =>
+                  selectCharacter(selectedCharacter?.id === character.id ? null : character)
+                }
+                className={`px-3 py-2 cursor-pointer transition-colors ${
+                  selectedCharacter?.id === character.id
+                    ? "bg-bags-green/10"
+                    : "hover:bg-bags-green/5"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {/* Rank */}
+                  <span className="w-5 flex-shrink-0 flex items-center justify-center">
+                    {getRankBadge(index + 1) || (
+                      <span className="font-pixel text-[8px] text-gray-600">{index + 1}</span>
+                    )}
+                  </span>
 
-                <div
-                  className="w-8 h-8 rounded bg-bags-dark overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-bags-green"
-                  onClick={() =>
-                    selectCharacter(selectedCharacter?.id === character.id ? null : character)
-                  }
-                >
-                  {character.avatarUrl ? (
-                    <img
-                      src={character.avatarUrl}
-                      alt={character.username}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    getMoodIcon(character.mood)
-                  )}
-                </div>
-
-                <div className="flex-1 overflow-hidden">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() =>
-                        selectCharacter(selectedCharacter?.id === character.id ? null : character)
-                      }
-                      className="font-pixel text-[10px] text-white truncate hover:text-bags-green"
-                    >
-                      {character.username}
-                    </button>
-                    {character.profileUrl && (
-                      <a
-                        href={character.profileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-gray-400 hover:text-bags-green transition-colors"
-                        title={`View on ${character.provider}`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {getProviderIcon(character.provider)}
-                      </a>
+                  {/* Avatar */}
+                  <div className="w-6 h-6 bg-black/40 border border-bags-green/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                    {character.avatarUrl ? (
+                      <img
+                        src={character.avatarUrl}
+                        alt={character.username}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="font-pixel text-[8px] text-gray-500">
+                        {character.username.charAt(0).toUpperCase()}
+                      </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <p className="font-pixel text-[8px] text-gray-500">
-                      @
-                      {character.providerUsername?.toLowerCase() ||
-                        character.username.toLowerCase()}
-                    </p>
+
+                  {/* Name */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="font-pixel text-[9px] text-white truncate">
+                        {character.username}
+                      </span>
+                      {character.profileUrl && (
+                        <a
+                          href={character.profileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-500 hover:text-bags-green transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {getProviderIcon(character.provider)}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Earnings */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-pixel text-[9px] text-bags-gold">
+                      {formatEarnings(character.earnings24h)}
+                    </span>
+                    <span className="flex-shrink-0">{getMoodIcon(character.mood)}</span>
                   </div>
                 </div>
-
-                <div className="text-right">
-                  <p className="font-pixel text-[10px] text-bags-gold flex items-center justify-end gap-1">
-                    {formatEarnings(character.earnings24h)} SOL
-                  </p>
-                  <p className="font-pixel text-[8px] text-gray-500">24h</p>
-                </div>
-
-                <span title={character.mood}>{getMoodIcon(character.mood)}</span>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>

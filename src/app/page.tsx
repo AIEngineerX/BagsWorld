@@ -6,7 +6,7 @@ import { Suspense, useState, useEffect } from "react";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { AgentDialogue } from "@/components/AgentDialogue";
-import { EventFeed } from "@/components/EventFeed";
+import { UnifiedActivityFeed } from "@/components/UnifiedActivityFeed";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
 import { AshChat } from "@/components/AshChat";
@@ -43,7 +43,7 @@ import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
 import { ZoneNav } from "@/components/ZoneNav";
 import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
-import { AgentFeed, AgentToast } from "@/components/AgentFeed";
+import { AgentToast } from "@/components/AgentFeed";
 import { TradingGymModal } from "@/components/TradingGymModal";
 import { CommunityFundModal } from "@/components/CommunityFundModal";
 import { CasinoModal } from "@/components/CasinoModal";
@@ -457,50 +457,49 @@ export default function Home() {
             </svg>
           </button>
 
-          {/* Your Buildings */}
-          <div className="max-h-48 overflow-hidden border-b-2 border-bags-green/50 pt-10 lg:pt-0">
+          {/* Your Buildings - Collapsible */}
+          <div className="border-b border-bags-green/30 pt-10 lg:pt-0">
             <YourBuildings onRefresh={refreshAfterLaunch} />
           </div>
 
           {/* Tabbed Section: Agent Chat / Leaderboard */}
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-hidden flex flex-col min-h-0">
             {/* Tab Buttons */}
-            <div className="flex border-b-2 border-bags-green/30 bg-bags-dark">
+            <div className="flex bg-black/40">
               <button
                 onClick={() => setSidebarTab("agents")}
-                className={`flex-1 py-2 font-pixel text-[9px] transition-colors ${
+                className={`flex-1 py-2 font-pixel text-[9px] transition-all border-b-2 ${
                   sidebarTab === "agents"
-                    ? "text-bags-gold bg-bags-green/10 border-b-2 border-bags-gold -mb-0.5"
-                    : "text-gray-500 hover:text-bags-green"
+                    ? "text-bags-gold border-bags-gold bg-bags-green/5"
+                    : "text-gray-600 border-transparent hover:text-gray-400"
                 }`}
               >
-                [AGENTS]
+                CHAT
               </button>
               <button
                 onClick={() => setSidebarTab("leaderboard")}
-                className={`flex-1 py-2 font-pixel text-[9px] transition-colors ${
+                className={`flex-1 py-2 font-pixel text-[9px] transition-all border-b-2 ${
                   sidebarTab === "leaderboard"
-                    ? "text-bags-gold bg-bags-green/10 border-b-2 border-bags-gold -mb-0.5"
-                    : "text-gray-500 hover:text-bags-green"
+                    ? "text-bags-gold border-bags-gold bg-bags-green/5"
+                    : "text-gray-600 border-transparent hover:text-gray-400"
                 }`}
               >
-                [EARNERS]
+                EARNERS
               </button>
             </div>
             {/* Tab Content */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden min-h-0">
               {sidebarTab === "agents" ? <AgentDialogue /> : <Leaderboard />}
             </div>
           </div>
 
-          {/* Agent Feed - coordinated agent activity */}
-          <div className="h-32 border-t-2 border-bags-green/50">
-            <AgentFeed compact maxItems={10} showHeader={false} className="h-full" />
-          </div>
-
-          {/* Event Feed */}
-          <div className="h-36 border-t-4 border-bags-green">
-            <EventFeed events={worldState?.events ?? []} onClear={refetch} />
+          {/* Unified Activity Feed - combines agent + event feeds */}
+          <div className="h-52 border-t border-bags-green/50">
+            <UnifiedActivityFeed
+              events={worldState?.events ?? []}
+              maxItems={20}
+              className="h-full"
+            />
           </div>
         </aside>
 
