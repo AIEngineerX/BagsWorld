@@ -15499,6 +15499,7 @@ export class BootScene extends Phaser.Scene {
     this.generateBeachDecorations();
     this.generateMoltbookHQ();
     this.generateBeachHut();
+    this.generateMoltBar();
   }
 
   private generateBeachHut(): void {
@@ -15601,6 +15602,378 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(hutX, hutBottom - Math.round(8 * s), hutWidth, Math.round(4 * s));
 
     g.generateTexture("beach_hut", w, h);
+    g.destroy();
+  }
+
+  private generateMoltBar(): void {
+    const s = SCALE;
+    const w = Math.round(140 * s);
+    const h = Math.round(100 * s);
+    const g = this.make.graphics({ x: 0, y: 0 });
+
+    // Tiki Bar color palette
+    const bambooLight = 0xc4a35d;
+    const bambooDark = 0x8b7355;
+    const bambooMid = 0xa08040;
+    const thatchLight = 0xd4a574;
+    const thatchDark = 0x8b6914;
+    const thatchMid = 0xb8860b;
+    const woodBase = 0xa0522d;
+    const woodDark = 0x8b4513;
+    const woodLight = 0xcd853f;
+    const barTop = 0x654321;
+    const barTopLight = 0x8b7355;
+    const stoolSeat = 0xdeb887;
+    const stoolLeg = 0x654321;
+    const neonPink = 0xff69b4;
+    const neonCyan = 0x00ced1;
+    const bottleGreen = 0x228b22;
+    const bottleAmber = 0xffbf00;
+    const bottleClear = 0xe0ffff;
+    const glassBlue = 0x87ceeb;
+
+    // === LARGE THATCHED ROOF ===
+    const roofTop = Math.round(5 * s);
+    const roofBottom = Math.round(45 * s);
+    const roofWidth = Math.round(135 * s);
+    const roofCenterX = w / 2;
+
+    // Main roof overhang shape - angled sides
+    for (let layer = 0; layer < 8; layer++) {
+      const layerY = roofTop + layer * Math.round(5 * s);
+      const layerWidth = roofWidth - layer * Math.round(6 * s);
+      const layerX = roofCenterX - layerWidth / 2;
+
+      // Alternate thatch colors for texture
+      const thatchColor = layer % 3 === 0 ? thatchLight : layer % 3 === 1 ? thatchMid : thatchDark;
+      g.fillStyle(thatchColor);
+      g.fillRect(layerX, layerY, layerWidth, Math.round(7 * s));
+
+      // Thatch strand texture (vertical lines)
+      g.fillStyle(darken(thatchColor, 0.2));
+      for (let tx = layerX; tx < layerX + layerWidth; tx += Math.round(5 * s)) {
+        g.fillRect(tx, layerY + Math.round(1 * s), Math.round(1 * s), Math.round(5 * s));
+      }
+
+      // Highlight strands
+      g.fillStyle(lighten(thatchColor, 0.15));
+      for (
+        let tx = layerX + Math.round(3 * s);
+        tx < layerX + layerWidth;
+        tx += Math.round(10 * s)
+      ) {
+        g.fillRect(tx, layerY + Math.round(2 * s), Math.round(1 * s), Math.round(3 * s));
+      }
+    }
+
+    // Roof peak ornament
+    g.fillStyle(thatchDark);
+    g.fillRect(
+      roofCenterX - Math.round(20 * s),
+      roofTop - Math.round(4 * s),
+      Math.round(40 * s),
+      Math.round(6 * s)
+    );
+
+    // Small tiki mask on roof
+    g.fillStyle(woodDark);
+    g.fillRect(
+      roofCenterX - Math.round(6 * s),
+      roofTop - Math.round(2 * s),
+      Math.round(12 * s),
+      Math.round(8 * s)
+    );
+    // Mask eyes
+    g.fillStyle(0xffffff);
+    g.fillRect(roofCenterX - Math.round(4 * s), roofTop, Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(roofCenterX + Math.round(1 * s), roofTop, Math.round(3 * s), Math.round(2 * s));
+    // Mask mouth
+    g.fillStyle(0xff0000);
+    g.fillRect(
+      roofCenterX - Math.round(3 * s),
+      roofTop + Math.round(4 * s),
+      Math.round(6 * s),
+      Math.round(2 * s)
+    );
+
+    // === BAMBOO SUPPORT POLES ===
+    const polePositions = [
+      Math.round(15 * s),
+      Math.round(45 * s),
+      Math.round(95 * s),
+      Math.round(125 * s),
+    ];
+
+    polePositions.forEach((px) => {
+      // Main pole
+      g.fillStyle(bambooMid);
+      g.fillRect(
+        px - Math.round(3 * s),
+        roofBottom - Math.round(5 * s),
+        Math.round(6 * s),
+        h - roofBottom + Math.round(5 * s)
+      );
+
+      // Bamboo segments/joints
+      g.fillStyle(bambooDark);
+      for (let jointY = roofBottom; jointY < h; jointY += Math.round(15 * s)) {
+        g.fillRect(px - Math.round(4 * s), jointY, Math.round(8 * s), Math.round(3 * s));
+      }
+
+      // Highlight edge
+      g.fillStyle(bambooLight);
+      g.fillRect(
+        px - Math.round(3 * s),
+        roofBottom - Math.round(5 * s),
+        Math.round(2 * s),
+        h - roofBottom + Math.round(5 * s)
+      );
+    });
+
+    // === BAR COUNTER ===
+    const barTop_y = Math.round(60 * s);
+    const barHeight = Math.round(12 * s);
+    const barX = Math.round(25 * s);
+    const barWidth = Math.round(90 * s);
+
+    // Bar top surface
+    g.fillStyle(barTop);
+    g.fillRect(barX, barTop_y, barWidth, barHeight);
+
+    // Bar top highlight (polished look)
+    g.fillStyle(barTopLight);
+    g.fillRect(barX, barTop_y, barWidth, Math.round(3 * s));
+
+    // Bar front panel
+    g.fillStyle(woodBase);
+    g.fillRect(barX, barTop_y + barHeight, barWidth, Math.round(25 * s));
+
+    // Bamboo decoration on bar front
+    g.fillStyle(bambooDark);
+    for (let bx = barX + Math.round(8 * s); bx < barX + barWidth; bx += Math.round(12 * s)) {
+      g.fillRect(
+        bx,
+        barTop_y + barHeight + Math.round(3 * s),
+        Math.round(4 * s),
+        Math.round(19 * s)
+      );
+    }
+
+    // === BAR STOOLS ===
+    const stoolPositions = [
+      Math.round(35 * s),
+      Math.round(55 * s),
+      Math.round(75 * s),
+      Math.round(95 * s),
+    ];
+
+    stoolPositions.forEach((sx) => {
+      // Stool legs
+      g.fillStyle(stoolLeg);
+      g.fillRect(
+        sx - Math.round(5 * s),
+        h - Math.round(22 * s),
+        Math.round(3 * s),
+        Math.round(22 * s)
+      );
+      g.fillRect(
+        sx + Math.round(2 * s),
+        h - Math.round(22 * s),
+        Math.round(3 * s),
+        Math.round(22 * s)
+      );
+
+      // Stool seat
+      g.fillStyle(stoolSeat);
+      g.fillRect(
+        sx - Math.round(7 * s),
+        h - Math.round(25 * s),
+        Math.round(14 * s),
+        Math.round(5 * s)
+      );
+
+      // Seat highlight
+      g.fillStyle(lighten(stoolSeat, 0.2));
+      g.fillRect(
+        sx - Math.round(6 * s),
+        h - Math.round(25 * s),
+        Math.round(12 * s),
+        Math.round(2 * s)
+      );
+    });
+
+    // === BOTTLES ON BACK SHELF ===
+    const shelfY = Math.round(48 * s);
+    const bottlePositions = [
+      { x: Math.round(30 * s), color: bottleGreen, h: Math.round(10 * s) },
+      { x: Math.round(38 * s), color: bottleAmber, h: Math.round(12 * s) },
+      { x: Math.round(46 * s), color: bottleClear, h: Math.round(9 * s) },
+      { x: Math.round(54 * s), color: bottleGreen, h: Math.round(11 * s) },
+      { x: Math.round(62 * s), color: 0x8b0000, h: Math.round(10 * s) },
+      { x: Math.round(70 * s), color: bottleAmber, h: Math.round(12 * s) },
+      { x: Math.round(78 * s), color: bottleClear, h: Math.round(9 * s) },
+      { x: Math.round(86 * s), color: 0x4169e1, h: Math.round(11 * s) },
+      { x: Math.round(94 * s), color: bottleGreen, h: Math.round(10 * s) },
+      { x: Math.round(102 * s), color: bottleAmber, h: Math.round(8 * s) },
+    ];
+
+    bottlePositions.forEach((bottle) => {
+      // Bottle body
+      g.fillStyle(bottle.color);
+      g.fillRect(bottle.x, shelfY - bottle.h, Math.round(5 * s), bottle.h);
+      // Bottle neck
+      g.fillRect(
+        bottle.x + Math.round(1 * s),
+        shelfY - bottle.h - Math.round(3 * s),
+        Math.round(3 * s),
+        Math.round(4 * s)
+      );
+      // Bottle shine
+      g.fillStyle(lighten(bottle.color, 0.4), 0.5);
+      g.fillRect(
+        bottle.x + Math.round(1 * s),
+        shelfY - bottle.h + Math.round(2 * s),
+        Math.round(1 * s),
+        bottle.h - Math.round(4 * s)
+      );
+    });
+
+    // Shelf behind bottles
+    g.fillStyle(woodDark);
+    g.fillRect(Math.round(25 * s), shelfY, Math.round(90 * s), Math.round(3 * s));
+
+    // === DRINKS ON BAR ===
+    // Cocktail glass 1
+    g.fillStyle(glassBlue, 0.7);
+    g.fillRect(
+      Math.round(40 * s),
+      barTop_y - Math.round(8 * s),
+      Math.round(6 * s),
+      Math.round(7 * s)
+    );
+    g.fillStyle(0xff6347);
+    g.fillRect(
+      Math.round(41 * s),
+      barTop_y - Math.round(7 * s),
+      Math.round(4 * s),
+      Math.round(4 * s)
+    );
+    // Straw
+    g.fillStyle(neonPink);
+    g.fillRect(
+      Math.round(44 * s),
+      barTop_y - Math.round(12 * s),
+      Math.round(1 * s),
+      Math.round(8 * s)
+    );
+
+    // Cocktail glass 2
+    g.fillStyle(glassBlue, 0.7);
+    g.fillRect(
+      Math.round(80 * s),
+      barTop_y - Math.round(8 * s),
+      Math.round(6 * s),
+      Math.round(7 * s)
+    );
+    g.fillStyle(0x32cd32);
+    g.fillRect(
+      Math.round(81 * s),
+      barTop_y - Math.round(7 * s),
+      Math.round(4 * s),
+      Math.round(4 * s)
+    );
+    // Umbrella
+    g.fillStyle(0xff1493);
+    g.fillRect(
+      Math.round(82 * s),
+      barTop_y - Math.round(14 * s),
+      Math.round(6 * s),
+      Math.round(3 * s)
+    );
+    g.fillStyle(woodDark);
+    g.fillRect(
+      Math.round(84 * s),
+      barTop_y - Math.round(14 * s),
+      Math.round(1 * s),
+      Math.round(10 * s)
+    );
+
+    // === NEON "AGENT BAR" SIGN ===
+    // Sign background
+    g.fillStyle(0x1a1a2e);
+    g.fillRect(Math.round(35 * s), Math.round(15 * s), Math.round(70 * s), Math.round(18 * s));
+    g.fillStyle(0x2d2d44);
+    g.fillRect(Math.round(36 * s), Math.round(16 * s), Math.round(68 * s), Math.round(16 * s));
+
+    // Neon glow effect (outer)
+    g.fillStyle(neonPink, 0.3);
+    g.fillRect(Math.round(33 * s), Math.round(13 * s), Math.round(76 * s), Math.round(22 * s));
+
+    // "AGENT BAR" in pixel letters (simplified)
+    // A
+    g.fillStyle(neonPink);
+    g.fillRect(Math.round(40 * s), Math.round(19 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(Math.round(44 * s), Math.round(19 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(40 * s), Math.round(24 * s), Math.round(5 * s), Math.round(2 * s));
+
+    // B
+    g.fillRect(Math.round(48 * s), Math.round(19 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(Math.round(52 * s), Math.round(19 * s), Math.round(1 * s), Math.round(4 * s));
+    g.fillRect(Math.round(52 * s), Math.round(25 * s), Math.round(1 * s), Math.round(4 * s));
+
+    // A
+    g.fillRect(Math.round(56 * s), Math.round(19 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(Math.round(60 * s), Math.round(19 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(56 * s), Math.round(24 * s), Math.round(5 * s), Math.round(2 * s));
+
+    // R
+    g.fillRect(Math.round(64 * s), Math.round(19 * s), Math.round(4 * s), Math.round(10 * s));
+    g.fillRect(Math.round(68 * s), Math.round(19 * s), Math.round(1 * s), Math.round(5 * s));
+    g.fillRect(Math.round(68 * s), Math.round(25 * s), Math.round(2 * s), Math.round(4 * s));
+
+    // Neon cyan accent line
+    g.fillStyle(neonCyan);
+    g.fillRect(Math.round(38 * s), Math.round(31 * s), Math.round(64 * s), Math.round(2 * s));
+
+    // === TIKI TORCHES ON SIDES ===
+    // Left torch
+    g.fillStyle(bambooDark);
+    g.fillRect(Math.round(5 * s), Math.round(40 * s), Math.round(4 * s), Math.round(55 * s));
+    // Torch flame
+    g.fillStyle(0xff6600);
+    g.fillRect(Math.round(4 * s), Math.round(32 * s), Math.round(6 * s), Math.round(10 * s));
+    g.fillStyle(0xffcc00);
+    g.fillRect(Math.round(5 * s), Math.round(34 * s), Math.round(4 * s), Math.round(6 * s));
+    g.fillStyle(0xffff00);
+    g.fillRect(Math.round(6 * s), Math.round(36 * s), Math.round(2 * s), Math.round(3 * s));
+
+    // Right torch
+    g.fillStyle(bambooDark);
+    g.fillRect(w - Math.round(9 * s), Math.round(40 * s), Math.round(4 * s), Math.round(55 * s));
+    // Torch flame
+    g.fillStyle(0xff6600);
+    g.fillRect(w - Math.round(10 * s), Math.round(32 * s), Math.round(6 * s), Math.round(10 * s));
+    g.fillStyle(0xffcc00);
+    g.fillRect(w - Math.round(9 * s), Math.round(34 * s), Math.round(4 * s), Math.round(6 * s));
+    g.fillStyle(0xffff00);
+    g.fillRect(w - Math.round(8 * s), Math.round(36 * s), Math.round(2 * s), Math.round(3 * s));
+
+    // === STRING LIGHTS (festive) ===
+    const lightColors = [neonPink, neonCyan, 0xffff00, 0x00ff00, 0xff6600];
+    for (let lx = Math.round(20 * s); lx < w - Math.round(15 * s); lx += Math.round(12 * s)) {
+      const lightColor = lightColors[Math.floor((lx / Math.round(12 * s)) % lightColors.length)];
+      // Wire
+      g.fillStyle(0x333333);
+      g.fillRect(lx, Math.round(42 * s), Math.round(12 * s), Math.round(1 * s));
+      // Bulb
+      g.fillStyle(lightColor);
+      g.fillRect(lx + Math.round(5 * s), Math.round(43 * s), Math.round(3 * s), Math.round(4 * s));
+      // Glow
+      g.fillStyle(lightColor, 0.3);
+      g.fillRect(lx + Math.round(4 * s), Math.round(42 * s), Math.round(5 * s), Math.round(6 * s));
+    }
+
+    g.generateTexture("molt_bar", w, h);
     g.destroy();
   }
 

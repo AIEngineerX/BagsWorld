@@ -4155,6 +4155,60 @@ export class WorldScene extends Phaser.Scene {
     hutLabel.setDepth(6);
     this.moltbookElements.push(hutLabel);
 
+    // === MOLT BAR (depth 5) - Tiki bar for alpha agent chat ===
+    const barX = Math.round(250 * s); // Left of Moltbook HQ (which is at 400)
+    const moltBar = this.add.sprite(barX, pathLevel, "molt_bar");
+    moltBar.setOrigin(0.5, 1);
+    moltBar.setDepth(5);
+    moltBar.setScale(1.0);
+    this.moltbookElements.push(moltBar);
+
+    // Make Molt Bar interactive - opens Molt Bar Modal
+    moltBar.setInteractive({ useHandCursor: true });
+    moltBar.on("pointerdown", () => {
+      window.dispatchEvent(new CustomEvent("bagsworld-moltbar-click"));
+    });
+    moltBar.on("pointerover", () => {
+      moltBar.setTint(0xfff0e0);
+      moltBar.setScale(1.05);
+    });
+    moltBar.on("pointerout", () => {
+      moltBar.clearTint();
+      moltBar.setScale(1.0);
+    });
+
+    // Molt Bar glow animation (neon sign effect)
+    this.tweens.add({
+      targets: moltBar,
+      alpha: { from: 1, to: 0.92 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Molt Bar label
+    const barLabelBg = this.add.rectangle(
+      barX,
+      pathLevel - Math.round(115 * s),
+      Math.round(100 * s),
+      Math.round(24 * s),
+      0x7c3aed,
+      0.9
+    );
+    barLabelBg.setDepth(6);
+    this.moltbookElements.push(barLabelBg);
+
+    const barLabel = this.add.text(barX, pathLevel - Math.round(115 * s), "🍹 MOLT BAR", {
+      fontFamily: "monospace",
+      fontSize: `${Math.round(11 * s)}px`,
+      color: "#fde047",
+      align: "center",
+    });
+    barLabel.setOrigin(0.5, 0.5);
+    barLabel.setDepth(6);
+    this.moltbookElements.push(barLabel);
+
     // === WAVE ANIMATION (depth 1) - at bottom of screen ===
     this.createWaveAnimation(s);
 
