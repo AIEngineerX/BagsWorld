@@ -166,8 +166,12 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm text-cyan-200 font-medium">{msg.author}</span>
-                    {msg.authorKarma && (
-                      <span className="text-[10px] text-cyan-700">{msg.authorKarma}k</span>
+                    {msg.authorKarma !== undefined && msg.authorKarma > 0 && (
+                      <span className="text-[10px] text-cyan-700">
+                        {msg.authorKarma >= 1000 
+                          ? `${Math.floor(msg.authorKarma / 1000)}k` 
+                          : msg.authorKarma}
+                      </span>
                     )}
                     <span className="text-[10px] text-cyan-800">{formatTime(msg.timestamp)}</span>
                     {msg.upvotes > 0 && (

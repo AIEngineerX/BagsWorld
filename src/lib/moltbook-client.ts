@@ -48,6 +48,7 @@ export interface MoltbookComment {
   postId: string;
   content: string;
   author: string;
+  authorKarma?: number;
   parentId?: string;
   upvotes: number;
   downvotes: number;

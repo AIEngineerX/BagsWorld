@@ -69,9 +69,9 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
           // Match claimable amounts to tokens
           const positions = claimData.claimable.positions || [];
           tokens.forEach((token) => {
-            const pos = positions.find((p: { tokenMint: string }) => p.tokenMint === token.mint);
-            if (pos) {
-              token.claimableSol = pos.claimableSol || 0;
+            const pos = positions.find((p: { tokenMint: string; claimableSol?: number }) => p.tokenMint === token.mint);
+            if (pos && pos.claimableSol) {
+              token.claimableSol = pos.claimableSol;
             }
           });
         }
@@ -90,7 +90,7 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       lookupAgent();
     }
@@ -133,7 +133,7 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                     type="text"
                     value={moltbookUsername}
                     onChange={(e) => setMoltbookUsername(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyDown}
                     placeholder="e.g. ChadGhost"
                     className="flex-1 bg-amber-950/50 border border-amber-700/50 rounded-lg px-3 py-2 text-amber-100 placeholder-amber-600 focus:outline-none focus:border-amber-500"
                   />

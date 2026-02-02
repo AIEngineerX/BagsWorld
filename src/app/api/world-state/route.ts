@@ -34,6 +34,7 @@ import {
   getExternalAgentBuildingsSync,
 } from "@/lib/agent-economy/external-registry";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
+import "@/lib/chadghost-startup"; // Auto-start ChadGhost alpha service
 
 // Bags SDK types
 interface TokenLaunchCreator {
