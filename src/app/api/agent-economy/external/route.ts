@@ -66,10 +66,10 @@ async function generateTokenImage(
   }
 
   // Build a prompt from token details
-  const basePrompt = description 
+  const basePrompt = description
     ? `${name} (${symbol}): ${description}`
     : `${name} ${symbol} cryptocurrency`;
-  
+
   const fullPrompt = `${basePrompt}, pixel art style, token logo, cryptocurrency coin design, centered composition, clean solid background, high quality, vibrant colors`;
 
   try {
@@ -152,7 +152,10 @@ async function generateTokenImage(
     return { success: false, error: "No image provider available" };
   } catch (err) {
     console.error("[generateTokenImage] Error:", err);
-    return { success: false, error: err instanceof Error ? err.message : "Image generation failed" };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Image generation failed",
+    };
   }
 }
 
@@ -231,7 +234,8 @@ export async function GET(request: NextRequest) {
       success: true,
       service: {
         name: "Pokécenter",
-        description: "Free token launches for AI agents. Keep 100% of trading fees. ChadGhost is your onboarding guide!",
+        description:
+          "Free token launches for AI agents. Keep 100% of trading fees. ChadGhost is your onboarding guide!",
         version: "2.0.0",
         status: launcherStatus.configured ? "online" : "offline",
         onboardingAgent: "ChadGhost",
@@ -308,7 +312,8 @@ export async function GET(request: NextRequest) {
           automatic: true,
           provider: "fal.ai Flux",
           note: "If no imageUrl provided, we generate a unique token logo from your name/symbol/description",
-          manualOption: "POST {action: 'generate-image', prompt: 'your custom prompt'} to generate first, then pass the URL",
+          manualOption:
+            "POST {action: 'generate-image', prompt: 'your custom prompt'} to generate first, then pass the URL",
         },
       },
       howToOnboard: {
@@ -1415,18 +1420,21 @@ export async function POST(request: NextRequest) {
     // Auto-generate image if not provided
     let finalImageUrl = imageUrl;
     let imageGenerated = false;
-    
+
     if (!finalImageUrl) {
       console.log("[Launch] No imageUrl provided, auto-generating...");
       const imageResult = await generateTokenImage(name, symbol, description);
-      
+
       if (imageResult.success && imageResult.imageUrl) {
         finalImageUrl = imageResult.imageUrl;
         imageGenerated = true;
         console.log("[Launch] Auto-generated image:", finalImageUrl);
       } else {
         // Fall back to DiceBear if image generation fails
-        console.warn("[Launch] Image generation failed, using DiceBear fallback:", imageResult.error);
+        console.warn(
+          "[Launch] Image generation failed, using DiceBear fallback:",
+          imageResult.error
+        );
         finalImageUrl = `https://api.dicebear.com/7.x/shapes/png?seed=${encodeURIComponent(symbol)}&size=400`;
       }
     }
@@ -1493,17 +1501,24 @@ export async function POST(request: NextRequest) {
         },
         image: {
           url: finalImageUrl,
-          source: imageGenerated ? "auto-generated" : (imageUrl ? "user-provided" : "fallback"),
+          source: imageGenerated ? "auto-generated" : imageUrl ? "user-provided" : "fallback",
           provider: imageGenerated ? "fal.ai" : undefined,
         },
         transaction: result.signature,
         feeInfo: hasCustomFees
           ? {
-              split: feeRecipients.map((r: { moltbookUsername?: string; twitter?: string; wallet?: string; bps: number }) => ({
-                recipient: r.moltbookUsername || r.twitter || r.wallet,
-                share: `${r.bps / 100}%`,
-                bps: r.bps,
-              })),
+              split: feeRecipients.map(
+                (r: {
+                  moltbookUsername?: string;
+                  twitter?: string;
+                  wallet?: string;
+                  bps: number;
+                }) => ({
+                  recipient: r.moltbookUsername || r.twitter || r.wallet,
+                  share: `${r.bps / 100}%`,
+                  bps: r.bps,
+                })
+              ),
               claimEndpoint: "/api/agent-economy/external (action: claimable, then claim)",
               solscan: `https://solscan.io/token/${result.tokenMint}`,
             }
