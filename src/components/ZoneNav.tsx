@@ -26,7 +26,7 @@ export function ZoneNav() {
   };
 
   return (
-    <nav className="flex items-center gap-1 bg-black/90 backdrop-blur-sm px-2 py-1.5 border border-bags-green/40 shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(74,222,128,0.1)]">
+    <nav className="flex items-center gap-1 bg-black/90 backdrop-blur-sm px-2 py-1.5 border border-bags-green/50 shadow-[0_4px_20px_rgba(0,0,0,0.5),0_0_15px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
       {ZONE_ORDER.map((zoneId) => {
         const zone = ZONES[zoneId];
         const isActive = currentZone === zoneId;
@@ -37,25 +37,28 @@ export function ZoneNav() {
         const isFounders = zoneId === "founders";
         const isArena = zoneId === "arena";
 
+        // Base inactive styles
+        const baseInactive =
+          "hover:bg-white/5 border-gray-600 text-gray-400 hover:text-bags-green hover:border-bags-green/50";
+
         return (
           <button
             key={zoneId}
             onClick={() => handleZoneChange(zoneId)}
             className={`
               font-pixel text-[10px] px-3 py-1.5 transition-all duration-200
-              flex items-center gap-1
-              border
+              flex items-center gap-1 border
               ${
                 isActive
                   ? "bg-bags-green text-bags-dark border-bags-green shadow-[0_0_12px_rgba(74,222,128,0.6),inset_0_1px_0_rgba(255,255,255,0.2)]"
-                  : "text-gray-400 hover:text-bags-green hover:bg-bags-green/10 border-transparent hover:border-bags-green/30 hover:shadow-[0_0_8px_rgba(74,222,128,0.2)]"
+                  : baseInactive
               }
-              ${isLabs && !isActive ? "border-green-400/30 text-green-400 hover:border-green-400/50" : ""}
-              ${isMoltbook && !isActive ? "border-red-400/30 text-red-400 hover:border-red-400/50" : ""}
-              ${isTrending && !isActive ? "border-bags-gold/30 text-bags-gold hover:border-bags-gold/50" : ""}
-              ${isBallers && !isActive ? "border-yellow-400/30 text-yellow-400 hover:border-yellow-400/50" : ""}
-              ${isFounders && !isActive ? "border-amber-500/30 text-amber-400 hover:border-amber-500/50" : ""}
-              ${isArena && !isActive ? "border-red-500/30 text-red-400 hover:border-red-500/50" : ""}
+              ${!isActive && isLabs ? "border-green-500/50 text-green-400 hover:border-green-400" : ""}
+              ${!isActive && isMoltbook ? "border-red-500/50 text-red-400 hover:border-red-400" : ""}
+              ${!isActive && isTrending ? "border-yellow-500/50 text-bags-gold hover:border-bags-gold" : ""}
+              ${!isActive && isBallers ? "border-yellow-500/50 text-yellow-400 hover:border-yellow-400" : ""}
+              ${!isActive && isFounders ? "border-amber-500/50 text-amber-400 hover:border-amber-400" : ""}
+              ${!isActive && isArena ? "border-red-500/50 text-red-400 hover:border-red-400" : ""}
             `}
             title={zone.description}
           >
