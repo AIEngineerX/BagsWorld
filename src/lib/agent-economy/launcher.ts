@@ -771,9 +771,13 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
 
         if (data.success && data.response?.wallet) {
           wallet = data.response.wallet;
-          console.log(`[Launcher] Resolved @${recipient.moltbookUsername} → ${wallet!.slice(0, 8)}...`);
+          console.log(
+            `[Launcher] Resolved @${recipient.moltbookUsername} → ${wallet!.slice(0, 8)}...`
+          );
         } else {
-          throw new Error(`Moltbook user @${recipient.moltbookUsername} not found or not onboarded`);
+          throw new Error(
+            `Moltbook user @${recipient.moltbookUsername} not found or not onboarded`
+          );
         }
       } else if (recipient.twitter) {
         // Look up by Twitter
@@ -785,7 +789,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
 
         if (data.success && data.response?.wallet) {
           wallet = data.response.wallet;
-          console.log(`[Launcher] Resolved @${recipient.twitter} (Twitter) → ${wallet!.slice(0, 8)}...`);
+          console.log(
+            `[Launcher] Resolved @${recipient.twitter} (Twitter) → ${wallet!.slice(0, 8)}...`
+          );
         } else {
           throw new Error(`Twitter user @${recipient.twitter} not found`);
         }
@@ -801,7 +807,9 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
       claimersArray.push(wallet);
     }
 
-    console.log(`[Launcher] Fee split: ${request.feeRecipients.map((r, i) => `${r.moltbookUsername || r.twitter || r.wallet?.slice(0, 8)}=${r.bps / 100}%`).join(", ")}`);
+    console.log(
+      `[Launcher] Fee split: ${request.feeRecipients.map((r, i) => `${r.moltbookUsername || r.twitter || r.wallet?.slice(0, 8)}=${r.bps / 100}%`).join(", ")}`
+    );
   } else {
     // Default: 100% to creator
     basisPointsArray = [10000];

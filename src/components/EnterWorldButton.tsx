@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface EnterWorldButtonProps {
   className?: string;
@@ -9,11 +9,11 @@ interface EnterWorldButtonProps {
 // Default sprite variants (fallback if AI generation fails)
 // Colors match SHIRT_COLORS in BootScene.ts: green, blue, red, gold, purple, pink, cyan, orange, gray
 const DEFAULT_SPRITES = [
-  { id: 0, name: "Green Explorer" },
-  { id: 1, name: "Blue Adventurer" },
-  { id: 2, name: "Red Warrior" },
-  { id: 3, name: "Gold Knight" },
-  { id: 4, name: "Purple Mage" },
+  { id: 0, name: "Green Explorer", color: "#4ade80" },
+  { id: 1, name: "Blue Adventurer", color: "#60a5fa" },
+  { id: 2, name: "Red Warrior", color: "#f87171" },
+  { id: 3, name: "Gold Knight", color: "#fbbf24" },
+  { id: 4, name: "Purple Mage", color: "#a78bfa" },
 ];
 
 // Popular meme suggestions
@@ -27,6 +27,111 @@ const MEME_SUGGESTIONS = [
   "Deal With It sunglasses guy",
   "Trollface",
 ];
+
+// Generation stages for visual feedback
+const GENERATION_STAGES = [
+  { id: 1, label: "Analyzing prompt", icon: "🔍" },
+  { id: 2, label: "Generating character", icon: "🎨" },
+  { id: 3, label: "Creating animations", icon: "✨" },
+  { id: 4, label: "Finalizing sprite", icon: "🎮" },
+];
+
+// Floating pixel particle component
+function FloatingPixels() {
+  // Generate stable random positions on mount
+  const particles = useRef(
+    [...Array(20)].map(() => ({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      delay: Math.random() * 5,
+      duration: 3 + Math.random() * 4,
+    }))
+  ).current;
+
+  return (
+    <>
+      <style jsx>{`
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0) scale(1);
+            opacity: 0.3;
+          }
+          50% {
+            transform: translateY(-20px) scale(1.5);
+            opacity: 0.6;
+          }
+        }
+      `}</style>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {particles.map((p, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-green-400 rounded-full"
+            style={{
+              left: `${p.left}%`,
+              top: `${p.top}%`,
+              animation: `float ${p.duration}s ease-in-out infinite`,
+              animationDelay: `${p.delay}s`,
+            }}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+// Pixel art character silhouette that animates during generation
+function GeneratingAnimation({ stage }: { stage: number }) {
+  return (
+    <div className="relative w-32 h-32 mx-auto mb-4">
+      {/* Glow backdrop */}
+      <div className="absolute inset-0 bg-green-500/20 rounded-full blur-xl animate-pulse" />
+
+      {/* Pixel grid assembling effect */}
+      <div className="relative w-full h-full flex items-center justify-center">
+        <div className="grid grid-cols-8 gap-[2px]">
+          {[...Array(64)].map((_, i) => {
+            const row = Math.floor(i / 8);
+            const col = i % 8;
+            const isCharacterPixel =
+              (row >= 1 && row <= 2 && col >= 2 && col <= 5) || // Head
+              (row >= 3 && row <= 5 && col >= 1 && col <= 6) || // Body
+              (row >= 6 && row <= 7 && col >= 2 && col <= 3) || // Left leg
+              (row >= 6 && row <= 7 && col >= 4 && col <= 5); // Right leg
+
+            const shouldShow = isCharacterPixel && (i / 64) * 4 <= stage;
+            const delay = (row * 8 + col) * 20;
+
+            return (
+              <div
+                key={i}
+                className={`w-3 h-3 rounded-sm transition-all duration-300 ${
+                  shouldShow
+                    ? "bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.6)]"
+                    : "bg-gray-800/50"
+                }`}
+                style={{
+                  transitionDelay: `${delay}ms`,
+                  transform: shouldShow ? "scale(1)" : "scale(0.5)",
+                }}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Scanning line effect */}
+      <div
+        className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-green-400 to-transparent opacity-60"
+        style={{
+          top: `${(stage / 4) * 100}%`,
+          transition: "top 0.5s ease-out",
+        }}
+      />
+    </div>
+  );
+}
 
 export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
   const [isInWorld, setIsInWorld] = useState(false);
@@ -55,6 +160,8 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
     };
   }, []);
 
+  const [currentStage, setCurrentStage] = useState(0);
+
   const generateMemeSprite = async () => {
     if (!memePrompt.trim()) {
       setError("Enter a meme character to generate");
@@ -65,9 +172,16 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
     setError(null);
     setGeneratedSpriteUrl(null);
     setWalkSpriteSheetUrl(null);
+    setCurrentStage(0);
 
     try {
-      // Step 1: Generate character sprite
+      // Stage 1: Analyzing
+      setCurrentStage(1);
+      setGenerationStep("Analyzing prompt...");
+      await new Promise((r) => setTimeout(r, 500)); // Brief pause for visual feedback
+
+      // Stage 2: Generate character sprite
+      setCurrentStage(2);
       setGenerationStep("Creating character...");
       const response = await fetch("/api/generate-meme-sprite", {
         method: "POST",
@@ -83,8 +197,9 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
 
       setGeneratedSpriteUrl(data.imageUrl);
 
-      // Step 2: Generate walk animation sprite sheet
-      setGenerationStep("Creating walk animation...");
+      // Stage 3: Generate walk animation sprite sheet
+      setCurrentStage(3);
+      setGenerationStep("Creating animations...");
       const walkResponse = await fetch("/api/generate-sprite-sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,13 +214,19 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
       if (walkResponse.ok && walkData.imageUrl) {
         setWalkSpriteSheetUrl(walkData.imageUrl);
       }
-      // Don't fail if walk animation fails - character is still usable
+
+      // Stage 4: Finalizing
+      setCurrentStage(4);
+      setGenerationStep("Finalizing sprite...");
+      await new Promise((r) => setTimeout(r, 300));
 
       setGenerationStep("");
+      setCurrentStage(0);
     } catch (err) {
       console.error("Sprite generation error:", err);
       setError(err instanceof Error ? err.message : "Failed to generate sprite");
       setGenerationStep("");
+      setCurrentStage(0);
     } finally {
       setIsGenerating(false);
     }
@@ -205,16 +326,41 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
       {/* Meme Sprite Selector Modal */}
       {showSelector && (
         <div
-          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4"
           onClick={(e) => e.target === e.currentTarget && setShowSelector(false)}
         >
-          <div className="bg-gradient-to-b from-gray-900 to-black border-2 border-green-500 rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          {/* Scanline overlay */}
+          <div
+            className="fixed inset-0 pointer-events-none opacity-[0.03]"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)",
+            }}
+          />
+
+          <div className="relative bg-gradient-to-b from-gray-900 via-gray-900 to-black border-2 border-green-500/80 rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-[0_0_40px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
+            {/* Floating pixels background */}
+            <FloatingPixels />
+
+            {/* Corner decorations */}
+            <div className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 border-green-500/50" />
+            <div className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 border-green-500/50" />
+            <div className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 border-green-500/50" />
+            <div className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 border-green-500/50" />
+
             {/* Header */}
-            <div className="text-center mb-6">
-              <h2 className="font-pixel text-green-400 text-lg mb-2">CREATE YOUR MEME AVATAR</h2>
+            <div className="relative text-center mb-6">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-2xl">🎮</span>
+                <h2 className="font-pixel text-green-400 text-lg tracking-wide">
+                  CREATE YOUR MEME AVATAR
+                </h2>
+                <span className="text-2xl">🎮</span>
+              </div>
               <p className="font-pixel text-gray-400 text-[10px]">
                 Type any meme character and AI will generate your sprite
               </p>
+              <div className="mt-2 h-[2px] bg-gradient-to-r from-transparent via-green-500/50 to-transparent" />
             </div>
 
             {/* Toggle between AI and Default */}
@@ -275,55 +421,110 @@ export function EnterWorldButton({ className = "" }: EnterWorldButtonProps) {
                   ))}
                 </div>
 
-                {/* Generate Button */}
-                <button
-                  onClick={generateMemeSprite}
-                  disabled={isGenerating || !memePrompt.trim()}
-                  className={`w-full font-pixel text-sm py-3 rounded border-2 mb-4 transition-all ${
-                    isGenerating
-                      ? "bg-yellow-600 border-yellow-400 text-white animate-pulse"
-                      : "bg-purple-600 border-purple-400 text-white hover:bg-purple-500"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {isGenerating ? generationStep || "GENERATING..." : "GENERATE SPRITE"}
-                </button>
+                {/* Generation In Progress UI */}
+                {isGenerating ? (
+                  <div className="mb-4 p-4 bg-gray-800/50 rounded-lg border border-green-500/30">
+                    {/* Animated character preview */}
+                    <GeneratingAnimation stage={currentStage} />
+
+                    {/* Progress stages */}
+                    <div className="flex justify-center gap-2 mb-4">
+                      {GENERATION_STAGES.map((stage) => (
+                        <div
+                          key={stage.id}
+                          className={`flex flex-col items-center transition-all duration-300 ${
+                            currentStage >= stage.id
+                              ? "opacity-100 scale-100"
+                              : "opacity-30 scale-90"
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm mb-1 transition-all ${
+                              currentStage === stage.id
+                                ? "bg-green-500 shadow-[0_0_12px_rgba(74,222,128,0.6)] animate-pulse"
+                                : currentStage > stage.id
+                                  ? "bg-green-600"
+                                  : "bg-gray-700"
+                            }`}
+                          >
+                            {stage.icon}
+                          </div>
+                          <span className="font-pixel text-[6px] text-gray-400 text-center w-12">
+                            {stage.label.split(" ")[0]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Current step text */}
+                    <p className="font-pixel text-xs text-green-400 text-center animate-pulse">
+                      {generationStep || "Preparing..."}
+                    </p>
+                    <p className="font-pixel text-[8px] text-gray-500 text-center mt-1">
+                      This may take 10-20 seconds
+                    </p>
+                  </div>
+                ) : (
+                  /* Generate Button */
+                  <button
+                    onClick={generateMemeSprite}
+                    disabled={!memePrompt.trim()}
+                    className="group relative w-full font-pixel text-sm py-3 rounded border-2 mb-4 transition-all bg-gradient-to-b from-purple-600 to-purple-800 border-purple-400 text-white hover:from-purple-500 hover:to-purple-700 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      <span>✨</span>
+                      GENERATE SPRITE
+                      <span>✨</span>
+                    </span>
+                  </button>
+                )}
 
                 {/* Error Message */}
                 {error && (
-                  <div className="mb-4 p-3 bg-red-900/50 border border-red-500 rounded">
-                    <p className="font-pixel text-[10px] text-red-400">{error}</p>
+                  <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg">
+                    <p className="font-pixel text-[10px] text-red-400 flex items-center gap-2">
+                      <span>⚠️</span> {error}
+                    </p>
                   </div>
                 )}
 
                 {/* Generated Preview */}
-                {generatedSpriteUrl && (
-                  <div className="mb-4 p-4 bg-gray-800 rounded border border-green-500">
-                    <p className="font-pixel text-[10px] text-green-400 mb-2 text-center">
-                      YOUR MEME SPRITE
-                    </p>
+                {generatedSpriteUrl && !isGenerating && (
+                  <div className="mb-4 p-4 bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg border border-green-500 shadow-[0_0_20px_rgba(74,222,128,0.15)]">
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                      <span className="text-lg">🎉</span>
+                      <p className="font-pixel text-xs text-green-400">YOUR MEME SPRITE</p>
+                      <span className="text-lg">🎉</span>
+                    </div>
                     <div className="flex justify-center gap-4">
                       <div className="text-center">
-                        <img
-                          src={generatedSpriteUrl}
-                          alt="Generated meme sprite"
-                          className="w-24 h-24 object-contain rounded border-2 border-gray-600 bg-gray-900"
-                          style={{ imageRendering: "pixelated" }}
-                        />
-                        <p className="font-pixel text-[6px] text-gray-500 mt-1">CHARACTER</p>
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-green-500/20 blur-md rounded" />
+                          <img
+                            src={generatedSpriteUrl}
+                            alt="Generated meme sprite"
+                            className="relative w-24 h-24 object-contain rounded border-2 border-green-500/50 bg-gray-900"
+                            style={{ imageRendering: "pixelated" }}
+                          />
+                        </div>
+                        <p className="font-pixel text-[8px] text-green-400 mt-2">CHARACTER</p>
                       </div>
                       {walkSpriteSheetUrl && (
                         <div className="text-center">
-                          <img
-                            src={walkSpriteSheetUrl}
-                            alt="Walk animation sprite sheet"
-                            className="w-24 h-24 object-contain rounded border-2 border-purple-600 bg-gray-900"
-                            style={{ imageRendering: "pixelated" }}
-                          />
-                          <p className="font-pixel text-[6px] text-purple-400 mt-1">WALK CYCLE</p>
+                          <div className="relative">
+                            <div className="absolute inset-0 bg-purple-500/20 blur-md rounded" />
+                            <img
+                              src={walkSpriteSheetUrl}
+                              alt="Walk animation sprite sheet"
+                              className="relative w-24 h-24 object-contain rounded border-2 border-purple-500/50 bg-gray-900"
+                              style={{ imageRendering: "pixelated" }}
+                            />
+                          </div>
+                          <p className="font-pixel text-[8px] text-purple-400 mt-2">WALK CYCLE</p>
                         </div>
                       )}
                     </div>
-                    <p className="font-pixel text-[8px] text-gray-400 text-center mt-2">
+                    <p className="font-pixel text-[10px] text-gray-300 text-center mt-3 px-4 py-2 bg-gray-800/50 rounded">
                       &quot;{memePrompt}&quot;
                     </p>
                   </div>

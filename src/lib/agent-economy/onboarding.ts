@@ -148,7 +148,7 @@ export async function completeOnboarding(
 
   // Validate session exists and matches
   const session = pendingSessions.get(publicIdentifier);
-  
+
   if (!session) {
     return {
       success: false,
@@ -210,7 +210,9 @@ export async function completeOnboarding(
     // Clean up session
     pendingSessions.delete(publicIdentifier);
 
-    console.log(`[Onboarding] ✅ Complete! @${session.moltbookUsername} → ${primaryWallet?.slice(0, 8)}...`);
+    console.log(
+      `[Onboarding] ✅ Complete! @${session.moltbookUsername} → ${primaryWallet?.slice(0, 8)}...`
+    );
 
     return {
       success: true,

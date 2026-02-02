@@ -277,6 +277,17 @@ BagsWorld charges **zero extra fees** to creators. Ghost (@DaddyGhost) personall
 
 All contributions verifiable on-chain via Solscan.
 
+## CI/CD Requirements
+
+**GitHub Actions CI checks (must pass before merge):**
+
+1. **Lint** - `npm run lint`
+2. **Format** - `npx prettier --check "src/**/*.{ts,tsx,js,jsx}"`
+3. **TypeScript** - Type checking
+4. **Build** - `npm run build`
+
+**IMPORTANT:** Always run `npx prettier --write "src/**/*.{ts,tsx,js,jsx}"` before committing to ensure format check passes.
+
 ## Deployment
 
 Configured for Netlify (`netlify.toml`). Set environment variables in Netlify dashboard.
