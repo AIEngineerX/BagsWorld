@@ -284,14 +284,17 @@ export default function Home() {
   return (
     <main className="h-[100dvh] w-screen overflow-hidden flex flex-col">
       {/* Header - responsive */}
-      <header className="h-14 md:h-16 bg-bags-dark border-b-4 border-bags-green flex items-center justify-between px-2 md:px-4 relative z-50 safe-area-top shrink-0">
+      <header className="h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-2 md:px-4 relative z-50 safe-area-top shrink-0">
         {/* Left side - Logo and health */}
         <div className="flex items-center gap-2 md:gap-4">
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-bags-green/20 border border-bags-green flex items-center justify-center flex-shrink-0">
-              <WorldIcon className="text-bags-green" size={16} />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-bags-green/20 border border-bags-green flex items-center justify-center flex-shrink-0 shadow-[0_0_10px_rgba(74,222,128,0.3),inset_0_0_8px_rgba(74,222,128,0.1)]">
+              <WorldIcon
+                className="text-bags-green drop-shadow-[0_0_4px_rgba(74,222,128,0.5)]"
+                size={16}
+              />
             </div>
-            <h1 className="font-pixel text-xs sm:text-sm md:text-lg text-bags-green hidden xs:block">
+            <h1 className="font-pixel text-xs sm:text-sm md:text-lg text-bags-green hidden xs:block drop-shadow-[0_0_8px_rgba(74,222,128,0.4)]">
               BAGSWORLD
             </h1>
           </div>
@@ -436,7 +439,7 @@ export default function Home() {
           ${mobileSidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
           fixed lg:relative right-0 top-14 md:top-16 lg:top-0
           w-full sm:w-80 h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-4rem)] lg:h-full
-          bg-bags-dark border-l-4 border-bags-green flex flex-col
+          sidebar-panel hud-border-left flex flex-col
           transition-transform duration-300 ease-in-out z-40
           pb-safe
         `}
@@ -458,19 +461,20 @@ export default function Home() {
           </button>
 
           {/* Your Buildings - Collapsible */}
-          <div className="border-b border-bags-green/30 pt-10 lg:pt-0">
+          <div className="pt-10 lg:pt-0 relative">
             <YourBuildings onRefresh={refreshAfterLaunch} />
+            <div className="absolute bottom-0 left-0 right-0 glow-line-h" />
           </div>
 
           {/* Tabbed Section: Agent Chat / Leaderboard */}
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
             {/* Tab Buttons */}
-            <div className="flex bg-black/40">
+            <div className="flex bg-black/40 hud-divider">
               <button
                 onClick={() => setSidebarTab("agents")}
                 className={`flex-1 py-2 font-pixel text-[9px] transition-all border-b-2 ${
                   sidebarTab === "agents"
-                    ? "text-bags-gold border-bags-gold bg-bags-green/5"
+                    ? "text-bags-gold border-bags-gold bg-bags-green/5 tab-active-glow"
                     : "text-gray-600 border-transparent hover:text-gray-400"
                 }`}
               >
@@ -480,7 +484,7 @@ export default function Home() {
                 onClick={() => setSidebarTab("leaderboard")}
                 className={`flex-1 py-2 font-pixel text-[9px] transition-all border-b-2 ${
                   sidebarTab === "leaderboard"
-                    ? "text-bags-gold border-bags-gold bg-bags-green/5"
+                    ? "text-bags-gold border-bags-gold bg-bags-green/5 tab-active-glow"
                     : "text-gray-600 border-transparent hover:text-gray-400"
                 }`}
               >
@@ -494,7 +498,8 @@ export default function Home() {
           </div>
 
           {/* Unified Activity Feed - combines agent + event feeds */}
-          <div className="h-52 border-t border-bags-green/50">
+          <div className="h-52 relative">
+            <div className="absolute top-0 left-0 right-0 glow-line-h" />
             <UnifiedActivityFeed
               events={worldState?.events ?? []}
               maxItems={20}
@@ -513,7 +518,7 @@ export default function Home() {
       </div>
 
       {/* Footer status bar - simplified on mobile */}
-      <footer className="h-8 sm:h-9 bg-bags-dark border-t-4 border-bags-green flex items-center justify-between px-2 md:px-4 font-pixel text-[7px] sm:text-[8px] md:text-[10px] safe-area-bottom shrink-0">
+      <footer className="h-8 sm:h-9 hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[7px] sm:text-[8px] md:text-[10px] safe-area-bottom shrink-0">
         <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
             [POP:<span className="text-white ml-1">{worldState?.population?.length ?? 0}</span>]
