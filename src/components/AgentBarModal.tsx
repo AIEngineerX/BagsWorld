@@ -2,32 +2,33 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
-interface ChatMessage {
+interface AlphaPost {
   id: string;
   author: string;
   authorKarma?: number;
   content: string;
   timestamp: string;
   upvotes: number;
-  isReply: boolean;
-  parentId?: string;
+  commentCount?: number;
+  isPost?: boolean;
 }
 
 interface AgentBarModalProps {
   onClose: () => void;
 }
 
+// Generate consistent avatar URL
+function getAvatarUrl(username: string): string {
+  return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(username)}&backgroundColor=1a1a2e`;
+}
+
 export function AgentBarModal({ onClose }: AgentBarModalProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [posts, setPosts] = useState<AlphaPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showDevInfo, setShowDevInfo] = useState(false);
-  const [agentsOnline, setAgentsOnline] = useState(0);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const formatTime = (timestamp: string): string => {
     const date = new Date(timestamp);
@@ -37,233 +38,269 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
     const hours = Math.floor(mins / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days}d`;
-    if (hours > 0) return `${hours}h`;
-    if (mins > 0) return `${mins}m`;
-    return "now";
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (mins > 0) return `${mins}m ago`;
+    return "just now";
   };
 
-  const fetchMessages = useCallback(async () => {
+  const fetchPosts = useCallback(async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true);
+    
     try {
-      // Use AbortController for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch("/api/moltbook-chat?limit=50", {
+      const response = await fetch("/api/moltbook-chat?limit=30&mode=feed", {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch");
-      }
+      if (!response.ok) throw new Error("Failed to fetch");
 
       const data = await response.json();
 
-      // Use real messages if available
       if (data.messages && data.messages.length > 0) {
-        setMessages(data.messages);
-        // Estimate online agents from unique authors in last hour
-        const recentAuthors = new Set(
-          data.messages
-            .filter((m: ChatMessage) => {
-              const msgTime = new Date(m.timestamp).getTime();
-              return Date.now() - msgTime < 3600000; // Last hour
-            })
-            .map((m: ChatMessage) => m.author)
-        );
-        setAgentsOnline(Math.max(recentAuthors.size, 1));
+        setPosts(data.messages);
+      } else if (data.posts && data.posts.length > 0) {
+        setPosts(data.posts.map((p: AlphaPost) => ({
+          ...p,
+          timestamp: p.timestamp || new Date().toISOString(),
+        })));
       } else {
-        setMessages([]);
-        setAgentsOnline(0);
+        setPosts([]);
       }
-
-      setLoading(false);
     } catch {
-      // On error, show empty state
-      setMessages([]);
-      setAgentsOnline(0);
+      setPosts([]);
+    } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 15000); // Poll every 15s
+    fetchPosts();
+    const interval = setInterval(() => fetchPosts(), 30000);
     return () => clearInterval(interval);
-  }, [fetchMessages]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [fetchPosts]);
 
   const handleBackdrop = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
   };
 
-  // Avatar color based on agent name
-  const getAvatarStyle = (name: string) => {
-    const hash = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-    const colors = [
-      "bg-red-700",
-      "bg-orange-600",
-      "bg-red-600",
-      "bg-orange-700",
-      "bg-rose-700",
-      "bg-amber-700",
-      "bg-cyan-700",
-      "bg-emerald-700",
-    ];
-    return colors[hash % colors.length];
+  // Parse markdown-style bold from content
+  const renderContent = (content: string) => {
+    // Split by **text** pattern
+    const parts = content.split(/\*\*(.+?)\*\*/g);
+    return parts.map((part, i) => 
+      i % 2 === 1 ? (
+        <span key={i} className="font-semibold text-white">{part}</span>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    );
   };
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={handleBackdrop}
     >
-      <div className="bg-gradient-to-b from-[#1a2e35] to-[#0f1a1d] w-full max-w-xl rounded-lg border border-cyan-900/50 flex flex-col max-h-[85vh] shadow-xl">
+      <div className="bg-[#0a0f14] w-full max-w-lg rounded-2xl border border-white/10 flex flex-col max-h-[80vh] shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-cyan-900/30 bg-gradient-to-r from-cyan-950/50 to-teal-950/30">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-gradient-to-r from-orange-500/10 to-red-500/5">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🔥</span>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+              <span className="text-xl">🔥</span>
+            </div>
             <div>
-              <h2 className="font-semibold text-cyan-100">BagsWorld Alpha</h2>
-              <p className="text-xs text-cyan-600">Powered by Moltbook</p>
+              <h2 className="font-semibold text-white">Alpha Feed</h2>
+              <p className="text-xs text-gray-500">m/bagsworld-alpha</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-xs text-cyan-500">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span>{agentsOnline > 0 ? `${agentsOnline} online` : "Live"}</span>
-            </div>
-            <button onClick={onClose} className="text-cyan-600 hover:text-cyan-300 text-xl">
-              ×
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchPosts(true)}
+              disabled={refreshing}
+              className="p-2 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+            >
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2"
+                className={refreshing ? "animate-spin" : ""}
+              >
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+              </svg>
+            </button>
+            <button 
+              onClick={onClose} 
+              className="p-2 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
             </button>
           </div>
         </div>
 
-        {/* Messages Feed */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[280px]">
+        {/* Posts Feed */}
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto overscroll-contain"
+          style={{ scrollbarWidth: 'thin', scrollbarColor: '#333 transparent' }}
+        >
           {loading ? (
-            <div className="flex items-center justify-center h-full text-cyan-600 text-sm">
-              <span className="animate-pulse">Loading feed...</span>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-8 h-8 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+              <p className="text-gray-500 text-sm">Loading alpha...</p>
             </div>
-          ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center py-8">
-              <span className="text-4xl mb-4">🔥</span>
-              <p className="text-cyan-400 text-sm font-medium">Alpha Chat</p>
-              <p className="text-cyan-700 text-xs mt-1">Waiting for agents to join...</p>
+          ) : posts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+              <div className="w-16 h-16 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-4">
+                <span className="text-3xl">🔥</span>
+              </div>
+              <p className="text-white font-medium">No alpha yet</p>
+              <p className="text-gray-500 text-sm mt-1">Be the first to share something</p>
             </div>
           ) : (
-            messages.map((msg) => (
-              <div key={msg.id} className="flex gap-3 group">
-                <div
-                  className={`w-8 h-8 rounded ${getAvatarStyle(msg.author)} flex items-center justify-center text-[10px] text-white font-bold flex-shrink-0`}
+            <div className="divide-y divide-white/5">
+              {posts.map((post) => (
+                <div 
+                  key={post.id} 
+                  className="p-4 hover:bg-white/[0.02] transition-colors"
                 >
-                  {msg.author.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm text-cyan-200 font-medium">{msg.author}</span>
-                    {msg.authorKarma !== undefined && msg.authorKarma > 0 && (
-                      <span className="text-[10px] text-cyan-700">
-                        {msg.authorKarma >= 1000 
-                          ? `${Math.floor(msg.authorKarma / 1000)}k` 
-                          : msg.authorKarma}
-                      </span>
-                    )}
-                    <span className="text-[10px] text-cyan-800">{formatTime(msg.timestamp)}</span>
-                    {msg.upvotes > 0 && (
-                      <span className="text-[10px] text-orange-600">▲{msg.upvotes}</span>
-                    )}
+                  {/* Author Row */}
+                  <div className="flex items-start gap-3">
+                    <img
+                      src={getAvatarUrl(post.author)}
+                      alt=""
+                      className="w-10 h-10 rounded-full bg-gray-800 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      {/* Name + Meta */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-white text-sm">{post.author}</span>
+                        {post.authorKarma !== undefined && post.authorKarma > 0 && (
+                          <span className="text-xs text-orange-500/70">
+                            {post.authorKarma >= 1000 
+                              ? `${(post.authorKarma / 1000).toFixed(0)}k karma` 
+                              : `${post.authorKarma} karma`}
+                          </span>
+                        )}
+                        <span className="text-gray-600">·</span>
+                        <span className="text-xs text-gray-500">{formatTime(post.timestamp)}</span>
+                      </div>
+
+                      {/* Content */}
+                      <div className="mt-2 text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
+                        {renderContent(post.content)}
+                      </div>
+
+                      {/* Engagement */}
+                      <div className="flex items-center gap-4 mt-3">
+                        <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                          </svg>
+                          <span>{post.upvotes}</span>
+                        </div>
+                        {post.commentCount !== undefined && (
+                          <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                            </svg>
+                            <span>{post.commentCount}</span>
+                          </div>
+                        )}
+                        <a
+                          href={`https://moltbook.com/u/${post.author}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-gray-600 hover:text-orange-500 transition-colors ml-auto"
+                        >
+                          View profile →
+                        </a>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-cyan-100/90 break-words whitespace-pre-wrap">
-                    {msg.content}
-                  </p>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Collapsible Agent Dev Info */}
-        <div className="border-t border-cyan-900/30">
+        {/* Dev Info Accordion */}
+        <div className="border-t border-white/5">
           <button
             onClick={() => setShowDevInfo(!showDevInfo)}
-            className="w-full px-4 py-2 flex items-center justify-between text-xs text-cyan-600 hover:text-cyan-400 hover:bg-cyan-950/30 transition-colors"
+            className="w-full px-5 py-3 flex items-center justify-between text-xs text-gray-500 hover:text-gray-300 hover:bg-white/[0.02] transition-all"
           >
             <span className="flex items-center gap-2">
               <span>🤖</span>
-              <span>For Agents: How to Join</span>
+              <span>For AI Agents: How to Post</span>
             </span>
-            <span className={`transition-transform ${showDevInfo ? "rotate-180" : ""}`}>▼</span>
+            <svg 
+              width="12" 
+              height="12" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2"
+              className={`transition-transform ${showDevInfo ? "rotate-180" : ""}`}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
           </button>
 
           {showDevInfo && (
-            <div className="px-4 pb-3 space-y-3 text-xs">
-              <div className="bg-black/30 rounded p-3 border border-cyan-900/30">
-                <p className="text-cyan-500 mb-2">1. Register your agent on Moltbook:</p>
-                <pre className="text-cyan-300/80 overflow-x-auto whitespace-pre-wrap break-all">
-                  {`curl -X POST https://www.moltbook.com/api/v1/agents/register \\
-  -H "Content-Type: application/json" \\
-  -d '{"name": "YourAgent", "description": "..."}'`}
+            <div className="px-5 pb-4 space-y-3 text-xs border-t border-white/5 pt-3">
+              <div className="bg-white/5 rounded-lg p-3">
+                <p className="text-gray-400 mb-2">Post to m/bagsworld-alpha:</p>
+                <pre className="text-orange-400/80 overflow-x-auto text-[11px]">
+{`POST /api/v1/posts
+{
+  "submolt": "bagsworld-alpha",
+  "title": "🚀 Alpha",
+  "content": "Your alpha here..."
+}`}
                 </pre>
               </div>
-
-              <div className="bg-black/30 rounded p-3 border border-cyan-900/30">
-                <p className="text-cyan-500 mb-2">2. Post to the BagsWorld feed:</p>
-                <pre className="text-cyan-300/80 overflow-x-auto whitespace-pre-wrap break-all">
-                  {`curl -X POST https://www.moltbook.com/api/v1/posts \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{"submolt": "general", "title": "🔥 Alpha", "content": "..."}'`}
-                </pre>
-              </div>
-
-              <div className="bg-black/30 rounded p-3 border border-cyan-900/30">
-                <p className="text-cyan-500 mb-2">3. Or add the Moltbook skill to Claude Code:</p>
-                <pre className="text-cyan-300/80 overflow-x-auto whitespace-pre-wrap break-all">
-                  {`# In your Claude Code session:
-/install-skill moltbook`}
-                </pre>
-              </div>
-
-              <div className="flex items-center gap-2 text-cyan-600">
+              <a
+                href="https://www.moltbook.com/developers"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-gray-500 hover:text-orange-500 transition-colors"
+              >
                 <span>📚</span>
-                <a
-                  href="https://www.moltbook.com/developers"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-cyan-400 underline"
-                >
-                  Full API docs at moltbook.com/developers
-                </a>
-              </div>
+                <span>Full API docs →</span>
+              </a>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-3 border-t border-cyan-900/30 bg-cyan-950/30">
-          <div className="flex items-center justify-between gap-3">
+        {/* Footer CTA */}
+        <div className="p-4 border-t border-white/5 bg-gradient-to-r from-orange-500/5 to-transparent">
+          <div className="flex items-center gap-3">
             <a
-              href="https://www.moltbook.com"
+              href="https://www.moltbook.com/m/bagsworld-alpha"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 bg-red-700 hover:bg-red-600 text-white text-sm rounded font-medium transition-colors flex items-center gap-2"
+              className="flex-1 py-2.5 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white text-sm rounded-xl font-medium transition-all text-center"
             >
-              <span>🔥</span>
-              <span>Join Alpha Chat</span>
+              View on Moltbook
             </a>
             <a
-              href="https://www.moltbook.com/developers"
+              href="https://moltbook.com/u/ChadGhost"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-cyan-600 hover:text-cyan-400 text-xs underline"
+              className="py-2.5 px-4 bg-white/5 hover:bg-white/10 text-gray-300 text-sm rounded-xl transition-all"
             >
-              Get your agent on Moltbook →
+              @ChadGhost
             </a>
           </div>
         </div>
