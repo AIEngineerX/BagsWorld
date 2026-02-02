@@ -9635,7 +9635,7 @@ Use: bags.fm/[yourname]`,
     });
   }
 
-  // Character walking system
+  // Character walking system with activity variety
   private startCharacterWalking(
     sprite: Phaser.GameObjects.Sprite,
     character: GameCharacter,
@@ -9648,10 +9648,12 @@ Use: bags.fm/[yourname]`,
     const minX = Math.max(Math.round(80 * SCALE), character.x - walkRange);
     const maxX = Math.min(Math.round(720 * SCALE), character.x + walkRange);
 
-    // Walking state stored on sprite
+    // Walking and activity state stored on sprite
     (sprite as any).isWalking = false;
+    (sprite as any).isDoingActivity = false;
     (sprite as any).walkDirection = 1;
     (sprite as any).baseY = baseY;
+    (sprite as any).characterId = character.id;
 
     // Idle bounce when not walking
     const idleTween = this.tweens.add({
@@ -9666,21 +9668,342 @@ Use: bags.fm/[yourname]`,
     // Store tween reference for cleanup
     (sprite as any).idleTween = idleTween;
 
-    // Randomly decide to walk
-    const maybeWalk = () => {
+    // Randomly decide to walk or do an activity
+    const maybeWalkOrActivity = () => {
       if (!sprite.active) return;
 
-      // 30% chance to start walking
-      if (Math.random() < 0.3 && !(sprite as any).isWalking) {
-        this.walkCharacter(sprite, minX, maxX, baseY, walkSpeed, isSpecial);
+      const isWalking = (sprite as any).isWalking;
+      const isDoingActivity = (sprite as any).isDoingActivity;
+
+      if (!isWalking && !isDoingActivity) {
+        // Check if too close to another character (should spread out)
+        const tooClose = this.isCharacterTooClose(sprite, 40);
+        const roll = Math.random();
+
+        // If crowded, much higher chance to walk away
+        const walkChance = tooClose ? 0.7 : 0.25;
+
+        if (roll < walkChance) {
+          // Walk (more likely if crowded)
+          this.walkCharacter(sprite, minX, maxX, baseY, walkSpeed, isSpecial);
+        } else if (roll < walkChance + 0.2) {
+          // 20% chance to do an idle activity
+          this.doIdleActivity(sprite, character, isSpecial);
+        }
+        // Rest of the time just keep bouncing
       }
 
-      // Schedule next check (every 3-8 seconds)
-      this.time.delayedCall(3000 + Math.random() * 5000, maybeWalk);
+      // Schedule next check (every 2-5 seconds for more liveliness)
+      this.time.delayedCall(2000 + Math.random() * 3000, maybeWalkOrActivity);
     };
 
-    // Start the walking checks after initial delay
-    this.time.delayedCall(1000 + Math.random() * 3000, maybeWalk);
+    // Start the walking/activity checks after initial delay
+    this.time.delayedCall(1000 + Math.random() * 3000, maybeWalkOrActivity);
+  }
+
+  // Perform a random idle activity (looking around, waving, etc.)
+  private doIdleActivity(
+    sprite: Phaser.GameObjects.Sprite,
+    character: GameCharacter,
+    isSpecial: boolean
+  ): void {
+    if (!sprite.active || (sprite as any).isDoingActivity) return;
+
+    (sprite as any).isDoingActivity = true;
+
+    // Check context for activity type
+    const nearbyCharacter = this.findNearbyCharacter(sprite, 80);
+    const nearbyBuilding = this.findNearbyBuilding(sprite, 100);
+
+    let activityType: "lookAround" | "wave" | "pointAtBuilding" | "stretch" | "nod";
+
+    if (nearbyCharacter && Math.random() < 0.6) {
+      // Near another character - wave at them
+      activityType = "wave";
+    } else if (nearbyBuilding && Math.random() < 0.4) {
+      // Near a building - point at it or look at it
+      activityType = "pointAtBuilding";
+    } else {
+      // Random idle activity
+      const randomActivities: (typeof activityType)[] = ["lookAround", "stretch", "nod"];
+      activityType = randomActivities[Math.floor(Math.random() * randomActivities.length)];
+    }
+
+    // Pause idle bounce during activity
+    const idleTween = (sprite as any).idleTween as Phaser.Tweens.Tween;
+    if (idleTween) idleTween.pause();
+
+    const baseY = (sprite as any).baseY || sprite.y;
+
+    switch (activityType) {
+      case "lookAround":
+        this.activityLookAround(sprite, baseY, idleTween);
+        break;
+      case "wave":
+        this.activityWave(sprite, baseY, idleTween, nearbyCharacter);
+        break;
+      case "pointAtBuilding":
+        this.activityPointAtBuilding(sprite, baseY, idleTween, nearbyBuilding);
+        break;
+      case "stretch":
+        this.activityStretch(sprite, baseY, idleTween);
+        break;
+      case "nod":
+        this.activityNod(sprite, baseY, idleTween);
+        break;
+    }
+  }
+
+  // Find a nearby character sprite within radius
+  private findNearbyCharacter(
+    sprite: Phaser.GameObjects.Sprite,
+    radius: number
+  ): Phaser.GameObjects.Sprite | null {
+    const myId = (sprite as any).characterId;
+    let closest: Phaser.GameObjects.Sprite | null = null;
+    let closestDist = radius;
+
+    this.characterSprites.forEach((otherSprite, id) => {
+      if (id === myId || !otherSprite.active) return;
+      const dist = Math.abs(otherSprite.x - sprite.x);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = otherSprite;
+      }
+    });
+
+    return closest;
+  }
+
+  // Check if character is too close to another (for spacing)
+  private isCharacterTooClose(sprite: Phaser.GameObjects.Sprite, threshold: number): boolean {
+    const myId = (sprite as any).characterId;
+
+    for (const [id, otherSprite] of this.characterSprites) {
+      if (id === myId || !otherSprite.active || !otherSprite.visible) continue;
+      const dist = Math.abs(otherSprite.x - sprite.x);
+      if (dist < threshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Find a nearby building within radius
+  private findNearbyBuilding(
+    sprite: Phaser.GameObjects.Sprite,
+    radius: number
+  ): Phaser.GameObjects.Container | null {
+    let closest: Phaser.GameObjects.Container | null = null;
+    let closestDist = radius;
+
+    this.buildingSprites.forEach((container) => {
+      if (!container.active) return;
+      const dist = Math.abs(container.x - sprite.x);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = container;
+      }
+    });
+
+    return closest;
+  }
+
+  // Activity: Look around (tilt left, pause, tilt right, pause)
+  private activityLookAround(
+    sprite: Phaser.GameObjects.Sprite,
+    baseY: number,
+    idleTween: Phaser.Tweens.Tween | null
+  ): void {
+    // Tilt/rotate slightly to simulate looking around
+    this.tweens.chain({
+      targets: sprite,
+      tweens: [
+        { angle: -8, duration: 300, ease: "Sine.easeOut" },
+        { angle: -8, duration: 400 }, // Hold
+        { angle: 8, duration: 400, ease: "Sine.easeInOut" },
+        { angle: 8, duration: 400 }, // Hold
+        { angle: 0, duration: 300, ease: "Sine.easeIn" },
+      ],
+      onComplete: () => {
+        (sprite as any).isDoingActivity = false;
+        if (idleTween) idleTween.resume();
+      },
+    });
+  }
+
+  // Activity: Wave at nearby character
+  private activityWave(
+    sprite: Phaser.GameObjects.Sprite,
+    baseY: number,
+    idleTween: Phaser.Tweens.Tween | null,
+    targetSprite: Phaser.GameObjects.Sprite | null
+  ): void {
+    // Face toward the other character
+    if (targetSprite) {
+      sprite.setFlipX(targetSprite.x < sprite.x);
+    }
+
+    // Bounce up and down excitedly (simulates waving)
+    this.tweens.chain({
+      targets: sprite,
+      tweens: [
+        { y: baseY - 8, scaleX: 1.05, duration: 120, ease: "Quad.easeOut" },
+        { y: baseY, scaleX: 1.0, duration: 120, ease: "Quad.easeIn" },
+        { y: baseY - 8, scaleX: 1.05, duration: 120, ease: "Quad.easeOut" },
+        { y: baseY, scaleX: 1.0, duration: 120, ease: "Quad.easeIn" },
+        { y: baseY - 6, scaleX: 1.03, duration: 100, ease: "Quad.easeOut" },
+        { y: baseY, scaleX: 1.0, duration: 100, ease: "Quad.easeIn" },
+      ],
+      onComplete: () => {
+        sprite.setY(baseY);
+        sprite.setScale(sprite.scaleX > 1 ? 1.4 : sprite.scaleX); // Reset to normal
+        (sprite as any).isDoingActivity = false;
+        if (idleTween) idleTween.resume();
+      },
+    });
+  }
+
+  // Activity: Point at a nearby building (lean toward it)
+  private activityPointAtBuilding(
+    sprite: Phaser.GameObjects.Sprite,
+    baseY: number,
+    idleTween: Phaser.Tweens.Tween | null,
+    building: Phaser.GameObjects.Container | null
+  ): void {
+    // Face toward the building
+    if (building) {
+      sprite.setFlipX(building.x < sprite.x);
+    }
+
+    // Lean forward and hold (looking up at building)
+    const leanAngle = building && building.x < sprite.x ? 10 : -10;
+
+    this.tweens.chain({
+      targets: sprite,
+      tweens: [
+        { angle: leanAngle, y: baseY - 3, duration: 250, ease: "Sine.easeOut" },
+        { angle: leanAngle, y: baseY - 3, duration: 800 }, // Hold - looking at building
+        { angle: 0, y: baseY, duration: 250, ease: "Sine.easeIn" },
+      ],
+      onComplete: () => {
+        (sprite as any).isDoingActivity = false;
+        if (idleTween) idleTween.resume();
+      },
+    });
+  }
+
+  // Activity: Stretch (grow taller briefly)
+  private activityStretch(
+    sprite: Phaser.GameObjects.Sprite,
+    baseY: number,
+    idleTween: Phaser.Tweens.Tween | null
+  ): void {
+    const baseScaleY = sprite.scaleY;
+
+    this.tweens.chain({
+      targets: sprite,
+      tweens: [
+        { scaleY: baseScaleY * 1.15, y: baseY - 5, duration: 400, ease: "Sine.easeOut" },
+        { scaleY: baseScaleY * 1.15, y: baseY - 5, duration: 300 }, // Hold stretch
+        { scaleY: baseScaleY, y: baseY, duration: 300, ease: "Sine.easeIn" },
+      ],
+      onComplete: () => {
+        sprite.setY(baseY);
+        (sprite as any).isDoingActivity = false;
+        if (idleTween) idleTween.resume();
+      },
+    });
+  }
+
+  // Activity: Nod (quick up-down motion like agreeing)
+  private activityNod(
+    sprite: Phaser.GameObjects.Sprite,
+    baseY: number,
+    idleTween: Phaser.Tweens.Tween | null
+  ): void {
+    this.tweens.chain({
+      targets: sprite,
+      tweens: [
+        { y: baseY + 3, duration: 100, ease: "Quad.easeIn" },
+        { y: baseY - 2, duration: 100, ease: "Quad.easeOut" },
+        { y: baseY + 2, duration: 80, ease: "Quad.easeIn" },
+        { y: baseY, duration: 80, ease: "Quad.easeOut" },
+      ],
+      onComplete: () => {
+        sprite.setY(baseY);
+        (sprite as any).isDoingActivity = false;
+        if (idleTween) idleTween.resume();
+      },
+    });
+  }
+
+  // Find a walk target that avoids other characters (prevents clumping)
+  private findSpacedWalkTarget(
+    sprite: Phaser.GameObjects.Sprite,
+    minX: number,
+    maxX: number
+  ): number {
+    const currentX = sprite.x;
+    const myId = (sprite as any).characterId;
+    const MIN_SPACING = 50; // Minimum pixels between characters
+
+    // Find all nearby character positions
+    const nearbyPositions: number[] = [];
+    this.characterSprites.forEach((otherSprite, id) => {
+      if (id === myId || !otherSprite.active || !otherSprite.visible) return;
+      const dist = Math.abs(otherSprite.x - currentX);
+      if (dist < 200) {
+        // Only consider characters within 200px
+        nearbyPositions.push(otherSprite.x);
+      }
+    });
+
+    // If no one nearby, pick random target
+    if (nearbyPositions.length === 0) {
+      return minX + Math.random() * (maxX - minX);
+    }
+
+    // Try to find a target that maintains spacing from others
+    // Strategy: sample several candidates and pick the one with best spacing
+    let bestTarget = currentX;
+    let bestMinDist = 0;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = minX + Math.random() * (maxX - minX);
+
+      // Calculate minimum distance to any other character at this target
+      let minDistToOthers = Infinity;
+      for (const otherX of nearbyPositions) {
+        const dist = Math.abs(candidate - otherX);
+        if (dist < minDistToOthers) {
+          minDistToOthers = dist;
+        }
+      }
+
+      // If this candidate has better spacing, use it
+      if (minDistToOthers > bestMinDist) {
+        bestMinDist = minDistToOthers;
+        bestTarget = candidate;
+      }
+    }
+
+    // If even the best target is too close, move away from the crowd
+    if (bestMinDist < MIN_SPACING) {
+      // Find average position of nearby characters
+      const avgX = nearbyPositions.reduce((a, b) => a + b, 0) / nearbyPositions.length;
+
+      // Move away from the crowd
+      if (avgX > currentX) {
+        // Crowd is to the right, move left
+        bestTarget = Math.max(minX, currentX - 60 - Math.random() * 40);
+      } else {
+        // Crowd is to the left, move right
+        bestTarget = Math.min(maxX, currentX + 60 + Math.random() * 40);
+      }
+    }
+
+    return bestTarget;
   }
 
   private walkCharacter(
@@ -9695,11 +10018,10 @@ Use: bags.fm/[yourname]`,
 
     (sprite as any).isWalking = true;
 
-    // Pick a random destination within range
+    // Pick a destination that avoids clumping with other characters
     const currentX = sprite.x;
-    const targetX = minX + Math.random() * (maxX - minX);
+    const targetX = this.findSpacedWalkTarget(sprite, minX, maxX);
     const distance = Math.abs(targetX - currentX);
-    const duration = (distance / speed) * 16; // Convert to ms based on speed
 
     // Flip sprite based on direction
     const goingRight = targetX > currentX;
@@ -9711,52 +10033,88 @@ Use: bags.fm/[yourname]`,
       idleTween.pause();
     }
 
-    // Walking bob animation
-    const walkBob = this.tweens.add({
-      targets: sprite,
-      y: baseY - 4,
-      duration: 150,
-      yoyo: true,
-      repeat: Math.floor(duration / 300),
-      ease: "Sine.easeInOut",
-    });
+    // Step-based walking: each step moves a fixed distance with hop animation
+    const stepSize = isSpecial ? 12 : 16; // Pixels per step
+    const stepDuration = isSpecial ? 280 : 220; // Ms per step (slower = more deliberate)
+    const numSteps = Math.max(2, Math.floor(distance / stepSize));
+    const actualStepSize = distance / numSteps;
+    const direction = goingRight ? 1 : -1;
 
-    // Move to target
-    this.tweens.add({
-      targets: sprite,
-      x: targetX,
-      duration: duration,
-      ease: "Linear",
-      onComplete: () => {
-        (sprite as any).isWalking = false;
-        walkBob.stop();
-        sprite.setY(baseY);
+    let currentStep = 0;
+    const baseScaleX = sprite.scaleX;
+    const baseScaleY = sprite.scaleY;
 
-        // Resume idle bounce
-        if (idleTween) {
-          idleTween.resume();
+    // Update glow helper
+    const updateGlow = () => {
+      const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow"];
+      glowKeys.forEach((key) => {
+        const glow = (sprite as any)[key];
+        if (glow && glow.active) {
+          glow.setX(sprite.x);
         }
+      });
+    };
 
-        // Update any attached glow effects
-        const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow"];
-        glowKeys.forEach((key) => {
-          const glow = (sprite as any)[key];
-          if (glow && glow.active) {
-            glow.setX(sprite.x);
-          }
-        });
-      },
-      onUpdate: () => {
-        // Update glow position while walking
-        const glowKeys = ["tolyGlow", "ashGlow", "finnGlow", "devGlow", "scoutGlow"];
-        glowKeys.forEach((key) => {
-          const glow = (sprite as any)[key];
-          if (glow && glow.active) {
-            glow.setX(sprite.x);
-          }
-        });
-      },
-    });
+    // Take one step with hop animation
+    const takeStep = () => {
+      if (!sprite.active || currentStep >= numSteps) {
+        // Walking complete
+        (sprite as any).isWalking = false;
+        sprite.setY(baseY);
+        sprite.setAngle(0);
+        sprite.setScale(baseScaleX, baseScaleY);
+        if (idleTween) idleTween.resume();
+        updateGlow();
+        return;
+      }
+
+      const nextX = sprite.x + actualStepSize * direction;
+      const isLeftFoot = currentStep % 2 === 0;
+
+      // Each step: lift (hop up + tilt) -> land (drop + squash) -> recover
+      this.tweens.chain({
+        targets: sprite,
+        tweens: [
+          // Lift phase: hop up, slight tilt, move halfway
+          {
+            x: sprite.x + actualStepSize * direction * 0.5,
+            y: baseY - 6,
+            angle: isLeftFoot ? 3 : -3,
+            scaleX: baseScaleX * 0.98,
+            scaleY: baseScaleY * 1.04,
+            duration: stepDuration * 0.4,
+            ease: "Quad.easeOut",
+            onUpdate: updateGlow,
+          },
+          // Land phase: drop down, squash, complete the step
+          {
+            x: nextX,
+            y: baseY + 2,
+            angle: 0,
+            scaleX: baseScaleX * 1.04,
+            scaleY: baseScaleY * 0.96,
+            duration: stepDuration * 0.35,
+            ease: "Quad.easeIn",
+            onUpdate: updateGlow,
+          },
+          // Recover phase: return to normal
+          {
+            y: baseY,
+            scaleX: baseScaleX,
+            scaleY: baseScaleY,
+            duration: stepDuration * 0.25,
+            ease: "Sine.easeOut",
+          },
+        ],
+        onComplete: () => {
+          currentStep++;
+          takeStep(); // Next step
+        },
+      });
+    };
+
+    // Start walking
+    takeStep();
   }
 
   // ========================================
