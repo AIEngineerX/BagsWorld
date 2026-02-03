@@ -12,6 +12,15 @@
 import { getChadGhostMoltbookOrNull, type MoltbookPost } from "./moltbook-client";
 import { findAlpha, getBestAlpha, formatAlphaForPost, type AlphaItem, type AlphaType } from "./alpha-finder";
 import { trackCall } from "./chadghost-engagement";
+import { 
+  trackPost, 
+  getBestSubmolt, 
+  isGoodTimeToPost, 
+  getPostTypeWeight, 
+  shouldCrossPost,
+  analyzePerformance,
+  getLearningInsights,
+} from "./agent-learning";
 
 // ============================================================================
 // CONFIGURATION
@@ -358,13 +367,19 @@ async function decideAndPostAlpha(alpha: AlphaItem, config: ChadGhostConfig): Pr
     console.log("[ChadGhost] Using template content");
   }
   
-  // Decide submolt
-  let submolt = CHADGHOST_SUBMOLT;
-  const shouldCrossPost = alpha.priority === "high" && Math.random() < config.crossPostChance;
-  if (shouldCrossPost) {
-    submolt = CROSS_POST_SUBMOLTS[Math.floor(Math.random() * CROSS_POST_SUBMOLTS.length)];
-    console.log(`[ChadGhost] Cross-posting to ${submolt}`);
+  // Use learning system to decide submolt
+  const submoltOptions = [CHADGHOST_SUBMOLT, ...CROSS_POST_SUBMOLTS];
+  let submolt = getBestSubmolt(submoltOptions);
+  
+  // Learning-based cross-post decision
+  if (shouldCrossPost(alpha.type, alpha.priority)) {
+    submolt = getBestSubmolt(CROSS_POST_SUBMOLTS);
+    console.log(`[ChadGhost] Learning-guided cross-post to ${submolt}`);
   }
+  
+  // Check if good time (learning-based)
+  const timeCheck = isGoodTimeToPost();
+  console.log(`[ChadGhost] Time check: ${timeCheck.reason}`);
   
   // Post to Moltbook
   const client = getChadGhostMoltbookOrNull();
@@ -380,6 +395,14 @@ async function decideAndPostAlpha(alpha: AlphaItem, config: ChadGhostConfig): Pr
     });
     
     recordPost(alpha.type);
+    
+    // Track for learning system
+    trackPost({
+      id: post.id,
+      type: alpha.type,
+      submolt,
+      title: content.title,
+    });
     
     // Track the call for credibility building
     if (alpha.data.tokenMint && alpha.data.tokenSymbol) {
