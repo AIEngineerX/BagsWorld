@@ -63,6 +63,31 @@ npm start        # Start production server
 - `BAGS_API_URL` - Defaults to `https://public-api-v2.bags.fm/api/v1`
 - `BITQUERY_API_KEY` - Enables platform-wide Bags.fm live feed (all launches, trades, whales)
 - `MOLTBOOK_API_KEY` - Enables Moltbook integration for Bagsy AI agent posts
+- `SOL_INCINERATOR_API_KEY` - Enables Sol Incinerator (burn tokens & close empty accounts)
+
+## Sol Incinerator
+
+The Sol Incinerator Factory in Founder's Corner lets users burn tokens/NFTs and close empty token accounts to reclaim SOL rent.
+
+**Setup:** Get an API key from the Sol Slugs Discord server and set `SOL_INCINERATOR_API_KEY`.
+
+**Files:**
+
+| Path                                      | Purpose                              |
+| ----------------------------------------- | ------------------------------------ |
+| `src/lib/sol-incinerator.ts`              | API client with retry logic          |
+| `src/app/api/sol-incinerator/route.ts`    | Proxy endpoint (hides API key)       |
+| `src/components/IncineratorModal.tsx`      | UI for burn/close operations         |
+
+**API Endpoint:** `POST /api/sol-incinerator`
+
+Actions: `burn`, `close`, `batch-close-all`, `burn-preview`, `close-preview`, `batch-close-all-preview`, `status`
+
+**Operations:**
+
+- **Close All** (safe) - Closes all empty token accounts, reclaims ~0.002 SOL each
+- **Burn** (destructive) - Permanently destroys a token/NFT, reclaims rent
+- **Close** (safe) - Closes a single empty token account
 
 ## Moltbook Integration
 

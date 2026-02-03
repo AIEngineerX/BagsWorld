@@ -50,6 +50,7 @@ import { CasinoModal } from "@/components/CasinoModal";
 import { ArenaModal } from "@/components/ArenaModal";
 import { AgentHutModal } from "@/components/AgentHutModal";
 import { AgentBarModal } from "@/components/AgentBarModal";
+import { IncineratorModal } from "@/components/IncineratorModal";
 import { CasinoAdmin } from "@/components/CasinoAdmin";
 import { OracleTowerModal } from "@/components/OracleTowerModal";
 import { LauncherHub } from "@/components/LauncherHub";
@@ -117,6 +118,7 @@ export default function Home() {
   const [showArenaModal, setShowArenaModal] = useState(false);
   const [showAgentHutModal, setShowAgentHutModal] = useState(false);
   const [showAgentBarModal, setShowAgentBarModal] = useState(false);
+  const [showIncineratorModal, setShowIncineratorModal] = useState(false);
   const [mansionData, setMansionData] = useState<{
     name?: string;
     holderRank?: number;
@@ -184,6 +186,10 @@ export default function Home() {
       setShowAgentBarModal(true);
     };
 
+    const handleIncineratorClick = () => {
+      setShowIncineratorModal(true);
+    };
+
     // Handle AI action button events
     const handleLaunchClick = () => {
       setShowLaunchModal(true);
@@ -207,6 +213,7 @@ export default function Home() {
     window.addEventListener("bagsworld-arena-click", handleArenaClick as EventListener);
     window.addEventListener("bagsworld-agenthut-click", handleAgentHutClick as EventListener);
     window.addEventListener("bagsworld-moltbar-click", handleMoltBarClick as EventListener);
+    window.addEventListener("bagsworld-incinerator-click", handleIncineratorClick as EventListener);
     window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
     window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     return () => {
@@ -230,6 +237,10 @@ export default function Home() {
       window.removeEventListener("bagsworld-arena-click", handleArenaClick as EventListener);
       window.removeEventListener("bagsworld-agenthut-click", handleAgentHutClick as EventListener);
       window.removeEventListener("bagsworld-moltbar-click", handleMoltBarClick as EventListener);
+      window.removeEventListener(
+        "bagsworld-incinerator-click",
+        handleIncineratorClick as EventListener
+      );
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     };
@@ -687,6 +698,9 @@ export default function Home() {
 
       {/* Agent Bar Modal - Alpha chat for MoltBook agents */}
       {showAgentBarModal && <AgentBarModal onClose={() => setShowAgentBarModal(false)} />}
+
+      {/* Sol Incinerator Modal - Burn tokens & close empty accounts */}
+      {showIncineratorModal && <IncineratorModal onClose={() => setShowIncineratorModal(false)} />}
 
       {/* Sniper Tower - All Bags.fm tokens in Academy zone */}
       <SniperTowerWrapper />
