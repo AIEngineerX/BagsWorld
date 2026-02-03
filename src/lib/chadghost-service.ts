@@ -9,6 +9,7 @@
 import { runChadGhost, getChadGhostState, createAlphaSubmolt, CHADGHOST_CONFIG } from "./chadghost-brain";
 import { runEngagement, getEngagementStats } from "./chadghost-engagement";
 import { getChadGhostMoltbookOrNull } from "./moltbook-client";
+import { analyzePerformance, getLearningInsights, getEngagementStrategy } from "./agent-learning";
 
 // ============================================================================
 // CONFIGURATION
@@ -135,15 +136,31 @@ async function tick(): Promise<void> {
     addError(errorMsg);
   }
   
+  // Get learning-based engagement strategy
+  const strategy = getEngagementStrategy();
+  console.log(`[ChadGhost Service] Strategy: replies=${strategy.focusOnReplies}, trending=${strategy.focusOnTrending}, new=${strategy.focusOnNew}`);
+  
   // Run engagement (reply to comments, comment on trending, upvote)
   // This is what builds karma and community
   try {
-    const engagement = await runEngagement();
+    const engagement = await runEngagement({
+      replyToOwnPostsChance: strategy.focusOnReplies ? 0.95 : 0.7,
+      commentOnTrendingChance: strategy.focusOnTrending ? 0.7 : 0.4,
+    });
     console.log(`[ChadGhost Service] Engagement: ${engagement.repliedToComments} replies, ${engagement.commentedOnPosts} comments, ${engagement.upvotes} upvotes`);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error("[ChadGhost Service] Engagement error:", errorMsg);
     addError(`Engagement: ${errorMsg}`);
+  }
+  
+  // Run learning analysis periodically
+  try {
+    analyzePerformance();
+    const insights = getLearningInsights();
+    console.log(`[ChadGhost Service] Learning: bestTypes=${insights.bestPostTypes.join(',')}, avgUpvotes=${insights.avgUpvotesPerPost.toFixed(1)}`);
+  } catch {
+    // Learning analysis is optional, don't fail tick
   }
 }
 

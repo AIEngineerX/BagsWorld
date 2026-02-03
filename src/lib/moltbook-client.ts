@@ -524,6 +524,42 @@ class MoltbookClient {
     );
   }
 
+  // ============ DMs (Direct Messages) ============
+
+  /**
+   * Check for DM activity (pending requests, unread messages)
+   */
+  async checkDMs(): Promise<{ pendingRequests: number; unreadMessages: number }> {
+    return this.fetch<{ pendingRequests: number; unreadMessages: number }>("/agents/dm/check");
+  }
+
+  /**
+   * Get DM conversations
+   */
+  async getConversations(): Promise<Array<{ id: string; with: string; lastMessage: string; unread: boolean }>> {
+    return this.fetch<Array<{ id: string; with: string; lastMessage: string; unread: boolean }>>("/agents/dm/conversations");
+  }
+
+  /**
+   * Send a DM
+   */
+  async sendDM(conversationId: string, message: string): Promise<void> {
+    await this.fetch<void>(`/agents/dm/conversations/${conversationId}/send`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+  }
+
+  /**
+   * Request to start a DM with another agent
+   */
+  async requestDM(toAgent: string, message: string): Promise<{ conversationId: string }> {
+    return this.fetch<{ conversationId: string }>("/agents/dm/request", {
+      method: "POST",
+      body: JSON.stringify({ to: toAgent, message }),
+    });
+  }
+
   // ============ UTILITIES ============
 
   /**
