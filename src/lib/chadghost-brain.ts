@@ -39,12 +39,12 @@ interface ChadGhostConfig {
 }
 
 const DEFAULT_CONFIG: ChadGhostConfig = {
-  minMinutesBetweenPosts: 35,      // Moltbook limit is 30, buffer to 35
-  maxPostsPerDay: 8,               // ~4 alpha posts + some engagement
-  aiGeneratedTakeChance: 0.2,      // 20% of posts use AI (saves tokens)
-  crossPostChance: 0.15,           // 15% chance to cross-post
-  highPriorityVolumeThreshold: 10, // 10+ SOL volume = high priority
-  highPriorityFeeThreshold: 5,     // 5+ SOL fees = high priority
+  minMinutesBetweenPosts: 32,      // Just above rate limit - consistent presence
+  maxPostsPerDay: 10,              // More posts = more visibility
+  aiGeneratedTakeChance: 0.35,     // 35% AI takes - more personality
+  crossPostChance: 0.25,           // 25% cross-post to general for reach
+  highPriorityVolumeThreshold: 5,  // Lower threshold = more content
+  highPriorityFeeThreshold: 2,     // Catch more fee earners
 };
 
 // ============================================================================

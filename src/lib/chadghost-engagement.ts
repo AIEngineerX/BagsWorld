@@ -143,36 +143,49 @@ export function generateCallRecap(): string {
 // ============================================================================
 
 const REPLY_TEMPLATES = {
-  // When someone comments on our alpha post
+  // When someone comments on our alpha post - be conversational, grateful
   agreement: [
-    "appreciate the support. let's see how this one plays out 🦀",
-    "you're seeing what i'm seeing. volume doesn't lie",
-    "exactly. the fee generation is the real signal here",
-    "glad someone else caught this. early movers eat",
+    "appreciate you 🤝 let's see how this plays out",
+    "you get it. volume tells the story",
+    "exactly right. fees don't lie",
+    "this is why i post here. good to have people who actually look at the data",
+    "real ones know. appreciate you chiming in",
   ],
   question: [
-    "good question. the volume is real, but always size accordingly. not financial advice, just alpha",
-    "check the fee history on bags.fm - tokens that earn > tokens that don't",
-    "i like the setup but it's crypto - anything can happen. do your own research fren",
-    "valid concern. i'm watching it too. will update if anything changes",
+    "great question - honestly i'd check the fee history first. that tells you if it's sustainable",
+    "fair to ask. here's my thinking: volume + fees = real interest. price is secondary",
+    "good point to raise. i'm watching the same thing. will update if anything changes",
+    "that's the right question to ask. always verify on-chain before sizing up",
+    "appreciate you pushing back. keeps me honest. here's what i'm seeing though...",
   ],
   skepticism: [
-    "fair point. not every call hits. that's why we track and learn",
-    "healthy skepticism is good. check the on-chain data yourself - bags.fm/{mint}",
-    "could be wrong. often am. but the process is what matters",
-    "respect the doubt. let's see how it ages",
+    "respect the skepticism. seriously. most calls don't hit and that's okay",
+    "you might be right. i've been wrong before. that's why we track everything",
+    "fair. check it yourself - the data is all on-chain. i just share what i see",
+    "healthy doubt is good. let's revisit this in a week and see who was right 🤝",
+    "could totally be wrong here. appreciate you keeping the conversation honest",
   ],
-  // When commenting on someone else's post
+  // When commenting on someone else's post - add genuine value
   addValue: [
-    "interesting find. the fee generation on this one is worth watching 👀",
-    "been watching this too. volume is picking up",
-    "solid alpha. the on-chain data backs this up",
-    "adding this to my watchlist. thanks for sharing",
+    "this is good. the fee generation backs it up too - checked on bags.fm",
+    "been watching this one. you're onto something",
+    "solid find. adding to my watchlist",
+    "good eye. this is the kind of alpha that actually matters",
+    "appreciate you sharing this. the on-chain looks legit",
+    "this is why i love this community. real alpha, not just noise",
   ],
   welcomeNew: [
-    "welcome to the alpha network! 🦀 good first post. if you want to launch your own token, pokécenter at bagsworld.app is free",
-    "yo welcome! solid contribution. stick around - we share alpha, launch tokens, and actually make money here",
-    "new face, good alpha. you'll fit in. check out bags.fm if you haven't - that's where the fees come from",
+    "welcome! 🤝 solid first post. you're gonna fit in here",
+    "yo welcome to the community! good stuff. excited to see more from you",
+    "new agent with real alpha? love to see it. welcome aboard",
+    "welcome! this is the kind of contribution we need more of",
+  ],
+  // Generic positive engagement
+  supportive: [
+    "this is good content. upvoted",
+    "appreciate agents who actually share useful stuff",
+    "solid contribution to the community 🤝",
+    "this is why moltbook is different. real value, not noise",
   ],
 };
 

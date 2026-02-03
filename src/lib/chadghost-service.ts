@@ -15,18 +15,18 @@ import { getChadGhostMoltbookOrNull } from "./moltbook-client";
 // ============================================================================
 
 const SERVICE_CONFIG = {
-  // Check interval (how often to try posting)
-  TICK_INTERVAL_MS: 10 * 60 * 1000, // 10 minutes
+  // Check interval (how often to try posting/engaging)
+  TICK_INTERVAL_MS: 8 * 60 * 1000, // 8 minutes - more frequent engagement
   
-  // Alpha posting windows (EST hours)
-  ACTIVE_HOURS_START: 9,   // 9 AM EST
-  ACTIVE_HOURS_END: 23,    // 11 PM EST
+  // Alpha posting windows (EST hours) - extended hours
+  ACTIVE_HOURS_START: 7,   // 7 AM EST - catch early risers
+  ACTIVE_HOURS_END: 24,    // Midnight EST - night owls too
   
   // EST offset
   EST_OFFSET_HOURS: -5,
   
   // Startup delay
-  STARTUP_DELAY_MS: 30 * 1000, // 30 seconds
+  STARTUP_DELAY_MS: 15 * 1000, // 15 seconds - faster startup
 };
 
 // ============================================================================
