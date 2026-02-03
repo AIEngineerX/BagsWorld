@@ -13036,6 +13036,9 @@ export class BootScene extends Phaser.Scene {
 
     // Building 2: Social Hub (social links building)
     this.generateFoundersSocialHub(s);
+
+    // Building 3: Sol Incinerator Factory (burn tokens & close accounts)
+    this.generateFoundersIncinerator(s);
   }
 
   /**
@@ -14137,6 +14140,400 @@ export class BootScene extends Phaser.Scene {
     );
 
     g.generateTexture("founders_2", canvasW, canvasH);
+    g.destroy();
+  }
+
+  /**
+   * Founders Incinerator Factory - Industrial generator/power plant building
+   * Burns tokens & closes empty accounts. Dark metal with fire/furnace glow.
+   */
+  private generateFoundersIncinerator(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasW = Math.round(95 * s);
+    const canvasH = Math.round(150 * s);
+    const bWidth = Math.round(78 * s);
+    const bHeight = Math.round(100 * s);
+    const baseX = Math.round(8 * s);
+    const baseY = canvasH - bHeight;
+
+    // Industrial color palette
+    const metalBase = 0x374151; // Dark steel gray
+    const metalLight = lighten(metalBase, 0.18);
+    const metalDark = darken(metalBase, 0.25);
+    const roofColor = 0x1f2937; // Darker steel roof
+    const roofLight = lighten(roofColor, 0.18);
+    const fireOrange = 0xf97316; // Furnace orange
+    const fireRed = 0xdc2626; // Hot red
+    const fireYellow = 0xfde047; // Inner flame yellow
+    const sootBlack = 0x0a0a0f; // Soot/void
+
+    // Ground shadow
+    g.fillStyle(PALETTE.void);
+    g.fillRect(
+      baseX + Math.round(6 * s),
+      canvasH - Math.round(4 * s),
+      bWidth - Math.round(4 * s),
+      Math.round(4 * s)
+    );
+
+    // Main body - industrial steel walls
+    g.fillStyle(metalBase);
+    g.fillRect(baseX, baseY, bWidth, bHeight);
+
+    // 3D depth: Light left edge
+    g.fillStyle(metalLight);
+    g.fillRect(baseX, baseY, Math.round(5 * s), bHeight);
+
+    // 3D depth: Dark right edge
+    g.fillStyle(metalDark);
+    g.fillRect(baseX + bWidth - Math.round(5 * s), baseY, Math.round(5 * s), bHeight);
+
+    // Metal panel / rivet texture pattern
+    g.fillStyle(darken(metalBase, 0.08));
+    for (let py = 0; py < bHeight; py += Math.round(10 * s)) {
+      const offset = (py / Math.round(10 * s)) % 2 === 0 ? 0 : Math.round(7 * s);
+      for (
+        let px = Math.round(6 * s) + offset;
+        px < bWidth - Math.round(6 * s);
+        px += Math.round(14 * s)
+      ) {
+        g.fillRect(baseX + px, baseY + py, Math.round(12 * s), Math.round(8 * s));
+      }
+    }
+
+    // Horizontal riveted seam lines
+    g.fillStyle(metalDark);
+    for (let py = Math.round(20 * s); py < bHeight; py += Math.round(25 * s)) {
+      g.fillRect(
+        baseX + Math.round(5 * s),
+        baseY + py,
+        bWidth - Math.round(10 * s),
+        Math.round(1 * s)
+      );
+      // Rivet dots along seams
+      g.fillStyle(lighten(metalBase, 0.1));
+      for (
+        let rx = Math.round(10 * s);
+        rx < bWidth - Math.round(10 * s);
+        rx += Math.round(12 * s)
+      ) {
+        g.fillRect(baseX + rx, baseY + py - Math.round(1 * s), Math.round(3 * s), Math.round(3 * s));
+      }
+      g.fillStyle(metalDark);
+    }
+
+    // === FLAT INDUSTRIAL ROOF (stepped layers) ===
+    const roofW1 = bWidth + Math.round(8 * s);
+    const roofX1 = baseX - Math.round(4 * s);
+
+    // Roof layer 1 (main eave - wider than building)
+    g.fillStyle(roofColor);
+    g.fillRect(roofX1, baseY - Math.round(8 * s), roofW1, Math.round(8 * s));
+    g.fillStyle(roofLight);
+    g.fillRect(roofX1, baseY - Math.round(8 * s), roofW1, Math.round(2 * s));
+
+    // Roof layer 2 (narrower upper section)
+    const roofW2 = roofW1 - Math.round(12 * s);
+    const roofX2 = roofX1 + Math.round(6 * s);
+    g.fillStyle(roofColor);
+    g.fillRect(roofX2, baseY - Math.round(14 * s), roofW2, Math.round(6 * s));
+    g.fillStyle(roofLight);
+    g.fillRect(roofX2, baseY - Math.round(14 * s), roofW2, Math.round(2 * s));
+
+    // === LEFT SMOKESTACK (tall) ===
+    const stack1X = baseX + Math.round(8 * s);
+    const stack1W = Math.round(12 * s);
+    const stack1H = Math.round(45 * s);
+    const stack1Y = baseY - Math.round(14 * s) - stack1H;
+
+    g.fillStyle(PALETTE.gray);
+    g.fillRect(stack1X, stack1Y, stack1W, stack1H);
+    // Left highlight
+    g.fillStyle(lighten(PALETTE.gray, 0.12));
+    g.fillRect(stack1X, stack1Y, Math.round(3 * s), stack1H);
+    // Right shadow
+    g.fillStyle(darken(PALETTE.gray, 0.2));
+    g.fillRect(stack1X + stack1W - Math.round(3 * s), stack1Y, Math.round(3 * s), stack1H);
+    // Stack cap
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(
+      stack1X - Math.round(2 * s),
+      stack1Y - Math.round(4 * s),
+      stack1W + Math.round(4 * s),
+      Math.round(5 * s)
+    );
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(
+      stack1X - Math.round(2 * s),
+      stack1Y - Math.round(4 * s),
+      stack1W + Math.round(4 * s),
+      Math.round(1 * s)
+    );
+    // Smoke puffs (solid pixels at top of stack)
+    g.fillStyle(PALETTE.lightGray);
+    g.fillRect(
+      stack1X + Math.round(2 * s),
+      stack1Y - Math.round(10 * s),
+      Math.round(8 * s),
+      Math.round(5 * s)
+    );
+    g.fillStyle(PALETTE.silver);
+    g.fillRect(
+      stack1X + Math.round(4 * s),
+      stack1Y - Math.round(16 * s),
+      Math.round(6 * s),
+      Math.round(5 * s)
+    );
+    g.fillRect(
+      stack1X + Math.round(1 * s),
+      stack1Y - Math.round(14 * s),
+      Math.round(4 * s),
+      Math.round(3 * s)
+    );
+
+    // === RIGHT SMOKESTACK (shorter) ===
+    const stack2X = baseX + bWidth - Math.round(22 * s);
+    const stack2W = Math.round(14 * s);
+    const stack2H = Math.round(35 * s);
+    const stack2Y = baseY - Math.round(14 * s) - stack2H;
+
+    g.fillStyle(PALETTE.gray);
+    g.fillRect(stack2X, stack2Y, stack2W, stack2H);
+    g.fillStyle(lighten(PALETTE.gray, 0.12));
+    g.fillRect(stack2X, stack2Y, Math.round(3 * s), stack2H);
+    g.fillStyle(darken(PALETTE.gray, 0.2));
+    g.fillRect(stack2X + stack2W - Math.round(3 * s), stack2Y, Math.round(3 * s), stack2H);
+    // Stack cap
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(
+      stack2X - Math.round(2 * s),
+      stack2Y - Math.round(4 * s),
+      stack2W + Math.round(4 * s),
+      Math.round(5 * s)
+    );
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(
+      stack2X - Math.round(2 * s),
+      stack2Y - Math.round(4 * s),
+      stack2W + Math.round(4 * s),
+      Math.round(1 * s)
+    );
+    // Smoke puffs
+    g.fillStyle(PALETTE.lightGray);
+    g.fillRect(
+      stack2X + Math.round(3 * s),
+      stack2Y - Math.round(9 * s),
+      Math.round(9 * s),
+      Math.round(4 * s)
+    );
+    g.fillStyle(PALETTE.silver);
+    g.fillRect(
+      stack2X + Math.round(5 * s),
+      stack2Y - Math.round(14 * s),
+      Math.round(7 * s),
+      Math.round(4 * s)
+    );
+
+    // === FURNACE OPENING (center-bottom, large with fire glow) ===
+    const furnaceW = Math.round(28 * s);
+    const furnaceH = Math.round(32 * s);
+    const furnaceX = baseX + bWidth / 2 - furnaceW / 2;
+    const furnaceY = canvasH - furnaceH;
+
+    // Furnace frame (dark steel)
+    g.fillStyle(sootBlack);
+    g.fillRect(
+      furnaceX - Math.round(4 * s),
+      furnaceY - Math.round(5 * s),
+      furnaceW + Math.round(8 * s),
+      furnaceH + Math.round(5 * s)
+    );
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(
+      furnaceX - Math.round(4 * s),
+      furnaceY - Math.round(5 * s),
+      furnaceW + Math.round(8 * s),
+      Math.round(3 * s)
+    );
+
+    // Fire inside furnace (layered colors: red -> orange -> yellow center)
+    g.fillStyle(fireRed);
+    g.fillRect(furnaceX, furnaceY, furnaceW, furnaceH);
+
+    g.fillStyle(fireOrange);
+    g.fillRect(
+      furnaceX + Math.round(3 * s),
+      furnaceY + Math.round(4 * s),
+      furnaceW - Math.round(6 * s),
+      furnaceH - Math.round(4 * s)
+    );
+
+    g.fillStyle(fireYellow);
+    g.fillRect(
+      furnaceX + Math.round(7 * s),
+      furnaceY + Math.round(8 * s),
+      furnaceW - Math.round(14 * s),
+      furnaceH - Math.round(10 * s)
+    );
+
+    // Fire flicker detail pixels
+    g.fillStyle(fireRed);
+    g.fillRect(
+      furnaceX + Math.round(5 * s),
+      furnaceY + Math.round(2 * s),
+      Math.round(4 * s),
+      Math.round(6 * s)
+    );
+    g.fillRect(
+      furnaceX + Math.round(18 * s),
+      furnaceY + Math.round(5 * s),
+      Math.round(5 * s),
+      Math.round(8 * s)
+    );
+
+    // Furnace grate bars (horizontal lines)
+    g.fillStyle(sootBlack);
+    for (let gy = Math.round(6 * s); gy < furnaceH; gy += Math.round(8 * s)) {
+      g.fillRect(furnaceX, furnaceY + gy, furnaceW, Math.round(2 * s));
+    }
+
+    // === FIRE GLOW above furnace (warm light on facade) ===
+    g.fillStyle(darken(fireOrange, 0.4));
+    g.fillRect(
+      furnaceX - Math.round(2 * s),
+      furnaceY - Math.round(15 * s),
+      furnaceW + Math.round(4 * s),
+      Math.round(10 * s)
+    );
+
+    // === INDUSTRIAL WINDOWS (small, reinforced) ===
+    const windowColor = fireOrange;
+    for (let wx = 0; wx < 2; wx++) {
+      const winX = baseX + Math.round(12 * s) + wx * Math.round(45 * s);
+      const winY = baseY + Math.round(12 * s);
+      const winW = Math.round(14 * s);
+      const winH = Math.round(10 * s);
+
+      // Window frame (dark steel)
+      g.fillStyle(sootBlack);
+      g.fillRect(
+        winX - Math.round(2 * s),
+        winY - Math.round(2 * s),
+        winW + Math.round(4 * s),
+        winH + Math.round(4 * s)
+      );
+
+      // Window glass (orange glow from furnace)
+      g.fillStyle(windowColor);
+      g.fillRect(winX, winY, winW, winH);
+
+      // Inner glow
+      g.fillStyle(lighten(windowColor, 0.2));
+      g.fillRect(
+        winX + Math.round(2 * s),
+        winY + Math.round(2 * s),
+        winW - Math.round(4 * s),
+        winH - Math.round(4 * s)
+      );
+
+      // Highlight corner
+      g.fillStyle(PALETTE.white);
+      g.fillRect(
+        winX + Math.round(1 * s),
+        winY + Math.round(1 * s),
+        Math.round(3 * s),
+        Math.round(2 * s)
+      );
+
+      // Cross bars (reinforced industrial)
+      g.fillStyle(metalDark);
+      g.fillRect(winX + winW / 2 - Math.round(1 * s), winY, Math.round(2 * s), winH);
+      g.fillRect(winX, winY + winH / 2 - Math.round(1 * s), winW, Math.round(2 * s));
+    }
+
+    // === CONVEYOR BELT (bottom-left, mechanical detail) ===
+    const convY = canvasH - Math.round(10 * s);
+    const convX = baseX + Math.round(2 * s);
+    const convW = Math.round(20 * s);
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(convX, convY, convW, Math.round(6 * s));
+    // Belt rollers
+    g.fillStyle(metalLight);
+    for (let rx = 0; rx < convW; rx += Math.round(5 * s)) {
+      g.fillRect(convX + rx, convY + Math.round(1 * s), Math.round(3 * s), Math.round(4 * s));
+    }
+
+    // === PIPES on right side ===
+    const pipeX = baseX + bWidth - Math.round(8 * s);
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(pipeX, baseY + Math.round(30 * s), Math.round(6 * s), Math.round(40 * s));
+    g.fillStyle(lighten(PALETTE.midGray, 0.15));
+    g.fillRect(pipeX, baseY + Math.round(30 * s), Math.round(2 * s), Math.round(40 * s));
+    // Pipe joints
+    g.fillStyle(PALETTE.gray);
+    g.fillRect(
+      pipeX - Math.round(1 * s),
+      baseY + Math.round(38 * s),
+      Math.round(8 * s),
+      Math.round(4 * s)
+    );
+    g.fillRect(
+      pipeX - Math.round(1 * s),
+      baseY + Math.round(55 * s),
+      Math.round(8 * s),
+      Math.round(4 * s)
+    );
+
+    // === WARNING SIGN (hazard stripes above furnace) ===
+    const signX = baseX + bWidth / 2 - Math.round(15 * s);
+    const signY = furnaceY - Math.round(22 * s);
+    const signW = Math.round(30 * s);
+    const signH = Math.round(10 * s);
+    // Sign background
+    g.fillStyle(PALETTE.amber);
+    g.fillRect(signX, signY, signW, signH);
+    // Hazard stripes (diagonal approximation with offset rects)
+    g.fillStyle(sootBlack);
+    for (let sx = 0; sx < signW; sx += Math.round(8 * s)) {
+      g.fillRect(signX + sx, signY, Math.round(4 * s), signH);
+    }
+    // Sign border
+    g.fillStyle(metalDark);
+    g.fillRect(signX, signY, signW, Math.round(1 * s));
+    g.fillRect(signX, signY + signH - Math.round(1 * s), signW, Math.round(1 * s));
+
+    // === GEAR/COG decoration (top-left corner of building) ===
+    const cogX = baseX + Math.round(24 * s);
+    const cogY = baseY + Math.round(35 * s);
+    // Gear body (square with notches to look mechanical)
+    g.fillStyle(PALETTE.midGray);
+    g.fillRect(cogX, cogY, Math.round(12 * s), Math.round(12 * s));
+    // Gear teeth (small rects extending from sides)
+    g.fillStyle(PALETTE.gray);
+    g.fillRect(cogX - Math.round(2 * s), cogY + Math.round(3 * s), Math.round(2 * s), Math.round(6 * s));
+    g.fillRect(
+      cogX + Math.round(12 * s),
+      cogY + Math.round(3 * s),
+      Math.round(2 * s),
+      Math.round(6 * s)
+    );
+    g.fillRect(cogX + Math.round(3 * s), cogY - Math.round(2 * s), Math.round(6 * s), Math.round(2 * s));
+    g.fillRect(
+      cogX + Math.round(3 * s),
+      cogY + Math.round(12 * s),
+      Math.round(6 * s),
+      Math.round(2 * s)
+    );
+    // Gear center
+    g.fillStyle(PALETTE.darkGray);
+    g.fillRect(
+      cogX + Math.round(4 * s),
+      cogY + Math.round(4 * s),
+      Math.round(4 * s),
+      Math.round(4 * s)
+    );
+
+    g.generateTexture("founders_3", canvasW, canvasH);
     g.destroy();
   }
 
