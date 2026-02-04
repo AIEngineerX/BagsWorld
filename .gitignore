@@ -50,6 +50,9 @@ node_modules
 # Trigger redeploy Mon, Jan 19, 2026  9:09:54 AM
 # Helius RPC configured Mon, Jan 19, 2026  9:24:37 AM
 
+# Claude Code skills (private)
+.claude/skills/
+
 # Local-only agent dashboard
 /src/app/agents/
 /src/components/MoltbookDashboard.tsx
