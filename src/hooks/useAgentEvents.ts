@@ -138,9 +138,15 @@ export function useAgentEvents(options?: {
     }
   }, []);
 
-  // Mark all as read
+  // Mark all as read — uses functional state access to avoid stale closure
   const markAllAsRead = useCallback(async () => {
-    const unreadIds = state.announcements.filter((a) => !a.read).map((a) => a.id);
+    // Read current unread IDs from state via setState to get the latest
+    let unreadIds: string[] = [];
+    setState((prev) => {
+      unreadIds = prev.announcements.filter((a) => !a.read).map((a) => a.id);
+      return prev; // Don't change state yet
+    });
+
     if (unreadIds.length > 0) {
       try {
         await fetch("/api/agent-coordinator", {
@@ -154,13 +160,14 @@ export function useAgentEvents(options?: {
           announcements: prev.announcements.map((a) =>
             unreadIds.includes(a.id) ? { ...a, read: true } : a
           ),
-          unreadCount: 0,
+          unreadCount: prev.announcements.filter((a) => !a.read && !unreadIds.includes(a.id))
+            .length,
         }));
       } catch (error) {
         console.error("[useAgentEvents] Mark all read error:", error);
       }
     }
-  }, [state.announcements]);
+  }, []);
 
   // Clear all announcements
   const clearAnnouncements = useCallback(async () => {

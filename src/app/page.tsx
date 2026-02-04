@@ -56,7 +56,7 @@ import { LauncherHub } from "@/components/LauncherHub";
 import { TradingTerminalModal } from "@/components/TradingTerminalModal";
 import { MansionModal } from "@/components/MansionModal";
 import { MiniMap } from "@/components/MiniMap";
-import { SniperTower } from "@/components/SniperTower";
+
 import { useGameStore } from "@/lib/store";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import {
@@ -74,12 +74,6 @@ import { AgentActivityIndicator } from "@/components/AgentActivityIndicator";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 const CASINO_ADMIN_WALLET = "7BAHgz9Q2ubiTaVo9sCy5AdDvNMiJaK8FebGHTM3PEwm";
-
-// Sniper Tower wrapper that connects to the game store
-function SniperTowerWrapper() {
-  const { isSniperTowerOpen, closeSniperTower } = useGameStore();
-  return <SniperTower isOpen={isSniperTowerOpen} onClose={closeSniperTower} />;
-}
 
 interface BuildingClickData {
   mint: string;
@@ -687,9 +681,6 @@ export default function Home() {
 
       {/* Agent Bar Modal - Alpha chat for MoltBook agents */}
       {showAgentBarModal && <AgentBarModal onClose={() => setShowAgentBarModal(false)} />}
-
-      {/* Sniper Tower - All Bags.fm tokens in Academy zone */}
-      <SniperTowerWrapper />
     </main>
   );
 }

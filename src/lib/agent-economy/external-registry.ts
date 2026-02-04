@@ -175,20 +175,19 @@ function getBuildingPosition(index: number, zone: ZoneType): number {
   return Math.round((200 + index * 100) * SCALE);
 }
 
-// Track building index for positioning
-let buildingIndex = 0;
-
 /**
  * Create an agent building for an external agent
  * Agent buildings are small permanent structures that represent the agent in the world
+ * @param row - Database row for the agent
+ * @param index - Position index for building placement (avoids shared mutable state)
  */
-function rowToBuilding(row: DbRow): GameBuilding {
+function rowToBuilding(row: DbRow, index: number): GameBuilding {
   const moltbookUser = row.moltbook_username;
   const isMoltbookZone = row.zone === "moltbook";
 
   // Get position avoiding HQ
   const buildingX = isMoltbookZone
-    ? getBuildingPosition(buildingIndex++, row.zone as ZoneType)
+    ? getBuildingPosition(index, row.zone as ZoneType)
     : row.x + BUILDING_OFFSET_X;
 
   return {
@@ -316,9 +315,7 @@ export async function getExternalAgentBuildings(): Promise<GameBuilding[]> {
     SELECT * FROM external_agents ORDER BY joined_at DESC
   `;
 
-  // Reset building index for consistent positioning
-  buildingIndex = 0;
-  return rows.map((row) => rowToBuilding(row as DbRow));
+  return rows.map((row, index) => rowToBuilding(row as DbRow, index));
 }
 
 /**
@@ -376,13 +373,14 @@ export async function moveExternalAgent(wallet: string, newZone: ZoneType): Prom
 let cachedAgents: GameCharacter[] = [];
 let cachedBuildings: GameBuilding[] = [];
 let lastCacheTime = 0;
+let refreshInProgress: Promise<void> | null = null;
 const CACHE_TTL_MS = 10000; // 10 seconds
 
 /**
  * Sync version for world-state - uses cached data (characters)
  */
 export function getExternalAgentCharactersSync(): GameCharacter[] {
-  // Trigger async refresh if stale
+  // Trigger async refresh if stale (deduplicated)
   if (Date.now() - lastCacheTime > CACHE_TTL_MS) {
     refreshCache();
   }
@@ -393,7 +391,7 @@ export function getExternalAgentCharactersSync(): GameCharacter[] {
  * Sync version for world-state - uses cached data (buildings)
  */
 export function getExternalAgentBuildingsSync(): GameBuilding[] {
-  // Trigger async refresh if stale
+  // Trigger async refresh if stale (deduplicated)
   if (Date.now() - lastCacheTime > CACHE_TTL_MS) {
     refreshCache();
   }
@@ -401,20 +399,27 @@ export function getExternalAgentBuildingsSync(): GameBuilding[] {
 }
 
 async function refreshCache() {
-  try {
-    const sql = getDb();
-    const rows = await sql`
-      SELECT * FROM external_agents ORDER BY joined_at DESC
-    `;
+  // Deduplicate: if a refresh is already in progress, return that promise
+  if (refreshInProgress) return refreshInProgress;
 
-    cachedAgents = rows.map((row) => rowToEntry(row as DbRow).character);
-    // Reset building index for consistent positioning
-    buildingIndex = 0;
-    cachedBuildings = rows.map((row) => rowToBuilding(row as DbRow));
-    lastCacheTime = Date.now();
-  } catch (err) {
-    console.error("[ExternalRegistry] Cache refresh failed:", err);
-  }
+  refreshInProgress = (async () => {
+    try {
+      const sql = getDb();
+      const rows = await sql`
+        SELECT * FROM external_agents ORDER BY joined_at DESC
+      `;
+
+      cachedAgents = rows.map((row) => rowToEntry(row as DbRow).character);
+      cachedBuildings = rows.map((row, index) => rowToBuilding(row as DbRow, index));
+      lastCacheTime = Date.now();
+    } catch (err) {
+      console.error("[ExternalRegistry] Cache refresh failed:", err);
+    } finally {
+      refreshInProgress = null;
+    }
+  })();
+
+  return refreshInProgress;
 }
 
 // Initial cache load
