@@ -34,7 +34,7 @@ import {
   getExternalAgentBuildingsSync,
 } from "@/lib/agent-economy/external-registry";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
-import "@/lib/chadghost-startup"; // Auto-start ChadGhost alpha service
+// ChadGhost runs externally via OpenClaw cron jobs — removed auto-start import
 
 // Bags SDK types
 interface TokenLaunchCreator {
