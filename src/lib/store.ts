@@ -8,7 +8,6 @@ export const useGameStore = create<GameStore>((set) => ({
   selectedCharacter: null,
   selectedBuilding: null,
   currentZone: "main_city",
-  isSniperTowerOpen: false,
 
   setWorldState: (state: WorldState) => set({ worldState: state, isLoading: false, error: null }),
 
@@ -23,8 +22,4 @@ export const useGameStore = create<GameStore>((set) => ({
     set({ selectedBuilding: building, selectedCharacter: null }),
 
   setZone: (zone: ZoneType) => set({ currentZone: zone }),
-
-  openSniperTower: () => set({ isSniperTowerOpen: true }),
-
-  closeSniperTower: () => set({ isSniperTowerOpen: false }),
 }));

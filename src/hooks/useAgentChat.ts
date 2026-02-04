@@ -1,7 +1,7 @@
 // Unified Agent Chat Hook
 // Provides consistent chat interface for all BagsWorld AI agents
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 export interface ChatMessage {
   id: string;
@@ -26,6 +26,12 @@ export function useAgentChat(options: UseAgentChatOptions) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentAgent, setCurrentAgent] = useState(initialAgentId);
   const sessionIdRef = useRef(crypto.randomUUID());
+  const messagesRef = useRef<ChatMessage[]>([]);
+
+  // Keep ref in sync with state so sendMessage always has fresh messages
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const addMessage = useCallback(
     (message: ChatMessage) => {
@@ -69,14 +75,26 @@ export function useAgentChat(options: UseAgentChatOptions) {
       if (!userMessage.trim() || isLoading) return;
 
       const now = Date.now();
-      addMessage({ id: `user-${now}`, role: "user", content: userMessage, timestamp: now });
+      const userMsg: ChatMessage = {
+        id: `user-${now}`,
+        role: "user",
+        content: userMessage,
+        timestamp: now,
+      };
+      addMessage(userMsg);
       setIsLoading(true);
 
       try {
-        const conversationHistory = messages
-          .filter((m) => m.role === "user" || m.role === "assistant")
-          .slice(-10)
-          .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+        // Build conversation history from current state + the new user message
+        // to avoid stale closure over `messages`
+        const currentMessages = messagesRef.current;
+        const conversationHistory = [
+          ...currentMessages
+            .filter((m) => m.role === "user" || m.role === "assistant")
+            .slice(-9)
+            .map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+          { role: "user" as const, content: userMessage },
+        ];
 
         const response = await fetch("/api/agents", {
           method: "POST",
@@ -120,7 +138,7 @@ export function useAgentChat(options: UseAgentChatOptions) {
         setIsLoading(false);
       }
     },
-    [currentAgent, messages, isLoading, addMessage, onSuggestedAgent]
+    [currentAgent, isLoading, addMessage, onSuggestedAgent]
   );
 
   return {

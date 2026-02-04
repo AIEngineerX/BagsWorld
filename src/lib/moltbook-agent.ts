@@ -141,7 +141,6 @@ const BAGSWORLD_FEATURES = [
   { name: "Casino", description: "win prizes and play games", zone: "BagsCity" },
   { name: "Trading Terminal", description: "trade tokens with live charts", zone: "BagsCity" },
   { name: "Oracle Tower", description: "predict prices and win rewards", zone: "BagsCity" },
-  { name: "Sniper Tower", description: "catch new launches early", zone: "BagsCity" },
   { name: "PokeCenter", description: "heal up and learn about the ecosystem", zone: "Park" },
   {
     name: "Professor Oak's Lab",
@@ -218,7 +217,7 @@ WHAT IS BAGSWORLD (bagsworld.app):
 - A living pixel art world that reacts to real Bags.fm on-chain activity
 - World health, weather, and buildings react to live trading data
 - 16+ AI characters live here (Finn, Ghost, Neo, Ash, Professor Oak, etc.)
-- Features: Casino, Trading Terminal, Oracle Tower, Sniper Tower, PokeCenter, MoltBook Arena
+- Features: Casino, Trading Terminal, Oracle Tower, PokeCenter, MoltBook Arena
 - Buildings grow based on market cap, weather changes with ecosystem health
 - URL: bagsworld.app
 

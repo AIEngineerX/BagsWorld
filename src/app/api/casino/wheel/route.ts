@@ -1,6 +1,22 @@
 // Casino Wheel of Fortune API
 import { NextRequest, NextResponse } from "next/server";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { getCasinoPot, recordWheelSpin, isNeonConfigured, getLastWheelSpin } from "@/lib/neon";
+import {
+  getTokenBalance,
+  BAGSWORLD_TOKEN_MINT,
+  MIN_TOKEN_BALANCE,
+  BAGSWORLD_TOKEN_SYMBOL,
+  BAGSWORLD_BUY_URL,
+} from "@/lib/token-balance";
+
+function getRpcUrl(): string {
+  return (
+    process.env.SOLANA_RPC_URL ||
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
+    "https://api.mainnet-beta.solana.com"
+  );
+}
 
 // Wheel segments with probabilities
 const WHEEL_SEGMENTS = [
@@ -88,6 +104,31 @@ export async function POST(request: NextRequest) {
 
     if (!wallet) {
       return NextResponse.json({ error: "Wallet address required" }, { status: 400 });
+    }
+
+    // Token gate: verify wallet holds minimum $BagsWorld tokens
+    try {
+      const connection = new Connection(getRpcUrl(), "confirmed");
+      const walletPubkey = new PublicKey(wallet);
+      const balance = await getTokenBalance(connection, walletPubkey, BAGSWORLD_TOKEN_MINT);
+
+      if (balance < MIN_TOKEN_BALANCE) {
+        return NextResponse.json(
+          {
+            error: `Hold ${MIN_TOKEN_BALANCE.toLocaleString()} ${BAGSWORLD_TOKEN_SYMBOL} to spin the wheel`,
+            balance,
+            required: MIN_TOKEN_BALANCE,
+            buyUrl: BAGSWORLD_BUY_URL,
+          },
+          { status: 403 }
+        );
+      }
+    } catch (error) {
+      console.error("Token gate check failed:", error);
+      return NextResponse.json(
+        { error: "Failed to verify token balance. Please try again." },
+        { status: 500 }
+      );
     }
 
     const dbConfigured = isNeonConfigured();
