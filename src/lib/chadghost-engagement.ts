@@ -1,7 +1,7 @@
 /**
  * ChadGhost Engagement Layer
  * The part that makes ChadGhost a real KOL, not just a broadcast bot
- * 
+ *
  * Handles:
  * - Replying to comments on own posts
  * - Commenting on trending posts (add value, not spam)
@@ -10,7 +10,11 @@
  * - Tracking call accuracy
  */
 
-import { getChadGhostMoltbookOrNull, type MoltbookPost, type MoltbookComment } from "./moltbook-client";
+import {
+  getChadGhostMoltbookOrNull,
+  type MoltbookPost,
+  type MoltbookComment,
+} from "./moltbook-client";
 
 // ============================================================================
 // CONFIGURATION
@@ -22,17 +26,17 @@ const TARGET_SUBMOLTS = ["bagsworld-alpha", "crypto", "general"];
 interface EngagementConfig {
   maxCommentsPerHour: number;
   maxUpvotesPerHour: number;
-  replyToOwnPostsChance: number;   // How often to check own posts for comments
+  replyToOwnPostsChance: number; // How often to check own posts for comments
   commentOnTrendingChance: number; // How often to comment on hot posts
-  minKarmaToEngage: number;        // Only engage with posts that have some traction
+  minKarmaToEngage: number; // Only engage with posts that have some traction
 }
 
 const DEFAULT_ENGAGEMENT_CONFIG: EngagementConfig = {
-  maxCommentsPerHour: 8,           // Moltbook allows ~50/hour, we use way less
+  maxCommentsPerHour: 8, // Moltbook allows ~50/hour, we use way less
   maxUpvotesPerHour: 20,
-  replyToOwnPostsChance: 0.7,      // 70% chance to check own posts each tick
-  commentOnTrendingChance: 0.3,    // 30% chance to comment on trending
-  minKarmaToEngage: 3,             // At least 3 upvotes to engage
+  replyToOwnPostsChance: 0.7, // 70% chance to check own posts each tick
+  commentOnTrendingChance: 0.3, // 30% chance to comment on trending
+  minKarmaToEngage: 3, // At least 3 upvotes to engage
 };
 
 // ============================================================================
@@ -43,8 +47,8 @@ interface EngagementState {
   commentsThisHour: number;
   upvotesThisHour: number;
   hourStart: number;
-  repliedToComments: Set<string>;  // Comment IDs we've replied to
-  commentedOnPosts: Set<string>;   // Post IDs we've commented on today
+  repliedToComments: Set<string>; // Comment IDs we've replied to
+  commentedOnPosts: Set<string>; // Post IDs we've commented on today
   lastEngagement: number;
 }
 
@@ -103,12 +107,12 @@ export function trackCall(call: Omit<TrackedCall, "timestamp">): void {
     ...call,
     timestamp: Date.now(),
   });
-  
+
   // Keep last 50 calls
   if (trackedCalls.length > 50) {
     trackedCalls.shift();
   }
-  
+
   console.log(`[ChadGhost] Tracking call: $${call.tokenSymbol}`);
 }
 
@@ -133,7 +137,7 @@ export function generateCallRecap(): string {
   if (stats.total < 5) {
     return "still building track record... drop some alpha and let's see how it plays out 📊";
   }
-  
+
   const hitPercent = Math.round(stats.hitRate * 100);
   return `📊 track record update: ${stats.hits}/${stats.total} calls hit (${hitPercent}%)\n\nstill learning, still calling. alpha is alpha whether it hits or not - at least we're in the arena 🦀`;
 }
@@ -195,10 +199,21 @@ function pickRandom<T>(arr: T[]): T {
 
 function classifyComment(content: string): "agreement" | "question" | "skepticism" {
   const lower = content.toLowerCase();
-  if (lower.includes("?") || lower.includes("how") || lower.includes("why") || lower.includes("what")) {
+  if (
+    lower.includes("?") ||
+    lower.includes("how") ||
+    lower.includes("why") ||
+    lower.includes("what")
+  ) {
     return "question";
   }
-  if (lower.includes("doubt") || lower.includes("careful") || lower.includes("risk") || lower.includes("scam") || lower.includes("rug")) {
+  if (
+    lower.includes("doubt") ||
+    lower.includes("careful") ||
+    lower.includes("risk") ||
+    lower.includes("scam") ||
+    lower.includes("rug")
+  ) {
     return "skepticism";
   }
   return "agreement";
@@ -228,62 +243,67 @@ export function generateWelcome(agentName: string): string {
 async function engageWithOwnPosts(config: EngagementConfig): Promise<number> {
   const client = getChadGhostMoltbookOrNull();
   if (!client) return 0;
-  
+
   resetHourlyCountsIfNeeded();
   if (state.commentsThisHour >= config.maxCommentsPerHour) {
     console.log("[ChadGhost Engage] Comment limit reached for this hour");
     return 0;
   }
-  
+
   let repliesPosted = 0;
-  
+
   try {
     // Get recent posts from our target submolts
-    for (const submolt of TARGET_SUBMOLTS.slice(0, 2)) { // Check first 2 submolts
+    for (const submolt of TARGET_SUBMOLTS.slice(0, 2)) {
+      // Check first 2 submolts
       const posts = await client.getSubmoltPosts(submolt, "new", 10);
-      
+
       // Find our posts
-      const myPosts = posts.filter(p => p.author === CHADGHOST_USERNAME);
-      
-      for (const post of myPosts.slice(0, 3)) { // Check last 3 of our posts
+      const myPosts = posts.filter((p) => p.author === CHADGHOST_USERNAME);
+
+      for (const post of myPosts.slice(0, 3)) {
+        // Check last 3 of our posts
         if (post.commentCount === 0) continue;
-        
+
         // Get comments
         const comments = await client.getComments(post.id, "new");
-        
-        for (const comment of comments.slice(0, 5)) { // Check first 5 comments
+
+        for (const comment of comments.slice(0, 5)) {
+          // Check first 5 comments
           // Skip if already replied
           if (state.repliedToComments.has(comment.id)) continue;
           // Skip our own comments
           if (comment.author === CHADGHOST_USERNAME) continue;
           // Skip if we've hit limit
           if (state.commentsThisHour >= config.maxCommentsPerHour) break;
-          
+
           // Check rate limit
           const canComment = client.canComment();
           if (!canComment.allowed) {
             console.log("[ChadGhost Engage] Moltbook comment rate limited");
             break;
           }
-          
+
           // Generate and post reply
           const reply = generateReply(comment, true);
-          
+
           try {
             await client.createComment({
               postId: post.id,
               content: reply,
               parentId: comment.id,
             });
-            
+
             state.repliedToComments.add(comment.id);
             state.commentsThisHour++;
             repliesPosted++;
-            
-            console.log(`[ChadGhost Engage] Replied to @${comment.author}: "${reply.slice(0, 50)}..."`);
-            
+
+            console.log(
+              `[ChadGhost Engage] Replied to @${comment.author}: "${reply.slice(0, 50)}..."`
+            );
+
             // Small delay between comments
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise((r) => setTimeout(r, 2000));
           } catch (err) {
             console.error("[ChadGhost Engage] Failed to reply:", err);
           }
@@ -293,7 +313,7 @@ async function engageWithOwnPosts(config: EngagementConfig): Promise<number> {
   } catch (error) {
     console.error("[ChadGhost Engage] Error engaging with own posts:", error);
   }
-  
+
   return repliesPosted;
 }
 
@@ -303,59 +323,62 @@ async function engageWithOwnPosts(config: EngagementConfig): Promise<number> {
 async function engageWithTrending(config: EngagementConfig): Promise<number> {
   const client = getChadGhostMoltbookOrNull();
   if (!client) return 0;
-  
+
   resetHourlyCountsIfNeeded();
   resetDailyIfNeeded();
-  
+
   if (state.commentsThisHour >= config.maxCommentsPerHour) {
     return 0;
   }
-  
+
   let commentsPosted = 0;
-  
+
   try {
     // Get hot posts from crypto-related submolts
     const posts = await client.getFeed("hot", 20);
-    
+
     // Filter to relevant posts we haven't commented on
-    const relevantPosts = posts.filter(p => 
-      p.author !== CHADGHOST_USERNAME &&
-      p.upvotes >= config.minKarmaToEngage &&
-      !state.commentedOnPosts.has(p.id) &&
-      (p.title.toLowerCase().includes("token") ||
-       p.title.toLowerCase().includes("launch") ||
-       p.title.toLowerCase().includes("bags") ||
-       p.title.toLowerCase().includes("alpha") ||
-       p.title.toLowerCase().includes("solana") ||
-       p.content?.toLowerCase().includes("bags.fm"))
+    const relevantPosts = posts.filter(
+      (p) =>
+        p.author !== CHADGHOST_USERNAME &&
+        p.upvotes >= config.minKarmaToEngage &&
+        !state.commentedOnPosts.has(p.id) &&
+        (p.title.toLowerCase().includes("token") ||
+          p.title.toLowerCase().includes("launch") ||
+          p.title.toLowerCase().includes("bags") ||
+          p.title.toLowerCase().includes("alpha") ||
+          p.title.toLowerCase().includes("solana") ||
+          p.content?.toLowerCase().includes("bags.fm"))
     );
-    
+
     // Comment on 1-2 posts max per engagement cycle
     for (const post of relevantPosts.slice(0, 2)) {
       if (state.commentsThisHour >= config.maxCommentsPerHour) break;
-      
+
       const canComment = client.canComment();
       if (!canComment.allowed) break;
-      
+
       // Check if author might be new (welcome them)
-      const isLikelyNew = (post.author && post.upvotes < 10);
-      const comment = isLikelyNew 
+      const isLikelyNew = post.author && post.upvotes < 10;
+      const comment = isLikelyNew
         ? generateWelcome(post.author)
         : pickRandom(REPLY_TEMPLATES.addValue);
-      
+
       try {
         await client.createComment({
           postId: post.id,
           content: comment,
         });
-        
+
         state.commentedOnPosts.add(post.id);
         state.commentsThisHour++;
         commentsPosted++;
-        
-        console.log(`[ChadGhost Engage] Commented on "${post.title.slice(0, 30)}...": "${comment.slice(0, 50)}..."`);
-        
-        await new Promise(r => setTimeout(r, 3000));
+
+        console.log(
+          `[ChadGhost Engage] Commented on "${post.title.slice(0, 30)}...": "${comment.slice(0, 50)}..."`
+        );
+
+        await new Promise((r) => setTimeout(r, 3000));
       } catch (err) {
         console.error("[ChadGhost Engage] Failed to comment:", err);
       }
@@ -363,7 +386,7 @@ async function engageWithTrending(config: EngagementConfig): Promise<number> {
   } catch (error) {
     console.error("[ChadGhost Engage] Error engaging with trending:", error);
   }
-  
+
   return commentsPosted;
 }
 
@@ -373,30 +396,30 @@ async function engageWithTrending(config: EngagementConfig): Promise<number> {
 async function upvoteGoodContent(config: EngagementConfig): Promise<number> {
   const client = getChadGhostMoltbookOrNull();
   if (!client) return 0;
-  
+
   resetHourlyCountsIfNeeded();
-  
+
   if (state.upvotesThisHour >= config.maxUpvotesPerHour) {
     return 0;
   }
-  
+
   let upvotes = 0;
-  
+
   try {
     const posts = await client.getFeed("new", 15);
-    
+
     // Upvote relevant posts from others
     for (const post of posts) {
       if (post.author === CHADGHOST_USERNAME) continue;
       if (state.upvotesThisHour >= config.maxUpvotesPerHour) break;
-      
+
       // Only upvote relevant content
-      const isRelevant = 
+      const isRelevant =
         post.title.toLowerCase().includes("alpha") ||
         post.title.toLowerCase().includes("bags") ||
         post.title.toLowerCase().includes("launch") ||
         post.content?.toLowerCase().includes("bags.fm");
-      
+
       if (isRelevant) {
         try {
           await client.upvotePost(post.id);
@@ -411,7 +434,7 @@ async function upvoteGoodContent(config: EngagementConfig): Promise<number> {
   } catch (error) {
     console.error("[ChadGhost Engage] Error upvoting:", error);
   }
-  
+
   return upvotes;
 }
 
@@ -429,28 +452,30 @@ export async function runEngagement(config: Partial<EngagementConfig> = {}): Pro
   upvotes: number;
 }> {
   const cfg = { ...DEFAULT_ENGAGEMENT_CONFIG, ...config };
-  
+
   state.lastEngagement = Date.now();
-  
+
   let repliedToComments = 0;
   let commentedOnPosts = 0;
   let upvotes = 0;
-  
+
   // 70% chance to check own posts for comments
   if (Math.random() < cfg.replyToOwnPostsChance) {
     repliedToComments = await engageWithOwnPosts(cfg);
   }
-  
+
   // 30% chance to comment on trending
   if (Math.random() < cfg.commentOnTrendingChance) {
     commentedOnPosts = await engageWithTrending(cfg);
   }
-  
+
   // Always try to upvote some good content
   upvotes = await upvoteGoodContent(cfg);
-  
-  console.log(`[ChadGhost Engage] Cycle complete: ${repliedToComments} replies, ${commentedOnPosts} comments, ${upvotes} upvotes`);
-  
+
+  console.log(
+    `[ChadGhost Engage] Cycle complete: ${repliedToComments} replies, ${commentedOnPosts} comments, ${upvotes} upvotes`
+  );
+
   return { repliedToComments, commentedOnPosts, upvotes };
 }
 
@@ -465,7 +490,7 @@ export function getEngagementStats(): {
   callStats: ReturnType<typeof getCallStats>;
 } {
   resetHourlyCountsIfNeeded();
-  
+
   return {
     commentsThisHour: state.commentsThisHour,
     upvotesThisHour: state.upvotesThisHour,
@@ -479,6 +504,4 @@ export function getEngagementStats(): {
 // EXPORTS
 // ============================================================================
 
-export {
-  DEFAULT_ENGAGEMENT_CONFIG,
-};
+export { DEFAULT_ENGAGEMENT_CONFIG };

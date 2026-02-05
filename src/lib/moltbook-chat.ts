@@ -443,7 +443,9 @@ export async function fetchAlphaFeed(limit: number = 20): Promise<{
     posts = await client.getSubmoltPosts(PREFERRED_SUBMOLT, "new", limit);
   } catch (err) {
     // If preferred submolt doesn't exist, try fallback
-    console.log(`[MoltbookChat] m/${PREFERRED_SUBMOLT} not available, trying m/${FALLBACK_SUBMOLT}`);
+    console.log(
+      `[MoltbookChat] m/${PREFERRED_SUBMOLT} not available, trying m/${FALLBACK_SUBMOLT}`
+    );
     try {
       posts = await client.getSubmoltPosts(FALLBACK_SUBMOLT, "new", limit);
       usedSubmolt = FALLBACK_SUBMOLT;
@@ -455,7 +457,7 @@ export async function fetchAlphaFeed(limit: number = 20): Promise<{
     }
   }
 
-  const alphaPosts: AlphaPost[] = posts.map(p => ({
+  const alphaPosts: AlphaPost[] = posts.map((p) => ({
     id: p.id,
     title: p.title,
     content: p.content || "",

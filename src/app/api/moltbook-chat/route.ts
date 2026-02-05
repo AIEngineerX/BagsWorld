@@ -90,7 +90,7 @@ export async function GET(request: Request) {
     const result = await fetchAlphaFeed(limit);
 
     // Convert posts to message-like format for backwards compatibility
-    const messages = result.posts.map(p => ({
+    const messages = result.posts.map((p) => ({
       id: p.id,
       author: p.author,
       authorKarma: p.authorKarma,

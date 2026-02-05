@@ -1596,7 +1596,10 @@ export async function POST(request: NextRequest) {
         positionCount: positions.length,
         positions: positions.map((p) => {
           // Calculate per-position claimable amount
-          const virtualLamports = parseInt(p.virtualPoolClaimableAmount || p.totalClaimableLamportsUserShare || "0", 10);
+          const virtualLamports = parseInt(
+            p.virtualPoolClaimableAmount || p.totalClaimableLamportsUserShare || "0",
+            10
+          );
           const dammLamports = parseInt(p.dammPoolClaimableAmount || "0", 10);
           const totalLamports = virtualLamports + dammLamports;
           return {

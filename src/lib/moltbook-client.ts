@@ -299,11 +299,13 @@ class MoltbookClient {
     // Check general rate limit
     const rateCheck = this.checkRateLimit("request");
     if (!rateCheck.allowed) {
-      throw new Error(`Rate limited. Retry after ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)}s`);
+      throw new Error(
+        `Rate limited. Retry after ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)}s`
+      );
     }
 
     const url = `${this.baseUrl}/submolts/${submolt}?sort=${sort}&limit=${limit}`;
-    
+
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -316,7 +318,7 @@ class MoltbookClient {
     }
 
     // Moltbook returns { success, submolt, posts } directly (not wrapped in 'data')
-    const data = await response.json() as {
+    const data = (await response.json()) as {
       success: boolean;
       submolt: MoltbookSubmolt;
       posts?: Array<{
@@ -336,15 +338,15 @@ class MoltbookClient {
     if (!data.success) {
       throw new Error(data.error || "Failed to fetch submolt posts");
     }
-    
+
     // Map the response format to MoltbookPost
-    return (data.posts || []).map(p => ({
+    return (data.posts || []).map((p) => ({
       id: p.id,
       title: p.title,
       content: p.content,
       url: p.url,
       submolt: submolt,
-      author: p.author?.name || 'unknown',
+      author: p.author?.name || "unknown",
       authorKarma: p.author?.karma,
       upvotes: p.upvotes,
       downvotes: p.downvotes,
@@ -536,8 +538,12 @@ class MoltbookClient {
   /**
    * Get DM conversations
    */
-  async getConversations(): Promise<Array<{ id: string; with: string; lastMessage: string; unread: boolean }>> {
-    return this.fetch<Array<{ id: string; with: string; lastMessage: string; unread: boolean }>>("/agents/dm/conversations");
+  async getConversations(): Promise<
+    Array<{ id: string; with: string; lastMessage: string; unread: boolean }>
+  > {
+    return this.fetch<Array<{ id: string; with: string; lastMessage: string; unread: boolean }>>(
+      "/agents/dm/conversations"
+    );
   }
 
   /**

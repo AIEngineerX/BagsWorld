@@ -16,20 +16,20 @@ let startupAttempted = false;
 export function ensureChadGhostStarted(): void {
   if (startupAttempted) return;
   startupAttempted = true;
-  
+
   // Check if Moltbook is configured
   const client = getMoltbookOrNull();
   if (!client) {
     console.log("[ChadGhost Startup] Moltbook not configured (MOLTBOOK_API_KEY missing), skipping");
     return;
   }
-  
+
   // Check if already running
   if (isChadGhostServiceRunning()) {
     console.log("[ChadGhost Startup] Already running");
     return;
   }
-  
+
   // Start with a delay to let the server fully initialize
   setTimeout(() => {
     console.log("[ChadGhost Startup] Starting ChadGhost service...");
