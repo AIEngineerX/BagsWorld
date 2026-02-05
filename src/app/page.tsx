@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -58,6 +59,7 @@ import { MansionModal } from "@/components/MansionModal";
 import { MiniMap } from "@/components/MiniMap";
 
 import { useGameStore } from "@/lib/store";
+import type { ZoneType } from "@/lib/types";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import {
   initDialogueEventBridge,
@@ -74,6 +76,28 @@ import { AgentActivityIndicator } from "@/components/AgentActivityIndicator";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 const CASINO_ADMIN_WALLET = "7BAHgz9Q2ubiTaVo9sCy5AdDvNMiJaK8FebGHTM3PEwm";
+
+// Mapping of agent IDs to their click event names
+const AGENT_CLICK_EVENTS: Record<string, string> = {
+  ghost: "bagsworld-dev-click",
+  neo: "bagsworld-neo-click",
+  finn: "bagsworld-finn-click",
+  toly: "bagsworld-toly-click",
+  ash: "bagsworld-ash-click",
+  shaw: "bagsworld-shaw-click",
+  cj: "bagsworld-cj-click",
+  ramo: "bagsworld-ramo-click",
+  sincara: "bagsworld-sincara-click",
+  stuu: "bagsworld-stuu-click",
+  sam: "bagsworld-sam-click",
+  alaa: "bagsworld-alaa-click",
+  carlo: "bagsworld-carlo-click",
+  bnn: "bagsworld-bnn-click",
+  "professor-oak": "bagsworld-professoroak-click",
+  bagsy: "bagsworld-bagsy-click",
+  "bags-bot": "bagsworld-bagsy-click",
+  chadghost: "bagsworld-dev-click",
+};
 
 interface BuildingClickData {
   mint: string;
@@ -97,6 +121,8 @@ const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
 export default function Home() {
   const { worldState, isLoading, refreshAfterLaunch, tokenCount, refetch } = useWorldState();
   const { publicKey } = useWallet();
+  const searchParams = useSearchParams();
+  const { setZone } = useGameStore();
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
   const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
   const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
@@ -282,6 +308,46 @@ export default function Home() {
       updateWorldStateForBehavior(worldState);
     }
   }, [worldState]);
+
+  // Handle URL parameters from /agents page (zone= and chat=)
+  useEffect(() => {
+    const zone = searchParams.get("zone");
+    const chat = searchParams.get("chat");
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    if (zone) {
+      const validZones = [
+        "main_city",
+        "trending",
+        "labs",
+        "ballers",
+        "founders",
+        "moltbook",
+        "arena",
+      ];
+      if (validZones.includes(zone)) {
+        timers.push(
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("bagsworld-zone-change", { detail: { zone } }));
+            setZone(zone as ZoneType);
+          }, 1000)
+        );
+      }
+    }
+
+    if (chat) {
+      const eventName = AGENT_CLICK_EVENTS[chat];
+      if (eventName) {
+        timers.push(
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent(eventName));
+          }, 1500)
+        );
+      }
+    }
+
+    return () => timers.forEach(clearTimeout);
+  }, [searchParams, setZone]);
 
   return (
     <main className="h-[100dvh] w-screen overflow-hidden flex flex-col">
