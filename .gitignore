@@ -53,7 +53,6 @@ node_modules
 # Claude Code skills (private)
 .claude/skills/
 
-# Local-only agent dashboard
-/src/app/agents/
+# Local-only agent dashboard (MoltbookDashboard replaced by MeetTheAgents)
 /src/components/MoltbookDashboard.tsx
 /src/app/api/agent-dashboard/
