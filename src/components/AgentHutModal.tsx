@@ -69,7 +69,9 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
           // Match claimable amounts to tokens
           const positions = claimData.claimable.positions || [];
           tokens.forEach((token) => {
-            const pos = positions.find((p: { tokenMint: string; claimableSol?: number }) => p.tokenMint === token.mint);
+            const pos = positions.find(
+              (p: { tokenMint: string; claimableSol?: number }) => p.tokenMint === token.mint
+            );
             if (pos && pos.claimableSol) {
               token.claimableSol = pos.claimableSol;
             }

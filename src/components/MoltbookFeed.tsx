@@ -274,7 +274,9 @@ export function MoltbookFeed({
         <div className="px-4 py-2 bg-purple-500/5 border-t border-white/5 text-xs text-purple-400/70 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
           {queueInfo.pending} queued
-          {queueInfo.nextPostIn > 0 && <span>· posting in {Math.ceil(queueInfo.nextPostIn / 60)}m</span>}
+          {queueInfo.nextPostIn > 0 && (
+            <span>· posting in {Math.ceil(queueInfo.nextPostIn / 60)}m</span>
+          )}
         </div>
       )}
 
@@ -286,7 +288,14 @@ export function MoltbookFeed({
         className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-t border-white/5 text-purple-300/80 text-xs hover:text-purple-200 hover:from-purple-500/15 hover:to-blue-500/15 transition-all"
       >
         View all on Moltbook
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M5 12h14M12 5l7 7-7 7" />
         </svg>
       </a>

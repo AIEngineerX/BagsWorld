@@ -106,6 +106,54 @@ interface BuildingClickData {
   tokenUrl?: string;
 }
 
+// Handles ?zone= and ?chat= deep links from the /agents page
+// Wrapped in Suspense because useSearchParams requires it for static prerendering
+function DeepLinkHandler() {
+  const searchParams = useSearchParams();
+  const { setZone } = useGameStore();
+
+  useEffect(() => {
+    const zone = searchParams.get("zone");
+    const chat = searchParams.get("chat");
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    if (zone) {
+      const validZones = [
+        "main_city",
+        "trending",
+        "labs",
+        "ballers",
+        "founders",
+        "moltbook",
+        "arena",
+      ];
+      if (validZones.includes(zone)) {
+        timers.push(
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("bagsworld-zone-change", { detail: { zone } }));
+            setZone(zone as ZoneType);
+          }, 1000)
+        );
+      }
+    }
+
+    if (chat) {
+      const eventName = AGENT_CLICK_EVENTS[chat];
+      if (eventName) {
+        timers.push(
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent(eventName));
+          }, 1500)
+        );
+      }
+    }
+
+    return () => timers.forEach(clearTimeout);
+  }, [searchParams, setZone]);
+
+  return null;
+}
+
 const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
   ssr: false,
   loading: () => (
@@ -121,8 +169,6 @@ const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
 export default function Home() {
   const { worldState, isLoading, refreshAfterLaunch, tokenCount, refetch } = useWorldState();
   const { publicKey } = useWallet();
-  const searchParams = useSearchParams();
-  const { setZone } = useGameStore();
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
   const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
   const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
@@ -309,48 +355,12 @@ export default function Home() {
     }
   }, [worldState]);
 
-  // Handle URL parameters from /agents page (zone= and chat=)
-  useEffect(() => {
-    const zone = searchParams.get("zone");
-    const chat = searchParams.get("chat");
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    if (zone) {
-      const validZones = [
-        "main_city",
-        "trending",
-        "labs",
-        "ballers",
-        "founders",
-        "moltbook",
-        "arena",
-      ];
-      if (validZones.includes(zone)) {
-        timers.push(
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent("bagsworld-zone-change", { detail: { zone } }));
-            setZone(zone as ZoneType);
-          }, 1000)
-        );
-      }
-    }
-
-    if (chat) {
-      const eventName = AGENT_CLICK_EVENTS[chat];
-      if (eventName) {
-        timers.push(
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent(eventName));
-          }, 1500)
-        );
-      }
-    }
-
-    return () => timers.forEach(clearTimeout);
-  }, [searchParams, setZone]);
-
   return (
     <main className="h-[100dvh] w-screen overflow-hidden flex flex-col">
+      {/* Deep link handler for ?zone= and ?chat= from /agents page */}
+      <Suspense fallback={null}>
+        <DeepLinkHandler />
+      </Suspense>
       {/* Header - responsive */}
       <header className="h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-2 md:px-4 relative z-50 safe-area-top shrink-0">
         {/* Left side - Logo and health */}

@@ -18,9 +18,9 @@ import {
   createAlphaSubmolt,
 } from "@/lib/chadghost-brain";
 import { findAlpha, getBestAlpha, getAlphaStats } from "@/lib/alpha-finder";
-import { 
-  runEngagement, 
-  getEngagementStats, 
+import {
+  runEngagement,
+  getEngagementStats,
   generateCallRecap,
   trackCall,
   generateWelcome,
@@ -153,9 +153,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: result.success,
         error: result.error,
-        message: result.success
-          ? "Created m/bagsworld-alpha submolt"
-          : `Failed: ${result.error}`,
+        message: result.success ? "Created m/bagsworld-alpha submolt" : `Failed: ${result.error}`,
       });
     }
 
@@ -173,7 +171,15 @@ export async function POST(request: NextRequest) {
       // Test alpha reply generation
       const { isGoodAlpha } = body;
       const reply = generateReply(
-        { id: "test", postId: "test", content: "test comment", author: "TestAgent", upvotes: 0, downvotes: 0, createdAt: new Date().toISOString() },
+        {
+          id: "test",
+          postId: "test",
+          content: "test comment",
+          author: "TestAgent",
+          upvotes: 0,
+          downvotes: 0,
+          createdAt: new Date().toISOString(),
+        },
         isGoodAlpha !== false
       );
       return NextResponse.json({
