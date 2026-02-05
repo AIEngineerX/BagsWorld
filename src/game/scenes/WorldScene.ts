@@ -190,8 +190,11 @@ export class WorldScene extends Phaser.Scene {
   private playerVelocity = { x: 0, y: 0 }; // Smooth movement
   private playerWalkCycle = 0; // Animation cycle for walking bob
   private readonly PLAYER_WALK_SPEED = 1.8; // Natural walking speed (pixels per frame)
+  private readonly PLAYER_SPRINT_SPEED = 3.6; // Sprint speed when holding Shift
   private readonly PLAYER_ACCELERATION = 0.15; // How quickly player reaches walk speed
+  private readonly PLAYER_SPRINT_ACCELERATION = 0.25; // Faster acceleration when sprinting
   private readonly PLAYER_FRICTION = 0.85; // Deceleration when not pressing keys
+  private sprintKey: Phaser.Input.Keyboard.Key | null = null;
   private nearbyNPC: GameCharacter | null = null; // NPC player is near (for interaction)
   private nearbyBuilding: GameBuilding | null = null; // Building player is near (for interaction)
   private interactPrompt: Phaser.GameObjects.Container | null = null; // "Press E to talk/enter" UI
@@ -318,6 +321,7 @@ export class WorldScene extends Phaser.Scene {
         D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
         E: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
       };
+      this.sprintKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     }
 
     // Create "Press E to talk" prompt (hidden initially)
@@ -603,27 +607,29 @@ export class WorldScene extends Phaser.Scene {
     const up = this.cursors?.up.isDown || this.wasdKeys?.W.isDown || false;
     const down = this.cursors?.down.isDown || this.wasdKeys?.S.isDown || false;
     const interact = this.wasdKeys?.E ? Phaser.Input.Keyboard.JustDown(this.wasdKeys.E) : false;
+    const sprinting = this.sprintKey?.isDown || false;
 
     // Apply acceleration based on input (natural walking feel)
+    const accel = sprinting ? this.PLAYER_SPRINT_ACCELERATION : this.PLAYER_ACCELERATION;
     if (left) {
-      this.playerVelocity.x -= this.PLAYER_ACCELERATION;
+      this.playerVelocity.x -= accel;
     } else if (right) {
-      this.playerVelocity.x += this.PLAYER_ACCELERATION;
+      this.playerVelocity.x += accel;
     } else {
       // Apply friction when no input
       this.playerVelocity.x *= this.PLAYER_FRICTION;
     }
 
     if (up) {
-      this.playerVelocity.y -= this.PLAYER_ACCELERATION;
+      this.playerVelocity.y -= accel;
     } else if (down) {
-      this.playerVelocity.y += this.PLAYER_ACCELERATION;
+      this.playerVelocity.y += accel;
     } else {
       this.playerVelocity.y *= this.PLAYER_FRICTION;
     }
 
-    // Clamp velocity to walk speed
-    const maxSpeed = this.PLAYER_WALK_SPEED;
+    // Clamp velocity to walk/sprint speed
+    const maxSpeed = sprinting ? this.PLAYER_SPRINT_SPEED : this.PLAYER_WALK_SPEED;
     this.playerVelocity.x = Phaser.Math.Clamp(this.playerVelocity.x, -maxSpeed, maxSpeed);
     this.playerVelocity.y = Phaser.Math.Clamp(this.playerVelocity.y, -maxSpeed, maxSpeed);
 
@@ -668,14 +674,14 @@ export class WorldScene extends Phaser.Scene {
           this.localPlayer.play(walkAnimKey);
         }
         // Still apply subtle bob for extra life
-        this.playerWalkCycle += 0.15;
+        this.playerWalkCycle += sprinting ? 0.3 : 0.15;
         const bobAmount = Math.sin(this.playerWalkCycle) * 2;
         this.localPlayer.setOrigin(0.5, 1 - bobAmount / 50);
         this.localPlayer.setScale(baseScale);
         this.localPlayer.setRotation(0);
       } else {
         // No sprite sheet - use procedural bob animation
-        this.playerWalkCycle += 0.25; // Animation speed
+        this.playerWalkCycle += sprinting ? 0.45 : 0.25; // Animation speed
         // Vertical bob (subtle hop)
         const bobAmount = Math.sin(this.playerWalkCycle) * 3;
         this.localPlayer.setOrigin(0.5, 1 - bobAmount / 50);
