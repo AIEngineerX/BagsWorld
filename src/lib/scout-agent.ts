@@ -411,7 +411,7 @@ export async function checkToken(mint: string): Promise<TokenLaunch | null> {
   try {
     // Fetch token info from Bags API or on-chain
     const response = await fetch(
-      `https://public-api-v2.bags.fm/api/v1/token-launch/creator/v3?mint=${mint}`,
+      `https://public-api-v2.bags.fm/api/v1/token-launch/creator/v3?tokenMint=${mint}`,
       {
         headers: {
           "x-api-key": process.env.BAGS_API_KEY || "",

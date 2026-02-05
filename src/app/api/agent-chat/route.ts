@@ -56,10 +56,10 @@ async function fetchTokenInfo(mint: string): Promise<string> {
 
   try {
     const [creatorsRes, feesRes] = await Promise.all([
-      fetch(`${BAGS_API_URL}/token-launch/creator/v3?mint=${mint}`, {
+      fetch(`${BAGS_API_URL}/token-launch/creator/v3?tokenMint=${mint}`, {
         headers: { "x-api-key": BAGS_API_KEY },
       }),
-      fetch(`${BAGS_API_URL}/token-launch/lifetime-fees?mint=${mint}`, {
+      fetch(`${BAGS_API_URL}/token-launch/lifetime-fees?tokenMint=${mint}`, {
         headers: { "x-api-key": BAGS_API_KEY },
       }),
     ]);

@@ -78,7 +78,7 @@ describe("BagsApiService", () => {
 
       expect(result).toEqual(mockToken);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining(`/token-launch/creator/v3?mint=${mockToken.mint}`),
+        expect.stringContaining(`/token-launch/creator/v3?tokenMint=${mockToken.mint}`),
         expect.any(Object)
       );
     });
@@ -146,7 +146,7 @@ describe("BagsApiService", () => {
 
       expect(result).toEqual(mockFees);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining(`/token-launch/lifetime-fees?mint=${mockFees.mint}`),
+        expect.stringContaining(`/token-launch/lifetime-fees?tokenMint=${mockFees.mint}`),
         expect.any(Object)
       );
     });
