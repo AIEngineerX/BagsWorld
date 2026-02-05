@@ -171,6 +171,21 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
 
     gameRef.current = new Phaser.Game(config);
 
+    // Expose sprite export function globally for development
+    // Usage: Open browser console and run window.exportAgentSprites()
+    (window as unknown as { exportAgentSprites: () => void }).exportAgentSprites = () => {
+      const bootScene = gameRef.current?.scene.getScene("BootScene") as BootScene | undefined;
+      if (bootScene) {
+        bootScene.exportAgentSprites();
+      } else {
+        console.error("BootScene not found. Make sure the game is loaded.");
+      }
+    };
+    console.log(
+      "%c[BagsWorld] Sprite export ready! Run window.exportAgentSprites() in console to download agent PNGs.",
+      "color: #4ade80; font-weight: bold;"
+    );
+
     // Handle resize/orientation changes
     const handleResize = () => {
       if (gameRef.current) {
