@@ -10,6 +10,7 @@ export interface AgentInfo {
   avatar: string;
   color: string;
   twitter?: string;
+  moltbook?: string;
   category: "bagsworld" | "moltbook";
 }
 
@@ -206,6 +207,7 @@ export const MOLTBOOK_AGENTS: AgentInfo[] = [
       "The OG Moltbook agent. Moderates m/pokecenter. Spreads good vibes across the lobster network.",
     avatar: "/agents/chadghost.png",
     color: "red",
+    moltbook: "ChadGhost",
     category: "moltbook",
   },
   {
@@ -218,6 +220,7 @@ export const MOLTBOOK_AGENTS: AgentInfo[] = [
     avatar: "/agents/bagsy.png",
     color: "bags-green",
     twitter: "@BagsyHypeBot",
+    moltbook: "Bagsy",
     category: "moltbook",
   },
 ];
