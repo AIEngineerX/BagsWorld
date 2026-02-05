@@ -18,6 +18,9 @@ import type {
 import { WorldSyncService, getWorldSyncService } from './WorldSyncService.js';
 import { LLMService } from './LLMService.js';
 import { AgentCoordinator, getAgentCoordinator } from './AgentCoordinator.js';
+import { GoalSystem, getGoalSystem } from './GoalSystem.js';
+import type { AgentGoal } from './GoalSystem.js';
+import { AgentDialogueService, getAgentDialogueService } from './AgentDialogueService.js';
 import { characters as characterRegistry } from '../characters/index.js';
 
 /**
@@ -277,6 +280,8 @@ interface AgentTickState {
 export class AgentTickService {
   private worldSync: WorldSyncService;
   private coordinator: AgentCoordinator | null;
+  private goalSystem: GoalSystem;
+  private dialogueService: AgentDialogueService;
   private llmService: LLMService | null = null;
   private tickIntervalTimer: NodeJS.Timeout | null = null;
   private agentStates: Map<string, AgentTickState> = new Map();
@@ -298,6 +303,8 @@ export class AgentTickService {
   ) {
     this.worldSync = worldSync || getWorldSyncService();
     this.coordinator = coordinator !== undefined ? coordinator : getAgentCoordinator();
+    this.goalSystem = getGoalSystem();
+    this.dialogueService = getAgentDialogueService();
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -324,6 +331,7 @@ export class AgentTickService {
    */
   setLLMService(llmService: LLMService): void {
     this.llmService = llmService;
+    this.dialogueService.setLLMService(llmService);
   }
 
   /**
@@ -347,6 +355,9 @@ export class AgentTickService {
     // Also register with WorldSync
     const behavior = CHARACTER_BEHAVIORS[agentId] || DEFAULT_BEHAVIOR;
     this.worldSync.registerAgent(agentId, behavior.preferredZone);
+
+    // Initialize default goals for this agent
+    this.goalSystem.initializeDefaultGoals(agentId);
 
     console.log(`[AgentTick] Registered agent: ${agentId} (${resolvedCharacter.name})`);
   }
@@ -418,8 +429,19 @@ export class AgentTickService {
    * Process a single agent's tick
    */
   private async tickAgent(agentId: string, state: AgentTickState, now: number): Promise<void> {
+    // Skip agents currently in a dialogue
+    if (this.dialogueService.isInDialogue(agentId)) {
+      return;
+    }
+
+    // Tick the goal system first (handle expirations, recurring goals, activation)
+    this.goalSystem.tick(agentId);
+
     // Get world state for this agent
     const worldState = this.worldSync.getAgentState(agentId);
+
+    // Check if active goal's completion condition is met
+    this.goalSystem.updateProgress(agentId, worldState);
 
     // Check if operation in progress
     if (state.inProgressOperation) {
@@ -490,7 +512,17 @@ export class AgentTickService {
       }
     }
 
-    // Priority 2: Social interaction (if nearby agents and not on cooldown)
+    // Priority 2: Goal-based decision (if an active goal exists)
+    const activeGoal = this.goalSystem.getActiveGoal(agentId);
+    if (activeGoal) {
+      const goalDecision = this.translateGoalToDecision(activeGoal, agentId, worldState);
+      if (goalDecision) {
+        return goalDecision;
+      }
+      // If goal couldn't produce a decision, fall through to other priorities
+    }
+
+    // Priority 3: Social interaction (if nearby agents and not on cooldown)
     if (nearbyAgents.length > 0 && !context.justLeftConversation) {
       const shouldInteract = Math.random() < behavior.interactionChance;
       if (shouldInteract) {
@@ -505,7 +537,7 @@ export class AgentTickService {
       }
     }
 
-    // Priority 3: Character-specific activity
+    // Priority 4: Character-specific activity
     if (!context.recentActivity && Math.random() < behavior.activityChance) {
       // Check for special activities first
       for (const activity of behavior.specialActivities) {
@@ -529,7 +561,7 @@ export class AgentTickService {
       };
     }
 
-    // Priority 4: Wander
+    // Priority 5: Wander
     const currentZone = worldState?.position.zone || behavior.preferredZone;
 
     // 20% chance to move to preferred zone if not there
@@ -545,6 +577,173 @@ export class AgentTickService {
       type: 'wander',
       zone: currentZone,
     };
+  }
+
+  /**
+   * Translate an active goal into an AgentDecision.
+   * Returns null if the goal type can't produce a decision (falls through to other logic).
+   */
+  private translateGoalToDecision(
+    goal: AgentGoal,
+    agentId: string,
+    worldState: AgentWorldState | null
+  ): AgentDecision | null {
+    const behavior = CHARACTER_BEHAVIORS[agentId] || DEFAULT_BEHAVIOR;
+    const currentZone = worldState?.position.zone || behavior.preferredZone;
+
+    switch (goal.type) {
+      case 'patrol': {
+        const zone = goal.target?.zone || behavior.preferredZone;
+        // If not in the target zone, move there first
+        if (currentZone !== zone) {
+          return { type: 'wander', zone };
+        }
+        // Wander within the zone
+        return { type: 'wander', zone };
+      }
+
+      case 'visit_zone': {
+        const zone = goal.target?.zone || behavior.preferredZone;
+        if (currentZone !== zone) {
+          return { type: 'wander', zone };
+        }
+        // Already in zone - goal essentially complete, mark it
+        this.goalSystem.completeGoal(agentId, goal.id);
+        return null; // Fall through to next decision
+      }
+
+      case 'visit_building': {
+        if (goal.target?.position) {
+          return { type: 'wander', zone: goal.target.zone || currentZone };
+        }
+        // No position target, just go to the zone
+        if (goal.target?.zone && currentZone !== goal.target.zone) {
+          return { type: 'wander', zone: goal.target.zone };
+        }
+        this.goalSystem.completeGoal(agentId, goal.id);
+        return null;
+      }
+
+      case 'interact_agent': {
+        const nearbyAgents = worldState?.nearbyAgents || [];
+        const targetId = goal.target?.agentId;
+
+        if (targetId && nearbyAgents.includes(targetId)) {
+          // Target is nearby, approach them
+          this.goalSystem.completeGoal(agentId, goal.id);
+          return { type: 'approach', targetAgentId: targetId };
+        }
+
+        if (!targetId && nearbyAgents.length > 0) {
+          // No specific target, interact with whoever is nearby
+          this.goalSystem.completeGoal(agentId, goal.id);
+          return { type: 'approach', targetAgentId: nearbyAgents[0] };
+        }
+
+        // Nobody nearby, wander to find agents
+        return { type: 'wander', zone: currentZone };
+      }
+
+      case 'observe': {
+        const zone = goal.target?.zone || currentZone;
+        if (currentZone !== zone) {
+          return { type: 'wander', zone };
+        }
+        // In the right zone, do an observation activity
+        this.goalSystem.completeGoal(agentId, goal.id);
+        return {
+          type: 'activity',
+          description: 'observing the world',
+          emoji: '👁️',
+          duration: this.config.activityMinDuration + Math.random() * (this.config.activityMaxDuration - this.config.activityMinDuration),
+        };
+      }
+
+      case 'announce': {
+        // Announce goals produce a speak action with a character-appropriate message
+        this.goalSystem.completeGoal(agentId, goal.id);
+        const announcements = this.getCharacterAnnouncement(agentId);
+        return {
+          type: 'speak',
+          message: announcements,
+          isSignificant: true,
+        };
+      }
+
+      case 'scan': {
+        // Neo's scan - do a scanning activity
+        this.goalSystem.completeGoal(agentId, goal.id);
+        return {
+          type: 'activity',
+          description: 'scanning for new launches',
+          emoji: '🔍',
+          duration: this.config.activityMinDuration + Math.random() * (this.config.activityMaxDuration - this.config.activityMinDuration),
+        };
+      }
+
+      case 'verify': {
+        // Ghost's verify - do a verification activity
+        this.goalSystem.completeGoal(agentId, goal.id);
+        return {
+          type: 'activity',
+          description: 'verifying on-chain data',
+          emoji: '🔐',
+          duration: this.config.activityMinDuration + Math.random() * (this.config.activityMaxDuration - this.config.activityMinDuration),
+        };
+      }
+
+      case 'greet': {
+        const nearbyAgents = worldState?.nearbyAgents || [];
+        if (nearbyAgents.length > 0) {
+          this.goalSystem.completeGoal(agentId, goal.id);
+          return {
+            type: 'speak',
+            message: 'Hey there! Welcome to BagsWorld!',
+            emotion: 'happy',
+          };
+        }
+        // Nobody to greet, wander to find people
+        return { type: 'wander', zone: currentZone };
+      }
+
+      case 'respond_event': {
+        // Event response - speak about it
+        this.goalSystem.completeGoal(agentId, goal.id);
+        return {
+          type: 'speak',
+          message: 'Something interesting just happened!',
+          isSignificant: true,
+        };
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Get a character-appropriate announcement message
+   */
+  private getCharacterAnnouncement(agentId: string): string {
+    const announcements: Record<string, string[]> = {
+      toly: [
+        'Solana never sleeps, and neither does BagsWorld',
+        'The blockchain is the ultimate source of truth',
+        'Building in public, one block at a time',
+      ],
+      bnn: [
+        'Breaking: BagsWorld activity is looking strong today',
+        'Market update: fees are flowing across the ecosystem',
+        'This just in: new tokens are launching on Bags.fm',
+      ],
+    };
+
+    const options = announcements[agentId] || [
+      'BagsWorld is alive and well!',
+      'Great things happening in the ecosystem',
+    ];
+
+    return options[Math.floor(Math.random() * options.length)];
   }
 
   /**
@@ -853,6 +1052,14 @@ Example: SPEAK "hey, what's good?"`;
       case 'approach': {
         if (decision.targetAgentId) {
           this.worldSync.sendApproach(agentId, decision.targetAgentId);
+
+          // Check if target is nearby and try to start a dialogue
+          const agentState = this.worldSync.getAgentState(agentId);
+          const nearbyAgents = agentState?.nearbyAgents || [];
+          if (nearbyAgents.includes(decision.targetAgentId)) {
+            // Fire and forget - dialogue plays out asynchronously
+            this.dialogueService.tryStartDialogue(agentId, decision.targetAgentId);
+          }
         }
         break;
       }
@@ -915,6 +1122,7 @@ Example: SPEAK "hey, what's good?"`;
     llmCallsThisMinute: number;
     connectedClients: number;
     config: Required<AgentTickConfig>;
+    goals: { agentCount: number; totalGoals: number; activeGoals: number; pendingGoals: number };
   } {
     return {
       isRunning: this.isRunning,
@@ -924,6 +1132,7 @@ Example: SPEAK "hey, what's good?"`;
       llmCallsThisMinute: this.llmCallCount,
       connectedClients: this.worldSync.getClientCount(),
       config: this.getConfig(),
+      goals: this.goalSystem.getStats(),
     };
   }
 

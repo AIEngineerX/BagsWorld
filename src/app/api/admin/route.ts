@@ -641,11 +641,14 @@ async function handleAddToken(data: { mint: string; name?: string; symbol?: stri
     if (source === "manual" && process.env.BAGS_API_KEY) {
       try {
         const bagsUrl = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
-        const bagsResponse = await fetch(`${bagsUrl}/token-launch/creator/v3?tokenMint=${data.mint}`, {
-          headers: {
-            "x-api-key": process.env.BAGS_API_KEY,
-          },
-        });
+        const bagsResponse = await fetch(
+          `${bagsUrl}/token-launch/creator/v3?tokenMint=${data.mint}`,
+          {
+            headers: {
+              "x-api-key": process.env.BAGS_API_KEY,
+            },
+          }
+        );
         if (bagsResponse.ok) {
           const bagsData = await bagsResponse.json();
           if (bagsData.data?.tokenLaunchInfo) {

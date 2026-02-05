@@ -46,3 +46,11 @@ export type { Tweet, PostResult, TwitterConfig } from './TwitterService.js';
 // Helius Service - Real-time Solana transaction tracking
 export { HeliusService, getHeliusService } from './HeliusService.js';
 export type { ParsedTransaction, WalletTradeHistory, TradeAlert } from './HeliusService.js';
+
+// Goal System - Priority-based goal queue for agent autonomy
+export { GoalSystem, getGoalSystem, resetGoalSystem } from './GoalSystem.js';
+export type { GoalType, AgentGoal, GoalInput } from './GoalSystem.js';
+
+// Agent Dialogue - Agent-to-agent conversations
+export { AgentDialogueService, getAgentDialogueService, resetAgentDialogueService } from './AgentDialogueService.js';
+export type { DialogueLine } from './AgentDialogueService.js';
