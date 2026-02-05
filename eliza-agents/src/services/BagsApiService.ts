@@ -433,7 +433,7 @@ export class BagsApiService extends Service {
 
   async getToken(mint: string): Promise<TokenInfo | null> {
     try {
-      const data = await this.fetch<{ token: TokenInfo }>(`/token-launch/creator/v3?mint=${mint}`);
+      const data = await this.fetch<{ token: TokenInfo }>(`/token-launch/creator/v3?tokenMint=${mint}`);
       return data.token || null;
     } catch (error) {
       console.error(`Failed to fetch token ${mint}:`, error);
@@ -444,7 +444,7 @@ export class BagsApiService extends Service {
 
   async getCreatorFees(mint: string): Promise<CreatorFees | null> {
     try {
-      const data = await this.fetch<CreatorFees>(`/token-launch/lifetime-fees?mint=${mint}`);
+      const data = await this.fetch<CreatorFees>(`/token-launch/lifetime-fees?tokenMint=${mint}`);
       return data;
     } catch (error) {
       console.error(`Failed to fetch fees for ${mint}:`, error);

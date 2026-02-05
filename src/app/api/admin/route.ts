@@ -641,7 +641,7 @@ async function handleAddToken(data: { mint: string; name?: string; symbol?: stri
     if (source === "manual" && process.env.BAGS_API_KEY) {
       try {
         const bagsUrl = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
-        const bagsResponse = await fetch(`${bagsUrl}/token-launch/creator/v3?mint=${data.mint}`, {
+        const bagsResponse = await fetch(`${bagsUrl}/token-launch/creator/v3?tokenMint=${data.mint}`, {
           headers: {
             "x-api-key": process.env.BAGS_API_KEY,
           },
