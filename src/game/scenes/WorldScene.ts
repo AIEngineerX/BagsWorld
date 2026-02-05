@@ -163,6 +163,13 @@ export class WorldScene extends Phaser.Scene {
   private boundBehaviorHandler: ((e: Event) => void) | null = null;
   private boundSpeakHandler: ((e: Event) => void) | null = null;
 
+  // Agent server WebSocket connection
+  private agentSocket: WebSocket | null = null;
+  private agentReconnectAttempts = 0;
+  private readonly maxAgentReconnectAttempts = 5;
+  private worldStateUpdateTimer: Phaser.Time.TimerEvent | null = null;
+  private agentReconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
   // Performance: character lookup map for O(1) access in update loop
   private characterById: Map<string, GameCharacter> = new Map();
   // Performance: cached movement speeds per character (avoid random() every frame)
@@ -294,6 +301,9 @@ export class WorldScene extends Phaser.Scene {
 
     // Setup mobile camera controls (drag to pan, pinch to zoom)
     this.setupMobileCameraControls();
+
+    // Connect to agent server for bidirectional communication
+    this.connectToAgentServer();
   }
 
   // === LOCAL PLAYER SETUP ===
@@ -4677,6 +4687,179 @@ Use: bags.fm/[yourname]`,
   }
 
   // Cleanup method to prevent memory leaks
+  // === AGENT SERVER WEBSOCKET ===
+
+  private connectToAgentServer(): void {
+    try {
+      // Allow configurable URL via window global or default to localhost:3001
+      const wsUrl =
+        (typeof window !== "undefined" && (window as any).__AGENTS_WS_URL) ||
+        "ws://localhost:3001/ws";
+
+      this.agentSocket = new WebSocket(wsUrl);
+
+      this.agentSocket.onopen = () => {
+        console.log("[WorldScene] Connected to agent server");
+        this.agentReconnectAttempts = 0;
+
+        // Start sending world state updates every 1 second
+        if (this.worldStateUpdateTimer) {
+          this.worldStateUpdateTimer.destroy();
+        }
+        this.worldStateUpdateTimer = this.time.addEvent({
+          delay: 1000,
+          callback: () => this.sendWorldStateUpdate(),
+          loop: true,
+        });
+      };
+
+      this.agentSocket.onmessage = (event: MessageEvent) => {
+        try {
+          const command = JSON.parse(event.data);
+          this.handleAgentCommand(command);
+        } catch (err) {
+          console.error("[WorldScene] Failed to parse agent message:", err);
+        }
+      };
+
+      this.agentSocket.onclose = () => {
+        console.log("[WorldScene] Agent server connection closed");
+        this.agentSocket = null;
+
+        // Stop the world state update timer when disconnected
+        if (this.worldStateUpdateTimer) {
+          this.worldStateUpdateTimer.destroy();
+          this.worldStateUpdateTimer = null;
+        }
+
+        this.scheduleAgentReconnect();
+      };
+
+      this.agentSocket.onerror = (err: Event) => {
+        // Log at debug level - agent server is optional
+        console.debug("[WorldScene] Agent server connection error:", err);
+      };
+    } catch (err) {
+      // Game works fine without the agent server
+      console.debug("[WorldScene] Could not connect to agent server:", err);
+      this.scheduleAgentReconnect();
+    }
+  }
+
+  private sendWorldStateUpdate(): void {
+    if (!this.agentSocket || this.agentSocket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    try {
+      // Build character states from current sprites
+      const characters: Record<string, { x: number; y: number; isMoving: boolean }> = {};
+
+      for (const [, sprite] of this.characterSprites) {
+        const spriteData = sprite as any;
+        let agentId: string | null = null;
+
+        // Map sprite flags to agent IDs (same pattern as findCharacterSprite)
+        if (spriteData.isFinn) agentId = "finn";
+        else if (spriteData.isDev) agentId = "ghost";
+        else if (spriteData.isScout) agentId = "neo";
+        else if (spriteData.isAsh) agentId = "ash";
+        else if (spriteData.isToly) agentId = "toly";
+        else if (spriteData.isCJ) agentId = "cj";
+        else if (spriteData.isShaw) agentId = "shaw";
+        else if (spriteData.isRamo) agentId = "ramo";
+        else if (spriteData.isSincara) agentId = "sincara";
+        else if (spriteData.isStuu) agentId = "stuu";
+        else if (spriteData.isSam) agentId = "sam";
+        else if (spriteData.isAlaa) agentId = "alaa";
+        else if (spriteData.isCarlo) agentId = "carlo";
+        else if (spriteData.isBNN) agentId = "bnn";
+        else if (spriteData.isProfessorOak) agentId = "professorOak";
+        else if (spriteData.isBagsy) agentId = "bagsy";
+
+        if (agentId) {
+          characters[agentId] = {
+            x: sprite.x,
+            y: sprite.y,
+            isMoving: this.characterTargets.has(agentId),
+          };
+        }
+      }
+
+      const update = {
+        type: "world-state-update",
+        timestamp: Date.now(),
+        zone: this.currentZone,
+        characters,
+        weather: this.worldState?.weather || "cloudy",
+        health: this.worldState?.health || 50,
+      };
+
+      this.agentSocket.send(JSON.stringify(update));
+    } catch (err) {
+      console.error("[WorldScene] Failed to send world state update:", err);
+    }
+  }
+
+  private handleAgentCommand(command: any): void {
+    if (!command || !command.type) return;
+
+    try {
+      switch (command.type) {
+        case "character-behavior":
+          window.dispatchEvent(
+            new CustomEvent("bagsworld-character-behavior", {
+              detail: command,
+            })
+          );
+          break;
+
+        case "character-speak":
+          window.dispatchEvent(new CustomEvent("bagsworld-character-speak", { detail: command }));
+          break;
+
+        case "zone-transition":
+          // Agent requested a zone change
+          if (command.target?.id) {
+            window.dispatchEvent(
+              new CustomEvent("bagsworld-zone-change", {
+                detail: { zone: command.target.id },
+              })
+            );
+          }
+          break;
+
+        case "pong":
+          // Heartbeat response, no action needed
+          break;
+
+        default:
+          console.debug("[WorldScene] Unknown agent command type:", command.type);
+      }
+    } catch (err) {
+      console.error("[WorldScene] Error handling agent command:", err);
+    }
+  }
+
+  private scheduleAgentReconnect(): void {
+    if (this.agentReconnectAttempts >= this.maxAgentReconnectAttempts) {
+      console.debug("[WorldScene] Max agent reconnect attempts reached, giving up");
+      return;
+    }
+
+    const delay = Math.min(1000 * Math.pow(2, this.agentReconnectAttempts), 30000);
+    this.agentReconnectAttempts++;
+
+    console.debug(
+      `[WorldScene] Scheduling agent reconnect in ${delay}ms (attempt ${this.agentReconnectAttempts}/${this.maxAgentReconnectAttempts})`
+    );
+
+    this.agentReconnectTimeout = setTimeout(() => {
+      this.agentReconnectTimeout = null;
+      this.connectToAgentServer();
+    }, delay);
+  }
+
   private cleanup(): void {
     // Remove window event listeners
     if (this.boundToggleMusic) {
@@ -4768,6 +4951,21 @@ Use: bags.fm/[yourname]`,
       this.boundSpeakHandler = null;
     }
     this.characterTargets.clear();
+
+    // Clean up agent server WebSocket
+    if (this.worldStateUpdateTimer) {
+      this.worldStateUpdateTimer.destroy();
+      this.worldStateUpdateTimer = null;
+    }
+    if (this.agentReconnectTimeout) {
+      clearTimeout(this.agentReconnectTimeout);
+      this.agentReconnectTimeout = null;
+    }
+    if (this.agentSocket) {
+      this.agentSocket.onclose = null; // Prevent reconnect on intentional close
+      this.agentSocket.close();
+      this.agentSocket = null;
+    }
 
     // Clean up beach crabs
     this.beachCrabs = [];
