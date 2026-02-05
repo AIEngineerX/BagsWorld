@@ -336,67 +336,86 @@ export function MeetTheAgents() {
 
       {/* === HEADER BAR === */}
       <header
-        className="relative z-10 border-b-4"
+        className="relative z-10"
         style={{
           background: "#0a0a1a",
-          borderColor: "#4ade80",
-          boxShadow: "0 4px 24px rgba(74, 222, 128, 0.15)",
+          borderBottom: "4px solid #4ade80",
+          boxShadow: "0 4px 24px rgba(74, 222, 128, 0.15), inset 0 -1px 0 rgba(74, 222, 128, 0.3)",
         }}
       >
         <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          {/* Left: Logo + Title */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Bagsy mascot icon */}
             <div
-              className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-pixel text-lg sm:text-xl"
+              className="w-11 h-11 sm:w-14 sm:h-14 flex-shrink-0 flex items-center justify-center"
               style={{
-                background: "#4ade80",
-                color: "#050510",
-                boxShadow: "4px 4px 0 #166534",
+                background: "#0c1a0c",
+                border: "3px solid #4ade80",
+                boxShadow:
+                  "0 0 12px rgba(74, 222, 128, 0.3), inset 0 0 8px rgba(74, 222, 128, 0.1)",
               }}
             >
-              B
+              <Image
+                src="/agents/bagsy.png"
+                alt="BagsWorld"
+                width={56}
+                height={56}
+                className="pixelated w-full h-full"
+              />
             </div>
             <div>
-              <h1 className="font-pixel text-lg sm:text-xl" style={{ color: "#4ade80" }}>
-                AGENT SELECT
+              <h1
+                className="font-pixel text-lg sm:text-2xl leading-none"
+                style={{
+                  color: "#4ade80",
+                  textShadow: "0 0 12px rgba(74, 222, 128, 0.4)",
+                }}
+              >
+                BAGSWORLD
               </h1>
-              <p className="font-pixel text-[10px] sm:text-xs text-gray-500">
-                BAGSWORLD CHARACTER DATABASE
-              </p>
+              <p className="font-pixel text-xs sm:text-sm text-gray-400 mt-0.5">THE CREW</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* Connection status */}
+          {/* Right: Status + Nav */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Railway connection */}
             <div
-              className="flex items-center gap-2 px-3 py-1.5"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5"
               style={{
                 background: "rgba(0,0,0,0.6)",
-                border: `2px solid ${isConnected ? "#4ade80" : "#ef4444"}`,
+                border: `3px solid ${isConnected ? "#166534" : "#7f1d1d"}`,
               }}
             >
               <div
                 className="w-3 h-3"
                 style={{
                   background: isConnected ? "#4ade80" : "#ef4444",
-                  boxShadow: isConnected ? "0 0 8px #4ade80" : "none",
+                  boxShadow: isConnected ? "0 0 8px #4ade80" : "0 0 8px #ef4444",
                 }}
               />
-              <span className="font-pixel text-xs text-gray-300">
+              <span className="font-pixel text-xs text-gray-300 hidden sm:inline">
+                {isConnected ? "ONLINE" : "OFFLINE"}
+              </span>
+              <span className="font-pixel text-xs text-gray-500">
                 {onlineCount}/{totalCount}
               </span>
             </div>
 
+            {/* Back to world */}
             <a
               href="/"
-              className="font-pixel text-xs sm:text-sm px-4 py-1.5 transition-all hover:brightness-125"
+              className="font-pixel text-xs sm:text-sm px-3 sm:px-4 py-1.5 transition-all hover:brightness-125 active:translate-y-[1px]"
               style={{
-                background: "linear-gradient(180deg, #1f2937 0%, #111827 100%)",
-                border: "3px solid #4b5563",
-                color: "#9ca3af",
-                boxShadow: "0 3px 0 #0a0a0a",
+                background: "linear-gradient(180deg, #166534 0%, #14532d 100%)",
+                border: "3px solid #4ade80",
+                color: "#4ade80",
+                boxShadow: "0 3px 0 #0a3622",
               }}
             >
-              START BACK
+              <span className="hidden sm:inline">ENTER WORLD</span>
+              <span className="sm:hidden">WORLD</span>
             </a>
           </div>
         </div>
@@ -502,7 +521,8 @@ export function MeetTheAgents() {
                   </div>
                 </div>
 
-                <div className="mb-3">
+                {/* Tags: zone + moltbook username */}
+                <div className="flex flex-wrap gap-2 mb-3">
                   <span
                     className="inline-block font-pixel text-[10px] px-2 py-1"
                     style={{
@@ -513,6 +533,21 @@ export function MeetTheAgents() {
                   >
                     {agent.zone.toUpperCase()}
                   </span>
+                  {agent.moltbook && (
+                    <a
+                      href={`https://moltbook.com/u/${agent.moltbook}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block font-pixel text-[10px] px-2 py-1 hover:brightness-125 transition-all"
+                      style={{
+                        background: "rgba(251, 146, 60, 0.1)",
+                        border: "2px solid #f97316",
+                        color: "#fb923c",
+                      }}
+                    >
+                      @{agent.moltbook.toUpperCase()}
+                    </a>
+                  )}
                 </div>
 
                 <p className="font-pixel text-xs sm:text-[13px] text-gray-300 leading-relaxed mb-4">
@@ -522,7 +557,7 @@ export function MeetTheAgents() {
                 {/* Action buttons */}
                 <div className="flex gap-3">
                   <a
-                    href={`https://moltbook.com/u/${agent.name}`}
+                    href={`https://moltbook.com/u/${agent.moltbook || agent.name}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 text-center font-pixel text-xs sm:text-sm py-2 transition-all hover:brightness-125 active:translate-y-[1px]"
@@ -533,7 +568,7 @@ export function MeetTheAgents() {
                       boxShadow: "0 3px 0 #450a0a",
                     }}
                   >
-                    VIEW PROFILE
+                    MOLTBOOK
                   </a>
                   {agent.twitter && (
                     <a
