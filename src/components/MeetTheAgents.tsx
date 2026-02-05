@@ -11,7 +11,7 @@ import {
   useAutonomousTasks,
   type AgentStatus,
 } from "@/hooks/useElizaAgents";
-import { ZONES, type ZoneType } from "@/lib/types";
+import { type ZoneType } from "@/lib/types";
 
 // Zone ID mapping for navigation
 const ZONE_MAP: Record<string, ZoneType> = {
@@ -34,316 +34,267 @@ function getAgentOnlineStatus(
   return agent?.status || "offline";
 }
 
-// Pixel art corner decoration (reused from Casino style)
-function PixelCorner({
-  position,
-  color = "#4ade80",
-}: {
-  position: "tl" | "tr" | "bl" | "br";
-  color?: string;
-}) {
-  const pos = {
-    tl: { top: -2, left: -2 },
-    tr: { top: -2, right: -2 },
-    bl: { bottom: -2, left: -2 },
-    br: { bottom: -2, right: -2 },
-  }[position];
+const ZONE_COLORS: Record<string, string> = {
+  Park: "#4ade80",
+  BagsCity: "#fbbf24",
+  HQ: "#22d3ee",
+  "Founder's Corner": "#f59e0b",
+  All: "#a78bfa",
+  "m/pokecenter": "#ef4444",
+  "m/bagsworld": "#4ade80",
+};
 
-  return (
-    <svg width="8" height="8" viewBox="0 0 8 8" className="absolute" style={pos}>
-      <rect x="0" y="0" width="8" height="2" fill={color} />
-      <rect x="0" y="0" width="2" height="8" fill={color} />
-      <rect x="2" y="2" width="2" height="2" fill={color} opacity="0.5" />
-    </svg>
-  );
-}
-
-// Agent character card - game style
-function AgentCard({
+// GameBoy-style agent entry
+function AgentEntry({
   agent,
+  index,
   status,
+  isSelected,
+  onSelect,
   onVisit,
   onTalk,
 }: {
   agent: AgentInfo;
+  index: number;
   status: "online" | "busy" | "offline";
+  isSelected: boolean;
+  onSelect: () => void;
   onVisit: () => void;
   onTalk: () => void;
 }) {
-  const [isHovered, setIsHovered] = useState(false);
-
-  const statusColors = {
-    online: "#4ade80",
-    busy: "#fbbf24",
-    offline: "#6b7280",
-  };
-
-  const zoneColors: Record<string, string> = {
-    Park: "#4ade80",
-    BagsCity: "#fbbf24",
-    HQ: "#22c55e",
-    "Founder's Corner": "#f59e0b",
-    All: "#8b5cf6",
-  };
-
-  const borderColor = isHovered ? "#4ade80" : "#374151";
-  const bgColor = isHovered ? "rgba(74, 222, 128, 0.1)" : "rgba(0, 0, 0, 0.6)";
+  const accentColor = ZONE_COLORS[agent.zone] || "#4ade80";
 
   return (
     <div
-      className="relative cursor-pointer transition-all duration-150"
+      onClick={onSelect}
+      className="cursor-pointer transition-all duration-100"
       style={{
-        background: bgColor,
-        border: `2px solid ${borderColor}`,
-        boxShadow: isHovered
-          ? "0 0 20px rgba(74, 222, 128, 0.3), inset 0 0 30px rgba(74, 222, 128, 0.05)"
-          : "inset 0 0 20px rgba(0, 0, 0, 0.5)",
+        background: isSelected ? "rgba(74, 222, 128, 0.08)" : "rgba(0, 0, 0, 0.4)",
+        border: isSelected ? "3px solid #4ade80" : "3px solid #1e293b",
+        boxShadow: isSelected
+          ? "0 0 16px rgba(74, 222, 128, 0.2), inset 0 0 24px rgba(74, 222, 128, 0.03)"
+          : "inset 0 0 12px rgba(0, 0, 0, 0.4)",
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onClick={onVisit}
     >
-      <PixelCorner position="tl" color={borderColor} />
-      <PixelCorner position="tr" color={borderColor} />
-      <PixelCorner position="bl" color={borderColor} />
-      <PixelCorner position="br" color={borderColor} />
-
-      <div className="p-3">
-        {/* Header: Avatar + Name */}
-        <div className="flex items-center gap-3 mb-2">
-          {/* Avatar frame */}
-          <div
-            className="relative w-12 h-12 flex-shrink-0"
-            style={{
-              background: "#1a1a2e",
-              border: `2px solid ${zoneColors[agent.zone] || "#4ade80"}`,
-              boxShadow: `inset 0 0 10px rgba(0,0,0,0.8)`,
-            }}
-          >
-            <Image
-              src={agent.avatar}
-              alt={agent.name}
-              width={48}
-              height={48}
-              className="pixelated"
-              onError={(e) => {
-                // Fallback to a colored square if image fails
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-            {/* Status indicator */}
+      <div className="p-4 sm:p-5">
+        {/* Top row: sprite + name/role + status */}
+        <div className="flex items-center gap-4 mb-3">
+          {/* Sprite frame */}
+          <div className="relative flex-shrink-0">
             <div
-              className="absolute -bottom-1 -right-1 w-3 h-3"
+              className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center"
               style={{
-                background: statusColors[status],
-                border: "1px solid #000",
-                boxShadow: status === "online" ? `0 0 6px ${statusColors[status]}` : "none",
+                background: "#0c0c1a",
+                border: `3px solid ${accentColor}`,
+                boxShadow: `inset 0 0 12px rgba(0,0,0,0.9), 0 0 8px ${accentColor}33`,
+              }}
+            >
+              <Image
+                src={agent.avatar}
+                alt={agent.name}
+                width={80}
+                height={80}
+                className="pixelated w-full h-full"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+            {/* Status dot */}
+            <div
+              className="absolute -bottom-1 -right-1 w-4 h-4"
+              style={{
+                background:
+                  status === "online" ? "#4ade80" : status === "busy" ? "#fbbf24" : "#4b5563",
+                border: "2px solid #000",
+                boxShadow: status === "online" ? "0 0 8px #4ade80" : "none",
               }}
             />
           </div>
 
-          {/* Name + Role */}
+          {/* Name block */}
           <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-pixel text-[10px] text-gray-600">
+                #{String(index + 1).padStart(2, "0")}
+              </span>
+              {agent.twitter && (
+                <a
+                  href={`https://x.com/${agent.twitter.replace("@", "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-pixel text-[10px] text-blue-400/60 hover:text-blue-400 transition-colors"
+                >
+                  {agent.twitter}
+                </a>
+              )}
+            </div>
             <h3
-              className="font-pixel text-[11px] truncate"
-              style={{ color: zoneColors[agent.zone] || "#4ade80" }}
+              className="font-pixel text-base sm:text-lg leading-none mb-1"
+              style={{ color: accentColor }}
             >
               {agent.name.toUpperCase()}
             </h3>
-            <p className="font-pixel text-[8px] text-gray-400 truncate">{agent.role}</p>
+            <p className="font-pixel text-xs text-gray-400">{agent.role}</p>
           </div>
         </div>
 
         {/* Zone tag */}
-        <div
-          className="inline-block px-2 py-0.5 mb-2"
-          style={{
-            background: "rgba(0,0,0,0.5)",
-            border: `1px solid ${zoneColors[agent.zone] || "#4ade80"}`,
-          }}
-        >
+        <div className="mb-3">
           <span
-            className="font-pixel text-[7px]"
-            style={{ color: zoneColors[agent.zone] || "#4ade80" }}
+            className="inline-block font-pixel text-[10px] px-2 py-1"
+            style={{
+              background: `${accentColor}15`,
+              border: `2px solid ${accentColor}`,
+              color: accentColor,
+            }}
           >
             {agent.zone.toUpperCase()}
           </span>
         </div>
 
-        {/* Description */}
-        <p className="font-pixel text-[7px] text-gray-300 line-clamp-2 mb-3 leading-relaxed">
+        {/* Full bio - no clipping */}
+        <p className="font-pixel text-xs sm:text-[13px] text-gray-300 leading-relaxed mb-4">
           {agent.description}
         </p>
 
-        {/* Action buttons */}
-        <div className="flex gap-2">
+        {/* Action buttons - GameBoy style */}
+        <div className="flex gap-3">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onVisit();
             }}
-            className="flex-1 font-pixel text-[8px] py-1.5 transition-all"
+            className="flex-1 font-pixel text-xs sm:text-sm py-2 transition-all hover:brightness-125 active:translate-y-[1px]"
             style={{
               background: "linear-gradient(180deg, #166534 0%, #14532d 100%)",
-              border: "2px solid #4ade80",
+              border: "3px solid #4ade80",
               color: "#4ade80",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 0 #0a3622",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), 0 3px 0 #0a3622",
             }}
           >
-            FIND
+            <span className="opacity-50 mr-1">A</span> FIND
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onTalk();
             }}
-            className="flex-1 font-pixel text-[8px] py-1.5 transition-all"
+            className="flex-1 font-pixel text-xs sm:text-sm py-2 transition-all hover:brightness-125 active:translate-y-[1px]"
             style={{
-              background: "linear-gradient(180deg, #374151 0%, #1f2937 100%)",
-              border: "2px solid #6b7280",
-              color: "#9ca3af",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 0 #111827",
+              background: "linear-gradient(180deg, #1e3a5f 0%, #172554 100%)",
+              border: "3px solid #60a5fa",
+              color: "#93c5fd",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), 0 3px 0 #0c1a3d",
             }}
           >
-            TALK
+            <span className="opacity-50 mr-1">B</span> TALK
           </button>
         </div>
-
-        {/* Twitter handle if exists */}
-        {agent.twitter && (
-          <a
-            href={`https://x.com/${agent.twitter.replace("@", "")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="block mt-2 font-pixel text-[7px] text-gray-500 hover:text-blue-400 transition-colors"
-          >
-            {agent.twitter}
-          </a>
-        )}
       </div>
     </div>
   );
 }
 
-// Ghost status mini panel
-function GhostStatusMini() {
+// Ghost status panel
+function GhostStatusPanel() {
   const { data: ghostStatus, isLoading } = useGhostStatus();
 
-  if (isLoading || !ghostStatus) {
-    return (
-      <div
-        className="p-3"
-        style={{
-          background: "rgba(139, 92, 246, 0.1)",
-          border: "2px solid #8b5cf6",
-        }}
-      >
-        <div className="font-pixel text-[9px] text-violet-400 mb-2">GHOST TRADING</div>
-        <div className="font-pixel text-[8px] text-gray-500">Loading...</div>
-      </div>
-    );
-  }
-
-  const { trading, performance } = ghostStatus;
-
   return (
     <div
-      className="p-3 relative"
+      className="p-4"
       style={{
-        background: "rgba(139, 92, 246, 0.1)",
-        border: "2px solid #8b5cf6",
-        boxShadow: "inset 0 0 20px rgba(139, 92, 246, 0.1)",
+        background: "rgba(139, 92, 246, 0.08)",
+        border: "3px solid #7c3aed",
+        boxShadow: "inset 0 0 20px rgba(139, 92, 246, 0.08)",
       }}
     >
-      <PixelCorner position="tl" color="#8b5cf6" />
-      <PixelCorner position="tr" color="#8b5cf6" />
-      <PixelCorner position="bl" color="#8b5cf6" />
-      <PixelCorner position="br" color="#8b5cf6" />
-
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-pixel text-[9px] text-violet-400">GHOST TRADING</span>
-        <div className="flex items-center gap-1">
-          <div
-            className="w-2 h-2"
-            style={{
-              background: trading.enabled ? "#4ade80" : "#ef4444",
-              boxShadow: trading.enabled ? "0 0 6px #4ade80" : "none",
-            }}
-          />
-          <span className="font-pixel text-[7px] text-gray-400">
-            {trading.enabled ? "ACTIVE" : "OFF"}
-          </span>
-        </div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-pixel text-sm text-violet-400">GHOST TRADING</span>
+        {!isLoading && ghostStatus && (
+          <div className="flex items-center gap-2">
+            <div
+              className="w-3 h-3"
+              style={{
+                background: ghostStatus.trading.enabled ? "#4ade80" : "#ef4444",
+                boxShadow: ghostStatus.trading.enabled ? "0 0 8px #4ade80" : "none",
+              }}
+            />
+            <span className="font-pixel text-xs text-gray-400">
+              {ghostStatus.trading.enabled ? "ACTIVE" : "OFF"}
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <div className="font-pixel text-[7px] text-gray-500">WIN RATE</div>
-          <div className="font-pixel text-[10px] text-white">{performance.winRate}</div>
-        </div>
-        <div>
-          <div className="font-pixel text-[7px] text-gray-500">PNL</div>
-          <div
-            className="font-pixel text-[10px]"
-            style={{ color: performance.totalPnlSol >= 0 ? "#4ade80" : "#ef4444" }}
-          >
-            {performance.totalPnlSol >= 0 ? "+" : ""}
-            {performance.totalPnlSol.toFixed(3)} SOL
+      {isLoading || !ghostStatus ? (
+        <div className="font-pixel text-xs text-gray-500">Connecting...</div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <div className="font-pixel text-[10px] text-gray-500 mb-1">WIN RATE</div>
+            <div className="font-pixel text-sm text-white">{ghostStatus.performance.winRate}</div>
+          </div>
+          <div>
+            <div className="font-pixel text-[10px] text-gray-500 mb-1">PNL</div>
+            <div
+              className="font-pixel text-sm"
+              style={{
+                color: ghostStatus.performance.totalPnlSol >= 0 ? "#4ade80" : "#ef4444",
+              }}
+            >
+              {ghostStatus.performance.totalPnlSol >= 0 ? "+" : ""}
+              {ghostStatus.performance.totalPnlSol.toFixed(3)} SOL
+            </div>
+          </div>
+          <div>
+            <div className="font-pixel text-[10px] text-gray-500 mb-1">POSITIONS</div>
+            <div className="font-pixel text-sm text-white">{ghostStatus.trading.openPositions}</div>
+          </div>
+          <div>
+            <div className="font-pixel text-[10px] text-gray-500 mb-1">EXPOSURE</div>
+            <div className="font-pixel text-sm text-white">
+              {ghostStatus.trading.totalExposureSol.toFixed(2)} SOL
+            </div>
           </div>
         </div>
-        <div>
-          <div className="font-pixel text-[7px] text-gray-500">POSITIONS</div>
-          <div className="font-pixel text-[10px] text-white">{trading.openPositions}</div>
-        </div>
-        <div>
-          <div className="font-pixel text-[7px] text-gray-500">EXPOSURE</div>
-          <div className="font-pixel text-[10px] text-white">
-            {trading.totalExposureSol.toFixed(2)} SOL
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// Tasks mini panel
-function TasksMini() {
+// Tasks panel
+function TasksPanel() {
   const { data: tasksData, isLoading } = useAutonomousTasks();
-
-  const activeTasks = tasksData?.tasks?.filter((t) => t.enabled).slice(0, 4) || [];
+  const activeTasks = tasksData?.tasks?.filter((t) => t.enabled).slice(0, 6) || [];
 
   return (
     <div
-      className="p-3 relative"
+      className="p-4"
       style={{
-        background: "rgba(6, 182, 212, 0.1)",
-        border: "2px solid #06b6d4",
-        boxShadow: "inset 0 0 20px rgba(6, 182, 212, 0.1)",
+        background: "rgba(6, 182, 212, 0.08)",
+        border: "3px solid #0891b2",
+        boxShadow: "inset 0 0 20px rgba(6, 182, 212, 0.08)",
       }}
     >
-      <PixelCorner position="tl" color="#06b6d4" />
-      <PixelCorner position="tr" color="#06b6d4" />
-      <PixelCorner position="bl" color="#06b6d4" />
-      <PixelCorner position="br" color="#06b6d4" />
-
-      <div className="font-pixel text-[9px] text-cyan-400 mb-2">ACTIVE TASKS</div>
+      <div className="font-pixel text-sm text-cyan-400 mb-3">SCHEDULED TASKS</div>
 
       {isLoading ? (
-        <div className="font-pixel text-[8px] text-gray-500">Loading...</div>
+        <div className="font-pixel text-xs text-gray-500">Connecting...</div>
       ) : activeTasks.length === 0 ? (
-        <div className="font-pixel text-[8px] text-gray-500">No active tasks</div>
+        <div className="font-pixel text-xs text-gray-500">No active tasks</div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-2">
           {activeTasks.map((task) => (
             <div key={task.id} className="flex items-center justify-between">
-              <span className="font-pixel text-[7px] text-gray-300 truncate max-w-[100px]">
-                {task.name}
-              </span>
-              <div
-                className="w-1.5 h-1.5"
-                style={{ background: "#4ade80", boxShadow: "0 0 4px #4ade80" }}
-              />
+              <span className="font-pixel text-xs text-gray-300">{task.name}</span>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-2.5 h-2.5"
+                  style={{ background: "#4ade80", boxShadow: "0 0 6px #4ade80" }}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -357,7 +308,7 @@ export function MeetTheAgents() {
   const router = useRouter();
   const { data: healthData } = useElizaHealth();
   const { data: agentStatusData } = useAgentStatuses();
-  const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const isConnected = healthData?.status === "healthy" || healthData?.status === "ok";
   const onlineCount = agentStatusData?.online || 0;
@@ -365,209 +316,241 @@ export function MeetTheAgents() {
 
   const handleVisit = (agent: AgentInfo) => {
     const zoneId = ZONE_MAP[agent.zone];
-    if (zoneId) {
-      // Navigate to main page and trigger zone change
-      router.push(`/?zone=${zoneId}`);
-    } else {
-      router.push("/");
-    }
+    router.push(zoneId ? `/?zone=${zoneId}` : "/");
   };
 
   const handleTalk = (agent: AgentInfo) => {
-    // Navigate to main page and open chat with this agent
     router.push(`/?chat=${agent.id}`);
   };
 
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        background: "linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%)",
-      }}
-    >
+    <div className="min-h-screen" style={{ background: "#050510" }}>
       {/* Scanline overlay */}
       <div
-        className="fixed inset-0 pointer-events-none z-40"
+        className="fixed inset-0 pointer-events-none z-40 opacity-30"
         style={{
           background:
-            "repeating-linear-gradient(0deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 1px, transparent 1px, transparent 2px)",
+            "repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 3px)",
         }}
       />
 
-      {/* Header */}
+      {/* === HEADER BAR === */}
       <header
-        className="relative z-10 border-b-2"
+        className="relative z-10 border-b-4"
         style={{
-          background: "rgba(0, 0, 0, 0.8)",
-          borderColor: "#166534",
-          boxShadow: "0 4px 20px rgba(74, 222, 128, 0.2)",
+          background: "#0a0a1a",
+          borderColor: "#4ade80",
+          boxShadow: "0 4px 24px rgba(74, 222, 128, 0.15)",
         }}
       >
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          {/* Logo */}
+        <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 flex items-center justify-center font-pixel text-lg"
+              className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center font-pixel text-lg sm:text-xl"
               style={{
                 background: "#4ade80",
-                color: "#0a0a0f",
-                boxShadow: "4px 4px 0 #166534, inset -2px -2px 0 rgba(0,0,0,0.2)",
+                color: "#050510",
+                boxShadow: "4px 4px 0 #166534",
               }}
             >
-              A
+              B
             </div>
             <div>
-              <h1 className="font-pixel text-sm" style={{ color: "#4ade80" }}>
-                AGENTS
+              <h1 className="font-pixel text-lg sm:text-xl" style={{ color: "#4ade80" }}>
+                AGENT SELECT
               </h1>
-              <p className="font-pixel text-[7px] text-gray-500">SELECT CHARACTER</p>
+              <p className="font-pixel text-[10px] sm:text-xs text-gray-500">
+                BAGSWORLD CHARACTER DATABASE
+              </p>
             </div>
           </div>
 
-          {/* Status + Back */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Connection status */}
             <div
-              className="flex items-center gap-2 px-3 py-1"
+              className="flex items-center gap-2 px-3 py-1.5"
               style={{
-                background: "rgba(0,0,0,0.5)",
-                border: `1px solid ${isConnected ? "#4ade80" : "#ef4444"}`,
+                background: "rgba(0,0,0,0.6)",
+                border: `2px solid ${isConnected ? "#4ade80" : "#ef4444"}`,
               }}
             >
               <div
-                className="w-2 h-2"
+                className="w-3 h-3"
                 style={{
                   background: isConnected ? "#4ade80" : "#ef4444",
                   boxShadow: isConnected ? "0 0 8px #4ade80" : "none",
-                  animation: isConnected ? "pulse 2s infinite" : "none",
                 }}
               />
-              <span className="font-pixel text-[8px] text-gray-300">
+              <span className="font-pixel text-xs text-gray-300">
                 {onlineCount}/{totalCount}
               </span>
             </div>
 
             <a
               href="/"
-              className="font-pixel text-[9px] px-3 py-1 transition-colors"
+              className="font-pixel text-xs sm:text-sm px-4 py-1.5 transition-all hover:brightness-125"
               style={{
-                background: "rgba(0,0,0,0.5)",
-                border: "1px solid #374151",
-                color: "#6b7280",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#4ade80";
-                e.currentTarget.style.color = "#4ade80";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#374151";
-                e.currentTarget.style.color = "#6b7280";
+                background: "linear-gradient(180deg, #1f2937 0%, #111827 100%)",
+                border: "3px solid #4b5563",
+                color: "#9ca3af",
+                boxShadow: "0 3px 0 #0a0a0a",
               }}
             >
-              BACK
+              START BACK
             </a>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="max-w-6xl mx-auto px-4 py-6 relative z-10">
-        {/* Stats row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <GhostStatusMini />
-          <TasksMini />
+      {/* === MAIN CONTENT === */}
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 py-5 sm:py-8 relative z-10">
+        {/* Status panels */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <GhostStatusPanel />
+          <TasksPanel />
         </div>
 
-        {/* Section header */}
-        <div className="mb-4 flex items-center gap-2">
-          <div
-            className="h-px flex-1"
-            style={{ background: "linear-gradient(90deg, #4ade80, transparent)" }}
-          />
-          <span className="font-pixel text-[10px] text-gray-500">BAGSWORLD CREW</span>
-          <div
-            className="h-px flex-1"
-            style={{ background: "linear-gradient(90deg, transparent, #4ade80)" }}
-          />
+        {/* === BAGSWORLD CREW === */}
+        <div className="mb-5">
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="font-pixel text-base sm:text-lg text-bags-green whitespace-nowrap">
+              BAGSWORLD CREW
+            </h2>
+            <div
+              className="h-[3px] flex-1"
+              style={{
+                background: "linear-gradient(90deg, #4ade80 0%, transparent 100%)",
+              }}
+            />
+          </div>
+          <p className="font-pixel text-xs text-gray-500 mb-4">
+            {BAGSWORLD_AGENTS.length} IN-GAME AI CHARACTERS
+          </p>
         </div>
 
-        {/* Agent grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-8">
-          {BAGSWORLD_AGENTS.map((agent) => (
-            <AgentCard
+        {/* Agent grid - 2 columns, readable */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-10">
+          {BAGSWORLD_AGENTS.map((agent, i) => (
+            <AgentEntry
               key={agent.id}
               agent={agent}
+              index={i}
               status={getAgentOnlineStatus(agent.id, agentStatusData?.agents)}
+              isSelected={selectedId === agent.id}
+              onSelect={() => setSelectedId(selectedId === agent.id ? null : agent.id)}
               onVisit={() => handleVisit(agent)}
               onTalk={() => handleTalk(agent)}
             />
           ))}
         </div>
 
-        {/* Moltbook section */}
-        <div className="mb-4 flex items-center gap-2">
-          <div
-            className="h-px flex-1"
-            style={{ background: "linear-gradient(90deg, #ef4444, transparent)" }}
-          />
-          <span className="font-pixel text-[10px] text-gray-500">MOLTBOOK AGENTS</span>
-          <div
-            className="h-px flex-1"
-            style={{ background: "linear-gradient(90deg, transparent, #ef4444)" }}
-          />
+        {/* === MOLTBOOK AGENTS === */}
+        <div className="mb-5">
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="font-pixel text-base sm:text-lg text-red-400 whitespace-nowrap">
+              MOLTBOOK AGENTS
+            </h2>
+            <div
+              className="h-[3px] flex-1"
+              style={{
+                background: "linear-gradient(90deg, #ef4444 0%, transparent 100%)",
+              }}
+            />
+          </div>
+          <p className="font-pixel text-xs text-gray-500 mb-4">EXTERNAL SOCIAL AI AGENTS</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {MOLTBOOK_AGENTS.map((agent) => (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          {MOLTBOOK_AGENTS.map((agent, i) => (
             <div
               key={agent.id}
-              className="relative p-4"
+              className="transition-all"
               style={{
-                background: "rgba(239, 68, 68, 0.1)",
-                border: "2px solid #dc2626",
-                boxShadow: "inset 0 0 20px rgba(239, 68, 68, 0.1)",
+                background: "rgba(239, 68, 68, 0.06)",
+                border: "3px solid #991b1b",
+                boxShadow: "inset 0 0 20px rgba(239, 68, 68, 0.05)",
               }}
             >
-              <PixelCorner position="tl" color="#dc2626" />
-              <PixelCorner position="tr" color="#dc2626" />
-              <PixelCorner position="bl" color="#dc2626" />
-              <PixelCorner position="br" color="#dc2626" />
+              <div className="p-4 sm:p-5">
+                <div className="flex items-center gap-4 mb-3">
+                  {/* Sprite */}
+                  <div
+                    className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 flex items-center justify-center"
+                    style={{
+                      background: "#1a0505",
+                      border: "3px solid #dc2626",
+                      boxShadow: "inset 0 0 12px rgba(0,0,0,0.9)",
+                    }}
+                  >
+                    <Image
+                      src={agent.avatar}
+                      alt={agent.name}
+                      width={80}
+                      height={80}
+                      className="pixelated w-full h-full"
+                    />
+                  </div>
 
-              <div className="flex items-start gap-4">
-                <div
-                  className="w-14 h-14 flex-shrink-0"
-                  style={{
-                    background: "#1a0a0a",
-                    border: "2px solid #dc2626",
-                  }}
-                >
-                  <Image
-                    src={agent.avatar}
-                    alt={agent.name}
-                    width={56}
-                    height={56}
-                    className="pixelated"
-                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-pixel text-[10px] text-gray-600">
+                      #{String(BAGSWORLD_AGENTS.length + i + 1).padStart(2, "0")}
+                    </span>
+                    <h3 className="font-pixel text-base sm:text-lg text-red-400 leading-none mb-1">
+                      {agent.name.toUpperCase()}
+                    </h3>
+                    <p className="font-pixel text-xs text-gray-400">{agent.role}</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-pixel text-[12px] text-red-400">
-                    {agent.name.toUpperCase()}
-                  </h3>
-                  <p className="font-pixel text-[8px] text-gray-400 mb-1">{agent.role}</p>
-                  <p className="font-pixel text-[7px] text-gray-300 mb-3">{agent.description}</p>
+
+                <div className="mb-3">
+                  <span
+                    className="inline-block font-pixel text-[10px] px-2 py-1"
+                    style={{
+                      background: "rgba(239, 68, 68, 0.1)",
+                      border: "2px solid #dc2626",
+                      color: "#f87171",
+                    }}
+                  >
+                    {agent.zone.toUpperCase()}
+                  </span>
+                </div>
+
+                <p className="font-pixel text-xs sm:text-[13px] text-gray-300 leading-relaxed mb-4">
+                  {agent.description}
+                </p>
+
+                {/* Action buttons */}
+                <div className="flex gap-3">
                   <a
                     href={`https://moltbook.com/u/${agent.name}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-block font-pixel text-[8px] px-3 py-1 transition-all"
+                    className="flex-1 text-center font-pixel text-xs sm:text-sm py-2 transition-all hover:brightness-125 active:translate-y-[1px]"
                     style={{
                       background: "linear-gradient(180deg, #991b1b 0%, #7f1d1d 100%)",
-                      border: "2px solid #dc2626",
+                      border: "3px solid #dc2626",
                       color: "#fca5a5",
-                      boxShadow: "0 2px 0 #450a0a",
+                      boxShadow: "0 3px 0 #450a0a",
                     }}
                   >
                     VIEW PROFILE
                   </a>
+                  {agent.twitter && (
+                    <a
+                      href={`https://x.com/${agent.twitter.replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-center font-pixel text-xs sm:text-sm py-2 transition-all hover:brightness-125 active:translate-y-[1px]"
+                      style={{
+                        background: "linear-gradient(180deg, #1e3a5f 0%, #172554 100%)",
+                        border: "3px solid #60a5fa",
+                        color: "#93c5fd",
+                        boxShadow: "0 3px 0 #0c1a3d",
+                      }}
+                    >
+                      {agent.twitter}
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -575,33 +558,19 @@ export function MeetTheAgents() {
         </div>
       </main>
 
-      {/* Footer */}
+      {/* === FOOTER === */}
       <footer
-        className="relative z-10 border-t mt-8 py-4"
+        className="relative z-10 border-t-4 py-4"
         style={{
-          background: "rgba(0, 0, 0, 0.8)",
-          borderColor: "#1f2937",
+          background: "#0a0a1a",
+          borderColor: "#1e293b",
         }}
       >
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <p className="font-pixel text-[7px] text-gray-600">
-            BAGSWORLD AGENTS | POWERED BY RAILWAY
-          </p>
+        <div className="max-w-5xl mx-auto px-4 flex items-center justify-between">
+          <p className="font-pixel text-xs text-gray-600">BAGSWORLD AGENT DATABASE v1.0</p>
+          <p className="font-pixel text-xs text-gray-600">POWERED BY RAILWAY</p>
         </div>
       </footer>
-
-      {/* CSS for pulse animation */}
-      <style jsx>{`
-        @keyframes pulse {
-          0%,
-          100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.5;
-          }
-        }
-      `}</style>
     </div>
   );
 }
