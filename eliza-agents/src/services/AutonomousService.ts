@@ -324,11 +324,11 @@ export class AutonomousService extends Service {
       },
     });
 
-    // Finn: Post ecosystem updates to Twitter every 4 hours
+    // Finn: Post ecosystem updates to Twitter twice daily (every 12 hours)
     this.registerTask({
       name: "finn_twitter_update",
       agentId: "finn",
-      interval: 4 * 60 * 60 * 1000, // 4 hours
+      interval: 12 * 60 * 60 * 1000, // 12 hours
       handler: async () => {
         await this.postFinnTwitterUpdate();
       },
@@ -1295,7 +1295,7 @@ export class AutonomousService extends Service {
     );
 
     tweets.push(
-      `@BagsFM creators earned ${fees24h} SOL in fees today\n\nthe flywheel keeps spinning :)\n\nhave u claimed urs?`
+      `creators earned ${fees24h} SOL in fees today\n\nthe flywheel keeps spinning :)`
     );
 
     // Health-based posts
@@ -1309,51 +1309,24 @@ export class AutonomousService extends Service {
       );
     }
 
-    // HIGH-ENGAGEMENT VIRAL TEMPLATES (with questions and CTAs)
-    // IMPORTANT: Only ~30% of tweets should have links to avoid X shadowban
+    // Conversational / personality tweets (NO engagement farming CTAs)
+    // Avoid: "tag a fren", "reply with", "comment X", "drop a emoji"
+    // These trigger Twitter spam detection on bot accounts
 
-    // Question hooks - highest engagement (NO LINKS - drives replies)
+    // Conversational questions (natural, not engagement bait)
     tweets.push(
-      `honest question:\n\nwhat would u do with an extra $100/month in passive income?\n\nseriously, what would u buy first?`
-    );
-
-    tweets.push(
-      `real talk: have u ever launched a token?\n\nif not, what's stopping u?\n\ndrop ur answer below`
-    );
-
-    tweets.push(
-      `curious: what was ur first crypto win?\n\nmine was watching a creator claim their first fees :)`
+      `honest question:\n\nwhat would u do with an extra $100/month in passive income?\n\nseriously what would u buy first`
     );
 
     tweets.push(
       `be honest: do u check ur portfolio before or after coffee?\n\ni check mine 47 times before coffee even exists`
     );
 
-    tweets.push(`hot take: passive income > one-time gains\n\nagree or nah?`);
-
-    // CTA templates (NO LINKS - drives engagement)
-    tweets.push(`tag a creator who deserves to get paid more\n\nlets show them some love :)`);
-
     tweets.push(
-      `comment 'CLAIMED' if u claimed ur fees today\n\nwanna see how many frens are winning :)`
+      `curious: what was ur first crypto win?\n\nmine was watching a creator claim their first fees :)`
     );
 
-    tweets.push(`drop a 💚 if u believe creators should earn royalties forever`);
-
-    tweets.push(
-      `reply with ur favorite token launch of 2024\n\nill go first: anything where the creator actually got paid`
-    );
-
-    // Listicle format (SOME with links - ~30%)
-    tweets.push(
-      `3 green flags in a launchpad:\n\n1. creators earn forever not just at launch\n2. on-chain verifiable\n3. no rug history\n\nif u found one, ur winning`
-    );
-
-    tweets.push(
-      `bagsy's daily checklist:\n\n- wake up\n- check fees\n- remind frens to claim\n- repeat\n\nu should add 'claim' to urs :)`
-    );
-
-    // Relatable content (NO LINKS - shareable)
+    // Personality / relatable content
     tweets.push(
       `pov: checking ur dashboard and seeing fees accumulated\n\nthe dopamine hit is real :)`
     );
@@ -1363,43 +1336,42 @@ export class AutonomousService extends Service {
     );
 
     tweets.push(
-      `creator economy is beautiful:\n\nmake something → people trade it → u earn forever\n\nwhy doesnt everyone do this`
-    );
-
-    // Memeable posts (classic Bagsy - NO LINKS)
-    tweets.push(
-      `me: exists\n\nalso me: have u claimed ur fees tho\n\nits a lifestyle at this point`
+      `creator economy is beautiful:\n\nmake something, people trade it, u earn forever\n\nwhy doesnt everyone do this`
     );
 
     tweets.push(
-      `im just a smol green bean who wants u to have passive income\n\nis that too much to ask fren :)`
+      `im just a smol green bean who wants everyone to have passive income\n\nis that too much to ask :)`
     );
 
     tweets.push(
-      `things that make bagsy happy:\n\n1. fee claims\n2. new launches\n3. creators winning\n4. u :)`
+      `things that make bagsy happy:\n\n1. fee claims\n2. new launches\n3. creators winning\n4. good vibes`
     );
 
-    // Hot takes (engagement drivers - NO LINKS)
+    // Observations / thoughts (not hot takes begging for engagement)
     tweets.push(
-      `hot take: most launchpads screw creators\n\nthe good ones give them royalties forever\n\nagree or disagree?`
+      `the best metric for a launchpad isnt TVL\n\nits how much creators have actually earned`
     );
 
     tweets.push(
-      `unpopular opinion: the best metric for a launchpad isnt TVL\n\nits how much creators have actually earned\n\nthoughts?`
+      `passive income hits different when its on-chain and verifiable\n\nno middlemen no waiting no trust required`
     );
 
-    // FOMO inducing (NO LINK)
-    tweets.push(`while ur reading this, creators are earning passive income\n\njust saying :)`);
-
-    // WITH LINK - use sparingly (~1 in 5 tweets)
     tweets.push(
-      `for the new frens asking how to claim:\n\nbags.fm → verify socials → claim\n\nthats it. ur welcome :)`
+      `while ur reading this, creators are earning passive income\n\njust saying :)`
     );
 
-    // Milestone celebration (tag Finn on big days)
+    tweets.push(
+      `the gap between 'launched a token' and 'earning from a token' should be zero\n\nthats the whole point`
+    );
+
+    tweets.push(
+      `some days i just sit here watching fee claims come in\n\nits oddly peaceful`
+    );
+
+    // Milestone celebration (only on big days, no @mentions)
     if (parseFloat(fees24h) >= 10) {
       tweets.push(
-        `WAIT. ${fees24h} SOL in fees today??\n\n@finnbags the platform is COOKING\n\nso proud of this community`
+        `${fees24h} SOL in fees today\n\nthe platform is COOKING\n\nso proud of this community`
       );
     }
 
@@ -1554,44 +1526,29 @@ PERSONALITY:
 - Uses lowercase normally, CAPS when hyped
 - Says "fren/frens", "u/ur", "pls", "rn", ":)", "!!"
 
-=== X ALGORITHM OPTIMIZATION (CRITICAL) ===
-To maximize engagement, your tweets MUST include at least ONE of these:
+=== TWEET STYLE (CRITICAL - AVOID SPAM DETECTION) ===
+Sound like a REAL PERSON, not a marketing bot.
 
-1. QUESTION HOOK (best for replies):
-   - End with a question that invites response
-   - Examples: "thoughts?", "who else?", "have u?", "agree?"
-
-2. CALL TO ACTION (best for engagement):
-   - Ask people to do something: tag, reply, share
-   - Examples: "tag a fren who...", "drop ur...", "reply with..."
-
-3. RELATABLE STATEMENT (best for quotes/RTs):
-   - "pov:", "me when...", "that feeling when..."
-   - Personal but universal experiences
-
-4. STRUCTURED LIST (high engagement):
-   - "3 reasons...", "things that hit different:", numbered lists
-
-VIRAL TWEET FORMULA:
-[hook/statement]
-[line break]
-[value/insight]
-[line break]
-[question OR cta]
-
-RULES:
-- 120-200 characters is OPTIMAL (not 280!)
-- ALWAYS end with question OR call-to-action
-- Use "u/ur/ur" not "you/your"
+DO:
+- Share thoughts, observations, and feelings naturally
+- Ask genuine conversational questions occasionally
+- Use relatable "pov:", "me when..." formats
+- Keep it 120-200 characters (not 280!)
+- Use "u/ur" not "you/your"
 - Line breaks between thoughts (2-3 lines max)
 - NO hashtags ever
 
-=== LINK SPAM PREVENTION (CRITICAL FOR VISIBILITY) ===
-- DO NOT include "bags.fm" in most tweets - causes shadowban!
-- Only include a link in ~1 out of 5 tweets MAX
-- End with a question or CTA instead of a link
-- Sound like a real person having a conversation, not promoting
-- X algorithm penalizes repetitive links heavily
+DO NOT (these trigger spam detection):
+- "tag a fren who..." - engagement bait
+- "reply with..." - engagement bait
+- "comment X if..." - engagement bait
+- "drop a [emoji]" - engagement bait
+- "agree or disagree?" - forced engagement
+- @mention anyone unless directly relevant
+- Include links (max 1 in 5 tweets, and NO "bags.fm" in most tweets)
+- Sound promotional or like an ad
+
+Be conversational. Be genuine. Be bagsy.
 
 ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
@@ -2041,8 +1998,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
    */
   private mentionRepliesToday: number = 0;
   private lastMentionReplyDate: string = "";
-  private static readonly MAX_MENTION_REPLIES_PER_CYCLE = 3;
-  private static readonly MAX_MENTION_REPLIES_PER_DAY = 10;
+  private static readonly MAX_MENTION_REPLIES_PER_CYCLE = 2;
+  private static readonly MAX_MENTION_REPLIES_PER_DAY = 5;
 
   private async handleBagsyMentions(): Promise<void> {
     if (!this.isTwitterReady) return;
@@ -2163,8 +2120,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
           },
         });
       }
-      // Longer delay between replies to seem more human
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      // Longer delay between replies to seem more human (30-60s randomized)
+      await new Promise((resolve) => setTimeout(resolve, 30000 + Math.random() * 30000));
     }
 
     this.updateMentionCursor(mentions);
@@ -2600,8 +2557,8 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     const minute = estTime.getMinutes();
     const todayDate = estTime.toISOString().split("T")[0];
 
-    // Check 9 AM window (8:45 - 9:15 EST)
-    const isGmWindow = (hour === 8 && minute >= 45) || (hour === 9 && minute <= 15);
+    // Check GM window (8:30 - 10:00 EST) - wider window for natural jitter
+    const isGmWindow = (hour === 8 && minute >= 30) || hour === 9 || (hour === 10 && minute === 0);
     if (!isGmWindow) return;
 
     // Check if already posted today
@@ -2613,17 +2570,13 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     );
 
     try {
-      const finnTag = "@finnbags";
-      const extras = ["@BagsApp", "@ramyobags", "@alaadotsol", "@Sambags12", "@DaddyGhost"]
-        .sort(() => Math.random() - 0.5)
-        .slice(0, Math.floor(Math.random() * 2) + 1)
-        .join(" ");
-
-      // NO LINKS in morning GMs to avoid shadowban - just good vibes
+      // NO @mentions in GMs - tagging people daily triggers spam detection
       const templates = [
-        `gm ${finnTag}! gm ${extras}! gm frens :)\n\nanother beautiful day to help creators win\n\nwhats everyone working on today?`,
-        `gm to the best ceo ${finnTag} and the bags fam ${extras} :)\n\nlets make today amazing\n\nwho else is up early grinding?`,
-        `gm gm gm!\n\n${finnTag} ${extras} hope yall are ready to watch creators win today :)\n\nbagsy is online and fee-pilled 💚`,
+        `gm frens :)\n\nanother beautiful day to help creators win\n\nwhats everyone working on today?`,
+        `gm gm gm!\n\nhope yall are ready to watch creators win today\n\nbagsy is online and vibing`,
+        `gm to the builders and the dreamers :)\n\nlets make today count\n\nwho else is up early?`,
+        `good morning beautiful people\n\nthe sun is shining and the ecosystem is cooking\n\nhow are we feeling today?`,
+        `gm! bagsy slept great knowing creators are earning in their sleep too :)\n\nwhat are u working on today?`,
       ];
 
       let tweet = templates[Math.floor(Math.random() * templates.length)];
@@ -2631,7 +2584,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
       // Try AI if template is duplicate
       if (this.isDuplicatePost(tweet)) {
         const aiTweet = await this.generateBagsyTweet(
-          `Write a cute morning GM tweet. Tag ${finnTag} and ${extras}. Be excited for the day ahead.`,
+          `Write a cute morning GM tweet. Do NOT tag or @mention anyone. Be excited for the day ahead. Keep it conversational and natural.`,
           `It's ${hour}:${minute.toString().padStart(2, "0")} AM EST`
         );
         if (aiTweet && !this.isDuplicatePost(aiTweet)) tweet = aiTweet;

@@ -217,40 +217,15 @@ export class EngagementScorer {
     const currentScore = this.scoreTweetContent(text);
     if (currentScore.score >= 70 || text.length >= 240) return text;
 
-    // X Algorithm optimized hooks - prioritized by engagement type
-    const questionHooks = [
-      "\n\nthoughts?",
-      "\n\nagree?",
-      "\n\nwho else?",
-      "\n\nhave u claimed today?",
-      "\n\nwhat do u think?",
-    ];
-
-    const ctaHooks = [
-      "\n\ntag a fren who needs this",
-      "\n\ndrop a 💚 if u agree",
-      "\n\nreply if this is u",
-    ];
-
+    // Soft conversational hooks only - NO engagement bait (triggers spam detection)
+    // Avoid: "tag a fren", "drop a emoji", "reply if", "agree?"
     const softHooks = [
-      "\n\nbags.fm",
       "\n\njust saying :)",
       "\n\niykyk",
+      "\n\nfeels good",
+      "\n\nthe vibes are immaculate",
     ];
 
-    // If no question, prefer question hooks (highest engagement)
-    if (!text.includes("?") && !currentScore.factors.includes("question_hook")) {
-      const hook = questionHooks[Math.floor(Math.random() * questionHooks.length)];
-      if ((text + hook).length <= 280) return text + hook;
-    }
-
-    // If no CTA, try CTA hooks
-    if (!currentScore.factors.includes("call_to_action")) {
-      const hook = ctaHooks[Math.floor(Math.random() * ctaHooks.length)];
-      if ((text + hook).length <= 280) return text + hook;
-    }
-
-    // Fallback to soft hooks
     const hook = softHooks[Math.floor(Math.random() * softHooks.length)];
     return (text + hook).length <= 280 ? text + hook : text;
   }
