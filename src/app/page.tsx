@@ -3,10 +3,10 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
 import { Leaderboard } from "@/components/Leaderboard";
-import { AgentDialogue } from "@/components/AgentDialogue";
+import { LiveMarketFeed } from "@/components/LiveMarketFeed";
 import { UnifiedActivityFeed } from "@/components/UnifiedActivityFeed";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
@@ -171,19 +171,28 @@ export default function Home() {
   const { worldState, isLoading, refreshAfterLaunch, tokenCount, refetch } = useWorldState();
   const { publicKey } = useWallet();
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
-  const [showPokeCenterModal, setShowPokeCenterModal] = useState(false);
-  const [showFeeClaimModal, setShowFeeClaimModal] = useState(false);
-  const [showTradingGymModal, setShowTradingGymModal] = useState(false);
-  const [showCommunityFundModal, setShowCommunityFundModal] = useState(false);
-  const [showCasinoModal, setShowCasinoModal] = useState(false);
-  const [showOracleModal, setShowOracleModal] = useState(false);
-  const [showLauncherHub, setShowLauncherHub] = useState(false);
-  const [showCasinoAdmin, setShowCasinoAdmin] = useState(false);
-  const [showTradingTerminal, setShowTradingTerminal] = useState(false);
-  const [showMansionModal, setShowMansionModal] = useState(false);
-  const [showArenaModal, setShowArenaModal] = useState(false);
-  const [showAgentHutModal, setShowAgentHutModal] = useState(false);
-  const [showAgentBarModal, setShowAgentBarModal] = useState(false);
+
+  // Consolidated modal state - replaces 14 individual useState calls
+  type ModalType =
+    | "pokeCenter"
+    | "feeClaim"
+    | "tradingGym"
+    | "communityFund"
+    | "casino"
+    | "oracle"
+    | "launcherHub"
+    | "casinoAdmin"
+    | "tradingTerminal"
+    | "mansion"
+    | "arena"
+    | "agentHut"
+    | "agentBar"
+    | "launch"
+    | null;
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const openModal = useCallback((modal: ModalType) => setActiveModal(modal), []);
+  const closeModal = useCallback(() => setActiveModal(null), []);
+
   const [mansionData, setMansionData] = useState<{
     name?: string;
     holderRank?: number;
@@ -192,10 +201,7 @@ export default function Home() {
   } | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"leaderboard" | "agents">("agents");
-
-  // State for LaunchModal
-  const [showLaunchModal, setShowLaunchModal] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"leaderboard" | "market">("market");
 
   // Listen for building click events from Phaser
   useEffect(() => {
@@ -203,30 +209,12 @@ export default function Home() {
       setTradeToken(event.detail);
     };
 
-    const handlePokeCenterClick = () => {
-      setShowPokeCenterModal(true);
-    };
-
-    const handleTradingGymClick = () => {
-      setShowTradingGymModal(true);
-    };
-
-    const handleTreasuryClick = () => {
-      setShowCommunityFundModal(true);
-    };
-
-    const handleCasinoClick = () => {
-      setShowCasinoModal(true);
-    };
-
-    const handleOracleClick = () => {
-      setShowOracleModal(true);
-    };
-
-    const handleTradingTerminalClick = () => {
-      setShowTradingTerminal(true);
-    };
-
+    const handlePokeCenterClick = () => openModal("pokeCenter");
+    const handleTradingGymClick = () => openModal("tradingGym");
+    const handleTreasuryClick = () => openModal("communityFund");
+    const handleCasinoClick = () => openModal("casino");
+    const handleOracleClick = () => openModal("oracle");
+    const handleTradingTerminalClick = () => openModal("tradingTerminal");
     const handleMansionClick = (
       event: CustomEvent<{
         name?: string;
@@ -236,29 +224,13 @@ export default function Home() {
       }>
     ) => {
       setMansionData(event.detail);
-      setShowMansionModal(true);
+      openModal("mansion");
     };
-
-    const handleArenaClick = () => {
-      setShowArenaModal(true);
-    };
-
-    const handleAgentHutClick = () => {
-      setShowAgentHutModal(true);
-    };
-
-    const handleMoltBarClick = () => {
-      setShowAgentBarModal(true);
-    };
-
-    // Handle AI action button events
-    const handleLaunchClick = () => {
-      setShowLaunchModal(true);
-    };
-
-    const handleClaimClick = () => {
-      setShowFeeClaimModal(true);
-    };
+    const handleArenaClick = () => openModal("arena");
+    const handleAgentHutClick = () => openModal("agentHut");
+    const handleMoltBarClick = () => openModal("agentBar");
+    const handleLaunchClick = () => openModal("launch");
+    const handleClaimClick = () => openModal("feeClaim");
 
     window.addEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
     window.addEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
@@ -300,7 +272,7 @@ export default function Home() {
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     };
-  }, []);
+  }, [openModal]);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -326,12 +298,12 @@ export default function Home() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === "R") {
         e.preventDefault();
-        setShowCasinoAdmin(true);
+        openModal("casinoAdmin");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [openModal]);
 
   // Initialize autonomous dialogue and behavior systems (all sync, non-blocking)
   useEffect(() => {
@@ -565,14 +537,14 @@ export default function Home() {
             {/* Tab Buttons */}
             <div className="flex bg-black/40 hud-divider">
               <button
-                onClick={() => setSidebarTab("agents")}
+                onClick={() => setSidebarTab("market")}
                 className={`flex-1 py-2 font-pixel text-[9px] transition-all border-b-2 ${
-                  sidebarTab === "agents"
+                  sidebarTab === "market"
                     ? "text-bags-gold border-bags-gold bg-bags-green/5 tab-active-glow"
                     : "text-gray-600 border-transparent hover:text-gray-400"
                 }`}
               >
-                CHAT
+                MARKET
               </button>
               <button
                 onClick={() => setSidebarTab("leaderboard")}
@@ -587,7 +559,7 @@ export default function Home() {
             </div>
             {/* Tab Content */}
             <div className="flex-1 overflow-hidden min-h-0">
-              {sidebarTab === "agents" ? <AgentDialogue /> : <Leaderboard />}
+              {sidebarTab === "market" ? <LiveMarketFeed /> : <Leaderboard />}
             </div>
           </div>
 
@@ -627,20 +599,22 @@ export default function Home() {
             <EcosystemStats />
           </div>
           <button
-            onClick={() => setShowTradingTerminal(true)}
+            onClick={() => openModal("tradingTerminal")}
             className="text-[#22c55e] hover:text-[#16a34a] transition-colors min-h-[44px] sm:min-h-0 flex items-center"
+            aria-label="Open trading terminal"
           >
             [TERMINAL]
           </button>
           <button
-            onClick={() => setShowLauncherHub(true)}
+            onClick={() => openModal("launcherHub")}
             className="text-gray-400 hover:text-bags-green transition-colors min-h-[44px] sm:min-h-0 flex items-center"
+            aria-label="Open launcher hub"
           >
             [LAUNCHERS]
           </button>
           {publicKey?.toString() === CASINO_ADMIN_WALLET && (
             <button
-              onClick={() => setShowCasinoAdmin(true)}
+              onClick={() => openModal("casinoAdmin")}
               className="text-bags-gold hover:text-yellow-300 transition-colors"
             >
               [ADMIN]
@@ -692,38 +666,19 @@ export default function Home() {
         />
       )}
 
-      {/* PokeCenter Modal - triggered by clicking PokeCenter building */}
-      {showPokeCenterModal && (
-        <PokeCenterModal
-          onClose={() => setShowPokeCenterModal(false)}
-          onOpenFeeClaimModal={() => setShowFeeClaimModal(true)}
-        />
+      {/* Modals - consolidated state via activeModal */}
+      {activeModal === "pokeCenter" && (
+        <PokeCenterModal onClose={closeModal} onOpenFeeClaimModal={() => openModal("feeClaim")} />
       )}
-
-      {/* Trading Gym Modal - triggered by clicking Trading Gym building */}
-      {showTradingGymModal && <TradingGymModal onClose={() => setShowTradingGymModal(false)} />}
-
-      {/* Community Fund Modal - Treasury Building */}
-      {showCommunityFundModal && (
-        <CommunityFundModal onClose={() => setShowCommunityFundModal(false)} />
-      )}
-
-      {/* Casino Modal - triggered by clicking Casino building */}
-      {showCasinoModal && <CasinoModal onClose={() => setShowCasinoModal(false)} />}
-
-      {/* Oracle Tower Modal - prediction market */}
-      {showOracleModal && <OracleTowerModal onClose={() => setShowOracleModal(false)} />}
-
-      {/* Trading Terminal Modal - professional trading terminal with charts */}
-      {showTradingTerminal && (
-        <TradingTerminalModal onClose={() => setShowTradingTerminal(false)} />
-      )}
-
-      {/* Mansion Modal - shows top holder info for Ballers Valley mansions */}
-      {showMansionModal && mansionData && (
+      {activeModal === "tradingGym" && <TradingGymModal onClose={closeModal} />}
+      {activeModal === "communityFund" && <CommunityFundModal onClose={closeModal} />}
+      {activeModal === "casino" && <CasinoModal onClose={closeModal} />}
+      {activeModal === "oracle" && <OracleTowerModal onClose={closeModal} />}
+      {activeModal === "tradingTerminal" && <TradingTerminalModal onClose={closeModal} />}
+      {activeModal === "mansion" && mansionData && (
         <MansionModal
           onClose={() => {
-            setShowMansionModal(false);
+            closeModal();
             setMansionData(null);
           }}
           name={mansionData.name}
@@ -732,41 +687,27 @@ export default function Home() {
           holderBalance={mansionData.holderBalance}
         />
       )}
-
-      {/* Fee Claim Modal - can be opened from PokeCenter or AI action buttons */}
-      {showFeeClaimModal && <FeeClaimModal onClose={() => setShowFeeClaimModal(false)} />}
-
-      {/* Launch Modal - can be opened from AI action buttons */}
-      {showLaunchModal && (
+      {activeModal === "feeClaim" && <FeeClaimModal onClose={closeModal} />}
+      {activeModal === "launch" && (
         <LaunchModal
-          onClose={() => setShowLaunchModal(false)}
+          onClose={closeModal}
           onLaunchSuccess={() => {
-            setShowLaunchModal(false);
+            closeModal();
             refreshAfterLaunch();
           }}
         />
       )}
+      {activeModal === "launcherHub" && <LauncherHub onClose={closeModal} />}
+      {activeModal === "casinoAdmin" && <CasinoAdmin onClose={closeModal} />}
+      {activeModal === "arena" && <ArenaModal onClose={closeModal} />}
+      {activeModal === "agentHut" && <AgentHutModal onClose={closeModal} />}
+      {activeModal === "agentBar" && <AgentBarModal onClose={closeModal} />}
 
       {/* Agent Toast Notifications - shows real-time agent activity */}
       <AgentToast />
 
       {/* Scout Alerts - shows new token launch notifications */}
       <ScoutAlerts />
-
-      {/* Launcher Hub - shows wallets of people who launched on BagsWorld */}
-      {showLauncherHub && <LauncherHub onClose={() => setShowLauncherHub(false)} />}
-
-      {/* Casino Admin - secret panel (Ctrl+Shift+R) */}
-      {showCasinoAdmin && <CasinoAdmin onClose={() => setShowCasinoAdmin(false)} />}
-
-      {/* Arena Modal - MoltBook AI agent battles */}
-      {showArenaModal && <ArenaModal onClose={() => setShowArenaModal(false)} />}
-
-      {/* Agent Hut Modal - View tokens & claimable fees for agents */}
-      {showAgentHutModal && <AgentHutModal onClose={() => setShowAgentHutModal(false)} />}
-
-      {/* Agent Bar Modal - Alpha chat for MoltBook agents */}
-      {showAgentBarModal && <AgentBarModal onClose={() => setShowAgentBarModal(false)} />}
     </main>
   );
 }
