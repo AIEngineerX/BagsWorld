@@ -120,7 +120,6 @@ npm test             # Run Jest tests
 
 **Monitoring:**
 
-- `BITQUERY_API_KEY` - Platform-wide Bags.fm live feed
 - `BAGS_API_URL` - Defaults to `https://public-api-v2.bags.fm/api/v1`
 
 **Client-Side:**
@@ -264,19 +263,6 @@ Token-centric API - most endpoints require a known token mint:
 - `/fee-share/token/claim-events?mint=` - Get claim events
 - `/token-launch/create-token-info` - Create new token metadata
 - `/token-launch/create-launch-transaction` - Build launch transaction
-
-## Bags.fm Live Feed
-
-Platform-wide activity monitoring via Bitquery (`src/lib/bags-live-feed.ts`):
-
-- **All new token launches** (Meteora DBC pool initialization)
-- **All trades** for Bags tokens across DEXs
-- **Whale alerts** (10+ SOL transfers)
-- **Price pumps/dumps** (20%+ / -15% changes)
-
-API: `/api/bags-live-feed?action=status|launches|trades|all`
-
-Requires `BITQUERY_API_KEY` from [Bitquery.io](https://bitquery.io)
 
 ## World Health System
 
