@@ -53,6 +53,7 @@ export interface WorldHealthData {
   weather: string;
   totalVolume24h: number;
   totalFees24h: number;
+  totalLifetimeFees?: number;
   activeTokens: number;
   topCreators: TopCreator[];
 }
@@ -80,6 +81,7 @@ export interface TradeQuote {
   priceImpactPct: string;
   slippageBps: number;
   routePlan: RouteLeg[];
+  _jupiterQuote?: unknown;
 }
 
 export interface RouteLeg {
@@ -803,12 +805,15 @@ export class BagsApiService extends Service {
 
     const quote = await response.json();
     return {
+      requestId: quote.requestId ?? '',
       inputMint: quote.inputMint,
       outputMint: quote.outputMint,
       inAmount: quote.inAmount,
       outAmount: quote.outAmount,
+      minOutAmount: quote.otherAmountThreshold ?? quote.outAmount,
       priceImpactPct: quote.priceImpactPct,
-      // Store full quote for swap request
+      slippageBps: quote.slippageBps ?? (slippageBps || 300),
+      routePlan: quote.routePlan ?? [],
       _jupiterQuote: quote,
     } as TradeQuote;
   }

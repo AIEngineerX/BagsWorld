@@ -53,6 +53,42 @@ const agentRoles: Record<string, { role: string; expertise: string[] }> = {
     role: 'The Dev / DaddyGhost',
     expertise: ['rewards system', 'on-chain verification', 'smart contracts', 'fee mechanics'],
   },
+  ramo: {
+    role: 'Co-Founder & CTO',
+    expertise: ['smart contracts', 'fee-share system', 'Solana SDK', 'security audits'],
+  },
+  sincara: {
+    role: 'Frontend Engineer',
+    expertise: ['UI/UX design', 'frontend development', 'mobile app', 'animations'],
+  },
+  stuu: {
+    role: 'Operations & Support',
+    expertise: ['user support', 'troubleshooting', 'platform operations', 'documentation'],
+  },
+  sam: {
+    role: 'Growth & Marketing',
+    expertise: ['marketing strategy', 'growth metrics', 'social media', 'community growth'],
+  },
+  alaa: {
+    role: 'Skunk Works / R&D',
+    expertise: ['prototyping', 'experimental features', 'innovation', 'proof of concepts'],
+  },
+  carlo: {
+    role: 'Community Ambassador',
+    expertise: ['community building', 'onboarding newcomers', 'events', 'vibes curation'],
+  },
+  bnn: {
+    role: 'Bags News Network',
+    expertise: ['ecosystem news', 'launch coverage', 'announcements', 'market updates'],
+  },
+  'professor-oak': {
+    role: 'Token Launch Wizard',
+    expertise: ['token launching', 'DexScreener listings', 'launch guidance', 'creator mentoring'],
+  },
+  bagsy: {
+    role: 'BagsWorld Mascot & Hype Bot',
+    expertise: ['fee reminders', 'BagsWorld features', 'hype generation', 'community vibes'],
+  },
 };
 
 export const agentContextProvider: Provider = {
@@ -153,6 +189,43 @@ function checkShouldReferToOther(
     'agent': 'shaw',
     'character': 'shaw',
     'multi-agent': 'shaw',
+    'smart contract': 'ramo',
+    'sdk': 'ramo',
+    'audit': 'ramo',
+    'fee share': 'ramo',
+    'frontend': 'sincara',
+    'ui': 'sincara',
+    'ux': 'sincara',
+    'design': 'sincara',
+    'mobile app': 'sincara',
+    'support': 'stuu',
+    'help': 'stuu',
+    'bug': 'stuu',
+    'issue': 'stuu',
+    'troubleshoot': 'stuu',
+    'marketing': 'sam',
+    'growth': 'sam',
+    'referral': 'sam',
+    'promote': 'sam',
+    'experiment': 'alaa',
+    'prototype': 'alaa',
+    'innovation': 'alaa',
+    'skunk works': 'alaa',
+    'community': 'carlo',
+    'welcome': 'carlo',
+    'onboard': 'carlo',
+    'event': 'carlo',
+    'news': 'bnn',
+    'announcement': 'bnn',
+    'update': 'bnn',
+    'breaking': 'bnn',
+    'launch guide': 'professor-oak',
+    'dexscreener': 'professor-oak',
+    'token name': 'professor-oak',
+    'logo': 'professor-oak',
+    'unclaimed': 'bagsy',
+    'claim fees': 'bagsy',
+    'bagsworld': 'bagsy',
   };
 
   for (const [topic, agentId] of Object.entries(topicToAgent)) {

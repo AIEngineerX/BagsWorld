@@ -1158,7 +1158,7 @@ export class AutonomousService extends Service {
       // Fallback to templates if AI fails
       if (!tweet) {
         const templates = this.generateBagsyTweets(healthData);
-        tweet = templates.sort(() => Math.random() - 0.5).find((t) => !this.isDuplicatePost(t));
+        tweet = templates.sort(() => Math.random() - 0.5).find((t) => !this.isDuplicatePost(t)) ?? null;
         if (!tweet) {
           console.log("[AutonomousService] All Bagsy tweets would be duplicates, skipping");
           return;
@@ -2699,6 +2699,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     try {
       const healthData = await this.bagsApi.getWorldHealth();
+      if (!healthData) return null;
 
       // Check for milestone: significant total fees
       if (
@@ -2844,7 +2845,7 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
 
     // Log weekly stats
     const stats = await getEngagementStats("bagsy", 7);
-    if (stats?.totalTweets > 0) {
+    if (stats && stats.totalTweets > 0) {
       console.log(
         `[AutonomousService] 7-day: ${stats.totalTweets} tweets, ${stats.avgLikes.toFixed(1)} avg likes, ${(stats.avgEngagementRate * 100).toFixed(2)}% engagement`
       );

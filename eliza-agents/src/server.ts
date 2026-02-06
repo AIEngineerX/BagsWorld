@@ -31,7 +31,6 @@ import {
   creatorToolsRoutes,
   ghostRoutes,
   twitterRoutes,
-  moltbookRoutes,
   setDatabase,
 } from "./routes/index.js";
 import { GhostTrader, getGhostTrader } from "./services/GhostTrader.js";
@@ -152,7 +151,6 @@ app.use("/api/launch-wizard", chatLimiter, launchWizardRoutes); // LLM-heavy
 app.use("/api/creator-tools", chatLimiter, creatorToolsRoutes); // LLM-heavy
 app.use("/api/ghost", ghostRoutes);
 app.use("/api/twitter", twitterRoutes);
-app.use("/api/moltbook", moltbookRoutes);
 
 // Database initialization
 async function initializeDatabase(): Promise<void> {
@@ -422,9 +420,6 @@ async function main(): Promise<void> {
     console.log(
       `  POST   /api/twitter/generate-shill           - Generate shill content for token`
     );
-    console.log(`\nBagsy MoltBook (Requires MOLTBOOK_API_KEY):`);
-    console.log(`  GET    /api/moltbook/status                  - MoltBook service status`);
-    console.log(`  POST   /api/moltbook/post                    - Post to MoltBook as Bagsy`);
   });
 }
 
