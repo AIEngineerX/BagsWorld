@@ -154,6 +154,8 @@ export interface GhostPosition {
   pnlSol?: number;
   createdAt: Date;
   closedAt?: Date;
+  sellAttempts: number;
+  noPriceCount: number;
 }
 
 export interface TradeEvaluation {
@@ -372,6 +374,16 @@ export class GhostTrader {
       ON ghost_positions(token_mint)
     `;
 
+    // Add sell_attempts and no_price_count columns if missing (migration)
+    await this.db`
+      ALTER TABLE ghost_positions
+      ADD COLUMN IF NOT EXISTS sell_attempts INTEGER DEFAULT 0
+    `;
+    await this.db`
+      ALTER TABLE ghost_positions
+      ADD COLUMN IF NOT EXISTS no_price_count INTEGER DEFAULT 0
+    `;
+
     // Config table for persisting enabled state
     await this.db`
       CREATE TABLE IF NOT EXISTS ghost_config (
@@ -447,6 +459,8 @@ export class GhostTrader {
       pnl_sol: string | null;
       created_at: string;
       closed_at: string | null;
+      sell_attempts: number | null;
+      no_price_count: number | null;
     }>;
 
     let openCount = 0;
@@ -469,6 +483,8 @@ export class GhostTrader {
         pnlSol: row.pnl_sol ? parseFloat(row.pnl_sol) : undefined,
         createdAt: new Date(row.created_at),
         closedAt: row.closed_at ? new Date(row.closed_at) : undefined,
+        sellAttempts: row.sell_attempts || 0,
+        noPriceCount: row.no_price_count || 0,
       };
       this.positions.set(position.id, position);
       this.tradedMints.add(position.tokenMint);
@@ -837,8 +853,29 @@ export class GhostTrader {
       }
 
       if (currentPriceSol === 0) {
-        console.warn(`[GhostTrader] No price data for ${position.tokenSymbol}, skipping`);
+        position.noPriceCount = (position.noPriceCount || 0) + 1;
+        console.warn(
+          `[GhostTrader] No price data for ${position.tokenSymbol} (attempt ${position.noPriceCount}/10)`
+        );
+        // After 10 consecutive checks with no price (~20 min), mark as failed
+        if (position.noPriceCount >= 10) {
+          console.log(
+            `[GhostTrader] Marking ${position.tokenSymbol} as failed - no price data after ${position.noPriceCount} checks`
+          );
+          position.status = "failed";
+          position.exitReason = "no_price_data";
+          position.pnlSol = -position.amountSol; // Assume total loss
+          position.closedAt = new Date();
+          await this.updatePositionInDatabase(position);
+        } else {
+          await this.updatePositionInDatabase(position);
+        }
         continue;
+      }
+
+      // Reset no-price counter if we got price data
+      if (position.noPriceCount > 0) {
+        position.noPriceCount = 0;
       }
 
       // Calculate current multiplier (1.0 = breakeven)
@@ -870,7 +907,7 @@ export class GhostTrader {
       const isDecaying =
         priceChangePercent <= -this.config.deadPositionDecayPercent &&
         priceChangePercent > -this.config.stopLossPercent;
-      const isLiquidityDrained = liquidityUsd > 0 && liquidityUsd < 200; // Less than $200 liquidity
+      const isLiquidityDrained = liquidityUsd < 200; // Less than $200 liquidity (including $0)
 
       // Dead if: (held too long AND low volume) OR (decaying AND no volume) OR (liquidity drained)
       if ((isHeldTooLong && isVolumeDead) || (isDecaying && isVolumeDead) || isLiquidityDrained) {
@@ -1374,6 +1411,8 @@ export class GhostTrader {
       status: "open",
       entryReason: reasons.join(", "),
       createdAt: new Date(),
+      sellAttempts: 0,
+      noPriceCount: 0,
     };
 
     // Save to memory and database
@@ -1389,6 +1428,8 @@ export class GhostTrader {
 
   /**
    * Execute a close/sell trade
+   * Tracks sell attempts and escalates slippage on retries.
+   * After 5 failed attempts, marks the position as failed.
    */
   private async executeClose(
     position: GhostPosition,
@@ -1397,7 +1438,33 @@ export class GhostTrader {
   ): Promise<void> {
     if (!this.ghostWalletPublicKey) return;
 
-    console.log(`[GhostTrader] Closing position: ${position.tokenSymbol} (${reason})`);
+    const MAX_SELL_ATTEMPTS = 5;
+    position.sellAttempts = (position.sellAttempts || 0) + 1;
+
+    // After max attempts, give up and mark as failed
+    if (position.sellAttempts > MAX_SELL_ATTEMPTS) {
+      console.log(
+        `[GhostTrader] Marking ${position.tokenSymbol} as FAILED after ${MAX_SELL_ATTEMPTS} sell attempts`
+      );
+      position.status = "failed";
+      position.exitReason = `${reason}_sell_failed`;
+      // Estimate P&L from last known price
+      const estimatedSolBack = currentPriceSol > 0
+        ? (currentPriceSol / position.entryPriceSol) * position.amountSol
+        : 0;
+      position.pnlSol = estimatedSolBack - position.amountSol;
+      position.closedAt = new Date();
+      await this.updatePositionInDatabase(position);
+      return;
+    }
+
+    // Escalate slippage for distressed sells: 3% → 5% → 8% → 12% → 15%
+    const slippageEscalation = [300, 500, 800, 1200, 1500];
+    const sellSlippageBps = slippageEscalation[Math.min(position.sellAttempts - 1, slippageEscalation.length - 1)];
+
+    console.log(
+      `[GhostTrader] Closing position: ${position.tokenSymbol} (${reason}, attempt ${position.sellAttempts}/${MAX_SELL_ATTEMPTS}, slippage ${sellSlippageBps}bps)`
+    );
 
     // Get trade quote for selling tokens back to SOL
     let quote: TradeQuote;
@@ -1406,10 +1473,11 @@ export class GhostTrader {
         position.tokenMint,
         SOL_MINT,
         position.amountTokens,
-        this.config.slippageBps
+        sellSlippageBps
       );
     } catch (error) {
-      console.error(`[GhostTrader] Failed to get sell quote for ${position.tokenSymbol}:`, error);
+      console.error(`[GhostTrader] Failed to get sell quote for ${position.tokenSymbol} (attempt ${position.sellAttempts}):`, error);
+      await this.updatePositionInDatabase(position);
       return;
     }
 
@@ -1418,7 +1486,8 @@ export class GhostTrader {
     try {
       swapResult = await this.bagsApi.createSwapTransaction(quote, this.ghostWalletPublicKey);
     } catch (error) {
-      console.error(`[GhostTrader] Failed to create sell tx for ${position.tokenSymbol}:`, error);
+      console.error(`[GhostTrader] Failed to create sell tx for ${position.tokenSymbol} (attempt ${position.sellAttempts}):`, error);
+      await this.updatePositionInDatabase(position);
       return;
     }
 
@@ -1426,9 +1495,13 @@ export class GhostTrader {
     const txSignature = await this.signAndSubmitTransaction(swapResult.swapTransaction);
 
     if (!txSignature) {
-      console.error(`[GhostTrader] Failed to submit sell transaction for ${position.tokenSymbol}`);
+      console.error(`[GhostTrader] Failed to submit sell transaction for ${position.tokenSymbol} (attempt ${position.sellAttempts})`);
+      await this.updatePositionInDatabase(position);
       return;
     }
+
+    // Success — reset attempt counter
+    position.sellAttempts = 0;
 
     // Calculate P&L
     const solReceived = parseFloat(quote.outAmount) / LAMPORTS_PER_SOL;
@@ -1610,7 +1683,9 @@ export class GhostTrader {
         status = ${position.status},
         exit_reason = ${position.exitReason || null},
         pnl_sol = ${position.pnlSol || null},
-        closed_at = ${position.closedAt?.toISOString() || null}
+        closed_at = ${position.closedAt?.toISOString() || null},
+        sell_attempts = ${position.sellAttempts || 0},
+        no_price_count = ${position.noPriceCount || 0}
       WHERE id = ${position.id}
     `;
   }
@@ -1881,6 +1956,8 @@ export class GhostTrader {
       status: "open",
       entryReason: "manual buy",
       createdAt: new Date(),
+      sellAttempts: 0,
+      noPriceCount: 0,
     };
 
     this.positions.set(position.id, position);

@@ -123,7 +123,7 @@ export function GhostTradingMini() {
   const openCount = status?.trading?.openPositions || 0;
   const walletAddress = status?.wallet?.address || null;
   const totalTrades = status?.performance?.totalTrades || 0;
-  const winRate = status?.performance?.winRate;
+  const winRate = status?.performance?.winRate as number | undefined;
 
   // Handle masked data (returns "***" for non-admin requests)
   const rawBalance = status?.wallet?.balanceSol;
