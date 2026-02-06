@@ -7,6 +7,7 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import type { TradeQuote } from "@/lib/types";
 import { getTokenDecimals } from "@/lib/token-balance";
+import { useMobileWallet } from "@/hooks/useMobileWallet";
 
 // Helper to deserialize transaction - tries both formats
 function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
@@ -34,7 +35,7 @@ interface TradeModalProps {
 type TradeDirection = "buy" | "sell";
 
 export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: TradeModalProps) {
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
 
@@ -103,7 +104,7 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
   }, [fetchQuote]);
 
   const handleSwap = async () => {
-    if (!connected || !publicKey || !signTransaction) {
+    if (!connected || !publicKey) {
       setWalletModalVisible(true);
       return;
     }

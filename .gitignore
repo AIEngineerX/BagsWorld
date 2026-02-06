@@ -53,6 +53,12 @@ node_modules
 # Claude Code skills (private)
 .claude/skills/
 
+# Capacitor iOS build artifacts
+ios/App/Pods/
+ios/App/build/
+ios/App/DerivedData/
+ios/capacitor-cordova-ios-plugins/
+
 # Local-only agent dashboard (MoltbookDashboard replaced by MeetTheAgents)
 /src/components/MoltbookDashboard.tsx
 /src/app/api/agent-dashboard/

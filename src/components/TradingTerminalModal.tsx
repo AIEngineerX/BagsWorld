@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { useMobileWallet } from "@/hooks/useMobileWallet";
 import {
   createChart,
   IChartApi,
@@ -123,7 +124,7 @@ const JUPITER_QUOTE_API = "https://quote-api.jup.ag/v6/quote";
 const JUPITER_SWAP_API = "https://quote-api.jup.ag/v6/swap";
 
 export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
   const { connection } = useConnection();
   const queryClient = useQueryClient();
 
@@ -224,7 +225,7 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
   // Execute swap mutation
   const swapMutation = useMutation({
     mutationFn: async () => {
-      if (!publicKey || !signTransaction || !jupiterQuote) {
+      if (!publicKey || !jupiterQuote) {
         throw new Error("Wallet not connected or no quote available");
       }
 

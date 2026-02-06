@@ -5,6 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
+import { useMobileWallet } from "@/hooks/useMobileWallet";
 
 // Helper to deserialize transaction - handles both base58 and base64 encoding
 function deserializeTransaction(
@@ -84,7 +85,7 @@ interface LaunchModalProps {
 }
 
 export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
 
   const [formData, setFormData] = useState({
@@ -543,10 +544,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         if (feeResult.needsCreation && feeResult.transactions?.length > 0) {
           setLaunchStatus("Creating fee share config on-chain...");
 
-          if (!signTransaction) {
-            throw new Error("Wallet does not support transaction signing");
-          }
-
           const connection = new Connection(
             process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
           );
@@ -663,12 +660,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
       }
 
       // 3. Create launch transaction, sign it, and send to blockchain
-      if (!signTransaction) {
-        throw new Error(
-          "Wallet does not support transaction signing. Please use Phantom or another compatible wallet."
-        );
-      }
-
       {
         setLaunchStatus("Creating launch transaction...");
 

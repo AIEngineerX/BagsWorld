@@ -28,10 +28,21 @@
     "bagsy:gm": "curl -s -X POST http://localhost:3000/api/bagsy -H 'Content-Type: application/json' -d '{\"action\":\"trigger_post\",\"type\":\"gm\"}' | jq",
     "bagsy:hype": "curl -s -X POST http://localhost:3000/api/bagsy -H 'Content-Type: application/json' -d '{\"action\":\"trigger_post\",\"type\":\"hype\"}' | jq",
     "dev:ws": "npx ts-node --project tsconfig.server.json server.ts",
-    "arena:status": "curl -s http://localhost:3000/api/arena/brawl?action=status | jq"
+    "arena:status": "curl -s http://localhost:3000/api/arena/brawl?action=status | jq",
+    "cap:sync": "npx cap sync ios",
+    "cap:open": "npx cap open ios",
+    "cap:build": "npm run build && npx cap sync ios"
   },
   "dependencies": {
     "@bagsfm/bags-sdk": "^1.2.6",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.0.2",
+    "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
     "@fal-ai/client": "^1.8.4",
     "@neondatabase/serverless": "^1.0.2",
     "@netlify/neon": "^0.1.0",

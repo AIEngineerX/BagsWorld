@@ -6,6 +6,7 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import type { TrendingToken, NewPair, TokenSafety, TradeQuote } from "@/lib/types";
+import { useMobileWallet } from "@/hooks/useMobileWallet";
 
 // Helper to deserialize transaction - tries both formats
 function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
@@ -29,7 +30,7 @@ interface TradingTerminalProps {
 }
 
 export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
 
@@ -136,7 +137,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
   };
 
   const executeSwap = async () => {
-    if (!connected || !publicKey || !signTransaction) {
+    if (!connected || !publicKey) {
       setWalletModalVisible(true);
       return;
     }
