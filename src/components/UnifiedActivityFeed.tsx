@@ -12,6 +12,8 @@ import {
   WhaleIcon,
   SignalIcon,
   HammerIcon,
+  TrophyIcon,
+  CoinIcon,
 } from "./icons";
 
 // ============================================================================
@@ -59,6 +61,12 @@ const getActivityStyle = (
         return { color: "text-bags-gold", icon: <TargetIcon size={12} />, label: "GOAL" };
       case "whale_alert":
         return { color: "text-blue-400", icon: <WhaleIcon size={12} />, label: "WHALE" };
+      case "arena_victory":
+        return { color: "text-red-400", icon: <TrophyIcon size={12} />, label: "ARENA" };
+      case "casino_win":
+        return { color: "text-bags-gold", icon: <CoinIcon size={12} />, label: "CASINO" };
+      case "oracle_settle":
+        return { color: "text-bags-purple", icon: <TargetIcon size={12} />, label: "ORACLE" };
       default:
         return { color: "text-gray-400", icon: <SignalIcon size={12} />, label: "EVENT" };
     }
@@ -78,6 +86,12 @@ const getActivityStyle = (
       return { color: "text-blue-400", icon: <WhaleIcon size={12} />, label: "WHALE" };
     case "agent_insight":
       return { color: "text-cyan-400", icon: <SignalIcon size={12} />, label: "AGENT" };
+    case "arena_victory":
+      return { color: "text-red-400", icon: <TrophyIcon size={12} />, label: "ARENA" };
+    case "casino_win":
+      return { color: "text-bags-gold", icon: <CoinIcon size={12} />, label: "CASINO" };
+    case "oracle_settle":
+      return { color: "text-bags-purple", icon: <TargetIcon size={12} />, label: "ORACLE" };
     default:
       return { color: "text-gray-400", icon: <SignalIcon size={12} />, label: "INFO" };
   }
