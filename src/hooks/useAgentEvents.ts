@@ -48,6 +48,8 @@ export function useAgentEvents(options?: {
 
   const lastTimestampRef = useRef(0);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // Filter out old announcements (older than 24 hours)
   const filterOldAnnouncements = useCallback((announcements: Announcement[]): Announcement[] => {
@@ -138,14 +140,9 @@ export function useAgentEvents(options?: {
     }
   }, []);
 
-  // Mark all as read — uses functional state access to avoid stale closure
+  // Mark all as read — uses ref to read current state without stale closure
   const markAllAsRead = useCallback(async () => {
-    // Read current unread IDs from state via setState to get the latest
-    let unreadIds: string[] = [];
-    setState((prev) => {
-      unreadIds = prev.announcements.filter((a) => !a.read).map((a) => a.id);
-      return prev; // Don't change state yet
-    });
+    const unreadIds = stateRef.current.announcements.filter((a) => !a.read).map((a) => a.id);
 
     if (unreadIds.length > 0) {
       try {
