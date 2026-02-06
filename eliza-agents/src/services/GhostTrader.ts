@@ -18,7 +18,9 @@ import {
   TelegramBroadcaster,
   getTelegramBroadcaster,
   type TradeSignal,
+  type ExitSignal,
 } from "./TelegramBroadcaster.js";
+import { getDexScreenerCache } from "./DexScreenerCache.js";
 
 // ============================================================================
 // Constants
@@ -156,6 +158,7 @@ export interface GhostPosition {
   closedAt?: Date;
   sellAttempts: number;
   noPriceCount: number;
+  peakMultiplier: number;
 }
 
 export interface TradeEvaluation {
@@ -383,6 +386,10 @@ export class GhostTrader {
       ALTER TABLE ghost_positions
       ADD COLUMN IF NOT EXISTS no_price_count INTEGER DEFAULT 0
     `;
+    await this.db`
+      ALTER TABLE ghost_positions
+      ADD COLUMN IF NOT EXISTS peak_multiplier DECIMAL(18, 9) DEFAULT 1.0
+    `;
 
     // Config table for persisting enabled state
     await this.db`
@@ -461,6 +468,7 @@ export class GhostTrader {
       closed_at: string | null;
       sell_attempts: number | null;
       no_price_count: number | null;
+      peak_multiplier: string | null;
     }>;
 
     let openCount = 0;
@@ -485,6 +493,7 @@ export class GhostTrader {
         closedAt: row.closed_at ? new Date(row.closed_at) : undefined,
         sellAttempts: row.sell_attempts || 0,
         noPriceCount: row.no_price_count || 0,
+        peakMultiplier: row.peak_multiplier ? parseFloat(row.peak_multiplier) : 1.0,
       };
       this.positions.set(position.id, position);
       this.tradedMints.add(position.tokenMint);
@@ -832,21 +841,15 @@ export class GhostTrader {
         volume24hUsd = token.volume24h || 0;
       }
 
-      // Always check DexScreener for more accurate volume/liquidity data
+      // Always check DexScreener for more accurate volume/liquidity data (via shared cache)
       try {
-        const dexRes = await fetch(
-          `https://api.dexscreener.com/latest/dex/tokens/${position.tokenMint}`
-        );
-        if (dexRes.ok) {
-          const dexData = await dexRes.json();
-          const pair = dexData.pairs?.[0];
-          if (pair) {
-            if (pair.priceNative && !currentPriceSol) {
-              currentPriceSol = parseFloat(pair.priceNative);
-            }
-            volume24hUsd = pair.volume?.h24 || volume24hUsd;
-            liquidityUsd = pair.liquidity?.usd || 0;
+        const dexData = await getDexScreenerCache().getTokenData(position.tokenMint);
+        if (dexData) {
+          if (dexData.priceNative && !currentPriceSol) {
+            currentPriceSol = dexData.priceNative;
           }
+          volume24hUsd = dexData.volume24hUsd || volume24hUsd;
+          liquidityUsd = dexData.liquidityUsd || 0;
         }
       } catch {
         console.warn(`[GhostTrader] Failed to get DexScreener data for ${position.tokenSymbol}`);
@@ -882,10 +885,10 @@ export class GhostTrader {
       const currentMultiplier = currentPriceSol / position.entryPriceSol;
       const priceChangePercent = (currentMultiplier - 1) * 100;
 
-      // Track highest multiplier for trailing stop
-      const peakMultiplier = (position as any).peakMultiplier || currentMultiplier;
-      if (currentMultiplier > peakMultiplier) {
-        (position as any).peakMultiplier = currentMultiplier;
+      // Track highest multiplier for trailing stop (persisted to DB)
+      if (currentMultiplier > position.peakMultiplier) {
+        position.peakMultiplier = currentMultiplier;
+        await this.updatePositionInDatabase(position);
       }
 
       // Calculate hold time
@@ -925,12 +928,12 @@ export class GhostTrader {
       }
 
       // === TRAILING STOP (after reaching 2x) ===
-      if (peakMultiplier >= 2.0) {
-        const trailingStopLevel = peakMultiplier * (1 - this.config.trailingStopPercent / 100);
+      if (position.peakMultiplier >= 2.0) {
+        const trailingStopLevel = position.peakMultiplier * (1 - this.config.trailingStopPercent / 100);
         if (currentMultiplier <= trailingStopLevel) {
           console.log(
             `[GhostTrader] Trailing stop triggered for ${position.tokenSymbol} ` +
-              `(peak: ${peakMultiplier.toFixed(2)}x, current: ${currentMultiplier.toFixed(2)}x)`
+              `(peak: ${position.peakMultiplier.toFixed(2)}x, current: ${currentMultiplier.toFixed(2)}x)`
           );
           await this.executeClose(position, "trailing_stop", currentPriceSol);
           continue;
@@ -1413,6 +1416,7 @@ export class GhostTrader {
       createdAt: new Date(),
       sellAttempts: 0,
       noPriceCount: 0,
+      peakMultiplier: 1.0,
     };
 
     // Save to memory and database
@@ -1631,7 +1635,7 @@ export class GhostTrader {
       });
     }
 
-    // Broadcast entry to Telegram channel (entries only)
+    // Broadcast to Telegram channel
     if (type === "buy" && this.lastEvaluation) {
       const signal: TradeSignal = {
         type: "entry",
@@ -1650,6 +1654,21 @@ export class GhostTrader {
       };
       this.telegramBroadcaster.broadcastEntry(signal);
       this.lastEvaluation = null; // Clear after use
+    } else if (type === "sell" && position.exitReason) {
+      const holdTimeMinutes = position.closedAt
+        ? (position.closedAt.getTime() - position.createdAt.getTime()) / 60000
+        : 0;
+      const exitSignal: ExitSignal = {
+        type: "exit",
+        tokenSymbol: position.tokenSymbol,
+        tokenName: position.tokenName,
+        tokenMint: position.tokenMint,
+        amountSol: position.amountSol,
+        pnlSol: position.pnlSol || 0,
+        exitReason: position.exitReason,
+        holdTimeMinutes,
+      };
+      this.telegramBroadcaster.broadcastExit(exitSignal);
     }
   }
 
@@ -1685,7 +1704,8 @@ export class GhostTrader {
         pnl_sol = ${position.pnlSol || null},
         closed_at = ${position.closedAt?.toISOString() || null},
         sell_attempts = ${position.sellAttempts || 0},
-        no_price_count = ${position.noPriceCount || 0}
+        no_price_count = ${position.noPriceCount || 0},
+        peak_multiplier = ${position.peakMultiplier || 1.0}
       WHERE id = ${position.id}
     `;
   }
@@ -1958,6 +1978,7 @@ export class GhostTrader {
       createdAt: new Date(),
       sellAttempts: 0,
       noPriceCount: 0,
+      peakMultiplier: 1.0,
     };
 
     this.positions.set(position.id, position);

@@ -1656,8 +1656,8 @@ router.get("/copy-trader/history", (req: Request, res: Response) => {
 // Telegram Broadcasting Routes
 // ============================================================================
 
-// GET /api/ghost/telegram/status - Get Telegram broadcast status
-router.get("/telegram/status", async (req: Request, res: Response) => {
+// GET /api/ghost/telegram/status - Get Telegram broadcast status (PROTECTED)
+router.get("/telegram/status", requireAdminKey, async (req: Request, res: Response) => {
   const broadcaster = getTelegramBroadcaster();
   const stats = await broadcaster.getStats();
   const config = broadcaster.getConfig();
