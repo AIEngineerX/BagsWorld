@@ -313,6 +313,75 @@ describe("Scout Agent", () => {
       jest.advanceTimersByTime(1);
       expect(WebSocket.mock.calls.length).toBe(initialCalls + 1);
     });
+
+    it("should use exponential backoff on consecutive failures", () => {
+      scout.initScoutAgent({ reconnectDelayMs: 1000 });
+      scout.startScoutAgent();
+      const WebSocket = require("ws");
+
+      // First disconnect: delay = 1000 * 2^0 = 1000ms
+      mockWsInstance.onclose?.();
+      jest.advanceTimersByTime(999);
+      const callsAfterFirst = WebSocket.mock.calls.length;
+      jest.advanceTimersByTime(1);
+      expect(WebSocket.mock.calls.length).toBe(callsAfterFirst + 1);
+
+      // Second disconnect: delay = 1000 * 2^1 = 2000ms
+      mockWsInstance.onclose?.();
+      jest.advanceTimersByTime(1999);
+      const callsAfterSecond = WebSocket.mock.calls.length;
+      jest.advanceTimersByTime(1);
+      expect(WebSocket.mock.calls.length).toBe(callsAfterSecond + 1);
+
+      // Third disconnect: delay = 1000 * 2^2 = 4000ms
+      mockWsInstance.onclose?.();
+      jest.advanceTimersByTime(3999);
+      const callsAfterThird = WebSocket.mock.calls.length;
+      jest.advanceTimersByTime(1);
+      expect(WebSocket.mock.calls.length).toBe(callsAfterThird + 1);
+    });
+
+    it("should cap backoff at 60 seconds", () => {
+      scout.initScoutAgent({ reconnectDelayMs: 10000 });
+      scout.startScoutAgent();
+      const WebSocket = require("ws");
+
+      // Simulate many failures to exceed 60s cap
+      // 10000 * 2^3 = 80000 → capped to 60000
+      for (let i = 0; i < 3; i++) {
+        mockWsInstance.onclose?.();
+        jest.advanceTimersByTime(60001);
+      }
+
+      // Fourth disconnect should be capped at 60s, not 80s
+      mockWsInstance.onclose?.();
+      const callsBefore = WebSocket.mock.calls.length;
+      jest.advanceTimersByTime(60000);
+      expect(WebSocket.mock.calls.length).toBe(callsBefore + 1);
+    });
+
+    it("should reset backoff on successful connection", () => {
+      scout.initScoutAgent({ reconnectDelayMs: 1000 });
+      scout.startScoutAgent();
+      const WebSocket = require("ws");
+
+      // Fail twice: delays = 1000, 2000
+      mockWsInstance.onclose?.();
+      jest.advanceTimersByTime(1000);
+      mockWsInstance.onclose?.();
+      jest.advanceTimersByTime(2000);
+
+      // Successful connection resets backoff
+      mockWsInstance.onopen?.();
+
+      // Next failure should be back to base delay 1000ms
+      mockWsInstance.onclose?.();
+      const callsBefore = WebSocket.mock.calls.length;
+      jest.advanceTimersByTime(999);
+      expect(WebSocket.mock.calls.length).toBe(callsBefore);
+      jest.advanceTimersByTime(1);
+      expect(WebSocket.mock.calls.length).toBe(callsBefore + 1);
+    });
   });
 
   // =========================================================================

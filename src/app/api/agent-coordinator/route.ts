@@ -168,7 +168,11 @@ export async function POST(request: Request) {
       case "start": {
         startCoordinator();
         initAnnouncementHandler();
-        connectAIAgent();
+        try {
+          connectAIAgent();
+        } catch (err) {
+          console.error("[Agent Coordinator API] AI agent connection failed:", err);
+        }
         return NextResponse.json({ success: true, message: "Coordinator started" });
       }
 
@@ -244,7 +248,11 @@ async function initializeCoordinator(): Promise<void> {
 
   startCoordinator();
   initAnnouncementHandler();
-  connectAIAgent();
+  try {
+    connectAIAgent();
+  } catch (err) {
+    console.error("[Agent Coordinator API] AI agent connection failed:", err);
+  }
 
   // Load recent events from database on cold start
   if (isNeonConfigured()) {

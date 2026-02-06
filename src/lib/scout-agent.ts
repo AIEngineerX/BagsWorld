@@ -80,6 +80,8 @@ let scoutConfig: ScoutConfig = { ...DEFAULT_CONFIG };
 let ws: WebSocket | null = null;
 let reconnectTimeout: NodeJS.Timeout | null = null;
 let alertCallbacks: ScoutAlertCallback[] = [];
+let consecutiveFailures = 0;
+const MAX_RECONNECT_DELAY_MS = 60000; // Cap at 60s
 let alertTimestamps: number[] = [];
 
 // Initialize the scout agent
@@ -135,6 +137,20 @@ export function stopScoutAgent(): void {
   console.log("[Scout Agent] Stopped");
 }
 
+function getReconnectDelay(): number {
+  const baseDelay = scoutConfig.reconnectDelayMs;
+  const backoff = Math.min(baseDelay * Math.pow(2, consecutiveFailures), MAX_RECONNECT_DELAY_MS);
+  return backoff;
+}
+
+function scheduleReconnect(): void {
+  if (!scoutState.isRunning) return;
+  const delay = getReconnectDelay();
+  consecutiveFailures++;
+  console.log(`[Scout Agent] Reconnecting in ${delay}ms (attempt ${consecutiveFailures})...`);
+  reconnectTimeout = setTimeout(connectPumpFunWebSocket, delay);
+}
+
 function connectPumpFunWebSocket(): void {
   if (!scoutState.isRunning) return;
 
@@ -144,6 +160,7 @@ function connectPumpFunWebSocket(): void {
     ws.onopen = () => {
       console.log("[Scout Agent] Connected to pump.fun WebSocket");
       scoutState.isConnected = true;
+      consecutiveFailures = 0; // Reset backoff on successful connection
 
       // Subscribe to new token launches
       ws?.send(JSON.stringify({ method: "subscribeNewToken" }));
@@ -169,23 +186,12 @@ function connectPumpFunWebSocket(): void {
     ws.onclose = () => {
       console.log("[Scout Agent] WebSocket disconnected");
       scoutState.isConnected = false;
-
-      // Reconnect if still running
-      if (scoutState.isRunning) {
-        reconnectTimeout = setTimeout(() => {
-          console.log("[Scout Agent] Reconnecting...");
-          connectPumpFunWebSocket();
-        }, scoutConfig.reconnectDelayMs);
-      }
+      scheduleReconnect();
     };
   } catch (error) {
     console.error("[Scout Agent] Connection error:", error);
     addError(`Connection error: ${error instanceof Error ? error.message : String(error)}`);
-
-    // Retry connection
-    if (scoutState.isRunning) {
-      reconnectTimeout = setTimeout(connectPumpFunWebSocket, scoutConfig.reconnectDelayMs);
-    }
+    scheduleReconnect();
   }
 }
 
