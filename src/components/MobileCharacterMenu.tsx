@@ -135,13 +135,13 @@ export function MobileCharacterMenu() {
 
   return (
     <div
-      className="sm:hidden fixed right-4 z-50"
+      className="sm:hidden fixed left-4 z-50"
       style={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
     >
       {/* Expanded menu */}
       {isOpen && (
-        <div className="absolute bottom-16 right-0 bg-bags-dark border-2 border-bags-green p-3 shadow-lg shadow-bags-green/20 max-h-[60vh] overflow-y-auto">
-          <p className="font-pixel text-[8px] text-bags-green mb-3 text-center border-b border-bags-green/30 pb-2">
+        <div className="absolute bottom-16 left-0 bg-bags-dark border-2 border-bags-green p-3 shadow-lg shadow-bags-green/20 max-h-[60vh] overflow-y-auto">
+          <p className="font-pixel text-[10px] text-bags-green mb-3 text-center border-b border-bags-green/30 pb-2">
             [TALK TO]
           </p>
           <div className="flex flex-col gap-2">
@@ -158,12 +158,12 @@ export function MobileCharacterMenu() {
                     {char.shortName}
                   </span>
                 </div>
-                <span className="font-pixel text-[10px] text-white">{char.name}</span>
+                <span className="font-pixel text-[11px] text-white">{char.name}</span>
               </button>
             ))}
           </div>
           {/* Academy Section */}
-          <p className="font-pixel text-[8px] text-blue-400 mt-3 mb-2 text-center border-t border-blue-500/30 pt-2">
+          <p className="font-pixel text-[10px] text-blue-400 mt-3 mb-2 text-center border-t border-blue-500/30 pt-2">
             [ACADEMY]
           </p>
           <div className="flex flex-col gap-2">
@@ -180,7 +180,7 @@ export function MobileCharacterMenu() {
                     {char.shortName}
                   </span>
                 </div>
-                <span className="font-pixel text-[10px] text-white">{char.name}</span>
+                <span className="font-pixel text-[11px] text-white">{char.name}</span>
               </button>
             ))}
           </div>

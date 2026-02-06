@@ -223,9 +223,10 @@ body {
 }
 
 /* Responsive font sizing */
-@media (max-width: 640px) {
+@media (max-width: 639px) {
   .font-pixel {
     letter-spacing: -0.5px; /* Tighter on small screens */
+    font-size: max(10px, inherit);
   }
 }
 
@@ -327,9 +328,9 @@ body {
     height: 48px !important;
   }
 
-  /* Hide footer in landscape on short screens */
+  /* Compact footer in landscape on short screens */
   footer {
-    display: none;
+    height: 32px !important;
   }
 }
 
@@ -723,4 +724,14 @@ body {
     0 1px 2px rgba(0, 0, 0, 0.4),
     inset 0 1px 2px rgba(0, 0, 0, 0.2);
   transform: translateY(1px);
+}
+
+/* Scrollbar hide utility for horizontal scroll areas */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

@@ -260,11 +260,11 @@ export function AIChat() {
       </div>
 
       {/* Messages */}
-      <div className="h-48 overflow-y-auto p-2 space-y-2">
+      <div className="h-64 sm:h-48 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-2">
             <p className="font-pixel text-[10px] text-bags-gold mb-2">BagsWorld Bot</p>
-            <p className="font-pixel text-[7px] text-gray-400 mb-3">
+            <p className="font-pixel text-[9px] sm:text-[7px] text-gray-400 mb-3">
               i can control animals, trigger effects, and answer questions!
             </p>
 
@@ -272,19 +272,19 @@ export function AIChat() {
             <div className="flex flex-wrap justify-center gap-1 mb-2">
               <button
                 onClick={() => handleQuickAction("pet the dog")}
-                className="px-2 py-1 bg-bags-darker border border-bags-green/30 font-pixel text-[7px] text-bags-green hover:bg-bags-green/20"
+                className="px-2 py-1 bg-bags-darker border border-bags-green/30 font-pixel text-[9px] sm:text-[7px] text-bags-green hover:bg-bags-green/20"
               >
                 🐕 pet dog
               </button>
               <button
                 onClick={() => handleQuickAction("call the cat")}
-                className="px-2 py-1 bg-bags-darker border border-bags-green/30 font-pixel text-[7px] text-bags-green hover:bg-bags-green/20"
+                className="px-2 py-1 bg-bags-darker border border-bags-green/30 font-pixel text-[9px] sm:text-[7px] text-bags-green hover:bg-bags-green/20"
               >
                 🐱 call cat
               </button>
               <button
                 onClick={() => handleQuickAction("play with charmander")}
-                className="px-2 py-1 bg-bags-darker border border-orange-500/30 font-pixel text-[7px] text-orange-400 hover:bg-orange-500/20"
+                className="px-2 py-1 bg-bags-darker border border-orange-500/30 font-pixel text-[9px] sm:text-[7px] text-orange-400 hover:bg-orange-500/20"
                 title="Visit Founders zone!"
               >
                 🔥 charmander
@@ -295,25 +295,25 @@ export function AIChat() {
             <div className="flex flex-wrap justify-center gap-1 mb-2">
               <button
                 onClick={() => handleQuickAction("fireworks")}
-                className="px-2 py-1 bg-bags-darker border border-purple-500/30 font-pixel text-[7px] text-purple-400 hover:bg-purple-500/20"
+                className="px-2 py-1 bg-bags-darker border border-purple-500/30 font-pixel text-[9px] sm:text-[7px] text-purple-400 hover:bg-purple-500/20"
               >
                 🎆 fireworks
               </button>
               <button
                 onClick={() => handleQuickAction("make it rain")}
-                className="px-2 py-1 bg-bags-darker border border-yellow-500/30 font-pixel text-[7px] text-yellow-400 hover:bg-yellow-500/20"
+                className="px-2 py-1 bg-bags-darker border border-yellow-500/30 font-pixel text-[9px] sm:text-[7px] text-yellow-400 hover:bg-yellow-500/20"
               >
                 💰 coins
               </button>
               <button
                 onClick={() => handleQuickAction("confetti")}
-                className="px-2 py-1 bg-bags-darker border border-pink-500/30 font-pixel text-[7px] text-pink-400 hover:bg-pink-500/20"
+                className="px-2 py-1 bg-bags-darker border border-pink-500/30 font-pixel text-[9px] sm:text-[7px] text-pink-400 hover:bg-pink-500/20"
               >
                 🎊 confetti
               </button>
             </div>
 
-            <p className="font-pixel text-[6px] text-gray-500">
+            <p className="font-pixel text-[8px] sm:text-[6px] text-gray-500">
               try &quot;help&quot; for more commands
             </p>
           </div>
@@ -333,7 +333,9 @@ export function AIChat() {
               {msg.sender === "bot" && (
                 <p className="font-pixel text-[6px] text-bags-gold mb-1">Bot:</p>
               )}
-              <p className="font-pixel text-[8px] text-white whitespace-pre-wrap">{msg.message}</p>
+              <p className="font-pixel text-[10px] sm:text-[8px] text-white whitespace-pre-wrap">
+                {msg.message}
+              </p>
             </div>
           ))
         )}
@@ -364,7 +366,7 @@ export function AIChat() {
             onKeyPress={handleKeyPress}
             placeholder="pet the dog, fireworks, help..."
             disabled={isLoading}
-            className="flex-1 bg-bags-darker border border-bags-green/30 px-2 py-1 font-pixel text-[8px] text-white placeholder-gray-500 focus:outline-none focus:border-bags-green disabled:opacity-50"
+            className="flex-1 bg-bags-darker border border-bags-green/30 px-2 py-1 font-pixel text-[11px] sm:text-[8px] text-white placeholder-gray-500 focus:outline-none focus:border-bags-green disabled:opacity-50"
           />
           <button
             type="submit"
