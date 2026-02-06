@@ -28,6 +28,9 @@ export type AgentEventType =
   | "creator_milestone" // Creator hit a milestone
   | "whale_alert" // Large transaction detected
   | "agent_insight" // AI Agent generated insight
+  | "arena_victory" // Arena combat result
+  | "casino_win" // Casino raffle/slot win
+  | "oracle_settle" // Oracle round settled
   | "system"; // System messages
 
 export type AgentSource =
@@ -36,6 +39,9 @@ export type AgentSource =
   | "creator-rewards"
   | "world-state"
   | "price-monitor"
+  | "casino"
+  | "oracle"
+  | "arena"
   | "manual";
 
 export type EventPriority = "low" | "medium" | "high" | "urgent";
@@ -428,6 +434,36 @@ function generateAnnouncement(event: AgentEvent): string {
     case "agent_insight": {
       const data = event.data as { message?: string };
       return data.message || "Agent insight";
+    }
+
+    case "arena_victory": {
+      const data = event.data as { winner?: string; loser?: string };
+      const winner = data.winner || "Fighter";
+      const loser = data.loser || "Opponent";
+      return `ARENA: ${winner} defeats ${loser} in combat!`;
+    }
+
+    case "casino_win": {
+      const data = event.data as { winnerWallet?: string; prizeSol?: number };
+      const wallet = data.winnerWallet
+        ? `${data.winnerWallet.slice(0, 4)}...${data.winnerWallet.slice(-4)}`
+        : "Someone";
+      const prize = data.prizeSol ?? 0;
+      return `CASINO: ${wallet} won ${formatSol(prize)} in the raffle!`;
+    }
+
+    case "oracle_settle": {
+      const data = event.data as {
+        winningSymbol?: string;
+        priceChange?: number;
+        winnersCount?: number;
+        prizePoolSol?: number;
+      };
+      const symbol = data.winningSymbol || "TOKEN";
+      const change = data.priceChange ?? 0;
+      const count = data.winnersCount ?? 0;
+      const prize = data.prizePoolSol ?? 0;
+      return `ORACLE: $${symbol} wins (+${change.toFixed(1)}%)! ${count} predictors share ${formatSol(prize)}`;
     }
 
     case "system":
