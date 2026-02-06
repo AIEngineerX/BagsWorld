@@ -46,15 +46,15 @@ const DEFAULT_CONFIG = {
   maxHoldTimeMinutes: 480, // 8 hours - Bags runners need time
   minVolumeToHoldUsd: 500, // Need some volume to keep holding
   deadPositionDecayPercent: 25, // If down 25%+ and stale, consider dead
-  // Liquidity requirements - BALANCED (BagBot uses $50K, but Bags tokens are smaller)
-  minLiquidityUsd: 5000, // $5K minimum - prevents bad fills from low liquidity
-  minMarketCapUsd: 5000, // $5K minimum (runners can start small)
+  // Liquidity requirements - TUNED FOR BAGS.FM (most tokens have $400-$4K liquidity)
+  minLiquidityUsd: 500, // $500 minimum - Bags.fm tokens rarely exceed $5K liquidity
+  minMarketCapUsd: 2000, // $2K minimum (runners can start small)
   // Quality filters - aligned with BagBot patterns
   maxCreatorFeeBps: 500, // 5% max (some Bags creators set higher)
   minBuySellRatio: 1.15, // Bullish pressure required (BagBot uses 1.2)
   minHolders: 5, // New tokens start with few holders
   minVolume24hUsd: 5000, // $5K volume - lowered for more opportunities
-  maxPriceImpactPercent: 3.0, // 3% max - tighter for better execution (BagBot uses 1%)
+  maxPriceImpactPercent: 10.0, // 10% max - Bags.fm micro-caps need wider tolerance
   // Timing - EXPANDED (Bags runners are days old, not minutes)
   minLaunchAgeSec: 300, // 5 minutes minimum (avoid instant rugs)
   maxLaunchAgeSec: 604800, // 7 DAYS max
@@ -1087,8 +1087,8 @@ export class GhostTrader {
     }
 
     // === PRICE IMPACT CHECK ===
-    // Use liquidity as proxy for micro-caps
-    const estimatedImpact = (this.config.maxPositionSol * 170) / (liquidityUsd || 1) * 100;
+    // Use minimum position size for impact estimate (actual size adjusted later by score)
+    const estimatedImpact = (this.config.minPositionSol * 170) / (liquidityUsd || 1) * 100;
     if (estimatedImpact > this.config.maxPriceImpactPercent) {
       return reject(`high price impact (est ${estimatedImpact.toFixed(1)}% > ${this.config.maxPriceImpactPercent}%)`);
     }
@@ -1165,23 +1165,25 @@ export class GhostTrader {
       reasons.push(`already pumped ${priceChange24h.toFixed(0)}% - late entry risk`);
     }
 
-    // 4. LIQUIDITY (0-15 points) - execution quality
-    // Minimum is now $5K, reward higher liquidity
-    if (liquidityUsd >= 50000) {
+    // 4. LIQUIDITY (0-15 points) - execution quality (tuned for Bags.fm micro-caps)
+    if (liquidityUsd >= 10000) {
       score += 15;
-      reasons.push("excellent liquidity ($50K+)");
-    } else if (liquidityUsd >= 20000) {
-      score += 13;
-      reasons.push("strong liquidity ($20K+)");
-    } else if (liquidityUsd >= 10000) {
-      score += 10;
-      reasons.push("good liquidity ($10K+)");
+      reasons.push("excellent liquidity ($10K+)");
     } else if (liquidityUsd >= 5000) {
+      score += 13;
+      reasons.push("strong liquidity ($5K+)");
+    } else if (liquidityUsd >= 2000) {
+      score += 10;
+      reasons.push("good liquidity ($2K+)");
+    } else if (liquidityUsd >= 1000) {
       score += 7;
-      reasons.push("adequate liquidity ($5K+)");
+      reasons.push("adequate liquidity ($1K+)");
+    } else if (liquidityUsd >= 500) {
+      score += 4;
+      reasons.push("minimum liquidity ($500+)");
     } else {
-      score += 3;
-      reasons.push("minimum liquidity");
+      score += 2;
+      reasons.push("very low liquidity");
     }
 
     // 5. TOKEN AGE (0-15 points) - rug risk assessment
