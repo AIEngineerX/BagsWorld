@@ -1,10 +1,14 @@
 "use client";
 
 // Mini trading widget for Ghost's chat interface
-// Shows live trading stats with real-time price action
+// Shows live trading stats with real-time price action and recent trade feed
 
 import { useState, useEffect, useCallback } from "react";
-import { useGhostStatus, useGhostOpenPositions } from "@/hooks/useElizaAgents";
+import {
+  useGhostStatus,
+  useGhostOpenPositions,
+  useGhostPositions,
+} from "@/hooks/useElizaAgents";
 
 // Live price data for a token
 interface LivePrice {
@@ -95,15 +99,22 @@ function useLivePrices(mints: string[]) {
 export function GhostTradingMini() {
   const { data: status, isLoading } = useGhostStatus();
   const { data: positions } = useGhostOpenPositions();
+  const { data: allPositions } = useGhostPositions();
 
   // Get mints for open positions to fetch live prices
   const openMints = positions?.positions?.map((p: any) => p.tokenMint).filter(Boolean) || [];
   const livePrices = useLivePrices(openMints);
 
+  // Get recent closed trades for the feed
+  const closedTrades = (allPositions?.positions || [])
+    .filter((p: any) => p.status === "closed" && p.closedAt)
+    .sort((a: any, b: any) => new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime())
+    .slice(0, 5);
+
   if (isLoading) {
     return (
-      <div className="p-2 bg-purple-500/5 border-b border-purple-500/20 animate-pulse">
-        <div className="h-12 bg-purple-500/10 rounded" />
+      <div className="p-3 bg-purple-500/5 border-b border-purple-500/20 animate-pulse">
+        <div className="h-16 bg-purple-500/10 rounded" />
       </div>
     );
   }
@@ -112,6 +123,7 @@ export function GhostTradingMini() {
   const openCount = status?.trading?.openPositions || 0;
   const walletAddress = status?.wallet?.address || null;
   const totalTrades = status?.performance?.totalTrades || 0;
+  const winRate = status?.performance?.winRate;
 
   // Handle masked data (returns "***" for non-admin requests)
   const rawBalance = status?.wallet?.balanceSol;
@@ -128,68 +140,74 @@ export function GhostTradingMini() {
     : null;
 
   return (
-    <div className="p-2 bg-purple-500/5 border-b border-purple-500/20">
+    <div className="p-3 bg-purple-500/8 border-b-2 border-purple-500/30">
       {/* Status Row */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span
-            className={`w-2 h-2 rounded-full ${isEnabled ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
+            className={`w-3 h-3 rounded-full ${isEnabled ? "bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.6)]" : "bg-red-400"}`}
           />
           <span
-            className={`font-pixel text-[8px] ${isEnabled ? "text-green-400" : "text-red-400"}`}
+            className={`font-pixel text-[11px] font-bold tracking-wide ${isEnabled ? "text-green-400" : "text-red-400"}`}
           >
             {isEnabled ? "TRADING LIVE" : "TRADING OFF"}
           </span>
         </div>
-        {shortWallet ? (
-          <a
-            href={`https://solscan.io/account/${walletAddress}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-pixel text-[7px] text-purple-400 hover:text-purple-300 underline"
-            title={walletAddress || undefined}
-          >
-            {shortWallet}
-          </a>
-        ) : totalTrades > 0 ? (
-          <span className="font-pixel text-[7px] text-gray-500">{totalTrades} trades</span>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {totalTrades > 0 && (
+            <span className="font-pixel text-[9px] text-gray-400">
+              {totalTrades} trades
+              {typeof winRate === "number" ? ` | ${winRate.toFixed(0)}% WR` : ""}
+            </span>
+          )}
+          {shortWallet && (
+            <a
+              href={`https://solscan.io/account/${walletAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-pixel text-[9px] text-purple-400 hover:text-purple-300 underline"
+              title={walletAddress || undefined}
+            >
+              {shortWallet}
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-1 text-center">
+      <div className="grid grid-cols-4 gap-2 text-center bg-purple-500/10 rounded-md p-2 mb-2">
         <div>
-          <p className="font-pixel text-[6px] text-gray-500">POSITIONS</p>
-          <p className="font-pixel text-[10px] text-white">{openCount}/3</p>
+          <p className="font-pixel text-[8px] text-gray-400 mb-0.5">POSITIONS</p>
+          <p className="font-pixel text-[13px] text-white font-bold">{openCount}/3</p>
         </div>
         <div>
-          <p className="font-pixel text-[6px] text-gray-500">BALANCE</p>
-          <p className="font-pixel text-[10px] text-yellow-400">
-            {walletBalance !== null ? walletBalance.toFixed(2) : "***"}
+          <p className="font-pixel text-[8px] text-gray-400 mb-0.5">BALANCE</p>
+          <p className="font-pixel text-[13px] text-yellow-400 font-bold">
+            {walletBalance !== null ? `${walletBalance.toFixed(2)}` : "***"}
           </p>
         </div>
         <div>
-          <p className="font-pixel text-[6px] text-gray-500">EXPOSURE</p>
-          <p className="font-pixel text-[10px] text-purple-300">
+          <p className="font-pixel text-[8px] text-gray-400 mb-0.5">EXPOSURE</p>
+          <p className="font-pixel text-[13px] text-purple-300 font-bold">
             {exposure !== null ? exposure.toFixed(2) : "***"}
           </p>
         </div>
         <div>
-          <p className="font-pixel text-[6px] text-gray-500">P&L</p>
+          <p className="font-pixel text-[8px] text-gray-400 mb-0.5">P&L</p>
           <p
-            className={`font-pixel text-[10px] ${totalPnl === null ? "text-gray-500" : totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+            className={`font-pixel text-[13px] font-bold ${totalPnl === null ? "text-gray-500" : totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
           >
             {totalPnl !== null ? `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(3)}` : "***"}
           </p>
         </div>
       </div>
 
-      {/* Open Positions Preview */}
+      {/* Open Positions */}
       {positions?.positions && positions.positions.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-purple-500/20">
+        <div className="mb-2">
           <div className="flex items-center justify-between mb-1">
-            <p className="font-pixel text-[6px] text-gray-500">OPEN POSITIONS</p>
-            <p className="font-pixel text-[6px] text-gray-600">SL: -15% | TP: 1.5x-3x</p>
+            <p className="font-pixel text-[9px] text-gray-400 font-bold">OPEN POSITIONS</p>
+            <p className="font-pixel text-[8px] text-gray-500">SL: -15% | TP: 1.5x-3x</p>
           </div>
           <div className="space-y-1">
             {positions.positions.slice(0, 3).map((pos: any) => {
@@ -210,40 +228,100 @@ export function GhostTradingMini() {
               return (
                 <div
                   key={pos.id}
-                  className="flex justify-between items-center bg-purple-500/10 rounded px-1 py-0.5"
+                  className="flex justify-between items-center bg-purple-500/15 rounded-md px-2 py-1.5"
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
                     {dexUrl ? (
                       <a
                         href={dexUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-pixel text-[8px] text-purple-300 hover:text-purple-100 font-bold underline"
+                        className="font-pixel text-[11px] text-purple-300 hover:text-purple-100 font-bold underline"
                         title={`View ${symbol} on DexScreener`}
                       >
                         ${displaySymbol}
                       </a>
                     ) : (
-                      <span className="font-pixel text-[8px] text-purple-300 font-bold">
+                      <span className="font-pixel text-[11px] text-purple-300 font-bold">
                         ${displaySymbol}
                       </span>
                     )}
-                    <span className="font-pixel text-[6px] text-gray-500">
+                    <span className="font-pixel text-[8px] text-gray-500">
                       {timeAgo(pos.createdAt)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
                     {pnlPercent !== null && (
                       <span
-                        className={`font-pixel text-[7px] ${pnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
+                        className={`font-pixel text-[10px] font-bold ${pnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
                       >
                         {pnlPercent >= 0 ? "+" : ""}
                         {pnlPercent.toFixed(1)}%
                       </span>
                     )}
-                    <span className="font-pixel text-[7px] text-yellow-400">
-                      {pos.amountSol?.toFixed(2) || "0.00"}
+                    <span className="font-pixel text-[10px] text-yellow-400">
+                      {pos.amountSol?.toFixed(2) || "0.00"} SOL
                     </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Trades Feed */}
+      {closedTrades.length > 0 && (
+        <div className="border-t border-purple-500/20 pt-2">
+          <p className="font-pixel text-[9px] text-gray-400 font-bold mb-1">RECENT TRADES</p>
+          <div className="space-y-1">
+            {closedTrades.map((trade: any) => {
+              const symbol = trade.tokenSymbol || trade.tokenMint?.slice(0, 6) || "???";
+              const displaySymbol = formatSymbol(symbol);
+              const pnl = trade.pnlSol || 0;
+              const isWin = pnl > 0;
+              const dexUrl = trade.tokenMint
+                ? `https://dexscreener.com/solana/${trade.tokenMint}`
+                : null;
+
+              return (
+                <div
+                  key={trade.id}
+                  className={`flex justify-between items-center rounded-md px-2 py-1 ${isWin ? "bg-green-500/10" : "bg-red-500/10"}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`font-pixel text-[9px] ${isWin ? "text-green-500" : "text-red-500"}`}>
+                      {isWin ? "W" : "L"}
+                    </span>
+                    {dexUrl ? (
+                      <a
+                        href={dexUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-pixel text-[10px] text-gray-300 hover:text-white underline"
+                      >
+                        ${displaySymbol}
+                      </a>
+                    ) : (
+                      <span className="font-pixel text-[10px] text-gray-300">
+                        ${displaySymbol}
+                      </span>
+                    )}
+                    <span className="font-pixel text-[8px] text-gray-500">
+                      {timeAgo(trade.closedAt)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`font-pixel text-[10px] font-bold ${isWin ? "text-green-400" : "text-red-400"}`}
+                    >
+                      {pnl >= 0 ? "+" : ""}{pnl.toFixed(3)} SOL
+                    </span>
+                    {trade.exitReason && (
+                      <span className="font-pixel text-[7px] text-gray-500">
+                        {trade.exitReason}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -254,13 +332,13 @@ export function GhostTradingMini() {
 
       {/* Exit rules reminder */}
       {openCount > 0 && (
-        <p className="font-pixel text-[6px] text-gray-600 text-center mt-1">
+        <p className="font-pixel text-[8px] text-gray-500 text-center mt-2 animate-pulse">
           watching for exits...
         </p>
       )}
 
       {/* Quick tip */}
-      <p className="font-pixel text-[6px] text-purple-400/60 text-center mt-2">
+      <p className="font-pixel text-[8px] text-purple-400/60 text-center mt-2">
         ask me about my trades or strategy
       </p>
     </div>
