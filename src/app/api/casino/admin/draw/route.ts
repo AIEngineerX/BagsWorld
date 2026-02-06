@@ -7,6 +7,7 @@ import {
   isNeonConfigured,
   checkRaffleThreshold,
 } from "@/lib/neon";
+import { emitEvent } from "@/lib/agent-coordinator";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,22 @@ export async function POST(request: NextRequest) {
     console.log(
       `[Casino Admin] Raffle drawn by ${wallet}. Winner: ${result.winner}, Prize: ${result.prize} SOL`
     );
+
+    // Emit casino win event to coordinator
+    emitEvent(
+      "casino_win",
+      "casino",
+      {
+        winnerWallet: result.winner,
+        prizeSol: result.prize,
+        entryCount: result.entryCount,
+        message: `Raffle winner takes ${result.prize} SOL!`,
+      },
+      "high"
+    ).catch((err) => {
+      console.error("[Casino Admin] Failed to emit casino_win event:", err);
+    });
+
     return NextResponse.json({
       success: true,
       winner: result.winner,

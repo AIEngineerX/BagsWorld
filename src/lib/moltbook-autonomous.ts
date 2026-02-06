@@ -22,8 +22,10 @@ import {
   engageWithFinnBags,
   challengeRandomTopAgent,
   postArenaInviteToRandomSubmolt,
+  celebrateClaim,
 } from "./moltbook-agent";
 import { getMoltbookOrNull } from "./moltbook-client";
+import { getRecentEvents, subscribe, type AgentEvent } from "./agent-coordinator";
 
 // ============================================================================
 // CONFIGURATION
@@ -198,6 +200,49 @@ function randomDelay(minMs: number, maxMs: number): Promise<void> {
 }
 
 // ============================================================================
+// WORLD HEALTH INTEGRATION
+// ============================================================================
+
+// Pending game event for reactive posting
+let pendingGameEvent: AgentEvent | null = null;
+let gameEventUnsubscribe: (() => void) | null = null;
+
+/**
+ * Get a posting frequency multiplier based on current world health.
+ * THRIVING (80%+): 1.5x, HEALTHY (60-80%): 1.0x, GROWING (40-60%): 0.7x,
+ * QUIET (20-40%): 0.5x, DORMANT (<20%): 0.3x
+ */
+function getWorldHealthMultiplier(): number {
+  const healthEvents = getRecentEvents(1, "world_health");
+  if (healthEvents.length === 0) return 1.0;
+
+  const health = (healthEvents[0].data as any)?.health ?? 50;
+  if (health >= 80) return 1.5;
+  if (health >= 60) return 1.0;
+  if (health >= 40) return 0.7;
+  if (health >= 20) return 0.5;
+  return 0.3;
+}
+
+/**
+ * Subscribe to high-priority coordinator events for reactive posting
+ */
+function subscribeToGameEvents(): void {
+  if (gameEventUnsubscribe) return; // Already subscribed
+
+  gameEventUnsubscribe = subscribe(
+    ["arena_victory", "casino_win", "oracle_settle", "fee_claim"],
+    (event) => {
+      // Only store high-priority events, and only if no pending event
+      if (event.priority === "high" && !pendingGameEvent) {
+        pendingGameEvent = event;
+      }
+    },
+    ["high", "urgent"]
+  );
+}
+
+// ============================================================================
 // SCHEDULED TASKS
 // ============================================================================
 
@@ -236,15 +281,16 @@ async function checkAndPostArenaInvite(): Promise<boolean> {
   }
 
   // Random chance to post (creates natural distribution throughout day)
-  // Higher chance in afternoon/evening EST
+  // Higher chance in afternoon/evening EST, scaled by world health
   const hour = getESTHour();
+  const healthMult = getWorldHealthMultiplier();
   let chance = 0.1; // 10% base chance per tick
 
   if (hour >= 12 && hour <= 20) {
     chance = 0.15; // 15% during peak hours
   }
 
-  if (Math.random() > chance) {
+  if (Math.random() > chance * healthMult) {
     return false;
   }
 
@@ -268,13 +314,13 @@ async function checkAndChallengeTopAgent(): Promise<boolean> {
     return false;
   }
 
-  // 8% chance per tick during peak hours
+  // 8% chance per tick during peak hours, scaled by world health
   const hour = getESTHour();
   if (hour < 14 || hour > 22) {
     return false;
   }
 
-  if (Math.random() > 0.08) {
+  if (Math.random() > 0.08 * getWorldHealthMultiplier()) {
     return false;
   }
 
@@ -295,13 +341,13 @@ async function checkAndPostCrossSubmoltInvite(): Promise<boolean> {
     return false;
   }
 
-  // 10% chance per tick during active hours
+  // 10% chance per tick during active hours, scaled by world health
   const hour = getESTHour();
   if (hour < 10 || hour > 20) {
     return false;
   }
 
-  if (Math.random() > 0.1) {
+  if (Math.random() > 0.1 * getWorldHealthMultiplier()) {
     return false;
   }
 
@@ -326,7 +372,7 @@ async function checkAndPostSpotlight(): Promise<boolean> {
     return false;
   }
 
-  // Random chance per tick
+  // Random chance per tick, scaled by world health
   const hour = getESTHour();
   let chance = 0.08;
 
@@ -335,7 +381,7 @@ async function checkAndPostSpotlight(): Promise<boolean> {
     chance = 0.12;
   }
 
-  if (Math.random() > chance) {
+  if (Math.random() > chance * getWorldHealthMultiplier()) {
     return false;
   }
 
@@ -365,13 +411,13 @@ async function checkAndPostInvite(): Promise<boolean> {
     return false;
   }
 
-  // 5% chance per tick during evening hours
+  // 5% chance per tick during evening hours, scaled by world health
   const hour = getESTHour();
   if (hour < 18 || hour > 22) {
     return false;
   }
 
-  if (Math.random() > 0.05) {
+  if (Math.random() > 0.05 * getWorldHealthMultiplier()) {
     return false;
   }
 
@@ -391,8 +437,8 @@ async function checkAndPostHype(): Promise<boolean> {
     return false;
   }
 
-  // 8% chance per tick
-  if (Math.random() > 0.08) {
+  // 8% chance per tick, scaled by world health
+  if (Math.random() > 0.08 * getWorldHealthMultiplier()) {
     return false;
   }
 
@@ -412,6 +458,51 @@ async function checkAndPostHype(): Promise<boolean> {
   postHype(topic);
   recordPost("hype");
   return true;
+}
+
+async function checkAndPostGameEvent(): Promise<boolean> {
+  if (!canPostAny() || !pendingGameEvent) {
+    return false;
+  }
+
+  const event = pendingGameEvent;
+  pendingGameEvent = null; // Clear regardless of post success
+
+  switch (event.type) {
+    case "arena_victory": {
+      const winner = (event.data as any)?.winner || "A fighter";
+      console.log(`[MoltbookAutonomous] Posting about arena victory: ${winner}`);
+      postHype(`${winner} just won an arena battle`);
+      recordPost("hype");
+      return true;
+    }
+    case "casino_win": {
+      const prize = (event.data as any)?.prizeSol || 0;
+      console.log(`[MoltbookAutonomous] Posting about casino win: ${prize} SOL`);
+      postHype(`someone just won ${prize} SOL in the Casino raffle`);
+      recordPost("hype");
+      return true;
+    }
+    case "oracle_settle": {
+      const symbol = (event.data as any)?.winningSymbol || "a token";
+      console.log(`[MoltbookAutonomous] Posting about oracle settlement: ${symbol}`);
+      spotlightFeature("Oracle Tower");
+      recordPost("feature_spotlight");
+      return true;
+    }
+    case "fee_claim": {
+      const amount = (event.data as any)?.amount || 0;
+      if (amount >= 1) {
+        console.log(`[MoltbookAutonomous] Posting about big fee claim: ${amount} SOL`);
+        celebrateClaim(amount);
+        recordPost("hype");
+        return true;
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
 }
 
 async function engageWithFinn(): Promise<void> {
@@ -456,6 +547,9 @@ async function tick(): Promise<void> {
   // Run checks in priority order (only one post per tick)
   // GM is highest priority during morning window
   if (await checkAndPostGM()) return;
+
+  // Check for pending game events (reactive posting)
+  if (await checkAndPostGameEvent()) return;
 
   // Add small random delay to feel more natural
   await randomDelay(1000, 3000);
@@ -508,6 +602,9 @@ export function startMoltbookAutonomous(): void {
   state.postsToday = [];
   state.lastGmDate = null;
 
+  // Subscribe to coordinator events for reactive posting
+  subscribeToGameEvents();
+
   console.log("[MoltbookAutonomous] Starting service");
   console.log(`[MoltbookAutonomous] Tick interval: ${CONFIG.TICK_INTERVAL_MS / 1000}s`);
   console.log(`[MoltbookAutonomous] Max posts per day: ${CONFIG.MAX_POSTS_PER_DAY}`);
@@ -545,6 +642,13 @@ export function stopMoltbookAutonomous(): void {
     clearInterval(state.finnEngagementIntervalId);
     state.finnEngagementIntervalId = null;
   }
+
+  // Unsubscribe from coordinator events
+  if (gameEventUnsubscribe) {
+    gameEventUnsubscribe();
+    gameEventUnsubscribe = null;
+  }
+  pendingGameEvent = null;
 
   state.isRunning = false;
   console.log("[MoltbookAutonomous] Service stopped");

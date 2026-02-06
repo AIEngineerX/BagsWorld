@@ -22,6 +22,7 @@ import {
   emitEvent,
   startCoordinator,
   getRecentEvents,
+  emitWorldHealthChange,
   type AgentEventType,
 } from "@/lib/agent-coordinator";
 import {
@@ -1324,7 +1325,25 @@ export async function POST(request: NextRequest) {
       0
     );
 
-    const claimVolume24h = onChainClaimVolume + agentClaimVolume;
+    // Also include game feature activity as a small health bonus
+    const arenaEvents24h = getRecentEvents(100, "arena_victory").filter(
+      (e) => e.timestamp > twentyFourHoursAgo
+    );
+    const casinoEvents24h = getRecentEvents(100, "casino_win").filter(
+      (e) => e.timestamp > twentyFourHoursAgo
+    );
+    const oracleEvents24h = getRecentEvents(100, "oracle_settle").filter(
+      (e) => e.timestamp > twentyFourHoursAgo
+    );
+
+    // Calculate game activity bonus (0-5 points, treated as SOL-equivalent at 0.5 SOL per point)
+    const arenaBonus = Math.min(2, arenaEvents24h.length * 0.5);
+    const casinoBonus = Math.min(1, casinoEvents24h.length * 1);
+    const oracleBonus = Math.min(2, oracleEvents24h.length * 1);
+    const gameActivityBonus = arenaBonus + casinoBonus + oracleBonus;
+    const gameActivitySolEquivalent = gameActivityBonus * 0.5;
+
+    const claimVolume24h = onChainClaimVolume + agentClaimVolume + gameActivitySolEquivalent;
     // 2. Total lifetime fees across all tokens (already in SOL after enrichment)
     const totalLifetimeFees = tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
     // 3. Count tokens with any fee activity
@@ -1389,8 +1408,26 @@ export async function POST(request: NextRequest) {
       claimVolume24h,
       totalLifetimeFees,
       activeTokenCount,
+      gameActivityBonus,
       source: "bags.fm",
     };
+
+    // Emit world health change if it shifted significantly
+    if (previousState && Math.abs(worldState.health - previousState.health) > 5) {
+      const status =
+        worldState.health >= 80
+          ? "THRIVING"
+          : worldState.health >= 60
+            ? "HEALTHY"
+            : worldState.health >= 40
+              ? "GROWING"
+              : worldState.health >= 20
+                ? "QUIET"
+                : "DORMANT";
+      emitWorldHealthChange(worldState.health, previousState.health, status).catch((err) => {
+        console.error("[WorldState] Failed to emit health change:", err);
+      });
+    }
 
     // Persist updated health values back to database (for time-based decay)
     // Only update buildings where health actually changed

@@ -7,6 +7,7 @@ import {
   isNeonConfigured,
 } from "@/lib/neon";
 import { isAdmin } from "@/lib/config";
+import { emitEvent } from "@/lib/agent-coordinator";
 
 export const dynamic = "force-dynamic";
 
@@ -153,6 +154,24 @@ export async function POST(request: NextRequest) {
   console.log(
     `[Oracle Admin] Round #${round.id} settled by ${adminWallet}: Winner ${winningToken?.symbol} (+${winningPriceChange.toFixed(2)}%), ${result.winnersCount} winners, ${prizePoolSol} SOL distributed`
   );
+
+  // Emit oracle settle event to coordinator
+  emitEvent(
+    "oracle_settle",
+    "oracle",
+    {
+      roundId: round.id,
+      winningSymbol: winningToken?.symbol,
+      winningMint: winningTokenMint,
+      priceChange: winningPriceChange,
+      winnersCount: result.winnersCount,
+      prizePoolSol,
+      message: `Oracle: $${winningToken?.symbol || "TOKEN"} wins (+${winningPriceChange.toFixed(1)}%)! ${result.winnersCount} predictors share ${prizePoolSol} SOL`,
+    },
+    "high"
+  ).catch((err) => {
+    console.error("[Oracle Admin] Failed to emit oracle_settle event:", err);
+  });
 
   return NextResponse.json({
     success: true,

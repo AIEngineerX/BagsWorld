@@ -4,6 +4,7 @@
 import { BagsApiClient } from "./bags-api";
 import { getXClient } from "./x-client";
 import type { FeeEarner, GameBuilding } from "./types";
+import { getRecentEvents } from "./agent-coordinator";
 
 export interface DailyReportData {
   date: string;
@@ -19,6 +20,13 @@ export interface DailyReportData {
     totalFees: number;
     totalClaims: number;
     activeRunners: number;
+  };
+  activityStats: {
+    arenaBattles: number;
+    casinoPrizes: number;
+    oracleRounds: number;
+    feeClaims: number;
+    tokenLaunches: number;
   };
   topToken: {
     symbol: string;
@@ -54,6 +62,24 @@ async function fetchReportData(): Promise<DailyReportData> {
   }
 
   const worldState = await response.json();
+
+  // Gather coordinator event counts for the last 24 hours
+  const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const arenaBattles = getRecentEvents(100, "arena_victory").filter(
+    (e) => e.timestamp > twentyFourHoursAgo
+  ).length;
+  const casinoPrizes = getRecentEvents(100, "casino_win").filter(
+    (e) => e.timestamp > twentyFourHoursAgo
+  ).length;
+  const oracleRounds = getRecentEvents(100, "oracle_settle").filter(
+    (e) => e.timestamp > twentyFourHoursAgo
+  ).length;
+  const feeClaims = getRecentEvents(100, "fee_claim").filter(
+    (e) => e.timestamp > twentyFourHoursAgo
+  ).length;
+  const tokenLaunches = getRecentEvents(100, "token_launch").filter(
+    (e) => e.timestamp > twentyFourHoursAgo
+  ).length;
 
   // Extract top runners (fee earners) - filter out the guide characters
   const runners = (worldState.population || [])
@@ -94,8 +120,15 @@ async function fetchReportData(): Promise<DailyReportData> {
     ecosystemStats: {
       totalTokens: buildings.filter((b) => b.symbol !== "BAGS" && b.symbol !== "WORLD").length,
       totalFees: totalFees,
-      totalClaims: 0, // Would need to track this
+      totalClaims: feeClaims,
       activeRunners: runners.length,
+    },
+    activityStats: {
+      arenaBattles,
+      casinoPrizes,
+      oracleRounds,
+      feeClaims,
+      tokenLaunches,
     },
     topToken,
   };
@@ -145,6 +178,20 @@ function generateReportText(data: DailyReportData): string[] {
     let statsTweet = `ECOSYSTEM STATS:\n\n`;
     statsTweet += `Active Tokens: ${data.ecosystemStats.totalTokens}\n`;
     statsTweet += `Active Runners: ${data.ecosystemStats.activeRunners}\n`;
+
+    // Add 24h activity summary from coordinator events
+    const { arenaBattles, casinoPrizes, oracleRounds, feeClaims, tokenLaunches } =
+      data.activityStats;
+    const activityParts: string[] = [];
+    if (arenaBattles > 0) activityParts.push(`${arenaBattles} battles`);
+    if (feeClaims > 0) activityParts.push(`${feeClaims} claims`);
+    if (tokenLaunches > 0) activityParts.push(`${tokenLaunches} launches`);
+    if (casinoPrizes > 0) activityParts.push(`${casinoPrizes} raffles`);
+    if (oracleRounds > 0) activityParts.push(`${oracleRounds} predictions`);
+
+    if (activityParts.length > 0) {
+      statsTweet += `24h Activity: ${activityParts.join(" | ")}\n`;
+    }
 
     if (data.topToken) {
       statsTweet += `\nTop Performer: $${data.topToken.symbol}`;

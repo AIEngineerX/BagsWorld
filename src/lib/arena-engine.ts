@@ -16,6 +16,7 @@ import {
   completeMatch,
   updateFighterStats,
 } from "./arena-db";
+import { emitEvent } from "./agent-coordinator";
 
 // Match state update callback type
 type MatchUpdateCallback = (state: MatchState) => void;
@@ -436,6 +437,23 @@ export class ArenaEngine {
     const winner1 = f1.stats.hp > 0;
     await updateFighterStats(f1.id, winner1, damageDealt1, f1.stats.maxHp - f1.stats.hp);
     await updateFighterStats(f2.id, !winner1, damageDealt2, f2.stats.maxHp - f2.stats.hp);
+
+    // Emit arena victory event to coordinator
+    emitEvent(
+      "arena_victory",
+      "arena",
+      {
+        winner: winner.username,
+        loser: loser.username,
+        matchId,
+        winnerHpRemaining: winner.stats.hp,
+        totalTicks: state.tick,
+        damageDealt: winner === f1 ? damageDealt1 : damageDealt2,
+      },
+      "medium"
+    ).catch((err) => {
+      console.error("[ArenaEngine] Failed to emit arena_victory event:", err);
+    });
 
     // Broadcast final state
     if (this.onUpdate) {

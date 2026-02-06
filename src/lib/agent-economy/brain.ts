@@ -22,6 +22,7 @@ import {
   type AgentEconomyConfig,
   DEFAULT_AGENT_ECONOMY_CONFIG,
 } from "./types";
+import { getRecentEvents } from "../agent-coordinator";
 
 // ============================================================================
 // TYPES
@@ -61,6 +62,13 @@ export interface PortfolioState {
   diversificationScore: number; // 0-100, higher = more diversified
 }
 
+export interface MarketSignal {
+  mint: string;
+  symbol: string;
+  type: "pump" | "dump";
+  change: number;
+}
+
 export interface MarketState {
   tokens: TokenMetrics[];
   topByVolume: TokenMetrics[];
@@ -69,6 +77,7 @@ export interface MarketState {
   recentLaunches: TokenMetrics[];
   averageVolume24h: number;
   averageFeeYield: number;
+  recentSignals?: MarketSignal[];
 }
 
 export interface TradeDecision {
@@ -366,6 +375,26 @@ export async function getMarketState(): Promise<MarketState> {
   const averageFeeYield =
     tokens.length > 0 ? tokens.reduce((sum, t) => sum + t.feeYieldPercent, 0) / tokens.length : 0;
 
+  // Pull recent price signals from coordinator events (last 6 hours)
+  const sixHoursAgo = Date.now() - 6 * 60 * 60 * 1000;
+  const pumpEvents = getRecentEvents(20, "token_pump").filter((e) => e.timestamp > sixHoursAgo);
+  const dumpEvents = getRecentEvents(20, "token_dump").filter((e) => e.timestamp > sixHoursAgo);
+
+  const recentSignals: MarketSignal[] = [
+    ...pumpEvents.map((e) => ({
+      mint: (e.data as any)?.mint || "",
+      symbol: (e.data as any)?.symbol || "TOKEN",
+      type: "pump" as const,
+      change: (e.data as any)?.change || 0,
+    })),
+    ...dumpEvents.map((e) => ({
+      mint: (e.data as any)?.mint || "",
+      symbol: (e.data as any)?.symbol || "TOKEN",
+      type: "dump" as const,
+      change: (e.data as any)?.change || 0,
+    })),
+  ];
+
   return {
     tokens,
     topByVolume,
@@ -374,6 +403,7 @@ export async function getMarketState(): Promise<MarketState> {
     recentLaunches,
     averageVolume24h,
     averageFeeYield,
+    recentSignals,
   };
 }
 
