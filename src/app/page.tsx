@@ -473,52 +473,58 @@ export default function Home() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Game area */}
-        <div className="flex-1 relative" style={{ touchAction: "auto" }}>
-          <Suspense fallback={<div className="w-full h-full bg-bags-dark" />}>
-            <GameCanvas worldState={worldState} />
-          </Suspense>
-          {/* Scanlines disabled on mobile via CSS for better touch handling */}
-          <div className="scanlines" aria-hidden="true" />
-
-          {/* Zone Navigation - positioned over game canvas */}
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20">
+        {/* Zone Navigation - strip on mobile, overlay on desktop */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="sm:hidden shrink-0">
             <ZoneNav />
           </div>
+          {/* Game area */}
+          <div className="flex-1 relative" style={{ touchAction: "auto" }}>
+            <Suspense fallback={<div className="w-full h-full bg-bags-dark" />}>
+              <GameCanvas worldState={worldState} />
+            </Suspense>
+            {/* Scanlines disabled on mobile via CSS for better touch handling */}
+            <div className="scanlines" aria-hidden="true" />
 
-          {/* Agent Activity Indicator - shows when agents are talking */}
-          <AgentActivityIndicator />
+            {/* Desktop zone nav overlay */}
+            <div className="hidden sm:block absolute top-2 left-1/2 -translate-x-1/2 z-20">
+              <ZoneNav />
+            </div>
 
-          {/* Chat windows - always rendered but can show/hide based on click events */}
-          {/* On mobile, users use MobileCharacterMenu to trigger these */}
-          <AIChat />
-          <TolyChat />
-          <AshChat />
-          <FinnbagsChat />
-          <DevChat />
-          <NeoChat />
-          <CJChat />
-          <ShawChat />
-          {/* Academy Characters */}
-          <RamoChat />
-          <SincaraChat />
-          <StuuChat />
-          <SamChat />
-          <AlaaChat />
-          <CarloChat />
-          <BNNChat />
-          {/* Founder's Corner Characters */}
-          <ProfessorOakChat />
-          {/* Mascots */}
-          <BagsyChat />
-          <AgentDashboard />
-          <AdminConsole />
+            {/* Agent Activity Indicator - shows when agents are talking */}
+            <AgentActivityIndicator />
 
-          {/* Mobile character menu - floating button */}
-          <MobileCharacterMenu />
+            {/* Chat windows - always rendered but can show/hide based on click events */}
+            {/* On mobile, users use MobileCharacterMenu to trigger these */}
+            <AIChat />
+            <TolyChat />
+            <AshChat />
+            <FinnbagsChat />
+            <DevChat />
+            <NeoChat />
+            <CJChat />
+            <ShawChat />
+            {/* Academy Characters */}
+            <RamoChat />
+            <SincaraChat />
+            <StuuChat />
+            <SamChat />
+            <AlaaChat />
+            <CarloChat />
+            <BNNChat />
+            {/* Founder's Corner Characters */}
+            <ProfessorOakChat />
+            {/* Mascots */}
+            <BagsyChat />
+            <AgentDashboard />
+            <AdminConsole />
 
-          {/* Mini Map - quick access to world features */}
-          <MiniMap />
+            {/* Mobile character menu - floating button */}
+            <MobileCharacterMenu />
+
+            {/* Mini Map - quick access to world features */}
+            <MiniMap />
+          </div>
         </div>
 
         {/* Sidebar - hidden on mobile, slide-in drawer on tablet, always visible on desktop */}
@@ -606,7 +612,7 @@ export default function Home() {
       </div>
 
       {/* Footer status bar - simplified on mobile */}
-      <footer className="h-8 sm:h-9 hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[7px] sm:text-[8px] md:text-[10px] safe-area-bottom shrink-0">
+      <footer className="h-10 sm:h-9 hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[10px] sm:text-[8px] md:text-[10px] safe-area-bottom shrink-0">
         <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
             [POP:<span className="text-white ml-1">{worldState?.population?.length ?? 0}</span>]
@@ -622,13 +628,13 @@ export default function Home() {
           </div>
           <button
             onClick={() => setShowTradingTerminal(true)}
-            className="text-[#22c55e] hover:text-[#16a34a] transition-colors"
+            className="text-[#22c55e] hover:text-[#16a34a] transition-colors min-h-[44px] sm:min-h-0 flex items-center"
           >
             [TERMINAL]
           </button>
           <button
             onClick={() => setShowLauncherHub(true)}
-            className="text-gray-400 hover:text-bags-green transition-colors"
+            className="text-gray-400 hover:text-bags-green transition-colors min-h-[44px] sm:min-h-0 flex items-center"
           >
             [LAUNCHERS]
           </button>

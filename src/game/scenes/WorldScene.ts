@@ -201,11 +201,15 @@ export class WorldScene extends Phaser.Scene {
   private boundEnterWorld: ((e: Event) => void) | null = null;
   private boundExitWorld: ((e: Event) => void) | null = null;
 
+  private isMobile = false;
+
   constructor() {
     super({ key: "WorldScene" });
   }
 
   create(): void {
+    this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     // Create layered ground
     this.createGround();
 
@@ -7718,8 +7722,40 @@ Use: bags.fm/[yourname]`,
                                       : this.getCharacterTexture(character.mood, variant);
     const sprite = this.add.sprite(character.x, character.y, textureKey);
     sprite.setDepth(isSpecial ? 11 : 10); // Special characters slightly above others
-    sprite.setInteractive();
+    if (this.isMobile) {
+      sprite.setInteractive(
+        new Phaser.Geom.Rectangle(-40, -40, 80, 80),
+        Phaser.Geom.Rectangle.Contains
+      );
+    } else {
+      sprite.setInteractive();
+    }
     sprite.setScale(isSpecial ? 1.3 : 1.2); // Special characters slightly larger
+
+    // Persistent name label on mobile (always visible, no hover needed)
+    if (this.isMobile) {
+      const charName = character.username || character.id;
+      const displayName = charName.length > 8 ? charName.substring(0, 8) : charName;
+      const labelBg = this.add.rectangle(
+        character.x,
+        character.y + 18,
+        displayName.length * 7 + 8,
+        16,
+        0x000000,
+        0.7
+      );
+      labelBg.setDepth(12);
+      const nameLabel = this.add.text(character.x, character.y + 18, displayName.toUpperCase(), {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#ffffff",
+      });
+      nameLabel.setOrigin(0.5, 0.5);
+      nameLabel.setDepth(13);
+      // Store references for cleanup - attach to sprite data
+      sprite.setData("mobileLabel", nameLabel);
+      sprite.setData("mobileLabelBg", labelBg);
+    }
 
     // Hover effects
     sprite.on("pointerover", () => {
@@ -8436,7 +8472,9 @@ Use: bags.fm/[yourname]`,
     // HQ floats in sky so it's always visible above other buildings
     const buildingDepth = isHQBuilding ? 8 : 5 - building.x / 10000;
     container.setDepth(buildingDepth);
-    const hitboxSize = isHQBuilding ? { w: 80, h: 160 } : { w: 40, h: 80 };
+    const hitboxSize = this.isMobile
+      ? (isHQBuilding ? { w: 120, h: 200 } : { w: 80, h: 120 })
+      : (isHQBuilding ? { w: 80, h: 160 } : { w: 40, h: 80 });
     container.setInteractive(
       new Phaser.Geom.Rectangle(-hitboxSize.w / 2, -hitboxSize.h, hitboxSize.w, hitboxSize.h),
       Phaser.Geom.Rectangle.Contains

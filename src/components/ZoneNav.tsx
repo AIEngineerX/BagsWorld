@@ -3,7 +3,7 @@
 import { useGameStore } from "@/lib/store";
 import { ZONES, ZoneType } from "@/lib/types";
 
-const ZONE_ORDER: ZoneType[] = [
+export const ZONE_ORDER: ZoneType[] = [
   "labs",
   "moltbook",
   "main_city",
@@ -12,6 +12,16 @@ const ZONE_ORDER: ZoneType[] = [
   "founders",
   "arena",
 ];
+
+const ZONE_SHORT_LABELS: Record<ZoneType, string> = {
+  labs: "HQ",
+  moltbook: "BEACH",
+  main_city: "PARK",
+  trending: "CITY",
+  ballers: "BALLERS",
+  founders: "LAUNCH",
+  arena: "ARENA",
+};
 
 export function ZoneNav() {
   const { currentZone, setZone } = useGameStore();
@@ -26,7 +36,7 @@ export function ZoneNav() {
   };
 
   return (
-    <nav className="flex items-center gap-1 bg-black/90 backdrop-blur-sm px-2 py-1.5 border border-bags-green/50 shadow-[0_4px_20px_rgba(0,0,0,0.5),0_0_15px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
+    <nav className="flex items-center flex-nowrap overflow-x-auto scrollbar-hide gap-1.5 sm:gap-1 bg-black/90 backdrop-blur-sm px-2 py-1.5 border border-bags-green/50 shadow-[0_4px_20px_rgba(0,0,0,0.5),0_0_15px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
       {ZONE_ORDER.map((zoneId) => {
         const zone = ZONES[zoneId];
         const isActive = currentZone === zoneId;
@@ -46,7 +56,8 @@ export function ZoneNav() {
             key={zoneId}
             onClick={() => handleZoneChange(zoneId)}
             className={`
-              font-pixel text-[10px] px-3 py-1.5 transition-all duration-200
+              font-pixel text-[11px] sm:text-[10px] px-4 sm:px-3 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0
+              whitespace-nowrap transition-all duration-200
               flex items-center gap-1 border
               ${
                 isActive
@@ -63,6 +74,7 @@ export function ZoneNav() {
             title={zone.description}
           >
             <span className="font-pixel text-[8px]">{zone.icon}</span>
+            <span className="sm:hidden">{ZONE_SHORT_LABELS[zoneId]}</span>
             <span className="hidden sm:inline">{zone.name.toUpperCase()}</span>
           </button>
         );

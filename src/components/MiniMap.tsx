@@ -117,7 +117,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
   const containerStyle: React.CSSProperties =
     position.x >= 0 && position.y >= 0
       ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
-      : { right: 16, bottom: 80 };
+      : { right: 16, bottom: "calc(80px + env(safe-area-inset-bottom, 0px))" };
 
   return (
     <div
