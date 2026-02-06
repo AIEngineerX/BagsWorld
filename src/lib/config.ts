@@ -186,6 +186,11 @@ export const ECOSYSTEM_CONFIG = {
         recovery: 5, // Normal activity
         fastRecovery: 10, // High volume
       },
+      // Grace period - new buildings get immunity from decay
+      gracePeriod: {
+        durationMs: 24 * 60 * 60 * 1000, // 24 hours
+        minHealth: 75, // Don't decay below this during grace period
+      },
     },
   },
 
