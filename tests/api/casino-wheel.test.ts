@@ -15,6 +15,24 @@ jest.mock("@/lib/neon", () => ({
   recordWheelSpin: jest.fn(),
 }));
 
+// Mock token-balance module to bypass token gate checks
+jest.mock("@/lib/token-balance", () => ({
+  getTokenBalance: jest.fn(() => Promise.resolve(10_000_000)), // Above MIN_TOKEN_BALANCE
+  BAGSWORLD_TOKEN_MINT: "MockBagsWorldMint",
+  MIN_TOKEN_BALANCE: 1_000_000,
+  BAGSWORLD_TOKEN_SYMBOL: "BAGS",
+  BAGSWORLD_BUY_URL: "https://example.com/buy",
+}));
+
+// Mock Solana web3.js to avoid connection issues
+jest.mock("@solana/web3.js", () => ({
+  Connection: jest.fn().mockImplementation(() => ({})),
+  PublicKey: jest.fn().mockImplementation((key: string) => ({
+    toString: () => key,
+    toBase58: () => key,
+  })),
+}));
+
 // Mock next/server to avoid NextRequest issues
 jest.mock("next/server", () => {
   const originalModule = jest.requireActual("next/server");

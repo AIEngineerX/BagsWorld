@@ -7465,6 +7465,14 @@ Use: bags.fm/[yourname]`,
       const shouldShow = zoneCharacterIds.has(id);
       sprite.setVisible(shouldShow);
 
+      // Toggle mobile labels with sprite
+      const mobileLabel = sprite.getData("mobileLabel") as Phaser.GameObjects.Text | undefined;
+      const mobileLabelBg = sprite.getData("mobileLabelBg") as
+        | Phaser.GameObjects.Rectangle
+        | undefined;
+      if (mobileLabel) mobileLabel.setVisible(shouldShow);
+      if (mobileLabelBg) mobileLabelBg.setVisible(shouldShow);
+
       // Handle associated glow sprites (including Shaw and Academy characters)
       const glowKeys = [
         "tolyGlow",
@@ -7616,6 +7624,9 @@ Use: bags.fm/[yourname]`,
       }
     });
 
+    // Sync mobile labels with current sprite position
+    if (this.isMobile) this.updateMobileLabel(sprite);
+
     // External agents (OpenClaws) - don't change their texture
     const isOpenClaw = character.id.startsWith("external-");
 
@@ -7759,7 +7770,7 @@ Use: bags.fm/[yourname]`,
     // Persistent name label on mobile (always visible, no hover needed)
     if (this.isMobile) {
       const charName = character.username || character.id;
-      const displayName = charName.length > 8 ? charName.substring(0, 8) : charName;
+      const displayName = charName.length > 10 ? charName.substring(0, 10) : charName;
       const labelYOffset = 18 + (index % 3) * 12; // Stagger: 18, 30, or 42px to avoid overlap
       const labelBg = this.add.rectangle(
         character.x,

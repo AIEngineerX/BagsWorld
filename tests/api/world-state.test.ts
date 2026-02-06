@@ -29,6 +29,8 @@ jest.mock("@/lib/dexscreener-api", () => ({
 jest.mock("@/lib/agent-coordinator", () => ({
   emitEvent: jest.fn(() => Promise.resolve()),
   startCoordinator: jest.fn(),
+  getRecentEvents: jest.fn(() => []),
+  emitWorldHealthChange: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock("@/lib/agent-economy", () => ({
