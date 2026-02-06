@@ -18,6 +18,7 @@ import {
   type AlphaType,
 } from "./alpha-finder";
 import { trackCall } from "./chadghost-engagement";
+import { emitEvent, emitTokenLaunch } from "./agent-coordinator";
 import {
   trackPost,
   getBestSubmolt,
@@ -426,6 +427,37 @@ async function decideAndPostAlpha(
       submolt,
       title: content.title,
     });
+
+    // Emit alpha to coordinator so it appears in the game's UnifiedActivityFeed
+    if (alpha.type === "new_launch" && alpha.data.tokenMint) {
+      emitTokenLaunch({
+        mint: alpha.data.tokenMint,
+        name: alpha.data.tokenName || alpha.data.tokenSymbol || "Unknown",
+        symbol: alpha.data.tokenSymbol || "???",
+        creator: alpha.data.wallet || "unknown",
+        liquidity: 0,
+        supply: 0,
+        timestamp: Date.now(),
+        platform: "bags",
+      }).catch((err) => {
+        console.error("[ChadGhost] Failed to emit launch to coordinator:", err);
+      });
+    } else {
+      emitEvent(
+        "agent_insight",
+        "ai-agent",
+        {
+          message: `ChadGhost alpha: ${content.title}`,
+          alphaType: alpha.type,
+          tokenSymbol: alpha.data.tokenSymbol,
+          tokenMint: alpha.data.tokenMint,
+          amount: alpha.data.amount,
+        },
+        alpha.priority === "high" ? "high" : "medium"
+      ).catch((err) => {
+        console.error("[ChadGhost] Failed to emit alpha to coordinator:", err);
+      });
+    }
 
     // Track the call for credibility building
     if (alpha.data.tokenMint && alpha.data.tokenSymbol) {

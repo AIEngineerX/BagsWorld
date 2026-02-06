@@ -733,7 +733,6 @@ src/
     autonomous-dialogue.ts             # NPC self-dialogue
     speech-bubble-manager.ts           # Speech bubble UI
     dialogue-event-bridge.ts           # Event/dialogue bridge
-    character-relationships.ts         # Character relationship tracking
     agent-learning.ts                  # Agent learning/memory
     agent-coordinator.ts               # Agent coordination
     agent-data.ts                      # Agent data management
@@ -785,7 +784,6 @@ src/
     AdminConsole.tsx                   # Admin panel
     ScoutAlerts.tsx                    # Neo scout alerts
     WorldHealthBar.tsx                 # World health display
-    EventFeed.tsx                      # Event feed
     UnifiedActivityFeed.tsx            # Unified activity feed
     EcosystemStats.tsx                 # Ecosystem statistics
     Leaderboard.tsx                    # Leaderboard
