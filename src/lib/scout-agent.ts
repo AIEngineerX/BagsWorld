@@ -1,15 +1,8 @@
 // Scout Agent - Real-time new token launch scanner
-// Primary: Bags.fm launches via bags-live-feed (Bitquery)
-// Fallback: pump.fun WebSocket (when BITQUERY_API_KEY not set)
+// Monitors pump.fun WebSocket for new token launches
 
 import WebSocket from "ws";
 import { emitTokenLaunch } from "./agent-coordinator";
-import {
-  getRecentLaunches as getLiveFeedLaunches,
-  startLiveFeed,
-  getLiveFeedState,
-  type BagsLaunch,
-} from "./bags-live-feed";
 
 // Scout configuration
 export interface ScoutConfig {
@@ -54,16 +47,8 @@ export interface ScoutState {
 // Alert callback type
 export type ScoutAlertCallback = (launch: TokenLaunch) => void;
 
-// Known Bags.fm creator signer
-const BAGS_SIGNER = "BAGSB9TpGrZxQbEsrEznv5jXXdwyP6AXerN8aVRiAmcv";
-
-// WebSocket endpoints (fallback only)
-const WS_ENDPOINTS = {
-  pumpportal: "wss://pumpportal.fun/api/data",
-};
-
-// Polling interval for Bags.fm live feed
-const BAGS_POLL_INTERVAL_MS = 30_000; // 30 seconds
+// WebSocket endpoint
+const PUMPPORTAL_WS_URL = "wss://pumpportal.fun/api/data";
 
 // Default configuration
 const DEFAULT_CONFIG: ScoutConfig = {
@@ -94,12 +79,8 @@ let scoutState: ScoutState = {
 let scoutConfig: ScoutConfig = { ...DEFAULT_CONFIG };
 let ws: WebSocket | null = null;
 let reconnectTimeout: NodeJS.Timeout | null = null;
-let bagsPollInterval: NodeJS.Timeout | null = null;
 let alertCallbacks: ScoutAlertCallback[] = [];
 let alertTimestamps: number[] = [];
-
-// Track mints we've already processed to avoid duplicates
-const processedMints = new Set<string>();
 
 // Initialize the scout agent
 export function initScoutAgent(config?: Partial<ScoutConfig>): boolean {
@@ -130,14 +111,7 @@ export function startScoutAgent(): boolean {
 
   scoutState.isRunning = true;
 
-  // Try Bags.fm live feed first (requires BITQUERY_API_KEY)
-  if (process.env.BITQUERY_API_KEY) {
-    connectBagsLiveFeed();
-  } else {
-    // Fallback to pump.fun WebSocket
-    console.log("[Scout Agent] No BITQUERY_API_KEY - falling back to pump.fun WebSocket");
-    connectPumpFunWebSocket();
-  }
+  connectPumpFunWebSocket();
 
   console.log("[Scout Agent] Started - scanning for new tokens");
   return true;
@@ -152,11 +126,6 @@ export function stopScoutAgent(): void {
     reconnectTimeout = null;
   }
 
-  if (bagsPollInterval) {
-    clearInterval(bagsPollInterval);
-    bagsPollInterval = null;
-  }
-
   if (ws) {
     ws.close();
     ws = null;
@@ -166,73 +135,14 @@ export function stopScoutAgent(): void {
   console.log("[Scout Agent] Stopped");
 }
 
-// ============================================================================
-// PRIMARY: Bags.fm Live Feed (via Bitquery)
-// ============================================================================
-
-function connectBagsLiveFeed(): void {
-  if (!scoutState.isRunning) return;
-
-  // Start the live feed service if not already running
-  const liveFeedState = getLiveFeedState();
-  if (!liveFeedState.isRunning) {
-    startLiveFeed();
-  }
-
-  scoutState.isConnected = true;
-  console.log("[Scout Agent] Connected to Bags.fm live feed (Bitquery)");
-
-  // Poll the live feed for new launches
-  pollBagsLiveFeed();
-  bagsPollInterval = setInterval(pollBagsLiveFeed, BAGS_POLL_INTERVAL_MS);
-}
-
-function pollBagsLiveFeed(): void {
-  if (!scoutState.isRunning) return;
-
-  const recentLaunches = getLiveFeedLaunches(20);
-
-  for (const bagsLaunch of recentLaunches) {
-    // Skip already-processed launches
-    if (processedMints.has(bagsLaunch.mint)) continue;
-    processedMints.add(bagsLaunch.mint);
-
-    // Convert BagsLaunch to TokenLaunch
-    const launch: TokenLaunch = {
-      mint: bagsLaunch.mint,
-      name: bagsLaunch.name,
-      symbol: bagsLaunch.symbol,
-      creator: bagsLaunch.creator,
-      liquidity: 0,
-      supply: bagsLaunch.initialSupply || 0,
-      timestamp: bagsLaunch.timestamp,
-      platform: "bags",
-      signature: bagsLaunch.signature,
-    };
-
-    handleTokenData(launch);
-  }
-
-  // Limit processedMints size
-  if (processedMints.size > 500) {
-    const arr = Array.from(processedMints);
-    processedMints.clear();
-    arr.slice(-250).forEach((m) => processedMints.add(m));
-  }
-}
-
-// ============================================================================
-// FALLBACK: pump.fun WebSocket
-// ============================================================================
-
 function connectPumpFunWebSocket(): void {
   if (!scoutState.isRunning) return;
 
   try {
-    ws = new WebSocket(WS_ENDPOINTS.pumpportal);
+    ws = new WebSocket(PUMPPORTAL_WS_URL);
 
     ws.onopen = () => {
-      console.log("[Scout Agent] Connected to pump.fun WebSocket (fallback)");
+      console.log("[Scout Agent] Connected to pump.fun WebSocket");
       scoutState.isConnected = true;
 
       // Subscribe to new token launches
@@ -246,7 +156,7 @@ function connectPumpFunWebSocket(): void {
         if (launch) {
           handleTokenData(launch);
         }
-      } catch (err) {
+      } catch {
         // Ignore parse errors for non-JSON messages
       }
     };
@@ -268,9 +178,9 @@ function connectPumpFunWebSocket(): void {
         }, scoutConfig.reconnectDelayMs);
       }
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("[Scout Agent] Connection error:", error);
-    addError(`Connection error: ${error.message}`);
+    addError(`Connection error: ${error instanceof Error ? error.message : String(error)}`);
 
     // Retry connection
     if (scoutState.isRunning) {
@@ -279,34 +189,24 @@ function connectPumpFunWebSocket(): void {
   }
 }
 
-// Parse pump.fun WebSocket data into TokenLaunch
 function parsePumpFunData(data: any): TokenLaunch | null {
-  try {
-    if (data.mint && data.name) {
-      return {
-        mint: data.mint,
-        name: data.name || "Unknown",
-        symbol: data.symbol && data.symbol !== "undefined" ? data.symbol : "???",
-        creator: data.traderPublicKey || data.creator || "unknown",
-        liquidity: data.vSolInBondingCurve || data.liquidity || 0,
-        supply: data.initialBuy || data.supply || 0,
-        timestamp: Date.now(),
-        platform: "pump",
-        uri: data.uri,
-        signature: data.signature,
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  if (!data.mint || !data.name) return null;
+
+  return {
+    mint: data.mint,
+    name: data.name || "Unknown",
+    symbol: data.symbol && data.symbol !== "undefined" ? data.symbol : "???",
+    creator: data.traderPublicKey || data.creator || "unknown",
+    liquidity: data.vSolInBondingCurve || data.liquidity || 0,
+    supply: data.initialBuy || data.supply || 0,
+    timestamp: Date.now(),
+    platform: "pump",
+    uri: data.uri,
+    signature: data.signature,
+  };
 }
 
-// ============================================================================
-// SHARED LOGIC
-// ============================================================================
-
-// Handle incoming token data (used by both Bags.fm and pump.fun paths)
+// Handle incoming token data
 function handleTokenData(launch: TokenLaunch): void {
   scoutState.launchesScanned++;
   scoutState.lastLaunchSeen = Date.now();
@@ -409,7 +309,7 @@ function sendAlerts(launch: TokenLaunch): void {
   for (const callback of alertCallbacks) {
     try {
       callback(launch);
-    } catch (error: any) {
+    } catch (error) {
       console.error("[Scout Agent] Alert callback error:", error);
     }
   }
@@ -473,51 +373,4 @@ export function unblockCreator(creatorAddress: string): void {
   scoutConfig.filters.blockedCreators = scoutConfig.filters.blockedCreators.filter(
     (c) => c !== creatorAddress
   );
-}
-
-// Reset state
-export function resetScoutState(): void {
-  scoutState = {
-    isRunning: false,
-    isConnected: false,
-    lastLaunchSeen: 0,
-    launchesScanned: 0,
-    alertsSent: 0,
-    recentLaunches: [],
-    errors: [],
-  };
-}
-
-// Manual trigger to check for specific token
-export async function checkToken(mint: string): Promise<TokenLaunch | null> {
-  try {
-    // Fetch token info from Bags API or on-chain
-    const response = await fetch(
-      `https://public-api-v2.bags.fm/api/v1/token-launch/creator/v3?tokenMint=${mint}`,
-      {
-        headers: {
-          "x-api-key": process.env.BAGS_API_KEY || "",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-
-    return {
-      mint,
-      name: data.name || "Unknown",
-      symbol: data.symbol || "???",
-      creator: data.creators?.[0]?.wallet || "unknown",
-      liquidity: 0,
-      supply: 0,
-      timestamp: Date.now(),
-      platform: "bags",
-    };
-  } catch {
-    return null;
-  }
 }

@@ -14,7 +14,6 @@ import {
 } from "@/lib/agent-coordinator";
 import { connectToCoordinator as connectAIAgent } from "@/lib/ai-agent";
 import { isNeonConfigured, getRecentEmittedEvents, initializeAgentFeedTables } from "@/lib/neon";
-import { startLiveFeed, stopLiveFeed, getLiveFeedState } from "@/lib/bags-live-feed";
 
 // 24 hour TTL for events
 const EVENT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -99,20 +98,11 @@ export async function GET(request: Request) {
   switch (action) {
     case "status": {
       const state = getCoordinatorState();
-      const liveFeedState = getLiveFeedState();
       return NextResponse.json({
         isRunning: state.isRunning,
         stats: state.stats,
         subscriptionCount: state.subscriptions.length,
         queueSize: state.eventQueue.length,
-        liveFeed: {
-          isRunning: liveFeedState.isRunning,
-          launchesFound: liveFeedState.launchesFound,
-          tradesFound: liveFeedState.tradesFound,
-          whaleAlertsFound: liveFeedState.whaleAlertsFound,
-          lastLaunchCheck: liveFeedState.lastLaunchCheck,
-          errors: liveFeedState.errors.slice(-5),
-        },
       });
     }
 
@@ -179,14 +169,12 @@ export async function POST(request: Request) {
         startCoordinator();
         initAnnouncementHandler();
         connectAIAgent();
-        startLiveFeed(); // Start platform-wide Bags.fm monitoring
-        return NextResponse.json({ success: true, message: "Coordinator started with live feed" });
+        return NextResponse.json({ success: true, message: "Coordinator started" });
       }
 
       case "stop": {
         stopCoordinator();
-        stopLiveFeed();
-        return NextResponse.json({ success: true, message: "Coordinator and live feed stopped" });
+        return NextResponse.json({ success: true, message: "Coordinator stopped" });
       }
 
       case "emit": {
@@ -257,7 +245,6 @@ async function initializeCoordinator(): Promise<void> {
   startCoordinator();
   initAnnouncementHandler();
   connectAIAgent();
-  startLiveFeed(); // Start platform-wide Bags.fm monitoring
 
   // Load recent events from database on cold start
   if (isNeonConfigured()) {

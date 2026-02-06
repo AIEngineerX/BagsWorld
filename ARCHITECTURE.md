@@ -97,8 +97,6 @@ Real Solana Activity --> API Enrichment --> Game State --> Pixel Art World
 |  /api/casino/* -----------> Raffle, wheel, admin (10 routes)      |
 |  /api/oracle/* -----------> Prediction market (8 routes)          |
 |  /api/trading-terminal ---> Market data and charts                |
-|  /api/bags-live-feed -----> Bitquery platform-wide activity       |
-|                                                                   |
 |  AUTH & SOCIAL                                                    |
 |  /api/auth/x/* -----------> X OAuth flow (initiate + callback)    |
 |  /api/report -------------> Daily X report generation             |
@@ -118,10 +116,9 @@ Real Solana Activity --> API Enrichment --> Game State --> Pixel Art World
 |                |  |                   |  |  - DexScreener   |
 |  - Creators    |  |  tokens table     |  |  - Replicate     |
 |  - Fees        |  |  (see schema)     |  |  - Claude AI     |
-|  - Claims      |  |                   |  |  - Bitquery      |
-|  - Launches    |  |                   |  |  - Moltbook      |
-+----------------+  +------------------+  |  - X (Twitter)   |
-                                          |  - Telegram      |
+|  - Claims      |  |                   |  |  - Moltbook      |
+|  - Launches    |  |                   |  |  - X (Twitter)   |
++----------------+  +------------------+  |  - Telegram      |
                                           +------------------+
 ```
 
@@ -628,7 +625,6 @@ See [.env.example](.env.example) for full configuration with setup instructions.
 
 | Variable | Side | Purpose |
 |----------|------|---------|
-| `BITQUERY_API_KEY` | Server | Platform-wide Bags.fm activity feed |
 | `BAGS_API_URL` | Server | Bags.fm API base (default: public-api-v2.bags.fm) |
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | Client | Public RPC (defaults to Ankr) |
 | `NEXT_PUBLIC_SOLANA_NETWORK` | Client | Network (default: mainnet-beta) |
@@ -667,7 +663,7 @@ src/
       trading-terminal/route.ts        # Market data
       terminal/route.ts                # Terminal data
       bagsy/route.ts                   # Moltbook posting
-      bags-live-feed/route.ts          # Platform activity (Bitquery)
+
       bags-bot/route.ts                # BagsBot integration
       moltbook/route.ts                # Moltbook post/fetch
       moltbook-chat/route.ts           # Moltbook chat
@@ -750,7 +746,7 @@ src/
     rate-limit.ts                      # Rate limiting
     eliza-api.ts                       # ElizaOS API wrapper
     docs-content.ts                    # Documentation content
-    bags-live-feed.ts                  # Bitquery activity monitor
+
 
   hooks/
     useWorldState.ts                   # Polls /api/world-state every 60s

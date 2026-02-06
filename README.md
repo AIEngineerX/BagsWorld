@@ -204,7 +204,6 @@ This starts the agent server on port 3001. The main app connects automatically v
 | `SOLANA_RPC_URL` | Yes | Helius RPC for transactions |
 | `ANTHROPIC_API_KEY` | For AI | Claude API for character chat and name generation |
 | `DATABASE_URL` | For persistence | Neon PostgreSQL connection (auto on Netlify) |
-| `BITQUERY_API_KEY` | Optional | Platform-wide Bags.fm live feed |
 | `REPLICATE_API_TOKEN` | Optional | AI image generation (falls back to procedural SVG) |
 | `AGENTS_API_URL` | Optional | ElizaOS server URL (default: localhost:3001) |
 | `AGENT_WALLET_PRIVATE_KEY` | For agents | Autonomous agent signing wallet |
@@ -235,7 +234,6 @@ BagsWorld/
 |   |   |   +-- chadghost/          # ChadGhost autonomous agent
 |   |   |   +-- bagsy/              # Bagsy Moltbook posting
 |   |   |   +-- trading-terminal/   # Market data and charts
-|   |   |   +-- bags-live-feed/     # Platform-wide activity
 |   |   |   +-- report/             # Daily X report generation
 |   |   |   +-- admin/              # Building editor, auth
 |   |   |   +-- ...                 # 60+ more endpoints
@@ -377,7 +375,6 @@ BagsWorld/
 | `GET /api/terminal` | Terminal market data |
 | `GET /api/trading-terminal` | Extended trading terminal |
 | `POST /api/send-transaction` | Direct transaction sending |
-| `GET /api/bags-live-feed` | Platform-wide Bags.fm activity (Bitquery) |
 | `GET /api/bagsworld-holders` | $BagsWorld holder lookup |
 
 ### Casino & Oracle
