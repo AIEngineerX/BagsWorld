@@ -38,6 +38,17 @@ export interface TradeSignal {
   };
 }
 
+export interface ExitSignal {
+  type: "exit";
+  tokenSymbol: string;
+  tokenName: string;
+  tokenMint: string;
+  amountSol: number;
+  pnlSol: number;
+  exitReason: string;
+  holdTimeMinutes: number;
+}
+
 interface MessageRecord {
   timestamp: number;
   tokenMint: string;
@@ -327,6 +338,79 @@ export class TelegramBroadcaster {
     this.processPendingMessages();
 
     return true;
+  }
+
+  // Format exit message
+  private formatExitMessage(signal: ExitSignal): string {
+    const isProfitable = signal.pnlSol >= 0;
+    const pnlSign = isProfitable ? "+" : "";
+    const pnlPercent = ((signal.pnlSol / signal.amountSol) * 100).toFixed(1);
+    const holdTime = signal.holdTimeMinutes < 60
+      ? `${signal.holdTimeMinutes.toFixed(0)}m`
+      : `${(signal.holdTimeMinutes / 60).toFixed(1)}h`;
+
+    const reasonMap: Record<string, string> = {
+      take_profit: "Take Profit",
+      stop_loss: "Stop Loss",
+      trailing_stop: "Trailing Stop",
+      dead_position: "Dead Position",
+      manual: "Manual",
+    };
+    const reason = reasonMap[signal.exitReason] || signal.exitReason;
+
+    let message = isProfitable ? `💰 *GHOST EXIT — WIN*\n\n` : `🔻 *GHOST EXIT — LOSS*\n\n`;
+    message += `*$${this.escapeMarkdown(signal.tokenSymbol)}* — ${this.escapeMarkdown(signal.tokenName)}\n\n`;
+    message += `${isProfitable ? "🟢" : "🔴"} *${reason}*\n\n`;
+    message += `📊 *Result*\n`;
+    message += `PnL: ${pnlSign}${signal.pnlSol.toFixed(4)} SOL (${pnlSign}${pnlPercent}%)\n`;
+    message += `Size: ${signal.amountSol.toFixed(2)} SOL | Held: ${holdTime}\n\n`;
+
+    // Links
+    const links: string[] = [];
+    if (this.config.includeDexscreenerLink) {
+      links.push(`[DexScreener](https://dexscreener.com/solana/${signal.tokenMint})`);
+    }
+    if (this.config.includeBagsLink) {
+      links.push(`[Bags.fm](https://bags.fm/t/${signal.tokenMint})`);
+    }
+    if (links.length > 0) {
+      message += links.join(" | ");
+    }
+
+    return message;
+  }
+
+  // Broadcast an exit/sell signal
+  async broadcastExit(signal: ExitSignal): Promise<boolean> {
+    if (!this.isEnabled()) {
+      return false;
+    }
+
+    if (!this.bot || !this.config.channelId) {
+      return false;
+    }
+
+    // Rate limit check
+    if (this.isRateLimited()) {
+      return false;
+    }
+
+    try {
+      const message = this.formatExitMessage(signal);
+      const result = await this.bot.api.sendMessage(this.config.channelId, message, {
+        parse_mode: "Markdown",
+        link_preview_options: { is_disabled: true },
+      });
+
+      this.lastMessageTime = Date.now();
+      console.log(
+        `[TelegramBroadcaster] Sent exit signal for $${signal.tokenSymbol} (msg_id: ${result.message_id})`
+      );
+      return true;
+    } catch (error) {
+      console.error(`[TelegramBroadcaster] Failed to send exit signal:`, error);
+      return false;
+    }
   }
 
   // Log broadcast to database for analytics

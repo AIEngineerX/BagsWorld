@@ -468,20 +468,14 @@ export class BagsApiService extends Service {
 
   async getRecentLaunches(limit: number = 10): Promise<RecentLaunch[]> {
     try {
-      // Use DexScreener search endpoint - search for "bags" returns all Bags.fm pairs
-      const response = await fetch("https://api.dexscreener.com/latest/dex/search?q=bags");
-
-      if (!response.ok) {
-        console.warn(`[BagsApi] DexScreener search failed: ${response.status}`);
-        return [];
-      }
-
-      const data = await response.json();
+      // Use DexScreener search endpoint via shared cache to prevent 429 rate limiting
+      const { getDexScreenerCache } = await import("./DexScreenerCache.js");
+      const data = await getDexScreenerCache().search("bags");
       const now = Date.now();
 
       // Filter for Bags.fm pairs on Solana
-      // Extend to 6 hours to ensure we find tokens (for testing)
-      const sixHoursAgo = now - 6 * 60 * 60 * 1000;
+      // 24-hour window to catch runners that are still active
+      const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
 
       const launches: RecentLaunch[] = (data.pairs || [])
         .filter(
@@ -495,8 +489,8 @@ export class BagsApiService extends Service {
             // Must be Solana + Bags.fm DEX
             if (pair.chainId !== "solana") return false;
             if (pair.dexId !== "bags") return false;
-            // Filter by age - include tokens up to 6 hours old
-            if (pair.pairCreatedAt && pair.pairCreatedAt < sixHoursAgo) return false;
+            // Filter by age - include tokens up to 24 hours old
+            if (pair.pairCreatedAt && pair.pairCreatedAt < twentyFourHoursAgo) return false;
             // Must have some market cap (indicates trading activity)
             if (!pair.fdv || pair.fdv < 1000) return false;
             return true;
