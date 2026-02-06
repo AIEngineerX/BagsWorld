@@ -57,7 +57,7 @@ export function ZoneNav() {
             onClick={() => handleZoneChange(zoneId)}
             className={`
               font-pixel text-[11px] sm:text-[10px] px-4 sm:px-3 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0
-              whitespace-nowrap transition-all duration-200
+              whitespace-nowrap transition-all duration-200 shrink-0
               flex items-center gap-1 border
               ${
                 isActive

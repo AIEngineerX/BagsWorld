@@ -1853,10 +1853,13 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createConstructionSigns(): void {
+    // Use actual game width so signs stay on-screen on mobile (960px)
+    const effectiveWidth = this.isMobile ? (this.sys.game.config.width as number) : GAME_WIDTH;
+
     // Two construction sign positions - left and right sides of BagsCity
     const signPositions = [
-      { x: Math.round(120 * SCALE), y: Math.round(380 * SCALE) },
-      { x: Math.round(680 * SCALE), y: Math.round(380 * SCALE) },
+      { x: Math.round(effectiveWidth * 0.15), y: Math.round(380 * SCALE) },
+      { x: Math.round(effectiveWidth * 0.85), y: Math.round(380 * SCALE) },
     ];
 
     signPositions.forEach((pos) => {
@@ -2010,8 +2013,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createTrendingBillboards(): void {
+    // Use actual game width so billboards stay on-screen on mobile (960px)
+    const effectiveWidth = this.isMobile ? (this.sys.game.config.width as number) : GAME_WIDTH;
+
     // Main central billboard - custom styled container (scaled)
-    const billboardX = Math.round(400 * SCALE);
+    const billboardX = Math.round(effectiveWidth / 2);
     const billboardY = Math.round(150 * SCALE);
     const billboardWidth = Math.round(160 * SCALE);
     const billboardHeight = Math.round(90 * SCALE);
@@ -2094,8 +2100,8 @@ export class WorldScene extends Phaser.Scene {
     // Side billboards - styled containers (scaled)
     const sideBillboardWidth = Math.round(100 * SCALE);
     const sideBillboardHeight = Math.round(60 * SCALE);
-    const leftX = Math.round(130 * SCALE);
-    const rightX = Math.round(670 * SCALE);
+    const leftX = Math.round(effectiveWidth * 0.16);
+    const rightX = Math.round(effectiveWidth * 0.84);
     const sideY = Math.round(320 * SCALE);
     const sideHeaderY = Math.round(300 * SCALE);
     const sideTextY = Math.round(328 * SCALE);
@@ -4648,6 +4654,15 @@ Use: bags.fm/[yourname]`,
     }
   }
 
+  // Update mobile label position to follow sprite movement
+  private updateMobileLabel(sprite: Phaser.GameObjects.Sprite): void {
+    const label = sprite.getData("mobileLabel") as Phaser.GameObjects.Text | undefined;
+    const bg = sprite.getData("mobileLabelBg") as Phaser.GameObjects.Rectangle | undefined;
+    const offset = (sprite.getData("mobileLabelOffset") as number) || 18;
+    if (label) label.setPosition(sprite.x, sprite.y + offset);
+    if (bg) bg.setPosition(sprite.x, sprite.y + offset);
+  }
+
   // Handle character speak events (from AI behavior)
   private handleCharacterSpeak(event: CustomEvent): void {
     const { characterId, message, emotion } = event.detail;
@@ -6853,6 +6868,7 @@ Use: bags.fm/[yourname]`,
 
           // Update any glow sprites to follow
           this.updateCharacterGlow(sprite, character);
+          if (this.isMobile) this.updateMobileLabel(sprite);
         } else {
           // Reached target, clear it and reset speed for next movement
           this.characterTargets.delete(behaviorId);
@@ -6883,6 +6899,7 @@ Use: bags.fm/[yourname]`,
         }
         // Update glow on fallback movement too
         this.updateCharacterGlow(sprite, character);
+        if (this.isMobile) this.updateMobileLabel(sprite);
       }
     });
 
@@ -7508,6 +7525,13 @@ Use: bags.fm/[yourname]`,
             glow.destroy();
           }
         });
+        // Clean up mobile labels before destroying sprite
+        const mobileLabel = sprite.getData("mobileLabel") as Phaser.GameObjects.Text | undefined;
+        const mobileLabelBg = sprite.getData("mobileLabelBg") as
+          | Phaser.GameObjects.Rectangle
+          | undefined;
+        if (mobileLabel) mobileLabel.destroy();
+        if (mobileLabelBg) mobileLabelBg.destroy();
         sprite.destroy();
         this.characterSprites.delete(id);
         this.characterVariants.delete(id);
@@ -7736,25 +7760,32 @@ Use: bags.fm/[yourname]`,
     if (this.isMobile) {
       const charName = character.username || character.id;
       const displayName = charName.length > 8 ? charName.substring(0, 8) : charName;
+      const labelYOffset = 18 + (index % 3) * 12; // Stagger: 18, 30, or 42px to avoid overlap
       const labelBg = this.add.rectangle(
         character.x,
-        character.y + 18,
+        character.y + labelYOffset,
         displayName.length * 7 + 8,
         16,
         0x000000,
         0.7
       );
       labelBg.setDepth(12);
-      const nameLabel = this.add.text(character.x, character.y + 18, displayName.toUpperCase(), {
-        fontFamily: "monospace",
-        fontSize: "10px",
-        color: "#ffffff",
-      });
+      const nameLabel = this.add.text(
+        character.x,
+        character.y + labelYOffset,
+        displayName.toUpperCase(),
+        {
+          fontFamily: "monospace",
+          fontSize: "10px",
+          color: "#ffffff",
+        }
+      );
       nameLabel.setOrigin(0.5, 0.5);
       nameLabel.setDepth(13);
       // Store references for cleanup - attach to sprite data
       sprite.setData("mobileLabel", nameLabel);
       sprite.setData("mobileLabelBg", labelBg);
+      sprite.setData("mobileLabelOffset", labelYOffset);
     }
 
     // Hover effects
@@ -8473,8 +8504,12 @@ Use: bags.fm/[yourname]`,
     const buildingDepth = isHQBuilding ? 8 : 5 - building.x / 10000;
     container.setDepth(buildingDepth);
     const hitboxSize = this.isMobile
-      ? (isHQBuilding ? { w: 120, h: 200 } : { w: 80, h: 120 })
-      : (isHQBuilding ? { w: 80, h: 160 } : { w: 40, h: 80 });
+      ? isHQBuilding
+        ? { w: 120, h: 200 }
+        : { w: 80, h: 120 }
+      : isHQBuilding
+        ? { w: 80, h: 160 }
+        : { w: 40, h: 80 };
     container.setInteractive(
       new Phaser.Geom.Rectangle(-hitboxSize.w / 2, -hitboxSize.h, hitboxSize.w, hitboxSize.h),
       Phaser.Geom.Rectangle.Contains
