@@ -65,6 +65,7 @@ if (DATABASE_URL) {
 }
 
 const app = express();
+app.set("trust proxy", 1); // Railway runs behind a reverse proxy
 app.use(express.json());
 app.use(
   cors({
