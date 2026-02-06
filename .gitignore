@@ -62,3 +62,6 @@ ios/capacitor-cordova-ios-plugins/
 # Local-only agent dashboard (MoltbookDashboard replaced by MeetTheAgents)
 /src/components/MoltbookDashboard.tsx
 /src/app/api/agent-dashboard/
+
+# Exported banner PNGs
+bagsworld-banner-*.png
