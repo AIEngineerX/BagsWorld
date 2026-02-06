@@ -1,8 +1,15 @@
 // Scout Agent - Real-time new token launch scanner
-// Monitors Bags.fm/pump.fun for new token launches and alerts the system
+// Primary: Bags.fm launches via bags-live-feed (Bitquery)
+// Fallback: pump.fun WebSocket (when BITQUERY_API_KEY not set)
 
 import WebSocket from "ws";
 import { emitTokenLaunch } from "./agent-coordinator";
+import {
+  getRecentLaunches as getLiveFeedLaunches,
+  startLiveFeed,
+  getLiveFeedState,
+  type BagsLaunch,
+} from "./bags-live-feed";
 
 // Scout configuration
 export interface ScoutConfig {
@@ -19,7 +26,7 @@ export interface ScoutConfig {
   maxAlertsPerMinute: number;
 }
 
-// Token launch data from WebSocket
+// Token launch data
 export interface TokenLaunch {
   mint: string;
   name: string;
@@ -50,10 +57,13 @@ export type ScoutAlertCallback = (launch: TokenLaunch) => void;
 // Known Bags.fm creator signer
 const BAGS_SIGNER = "BAGSB9TpGrZxQbEsrEznv5jXXdwyP6AXerN8aVRiAmcv";
 
-// WebSocket endpoints
+// WebSocket endpoints (fallback only)
 const WS_ENDPOINTS = {
   pumpportal: "wss://pumpportal.fun/api/data",
 };
+
+// Polling interval for Bags.fm live feed
+const BAGS_POLL_INTERVAL_MS = 30_000; // 30 seconds
 
 // Default configuration
 const DEFAULT_CONFIG: ScoutConfig = {
@@ -84,8 +94,12 @@ let scoutState: ScoutState = {
 let scoutConfig: ScoutConfig = { ...DEFAULT_CONFIG };
 let ws: WebSocket | null = null;
 let reconnectTimeout: NodeJS.Timeout | null = null;
+let bagsPollInterval: NodeJS.Timeout | null = null;
 let alertCallbacks: ScoutAlertCallback[] = [];
 let alertTimestamps: number[] = [];
+
+// Track mints we've already processed to avoid duplicates
+const processedMints = new Set<string>();
 
 // Initialize the scout agent
 export function initScoutAgent(config?: Partial<ScoutConfig>): boolean {
@@ -115,7 +129,15 @@ export function startScoutAgent(): boolean {
   }
 
   scoutState.isRunning = true;
-  connect();
+
+  // Try Bags.fm live feed first (requires BITQUERY_API_KEY)
+  if (process.env.BITQUERY_API_KEY) {
+    connectBagsLiveFeed();
+  } else {
+    // Fallback to pump.fun WebSocket
+    console.log("[Scout Agent] No BITQUERY_API_KEY - falling back to pump.fun WebSocket");
+    connectPumpFunWebSocket();
+  }
 
   console.log("[Scout Agent] Started - scanning for new tokens");
   return true;
@@ -130,6 +152,11 @@ export function stopScoutAgent(): void {
     reconnectTimeout = null;
   }
 
+  if (bagsPollInterval) {
+    clearInterval(bagsPollInterval);
+    bagsPollInterval = null;
+  }
+
   if (ws) {
     ws.close();
     ws = null;
@@ -139,15 +166,73 @@ export function stopScoutAgent(): void {
   console.log("[Scout Agent] Stopped");
 }
 
-// Connect to WebSocket
-function connect(): void {
+// ============================================================================
+// PRIMARY: Bags.fm Live Feed (via Bitquery)
+// ============================================================================
+
+function connectBagsLiveFeed(): void {
+  if (!scoutState.isRunning) return;
+
+  // Start the live feed service if not already running
+  const liveFeedState = getLiveFeedState();
+  if (!liveFeedState.isRunning) {
+    startLiveFeed();
+  }
+
+  scoutState.isConnected = true;
+  console.log("[Scout Agent] Connected to Bags.fm live feed (Bitquery)");
+
+  // Poll the live feed for new launches
+  pollBagsLiveFeed();
+  bagsPollInterval = setInterval(pollBagsLiveFeed, BAGS_POLL_INTERVAL_MS);
+}
+
+function pollBagsLiveFeed(): void {
+  if (!scoutState.isRunning) return;
+
+  const recentLaunches = getLiveFeedLaunches(20);
+
+  for (const bagsLaunch of recentLaunches) {
+    // Skip already-processed launches
+    if (processedMints.has(bagsLaunch.mint)) continue;
+    processedMints.add(bagsLaunch.mint);
+
+    // Convert BagsLaunch to TokenLaunch
+    const launch: TokenLaunch = {
+      mint: bagsLaunch.mint,
+      name: bagsLaunch.name,
+      symbol: bagsLaunch.symbol,
+      creator: bagsLaunch.creator,
+      liquidity: 0,
+      supply: bagsLaunch.initialSupply || 0,
+      timestamp: bagsLaunch.timestamp,
+      platform: "bags",
+      signature: bagsLaunch.signature,
+    };
+
+    handleTokenData(launch);
+  }
+
+  // Limit processedMints size
+  if (processedMints.size > 500) {
+    const arr = Array.from(processedMints);
+    processedMints.clear();
+    arr.slice(-250).forEach((m) => processedMints.add(m));
+  }
+}
+
+// ============================================================================
+// FALLBACK: pump.fun WebSocket
+// ============================================================================
+
+function connectPumpFunWebSocket(): void {
   if (!scoutState.isRunning) return;
 
   try {
     ws = new WebSocket(WS_ENDPOINTS.pumpportal);
 
     ws.onopen = () => {
-      console.log("[Scout Agent] Connected to token stream");
+      console.log("[Scout Agent] Connected to pump.fun WebSocket (fallback)");
       scoutState.isConnected = true;
 
       // Subscribe to new token launches
@@ -157,7 +242,10 @@ function connect(): void {
     ws.onmessage = (event: WebSocket.MessageEvent) => {
       try {
         const data = JSON.parse(event.data.toString());
-        handleTokenData(data);
+        const launch = parsePumpFunData(data);
+        if (launch) {
+          handleTokenData(launch);
+        }
       } catch (err) {
         // Ignore parse errors for non-JSON messages
       }
@@ -169,14 +257,14 @@ function connect(): void {
     };
 
     ws.onclose = () => {
-      console.log("[Scout Agent] Disconnected");
+      console.log("[Scout Agent] WebSocket disconnected");
       scoutState.isConnected = false;
 
       // Reconnect if still running
       if (scoutState.isRunning) {
         reconnectTimeout = setTimeout(() => {
           console.log("[Scout Agent] Reconnecting...");
-          connect();
+          connectPumpFunWebSocket();
         }, scoutConfig.reconnectDelayMs);
       }
     };
@@ -186,17 +274,40 @@ function connect(): void {
 
     // Retry connection
     if (scoutState.isRunning) {
-      reconnectTimeout = setTimeout(connect, scoutConfig.reconnectDelayMs);
+      reconnectTimeout = setTimeout(connectPumpFunWebSocket, scoutConfig.reconnectDelayMs);
     }
   }
 }
 
-// Handle incoming token data
-function handleTokenData(data: any): void {
-  // Parse token launch data
-  const launch = parseTokenLaunch(data);
-  if (!launch) return;
+// Parse pump.fun WebSocket data into TokenLaunch
+function parsePumpFunData(data: any): TokenLaunch | null {
+  try {
+    if (data.mint && data.name) {
+      return {
+        mint: data.mint,
+        name: data.name || "Unknown",
+        symbol: data.symbol && data.symbol !== "undefined" ? data.symbol : "???",
+        creator: data.traderPublicKey || data.creator || "unknown",
+        liquidity: data.vSolInBondingCurve || data.liquidity || 0,
+        supply: data.initialBuy || data.supply || 0,
+        timestamp: Date.now(),
+        platform: "pump",
+        uri: data.uri,
+        signature: data.signature,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
+// ============================================================================
+// SHARED LOGIC
+// ============================================================================
+
+// Handle incoming token data (used by both Bags.fm and pump.fun paths)
+function handleTokenData(launch: TokenLaunch): void {
   scoutState.launchesScanned++;
   scoutState.lastLaunchSeen = Date.now();
 
@@ -218,35 +329,6 @@ function handleTokenData(data: any): void {
 
   // Send alerts
   sendAlerts(launch);
-}
-
-// Parse raw WebSocket data into TokenLaunch
-function parseTokenLaunch(data: any): TokenLaunch | null {
-  try {
-    // Handle pumpportal.fun format
-    // NOTE: PumpPortal only streams pump.fun launches, NOT Bags.fm launches
-    // Bags.fm uses Meteora DBC bonding curves which are on a different system
-    if (data.mint && data.name) {
-      // PumpPortal data is always from pump.fun
-      // Bags.fm launches come through the world-state API, not this WebSocket
-      return {
-        mint: data.mint,
-        name: data.name || "Unknown",
-        symbol: data.symbol && data.symbol !== "undefined" ? data.symbol : "???",
-        creator: data.traderPublicKey || data.creator || "unknown",
-        liquidity: data.vSolInBondingCurve || data.liquidity || 0,
-        supply: data.initialBuy || data.supply || 0,
-        timestamp: Date.now(),
-        platform: "pump", // Always pump.fun from PumpPortal
-        uri: data.uri,
-        signature: data.signature,
-      };
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 // Check if token passes configured filters

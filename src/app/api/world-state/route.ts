@@ -18,7 +18,12 @@ import {
 } from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
-import { emitEvent, startCoordinator, type AgentEventType } from "@/lib/agent-coordinator";
+import {
+  emitEvent,
+  startCoordinator,
+  getRecentEvents,
+  type AgentEventType,
+} from "@/lib/agent-coordinator";
 import {
   getGlobalTokens,
   isNeonConfigured,
@@ -1305,7 +1310,21 @@ export async function POST(request: NextRequest) {
 
     // Calculate Bags.fm health metrics from real on-chain data
     // 1. Total 24h claim volume (claims are in lamports from SDK, convert to SOL)
-    const claimVolume24h = lamportsToSol(allClaimEvents24h.reduce((sum, e) => sum + e.amount, 0));
+    const onChainClaimVolume = lamportsToSol(
+      allClaimEvents24h.reduce((sum, e) => sum + e.amount, 0)
+    );
+
+    // Also include agent economy claims from the coordinator (already in SOL)
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const agentClaimEvents = getRecentEvents(100, "fee_claim").filter(
+      (e) => e.timestamp > twentyFourHoursAgo && (e.data as any)?.tokenSymbol === "agent-claim"
+    );
+    const agentClaimVolume = agentClaimEvents.reduce(
+      (sum, e) => sum + ((e.data as any)?.amount || 0),
+      0
+    );
+
+    const claimVolume24h = onChainClaimVolume + agentClaimVolume;
     // 2. Total lifetime fees across all tokens (already in SOL after enrichment)
     const totalLifetimeFees = tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
     // 3. Count tokens with any fee activity

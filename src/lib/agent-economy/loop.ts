@@ -19,6 +19,7 @@ import {
 import { logAgentAction } from "./credentials";
 import { lamportsToSol, DEFAULT_AGENT_ECONOMY_CONFIG } from "./types";
 import { makeTradeDecision, type StrategyType, type TradeDecision } from "./brain";
+import { emitFeeClaim, emitEvent } from "../agent-coordinator";
 
 // ============================================================================
 // CONFIGURATION
@@ -202,6 +203,11 @@ async function processAgent(
         console.log(
           `[Loop] ${agent.username}: Claimed ${claimResult.amount.toFixed(6)} SOL successfully`
         );
+
+        // Emit to coordinator so claim appears in UnifiedActivityFeed and boosts world health
+        emitFeeClaim(agent.username, claimResult.amount, "agent-claim").catch((err) => {
+          console.error(`[Loop] ${agent.username}: Failed to emit claim event:`, err);
+        });
       }
     }
   }
@@ -311,6 +317,23 @@ async function processAgent(
         // Update mood based on trade
         await updateAgentCharacter(agent.agentId, { mood: "happy" });
 
+        // Emit trade event to coordinator for UnifiedActivityFeed
+        emitEvent(
+          "agent_insight",
+          "ai-agent",
+          {
+            message: `${agent.username} bought $${decision.tokenSymbol || "???"} for ${decision.amountSol?.toFixed(4)} SOL`,
+            action: "buy",
+            username: agent.username,
+            tokenSymbol: decision.tokenSymbol,
+            amount: decision.amountSol,
+            reason: decision.reason,
+          },
+          "medium"
+        ).catch((err) => {
+          console.error(`[Loop] ${agent.username}: Failed to emit buy event:`, err);
+        });
+
         console.log(`[Loop] ${agent.username}: BUY successful - ${buyResult.signature}`);
       } else {
         result.errors.push(`Buy failed: ${buyResult.error}`);
@@ -351,6 +374,23 @@ async function processAgent(
           true,
           sellResult.signature
         );
+
+        // Emit trade event to coordinator for UnifiedActivityFeed
+        emitEvent(
+          "agent_insight",
+          "ai-agent",
+          {
+            message: `${agent.username} sold $${decision.tokenSymbol || "???"} for ~${decision.amountSol?.toFixed(4)} SOL`,
+            action: "sell",
+            username: agent.username,
+            tokenSymbol: decision.tokenSymbol,
+            amount: decision.amountSol,
+            reason: decision.reason,
+          },
+          "medium"
+        ).catch((err) => {
+          console.error(`[Loop] ${agent.username}: Failed to emit sell event:`, err);
+        });
 
         console.log(`[Loop] ${agent.username}: SELL successful - ${sellResult.signature}`);
       } else {

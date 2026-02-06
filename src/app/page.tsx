@@ -45,6 +45,7 @@ import { FeeClaimModal } from "@/components/FeeClaimModal";
 import { ZoneNav } from "@/components/ZoneNav";
 import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
 import { AgentToast } from "@/components/AgentFeed";
+import { ScoutAlerts } from "@/components/ScoutAlerts";
 import { TradingGymModal } from "@/components/TradingGymModal";
 import { CommunityFundModal } from "@/components/CommunityFundModal";
 import { CasinoModal } from "@/components/CasinoModal";
@@ -742,6 +743,9 @@ export default function Home() {
 
       {/* Agent Toast Notifications - shows real-time agent activity */}
       <AgentToast />
+
+      {/* Scout Alerts - shows new token launch notifications */}
+      <ScoutAlerts />
 
       {/* Launcher Hub - shows wallets of people who launched on BagsWorld */}
       {showLauncherHub && <LauncherHub onClose={() => setShowLauncherHub(false)} />}
