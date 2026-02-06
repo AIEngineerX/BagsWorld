@@ -32,6 +32,9 @@ const eventTypeLabels: Record<string, string> = {
   whale_alert: "WHALE",
   agent_insight: "AGENT",
   system: "SYSTEM",
+  arena_victory: "ARENA",
+  casino_win: "CASINO",
+  oracle_settle: "ORACLE",
 };
 
 // ============================================================================
