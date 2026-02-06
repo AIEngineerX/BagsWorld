@@ -366,6 +366,28 @@ export interface OracleSettlementData {
   settledAt: string;
 }
 
+// Market Feed Types
+
+export interface MarketEvent {
+  id: string;
+  type: GameEventType;
+  message: string;
+  timestamp: number;
+  tokenSymbol?: string;
+  tokenName?: string;
+  amount?: number;
+  change?: number;
+  marketCap?: number;
+}
+
+export interface MarketSummary {
+  totalVolume24h: number;
+  totalFeesClaimed: number;
+  activeTokenCount: number;
+  topGainer: { symbol: string; change: number } | null;
+  topLoser: { symbol: string; change: number } | null;
+}
+
 // Store types
 export interface GameStore {
   worldState: WorldState | null;

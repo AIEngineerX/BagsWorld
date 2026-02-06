@@ -220,7 +220,7 @@ export function UnifiedActivityFeed({
       </div>
 
       {/* Activity List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" role="feed" aria-label="Live activity feed">
         {unifiedActivities.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center py-4">
