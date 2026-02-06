@@ -135,7 +135,8 @@ export function calculateBuildingHealth(
   previousHealth: number,
   isPermanent: boolean = false,
   healthOverride?: number | null,
-  lastHealthUpdate?: Date | null
+  lastHealthUpdate?: Date | null,
+  createdAt?: number | null
 ): { health: number; status: BuildingStatus; cyclesApplied: number } {
   // Admin override - use directly
   if (healthOverride != null) {
@@ -152,6 +153,18 @@ export function calculateBuildingHealth(
   }
 
   const config = ECOSYSTEM_CONFIG.buildings.decay;
+
+  // Grace period - new buildings get immunity from heavy decay
+  const gracePeriod = config.gracePeriod;
+  if (createdAt && gracePeriod) {
+    const ageMs = Date.now() - createdAt;
+    if (ageMs < gracePeriod.durationMs) {
+      // During grace period, don't decay below minimum health floor
+      const health = Math.max(previousHealth, gracePeriod.minHealth);
+      return { health, status: getStatusFromHealth(health), cyclesApplied: 0 };
+    }
+  }
+
   let adjustmentPerCycle = 0;
 
   // Determine decay/recovery rate based on volume and market cap
@@ -641,7 +654,8 @@ export function transformTokenToBuilding(
     previousHealth,
     landmark.isPermanent,
     token.healthOverride,
-    token.healthUpdatedAt // For time-based decay - how long since last calculation
+    token.healthUpdatedAt, // For time-based decay - how long since last calculation
+    token.createdAt // For grace period - new buildings get decay immunity
   );
 
   // Assign zones based on landmark type or hash of mint for user buildings

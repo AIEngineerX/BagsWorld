@@ -651,6 +651,7 @@ async function enrichTokenWithSDK(
     positionOverride: token.positionOverride,
     styleOverride: token.styleOverride,
     healthOverride: token.healthOverride,
+    createdAt: token.createdAt,
   };
 
   return { tokenInfo, creators, claimEvents, claimEvents24h };
