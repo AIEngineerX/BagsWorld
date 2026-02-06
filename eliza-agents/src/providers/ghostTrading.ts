@@ -1,7 +1,7 @@
 // Ghost Trading Context Provider
 // Injects real-time trading data into Ghost's conversations
 
-import type { Provider, IAgentRuntime, Memory, State } from '../types/elizaos.js';
+import type { Provider, IAgentRuntime, Memory, State, ProviderResult } from '../types/elizaos.js';
 import { getGhostTrader } from '../services/GhostTrader.js';
 
 export const ghostTradingProvider: Provider = {
@@ -12,7 +12,7 @@ export const ghostTradingProvider: Provider = {
     _runtime: IAgentRuntime,
     _memory: Memory,
     _state: State
-  ): Promise<{ text: string } | null> {
+  ): Promise<ProviderResult> {
     try {
       const trader = getGhostTrader();
       const stats = trader.getStats();

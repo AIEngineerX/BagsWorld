@@ -206,7 +206,7 @@ router.get("/positions/open", (req: Request, res: Response) => {
 // POST /api/ghost/positions/:id/mark-closed - Mark position as closed (PROTECTED)
 // SECURITY: Requires admin key - modifying position state can affect PnL tracking
 router.post("/positions/:id/mark-closed", requireAdminKey, async (req: Request, res: Response) => {
-  const positionId = req.params.id;
+  const positionId = req.params.id as string;
   const { pnlSol, exitReason } = req.body;
 
   const trader = getGhostTrader();

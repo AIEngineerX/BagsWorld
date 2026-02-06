@@ -9,6 +9,12 @@ import { worldStateProvider } from '../providers/worldState.js';
 import { agentContextProvider } from '../providers/agentContext.js';
 import { oracleDataProvider } from '../providers/oracleData.js';
 import { ghostTradingProvider } from '../providers/ghostTrading.js';
+import { getBagsApiService } from '../services/BagsApiService.js';
+import {
+  tokenMentionEvaluator,
+  feeQueryEvaluator,
+  launchQueryEvaluator,
+} from '../evaluators/index.js';
 
 // Reduced from 50 to 8 for token efficiency (~80% savings on conversation context)
 export const MAX_CONVERSATION_LENGTH = 8;
@@ -181,6 +187,92 @@ export async function buildConversationContext(
     if (tradingResult?.text) {
       context.tradingState = tradingResult.text;
     }
+  }
+
+  // Evaluator-driven data enrichment: run evaluators and fetch real data when relevant
+  try {
+    const tokenDataParts: string[] = [];
+
+    // Run evaluators in parallel
+    const [tokenResult, feeResult, launchResult] = await Promise.all([
+      tokenMentionEvaluator.evaluate(runtime, memory, state),
+      feeQueryEvaluator.evaluate(runtime, memory, state),
+      launchQueryEvaluator.evaluate(runtime, memory, state),
+    ]);
+
+    const api = getBagsApiService();
+
+    // Token mention: auto-lookup when user pastes a mint or $SYMBOL
+    if (tokenResult.score >= 0.5) {
+      const mint = tokenResult.data?.mint as string | undefined;
+      const symbol = tokenResult.data?.symbol as string | undefined;
+
+      const token = mint
+        ? await api.getToken(mint).catch(() => null)
+        : symbol
+          ? (await api.searchTokens(symbol).catch(() => []))[0] ?? null
+          : null;
+
+      if (token) {
+        const parts = [`${token.name} ($${token.symbol})`];
+        if (token.marketCap) parts.push(`Market Cap: $${token.marketCap.toLocaleString()}`);
+        if (token.volume24h) parts.push(`24h Volume: $${token.volume24h.toLocaleString()}`);
+        if (token.lifetimeFees) parts.push(`Lifetime Fees: ${token.lifetimeFees.toFixed(4)} SOL`);
+        if (token.holders) parts.push(`Holders: ${token.holders}`);
+        if (token.price) parts.push(`Price: $${token.price}`);
+        if (token.change24h !== undefined) parts.push(`24h Change: ${token.change24h > 0 ? '+' : ''}${token.change24h.toFixed(2)}%`);
+        tokenDataParts.push(`TOKEN: ${parts.join(' | ')}`);
+
+        // Also fetch fees if the fee evaluator triggered or token was found
+        if (feeResult.score >= 0.3 && (mint || token.mint)) {
+          const fees = await api.getCreatorFees(mint || token.mint).catch(() => null);
+          if (fees) {
+            tokenDataParts.push(
+              `FEES: Total: ${fees.totalFees.toFixed(4)} SOL | Claimed: ${fees.claimedFees.toFixed(4)} SOL | Unclaimed: ${fees.unclaimedFees.toFixed(4)} SOL`
+            );
+          }
+        }
+      }
+    }
+    // Fee query without a specific token mention (general fee question)
+    else if (feeResult.score >= 0.5) {
+      const mint = userMessage.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/)?.[0];
+      const symbol = userMessage.match(/\$([A-Za-z]{2,10})/)?.[1];
+
+      if (mint || symbol) {
+        const tokenMint = mint || (symbol ? (await api.searchTokens(symbol).catch(() => []))[0]?.mint : null);
+        if (tokenMint) {
+          const fees = await api.getCreatorFees(tokenMint).catch(() => null);
+          if (fees) {
+            tokenDataParts.push(
+              `FEES for ${tokenMint.slice(0, 8)}...: Total: ${fees.totalFees.toFixed(4)} SOL | Claimed: ${fees.claimedFees.toFixed(4)} SOL | Unclaimed: ${fees.unclaimedFees.toFixed(4)} SOL`
+            );
+          }
+        }
+      }
+    }
+
+    // Launch query: auto-fetch recent launches
+    if (launchResult.score >= 0.5) {
+      const launches = await api.getRecentLaunches(5).catch(() => []);
+      if (launches.length > 0) {
+        const launchLines = launches.map(l => {
+          const age = Date.now() - l.launchedAt;
+          const hours = Math.floor(age / 3600000);
+          const timeStr = hours < 1 ? 'just now' : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+          const mc = l.initialMarketCap ? `MC: $${l.initialMarketCap.toLocaleString()}` : '';
+          return `- ${l.name} ($${l.symbol}) ${timeStr} ${mc}`.trim();
+        });
+        tokenDataParts.push(`RECENT LAUNCHES:\n${launchLines.join('\n')}`);
+      }
+    }
+
+    if (tokenDataParts.length > 0) {
+      context.tokenData = tokenDataParts.join('\n\n');
+    }
+  } catch (error) {
+    // Enrichment is best-effort - don't break chat if it fails
+    console.warn('[shared] Evaluator enrichment failed:', error instanceof Error ? error.message : error);
   }
 
   return context;
