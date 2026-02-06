@@ -5,6 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
+import { useMobileWallet } from "@/hooks/useMobileWallet";
 
 // Helper to deserialize transaction - handles various formats from Bags API
 function deserializeTransaction(
@@ -67,7 +68,13 @@ interface ClaimTransaction {
 }
 
 export function PartnerClaimButton() {
-  const { publicKey, connected, signAllTransactions, signTransaction } = useWallet();
+  const {
+    publicKey,
+    connected,
+    mobileSignTransaction: signTransaction,
+    wallet,
+  } = useMobileWallet();
+  const { signAllTransactions } = wallet;
   const { connection } = useConnection();
 
   const [isPartner, setIsPartner] = useState(false);

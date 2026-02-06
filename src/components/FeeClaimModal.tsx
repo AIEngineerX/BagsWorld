@@ -6,6 +6,7 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { Transaction, VersionedTransaction } from "@solana/web3.js";
 import type { ClaimablePosition } from "@/lib/types";
+import { useMobileWallet } from "@/hooks/useMobileWallet";
 
 // Helper to deserialize transaction - tries both formats
 function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
@@ -27,7 +28,7 @@ interface FeeClaimModalProps {
 }
 
 export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
   const {
@@ -168,7 +169,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
   const walletMatches = !linkedWallet || (publicKey && publicKey.toBase58() === linkedWallet);
 
   const handleClaim = async () => {
-    if (!connected || !publicKey || !signTransaction) {
+    if (!connected || !publicKey) {
       setWalletModalVisible(true);
       return;
     }
