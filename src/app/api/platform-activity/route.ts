@@ -335,7 +335,7 @@ export async function GET(request: Request) {
     // Fetch uncached claim events in parallel
     if (uncachedClaimMints.length > 0) {
       const claimResults = await Promise.allSettled(
-        uncachedClaimMints.map((mint) => api!.getTokenClaimEvents(mint, 5))
+        uncachedClaimMints.map((mint) => api!.getTokenClaimEvents24h(mint))
       );
 
       for (let i = 0; i < uncachedClaimMints.length; i++) {
