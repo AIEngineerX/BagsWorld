@@ -139,6 +139,7 @@ export class WorldScene extends Phaser.Scene {
   private dungeonElements: Phaser.GameObjects.GameObject[] = []; // Dungeon zone elements
   private dungeonZoneCreated = false; // Cache dungeon zone elements
   private foundersPopup: Phaser.GameObjects.Container | null = null; // Popup modal for building info
+  private foundersActiveTab: string = "overview"; // Current tab in DexScreener Workshop popup
   private ballersGoldenSky: Phaser.GameObjects.Graphics | null = null; // Golden hour sky for Ballers Valley
   private academyTwilightSky: Phaser.GameObjects.Graphics | null = null; // Magical twilight sky for Academy
   private dungeonCaveSky: Phaser.GameObjects.Graphics | null = null; // Cave ceiling for dungeon zone
@@ -2879,9 +2880,7 @@ export class WorldScene extends Phaser.Scene {
 
     // === BUILDINGS (depth 5+) - Clickable with info popups ===
     const buildings = [
-      { texture: "founders_0", x: 250, label: "DEXSCREENER\nWORKSHOP", type: "workshop" },
-      { texture: "founders_1", x: 450, label: "ART\nSTUDIO", type: "studio" },
-      { texture: "founders_2", x: 650, label: "SOCIAL\nHUB", type: "social" },
+      { texture: "founders_0", x: 450, label: "DEXSCREENER\nWORKSHOP", type: "overview" },
     ];
 
     buildings.forEach((b, i) => {
@@ -3136,10 +3135,11 @@ export class WorldScene extends Phaser.Scene {
    * Show Founder's Corner popup with pixel-art themed educational content
    * Enhanced with CRT scanlines, animated elements, and retro terminal styling
    */
-  private showFoundersPopup(type: string): void {
+  private showFoundersPopup(tab: string, animate: boolean = true): void {
     // Don't open if popup already exists
     if (this.foundersPopup) return;
 
+    this.foundersActiveTab = tab;
     const s = SCALE;
     const centerX = GAME_WIDTH / 2;
     const centerY = Math.round(300 * s);
@@ -3149,7 +3149,7 @@ export class WorldScene extends Phaser.Scene {
     this.foundersPopup = popup;
     popup.setDepth(100);
 
-    // Dark overlay with pixel grid pattern effect
+    // Dark overlay
     const overlay = this.add.rectangle(
       GAME_WIDTH / 2,
       GAME_WIDTH / 2,
@@ -3162,138 +3162,97 @@ export class WorldScene extends Phaser.Scene {
     overlay.on("pointerdown", () => this.hideFoundersPopup());
     popup.add(overlay);
 
-    // Get content and theme based on building type
-    const content = this.getFoundersPopupContent(type);
-    const theme = this.getFoundersPopupTheme(type);
+    // Get content for active tab
+    const content = this.getFoundersPopupContent(tab);
+    const theme = { accent: 0x22c55e, titleColor: "#22c55e", icon: "⚙" }; // DexScreener green
 
-    // Panel dimensions (larger to fit content)
-    const panelW = Math.round(380 * s);
-    const panelH = Math.round(420 * s);
+    // Panel dimensions - taller to fit tabs + content
+    const panelW = Math.round(400 * s);
+    const panelH = Math.round(490 * s);
     const borderW = Math.round(4 * s);
 
-    // === PIXEL-PERFECT DROP SHADOW (layered for depth) ===
+    // === DROP SHADOW ===
     const shadowOffset = Math.round(6 * s);
-    const shadow1 = this.add.rectangle(
-      centerX + shadowOffset,
-      centerY + shadowOffset,
-      panelW + borderW * 2,
-      panelH + borderW * 2,
-      0x000000,
-      0.4
+    popup.add(
+      this.add.rectangle(
+        centerX + shadowOffset,
+        centerY + shadowOffset,
+        panelW + borderW * 2,
+        panelH + borderW * 2,
+        0x000000,
+        0.4
+      )
     );
-    popup.add(shadow1);
-    const shadow2 = this.add.rectangle(
-      centerX + Math.round(3 * s),
-      centerY + Math.round(3 * s),
-      panelW + borderW * 2,
-      panelH + borderW * 2,
-      0x000000,
-      0.3
+    popup.add(
+      this.add.rectangle(
+        centerX + Math.round(3 * s),
+        centerY + Math.round(3 * s),
+        panelW + borderW * 2,
+        panelH + borderW * 2,
+        0x000000,
+        0.3
+      )
     );
-    popup.add(shadow2);
 
-    // === DOUBLE-LINE BORDER (classic terminal style) ===
-    // Outer border line
-    const outerBorder = this.add.rectangle(
-      centerX,
-      centerY,
-      panelW + borderW * 2,
-      panelH + borderW * 2,
-      theme.accent
+    // === DOUBLE-LINE BORDER ===
+    popup.add(
+      this.add.rectangle(centerX, centerY, panelW + borderW * 2, panelH + borderW * 2, theme.accent)
     );
-    popup.add(outerBorder);
-
-    // Gap between borders (dark)
-    const borderGap = this.add.rectangle(
-      centerX,
-      centerY,
-      panelW + borderW,
-      panelH + borderW,
-      0x0a0a0f
+    popup.add(this.add.rectangle(centerX, centerY, panelW + borderW, panelH + borderW, 0x0a0a0f));
+    popup.add(this.add.rectangle(centerX, centerY, panelW, panelH, theme.accent));
+    popup.add(
+      this.add.rectangle(
+        centerX,
+        centerY,
+        panelW - Math.round(4 * s),
+        panelH - Math.round(4 * s),
+        0x0f172a
+      )
     );
-    popup.add(borderGap);
 
-    // Inner border line
-    const innerBorder = this.add.rectangle(centerX, centerY, panelW, panelH, theme.accent);
-    popup.add(innerBorder);
-
-    // Main panel background with subtle dither texture
-    const panelDark = this.add.rectangle(
-      centerX,
-      centerY,
-      panelW - Math.round(4 * s),
-      panelH - Math.round(4 * s),
-      0x0f172a
+    // Inner bevel highlight
+    popup.add(
+      this.add.rectangle(
+        centerX - panelW / 2 + Math.round(4 * s),
+        centerY,
+        Math.round(2 * s),
+        panelH - Math.round(8 * s),
+        theme.accent,
+        0.15
+      )
     );
-    popup.add(panelDark);
-
-    // Inner bevel highlight (top/left edges)
-    const bevelLight = this.add.rectangle(
-      centerX - panelW / 2 + Math.round(4 * s),
-      centerY,
-      Math.round(2 * s),
-      panelH - Math.round(8 * s),
-      theme.accent,
-      0.15
+    popup.add(
+      this.add.rectangle(
+        centerX,
+        centerY - panelH / 2 + Math.round(4 * s),
+        panelW - Math.round(8 * s),
+        Math.round(2 * s),
+        theme.accent,
+        0.2
+      )
     );
-    popup.add(bevelLight);
-    const bevelTop = this.add.rectangle(
-      centerX,
-      centerY - panelH / 2 + Math.round(4 * s),
-      panelW - Math.round(8 * s),
-      Math.round(2 * s),
-      theme.accent,
-      0.2
-    );
-    popup.add(bevelTop);
 
-    // === CRT SCANLINE OVERLAY ===
+    // === CRT SCANLINES ===
     const scanlineSpacing = Math.round(3 * s);
     for (let y = centerY - panelH / 2; y < centerY + panelH / 2; y += scanlineSpacing) {
-      const scanline = this.add.rectangle(
-        centerX,
-        y,
-        panelW - Math.round(8 * s),
-        1,
-        0x000000,
-        0.08
-      );
-      popup.add(scanline);
+      popup.add(this.add.rectangle(centerX, y, panelW - Math.round(8 * s), 1, 0x000000, 0.08));
     }
 
-    // === L-SHAPED CORNER DECORATIONS (pixel art flourishes) ===
+    // === L-SHAPED CORNERS ===
     const cornerLen = Math.round(16 * s);
     const cornerThick = Math.round(4 * s);
     const cornerInset = Math.round(8 * s);
-
-    // Helper to create L-shaped corner
     const createCorner = (cx: number, cy: number, flipX: boolean, flipY: boolean) => {
       const xDir = flipX ? -1 : 1;
       const yDir = flipY ? -1 : 1;
-      // Horizontal bar
-      const hBar = this.add.rectangle(
-        cx + (xDir * cornerLen) / 2,
-        cy,
-        cornerLen,
-        cornerThick,
-        theme.accent
+      popup.add(
+        this.add.rectangle(cx + (xDir * cornerLen) / 2, cy, cornerLen, cornerThick, theme.accent)
       );
-      popup.add(hBar);
-      // Vertical bar
-      const vBar = this.add.rectangle(
-        cx,
-        cy + (yDir * cornerLen) / 2,
-        cornerThick,
-        cornerLen,
-        theme.accent
+      popup.add(
+        this.add.rectangle(cx, cy + (yDir * cornerLen) / 2, cornerThick, cornerLen, theme.accent)
       );
-      popup.add(vBar);
-      // Corner dot accent
-      const dot = this.add.rectangle(cx, cy, cornerThick, cornerThick, 0xffffff, 0.8);
-      popup.add(dot);
+      popup.add(this.add.rectangle(cx, cy, cornerThick, cornerThick, 0xffffff, 0.8));
     };
-
-    // Place corners at panel edges
     createCorner(
       centerX - panelW / 2 + cornerInset,
       centerY - panelH / 2 + cornerInset,
@@ -3319,47 +3278,32 @@ export class WorldScene extends Phaser.Scene {
       true
     );
 
-    // === HEADER SECTION ===
-    const iconY = centerY - panelH / 2 + Math.round(45 * s);
-
-    // Icon container for animation
+    // === HEADER ===
+    const iconY = centerY - panelH / 2 + Math.round(40 * s);
     const iconContainer = this.add.container(centerX, iconY);
     popup.add(iconContainer);
 
-    // Icon background (pixel octagon effect - double border)
-    const iconBgOuter = this.add.rectangle(
-      0,
-      0,
-      Math.round(52 * s),
-      Math.round(52 * s),
-      theme.accent
+    iconContainer.add(
+      this.add.rectangle(0, 0, Math.round(44 * s), Math.round(44 * s), theme.accent)
     );
-    iconContainer.add(iconBgOuter);
-    const iconBgMid = this.add.rectangle(0, 0, Math.round(48 * s), Math.round(48 * s), 0x0a0a0f);
-    iconContainer.add(iconBgMid);
-    const iconBgInner = this.add.rectangle(0, 0, Math.round(44 * s), Math.round(44 * s), 0x1a1a2e);
-    iconContainer.add(iconBgInner);
-
-    // Pixel art icon glow effect
+    iconContainer.add(this.add.rectangle(0, 0, Math.round(40 * s), Math.round(40 * s), 0x0a0a0f));
+    iconContainer.add(this.add.rectangle(0, 0, Math.round(36 * s), Math.round(36 * s), 0x1a1a2e));
     const iconGlow = this.add.rectangle(
       0,
       0,
-      Math.round(40 * s),
-      Math.round(40 * s),
+      Math.round(32 * s),
+      Math.round(32 * s),
       theme.accent,
       0.1
     );
     iconContainer.add(iconGlow);
-
-    // Building icon (emoji representation)
     const iconText = this.add.text(0, 0, theme.icon, {
       fontFamily: "monospace",
-      fontSize: `${Math.round(22 * s)}px`,
+      fontSize: `${Math.round(18 * s)}px`,
     });
     iconText.setOrigin(0.5);
     iconContainer.add(iconText);
 
-    // Animate icon with slow pulse and subtle rotation
     this.tweens.add({
       targets: iconContainer,
       scaleX: { from: 1, to: 1.08 },
@@ -3378,13 +3322,11 @@ export class WorldScene extends Phaser.Scene {
       ease: "Sine.easeInOut",
     });
 
-    // Title with glow effect
-    const titleY = centerY - panelH / 2 + Math.round(85 * s);
-
-    // Title glow (behind main text)
-    const titleGlow = this.add.text(centerX, titleY, content.title, {
+    // Title
+    const titleY = centerY - panelH / 2 + Math.round(72 * s);
+    const titleGlow = this.add.text(centerX, titleY, "DEXSCREENER WORKSHOP", {
       fontFamily: '"Press Start 2P", monospace',
-      fontSize: `${Math.round(10 * s)}px`,
+      fontSize: `${Math.round(9 * s)}px`,
       color: theme.titleColor,
       fontStyle: "bold",
     });
@@ -3392,18 +3334,14 @@ export class WorldScene extends Phaser.Scene {
     titleGlow.setAlpha(0.3);
     titleGlow.setBlendMode(Phaser.BlendModes.ADD);
     popup.add(titleGlow);
-
-    // Main title text
-    const titleText = this.add.text(centerX, titleY, content.title, {
+    const titleText = this.add.text(centerX, titleY, "DEXSCREENER WORKSHOP", {
       fontFamily: '"Press Start 2P", monospace',
-      fontSize: `${Math.round(10 * s)}px`,
+      fontSize: `${Math.round(9 * s)}px`,
       color: theme.titleColor,
       fontStyle: "bold",
     });
     titleText.setOrigin(0.5);
     popup.add(titleText);
-
-    // Animated title glow pulse
     this.tweens.add({
       targets: titleGlow,
       alpha: { from: 0.2, to: 0.5 },
@@ -3415,81 +3353,127 @@ export class WorldScene extends Phaser.Scene {
       ease: "Sine.easeInOut",
     });
 
-    // Pixel divider (terminal-style double line)
-    const dividerY = titleY + Math.round(18 * s);
-    const dividerWidth = panelW - Math.round(48 * s);
+    // === TAB BAR ===
+    const tabY = centerY - panelH / 2 + Math.round(96 * s);
+    const tabDefs = [
+      { id: "overview", label: "OVERVIEW", accent: 0x22c55e },
+      { id: "images", label: "IMAGES", accent: 0xfbbf24 },
+      { id: "socials", label: "SOCIALS", accent: 0x38bdf8 },
+    ];
+    const tabTotalW = panelW - Math.round(40 * s);
+    const tabGap = Math.round(4 * s);
+    const singleTabW = Math.round((tabTotalW - tabGap * 2) / 3);
+    const tabStartX = centerX - tabTotalW / 2 + singleTabW / 2;
 
-    // Top divider line
-    const dividerTop = this.add.rectangle(
-      centerX,
-      dividerY - Math.round(2 * s),
-      dividerWidth,
-      Math.round(2 * s),
-      theme.accent,
-      0.8
+    tabDefs.forEach((td, i) => {
+      const tx = tabStartX + i * (singleTabW + tabGap);
+      const isActive = td.id === tab;
+
+      // Tab background
+      const tabBg = this.add.rectangle(
+        tx,
+        tabY,
+        singleTabW,
+        Math.round(24 * s),
+        isActive ? td.accent : 0x1e293b,
+        isActive ? 1 : 0.8
+      );
+      tabBg.setStrokeStyle(Math.round(2 * s), isActive ? td.accent : 0x334155);
+      popup.add(tabBg);
+
+      // Tab label
+      const tabLabel = this.add.text(tx, tabY, td.label, {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: `${Math.round(6 * s)}px`,
+        color: isActive ? "#0f172a" : "#94a3b8",
+        fontStyle: isActive ? "bold" : "normal",
+      });
+      tabLabel.setOrigin(0.5);
+      popup.add(tabLabel);
+
+      // Make inactive tabs clickable
+      if (!isActive) {
+        tabBg.setInteractive({ useHandCursor: true });
+        tabBg.on("pointerover", () => {
+          tabBg.setFillStyle(0x334155);
+          tabLabel.setColor("#e2e8f0");
+        });
+        tabBg.on("pointerout", () => {
+          tabBg.setFillStyle(0x1e293b);
+          tabLabel.setColor("#94a3b8");
+        });
+        tabBg.on("pointerdown", () => this.switchFoundersTab(td.id));
+      }
+    });
+
+    // Tab underline (active indicator)
+    const activeIdx = tabDefs.findIndex((t) => t.id === tab);
+    const activeTabX = tabStartX + activeIdx * (singleTabW + tabGap);
+    popup.add(
+      this.add.rectangle(
+        activeTabX,
+        tabY + Math.round(13 * s),
+        singleTabW - Math.round(8 * s),
+        Math.round(2 * s),
+        tabDefs[activeIdx].accent
+      )
     );
-    popup.add(dividerTop);
-    // Bottom divider line
-    const dividerBottom = this.add.rectangle(
-      centerX,
-      dividerY + Math.round(2 * s),
-      dividerWidth,
-      Math.round(2 * s),
-      theme.accent,
-      0.4
-    );
-    popup.add(dividerBottom);
 
     // === CONTENT SECTION ===
-    // Calculate section Y based on whether we have a tip
     const hasTip = content.tip && content.tip.length > 0;
-    const sectionHeight = hasTip ? Math.round(235 * s) : Math.round(265 * s);
-    const sectionY = centerY + Math.round(28 * s);
+    const sectionHeight = hasTip ? Math.round(235 * s) : Math.round(260 * s);
+    const sectionY = centerY + Math.round(38 * s);
 
-    // Section background with inner shadow effect
-    const sectionBgOuter = this.add.rectangle(
-      centerX,
-      sectionY,
-      panelW - Math.round(20 * s),
-      sectionHeight,
-      theme.accent,
-      0.2
+    // Section background
+    popup.add(
+      this.add.rectangle(
+        centerX,
+        sectionY,
+        panelW - Math.round(20 * s),
+        sectionHeight,
+        tabDefs[activeIdx].accent,
+        0.2
+      )
     );
-    popup.add(sectionBgOuter);
-
-    const sectionBg = this.add.rectangle(
-      centerX,
-      sectionY,
-      panelW - Math.round(24 * s),
-      sectionHeight - Math.round(4 * s),
-      0x0a0e17,
-      0.95
+    popup.add(
+      this.add.rectangle(
+        centerX,
+        sectionY,
+        panelW - Math.round(24 * s),
+        sectionHeight - Math.round(4 * s),
+        0x0a0e17,
+        0.95
+      )
     );
-    popup.add(sectionBg);
-
-    // Inner shadow (top edge)
-    const sectionShadow = this.add.rectangle(
-      centerX,
-      sectionY - sectionHeight / 2 + Math.round(4 * s),
-      panelW - Math.round(28 * s),
-      Math.round(8 * s),
-      0x000000,
-      0.3
+    popup.add(
+      this.add.rectangle(
+        centerX,
+        sectionY - sectionHeight / 2 + Math.round(4 * s),
+        panelW - Math.round(28 * s),
+        Math.round(8 * s),
+        0x000000,
+        0.3
+      )
     );
-    popup.add(sectionShadow);
 
-    // Content text - filter empty lines and use compact spacing
+    // Content text with clickable links
     const contentLines = content.body.split("\n").filter((ln) => ln.trim() !== "");
-    const lineHeight = Math.round(9 * s);
+    const lineHeight = Math.round(10 * s);
     const startY = sectionY - sectionHeight / 2 + Math.round(14 * s);
 
     contentLines.forEach((line, i) => {
-      // Determine line color based on content
-      let lineColor = "#cbd5e1"; // Default gray
-      if (line.startsWith(" +") || line.startsWith(" [x]") || line.match(/^\d\./)) {
-        lineColor = "#4ade80"; // Green for included/checked/numbered items
+      // Check if this is a clickable link line (starts with "> ")
+      const isLink = line.trimStart().startsWith("> ");
+      const linkUrl = isLink ? this.getFoundersLinkUrl(line) : null;
+
+      // Determine line color
+      let lineColor = "#cbd5e1";
+      if (isLink) {
+        lineColor = "#38bdf8"; // Bright cyan for links
+      } else if (line.startsWith(" +") || line.startsWith(" [x]") || line.match(/^\d\./)) {
+        lineColor = "#4ade80";
       } else if (line.startsWith(" [ ]")) {
-        lineColor = "#fbbf24"; // Gold for optional items
+        lineColor = "#fbbf24";
       } else if (
         line.includes("CHECKLIST") ||
         line.includes("WHAT YOU GET") ||
@@ -3499,84 +3483,100 @@ export class WorldScene extends Phaser.Scene {
         line.includes("BAGS.FM TIP") ||
         line.includes("TOKEN LOGO") ||
         line.includes("TOKEN BANNER") ||
-        line.includes("FREE TOOLS")
+        line.includes("FREE TOOLS") ||
+        line.includes("WHAT IS") ||
+        line.includes("ENHANCED TOKEN")
       ) {
-        lineColor = "#60a5fa"; // Cyan for headers
-      } else if (line.includes("ORDER:") || line.includes("COST:") || line.includes("TIME:")) {
-        lineColor = theme.titleColor; // Theme color for key info
+        lineColor = "#60a5fa";
+      } else if (line.includes("COST:") || line.includes("TIME:") || line.includes("VERIFY:")) {
+        lineColor = theme.titleColor;
       }
 
+      const displayText = isLink ? line.replace(/>\s*/, "  \u2192 ") : line;
       const lineText = this.add.text(
         centerX - panelW / 2 + Math.round(24 * s),
         startY + i * lineHeight,
-        line,
+        displayText,
         {
           fontFamily: '"Press Start 2P", monospace',
-          fontSize: `${Math.round(5 * s)}px`,
+          fontSize: `${Math.round(6 * s)}px`,
           color: lineColor,
         }
       );
       lineText.setOrigin(0, 0);
       popup.add(lineText);
+
+      // Make link lines clickable
+      if (isLink && linkUrl) {
+        lineText.setInteractive({ useHandCursor: true });
+        lineText.on("pointerover", () => {
+          lineText.setColor("#7dd3fc");
+          lineText.setAlpha(0.9);
+        });
+        lineText.on("pointerout", () => {
+          lineText.setColor("#38bdf8");
+          lineText.setAlpha(1);
+        });
+        lineText.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+          pointer.event.stopPropagation();
+          window.open(linkUrl, "_blank", "noopener,noreferrer");
+        });
+      }
     });
 
-    // === PRO TIP SECTION (only if tip exists) ===
+    // === TIP SECTION ===
     if (hasTip) {
-      const tipY = centerY + panelH / 2 - Math.round(45 * s);
-      const tipBgOuter = this.add.rectangle(
-        centerX,
-        tipY,
-        panelW - Math.round(20 * s),
-        Math.round(30 * s),
-        theme.accent,
-        0.3
+      const tipY = centerY + panelH / 2 - Math.round(50 * s);
+      popup.add(
+        this.add.rectangle(
+          centerX,
+          tipY,
+          panelW - Math.round(20 * s),
+          Math.round(30 * s),
+          tabDefs[activeIdx].accent,
+          0.3
+        )
       );
-      popup.add(tipBgOuter);
-
-      const tipBg = this.add.rectangle(
-        centerX,
-        tipY,
-        panelW - Math.round(24 * s),
-        Math.round(26 * s),
-        0x0a0e17,
-        0.9
+      popup.add(
+        this.add.rectangle(
+          centerX,
+          tipY,
+          panelW - Math.round(24 * s),
+          Math.round(26 * s),
+          0x0a0e17,
+          0.9
+        )
       );
-      popup.add(tipBg);
-
       const tipLabel = this.add.text(centerX - panelW / 2 + Math.round(28 * s), tipY, "TIP:", {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: `${Math.round(6 * s)}px`,
+        fontSize: `${Math.round(7 * s)}px`,
         color: "#fbbf24",
         fontStyle: "bold",
       });
       tipLabel.setOrigin(0, 0.5);
       popup.add(tipLabel);
-
-      const tipText = this.add.text(centerX - panelW / 2 + Math.round(65 * s), tipY, content.tip, {
+      const tipText = this.add.text(centerX - panelW / 2 + Math.round(70 * s), tipY, content.tip, {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: `${Math.round(5.5 * s)}px`,
+        fontSize: `${Math.round(6 * s)}px`,
         color: "#94a3b8",
       });
       tipText.setOrigin(0, 0.5);
       popup.add(tipText);
     }
 
-    // === CLOSE BUTTON (enhanced pixel style with glow) ===
+    // === CLOSE BUTTON ===
     const closeBtnX = centerX + panelW / 2 - Math.round(20 * s);
     const closeBtnY = centerY - panelH / 2 + Math.round(20 * s);
-
-    // Button glow effect (behind)
-    const closeBtnGlow = this.add.rectangle(
-      closeBtnX,
-      closeBtnY,
-      Math.round(30 * s),
-      Math.round(30 * s),
-      0xef4444,
-      0.2
+    popup.add(
+      this.add.rectangle(
+        closeBtnX,
+        closeBtnY,
+        Math.round(30 * s),
+        Math.round(30 * s),
+        0xef4444,
+        0.2
+      )
     );
-    popup.add(closeBtnGlow);
-
-    // Button outer border (3D effect)
     const closeBtnOuter = this.add.rectangle(
       closeBtnX,
       closeBtnY,
@@ -3585,18 +3585,9 @@ export class WorldScene extends Phaser.Scene {
       0xef4444
     );
     popup.add(closeBtnOuter);
-
-    // Button mid border
-    const closeBtnMid = this.add.rectangle(
-      closeBtnX,
-      closeBtnY,
-      Math.round(22 * s),
-      Math.round(22 * s),
-      0x7f1d1d
+    popup.add(
+      this.add.rectangle(closeBtnX, closeBtnY, Math.round(22 * s), Math.round(22 * s), 0x7f1d1d)
     );
-    popup.add(closeBtnMid);
-
-    // Button inner face
     const closeBtnInner = this.add.rectangle(
       closeBtnX,
       closeBtnY,
@@ -3606,21 +3597,6 @@ export class WorldScene extends Phaser.Scene {
     );
     closeBtnInner.setInteractive({ useHandCursor: true });
     closeBtnInner.on("pointerdown", () => this.hideFoundersPopup());
-    closeBtnInner.on("pointerover", () => {
-      closeBtnInner.setFillStyle(0x2a2a3e);
-      closeBtnOuter.setFillStyle(0xff6b6b);
-      closeBtnGlow.setAlpha(0.5);
-      closeBtn.setColor("#ffffff");
-    });
-    closeBtnInner.on("pointerout", () => {
-      closeBtnInner.setFillStyle(0x1a1a2e);
-      closeBtnOuter.setFillStyle(0xef4444);
-      closeBtnGlow.setAlpha(0.2);
-      closeBtn.setColor("#ef4444");
-    });
-    popup.add(closeBtnInner);
-
-    // X text with pixel font
     const closeBtn = this.add.text(closeBtnX, closeBtnY, "X", {
       fontFamily: '"Press Start 2P", monospace',
       fontSize: `${Math.round(9 * s)}px`,
@@ -3628,38 +3604,46 @@ export class WorldScene extends Phaser.Scene {
       fontStyle: "bold",
     });
     closeBtn.setOrigin(0.5);
+    closeBtnInner.on("pointerover", () => {
+      closeBtnInner.setFillStyle(0x2a2a3e);
+      closeBtnOuter.setFillStyle(0xff6b6b);
+      closeBtn.setColor("#ffffff");
+    });
+    closeBtnInner.on("pointerout", () => {
+      closeBtnInner.setFillStyle(0x1a1a2e);
+      closeBtnOuter.setFillStyle(0xef4444);
+      closeBtn.setColor("#ef4444");
+    });
+    popup.add(closeBtnInner);
     popup.add(closeBtn);
 
-    // === FOOTER (blinking "click to close") ===
-    const footerY = centerY + panelH / 2 - Math.round(14 * s);
-
-    // Footer brackets (static)
-    const footerLeft = this.add.text(centerX - Math.round(100 * s), footerY, "[", {
-      fontFamily: '"Press Start 2P", monospace',
-      fontSize: `${Math.round(5 * s)}px`,
-      color: "#475569",
-    });
-    footerLeft.setOrigin(0.5);
-    popup.add(footerLeft);
-
-    const footerRight = this.add.text(centerX + Math.round(100 * s), footerY, "]", {
-      fontFamily: '"Press Start 2P", monospace',
-      fontSize: `${Math.round(5 * s)}px`,
-      color: "#475569",
-    });
-    footerRight.setOrigin(0.5);
-    popup.add(footerRight);
-
-    // Footer text (blinking)
+    // === FOOTER ===
+    const footerY = centerY + panelH / 2 - Math.round(16 * s);
+    popup.add(
+      this.add
+        .text(centerX - Math.round(110 * s), footerY, "[", {
+          fontFamily: '"Press Start 2P", monospace',
+          fontSize: `${Math.round(6 * s)}px`,
+          color: "#475569",
+        })
+        .setOrigin(0.5)
+    );
+    popup.add(
+      this.add
+        .text(centerX + Math.round(110 * s), footerY, "]", {
+          fontFamily: '"Press Start 2P", monospace',
+          fontSize: `${Math.round(6 * s)}px`,
+          color: "#475569",
+        })
+        .setOrigin(0.5)
+    );
     const footerText = this.add.text(centerX, footerY, "Click anywhere to close", {
       fontFamily: '"Press Start 2P", monospace',
-      fontSize: `${Math.round(5 * s)}px`,
+      fontSize: `${Math.round(6 * s)}px`,
       color: "#64748b",
     });
     footerText.setOrigin(0.5);
     popup.add(footerText);
-
-    // Subtle blink animation for footer
     this.tweens.add({
       targets: footerText,
       alpha: { from: 1, to: 0.4 },
@@ -3670,38 +3654,59 @@ export class WorldScene extends Phaser.Scene {
     });
 
     // === ENTRANCE ANIMATION ===
-    popup.setAlpha(0);
-    popup.setScale(0.9);
-    this.tweens.add({
-      targets: popup,
-      alpha: 1,
-      scale: 1,
-      duration: 200,
-      ease: "Back.easeOut",
-    });
+    if (animate) {
+      popup.setAlpha(0);
+      popup.setScale(0.9);
+      this.tweens.add({
+        targets: popup,
+        alpha: 1,
+        scale: 1,
+        duration: 200,
+        ease: "Back.easeOut",
+      });
+    }
+  }
+
+  /**
+   * Switch tab within DexScreener Workshop popup (instant rebuild)
+   */
+  private switchFoundersTab(tab: string): void {
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
+    }
+    this.showFoundersPopup(tab, false);
+  }
+
+  /**
+   * Get URL for a clickable link line in the founders popup
+   */
+  private getFoundersLinkUrl(line: string): string | null {
+    const linkMap: Record<string, string> = {
+      "marketplace.dexscreener.com": "https://marketplace.dexscreener.com/product/token-info",
+      "dexscreener.com/solana": "https://dexscreener.com/solana",
+      "canva.com": "https://www.canva.com",
+      "remove.bg": "https://www.remove.bg",
+      "tinypng.com": "https://tinypng.com",
+      "carrd.co": "https://carrd.co",
+      "bags.fm": "https://bags.fm",
+    };
+    for (const [key, url] of Object.entries(linkMap)) {
+      if (line.includes(key)) return url;
+    }
+    return null;
   }
 
   /**
    * Get theme colors for Founder's popup based on building type
    */
-  private getFoundersPopupTheme(type: string): {
+  private getFoundersPopupTheme(_type: string): {
     accent: number;
     titleColor: string;
     icon: string;
   } {
-    switch (type) {
-      case "workshop":
-        // Terminal green - classic DexScreener/hacker aesthetic
-        return { accent: 0x22c55e, titleColor: "#22c55e", icon: "⚙" };
-      case "studio":
-        // Gold - creative/art theme
-        return { accent: 0xfbbf24, titleColor: "#fbbf24", icon: "🎨" };
-      case "social":
-        // Cyan/blue - social/web theme
-        return { accent: 0x38bdf8, titleColor: "#38bdf8", icon: "🌐" };
-      default:
-        return { accent: 0x4ade80, titleColor: "#4ade80", icon: "📋" };
-    }
+    // Unified DexScreener green theme for the workshop
+    return { accent: 0x22c55e, titleColor: "#22c55e", icon: "⚙" };
   }
 
   /**
@@ -4539,37 +4544,42 @@ export class WorldScene extends Phaser.Scene {
    * Get content for Founder's Corner popup based on building type
    * Real data from DexScreener marketplace & docs
    */
-  private getFoundersPopupContent(type: string): { title: string; body: string; tip: string } {
-    switch (type) {
-      case "workshop":
+  private getFoundersPopupContent(tab: string): { title: string; body: string; tip: string } {
+    switch (tab) {
+      case "overview":
         return {
-          title: "DEXSCREENER ENHANCED INFO",
-          body: `ORDER: marketplace.dexscreener.com/product/token-info
-COST:  $299 (crypto or card)
-TIME:  Usually <15 min, max 12 hours
+          title: "DEXSCREENER WORKSHOP",
+          body: `WHAT IS DEXSCREENER?
+Free chart site for DEX traders.
+Every Solana token auto-lists!
+> dexscreener.com/solana
 
-WHAT YOU GET:
+ENHANCED TOKEN INFO: $299
  + Custom logo & banner displayed
  + Social links shown to traders
- + Project description & roadmap
+ + Description & roadmap
  + Locked wallets (fixes mcap)
+
+COST:  $299 (crypto or card)
+TIME:  Usually <15 min, max 12h
+VERIFY: Sign with creator wallet
+
+ORDER HERE:
+> marketplace.dexscreener.com
 
 CHECKLIST BEFORE ORDERING:
  [x] Token launched on DEX
- [x] Logo ready (square PNG/JPG)
- [x] Banner ready (3:1 ratio)
- [x] Website live (not "coming soon")
+ [x] Logo ready (see IMAGES tab)
+ [x] Banner ready (see IMAGES tab)
+ [x] Website live (see SOCIALS tab)
  [x] Twitter with posts
- [ ] TG/Discord (optional)
-
-IMPORTANT: You need the wallet that
-created the token to verify ownership.`,
+ [ ] TG/Discord (optional)`,
           tip: "",
         };
 
-      case "studio":
+      case "images":
         return {
-          title: "IMAGE SPECS (EXACT)",
+          title: "DEXSCREENER WORKSHOP",
           body: `TOKEN LOGO:
  Ratio:   1:1 (square)
  Size:    512x512px recommended
@@ -4585,22 +4595,26 @@ TOKEN BANNER/HEADER:
  GOOD: Token name, clean design
  BAD:  Walls of text, busy BGs
 
-FREE TOOLS:
- canva.com     - templates
- remove.bg     - transparent bg
- tinypng.com   - compress files`,
-          tip: "Twitter header = DexScreener banner (same ratio)!",
+FREE TOOLS (click to open):
+> canva.com       - templates
+> remove.bg       - transparent bg
+> tinypng.com     - compress files
+
+IMPORTANT: Prof. Oak in this zone
+can generate logos + banners!`,
+          tip: "Twitter header = DexScreener banner!",
         };
 
-      case "social":
+      case "socials":
         return {
-          title: "SOCIALS SETUP GUIDE",
+          title: "DEXSCREENER WORKSHOP",
           body: `REQUIRED BY DEXSCREENER:
 
 1. WEBSITE (must be live)
-   Use Carrd.co for free 1-pager
-   Include: about, tokenomics, links
    NO "coming soon" pages
+   Include: about, tokenomics, links
+   Free 1-pager:
+> carrd.co
 
 2. TWITTER/X (must have posts)
    Pin a tweet about your token
@@ -4614,19 +4628,18 @@ OPTIONAL BUT RECOMMENDED:
 
 4. DISCORD
    Only if long-term project
-   Overkill for memecoins
 
 BAGS.FM TIP:
-Your creator page works as website!
-Use: bags.fm/[yourname]`,
+Your creator page = website!
+> bags.fm`,
           tip: "Set up TG BEFORE launch, not after!",
         };
 
       default:
         return {
-          title: "FOUNDER'S CORNER",
-          body: "Click a building to learn more!",
-          tip: "Each building = one step in the process.",
+          title: "DEXSCREENER WORKSHOP",
+          body: "Click a tab above to get started!",
+          tip: "Each tab = one step in the process.",
         };
     }
   }
