@@ -598,8 +598,12 @@ export class BagsApiService extends Service {
   }
 
   async getWorldHealth(): Promise<WorldHealthData | null> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const response = await fetch(`${this.bagsWorldUrl}/api/world-state`);
+      const response = await fetch(`${this.bagsWorldUrl}/api/world-state`, {
+        signal: controller.signal,
+      });
       if (!response.ok) {
         const error = new Error(
           `World health API error: ${response.status} ${response.statusText}`
@@ -621,6 +625,8 @@ export class BagsApiService extends Service {
       console.error("Failed to fetch world health:", error);
       if (this.throwOnError) throw error;
       return null;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
