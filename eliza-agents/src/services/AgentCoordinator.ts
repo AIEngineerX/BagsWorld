@@ -47,7 +47,7 @@ export class AgentCoordinator extends Service {
     console.log('[AgentCoordinator] Starting coordination service...');
     const service = new AgentCoordinator(runtime);
 
-    // Register all 16 agents with their capabilities
+    // Register all 17 agents with their capabilities
     // Core agents
     service.registerAgent('neo', ['scan', 'detect', 'analyze', 'alert']);
     service.registerAgent('ghost', ['rewards', 'verify', 'distribute', 'trade']);
@@ -68,10 +68,13 @@ export class AgentCoordinator extends Service {
     service.registerAgent('stuu', ['support', 'troubleshoot', 'operations']);
     service.registerAgent('professor-oak', ['launch', 'guide', 'dexscreener']);
 
+    // Mascots
+    service.registerAgent('bagsy', ['hype', 'post', 'moltbook', 'social']);
+
     // Store as singleton
     coordinatorInstance = service;
 
-    console.log('[AgentCoordinator] Coordination service ready with 16 agents');
+    console.log('[AgentCoordinator] Coordination service ready with 17 agents');
     return service;
   }
 

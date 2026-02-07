@@ -10,6 +10,8 @@ import { agentContextProvider } from '../providers/agentContext.js';
 import { oracleDataProvider } from '../providers/oracleData.js';
 import { ghostTradingProvider } from '../providers/ghostTrading.js';
 import { getBagsApiService } from '../services/BagsApiService.js';
+import { getMemoryService } from '../services/MemoryService.js';
+import { getRelationshipService } from '../services/RelationshipService.js';
 import {
   tokenMentionEvaluator,
   feeQueryEvaluator,
@@ -140,11 +142,13 @@ export function createMockState(): State {
 
 export async function buildConversationContext(
   character: Character,
-  userMessage: string
+  userMessage: string,
+  options?: { sessionId?: string }
 ): Promise<ConversationContext> {
   const runtime = createMockRuntime(character);
   const memory = createMockMemory(userMessage);
   const state = createMockState();
+  const agentId = character.name.toLowerCase().replace(/\s+/g, '-');
 
   const context: ConversationContext = {
     messages: [],
@@ -186,6 +190,40 @@ export async function buildConversationContext(
     const tradingResult = await ghostTradingProvider.get(runtime, memory, state);
     if (tradingResult?.text) {
       context.tradingState = tradingResult.text;
+    }
+  }
+
+  // Memory and relationship context: query Week 2 services if initialized
+  const memoryService = getMemoryService();
+  const relationshipService = getRelationshipService();
+
+  if (memoryService || relationshipService) {
+    const sessionId = options?.sessionId;
+
+    // Run memory and relationship lookups in parallel
+    const [memoryResult, relationshipResult] = await Promise.all([
+      memoryService
+        ? memoryService.summarizeForPrompt(agentId, userMessage, {
+            userId: sessionId,
+            maxTokenBudget: 600,
+          }).catch((err: Error) => {
+            console.warn('[shared] Memory summarize failed:', err.message);
+            return '';
+          })
+        : Promise.resolve(''),
+      relationshipService && sessionId
+        ? relationshipService.summarizeForPrompt(agentId, sessionId).catch((err: Error) => {
+            console.warn('[shared] Relationship summarize failed:', err.message);
+            return '';
+          })
+        : Promise.resolve(''),
+    ]);
+
+    if (memoryResult) {
+      context.memoryContext = memoryResult;
+    }
+    if (relationshipResult) {
+      context.relationshipContext = relationshipResult;
     }
   }
 

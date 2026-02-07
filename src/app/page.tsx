@@ -58,6 +58,7 @@ import { LauncherHub } from "@/components/LauncherHub";
 import { TradingTerminalModal } from "@/components/TradingTerminalModal";
 import { MansionModal } from "@/components/MansionModal";
 import { MiniMap } from "@/components/MiniMap";
+import { QuestTracker } from "@/components/QuestTracker";
 
 import { useGameStore } from "@/lib/store";
 import type { ZoneType } from "@/lib/types";
@@ -257,7 +258,10 @@ export default function Home() {
     window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
     window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     window.addEventListener("bagsworld-open-dungeon", handleDungeonClick as EventListener);
-    window.addEventListener("bagsworld-phaser-zone-change", handlePhaserZoneChange as EventListener);
+    window.addEventListener(
+      "bagsworld-phaser-zone-change",
+      handlePhaserZoneChange as EventListener
+    );
     return () => {
       window.removeEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
       window.removeEventListener(
@@ -282,7 +286,10 @@ export default function Home() {
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
       window.removeEventListener("bagsworld-open-dungeon", handleDungeonClick as EventListener);
-      window.removeEventListener("bagsworld-phaser-zone-change", handlePhaserZoneChange as EventListener);
+      window.removeEventListener(
+        "bagsworld-phaser-zone-change",
+        handlePhaserZoneChange as EventListener
+      );
     };
   }, [openModal, setZone]);
 
@@ -508,6 +515,9 @@ export default function Home() {
 
             {/* Mini Map - quick access to world features */}
             <MiniMap />
+
+            {/* Quest Tracker - first-time onboarding */}
+            <QuestTracker />
           </div>
         </div>
 

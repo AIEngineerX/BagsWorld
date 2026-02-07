@@ -21,6 +21,8 @@ import { AgentCoordinator, getAgentCoordinator } from './AgentCoordinator.js';
 import { GoalSystem, getGoalSystem } from './GoalSystem.js';
 import type { AgentGoal } from './GoalSystem.js';
 import { AgentDialogueService, getAgentDialogueService } from './AgentDialogueService.js';
+import { getMemoryService } from './MemoryService.js';
+import { getRelationshipService } from './RelationshipService.js';
 import { characters as characterRegistry } from '../characters/index.js';
 
 /**
@@ -526,13 +528,16 @@ export class AgentTickService {
     if (nearbyAgents.length > 0 && !context.justLeftConversation) {
       const shouldInteract = Math.random() < behavior.interactionChance;
       if (shouldInteract) {
+        // Choose the best interaction target based on relationships
+        const targetAgentId = await this.pickInteractionTarget(agentId, nearbyAgents);
+
         // 30% chance to use LLM for social decisions
         if (this.shouldUseLLM()) {
-          return this.llmDecision(agentId, state, worldState, 'interaction', nearbyAgents[0]);
+          return this.llmDecision(agentId, state, worldState, 'interaction', targetAgentId);
         }
         return {
           type: 'approach',
-          targetAgentId: nearbyAgents[0],
+          targetAgentId,
         };
       }
     }
@@ -765,6 +770,47 @@ export class AgentTickService {
   }
 
   /**
+   * Pick the best nearby agent to interact with based on relationship data.
+   * Prefers agents with positive sentiment, moderate familiarity, and high trust.
+   * Adds a curiosity bonus for unknown agents to encourage meeting new characters.
+   */
+  private async pickInteractionTarget(agentId: string, nearbyAgents: string[]): Promise<string> {
+    if (nearbyAgents.length === 1) return nearbyAgents[0];
+
+    const relationshipService = getRelationshipService();
+    if (!relationshipService) {
+      return nearbyAgents[Math.floor(Math.random() * nearbyAgents.length)];
+    }
+
+    const relationships = await relationshipService.getAgentRelationships(agentId, {
+      targetType: 'agent',
+      limit: 50,
+    });
+
+    const relMap = new Map(relationships.map(r => [r.targetId, r]));
+
+    const scored = nearbyAgents.map(targetId => {
+      const rel = relMap.get(targetId);
+      if (!rel) {
+        // Unknown agent — curiosity bonus to encourage meeting new characters
+        return { targetId, score: 0.4 + Math.random() * 0.3 };
+      }
+
+      // Normalize sentiment from [-1, 1] to [0, 1]
+      const sentimentScore = (rel.sentiment + 1) / 2;
+      const randomness = Math.random() * 0.3;
+
+      return {
+        targetId,
+        score: sentimentScore * 0.4 + rel.familiarity * 0.2 + rel.trust * 0.2 + randomness,
+      };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0].targetId;
+  }
+
+  /**
    * Make an LLM-based decision
    */
   private async llmDecision(
@@ -786,12 +832,37 @@ export class AgentTickService {
 
     const bio = Array.isArray(character.bio) ? character.bio.join(' ') : (character.bio || '');
 
-    const systemPrompt = `You are ${character.name} in BagsWorld, a pixel art game world.
+    // Fetch memory context for this agent (recent experiences, key memories)
+    let memoryContext = '';
+    const memoryService = getMemoryService();
+    if (memoryService) {
+      memoryContext = await memoryService.summarizeForPrompt(agentId, situation, {
+        maxTokenBudget: 300,
+      }).catch(() => '');
+    }
+
+    // Fetch relationship context with the target agent (if approaching someone)
+    let relationshipContext = '';
+    const relationshipService = getRelationshipService();
+    if (relationshipService && targetAgentId) {
+      relationshipContext = await relationshipService.summarizeForPrompt(agentId, targetAgentId)
+        .catch(() => '');
+    }
+
+    let systemPrompt = `You are ${character.name} in BagsWorld, a pixel art game world.
 
 CHARACTER:
-${bio}
+${bio}`;
 
-RULES:
+    if (memoryContext) {
+      systemPrompt += `\n\n${memoryContext}`;
+    }
+
+    if (relationshipContext) {
+      systemPrompt += `\n\nRELATIONSHIP WITH ${targetAgentId?.toUpperCase() || 'TARGET'}:\n${relationshipContext}`;
+    }
+
+    systemPrompt += `\n\nRULES:
 - Stay in character
 - Keep responses brief
 - Choose ONE action from the available options`;

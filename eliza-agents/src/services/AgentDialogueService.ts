@@ -11,6 +11,8 @@
 
 import { WorldSyncService, getWorldSyncService } from './WorldSyncService.js';
 import { LLMService } from './LLMService.js';
+import { getMemoryService } from './MemoryService.js';
+import { getRelationshipService } from './RelationshipService.js';
 import { characters as characterRegistry } from '../characters/index.js';
 import type { Character } from '../types/elizaos.js';
 
@@ -82,10 +84,12 @@ export class AgentDialogueService {
     this.activeDialogues.set(agentId, true);
     this.activeDialogues.set(targetAgentId, true);
 
+    let dialogueLines: DialogueLine[] = [];
+
     try {
-      const lines = await this.generateDialogue(agentId, char1, targetAgentId, char2);
-      if (lines.length > 0) {
-        await this.playDialogue(lines);
+      dialogueLines = await this.generateDialogue(agentId, char1, targetAgentId, char2);
+      if (dialogueLines.length > 0) {
+        await this.playDialogue(dialogueLines);
       }
     } catch (err) {
       console.error(`[AgentDialogue] Error generating dialogue between ${agentId} and ${targetAgentId}:`, err);
@@ -100,6 +104,9 @@ export class AgentDialogueService {
       // Record conversation end in world sync for tick cooldowns
       this.worldSync.recordConversationEnd(agentId);
       this.worldSync.recordConversationEnd(targetAgentId);
+
+      // Persist dialogue to long-term memory and update agent-to-agent relationships
+      this.persistDialogue(agentId, targetAgentId, dialogueLines);
     }
 
     return true;
@@ -241,6 +248,63 @@ Rules:
       await this.wait(line.delay);
       this.worldSync.sendSpeak(line.agentId, line.message, line.emotion);
     }
+  }
+
+  /**
+   * Persist dialogue lines to agent memory and update agent-to-agent relationships.
+   * Fire-and-forget: errors are logged but do not affect dialogue flow.
+   */
+  private persistDialogue(agent1Id: string, agent2Id: string, lines: DialogueLine[]): void {
+    if (lines.length === 0) return;
+
+    const memoryService = getMemoryService();
+    const relationshipService = getRelationshipService();
+
+    if (!memoryService && !relationshipService) return;
+
+    const dialogueSummary = lines.map(l => `${l.agentId}: ${l.message}`).join(' | ');
+
+    const promises: Promise<unknown>[] = [];
+
+    // Store the dialogue as a memory for both agents
+    if (memoryService) {
+      promises.push(
+        memoryService.createMemory({
+          agentId: agent1Id,
+          content: `Dialogue with ${agent2Id}: ${dialogueSummary}`,
+          memoryType: 'message',
+          importance: 0.5,
+          metadata: { dialogueWith: agent2Id, lineCount: lines.length },
+        }).catch((err: Error) => console.warn('[AgentDialogue] Memory write failed:', err.message))
+      );
+
+      promises.push(
+        memoryService.createMemory({
+          agentId: agent2Id,
+          content: `Dialogue with ${agent1Id}: ${dialogueSummary}`,
+          memoryType: 'message',
+          importance: 0.5,
+          metadata: { dialogueWith: agent1Id, lineCount: lines.length },
+        }).catch((err: Error) => console.warn('[AgentDialogue] Memory write failed:', err.message))
+      );
+    }
+
+    // Update agent-to-agent relationships (both directions)
+    if (relationshipService) {
+      promises.push(
+        relationshipService.updateAfterInteraction(agent1Id, agent2Id, 'agent', {
+          sentiment: 0.2, // Agent dialogues are friendly
+        }).catch((err: Error) => console.warn('[AgentDialogue] Relationship update failed:', err.message))
+      );
+
+      promises.push(
+        relationshipService.updateAfterInteraction(agent2Id, agent1Id, 'agent', {
+          sentiment: 0.2,
+        }).catch((err: Error) => console.warn('[AgentDialogue] Relationship update failed:', err.message))
+      );
+    }
+
+    Promise.all(promises).catch(() => {});
   }
 
   /**

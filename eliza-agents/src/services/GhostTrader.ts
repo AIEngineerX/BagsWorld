@@ -25,6 +25,7 @@ import {
   type ExitSignal,
 } from "./TelegramBroadcaster.js";
 import { getDexScreenerCache } from "./DexScreenerCache.js";
+import { getMemoryService } from "./MemoryService.js";
 
 // ============================================================================
 // Constants
@@ -652,6 +653,50 @@ export class GhostTrader {
     console.log(
       `[GhostTrader] Recorded trade outcome: ${position.tokenSymbol} (${isWin ? "WIN" : "LOSS"}, signals: ${signals.join(", ")})`
     );
+  }
+
+  /**
+   * Persist a trade event as a high-importance memory for Ghost.
+   * These memories are surfaced in chat (via MemoryService.summarizeForPrompt)
+   * and in autonomous tick decisions (via AgentTickService.llmDecision).
+   */
+  private persistTradeMemory(
+    action: "buy" | "sell",
+    position: GhostPosition,
+    extra?: { score?: number; pnlSol?: number; exitReason?: string }
+  ): void {
+    const memoryService = getMemoryService();
+    if (!memoryService) return;
+
+    let content: string;
+
+    if (action === "buy") {
+      content = `Bought ${position.amountSol.toFixed(2)} SOL of $${position.tokenSymbol} (${position.tokenMint.slice(0, 8)}...). Score: ${extra?.score ?? "N/A"}. Reasons: ${position.entryReason}`;
+    } else {
+      const pnl = extra?.pnlSol ?? position.pnlSol ?? 0;
+      const pnlSign = pnl >= 0 ? "+" : "";
+      content = `Closed $${position.tokenSymbol} position. ${extra?.exitReason || position.exitReason || "unknown"}. PnL: ${pnlSign}${pnl.toFixed(4)} SOL`;
+    }
+
+    memoryService
+      .createMemory({
+        agentId: "ghost",
+        content,
+        memoryType: "fact",
+        importance: 0.8,
+        metadata: {
+          tradeType: action,
+          tokenMint: position.tokenMint,
+          tokenSymbol: position.tokenSymbol,
+          amountSol: position.amountSol,
+          ...(extra?.score !== undefined && { score: extra.score }),
+          ...(extra?.pnlSol !== undefined && { pnlSol: extra.pnlSol }),
+          ...(extra?.exitReason && { exitReason: extra.exitReason }),
+        },
+      })
+      .catch((err: Error) =>
+        console.warn("[GhostTrader] Memory write failed:", err.message)
+      );
   }
 
   /**
@@ -1313,6 +1358,44 @@ export class GhostTrader {
       );
     }
 
+    // === MEMORY-INFORMED ADJUSTMENT ===
+    // Check if Ghost has past experience with this token (e.g., previously evaluated, traded)
+    const memoryService = getMemoryService();
+    if (memoryService) {
+      const tokenMemories = await memoryService.searchSimilar(
+        "ghost",
+        `$${launch.symbol} ${launch.mint.slice(0, 8)}`,
+        { limit: 3, minSimilarity: 0.5 }
+      ).catch(() => []);
+
+      if (tokenMemories.length > 0) {
+        const hasNegativeExperience = tokenMemories.some(
+          (m) =>
+            m.memory.content.includes("stop_loss") ||
+            m.memory.content.includes("dead_position") ||
+            m.memory.content.includes("failed") ||
+            m.memory.content.includes("stopped out")
+        );
+
+        if (hasNegativeExperience) {
+          score -= 10;
+          redFlags.push("burned on this token before");
+        }
+
+        const hasPositiveExperience = tokenMemories.some(
+          (m) =>
+            m.memory.content.includes("take_profit") ||
+            m.memory.content.includes("trailing_stop") ||
+            m.memory.content.includes("target hit")
+        );
+
+        if (hasPositiveExperience && !hasNegativeExperience) {
+          score += 5;
+          reasons.push("positive past experience");
+        }
+      }
+    }
+
     // === FINAL DECISION ===
     // Threshold: 55+ to trade (relaxed from 60 for more opportunities)
     // Max base score: ~100 (vol/mcap 25 + buy/sell 25 + momentum 20 + liq 15 + age 15)
@@ -1427,6 +1510,9 @@ export class GhostTrader {
     this.positions.set(position.id, position);
     this.tradedMints.add(launch.mint);
     await this.savePositionToDatabase(position);
+
+    // Persist trade as long-term memory (fire-and-forget)
+    this.persistTradeMemory("buy", position, { score: evaluation.score });
 
     // Announce trade
     await this.announceTrade("buy", position);
@@ -1566,6 +1652,12 @@ export class GhostTrader {
 
     // Record for learning
     await this.recordTradeOutcome(position);
+
+    // Persist trade outcome as long-term memory (fire-and-forget)
+    this.persistTradeMemory("sell", position, {
+      pnlSol: pnlSol,
+      exitReason: reason,
+    });
 
     // Announce trade
     await this.announceTrade("sell", position);

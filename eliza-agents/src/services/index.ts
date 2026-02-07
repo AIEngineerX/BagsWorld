@@ -51,6 +51,17 @@ export type { ParsedTransaction, WalletTradeHistory, TradeAlert } from './Helius
 export { GoalSystem, getGoalSystem, resetGoalSystem } from './GoalSystem.js';
 export type { GoalType, AgentGoal, GoalInput } from './GoalSystem.js';
 
+// Embedding Service - Vector embedding generation for semantic search
+export { EmbeddingService, getEmbeddingService, resetEmbeddingService, EMBEDDING_DIMENSION } from './EmbeddingService.js';
+
+// Memory Service - Agent memory persistence with pgvector search
+export { MemoryService, getMemoryService, setMemoryService, resetMemoryService } from './MemoryService.js';
+export type { AgentMemory, CreateMemoryInput, MemorySearchResult, MemoryType } from './MemoryService.js';
+
+// Relationship Service - Agent relationship tracking and evolution
+export { RelationshipService, getRelationshipService, setRelationshipService, resetRelationshipService } from './RelationshipService.js';
+export type { AgentRelationship, RelationshipUpdate, TargetType } from './RelationshipService.js';
+
 // Agent Dialogue - Agent-to-agent conversations
 export { AgentDialogueService, getAgentDialogueService, resetAgentDialogueService } from './AgentDialogueService.js';
 export type { DialogueLine } from './AgentDialogueService.js';
