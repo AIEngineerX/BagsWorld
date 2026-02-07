@@ -175,8 +175,8 @@ async function fetchLiveTokenData(mint?: string): Promise<{
 
           result.tokenData = {
             mint,
-            lifetimeFees: fees?.lifetimeFees || 0,
-            totalClaimed: fees?.totalClaimed || 0,
+            lifetimeFees: fees || 0,
+            totalClaimed: 0,
             creators: creators || [],
           };
         } catch (e) {

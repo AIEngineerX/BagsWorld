@@ -140,14 +140,10 @@ class BagsApiClient {
 
   // Analytics Endpoints
 
-  async getTokenLifetimeFees(tokenMint: string): Promise<{
-    mint: string;
-    lifetimeFees: number;
-    totalClaimed: number;
-    totalUnclaimed: number;
-  }> {
+  async getTokenLifetimeFees(tokenMint: string): Promise<number> {
     const params = new URLSearchParams({ tokenMint });
-    return this.fetch(`/token-launch/lifetime-fees?${params}`);
+    const data = await this.fetch<string>(`/token-launch/lifetime-fees?${params}`);
+    return parseInt(String(data), 10) || 0;
   }
 
   async getTokenCreators(tokenMint: string): Promise<
@@ -172,13 +168,24 @@ class BagsApiClient {
     if (limit) {
       params.set("limit", limit.toString());
     }
-    return this.fetch(`/fee-share/token/claim-events?${params}`);
+    const data = await this.fetch<{
+      events: Array<{
+        wallet: string;
+        isCreator?: boolean;
+        amount: string;
+        signature: string;
+        timestamp: number;
+      }>;
+    }>(`/fee-share/token/claim-events?${params}`);
+    return (data.events ?? []).map((e) => ({
+      signature: e.signature,
+      claimer: e.wallet,
+      amount: parseInt(e.amount, 10),
+      timestamp: e.timestamp,
+      tokenMint,
+    }));
   }
 
-  /**
-   * Get claim events for a token within a time range (for 24h earnings)
-   * Uses time-based filtering mode from Bags API v1.2.0+
-   */
   async getTokenClaimEvents24h(tokenMint: string): Promise<ClaimEvent[]> {
     const now = Math.floor(Date.now() / 1000);
     const twentyFourHoursAgo = now - 24 * 60 * 60;
@@ -190,7 +197,22 @@ class BagsApiClient {
       to: now.toString(),
     });
 
-    return this.fetch(`/fee-share/token/claim-events?${params}`);
+    const data = await this.fetch<{
+      events: Array<{
+        wallet: string;
+        isCreator?: boolean;
+        amount: string;
+        signature: string;
+        timestamp: number;
+      }>;
+    }>(`/fee-share/token/claim-events?${params}`);
+    return (data.events ?? []).map((e) => ({
+      signature: e.signature,
+      claimer: e.wallet,
+      amount: parseInt(e.amount, 10),
+      timestamp: e.timestamp,
+      tokenMint,
+    }));
   }
 
   // Fee Claiming Endpoints
@@ -619,60 +641,12 @@ class BagsApiClient {
     };
   }
 
-  // Platform-wide Discovery Endpoints
+  // Pool Discovery
 
-  async getTrendingTokens(limit: number = 10): Promise<
-    Array<{
-      mint: string;
-      name: string;
-      symbol: string;
-      imageUrl?: string;
-      marketCap?: number;
-      volume24h?: number;
-      change24h?: number;
-      lifetimeFees?: number;
-      createdAt?: number;
-    }>
+  async getBagsPools(): Promise<
+    Array<{ tokenMint: string; dbcConfigKey: string; dbcPoolKey: string }>
   > {
-    const params = new URLSearchParams({ limit: limit.toString() });
-    const data = await this.fetch<{ tokens: Array<Record<string, unknown>> }>(
-      `/token-launch/trending?${params}`
-    );
-    return (data.tokens ?? []) as Array<{
-      mint: string;
-      name: string;
-      symbol: string;
-      imageUrl?: string;
-      marketCap?: number;
-      volume24h?: number;
-      change24h?: number;
-      lifetimeFees?: number;
-      createdAt?: number;
-    }>;
-  }
-
-  async getFeeLeaderboard(limit: number = 10): Promise<
-    Array<{
-      wallet: string;
-      username?: string;
-      provider?: string;
-      lifetimeEarnings: number;
-      earnings24h?: number;
-      tokenCount?: number;
-    }>
-  > {
-    const params = new URLSearchParams({ limit: limit.toString() });
-    const data = await this.fetch<{ earners: Array<Record<string, unknown>> }>(
-      `/fee-share/leaderboard?${params}`
-    );
-    return (data.earners ?? []) as Array<{
-      wallet: string;
-      username?: string;
-      provider?: string;
-      lifetimeEarnings: number;
-      earnings24h?: number;
-      tokenCount?: number;
-    }>;
+    return this.fetch("/solana/bags/pools");
   }
 
   // Partner Fee Claiming
