@@ -22,14 +22,14 @@ interface TopEarner {
   tokens: TopEarnerToken[];
 }
 
-// 5-minute response cache
+// 30-minute response cache (each refresh makes many Bags API calls; 1000/day limit)
 let cachedResponse: {
   success: boolean;
   topEarners: TopEarner[];
   lastUpdated: string;
 } | null = null;
 let cacheTime = 0;
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 30 * 60 * 1000;
 
 /**
  * Discover Moltbook agents from feed + DB + hardcoded fallbacks.
@@ -148,6 +148,7 @@ export async function GET(request: Request) {
       platformData?: { avatarUrl?: string; displayName?: string };
     }> = [];
 
+    let rateLimited = false;
     for (let i = 0; i < knownAgents.length; i++) {
       const result = lookupResults[i];
       if (result.status === "fulfilled" && result.value?.wallet) {
@@ -157,14 +158,29 @@ export async function GET(request: Request) {
           username: knownAgents[i].username,
           platformData: result.value.platformData,
         });
+      } else if (result.status === "rejected" && String(result.reason).includes("Rate limit")) {
+        rateLimited = true;
       }
     }
 
     console.log(
-      `[top-earners] Resolved ${walletResults.length}/${knownAgents.length} agents to wallets`
+      `[top-earners] Resolved ${walletResults.length}/${knownAgents.length} agents to wallets${rateLimited ? " (rate limited)" : ""}`
     );
 
     if (walletResults.length === 0) {
+      // If rate limited, return a stale cache or an explicit error — don't cache empty
+      if (rateLimited) {
+        if (cachedResponse && cachedResponse.topEarners.length > 0) {
+          return NextResponse.json(cachedResponse);
+        }
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Bags API rate limit reached — try again later",
+          },
+          { status: 429 }
+        );
+      }
       const response = {
         success: true,
         topEarners: [] as TopEarner[],

@@ -74,10 +74,13 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
           setLastUpdated(data.lastUpdated);
           setEarnersError(null);
         } else {
-          setEarnersError(data.error || "Failed to load");
+          // Only show error if we have no existing data to display
+          if (topEarners.length === 0) {
+            setEarnersError(data.error || "Failed to load");
+          }
         }
       } catch {
-        if (mounted) setEarnersError("Failed to fetch top earners");
+        if (mounted && topEarners.length === 0) setEarnersError("Failed to fetch top earners");
       } finally {
         if (mounted) setEarnersLoading(false);
       }
@@ -85,8 +88,8 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
 
     fetchTopEarners();
 
-    // Poll every 5 minutes
-    const interval = setInterval(fetchTopEarners, 5 * 60 * 1000);
+    // Poll every 30 minutes (matches server cache TTL)
+    const interval = setInterval(fetchTopEarners, 30 * 60 * 1000);
     return () => {
       mounted = false;
       clearInterval(interval);
