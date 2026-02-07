@@ -313,7 +313,7 @@ export async function GET(request: Request) {
           const displayName = claim.claimer?.slice(0, 8) || "Unknown";
           const claimSol = lamportsToSol(claim.amount);
           events.push({
-            id: `bags_claim_${claim.signature}`,
+            id: `claim-${claim.signature}`,
             type: "fee_claim",
             message: `${displayName} claimed ${formatSol(claimSol)} from $${pair?.baseToken?.symbol ?? "token"} on Bags.fm`,
             timestamp: claim.timestamp * 1000,
@@ -350,7 +350,7 @@ export async function GET(request: Request) {
             const displayName = claim.claimer?.slice(0, 8) || "Unknown";
             const claimSol = lamportsToSol(claim.amount);
             events.push({
-              id: `bags_claim_${claim.signature}`,
+              id: `claim-${claim.signature}`,
               type: "fee_claim",
               message: `${displayName} claimed ${formatSol(claimSol)} from $${pair?.baseToken?.symbol ?? "token"} on Bags.fm`,
               timestamp: claim.timestamp * 1000,
