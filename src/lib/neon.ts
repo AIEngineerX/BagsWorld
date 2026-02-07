@@ -60,7 +60,10 @@ export function getNeonConnectionType(): "netlify" | "direct" | "none" {
 }
 
 // SQL tagged template function type
-type SqlFunction = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>;
+export type SqlFunction = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<unknown[]>;
 
 // Safe parseInt with NaN fallback
 function safeParseInt(value: string | number | null | undefined, fallback: number = 0): number {
@@ -75,7 +78,7 @@ function safeParseFloat(value: string | number | null | undefined, fallback: num
 }
 
 // Dynamically get SQL client
-async function getSql(): Promise<SqlFunction | null> {
+export async function getSql(): Promise<SqlFunction | null> {
   // Try Netlify's built-in Neon first (auto-configured)
   if (process.env.NETLIFY_DATABASE_URL) {
     try {
@@ -1727,6 +1730,16 @@ export interface OracleRoundDB {
   prizePoolLamports: bigint;
   prizeDistributed: boolean;
   createdAt: Date;
+  // Virtual market fields
+  marketType?: string;
+  marketConfig?: Record<string, unknown>;
+  autoResolve?: boolean;
+  resolutionSource?: string;
+  createdBy?: string;
+  entryCostOp?: number;
+  isTournamentMarket?: boolean;
+  tournamentId?: number;
+  winningOutcomeId?: string;
 }
 
 export interface OraclePredictionDB {
@@ -1739,6 +1752,66 @@ export interface OraclePredictionDB {
   prizeLamports: bigint;
   claimed: boolean;
   createdAt: Date;
+  // Virtual market fields
+  outcomeId?: string;
+  opWagered?: number;
+  opPayout?: number;
+}
+
+// Oracle Users (OP economy)
+export interface OracleUserDB {
+  wallet: string;
+  opBalance: number;
+  totalOpEarned: number;
+  totalOpSpent: number;
+  firstPredictionBonus: boolean;
+  lastDailyClaim?: Date;
+  currentStreak: number;
+  bestStreak: number;
+  reputationScore: number;
+  reputationTier: string;
+  totalMarketsEntered: number;
+  totalMarketsWon: number;
+  achievements: Record<string, { unlockedAt: string; opAwarded: number }>;
+  createdAt: Date;
+}
+
+// Oracle OP Ledger
+export interface OracleOPLedgerDB {
+  id: number;
+  wallet: string;
+  amount: number;
+  balanceAfter: number;
+  txType: string;
+  referenceId?: number;
+  createdAt: Date;
+}
+
+// Oracle Tournament
+export interface OracleTournamentDB {
+  id: number;
+  name: string;
+  description?: string;
+  startTime: Date;
+  endTime: Date;
+  status: string;
+  prizePoolLamports: bigint;
+  prizeDistribution: Array<{ rank: number; pct: number }>;
+  scoringType: string;
+  maxParticipants?: number;
+  createdBy: string;
+  createdAt: Date;
+}
+
+// Oracle Tournament Entry
+export interface OracleTournamentEntryDB {
+  tournamentId: number;
+  wallet: string;
+  score: number;
+  marketsEntered: number;
+  marketsWon: number;
+  finalRank?: number;
+  prizeLamports?: bigint;
 }
 
 export interface OracleBalanceDB {
@@ -1859,8 +1932,118 @@ export async function initializeOracleTables(): Promise<boolean> {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_predictions' AND column_name = 'claimed') THEN
           ALTER TABLE oracle_predictions ADD COLUMN claimed BOOLEAN DEFAULT FALSE;
         END IF;
+        -- Virtual market columns on oracle_rounds
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'market_type') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN market_type TEXT DEFAULT 'price_prediction';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'market_config') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN market_config JSONB DEFAULT '{}';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'auto_resolve') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN auto_resolve BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'resolution_source') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN resolution_source TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'created_by') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN created_by TEXT DEFAULT 'admin';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'entry_cost_op') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN entry_cost_op BIGINT DEFAULT 100;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'is_tournament_market') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN is_tournament_market BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'tournament_id') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN tournament_id INTEGER;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'winning_outcome_id') THEN
+          ALTER TABLE oracle_rounds ADD COLUMN winning_outcome_id TEXT;
+        END IF;
+        -- Virtual market columns on oracle_predictions
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_predictions' AND column_name = 'outcome_id') THEN
+          ALTER TABLE oracle_predictions ADD COLUMN outcome_id TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_predictions' AND column_name = 'op_wagered') THEN
+          ALTER TABLE oracle_predictions ADD COLUMN op_wagered BIGINT DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_predictions' AND column_name = 'op_payout') THEN
+          ALTER TABLE oracle_predictions ADD COLUMN op_payout BIGINT DEFAULT 0;
+        END IF;
       END $$
     `;
+
+    // Create oracle_users table - Virtual credit (OP) balances and stats
+    await sql`
+      CREATE TABLE IF NOT EXISTS oracle_users (
+        wallet TEXT PRIMARY KEY,
+        op_balance BIGINT DEFAULT 1000,
+        total_op_earned BIGINT DEFAULT 0,
+        total_op_spent BIGINT DEFAULT 0,
+        first_prediction_bonus BOOLEAN DEFAULT FALSE,
+        last_daily_claim TIMESTAMP WITH TIME ZONE,
+        current_streak INTEGER DEFAULT 0,
+        best_streak INTEGER DEFAULT 0,
+        reputation_score INTEGER DEFAULT 1000,
+        reputation_tier TEXT DEFAULT 'novice',
+        total_markets_entered INTEGER DEFAULT 0,
+        total_markets_won INTEGER DEFAULT 0,
+        achievements JSONB DEFAULT '{}',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Create oracle_op_ledger table - Audit trail for all OP changes
+    await sql`
+      CREATE TABLE IF NOT EXISTS oracle_op_ledger (
+        id SERIAL PRIMARY KEY,
+        wallet TEXT NOT NULL,
+        amount BIGINT NOT NULL,
+        balance_after BIGINT NOT NULL,
+        tx_type TEXT NOT NULL,
+        reference_id INTEGER,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Create oracle_tournaments table
+    await sql`
+      CREATE TABLE IF NOT EXISTS oracle_tournaments (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+        end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+        status TEXT DEFAULT 'upcoming',
+        prize_pool_lamports BIGINT DEFAULT 0,
+        prize_distribution JSONB,
+        scoring_type TEXT DEFAULT 'op_earned',
+        max_participants INTEGER,
+        created_by TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Create oracle_tournament_entries table
+    await sql`
+      CREATE TABLE IF NOT EXISTS oracle_tournament_entries (
+        tournament_id INTEGER REFERENCES oracle_tournaments(id) ON DELETE CASCADE,
+        wallet TEXT NOT NULL,
+        score BIGINT DEFAULT 0,
+        markets_entered INTEGER DEFAULT 0,
+        markets_won INTEGER DEFAULT 0,
+        final_rank INTEGER,
+        prize_lamports BIGINT DEFAULT 0,
+        PRIMARY KEY (tournament_id, wallet)
+      )
+    `;
+
+    // Additional indexes for new tables
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_op_ledger_wallet ON oracle_op_ledger(wallet)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_op_ledger_type ON oracle_op_ledger(tx_type)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_rounds_market_type ON oracle_rounds(market_type)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_tournaments_status ON oracle_tournaments(status)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_tournament_entries_wallet ON oracle_tournament_entries(wallet)`;
 
     return true;
   } catch (error) {
@@ -1869,7 +2052,36 @@ export async function initializeOracleTables(): Promise<boolean> {
   }
 }
 
-// Get active Oracle round (or most recent if none active)
+// Parse a DB row into OracleRoundDB
+function parseOracleRoundRow(row: Record<string, unknown>): OracleRoundDB {
+  return {
+    id: row.id as number,
+    status: row.status as "active" | "settled" | "cancelled",
+    startTime: new Date(row.start_time as string),
+    endTime: new Date(row.end_time as string),
+    tokenOptions: row.token_options as OracleTokenOptionDB[],
+    winningTokenMint: row.winning_token_mint as string | undefined,
+    winningPriceChange: row.winning_price_change
+      ? safeParseFloat(row.winning_price_change as string, 0)
+      : undefined,
+    settlementData: row.settlement_data as Record<string, unknown> | undefined,
+    entryCount: safeParseInt(row.entry_count as string, 0),
+    prizePoolLamports: BigInt((row.prize_pool_lamports as string) || "0"),
+    prizeDistributed: (row.prize_distributed as boolean) || false,
+    createdAt: new Date(row.created_at as string),
+    marketType: (row.market_type as string) || "price_prediction",
+    marketConfig: row.market_config as Record<string, unknown> | undefined,
+    autoResolve: (row.auto_resolve as boolean) || false,
+    resolutionSource: row.resolution_source as string | undefined,
+    createdBy: (row.created_by as string) || "admin",
+    entryCostOp: safeParseInt(row.entry_cost_op as string, 100),
+    isTournamentMarket: (row.is_tournament_market as boolean) || false,
+    tournamentId: row.tournament_id as number | undefined,
+    winningOutcomeId: row.winning_outcome_id as string | undefined,
+  };
+}
+
+// Get active Oracle round (or most recent if none active) - backward compatible
 export async function getActiveOracleRound(): Promise<OracleRoundDB | null> {
   const sql = await getSql();
   if (!sql) return null;
@@ -1898,26 +2110,77 @@ export async function getActiveOracleRound(): Promise<OracleRoundDB | null> {
 
     if ((result as unknown[]).length === 0) return null;
 
-    const row = (result as Array<Record<string, unknown>>)[0];
-    return {
-      id: row.id as number,
-      status: row.status as "active" | "settled" | "cancelled",
-      startTime: new Date(row.start_time as string),
-      endTime: new Date(row.end_time as string),
-      tokenOptions: row.token_options as OracleTokenOptionDB[],
-      winningTokenMint: row.winning_token_mint as string | undefined,
-      winningPriceChange: row.winning_price_change
-        ? safeParseFloat(row.winning_price_change as string, 0)
-        : undefined,
-      settlementData: row.settlement_data as Record<string, unknown> | undefined,
-      entryCount: safeParseInt(row.entry_count as string, 0),
-      prizePoolLamports: BigInt((row.prize_pool_lamports as string) || "0"),
-      prizeDistributed: (row.prize_distributed as boolean) || false,
-      createdAt: new Date(row.created_at as string),
-    };
+    return parseOracleRoundRow((result as Array<Record<string, unknown>>)[0]);
   } catch (error) {
     console.error("[Oracle] Error getting active round:", error);
     return null;
+  }
+}
+
+// Get all active Oracle markets (supports multiple concurrent markets)
+export async function getActiveOracleMarkets(marketType?: string): Promise<OracleRoundDB[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'oracle_rounds'
+      )
+    `;
+
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) {
+      return [];
+    }
+
+    let result;
+    if (marketType) {
+      result = await sql`
+        SELECT r.*,
+          (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as entry_count
+        FROM oracle_rounds r
+        WHERE r.status = 'active'
+        AND COALESCE(r.market_type, 'price_prediction') = ${marketType}
+        ORDER BY r.end_time ASC
+      `;
+    } else {
+      result = await sql`
+        SELECT r.*,
+          (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as entry_count
+        FROM oracle_rounds r
+        WHERE r.status = 'active'
+        ORDER BY r.end_time ASC
+      `;
+    }
+
+    return (result as Array<Record<string, unknown>>).map(parseOracleRoundRow);
+  } catch (error) {
+    console.error("[Oracle] Error getting active markets:", error);
+    return [];
+  }
+}
+
+// Get markets that need auto-resolution (expired and auto_resolve=true)
+export async function getMarketsToResolve(): Promise<OracleRoundDB[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT r.*,
+        (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as entry_count
+      FROM oracle_rounds r
+      WHERE r.status = 'active'
+      AND r.end_time <= NOW()
+      AND r.auto_resolve = TRUE
+      ORDER BY r.end_time ASC
+    `;
+
+    return (result as Array<Record<string, unknown>>).map(parseOracleRoundRow);
+  } catch (error) {
+    console.error("[Oracle] Error getting markets to resolve:", error);
+    return [];
   }
 }
 
@@ -1925,7 +2188,17 @@ export async function getActiveOracleRound(): Promise<OracleRoundDB | null> {
 export async function createOracleRound(
   tokenOptions: OracleTokenOptionDB[],
   endTime: Date,
-  prizePoolLamports: bigint = BigInt(0)
+  prizePoolLamports: bigint = BigInt(0),
+  options?: {
+    marketType?: string;
+    marketConfig?: Record<string, unknown>;
+    autoResolve?: boolean;
+    resolutionSource?: string;
+    createdBy?: string;
+    entryCostOp?: number;
+    isTournamentMarket?: boolean;
+    tournamentId?: number;
+  }
 ): Promise<{ success: boolean; roundId?: number; error?: string }> {
   const sql = await getSql();
   if (!sql) return { success: false, error: "Database not configured" };
@@ -1934,13 +2207,22 @@ export async function createOracleRound(
     // Initialize tables if needed
     await initializeOracleTables();
 
-    // Check for existing active round
+    const marketType = options?.marketType || "price_prediction";
+
+    // For legacy price_prediction markets without market config, enforce single active round
+    // For new market types, allow up to 2 active rounds per type
     const existing = await sql`
-      SELECT id FROM oracle_rounds WHERE status = 'active' LIMIT 1
+      SELECT id, market_type FROM oracle_rounds
+      WHERE status = 'active'
+      AND COALESCE(market_type, 'price_prediction') = ${marketType}
     `;
 
-    if ((existing as unknown[]).length > 0) {
-      return { success: false, error: "Active round already exists. Settle or cancel it first." };
+    const maxPerType = marketType === "price_prediction" && !options?.marketConfig ? 1 : 2;
+    if ((existing as unknown[]).length >= maxPerType) {
+      return {
+        success: false,
+        error: `Maximum active ${marketType} markets reached (${maxPerType}). Settle or cancel existing ones first.`,
+      };
     }
 
     // Validate prize pool (max 1 SOL = 1_000_000_000 lamports)
@@ -1949,10 +2231,25 @@ export async function createOracleRound(
       return { success: false, error: "Prize pool exceeds maximum of 1 SOL" };
     }
 
-    // Create new round with prize pool
+    // Create new round with prize pool and market type fields
     const result = await sql`
-      INSERT INTO oracle_rounds (token_options, end_time, status, prize_pool_lamports, prize_distributed)
-      VALUES (${JSON.stringify(tokenOptions)}, ${endTime.toISOString()}, 'active', ${prizePoolLamports.toString()}, FALSE)
+      INSERT INTO oracle_rounds (
+        token_options, end_time, status, prize_pool_lamports, prize_distributed,
+        market_type, market_config, auto_resolve, resolution_source, created_by,
+        entry_cost_op, is_tournament_market, tournament_id
+      )
+      VALUES (
+        ${JSON.stringify(tokenOptions)}, ${endTime.toISOString()}, 'active',
+        ${prizePoolLamports.toString()}, FALSE,
+        ${marketType},
+        ${JSON.stringify(options?.marketConfig || {})},
+        ${options?.autoResolve || false},
+        ${options?.resolutionSource || null},
+        ${options?.createdBy || "admin"},
+        ${options?.entryCostOp || 100},
+        ${options?.isTournamentMarket || false},
+        ${options?.tournamentId || null}
+      )
       RETURNING id
     `;
 
@@ -1968,7 +2265,8 @@ export async function createOracleRound(
 export async function enterOraclePrediction(
   roundId: number,
   wallet: string,
-  tokenMint: string
+  tokenMint: string,
+  options?: { outcomeId?: string; opWagered?: number }
 ): Promise<{ success: boolean; error?: string }> {
   const sql = await getSql();
   if (!sql) return { success: false, error: "Database not configured" };
@@ -1976,7 +2274,7 @@ export async function enterOraclePrediction(
   try {
     // Check if round exists and is active
     const round = await sql`
-      SELECT id, status, end_time, token_options FROM oracle_rounds
+      SELECT id, status, end_time, token_options, market_config FROM oracle_rounds
       WHERE id = ${roundId}
     `;
 
@@ -1997,11 +2295,20 @@ export async function enterOraclePrediction(
       return { success: false, error: "Entry deadline has passed" };
     }
 
-    // Validate token is in options
-    const tokenOptions = roundData.token_options as OracleTokenOptionDB[];
-    const validToken = tokenOptions.some((t) => t.mint === tokenMint);
-    if (!validToken) {
-      return { success: false, error: "Invalid token selection" };
+    // Validate selection - either token mint or outcome_id
+    const marketConfig = roundData.market_config as Record<string, unknown> | null;
+    if (options?.outcomeId && marketConfig) {
+      const outcomes = (marketConfig.outcomes || []) as Array<{ id: string }>;
+      const validOutcome = outcomes.some((o) => o.id === options.outcomeId);
+      if (!validOutcome) {
+        return { success: false, error: "Invalid outcome selection" };
+      }
+    } else {
+      const tokenOptions = roundData.token_options as OracleTokenOptionDB[];
+      const validToken = tokenOptions.some((t) => t.mint === tokenMint);
+      if (!validToken) {
+        return { success: false, error: "Invalid token selection" };
+      }
     }
 
     // Check if already entered
@@ -2014,10 +2321,10 @@ export async function enterOraclePrediction(
       return { success: false, error: "Already entered this round" };
     }
 
-    // Enter prediction
+    // Enter prediction with optional OP and outcome fields
     await sql`
-      INSERT INTO oracle_predictions (round_id, wallet, token_mint)
-      VALUES (${roundId}, ${wallet}, ${tokenMint})
+      INSERT INTO oracle_predictions (round_id, wallet, token_mint, outcome_id, op_wagered)
+      VALUES (${roundId}, ${wallet}, ${tokenMint}, ${options?.outcomeId || null}, ${options?.opWagered || 0})
     `;
 
     // Update entry count
@@ -2310,22 +2617,7 @@ export async function getOracleHistory(
     }> = [];
 
     for (const row of rounds as Array<Record<string, unknown>>) {
-      const round: OracleRoundDB = {
-        id: row.id as number,
-        status: row.status as "active" | "settled" | "cancelled",
-        startTime: new Date(row.start_time as string),
-        endTime: new Date(row.end_time as string),
-        tokenOptions: row.token_options as OracleTokenOptionDB[],
-        winningTokenMint: row.winning_token_mint as string | undefined,
-        winningPriceChange: row.winning_price_change
-          ? safeParseFloat(row.winning_price_change as string, 0)
-          : undefined,
-        settlementData: row.settlement_data as Record<string, unknown> | undefined,
-        entryCount: safeParseInt(row.entry_count as string, 0),
-        prizePoolLamports: BigInt((row.prize_pool_lamports as string) || "0"),
-        prizeDistributed: (row.prize_distributed as boolean) || false,
-        createdAt: new Date(row.created_at as string),
-      };
+      const round = parseOracleRoundRow(row);
 
       let userPrediction: OraclePredictionDB | undefined;
       if (wallet) {
@@ -2803,6 +3095,443 @@ export async function getUserRoundPrize(
   } catch (error) {
     console.error("[Oracle] Error getting user round prize:", error);
     return null;
+  }
+}
+
+// ============================================================================
+// ORACLE TOURNAMENT MANAGEMENT
+// ============================================================================
+
+// Create a tournament
+export async function createOracleTournament(
+  name: string,
+  description: string | undefined,
+  startTime: Date,
+  endTime: Date,
+  prizePoolLamports: bigint,
+  prizeDistribution: Array<{ rank: number; pct: number }>,
+  scoringType: string,
+  maxParticipants: number | undefined,
+  createdBy: string
+): Promise<{ success: boolean; tournamentId?: number; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    await initializeOracleTables();
+
+    const result = await sql`
+      INSERT INTO oracle_tournaments (
+        name, description, start_time, end_time, status,
+        prize_pool_lamports, prize_distribution, scoring_type,
+        max_participants, created_by
+      )
+      VALUES (
+        ${name}, ${description || null}, ${startTime.toISOString()}, ${endTime.toISOString()},
+        ${startTime <= new Date() ? "active" : "upcoming"},
+        ${prizePoolLamports.toString()}, ${JSON.stringify(prizeDistribution)},
+        ${scoringType}, ${maxParticipants || null}, ${createdBy}
+      )
+      RETURNING id
+    `;
+
+    const tournamentId = (result as Array<{ id: number }>)[0]?.id;
+    return { success: true, tournamentId };
+  } catch (error) {
+    console.error("[Oracle] Error creating tournament:", error);
+    return { success: false, error: "Failed to create tournament" };
+  }
+}
+
+// Get tournaments by status
+export async function getOracleTournaments(status?: string): Promise<OracleTournamentDB[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const tableCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'oracle_tournaments'
+      )
+    `;
+    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) return [];
+
+    let result;
+    if (status) {
+      result = await sql`
+        SELECT t.*,
+          (SELECT COUNT(*) FROM oracle_tournament_entries WHERE tournament_id = t.id) as participant_count
+        FROM oracle_tournaments t
+        WHERE t.status = ${status}
+        ORDER BY t.start_time ASC
+      `;
+    } else {
+      result = await sql`
+        SELECT t.*,
+          (SELECT COUNT(*) FROM oracle_tournament_entries WHERE tournament_id = t.id) as participant_count
+        FROM oracle_tournaments t
+        WHERE t.status IN ('upcoming', 'active')
+        ORDER BY t.start_time ASC
+      `;
+    }
+
+    return (result as Array<Record<string, unknown>>).map((row) => ({
+      id: row.id as number,
+      name: row.name as string,
+      description: row.description as string | undefined,
+      startTime: new Date(row.start_time as string),
+      endTime: new Date(row.end_time as string),
+      status: row.status as string,
+      prizePoolLamports: BigInt((row.prize_pool_lamports as string) || "0"),
+      prizeDistribution: (row.prize_distribution || []) as Array<{ rank: number; pct: number }>,
+      scoringType: (row.scoring_type as string) || "op_earned",
+      maxParticipants: row.max_participants as number | undefined,
+      createdBy: row.created_by as string,
+      createdAt: new Date(row.created_at as string),
+    }));
+  } catch (error) {
+    console.error("[Oracle] Error getting tournaments:", error);
+    return [];
+  }
+}
+
+// Join a tournament
+export async function joinOracleTournament(
+  tournamentId: number,
+  wallet: string
+): Promise<{ success: boolean; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    // Check tournament exists and is active/upcoming
+    const tournament = await sql`
+      SELECT id, status, max_participants FROM oracle_tournaments
+      WHERE id = ${tournamentId}
+    `;
+
+    if ((tournament as unknown[]).length === 0) {
+      return { success: false, error: "Tournament not found" };
+    }
+
+    const t = (tournament as Array<Record<string, unknown>>)[0];
+    if (t.status !== "active" && t.status !== "upcoming") {
+      return { success: false, error: "Tournament is not accepting entries" };
+    }
+
+    // Check max participants
+    if (t.max_participants) {
+      const countResult = await sql`
+        SELECT COUNT(*) as count FROM oracle_tournament_entries
+        WHERE tournament_id = ${tournamentId}
+      `;
+      const count = safeParseInt((countResult as Array<{ count: string }>)[0]?.count, 0);
+      if (count >= (t.max_participants as number)) {
+        return { success: false, error: "Tournament is full" };
+      }
+    }
+
+    // Check if already joined
+    const existing = await sql`
+      SELECT tournament_id FROM oracle_tournament_entries
+      WHERE tournament_id = ${tournamentId} AND wallet = ${wallet}
+    `;
+
+    if ((existing as unknown[]).length > 0) {
+      return { success: false, error: "Already joined this tournament" };
+    }
+
+    // Join
+    await sql`
+      INSERT INTO oracle_tournament_entries (tournament_id, wallet)
+      VALUES (${tournamentId}, ${wallet})
+    `;
+
+    return { success: true };
+  } catch (error) {
+    console.error("[Oracle] Error joining tournament:", error);
+    return { success: false, error: "Failed to join tournament" };
+  }
+}
+
+// Get tournament leaderboard
+export async function getOracleTournamentLeaderboard(
+  tournamentId: number,
+  limit: number = 20
+): Promise<OracleTournamentEntryDB[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT * FROM oracle_tournament_entries
+      WHERE tournament_id = ${tournamentId}
+      ORDER BY score DESC, markets_won DESC
+      LIMIT ${limit}
+    `;
+
+    return (result as Array<Record<string, unknown>>).map((row) => ({
+      tournamentId: row.tournament_id as number,
+      wallet: row.wallet as string,
+      score: safeParseInt(row.score as string, 0),
+      marketsEntered: safeParseInt(row.markets_entered as string, 0),
+      marketsWon: safeParseInt(row.markets_won as string, 0),
+      finalRank: row.final_rank as number | undefined,
+      prizeLamports: row.prize_lamports ? BigInt((row.prize_lamports as string) || "0") : undefined,
+    }));
+  } catch (error) {
+    console.error("[Oracle] Error getting tournament leaderboard:", error);
+    return [];
+  }
+}
+
+// Update tournament entry score (called when a user wins/enters a market during a tournament)
+export async function updateTournamentScore(
+  tournamentId: number,
+  wallet: string,
+  opEarned: number,
+  won: boolean
+): Promise<void> {
+  const sql = await getSql();
+  if (!sql) return;
+
+  try {
+    await sql`
+      UPDATE oracle_tournament_entries SET
+        score = score + ${opEarned},
+        markets_entered = markets_entered + 1,
+        markets_won = markets_won + ${won ? 1 : 0}
+      WHERE tournament_id = ${tournamentId} AND wallet = ${wallet}
+    `;
+  } catch (error) {
+    console.error("[Oracle] Error updating tournament score:", error);
+  }
+}
+
+// Settle a round with winning outcome (generalized for all market types)
+export async function settleOracleRoundWithOutcome(
+  roundId: number,
+  winningOutcomeId: string,
+  settlementData: Record<string, unknown>
+): Promise<{ success: boolean; error?: string }> {
+  const sql = await getSql();
+  if (!sql) return { success: false, error: "Database not configured" };
+
+  try {
+    await sql`
+      UPDATE oracle_rounds SET
+        status = 'settled',
+        winning_outcome_id = ${winningOutcomeId},
+        settlement_data = ${JSON.stringify(settlementData)}
+      WHERE id = ${roundId} AND status = 'active'
+    `;
+
+    return { success: true };
+  } catch (error) {
+    console.error("[Oracle] Error settling round with outcome:", error);
+    return { success: false, error: "Failed to settle round" };
+  }
+}
+
+// Get all predictions for a round
+export async function getOracleRoundPredictions(roundId: number): Promise<OraclePredictionDB[]> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT * FROM oracle_predictions
+      WHERE round_id = ${roundId}
+      ORDER BY created_at ASC
+    `;
+
+    return (result as Array<Record<string, unknown>>).map((row) => ({
+      id: row.id as number,
+      roundId: row.round_id as number,
+      wallet: row.wallet as string,
+      tokenMint: row.token_mint as string,
+      isWinner: row.is_winner as boolean,
+      predictionRank: row.prediction_rank as number | undefined,
+      prizeLamports: BigInt((row.prize_lamports as string) || "0"),
+      claimed: (row.claimed as boolean) || false,
+      createdAt: new Date(row.created_at as string),
+      outcomeId: row.outcome_id as string | undefined,
+      opWagered: safeParseInt(row.op_wagered as string, 0),
+      opPayout: safeParseInt(row.op_payout as string, 0),
+    }));
+  } catch (error) {
+    console.error("[Oracle] Error getting round predictions:", error);
+    return [];
+  }
+}
+
+// Update prediction with OP payout
+export async function updatePredictionOPPayout(
+  predictionId: number,
+  opPayout: number,
+  isWinner: boolean,
+  rank?: number
+): Promise<void> {
+  const sql = await getSql();
+  if (!sql) return;
+
+  try {
+    await sql`
+      UPDATE oracle_predictions SET
+        op_payout = ${opPayout},
+        is_winner = ${isWinner},
+        prediction_rank = ${rank || null}
+      WHERE id = ${predictionId}
+    `;
+  } catch (error) {
+    console.error("[Oracle] Error updating prediction OP payout:", error);
+  }
+}
+
+// Get user's active predictions across all markets
+export async function getUserActivePredictions(
+  wallet: string
+): Promise<Array<{ prediction: OraclePredictionDB; round: OracleRoundDB }>> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT p.*, r.status as round_status, r.end_time as round_end_time,
+             r.token_options, r.market_type, r.market_config,
+             r.start_time as round_start_time, r.prize_pool_lamports,
+             r.prize_distributed, r.created_at as round_created_at,
+             r.winning_token_mint, r.winning_price_change,
+             r.settlement_data, r.auto_resolve, r.resolution_source,
+             r.created_by, r.entry_cost_op, r.is_tournament_market,
+             r.tournament_id, r.winning_outcome_id,
+             (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as round_entry_count
+      FROM oracle_predictions p
+      JOIN oracle_rounds r ON p.round_id = r.id
+      WHERE p.wallet = ${wallet}
+      AND r.status = 'active'
+      ORDER BY r.end_time ASC
+    `;
+
+    return (result as Array<Record<string, unknown>>).map((row) => ({
+      prediction: {
+        id: row.id as number,
+        roundId: row.round_id as number,
+        wallet: row.wallet as string,
+        tokenMint: row.token_mint as string,
+        isWinner: row.is_winner as boolean,
+        predictionRank: row.prediction_rank as number | undefined,
+        prizeLamports: BigInt((row.prize_lamports as string) || "0"),
+        claimed: (row.claimed as boolean) || false,
+        createdAt: new Date(row.created_at as string),
+        outcomeId: row.outcome_id as string | undefined,
+        opWagered: safeParseInt(row.op_wagered as string, 0),
+        opPayout: safeParseInt(row.op_payout as string, 0),
+      },
+      round: {
+        id: row.round_id as number,
+        status: row.round_status as "active" | "settled" | "cancelled",
+        startTime: new Date(row.round_start_time as string),
+        endTime: new Date(row.round_end_time as string),
+        tokenOptions: row.token_options as OracleTokenOptionDB[],
+        winningTokenMint: row.winning_token_mint as string | undefined,
+        winningPriceChange: row.winning_price_change
+          ? safeParseFloat(row.winning_price_change as string, 0)
+          : undefined,
+        settlementData: row.settlement_data as Record<string, unknown> | undefined,
+        entryCount: safeParseInt(row.round_entry_count as string, 0),
+        prizePoolLamports: BigInt((row.prize_pool_lamports as string) || "0"),
+        prizeDistributed: (row.prize_distributed as boolean) || false,
+        createdAt: new Date(row.round_created_at as string),
+        marketType: (row.market_type as string) || "price_prediction",
+        marketConfig: row.market_config as Record<string, unknown> | undefined,
+        autoResolve: (row.auto_resolve as boolean) || false,
+        resolutionSource: row.resolution_source as string | undefined,
+        createdBy: (row.created_by as string) || "admin",
+        entryCostOp: safeParseInt(row.entry_cost_op as string, 100),
+        isTournamentMarket: (row.is_tournament_market as boolean) || false,
+        tournamentId: row.tournament_id as number | undefined,
+        winningOutcomeId: row.winning_outcome_id as string | undefined,
+      },
+    }));
+  } catch (error) {
+    console.error("[Oracle] Error getting user active predictions:", error);
+    return [];
+  }
+}
+
+// Get user's recent prediction results
+export async function getUserRecentResults(
+  wallet: string,
+  limit: number = 20
+): Promise<Array<{ prediction: OraclePredictionDB; round: OracleRoundDB }>> {
+  const sql = await getSql();
+  if (!sql) return [];
+
+  try {
+    const result = await sql`
+      SELECT p.*, r.status as round_status, r.end_time as round_end_time,
+             r.token_options, r.market_type, r.market_config,
+             r.start_time as round_start_time, r.prize_pool_lamports,
+             r.prize_distributed, r.created_at as round_created_at,
+             r.winning_token_mint, r.winning_price_change,
+             r.settlement_data, r.auto_resolve, r.resolution_source,
+             r.created_by, r.entry_cost_op, r.is_tournament_market,
+             r.tournament_id, r.winning_outcome_id,
+             (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as round_entry_count
+      FROM oracle_predictions p
+      JOIN oracle_rounds r ON p.round_id = r.id
+      WHERE p.wallet = ${wallet}
+      AND r.status = 'settled'
+      ORDER BY r.end_time DESC
+      LIMIT ${limit}
+    `;
+
+    return (result as Array<Record<string, unknown>>).map((row) => ({
+      prediction: {
+        id: row.id as number,
+        roundId: row.round_id as number,
+        wallet: row.wallet as string,
+        tokenMint: row.token_mint as string,
+        isWinner: row.is_winner as boolean,
+        predictionRank: row.prediction_rank as number | undefined,
+        prizeLamports: BigInt((row.prize_lamports as string) || "0"),
+        claimed: (row.claimed as boolean) || false,
+        createdAt: new Date(row.created_at as string),
+        outcomeId: row.outcome_id as string | undefined,
+        opWagered: safeParseInt(row.op_wagered as string, 0),
+        opPayout: safeParseInt(row.op_payout as string, 0),
+      },
+      round: {
+        id: row.round_id as number,
+        status: row.round_status as "active" | "settled" | "cancelled",
+        startTime: new Date(row.round_start_time as string),
+        endTime: new Date(row.round_end_time as string),
+        tokenOptions: row.token_options as OracleTokenOptionDB[],
+        winningTokenMint: row.winning_token_mint as string | undefined,
+        winningPriceChange: row.winning_price_change
+          ? safeParseFloat(row.winning_price_change as string, 0)
+          : undefined,
+        settlementData: row.settlement_data as Record<string, unknown> | undefined,
+        entryCount: safeParseInt(row.round_entry_count as string, 0),
+        prizePoolLamports: BigInt((row.prize_pool_lamports as string) || "0"),
+        prizeDistributed: (row.prize_distributed as boolean) || false,
+        createdAt: new Date(row.round_created_at as string),
+        marketType: (row.market_type as string) || "price_prediction",
+        marketConfig: row.market_config as Record<string, unknown> | undefined,
+        autoResolve: (row.auto_resolve as boolean) || false,
+        resolutionSource: row.resolution_source as string | undefined,
+        createdBy: (row.created_by as string) || "admin",
+        entryCostOp: safeParseInt(row.entry_cost_op as string, 100),
+        isTournamentMarket: (row.is_tournament_market as boolean) || false,
+        tournamentId: row.tournament_id as number | undefined,
+        winningOutcomeId: row.winning_outcome_id as string | undefined,
+      },
+    }));
+  } catch (error) {
+    console.error("[Oracle] Error getting user recent results:", error);
+    return [];
   }
 }
 

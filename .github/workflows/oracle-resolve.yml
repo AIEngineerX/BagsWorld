@@ -1,0 +1,31 @@
+name: Oracle Auto-Resolve
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+
+  workflow_dispatch:
+
+jobs:
+  auto-resolve:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve Expired Markets
+        run: |
+          echo "Checking for markets to auto-resolve..."
+
+          RESPONSE=$(curl -s -X POST "${{ secrets.BAGSWORLD_URL }}/api/oracle/auto-resolve" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.ORACLE_AUTO_RESOLVE_SECRET }}" \
+            -d '{}')
+
+          echo "Response: $RESPONSE"
+
+          RESOLVED=$(echo $RESPONSE | jq -r '.resolved // 0')
+          echo "Resolved $RESOLVED market(s)"
+
+          if [ "$RESOLVED" -gt 0 ]; then
+            echo "Resolution details:"
+            echo $RESPONSE | jq -r '.results[]'
+          fi

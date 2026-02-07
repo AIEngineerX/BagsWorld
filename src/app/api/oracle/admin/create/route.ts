@@ -86,6 +86,12 @@ export async function POST(request: NextRequest) {
     tokenMints,
     useRegistry = true,
     prizePoolSol = 0,
+    // New virtual market fields
+    marketType = "price_prediction",
+    marketConfig,
+    autoResolve = false,
+    resolutionSource,
+    entryCostOp = 100,
   } = body;
 
   // Verify admin using config-based admin check
@@ -192,8 +198,15 @@ export async function POST(request: NextRequest) {
   // Calculate end time
   const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000);
 
-  // Create round with prize pool
-  const result = await createOracleRound(tokenOptions, endTime, prizePoolLamports);
+  // Create round with prize pool and market type options
+  const result = await createOracleRound(tokenOptions, endTime, prizePoolLamports, {
+    marketType,
+    marketConfig,
+    autoResolve,
+    resolutionSource,
+    createdBy: "admin",
+    entryCostOp,
+  });
 
   if (!result.success) {
     return NextResponse.json({ success: false, error: result.error }, { status: 400 });

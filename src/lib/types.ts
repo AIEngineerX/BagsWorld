@@ -341,6 +341,39 @@ export const METEORA_DBC_PROGRAM = "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
 
 // Oracle Prediction Market Types
 
+export type OracleMarketType =
+  | "price_prediction"
+  | "world_health"
+  | "weather_forecast"
+  | "fee_volume";
+
+export type OracleOutcomeType = "multiple_choice" | "binary";
+
+export interface OracleMarketOutcome {
+  id: string;
+  label: string;
+  data?: Record<string, unknown>;
+}
+
+export interface OracleMarketConfig {
+  outcome_type: OracleOutcomeType;
+  outcomes: OracleMarketOutcome[];
+  resolution_logic: string;
+  question: string;
+}
+
+export type OracleReputationTier = "novice" | "seer" | "oracle" | "master";
+
+export type OracleOPTxType =
+  | "signup_bonus"
+  | "daily_claim"
+  | "prediction_entry"
+  | "prediction_win"
+  | "participation"
+  | "streak_bonus"
+  | "tournament_prize"
+  | "achievement";
+
 export interface OracleTokenOption {
   mint: string;
   symbol: string;
@@ -359,6 +392,15 @@ export interface OracleRound {
   winningTokenMint?: string;
   winningTokenSymbol?: string;
   winningPriceChange?: number;
+  marketType?: OracleMarketType;
+  marketConfig?: OracleMarketConfig;
+  autoResolve?: boolean;
+  resolutionSource?: string;
+  createdBy?: string;
+  entryCostOp?: number;
+  isTournamentMarket?: boolean;
+  tournamentId?: number;
+  winningOutcomeId?: string;
 }
 
 export interface OraclePrediction {
@@ -368,12 +410,70 @@ export interface OraclePrediction {
   tokenMint: string;
   isWinner: boolean;
   createdAt: string;
+  outcomeId?: string;
+  opWagered?: number;
+  opPayout?: number;
 }
 
 export interface OracleSettlementData {
   endPrices: Record<string, number>;
   priceChanges: Record<string, number>;
   settledAt: string;
+}
+
+export interface OracleUser {
+  wallet: string;
+  opBalance: number;
+  totalOpEarned: number;
+  totalOpSpent: number;
+  firstPredictionBonus: boolean;
+  lastDailyClaim?: string;
+  currentStreak: number;
+  bestStreak: number;
+  reputationScore: number;
+  reputationTier: OracleReputationTier;
+  totalMarketsEntered: number;
+  totalMarketsWon: number;
+  achievements: Record<string, { unlockedAt: string; opAwarded: number }>;
+  createdAt: string;
+}
+
+export interface OracleOPLedgerEntry {
+  id: number;
+  wallet: string;
+  amount: number;
+  balanceAfter: number;
+  txType: OracleOPTxType;
+  referenceId?: number;
+  createdAt: string;
+}
+
+export type OracleTournamentStatus = "upcoming" | "active" | "ended" | "settled";
+
+export interface OracleTournament {
+  id: number;
+  name: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  status: OracleTournamentStatus;
+  prizePoolLamports: number;
+  prizeDistribution: Array<{ rank: number; pct: number }>;
+  scoringType: "op_earned" | "win_count" | "accuracy";
+  maxParticipants?: number;
+  participantCount?: number;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface OracleTournamentEntry {
+  tournamentId: number;
+  wallet: string;
+  score: number;
+  marketsEntered: number;
+  marketsWon: number;
+  finalRank?: number;
+  prizeLamports?: number;
 }
 
 // Market Feed Types
