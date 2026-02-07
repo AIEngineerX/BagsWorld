@@ -127,28 +127,34 @@ export async function GET(request: Request) {
 
     console.log(`[top-earners] Checking ${knownAgents.length} Moltbook agents`);
 
-    // Step 2: Bulk resolve Moltbook usernames → wallets
-    const bulkItems = knownAgents.map((a) => ({
-      provider: "moltbook",
-      username: a.username,
-    }));
+    // Step 2: Resolve Moltbook usernames → wallets individually
+    // Using individual lookups with allSettled so agents without Bags wallets are skipped
+    const lookupResults = await Promise.allSettled(
+      knownAgents.map((a) => api.getWalletByUsername("moltbook", a.username))
+    );
 
-    let walletResults: Array<{
+    const walletResults: Array<{
       wallet: string;
       provider: string;
       username: string;
       platformData?: { avatarUrl?: string; displayName?: string };
     }> = [];
 
-    try {
-      walletResults = await api.bulkWalletLookup(bulkItems);
-    } catch (err) {
-      console.error("[top-earners] Bulk wallet lookup failed:", err);
-      return NextResponse.json({
-        success: false,
-        error: "Failed to resolve agent wallets",
-      });
+    for (let i = 0; i < knownAgents.length; i++) {
+      const result = lookupResults[i];
+      if (result.status === "fulfilled" && result.value?.wallet) {
+        walletResults.push({
+          wallet: result.value.wallet,
+          provider: "moltbook",
+          username: knownAgents[i].username,
+          platformData: result.value.platformData,
+        });
+      }
     }
+
+    console.log(
+      `[top-earners] Resolved ${walletResults.length}/${knownAgents.length} agents to wallets`
+    );
 
     if (walletResults.length === 0) {
       const response = {
@@ -156,6 +162,8 @@ export async function GET(request: Request) {
         topEarners: [] as TopEarner[],
         lastUpdated: new Date().toISOString(),
       };
+      cachedResponse = response;
+      cacheTime = Date.now();
       return NextResponse.json(response);
     }
 
