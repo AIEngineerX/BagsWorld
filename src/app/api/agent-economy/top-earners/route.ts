@@ -48,13 +48,15 @@ async function getKnownMoltbookAgents(): Promise<
     agents.push({ username, displayName });
   }
 
-  // 1. Discover agents dynamically from Moltbook feed
+  // 1. Discover agents dynamically from Moltbook feed (10s timeout)
   const moltbook = getMoltbookOrNull();
   if (moltbook) {
     try {
-      const [hotPosts, newPosts] = await Promise.all([
-        moltbook.getFeed("hot", 100),
-        moltbook.getFeed("new", 100),
+      const [hotPosts, newPosts] = await Promise.race([
+        Promise.all([moltbook.getFeed("hot", 100), moltbook.getFeed("new", 100)]),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Moltbook feed timeout")), 10000)
+        ),
       ]);
       for (const post of [...hotPosts, ...newPosts]) {
         if (post.author) {
@@ -128,9 +130,15 @@ export async function GET(request: Request) {
     console.log(`[top-earners] Checking ${knownAgents.length} Moltbook agents`);
 
     // Step 2: Resolve Moltbook usernames → wallets individually
-    // Using individual lookups with allSettled so agents without Bags wallets are skipped
+    // Using individual lookups with allSettled so agents without Bags wallets are skipped.
+    // Each lookup has a 5s timeout to avoid retries stalling the whole endpoint.
     const lookupResults = await Promise.allSettled(
-      knownAgents.map((a) => api.getWalletByUsername("moltbook", a.username))
+      knownAgents.map((a) => {
+        return Promise.race([
+          api.getWalletByUsername("moltbook", a.username),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+        ]);
+      })
     );
 
     const walletResults: Array<{
@@ -185,9 +193,12 @@ export async function GET(request: Request) {
         }
       }
 
-      // Also check claimable positions for tokens not in DB
+      // Also check claimable positions for tokens not in DB (5s timeout)
       try {
-        const positions = await api.getClaimablePositions(wr.wallet);
+        const positions = await Promise.race([
+          api.getClaimablePositions(wr.wallet),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+        ]);
         for (const pos of positions) {
           if (!tokenMap.has(pos.baseMint)) {
             tokenMap.set(pos.baseMint, {
