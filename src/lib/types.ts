@@ -269,7 +269,9 @@ export type GameEventType =
   | "price_pump"
   | "price_dump"
   | "milestone"
-  | "whale_alert";
+  | "whale_alert"
+  | "platform_launch"
+  | "platform_trending";
 
 export interface GameEvent {
   id: string;
@@ -284,6 +286,7 @@ export interface GameEvent {
     symbol?: string;
     platform?: "bags" | "pump";
     mint?: string;
+    source?: "bagsworld" | "platform";
   };
 }
 
@@ -378,6 +381,7 @@ export interface MarketEvent {
   amount?: number;
   change?: number;
   marketCap?: number;
+  source?: "bagsworld" | "platform";
 }
 
 export interface MarketSummary {

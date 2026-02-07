@@ -619,6 +619,62 @@ class BagsApiClient {
     };
   }
 
+  // Platform-wide Discovery Endpoints
+
+  async getTrendingTokens(limit: number = 10): Promise<
+    Array<{
+      mint: string;
+      name: string;
+      symbol: string;
+      imageUrl?: string;
+      marketCap?: number;
+      volume24h?: number;
+      change24h?: number;
+      lifetimeFees?: number;
+      createdAt?: number;
+    }>
+  > {
+    const params = new URLSearchParams({ limit: limit.toString() });
+    const data = await this.fetch<{ tokens: Array<Record<string, unknown>> }>(
+      `/token-launch/trending?${params}`
+    );
+    return (data.tokens ?? []) as Array<{
+      mint: string;
+      name: string;
+      symbol: string;
+      imageUrl?: string;
+      marketCap?: number;
+      volume24h?: number;
+      change24h?: number;
+      lifetimeFees?: number;
+      createdAt?: number;
+    }>;
+  }
+
+  async getFeeLeaderboard(limit: number = 10): Promise<
+    Array<{
+      wallet: string;
+      username?: string;
+      provider?: string;
+      lifetimeEarnings: number;
+      earnings24h?: number;
+      tokenCount?: number;
+    }>
+  > {
+    const params = new URLSearchParams({ limit: limit.toString() });
+    const data = await this.fetch<{ earners: Array<Record<string, unknown>> }>(
+      `/fee-share/leaderboard?${params}`
+    );
+    return (data.earners ?? []) as Array<{
+      wallet: string;
+      username?: string;
+      provider?: string;
+      lifetimeEarnings: number;
+      earnings24h?: number;
+      tokenCount?: number;
+    }>;
+  }
+
   // Partner Fee Claiming
   async generatePartnerClaimTx(
     partnerKey: string,
