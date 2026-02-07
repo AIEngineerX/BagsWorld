@@ -157,7 +157,12 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
     }
   };
 
+  const stopPropagation = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
     if (e.key === "Enter") {
       lookupAgent();
     }
@@ -303,6 +308,7 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                   value={moltbookUsername}
                   onChange={(e) => setMoltbookUsername(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  onKeyUp={stopPropagation}
                   placeholder="e.g. ChadGhost"
                   className="w-full bg-amber-950/50 border border-amber-700/50 rounded-lg px-3 py-2 text-amber-100 placeholder-amber-600 focus:outline-none focus:border-amber-500 text-sm"
                 />
