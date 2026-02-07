@@ -146,6 +146,21 @@ const localStorageMock = {
 };
 Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
+// Polyfill Response.json static method for NextResponse.json() in API route tests
+// jsdom provides Response but lacks the static .json() factory method
+if (typeof Response !== "undefined" && typeof Response.json !== "function") {
+  Response.json = function (data, init = {}) {
+    const body = JSON.stringify(data);
+    return new Response(body, {
+      ...init,
+      headers: {
+        "content-type": "application/json",
+        ...(init.headers || {}),
+      },
+    });
+  };
+}
+
 // Mock fetch for API tests
 global.fetch = jest.fn();
 
