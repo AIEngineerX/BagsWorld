@@ -322,14 +322,15 @@ export class WorldScene extends Phaser.Scene {
     // Setup keyboard input
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
+      // enableCapture = false so WASD/E/Shift keys still reach <input> elements
       this.wasdKeys = {
-        W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-        A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-        S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-        D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-        E: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+        W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W, false),
+        A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A, false),
+        S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S, false),
+        D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D, false),
+        E: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E, false),
       };
-      this.sprintKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+      this.sprintKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT, false);
     }
 
     // Create "Press E to talk" prompt (hidden initially)
@@ -609,12 +610,17 @@ export class WorldScene extends Phaser.Scene {
   private updateLocalPlayer(): void {
     if (!this.localPlayer || !this.playerEnabled) return;
 
-    // Get input state
-    const left = this.cursors?.left.isDown || this.wasdKeys?.A.isDown || false;
-    const right = this.cursors?.right.isDown || this.wasdKeys?.D.isDown || false;
-    const up = this.cursors?.up.isDown || this.wasdKeys?.W.isDown || false;
-    const down = this.cursors?.down.isDown || this.wasdKeys?.S.isDown || false;
-    const interact = this.wasdKeys?.E ? Phaser.Input.Keyboard.JustDown(this.wasdKeys.E) : false;
+    // Skip WASD movement when a text input or textarea is focused (chat boxes, modals, etc.)
+    const activeTag = document.activeElement?.tagName;
+    const isTyping = activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT";
+
+    // Get input state — arrow keys always work, WASD only when not typing
+    const left = this.cursors?.left.isDown || (!isTyping && this.wasdKeys?.A.isDown) || false;
+    const right = this.cursors?.right.isDown || (!isTyping && this.wasdKeys?.D.isDown) || false;
+    const up = this.cursors?.up.isDown || (!isTyping && this.wasdKeys?.W.isDown) || false;
+    const down = this.cursors?.down.isDown || (!isTyping && this.wasdKeys?.S.isDown) || false;
+    const interact =
+      !isTyping && this.wasdKeys?.E ? Phaser.Input.Keyboard.JustDown(this.wasdKeys.E) : false;
     const sprinting = this.sprintKey?.isDown || false;
 
     // Apply acceleration based on input (natural walking feel)
