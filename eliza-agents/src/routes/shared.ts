@@ -370,11 +370,22 @@ export async function dispatchAction(
   }
   const state = createMockState();
 
-  // Run evaluators that aren't covered by the enrichment pipeline, in parallel
+  // Run evaluators that aren't covered by the enrichment pipeline, in parallel.
+  // Each evaluator is individually guarded so one failure doesn't block the others.
+  const noMatch = { score: 0, reason: 'evaluator failed' };
   const [worldResult, creatorResult, oracleResult] = await Promise.all([
-    worldStatusEvaluator.evaluate(runtime, memory, state),
-    creatorQueryEvaluator.evaluate(runtime, memory, state),
-    oracleQueryEvaluator.evaluate(runtime, memory, state),
+    worldStatusEvaluator.evaluate(runtime, memory, state).catch((err: Error) => {
+      console.warn('[shared] worldStatusEvaluator failed:', err.message);
+      return noMatch;
+    }),
+    creatorQueryEvaluator.evaluate(runtime, memory, state).catch((err: Error) => {
+      console.warn('[shared] creatorQueryEvaluator failed:', err.message);
+      return noMatch;
+    }),
+    oracleQueryEvaluator.evaluate(runtime, memory, state).catch((err: Error) => {
+      console.warn('[shared] oracleQueryEvaluator failed:', err.message);
+      return noMatch;
+    }),
   ]);
 
   // Build candidate list: { action, score, priority (lower = more important) }
@@ -391,12 +402,16 @@ export async function dispatchAction(
   // Oracle: pick the most specific action that validates
   if (oracleResult.score >= ACTION_DISPATCH_THRESHOLD) {
     for (const oracleAction of ORACLE_ACTIONS_BY_PRIORITY) {
-      if (oracleAction.validate) {
-        const valid = await oracleAction.validate(runtime, memory, state);
-        if (valid) {
-          candidates.push({ action: oracleAction, score: oracleResult.score, priority: 5 });
-          break; // Only dispatch the most specific matching oracle action
+      try {
+        if (oracleAction.validate) {
+          const valid = await oracleAction.validate(runtime, memory, state);
+          if (valid) {
+            candidates.push({ action: oracleAction, score: oracleResult.score, priority: 5 });
+            break;
+          }
         }
+      } catch (err) {
+        console.warn(`[shared] Oracle action ${oracleAction.name} validate failed:`, err instanceof Error ? err.message : err);
       }
     }
   }
@@ -405,18 +420,26 @@ export async function dispatchAction(
   // shillToken is Finn-specific
   const characterName = character.name.toLowerCase();
 
-  if (claimFeesReminderAction.validate) {
-    const valid = await claimFeesReminderAction.validate(runtime, memory, state);
-    if (valid) {
-      candidates.push({ action: claimFeesReminderAction, score: 0.8, priority: 3 });
+  try {
+    if (claimFeesReminderAction.validate) {
+      const valid = await claimFeesReminderAction.validate(runtime, memory, state);
+      if (valid) {
+        candidates.push({ action: claimFeesReminderAction, score: 0.8, priority: 3 });
+      }
     }
+  } catch (err) {
+    console.warn('[shared] claimFeesReminder validate failed:', err instanceof Error ? err.message : err);
   }
 
-  if (characterName === 'finn' && shillTokenAction.validate) {
-    const valid = await shillTokenAction.validate(runtime, memory, state);
-    if (valid) {
-      candidates.push({ action: shillTokenAction, score: 0.8, priority: 3 });
+  try {
+    if (characterName === 'finn' && shillTokenAction.validate) {
+      const valid = await shillTokenAction.validate(runtime, memory, state);
+      if (valid) {
+        candidates.push({ action: shillTokenAction, score: 0.8, priority: 3 });
+      }
     }
+  } catch (err) {
+    console.warn('[shared] shillToken validate failed:', err instanceof Error ? err.message : err);
   }
 
   if (candidates.length === 0) return null;
@@ -426,26 +449,30 @@ export async function dispatchAction(
 
   // Try each candidate until one validates and executes successfully
   for (const candidate of candidates) {
-    // Validate if we haven't already (evaluator-derived actions need explicit validate)
-    if (candidate.action.validate) {
-      const valid = await candidate.action.validate(runtime, memory, state);
-      if (!valid) continue;
-    }
+    try {
+      // Validate if we haven't already (evaluator-derived actions need explicit validate)
+      if (candidate.action.validate) {
+        const valid = await candidate.action.validate(runtime, memory, state);
+        if (!valid) continue;
+      }
 
-    const result = await candidate.action.handler(runtime, memory, state);
-    if (!result) continue;
+      const result = await candidate.action.handler(runtime, memory, state);
+      if (!result) continue;
 
-    const actionResult = result as ActionResult;
-    if (actionResult.success && actionResult.text) {
-      console.log(`[shared] Action dispatched: ${candidate.action.name} (score: ${candidate.score.toFixed(2)})`);
-      return actionResult.text;
-    }
+      const actionResult = result as ActionResult;
+      if (actionResult.success && actionResult.text) {
+        console.log(`[shared] Action dispatched: ${candidate.action.name} (score: ${candidate.score.toFixed(2)})`);
+        return actionResult.text;
+      }
 
-    // Action returned but wasn't successful — still include its text if it has useful info
-    // (e.g., "connect your wallet to enter a prediction" is helpful context)
-    if (actionResult.text) {
-      console.log(`[shared] Action ${candidate.action.name} returned non-success with message`);
-      return actionResult.text;
+      // Action returned but wasn't successful — still include its text if it has useful info
+      // (e.g., "connect your wallet to enter a prediction" is helpful context)
+      if (actionResult.text) {
+        console.log(`[shared] Action ${candidate.action.name} returned non-success with message`);
+        return actionResult.text;
+      }
+    } catch (err) {
+      console.warn(`[shared] Action ${candidate.action.name} failed:`, err instanceof Error ? err.message : err);
     }
   }
 
