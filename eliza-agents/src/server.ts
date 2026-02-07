@@ -17,6 +17,9 @@ import { cleanupCache as cleanupApiCache } from "./services/BagsApiService.js";
 import { getWorldSyncService } from "./services/WorldSyncService.js";
 import { getAgentTickService } from "./services/AgentTickService.js";
 import { getLLMService } from "./services/LLMService.js";
+import { getEmbeddingService } from "./services/EmbeddingService.js";
+import { getMemoryService } from "./services/MemoryService.js";
+import { getRelationshipService } from "./services/RelationshipService.js";
 import type { Character } from "./types/elizaos.js";
 import type { Server } from "http";
 
@@ -59,6 +62,17 @@ if (DATABASE_URL) {
   sql = neon(DATABASE_URL);
   setDatabase(sql);
   setLaunchWizardDatabase(sql);
+
+  // Initialize Week 2 services: Embedding, Memory, Relationship
+  const embeddingService = getEmbeddingService();
+  console.log(`[EmbeddingService] Initialized (configured: ${embeddingService.isConfigured()})`);
+
+  const memoryService = getMemoryService(sql);
+  console.log(`[MemoryService] Initialized`);
+
+  const relationshipService = getRelationshipService(sql);
+  console.log(`[RelationshipService] Initialized`);
+
   console.log("[Database] Connected to Neon");
 } else {
   console.warn("[Database] No DATABASE_URL - running without persistence");
@@ -137,6 +151,66 @@ app.get("/health", async (req, res) => {
     database: dbStatus,
     llm: llmConfigured ? "configured" : "not configured",
     agents: getCharacterIds().length,
+  });
+});
+
+// Memory & Relationship health/stats endpoint
+app.get("/api/memory/stats", async (req, res) => {
+  if (!sql) {
+    res.json({ status: "not_configured", memory: null, relationships: null });
+    return;
+  }
+
+  const [memoryRows, relationshipRows] = await Promise.all([
+    sql`
+      SELECT agent_id, COUNT(*) as count
+      FROM agent_memories
+      GROUP BY agent_id
+      ORDER BY count DESC
+    ` as unknown as Promise<Array<{ agent_id: string; count: string }>>,
+    sql`
+      SELECT
+        COUNT(*) as total,
+        COUNT(CASE WHEN target_type = 'user' THEN 1 END) as user_count,
+        COUNT(CASE WHEN target_type = 'agent' THEN 1 END) as agent_count,
+        AVG(familiarity) as avg_familiarity,
+        AVG(trust) as avg_trust
+      FROM agent_relationships
+    ` as unknown as Promise<
+      Array<{
+        total: string;
+        user_count: string;
+        agent_count: string;
+        avg_familiarity: string;
+        avg_trust: string;
+      }>
+    >,
+  ]);
+
+  const agentMemoryCounts: Record<string, number> = {};
+  let totalMemories = 0;
+  for (const row of memoryRows) {
+    const count = parseInt(row.count, 10);
+    agentMemoryCounts[row.agent_id] = count;
+    totalMemories += count;
+  }
+
+  const relStats = relationshipRows[0];
+
+  res.json({
+    status: "ok",
+    memory: {
+      totalMemories,
+      agentCount: memoryRows.length,
+      perAgent: agentMemoryCounts,
+    },
+    relationships: {
+      total: parseInt(relStats?.total || "0", 10),
+      userRelationships: parseInt(relStats?.user_count || "0", 10),
+      agentRelationships: parseInt(relStats?.agent_count || "0", 10),
+      avgFamiliarity: parseFloat(relStats?.avg_familiarity || "0"),
+      avgTrust: parseFloat(relStats?.avg_trust || "0"),
+    },
   });
 });
 
@@ -219,7 +293,97 @@ async function initializeDatabase(): Promise<void> {
       ON launch_wizard_sessions(updated_at)
     `;
 
-    console.log("[Database] Schema initialized");
+    // =========================================================================
+    // Memory & Relationship Tables (Phase 1 - Memory & RAG)
+    // =========================================================================
+
+    // Enable pgvector extension for semantic similarity search
+    await sql`CREATE EXTENSION IF NOT EXISTS vector`;
+
+    // Agent memories - stores conversation fragments, facts, reflections, and knowledge
+    // with vector embeddings for semantic retrieval
+    await sql`
+      CREATE TABLE IF NOT EXISTS agent_memories (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        agent_id VARCHAR(50) NOT NULL,
+        room_id VARCHAR(255),
+        user_id VARCHAR(255),
+        content TEXT NOT NULL,
+        embedding vector(1536),
+        memory_type VARCHAR(30) NOT NULL DEFAULT 'message',
+        importance REAL NOT NULL DEFAULT 0.5,
+        emotional_valence REAL DEFAULT 0.0,
+        metadata JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      )
+    `;
+
+    // Lookup indexes for agent_memories
+    // Composite indexes cover single-column agent_id queries via leading column
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_memories_agent_type
+      ON agent_memories(agent_id, memory_type)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_memories_agent_room
+      ON agent_memories(agent_id, room_id)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_memories_agent_user
+      ON agent_memories(agent_id, user_id)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_memories_created
+      ON agent_memories(created_at DESC)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_memories_importance
+      ON agent_memories(agent_id, importance DESC)
+    `;
+
+    // HNSW index for fast approximate nearest-neighbor vector search (cosine similarity)
+    // m=16 connections per node, ef_construction=64 for build quality
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_memories_embedding
+      ON agent_memories USING hnsw (embedding vector_cosine_ops)
+      WITH (m = 16, ef_construction = 64)
+    `;
+
+    // Agent relationships - tracks how each agent perceives users and other agents
+    // trust/familiarity/sentiment evolve over interactions
+    await sql`
+      CREATE TABLE IF NOT EXISTS agent_relationships (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        agent_id VARCHAR(50) NOT NULL,
+        target_id VARCHAR(255) NOT NULL,
+        target_type VARCHAR(30) NOT NULL DEFAULT 'user',
+        trust REAL NOT NULL DEFAULT 0.5,
+        familiarity REAL NOT NULL DEFAULT 0.0,
+        sentiment REAL NOT NULL DEFAULT 0.0,
+        respect REAL NOT NULL DEFAULT 0.5,
+        interaction_count INTEGER NOT NULL DEFAULT 0,
+        last_topics TEXT[] DEFAULT '{}',
+        last_interaction TIMESTAMP WITH TIME ZONE,
+        notes TEXT DEFAULT '',
+        metadata JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        UNIQUE(agent_id, target_id)
+      )
+    `;
+
+    // Lookup indexes for agent_relationships
+    // Composite index covers single-column agent_id queries via leading column
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_relationships_pair
+      ON agent_relationships(agent_id, target_id)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_relationships_updated
+      ON agent_relationships(updated_at DESC)
+    `;
+
+    console.log("[Database] Schema initialized (with pgvector memory tables)");
   } catch (err: any) {
     console.error("[Database] Failed to initialize schema:", err.message);
     console.warn("[Database] Server will continue without database persistence");
@@ -297,6 +461,57 @@ async function initializeAutonomousServices(): Promise<void> {
     }
   }, CACHE_CLEANUP_INTERVAL);
   console.log("[BagsApi] Cache cleanup timer started (every 5 minutes)");
+
+  // =========================================================================
+  // Memory & Relationship Lifecycle Timers
+  // =========================================================================
+
+  // Memory pruning: keep storage bounded by removing old low-importance memories
+  const MEMORY_PRUNE_INTERVAL = 60 * 60 * 1000; // 1 hour
+  setInterval(async () => {
+    const memoryService = getMemoryService();
+    if (!memoryService) return;
+
+    const agentIds = getCharacterIds();
+    let totalPruned = 0;
+
+    for (const agentId of agentIds) {
+      const pruned = await memoryService.pruneMemories(agentId, 500).catch((err: Error) => {
+        console.warn(`[MemoryLifecycle] Prune failed for ${agentId}:`, err.message);
+        return 0;
+      });
+      totalPruned += pruned;
+    }
+
+    if (totalPruned > 0) {
+      console.log(
+        `[MemoryLifecycle] Pruned ${totalPruned} low-importance memories across ${agentIds.length} agents`
+      );
+    }
+  }, MEMORY_PRUNE_INTERVAL);
+  console.log("[MemoryLifecycle] Memory pruning timer started (hourly, keep 500/agent)");
+
+  // Relationship decay: reduce familiarity for inactive relationships
+  const RELATIONSHIP_DECAY_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+  setInterval(async () => {
+    const relationshipService = getRelationshipService();
+    if (!relationshipService) return;
+
+    const decayed = await relationshipService
+      .decayInactiveRelationships(
+        7 * 24 * 60 * 60 * 1000, // 7 days without interaction
+        0.05 // Lose 0.05 familiarity per cycle
+      )
+      .catch((err: Error) => {
+        console.warn("[RelationshipLifecycle] Decay failed:", err.message);
+        return 0;
+      });
+
+    if (decayed > 0) {
+      console.log(`[RelationshipLifecycle] Decayed familiarity for ${decayed} inactive relationships`);
+    }
+  }, RELATIONSHIP_DECAY_INTERVAL);
+  console.log("[RelationshipLifecycle] Relationship decay timer started (every 6h, 7-day threshold)");
 }
 
 // Initialize WorldSync WebSocket server and AgentTick loop
@@ -332,7 +547,7 @@ async function initializeWorldSyncAndTick(server: Server): Promise<void> {
     console.log("[AgentTick] Running without LLM (rules-based only)");
   }
 
-  // Register all 16 agents with the tick service
+  // Register all 17 agents with the tick service
   const agentIds = getCharacterIds();
   for (const agentId of agentIds) {
     tickService.registerAgent(agentId);
@@ -390,6 +605,7 @@ async function main(): Promise<void> {
     console.log(`  POST   /api/autonomous/trigger/:task - Manually trigger a task`);
     console.log(`  GET    /api/coordination/context    - Get agent coordination context`);
     console.log(`  GET    /api/agent-tick/stats        - Get tick service stats`);
+    console.log(`  GET    /api/memory/stats            - Memory & relationship stats`);
     console.log(`\nWebSocket:`);
     console.log(`  WS     ws://${HOST}:${PORT}/ws      - World sync (Phaser game)`);
     console.log(`\nLaunch Wizard (Professor Oak):`);

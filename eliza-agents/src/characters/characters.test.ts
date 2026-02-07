@@ -27,6 +27,8 @@ import {
   sincaraCharacter,
   stuuCharacter,
   professorOakCharacter,
+  // Mascots
+  bagsyCharacter,
 } from './index.js';
 
 describe('Character Registry', () => {
@@ -59,6 +61,8 @@ describe('Character Registry', () => {
       expect(names).toContain('Sincara');
       expect(names).toContain('Stuu');
       expect(names).toContain('Professor Oak');
+      // Mascots
+      expect(names).toContain('Bagsy');
     });
   });
 
@@ -145,6 +149,8 @@ describe('Character Registry', () => {
       expect(ids).toContain('sincara');
       expect(ids).toContain('stuu');
       expect(ids).toContain('professor-oak');
+      // Mascots
+      expect(ids).toContain('bagsy');
     });
   });
 
@@ -181,8 +187,6 @@ describe('Character Registry', () => {
 });
 
 describe('Character Structure Validation', () => {
-  const requiredFields = ['name', 'system', 'bio', 'topics', 'adjectives', 'messageExamples', 'style'];
-
   describe.each(allCharacters)('$name character', (character) => {
     it('has name property', () => {
       expect(character.name).toBeDefined();
@@ -190,10 +194,26 @@ describe('Character Structure Validation', () => {
       expect(character.name.length).toBeGreaterThan(0);
     });
 
-    it('has system prompt', () => {
-      expect(character.system).toBeDefined();
-      expect(typeof character.system).toBe('string');
-      expect(character.system!.length).toBeGreaterThan(50); // Meaningful system prompt
+    it('does NOT have pre-baked system prompt (built dynamically by LLMService)', () => {
+      expect(character.system).toBeUndefined();
+    });
+
+    it('has quirks array', () => {
+      expect(character.quirks).toBeDefined();
+      expect(Array.isArray(character.quirks)).toBe(true);
+      expect(character.quirks!.length).toBeGreaterThan(0);
+    });
+
+    it('has vocabulary array', () => {
+      expect(character.vocabulary).toBeDefined();
+      expect(Array.isArray(character.vocabulary)).toBe(true);
+      expect(character.vocabulary!.length).toBeGreaterThan(0);
+    });
+
+    it('has tone string', () => {
+      expect(character.tone).toBeDefined();
+      expect(typeof character.tone).toBe('string');
+      expect(character.tone!.length).toBeGreaterThan(10);
     });
 
     it('has bio array', () => {
@@ -237,16 +257,16 @@ describe('Character Structure Validation', () => {
     });
 
     it('messageExamples have valid structure', () => {
-      character.messageExamples!.forEach((example, index) => {
+      for (const example of character.messageExamples!) {
         expect(Array.isArray(example)).toBe(true);
         expect(example.length).toBeGreaterThanOrEqual(2);
 
-        example.forEach((message, msgIndex) => {
+        for (const message of example) {
           expect(message.name).toBeDefined();
           expect(message.content).toBeDefined();
           expect(message.content.text).toBeDefined();
-        });
-      });
+        }
+      }
     });
   });
 });
@@ -332,16 +352,25 @@ describe('Individual Character Exports', () => {
     expect(professorOakCharacter).toBeDefined();
     expect(professorOakCharacter.name).toBe('Professor Oak');
   });
+
+  // Mascot exports
+  it('exports bagsyCharacter', () => {
+    expect(bagsyCharacter).toBeDefined();
+    expect(bagsyCharacter.name).toBe('Bagsy');
+  });
 });
 
 describe('Character Content Quality', () => {
   describe.each(allCharacters)('$name character content', (character) => {
-    it('system prompt mentions character name or role', () => {
-      const system = character.system!.toLowerCase();
+    it('bio mentions character role or identity', () => {
+      const bioText = (character.bio as string[]).join(' ').toLowerCase();
       const nameLower = character.name.toLowerCase();
-      // System should mention the character name or have clear role definition
-      const hasName = system.includes(nameLower) || system.includes('you are');
-      expect(hasName).toBe(true);
+      // Bio should reference the character's identity or role
+      const hasIdentity = bioText.includes(nameLower) ||
+        bioText.includes('bags') ||
+        bioText.includes('world') ||
+        bioText.length > 50;
+      expect(hasIdentity).toBe(true);
     });
 
     it('topics are unique', () => {

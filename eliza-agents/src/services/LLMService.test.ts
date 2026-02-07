@@ -15,6 +15,9 @@ describe('LLMService', () => {
     bio: ['A test agent for unit testing', 'Very helpful'],
     topics: ['testing', 'debugging', 'code quality'],
     adjectives: ['helpful', 'precise', 'patient'],
+    quirks: ['Always runs tests first', 'Loves clean code'],
+    vocabulary: ['assert', 'verify', 'validate'],
+    tone: 'friendly and methodical',
     style: {
       all: ['Be concise', 'Use technical terms'],
       chat: ['Keep it friendly', 'Ask clarifying questions'],
@@ -80,8 +83,10 @@ describe('LLMService', () => {
       expect(prompt).toContain('A test agent for unit testing');
       expect(prompt).toContain('testing, debugging, code quality');
       expect(prompt).toContain('helpful, precise, patient');
-      expect(prompt).toContain('Be concise');
-      expect(prompt).toContain('Keep it friendly');
+      // Dynamic prompt uses structured fields: tone, quirks, vocabulary
+      expect(prompt).toContain('friendly and methodical');
+      expect(prompt).toContain('Always runs tests first');
+      expect(prompt).toContain('assert, verify, validate');
     });
 
     it('includes world state in context', () => {
@@ -121,6 +126,66 @@ describe('LLMService', () => {
 
       expect(prompt).toContain('OTHER AGENTS');
       expect(prompt).toContain('Other agents: Toly, Finn, Ash');
+    });
+
+    it('includes memory context in prompt', () => {
+      const service = new LLMService();
+      const context: ConversationContext = {
+        messages: [],
+        memoryContext: 'RELEVANT MEMORIES:\n[fact] User likes Solana NFTs\n\nKEY MEMORIES:\n- This user is a developer',
+      };
+
+      const prompt = service.buildSystemPrompt(mockCharacter, context);
+
+      expect(prompt).toContain('RELEVANT MEMORIES');
+      expect(prompt).toContain('User likes Solana NFTs');
+      expect(prompt).toContain('KEY MEMORIES');
+      expect(prompt).toContain('This user is a developer');
+    });
+
+    it('includes relationship context in prompt', () => {
+      const service = new LLMService();
+      const context: ConversationContext = {
+        messages: [],
+        relationshipContext: "You've chatted with this user 5 times before. You're getting to know them.",
+      };
+
+      const prompt = service.buildSystemPrompt(mockCharacter, context);
+
+      expect(prompt).toContain('RELATIONSHIP WITH THIS USER');
+      expect(prompt).toContain('chatted with this user 5 times');
+      expect(prompt).toContain('getting to know them');
+    });
+
+    it('includes both memory and relationship context together', () => {
+      const service = new LLMService();
+      const context: ConversationContext = {
+        messages: [],
+        worldState: 'Health: 90%',
+        memoryContext: 'RELEVANT MEMORIES:\n[fact] User trades frequently',
+        relationshipContext: "This is a long-time friend. You trust them highly.",
+      };
+
+      const prompt = service.buildSystemPrompt(mockCharacter, context);
+
+      expect(prompt).toContain('CURRENT WORLD STATE');
+      expect(prompt).toContain('RELEVANT MEMORIES');
+      expect(prompt).toContain('RELATIONSHIP WITH THIS USER');
+      expect(prompt).toContain('long-time friend');
+    });
+
+    it('omits memory and relationship sections when not provided', () => {
+      const service = new LLMService();
+      const context: ConversationContext = {
+        messages: [],
+        worldState: 'Health: 80%',
+      };
+
+      const prompt = service.buildSystemPrompt(mockCharacter, context);
+
+      expect(prompt).toContain('CURRENT WORLD STATE');
+      expect(prompt).not.toContain('RELEVANT MEMORIES');
+      expect(prompt).not.toContain('RELATIONSHIP WITH THIS USER');
     });
 
     it('handles character with custom system prompt', () => {
@@ -449,6 +514,8 @@ describe('LLMService', () => {
         worldState: 'Health: 75%',
         tokenData: '$BAGS: 1M MC',
         agentContext: 'Toly is online',
+        memoryContext: 'RELEVANT MEMORIES:\n[fact] User is interested in DeFi',
+        relationshipContext: "You've chatted with this user 3 times before.",
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -471,6 +538,10 @@ describe('LLMService', () => {
       expect(callBody.system).toContain('Health: 75%');
       expect(callBody.system).toContain('$BAGS: 1M MC');
       expect(callBody.system).toContain('Toly is online');
+      expect(callBody.system).toContain('RELEVANT MEMORIES');
+      expect(callBody.system).toContain('User is interested in DeFi');
+      expect(callBody.system).toContain('RELATIONSHIP WITH THIS USER');
+      expect(callBody.system).toContain('chatted with this user 3 times');
     });
   });
 

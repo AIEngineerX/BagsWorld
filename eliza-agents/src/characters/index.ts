@@ -2,6 +2,7 @@
 // Imports CharacterDefinition from local definitions and converts to ElizaOS Character type
 
 import type { Character } from '../types/elizaos.js';
+import { getKnowledgeForAgent } from '../knowledge/index.js';
 
 // Import character definitions from local copies (for standalone deployment)
 import {
@@ -26,44 +27,12 @@ import { professorOakCharacter as professorOakDef } from './definitions/professo
 import { bagsyCharacter as bagsyDef } from './definitions/bagsy.character.js';
 
 // Convert CharacterDefinition to ElizaOS Character format
+// NOTE: We deliberately do NOT pre-bake character.system here.
+// LLMService.buildSystemPrompt() dynamically constructs the system prompt
+// from the structured fields below, which enables memory/context injection.
 function toElizaCharacter(def: CharacterDefinition): Character {
-  // Generate username from name (lowercase, hyphens for spaces)
   const username = def.name.toLowerCase().replace(/\s+/g, '-');
 
-  // Build the system prompt from the character definition
-  const systemPrompt = `You are ${def.name}.
-
-PERSONALITY:
-${def.bio.join('\n')}
-
-BACKSTORY AND RELATIONSHIPS:
-${def.lore.join('\n')}
-
-YOUR STYLE:
-- Tone: ${def.style.tone}
-- You are: ${def.style.adjectives.join(', ')}
-- You use words like: ${def.style.vocabulary.slice(0, 15).join(', ')}
-
-QUIRKS:
-${def.quirks.map((q) => `- ${q}`).join('\n')}
-
-EXAMPLE RESPONSES:
-${def.messageExamples
-  .slice(0, 4)
-  .map((convo) => convo.map((m) => `${m.user}: ${m.content}`).join('\n'))
-  .join('\n\n')}
-
-TOPICS YOU KNOW ABOUT:
-${def.topics.join(', ')}
-
-RULES:
-- Keep responses SHORT (1-2 sentences max)
-- Stay in character always
-- Be helpful but never give financial advice directly
-- Use light emoji, don't overdo it
-- Reference BagsWorld features when relevant (animals, weather, buildings)`;
-
-  // Convert messageExamples format: { user, content } -> { name, content: { text } }
   const messageExamples = def.messageExamples.map((convo) =>
     convo.map((msg) => ({
       name: msg.user === 'anon' ? '{{name1}}' : msg.user,
@@ -74,11 +43,14 @@ RULES:
   return {
     name: def.name,
     username,
-    system: systemPrompt,
+    // system is intentionally unset - LLMService builds it dynamically
     bio: def.bio,
     lore: def.lore,
     topics: def.topics,
     adjectives: def.style.adjectives,
+    quirks: def.quirks,
+    vocabulary: def.style.vocabulary,
+    tone: def.style.tone,
     messageExamples,
     postExamples: def.postExamples,
     style: {
@@ -87,10 +59,10 @@ RULES:
         ...def.style.adjectives.map((adj) => `Be ${adj}`),
       ],
       chat: [
-        `Use vocabulary like: ${def.style.vocabulary.slice(0, 8).join(', ')}`,
-        ...def.quirks.slice(0, 3),
+        `Use vocabulary like: ${def.style.vocabulary.join(', ')}`,
+        ...def.quirks,
       ],
-      post: def.postExamples.slice(0, 3),
+      post: def.postExamples.slice(0, 5),
     },
     settings: {
       model: 'claude-sonnet-4-20250514',
@@ -173,6 +145,14 @@ export const characters: Record<string, Character> = {
   // Mascots
   'bagsy': bagsyCharacter,
 };
+
+// Inject knowledge into each character (primary IDs only, not aliases)
+for (const id of getCharacterIds()) {
+  const char = characters[id];
+  if (char) {
+    char.knowledge = getKnowledgeForAgent(id);
+  }
+}
 
 export function getCharacter(id: string): Character | undefined {
   const normalizedId = id.toLowerCase().replace(/[\s_]/g, '-');

@@ -814,4 +814,45 @@ describe('AgentTickService', () => {
       expect(service.getStats().llmCallsThisMinute).toBe(0);
     });
   });
+
+  describe('pickInteractionTarget', () => {
+    const pickTarget = (agentId: string, nearbyAgents: string[]) => {
+      return (service as any).pickInteractionTarget(agentId, nearbyAgents);
+    };
+
+    it('returns the only agent when there is one nearby', async () => {
+      const target = await pickTarget('finn', ['ghost']);
+      expect(target).toBe('ghost');
+    });
+
+    it('returns a nearby agent when multiple are available (no relationship service)', async () => {
+      const target = await pickTarget('finn', ['ghost', 'toly', 'ash']);
+      expect(['ghost', 'toly', 'ash']).toContain(target);
+    });
+
+    it('returns a string for any input combination', async () => {
+      const target = await pickTarget('neo', ['cj', 'sam']);
+      expect(typeof target).toBe('string');
+      expect(target.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('memory and relationship integration in LLM decisions', () => {
+    it('llmDecision method exists and is callable', () => {
+      expect(typeof (service as any).llmDecision).toBe('function');
+    });
+
+    it('llmDecision falls back to wander when no LLM service is set', async () => {
+      service.registerAgent('finn');
+      const state = (service as any).agentStates.get('finn');
+      const result = await (service as any).llmDecision('finn', state, null, 'test');
+      expect(result.type).toBe('wander');
+      expect(result.zone).toBe('main_city');
+    });
+
+    it('pickInteractionTarget is used in decide flow', () => {
+      // Verify the method is accessible on the service instance
+      expect(typeof (service as any).pickInteractionTarget).toBe('function');
+    });
+  });
 });

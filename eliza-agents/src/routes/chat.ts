@@ -9,6 +9,8 @@ import {
   getCharacterIds,
 } from '../characters/index.js';
 import { getLLMService } from '../services/LLMService.js';
+import { getMemoryService } from '../services/MemoryService.js';
+import { getRelationshipService } from '../services/RelationshipService.js';
 import {
   getDatabase,
   getConversationHistory,
@@ -96,7 +98,7 @@ router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
 
     await saveMessage(sessionId, normalizedAgentId, 'user', message);
 
-    const context = await buildConversationContext(character, message);
+    const context = await buildConversationContext(character, message, { sessionId });
     context.messages = conversationHistory;
 
     const llmService = getLLMService();
@@ -111,6 +113,42 @@ router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
     await saveMessage(sessionId, normalizedAgentId, 'assistant', llmResponse.text);
 
     await pruneOldMessages(sessionId, normalizedAgentId);
+
+    // Persist to long-term memory and update relationship (fire-and-forget)
+    const memoryService = getMemoryService();
+    const relationshipService = getRelationshipService();
+
+    if (memoryService || relationshipService) {
+      // Run memory writes and relationship update in parallel, don't block response
+      Promise.all([
+        memoryService
+          ? memoryService.createMemory({
+              agentId: normalizedAgentId,
+              content: `User said: ${message}`,
+              memoryType: 'message',
+              roomId: sessionId,
+              userId: sessionId,
+              importance: 0.4,
+            }).catch((err: Error) => console.warn('[chat] Memory write (user) failed:', err.message))
+          : null,
+        memoryService
+          ? memoryService.createMemory({
+              agentId: normalizedAgentId,
+              content: `${character.name} replied: ${llmResponse.text}`,
+              memoryType: 'message',
+              roomId: sessionId,
+              userId: sessionId,
+              importance: 0.4,
+            }).catch((err: Error) => console.warn('[chat] Memory write (assistant) failed:', err.message))
+          : null,
+        relationshipService
+          ? relationshipService.updateAfterInteraction(normalizedAgentId, sessionId, 'user', {
+              topics: extractTopics(message),
+              sentiment: 0.1, // Default slightly positive (user is engaging)
+            }).catch((err: Error) => console.warn('[chat] Relationship update failed:', err.message))
+          : null,
+      ]).catch(() => {}); // Swallow any remaining errors
+    }
 
     res.json({
       success: true,
@@ -214,5 +252,35 @@ router.get('/sessions/:sessionId/history', async (req: Request, res: Response) =
     });
   }
 });
+
+/**
+ * Extract discussion topics from a user message for relationship tracking.
+ * Returns up to 3 topic keywords detected in the message.
+ */
+const TOPIC_PATTERNS: [RegExp, string][] = [
+  [/\b(solana|sol)\b/i, 'Solana'],
+  [/\b(token|launch|create|mint)\b/i, 'Token Launch'],
+  [/\b(trade|buy|sell|swap|position)\b/i, 'Trading'],
+  [/\b(fee|claim|royalt|revenue)\b/i, 'Fees'],
+  [/\b(nft|collection|art)\b/i, 'NFTs'],
+  [/\b(defi|liquidity|pool|stake)\b/i, 'DeFi'],
+  [/\b(casino|gambl|bet|slot)\b/i, 'Casino'],
+  [/\b(oracle|predict|forecast)\b/i, 'Oracle'],
+  [/\b(arena|fight|battle|combat)\b/i, 'Arena'],
+  [/\b(moltbook|social|post)\b/i, 'Moltbook'],
+  [/\b(wallet|phantom|connect)\b/i, 'Wallet'],
+  [/\b(market|chart|price|volume)\b/i, 'Market Data'],
+];
+
+function extractTopics(message: string): string[] {
+  const topics: string[] = [];
+  for (const [pattern, topic] of TOPIC_PATTERNS) {
+    if (pattern.test(message)) {
+      topics.push(topic);
+      if (topics.length >= 3) break;
+    }
+  }
+  return topics;
+}
 
 export default router;

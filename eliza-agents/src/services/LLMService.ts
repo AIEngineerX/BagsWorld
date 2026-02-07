@@ -13,6 +13,8 @@ export interface ConversationContext {
   agentContext?: string;
   oracleState?: string;
   tradingState?: string;
+  memoryContext?: string;
+  relationshipContext?: string;
 }
 
 export interface LLMResponse {
@@ -84,32 +86,67 @@ export class LLMService extends Service {
   }
 
   buildSystemPrompt(character: Character, context?: ConversationContext): string {
-    const bio = Array.isArray(character.bio) ? character.bio.join('\n') : character.bio;
-    const topics = character.topics?.join(', ') || '';
-    const adjectives = character.adjectives?.join(', ') || '';
+    // If character.system is explicitly set (legacy or external override), use it as the
+    // base prompt and append dynamic context. Otherwise, build the full prompt dynamically
+    // from structured character data - this is the preferred path that enables memory injection.
+    let systemPrompt: string;
 
-    const styleAll = character.style?.all?.join('\n- ') || '';
-    const styleChat = character.style?.chat?.join('\n- ') || '';
+    if (character.system) {
+      systemPrompt = character.system;
+    } else {
+      const bio = Array.isArray(character.bio) ? character.bio.join('\n') : (character.bio || '');
+      const lore = character.lore || [];
+      const topics = character.topics || [];
+      const adjectives = character.adjectives || [];
+      const quirks = character.quirks || [];
+      const vocabulary = character.vocabulary || [];
+      const tone = character.tone || '';
+      const knowledge = character.knowledge || [];
 
-    let systemPrompt = character.system || `You are ${character.name}.
+      systemPrompt = `You are ${character.name}.
 
-IDENTITY:
-${bio}
+PERSONALITY:
+${bio}`;
 
-${topics ? `EXPERTISE: ${topics}` : ''}
+      if (lore.length > 0) {
+        systemPrompt += `\n\nBACKSTORY AND RELATIONSHIPS:\n${lore.join('\n')}`;
+      }
 
-${adjectives ? `PERSONALITY: ${adjectives}` : ''}
+      if (tone || adjectives.length > 0 || vocabulary.length > 0) {
+        systemPrompt += '\n\nYOUR STYLE:';
+        if (tone) systemPrompt += `\n- Tone: ${tone}`;
+        if (adjectives.length > 0) systemPrompt += `\n- You are: ${adjectives.join(', ')}`;
+        if (vocabulary.length > 0) systemPrompt += `\n- You use words like: ${vocabulary.slice(0, 20).join(', ')}`;
+      }
 
-COMMUNICATION STYLE:
-${styleAll ? `- ${styleAll}` : ''}
-${styleChat ? `- ${styleChat}` : ''}
+      if (quirks.length > 0) {
+        systemPrompt += `\n\nQUIRKS:\n${quirks.map(q => `- ${q}`).join('\n')}`;
+      }
 
-RULES:
-- Stay in character at all times
-- Keep responses concise (1-4 sentences unless detail is requested)
-- Use your unique voice and mannerisms
-- Reference your expertise naturally`;
+      if (knowledge.length > 0) {
+        systemPrompt += `\n\nKNOWLEDGE:\n${knowledge.join('\n')}`;
+      }
 
+      if (character.messageExamples && character.messageExamples.length > 0) {
+        const examples = character.messageExamples.slice(0, 4).map(convo =>
+          convo.map(m => `${m.name}: ${m.content.text}`).join('\n')
+        ).join('\n\n');
+        systemPrompt += `\n\nEXAMPLE RESPONSES:\n${examples}`;
+      }
+
+      if (topics.length > 0) {
+        systemPrompt += `\n\nTOPICS YOU KNOW ABOUT:\n${topics.join(', ')}`;
+      }
+
+      systemPrompt += `\n\nRULES:
+- Keep responses SHORT (1-2 sentences max)
+- Stay in character always
+- Be helpful but never give financial advice directly
+- Use light emoji, don't overdo it
+- Reference BagsWorld features when relevant (animals, weather, buildings)`;
+    }
+
+    // Append dynamic context sections (applies to both legacy and dynamic prompts)
     if (context?.worldState) {
       systemPrompt += `\n\nCURRENT WORLD STATE:\n${context.worldState}`;
     }
@@ -128,6 +165,14 @@ RULES:
 
     if (context?.tradingState) {
       systemPrompt += `\n\nYOUR TRADING DATA (use this to answer questions about your positions, performance, and strategy):\n${context.tradingState}`;
+    }
+
+    if (context?.memoryContext) {
+      systemPrompt += `\n\n${context.memoryContext}`;
+    }
+
+    if (context?.relationshipContext) {
+      systemPrompt += `\n\nRELATIONSHIP WITH THIS USER:\n${context.relationshipContext}`;
     }
 
     return systemPrompt;

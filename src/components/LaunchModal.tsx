@@ -142,6 +142,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
     setDuplicateWarning(warnings);
   }, [formData.name, formData.symbol]);
 
+  // Notify quest tracker that the launch modal was opened
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("bagsworld-launch-opened"));
+  }, []);
+
   // Listen for pre-fill events from Professor Oak AI Generator
   useEffect(() => {
     const handlePrefill = (e: Event) => {

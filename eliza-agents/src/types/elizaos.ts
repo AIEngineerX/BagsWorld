@@ -25,6 +25,9 @@ export interface Character {
   topics?: string[];
   adjectives?: string[];
   knowledge?: string[];
+  quirks?: string[];
+  vocabulary?: string[];
+  tone?: string;
   messageExamples?: Array<Array<{ name: string; content: { text: string } }>>;
   postExamples?: string[];
   style?: {
