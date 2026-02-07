@@ -14,7 +14,7 @@ interface TopEarnerToken {
   mint: string;
   name: string;
   symbol: string;
-  claimableSol: number;
+  lifetimeFeeSol: number;
 }
 
 interface TopEarner {
@@ -23,7 +23,7 @@ interface TopEarner {
   username: string;
   profilePic?: string;
   wallet: string;
-  totalClaimableSol: number;
+  totalLifetimeFeeSol: number;
   tokenCount: number;
   tokens: TopEarnerToken[];
 }
@@ -267,9 +267,9 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                     </div>
 
                     <div className="bg-amber-950/50 rounded px-3 py-2 mb-3">
-                      <div className="text-amber-500 text-xs">Total Claimable Fees</div>
+                      <div className="text-amber-500 text-xs">Total Lifetime Fees</div>
                       <div className="text-green-400 font-bold text-lg">
-                        {earner.totalClaimableSol.toFixed(4)} SOL
+                        {earner.totalLifetimeFeeSol.toFixed(4)} SOL
                       </div>
                     </div>
 
@@ -282,7 +282,7 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                           >
                             <span className="text-amber-300">${token.symbol}</span>
                             <span className="text-amber-500">
-                              {token.claimableSol.toFixed(4)} SOL
+                              {token.lifetimeFeeSol.toFixed(4)} SOL
                             </span>
                           </div>
                         ))}

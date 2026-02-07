@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { initBagsApi } from "@/lib/bags-api";
-import { isNeonConfigured } from "@/lib/neon";
+import { isNeonConfigured, getTokensByCreator } from "@/lib/neon";
 import { neon } from "@neondatabase/serverless";
 
 interface TopEarnerToken {
   mint: string;
   name: string;
   symbol: string;
-  claimableSol: number;
+  lifetimeFeeSol: number;
 }
 
 interface TopEarner {
@@ -16,7 +16,7 @@ interface TopEarner {
   username: string;
   profilePic?: string;
   wallet: string;
-  totalClaimableSol: number;
+  totalLifetimeFeeSol: number;
   tokenCount: number;
   tokens: TopEarnerToken[];
 }
@@ -133,40 +133,71 @@ export async function GET(request: Request) {
       return NextResponse.json(response);
     }
 
-    // Step 3: Get claimable positions for each wallet
+    // Step 3: Discover tokens per wallet (DB + claimable positions fallback)
     const earners: TopEarner[] = [];
 
-    const positionResults = await Promise.allSettled(
-      walletResults.map((wr) => api.getClaimablePositions(wr.wallet))
-    );
+    for (const wr of walletResults) {
+      // Discover tokens from DB
+      const tokenMap = new Map<string, { mint: string; name: string; symbol: string }>();
 
-    for (let i = 0; i < walletResults.length; i++) {
-      const wr = walletResults[i];
-      const result = positionResults[i];
+      if (isNeonConfigured()) {
+        try {
+          const dbTokens = await getTokensByCreator(wr.wallet);
+          for (const t of dbTokens) {
+            tokenMap.set(t.mint, { mint: t.mint, name: t.name, symbol: t.symbol });
+          }
+        } catch {
+          // DB lookup failed, continue with claimable positions fallback
+        }
+      }
 
-      if (result.status !== "fulfilled" || !result.value?.length) continue;
+      // Also check claimable positions for tokens not in DB
+      try {
+        const positions = await api.getClaimablePositions(wr.wallet);
+        for (const pos of positions) {
+          if (!tokenMap.has(pos.baseMint)) {
+            tokenMap.set(pos.baseMint, {
+              mint: pos.baseMint,
+              name: pos.tokenName || "Unknown",
+              symbol: pos.tokenSymbol || "???",
+            });
+          }
+        }
+      } catch {
+        // Claimable lookup failed, continue with DB tokens only
+      }
 
-      const positions = result.value;
+      if (tokenMap.size === 0) continue;
+
+      // Step 4: Get lifetime fees for each token
+      const mints = Array.from(tokenMap.keys());
+      const feeResults = await Promise.allSettled(
+        mints.map((mint) => api.getTokenLifetimeFees(mint))
+      );
+
       const tokens: TopEarnerToken[] = [];
-      let totalLamports = 0;
+      let totalLifetimeLamports = 0;
 
-      for (const pos of positions) {
-        const lamports = pos.totalClaimableLamportsUserShare || 0;
+      for (let j = 0; j < mints.length; j++) {
+        const mint = mints[j];
+        const feeResult = feeResults[j];
+        const lamports = feeResult.status === "fulfilled" ? feeResult.value : 0;
         if (lamports <= 0) continue;
 
-        totalLamports += lamports;
+        totalLifetimeLamports += lamports;
+        const info = tokenMap.get(mint)!;
         tokens.push({
-          mint: pos.baseMint,
-          name: pos.tokenName || "Unknown",
-          symbol: pos.tokenSymbol || "???",
-          claimableSol: lamports / 1_000_000_000,
+          mint,
+          name: info.name,
+          symbol: info.symbol,
+          lifetimeFeeSol: lamports / 1_000_000_000,
         });
       }
 
-      if (totalLamports <= 0) continue;
+      if (totalLifetimeLamports <= 0) continue;
 
-      // Sort tokens by claimable amount descending
-      tokens.sort((a, b) => b.claimableSol - a.claimableSol);
+      // Sort tokens by lifetime fees descending
+      tokens.sort((a, b) => b.lifetimeFeeSol - a.lifetimeFeeSol);
 
       // Find display name from known agents list
       const knownAgent = knownAgents.find(
@@ -179,17 +210,17 @@ export async function GET(request: Request) {
         username: wr.username,
         profilePic: wr.platformData?.avatarUrl,
         wallet: wr.wallet,
-        totalClaimableSol: totalLamports / 1_000_000_000,
+        totalLifetimeFeeSol: totalLifetimeLamports / 1_000_000_000,
         tokenCount: tokens.length,
         tokens,
       });
     }
 
-    // Sort by total claimable SOL descending
-    earners.sort((a, b) => b.totalClaimableSol - a.totalClaimableSol);
+    // Sort by total lifetime fees descending
+    earners.sort((a, b) => b.totalLifetimeFeeSol - a.totalLifetimeFeeSol);
 
     console.log(
-      `[top-earners] ${walletResults.length} wallets resolved → ${earners.length} with claimable fees`
+      `[top-earners] ${walletResults.length} wallets resolved → ${earners.length} with lifetime fees`
     );
 
     const response = {
