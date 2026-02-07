@@ -103,6 +103,8 @@ export async function POST(request: Request) {
     }
 
     // Try the eliza-agents server first
+    const proxyController = new AbortController();
+    const proxyTimeout = setTimeout(() => proxyController.abort(), 15000);
     try {
       const agentResponse = await fetch(`${AGENTS_API_URL}/api/agents/${character}/chat`, {
         method: "POST",
@@ -114,6 +116,7 @@ export async function POST(request: Request) {
           chatHistory,
           wallet,
         }),
+        signal: proxyController.signal,
       });
 
       if (agentResponse.ok) {
@@ -128,6 +131,8 @@ export async function POST(request: Request) {
       console.warn(`[Chat] Agents server returned ${agentResponse.status}, using fallback`);
     } catch (agentError) {
       console.warn("[Chat] Agents server unavailable, using fallback:", agentError);
+    } finally {
+      clearTimeout(proxyTimeout);
     }
 
     // Fallback to local responses when agents server is unavailable
