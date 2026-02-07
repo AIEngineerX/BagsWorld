@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { DungeonModal } from "@/components/DungeonModal";
 
@@ -10,21 +10,13 @@ beforeEach(() => {
 });
 
 describe("DungeonModal rendering", () => {
-  it("renders header, close button, and iframe", () => {
-    const { container } = render(<DungeonModal onClose={onClose} />);
+  it("renders coming soon teaser with title and description", () => {
+    render(<DungeonModal onClose={onClose} />);
 
-    expect(screen.getByText("[D]")).toBeInTheDocument();
     expect(screen.getByText("BAGSDUNGEON")).toBeInTheDocument();
-
-    const closeButton = screen.getByRole("button");
-    expect(closeButton.textContent).toContain("CLOSE");
-
-    const iframe = container.querySelector("iframe");
-    expect(iframe).toBeInTheDocument();
-    expect(iframe?.getAttribute("src")).toBe("/games/dungeon/?embed=true");
-    expect(iframe?.getAttribute("title")).toBe("BagsDungeon MMORPG");
-    expect(iframe?.getAttribute("allow")).toContain("autoplay");
-    expect(iframe?.getAttribute("allow")).toContain("fullscreen");
+    expect(screen.getByText("COMING SOON")).toBeInTheDocument();
+    expect(screen.getByText(/MMORPG adventure/)).toBeInTheDocument();
+    expect(screen.getByText("RETURN TO BAGSWORLD")).toBeInTheDocument();
   });
 });
 
@@ -37,15 +29,13 @@ describe("DungeonModal close behavior", () => {
 
   it("calls onClose when close button is clicked", () => {
     render(<DungeonModal onClose={onClose} />);
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByTitle("Close (ESC)"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onClose on bagsdungeon-close postMessage", () => {
+  it("calls onClose when return button is clicked", () => {
     render(<DungeonModal onClose={onClose} />);
-    act(() => {
-      window.dispatchEvent(new MessageEvent("message", { data: { type: "bagsdungeon-close" } }));
-    });
+    fireEvent.click(screen.getByText("RETURN TO BAGSWORLD"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -53,16 +43,6 @@ describe("DungeonModal close behavior", () => {
     render(<DungeonModal onClose={onClose} />);
     fireEvent.keyDown(window, { key: "Enter" });
     fireEvent.keyDown(window, { key: "a" });
-    expect(onClose).not.toHaveBeenCalled();
-  });
-
-  it("ignores unrelated postMessages", () => {
-    render(<DungeonModal onClose={onClose} />);
-    act(() => {
-      for (const data of [{ type: "other" }, "string", null, undefined]) {
-        window.dispatchEvent(new MessageEvent("message", { data }));
-      }
-    });
     expect(onClose).not.toHaveBeenCalled();
   });
 });
@@ -73,9 +53,6 @@ describe("DungeonModal cleanup", () => {
     unmount();
 
     fireEvent.keyDown(window, { key: "Escape" });
-    act(() => {
-      window.dispatchEvent(new MessageEvent("message", { data: { type: "bagsdungeon-close" } }));
-    });
     expect(onClose).not.toHaveBeenCalled();
   });
 
