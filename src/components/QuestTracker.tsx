@@ -12,7 +12,7 @@ interface QuestState {
     talk_to_ash: boolean;
     visit_oak: boolean;
     launch_token: boolean;
-    check_terminal: boolean;
+    check_fees: boolean;
   };
 }
 
@@ -22,28 +22,24 @@ const QUEST_STEPS = [
     title: "Talk to Ash",
     description: "Learn how the ecosystem works",
     event: "bagsworld-ash-click",
-    zoneHint: "Park",
   },
   {
     key: "visit_oak" as const,
     title: "Visit Professor Oak",
     description: "Get AI guidance on launching",
     event: "bagsworld-professoroak-click",
-    zoneHint: "Founder's Corner",
   },
   {
     key: "launch_token" as const,
     title: "Launch a Token",
     description: "Open the token launcher",
     event: "bagsworld-launch-opened",
-    zoneHint: "Header or Oak",
   },
   {
-    key: "check_terminal" as const,
-    title: "Check the Terminal",
-    description: "View live market data",
-    event: "bagsworld-terminal-click",
-    zoneHint: "BagsCity",
+    key: "check_fees" as const,
+    title: "Check Your Fees",
+    description: "See how creators earn from trades",
+    event: "bagsworld-claim-click",
   },
 ];
 
@@ -55,7 +51,7 @@ function getDefaultState(): QuestState {
       talk_to_ash: false,
       visit_oak: false,
       launch_token: false,
-      check_terminal: false,
+      check_fees: false,
     },
   };
 }
@@ -95,8 +91,15 @@ export function QuestTracker() {
   const [expanded, setExpanded] = useState(isFirstVisit);
   const [justCompleted, setJustCompleted] = useState<string | null>(null);
   const [allDone, setAllDone] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const mobileCollapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentZone = useGameStore((s) => s.currentZone);
+
+  // Slide-in on mount
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(t);
+  }, []);
 
   // Auto-collapse on mobile after 5s
   useEffect(() => {
@@ -127,7 +130,7 @@ export function QuestTracker() {
             steps: { ...prev.steps, [step.key]: true },
           };
           setJustCompleted(step.key);
-          setTimeout(() => setJustCompleted(null), 600);
+          setTimeout(() => setJustCompleted(null), 1200);
           saveState(next);
 
           // Check if all done
@@ -173,24 +176,22 @@ export function QuestTracker() {
 
   const completedCount = Object.values(state.steps).filter(Boolean).length;
   const progress = completedCount / QUEST_STEPS.length;
-
-  // Find next incomplete step
   const nextStepIndex = QUEST_STEPS.findIndex((s) => !state.steps[s.key]);
 
   // All done celebration
   if (allDone) {
     return (
-      <div className="fixed left-4 bottom-14 sm:left-4 sm:bottom-14 z-[60] w-80 max-w-[calc(100vw-1rem)]">
-        <div className="bg-black/90 backdrop-blur-sm border border-yellow-500/50 p-4 shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse">
-          <p className="font-pixel text-sm text-yellow-400 text-center quest-complete-text">
+      <div className="fixed left-1/2 -translate-x-1/2 bottom-20 sm:bottom-16 z-[60]">
+        <div className="quest-complete-container bg-black/95 backdrop-blur-md border border-yellow-500/60 rounded-lg px-6 py-3 shadow-[0_0_30px_rgba(251,191,36,0.3)]">
+          <p className="font-pixel text-sm text-yellow-400 text-center quest-complete-text tracking-wider">
             QUEST COMPLETE!
           </p>
-          <div className="flex justify-center gap-1 mt-2">
-            {[...Array(6)].map((_, i) => (
+          <div className="flex justify-center gap-1.5 mt-1.5">
+            {[...Array(5)].map((_, i) => (
               <span
                 key={i}
-                className="inline-block text-yellow-400 quest-sparkle"
-                style={{ animationDelay: `${i * 0.15}s` }}
+                className="inline-block text-yellow-400 font-pixel text-[10px] quest-sparkle"
+                style={{ animationDelay: `${i * 0.12}s` }}
               >
                 *
               </span>
@@ -198,22 +199,35 @@ export function QuestTracker() {
           </div>
         </div>
         <style jsx>{`
+          .quest-complete-container {
+            animation: complete-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+          }
           .quest-complete-text {
             text-shadow:
-              0 0 10px rgba(251, 191, 36, 0.5),
-              0 0 20px rgba(251, 191, 36, 0.3);
+              0 0 8px rgba(251, 191, 36, 0.6),
+              0 0 16px rgba(251, 191, 36, 0.3);
           }
           .quest-sparkle {
-            animation: sparkle 0.8s ease-in-out infinite alternate;
+            animation: sparkle 0.6s ease-in-out infinite alternate;
+          }
+          @keyframes complete-pop {
+            0% {
+              transform: scale(0.8);
+              opacity: 0;
+            }
+            100% {
+              transform: scale(1);
+              opacity: 1;
+            }
           }
           @keyframes sparkle {
             0% {
-              opacity: 0.3;
-              transform: scale(0.8);
+              opacity: 0.2;
+              transform: scale(0.6) translateY(2px);
             }
             100% {
               opacity: 1;
-              transform: scale(1.3);
+              transform: scale(1.2) translateY(-2px);
             }
           }
         `}</style>
@@ -221,29 +235,53 @@ export function QuestTracker() {
     );
   }
 
-  // Collapsed pill
+  // Collapsed pill — centered at bottom, small and unobtrusive
   if (!expanded) {
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="fixed left-2 bottom-24 sm:left-4 sm:bottom-14 z-[60] bg-black/90 backdrop-blur-sm border border-bags-green/30 px-3 py-2 shadow-[0_0_15px_rgba(74,222,128,0.1)] hover:border-bags-green/60 transition-all quest-pill"
+        className={`fixed left-1/2 -translate-x-1/2 bottom-12 sm:bottom-11 z-[60] bg-black/80 backdrop-blur-sm border border-bags-green/40 rounded-full px-4 py-1.5 hover:border-bags-green/70 hover:bg-black/90 transition-all duration-300 quest-pill ${mounted ? "quest-slide-up" : "opacity-0 translate-y-4"}`}
       >
-        <span className="font-pixel text-[10px] text-bags-green">
-          [Q] QUEST {completedCount}/{QUEST_STEPS.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-pixel text-[9px] text-bags-green/70">Q</span>
+          <div className="flex gap-0.5">
+            {QUEST_STEPS.map((step) => (
+              <div
+                key={step.key}
+                className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                  state.steps[step.key] ? "bg-bags-green" : "bg-gray-700"
+                }`}
+              />
+            ))}
+          </div>
+          <span className="font-pixel text-[8px] text-gray-500">
+            {completedCount}/{QUEST_STEPS.length}
+          </span>
+        </div>
         <style jsx>{`
           .quest-pill {
-            animation: pill-pulse 2s ease-in-out infinite;
+            animation: pill-glow 3s ease-in-out infinite;
           }
-          @keyframes pill-pulse {
+          .quest-slide-up {
+            animation: slide-up 0.3s ease-out forwards;
+          }
+          @keyframes pill-glow {
             0%,
             100% {
-              box-shadow: 0 0 15px rgba(74, 222, 128, 0.1);
+              box-shadow: 0 0 8px rgba(74, 222, 128, 0.05);
             }
             50% {
-              box-shadow:
-                0 0 15px rgba(74, 222, 128, 0.2),
-                0 0 25px rgba(74, 222, 128, 0.1);
+              box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
+            }
+          }
+          @keyframes slide-up {
+            from {
+              opacity: 0;
+              transform: translateX(-50%) translateY(8px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(-50%) translateY(0);
             }
           }
         `}</style>
@@ -251,24 +289,33 @@ export function QuestTracker() {
     );
   }
 
-  // Expanded panel
+  // Expanded panel — centered bottom, compact card
   return (
-    <div className="fixed left-2 bottom-24 sm:left-4 sm:bottom-14 z-[60] w-[calc(100vw-1rem)] max-w-80">
-      <div className="bg-black/90 backdrop-blur-sm border border-bags-green/30 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-bags-green/20">
-          <span className="font-pixel text-[10px] text-bags-green">[Q] WELCOME QUEST</span>
-          <div className="flex items-center gap-1">
+    <div
+      className={`fixed left-1/2 -translate-x-1/2 bottom-12 sm:bottom-11 z-[60] w-72 sm:w-80 max-w-[calc(100vw-2rem)] ${mounted ? "quest-panel-enter" : "opacity-0 translate-y-4"}`}
+    >
+      <div className="bg-black/95 backdrop-blur-md border border-bags-green/25 rounded-lg shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden">
+        {/* Header — slim */}
+        <div className="flex items-center justify-between px-3 py-1.5 bg-bags-green/5 border-b border-bags-green/15">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded bg-bags-green/20 flex items-center justify-center">
+              <span className="font-pixel text-[8px] text-bags-green">Q</span>
+            </div>
+            <span className="font-pixel text-[9px] text-bags-green/80 tracking-wide">
+              WELCOME QUEST
+            </span>
+          </div>
+          <div className="flex items-center">
             <button
               onClick={handleMinimize}
-              className="font-pixel text-[10px] text-gray-500 hover:text-bags-green px-1 transition-colors"
+              className="font-pixel text-[9px] text-gray-600 hover:text-bags-green p-1 transition-colors"
               aria-label="Minimize"
             >
               [-]
             </button>
             <button
               onClick={handleDismiss}
-              className="font-pixel text-[10px] text-gray-500 hover:text-red-400 px-1 transition-colors"
+              className="font-pixel text-[9px] text-gray-600 hover:text-red-400 p-1 transition-colors"
               aria-label="Close"
             >
               [X]
@@ -277,7 +324,7 @@ export function QuestTracker() {
         </div>
 
         {/* Steps */}
-        <div className="px-3 py-2 space-y-1.5">
+        <div className="px-3 py-2 space-y-0.5">
           {QUEST_STEPS.map((step, i) => {
             const completed = state.steps[step.key];
             const isNext = i === nextStepIndex;
@@ -286,65 +333,150 @@ export function QuestTracker() {
             return (
               <div
                 key={step.key}
-                className={`transition-all duration-300 ${wasJustCompleted ? "scale-105" : ""}`}
+                className={`flex items-center gap-2 py-1 px-1.5 rounded transition-all duration-500 ${
+                  wasJustCompleted
+                    ? "quest-step-complete bg-bags-green/10"
+                    : isNext
+                      ? "bg-white/[0.02]"
+                      : ""
+                }`}
               >
-                <div className="flex items-start gap-2">
-                  <span
-                    className={`font-pixel text-[10px] mt-0.5 transition-all duration-300 ${
-                      completed ? "text-bags-green" : isNext ? "text-white" : "text-gray-600"
-                    } ${wasJustCompleted ? "scale-125" : ""}`}
-                  >
-                    {completed ? "+" : isNext ? ">" : "o"}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={`font-pixel text-[10px] transition-colors duration-300 ${
-                        completed ? "text-bags-green" : isNext ? "text-white" : "text-gray-500"
-                      }`}
-                    >
-                      {step.title}
-                    </p>
-                    {(isNext || completed) && (
-                      <p
-                        className={`font-pixel text-[8px] ${
-                          completed ? "text-bags-green/60" : "text-gray-400"
-                        }`}
-                      >
-                        {step.description}
-                      </p>
-                    )}
-                  </div>
+                {/* Step indicator */}
+                <div
+                  className={`w-4 h-4 rounded-sm flex items-center justify-center shrink-0 transition-all duration-500 ${
+                    completed
+                      ? "bg-bags-green/20 border border-bags-green/50"
+                      : isNext
+                        ? "border border-white/30"
+                        : "border border-gray-800"
+                  } ${wasJustCompleted ? "quest-check-pop" : ""}`}
+                >
+                  {completed ? (
+                    <span className="font-pixel text-[8px] text-bags-green">+</span>
+                  ) : isNext ? (
+                    <span className="font-pixel text-[7px] text-white/50 quest-caret">&gt;</span>
+                  ) : (
+                    <span className="font-pixel text-[7px] text-gray-700">&middot;</span>
+                  )}
                 </div>
+
+                {/* Step text */}
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`font-pixel text-[9px] leading-tight transition-all duration-500 ${
+                      completed
+                        ? "text-bags-green/80"
+                        : isNext
+                          ? "text-white/90"
+                          : "text-gray-600"
+                    } ${wasJustCompleted ? "text-bags-green" : ""}`}
+                  >
+                    {step.title}
+                    {isNext && !completed && (
+                      <span className="text-gray-500 ml-1 text-[7px]">- {step.description}</span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Completed flash */}
+                {wasJustCompleted && (
+                  <span className="font-pixel text-[7px] text-bags-green quest-done-badge">
+                    DONE
+                  </span>
+                )}
               </div>
             );
           })}
         </div>
 
-        {/* Progress bar */}
-        <div className="px-3 pb-2">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-gray-800 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-bags-green to-emerald-400 transition-all duration-500"
-                style={{ width: `${progress * 100}%` }}
-              />
-            </div>
-            <span className="font-pixel text-[8px] text-gray-400">
-              {completedCount}/{QUEST_STEPS.length}
-            </span>
+        {/* Progress bar + skip — combined footer */}
+        <div className="px-3 pb-2 pt-0.5 flex items-center gap-2">
+          <div className="flex-1 h-1 bg-gray-800/80 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-bags-green/80 to-emerald-400 rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${progress * 100}%` }}
+            />
           </div>
-        </div>
-
-        {/* Skip button */}
-        <div className="px-3 pb-2">
+          <span className="font-pixel text-[7px] text-gray-500">
+            {completedCount}/{QUEST_STEPS.length}
+          </span>
           <button
             onClick={handleDismiss}
-            className="w-full font-pixel text-[8px] text-gray-600 hover:text-gray-400 py-1 transition-colors"
+            className="font-pixel text-[7px] text-gray-600 hover:text-gray-400 transition-colors"
           >
             [SKIP]
           </button>
         </div>
       </div>
+
+      <style jsx>{`
+        .quest-panel-enter {
+          animation: panel-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes panel-enter {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(12px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+          }
+        }
+        .quest-step-complete {
+          animation: step-flash 1.2s ease-out forwards;
+        }
+        @keyframes step-flash {
+          0% {
+            background-color: rgba(74, 222, 128, 0.2);
+          }
+          60% {
+            background-color: rgba(74, 222, 128, 0.08);
+          }
+          100% {
+            background-color: transparent;
+          }
+        }
+        .quest-check-pop {
+          animation: check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes check-pop {
+          0% {
+            transform: scale(0.5);
+          }
+          60% {
+            transform: scale(1.3);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
+        .quest-done-badge {
+          animation: badge-in 0.3s ease-out forwards;
+        }
+        @keyframes badge-in {
+          from {
+            opacity: 0;
+            transform: translateX(4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        .quest-caret {
+          animation: caret-blink 1.5s ease-in-out infinite;
+        }
+        @keyframes caret-blink {
+          0%,
+          100% {
+            opacity: 0.5;
+          }
+          50% {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

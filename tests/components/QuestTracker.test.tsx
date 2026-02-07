@@ -69,11 +69,11 @@ describe("QuestTracker", () => {
   describe("initial rendering", () => {
     it("renders expanded on first visit (no localStorage)", () => {
       render(<QuestTracker />);
-      expect(screen.getByText("[Q] WELCOME QUEST")).toBeInTheDocument();
+      expect(screen.getByText("WELCOME QUEST")).toBeInTheDocument();
       expect(screen.getByText("Talk to Ash")).toBeInTheDocument();
       expect(screen.getByText("Visit Professor Oak")).toBeInTheDocument();
       expect(screen.getByText("Launch a Token")).toBeInTheDocument();
-      expect(screen.getByText("Check the Terminal")).toBeInTheDocument();
+      expect(screen.getByText("Check Your Fees")).toBeInTheDocument();
     });
 
     it("shows progress as 0/4 on first visit", () => {
@@ -102,15 +102,15 @@ describe("QuestTracker", () => {
           talk_to_ash: true,
           visit_oak: false,
           launch_token: false,
-          check_terminal: false,
+          check_fees: false,
         },
       });
 
       render(<QuestTracker />);
-      // Collapsed pill should show
-      expect(screen.getByText(/QUEST 1\/4/)).toBeInTheDocument();
+      // Collapsed pill should show progress count
+      expect(screen.getByText("1/4")).toBeInTheDocument();
       // Expanded content should not be visible
-      expect(screen.queryByText("[Q] WELCOME QUEST")).not.toBeInTheDocument();
+      expect(screen.queryByText("WELCOME QUEST")).not.toBeInTheDocument();
     });
 
     it("does not render when dismissed", () => {
@@ -121,7 +121,7 @@ describe("QuestTracker", () => {
           talk_to_ash: false,
           visit_oak: false,
           launch_token: false,
-          check_terminal: false,
+          check_fees: false,
         },
       });
 
@@ -137,7 +137,7 @@ describe("QuestTracker", () => {
           talk_to_ash: true,
           visit_oak: true,
           launch_token: true,
-          check_terminal: true,
+          check_fees: true,
         },
       });
 
@@ -178,11 +178,11 @@ describe("QuestTracker", () => {
       expect(screen.getByText("1/4")).toBeInTheDocument();
     });
 
-    it("completes check_terminal step when event fires", () => {
+    it("completes check_fees step when event fires", () => {
       render(<QuestTracker />);
 
       act(() => {
-        window.dispatchEvent(new CustomEvent("bagsworld-terminal-click"));
+        window.dispatchEvent(new CustomEvent("bagsworld-claim-click"));
       });
 
       expect(screen.getByText("1/4")).toBeInTheDocument();
@@ -193,7 +193,7 @@ describe("QuestTracker", () => {
 
       // Complete step 4 first, then step 1
       act(() => {
-        window.dispatchEvent(new CustomEvent("bagsworld-terminal-click"));
+        window.dispatchEvent(new CustomEvent("bagsworld-claim-click"));
       });
       expect(screen.getByText("1/4")).toBeInTheDocument();
 
@@ -237,7 +237,7 @@ describe("QuestTracker", () => {
         window.dispatchEvent(new CustomEvent("bagsworld-ash-click"));
         window.dispatchEvent(new CustomEvent("bagsworld-professoroak-click"));
         window.dispatchEvent(new CustomEvent("bagsworld-launch-opened"));
-        window.dispatchEvent(new CustomEvent("bagsworld-terminal-click"));
+        window.dispatchEvent(new CustomEvent("bagsworld-claim-click"));
       });
 
       expect(screen.getByText("QUEST COMPLETE!")).toBeInTheDocument();
@@ -250,7 +250,7 @@ describe("QuestTracker", () => {
         window.dispatchEvent(new CustomEvent("bagsworld-ash-click"));
         window.dispatchEvent(new CustomEvent("bagsworld-professoroak-click"));
         window.dispatchEvent(new CustomEvent("bagsworld-launch-opened"));
-        window.dispatchEvent(new CustomEvent("bagsworld-terminal-click"));
+        window.dispatchEvent(new CustomEvent("bagsworld-claim-click"));
       });
 
       const saved = getStoredQuest();
@@ -264,7 +264,7 @@ describe("QuestTracker", () => {
         window.dispatchEvent(new CustomEvent("bagsworld-ash-click"));
         window.dispatchEvent(new CustomEvent("bagsworld-professoroak-click"));
         window.dispatchEvent(new CustomEvent("bagsworld-launch-opened"));
-        window.dispatchEvent(new CustomEvent("bagsworld-terminal-click"));
+        window.dispatchEvent(new CustomEvent("bagsworld-claim-click"));
       });
 
       expect(screen.getByText("QUEST COMPLETE!")).toBeInTheDocument();
@@ -281,13 +281,13 @@ describe("QuestTracker", () => {
   describe("minimize and expand", () => {
     it("minimizes to pill when [-] is clicked", () => {
       render(<QuestTracker />);
-      expect(screen.getByText("[Q] WELCOME QUEST")).toBeInTheDocument();
+      expect(screen.getByText("WELCOME QUEST")).toBeInTheDocument();
 
       fireEvent.click(screen.getByLabelText("Minimize"));
 
-      // Should show collapsed pill
-      expect(screen.getByText(/QUEST 0\/4/)).toBeInTheDocument();
-      expect(screen.queryByText("[Q] WELCOME QUEST")).not.toBeInTheDocument();
+      // Should show collapsed pill with progress count
+      expect(screen.getByText("0/4")).toBeInTheDocument();
+      expect(screen.queryByText("WELCOME QUEST")).not.toBeInTheDocument();
     });
 
     it("expands from pill when clicked", () => {
@@ -295,11 +295,12 @@ describe("QuestTracker", () => {
 
       // Minimize
       fireEvent.click(screen.getByLabelText("Minimize"));
-      expect(screen.queryByText("[Q] WELCOME QUEST")).not.toBeInTheDocument();
+      expect(screen.queryByText("WELCOME QUEST")).not.toBeInTheDocument();
 
-      // Click pill to expand
-      fireEvent.click(screen.getByText(/QUEST 0\/4/));
-      expect(screen.getByText("[Q] WELCOME QUEST")).toBeInTheDocument();
+      // Click pill to expand — pill is the button containing "Q"
+      const pill = screen.getByText("Q").closest("button")!;
+      fireEvent.click(pill);
+      expect(screen.getByText("WELCOME QUEST")).toBeInTheDocument();
     });
   });
 
