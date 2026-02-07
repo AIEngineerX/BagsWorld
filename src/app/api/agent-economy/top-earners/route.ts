@@ -79,209 +79,290 @@ export async function GET(request: Request) {
   const api = initBagsApi(BAGS_API_KEY);
   const now = Date.now();
 
+  // earnerKey → earner data (shared across both pipelines)
+  const earnerMap = new Map<
+    string,
+    {
+      name: string;
+      provider: string;
+      username: string;
+      profilePic?: string;
+      wallet: string;
+      tokens: TopEarnerToken[];
+    }
+  >();
+
+  // Track which mints we've already processed to avoid double-counting
+  const processedMints = new Set<string>();
+
   try {
-    // Step 1: Gather token mints from multiple sources
-    const mintSet = new Set<string>();
-
-    // Always include BagsWorld
-    mintSet.add(BAGSWORLD_MINT);
-
-    // Source A: Neon DB — all tokens launched through BagsWorld (guaranteed Bags.fm tokens)
+    // ====================================================
+    // Pipeline A: BagsWorld DB tokens (known fee_shares)
+    // Fast path — uses DB fee_shares directly, no creator API needed
+    // ====================================================
     const dbTokenMap = new Map<string, { name: string; symbol: string }>();
+
     if (isNeonConfigured()) {
       const globalTokens = await getGlobalTokens();
+
+      // Filter to tokens with Moltbook fee shares
+      const moltbookDbTokens = globalTokens.filter(
+        (t) =>
+          t.mint !== "TEST123" &&
+          t.fee_shares?.some((fs) => fs.provider === "moltbook" && fs.bps > 0)
+      );
+
+      // Populate dbTokenMap for all DB tokens (used by Pipeline B for names)
       for (const t of globalTokens) {
-        mintSet.add(t.mint);
         dbTokenMap.set(t.mint, { name: t.name, symbol: t.symbol });
       }
+
+      if (moltbookDbTokens.length > 0) {
+        // Fetch lifetime fees for DB tokens
+        const dbFeeResults = await Promise.allSettled(
+          moltbookDbTokens.map((t) => api.getTokenLifetimeFees(t.mint))
+        );
+
+        for (let i = 0; i < moltbookDbTokens.length; i++) {
+          const token = moltbookDbTokens[i];
+          const feeResult = dbFeeResults[i];
+          const feesLamports = feeResult.status === "fulfilled" ? feeResult.value : 0;
+
+          processedMints.add(token.mint);
+          if (feesLamports === 0) continue;
+
+          // Cache the fee probe
+          probeCache.set(token.mint, { isBags: true, feesLamports, ts: now });
+
+          for (const share of token.fee_shares || []) {
+            if (share.provider !== "moltbook" || share.bps <= 0) continue;
+
+            const royaltyShare = share.bps / 10000;
+            const earnerToken: TopEarnerToken = {
+              mint: token.mint,
+              name: token.name,
+              symbol: token.symbol,
+              lifetimeFeesSol: (feesLamports * royaltyShare) / 1_000_000_000,
+            };
+
+            const key = `moltbook:${share.username}`;
+            const existing = earnerMap.get(key);
+            if (existing) {
+              existing.tokens.push(earnerToken);
+            } else {
+              earnerMap.set(key, {
+                name: share.username,
+                provider: "moltbook",
+                username: share.username,
+                wallet: token.creator_wallet,
+                tokens: [earnerToken],
+              });
+            }
+          }
+        }
+
+        console.log(
+          `[top-earners] Pipeline A: ${moltbookDbTokens.length} DB tokens → ${earnerMap.size} Moltbook earners`
+        );
+      }
     }
 
-    // Source B: DexScreener trending Solana tokens
+    // ====================================================
+    // Pipeline B: Global discovery via DexScreener + Bags API
+    // Discovers Moltbook agents outside BagsWorld
+    // ====================================================
+    const mintSet = new Set<string>();
+    mintSet.add(BAGSWORLD_MINT);
+
+    // Source: DexScreener trending Solana tokens
     const [profiles, boosted] = await Promise.all([
-      fetchLatestTokenProfiles(),
-      fetchTopBoostedTokens(),
+      fetchLatestTokenProfiles().catch(() => []),
+      fetchTopBoostedTokens().catch(() => []),
     ]);
     for (const p of profiles) {
-      if (p.chainId === "solana") mintSet.add(p.tokenAddress);
+      if (p.chainId === "solana" && !processedMints.has(p.tokenAddress)) {
+        mintSet.add(p.tokenAddress);
+      }
     }
     for (const b of boosted) {
-      if (b.chainId === "solana") mintSet.add(b.tokenAddress);
-    }
-
-    const mintsToProbe = Array.from(mintSet).slice(0, 80);
-
-    console.log(
-      `[top-earners] Sources: ${dbTokenMap.size} DB tokens, ${profiles.length} profiles, ${boosted.length} boosted → ${mintsToProbe.length} mints to probe`
-    );
-
-    // Step 2: Probe mints to identify Bags.fm tokens with fees
-    const bagsMints = new Map<string, number>(); // mint → feesLamports
-    const uncachedMints: string[] = [];
-
-    for (const mint of mintsToProbe) {
-      const cached = probeCache.get(mint);
-      if (cached && now - cached.ts < PROBE_TTL) {
-        if (cached.isBags && cached.feesLamports > 0) {
-          bagsMints.set(mint, cached.feesLamports);
-        }
-      } else {
-        uncachedMints.push(mint);
+      if (b.chainId === "solana" && !processedMints.has(b.tokenAddress)) {
+        mintSet.add(b.tokenAddress);
       }
     }
 
-    if (uncachedMints.length > 0) {
-      const probeResults = await Promise.allSettled(
-        uncachedMints.map((m) => api.getTokenLifetimeFees(m))
+    // Remove already-processed mints
+    for (const mint of processedMints) {
+      mintSet.delete(mint);
+    }
+
+    const mintsToProbe = Array.from(mintSet).slice(0, 60);
+
+    if (mintsToProbe.length > 0) {
+      // Probe for Bags.fm tokens with fees
+      const bagsMints = new Map<string, number>();
+      const uncachedMints: string[] = [];
+
+      for (const mint of mintsToProbe) {
+        const cached = probeCache.get(mint);
+        if (cached && now - cached.ts < PROBE_TTL) {
+          if (cached.isBags && cached.feesLamports > 0) {
+            bagsMints.set(mint, cached.feesLamports);
+          }
+        } else {
+          uncachedMints.push(mint);
+        }
+      }
+
+      if (uncachedMints.length > 0) {
+        const probeResults = await Promise.allSettled(
+          uncachedMints.map((m) => api.getTokenLifetimeFees(m))
+        );
+
+        for (let i = 0; i < uncachedMints.length; i++) {
+          const mint = uncachedMints[i];
+          const result = probeResults[i];
+          if (result.status === "fulfilled") {
+            probeCache.set(mint, { isBags: true, feesLamports: result.value, ts: now });
+            if (result.value > 0) bagsMints.set(mint, result.value);
+          } else {
+            probeCache.set(mint, { isBags: false, feesLamports: 0, ts: now });
+          }
+        }
+      }
+
+      console.log(
+        `[top-earners] Pipeline B: Probed ${mintsToProbe.length} mints → ${bagsMints.size} Bags tokens with fees`
       );
 
-      for (let i = 0; i < uncachedMints.length; i++) {
-        const mint = uncachedMints[i];
-        const result = probeResults[i];
-        if (result.status === "fulfilled") {
-          probeCache.set(mint, { isBags: true, feesLamports: result.value, ts: now });
-          if (result.value > 0) bagsMints.set(mint, result.value);
-        } else {
-          probeCache.set(mint, { isBags: false, feesLamports: 0, ts: now });
+      if (bagsMints.size > 0) {
+        // Sort by fees, take top 20 for creator lookup
+        const sortedMints = Array.from(bagsMints.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 20)
+          .map(([mint]) => mint);
+
+        // Resolve token names for unknown mints
+        const unknownMints = sortedMints.filter((m) => !dbTokenMap.has(m));
+        if (unknownMints.length > 0) {
+          const dexPairs = await getTokensByMints(unknownMints).catch(() => []);
+          for (const pair of dexPairs) {
+            if (pair.baseToken && !dbTokenMap.has(pair.baseToken.address)) {
+              dbTokenMap.set(pair.baseToken.address, {
+                name: pair.baseToken.name,
+                symbol: pair.baseToken.symbol,
+              });
+            }
+          }
+        }
+
+        // Fetch creators for discovered tokens
+        const creatorFetches = sortedMints.map(async (mint) => {
+          const cached = creatorCache.get(mint);
+          if (cached && now - cached.ts < CREATOR_TTL) {
+            return { mint, creators: cached.creators };
+          }
+
+          const raw = await fetch(
+            `https://public-api-v2.bags.fm/api/v1/token-launch/creator/v3?tokenMint=${mint}`,
+            { headers: { "x-api-key": BAGS_API_KEY } }
+          );
+          const data = await raw.json();
+
+          if (!data.success) {
+            creatorCache.set(mint, { creators: [], ts: now });
+            return { mint, creators: [] };
+          }
+
+          // Handle both response formats:
+          // Format A: { success, response: [...] }
+          // Format B: { success, name, symbol, creators: [...] }
+          const creatorsArray = Array.isArray(data.response)
+            ? data.response
+            : Array.isArray(data.creators)
+              ? data.creators
+              : [];
+
+          const creators = creatorsArray as Array<{
+            wallet: string;
+            provider: string;
+            providerUsername: string;
+            username?: string;
+            pfp?: string;
+            royaltyBps?: number;
+            twitterUsername?: string;
+            bagsUsername?: string;
+          }>;
+
+          creatorCache.set(mint, { creators, ts: now });
+          return { mint, creators };
+        });
+
+        const creatorResults = await Promise.allSettled(creatorFetches);
+
+        for (const result of creatorResults) {
+          if (result.status !== "fulfilled") continue;
+          const { mint, creators } = result.value;
+
+          // If royaltyBps is missing, assume equal split
+          const creatorsWithRoyalties = creators.filter(
+            (c) => c.royaltyBps === undefined || c.royaltyBps > 0
+          );
+          const defaultShare =
+            creatorsWithRoyalties.length > 0 ? 1 / creatorsWithRoyalties.length : 1;
+
+          for (const creator of creatorsWithRoyalties) {
+            if (creator.provider !== "moltbook") continue;
+
+            const feesLamports = bagsMints.get(mint) ?? 0;
+            const royaltyShare =
+              creator.royaltyBps !== undefined ? creator.royaltyBps / 10000 : defaultShare;
+            const creatorFeesLamports = feesLamports * royaltyShare;
+            const dbToken = dbTokenMap.get(mint);
+            const token: TopEarnerToken = {
+              mint,
+              name: dbToken?.name || "Unknown",
+              symbol: dbToken?.symbol || "???",
+              lifetimeFeesSol: creatorFeesLamports / 1_000_000_000,
+            };
+
+            const displayName =
+              creator.twitterUsername ||
+              creator.bagsUsername ||
+              creator.providerUsername ||
+              creator.username ||
+              `${creator.wallet.slice(0, 4)}...${creator.wallet.slice(-4)}`;
+
+            const key = `moltbook:${creator.providerUsername || creator.username || creator.wallet}`;
+            const existing = earnerMap.get(key);
+            if (existing) {
+              // Only add if we haven't already processed this mint for this earner
+              if (!existing.tokens.some((t) => t.mint === mint)) {
+                existing.tokens.push(token);
+              }
+            } else {
+              earnerMap.set(key, {
+                name: displayName,
+                provider: creator.provider,
+                username:
+                  creator.providerUsername ||
+                  creator.username ||
+                  `${creator.wallet.slice(0, 4)}...${creator.wallet.slice(-4)}`,
+                profilePic: creator.pfp,
+                wallet: creator.wallet,
+                tokens: [token],
+              });
+            }
+          }
         }
       }
     }
 
-    console.log(
-      `[top-earners] Probed ${mintsToProbe.length} mints → ${bagsMints.size} Bags tokens with fees`
-    );
-
-    if (bagsMints.size === 0) {
-      const response = {
-        success: true,
-        topEarners: [] as TopEarner[],
-        lastUpdated: new Date().toISOString(),
-      };
-      cachedResponse = response;
-      cacheTime = now;
-      return NextResponse.json(response);
-    }
-
-    // Step 3: Sort by fees descending, take top 20 for creator lookup
-    const sortedMints = Array.from(bagsMints.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([mint]) => mint);
-
-    // Step 3.5: Resolve token names via DexScreener for mints not in DB
-    const unknownMints = sortedMints.filter((m) => !dbTokenMap.has(m));
-    if (unknownMints.length > 0) {
-      const dexPairs = await getTokensByMints(unknownMints);
-      for (const pair of dexPairs) {
-        if (pair.baseToken && !dbTokenMap.has(pair.baseToken.address)) {
-          dbTokenMap.set(pair.baseToken.address, {
-            name: pair.baseToken.name,
-            symbol: pair.baseToken.symbol,
-          });
-        }
-      }
-    }
-
-    // Step 4: Get creators for top Bags tokens
-    // wallet → earner data
-    const earnerMap = new Map<
-      string,
-      {
-        name: string;
-        provider: string;
-        username: string;
-        profilePic?: string;
-        tokens: TopEarnerToken[];
-      }
-    >();
-
-    const creatorFetches = sortedMints.map(async (mint) => {
-      const cached = creatorCache.get(mint);
-      if (cached && now - cached.ts < CREATOR_TTL) {
-        return { mint, creators: cached.creators };
-      }
-
-      // The Bags API returns extended creator info
-      const raw = await fetch(
-        `https://public-api-v2.bags.fm/api/v1/token-launch/creator/v3?tokenMint=${mint}`,
-        { headers: { "x-api-key": BAGS_API_KEY } }
-      );
-      const data = await raw.json();
-
-      if (!data.success || !Array.isArray(data.response)) {
-        creatorCache.set(mint, { creators: [], ts: now });
-        return { mint, creators: [] };
-      }
-
-      const creators = data.response as Array<{
-        wallet: string;
-        provider: string;
-        providerUsername: string;
-        username?: string;
-        pfp?: string;
-        royaltyBps?: number;
-        twitterUsername?: string;
-        bagsUsername?: string;
-      }>;
-
-      creatorCache.set(mint, { creators, ts: now });
-      return { mint, creators };
-    });
-
-    const creatorResults = await Promise.allSettled(creatorFetches);
-
-    for (const result of creatorResults) {
-      if (result.status !== "fulfilled") continue;
-      const { mint, creators } = result.value;
-
-      // Find the creator with royalties (the fee earner)
-      for (const creator of creators) {
-        if (!creator.royaltyBps || creator.royaltyBps === 0) continue;
-
-        // Only include Moltbook agents (per bags.fm/skill.md, agents auth via Moltbook)
-        if (creator.provider !== "moltbook") continue;
-
-        const feesLamports = bagsMints.get(mint) ?? 0;
-        const dbToken = dbTokenMap.get(mint);
-        const token: TopEarnerToken = {
-          mint,
-          name: dbToken?.name || "Unknown",
-          symbol: dbToken?.symbol || "???",
-          lifetimeFeesSol: feesLamports / 1_000_000_000,
-        };
-
-        // Pick the best display name
-        const displayName =
-          creator.twitterUsername ||
-          creator.bagsUsername ||
-          creator.providerUsername ||
-          creator.username ||
-          `${creator.wallet.slice(0, 4)}...${creator.wallet.slice(-4)}`;
-
-        const displayUsername =
-          creator.twitterUsername ||
-          creator.bagsUsername ||
-          creator.providerUsername ||
-          `${creator.wallet.slice(0, 4)}...${creator.wallet.slice(-4)}`;
-
-        const existing = earnerMap.get(creator.wallet);
-        if (existing) {
-          existing.tokens.push(token);
-        } else {
-          earnerMap.set(creator.wallet, {
-            name: displayName,
-            provider: creator.provider,
-            username: displayUsername,
-            profilePic: creator.pfp,
-            tokens: [token],
-          });
-        }
-      }
-    }
-
-    // Step 5: Build sorted earner list
+    // ====================================================
+    // Build final sorted earner list
+    // ====================================================
     const earners: TopEarner[] = [];
 
-    for (const [wallet, data] of earnerMap) {
+    for (const [, data] of earnerMap) {
       const tokens = data.tokens
         .filter((t) => t.lifetimeFeesSol > 0)
         .sort((a, b) => b.lifetimeFeesSol - a.lifetimeFeesSol);
@@ -294,7 +375,7 @@ export async function GET(request: Request) {
         provider: data.provider,
         username: data.username,
         profilePic: data.profilePic,
-        wallet,
+        wallet: data.wallet,
         totalLifetimeFeesSol,
         tokenCount: tokens.length,
         tokens,
@@ -304,7 +385,7 @@ export async function GET(request: Request) {
     earners.sort((a, b) => b.totalLifetimeFeesSol - a.totalLifetimeFeesSol);
 
     console.log(
-      `[top-earners] Found ${earnerMap.size} fee earners → top ${Math.min(3, earners.length)} returned`
+      `[top-earners] Total: ${earnerMap.size} Moltbook earners → top ${Math.min(3, earners.length)} returned`
     );
 
     const response = {

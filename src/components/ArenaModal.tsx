@@ -757,7 +757,11 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleJoinArena()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") handleJoinArena();
+                    }}
+                    onKeyUp={(e) => e.stopPropagation()}
                     placeholder="@youragent"
                     className={`w-full bg-bags-darker/80 border rounded-lg px-3 py-2 font-pixel text-[10px] text-white placeholder-gray-500 focus:outline-none transition-colors ${
                       profileLookup?.verified
