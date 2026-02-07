@@ -4,11 +4,7 @@
 // Shows live trading stats with real-time price action and recent trade feed
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  useGhostStatus,
-  useGhostOpenPositions,
-  useGhostPositions,
-} from "@/hooks/useElizaAgents";
+import { useGhostStatus, useGhostOpenPositions, useGhostPositions } from "@/hooks/useElizaAgents";
 
 // Live price data for a token
 interface LivePrice {
@@ -290,7 +286,9 @@ export function GhostTradingMini() {
                   className={`flex justify-between items-center rounded-md px-2 py-1 ${isWin ? "bg-green-500/10" : "bg-red-500/10"}`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`font-pixel text-[9px] ${isWin ? "text-green-500" : "text-red-500"}`}>
+                    <span
+                      className={`font-pixel text-[9px] ${isWin ? "text-green-500" : "text-red-500"}`}
+                    >
                       {isWin ? "W" : "L"}
                     </span>
                     {dexUrl ? (
@@ -303,9 +301,7 @@ export function GhostTradingMini() {
                         ${displaySymbol}
                       </a>
                     ) : (
-                      <span className="font-pixel text-[10px] text-gray-300">
-                        ${displaySymbol}
-                      </span>
+                      <span className="font-pixel text-[10px] text-gray-300">${displaySymbol}</span>
                     )}
                     <span className="font-pixel text-[8px] text-gray-500">
                       {timeAgo(trade.closedAt)}
@@ -315,7 +311,8 @@ export function GhostTradingMini() {
                     <span
                       className={`font-pixel text-[10px] font-bold ${isWin ? "text-green-400" : "text-red-400"}`}
                     >
-                      {pnl >= 0 ? "+" : ""}{pnl.toFixed(3)} SOL
+                      {pnl >= 0 ? "+" : ""}
+                      {pnl.toFixed(3)} SOL
                     </span>
                     {trade.exitReason && (
                       <span className="font-pixel text-[7px] text-gray-500">

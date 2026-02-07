@@ -563,14 +563,10 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Unified Activity Feed - combines agent + event feeds */}
-          <div className="h-52 relative">
+          {/* Unified Activity Feed - agent-specific events only */}
+          <div className="max-h-52 shrink-0 relative">
             <div className="absolute top-0 left-0 right-0 glow-line-h" />
-            <UnifiedActivityFeed
-              events={worldState?.events ?? []}
-              maxItems={20}
-              className="h-full"
-            />
+            <UnifiedActivityFeed maxItems={20} />
           </div>
         </aside>
 

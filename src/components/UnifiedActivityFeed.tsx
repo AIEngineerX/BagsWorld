@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useAgentEvents } from "@/hooks/useAgentEvents";
-import type { GameEvent } from "@/lib/types";
 import {
   RocketIcon,
   DiamondIcon,
@@ -31,7 +30,6 @@ interface UnifiedActivity {
 }
 
 interface UnifiedActivityFeedProps {
-  events: GameEvent[];
   maxItems?: number;
   className?: string;
 }
@@ -105,72 +103,45 @@ const cleanMessage = (message: string): string => {
     .trim();
 };
 
+// Event types already shown in LiveMarketFeed — exclude from agent feed
+const MARKET_EVENT_TYPES = new Set([
+  "fee_claim",
+  "token_launch",
+  "price_pump",
+  "price_dump",
+  "milestone",
+  "building_constructed",
+  "whale_alert",
+  "platform_launch",
+  "platform_trending",
+]);
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-export function UnifiedActivityFeed({
-  events,
-  maxItems = 15,
-  className = "",
-}: UnifiedActivityFeedProps) {
-  const [filter, setFilter] = useState<"all" | "claims" | "trades">("all");
+export function UnifiedActivityFeed({ maxItems = 15, className = "" }: UnifiedActivityFeedProps) {
   const { announcements, markAsRead } = useAgentEvents({ maxAnnouncements: 20 });
 
-  // Combine and sort all activities
+  // Agent announcements only (market events are in LiveMarketFeed)
   const unifiedActivities = useMemo(() => {
-    const activities: UnifiedActivity[] = [];
-
-    // Add events
-    events.forEach((event) => {
-      activities.push({
-        id: event.id,
-        type: "event",
-        eventType: event.type,
-        message: event.message,
-        timestamp: event.timestamp,
-      });
-    });
-
-    // Add agent announcements (only medium+ priority to reduce noise)
-    announcements
-      .filter((a) => a.priority !== "low")
-      .forEach((announcement) => {
-        activities.push({
-          id: announcement.id,
-          type: "agent",
-          eventType: announcement.eventType,
-          message: announcement.message,
-          timestamp: announcement.timestamp,
-          priority: announcement.priority,
-          read: announcement.read,
-        });
-      });
+    const activities: UnifiedActivity[] = announcements
+      .filter((a) => a.priority !== "low" && !MARKET_EVENT_TYPES.has(a.eventType))
+      .map((announcement) => ({
+        id: announcement.id,
+        type: "agent" as const,
+        eventType: announcement.eventType,
+        message: announcement.message,
+        timestamp: announcement.timestamp,
+        priority: announcement.priority,
+        read: announcement.read,
+      }));
 
     // Sort by timestamp (newest first)
     activities.sort((a, b) => b.timestamp - a.timestamp);
 
-    // Apply filter
-    if (filter === "claims") {
-      return activities
-        .filter((a) => a.eventType === "fee_claim" || a.eventType === "distribution")
-        .slice(0, maxItems);
-    }
-    if (filter === "trades") {
-      return activities
-        .filter(
-          (a) =>
-            a.eventType === "price_pump" ||
-            a.eventType === "price_dump" ||
-            a.eventType === "token_pump" ||
-            a.eventType === "token_dump" ||
-            a.eventType === "whale_alert"
-        )
-        .slice(0, maxItems);
-    }
-
     return activities.slice(0, maxItems);
-  }, [events, announcements, filter, maxItems]);
+  }, [announcements, maxItems]);
 
   const formatTime = (timestamp: number): string => {
     const diff = Date.now() - timestamp;
@@ -198,33 +169,22 @@ export function UnifiedActivityFeed({
           <span className="text-bags-green animate-pulse">
             <SignalIcon size={12} />
           </span>
-          <span className="font-pixel text-[9px] text-bags-green">LIVE ACTIVITY</span>
+          <span className="font-pixel text-[9px] text-bags-green">AGENT FEED</span>
         </div>
-
-        {/* Filter Tabs */}
-        <div className="flex gap-1">
-          {(["all", "claims", "trades"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`font-pixel text-[7px] px-1.5 py-0.5 transition-colors ${
-                filter === f
-                  ? "text-bags-gold bg-bags-gold/10"
-                  : "text-gray-500 hover:text-gray-300"
-              }`}
-            >
-              {f.toUpperCase()}
-            </button>
-          ))}
-        </div>
+        <span className="font-pixel text-[6px] text-gray-600">
+          {unifiedActivities.length > 0 ? `${unifiedActivities.length} events` : ""}
+        </span>
       </div>
 
       {/* Activity List */}
       <div className="flex-1 overflow-y-auto" role="feed" aria-label="Live activity feed">
         {unifiedActivities.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center py-4">
-              <p className="font-pixel text-[8px] text-gray-500">Waiting for activity...</p>
+          <div className="flex items-center justify-center h-full py-3">
+            <div className="text-center">
+              <span className="text-gray-600 block mb-1">
+                <SignalIcon size={14} />
+              </span>
+              <p className="font-pixel text-[7px] text-gray-600">No agent activity yet</p>
             </div>
           </div>
         ) : (

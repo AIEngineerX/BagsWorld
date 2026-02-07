@@ -32,8 +32,8 @@ export function usePlatformActivity() {
   const query = useQuery({
     queryKey: ["platformActivity", knownMints.join(",")],
     queryFn: () => fetchPlatformActivity(knownMints),
-    refetchInterval: 90_000,
-    staleTime: 80_000,
+    refetchInterval: 60_000,
+    staleTime: 55_000,
     retry: 2,
   });
 
