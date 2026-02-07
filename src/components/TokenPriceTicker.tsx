@@ -11,7 +11,9 @@ const TokenPriceTicker = React.memo(function TokenPriceTicker({
   buildings,
 }: TokenPriceTickerProps) {
   const tickerItems = useMemo(() => {
-    const withChange = buildings.filter((b) => b.change24h !== undefined && b.change24h !== null);
+    const withChange = buildings.filter(
+      (b) => !b.isPermanent && b.change24h !== undefined && b.change24h !== null
+    );
 
     if (withChange.length === 0) return null;
 

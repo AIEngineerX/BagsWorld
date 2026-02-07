@@ -44,7 +44,6 @@ import { PokeCenterModal } from "@/components/PokeCenterModal";
 import { FeeClaimModal } from "@/components/FeeClaimModal";
 import { ZoneNav } from "@/components/ZoneNav";
 import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
-import { AgentToast } from "@/components/AgentFeed";
 import { ScoutAlerts } from "@/components/ScoutAlerts";
 import { TradingGymModal } from "@/components/TradingGymModal";
 import { CommunityFundModal } from "@/components/CommunityFundModal";
@@ -564,7 +563,7 @@ export default function Home() {
           </div>
 
           {/* Unified Activity Feed - agent-specific events only */}
-          <div className="max-h-52 shrink-0 relative">
+          <div className="h-40 shrink-0 relative">
             <div className="absolute top-0 left-0 right-0 glow-line-h" />
             <UnifiedActivityFeed maxItems={20} />
           </div>
@@ -698,9 +697,6 @@ export default function Home() {
       {activeModal === "arena" && <ArenaModal onClose={closeModal} />}
       {activeModal === "agentHut" && <AgentHutModal onClose={closeModal} />}
       {activeModal === "agentBar" && <AgentBarModal onClose={closeModal} />}
-
-      {/* Agent Toast Notifications - shows real-time agent activity */}
-      <AgentToast />
 
       {/* Scout Alerts - shows new token launch notifications */}
       <ScoutAlerts />

@@ -118,10 +118,11 @@ export function LiveMarketFeed() {
           (e) =>
             e.type === "token_launch" ||
             e.type === "building_constructed" ||
-            e.type === "platform_launch"
+            e.type === "platform_launch" ||
+            e.type === "platform_trending"
         );
       case "claims":
-        return marketEvents.filter((e) => e.type === "fee_claim");
+        return marketEvents.filter((e) => e.type === "fee_claim" || e.type === "milestone");
       case "trades":
         return marketEvents.filter(
           (e) => e.type === "price_pump" || e.type === "price_dump" || e.type === "whale_alert"
