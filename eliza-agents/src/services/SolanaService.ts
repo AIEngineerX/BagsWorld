@@ -345,7 +345,6 @@ export class SolanaService extends Service {
     if (!this.publicKeyBytes) return 0;
 
     const publicKey = base58Encode(this.publicKeyBytes);
-    const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
     const response = await fetch(this.rpcUrl, {
       method: "POST",
@@ -363,6 +362,11 @@ export class SolanaService extends Service {
     });
 
     const result = await response.json();
+
+    if (result.error) {
+      throw new Error(result.error.message || JSON.stringify(result.error));
+    }
+
     const accounts = result.result?.value;
 
     if (!accounts || accounts.length === 0) {
@@ -374,8 +378,10 @@ export class SolanaService extends Service {
     for (const account of accounts) {
       const tokenAmount = account.account?.data?.parsed?.info?.tokenAmount;
       if (tokenAmount) {
-        // Use the raw string amount to preserve precision
-        totalAmount += parseFloat(tokenAmount.amount);
+        const parsed = parseFloat(tokenAmount.amount);
+        if (!isNaN(parsed)) {
+          totalAmount += parsed;
+        }
       }
     }
 
