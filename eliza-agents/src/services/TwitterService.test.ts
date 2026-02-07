@@ -77,8 +77,10 @@ describe('TwitterService', () => {
       expect(s.isConfigured()).toBe(true);
     });
 
-    it.skip('marks as authenticated on successful OAuth verification', async () => {
-      // Skip: vitest mock timing issue with OAuth flow
+    it('marks as authenticated on successful OAuth verification', async () => {
+      // Disable dry run so verifyCredentials actually calls the Twitter API
+      process.env.TWITTER_DRY_RUN = 'false';
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ data: { username: 'TestBot' } }),
@@ -105,8 +107,10 @@ describe('TwitterService', () => {
       expect(s.isConfigured()).toBe(false);
     });
 
-    it.skip('handles network errors gracefully', async () => {
-      // Skip: vitest mock rejection timing issue
+    it('handles network errors gracefully', async () => {
+      // Disable dry run so verifyCredentials attempts the real fetch path
+      process.env.TWITTER_DRY_RUN = 'false';
+
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       const s = new TwitterService();
@@ -483,8 +487,7 @@ describe('TwitterService', () => {
       expect(mentions).toEqual([]);
     });
 
-    it.skip('returns empty array when API returns no data', async () => {
-      // Skip: vitest mock timing issue
+    it('returns empty array when API returns no data', async () => {
       process.env.TWITTER_BEARER_TOKEN = 'test-bearer';
       const s = new TwitterService();
 
@@ -498,8 +501,7 @@ describe('TwitterService', () => {
       expect(mentions).toEqual([]);
     });
 
-    it.skip('parses mentions correctly', async () => {
-      // Skip: vitest mock timing issue
+    it('parses mentions correctly', async () => {
       process.env.TWITTER_BEARER_TOKEN = 'test-bearer';
       const s = new TwitterService();
 

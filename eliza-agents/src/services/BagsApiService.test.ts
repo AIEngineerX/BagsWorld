@@ -9,6 +9,18 @@ import {
   RecentLaunch,
 } from "./BagsApiService.js";
 
+// Mock DexScreenerCache to prevent its internal fetch calls from interfering
+// with the global mockFetch used by other BagsApiService methods.
+// getRecentLaunches() dynamically imports DexScreenerCache.search("bags").
+const mockDexScreenerSearch = vi.fn().mockResolvedValue({ pairs: [] });
+vi.mock("./DexScreenerCache.js", () => ({
+  getDexScreenerCache: () => ({
+    search: mockDexScreenerSearch,
+    getTokenData: vi.fn().mockResolvedValue(null),
+    clear: vi.fn(),
+  }),
+}));
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 (global as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
@@ -243,7 +255,7 @@ describe("BagsApiService", () => {
   });
 
   describe("getRecentLaunches", () => {
-    // Uses DexScreener API format
+    // Uses DexScreener API format (via DexScreenerCache)
     const mockDexScreenerPairs = [
       {
         chainId: "solana",
@@ -263,24 +275,20 @@ describe("BagsApiService", () => {
       },
     ];
 
-    it("fetches recent launches from DexScreener", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ pairs: mockDexScreenerPairs }),
-      });
+    it("fetches recent launches via DexScreenerCache", async () => {
+      mockDexScreenerSearch.mockResolvedValueOnce({ pairs: mockDexScreenerPairs });
 
       const result = await service.getRecentLaunches(5);
 
-      // Verify it calls DexScreener
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("api.dexscreener.com")
-      );
-      // Returns formatted launches
+      expect(mockDexScreenerSearch).toHaveBeenCalledWith("bags");
       expect(result.length).toBeLessThanOrEqual(5);
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0].mint).toBe("mint1");
+      expect(result[0].symbol).toBe("TK1");
     });
 
     it("returns empty array on error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+      mockDexScreenerSearch.mockRejectedValueOnce(new Error("Network error"));
 
       const result = await service.getRecentLaunches();
       expect(result).toEqual([]);
@@ -288,13 +296,10 @@ describe("BagsApiService", () => {
 
     it("handles pairs with missing fdv", async () => {
       const pairsNoFdv = [{ ...mockDexScreenerPairs[0], fdv: undefined }];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ pairs: pairsNoFdv }),
-      });
+      mockDexScreenerSearch.mockResolvedValueOnce({ pairs: pairsNoFdv });
 
       const result = await service.getRecentLaunches(1);
-      // Should still return result even without FDV
+      // Pair with fdv=undefined is filtered out (fdv < 1000 check), result is empty but defined
       expect(result).toBeDefined();
     });
   });
@@ -547,11 +552,10 @@ describe("BagsApiService edge cases", () => {
         if (url.includes("creators/top")) {
           return { ok: true, json: async () => ({ success: true, response: { creators: [] } }) };
         }
-        if (url.includes("token-launch/recent")) {
-          return { ok: true, json: async () => ({ success: true, response: { launches: [] } }) };
-        }
         return { ok: true, json: async () => ({ success: true, response: {} }) };
       });
+      // getRecentLaunches goes through DexScreenerCache mock, not global fetch
+      mockDexScreenerSearch.mockResolvedValueOnce({ pairs: [] });
 
       // Fire concurrent requests to different endpoints
       const [token, creators, launches] = await Promise.all([
@@ -563,7 +567,8 @@ describe("BagsApiService edge cases", () => {
       expect(token).not.toBeNull();
       expect(creators).toEqual([]);
       expect(launches).toEqual([]);
-      expect(mockFetch).toHaveBeenCalledTimes(3);
+      // getToken + getTopCreators use mockFetch; getRecentLaunches uses DexScreenerCache mock
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 
