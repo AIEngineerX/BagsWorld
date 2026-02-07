@@ -17718,7 +17718,8 @@ export class BootScene extends Phaser.Scene {
       g.fillRect(
         Math.floor(Math.random() * (size - 4)),
         Math.floor(Math.random() * (size - 6)),
-        r(1), r(3)
+        r(1),
+        r(3)
       );
     }
 
@@ -17733,7 +17734,8 @@ export class BootScene extends Phaser.Scene {
 
   private generateDungeonEntrance(): void {
     const r = this.r.bind(this);
-    const w = r(200), h = r(180);
+    const w = r(200),
+      h = r(180);
     const g = this.make.graphics({ x: 0, y: 0 });
     const cx = w / 2;
 
@@ -17786,7 +17788,8 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
 
     // Entrance glow overlay
-    const gw = r(120), gh = r(140);
+    const gw = r(120),
+      gh = r(140);
     const glow = this.make.graphics({ x: 0, y: 0 });
     glow.fillStyle(0x6b21a8, 0.15);
     glow.fillRect(0, 0, gw, gh);
@@ -17800,7 +17803,8 @@ export class BootScene extends Phaser.Scene {
 
   private generateDungeonTorch(): void {
     const r = this.r.bind(this);
-    const w = r(12), h = r(24);
+    const w = r(12),
+      h = r(24);
     const g = this.make.graphics({ x: 0, y: 0 });
     const cx = w / 2;
 
@@ -17853,7 +17857,8 @@ export class BootScene extends Phaser.Scene {
 
   private generateDungeonPillar(): void {
     const r = this.r.bind(this);
-    const w = r(20), h = r(60);
+    const w = r(20),
+      h = r(60);
     const g = this.make.graphics({ x: 0, y: 0 });
 
     // Capital (top)
@@ -17885,7 +17890,8 @@ export class BootScene extends Phaser.Scene {
 
   private generateDungeonBanner(): void {
     const r = this.r.bind(this);
-    const w = r(16), h = r(32);
+    const w = r(16),
+      h = r(32);
     const cx = w / 2;
     const g = this.make.graphics({ x: 0, y: 0 });
 
@@ -17912,7 +17918,8 @@ export class BootScene extends Phaser.Scene {
 
   private generateDungeonGate(): void {
     const r = this.r.bind(this);
-    const w = r(160), h = r(10);
+    const w = r(160),
+      h = r(10);
     const g = this.make.graphics({ x: 0, y: 0 });
     const spacing = r(12);
 
@@ -17936,7 +17943,8 @@ export class BootScene extends Phaser.Scene {
 
   private generateDungeonTunnel(): void {
     const r = this.r.bind(this);
-    const w = r(40), h = r(50);
+    const w = r(40),
+      h = r(50);
     const cx = w / 2;
     const g = this.make.graphics({ x: 0, y: 0 });
 
