@@ -37,6 +37,9 @@ export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
   const [error, setError] = useState<string | null>(null);
   const [lastSeenMint, setLastSeenMint] = useState<string | null>(null);
 
+  // Track whether we've received a 401 and should stop polling
+  const unauthorizedRef = useRef(false);
+
   // Use refs to avoid circular dependencies in useCallback
   const alertsRef = useRef<TokenLaunch[]>([]);
   const lastSeenMintRef = useRef<string | null>(null);
@@ -57,12 +60,21 @@ export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
 
   // Fetch scout status and recent launches
   const fetchScoutData = useCallback(async () => {
+    // Stop polling if we already know we're unauthorized
+    if (unauthorizedRef.current) return;
+
     try {
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "scout-launches", count: maxAlerts }),
       });
+
+      if (response.status === 401) {
+        unauthorizedRef.current = true;
+        setIsLoading(false);
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Failed to fetch scout data");
@@ -101,12 +113,20 @@ export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
 
   // Fetch scout state
   const fetchScoutState = useCallback(async () => {
+    // Stop polling if we already know we're unauthorized
+    if (unauthorizedRef.current) return;
+
     try {
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "scout-status" }),
       });
+
+      if (response.status === 401) {
+        unauthorizedRef.current = true;
+        return;
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -119,12 +139,19 @@ export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
 
   // Start scout agent
   const startScout = useCallback(async () => {
+    if (unauthorizedRef.current) return false;
+
     try {
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "scout-start" }),
       });
+
+      if (response.status === 401) {
+        unauthorizedRef.current = true;
+        return false;
+      }
 
       if (!response.ok) {
         throw new Error("Failed to start scout");
@@ -140,12 +167,19 @@ export function useScoutAlerts(options: UseScoutAlertsOptions = {}) {
 
   // Stop scout agent
   const stopScout = useCallback(async () => {
+    if (unauthorizedRef.current) return false;
+
     try {
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "scout-stop" }),
       });
+
+      if (response.status === 401) {
+        unauthorizedRef.current = true;
+        return false;
+      }
 
       if (!response.ok) {
         throw new Error("Failed to stop scout");
