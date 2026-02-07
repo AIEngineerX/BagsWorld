@@ -1,4 +1,8 @@
-// SolanaService - Transaction signing and submission for Ghost trading
+/**
+ * SolanaService - Transaction signing and submission for GhostTrader (ElizaOS)
+ * Runs on: Railway (deployed alongside GhostTrader)
+ * NOT related to ChadGhost (MoltBook alpha-posting agent on Mac mini)
+ */
 
 import { Service, type IAgentRuntime } from "../types/elizaos.js";
 import nacl from "tweetnacl";
@@ -330,6 +334,52 @@ export class SolanaService extends Service {
 
     const result = await response.json();
     return (result.result?.value || 0) / 1_000_000_000;
+  }
+
+  /**
+   * Get SPL token balance for a specific mint.
+   * Returns raw token amount (not decimal-adjusted), matching how amountTokens
+   * is stored from parseFloat(quote.outAmount) during buys.
+   */
+  async getTokenBalance(tokenMint: string): Promise<number> {
+    if (!this.publicKeyBytes) return 0;
+
+    const publicKey = base58Encode(this.publicKeyBytes);
+    const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+
+    const response = await fetch(this.rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenAccountsByOwner",
+        params: [
+          publicKey,
+          { mint: tokenMint },
+          { encoding: "jsonParsed", commitment: "confirmed" },
+        ],
+      }),
+    });
+
+    const result = await response.json();
+    const accounts = result.result?.value;
+
+    if (!accounts || accounts.length === 0) {
+      return 0;
+    }
+
+    // Sum balances across all token accounts for this mint (usually just one)
+    let totalAmount = 0;
+    for (const account of accounts) {
+      const tokenAmount = account.account?.data?.parsed?.info?.tokenAmount;
+      if (tokenAmount) {
+        // Use the raw string amount to preserve precision
+        totalAmount += parseFloat(tokenAmount.amount);
+      }
+    }
+
+    return totalAmount;
   }
 
   /**

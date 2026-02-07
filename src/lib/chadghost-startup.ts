@@ -1,6 +1,7 @@
 /**
- * ChadGhost Startup
+ * ChadGhost Startup - MoltBook Agent Initialization
  * Ensures ChadGhost service starts once and only once
+ * Runs on: Mac mini (separate from GhostTrader on Railway)
  * Import this file from any server-side code to auto-start
  */
 
