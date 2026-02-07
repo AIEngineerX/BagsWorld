@@ -31,6 +31,11 @@ jest.mock("@/lib/neon", () => ({
   getTokensByCreator: jest.fn().mockResolvedValue([]),
 }));
 
+// Mock moltbook client (feed discovery returns empty by default — hardcoded agents still work)
+jest.mock("@/lib/moltbook-client", () => ({
+  getMoltbookOrNull: jest.fn().mockReturnValue(null),
+}));
+
 import { GET } from "@/app/api/agent-economy/top-earners/route";
 import { initBagsApi } from "@/lib/bags-api";
 import { isNeonConfigured, getTokensByCreator } from "@/lib/neon";
@@ -270,7 +275,7 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(earners[0].username).toBe("Bagsy");
   });
 
-  it("returns at most 3 earners", async () => {
+  it("returns at most 10 earners", async () => {
     mockApi.bulkWalletLookup.mockResolvedValue(
       ["Bagsy", "ChadGhost", "Agent3", "Agent4"].map((username, i) => ({
         wallet: `Wallet${i}111111111111111111111111111111111`,
@@ -290,7 +295,7 @@ describe("GET /api/agent-economy/top-earners", () => {
     const earners = body.topEarners as Array<Record<string, unknown>>;
 
     expect(body.success).toBe(true);
-    expect(earners.length).toBeLessThanOrEqual(3);
+    expect(earners.length).toBeLessThanOrEqual(10);
   });
 
   it("sorts tokens within each earner by lifetime fees descending", async () => {
