@@ -6,6 +6,8 @@ interface DungeonModalProps {
   onClose: () => void;
 }
 
+const DUNGEON_SERVER = process.env.NEXT_PUBLIC_DUNGEON_SERVER || "";
+
 export function DungeonModal({ onClose }: DungeonModalProps) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -41,7 +43,7 @@ export function DungeonModal({ onClose }: DungeonModalProps) {
         </button>
       </div>
       <iframe
-        src="/games/dungeon/?embed=true"
+        src={`/games/dungeon/?embed=true${DUNGEON_SERVER ? `&server=${DUNGEON_SERVER}` : ""}`}
         className="flex-1 w-full border-0"
         allow="autoplay; fullscreen"
         title="BagsDungeon MMORPG"
