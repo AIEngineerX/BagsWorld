@@ -294,7 +294,7 @@ export function QuestTracker() {
     <div
       className={`fixed left-1/2 -translate-x-1/2 bottom-12 sm:bottom-11 z-[60] w-72 sm:w-80 max-w-[calc(100vw-2rem)] ${mounted ? "quest-panel-enter" : "opacity-0 translate-y-4"}`}
     >
-      <div className="bg-black/95 backdrop-blur-md border border-bags-green/25 rounded-lg shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden">
+      <div className={`bg-black/95 backdrop-blur-md border rounded-lg overflow-hidden ${isFirstVisit ? "quest-glow border-bags-green/50" : "border-bags-green/25 shadow-[0_0_20px_rgba(0,0,0,0.5)]"}`}>
         {/* Header — slim */}
         <div className="flex items-center justify-between px-3 py-1.5 bg-bags-green/5 border-b border-bags-green/15">
           <div className="flex items-center gap-1.5">
@@ -410,6 +410,25 @@ export function QuestTracker() {
       </div>
 
       <style jsx>{`
+        .quest-glow {
+          animation:
+            panel-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+            glow-pulse 1.8s ease-in-out 0.4s 3;
+        }
+        @keyframes glow-pulse {
+          0%,
+          100% {
+            box-shadow:
+              0 0 8px rgba(74, 222, 128, 0.15),
+              0 0 20px rgba(74, 222, 128, 0.05);
+          }
+          50% {
+            box-shadow:
+              0 0 15px rgba(74, 222, 128, 0.4),
+              0 0 35px rgba(74, 222, 128, 0.15),
+              0 0 50px rgba(74, 222, 128, 0.05);
+          }
+        }
         .quest-panel-enter {
           animation: panel-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
