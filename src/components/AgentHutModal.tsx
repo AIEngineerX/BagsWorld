@@ -227,9 +227,9 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                 </div>
               ) : topEarners.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-amber-400 text-sm">No fee earners found yet</p>
+                  <p className="text-amber-400 text-sm">No Moltbook agents with fee earnings yet</p>
                   <p className="text-amber-600 text-xs mt-2">
-                    Launch a token on Bags.fm to start earning fees!
+                    Launch a token via Pokecenter to start earning fees!
                   </p>
                 </div>
               ) : (
