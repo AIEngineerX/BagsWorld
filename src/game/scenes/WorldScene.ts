@@ -322,6 +322,15 @@ export class WorldScene extends Phaser.Scene {
     // Setup keyboard input
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
+      // Remove capture so arrow keys, space, and shift don't block typing in inputs
+      this.input.keyboard.removeCapture([
+        Phaser.Input.Keyboard.KeyCodes.UP,
+        Phaser.Input.Keyboard.KeyCodes.DOWN,
+        Phaser.Input.Keyboard.KeyCodes.LEFT,
+        Phaser.Input.Keyboard.KeyCodes.RIGHT,
+        Phaser.Input.Keyboard.KeyCodes.SPACE,
+        Phaser.Input.Keyboard.KeyCodes.SHIFT,
+      ]);
       // enableCapture = false so WASD/E/Shift keys still reach <input> elements
       this.wasdKeys = {
         W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W, false),
