@@ -30,13 +30,10 @@ export function DungeonModal({ onClose }: DungeonModalProps) {
         <h2 className="font-pixel text-purple-400 text-2xl sm:text-3xl tracking-wider">
           BAGSDUNGEON
         </h2>
-        <div className="font-pixel text-purple-300/80 text-sm animate-pulse">
-          COMING SOON
-        </div>
+        <div className="font-pixel text-purple-300/80 text-sm animate-pulse">COMING SOON</div>
         <p className="font-pixel text-gray-500 text-xs max-w-md leading-relaxed">
-          A full MMORPG adventure awaits inside BagsWorld.
-          Explore dungeons, battle monsters, and earn loot
-          — all connected to the Bags.fm ecosystem.
+          A full MMORPG adventure awaits inside BagsWorld. Explore dungeons, battle monsters, and
+          earn loot — all connected to the Bags.fm ecosystem.
         </p>
         <button
           onClick={onClose}
