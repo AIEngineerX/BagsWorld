@@ -5,7 +5,18 @@ import { useGameStore } from "@/lib/store";
 import type { GameEvent } from "@/lib/types";
 import { useMemo } from "react";
 
-async function fetchPlatformActivity(knownMints: string[]): Promise<GameEvent[]> {
+interface PlatformSummary {
+  totalVolume24h: number;
+  totalFeesClaimed: number;
+  activeTokenCount: number;
+}
+
+interface PlatformActivityResult {
+  events: GameEvent[];
+  summary: PlatformSummary;
+}
+
+async function fetchPlatformActivity(knownMints: string[]): Promise<PlatformActivityResult> {
   const params = new URLSearchParams();
   if (knownMints.length > 0) {
     params.set("knownMints", knownMints.join(","));
@@ -17,7 +28,10 @@ async function fetchPlatformActivity(knownMints: string[]): Promise<GameEvent[]>
   }
 
   const data = await response.json();
-  return data.events ?? [];
+  return {
+    events: data.events ?? [],
+    summary: data.summary ?? { totalVolume24h: 0, totalFeesClaimed: 0, activeTokenCount: 0 },
+  };
 }
 
 export function usePlatformActivity() {
@@ -37,8 +51,15 @@ export function usePlatformActivity() {
     retry: 2,
   });
 
+  const defaultSummary: PlatformSummary = {
+    totalVolume24h: 0,
+    totalFeesClaimed: 0,
+    activeTokenCount: 0,
+  };
+
   return {
-    platformEvents: query.data ?? [],
+    platformEvents: query.data?.events ?? [],
+    platformSummary: query.data?.summary ?? defaultSummary,
     isLoading: query.isLoading,
     error: query.error,
   };

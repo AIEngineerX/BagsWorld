@@ -14,7 +14,11 @@ const BAGS_API_KEY = process.env.BAGS_API_KEY;
 // --- Caches ---
 
 // Main response cache (60s — matches client polling interval)
-let eventsCache: { data: GameEvent[]; timestamp: number } | null = null;
+let eventsCache: {
+  data: GameEvent[];
+  summary: { totalVolume24h: number; totalFeesClaimed: number; activeTokenCount: number };
+  timestamp: number;
+} | null = null;
 const EVENTS_CACHE_TTL = 60_000;
 
 // Per-mint Bags token probe: maps mint → { isBags, feesLamports, timestamp }
@@ -176,90 +180,6 @@ function generateBagsTokenEvents(
   return events;
 }
 
-// Generate events for non-Bags DexScreener tokens (higher thresholds, generic messaging)
-function generateGenericEvents(
-  pair: DexPair,
-  now: number,
-  index: number,
-  isBoosted: boolean
-): GameEvent[] {
-  const events: GameEvent[] = [];
-  const symbol = pair.baseToken.symbol;
-  const name = pair.baseToken.name;
-  const mint = pair.baseToken.address;
-  const mcap = pair.marketCap || pair.fdv || 0;
-  const change24h = pair.priceChange?.h24 ?? 0;
-  const change1h = pair.priceChange?.h1 ?? 0;
-  const vol24h = pair.volume?.h24 ?? 0;
-  const vol1h = pair.volume?.h1 ?? 0;
-  const txns24h = pair.txns?.h24;
-  const txns1h = pair.txns?.h1;
-  const baseTs = now - index * 10_000;
-
-  // 1. Trending event
-  const label = isBoosted ? "boosted on DexScreener" : "trending on Solana";
-  const parts = [`$${symbol} ${label} — ${fmtMcap(mcap)} mcap`];
-  if (vol24h > 0) parts.push(`${fmtVol(vol24h)} vol`);
-  parts.push(fmtChange(change24h));
-
-  events.push({
-    id: `platform_trending_${mint}`,
-    type: "platform_trending",
-    message: parts.join(", "),
-    timestamp: baseTs,
-    data: { tokenName: name, symbol, mint, change: change24h, amount: vol24h, source: "platform" },
-  });
-
-  // 2. Price pump/dump — 10%+ 1h move (original threshold for generic tokens)
-  if (Math.abs(change1h) >= 10) {
-    const isPump = change1h > 0;
-    const txnCount = txns1h ? (isPump ? txns1h.buys : txns1h.sells) : 0;
-    const txnInfo = txnCount > 0 ? ` (${txnCount} ${isPump ? "buys" : "sells"} in 1h)` : "";
-    events.push({
-      id: `platform_${isPump ? "pump" : "dump"}_1h_${mint}`,
-      type: isPump ? "price_pump" : "price_dump",
-      message: `$${symbol} ${isPump ? "pumping" : "dumping"} ${fmtChange(change1h)} in 1h${txnInfo}`,
-      timestamp: baseTs - 1000,
-      data: { tokenName: name, symbol, mint, change: change1h, amount: vol1h, source: "platform" },
-    });
-  }
-
-  // 3. Whale alert — 5%+ mcap in 1h volume
-  if (vol1h > 10_000 && mcap > 0 && vol1h / mcap > 0.05) {
-    const totalTxns = txns1h ? txns1h.buys + txns1h.sells : 0;
-    const txnInfo = totalTxns > 0 ? ` across ${totalTxns} trades` : "";
-    events.push({
-      id: `platform_whale_${mint}`,
-      type: "whale_alert",
-      message: `Heavy volume on $${symbol} — ${fmtVol(vol1h)} in 1h${txnInfo}`,
-      timestamp: baseTs - 2000,
-      data: { tokenName: name, symbol, mint, change: change24h, amount: vol1h, source: "platform" },
-    });
-  }
-
-  // 4. High activity — 500+ txns in 24h
-  if (txns24h && txns24h.buys + txns24h.sells > 500) {
-    const total = txns24h.buys + txns24h.sells;
-    const buyRatio = Math.round((txns24h.buys / total) * 100);
-    events.push({
-      id: `platform_activity_${mint}`,
-      type: "platform_trending",
-      message: `$${symbol} hot — ${total} trades today (${buyRatio}% buys), ${fmtVol(vol24h)} volume`,
-      timestamp: baseTs - 3000,
-      data: {
-        tokenName: name,
-        symbol,
-        mint,
-        change: change24h,
-        amount: vol24h,
-        source: "platform",
-      },
-    });
-  }
-
-  return events;
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const knownMintsParam = searchParams.get("knownMints") || "";
@@ -271,7 +191,7 @@ export async function GET(request: Request) {
       knownMints.size > 0
         ? eventsCache.data.filter((e) => !e.data?.mint || !knownMints.has(e.data.mint))
         : eventsCache.data;
-    return NextResponse.json({ events: filtered });
+    return NextResponse.json({ events: filtered, summary: eventsCache.summary });
   }
 
   const events: GameEvent[] = [];
@@ -349,9 +269,8 @@ export async function GET(request: Request) {
     console.warn("[platform-activity] BAGS_API_KEY not set — showing DexScreener data only");
   }
 
-  // ─── Step 3: Get DexScreener pair data ───
-  // Batch all mints (Bags first) into DexScreener for price/volume/mcap data
-  const allMintsToFetch = [...bagsMints.keys(), ...nonBagsMints].slice(0, 30);
+  // ─── Step 3: Get DexScreener pair data for Bags.fm tokens ───
+  const allMintsToFetch = Array.from(bagsMints.keys()).slice(0, 30);
   const pairs = allMintsToFetch.length > 0 ? await getTokensByMints(allMintsToFetch) : [];
 
   const pairMap: Record<string, DexPair> = {};
@@ -455,28 +374,30 @@ export async function GET(request: Request) {
     }
   }
 
-  // ─── Step 6: Generate events from non-Bags tokens (SECONDARY) ───
-  // Sort by volume descending
-  nonBagsMints.sort((a, b) => (pairMap[b]?.volume?.h24 ?? 0) - (pairMap[a]?.volume?.h24 ?? 0));
-
-  for (let i = 0; i < nonBagsMints.length; i++) {
-    const mint = nonBagsMints[i];
+  // ─── Step 6: Compute Bags.fm summary stats ───
+  let platformVolume24h = 0;
+  let platformFeesClaimed = 0;
+  for (const mint of bagsMintsList) {
     const pair = pairMap[mint];
-    if (!pair) continue;
-    events.push(
-      ...generateGenericEvents(pair, now, bagsMintsList.length + i, boostedMints.has(mint))
-    );
+    if (pair) platformVolume24h += pair.volume?.h24 ?? 0;
+    const feesLamports = bagsMints.get(mint) ?? 0;
+    if (feesLamports > 0) platformFeesClaimed += lamportsToSol(feesLamports);
   }
+
+  const summary = {
+    totalVolume24h: platformVolume24h,
+    totalFeesClaimed: platformFeesClaimed,
+    activeTokenCount: bagsMintsList.filter((m) => pairMap[m]).length,
+  };
 
   // ─── Step 7: Sort and cache ───
   events.sort((a, b) => b.timestamp - a.timestamp);
 
-  const bagsEventCount = events.filter((e) => e.id.startsWith("bags_")).length;
   console.log(
-    `[platform-activity] DexScreener: ${solanaProfiles.length} profiles, ${solanaBoosted.length} boosted → ${bagsMints.size} Bags.fm tokens, ${nonBagsMints.length} general → ${events.length} events (${bagsEventCount} Bags.fm)`
+    `[platform-activity] DexScreener: ${solanaProfiles.length} profiles, ${solanaBoosted.length} boosted → ${bagsMints.size} Bags.fm tokens → ${events.length} events, summary: ${summary.activeTokenCount} tokens, ${fmtVol(summary.totalVolume24h)} vol`
   );
 
-  eventsCache = { data: events, timestamp: now };
+  eventsCache = { data: events, summary, timestamp: now };
 
   // Filter out known BagsWorld mints before returning
   const filtered =
@@ -484,5 +405,5 @@ export async function GET(request: Request) {
       ? events.filter((e) => !e.data?.mint || !knownMints.has(e.data.mint))
       : events;
 
-  return NextResponse.json({ events: filtered });
+  return NextResponse.json({ events: filtered, summary });
 }
