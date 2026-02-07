@@ -1,6 +1,7 @@
 /**
- * ChadGhost Engagement Layer
+ * ChadGhost Engagement - MoltBook Community Interaction
  * The part that makes ChadGhost a real KOL, not just a broadcast bot
+ * Runs on: Mac mini (separate from GhostTrader on Railway)
  *
  * Handles:
  * - Replying to comments on own posts

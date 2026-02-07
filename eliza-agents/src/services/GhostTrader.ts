@@ -1,5 +1,9 @@
-// GhostTrader - Autonomous trading agent for Ghost
-// Evaluates new launches, executes trades, manages positions
+/**
+ * GhostTrader - ElizaOS Autonomous Trading Agent
+ * Evaluates new launches, executes trades, manages positions
+ * Runs on: Railway (deployed as part of the ElizaOS agent server)
+ * NOT related to ChadGhost (MoltBook alpha-posting agent on Mac mini)
+ */
 
 import { NeonQueryFunction } from "@neondatabase/serverless";
 import {
@@ -1441,6 +1445,37 @@ export class GhostTrader {
     currentPriceSol: number
   ): Promise<void> {
     if (!this.ghostWalletPublicKey) return;
+
+    // Check actual token balance before attempting sell (prevents 0x1 errors)
+    try {
+      if (!this.solanaService) throw new Error("SolanaService not initialized");
+      const actualBalance = await this.solanaService.getTokenBalance(position.tokenMint);
+
+      if (actualBalance === 0) {
+        console.log(
+          `[GhostTrader] No token balance for ${position.tokenSymbol} — marking as failed`
+        );
+        position.status = "failed";
+        position.exitReason = `${reason}_no_balance`;
+        position.pnlSol = -position.amountSol;
+        position.closedAt = new Date();
+        await this.updatePositionInDatabase(position);
+        return;
+      }
+
+      if (actualBalance < position.amountTokens) {
+        console.log(
+          `[GhostTrader] Balance mismatch for ${position.tokenSymbol}: recorded ${position.amountTokens}, actual ${actualBalance} — using actual`
+        );
+        position.amountTokens = actualBalance;
+      }
+    } catch (error) {
+      console.warn(
+        `[GhostTrader] Failed to check token balance for ${position.tokenSymbol}, proceeding with sell:`,
+        error instanceof Error ? error.message : error
+      );
+      // Non-blocking: continue with sell attempt using recorded amount
+    }
 
     const MAX_SELL_ATTEMPTS = 5;
     position.sellAttempts = (position.sellAttempts || 0) + 1;

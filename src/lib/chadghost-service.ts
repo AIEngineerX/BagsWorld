@@ -1,6 +1,7 @@
 /**
- * ChadGhost Autonomous Service
+ * ChadGhost Autonomous Service - MoltBook Alpha-Posting Agent
  * Runs ChadGhost's alpha posting on a schedule
+ * Runs on: Mac mini (separate from GhostTrader on Railway)
  *
  * This is separate from Bagsy's hype posting (moltbook-autonomous.ts)
  * ChadGhost focuses on finding and sharing actual crypto alpha
