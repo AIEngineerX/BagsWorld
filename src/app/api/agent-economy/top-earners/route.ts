@@ -32,6 +32,7 @@ let cacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000;
 
 // Per-mint lifetime fees probe cache (2h) — used as a filter
+// IMPORTANT: only cache SUCCESSFUL results, never cache failures
 const probeCache = new Map<string, { feesLamports: number; ts: number }>();
 const PROBE_TTL = 2 * 60 * 60_000;
 
@@ -58,6 +59,39 @@ const creatorCache = new Map<
 >();
 const CREATOR_TTL = 60 * 60_000;
 
+// Rate limit tracker — stops all Bags API calls until reset
+let rateLimitedUntil = 0;
+
+function isRateLimited(): boolean {
+  return Date.now() < rateLimitedUntil;
+}
+
+function checkRateLimitError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.includes("Rate limit") || msg.includes("429")) {
+    // Default 5-min cooldown; the real reset is hourly
+    rateLimitedUntil = Date.now() + 5 * 60_000;
+    return true;
+  }
+  return false;
+}
+
+async function checkRateLimitResponse(res: Response): Promise<boolean> {
+  if (res.status === 429 || (!res.ok && res.status >= 400)) {
+    try {
+      const body = await res.clone().json();
+      if (body.error?.includes?.("Rate limit") || body.remaining === 0) {
+        const reset = body.resetTime ? new Date(body.resetTime).getTime() : Date.now() + 5 * 60_000;
+        rateLimitedUntil = reset;
+        return true;
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+  return false;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const noCache = searchParams.has("nocache");
@@ -77,7 +111,7 @@ export async function GET(request: Request) {
   const api = initBagsApi(BAGS_API_KEY);
   const now = Date.now();
 
-  // wallet → earner data (keyed by wallet since claim stats use wallets)
+  // wallet → earner data
   const earnerMap = new Map<
     string,
     {
@@ -90,17 +124,14 @@ export async function GET(request: Request) {
     }
   >();
 
-  // Track token metadata: mint → {name, symbol}
   const tokenMeta = new Map<string, { name: string; symbol: string }>();
 
   try {
     // ====================================================
     // Step 1: Discover ALL Bags.fm tokens
-    // All Bags.fm mints end in "BAGS" — use DexScreener search
     // ====================================================
     const mintSet = new Set<string>();
 
-    // Source A: DexScreener search for BAGS-suffix tokens (global discovery)
     const dexPairs = await searchTokens("BAGS").catch(() => []);
     for (const pair of dexPairs) {
       if (pair.chainId === "solana" && pair.baseToken.address.endsWith("BAGS")) {
@@ -112,7 +143,6 @@ export async function GET(request: Request) {
       }
     }
 
-    // Source B: BagsWorld DB tokens (may include tokens not on DexScreener)
     if (isNeonConfigured()) {
       const globalTokens = await getGlobalTokens();
       for (const t of globalTokens) {
@@ -123,9 +153,7 @@ export async function GET(request: Request) {
     }
 
     const allMints = Array.from(mintSet);
-    console.log(
-      `[top-earners] Discovered ${allMints.length} Bags.fm tokens (${dexPairs.length} DexScreener)`
-    );
+    console.log(`[top-earners] Discovered ${allMints.length} Bags.fm tokens`);
 
     if (allMints.length === 0) {
       const response = {
@@ -140,11 +168,11 @@ export async function GET(request: Request) {
     }
 
     // ====================================================
-    // Step 2: Probe lifetime fees to filter tokens with activity
-    // (tokens with 0 lifetime fees can't have any claims)
+    // Step 2: Probe lifetime fees (filter for active tokens)
+    // Only cache SUCCESSFUL results — never cache errors
     // ====================================================
     const uncachedMints: string[] = [];
-    const activeMints = new Map<string, number>(); // mint → feesLamports
+    const activeMints = new Map<string, number>();
 
     for (const mint of allMints) {
       const cached = probeCache.get(mint);
@@ -157,47 +185,59 @@ export async function GET(request: Request) {
       }
     }
 
-    if (uncachedMints.length > 0) {
+    if (uncachedMints.length > 0 && !isRateLimited()) {
       const batches = [];
       for (let i = 0; i < uncachedMints.length; i += 20) {
         batches.push(uncachedMints.slice(i, i + 20));
       }
 
       for (const batch of batches) {
+        if (isRateLimited()) break;
+
         const results = await Promise.allSettled(batch.map((m) => api.getTokenLifetimeFees(m)));
 
         for (let i = 0; i < batch.length; i++) {
           const mint = batch[i];
           const result = results[i];
           if (result.status === "fulfilled") {
+            // Only cache successful results
             probeCache.set(mint, { feesLamports: result.value, ts: now });
             if (result.value > 0) activeMints.set(mint, result.value);
           } else {
-            probeCache.set(mint, { feesLamports: 0, ts: now });
+            // Check for rate limit — if so, stop making calls
+            if (checkRateLimitError(result.reason)) {
+              console.log("[top-earners] Rate limited, stopping probe calls");
+              break;
+            }
+            // DON'T cache failures — leave uncached for next request
           }
         }
       }
+    } else if (isRateLimited() && uncachedMints.length > 0) {
+      console.log(
+        `[top-earners] Skipping ${uncachedMints.length} probes (rate limited until ${new Date(rateLimitedUntil).toISOString()})`
+      );
     }
 
-    console.log(
-      `[top-earners] ${activeMints.size} tokens have fee activity (${uncachedMints.length} freshly probed)`
-    );
+    console.log(`[top-earners] ${activeMints.size} tokens have fee activity`);
 
     if (activeMints.size === 0) {
+      // Don't cache empty results if we're rate limited (data is incomplete)
       const response = {
         success: true,
         topEarners: [] as TopEarner[],
         lastUpdated: new Date().toISOString(),
         tokenCount: allMints.length,
       };
-      cachedResponse = response;
-      cacheTime = now;
+      if (!isRateLimited()) {
+        cachedResponse = response;
+        cacheTime = now;
+      }
       return NextResponse.json(response);
     }
 
     // ====================================================
     // Step 3: Get claim stats + creators for active tokens
-    // Match claimed wallets to Moltbook agents
     // ====================================================
     const sortedMints = Array.from(activeMints.entries())
       .sort((a, b) => b[1] - a[1])
@@ -205,32 +245,43 @@ export async function GET(request: Request) {
       .map(([mint]) => mint);
 
     for (const mint of sortedMints) {
+      if (isRateLimited()) break;
+
       const meta = tokenMeta.get(mint);
 
-      // 3a: Get claim stats for this token
+      // 3a: Get claim stats
       let claimStats = claimStatsCache.get(mint);
       if (!claimStats || now - claimStats.ts >= CLAIM_STATS_TTL) {
-        try {
-          const freshStats = await api.getClaimStats(mint);
-          claimStats = { stats: freshStats, ts: now };
-          claimStatsCache.set(mint, claimStats);
-        } catch {
-          claimStats = { stats: [], ts: now };
-          claimStatsCache.set(mint, claimStats);
+        if (!isRateLimited()) {
+          try {
+            const freshStats = await api.getClaimStats(mint);
+            claimStats = { stats: freshStats, ts: now };
+            claimStatsCache.set(mint, claimStats);
+          } catch (err) {
+            if (checkRateLimitError(err)) break;
+            // Don't cache failures
+            continue;
+          }
+        } else {
+          continue;
         }
       }
 
-      // Skip tokens with no claims
       if (claimStats.stats.length === 0) continue;
 
-      // 3b: Get creators to map wallets → Moltbook identities
+      // 3b: Get creators
       let creators = creatorCache.get(mint);
       if (!creators || now - creators.ts >= CREATOR_TTL) {
+        if (isRateLimited()) continue;
+
         try {
           const raw = await fetch(
             `https://public-api-v2.bags.fm/api/v1/token-launch/creator/v3?tokenMint=${mint}`,
             { headers: { "x-api-key": BAGS_API_KEY } }
           );
+
+          if (await checkRateLimitResponse(raw)) break;
+
           const data = await raw.json();
 
           if (data.success) {
@@ -240,17 +291,18 @@ export async function GET(request: Request) {
                 ? data.creators
                 : [];
             creators = { creators: creatorsArray, ts: now };
+            creatorCache.set(mint, creators);
           } else {
-            creators = { creators: [], ts: now };
+            // Don't cache non-success responses (may be rate limit or transient)
+            continue;
           }
-          creatorCache.set(mint, creators);
-        } catch {
-          creators = { creators: [], ts: now };
-          creatorCache.set(mint, creators);
+        } catch (err) {
+          if (checkRateLimitError(err)) break;
+          continue;
         }
       }
 
-      // 3c: Build wallet → Moltbook identity map for this token's creators
+      // 3c: Build wallet → Moltbook identity map
       const walletToMoltbook = new Map<string, { name: string; username: string; pfp?: string }>();
 
       for (const creator of creators.creators) {
@@ -338,8 +390,12 @@ export async function GET(request: Request) {
       tokenCount: allMints.length,
     };
 
-    cachedResponse = response;
-    cacheTime = now;
+    // Only cache if we have complete data (not rate limited)
+    if (!isRateLimited()) {
+      cachedResponse = response;
+      cacheTime = now;
+    }
+
     return NextResponse.json(response);
   } catch (err) {
     console.error("[top-earners] Error:", err);
