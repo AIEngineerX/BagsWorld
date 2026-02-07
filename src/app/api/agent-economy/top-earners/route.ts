@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { initBagsApi } from "@/lib/bags-api";
 import { isNeonConfigured, getTokensByCreator } from "@/lib/neon";
 import { neon } from "@neondatabase/serverless";
+import { getMoltbookOrNull } from "@/lib/moltbook-client";
 
 interface TopEarnerToken {
   mint: string;
@@ -31,18 +32,42 @@ let cacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000;
 
 /**
- * Get all known Moltbook agent usernames from DB + hardcoded list
+ * Discover Moltbook agents from feed + DB + hardcoded fallbacks.
+ * The feed provides dynamic discovery of any agent that has posted.
  */
 async function getKnownMoltbookAgents(): Promise<
   Array<{ username: string; displayName?: string }>
 > {
+  const seen = new Set<string>();
   const agents: Array<{ username: string; displayName?: string }> = [];
 
-  // Hardcoded agents that always exist
-  agents.push({ username: "Bagsy", displayName: "Bagsy" });
-  agents.push({ username: "ChadGhost", displayName: "ChadGhost" });
+  function addAgent(username: string, displayName?: string) {
+    const key = username.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    agents.push({ username, displayName });
+  }
 
-  // Pull external agents with Moltbook usernames from DB
+  // 1. Discover agents dynamically from Moltbook feed
+  const moltbook = getMoltbookOrNull();
+  if (moltbook) {
+    try {
+      const [hotPosts, newPosts] = await Promise.all([
+        moltbook.getFeed("hot", 100),
+        moltbook.getFeed("new", 100),
+      ]);
+      for (const post of [...hotPosts, ...newPosts]) {
+        if (post.author) {
+          addAgent(post.author, post.author);
+        }
+      }
+      console.log(`[top-earners] Discovered ${agents.length} agents from Moltbook feed`);
+    } catch (err) {
+      console.error("[top-earners] Moltbook feed fetch failed:", err);
+    }
+  }
+
+  // 2. Pull external agents with Moltbook usernames from DB
   if (isNeonConfigured()) {
     try {
       const sql = neon(process.env.DATABASE_URL!);
@@ -53,15 +78,16 @@ async function getKnownMoltbookAgents(): Promise<
       for (const row of rows) {
         const username = (row as { moltbook_username: string }).moltbook_username;
         const name = (row as { name: string }).name;
-        // Avoid duplicates
-        if (!agents.some((a) => a.username.toLowerCase() === username.toLowerCase())) {
-          agents.push({ username, displayName: name });
-        }
+        addAgent(username, name);
       }
     } catch (err) {
       console.error("[top-earners] Failed to fetch external agents from DB:", err);
     }
   }
+
+  // 3. Hardcoded fallbacks (always include these)
+  addAgent("Bagsy", "Bagsy");
+  addAgent("ChadGhost", "ChadGhost");
 
   return agents;
 }
@@ -225,7 +251,7 @@ export async function GET(request: Request) {
 
     const response = {
       success: true,
-      topEarners: earners.slice(0, 3),
+      topEarners: earners.slice(0, 10),
       lastUpdated: new Date().toISOString(),
     };
 
