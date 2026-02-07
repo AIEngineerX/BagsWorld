@@ -10,11 +10,36 @@ interface AgentToken {
   claimableSol?: number;
 }
 
+interface TopEarnerToken {
+  mint: string;
+  name: string;
+  symbol: string;
+  lifetimeFeesSol: number;
+}
+
+interface TopEarner {
+  name: string;
+  provider: string;
+  username: string;
+  profilePic?: string;
+  wallet: string;
+  totalLifetimeFeesSol: number;
+  tokenCount: number;
+  tokens: TopEarnerToken[];
+}
+
 interface AgentHutModalProps {
   onClose: () => void;
 }
 
+type TabType = "top-earners" | "find-agent";
+
+const RANK_COLORS = ["text-yellow-400", "text-gray-300", "text-amber-600"];
+
 export function AgentHutModal({ onClose }: AgentHutModalProps) {
+  const [activeTab, setActiveTab] = useState<TabType>("top-earners");
+
+  // My Agent state
   const [moltbookUsername, setMoltbookUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,9 +49,49 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
     totalClaimable: number;
   } | null>(null);
 
+  // Top Earners state
+  const [topEarners, setTopEarners] = useState<TopEarner[]>([]);
+  const [earnersLoading, setEarnersLoading] = useState(true);
+  const [earnersError, setEarnersError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
   };
+
+  // Fetch top earners on mount
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchTopEarners = async () => {
+      try {
+        const res = await fetch("/api/agent-economy/top-earners");
+        const data = await res.json();
+        if (!mounted) return;
+
+        if (data.success) {
+          setTopEarners(data.topEarners);
+          setLastUpdated(data.lastUpdated);
+          setEarnersError(null);
+        } else {
+          setEarnersError(data.error || "Failed to load");
+        }
+      } catch {
+        if (mounted) setEarnersError("Failed to fetch top earners");
+      } finally {
+        if (mounted) setEarnersLoading(false);
+      }
+    };
+
+    fetchTopEarners();
+
+    // Poll every 5 minutes
+    const interval = setInterval(fetchTopEarners, 5 * 60 * 1000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const lookupAgent = async () => {
     if (!moltbookUsername.trim()) {
@@ -111,7 +176,7 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
               <span className="text-3xl">🛖</span>
               <div>
                 <h2 className="text-xl font-bold text-amber-100">Agent Hut</h2>
-                <p className="text-amber-300 text-sm">View your tokens & fees</p>
+                <p className="text-amber-300 text-sm">Agents & fee earnings</p>
               </div>
             </div>
             <button
@@ -123,47 +188,142 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b border-amber-700/50">
+          <button
+            onClick={() => setActiveTab("top-earners")}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === "top-earners"
+                ? "text-amber-100 border-b-2 border-amber-400 bg-amber-800/20"
+                : "text-amber-500 hover:text-amber-300"
+            }`}
+          >
+            Top Earners
+          </button>
+          <button
+            onClick={() => setActiveTab("find-agent")}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === "find-agent"
+                ? "text-amber-100 border-b-2 border-amber-400 bg-amber-800/20"
+                : "text-amber-500 hover:text-amber-300"
+            }`}
+          >
+            Find Agent
+          </button>
+        </div>
+
         {/* Content */}
         <div className="p-4 overflow-y-auto max-h-[60vh]">
-          {!agentData ? (
-            /* Lookup Form */
+          {activeTab === "top-earners" ? (
+            /* Top Earners Tab */
+            <div className="space-y-3">
+              {earnersLoading ? (
+                <div className="text-center py-8">
+                  <div className="text-amber-400 animate-pulse text-lg">Loading top earners...</div>
+                </div>
+              ) : earnersError ? (
+                <div className="text-center py-8">
+                  <p className="text-red-400 text-sm">{earnersError}</p>
+                </div>
+              ) : topEarners.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-amber-400 text-sm">No fee earners found yet</p>
+                  <p className="text-amber-600 text-xs mt-2">
+                    Launch a token on Bags.fm to start earning fees!
+                  </p>
+                </div>
+              ) : (
+                topEarners.map((earner, idx) => (
+                  <div
+                    key={earner.wallet}
+                    className="bg-amber-800/30 rounded-lg p-4 border border-amber-700/30"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <span
+                        className={`text-2xl font-bold ${RANK_COLORS[idx] || "text-amber-400"}`}
+                      >
+                        #{idx + 1}
+                      </span>
+                      {earner.profilePic && !earner.profilePic.includes("default_pfp") && (
+                        <img
+                          src={earner.profilePic}
+                          alt=""
+                          className="w-8 h-8 rounded-full border border-amber-700/50"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-amber-100 font-medium truncate">{earner.name}</div>
+                        <span className="text-amber-500 text-xs">
+                          {earner.provider === "twitter"
+                            ? `𝕏 @${earner.username}`
+                            : earner.username}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-950/50 rounded px-3 py-2 mb-3">
+                      <div className="text-amber-500 text-xs">Lifetime Fees Earned</div>
+                      <div className="text-green-400 font-bold text-lg">
+                        {earner.totalLifetimeFeesSol.toFixed(4)} SOL
+                      </div>
+                    </div>
+
+                    {earner.tokens.length > 0 && (
+                      <div className="space-y-1">
+                        {earner.tokens.map((token) => (
+                          <div
+                            key={token.mint}
+                            className="flex items-center justify-between text-xs"
+                          >
+                            <span className="text-amber-300">${token.symbol}</span>
+                            <span className="text-amber-500">
+                              {token.lifetimeFeesSol.toFixed(4)} SOL
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+
+              {lastUpdated && (
+                <p className="text-amber-600 text-xs text-center">
+                  Updated {new Date(lastUpdated).toLocaleTimeString()}
+                </p>
+              )}
+            </div>
+          ) : !agentData ? (
+            /* Find Agent - Lookup Form */
             <div className="space-y-4">
               <div className="bg-amber-800/30 rounded-lg p-4 border border-amber-700/30">
                 <label className="block text-amber-200 text-sm mb-2">Moltbook Username</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={moltbookUsername}
-                    onChange={(e) => setMoltbookUsername(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="e.g. ChadGhost"
-                    className="flex-1 bg-amber-950/50 border border-amber-700/50 rounded-lg px-3 py-2 text-amber-100 placeholder-amber-600 focus:outline-none focus:border-amber-500"
-                  />
-                  <button
-                    onClick={lookupAgent}
-                    disabled={isLoading}
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800 text-white rounded-lg font-medium transition-colors"
-                  >
-                    {isLoading ? "..." : "Lookup"}
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  value={moltbookUsername}
+                  onChange={(e) => setMoltbookUsername(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="e.g. ChadGhost"
+                  className="w-full bg-amber-950/50 border border-amber-700/50 rounded-lg px-3 py-2 text-amber-100 placeholder-amber-600 focus:outline-none focus:border-amber-500 text-sm"
+                />
+                <button
+                  onClick={lookupAgent}
+                  disabled={isLoading}
+                  className="w-full mt-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800 text-white rounded-lg font-medium text-sm transition-colors"
+                >
+                  {isLoading ? "Searching..." : "Find Agent"}
+                </button>
                 {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
               </div>
 
-              <div className="bg-amber-800/20 rounded-lg p-4 border border-amber-700/20">
-                <h3 className="text-amber-200 font-medium mb-2">🏥 Don&apos;t have a token yet?</h3>
-                <p className="text-amber-400 text-sm mb-3">
-                  Launch your own token for FREE via Pokécenter! You keep 100% of trading fees.
+              <div className="bg-amber-800/20 rounded-lg p-3 border border-amber-700/20">
+                <p className="text-amber-400 text-xs">
+                  Search by Moltbook username to view an agent&apos;s tokens and claimable fees.
                 </p>
-                <code className="block bg-amber-950/50 rounded p-2 text-xs text-amber-300 overflow-x-auto">
-                  POST /api/agent-economy/external
-                  <br />
-                  {`{ "action": "launch", "moltbookUsername": "YOU", "name": "...", "symbol": "...", "description": "..." }`}
-                </code>
               </div>
             </div>
           ) : (
-            /* Agent Data Display */
+            /* Find Agent - Results */
             <div className="space-y-4">
               {/* Agent Info */}
               <div className="bg-amber-800/30 rounded-lg p-4 border border-amber-700/30">
@@ -192,7 +352,7 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                 </div>
                 {agentData.totalClaimable > 0 && (
                   <p className="text-green-400 text-xs mt-2">
-                    💡 Use action=&quot;claim&quot; to get unsigned transactions
+                    Use action=&quot;claim&quot; to get unsigned transactions
                   </p>
                 )}
               </div>
@@ -237,7 +397,7 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
               {/* Claim Instructions */}
               {agentData.totalClaimable > 0 && (
                 <div className="bg-amber-800/20 rounded-lg p-4 border border-amber-700/20">
-                  <h3 className="text-amber-200 font-medium mb-2">📝 How to Claim</h3>
+                  <h3 className="text-amber-200 font-medium mb-2">How to Claim</h3>
                   <ol className="text-amber-400 text-sm space-y-1 list-decimal list-inside">
                     <li>Call action=&quot;claim&quot; with your wallet</li>
                     <li>Sign the returned transactions</li>
@@ -255,7 +415,7 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
         {/* Footer */}
         <div className="p-4 border-t border-amber-700/50 bg-amber-800/20">
           <p className="text-amber-500 text-xs text-center">
-            🏥 Powered by BagsWorld Pokécenter • 100% fees to creators
+            Powered by BagsWorld Pokecenter &bull; 100% fees to creators
           </p>
         </div>
       </div>
