@@ -1446,6 +1446,12 @@ export class GhostTrader {
   ): Promise<void> {
     if (!this.ghostWalletPublicKey) return;
 
+    // Guard against concurrent close attempts on the same position
+    if (position.status !== "open") {
+      console.log(`[GhostTrader] Position ${position.tokenSymbol} already ${position.status}, skipping close`);
+      return;
+    }
+
     // Check actual token balance before attempting sell (prevents 0x1 errors)
     try {
       if (!this.solanaService) throw new Error("SolanaService not initialized");
@@ -1460,6 +1466,7 @@ export class GhostTrader {
         position.pnlSol = -position.amountSol;
         position.closedAt = new Date();
         await this.updatePositionInDatabase(position);
+        await this.announceTrade("sell", position);
         return;
       }
 
@@ -1494,6 +1501,7 @@ export class GhostTrader {
       position.pnlSol = estimatedSolBack - position.amountSol;
       position.closedAt = new Date();
       await this.updatePositionInDatabase(position);
+      await this.announceTrade("sell", position);
       return;
     }
 
