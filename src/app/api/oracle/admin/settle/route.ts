@@ -3,38 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getActiveOracleRound,
   settleOracleRound,
+  settleOracleRoundWithOutcome,
   cancelOracleRound,
+  getOracleRoundPredictions,
+  updatePredictionOPPayout,
   isNeonConfigured,
 } from "@/lib/neon";
 import { isAdmin } from "@/lib/config";
 import { emitEvent } from "@/lib/agent-coordinator";
+import { resolveMarket, calculateOPPayouts, getTokenPrice } from "@/lib/oracle-resolver";
+import { addOP, updateStreak, updateReputation } from "@/lib/op-economy";
 
 export const dynamic = "force-dynamic";
-
-// Fetch current price from DexScreener
-async function getTokenPrice(mint: string): Promise<number> {
-  const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`, {
-    next: { revalidate: 0 },
-  });
-
-  if (!response.ok) {
-    console.error(`DexScreener API error for ${mint}: ${response.status}`);
-    return 0;
-  }
-
-  const data = await response.json();
-
-  if (data.pairs && data.pairs.length > 0) {
-    // Get price from most liquid pair
-    const sortedPairs = data.pairs.sort(
-      (a: { liquidity?: { usd?: number } }, b: { liquidity?: { usd?: number } }) =>
-        (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0)
-    );
-    return parseFloat(sortedPairs[0].priceUsd || "0");
-  }
-
-  return 0;
-}
 
 export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
@@ -72,7 +52,64 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Settle the round - fetch end prices and determine winner
+  // For non-price-prediction markets, use the generalized resolver
+  const marketType = round.marketType || "price_prediction";
+  if (marketType !== "price_prediction") {
+    const resolution = await resolveMarket(round);
+    if (!resolution.success) {
+      return NextResponse.json(
+        { success: false, error: resolution.error || "Resolution failed" },
+        { status: 500 }
+      );
+    }
+
+    if (resolution.winningOutcomeId) {
+      await settleOracleRoundWithOutcome(
+        round.id,
+        resolution.winningOutcomeId,
+        resolution.resolutionData
+      );
+    }
+
+    // Distribute OP payouts
+    const predictions = await getOracleRoundPredictions(round.id);
+    if (predictions.length > 0) {
+      const winningId = resolution.winningOutcomeId || "";
+      const payouts = calculateOPPayouts(predictions, winningId, true);
+      const totalPreds = predictions.length;
+      const winnerCount = payouts.filter((p) => p.isWinner).length;
+      const difficulty = totalPreds > 0 ? totalPreds / Math.max(1, winnerCount) : 1;
+
+      for (const payout of payouts) {
+        await updatePredictionOPPayout(
+          payout.predictionId,
+          payout.opPayout,
+          payout.isWinner,
+          payout.rank
+        );
+        if (payout.opPayout > 0) {
+          await addOP(payout.wallet, payout.opPayout, "prediction_win", round.id);
+        }
+        await updateStreak(payout.wallet, payout.isWinner);
+        await updateReputation(payout.wallet, payout.isWinner, difficulty);
+      }
+    }
+
+    console.log(
+      `[Oracle Admin] Round #${round.id} (${marketType}) settled by ${adminWallet}: winner=${resolution.winningOutcomeId}`
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: "Market settled successfully",
+      roundId: round.id,
+      marketType,
+      winningOutcome: resolution.winningOutcomeId,
+      resolutionData: resolution.resolutionData,
+    });
+  }
+
+  // Settle the round - fetch end prices and determine winner (price_prediction flow)
   const endPrices: Record<string, number> = {};
   const priceChanges: Record<string, number> = {};
   let validPriceCount = 0;
@@ -146,6 +183,29 @@ export async function POST(request: NextRequest) {
 
   if (!result.success) {
     return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+  }
+
+  // Also distribute OP payouts for price prediction markets
+  const predictions = await getOracleRoundPredictions(round.id);
+  if (predictions.length > 0) {
+    const payouts = calculateOPPayouts(predictions, winningTokenMint, false);
+    const totalPreds = predictions.length;
+    const winnerCount = payouts.filter((p) => p.isWinner).length;
+    const difficulty = totalPreds > 0 ? totalPreds / Math.max(1, winnerCount) : 1;
+
+    for (const payout of payouts) {
+      await updatePredictionOPPayout(
+        payout.predictionId,
+        payout.opPayout,
+        payout.isWinner,
+        payout.rank
+      );
+      if (payout.opPayout > 0) {
+        await addOP(payout.wallet, payout.opPayout, "prediction_win", round.id);
+      }
+      await updateStreak(payout.wallet, payout.isWinner);
+      await updateReputation(payout.wallet, payout.isWinner, difficulty);
+    }
   }
 
   // Calculate prize pool in SOL for logging
