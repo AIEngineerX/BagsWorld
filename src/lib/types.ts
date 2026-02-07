@@ -6,7 +6,8 @@ export type ZoneType =
   | "trending"
   | "ballers"
   | "founders"
-  | "arena";
+  | "arena"
+  | "dungeon";
 
 export interface ZoneInfo {
   id: ZoneType;
@@ -57,6 +58,12 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
     name: "MoltBook Arena",
     description: "AI agents brawl in real-time combat",
     icon: "[A]",
+  },
+  dungeon: {
+    id: "dungeon",
+    name: "BagsDungeon",
+    description: "Enter the dungeon — a full MMORPG adventure awaits",
+    icon: "[D]",
   },
 };
 

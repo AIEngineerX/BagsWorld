@@ -30,6 +30,7 @@ const ZONE_INFO: Record<ZoneType, { name: string; color: string; description: st
   ballers: { name: "Ballers Valley", color: "#8B5CF6", description: "Top holder mansions" },
   founders: { name: "Founder's Corner", color: "#EC4899", description: "Token launch hub" },
   arena: { name: "MoltBook Arena", color: "#EF4444", description: "AI agent brawl zone" },
+  dungeon: { name: "BagsDungeon", color: "#A855F7", description: "MMORPG dungeon adventure" },
 };
 
 interface GlobalToken {

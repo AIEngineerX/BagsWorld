@@ -76,6 +76,10 @@ const ZONE_SPAWN_POINTS: Record<ZoneType, { x: number; y: number }[]> = {
     { x: Math.round(300 * SCALE), y: GROUND_Y },
     { x: Math.round(500 * SCALE), y: GROUND_Y },
   ],
+  dungeon: [
+    { x: Math.round(300 * SCALE), y: GROUND_Y },
+    { x: Math.round(500 * SCALE), y: GROUND_Y },
+  ],
 };
 
 /**
@@ -275,6 +279,7 @@ export function getSpawnStats(): {
     founders: 0,
     ballers: 0,
     arena: 0,
+    dungeon: 0,
   };
 
   for (const agent of agents) {
