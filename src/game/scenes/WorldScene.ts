@@ -2880,7 +2880,7 @@ export class WorldScene extends Phaser.Scene {
 
     // === BUILDINGS (depth 5+) - Clickable with info popups ===
     const buildings = [
-      { texture: "founders_0", x: 450, label: "DEXSCREENER\nWORKSHOP", type: "overview" },
+      { texture: "founders_0", x: 300, label: "DEXSCREENER\nWORKSHOP", type: "overview" },
     ];
 
     buildings.forEach((b, i) => {
@@ -2938,6 +2938,66 @@ export class WorldScene extends Phaser.Scene {
       label.setDepth(7);
       this.foundersElements.push(label);
     });
+
+    // === SOL INCINERATOR FACTORY (depth 5) - Opens React modal ===
+    const incineratorX = Math.round(600 * s);
+    const incineratorSprite = this.add.sprite(incineratorX, pathLevel, "founders_3");
+    incineratorSprite.setOrigin(0.5, 1);
+    incineratorSprite.setDepth(4.6);
+
+    incineratorSprite.setInteractive({ useHandCursor: true });
+    incineratorSprite.on("pointerdown", () => {
+      window.dispatchEvent(new CustomEvent("bagsworld-incinerator-click"));
+    });
+    incineratorSprite.on("pointerover", () => {
+      incineratorSprite.setTint(0xdddddd);
+      this.tweens.add({
+        targets: incineratorSprite,
+        scaleX: 1.02,
+        scaleY: 1.02,
+        duration: 100,
+        ease: "Power2",
+      });
+    });
+    incineratorSprite.on("pointerout", () => {
+      incineratorSprite.clearTint();
+      this.tweens.add({
+        targets: incineratorSprite,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 100,
+        ease: "Power2",
+      });
+    });
+    this.foundersElements.push(incineratorSprite);
+
+    // Incinerator label
+    const incLabelBg = this.add.rectangle(
+      incineratorX,
+      pathLevel + Math.round(18 * s),
+      Math.round(78 * s),
+      Math.round(24 * s),
+      0x000000,
+      0.7
+    );
+    incLabelBg.setDepth(6);
+    incLabelBg.setStrokeStyle(1, 0xf97316);
+    this.foundersElements.push(incLabelBg);
+
+    const incLabel = this.add.text(
+      incineratorX,
+      pathLevel + Math.round(18 * s),
+      "SOL\nINCINERATOR",
+      {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(8 * s)}px`,
+        color: "#f97316",
+        align: "center",
+      }
+    );
+    incLabel.setOrigin(0.5, 0.5);
+    incLabel.setDepth(7);
+    this.foundersElements.push(incLabel);
 
     // === LANTERNS (depth 3) ===
     const lanternPositions = [170, 350, 550, 730];

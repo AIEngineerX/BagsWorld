@@ -62,6 +62,7 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
   // Fetch top earners on mount
   useEffect(() => {
     let mounted = true;
+    let hasData = false;
 
     const fetchTopEarners = async () => {
       try {
@@ -73,14 +74,15 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
           setTopEarners(data.topEarners);
           setLastUpdated(data.lastUpdated);
           setEarnersError(null);
+          hasData = data.topEarners.length > 0;
         } else {
           // Only show error if we have no existing data to display
-          if (topEarners.length === 0) {
+          if (!hasData) {
             setEarnersError(data.error || "Failed to load");
           }
         }
       } catch {
-        if (mounted && topEarners.length === 0) setEarnersError("Failed to fetch top earners");
+        if (mounted && !hasData) setEarnersError("Failed to fetch top earners");
       } finally {
         if (mounted) setEarnersLoading(false);
       }

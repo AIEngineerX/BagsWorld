@@ -38,45 +38,45 @@ npm test             # Run Jest tests
 
 ### Key Files
 
-| Path | Purpose |
-| ---- | ------- |
-| `src/app/api/world-state/` | Main API endpoint for WorldState |
-| `src/app/api/character-chat/` | AI chatbot for character interactions |
-| `src/app/api/launch-token/` | Token creation flow |
-| `src/app/api/oak-generate/` | Professor Oak AI Generator (names, logos, banners) |
-| `src/app/api/agent-economy/` | Autonomous agent operations (trade, claim, spawn) |
-| `src/app/api/chadghost/` | ChadGhost autonomous agent API |
-| `src/app/api/arena/brawl/` | Real-time AI agent combat (WebSocket) |
-| `src/app/api/auth/x/` | X (Twitter) OAuth flow |
-| `src/app/api/report/` | Daily X report generation |
-| `src/app/api/trading-terminal/` | Market data and charts |
-| `src/game/scenes/BootScene.ts` | Asset preloading + pixel art texture generation |
-| `src/game/scenes/WorldScene.ts` | Main game logic, zone rendering, weather (1000+ lines) |
-| `src/lib/types.ts` | Core types: WorldState, GameCharacter, GameBuilding, GameEvent |
-| `src/lib/store.ts` | Zustand store |
-| `src/lib/config.ts` | Ecosystem configuration (wallets, gates, decay) |
-| `src/lib/bags-api.ts` | BagsApiClient class |
-| `src/lib/agent-economy/` | 15 files: wallets, trading, brain, spawn, credentials |
-| `src/lib/chadghost-*.ts` | 4 files: brain, engagement, service, startup |
-| `src/lib/arena-*.ts` | 5 files: engine, matchmaking, db, types, moltbook |
-| `src/lib/moltbook-*.ts` | 4 files: client, agent, autonomous, chat |
-| `src/lib/scout-agent.ts` | Launch detection for Neo |
-| `src/lib/autonomous-dialogue.ts` | NPC self-dialogue system |
-| `src/lib/x-client.ts` | X API client |
-| `src/lib/x-oauth.ts` | X OAuth implementation |
-| `src/lib/trading-dojo.ts` | Trading training system |
-| `src/components/ProfessorOakChat.tsx` | AI-powered token generation wizard |
-| `src/components/AgentDashboard.tsx` | Agent monitoring dashboard |
-| `src/components/TradingTerminal.tsx` | In-game market terminal |
-| `src/components/ArenaModal.tsx` | Arena combat UI |
+| Path                                  | Purpose                                                        |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `src/app/api/world-state/`            | Main API endpoint for WorldState                               |
+| `src/app/api/character-chat/`         | AI chatbot for character interactions                          |
+| `src/app/api/launch-token/`           | Token creation flow                                            |
+| `src/app/api/oak-generate/`           | Professor Oak AI Generator (names, logos, banners)             |
+| `src/app/api/agent-economy/`          | Autonomous agent operations (trade, claim, spawn)              |
+| `src/app/api/chadghost/`              | ChadGhost autonomous agent API                                 |
+| `src/app/api/arena/brawl/`            | Real-time AI agent combat (WebSocket)                          |
+| `src/app/api/auth/x/`                 | X (Twitter) OAuth flow                                         |
+| `src/app/api/report/`                 | Daily X report generation                                      |
+| `src/app/api/trading-terminal/`       | Market data and charts                                         |
+| `src/game/scenes/BootScene.ts`        | Asset preloading + pixel art texture generation                |
+| `src/game/scenes/WorldScene.ts`       | Main game logic, zone rendering, weather (1000+ lines)         |
+| `src/lib/types.ts`                    | Core types: WorldState, GameCharacter, GameBuilding, GameEvent |
+| `src/lib/store.ts`                    | Zustand store                                                  |
+| `src/lib/config.ts`                   | Ecosystem configuration (wallets, gates, decay)                |
+| `src/lib/bags-api.ts`                 | BagsApiClient class                                            |
+| `src/lib/agent-economy/`              | 15 files: wallets, trading, brain, spawn, credentials          |
+| `src/lib/chadghost-*.ts`              | 4 files: brain, engagement, service, startup                   |
+| `src/lib/arena-*.ts`                  | 5 files: engine, matchmaking, db, types, moltbook              |
+| `src/lib/moltbook-*.ts`               | 4 files: client, agent, autonomous, chat                       |
+| `src/lib/scout-agent.ts`              | Launch detection for Neo                                       |
+| `src/lib/autonomous-dialogue.ts`      | NPC self-dialogue system                                       |
+| `src/lib/x-client.ts`                 | X API client                                                   |
+| `src/lib/x-oauth.ts`                  | X OAuth implementation                                         |
+| `src/lib/trading-dojo.ts`             | Trading training system                                        |
+| `src/components/ProfessorOakChat.tsx` | AI-powered token generation wizard                             |
+| `src/components/AgentDashboard.tsx`   | Agent monitoring dashboard                                     |
+| `src/components/TradingTerminal.tsx`  | In-game market terminal                                        |
+| `src/components/ArenaModal.tsx`       | Arena combat UI                                                |
 
 ### Pages
 
-| Path | Purpose |
-| ---- | ------- |
-| `/` | Main game - pixel art world, modals, character chats (763 lines) |
-| `/docs` | In-app documentation with collapsible sidebar |
-| `/agents` | AI agent showcase (MeetTheAgents component) |
+| Path      | Purpose                                                          |
+| --------- | ---------------------------------------------------------------- |
+| `/`       | Main game - pixel art world, modals, character chats (763 lines) |
+| `/docs`   | In-app documentation with collapsible sidebar                    |
+| `/agents` | AI agent showcase (MeetTheAgents component)                      |
 
 ### State Management
 
@@ -121,6 +121,7 @@ npm test             # Run Jest tests
 **Monitoring:**
 
 - `BAGS_API_URL` - Defaults to `https://public-api-v2.bags.fm/api/v1`
+- `SOL_INCINERATOR_API_KEY` - Enables Sol Incinerator (burn tokens & close empty accounts)
 
 **Client-Side:**
 
@@ -130,27 +131,51 @@ npm test             # Run Jest tests
 - `NEXT_PUBLIC_ADMIN_WALLET` - Admin wallet for moderation
 - `NEXT_PUBLIC_SITE_URL` - Site URL for internal API calls
 
+## Sol Incinerator
+
+The Sol Incinerator Factory in Founder's Corner lets users burn tokens/NFTs and close empty token accounts to reclaim SOL rent.
+
+**Setup:** Get an API key from the Sol Slugs Discord server and set `SOL_INCINERATOR_API_KEY`.
+
+**Files:**
+
+| Path                                   | Purpose                        |
+| -------------------------------------- | ------------------------------ |
+| `src/lib/sol-incinerator.ts`           | API client with retry logic    |
+| `src/app/api/sol-incinerator/route.ts` | Proxy endpoint (hides API key) |
+| `src/components/IncineratorModal.tsx`  | UI for burn/close operations   |
+
+**API Endpoint:** `POST /api/sol-incinerator`
+
+Actions: `burn`, `close`, `batch-close-all`, `burn-preview`, `close-preview`, `batch-close-all-preview`, `status`
+
+**Operations:**
+
+- **Close All** (safe) - Closes all empty token accounts, reclaims ~0.002 SOL each
+- **Burn** (destructive) - Permanently destroys a token/NFT, reclaims rent
+- **Close** (safe) - Closes a single empty token account
+
 ## Agent Economy System
 
 Complete autonomous agent subsystem in `src/lib/agent-economy/`:
 
-| File | Purpose |
-| ---- | ------- |
-| `brain.ts` | Decision-making AI for autonomous actions |
-| `wallet.ts` | Agent wallet management |
-| `trading.ts` | Autonomous trading operations |
-| `fees.ts` | Autonomous fee claiming |
-| `spawn.ts` | Agent spawning/despawning |
-| `launcher.ts` | Agent-created token launches |
-| `credentials.ts` | Credential management |
-| `auth.ts` | Agent authentication |
-| `onboarding.ts` | Agent onboarding flow |
-| `external-registry.ts` | External agent registry |
-| `external.ts` | External agent integration |
-| `loop.ts` | Continuous operation loop |
-| `launch.ts` | Launch operations |
-| `types.ts` | Type definitions |
-| `index.ts` | Main export |
+| File                   | Purpose                                   |
+| ---------------------- | ----------------------------------------- |
+| `brain.ts`             | Decision-making AI for autonomous actions |
+| `wallet.ts`            | Agent wallet management                   |
+| `trading.ts`           | Autonomous trading operations             |
+| `fees.ts`              | Autonomous fee claiming                   |
+| `spawn.ts`             | Agent spawning/despawning                 |
+| `launcher.ts`          | Agent-created token launches              |
+| `credentials.ts`       | Credential management                     |
+| `auth.ts`              | Agent authentication                      |
+| `onboarding.ts`        | Agent onboarding flow                     |
+| `external-registry.ts` | External agent registry                   |
+| `external.ts`          | External agent integration                |
+| `loop.ts`              | Continuous operation loop                 |
+| `launch.ts`            | Launch operations                         |
+| `types.ts`             | Type definitions                          |
+| `index.ts`             | Main export                               |
 
 API: `/api/agent-economy` (spawn, despawn, trade, claim), `/api/agent-economy/external` (registry), `/api/agent-economy/docs`
 
@@ -158,12 +183,12 @@ API: `/api/agent-economy` (spawn, despawn, trade, claim), `/api/agent-economy/ex
 
 Autonomous AI agent running in parallel with Bagsy:
 
-| File | Purpose |
-| ---- | ------- |
-| `src/lib/chadghost-brain.ts` | Decision-making engine |
+| File                              | Purpose                    |
+| --------------------------------- | -------------------------- |
+| `src/lib/chadghost-brain.ts`      | Decision-making engine     |
 | `src/lib/chadghost-engagement.ts` | Community engagement logic |
-| `src/lib/chadghost-service.ts` | Service operations |
-| `src/lib/chadghost-startup.ts` | Initialization |
+| `src/lib/chadghost-service.ts`    | Service operations         |
+| `src/lib/chadghost-startup.ts`    | Initialization             |
 
 API: `/api/chadghost`, integrated into `/api/agent-dashboard`
 
@@ -171,12 +196,12 @@ API: `/api/chadghost`, integrated into `/api/agent-dashboard`
 
 Real-time AI agent battles via WebSocket:
 
-| File | Purpose |
-| ---- | ------- |
-| `src/lib/arena-engine.ts` | Combat engine |
-| `src/lib/arena-matchmaking.ts` | Matchmaking algorithm |
-| `src/lib/arena-db.ts` | Arena persistence |
-| `src/lib/arena-types.ts` | Type definitions |
+| File                                | Purpose                       |
+| ----------------------------------- | ----------------------------- |
+| `src/lib/arena-engine.ts`           | Combat engine                 |
+| `src/lib/arena-matchmaking.ts`      | Matchmaking algorithm         |
+| `src/lib/arena-db.ts`               | Arena persistence             |
+| `src/lib/arena-types.ts`            | Type definitions              |
 | `src/lib/arena-moltbook-monitor.ts` | Arena-to-Moltbook integration |
 
 API: `/api/arena` (status, analysis), `/api/arena/brawl` (WebSocket combat)
@@ -190,17 +215,17 @@ Moltbook is a social network for AI agents. BagsWorld has two agents posting:
 
 **Files:**
 
-| Path | Purpose |
-| ---- | ------- |
-| `src/lib/moltbook-client.ts` | API client with rate limiting |
-| `src/lib/moltbook-agent.ts` | Bagsy personality + content generation |
-| `src/lib/moltbook-autonomous.ts` | Autonomous posting logic |
-| `src/lib/moltbook-chat.ts` | Moltbook chat integration |
-| `src/app/api/moltbook/route.ts` | POST/GET endpoints for game integration |
-| `src/app/api/moltbook-chat/route.ts` | Moltbook chat endpoint |
-| `src/app/api/bags-bot/route.ts` | BagsBot Moltbook integration |
-| `src/components/MoltbookFeed.tsx` | UI component for displaying feed |
-| `src/components/MoltbookDashboard.tsx` | Moltbook dashboard |
+| Path                                   | Purpose                                 |
+| -------------------------------------- | --------------------------------------- |
+| `src/lib/moltbook-client.ts`           | API client with rate limiting           |
+| `src/lib/moltbook-agent.ts`            | Bagsy personality + content generation  |
+| `src/lib/moltbook-autonomous.ts`       | Autonomous posting logic                |
+| `src/lib/moltbook-chat.ts`             | Moltbook chat integration               |
+| `src/app/api/moltbook/route.ts`        | POST/GET endpoints for game integration |
+| `src/app/api/moltbook-chat/route.ts`   | Moltbook chat endpoint                  |
+| `src/app/api/bags-bot/route.ts`        | BagsBot Moltbook integration            |
+| `src/components/MoltbookFeed.tsx`      | UI component for displaying feed        |
+| `src/components/MoltbookDashboard.tsx` | Moltbook dashboard                      |
 
 **Rate Limits:**
 
@@ -243,14 +268,14 @@ celebrateClaim(5.5); // Celebrate a fee claim
 
 OAuth 2.0 flow for authentication and automated posting:
 
-| File | Purpose |
-| ---- | ------- |
-| `src/lib/x-client.ts` | X API client |
-| `src/lib/x-oauth.ts` | OAuth implementation |
-| `src/app/api/auth/x/route.ts` | OAuth initiation |
-| `src/app/api/auth/x/callback/route.ts` | OAuth callback |
-| `src/app/api/report/route.ts` | Daily report generation |
-| `src/hooks/useXAuth.ts` | Client-side auth state |
+| File                                   | Purpose                 |
+| -------------------------------------- | ----------------------- |
+| `src/lib/x-client.ts`                  | X API client            |
+| `src/lib/x-oauth.ts`                   | OAuth implementation    |
+| `src/app/api/auth/x/route.ts`          | OAuth initiation        |
+| `src/app/api/auth/x/callback/route.ts` | OAuth callback          |
+| `src/app/api/report/route.ts`          | Daily report generation |
+| `src/hooks/useXAuth.ts`                | Client-side auth state  |
 
 **Daily Reports:** GitHub Actions cron job posts daily at 6 PM EST via `/api/report`.
 
@@ -276,13 +301,13 @@ Health calculated from real Bags.fm data in `calculateWorldHealth()`:
 
 **Health Thresholds:**
 
-| 24h Claims | Score    | Status       |
-| ---------- | -------- | ------------ |
-| 50+ SOL    | 90-100%  | THRIVING     |
-| 20-50 SOL  | 70-90%   | HEALTHY      |
-| 5-20 SOL   | 50-70%   | GROWING      |
-| 1-5 SOL    | 25-50%   | QUIET        |
-| < 1 SOL    | 0-25%    | DORMANT/DYING|
+| 24h Claims | Score   | Status        |
+| ---------- | ------- | ------------- |
+| 50+ SOL    | 90-100% | THRIVING      |
+| 20-50 SOL  | 70-90%  | HEALTHY       |
+| 5-20 SOL   | 50-70%  | GROWING       |
+| 1-5 SOL    | 25-50%  | QUIET         |
+| < 1 SOL    | 0-25%   | DORMANT/DYING |
 
 **Baseline:** 25% + 3% per building (max 40%) when no fee activity
 
@@ -300,13 +325,13 @@ Health calculated from real Bags.fm data in `calculateWorldHealth()`:
 
 **After grace period:**
 
-| Condition | Health Change/Cycle |
-| --------- | ------------------- |
-| High volume | +10 (fast recovery) |
-| Normal activity | +5 (recovery) |
-| 20%+ price drop | -2 (light decay) |
-| Low volume only | -5 (moderate decay) |
-| Low volume + low mcap | -8 (heavy decay) |
+| Condition             | Health Change/Cycle |
+| --------------------- | ------------------- |
+| High volume           | +10 (fast recovery) |
+| Normal activity       | +5 (recovery)       |
+| 20%+ price drop       | -2 (light decay)    |
+| Low volume only       | -5 (moderate decay) |
+| Low volume + low mcap | -8 (heavy decay)    |
 
 **Thresholds:** Active (75+) > Warning (50-75) > Critical (25-50) > Dormant (< 25) > Hidden (< 10)
 
@@ -324,7 +349,7 @@ Day/Night synced to EST timezone via `timeInfo` from API.
 | ----------- | ---------------- | ---------------------------------------------- |
 | `labs`      | HQ               | Bags.fm team headquarters, R&D                 |
 | `main_city` | Park             | Peaceful green space, PokeCenter               |
-| `trending`  | BagsCity         | Urban neon, Casino, Terminal, Oracle Tower      |
+| `trending`  | BagsCity         | Urban neon, Casino, Terminal, Oracle Tower     |
 | `ballers`   | Ballers Valley   | Luxury mansions for top holders                |
 | `founders`  | Founder's Corner | Token launch education, Professor Oak, Pokemon |
 | `moltbook`  | Moltbook Beach   | Tropical AI agent hangout, Openclaw lobsters   |
@@ -332,25 +357,25 @@ Day/Night synced to EST timezone via `timeInfo` from API.
 
 ## AI Characters (17 Total)
 
-| Character     | File                          | Zone             | Role                                           |
-| ------------- | ----------------------------- | ---------------- | ---------------------------------------------- |
-| Toly          | `toly.character.ts`           | Park             | Solana co-founder, blockchain expert           |
-| Ash           | `ash.character.ts`            | Park             | Pokemon-themed ecosystem guide                 |
-| Finn          | `finn.character.ts`           | Park             | Bags.fm CEO                                    |
-| Shaw          | `shaw.character.ts`           | Park             | ElizaOS creator, agent architect               |
-| Ghost         | `ghost.character.ts`          | Park             | Community funding (5%), on-chain verification  |
-| Neo           | `neo.character.ts`            | BagsCity         | Scout agent, watches for launches              |
-| CJ            | `cj.character.ts`             | BagsCity         | Market commentary (GTA vibes)                  |
-| Ramo          | `ramo.character.ts`           | HQ               | CTO, smart contracts, SDK                      |
-| Sincara       | `sincara.character.ts`        | HQ               | Frontend Engineer, UI/UX                       |
-| Stuu          | `stuu.character.ts`           | HQ               | Operations, support                            |
-| Sam           | `sam.character.ts`            | HQ               | Growth, marketing                              |
-| Alaa          | `alaa.character.ts`           | HQ               | Skunk Works, R&D                               |
-| Carlo         | `carlo.character.ts`          | HQ               | Ambassador, community                          |
-| BNN           | `bnn.character.ts`            | HQ               | News bot, announcements                        |
-| Professor Oak | `professor-oak.character.ts`  | Founder's Corner | AI-powered token generator, launch guide       |
-| Bagsy         | `bagsy.character.ts`          | All              | Moltbook hype bot (@BagsyHypeBot)              |
-| Bags Bot      | `bags-bot.character.ts`       | All              | Commands, world features guide                 |
+| Character     | File                         | Zone             | Role                                          |
+| ------------- | ---------------------------- | ---------------- | --------------------------------------------- |
+| Toly          | `toly.character.ts`          | Park             | Solana co-founder, blockchain expert          |
+| Ash           | `ash.character.ts`           | Park             | Pokemon-themed ecosystem guide                |
+| Finn          | `finn.character.ts`          | Park             | Bags.fm CEO                                   |
+| Shaw          | `shaw.character.ts`          | Park             | ElizaOS creator, agent architect              |
+| Ghost         | `ghost.character.ts`         | Park             | Community funding (5%), on-chain verification |
+| Neo           | `neo.character.ts`           | BagsCity         | Scout agent, watches for launches             |
+| CJ            | `cj.character.ts`            | BagsCity         | Market commentary (GTA vibes)                 |
+| Ramo          | `ramo.character.ts`          | HQ               | CTO, smart contracts, SDK                     |
+| Sincara       | `sincara.character.ts`       | HQ               | Frontend Engineer, UI/UX                      |
+| Stuu          | `stuu.character.ts`          | HQ               | Operations, support                           |
+| Sam           | `sam.character.ts`           | HQ               | Growth, marketing                             |
+| Alaa          | `alaa.character.ts`          | HQ               | Skunk Works, R&D                              |
+| Carlo         | `carlo.character.ts`         | HQ               | Ambassador, community                         |
+| BNN           | `bnn.character.ts`           | HQ               | News bot, announcements                       |
+| Professor Oak | `professor-oak.character.ts` | Founder's Corner | AI-powered token generator, launch guide      |
+| Bagsy         | `bagsy.character.ts`         | All              | Moltbook hype bot (@BagsyHypeBot)             |
+| Bags Bot      | `bags-bot.character.ts`      | All              | Commands, world features guide                |
 
 Character files are in `eliza-agents/src/characters/definitions/`.
 

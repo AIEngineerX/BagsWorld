@@ -52,6 +52,7 @@ import { ArenaModal } from "@/components/ArenaModal";
 import { DungeonModal } from "@/components/DungeonModal";
 import { AgentHutModal } from "@/components/AgentHutModal";
 import { AgentBarModal } from "@/components/AgentBarModal";
+import { IncineratorModal } from "@/components/IncineratorModal";
 import { CasinoAdmin } from "@/components/CasinoAdmin";
 import { OracleTowerModal } from "@/components/OracleTowerModal";
 import { LauncherHub } from "@/components/LauncherHub";
@@ -175,7 +176,7 @@ export default function Home() {
   const { setZone } = useGameStore();
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
 
-  // Consolidated modal state - replaces 14 individual useState calls
+  // Consolidated modal state - replaces individual useState calls
   type ModalType =
     | "pokeCenter"
     | "feeClaim"
@@ -192,6 +193,7 @@ export default function Home() {
     | "agentBar"
     | "launch"
     | "dungeon"
+    | "incinerator"
     | null;
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const openModal = useCallback((modal: ModalType) => setActiveModal(modal), []);
@@ -233,6 +235,7 @@ export default function Home() {
     const handleArenaClick = () => openModal("arena");
     const handleAgentHutClick = () => openModal("agentHut");
     const handleMoltBarClick = () => openModal("agentBar");
+    const handleIncineratorClick = () => openModal("incinerator");
     const handleLaunchClick = () => openModal("launch");
     const handleClaimClick = () => openModal("feeClaim");
     const handleDungeonClick = () => openModal("dungeon");
@@ -255,6 +258,7 @@ export default function Home() {
     window.addEventListener("bagsworld-arena-click", handleArenaClick as EventListener);
     window.addEventListener("bagsworld-agenthut-click", handleAgentHutClick as EventListener);
     window.addEventListener("bagsworld-moltbar-click", handleMoltBarClick as EventListener);
+    window.addEventListener("bagsworld-incinerator-click", handleIncineratorClick as EventListener);
     window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
     window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
     window.addEventListener("bagsworld-open-dungeon", handleDungeonClick as EventListener);
@@ -283,6 +287,10 @@ export default function Home() {
       window.removeEventListener("bagsworld-arena-click", handleArenaClick as EventListener);
       window.removeEventListener("bagsworld-agenthut-click", handleAgentHutClick as EventListener);
       window.removeEventListener("bagsworld-moltbar-click", handleMoltBarClick as EventListener);
+      window.removeEventListener(
+        "bagsworld-incinerator-click",
+        handleIncineratorClick as EventListener
+      );
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
       window.removeEventListener("bagsworld-open-dungeon", handleDungeonClick as EventListener);
@@ -722,6 +730,9 @@ export default function Home() {
       {activeModal === "agentHut" && <AgentHutModal onClose={closeModal} />}
       {activeModal === "agentBar" && <AgentBarModal onClose={closeModal} />}
       {activeModal === "dungeon" && <DungeonModal onClose={closeModal} />}
+
+      {/* Sol Incinerator Modal - Burn tokens & close empty accounts */}
+      {activeModal === "incinerator" && <IncineratorModal onClose={closeModal} />}
 
       {/* Scout Alerts - shows new token launch notifications */}
       <ScoutAlerts />

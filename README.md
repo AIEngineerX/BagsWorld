@@ -125,7 +125,7 @@ Every character runs on [ElizaOS](https://github.com/elizaOS/eliza) with persist
 - **Building Decay** - Buildings lose health without trading activity (24h grace period for new launches)
 - **Professor Oak AI Generator** - AI-powered token name, logo, and banner generation
 - **Casino** - Community-funded raffles, wheel spinner ($BagsWorld token-gated)
-- **Oracle Tower** - Prediction market for token price movements ($BagsWorld token-gated)
+- **Oracle Tower** - Virtual prediction market with OP credits and tournaments ($BagsWorld token-gated)
 - **Trading Terminal** - In-game market data, charts, and analysis
 - **Arena Brawl** - Real-time AI agent combat via WebSocket
 - **Scout Alerts** - Neo watches the blockchain for new launches
@@ -140,6 +140,42 @@ Every character runs on [ElizaOS](https://github.com/elizaOS/eliza) with persist
 - **ChadGhost** - Autonomous AI agent with decision-making brain, community engagement
 - **Agent Economy** - Agents have wallets, can spawn/despawn, trade, and claim fees autonomously
 - **Daily Reports** - Automated daily X posts summarizing world activity (GitHub Actions cron)
+
+### Oracle Tower - Virtual Prediction Market
+
+The Oracle Tower in BagsCity is a virtual prediction market. Players predict real outcomes using **Oracle Points (OP)** - a free virtual currency that cannot be purchased or cashed out. Think of it like fantasy sports for crypto.
+
+**Requirements:** Hold 2M+ $BagsWorld tokens to access.
+
+**Getting Started:**
+1. You start with **1,000 free OP**
+2. Claim **50 free OP** every day just for logging in
+3. Browse active markets and make predictions
+4. Winners split the OP pool (parimutuel - no house edge)
+
+**4 Market Types:**
+
+| Market | Question | Duration | Source |
+|--------|----------|----------|--------|
+| Price Prediction | Which token gains most? | 24h | DexScreener |
+| World Health | Will health be above X%? | 6-24h | World State API |
+| Weather Forecast | What will weather be? | 6h | World State API |
+| Fee Volume | Will fees exceed X SOL? | 24h | Bags SDK |
+
+**Earning OP:**
+
+| Source | Amount |
+|--------|--------|
+| Sign-up Bonus | 1,000 OP |
+| Daily Login | 50 OP |
+| Win a Prediction | Share of pool |
+| Participation | +10 OP per entry |
+| Streak Bonus | +10% on 3+ wins |
+| Achievements | 100-500 OP |
+
+**Reputation Tiers:** Novice (0-999) -> Seer (1000-1499, +10%) -> Oracle (1500-1999, +20%) -> Master (2000+, +30%)
+
+**Tournaments:** Free-entry competitive events with real SOL prizes funded by the admin. Score = cumulative OP earned during the tournament window. Top finishers receive SOL.
 
 ### Blockchain Integration
 
@@ -385,12 +421,20 @@ BagsWorld/
 | `*/api/casino/wheel` | Wheel spinner game |
 | `GET /api/casino/history` | Past raffle results |
 | `*/api/casino/admin/*` | Create, draw, toggle, manage raffles (6 routes) |
-| `GET /api/oracle/current` | Active prediction round |
-| `POST /api/oracle/enter` | Enter prediction |
-| `POST /api/oracle/claim` | Claim winnings |
-| `GET /api/oracle/leaderboard` | Top predictors |
+| `GET /api/oracle/current` | Active prediction round (legacy) |
+| `GET /api/oracle/markets` | All active markets with prediction counts |
+| `POST /api/oracle/predict` | Enter prediction with OP deduction |
+| `POST /api/oracle/enter` | Enter prediction (legacy) |
+| `POST /api/oracle/claim` | Claim SOL winnings |
+| `GET /api/oracle/profile` | User OP balance, stats, reputation |
+| `POST /api/oracle/claim-daily` | Claim daily 50 OP bonus |
+| `GET /api/oracle/leaderboard` | Top predictors with reputation tiers |
 | `GET /api/oracle/prices` | Token prices for predictions |
-| `*/api/oracle/admin/*` | Create rounds, settle, process claims (3 routes) |
+| `POST /api/oracle/auto-resolve` | Cron endpoint for auto-resolution |
+| `POST /api/oracle/auto-generate` | Cron endpoint for market generation |
+| `GET /api/oracle/tournaments` | Active and upcoming tournaments |
+| `POST /api/oracle/tournaments/join` | Join a tournament (free) |
+| `*/api/oracle/admin/*` | Create rounds/tournaments, settle, manage (6 routes) |
 
 ### Arena Combat
 
