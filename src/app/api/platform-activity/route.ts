@@ -13,13 +13,13 @@ const BAGS_API_KEY = process.env.BAGS_API_KEY;
 
 // --- Caches ---
 
-// Main response cache (60s — matches client polling interval)
+// Main response cache (3 min — reduces Bags API call volume)
 let eventsCache: {
   data: GameEvent[];
   summary: { totalVolume24h: number; totalFeesClaimed: number; activeTokenCount: number };
   timestamp: number;
 } | null = null;
-const EVENTS_CACHE_TTL = 60_000;
+const EVENTS_CACHE_TTL = 3 * 60_000; // 3 minutes
 
 // Per-mint Bags token probe: maps mint → { isBags, feesLamports, timestamp }
 // Successful probe = Bags token, failed probe = non-Bags token
@@ -31,7 +31,7 @@ const PROBE_CACHE_TTL = 2 * 60 * 60_000; // 2 hours
 
 // Per-mint claim events cache
 const claimCache = new Map<string, { events: ClaimEvent[]; timestamp: number }>();
-const CLAIM_CACHE_TTL = 3 * 60_000; // 3 min
+const CLAIM_CACHE_TTL = 10 * 60_000; // 10 min — claims don't change frequently
 
 // --- Formatters ---
 

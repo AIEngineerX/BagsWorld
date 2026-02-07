@@ -139,9 +139,9 @@ let claimEventsCache: DataCache<ClaimEvent[]> | null = null;
 let cachedWeather: { weather: WorldState["weather"]; fetchedAt: number } | null = null;
 
 const TOKEN_CACHE_DURATION = 30 * 1000; // 30 seconds (faster refresh for launches)
-const EARNER_CACHE_DURATION = 60 * 1000; // 1 minute
+const EARNER_CACHE_DURATION = 3 * 60 * 1000; // 3 minutes
 const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const SDK_ENRICH_CACHE_TTL = 45 * 1000; // 45 seconds — deduplicates SDK calls across concurrent users
+const SDK_ENRICH_CACHE_TTL = 3 * 60 * 1000; // 3 minutes — reduces Bags API calls (4 calls/token saved per TTL window)
 const PRICE_CACHE_DURATION = 60 * 1000; // 60 seconds for DexScreener rate limits
 const EVENT_EXPIRY_DURATION = 60 * 60 * 1000; // 1 hour - auto-expire old events
 
