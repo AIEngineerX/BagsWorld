@@ -6,15 +6,31 @@ import {
   getTokensByMints,
 } from "@/lib/dexscreener-api";
 import type { DexPair } from "@/lib/dexscreener-api";
-import type { GameEvent } from "@/lib/types";
+import type { GameEvent, ClaimEvent } from "@/lib/types";
+import { lamportsToSol, formatSol } from "@/lib/solana-utils";
 
 const BAGS_API_KEY = process.env.BAGS_API_KEY;
 
-// Server-side cache
-let cachedResponse: { data: GameEvent[]; timestamp: number } | null = null;
-const CACHE_DURATION = 60_000; // 60 seconds
+// --- Caches ---
 
-// Helpers
+// Main response cache (60s — matches client polling interval)
+let eventsCache: { data: GameEvent[]; timestamp: number } | null = null;
+const EVENTS_CACHE_TTL = 60_000;
+
+// Per-mint Bags token probe: maps mint → { isBags, feesLamports, timestamp }
+// Successful probe = Bags token, failed probe = non-Bags token
+const bagsProbeCache = new Map<
+  string,
+  { isBags: boolean; feesLamports: number; timestamp: number }
+>();
+const PROBE_CACHE_TTL = 2 * 60 * 60_000; // 2 hours
+
+// Per-mint claim events cache
+const claimCache = new Map<string, { events: ClaimEvent[]; timestamp: number }>();
+const CLAIM_CACHE_TTL = 3 * 60_000; // 3 min
+
+// --- Formatters ---
+
 function fmtMcap(mcap: number): string {
   if (mcap >= 1_000_000) return `$${(mcap / 1_000_000).toFixed(1)}M`;
   if (mcap >= 1_000) return `$${(mcap / 1_000).toFixed(0)}K`;
@@ -31,8 +47,137 @@ function fmtVol(vol: number): string {
   return `$${vol.toFixed(0)}`;
 }
 
-// Generate rich events from a DexScreener pair
-function generateEventsFromPair(
+// --- Event generators ---
+
+// Generate events for a confirmed Bags.fm token (lower thresholds, Bags-specific messaging)
+function generateBagsTokenEvents(
+  pair: DexPair,
+  now: number,
+  index: number,
+  isBoosted: boolean,
+  feesLamports: number
+): GameEvent[] {
+  const events: GameEvent[] = [];
+  const symbol = pair.baseToken.symbol;
+  const name = pair.baseToken.name;
+  const mint = pair.baseToken.address;
+  const mcap = pair.marketCap || pair.fdv || 0;
+  const change24h = pair.priceChange?.h24 ?? 0;
+  const change1h = pair.priceChange?.h1 ?? 0;
+  const vol24h = pair.volume?.h24 ?? 0;
+  const vol1h = pair.volume?.h1 ?? 0;
+  const txns24h = pair.txns?.h24;
+  const txns1h = pair.txns?.h1;
+  const baseTs = now - index * 10_000;
+
+  // 1. Trending event with Bags.fm branding
+  const label = isBoosted ? "boosted on DexScreener" : "active on Bags.fm";
+  const parts = [`$${symbol} ${label} — ${fmtMcap(mcap)} mcap`];
+  if (vol24h > 0) parts.push(`${fmtVol(vol24h)} vol`);
+  parts.push(fmtChange(change24h));
+
+  events.push({
+    id: `bags_trending_${mint}`,
+    type: "platform_trending",
+    message: parts.join(", "),
+    timestamp: baseTs,
+    data: { tokenName: name, symbol, mint, change: change24h, amount: vol24h, source: "platform" },
+  });
+
+  // 2. Price pump/dump — 5%+ 1h move OR 15%+ 24h move (lower thresholds for Bags tokens)
+  if (Math.abs(change1h) >= 5) {
+    const isPump = change1h > 0;
+    const txnCount = txns1h ? (isPump ? txns1h.buys : txns1h.sells) : 0;
+    const txnInfo = txnCount > 0 ? ` (${txnCount} ${isPump ? "buys" : "sells"} in 1h)` : "";
+    events.push({
+      id: `bags_${isPump ? "pump" : "dump"}_1h_${mint}`,
+      type: isPump ? "price_pump" : "price_dump",
+      message: `$${symbol} ${isPump ? "pumping" : "dumping"} ${fmtChange(change1h)} in 1h${txnInfo}`,
+      timestamp: baseTs - 1000,
+      data: { tokenName: name, symbol, mint, change: change1h, amount: vol1h, source: "platform" },
+    });
+  } else if (Math.abs(change24h) >= 15) {
+    const isPump = change24h > 0;
+    const txnCount = txns24h ? (isPump ? txns24h.buys : txns24h.sells) : 0;
+    const txnInfo = txnCount > 0 ? ` (${txnCount} ${isPump ? "buys" : "sells"} today)` : "";
+    events.push({
+      id: `bags_${isPump ? "pump" : "dump"}_24h_${mint}`,
+      type: isPump ? "price_pump" : "price_dump",
+      message: `$${symbol} ${isPump ? "up" : "down"} ${fmtChange(change24h)} today${txnInfo}`,
+      timestamp: baseTs - 1000,
+      data: {
+        tokenName: name,
+        symbol,
+        mint,
+        change: change24h,
+        amount: vol24h,
+        source: "platform",
+      },
+    });
+  }
+
+  // 3. Whale alert — 3%+ mcap in 1h volume (lower threshold for Bags tokens)
+  if (vol1h > 5_000 && mcap > 0 && vol1h / mcap > 0.03) {
+    const totalTxns = txns1h ? txns1h.buys + txns1h.sells : 0;
+    const txnInfo = totalTxns > 0 ? ` across ${totalTxns} trades` : "";
+    events.push({
+      id: `bags_whale_${mint}`,
+      type: "whale_alert",
+      message: `Heavy volume on $${symbol} — ${fmtVol(vol1h)} in 1h${txnInfo}`,
+      timestamp: baseTs - 2000,
+      data: { tokenName: name, symbol, mint, change: change24h, amount: vol1h, source: "platform" },
+    });
+  }
+
+  // 4. High activity alert — 200+ txns in 24h (lower threshold for Bags tokens)
+  if (txns24h && txns24h.buys + txns24h.sells > 200) {
+    const total = txns24h.buys + txns24h.sells;
+    const buyRatio = Math.round((txns24h.buys / total) * 100);
+    events.push({
+      id: `bags_activity_${mint}`,
+      type: "platform_trending",
+      message: `$${symbol} hot — ${total} trades today (${buyRatio}% buys), ${fmtVol(vol24h)} volume`,
+      timestamp: baseTs - 3000,
+      data: {
+        tokenName: name,
+        symbol,
+        mint,
+        change: change24h,
+        amount: vol24h,
+        source: "platform",
+      },
+    });
+  }
+
+  // 5. Lifetime fee milestones
+  if (feesLamports > 0) {
+    const feesSol = lamportsToSol(feesLamports);
+    const thresholds = [1000, 500, 100, 50, 10, 5, 1, 0.5, 0.1];
+    for (const threshold of thresholds) {
+      if (feesSol >= threshold) {
+        events.push({
+          id: `bags_milestone_${mint}_${threshold}`,
+          type: "milestone",
+          message: `$${symbol} has earned ${formatSol(feesSol)} in lifetime fees on Bags.fm`,
+          timestamp: baseTs - 4000,
+          data: {
+            tokenName: name,
+            symbol,
+            mint,
+            amount: feesSol,
+            source: "platform",
+          },
+        });
+        break; // Only show highest achieved milestone
+      }
+    }
+  }
+
+  return events;
+}
+
+// Generate events for non-Bags DexScreener tokens (higher thresholds, generic messaging)
+function generateGenericEvents(
   pair: DexPair,
   now: number,
   index: number,
@@ -49,9 +194,9 @@ function generateEventsFromPair(
   const vol1h = pair.volume?.h1 ?? 0;
   const txns24h = pair.txns?.h24;
   const txns1h = pair.txns?.h1;
-  const baseTs = now - index * 10_000; // Stagger evenly
+  const baseTs = now - index * 10_000;
 
-  // 1. Trending/boosted event
+  // 1. Trending event
   const label = isBoosted ? "boosted on DexScreener" : "trending on Solana";
   const parts = [`$${symbol} ${label} — ${fmtMcap(mcap)} mcap`];
   if (vol24h > 0) parts.push(`${fmtVol(vol24h)} vol`);
@@ -62,17 +207,10 @@ function generateEventsFromPair(
     type: "platform_trending",
     message: parts.join(", "),
     timestamp: baseTs,
-    data: {
-      tokenName: name,
-      symbol,
-      mint,
-      change: change24h,
-      amount: vol24h,
-      source: "platform",
-    },
+    data: { tokenName: name, symbol, mint, change: change24h, amount: vol24h, source: "platform" },
   });
 
-  // 2. Price pump/dump for significant 1h moves (>=10%)
+  // 2. Price pump/dump — 10%+ 1h move (original threshold for generic tokens)
   if (Math.abs(change1h) >= 10) {
     const isPump = change1h > 0;
     const txnCount = txns1h ? (isPump ? txns1h.buys : txns1h.sells) : 0;
@@ -86,7 +224,7 @@ function generateEventsFromPair(
     });
   }
 
-  // 3. Whale alert for high 1h volume relative to mcap (>5%)
+  // 3. Whale alert — 5%+ mcap in 1h volume
   if (vol1h > 10_000 && mcap > 0 && vol1h / mcap > 0.05) {
     const totalTxns = txns1h ? txns1h.buys + txns1h.sells : 0;
     const txnInfo = totalTxns > 0 ? ` across ${totalTxns} trades` : "";
@@ -99,7 +237,7 @@ function generateEventsFromPair(
     });
   }
 
-  // 4. High activity alert (500+ txns in 24h)
+  // 4. High activity — 500+ txns in 24h
   if (txns24h && txns24h.buys + txns24h.sells > 500) {
     const total = txns24h.buys + txns24h.sells;
     const buyRatio = Math.round((txns24h.buys / total) * 100);
@@ -128,148 +266,219 @@ export async function GET(request: Request) {
   const knownMints = new Set(knownMintsParam.split(",").filter(Boolean));
 
   // Return cached data if fresh
-  if (cachedResponse && Date.now() - cachedResponse.timestamp < CACHE_DURATION) {
+  if (eventsCache && Date.now() - eventsCache.timestamp < EVENTS_CACHE_TTL) {
     const filtered =
       knownMints.size > 0
-        ? cachedResponse.data.filter((e) => !e.data?.mint || !knownMints.has(e.data.mint))
-        : cachedResponse.data;
+        ? eventsCache.data.filter((e) => !e.data?.mint || !knownMints.has(e.data.mint))
+        : eventsCache.data;
     return NextResponse.json({ events: filtered });
   }
 
   const events: GameEvent[] = [];
   const now = Date.now();
 
-  try {
-    // DexScreener is the primary data source (no auth needed, 300 req/min)
-    // Fetch latest profiles + boosted tokens in parallel
-    const [profiles, boosted] = await Promise.all([
-      fetchLatestTokenProfiles(),
-      fetchTopBoostedTokens(),
-    ]);
+  // ─── Step 1: DexScreener discovery ───
+  // Fetch trending profiles + boosted tokens in parallel (no auth, 300 req/min)
+  const [profiles, boosted] = await Promise.all([
+    fetchLatestTokenProfiles(),
+    fetchTopBoostedTokens(),
+  ]);
 
-    // Filter for Solana tokens only
-    const solanaProfiles = profiles.filter((t) => t.chainId === "solana");
-    const solanaBoosted = boosted.filter((t) => t.chainId === "solana");
+  const solanaProfiles = profiles.filter((t) => t.chainId === "solana");
+  const solanaBoosted = boosted.filter((t) => t.chainId === "solana");
 
-    // Collect unique Solana mints (boosted first for priority)
-    const boostedMints = new Set(solanaBoosted.map((t) => t.tokenAddress));
-    const allMints = new Set<string>();
-    solanaBoosted.forEach((t) => allMints.add(t.tokenAddress));
-    solanaProfiles.slice(0, 20).forEach((t) => allMints.add(t.tokenAddress));
+  // Collect unique Solana mints (boosted first for priority)
+  const boostedMints = new Set(solanaBoosted.map((t) => t.tokenAddress));
+  const allMints = new Set<string>();
+  solanaBoosted.forEach((t) => allMints.add(t.tokenAddress));
+  solanaProfiles.slice(0, 20).forEach((t) => allMints.add(t.tokenAddress));
 
-    // Filter out known BagsWorld mints and limit to 30 for DexScreener batch
-    const mintsToFetch = Array.from(allMints)
-      .filter((m) => !knownMints.has(m))
-      .slice(0, 30);
+  // Exclude known BagsWorld-registered mints (handled by world-state route)
+  const mintsToProcess = Array.from(allMints).filter((m) => !knownMints.has(m));
 
-    if (mintsToFetch.length > 0) {
-      // Get full pair data from DexScreener
-      const pairs = await getTokensByMints(mintsToFetch);
+  // ─── Step 2: Probe mints against Bags API ───
+  // getTokenLifetimeFees returns lamports for Bags tokens, throws "Invalid mint" for non-Bags
+  let api: ReturnType<typeof initBagsApi> | null = null;
+  const bagsMints = new Map<string, number>(); // mint → feesLamports
+  const nonBagsMints: string[] = [];
 
-      // Filter for valid pairs with real data
-      const validPairs = pairs.filter(
-        (p) => p?.baseToken?.address && (parseFloat(p.priceUsd) > 0 || p.volume?.h24 > 0)
-      );
+  if (BAGS_API_KEY) {
+    api = initBagsApi(BAGS_API_KEY);
 
-      // Sort: boosted first, then by volume
-      validPairs.sort((a, b) => {
-        const aIsBoosted = boostedMints.has(a.baseToken.address) ? 1 : 0;
-        const bIsBoosted = boostedMints.has(b.baseToken.address) ? 1 : 0;
-        if (aIsBoosted !== bIsBoosted) return bIsBoosted - aIsBoosted;
-        return (b.volume?.h24 ?? 0) - (a.volume?.h24 ?? 0);
-      });
-
-      // Generate events from each pair
-      validPairs.forEach((pair, i) => {
-        const isBoosted = boostedMints.has(pair.baseToken.address);
-        events.push(...generateEventsFromPair(pair, now, i, isBoosted));
-      });
+    // Separate cached from uncached
+    const uncachedMints: string[] = [];
+    for (const mint of mintsToProcess) {
+      const cached = bagsProbeCache.get(mint);
+      if (cached && now - cached.timestamp < PROBE_CACHE_TTL) {
+        if (cached.isBags) {
+          bagsMints.set(mint, cached.feesLamports);
+        } else {
+          nonBagsMints.push(mint);
+        }
+      } else {
+        uncachedMints.push(mint);
+      }
     }
 
-    console.log(
-      `[platform-activity] DexScreener: ${solanaProfiles.length} profiles, ${solanaBoosted.length} boosted, ${mintsToFetch.length} fetched → ${events.length} events`
-    );
-  } catch (error) {
-    console.error("[platform-activity] DexScreener error:", error);
-  }
+    // Probe uncached mints in parallel via getTokenLifetimeFees
+    // Success = Bags token (stores lamports), failure = non-Bags token ("Invalid mint")
+    if (uncachedMints.length > 0) {
+      const probeResults = await Promise.allSettled(
+        uncachedMints.map((mint) => api!.getTokenLifetimeFees(mint))
+      );
 
-  // Bags API as supplementary source (best-effort, endpoints may not exist)
-  if (BAGS_API_KEY) {
-    try {
-      const api = initBagsApi(BAGS_API_KEY);
-      const [trendingResult, earnersResult] = await Promise.allSettled([
-        api.getTrendingTokens(25),
-        api.getFeeLeaderboard(15),
-      ]);
-
-      // Process Bags trending tokens (if endpoint exists)
-      const trending = trendingResult.status === "fulfilled" ? trendingResult.value : [];
-      if (trending.length > 0) {
-        // Get DexScreener data for Bags tokens not already covered
-        const existingMints = new Set(events.map((e) => e.data?.mint).filter(Boolean));
-        const newBagsMints = trending
-          .map((t) => t.mint)
-          .filter((m) => !existingMints.has(m) && !knownMints.has(m));
-
-        if (newBagsMints.length > 0) {
-          try {
-            const pairs = await getTokensByMints(newBagsMints.slice(0, 30));
-            const pairMap: Record<string, DexPair> = {};
-            for (const p of pairs) {
-              if (p?.baseToken?.address) pairMap[p.baseToken.address] = p;
-            }
-            trending.forEach((token, i) => {
-              const pair = pairMap[token.mint];
-              if (pair) {
-                events.push(...generateEventsFromPair(pair, now, events.length + i, false));
-              }
-            });
-          } catch {
-            // Best-effort enrichment
-          }
+      for (let i = 0; i < uncachedMints.length; i++) {
+        const mint = uncachedMints[i];
+        const result = probeResults[i];
+        if (result.status === "fulfilled") {
+          bagsProbeCache.set(mint, { isBags: true, feesLamports: result.value, timestamp: now });
+          bagsMints.set(mint, result.value);
+        } else {
+          bagsProbeCache.set(mint, { isBags: false, feesLamports: 0, timestamp: now });
+          nonBagsMints.push(mint);
         }
       }
 
-      // Process Bags fee earners (if endpoint exists)
-      const earners = earnersResult.status === "fulfilled" ? earnersResult.value : [];
-      earners.forEach((earner, i) => {
-        if (earner.earnings24h && earner.earnings24h > 0) {
-          const name = earner.username || earner.wallet.slice(0, 6) + "...";
+      console.log(
+        `[platform-activity] Probed ${uncachedMints.length} tokens: ${bagsMints.size} Bags.fm, ${nonBagsMints.length} non-Bags`
+      );
+    }
+  } else {
+    // No API key — all tokens are treated as non-Bags
+    nonBagsMints.push(...mintsToProcess);
+    console.warn("[platform-activity] BAGS_API_KEY not set — showing DexScreener data only");
+  }
+
+  // ─── Step 3: Get DexScreener pair data ───
+  // Batch all mints (Bags first) into DexScreener for price/volume/mcap data
+  const allMintsToFetch = [...bagsMints.keys(), ...nonBagsMints].slice(0, 30);
+  const pairs = allMintsToFetch.length > 0 ? await getTokensByMints(allMintsToFetch) : [];
+
+  const pairMap: Record<string, DexPair> = {};
+  for (const p of pairs) {
+    if (p?.baseToken?.address && (parseFloat(p.priceUsd) > 0 || p.volume?.h24 > 0)) {
+      pairMap[p.baseToken.address] = p;
+    }
+  }
+
+  // ─── Step 4: Generate events from Bags tokens (PRIMARY) ───
+  const bagsMintsList = Array.from(bagsMints.keys());
+
+  // Sort: boosted first, then by 24h volume
+  bagsMintsList.sort((a, b) => {
+    const aBoost = boostedMints.has(a) ? 1 : 0;
+    const bBoost = boostedMints.has(b) ? 1 : 0;
+    if (aBoost !== bBoost) return bBoost - aBoost;
+    return (pairMap[b]?.volume?.h24 ?? 0) - (pairMap[a]?.volume?.h24 ?? 0);
+  });
+
+  for (let i = 0; i < bagsMintsList.length; i++) {
+    const mint = bagsMintsList[i];
+    const pair = pairMap[mint];
+    if (!pair) continue;
+    const feesLamports = bagsMints.get(mint) ?? 0;
+    events.push(...generateBagsTokenEvents(pair, now, i, boostedMints.has(mint), feesLamports));
+  }
+
+  // ─── Step 5: Fetch claim events for top Bags tokens ───
+  if (api && bagsMintsList.length > 0) {
+    const topMints = bagsMintsList.slice(0, 10);
+
+    // Separate cached from uncached
+    const uncachedClaimMints: string[] = [];
+    for (const mint of topMints) {
+      const cached = claimCache.get(mint);
+      if (cached && now - cached.timestamp < CLAIM_CACHE_TTL) {
+        for (const claim of cached.events) {
+          const pair = pairMap[mint];
+          const displayName = claim.claimer?.slice(0, 8) || "Unknown";
+          const claimSol = lamportsToSol(claim.amount);
           events.push({
-            id: `platform_claim_${earner.wallet}`,
+            id: `bags_claim_${claim.signature}`,
             type: "fee_claim",
-            message: `${name} earned ${earner.earnings24h.toFixed(2)} SOL in fees today`,
-            timestamp: now - i * 20_000,
-            data: { username: earner.username, amount: earner.earnings24h, source: "platform" },
-          });
-        }
-        if (earner.lifetimeEarnings > 100) {
-          const name = earner.username || earner.wallet.slice(0, 6) + "...";
-          events.push({
-            id: `platform_topearner_${earner.wallet}`,
-            type: "milestone",
-            message: `${name} — ${earner.lifetimeEarnings.toFixed(0)} SOL lifetime fees${earner.tokenCount ? ` across ${earner.tokenCount} tokens` : ""}`,
-            timestamp: now - i * 20_000 - 5000,
+            message: `${displayName} claimed ${formatSol(claimSol)} from $${pair?.baseToken?.symbol ?? "token"} on Bags.fm`,
+            timestamp: claim.timestamp * 1000,
             data: {
-              username: earner.username,
-              amount: earner.lifetimeEarnings,
+              username: displayName,
+              tokenName: pair?.baseToken?.name,
+              symbol: pair?.baseToken?.symbol,
+              mint,
+              amount: claimSol,
               source: "platform",
             },
           });
         }
-      });
-    } catch {
-      // Bags API is supplementary — DexScreener data is sufficient
+      } else {
+        uncachedClaimMints.push(mint);
+      }
+    }
+
+    // Fetch uncached claim events in parallel
+    if (uncachedClaimMints.length > 0) {
+      const claimResults = await Promise.allSettled(
+        uncachedClaimMints.map((mint) => api!.getTokenClaimEvents(mint, 5))
+      );
+
+      for (let i = 0; i < uncachedClaimMints.length; i++) {
+        const mint = uncachedClaimMints[i];
+        const result = claimResults[i];
+        if (result.status === "fulfilled") {
+          const claimEvents = result.value;
+          claimCache.set(mint, { events: claimEvents, timestamp: now });
+
+          for (const claim of claimEvents) {
+            const pair = pairMap[mint];
+            const displayName = claim.claimer?.slice(0, 8) || "Unknown";
+            const claimSol = lamportsToSol(claim.amount);
+            events.push({
+              id: `bags_claim_${claim.signature}`,
+              type: "fee_claim",
+              message: `${displayName} claimed ${formatSol(claimSol)} from $${pair?.baseToken?.symbol ?? "token"} on Bags.fm`,
+              timestamp: claim.timestamp * 1000,
+              data: {
+                username: displayName,
+                tokenName: pair?.baseToken?.name,
+                symbol: pair?.baseToken?.symbol,
+                mint,
+                amount: claimSol,
+                source: "platform",
+              },
+            });
+          }
+        } else {
+          console.error(
+            `[platform-activity] Claim events failed for ${mint}:`,
+            result.reason instanceof Error ? result.reason.message : result.reason
+          );
+        }
+      }
     }
   }
 
-  // Sort by timestamp descending
+  // ─── Step 6: Generate events from non-Bags tokens (SECONDARY) ───
+  // Sort by volume descending
+  nonBagsMints.sort((a, b) => (pairMap[b]?.volume?.h24 ?? 0) - (pairMap[a]?.volume?.h24 ?? 0));
+
+  for (let i = 0; i < nonBagsMints.length; i++) {
+    const mint = nonBagsMints[i];
+    const pair = pairMap[mint];
+    if (!pair) continue;
+    events.push(
+      ...generateGenericEvents(pair, now, bagsMintsList.length + i, boostedMints.has(mint))
+    );
+  }
+
+  // ─── Step 7: Sort and cache ───
   events.sort((a, b) => b.timestamp - a.timestamp);
 
-  // Cache the full unfiltered events
-  cachedResponse = { data: events, timestamp: now };
+  const bagsEventCount = events.filter((e) => e.id.startsWith("bags_")).length;
+  console.log(
+    `[platform-activity] DexScreener: ${solanaProfiles.length} profiles, ${solanaBoosted.length} boosted → ${bagsMints.size} Bags.fm tokens, ${nonBagsMints.length} general → ${events.length} events (${bagsEventCount} Bags.fm)`
+  );
 
-  // Filter out known BagsWorld tokens before returning
+  eventsCache = { data: events, timestamp: now };
+
+  // Filter out known BagsWorld mints before returning
   const filtered =
     knownMints.size > 0
       ? events.filter((e) => !e.data?.mint || !knownMints.has(e.data.mint))
