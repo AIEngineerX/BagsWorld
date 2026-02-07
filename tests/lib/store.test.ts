@@ -236,6 +236,7 @@ describe("useGameStore", () => {
       "ballers",
       "founders",
       "arena",
+      "dungeon",
     ];
 
     allZones.forEach((zone) => {

@@ -2,7 +2,7 @@
  * ZONES Constant Integrity Tests
  *
  * Tests the ZONES record and ZoneType with:
- * - All 7 zones present
+ * - All 8 zones present (including dungeon)
  * - Each zone has required fields (id, name, description, icon)
  * - Zone IDs are self-consistent (id matches key)
  * - No empty strings in any field
@@ -20,17 +20,31 @@ const ALL_ZONE_IDS: ZoneType[] = [
   "ballers",
   "founders",
   "arena",
+  "dungeon",
 ];
 
 describe("ZONES constant", () => {
   describe("completeness", () => {
-    it("contains exactly 7 zones", () => {
-      expect(Object.keys(ZONES)).toHaveLength(7);
+    it("contains exactly 8 zones", () => {
+      expect(Object.keys(ZONES)).toHaveLength(8);
+    });
+
+    it("ZONES keys match ALL_ZONE_IDS exactly", () => {
+      const keys = Object.keys(ZONES).sort();
+      const expected = [...ALL_ZONE_IDS].sort();
+      expect(keys).toEqual(expected);
     });
 
     ALL_ZONE_IDS.forEach((zoneId) => {
       it(`contains zone "${zoneId}"`, () => {
         expect(ZONES[zoneId]).toBeDefined();
+      });
+    });
+
+    it("has no unexpected extra zones", () => {
+      const zoneKeys = Object.keys(ZONES);
+      zoneKeys.forEach((key) => {
+        expect(ALL_ZONE_IDS).toContain(key);
       });
     });
   });
@@ -91,6 +105,12 @@ describe("ZONES constant", () => {
       const unique = new Set(icons);
       expect(unique.size).toBe(icons.length);
     });
+
+    it("all zone IDs are lowercase with underscores only", () => {
+      Object.keys(ZONES).forEach((key) => {
+        expect(key).toMatch(/^[a-z_]+$/);
+      });
+    });
   });
 
   describe("specific zone data", () => {
@@ -120,6 +140,42 @@ describe("ZONES constant", () => {
 
     it("moltbook zone has name 'Moltbook Beach'", () => {
       expect(ZONES.moltbook.name).toBe("Moltbook Beach");
+    });
+
+    it("dungeon zone has name 'BagsDungeon'", () => {
+      expect(ZONES.dungeon.name).toBe("BagsDungeon");
+    });
+
+    it("dungeon zone has icon '[D]'", () => {
+      expect(ZONES.dungeon.icon).toBe("[D]");
+    });
+
+    it("dungeon zone description mentions dungeon/MMORPG", () => {
+      expect(ZONES.dungeon.description.length).toBeGreaterThan(0);
+      expect(
+        ZONES.dungeon.description.toLowerCase().includes("dungeon") ||
+          ZONES.dungeon.description.toLowerCase().includes("mmorpg")
+      ).toBe(true);
+    });
+  });
+
+  describe("field length constraints", () => {
+    it("all zone names are under 30 characters", () => {
+      Object.values(ZONES).forEach((zone) => {
+        expect(zone.name.length).toBeLessThan(30);
+      });
+    });
+
+    it("all zone descriptions are under 200 characters", () => {
+      Object.values(ZONES).forEach((zone) => {
+        expect(zone.description.length).toBeLessThan(200);
+      });
+    });
+
+    it("all zone icons are exactly 3 characters ([X] format)", () => {
+      Object.values(ZONES).forEach((zone) => {
+        expect(zone.icon.length).toBe(3);
+      });
     });
   });
 });

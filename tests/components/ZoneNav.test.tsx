@@ -2,15 +2,16 @@
  * ZoneNav Component Tests
  *
  * Tests the zone navigation bar with:
- * - ZONE_ORDER constant integrity (all zones, correct order)
+ * - ZONE_ORDER constant integrity (all 8 zones, correct order)
  * - ZONE_SHORT_LABELS mapping completeness
- * - Rendering all 7 zone buttons
- * - Active zone highlighting
+ * - Rendering 7 main zone buttons + 1 dungeon button (separate row)
+ * - Active zone highlighting (green for main, purple for dungeon)
  * - Click handler: same zone no-op, different zone dispatches event + updates store
  * - Custom event detail structure
  * - Mobile responsive classes (short labels, touch targets)
  * - Accessibility: title attributes
  * - Zone-specific color styling
+ * - Dungeon-specific purple styling and separate layout
  */
 
 import React from "react";
@@ -19,6 +20,17 @@ import "@testing-library/jest-dom";
 import { ZoneNav, ZONE_ORDER } from "@/components/ZoneNav";
 import { ZONES, ZoneType } from "@/lib/types";
 import { useGameStore } from "@/lib/store";
+
+// The 7 main zones (rendered in the <nav> row)
+const MAIN_ZONES: ZoneType[] = [
+  "labs",
+  "moltbook",
+  "main_city",
+  "trending",
+  "ballers",
+  "founders",
+  "arena",
+];
 
 // Track dispatched events
 let dispatchedEvents: CustomEvent[] = [];
@@ -44,20 +56,12 @@ afterEach(() => {
 });
 
 describe("ZONE_ORDER constant", () => {
-  it("contains exactly 7 zones", () => {
-    expect(ZONE_ORDER).toHaveLength(7);
+  it("contains exactly 8 zones", () => {
+    expect(ZONE_ORDER).toHaveLength(8);
   });
 
   it("contains all valid ZoneType values", () => {
-    const allZones: ZoneType[] = [
-      "labs",
-      "moltbook",
-      "main_city",
-      "trending",
-      "ballers",
-      "founders",
-      "arena",
-    ];
+    const allZones: ZoneType[] = [...MAIN_ZONES, "dungeon"];
     allZones.forEach((zone) => {
       expect(ZONE_ORDER).toContain(zone);
     });
@@ -76,17 +80,27 @@ describe("ZONE_ORDER constant", () => {
     });
   });
 
-  it("starts with 'labs' and ends with 'arena'", () => {
+  it("starts with 'labs' and ends with 'dungeon'", () => {
     expect(ZONE_ORDER[0]).toBe("labs");
-    expect(ZONE_ORDER[ZONE_ORDER.length - 1]).toBe("arena");
+    expect(ZONE_ORDER[ZONE_ORDER.length - 1]).toBe("dungeon");
+  });
+
+  it("has dungeon after all main zones", () => {
+    const dungeonIndex = ZONE_ORDER.indexOf("dungeon");
+    const arenaIndex = ZONE_ORDER.indexOf("arena");
+    expect(dungeonIndex).toBeGreaterThan(arenaIndex);
+  });
+
+  it("main zones are in expected order", () => {
+    expect(ZONE_ORDER.slice(0, 7)).toEqual(MAIN_ZONES);
   });
 });
 
 describe("ZoneNav rendering", () => {
-  it("renders 7 zone buttons", () => {
+  it("renders 8 total zone buttons (7 main + 1 dungeon)", () => {
     render(<ZoneNav />);
     const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(7);
+    expect(buttons).toHaveLength(8);
   });
 
   it("renders icons for all zones", () => {
@@ -100,15 +114,14 @@ describe("ZoneNav rendering", () => {
   it("renders short labels for mobile (sm:hidden text)", () => {
     render(<ZoneNav />);
     // "HQ" appears twice: short label + full name (both "HQ" for labs zone)
-    // "PARK" appears twice: short label + full name (both "PARK" for main_city)
     expect(screen.getAllByText("HQ").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("BEACH")).toBeInTheDocument();
     expect(screen.getAllByText("PARK").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("CITY")).toBeInTheDocument();
-    // "BALLERS" short label is distinct from full "BALLERS VALLEY"
     expect(screen.getByText("BALLERS")).toBeInTheDocument();
     expect(screen.getByText("LAUNCH")).toBeInTheDocument();
     expect(screen.getByText("ARENA")).toBeInTheDocument();
+    expect(screen.getByText("DUNGEON")).toBeInTheDocument();
   });
 
   it("renders full zone names for desktop (hidden sm:inline text)", () => {
@@ -116,22 +129,29 @@ describe("ZoneNav rendering", () => {
     ZONE_ORDER.forEach((zoneId) => {
       const zone = ZONES[zoneId];
       const upperName = zone.name.toUpperCase();
-      // Some names match short labels (HQ, PARK) so use getAllByText
       const matches = screen.getAllByText(upperName);
       expect(matches.length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it("sets title attribute with zone description on each button", () => {
+  it("sets title attribute with zone description on each main button", () => {
     render(<ZoneNav />);
     const buttons = screen.getAllByRole("button");
-    buttons.forEach((button, i) => {
-      const zone = ZONES[ZONE_ORDER[i]];
-      expect(button).toHaveAttribute("title", zone.description);
+    // First 7 buttons are main zones
+    MAIN_ZONES.forEach((zoneId, i) => {
+      const zone = ZONES[zoneId];
+      expect(buttons[i]).toHaveAttribute("title", zone.description);
     });
   });
 
-  it("renders nav element as container", () => {
+  it("sets title attribute on dungeon button", () => {
+    render(<ZoneNav />);
+    const buttons = screen.getAllByRole("button");
+    const dungeonButton = buttons[7]; // Last button
+    expect(dungeonButton).toHaveAttribute("title", ZONES.dungeon.description);
+  });
+
+  it("renders nav element as container for main zones", () => {
     const { container } = render(<ZoneNav />);
     const nav = container.querySelector("nav");
     expect(nav).toBeInTheDocument();
@@ -144,11 +164,17 @@ describe("ZoneNav rendering", () => {
     expect(nav?.className).toContain("overflow-x-auto");
   });
 
+  it("dungeon button is outside the nav element", () => {
+    const { container } = render(<ZoneNav />);
+    const nav = container.querySelector("nav");
+    const buttonsInNav = nav?.querySelectorAll("button") ?? [];
+    expect(buttonsInNav).toHaveLength(7); // Only main zones in nav
+  });
+
   it("buttons have mobile-responsive text size classes", () => {
     render(<ZoneNav />);
     const buttons = screen.getAllByRole("button");
     buttons.forEach((button) => {
-      // Check mobile-first text-[11px] and desktop sm:text-[10px]
       expect(button.className).toContain("text-[11px]");
       expect(button.className).toContain("sm:text-[10px]");
     });
@@ -164,12 +190,11 @@ describe("ZoneNav rendering", () => {
 });
 
 describe("ZoneNav active zone highlighting", () => {
-  it("highlights the current zone with active styles", () => {
+  it("highlights the current main zone with green active styles", () => {
     useGameStore.setState({ currentZone: "main_city" });
     render(<ZoneNav />);
     const buttons = screen.getAllByRole("button");
-    // main_city is at index 2 in ZONE_ORDER
-    const parkIndex = ZONE_ORDER.indexOf("main_city");
+    const parkIndex = MAIN_ZONES.indexOf("main_city");
     expect(buttons[parkIndex].className).toContain("bg-bags-green");
     expect(buttons[parkIndex].className).toContain("text-bags-dark");
   });
@@ -178,10 +203,11 @@ describe("ZoneNav active zone highlighting", () => {
     useGameStore.setState({ currentZone: "main_city" });
     render(<ZoneNav />);
     const buttons = screen.getAllByRole("button");
-    ZONE_ORDER.forEach((zone, i) => {
+    MAIN_ZONES.forEach((zone, i) => {
       if (zone !== "main_city") {
-        // Inactive buttons should not have the active background
-        expect(buttons[i].className).not.toContain("bg-bags-green text-bags-dark border-bags-green shadow");
+        expect(buttons[i].className).not.toContain(
+          "bg-bags-green text-bags-dark border-bags-green shadow"
+        );
       }
     });
   });
@@ -195,8 +221,37 @@ describe("ZoneNav active zone highlighting", () => {
     rerender(<ZoneNav />);
 
     const buttons = screen.getAllByRole("button");
-    const labsIndex = ZONE_ORDER.indexOf("labs");
+    const labsIndex = MAIN_ZONES.indexOf("labs");
     expect(buttons[labsIndex].className).toContain("bg-bags-green");
+  });
+
+  it("highlights dungeon button with purple when dungeon is active", () => {
+    useGameStore.setState({ currentZone: "dungeon" });
+    render(<ZoneNav />);
+    const buttons = screen.getAllByRole("button");
+    const dungeonButton = buttons[7]; // Last button
+    expect(dungeonButton.className).toContain("bg-purple-600");
+    expect(dungeonButton.className).toContain("text-white");
+    expect(dungeonButton.className).toContain("border-purple-400");
+  });
+
+  it("dungeon button has purple inactive styling when not active", () => {
+    useGameStore.setState({ currentZone: "main_city" });
+    render(<ZoneNav />);
+    const buttons = screen.getAllByRole("button");
+    const dungeonButton = buttons[7];
+    expect(dungeonButton.className).toContain("border-purple-500/50");
+    expect(dungeonButton.className).toContain("text-purple-400");
+    expect(dungeonButton.className).not.toContain("bg-purple-600");
+  });
+
+  it("no main zone buttons are highlighted when dungeon is active", () => {
+    useGameStore.setState({ currentZone: "dungeon" });
+    render(<ZoneNav />);
+    const buttons = screen.getAllByRole("button");
+    MAIN_ZONES.forEach((_zone, i) => {
+      expect(buttons[i].className).not.toContain("bg-bags-green");
+    });
   });
 });
 
@@ -205,7 +260,7 @@ describe("ZoneNav click behavior", () => {
     useGameStore.setState({ currentZone: "main_city" });
     render(<ZoneNav />);
 
-    const labsIndex = ZONE_ORDER.indexOf("labs");
+    const labsIndex = MAIN_ZONES.indexOf("labs");
     const buttons = screen.getAllByRole("button");
     fireEvent.click(buttons[labsIndex]);
 
@@ -220,7 +275,7 @@ describe("ZoneNav click behavior", () => {
     useGameStore.setState({ currentZone: "main_city" });
     render(<ZoneNav />);
 
-    const arenaIndex = ZONE_ORDER.indexOf("arena");
+    const arenaIndex = MAIN_ZONES.indexOf("arena");
     fireEvent.click(screen.getAllByRole("button")[arenaIndex]);
     expect(useGameStore.getState().currentZone).toBe("arena");
   });
@@ -229,7 +284,7 @@ describe("ZoneNav click behavior", () => {
     useGameStore.setState({ currentZone: "trending" });
     render(<ZoneNav />);
 
-    const trendingIndex = ZONE_ORDER.indexOf("trending");
+    const trendingIndex = MAIN_ZONES.indexOf("trending");
     fireEvent.click(screen.getAllByRole("button")[trendingIndex]);
 
     const zoneEvents = dispatchedEvents.filter(
@@ -238,15 +293,14 @@ describe("ZoneNav click behavior", () => {
     expect(zoneEvents).toHaveLength(0);
   });
 
-  it("emits correct zone detail for each zone", () => {
-    ZONE_ORDER.forEach((targetZone) => {
+  it("emits correct zone detail for each main zone", () => {
+    MAIN_ZONES.forEach((targetZone) => {
       dispatchedEvents = [];
-      // Set to a zone that is NOT the target
-      const otherZone = ZONE_ORDER.find((z) => z !== targetZone)!;
+      const otherZone = MAIN_ZONES.find((z) => z !== targetZone)!;
       useGameStore.setState({ currentZone: otherZone });
 
       const { unmount } = render(<ZoneNav />);
-      const targetIndex = ZONE_ORDER.indexOf(targetZone);
+      const targetIndex = MAIN_ZONES.indexOf(targetZone);
       fireEvent.click(screen.getAllByRole("button")[targetIndex]);
 
       const zoneEvents = dispatchedEvents.filter(
@@ -257,13 +311,72 @@ describe("ZoneNav click behavior", () => {
       unmount();
     });
   });
+
+  it("dispatches zone change when clicking dungeon button", () => {
+    useGameStore.setState({ currentZone: "main_city" });
+    render(<ZoneNav />);
+
+    const buttons = screen.getAllByRole("button");
+    fireEvent.click(buttons[7]); // Dungeon is last button
+
+    const zoneEvents = dispatchedEvents.filter(
+      (e) => e.type === "bagsworld-zone-change"
+    );
+    expect(zoneEvents).toHaveLength(1);
+    expect(zoneEvents[0].detail).toEqual({ zone: "dungeon" });
+  });
+
+  it("updates store to dungeon when clicking dungeon button", () => {
+    useGameStore.setState({ currentZone: "main_city" });
+    render(<ZoneNav />);
+
+    fireEvent.click(screen.getAllByRole("button")[7]);
+    expect(useGameStore.getState().currentZone).toBe("dungeon");
+  });
+
+  it("does NOT dispatch event when clicking dungeon while already in dungeon", () => {
+    useGameStore.setState({ currentZone: "dungeon" });
+    render(<ZoneNav />);
+
+    fireEvent.click(screen.getAllByRole("button")[7]);
+
+    const zoneEvents = dispatchedEvents.filter(
+      (e) => e.type === "bagsworld-zone-change"
+    );
+    expect(zoneEvents).toHaveLength(0);
+  });
+
+  it("can navigate from dungeon to a main zone", () => {
+    useGameStore.setState({ currentZone: "dungeon" });
+    render(<ZoneNav />);
+
+    const labsIndex = MAIN_ZONES.indexOf("labs");
+    fireEvent.click(screen.getAllByRole("button")[labsIndex]);
+
+    expect(useGameStore.getState().currentZone).toBe("labs");
+    const zoneEvents = dispatchedEvents.filter(
+      (e) => e.type === "bagsworld-zone-change"
+    );
+    expect(zoneEvents).toHaveLength(1);
+    expect(zoneEvents[0].detail.zone).toBe("labs");
+  });
+
+  it("dispatches CustomEvent (not plain Event)", () => {
+    useGameStore.setState({ currentZone: "main_city" });
+    render(<ZoneNav />);
+
+    fireEvent.click(screen.getAllByRole("button")[0]); // labs
+
+    expect(dispatchedEvents[0]).toBeInstanceOf(CustomEvent);
+    expect(dispatchedEvents[0].detail).toBeDefined();
+  });
 });
 
 describe("ZoneNav zone-specific styling", () => {
   it("labs button has green-specific inactive styling", () => {
     useGameStore.setState({ currentZone: "trending" }); // not labs
     render(<ZoneNav />);
-    const labsIndex = ZONE_ORDER.indexOf("labs");
+    const labsIndex = MAIN_ZONES.indexOf("labs");
     const button = screen.getAllByRole("button")[labsIndex];
     expect(button.className).toContain("border-green-500/50");
     expect(button.className).toContain("text-green-400");
@@ -272,7 +385,7 @@ describe("ZoneNav zone-specific styling", () => {
   it("moltbook button has red-specific inactive styling", () => {
     useGameStore.setState({ currentZone: "main_city" });
     render(<ZoneNav />);
-    const idx = ZONE_ORDER.indexOf("moltbook");
+    const idx = MAIN_ZONES.indexOf("moltbook");
     const button = screen.getAllByRole("button")[idx];
     expect(button.className).toContain("border-red-500/50");
     expect(button.className).toContain("text-red-400");
@@ -281,7 +394,7 @@ describe("ZoneNav zone-specific styling", () => {
   it("trending button has yellow/gold inactive styling", () => {
     useGameStore.setState({ currentZone: "main_city" });
     render(<ZoneNav />);
-    const idx = ZONE_ORDER.indexOf("trending");
+    const idx = MAIN_ZONES.indexOf("trending");
     const button = screen.getAllByRole("button")[idx];
     expect(button.className).toContain("border-yellow-500/50");
     expect(button.className).toContain("text-bags-gold");
@@ -290,18 +403,53 @@ describe("ZoneNav zone-specific styling", () => {
   it("arena button has red-specific inactive styling", () => {
     useGameStore.setState({ currentZone: "main_city" });
     render(<ZoneNav />);
-    const idx = ZONE_ORDER.indexOf("arena");
+    const idx = MAIN_ZONES.indexOf("arena");
     const button = screen.getAllByRole("button")[idx];
     expect(button.className).toContain("border-red-500/50");
     expect(button.className).toContain("text-red-400");
   });
 
+  it("ballers button has yellow-specific inactive styling", () => {
+    useGameStore.setState({ currentZone: "main_city" });
+    render(<ZoneNav />);
+    const idx = MAIN_ZONES.indexOf("ballers");
+    const button = screen.getAllByRole("button")[idx];
+    expect(button.className).toContain("border-yellow-500/50");
+    expect(button.className).toContain("text-yellow-400");
+  });
+
+  it("founders button has amber-specific inactive styling", () => {
+    useGameStore.setState({ currentZone: "main_city" });
+    render(<ZoneNav />);
+    const idx = MAIN_ZONES.indexOf("founders");
+    const button = screen.getAllByRole("button")[idx];
+    expect(button.className).toContain("border-amber-500/50");
+    expect(button.className).toContain("text-amber-400");
+  });
+
+  it("main_city button has default inactive styling (no zone-specific color)", () => {
+    useGameStore.setState({ currentZone: "labs" });
+    render(<ZoneNav />);
+    const idx = MAIN_ZONES.indexOf("main_city");
+    const button = screen.getAllByRole("button")[idx];
+    // main_city has no entry in ZONE_COLORS, so only base inactive styles
+    expect(button.className).toContain("border-gray-600");
+    expect(button.className).toContain("text-gray-400");
+  });
+
   it("active zone does NOT get zone-specific colors (overridden by active)", () => {
     useGameStore.setState({ currentZone: "labs" });
     render(<ZoneNav />);
-    const labsIndex = ZONE_ORDER.indexOf("labs");
+    const labsIndex = MAIN_ZONES.indexOf("labs");
     const button = screen.getAllByRole("button")[labsIndex];
-    // When active, should NOT have the inactive zone-specific colors
     expect(button.className).not.toContain("border-green-500/50 text-green-400");
+  });
+
+  it("dungeon button has purple glow shadow when active", () => {
+    useGameStore.setState({ currentZone: "dungeon" });
+    render(<ZoneNav />);
+    const dungeonButton = screen.getAllByRole("button")[7];
+    expect(dungeonButton.className).toContain("shadow-");
+    expect(dungeonButton.className).toContain("purple");
   });
 });
