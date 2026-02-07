@@ -7,7 +7,7 @@ import { Suspense, useState, useEffect, useCallback } from "react";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveMarketFeed } from "@/components/LiveMarketFeed";
-import { UnifiedActivityFeed } from "@/components/UnifiedActivityFeed";
+import { AgentChatterFeed } from "@/components/AgentChatterFeed";
 import { LaunchButton } from "@/components/LaunchButton";
 import { AIChat } from "@/components/AIChat";
 import { AshChat } from "@/components/AshChat";
@@ -585,10 +585,10 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Unified Activity Feed - agent-specific events only */}
+          {/* Agent Chatter Feed - inter-agent conversations */}
           <div className="h-40 shrink-0 relative">
             <div className="absolute top-0 left-0 right-0 glow-line-h" />
-            <UnifiedActivityFeed maxItems={20} />
+            <AgentChatterFeed />
           </div>
         </aside>
 
