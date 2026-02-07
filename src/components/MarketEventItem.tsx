@@ -36,6 +36,12 @@ function getEventStyle(type: MarketEvent["type"]): {
         icon: <RocketIcon size={12} />,
         label: "LAUNCH",
       };
+    case "platform_launch":
+      return {
+        color: "text-purple-300",
+        icon: <RocketIcon size={12} />,
+        label: "LAUNCH",
+      };
     case "building_constructed":
       return {
         color: "text-orange-400",
@@ -72,6 +78,12 @@ function getEventStyle(type: MarketEvent["type"]): {
         icon: <TrophyIcon size={12} />,
         label: "GOAL",
       };
+    case "platform_trending":
+      return {
+        color: "text-cyan-400",
+        icon: <ChartUpIcon size={12} />,
+        label: "TRENDING",
+      };
     default:
       return {
         color: "text-gray-400",
@@ -87,9 +99,14 @@ export const MarketEventItem = React.memo(function MarketEventItem({
   event: MarketEvent;
 }) {
   const { color, icon, label } = getEventStyle(event.type);
+  const isPlatform = event.source === "platform";
 
   return (
-    <div className="px-3 py-2 hover:bg-bags-green/5 transition-colors">
+    <div
+      className={`px-3 py-2 hover:bg-bags-green/5 transition-colors ${
+        isPlatform ? "border-l-2 border-l-cyan-500/60" : ""
+      }`}
+    >
       <div className="flex items-start gap-2">
         <span className={`flex-shrink-0 mt-0.5 ${color}`}>{icon}</span>
         <div className="flex-1 min-w-0">
@@ -97,6 +114,11 @@ export const MarketEventItem = React.memo(function MarketEventItem({
             <span className={`font-pixel text-[6px] px-1 py-px ${color} bg-current/10`}>
               {label}
             </span>
+            {isPlatform && (
+              <span className="font-pixel text-[5px] px-1 py-px text-cyan-400 bg-cyan-400/10 border border-cyan-500/30">
+                BAGS.FM
+              </span>
+            )}
             <span className="font-pixel text-[6px] text-gray-600">
               {formatTime(event.timestamp)}
             </span>

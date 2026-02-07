@@ -3,17 +3,19 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useGameStore } from "@/lib/store";
 import type { MarketEvent, MarketSummary } from "@/lib/types";
+import { usePlatformActivity } from "@/hooks/usePlatformActivity";
 import { MarketSummaryBar } from "./MarketSummaryBar";
 import { TokenPriceTicker } from "./TokenPriceTicker";
 import { MarketEventItem } from "./MarketEventItem";
 import { SignalIcon } from "./icons";
 
-type MarketFilter = "all" | "launches" | "claims" | "trades";
+type MarketFilter = "all" | "launches" | "claims" | "trades" | "bagsfm";
 
 const MAX_EVENTS = 50;
 
 export function LiveMarketFeed() {
   const worldState = useGameStore((s) => s.worldState);
+  const { platformEvents } = usePlatformActivity();
   const [filter, setFilter] = useState<MarketFilter>("all");
   const listRef = useRef<HTMLDivElement>(null);
   const [userScrolled, setUserScrolled] = useState(false);
@@ -57,29 +59,66 @@ export function LiveMarketFeed() {
     };
   }, [buildings, events]);
 
-  // Transform GameEvent[] into MarketEvent[]
+  // Transform GameEvent[] into MarketEvent[], merging BagsWorld + platform events
   const marketEvents = useMemo<MarketEvent[]>(() => {
-    return events
-      .map((e) => ({
-        id: e.id,
-        type: e.type,
-        message: e.message,
-        timestamp: e.timestamp,
-        tokenSymbol: e.data?.symbol,
-        tokenName: e.data?.tokenName,
-        amount: e.data?.amount,
-        change: e.data?.change,
-      }))
-      .sort((a, b) => b.timestamp - a.timestamp)
+    // BagsWorld events (tagged as bagsworld)
+    const bwEvents: MarketEvent[] = events.map((e) => ({
+      id: e.id,
+      type: e.type,
+      message: e.message,
+      timestamp: e.timestamp,
+      tokenSymbol: e.data?.symbol,
+      tokenName: e.data?.tokenName,
+      amount: e.data?.amount,
+      change: e.data?.change,
+      source: "bagsworld" as const,
+    }));
+
+    // Platform events (tagged as platform)
+    const pfEvents: MarketEvent[] = platformEvents.map((e) => ({
+      id: e.id,
+      type: e.type,
+      message: e.message,
+      timestamp: e.timestamp,
+      tokenSymbol: e.data?.symbol,
+      tokenName: e.data?.tokenName,
+      amount: e.data?.amount,
+      change: e.data?.change,
+      source: "platform" as const,
+    }));
+
+    // Merge, deduplicate by id, sort with BagsWorld priority at same timestamp
+    const seen = new Set<string>();
+    const merged: MarketEvent[] = [];
+
+    for (const e of [...bwEvents, ...pfEvents]) {
+      if (!seen.has(e.id)) {
+        seen.add(e.id);
+        merged.push(e);
+      }
+    }
+
+    return merged
+      .sort((a, b) => {
+        const timeDiff = b.timestamp - a.timestamp;
+        if (timeDiff !== 0) return timeDiff;
+        // BagsWorld events first at same timestamp
+        if (a.source === "bagsworld" && b.source !== "bagsworld") return -1;
+        if (b.source === "bagsworld" && a.source !== "bagsworld") return 1;
+        return 0;
+      })
       .slice(0, MAX_EVENTS);
-  }, [events]);
+  }, [events, platformEvents]);
 
   // Apply filter
   const filteredEvents = useMemo(() => {
     switch (filter) {
       case "launches":
         return marketEvents.filter(
-          (e) => e.type === "token_launch" || e.type === "building_constructed"
+          (e) =>
+            e.type === "token_launch" ||
+            e.type === "building_constructed" ||
+            e.type === "platform_launch"
         );
       case "claims":
         return marketEvents.filter((e) => e.type === "fee_claim");
@@ -87,6 +126,8 @@ export function LiveMarketFeed() {
         return marketEvents.filter(
           (e) => e.type === "price_pump" || e.type === "price_dump" || e.type === "whale_alert"
         );
+      case "bagsfm":
+        return marketEvents.filter((e) => e.source === "platform");
       default:
         return marketEvents;
     }
@@ -119,7 +160,7 @@ export function LiveMarketFeed() {
         </div>
         {/* Filter Tabs */}
         <div className="flex gap-1">
-          {(["all", "launches", "claims", "trades"] as const).map((f) => (
+          {(["all", "launches", "claims", "trades", "bagsfm"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -129,7 +170,7 @@ export function LiveMarketFeed() {
                   : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              {f.toUpperCase()}
+              {f === "bagsfm" ? "BAGS.FM" : f.toUpperCase()}
             </button>
           ))}
         </div>

@@ -719,6 +719,8 @@ export function generateGameEvent(type: GameEvent["type"], data: GameEvent["data
     price_dump: (d) => `📉 ${d?.tokenName} dumped ${Math.abs(d?.change ?? 0).toFixed(0)}%`,
     milestone: (d) => `🏆 ${d?.username} reached ${d?.amount} SOL earned!`,
     whale_alert: (d) => `🐋 Whale activity on ${d?.tokenName}!`,
+    platform_launch: (d) => `🚀 New on Bags.fm: ${d?.tokenName} launched`,
+    platform_trending: (d) => `📊 ${d?.tokenName} trending on Bags.fm`,
   };
 
   return {
