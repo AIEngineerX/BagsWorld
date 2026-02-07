@@ -237,8 +237,8 @@ export async function GET(request: Request) {
       for (const creator of creators) {
         if (!creator.royaltyBps || creator.royaltyBps === 0) continue;
 
-        // Only include creators with a Moltbook identity
-        if (!creator.bagsUsername && creator.provider !== "moltbook") continue;
+        // Only include Moltbook agents (per bags.fm/skill.md, agents auth via Moltbook)
+        if (creator.provider !== "moltbook") continue;
 
         const feesLamports = bagsMints.get(mint) ?? 0;
         const dbToken = dbTokenMap.get(mint);
