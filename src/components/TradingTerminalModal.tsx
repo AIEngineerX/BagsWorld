@@ -135,6 +135,7 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<TokenInfo[]>([]);
   const [interval, setInterval] = useState<IntervalType>("1m");
+  const [chartMode, setChartMode] = useState<"price" | "mc">("price");
 
   // Trading state
   const [tradeMode, setTradeMode] = useState<TradeMode>("buy");
@@ -461,6 +462,31 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearch]);
 
+  // Get detailed token info or fallback to basic info (declared early for chart mode computations)
+  const tokenDetail: TokenDetailedInfo | null = tokenDetailData?.token || null;
+
+  // Compute supply factor for MC mode: mcap / price = circulating supply
+  const mcScaleFactor =
+    tokenDetail?.price && tokenDetail.price > 0
+      ? (tokenDetail.marketCap || 0) / tokenDetail.price
+      : 0;
+
+  // Transform candle OHLC values to market cap if in MC mode
+  const transformCandle = useCallback(
+    (c: OHLCVCandle): { open: number; high: number; low: number; close: number } => {
+      if (chartMode === "mc" && mcScaleFactor > 0) {
+        return {
+          open: c.open * mcScaleFactor,
+          high: c.high * mcScaleFactor,
+          low: c.low * mcScaleFactor,
+          close: c.close * mcScaleFactor,
+        };
+      }
+      return { open: c.open, high: c.high, low: c.low, close: c.close };
+    },
+    [chartMode, mcScaleFactor]
+  );
+
   // Track if chart should be visible (has data and container should exist)
   const shouldShowChart = selectedToken && !ohlcvLoading && (ohlcvData?.candles?.length || 0) > 0;
 
@@ -484,6 +510,14 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
 
       const containerWidth = chartContainerRef.current.clientWidth;
       const containerHeight = chartContainerRef.current.clientHeight || 288;
+
+      // MC mode price formatter: abbreviated values
+      const mcPriceFormatter = (price: number): string => {
+        if (price >= 1_000_000_000) return `$${(price / 1_000_000_000).toFixed(1)}B`;
+        if (price >= 1_000_000) return `$${(price / 1_000_000).toFixed(1)}M`;
+        if (price >= 1_000) return `$${(price / 1_000).toFixed(0)}K`;
+        return `$${price.toFixed(0)}`;
+      };
 
       const chart = createChart(chartContainerRef.current, {
         width: containerWidth,
@@ -523,6 +557,7 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
           timeVisible: true,
           secondsVisible: false,
         },
+        localization: chartMode === "mc" ? { priceFormatter: mcPriceFormatter } : undefined,
       });
 
       const candlestickSeries = chart.addSeries(CandlestickSeries, {
@@ -556,13 +591,16 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
       // Set initial data if available
       const candles = ohlcvData?.candles as OHLCVCandle[] | undefined;
       if (candles && candles.length > 0) {
-        const candlestickData: CandlestickData[] = candles.map((c) => ({
-          time: c.time as Time,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-        }));
+        const candlestickData: CandlestickData[] = candles.map((c) => {
+          const t = transformCandle(c);
+          return {
+            time: c.time as Time,
+            open: t.open,
+            high: t.high,
+            low: t.low,
+            close: t.close,
+          };
+        });
 
         const volumeData: HistogramData[] = candles.map((c) => ({
           time: c.time as Time,
@@ -597,7 +635,7 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
         volumeSeriesRef.current = null;
       }
     };
-  }, [activeTab, shouldShowChart, ohlcvData]);
+  }, [activeTab, shouldShowChart, ohlcvData, chartMode, transformCandle]);
 
   // Update chart data when OHLCV data changes (for live updates after initial load)
   useEffect(() => {
@@ -613,13 +651,16 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
       return;
     }
 
-    const candlestickData: CandlestickData[] = candles.map((c) => ({
-      time: c.time as Time,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
+    const candlestickData: CandlestickData[] = candles.map((c) => {
+      const t = transformCandle(c);
+      return {
+        time: c.time as Time,
+        open: t.open,
+        high: t.high,
+        low: t.low,
+        close: t.close,
+      };
+    });
 
     const volumeData: HistogramData[] = candles.map((c) => ({
       time: c.time as Time,
@@ -630,7 +671,7 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
     candlestickSeriesRef.current.setData(candlestickData);
     volumeSeriesRef.current.setData(volumeData);
     chartRef.current.timeScale().fitContent();
-  }, [ohlcvData]);
+  }, [ohlcvData, transformCandle]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
@@ -698,9 +739,6 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
     { id: "info", label: "INFO" },
     { id: "portfolio", label: "PORTFOLIO" },
   ];
-
-  // Get detailed token info or fallback to basic info
-  const tokenDetail: TokenDetailedInfo | null = tokenDetailData?.token || null;
 
   const intervals: { id: IntervalType; label: string }[] = [
     { id: "1s", label: "1S" },
@@ -1012,8 +1050,23 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                       )}
                     </div>
 
-                    {/* Row 3: Interval Selector */}
+                    {/* Row 3: Chart Mode Toggle + Interval Selector */}
                     <div className="flex items-center gap-1 mt-2">
+                      {/* Price/MC Toggle */}
+                      {(["price", "mc"] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => setChartMode(mode)}
+                          className={`font-mono text-[9px] px-2 py-1 rounded transition-colors ${
+                            chartMode === mode
+                              ? "bg-[#06b6d4]/20 text-[#06b6d4] border border-[#06b6d4]/50"
+                              : "text-[#64748b] hover:text-[#e2e8f0] border border-transparent hover:border-[#1e293b]"
+                          }`}
+                        >
+                          {mode === "price" ? "PRICE" : "MC"}
+                        </button>
+                      ))}
+                      <div className="w-px h-4 bg-[#1e293b] mx-1" />
                       {intervals.map((int) => (
                         <button
                           key={int.id}
@@ -1078,26 +1131,57 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
                         <div className="relative w-full h-72" style={{ minHeight: "288px" }}>
                           {/* Price/MC Overlay */}
                           <div className="absolute top-2 left-2 z-10 flex items-center gap-3 bg-[#0a0a0f]/90 backdrop-blur-sm rounded px-3 py-2 border border-[#1e293b]">
-                            <div>
-                              <p className="font-mono text-[#e2e8f0] text-lg font-bold">
-                                {formatPrice(tokenDetail?.price || selectedToken.price)}
-                              </p>
-                              <p
-                                className={`font-mono text-[10px] ${(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
-                              >
-                                {(tokenDetail?.change24h || selectedToken.change24h) >= 0
-                                  ? "+"
-                                  : ""}
-                                {(tokenDetail?.change24h || selectedToken.change24h).toFixed(2)}%
-                                24h
-                              </p>
-                            </div>
-                            <div className="border-l border-[#1e293b] pl-3">
-                              <p className="font-mono text-[#64748b] text-[9px]">MC</p>
-                              <p className="font-mono text-[#e2e8f0] text-sm">
-                                {formatMarketCap(tokenDetail?.marketCap || selectedToken.marketCap)}
-                              </p>
-                            </div>
+                            {chartMode === "price" ? (
+                              <>
+                                <div>
+                                  <p className="font-mono text-[#e2e8f0] text-lg font-bold">
+                                    {formatPrice(tokenDetail?.price || selectedToken.price)}
+                                  </p>
+                                  <p
+                                    className={`font-mono text-[10px] ${(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                                  >
+                                    {(tokenDetail?.change24h || selectedToken.change24h) >= 0
+                                      ? "+"
+                                      : ""}
+                                    {(tokenDetail?.change24h || selectedToken.change24h).toFixed(2)}
+                                    % 24h
+                                  </p>
+                                </div>
+                                <div className="border-l border-[#1e293b] pl-3">
+                                  <p className="font-mono text-[#64748b] text-[9px]">MC</p>
+                                  <p className="font-mono text-[#e2e8f0] text-sm">
+                                    {formatMarketCap(
+                                      tokenDetail?.marketCap || selectedToken.marketCap
+                                    )}
+                                  </p>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div>
+                                  <p className="font-mono text-[#e2e8f0] text-lg font-bold">
+                                    {formatMarketCap(
+                                      tokenDetail?.marketCap || selectedToken.marketCap
+                                    )}
+                                  </p>
+                                  <p
+                                    className={`font-mono text-[10px] ${(tokenDetail?.change24h || selectedToken.change24h) >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                                  >
+                                    {(tokenDetail?.change24h || selectedToken.change24h) >= 0
+                                      ? "+"
+                                      : ""}
+                                    {(tokenDetail?.change24h || selectedToken.change24h).toFixed(2)}
+                                    % 24h
+                                  </p>
+                                </div>
+                                <div className="border-l border-[#1e293b] pl-3">
+                                  <p className="font-mono text-[#64748b] text-[9px]">PRICE</p>
+                                  <p className="font-mono text-[#e2e8f0] text-sm">
+                                    {formatPrice(tokenDetail?.price || selectedToken.price)}
+                                  </p>
+                                </div>
+                              </>
+                            )}
                             {tokenDetail?.liquidity !== undefined && tokenDetail.liquidity > 0 && (
                               <div className="border-l border-[#1e293b] pl-3">
                                 <p className="font-mono text-[#64748b] text-[9px]">LIQ</p>

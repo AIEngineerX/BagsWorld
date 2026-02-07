@@ -275,9 +275,22 @@ async function handleTokenInfo(mint: string): Promise<NextResponse> {
   const data = await response.json();
   const pair = data.pairs?.[0];
 
-  if (!pair) {
-    tokenDetailCache.set(mint, { data: null, timestamp: Date.now() });
-    return NextResponse.json({ token: null, error: "Token not found" });
+  const dexPrice = pair ? parseFloat(pair.priceUsd) || 0 : 0;
+  const dexMcap = pair?.marketCap || 0;
+  const dexHasData = pair && (dexPrice > 0 || dexMcap > 0);
+
+  // If DexScreener has no pair or returned all zeros, try GeckoTerminal
+  if (!dexHasData) {
+    const geckoInfo = await fetchGeckoTerminalTokenInfo(mint);
+    if (geckoInfo) {
+      tokenDetailCache.set(mint, { data: geckoInfo, timestamp: Date.now() });
+      return NextResponse.json({ token: geckoInfo, dataSource: "geckoterminal" });
+    }
+
+    if (!pair) {
+      tokenDetailCache.set(mint, { data: null, timestamp: Date.now() });
+      return NextResponse.json({ token: null, error: "Token not found" });
+    }
   }
 
   const tokenInfo: TokenDetailedInfo = {
@@ -306,7 +319,7 @@ async function handleTokenInfo(mint: string): Promise<NextResponse> {
   };
 
   tokenDetailCache.set(mint, { data: tokenInfo, timestamp: Date.now() });
-  return NextResponse.json({ token: tokenInfo });
+  return NextResponse.json({ token: tokenInfo, dataSource: "dexscreener" });
 }
 
 async function handleTokenTrades(mint: string): Promise<NextResponse> {
@@ -602,7 +615,47 @@ function sortTokens(tokens: TokenWithMetrics[], sortBy: string): TokenWithMetric
   }
 }
 
-// DexScreener data fetcher with caching
+// GeckoTerminal token info fetcher (used as fallback when DexScreener returns no data)
+async function fetchGeckoTerminalTokenInfo(mint: string): Promise<TokenDetailedInfo | null> {
+  try {
+    const response = await fetch(
+      `https://api.geckoterminal.com/api/v2/networks/solana/tokens/${mint}`,
+      { headers: { Accept: "application/json" } }
+    );
+    if (!response.ok) return null;
+
+    const json = await response.json();
+    const attrs = json.data?.attributes;
+    if (!attrs) return null;
+
+    const price = parseFloat(attrs.price_usd) || 0;
+    const marketCap = parseFloat(attrs.market_cap_usd) || 0;
+    if (price === 0 && marketCap === 0) return null;
+
+    return {
+      mint,
+      name: attrs.name || "Unknown",
+      symbol: attrs.symbol || "???",
+      imageUrl: attrs.image_url,
+      price,
+      marketCap,
+      fdv: parseFloat(attrs.fdv_usd) || marketCap,
+      volume24h: parseFloat(attrs.volume_usd?.h24) || 0,
+      volume6h: parseFloat(attrs.volume_usd?.h6) || 0,
+      volume1h: parseFloat(attrs.volume_usd?.h1) || 0,
+      liquidity: 0,
+      change5m: parseFloat(attrs.price_change_percentage?.m5) || 0,
+      change1h: parseFloat(attrs.price_change_percentage?.h1) || 0,
+      change6h: parseFloat(attrs.price_change_percentage?.h6) || 0,
+      change24h: parseFloat(attrs.price_change_percentage?.h24) || 0,
+      txns24h: { buys: 0, sells: 0 },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// DexScreener data fetcher with caching + GeckoTerminal fallback
 async function fetchDexScreenerData(mint: string): Promise<{
   priceUsd: number;
   marketCap: number;
@@ -619,6 +672,12 @@ async function fetchDexScreenerData(mint: string): Promise<{
   });
 
   if (!response.ok) {
+    // DexScreener failed — try GeckoTerminal pool search as fallback
+    const geckoResult = await fetchGeckoTerminalPoolData(mint);
+    if (geckoResult) {
+      dexScreenerCache.set(mint, { data: geckoResult, timestamp: Date.now() });
+      return geckoResult;
+    }
     dexScreenerCache.set(mint, { data: null, timestamp: Date.now() });
     return null;
   }
@@ -627,6 +686,12 @@ async function fetchDexScreenerData(mint: string): Promise<{
   const pair = data.pairs?.[0];
 
   if (!pair) {
+    // No pair on DexScreener — try GeckoTerminal pool search as fallback
+    const geckoResult = await fetchGeckoTerminalPoolData(mint);
+    if (geckoResult) {
+      dexScreenerCache.set(mint, { data: geckoResult, timestamp: Date.now() });
+      return geckoResult;
+    }
     dexScreenerCache.set(mint, { data: null, timestamp: Date.now() });
     return null;
   }
@@ -638,8 +703,51 @@ async function fetchDexScreenerData(mint: string): Promise<{
     priceChange24h: pair.priceChange?.h24 || 0,
   };
 
+  // If DexScreener returned all zeros, try GeckoTerminal
+  if (result.priceUsd === 0 && result.marketCap === 0) {
+    const geckoResult = await fetchGeckoTerminalPoolData(mint);
+    if (geckoResult) {
+      dexScreenerCache.set(mint, { data: geckoResult, timestamp: Date.now() });
+      return geckoResult;
+    }
+  }
+
   dexScreenerCache.set(mint, { data: result, timestamp: Date.now() });
   return result;
+}
+
+// GeckoTerminal pool search fallback for basic price/mcap data
+async function fetchGeckoTerminalPoolData(mint: string): Promise<{
+  priceUsd: number;
+  marketCap: number;
+  volume24h: number;
+  priceChange24h: number;
+} | null> {
+  try {
+    const response = await fetch(
+      `https://api.geckoterminal.com/api/v2/search/pools?query=${mint}&network=solana&page=1`,
+      { headers: { Accept: "application/json" } }
+    );
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const pool = data.data?.[0];
+    if (!pool) return null;
+
+    const attrs = pool.attributes || {};
+    const price = parseFloat(attrs.base_token_price_usd) || 0;
+    const marketCap = parseFloat(attrs.market_cap_usd) || parseFloat(attrs.fdv_usd) || 0;
+    if (price === 0 && marketCap === 0) return null;
+
+    return {
+      priceUsd: price,
+      marketCap,
+      volume24h: parseFloat(attrs.volume_usd?.h24) || 0,
+      priceChange24h: parseFloat(attrs.price_change_percentage?.h24) || 0,
+    };
+  } catch {
+    return null;
+  }
 }
 
 // Fees cache (30s per mint)
