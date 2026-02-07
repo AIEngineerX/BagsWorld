@@ -9,13 +9,13 @@ import { TokenPriceTicker } from "./TokenPriceTicker";
 import { MarketEventItem } from "./MarketEventItem";
 import { SignalIcon } from "./icons";
 
-type MarketFilter = "all" | "launches" | "claims" | "trades" | "bagsfm";
+type MarketFilter = "all" | "launches" | "claims" | "trades";
 
 const MAX_EVENTS = 50;
 
 export function LiveMarketFeed() {
   const worldState = useGameStore((s) => s.worldState);
-  const { platformEvents } = usePlatformActivity();
+  const { platformEvents, platformSummary } = usePlatformActivity();
   const [filter, setFilter] = useState<MarketFilter>("all");
   const listRef = useRef<HTMLDivElement>(null);
   const [userScrolled, setUserScrolled] = useState(false);
@@ -23,15 +23,18 @@ export function LiveMarketFeed() {
   const buildings = useMemo(() => worldState?.buildings ?? [], [worldState?.buildings]);
   const events = useMemo(() => worldState?.events ?? [], [worldState?.events]);
 
-  // Compute market summary from buildings
+  // Compute market summary from buildings + platform Bags.fm data
   const summary = useMemo<MarketSummary>(() => {
-    let totalVolume24h = 0;
-    let totalFeesClaimed = 0;
+    let totalVolume24h = platformSummary.totalVolume24h;
+    let totalFeesClaimed = platformSummary.totalFeesClaimed;
     let topGainer: MarketSummary["topGainer"] = null;
     let topLoser: MarketSummary["topLoser"] = null;
 
+    // Add volume from user-registered buildings (deduplication: platform already excludes knownMints)
     for (const b of buildings) {
-      totalVolume24h += b.volume24h ?? 0;
+      if (!b.isPermanent) {
+        totalVolume24h += b.volume24h ?? 0;
+      }
 
       if (b.change24h != null) {
         if (!topGainer || b.change24h > topGainer.change) {
@@ -43,21 +46,25 @@ export function LiveMarketFeed() {
       }
     }
 
-    // Estimate fees from fee_claim events
+    // Add fees from BagsWorld events (user-registered token claims)
     for (const e of events) {
       if (e.type === "fee_claim" && e.data?.amount) {
         totalFeesClaimed += e.data.amount;
       }
     }
 
+    // Token count: platform-discovered Bags.fm tokens + user-registered buildings
+    const registeredTokenCount = buildings.filter((b) => !b.isPermanent).length;
+    const activeTokenCount = platformSummary.activeTokenCount + registeredTokenCount;
+
     return {
       totalVolume24h,
       totalFeesClaimed,
-      activeTokenCount: buildings.filter((b) => !b.isPermanent).length,
+      activeTokenCount,
       topGainer,
       topLoser,
     };
-  }, [buildings, events]);
+  }, [buildings, events, platformSummary]);
 
   // Transform GameEvent[] into MarketEvent[], merging BagsWorld + platform events
   const marketEvents = useMemo<MarketEvent[]>(() => {
@@ -118,17 +125,17 @@ export function LiveMarketFeed() {
           (e) =>
             e.type === "token_launch" ||
             e.type === "building_constructed" ||
-            e.type === "platform_launch" ||
-            e.type === "platform_trending"
+            e.type === "platform_launch"
         );
       case "claims":
         return marketEvents.filter((e) => e.type === "fee_claim" || e.type === "milestone");
       case "trades":
-        return marketEvents.filter(
-          (e) => e.type === "price_pump" || e.type === "price_dump" || e.type === "whale_alert"
-        );
-      case "bagsfm":
-        return marketEvents.filter((e) => e.source === "platform");
+        // Show whale trades sorted by volume (largest first)
+        return marketEvents
+          .filter(
+            (e) => e.type === "price_pump" || e.type === "price_dump" || e.type === "whale_alert"
+          )
+          .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
       default:
         return marketEvents;
     }
@@ -161,7 +168,7 @@ export function LiveMarketFeed() {
         </div>
         {/* Filter Tabs */}
         <div className="flex gap-1">
-          {(["all", "launches", "claims", "trades", "bagsfm"] as const).map((f) => (
+          {(["all", "launches", "claims", "trades"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -171,7 +178,7 @@ export function LiveMarketFeed() {
                   : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              {f === "bagsfm" ? "BAGS.FM" : f.toUpperCase()}
+              {f.toUpperCase()}
             </button>
           ))}
         </div>
