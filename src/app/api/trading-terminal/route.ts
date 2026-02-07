@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllWorldTokensAsync, type LaunchedToken } from "@/lib/token-registry";
+import { initBagsApi } from "@/lib/bags-api";
 
 interface TokenWithMetrics {
   mint: string;
@@ -152,6 +153,11 @@ export async function GET(request: NextRequest) {
       return handleHistory();
     case "leaderboard":
       return handleLeaderboard();
+    case "fees":
+      if (!mint) {
+        return NextResponse.json({ error: "mint parameter required" }, { status: 400 });
+      }
+      return handleFees(mint);
     case "portfolio":
       if (!wallet) {
         return NextResponse.json({ error: "wallet parameter required" }, { status: 400 });
@@ -634,4 +640,34 @@ async function fetchDexScreenerData(mint: string): Promise<{
 
   dexScreenerCache.set(mint, { data: result, timestamp: Date.now() });
   return result;
+}
+
+// Fees cache (30s per mint)
+const feesCache = new Map<string, { fees: number | null; timestamp: number }>();
+const FEES_CACHE_TTL = 30000;
+
+async function handleFees(mint: string): Promise<NextResponse> {
+  const cached = feesCache.get(mint);
+  if (cached && Date.now() - cached.timestamp < FEES_CACHE_TTL) {
+    return NextResponse.json({
+      fees: cached.fees !== null ? { lifetimeFeesSol: cached.fees } : null,
+      cached: true,
+    });
+  }
+
+  const apiKey = process.env.BAGS_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ fees: null });
+  }
+
+  try {
+    const api = initBagsApi(apiKey);
+    const feesLamports = await api.getTokenLifetimeFees(mint);
+    const lifetimeFeesSol = feesLamports / 1_000_000_000;
+    feesCache.set(mint, { fees: lifetimeFeesSol, timestamp: Date.now() });
+    return NextResponse.json({ fees: { lifetimeFeesSol } });
+  } catch {
+    feesCache.set(mint, { fees: null, timestamp: Date.now() });
+    return NextResponse.json({ fees: null });
+  }
 }

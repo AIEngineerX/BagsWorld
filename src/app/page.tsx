@@ -31,7 +31,7 @@ import { AdminConsole } from "@/components/AdminConsole";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
-import { TradeModal } from "@/components/TradeModal";
+import { BuildingModal } from "@/components/BuildingModal";
 import { LaunchModal } from "@/components/LaunchModal";
 import { PartnerClaimButton } from "@/components/PartnerClaimButton";
 import { MusicButton } from "@/components/MusicButton";
@@ -651,12 +651,13 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Trade Modal - triggered by clicking buildings */}
+      {/* Building Modal - triggered by clicking buildings */}
       {tradeToken && (
-        <TradeModal
+        <BuildingModal
           tokenMint={tradeToken.mint}
           tokenSymbol={tradeToken.symbol}
           tokenName={tradeToken.name}
+          tokenUrl={tradeToken.tokenUrl}
           onClose={() => setTradeToken(null)}
         />
       )}
