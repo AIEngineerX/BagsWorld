@@ -15,6 +15,7 @@ export interface ConversationContext {
   tradingState?: string;
   memoryContext?: string;
   relationshipContext?: string;
+  actionData?: string;
 }
 
 export interface LLMResponse {
@@ -173,6 +174,10 @@ ${bio}`;
 
     if (context?.relationshipContext) {
       systemPrompt += `\n\nRELATIONSHIP WITH THIS USER:\n${context.relationshipContext}`;
+    }
+
+    if (context?.actionData) {
+      systemPrompt += `\n\nACTION RESULT (structured data from a live query - use this data to answer the user accurately, weaving it into your response in-character):\n${context.actionData}`;
     }
 
     return systemPrompt;

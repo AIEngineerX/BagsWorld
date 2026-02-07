@@ -17,6 +17,7 @@ import {
   saveMessage,
   pruneOldMessages,
   buildConversationContext,
+  dispatchAction,
   MAX_CONVERSATION_LENGTH,
 } from './shared.js';
 
@@ -74,7 +75,7 @@ router.get('/agents/:agentId', (req: Request, res: Response) => {
 // POST /api/agents/:agentId/chat - Chat with agent
 router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
   const agentId = req.params.agentId as string;
-  const { message, sessionId: providedSessionId } = req.body;
+  const { message, sessionId: providedSessionId, worldState: clientWorldState, chatHistory: clientChatHistory } = req.body;
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     res.status(400).json({ error: 'message is required and must be a non-empty string' });
@@ -98,8 +99,19 @@ router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
 
     await saveMessage(sessionId, normalizedAgentId, 'user', message);
 
-    const context = await buildConversationContext(character, message, { sessionId });
+    const context = await buildConversationContext(character, message, { sessionId, clientWorldState });
     context.messages = conversationHistory;
+
+    // Action dispatch: run evaluators not covered by enrichment and execute matching actions.
+    // The action result (structured, character-formatted text) is injected into context
+    // so the LLM can weave real data into its natural, in-character response.
+    const actionData = await dispatchAction(character, message, { sessionId }).catch((err: Error) => {
+      console.warn('[chat] Action dispatch failed:', err.message);
+      return null;
+    });
+    if (actionData) {
+      context.actionData = actionData;
+    }
 
     const llmService = getLLMService();
 

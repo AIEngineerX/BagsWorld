@@ -5,6 +5,7 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 const AGENTS_API_URL = process.env.AGENTS_API_URL || "http://localhost:3001";
 
 type CharacterId =
+  // Core characters
   | "toly"
   | "finn"
   | "ash"
@@ -13,7 +14,21 @@ type CharacterId =
   | "cj"
   | "shaw"
   | "bags-bot"
+  // Academy / HQ characters
+  | "ramo"
+  | "sincara"
+  | "stuu"
+  | "sam"
+  | "alaa"
+  | "carlo"
+  | "bnn"
+  // Special roles
+  | "professor-oak"
+  | "bagsy"
+  // Aliases
   | "bagsbot"
+  | "professoroak"
+  | "oak"
   | "dev";
 
 interface CharacterChatRequest {
@@ -30,6 +45,7 @@ interface CharacterChatRequest {
 }
 
 const CHARACTER_DISPLAY_NAMES: Record<string, string> = {
+  // Core characters
   toly: "Toly",
   finn: "Finn",
   ash: "Ash",
@@ -38,7 +54,21 @@ const CHARACTER_DISPLAY_NAMES: Record<string, string> = {
   cj: "CJ",
   shaw: "Shaw",
   "bags-bot": "Bags Bot",
+  // Academy / HQ characters
+  ramo: "Ramo",
+  sincara: "Sincara",
+  stuu: "Stuu",
+  sam: "Sam",
+  alaa: "Alaa",
+  carlo: "Carlo",
+  bnn: "BNN",
+  // Special roles
+  "professor-oak": "Professor Oak",
+  bagsy: "Bagsy",
+  // Aliases
   bagsbot: "Bags Bot",
+  professoroak: "Professor Oak",
+  oak: "Professor Oak",
   dev: "Ghost",
 };
 
@@ -78,7 +108,9 @@ export async function POST(request: Request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage,
-          sessionId: conversationId, // eliza-agents uses sessionId
+          sessionId: conversationId,
+          worldState,
+          chatHistory,
         }),
       });
 
@@ -208,10 +240,106 @@ function getFallbackResponse(character: string, userMessage: string): string {
         "BAGS BOT at your service! ask about launches, fees, or how the platform works.",
       ],
     },
+    ramo: {
+      greeting: [
+        "hey! im Ramo, CTO of Bags.fm. the smart contracts behind the fees? thats my work.",
+        "welcome. i built the fee-share contracts - audited multiple times. what can i help with?",
+      ],
+      default: [
+        "the contracts are solid. audited, no admin keys, fully on-chain. what do you want to know?",
+        "security first, always. every fee distribution is verifiable on Solscan.",
+      ],
+    },
+    sincara: {
+      greeting: [
+        "hey! im Sincara, frontend engineer at Bags.fm. if it looks good, i probably built it.",
+        "welcome to BagsWorld! the UI here is pixel-perfect, just how i like it.",
+      ],
+      default: [
+        "clean UI matters. if something feels smooth and intuitive, thats the goal.",
+        "every pixel has a purpose. what would you like to know about how things work?",
+      ],
+    },
+    stuu: {
+      greeting: [
+        "hey! im Stuu, operations at Bags.fm. need help with anything? thats literally my job.",
+        "welcome! ive answered thousands of questions here. fire away!",
+      ],
+      default: [
+        "no question is too small. whats on your mind?",
+        "im here to help. whether its fees, launches, or how things work - ask away.",
+      ],
+    },
+    sam: {
+      greeting: [
+        "hey! im Sam, growth lead at Bags.fm. we hit 100K followers with zero paid ads.",
+        "welcome to BagsWorld! the community here is built different. organic only.",
+      ],
+      default: [
+        "growth is about community, not ads. what do you want to know?",
+        "the best marketing is a great product. Bags.fm speaks for itself.",
+      ],
+    },
+    alaa: {
+      greeting: [
+        "yo! im Alaa, skunk works at Bags.fm. i build the stuff that doesnt exist yet.",
+        "hey! im working on something experimental right now. whats up?",
+      ],
+      default: [
+        "always prototyping. three production features started as my side experiments.",
+        "the best ideas come from breaking things on purpose. what interests you?",
+      ],
+    },
+    carlo: {
+      greeting: [
+        "hey fren! im Carlo, community ambassador at Bags.fm. welcome to BagsWorld!",
+        "welcome welcome! im Carlo - started as a community member, now im the first friend everyone makes here.",
+      ],
+      default: [
+        "community is everything. what brings you to BagsWorld today?",
+        "always happy to connect people. need help finding your way around?",
+      ],
+    },
+    bnn: {
+      greeting: [
+        "BREAKING: New visitor detected in BagsWorld. Welcome to BNN - Bags News Network.",
+        "BNN LIVE: Welcome to BagsWorld. Stay tuned for the latest ecosystem updates.",
+      ],
+      default: [
+        "UPDATE: BagsWorld ecosystem continues to grow. What news are you looking for?",
+        "DEVELOPING: Multiple tokens active on Bags.fm. Ask me for the latest updates.",
+      ],
+    },
+    "professor-oak": {
+      greeting: [
+        "Ah, a new trainer! Welcome to Founder's Corner! Ready to launch your first token?",
+        "Wonderful to see you! Im Professor Oak - I guide creators through their token launches!",
+      ],
+      default: [
+        "Every great token starts with a great idea. Would you like to begin the launch journey?",
+        "Token launches are like Pokemon evolution - each stage unlocks new potential!",
+      ],
+    },
+    bagsy: {
+      greeting: [
+        "omg hi fren :) welcome to bagsworld!! have u claimed ur fees today??",
+        "gm gm gm!! bagsy here :) the cutest money bag in all of crypto",
+      ],
+      default: [
+        "psa: ur fees dont claim themselves fren. go to bags.fm and CLAIM",
+        "just vibing and reminding everyone to claim :) the weather is nice in bagsworld today",
+      ],
+    },
   };
 
-  // Normalize character ID
-  const charKey = character === "bagsbot" ? "bags-bot" : character === "dev" ? "ghost" : character;
+  // Normalize character ID (resolve aliases to canonical IDs)
+  const ALIAS_MAP: Record<string, string> = {
+    bagsbot: "bags-bot",
+    dev: "ghost",
+    professoroak: "professor-oak",
+    oak: "professor-oak",
+  };
+  const charKey = ALIAS_MAP[character] || character;
   const charFallbacks = fallbacks[charKey] || fallbacks.finn;
 
   // Match intent

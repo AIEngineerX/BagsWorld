@@ -16,7 +16,21 @@ import {
   tokenMentionEvaluator,
   feeQueryEvaluator,
   launchQueryEvaluator,
+  worldStatusEvaluator,
+  creatorQueryEvaluator,
+  oracleQueryEvaluator,
 } from '../evaluators/index.js';
+import type { Action, ActionResult } from '../types/elizaos.js';
+import { checkWorldHealthAction } from '../actions/checkWorldHealth.js';
+import { getTopCreatorsAction } from '../actions/getTopCreators.js';
+import { getOracleRoundAction } from '../actions/getOracleRound.js';
+import { enterPredictionAction } from '../actions/enterPrediction.js';
+import { checkPredictionAction } from '../actions/checkPrediction.js';
+import { getOracleHistoryAction } from '../actions/getOracleHistory.js';
+import { getOracleLeaderboardAction } from '../actions/getOracleLeaderboard.js';
+import { getOraclePricesAction } from '../actions/getOraclePrices.js';
+import { claimFeesReminderAction } from '../actions/claimFeesReminderAction.js';
+import { shillTokenAction } from '../actions/shillTokenAction.js';
 
 // Reduced from 50 to 8 for token efficiency (~80% savings on conversation context)
 export const MAX_CONVERSATION_LENGTH = 8;
@@ -143,7 +157,7 @@ export function createMockState(): State {
 export async function buildConversationContext(
   character: Character,
   userMessage: string,
-  options?: { sessionId?: string }
+  options?: { sessionId?: string; clientWorldState?: { health: number; weather: string; buildingCount: number; populationCount: number } }
 ): Promise<ConversationContext> {
   const runtime = createMockRuntime(character);
   const memory = createMockMemory(userMessage);
@@ -154,9 +168,13 @@ export async function buildConversationContext(
     messages: [],
   };
 
-  // Use cached world state if available (saves API calls + tokens)
+  // Use client-provided world state if available (more current than server cache),
+  // then fall back to cached server state, then fetch fresh
   const now = Date.now();
-  if (worldStateCache.data && now < worldStateCache.expires) {
+  if (options?.clientWorldState) {
+    const ws = options.clientWorldState;
+    context.worldState = `BAGSWORLD STATUS (from game client):\n- World Health: ${ws.health}%\n- Weather: ${ws.weather}\n- Buildings: ${ws.buildingCount}\n- Population: ${ws.populationCount}`;
+  } else if (worldStateCache.data && now < worldStateCache.expires) {
     context.worldState = worldStateCache.data;
   } else {
     const worldResult = await worldStateProvider.get(runtime, memory, state);
@@ -314,4 +332,122 @@ export async function buildConversationContext(
   }
 
   return context;
+}
+
+// Minimum evaluator score to trigger action dispatch
+const ACTION_DISPATCH_THRESHOLD = 0.5;
+
+// Oracle actions ordered by specificity — most specific first so we pick the best match
+const ORACLE_ACTIONS_BY_PRIORITY: Action[] = [
+  enterPredictionAction,     // "I predict $X will win" — most specific intent
+  checkPredictionAction,     // "Did I win?" / "Check my prediction"
+  getOracleLeaderboardAction, // "Who are the top predictors?"
+  getOraclePricesAction,     // "Which token is winning?" / live prices
+  getOracleHistoryAction,    // "Show past oracle rounds"
+  getOracleRoundAction,      // "What's the oracle round?" — most general
+];
+
+/**
+ * Dispatch actions based on evaluator scoring for queries not already handled
+ * by the data enrichment pipeline in buildConversationContext.
+ *
+ * Enrichment already handles: tokenMention, feeQuery, launchQuery.
+ * This function handles: worldStatus, creatorQuery, oracleQuery,
+ * plus character-specific actions (claimFeesReminder, shillToken).
+ *
+ * Returns the action result text to inject into ConversationContext.actionData,
+ * or null if no action was dispatched.
+ */
+export async function dispatchAction(
+  character: Character,
+  userMessage: string,
+  options?: { sessionId?: string; wallet?: string }
+): Promise<string | null> {
+  const runtime = createMockRuntime(character);
+  const memory = createMockMemory(userMessage);
+  if (options?.wallet) {
+    memory.content.wallet = options.wallet;
+  }
+  const state = createMockState();
+
+  // Run evaluators that aren't covered by the enrichment pipeline, in parallel
+  const [worldResult, creatorResult, oracleResult] = await Promise.all([
+    worldStatusEvaluator.evaluate(runtime, memory, state),
+    creatorQueryEvaluator.evaluate(runtime, memory, state),
+    oracleQueryEvaluator.evaluate(runtime, memory, state),
+  ]);
+
+  // Build candidate list: { action, score, priority (lower = more important) }
+  const candidates: Array<{ action: Action; score: number; priority: number }> = [];
+
+  if (worldResult.score >= ACTION_DISPATCH_THRESHOLD) {
+    candidates.push({ action: checkWorldHealthAction, score: worldResult.score, priority: 10 });
+  }
+
+  if (creatorResult.score >= ACTION_DISPATCH_THRESHOLD) {
+    candidates.push({ action: getTopCreatorsAction, score: creatorResult.score, priority: 10 });
+  }
+
+  // Oracle: pick the most specific action that validates
+  if (oracleResult.score >= ACTION_DISPATCH_THRESHOLD) {
+    for (const oracleAction of ORACLE_ACTIONS_BY_PRIORITY) {
+      if (oracleAction.validate) {
+        const valid = await oracleAction.validate(runtime, memory, state);
+        if (valid) {
+          candidates.push({ action: oracleAction, score: oracleResult.score, priority: 5 });
+          break; // Only dispatch the most specific matching oracle action
+        }
+      }
+    }
+  }
+
+  // Character-specific actions: claimFeesReminder works for any character,
+  // shillToken is Finn-specific
+  const characterName = character.name.toLowerCase();
+
+  if (claimFeesReminderAction.validate) {
+    const valid = await claimFeesReminderAction.validate(runtime, memory, state);
+    if (valid) {
+      candidates.push({ action: claimFeesReminderAction, score: 0.8, priority: 3 });
+    }
+  }
+
+  if (characterName === 'finn' && shillTokenAction.validate) {
+    const valid = await shillTokenAction.validate(runtime, memory, state);
+    if (valid) {
+      candidates.push({ action: shillTokenAction, score: 0.8, priority: 3 });
+    }
+  }
+
+  if (candidates.length === 0) return null;
+
+  // Sort by priority (lower first), then by evaluator score (higher first)
+  candidates.sort((a, b) => a.priority - b.priority || b.score - a.score);
+
+  // Try each candidate until one validates and executes successfully
+  for (const candidate of candidates) {
+    // Validate if we haven't already (evaluator-derived actions need explicit validate)
+    if (candidate.action.validate) {
+      const valid = await candidate.action.validate(runtime, memory, state);
+      if (!valid) continue;
+    }
+
+    const result = await candidate.action.handler(runtime, memory, state);
+    if (!result) continue;
+
+    const actionResult = result as ActionResult;
+    if (actionResult.success && actionResult.text) {
+      console.log(`[shared] Action dispatched: ${candidate.action.name} (score: ${candidate.score.toFixed(2)})`);
+      return actionResult.text;
+    }
+
+    // Action returned but wasn't successful — still include its text if it has useful info
+    // (e.g., "connect your wallet to enter a prediction" is helpful context)
+    if (actionResult.text) {
+      console.log(`[shared] Action ${candidate.action.name} returned non-success with message`);
+      return actionResult.text;
+    }
+  }
+
+  return null;
 }

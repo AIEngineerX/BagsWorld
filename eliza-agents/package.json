@@ -1,7 +1,7 @@
 {
   "name": "bagsworld-agents",
   "version": "1.0.0",
-  "description": "BagsWorld ElizaOS AI agents - 16 autonomous characters with persistent memory and multi-agent coordination",
+  "description": "BagsWorld ElizaOS AI agents - 17 autonomous characters with persistent memory and multi-agent coordination",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
