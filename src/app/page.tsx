@@ -49,6 +49,7 @@ import { TradingGymModal } from "@/components/TradingGymModal";
 import { CommunityFundModal } from "@/components/CommunityFundModal";
 import { CasinoModal } from "@/components/CasinoModal";
 import { ArenaModal } from "@/components/ArenaModal";
+import { DungeonModal } from "@/components/DungeonModal";
 import { AgentHutModal } from "@/components/AgentHutModal";
 import { AgentBarModal } from "@/components/AgentBarModal";
 import { CasinoAdmin } from "@/components/CasinoAdmin";
@@ -126,6 +127,7 @@ function DeepLinkHandler() {
         "founders",
         "moltbook",
         "arena",
+        "dungeon",
       ];
       if (validZones.includes(zone)) {
         timers.push(
@@ -169,6 +171,7 @@ const GameCanvas = dynamic(() => import("@/components/GameCanvas"), {
 export default function Home() {
   const { worldState, isLoading, refreshAfterLaunch, tokenCount, refetch } = useWorldState();
   const { publicKey } = useWallet();
+  const { setZone } = useGameStore();
   const [tradeToken, setTradeToken] = useState<BuildingClickData | null>(null);
 
   // Consolidated modal state - replaces 14 individual useState calls
@@ -187,6 +190,7 @@ export default function Home() {
     | "agentHut"
     | "agentBar"
     | "launch"
+    | "dungeon"
     | null;
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const openModal = useCallback((modal: ModalType) => setActiveModal(modal), []);
@@ -230,6 +234,11 @@ export default function Home() {
     const handleMoltBarClick = () => openModal("agentBar");
     const handleLaunchClick = () => openModal("launch");
     const handleClaimClick = () => openModal("feeClaim");
+    const handleDungeonClick = () => openModal("dungeon");
+    const handlePhaserZoneChange = (e: CustomEvent<{ zone: string }>) => {
+      const zone = e.detail?.zone;
+      if (zone) setZone(zone as ZoneType);
+    };
 
     window.addEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
     window.addEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
@@ -247,6 +256,8 @@ export default function Home() {
     window.addEventListener("bagsworld-moltbar-click", handleMoltBarClick as EventListener);
     window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
     window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
+    window.addEventListener("bagsworld-open-dungeon", handleDungeonClick as EventListener);
+    window.addEventListener("bagsworld-phaser-zone-change", handlePhaserZoneChange as EventListener);
     return () => {
       window.removeEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
       window.removeEventListener(
@@ -270,8 +281,10 @@ export default function Home() {
       window.removeEventListener("bagsworld-moltbar-click", handleMoltBarClick as EventListener);
       window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
       window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
+      window.removeEventListener("bagsworld-open-dungeon", handleDungeonClick as EventListener);
+      window.removeEventListener("bagsworld-phaser-zone-change", handlePhaserZoneChange as EventListener);
     };
-  }, [openModal]);
+  }, [openModal, setZone]);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -698,6 +711,7 @@ export default function Home() {
       {activeModal === "arena" && <ArenaModal onClose={closeModal} />}
       {activeModal === "agentHut" && <AgentHutModal onClose={closeModal} />}
       {activeModal === "agentBar" && <AgentBarModal onClose={closeModal} />}
+      {activeModal === "dungeon" && <DungeonModal onClose={closeModal} />}
 
       {/* Scout Alerts - shows new token launch notifications */}
       <ScoutAlerts />

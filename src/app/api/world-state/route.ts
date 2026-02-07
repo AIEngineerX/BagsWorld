@@ -141,9 +141,21 @@ let cachedWeather: { weather: WorldState["weather"]; fetchedAt: number } | null 
 const TOKEN_CACHE_DURATION = 30 * 1000; // 30 seconds (faster refresh for launches)
 const EARNER_CACHE_DURATION = 60 * 1000; // 1 minute
 const WEATHER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const CLAIM_EVENTS_CACHE_DURATION = 15 * 1000; // 15 seconds
+const SDK_ENRICH_CACHE_TTL = 45 * 1000; // 45 seconds — deduplicates SDK calls across concurrent users
 const PRICE_CACHE_DURATION = 60 * 1000; // 60 seconds for DexScreener rate limits
 const EVENT_EXPIRY_DURATION = 60 * 60 * 1000; // 1 hour - auto-expire old events
+
+// Per-token SDK enrichment cache — prevents redundant Bags API calls
+// when multiple users poll the same tokens within the TTL window.
+// Each entry caches the 4 SDK call results (creators, fees, claimEvents, claimEvents24h).
+interface SDKEnrichResult {
+  lifetimeFees: number;
+  creators: TokenLaunchCreator[];
+  claimEvents: ClaimEvent[];
+  claimEvents24h: ClaimEvent[];
+  timestamp: number;
+}
+const sdkEnrichCache = new Map<string, SDKEnrichResult>();
 
 let previousState: WorldState | null = null;
 
@@ -579,59 +591,80 @@ async function enrichTokenWithSDK(
   const isPlaceholderMint = token.mint.startsWith("Treasury") || token.mint.startsWith("Starter");
 
   if (sdk && !isPlaceholderMint) {
-    try {
-      const mintPubkey = new PublicKey(token.mint);
+    // Check per-token SDK cache first — avoids redundant API calls across concurrent users
+    const cached = sdkEnrichCache.get(token.mint);
+    if (cached && Date.now() - cached.timestamp < SDK_ENRICH_CACHE_TTL) {
+      lifetimeFees = cached.lifetimeFees;
+      creators = cached.creators;
+      claimEvents = cached.claimEvents;
+      claimEvents24h = cached.claimEvents24h;
+    } else {
+      try {
+        const mintPubkey = new PublicKey(token.mint);
 
-      // Calculate 24h time range for claim events
-      const now = Math.floor(Date.now() / 1000);
-      const twentyFourHoursAgo = now - 24 * 60 * 60;
+        // Calculate 24h time range for claim events
+        const now = Math.floor(Date.now() / 1000);
+        const twentyFourHoursAgo = now - 24 * 60 * 60;
 
-      const [creatorsResult, feesResult, eventsResult, events24hResult] = await Promise.allSettled([
-        sdk.state.getTokenCreators(mintPubkey),
-        sdk.state.getTokenLifetimeFees(mintPubkey),
-        sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 }),
-        // Fetch 24h claim events using time-based filtering (Bags API v1.2.0+)
-        sdk.state.getTokenClaimEvents(mintPubkey, {
-          mode: "time",
-          from: twentyFourHoursAgo,
-          to: now,
-        }),
-      ]);
+        const [creatorsResult, feesResult, eventsResult, events24hResult] =
+          await Promise.allSettled([
+            sdk.state.getTokenCreators(mintPubkey),
+            sdk.state.getTokenLifetimeFees(mintPubkey),
+            sdk.state.getTokenClaimEvents(mintPubkey, { limit: 5 }),
+            // Fetch 24h claim events using time-based filtering (Bags API v1.2.0+)
+            sdk.state.getTokenClaimEvents(mintPubkey, {
+              mode: "time",
+              from: twentyFourHoursAgo,
+              to: now,
+            }),
+          ]);
 
-      if (creatorsResult.status === "fulfilled") {
-        creators = creatorsResult.value || [];
+        if (creatorsResult.status === "fulfilled") {
+          creators = creatorsResult.value || [];
+        }
+
+        if (feesResult.status === "fulfilled") {
+          // SDK returns lamports, convert to SOL for storage and display
+          lifetimeFees = lamportsToSol(feesResult.value || 0);
+        }
+
+        if (eventsResult.status === "fulfilled") {
+          const rawEvents: TokenClaimEventSDK[] = eventsResult.value || [];
+          claimEvents = rawEvents.map((e) => ({
+            signature: e.signature,
+            claimer: e.wallet,
+            claimerUsername: undefined,
+            amount: safeParseClaimAmount(e.amount),
+            timestamp: e.timestamp,
+            tokenMint: token.mint,
+          }));
+        }
+
+        if (events24hResult.status === "fulfilled") {
+          const rawEvents24h: TokenClaimEventSDK[] = events24hResult.value || [];
+          claimEvents24h = rawEvents24h.map((e) => ({
+            signature: e.signature,
+            claimer: e.wallet,
+            claimerUsername: undefined,
+            amount: safeParseClaimAmount(e.amount),
+            timestamp: e.timestamp,
+            tokenMint: token.mint,
+          }));
+        }
+
+        // Cache successful SDK results (only if we got at least fees or creators)
+        if (lifetimeFees > 0 || creators.length > 0) {
+          sdkEnrichCache.set(token.mint, {
+            lifetimeFees,
+            creators,
+            claimEvents,
+            claimEvents24h,
+            timestamp: Date.now(),
+          });
+        }
+      } catch {
+        // Token enrichment failed, continue with defaults
       }
-
-      if (feesResult.status === "fulfilled") {
-        // SDK returns lamports, convert to SOL for storage and display
-        lifetimeFees = lamportsToSol(feesResult.value || 0);
-      }
-
-      if (eventsResult.status === "fulfilled") {
-        const rawEvents: TokenClaimEventSDK[] = eventsResult.value || [];
-        claimEvents = rawEvents.map((e) => ({
-          signature: e.signature,
-          claimer: e.wallet,
-          claimerUsername: undefined,
-          amount: safeParseClaimAmount(e.amount),
-          timestamp: e.timestamp,
-          tokenMint: token.mint,
-        }));
-      }
-
-      if (events24hResult.status === "fulfilled") {
-        const rawEvents24h: TokenClaimEventSDK[] = events24hResult.value || [];
-        claimEvents24h = rawEvents24h.map((e) => ({
-          signature: e.signature,
-          claimer: e.wallet,
-          claimerUsername: undefined,
-          amount: safeParseClaimAmount(e.amount),
-          timestamp: e.timestamp,
-          tokenMint: token.mint,
-        }));
-      }
-    } catch {
-      // Token enrichment failed, continue with defaults
     }
   }
 
