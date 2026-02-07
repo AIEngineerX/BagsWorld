@@ -12,10 +12,15 @@ const CHARACTER_COLORS: Record<string, string> = {
   cj: "#fdba74",
   toly: "#c084fc",
   shaw: "#ffb380",
-  "bags-bot": "#60a5fa",
   "professor-oak": "#fbbf24",
   bagsy: "#f472b6",
-  // HQ characters default to gray-400 via fallback
+  ramo: "#38bdf8",
+  sincara: "#fb7185",
+  stuu: "#a3e635",
+  sam: "#fbbf24",
+  alaa: "#818cf8",
+  carlo: "#34d399",
+  bnn: "#f97316",
 };
 
 const DEFAULT_COLOR = "#9ca3af";

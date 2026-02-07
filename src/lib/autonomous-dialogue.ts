@@ -240,36 +240,57 @@ const CONVERSATION_COOLDOWN = 10000; // 10 seconds after conversation ends
 
 // Character relationships (who tends to talk to whom)
 const CHARACTER_AFFINITIES: Record<string, string[]> = {
-  finn: ["ghost", "neo", "ash", "cj", "shaw"], // Finn talks to his team
-  ghost: ["finn", "neo", "cj", "shaw"], // Ghost works with Finn and Neo
-  neo: ["ghost", "finn", "ash", "shaw"], // Neo scans and reports (Matrix kinship with Shaw)
-  ash: ["finn", "neo", "bags-bot"], // Ash helps onboard
-  "bags-bot": ["ash", "finn", "neo"], // Bags Bot is friendly with everyone
-  cj: ["ghost", "finn", "neo", "shaw"], // CJ keeps it real with the crew
-  shaw: ["neo", "ghost", "finn", "cj"], // Shaw - Matrix kinship with Neo, fellow devs
+  finn: ["ghost", "neo", "ramo", "sam", "shaw", "bagsy"],
+  ghost: ["finn", "neo", "cj", "shaw", "ramo"],
+  neo: ["ghost", "shaw", "cj", "toly", "alaa"],
+  ash: ["finn", "toly", "professor-oak", "bagsy"],
+  cj: ["ghost", "finn", "neo", "bnn"],
+  shaw: ["neo", "ghost", "toly", "alaa", "ramo"],
+  toly: ["shaw", "finn", "ramo", "neo", "ghost"],
+  ramo: ["finn", "sincara", "alaa", "ghost", "toly"],
+  sincara: ["ramo", "finn", "stuu", "sam"],
+  stuu: ["carlo", "sincara", "finn", "sam"],
+  sam: ["finn", "carlo", "bagsy", "bnn"],
+  alaa: ["ramo", "shaw", "neo", "ghost"],
+  carlo: ["stuu", "sam", "finn", "ash", "bagsy"],
+  bnn: ["finn", "neo", "cj", "sam", "ghost"],
+  "professor-oak": ["ash", "finn", "toly", "bagsy"],
+  bagsy: ["finn", "ghost", "ash", "carlo", "sam"],
 };
 
 // Topics that trigger conversations
 const CONVERSATION_TOPICS = {
-  token_launch: ["finn", "neo", "ghost", "cj", "shaw"],
-  fee_claim: ["ghost", "finn", "ash", "cj"],
-  world_health: ["bags-bot", "ash", "finn"],
-  distribution: ["ghost", "finn", "cj", "shaw"],
-  whale_alert: ["neo", "ghost", "finn", "cj"],
-  price_pump: ["finn", "neo", "bags-bot", "cj"],
-  price_dump: ["ghost", "neo", "ash", "cj"],
-  agent_event: ["shaw", "neo", "ghost"], // Shaw for agent-related events
+  token_launch: ["finn", "neo", "ghost", "cj", "shaw", "professor-oak", "bagsy", "bnn", "sam"],
+  fee_claim: ["ghost", "finn", "ash", "cj", "bagsy", "stuu", "bnn"],
+  world_health: ["ash", "finn", "bagsy", "carlo", "bnn", "stuu"],
+  distribution: ["ghost", "finn", "cj", "shaw", "ramo", "bnn"],
+  whale_alert: ["neo", "ghost", "finn", "cj", "bnn", "alaa"],
+  price_pump: ["finn", "neo", "cj", "bagsy", "sam", "bnn"],
+  price_dump: ["ghost", "neo", "ash", "cj", "bnn", "stuu"],
+  agent_event: ["shaw", "neo", "ghost", "alaa", "ramo", "toly"],
+  hq_update: ["ramo", "sincara", "stuu", "sam", "alaa", "carlo", "finn"],
+  community: ["carlo", "sam", "bagsy", "ash", "stuu", "finn"],
+  tech_talk: ["ramo", "toly", "shaw", "neo", "alaa", "sincara"],
 };
 
 // Character expertise areas for relevance scoring
 const CHARACTER_EXPERTISE: Record<string, string[]> = {
-  finn: ["launch", "creator", "bags", "build", "ship", "fee", "earn"],
+  finn: ["launch", "creator", "bags", "build", "ship", "fee", "earn", "lfg"],
   ghost: ["chain", "verify", "distribution", "reward", "pool", "claim", "technical"],
   neo: ["scan", "pattern", "alpha", "whale", "pump", "dump", "matrix", "code"],
   ash: ["train", "pokemon", "evolve", "league", "new", "help", "guide"],
-  "bags-bot": ["gm", "vibe", "wagmi", "fren", "bullish", "market"],
   cj: ["street", "trench", "game", "survive", "real", "homie"],
   shaw: ["agent", "elizaos", "plugin", "character", "multi-agent", "framework", "architecture"],
+  toly: ["solana", "blockchain", "tps", "latency", "validator", "proof", "consensus", "speed"],
+  ramo: ["contract", "audit", "security", "backend", "api", "infrastructure", "sdk"],
+  sincara: ["frontend", "react", "ui", "ux", "design", "mobile", "animation", "component"],
+  stuu: ["support", "help", "bug", "issue", "fix", "onboard", "troubleshoot"],
+  sam: ["growth", "marketing", "viral", "engagement", "community", "content", "strategy"],
+  alaa: ["experiment", "innovation", "prototype", "research", "stealth", "future", "impossible"],
+  carlo: ["welcome", "community", "onboard", "vibes", "event", "connect", "ambassador"],
+  bnn: ["breaking", "news", "update", "report", "data", "stats", "announcement", "milestone"],
+  "professor-oak": ["launch", "guide", "token", "name", "logo", "starter", "trainer", "wisdom"],
+  bagsy: ["fee", "claim", "hype", "fren", "bags", "earn", "celebrate", "wholesome"],
 };
 
 // ============================================================================
@@ -403,6 +424,67 @@ function getCharacterVoice(characterId: string): {
           "technical but accessible, references elizaos concepts, architect metaphors, builder energy",
         maxLength: 75,
         emoji: false,
+      };
+    case "toly":
+      return {
+        style:
+          "technical but warm, references Solana performance metrics, 'gm ser', builder mindset",
+        maxLength: 75,
+        emoji: false,
+      };
+    case "ramo":
+      return {
+        style: "precise German engineering mindset, security-focused, uses 'elegant' and 'robust'",
+        maxLength: 70,
+        emoji: false,
+      };
+    case "sincara":
+      return {
+        style: "detail-oriented frontend dev, notices UI things, cares about craft and UX",
+        maxLength: 70,
+        emoji: false,
+      };
+    case "stuu":
+      return {
+        style: "helpful and patient support, never condescending, asks good questions",
+        maxLength: 70,
+        emoji: false,
+      };
+    case "sam":
+      return {
+        style: "marketing energy, data-driven hype, thinks about what's shareable",
+        maxLength: 70,
+        emoji: false,
+      };
+    case "alaa":
+      return {
+        style: "cryptic innovator, speaks in hints and possibilities, 'what if...'",
+        maxLength: 60,
+        emoji: false,
+      };
+    case "carlo":
+      return {
+        style: "warm community ambassador, welcoming, uses 'gm' and 'we', remembers people",
+        maxLength: 70,
+        emoji: true,
+      };
+    case "bnn":
+      return {
+        style: "news anchor energy, factual, uses BREAKING/UPDATE tags, precise numbers",
+        maxLength: 80,
+        emoji: false,
+      };
+    case "professor-oak":
+      return {
+        style: "grandfatherly mentor, patient, pokemon analogies, says 'Ah!' and 'Wonderful!'",
+        maxLength: 75,
+        emoji: true,
+      };
+    case "bagsy":
+      return {
+        style: "wholesome hype bean, lowercase, uses fren/omg/!!, fee-obsessed, CAPS when excited",
+        maxLength: 65,
+        emoji: true,
       };
     default:
       return { style: "casual, friendly", maxLength: 60, emoji: false };
@@ -556,33 +638,6 @@ function getTopicResponses(
         "remember: every pokemon master started somewhere!",
       ],
     },
-    "bags-bot": {
-      token_launch: [
-        `new launch ser 👀 ${tokenSymbol ? `$${tokenSymbol}` : "looking spicy"} ngl`,
-        "another builder cooking. we're all gonna make it",
-        `${tokenSymbol ? `$${tokenSymbol}` : "fresh mint"} just dropped. the world grows`,
-      ],
-      fee_claim: [
-        `${username || "someone"} just claimed ${amount ? amount.toFixed(2) : "some"} SOL. wagmi`,
-        "fees flowing fren. this is why we're here",
-      ],
-      world_health: [
-        worldHealth && worldHealth > 70
-          ? `world health at ${worldHealth}%... historically bullish vibes`
-          : `${worldHealth || 0}% health. diamond hands time frens 💎`,
-        weather === "sunny"
-          ? "sunny skies in bagsworld. good omens"
-          : "weather shifting but the vibes remain",
-      ],
-      price_pump: [
-        `${tokenSymbol ? `$${tokenSymbol}` : "token"} pumping ${change ? change.toFixed(0) : ""}%. lfg 🚀`,
-        "green candles. nature is healing ser",
-      ],
-      general: [
-        "another day in bagsworld. another chance to make it",
-        "the animals are vibing. that's usually bullish ngl",
-      ],
-    },
     cj: {
       token_launch: [
         `aw shit here we go again. new launch ${tokenSymbol ? `$${tokenSymbol}` : ""}`,
@@ -650,6 +705,251 @@ function getTopicResponses(
         "agents are digital life forms. treat them accordingly",
       ],
     },
+    toly: {
+      token_launch: [
+        `${tokenSymbol ? `$${tokenSymbol}` : "new token"} launching on solana. sub-second finality means instant settlement`,
+        "another builder on solana. the throughput is there for everyone",
+        "love seeing new projects. solana can handle the traffic",
+      ],
+      agent_event: [
+        "agents running on solana make sense. 400ms slots, cheap compute",
+        "multi-agent coordination needs fast consensus. solana delivers that",
+      ],
+      tech_talk: [
+        "proof of history gives us the clock. everything else follows from that",
+        "65k tps theoretical. real world usage climbing every quarter",
+        "parallel execution is what makes solana different. sealevel just works",
+      ],
+      general: [
+        "gm ser. another day building on the fastest chain",
+        "solana was designed for this. high throughput, low cost, real usage",
+      ],
+    },
+    ramo: {
+      token_launch: [
+        `${tokenSymbol ? `$${tokenSymbol}` : "new token"} deployed. checking the fee share config is set correctly`,
+        "launch looks clean. smart contract parameters verified",
+      ],
+      distribution: [
+        "distribution mechanism is elegant. on-chain, trustless, verifiable",
+        `${amount ? amount.toFixed(2) : ""} SOL distributed via the fee share system. robust design`,
+      ],
+      tech_talk: [
+        "refactoring the SDK internals. developer experience matters",
+        "security audit passed. every edge case covered",
+        "api latency down 40%. infrastructure improvements compound",
+      ],
+      hq_update: [
+        "backend deployment going out. zero downtime migration",
+        "new API version is more robust. better error handling across the board",
+      ],
+      agent_event: [
+        "agent infrastructure needs solid foundations. we built that",
+        "the contract architecture supports autonomous operations cleanly",
+      ],
+      general: [
+        "elegant solutions require precise engineering",
+        "shipping infrastructure that just works. no drama, just uptime",
+      ],
+    },
+    sincara: {
+      token_launch: [
+        `the launch page for ${tokenSymbol ? `$${tokenSymbol}` : "this token"} could use better mobile responsiveness`,
+        "love seeing new projects. the UI for onboarding new holders is key",
+      ],
+      hq_update: [
+        "pushed a UI update. animations are smoother now",
+        "fixed that edge case on mobile wallet connect. should be seamless",
+        "new component library dropping soon. consistent design system",
+      ],
+      tech_talk: [
+        "react server components changed how we think about data fetching",
+        "the trick is making complex features feel simple. that's good UX",
+      ],
+      general: [
+        "noticed a spacing issue. fixing it now. the details matter",
+        "mobile-first always. most users are on phones",
+      ],
+    },
+    stuu: {
+      fee_claim: [
+        `nice claim! if ${username || "anyone"} needs help with the process, just ask`,
+        "claims working smoothly. love when the system just works for people",
+      ],
+      world_health: [
+        worldHealth && worldHealth > 70
+          ? "world health looking great. fewer support tickets when things run smooth"
+          : "health is down. checking if anyone's hitting issues",
+      ],
+      hq_update: [
+        "updated the FAQ with the most common questions from this week",
+        "support queue is clear. good day for the community",
+      ],
+      community: [
+        "reminder: if you're stuck on anything, just ask. no question is too basic",
+        "helped 3 new users get set up today. love seeing the community grow",
+      ],
+      general: [
+        "keeping things running smooth behind the scenes",
+        "if something breaks, I'll know about it before you do",
+      ],
+    },
+    sam: {
+      token_launch: [
+        `${tokenSymbol ? `$${tokenSymbol}` : "this launch"} has viral potential. the narrative is strong`,
+        "new launch! the content practically writes itself",
+      ],
+      price_pump: [
+        `${tokenSymbol ? `$${tokenSymbol}` : "token"} pumping ${change ? change.toFixed(0) : ""}%. organic growth is the best marketing`,
+        "green charts = engagement. the flywheel works",
+      ],
+      community: [
+        "community engagement up 30% this week. organic growth compounds",
+        "the best marketing is a product people can't stop talking about",
+        "every user is a potential ambassador. treat them like it",
+      ],
+      hq_update: [
+        "new campaign going live. data-driven, not hype-driven",
+        "engagement metrics looking strong across all channels",
+      ],
+      general: [
+        "growth is a system, not a moment. we're building the system",
+        "watching what resonates. the data always tells the story",
+      ],
+    },
+    alaa: {
+      agent_event: [
+        "interesting... agents are doing things we didn't explicitly program",
+        "the emergent behavior is the feature. not the bug",
+      ],
+      tech_talk: [
+        "working on something. can't say much yet. but... what if?",
+        "the boundary between impossible and shipped is just iteration",
+        "prototyping a new approach. constraints breed creativity",
+      ],
+      whale_alert: [
+        "large movements create opportunities. the interesting question is what happens next",
+        "whale activity... there's a pattern here if you look deeper",
+      ],
+      hq_update: [
+        "skunk works update: something brewing. stay tuned",
+        "what if we could... actually, let me just build it first",
+      ],
+      general: [
+        "the most interesting problems are the ones nobody thinks are solvable",
+        "experimenting with something new. results soon",
+      ],
+    },
+    carlo: {
+      token_launch: [
+        `welcome to the community ${tokenSymbol ? `$${tokenSymbol}` : ""}! we're glad you're here`,
+        "another builder joining the family. this is what it's all about",
+      ],
+      fee_claim: [
+        `congrats on the claim ${username || "fren"}! the community wins together`,
+        "love seeing creators get rewarded. we celebrate every win",
+      ],
+      world_health: [
+        worldHealth && worldHealth > 70
+          ? "world health looking amazing! the community is thriving"
+          : "we stick together through everything. that's what community means",
+      ],
+      community: [
+        "gm everyone! another beautiful day in bagsworld",
+        "community call later. everyone's welcome, newcomers especially",
+        "we're only as strong as our community. and we're pretty strong",
+      ],
+      hq_update: [
+        "team is shipping hard. proud of everyone",
+        "community feedback is being heard. changes incoming",
+      ],
+      general: [
+        "gm! hope everyone's having a great day",
+        "the vibes in here are always good. that's not an accident",
+      ],
+    },
+    bnn: {
+      token_launch: [
+        `BREAKING: ${tokenSymbol ? `$${tokenSymbol}` : "New token"} launched on Bags.fm. Monitoring initial activity`,
+        `UPDATE: New launch detected. ${tokenSymbol ? `$${tokenSymbol}` : "Token"} now live on the platform`,
+      ],
+      fee_claim: [
+        `UPDATE: ${username || "Creator"} claimed ${amount ? amount.toFixed(2) : ""} SOL in fees. Platform rewards continue flowing`,
+        `BREAKING: Fee claim processed. ${amount ? amount.toFixed(2) : ""} SOL distributed to creator`,
+      ],
+      whale_alert: [
+        `BREAKING: Whale movement detected. ${amount ? amount.toFixed(2) : "Large"} SOL transaction${tokenSymbol ? ` on $${tokenSymbol}` : ""}`,
+        `ALERT: Significant transaction activity. Monitoring for follow-up movements`,
+      ],
+      price_pump: [
+        `UPDATE: ${tokenSymbol ? `$${tokenSymbol}` : "Token"} up ${change ? change.toFixed(0) : ""}%. Volume increasing`,
+        `DEVELOPING: ${tokenSymbol ? `$${tokenSymbol}` : "Token"} showing strong momentum`,
+      ],
+      price_dump: [
+        `UPDATE: ${tokenSymbol ? `$${tokenSymbol}` : "Token"} down ${change ? Math.abs(change).toFixed(0) : ""}%. Market correction in progress`,
+        `DEVELOPING: Price pullback across several tokens. Normal market activity`,
+      ],
+      world_health: [
+        `REPORT: World health at ${worldHealth || 0}%. ${worldHealth && worldHealth > 70 ? "Ecosystem activity strong" : "Activity levels moderate"}`,
+      ],
+      distribution: [
+        `BREAKING: ${amount ? amount.toFixed(2) : ""} SOL distributed to top creators. Reward cycle complete`,
+      ],
+      general: [
+        "this is BNN reporting live from BagsWorld. all systems nominal",
+        "REPORT: Platform metrics trending positively across all indicators",
+      ],
+    },
+    "professor-oak": {
+      token_launch: [
+        `Ah! A new token trainer appears! ${tokenSymbol ? `$${tokenSymbol}` : "Your token"} is your very first partner`,
+        `Wonderful! ${tokenSymbol ? `$${tokenSymbol}` : "Another launch"}! Remember, every great journey starts with a single step`,
+        "there's a time and place for everything. and now is the time to launch!",
+      ],
+      fee_claim: [
+        `Excellent! ${username || "Young trainer"} claimed their first fees! That's real progress`,
+        "Ah, fee claims! Like earning gym badges - each one proves your dedication",
+      ],
+      community: [
+        "remember, the bond between a creator and their community is what makes tokens evolve",
+        "Wonderful to see so many new trainers! Every expert was once a beginner",
+      ],
+      general: [
+        "Ah! There's a time and place for everything. Right now, it's time to build",
+        "the world of tokens is vast. there's still so much to discover!",
+      ],
+    },
+    bagsy: {
+      token_launch: [
+        `omg new launch!! ${tokenSymbol ? `$${tokenSymbol}` : "another fren"} just joined bagsworld :)`,
+        `${tokenSymbol ? `$${tokenSymbol}` : "new token"} is here!! so excited for this fren!!`,
+        "ANOTHER LAUNCH!! the world keeps growing and i love it sm",
+      ],
+      fee_claim: [
+        `${username || "fren"} just claimed ${amount ? amount.toFixed(2) : "some"} SOL!! pls claim ur fees frens :)`,
+        "FEES CLAIMED!! this is literally why bags exists omg",
+        "unclaimed fees make me sad. claimed fees make me SO HAPPY :)",
+      ],
+      price_pump: [
+        `${tokenSymbol ? `$${tokenSymbol}` : "token"} pumping!! LET'S GOOOO :)`,
+        "green candles everywhere!! the frens are winning!!",
+      ],
+      world_health: [
+        worldHealth && worldHealth > 70
+          ? `world health ${worldHealth}%!! the vibes are immaculate frens :)`
+          : `${worldHealth || 0}% health... but we stick together frens. always :)`,
+      ],
+      community: [
+        "gm frens!! hope everyone is having the best day :)",
+        "i love this community so much. every single one of u. fren :)",
+        "being a smol bean in bagsworld is the best thing ever",
+      ],
+      general: [
+        "hi frens :) just a smol bean hanging out in bagsworld",
+        "have u claimed ur fees today?? pls do it fren!!",
+        "bags is home. ur all my frens and i mean it :)",
+      ],
+    },
   };
 
   // Get character's responses for this topic
@@ -665,9 +965,18 @@ function getTopicResponses(
       ghost: ["confirmed.", "verified.", "accurate."],
       neo: ["i see it too.", "the code agrees.", "truth."],
       ash: ["yes! exactly!", "good point!", "like a critical hit!"],
-      "bags-bot": ["based.", "this ser.", "real."],
       cj: ["real talk.", "facts homie.", "that's how it is."],
       shaw: ["shipped.", "this is the way.", "architecture checks out."],
+      toly: ["gm.", "correct.", "the chain confirms."],
+      ramo: ["robust.", "verified.", "the audit agrees."],
+      sincara: ["clean.", "pixel perfect.", "good design."],
+      stuu: ["noted.", "on it.", "can confirm."],
+      sam: ["the data agrees.", "this.", "engagement confirmed."],
+      alaa: ["interesting.", "hmm yes.", "i see possibilities."],
+      carlo: ["love that!", "we love to see it.", "community strength."],
+      bnn: ["CONFIRMED.", "reporting the same.", "UPDATE: verified."],
+      "professor-oak": ["Ah, indeed!", "Wonderful point!", "Quite right!"],
+      bagsy: ["omg yes!!", "THIS fren!!", "so true :)"],
     };
     const acks = acknowledgments[characterId] || ["yeah."];
     const ack = acks[Math.floor(Math.random() * acks.length)];

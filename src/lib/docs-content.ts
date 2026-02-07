@@ -196,7 +196,7 @@ export const docsContent: DocSection[] = [
         id: "zones",
         title: "World Zones",
         content: [
-          "BagsWorld features five unique zones that you can explore using the minimap. Each zone has a distinct theme, unique characters, and special landmarks.",
+          "BagsWorld features seven unique zones that you can explore using the minimap. Each zone has a distinct theme, unique characters, and special landmarks.",
         ],
         table: {
           headers: ["Zone", "Theme", "Key Features"],
@@ -207,16 +207,18 @@ export const docsContent: DocSection[] = [
               "Bags.fm headquarters, team characters (Ramo, Sincara, Stuu, Sam, Alaa, Carlo, BNN)",
             ],
             ["Park", "Green, peaceful", "PokeCenter, Toly, Ash, Shaw, Finn"],
-            ["BagsCity", "Urban, neon", "Casino, Trading Terminal, Neo, CJ"],
+            ["BagsCity", "Urban, neon", "Casino, Trading Terminal, Oracle Tower, Neo, CJ"],
             ["Ballers Valley", "Luxury mansions", "Top 5 $BagsWorld holder showcases"],
             ["Founder's Corner", "Learning hub", "Professor Oak, token launch guidance"],
+            ["Moltbook Beach", "Tropical", "AI agent social hangout, Openclaw lobsters"],
+            ["MoltBook Arena", "Combat arena", "Real-time AI agent battles, spectator crowd"],
           ],
         },
         infoBox: {
           title: "Navigation",
           items: [
             "Click the map icon to open the minimap",
-            "Select any of the 5 zones to teleport",
+            "Select any of the 7 zones to teleport",
             "Click landmarks to interact with buildings",
             "Each zone has unique AI characters",
           ],
@@ -235,6 +237,7 @@ export const docsContent: DocSection[] = [
             ["Community Fund", "Park", "View Ghost's community contributions"],
             ["Casino", "BagsCity", "Raffles, wheel spins, win SOL prizes"],
             ["Trading Terminal", "BagsCity", "Professional trading with charts"],
+            ["Oracle Tower", "BagsCity", "Virtual prediction markets with OP credits"],
             ["Bags HQ", "HQ", "Bags.fm team headquarters"],
           ],
         },
@@ -352,10 +355,19 @@ export const docsContent: DocSection[] = [
           headers: ["Feature", "Status", "Description"],
           rows: [
             ["Token Buildings", "Live", "Your token becomes a building in the world"],
-            ["5 Zones", "Live", "HQ, Park, BagsCity, Ballers Valley, Founder's Corner"],
+            [
+              "7 Zones",
+              "Live",
+              "HQ, Park, BagsCity, Ballers Valley, Founder's Corner, Moltbook Beach, Arena",
+            ],
             ["16 AI Agents", "Live", "ElizaOS-powered NPCs with unique personalities"],
             ["Casino", "Live", "Games funded by Ghost's 5% contribution"],
             ["Trading Terminal", "Live", "View and trade Bags.fm tokens"],
+            [
+              "Oracle Tower",
+              "Live",
+              "Virtual prediction markets with free OP credits and tournaments",
+            ],
             ["Pokemon Music", "Live", "3 original pixel art soundtrack tracks"],
           ],
         },
@@ -483,18 +495,197 @@ POST /token-launch/create-launch-transaction`,
       },
       {
         id: "oracle-predictions",
-        title: "Oracle Tower",
+        title: "Oracle Tower - What Is It?",
         content: [
-          "The Oracle Tower hosts prediction rounds where you compete to forecast which token will perform best. Each round features 2-5 tokens with SOL prize pools.",
-          "Rounds last 24 hours. Pick the token you think will have the highest price change, and if you're right, claim your share of the prize pool.",
+          "The Oracle Tower is BagsWorld's virtual prediction market. It lives in BagsCity and lets you predict real outcomes - which token will pump hardest, what the world health will be, even the weather - using Oracle Points (OP), a free virtual currency.",
+          "Think of it like a fantasy sports league for crypto. You start with 1,000 free OP, earn more every day, and compete against other players. No real money is wagered - OP is earned through free participation only. Real SOL prizes are only available through free-entry tournaments funded by the admin.",
         ],
         infoBox: {
-          title: "How to Play",
+          title: "Quick Start",
           items: [
-            "View active prediction rounds",
-            "Select the token you predict will win",
-            "Wait for round to complete",
-            "Sign with wallet to claim winnings",
+            "Hold 2M+ $BagsWorld tokens to access Oracle Tower",
+            "You start with 1,000 free Oracle Points (OP)",
+            "Claim 50 free OP every day just for logging in",
+            "Browse active markets and make predictions",
+            "Win OP from other players when you're right",
+          ],
+        },
+      },
+      {
+        id: "oracle-op-economy",
+        title: "Oracle Points (OP)",
+        content: [
+          "Oracle Points are the virtual currency of the Oracle Tower. They are completely free - you cannot buy them with real money, and you cannot cash them out. OP exists purely for competitive fun.",
+          "You earn OP through daily bonuses, winning predictions, streaks, achievements, and participation rewards. Every prediction you enter earns +10 OP just for playing, win or lose.",
+        ],
+        table: {
+          headers: ["How to Earn", "Amount", "Details"],
+          rows: [
+            ["Sign-up Bonus", "1,000 OP", "Free on first visit"],
+            ["Daily Login", "50 OP", "Claim once every 24 hours"],
+            ["Win a Prediction", "Share of pool", "Winners split all wagered OP"],
+            ["Participation", "10 OP", "Every market you enter"],
+            ["Streak Bonus", "+10% per win", "3+ consecutive wins"],
+            ["First Prediction", "100 OP", "One-time bonus"],
+            ["Achievements", "100-500 OP", "Unlock milestones"],
+          ],
+        },
+        tips: [
+          "Claim your daily bonus every day to build up OP",
+          "Even losing predictions earn 10 OP participation reward",
+          "Higher reputation tiers earn bonus OP on every win",
+          "Winning streaks multiply your earnings",
+        ],
+      },
+      {
+        id: "oracle-market-types",
+        title: "Market Types",
+        content: [
+          "The Oracle Tower features four types of prediction markets, each pulling from real data sources. Markets are auto-generated throughout the day and auto-resolve when their timer expires - no admin intervention needed.",
+        ],
+        table: {
+          headers: ["Market", "Question Style", "Duration", "Data Source"],
+          rows: [
+            ["Price Prediction", "Which token gains the most?", "24 hours", "DexScreener prices"],
+            [
+              "World Health",
+              "Will health be above X% at midnight?",
+              "6-24 hours",
+              "BagsWorld health API",
+            ],
+            ["Weather Forecast", "What will the weather be in 6h?", "6 hours", "BagsWorld weather"],
+            ["Fee Volume", "Will fees exceed X SOL today?", "24 hours", "Bags SDK claim data"],
+          ],
+        },
+        infoBox: {
+          title: "How Payouts Work",
+          items: [
+            "Parimutuel model - winners split the total OP pool",
+            "Example: 50 players wager 100 OP each = 5,000 OP pool",
+            "All winners split the 5,000 OP proportionally",
+            "No house edge - 100% of OP goes back to winners",
+          ],
+        },
+      },
+      {
+        id: "oracle-how-to-predict",
+        title: "Making a Prediction",
+        content: [
+          "Browse active markets in the Markets tab, pick an outcome, and confirm your prediction. Your OP is deducted immediately and goes into the market pool. When the market resolves, winners split the pool.",
+        ],
+        steps: [
+          {
+            number: 1,
+            title: "Browse Markets",
+            description:
+              "Open Oracle Tower and check the Markets tab. Filter by type: Price, Health, Weather, or Fees.",
+          },
+          {
+            number: 2,
+            title: "Pick Your Outcome",
+            description:
+              "Each market shows the question, outcomes with live odds bars, entry cost, countdown timer, and participant count.",
+          },
+          {
+            number: 3,
+            title: "Confirm Prediction",
+            description:
+              "Click Predict on your chosen outcome. Your OP entry fee is deducted and added to the market pool.",
+          },
+          {
+            number: 4,
+            title: "Wait for Resolution",
+            description:
+              "Markets auto-resolve when the timer expires. Results are verified from real data sources (DexScreener, world state API, Bags SDK).",
+          },
+          {
+            number: 5,
+            title: "Collect Winnings",
+            description:
+              "If you win, your share of the OP pool is credited automatically. Check My Bets tab for results.",
+          },
+        ],
+      },
+      {
+        id: "oracle-reputation",
+        title: "Reputation & Tiers",
+        content: [
+          "Every player has a reputation score that starts at 1,000 and changes with each prediction using an ELO-style rating system. Correct predictions on hard-to-win markets earn more reputation. Your tier determines bonus OP on every win.",
+        ],
+        table: {
+          headers: ["Tier", "Rating", "OP Win Bonus"],
+          rows: [
+            ["Novice", "0 - 999", "+0%"],
+            ["Seer", "1,000 - 1,499", "+10%"],
+            ["Oracle", "1,500 - 1,999", "+20%"],
+            ["Master", "2,000+", "+30%"],
+          ],
+        },
+        infoBox: {
+          title: "Achievements",
+          items: [
+            "First Victory - Win your first market (+100 OP)",
+            "Hot Streak - Win 5 in a row (+250 OP)",
+            "Oracle Vision - Win 10 in a row (+500 OP)",
+            "Underdog - Win with <15% odds (+200 OP)",
+            "Daily Devotion - Claim daily bonus 7 days straight (+150 OP)",
+            "Market Maker - Enter 50 markets total (+300 OP)",
+          ],
+        },
+      },
+      {
+        id: "oracle-tournaments",
+        title: "Tournaments",
+        content: [
+          "Tournaments are special competitive events with real SOL prize pools funded entirely by the admin. Entry is always FREE - no OP cost. During a tournament window, all your market predictions count toward your tournament score.",
+          "Your tournament score is based on cumulative OP earned from markets during the tournament period. Top finishers receive SOL prizes distributed to their wallet.",
+        ],
+        steps: [
+          {
+            number: 1,
+            title: "Join for Free",
+            description:
+              "Check the Tournaments tab for active and upcoming tournaments. Click JOIN - entry costs nothing.",
+          },
+          {
+            number: 2,
+            title: "Predict During the Window",
+            description:
+              "Every market prediction you make during the tournament period earns tournament score based on OP gained.",
+          },
+          {
+            number: 3,
+            title: "Check the Leaderboard",
+            description:
+              "Live leaderboard shows current standings. Scoring can be OP earned, win count, or accuracy depending on the tournament.",
+          },
+          {
+            number: 4,
+            title: "Claim SOL Prize",
+            description:
+              "When the tournament ends, top finishers receive real SOL prizes. Claim via your Oracle Tower balance.",
+          },
+        ],
+        tips: [
+          "Tournaments use the sweepstakes model - free entry, real prizes",
+          "SOL prizes are funded by the admin, not by player entry fees",
+          "Play more markets during the tournament to increase your score",
+          "Tournament prizes are distributed via the existing Oracle balance + claim flow",
+        ],
+      },
+      {
+        id: "oracle-tabs",
+        title: "Oracle Tower Tabs",
+        content: ["The Oracle Tower interface has six tabs for navigating all features."],
+        table: {
+          headers: ["Tab", "What It Shows"],
+          rows: [
+            ["Markets", "All active markets - browse, filter by type, enter predictions"],
+            ["My Bets", "Your active predictions, recent results, OP won or lost"],
+            ["Tournaments", "Active and upcoming tournaments, join, live leaderboard"],
+            ["Leaderboard", "All-time rankings with reputation tiers"],
+            ["Profile", "Your OP balance, daily claim button, streak, stats, achievements"],
+            ["Admin", "Create markets (all types), create tournaments, manual resolve"],
           ],
         },
       },
