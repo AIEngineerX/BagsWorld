@@ -1291,11 +1291,11 @@ export class AutonomousService extends Service {
 
     // Ecosystem updates with data
     tweets.push(
-      `ecosystem check:\n\n${fees24h} SOL in fees today\n${activeTokens} tokens cooking\n\nvibes: immaculate :)`
+      `ecosystem check:\n\n${fees24h} SOL in fees today on @BagsFM\n${activeTokens} tokens cooking\n\nvibes: immaculate :)`
     );
 
     tweets.push(
-      `creators earned ${fees24h} SOL in fees today\n\nthe flywheel keeps spinning :)`
+      `creators earned ${fees24h} SOL in fees today on @BagsFM\n\nthe flywheel keeps spinning :)`
     );
 
     // Health-based posts
@@ -2206,13 +2206,14 @@ ${context ? `CURRENT CONTEXT:\n${context}` : ""}`;
     }
 
     // Regular mention replies - NO LINKS to avoid shadowban (link in profile is enough)
+    // All replies include a fee nudge since that's Bagsy's core personality
     const templates = [
       `hey @${authorUsername}! have u claimed ur fees today? :)`,
-      `gm @${authorUsername}! hope ur having a great day fren 💚`,
+      `gm @${authorUsername}! hope ur having a great day fren 💚 dont forget to check ur fees!`,
       `hi @${authorUsername}! if u have tokens on @BagsFM, u might have fees waiting :)`,
       `hey fren @${authorUsername}! just checking in - how are ur fees looking?`,
-      `@${authorUsername} gm! always nice to hear from frens :)`,
-      `hey @${authorUsername}! thanks for reaching out fren 💚`,
+      `@${authorUsername} gm! always nice to hear from frens :) have u checked ur fees today?`,
+      `hey @${authorUsername}! thanks for reaching out fren 💚 hope ur fees are stacking up!`,
     ];
     return templates[Math.floor(Math.random() * templates.length)];
   }

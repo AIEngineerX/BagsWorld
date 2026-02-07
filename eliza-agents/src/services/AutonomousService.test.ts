@@ -460,7 +460,9 @@ describe('Bagsy Tweet Generation', () => {
       it('returns fee-related reply for regular users', () => {
         const reply = (service as any).generateBagsyMentionReply('randomuser');
 
-        expect(reply).toContain('bags.fm/claim') || expect(reply.toLowerCase()).toContain('fee');
+        const hasFeeReference =
+          reply.toLowerCase().includes('fee') || reply.includes('bags.fm/claim');
+        expect(hasFeeReference).toBe(true);
       });
 
       it('includes username in reply', () => {

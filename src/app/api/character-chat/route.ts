@@ -36,6 +36,7 @@ interface CharacterChatRequest {
   userMessage: string;
   conversationId?: string;
   chatHistory?: Array<{ role: string; content: string }>;
+  wallet?: string;
   worldState?: {
     health: number;
     weather: string;
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
 
   try {
     const body: CharacterChatRequest = await request.json();
-    const { character, userMessage, conversationId, chatHistory = [], worldState } = body;
+    const { character, userMessage, conversationId, chatHistory = [], worldState, wallet } = body;
 
     const displayName = CHARACTER_DISPLAY_NAMES[character];
     if (!displayName) {
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
           sessionId: conversationId,
           worldState,
           chatHistory,
+          wallet,
         }),
       });
 

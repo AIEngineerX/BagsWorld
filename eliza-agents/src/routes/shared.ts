@@ -1,17 +1,17 @@
 // Shared utilities for route handlers
 // Database helpers, mock creators, and context builders
 
-import { v4 as uuidv4 } from 'uuid';
-import { NeonQueryFunction } from '@neondatabase/serverless';
-import type { Character, Memory, State, IAgentRuntime } from '../types/elizaos.js';
-import { Message, ConversationContext } from '../services/LLMService.js';
-import { worldStateProvider } from '../providers/worldState.js';
-import { agentContextProvider } from '../providers/agentContext.js';
-import { oracleDataProvider } from '../providers/oracleData.js';
-import { ghostTradingProvider } from '../providers/ghostTrading.js';
-import { getBagsApiService } from '../services/BagsApiService.js';
-import { getMemoryService } from '../services/MemoryService.js';
-import { getRelationshipService } from '../services/RelationshipService.js';
+import { v4 as uuidv4 } from "uuid";
+import { NeonQueryFunction } from "@neondatabase/serverless";
+import type { Character, Memory, State, IAgentRuntime } from "../types/elizaos.js";
+import { Message, ConversationContext } from "../services/LLMService.js";
+import { worldStateProvider } from "../providers/worldState.js";
+import { agentContextProvider } from "../providers/agentContext.js";
+import { oracleDataProvider } from "../providers/oracleData.js";
+import { ghostTradingProvider } from "../providers/ghostTrading.js";
+import { getBagsApiService } from "../services/BagsApiService.js";
+import { getMemoryService } from "../services/MemoryService.js";
+import { getRelationshipService } from "../services/RelationshipService.js";
 import {
   tokenMentionEvaluator,
   feeQueryEvaluator,
@@ -19,18 +19,18 @@ import {
   worldStatusEvaluator,
   creatorQueryEvaluator,
   oracleQueryEvaluator,
-} from '../evaluators/index.js';
-import type { Action, ActionResult } from '../types/elizaos.js';
-import { checkWorldHealthAction } from '../actions/checkWorldHealth.js';
-import { getTopCreatorsAction } from '../actions/getTopCreators.js';
-import { getOracleRoundAction } from '../actions/getOracleRound.js';
-import { enterPredictionAction } from '../actions/enterPrediction.js';
-import { checkPredictionAction } from '../actions/checkPrediction.js';
-import { getOracleHistoryAction } from '../actions/getOracleHistory.js';
-import { getOracleLeaderboardAction } from '../actions/getOracleLeaderboard.js';
-import { getOraclePricesAction } from '../actions/getOraclePrices.js';
-import { claimFeesReminderAction } from '../actions/claimFeesReminderAction.js';
-import { shillTokenAction } from '../actions/shillTokenAction.js';
+} from "../evaluators/index.js";
+import type { Action, ActionResult } from "../types/elizaos.js";
+import { checkWorldHealthAction } from "../actions/checkWorldHealth.js";
+import { getTopCreatorsAction } from "../actions/getTopCreators.js";
+import { getOracleRoundAction } from "../actions/getOracleRound.js";
+import { enterPredictionAction } from "../actions/enterPrediction.js";
+import { checkPredictionAction } from "../actions/checkPrediction.js";
+import { getOracleHistoryAction } from "../actions/getOracleHistory.js";
+import { getOracleLeaderboardAction } from "../actions/getOracleLeaderboard.js";
+import { getOraclePricesAction } from "../actions/getOraclePrices.js";
+import { claimFeesReminderAction } from "../actions/claimFeesReminderAction.js";
+import { shillTokenAction } from "../actions/shillTokenAction.js";
 
 // Reduced from 50 to 8 for token efficiency (~80% savings on conversation context)
 export const MAX_CONVERSATION_LENGTH = 8;
@@ -40,13 +40,15 @@ let worldStateCache: { data: string | null; expires: number } = { data: null, ex
 const WORLD_STATE_CACHE_TTL = 60000; // 1 minute
 
 // Pattern to detect if user is asking about other agents
-const AGENT_MENTION_PATTERN = /\b(toly|finn|ash|ghost|neo|cj|shaw|bags.?bot|who|which agent|talk to|ask)\b/i;
+const AGENT_MENTION_PATTERN =
+  /\b(toly|finn|ash|ghost|neo|cj|shaw|bags.?bot|who|which agent|talk to|ask)\b/i;
 
 // Pattern to detect Oracle-related queries
 const ORACLE_PATTERN = /\b(oracle|predict|prediction|forecast|tower|bet|pick|winner|round)\b/i;
 
 // Pattern to detect trading-related queries
-const TRADING_PATTERN = /\b(trad|position|buy|sell|pnl|profit|loss|exposure|performance|portfolio|stats|holding|wallet)\b/i;
+const TRADING_PATTERN =
+  /\b(trad|position|buy|sell|pnl|profit|loss|exposure|performance|portfolio|stats|holding|wallet)\b/i;
 
 // Database instance - set by server.ts
 let dbInstance: NeonQueryFunction<false, false> | null = null;
@@ -66,19 +68,21 @@ export async function getConversationHistory(
 ): Promise<Message[]> {
   const sql = dbInstance;
   if (!sql) {
-    console.warn('[shared] getConversationHistory: Database not configured, returning empty history');
+    console.warn(
+      "[shared] getConversationHistory: Database not configured, returning empty history"
+    );
     return [];
   }
 
-  const rows = await sql`
+  const rows = (await sql`
     SELECT role, content
     FROM conversation_messages
     WHERE session_id = ${sessionId} AND agent_id = ${agentId}
     ORDER BY created_at DESC
     LIMIT ${limit}
-  ` as Array<{ role: 'user' | 'assistant'; content: string }>;
+  `) as Array<{ role: "user" | "assistant"; content: string }>;
 
-  return rows.reverse().map(row => ({
+  return rows.reverse().map((row) => ({
     role: row.role,
     content: row.content,
   }));
@@ -87,12 +91,12 @@ export async function getConversationHistory(
 export async function saveMessage(
   sessionId: string,
   agentId: string,
-  role: 'user' | 'assistant',
+  role: "user" | "assistant",
   content: string
 ): Promise<void> {
   const sql = dbInstance;
   if (!sql) {
-    console.warn('[shared] saveMessage: Database not configured, message not persisted');
+    console.warn("[shared] saveMessage: Database not configured, message not persisted");
     return;
   }
 
@@ -105,16 +109,16 @@ export async function saveMessage(
 export async function pruneOldMessages(sessionId: string, agentId: string): Promise<void> {
   const sql = dbInstance;
   if (!sql) {
-    console.warn('[shared] pruneOldMessages: Database not configured, skipping prune');
+    console.warn("[shared] pruneOldMessages: Database not configured, skipping prune");
     return;
   }
 
-  const countResult = await sql`
+  const countResult = (await sql`
     SELECT COUNT(*) as count FROM conversation_messages
     WHERE session_id = ${sessionId} AND agent_id = ${agentId}
-  ` as Array<{ count: string }>;
+  `) as Array<{ count: string }>;
 
-  const count = parseInt(countResult[0]?.count || '0', 10);
+  const count = parseInt(countResult[0]?.count || "0", 10);
 
   if (count > MAX_CONVERSATION_LENGTH) {
     const deleteCount = count - MAX_CONVERSATION_LENGTH;
@@ -144,9 +148,9 @@ export function createMockMemory(text: string): Memory {
   return {
     id: uuidv4(),
     content: { text },
-    userId: 'user',
-    agentId: 'agent',
-    roomId: 'room',
+    userId: "user",
+    agentId: "agent",
+    roomId: "room",
   } as unknown as Memory;
 }
 
@@ -157,12 +161,20 @@ export function createMockState(): State {
 export async function buildConversationContext(
   character: Character,
   userMessage: string,
-  options?: { sessionId?: string; clientWorldState?: { health: number; weather: string; buildingCount: number; populationCount: number } }
+  options?: {
+    sessionId?: string;
+    clientWorldState?: {
+      health: number;
+      weather: string;
+      buildingCount: number;
+      populationCount: number;
+    };
+  }
 ): Promise<ConversationContext> {
   const runtime = createMockRuntime(character);
   const memory = createMockMemory(userMessage);
   const state = createMockState();
-  const agentId = character.name.toLowerCase().replace(/\s+/g, '-');
+  const agentId = character.name.toLowerCase().replace(/\s+/g, "-");
 
   const context: ConversationContext = {
     messages: [],
@@ -201,7 +213,7 @@ export async function buildConversationContext(
   }
 
   // Include Ghost trading context when talking to Ghost or asking about trading
-  const isGhost = character.name.toLowerCase() === 'ghost';
+  const isGhost = character.name.toLowerCase() === "ghost";
   const askingAboutTrading = TRADING_PATTERN.test(userMessage);
 
   if (isGhost || askingAboutTrading) {
@@ -221,20 +233,22 @@ export async function buildConversationContext(
     // Run memory and relationship lookups in parallel
     const [memoryResult, relationshipResult] = await Promise.all([
       memoryService
-        ? memoryService.summarizeForPrompt(agentId, userMessage, {
-            userId: sessionId,
-            maxTokenBudget: 600,
-          }).catch((err: Error) => {
-            console.warn('[shared] Memory summarize failed:', err.message);
-            return '';
-          })
-        : Promise.resolve(''),
+        ? memoryService
+            .summarizeForPrompt(agentId, userMessage, {
+              userId: sessionId,
+              maxTokenBudget: 600,
+            })
+            .catch((err: Error) => {
+              console.warn("[shared] Memory summarize failed:", err.message);
+              return "";
+            })
+        : Promise.resolve(""),
       relationshipService && sessionId
         ? relationshipService.summarizeForPrompt(agentId, sessionId).catch((err: Error) => {
-            console.warn('[shared] Relationship summarize failed:', err.message);
-            return '';
+            console.warn("[shared] Relationship summarize failed:", err.message);
+            return "";
           })
-        : Promise.resolve(''),
+        : Promise.resolve(""),
     ]);
 
     if (memoryResult) {
@@ -266,7 +280,7 @@ export async function buildConversationContext(
       const token = mint
         ? await api.getToken(mint).catch(() => null)
         : symbol
-          ? (await api.searchTokens(symbol).catch(() => []))[0] ?? null
+          ? ((await api.searchTokens(symbol).catch(() => []))[0] ?? null)
           : null;
 
       if (token) {
@@ -276,8 +290,9 @@ export async function buildConversationContext(
         if (token.lifetimeFees) parts.push(`Lifetime Fees: ${token.lifetimeFees.toFixed(4)} SOL`);
         if (token.holders) parts.push(`Holders: ${token.holders}`);
         if (token.price) parts.push(`Price: $${token.price}`);
-        if (token.change24h !== undefined) parts.push(`24h Change: ${token.change24h > 0 ? '+' : ''}${token.change24h.toFixed(2)}%`);
-        tokenDataParts.push(`TOKEN: ${parts.join(' | ')}`);
+        if (token.change24h !== undefined)
+          parts.push(`24h Change: ${token.change24h > 0 ? "+" : ""}${token.change24h.toFixed(2)}%`);
+        tokenDataParts.push(`TOKEN: ${parts.join(" | ")}`);
 
         // Also fetch fees if the fee evaluator triggered or token was found
         if (feeResult.score >= 0.3 && (mint || token.mint)) {
@@ -296,7 +311,8 @@ export async function buildConversationContext(
       const symbol = userMessage.match(/\$([A-Za-z]{2,10})/)?.[1];
 
       if (mint || symbol) {
-        const tokenMint = mint || (symbol ? (await api.searchTokens(symbol).catch(() => []))[0]?.mint : null);
+        const tokenMint =
+          mint || (symbol ? (await api.searchTokens(symbol).catch(() => []))[0]?.mint : null);
         if (tokenMint) {
           const fees = await api.getCreatorFees(tokenMint).catch(() => null);
           if (fees) {
@@ -312,39 +328,81 @@ export async function buildConversationContext(
     if (launchResult.score >= 0.5) {
       const launches = await api.getRecentLaunches(5).catch(() => []);
       if (launches.length > 0) {
-        const launchLines = launches.map(l => {
+        const launchLines = launches.map((l) => {
           const age = Date.now() - l.launchedAt;
           const hours = Math.floor(age / 3600000);
-          const timeStr = hours < 1 ? 'just now' : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
-          const mc = l.initialMarketCap ? `MC: $${l.initialMarketCap.toLocaleString()}` : '';
+          const timeStr =
+            hours < 1
+              ? "just now"
+              : hours < 24
+                ? `${hours}h ago`
+                : `${Math.floor(hours / 24)}d ago`;
+          const mc = l.initialMarketCap ? `MC: $${l.initialMarketCap.toLocaleString()}` : "";
           return `- ${l.name} ($${l.symbol}) ${timeStr} ${mc}`.trim();
         });
-        tokenDataParts.push(`RECENT LAUNCHES:\n${launchLines.join('\n')}`);
+        tokenDataParts.push(`RECENT LAUNCHES:\n${launchLines.join("\n")}`);
       }
     }
 
     if (tokenDataParts.length > 0) {
-      context.tokenData = tokenDataParts.join('\n\n');
+      context.tokenData = tokenDataParts.join("\n\n");
     }
   } catch (error) {
     // Enrichment is best-effort - don't break chat if it fails
-    console.warn('[shared] Evaluator enrichment failed:', error instanceof Error ? error.message : error);
+    console.warn(
+      "[shared] Evaluator enrichment failed:",
+      error instanceof Error ? error.message : error
+    );
   }
 
   return context;
 }
+
+// ---------------------------------------------------------------------------
+// ACTION DISPATCH ARCHITECTURE
+// ---------------------------------------------------------------------------
+//
+// The chat pipeline uses two mechanisms to inject live data into the LLM context:
+//
+// 1. ENRICHMENT (buildConversationContext, above)
+//    - Runs evaluators: tokenMention, feeQuery, launchQuery
+//    - On match, calls BagsApiService methods directly (getToken, getCreatorFees,
+//      getRecentLaunches) and injects the data into context.tokenData.
+//    - This means the corresponding ACTION handlers (lookupToken, getCreatorFees,
+//      getRecentLaunches) are NOT called here. Their handler() methods exist for
+//      the autonomous tick pipeline (AgentTickService), not the chat pipeline.
+//
+// 2. DISPATCH (dispatchAction, below)
+//    - Runs evaluators: worldStatus, creatorQuery, oracleQuery
+//    - On match, calls the corresponding action's validate() + handler() and
+//      injects the result into context.actionData.
+//    - Also handles character-specific actions: claimFeesReminder (any character),
+//      shillToken (Finn only).
+//
+// WALLET LIMITATION:
+//    Oracle actions (enterPrediction, checkPrediction) require a wallet address
+//    passed via message.content.wallet. The chat route forwards the optional
+//    `wallet` field from the request body. If the game client doesn't send a
+//    wallet, these actions will return "connect your wallet" — this is expected.
+//
+// MOCK RUNTIME:
+//    All actions receive a mock IAgentRuntime where getService() returns null.
+//    Actions fall back to singleton service instances (getBagsApiService(), etc).
+//    This is intentional: the full ElizaOS runtime is not instantiated in the
+//    chat pipeline. Only type compatibility is maintained.
+// ---------------------------------------------------------------------------
 
 // Minimum evaluator score to trigger action dispatch
 const ACTION_DISPATCH_THRESHOLD = 0.5;
 
 // Oracle actions ordered by specificity — most specific first so we pick the best match
 const ORACLE_ACTIONS_BY_PRIORITY: Action[] = [
-  enterPredictionAction,     // "I predict $X will win" — most specific intent
-  checkPredictionAction,     // "Did I win?" / "Check my prediction"
+  enterPredictionAction, // "I predict $X will win" — most specific intent
+  checkPredictionAction, // "Did I win?" / "Check my prediction"
   getOracleLeaderboardAction, // "Who are the top predictors?"
-  getOraclePricesAction,     // "Which token is winning?" / live prices
-  getOracleHistoryAction,    // "Show past oracle rounds"
-  getOracleRoundAction,      // "What's the oracle round?" — most general
+  getOraclePricesAction, // "Which token is winning?" / live prices
+  getOracleHistoryAction, // "Show past oracle rounds"
+  getOracleRoundAction, // "What's the oracle round?" — most general
 ];
 
 /**
@@ -372,31 +430,48 @@ export async function dispatchAction(
 
   // Run evaluators that aren't covered by the enrichment pipeline, in parallel.
   // Each evaluator is individually guarded so one failure doesn't block the others.
-  const noMatch = { score: 0, reason: 'evaluator failed' };
+  const noMatch = { score: 0, reason: "evaluator failed" };
   const [worldResult, creatorResult, oracleResult] = await Promise.all([
     worldStatusEvaluator.evaluate(runtime, memory, state).catch((err: Error) => {
-      console.warn('[shared] worldStatusEvaluator failed:', err.message);
+      console.warn("[shared] worldStatusEvaluator failed:", err.message);
       return noMatch;
     }),
     creatorQueryEvaluator.evaluate(runtime, memory, state).catch((err: Error) => {
-      console.warn('[shared] creatorQueryEvaluator failed:', err.message);
+      console.warn("[shared] creatorQueryEvaluator failed:", err.message);
       return noMatch;
     }),
     oracleQueryEvaluator.evaluate(runtime, memory, state).catch((err: Error) => {
-      console.warn('[shared] oracleQueryEvaluator failed:', err.message);
+      console.warn("[shared] oracleQueryEvaluator failed:", err.message);
       return noMatch;
     }),
   ]);
 
-  // Build candidate list: { action, score, priority (lower = more important) }
-  const candidates: Array<{ action: Action; score: number; priority: number }> = [];
+  // Build candidate list: { action, score, priority (lower = more important), preValidated }
+  // preValidated tracks whether validate() was already called during candidate selection,
+  // so we don't call it again in the execution loop.
+  const candidates: Array<{
+    action: Action;
+    score: number;
+    priority: number;
+    preValidated: boolean;
+  }> = [];
 
   if (worldResult.score >= ACTION_DISPATCH_THRESHOLD) {
-    candidates.push({ action: checkWorldHealthAction, score: worldResult.score, priority: 10 });
+    candidates.push({
+      action: checkWorldHealthAction,
+      score: worldResult.score,
+      priority: 10,
+      preValidated: false,
+    });
   }
 
   if (creatorResult.score >= ACTION_DISPATCH_THRESHOLD) {
-    candidates.push({ action: getTopCreatorsAction, score: creatorResult.score, priority: 10 });
+    candidates.push({
+      action: getTopCreatorsAction,
+      score: creatorResult.score,
+      priority: 10,
+      preValidated: false,
+    });
   }
 
   // Oracle: pick the most specific action that validates
@@ -406,12 +481,20 @@ export async function dispatchAction(
         if (oracleAction.validate) {
           const valid = await oracleAction.validate(runtime, memory, state);
           if (valid) {
-            candidates.push({ action: oracleAction, score: oracleResult.score, priority: 5 });
+            candidates.push({
+              action: oracleAction,
+              score: oracleResult.score,
+              priority: 5,
+              preValidated: true,
+            });
             break;
           }
         }
       } catch (err) {
-        console.warn(`[shared] Oracle action ${oracleAction.name} validate failed:`, err instanceof Error ? err.message : err);
+        console.warn(
+          `[shared] Oracle action ${oracleAction.name} validate failed:`,
+          err instanceof Error ? err.message : err
+        );
       }
     }
   }
@@ -424,22 +507,30 @@ export async function dispatchAction(
     if (claimFeesReminderAction.validate) {
       const valid = await claimFeesReminderAction.validate(runtime, memory, state);
       if (valid) {
-        candidates.push({ action: claimFeesReminderAction, score: 0.8, priority: 3 });
+        candidates.push({
+          action: claimFeesReminderAction,
+          score: 0.8,
+          priority: 3,
+          preValidated: true,
+        });
       }
     }
   } catch (err) {
-    console.warn('[shared] claimFeesReminder validate failed:', err instanceof Error ? err.message : err);
+    console.warn(
+      "[shared] claimFeesReminder validate failed:",
+      err instanceof Error ? err.message : err
+    );
   }
 
   try {
-    if (characterName === 'finn' && shillTokenAction.validate) {
+    if (characterName === "finn" && shillTokenAction.validate) {
       const valid = await shillTokenAction.validate(runtime, memory, state);
       if (valid) {
-        candidates.push({ action: shillTokenAction, score: 0.8, priority: 3 });
+        candidates.push({ action: shillTokenAction, score: 0.8, priority: 3, preValidated: true });
       }
     }
   } catch (err) {
-    console.warn('[shared] shillToken validate failed:', err instanceof Error ? err.message : err);
+    console.warn("[shared] shillToken validate failed:", err instanceof Error ? err.message : err);
   }
 
   if (candidates.length === 0) return null;
@@ -450,8 +541,8 @@ export async function dispatchAction(
   // Try each candidate until one validates and executes successfully
   for (const candidate of candidates) {
     try {
-      // Validate if we haven't already (evaluator-derived actions need explicit validate)
-      if (candidate.action.validate) {
+      // Only validate if we haven't already (oracle/character actions were pre-validated)
+      if (!candidate.preValidated && candidate.action.validate) {
         const valid = await candidate.action.validate(runtime, memory, state);
         if (!valid) continue;
       }
@@ -461,7 +552,9 @@ export async function dispatchAction(
 
       const actionResult = result as ActionResult;
       if (actionResult.success && actionResult.text) {
-        console.log(`[shared] Action dispatched: ${candidate.action.name} (score: ${candidate.score.toFixed(2)})`);
+        console.log(
+          `[shared] Action dispatched: ${candidate.action.name} (score: ${candidate.score.toFixed(2)})`
+        );
         return actionResult.text;
       }
 
@@ -472,7 +565,10 @@ export async function dispatchAction(
         return actionResult.text;
       }
     } catch (err) {
-      console.warn(`[shared] Action ${candidate.action.name} failed:`, err instanceof Error ? err.message : err);
+      console.warn(
+        `[shared] Action ${candidate.action.name} failed:`,
+        err instanceof Error ? err.message : err
+      );
     }
   }
 

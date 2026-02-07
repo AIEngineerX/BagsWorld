@@ -2,15 +2,12 @@
 // GET /api/agents, GET /api/agents/:id, POST /api/agents/:id/chat
 // GET /api/sessions/:id/history, DELETE /api/sessions/:id
 
-import { Router, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import {
-  getCharacter,
-  getCharacterIds,
-} from '../characters/index.js';
-import { getLLMService } from '../services/LLMService.js';
-import { getMemoryService } from '../services/MemoryService.js';
-import { getRelationshipService } from '../services/RelationshipService.js';
+import { Router, Request, Response } from "express";
+import { v4 as uuidv4 } from "uuid";
+import { getCharacter, getCharacterIds } from "../characters/index.js";
+import { getLLMService } from "../services/LLMService.js";
+import { getMemoryService } from "../services/MemoryService.js";
+import { getRelationshipService } from "../services/RelationshipService.js";
 import {
   getDatabase,
   getConversationHistory,
@@ -19,21 +16,25 @@ import {
   buildConversationContext,
   dispatchAction,
   MAX_CONVERSATION_LENGTH,
-} from './shared.js';
+} from "./shared.js";
 
 const router = Router();
 
 // GET /api/agents - List all agents
-router.get('/agents', (req: Request, res: Response) => {
+router.get("/agents", (req: Request, res: Response) => {
   const agentIds = getCharacterIds();
-  const agents = agentIds.map(id => {
+  const agents = agentIds.map((id) => {
     const character = getCharacter(id);
     const bio = character?.bio;
     return {
       id,
       name: character?.name || id,
       username: character?.username,
-      description: Array.isArray(bio) ? bio[0] : typeof bio === 'string' ? bio : 'A BagsWorld AI agent',
+      description: Array.isArray(bio)
+        ? bio[0]
+        : typeof bio === "string"
+          ? bio
+          : "A BagsWorld AI agent",
       topics: character?.topics?.slice(0, 5) || [],
     };
   });
@@ -46,7 +47,7 @@ router.get('/agents', (req: Request, res: Response) => {
 });
 
 // GET /api/agents/:agentId - Get agent info
-router.get('/agents/:agentId', (req: Request, res: Response) => {
+router.get("/agents/:agentId", (req: Request, res: Response) => {
   const agentId = req.params.agentId as string;
   const character = getCharacter(agentId.toLowerCase());
 
@@ -73,12 +74,12 @@ router.get('/agents/:agentId', (req: Request, res: Response) => {
 });
 
 // POST /api/agents/:agentId/chat - Chat with agent
-router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
+router.post("/agents/:agentId/chat", async (req: Request, res: Response) => {
   const agentId = req.params.agentId as string;
-  const { message, sessionId: providedSessionId, worldState: clientWorldState } = req.body;
+  const { message, sessionId: providedSessionId, worldState: clientWorldState, wallet } = req.body;
 
-  if (!message || typeof message !== 'string' || message.trim().length === 0) {
-    res.status(400).json({ error: 'message is required and must be a non-empty string' });
+  if (!message || typeof message !== "string" || message.trim().length === 0) {
+    res.status(400).json({ error: "message is required and must be a non-empty string" });
     return;
   }
 
@@ -97,16 +98,22 @@ router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
   try {
     const conversationHistory = await getConversationHistory(sessionId, normalizedAgentId);
 
-    await saveMessage(sessionId, normalizedAgentId, 'user', message);
+    await saveMessage(sessionId, normalizedAgentId, "user", message);
 
-    const context = await buildConversationContext(character, message, { sessionId, clientWorldState });
+    const context = await buildConversationContext(character, message, {
+      sessionId,
+      clientWorldState,
+    });
     context.messages = conversationHistory;
 
     // Action dispatch: run evaluators not covered by enrichment and execute matching actions.
     // The action result (structured, character-formatted text) is injected into context
     // so the LLM can weave real data into its natural, in-character response.
-    const actionData = await dispatchAction(character, message, { sessionId }).catch((err: Error) => {
-      console.warn('[chat] Action dispatch failed:', err.message);
+    const actionData = await dispatchAction(character, message, {
+      sessionId,
+      wallet: typeof wallet === "string" ? wallet : undefined,
+    }).catch((err: Error) => {
+      console.warn("[chat] Action dispatch failed:", err.message);
       return null;
     });
     if (actionData) {
@@ -122,7 +129,7 @@ router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
       context
     );
 
-    await saveMessage(sessionId, normalizedAgentId, 'assistant', llmResponse.text);
+    await saveMessage(sessionId, normalizedAgentId, "assistant", llmResponse.text);
 
     await pruneOldMessages(sessionId, normalizedAgentId);
 
@@ -134,30 +141,42 @@ router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
       // Run memory writes and relationship update in parallel, don't block response
       Promise.all([
         memoryService
-          ? memoryService.createMemory({
-              agentId: normalizedAgentId,
-              content: `User said: ${message}`,
-              memoryType: 'message',
-              roomId: sessionId,
-              userId: sessionId,
-              importance: 0.4,
-            }).catch((err: Error) => console.warn('[chat] Memory write (user) failed:', err.message))
+          ? memoryService
+              .createMemory({
+                agentId: normalizedAgentId,
+                content: `User said: ${message}`,
+                memoryType: "message",
+                roomId: sessionId,
+                userId: sessionId,
+                importance: 0.4,
+              })
+              .catch((err: Error) =>
+                console.warn("[chat] Memory write (user) failed:", err.message)
+              )
           : null,
         memoryService
-          ? memoryService.createMemory({
-              agentId: normalizedAgentId,
-              content: `${character.name} replied: ${llmResponse.text}`,
-              memoryType: 'message',
-              roomId: sessionId,
-              userId: sessionId,
-              importance: 0.4,
-            }).catch((err: Error) => console.warn('[chat] Memory write (assistant) failed:', err.message))
+          ? memoryService
+              .createMemory({
+                agentId: normalizedAgentId,
+                content: `${character.name} replied: ${llmResponse.text}`,
+                memoryType: "message",
+                roomId: sessionId,
+                userId: sessionId,
+                importance: 0.4,
+              })
+              .catch((err: Error) =>
+                console.warn("[chat] Memory write (assistant) failed:", err.message)
+              )
           : null,
         relationshipService
-          ? relationshipService.updateAfterInteraction(normalizedAgentId, sessionId, 'user', {
-              topics: extractTopics(message),
-              sentiment: 0.1, // Default slightly positive (user is engaging)
-            }).catch((err: Error) => console.warn('[chat] Relationship update failed:', err.message))
+          ? relationshipService
+              .updateAfterInteraction(normalizedAgentId, sessionId, "user", {
+                topics: extractTopics(message),
+                sentiment: 0.1, // Default slightly positive (user is engaging)
+              })
+              .catch((err: Error) =>
+                console.warn("[chat] Relationship update failed:", err.message)
+              )
           : null,
       ]).catch(() => {}); // Swallow any remaining errors
     }
@@ -174,20 +193,20 @@ router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
   } catch (err) {
     console.error(`[chat] Error in /agents/${agentId}/chat:`, err);
     res.status(500).json({
-      error: 'Failed to generate response',
-      message: err instanceof Error ? err.message : 'Unknown error',
+      error: "Failed to generate response",
+      message: err instanceof Error ? err.message : "Unknown error",
     });
   }
 });
 
 // DELETE /api/sessions/:sessionId - Clear session
-router.delete('/sessions/:sessionId', async (req: Request, res: Response) => {
+router.delete("/sessions/:sessionId", async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const { agentId } = req.query;
 
   const sql = getDatabase();
   if (!sql) {
-    res.status(503).json({ error: 'Database not configured' });
+    res.status(503).json({ error: "Database not configured" });
     return;
   }
 
@@ -206,25 +225,25 @@ router.delete('/sessions/:sessionId', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: `Session ${sessionId} cleared${agentId ? ` for agent ${agentId}` : ''}`,
+      message: `Session ${sessionId} cleared${agentId ? ` for agent ${agentId}` : ""}`,
     });
   } catch (err) {
     console.error(`[chat] Error in DELETE /sessions/${sessionId}:`, err);
     res.status(500).json({
-      error: 'Failed to clear session',
-      message: err instanceof Error ? err.message : 'Unknown error',
+      error: "Failed to clear session",
+      message: err instanceof Error ? err.message : "Unknown error",
     });
   }
 });
 
 // GET /api/sessions/:sessionId/history - Get conversation history
-router.get('/sessions/:sessionId/history', async (req: Request, res: Response) => {
+router.get("/sessions/:sessionId/history", async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const { agentId, limit } = req.query;
 
   const sql = getDatabase();
   if (!sql) {
-    res.status(503).json({ error: 'Database not configured' });
+    res.status(503).json({ error: "Database not configured" });
     return;
   }
 
@@ -259,8 +278,8 @@ router.get('/sessions/:sessionId/history', async (req: Request, res: Response) =
   } catch (err) {
     console.error(`[chat] Error in GET /sessions/${sessionId}/history:`, err);
     res.status(500).json({
-      error: 'Failed to fetch history',
-      message: err instanceof Error ? err.message : 'Unknown error',
+      error: "Failed to fetch history",
+      message: err instanceof Error ? err.message : "Unknown error",
     });
   }
 });
@@ -270,18 +289,18 @@ router.get('/sessions/:sessionId/history', async (req: Request, res: Response) =
  * Returns up to 3 topic keywords detected in the message.
  */
 const TOPIC_PATTERNS: [RegExp, string][] = [
-  [/\b(solana|sol)\b/i, 'Solana'],
-  [/\b(token|launch|create|mint)\b/i, 'Token Launch'],
-  [/\b(trade|buy|sell|swap|position)\b/i, 'Trading'],
-  [/\b(fee|claim|royalt|revenue)\b/i, 'Fees'],
-  [/\b(nft|collection|art)\b/i, 'NFTs'],
-  [/\b(defi|liquidity|pool|stake)\b/i, 'DeFi'],
-  [/\b(casino|gambl|bet|slot)\b/i, 'Casino'],
-  [/\b(oracle|predict|forecast)\b/i, 'Oracle'],
-  [/\b(arena|fight|battle|combat)\b/i, 'Arena'],
-  [/\b(moltbook|social|post)\b/i, 'Moltbook'],
-  [/\b(wallet|phantom|connect)\b/i, 'Wallet'],
-  [/\b(market|chart|price|volume)\b/i, 'Market Data'],
+  [/\b(solana|sol)\b/i, "Solana"],
+  [/\b(token|launch|create|mint)\b/i, "Token Launch"],
+  [/\b(trade|buy|sell|swap|position)\b/i, "Trading"],
+  [/\b(fee|claim|royalt|revenue)\b/i, "Fees"],
+  [/\b(nft|collection|art)\b/i, "NFTs"],
+  [/\b(defi|liquidity|pool|stake)\b/i, "DeFi"],
+  [/\b(casino|gambl|bet|slot)\b/i, "Casino"],
+  [/\b(oracle|predict|forecast)\b/i, "Oracle"],
+  [/\b(arena|fight|battle|combat)\b/i, "Arena"],
+  [/\b(moltbook|social|post)\b/i, "Moltbook"],
+  [/\b(wallet|phantom|connect)\b/i, "Wallet"],
+  [/\b(market|chart|price|volume)\b/i, "Market Data"],
 ];
 
 function extractTopics(message: string): string[] {
