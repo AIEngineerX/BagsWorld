@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { initBagsApi } from "@/lib/bags-api";
-import { searchTokens } from "@/lib/dexscreener-api";
-import { getGlobalTokens, isNeonConfigured } from "@/lib/neon";
+import { isNeonConfigured } from "@/lib/neon";
+import { neon } from "@neondatabase/serverless";
 
 interface TopEarnerToken {
   mint: string;
   name: string;
   symbol: string;
-  claimedSol: number;
+  claimableSol: number;
 }
 
 interface TopEarner {
@@ -16,7 +16,7 @@ interface TopEarner {
   username: string;
   profilePic?: string;
   wallet: string;
-  totalClaimedSol: number;
+  totalClaimableSol: number;
   tokenCount: number;
   tokens: TopEarnerToken[];
 }
@@ -26,70 +26,44 @@ let cachedResponse: {
   success: boolean;
   topEarners: TopEarner[];
   lastUpdated: string;
-  tokenCount: number;
 } | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000;
 
-// Per-mint lifetime fees probe cache (2h) — used as a filter
-// IMPORTANT: only cache SUCCESSFUL results, never cache failures
-const probeCache = new Map<string, { feesLamports: number; ts: number }>();
-const PROBE_TTL = 2 * 60 * 60_000;
+/**
+ * Get all known Moltbook agent usernames from DB + hardcoded list
+ */
+async function getKnownMoltbookAgents(): Promise<
+  Array<{ username: string; displayName?: string }>
+> {
+  const agents: Array<{ username: string; displayName?: string }> = [];
 
-// Per-mint claim stats cache (30 min)
-const claimStatsCache = new Map<
-  string,
-  { stats: Array<{ user: string; totalClaimed: number; claimCount: number }>; ts: number }
->();
-const CLAIM_STATS_TTL = 30 * 60_000;
+  // Hardcoded agents that always exist
+  agents.push({ username: "Bagsy", displayName: "Bagsy" });
+  agents.push({ username: "ChadGhost", displayName: "ChadGhost" });
 
-// Per-mint creator cache (1h)
-const creatorCache = new Map<
-  string,
-  {
-    creators: Array<{
-      wallet: string;
-      provider: string;
-      providerUsername: string;
-      username?: string;
-      pfp?: string;
-    }>;
-    ts: number;
-  }
->();
-const CREATOR_TTL = 60 * 60_000;
-
-// Rate limit tracker — stops all Bags API calls until reset
-let rateLimitedUntil = 0;
-
-function isRateLimited(): boolean {
-  return Date.now() < rateLimitedUntil;
-}
-
-function checkRateLimitError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (msg.includes("Rate limit") || msg.includes("429")) {
-    // Default 5-min cooldown; the real reset is hourly
-    rateLimitedUntil = Date.now() + 5 * 60_000;
-    return true;
-  }
-  return false;
-}
-
-async function checkRateLimitResponse(res: Response): Promise<boolean> {
-  if (res.status === 429 || (!res.ok && res.status >= 400)) {
+  // Pull external agents with Moltbook usernames from DB
+  if (isNeonConfigured()) {
     try {
-      const body = await res.clone().json();
-      if (body.error?.includes?.("Rate limit") || body.remaining === 0) {
-        const reset = body.resetTime ? new Date(body.resetTime).getTime() : Date.now() + 5 * 60_000;
-        rateLimitedUntil = reset;
-        return true;
+      const sql = neon(process.env.DATABASE_URL!);
+      const rows = await sql`
+        SELECT name, moltbook_username FROM external_agents
+        WHERE moltbook_username IS NOT NULL
+      `;
+      for (const row of rows) {
+        const username = (row as { moltbook_username: string }).moltbook_username;
+        const name = (row as { name: string }).name;
+        // Avoid duplicates
+        if (!agents.some((a) => a.username.toLowerCase() === username.toLowerCase())) {
+          agents.push({ username, displayName: name });
+        }
       }
-    } catch {
-      // ignore parse errors
+    } catch (err) {
+      console.error("[top-earners] Failed to fetch external agents from DB:", err);
     }
   }
-  return false;
+
+  return agents;
 }
 
 export async function GET(request: Request) {
@@ -109,292 +83,123 @@ export async function GET(request: Request) {
   }
 
   const api = initBagsApi(BAGS_API_KEY);
-  const now = Date.now();
-
-  // wallet → earner data
-  const earnerMap = new Map<
-    string,
-    {
-      name: string;
-      provider: string;
-      username: string;
-      profilePic?: string;
-      wallet: string;
-      tokens: TopEarnerToken[];
-    }
-  >();
-
-  const tokenMeta = new Map<string, { name: string; symbol: string }>();
 
   try {
-    // ====================================================
-    // Step 1: Discover ALL Bags.fm tokens
-    // ====================================================
-    const mintSet = new Set<string>();
+    // Step 1: Get all known Moltbook agents
+    const knownAgents = await getKnownMoltbookAgents();
 
-    const dexPairs = await searchTokens("BAGS").catch(() => []);
-    for (const pair of dexPairs) {
-      if (pair.chainId === "solana" && pair.baseToken.address.endsWith("BAGS")) {
-        mintSet.add(pair.baseToken.address);
-        tokenMeta.set(pair.baseToken.address, {
-          name: pair.baseToken.name,
-          symbol: pair.baseToken.symbol,
-        });
-      }
-    }
-
-    if (isNeonConfigured()) {
-      const globalTokens = await getGlobalTokens();
-      for (const t of globalTokens) {
-        if (t.mint === "TEST123") continue;
-        mintSet.add(t.mint);
-        tokenMeta.set(t.mint, { name: t.name, symbol: t.symbol });
-      }
-    }
-
-    const allMints = Array.from(mintSet);
-    console.log(`[top-earners] Discovered ${allMints.length} Bags.fm tokens`);
-
-    if (allMints.length === 0) {
+    if (knownAgents.length === 0) {
       const response = {
         success: true,
         topEarners: [] as TopEarner[],
         lastUpdated: new Date().toISOString(),
-        tokenCount: 0,
       };
       cachedResponse = response;
-      cacheTime = now;
+      cacheTime = Date.now();
       return NextResponse.json(response);
     }
 
-    // ====================================================
-    // Step 2: Probe lifetime fees (filter for active tokens)
-    // Only cache SUCCESSFUL results — never cache errors
-    // ====================================================
-    const uncachedMints: string[] = [];
-    const activeMints = new Map<string, number>();
+    console.log(`[top-earners] Checking ${knownAgents.length} Moltbook agents`);
 
-    for (const mint of allMints) {
-      const cached = probeCache.get(mint);
-      if (cached && now - cached.ts < PROBE_TTL) {
-        if (cached.feesLamports > 0) {
-          activeMints.set(mint, cached.feesLamports);
-        }
-      } else {
-        uncachedMints.push(mint);
-      }
+    // Step 2: Bulk resolve Moltbook usernames → wallets
+    const bulkItems = knownAgents.map((a) => ({
+      provider: "moltbook",
+      username: a.username,
+    }));
+
+    let walletResults: Array<{
+      wallet: string;
+      provider: string;
+      username: string;
+      platformData?: { avatarUrl?: string; displayName?: string };
+    }> = [];
+
+    try {
+      walletResults = await api.bulkWalletLookup(bulkItems);
+    } catch (err) {
+      console.error("[top-earners] Bulk wallet lookup failed:", err);
+      return NextResponse.json({
+        success: false,
+        error: "Failed to resolve agent wallets",
+      });
     }
 
-    if (uncachedMints.length > 0 && !isRateLimited()) {
-      const batches = [];
-      for (let i = 0; i < uncachedMints.length; i += 20) {
-        batches.push(uncachedMints.slice(i, i + 20));
-      }
-
-      for (const batch of batches) {
-        if (isRateLimited()) break;
-
-        const results = await Promise.allSettled(batch.map((m) => api.getTokenLifetimeFees(m)));
-
-        for (let i = 0; i < batch.length; i++) {
-          const mint = batch[i];
-          const result = results[i];
-          if (result.status === "fulfilled") {
-            // Only cache successful results
-            probeCache.set(mint, { feesLamports: result.value, ts: now });
-            if (result.value > 0) activeMints.set(mint, result.value);
-          } else {
-            // Check for rate limit — if so, stop making calls
-            if (checkRateLimitError(result.reason)) {
-              console.log("[top-earners] Rate limited, stopping probe calls");
-              break;
-            }
-            // DON'T cache failures — leave uncached for next request
-          }
-        }
-      }
-    } else if (isRateLimited() && uncachedMints.length > 0) {
-      console.log(
-        `[top-earners] Skipping ${uncachedMints.length} probes (rate limited until ${new Date(rateLimitedUntil).toISOString()})`
-      );
-    }
-
-    console.log(`[top-earners] ${activeMints.size} tokens have fee activity`);
-
-    if (activeMints.size === 0) {
-      // Don't cache empty results if we're rate limited (data is incomplete)
+    if (walletResults.length === 0) {
       const response = {
         success: true,
         topEarners: [] as TopEarner[],
         lastUpdated: new Date().toISOString(),
-        tokenCount: allMints.length,
       };
-      if (!isRateLimited()) {
-        cachedResponse = response;
-        cacheTime = now;
-      }
       return NextResponse.json(response);
     }
 
-    // ====================================================
-    // Step 3: Get claim stats + creators for active tokens
-    // ====================================================
-    const sortedMints = Array.from(activeMints.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 40)
-      .map(([mint]) => mint);
+    // Step 3: Get claimable positions for each wallet
+    const earners: TopEarner[] = [];
 
-    for (const mint of sortedMints) {
-      if (isRateLimited()) break;
+    const positionResults = await Promise.allSettled(
+      walletResults.map((wr) => api.getClaimablePositions(wr.wallet))
+    );
 
-      const meta = tokenMeta.get(mint);
+    for (let i = 0; i < walletResults.length; i++) {
+      const wr = walletResults[i];
+      const result = positionResults[i];
 
-      // 3a: Get claim stats
-      let claimStats = claimStatsCache.get(mint);
-      if (!claimStats || now - claimStats.ts >= CLAIM_STATS_TTL) {
-        if (!isRateLimited()) {
-          try {
-            const freshStats = await api.getClaimStats(mint);
-            claimStats = { stats: freshStats, ts: now };
-            claimStatsCache.set(mint, claimStats);
-          } catch (err) {
-            if (checkRateLimitError(err)) break;
-            // Don't cache failures
-            continue;
-          }
-        } else {
-          continue;
-        }
-      }
+      if (result.status !== "fulfilled" || !result.value?.length) continue;
 
-      if (claimStats.stats.length === 0) continue;
+      const positions = result.value;
+      const tokens: TopEarnerToken[] = [];
+      let totalLamports = 0;
 
-      // 3b: Get creators
-      let creators = creatorCache.get(mint);
-      if (!creators || now - creators.ts >= CREATOR_TTL) {
-        if (isRateLimited()) continue;
+      for (const pos of positions) {
+        const lamports = pos.totalClaimableLamportsUserShare || 0;
+        if (lamports <= 0) continue;
 
-        try {
-          const raw = await fetch(
-            `https://public-api-v2.bags.fm/api/v1/token-launch/creator/v3?tokenMint=${mint}`,
-            { headers: { "x-api-key": BAGS_API_KEY } }
-          );
-
-          if (await checkRateLimitResponse(raw)) break;
-
-          const data = await raw.json();
-
-          if (data.success) {
-            const creatorsArray = Array.isArray(data.response)
-              ? data.response
-              : Array.isArray(data.creators)
-                ? data.creators
-                : [];
-            creators = { creators: creatorsArray, ts: now };
-            creatorCache.set(mint, creators);
-          } else {
-            // Don't cache non-success responses (may be rate limit or transient)
-            continue;
-          }
-        } catch (err) {
-          if (checkRateLimitError(err)) break;
-          continue;
-        }
-      }
-
-      // 3c: Build wallet → Moltbook identity map
-      const walletToMoltbook = new Map<string, { name: string; username: string; pfp?: string }>();
-
-      for (const creator of creators.creators) {
-        if (creator.provider !== "moltbook") continue;
-        const displayName =
-          creator.providerUsername ||
-          creator.username ||
-          `${creator.wallet.slice(0, 4)}...${creator.wallet.slice(-4)}`;
-        walletToMoltbook.set(creator.wallet, {
-          name: displayName,
-          username: creator.providerUsername || creator.username || creator.wallet,
-          pfp: creator.pfp,
+        totalLamports += lamports;
+        tokens.push({
+          mint: pos.baseMint,
+          name: pos.tokenName || "Unknown",
+          symbol: pos.tokenSymbol || "???",
+          claimableSol: lamports / 1_000_000_000,
         });
       }
 
-      // 3d: Match claim stats to Moltbook creators
-      for (const stat of claimStats.stats) {
-        const moltAgent = walletToMoltbook.get(stat.user);
-        if (!moltAgent) continue;
-        if (stat.totalClaimed <= 0) continue;
+      if (totalLamports <= 0) continue;
 
-        const claimedSol = stat.totalClaimed / 1_000_000_000;
+      // Sort tokens by claimable amount descending
+      tokens.sort((a, b) => b.claimableSol - a.claimableSol);
 
-        const earnerToken: TopEarnerToken = {
-          mint,
-          name: meta?.name || "Unknown",
-          symbol: meta?.symbol || "???",
-          claimedSol,
-        };
-
-        const key = `moltbook:${moltAgent.username}`;
-        const existing = earnerMap.get(key);
-        if (existing) {
-          if (!existing.tokens.some((t) => t.mint === mint)) {
-            existing.tokens.push(earnerToken);
-          }
-        } else {
-          earnerMap.set(key, {
-            name: moltAgent.name,
-            provider: "moltbook",
-            username: moltAgent.username,
-            profilePic: moltAgent.pfp,
-            wallet: stat.user,
-            tokens: [earnerToken],
-          });
-        }
-      }
-    }
-
-    // ====================================================
-    // Step 4: Build sorted earner list
-    // ====================================================
-    const earners: TopEarner[] = [];
-
-    for (const [, data] of earnerMap) {
-      const tokens = data.tokens
-        .filter((t) => t.claimedSol > 0)
-        .sort((a, b) => b.claimedSol - a.claimedSol);
-
-      const totalClaimedSol = tokens.reduce((sum, t) => sum + t.claimedSol, 0);
-      if (totalClaimedSol === 0) continue;
+      // Find display name from known agents list
+      const knownAgent = knownAgents.find(
+        (a) => a.username.toLowerCase() === wr.username.toLowerCase()
+      );
 
       earners.push({
-        name: data.name,
-        provider: data.provider,
-        username: data.username,
-        profilePic: data.profilePic,
-        wallet: data.wallet,
-        totalClaimedSol,
+        name: wr.platformData?.displayName || knownAgent?.displayName || wr.username,
+        provider: "moltbook",
+        username: wr.username,
+        profilePic: wr.platformData?.avatarUrl,
+        wallet: wr.wallet,
+        totalClaimableSol: totalLamports / 1_000_000_000,
         tokenCount: tokens.length,
         tokens,
       });
     }
 
-    earners.sort((a, b) => b.totalClaimedSol - a.totalClaimedSol);
+    // Sort by total claimable SOL descending
+    earners.sort((a, b) => b.totalClaimableSol - a.totalClaimableSol);
 
     console.log(
-      `[top-earners] ${allMints.length} tokens → ${activeMints.size} with fees → ${earnerMap.size} Moltbook claimers → top ${Math.min(3, earners.length)}`
+      `[top-earners] ${walletResults.length} wallets resolved → ${earners.length} with claimable fees`
     );
 
     const response = {
       success: true,
       topEarners: earners.slice(0, 3),
       lastUpdated: new Date().toISOString(),
-      tokenCount: allMints.length,
     };
 
-    // Only cache if we have complete data (not rate limited)
-    if (!isRateLimited()) {
-      cachedResponse = response;
-      cacheTime = now;
-    }
+    cachedResponse = response;
+    cacheTime = Date.now();
 
     return NextResponse.json(response);
   } catch (err) {
