@@ -294,7 +294,9 @@ export function QuestTracker() {
     <div
       className={`fixed left-1/2 -translate-x-1/2 bottom-12 sm:bottom-11 z-[60] w-72 sm:w-80 max-w-[calc(100vw-2rem)] ${mounted ? "quest-panel-enter" : "opacity-0 translate-y-4"}`}
     >
-      <div className={`bg-black/95 backdrop-blur-md border rounded-lg overflow-hidden ${isFirstVisit ? "quest-glow border-bags-green/50" : "border-bags-green/25 shadow-[0_0_20px_rgba(0,0,0,0.5)]"}`}>
+      <div
+        className={`bg-black/95 backdrop-blur-md border rounded-lg overflow-hidden ${isFirstVisit ? "quest-glow border-bags-green/50" : "border-bags-green/25 shadow-[0_0_20px_rgba(0,0,0,0.5)]"}`}
+      >
         {/* Header — slim */}
         <div className="flex items-center justify-between px-3 py-1.5 bg-bags-green/5 border-b border-bags-green/15">
           <div className="flex items-center gap-1.5">
@@ -364,11 +366,7 @@ export function QuestTracker() {
                 <div className="flex-1 min-w-0">
                   <p
                     className={`font-pixel text-[9px] leading-tight transition-all duration-500 ${
-                      completed
-                        ? "text-bags-green/80"
-                        : isNext
-                          ? "text-white/90"
-                          : "text-gray-600"
+                      completed ? "text-bags-green/80" : isNext ? "text-white/90" : "text-gray-600"
                     } ${wasJustCompleted ? "text-bags-green" : ""}`}
                   >
                     {step.title}
