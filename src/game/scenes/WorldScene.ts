@@ -136,9 +136,13 @@ export class WorldScene extends Phaser.Scene {
     fighter1: { id: number; hp: number; maxHp: number; x: number; y: number; state: string };
     fighter2: { id: number; hp: number; maxHp: number; x: number; y: number; state: string };
   } | null = null;
+  private dungeonElements: Phaser.GameObjects.GameObject[] = []; // Dungeon zone elements
+  private dungeonZoneCreated = false; // Cache dungeon zone elements
   private foundersPopup: Phaser.GameObjects.Container | null = null; // Popup modal for building info
   private ballersGoldenSky: Phaser.GameObjects.Graphics | null = null; // Golden hour sky for Ballers Valley
   private academyTwilightSky: Phaser.GameObjects.Graphics | null = null; // Magical twilight sky for Academy
+  private dungeonCaveSky: Phaser.GameObjects.Graphics | null = null; // Cave ceiling for dungeon zone
+  private dungeonSkyElements: Phaser.GameObjects.GameObject[] = []; // Stalactites, crystals, etc.
   private academyMoon: Phaser.GameObjects.Arc | null = null; // Moon for Academy zone
   private academyStars: Phaser.GameObjects.Arc[] = []; // Extra bright stars for Academy
   private boundZoneChange: ((e: Event) => void) | null = null;
@@ -1176,17 +1180,20 @@ export class WorldScene extends Phaser.Scene {
       moltbook: -1,
       main_city: 0,
       trending: 1,
-      ballers: 2,
-      founders: 3,
-      arena: 4,
+      dungeon: 2,
+      ballers: 3,
+      founders: 4,
+      arena: 5,
     };
     const isGoingRight = zoneOrder[newZone] > zoneOrder[this.currentZone];
-    const duration = 600; // Smooth, cinematic transition
+    const isDungeonTransition = newZone === "dungeon" || this.currentZone === "dungeon";
+    const duration = isDungeonTransition ? 800 : 600; // Slower, dramatic descent for dungeon
     const slideDistance = Math.round(850 * SCALE); // Slightly more than screen width for full slide (scaled)
 
-    // Calculate offsets
-    const slideOutOffset = isGoingRight ? -slideDistance : slideDistance;
-    const slideInOffset = isGoingRight ? slideDistance : -slideDistance;
+    // For dungeon: vertical transition (descend down / ascend up)
+    // For all others: horizontal slide
+    const slideOutOffset = isDungeonTransition ? 0 : isGoingRight ? -slideDistance : slideDistance;
+    const slideInOffset = isDungeonTransition ? 0 : isGoingRight ? slideDistance : -slideDistance;
 
     // Collect current zone elements to slide out
     const oldElements: (Phaser.GameObjects.GameObject & { x?: number })[] = [];
@@ -1224,39 +1231,85 @@ export class WorldScene extends Phaser.Scene {
     );
     transitionOverlay.setDepth(0);
 
-    // Slide out old elements with smooth easing
-    oldElementData.forEach(({ el }) => {
-      if ((el as any).x !== undefined) {
-        this.tweens.add({
-          targets: el,
-          x: (el as any).x + slideOutOffset,
-          duration,
-          ease: "Cubic.easeInOut",
-        });
-      }
-    });
+    if (isDungeonTransition) {
+      const verticalDist = Math.round(600 * SCALE);
+      const isEnteringDungeon = newZone === "dungeon";
 
-    // Slide ground texture overlay (scaled)
-    this.tweens.add({
-      targets: this.ground,
-      tilePositionX:
-        this.ground.tilePositionX +
-        (isGoingRight ? Math.round(100 * SCALE) : -Math.round(100 * SCALE)),
-      duration,
-      ease: "Cubic.easeInOut",
-    });
+      // Old elements: slide up + fade out (descending into dungeon) or slide down + fade (ascending out)
+      oldElementData.forEach(({ el }) => {
+        if ((el as any).y !== undefined) {
+          this.tweens.add({
+            targets: el,
+            y: (el as any).y + (isEnteringDungeon ? -verticalDist : verticalDist),
+            alpha: 0,
+            duration,
+            ease: "Cubic.easeIn",
+          });
+        }
+      });
 
-    // Slide transition overlay in, destroy when complete
-    this.tweens.add({
-      targets: transitionOverlay,
-      x: GAME_WIDTH / 2,
-      duration,
-      ease: "Cubic.easeInOut",
-      onComplete: () => {
-        // Destroy overlay after tween completes (not mid-animation)
-        transitionOverlay.destroy();
-      },
-    });
+      // Ground darkens/lightens during transition
+      this.tweens.add({
+        targets: this.ground,
+        alpha: 0,
+        duration: duration * 0.4,
+        ease: "Cubic.easeIn",
+        onComplete: () => {
+          this.ground.setAlpha(1);
+        },
+      });
+
+      // Transition overlay: full-screen black fade for dungeon descent
+      transitionOverlay.setFillStyle(0x000000, 1);
+      transitionOverlay.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+      transitionOverlay.setSize(GAME_WIDTH, GAME_HEIGHT);
+      transitionOverlay.setAlpha(0);
+      transitionOverlay.setDepth(50);
+      this.tweens.add({
+        targets: transitionOverlay,
+        alpha: 1,
+        duration: duration * 0.5,
+        ease: "Cubic.easeIn",
+        yoyo: true,
+        hold: duration * 0.15,
+        onComplete: () => {
+          transitionOverlay.destroy();
+        },
+      });
+    } else {
+      // Standard horizontal slide for non-dungeon zones
+      oldElementData.forEach(({ el }) => {
+        if ((el as any).x !== undefined) {
+          this.tweens.add({
+            targets: el,
+            x: (el as any).x + slideOutOffset,
+            duration,
+            ease: "Cubic.easeInOut",
+          });
+        }
+      });
+
+      // Slide ground texture overlay (scaled)
+      this.tweens.add({
+        targets: this.ground,
+        tilePositionX:
+          this.ground.tilePositionX +
+          (isGoingRight ? Math.round(100 * SCALE) : -Math.round(100 * SCALE)),
+        duration,
+        ease: "Cubic.easeInOut",
+      });
+
+      // Slide transition overlay in, destroy when complete
+      this.tweens.add({
+        targets: transitionOverlay,
+        x: GAME_WIDTH / 2,
+        duration,
+        ease: "Cubic.easeInOut",
+        onComplete: () => {
+          transitionOverlay.destroy();
+        },
+      });
+    }
 
     // At 40% through animation, swap the zone for smooth visual transition
     this.time.delayedCall(duration * 0.4, () => {
@@ -1289,6 +1342,8 @@ export class WorldScene extends Phaser.Scene {
       } else if (this.currentZone === "arena") {
         this.arenaElements.forEach((el) => (el as any).setVisible(false));
         this.disconnectArenaWebSocket();
+      } else if (this.currentZone === "dungeon") {
+        this.dungeonElements.forEach((el) => (el as any).setVisible(false));
       }
 
       // Update zone and set up new content
@@ -1303,6 +1358,7 @@ export class WorldScene extends Phaser.Scene {
         ballers: "grass", // Ballers Valley has premium grass (luxury estate feel)
         founders: "founders_ground", // Founder's Corner has warm workshop flooring
         arena: "arena_floor", // MoltBook Arena has dark checkerboard floor
+        dungeon: "dungeon_ground", // BagsDungeon has dark cave stone floor
       };
       this.ground.setTexture(groundTextures[newZone]);
 
@@ -1471,6 +1527,28 @@ export class WorldScene extends Phaser.Scene {
           });
         }
       });
+    } else if (zone === "dungeon") {
+      this.setupDungeonZone();
+
+      // Dungeon elements drop in from above (vertical descent effect)
+      const verticalDist = Math.round(400 * SCALE);
+      const newElements = [...this.dungeonElements].filter(Boolean);
+
+      newElements.forEach((el) => {
+        if ((el as any).y !== undefined) {
+          const targetY = (el as any).y;
+          (el as any).y = targetY - verticalDist;
+          (el as any).alpha = 0;
+          this.tweens.add({
+            targets: el,
+            y: targetY,
+            alpha: 1,
+            duration: 600,
+            ease: "Cubic.easeOut",
+            delay: Math.random() * 150, // Stagger for dramatic effect
+          });
+        }
+      });
     } else {
       this.setupMainCityZone();
 
@@ -1530,6 +1608,9 @@ export class WorldScene extends Phaser.Scene {
       // Hide arena elements and disconnect WebSocket
       this.arenaElements.forEach((el) => (el as any).setVisible(false));
       this.disconnectArenaWebSocket();
+    } else if (this.currentZone === "dungeon") {
+      // Hide dungeon elements
+      this.dungeonElements.forEach((el) => (el as any).setVisible(false));
     } else if (this.currentZone === "main_city") {
       // Main city uses shared decorations, don't destroy them
       // Just hide them
@@ -1568,6 +1649,9 @@ export class WorldScene extends Phaser.Scene {
       case "arena":
         this.setupArenaZone();
         break;
+      case "dungeon":
+        this.setupDungeonZone();
+        break;
       case "main_city":
       default:
         this.setupMainCityZone();
@@ -1597,6 +1681,7 @@ export class WorldScene extends Phaser.Scene {
     this.labsElements.forEach((el) => (el as any).setVisible(false));
     this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
@@ -1632,6 +1717,7 @@ export class WorldScene extends Phaser.Scene {
     this.labsElements.forEach((el) => (el as any).setVisible(false));
     this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
@@ -1736,6 +1822,61 @@ export class WorldScene extends Phaser.Scene {
 
     // Add city street elements
     this.createCityStreetElements();
+
+    // === DUNGEON TUNNEL ENTRANCE (Mario pipe style) ===
+    const s = SCALE;
+    const tunnelX = Math.round(750 * s);
+    const tunnelY = Math.round(555 * s);
+
+    const tunnel = this.add.sprite(tunnelX, tunnelY, "dungeon_tunnel");
+    tunnel.setOrigin(0.5, 1);
+    tunnel.setDepth(5);
+    tunnel.setInteractive({ useHandCursor: true });
+    this.trendingElements.push(tunnel);
+
+    // Purple glow behind tunnel
+    const tunnelGlow = this.add.circle(tunnelX, tunnelY - Math.round(25 * s), Math.round(30 * s), 0x7c3aed, 0.1);
+    tunnelGlow.setDepth(4);
+    this.trendingElements.push(tunnelGlow);
+
+    // Pulsing glow effect
+    this.tweens.add({
+      targets: tunnelGlow,
+      alpha: { from: 0.06, to: 0.15 },
+      scale: { from: 1.0, to: 1.2 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Label text
+    const tunnelLabel = this.add.text(tunnelX, tunnelY + Math.round(5 * s), "DUNGEON", {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: `${Math.round(6 * s)}px`,
+      color: "#a855f7",
+      stroke: "#0a0a0f",
+      strokeThickness: Math.round(2 * s),
+      align: "center",
+    });
+    tunnelLabel.setOrigin(0.5, 0);
+    tunnelLabel.setDepth(11);
+    this.trendingElements.push(tunnelLabel);
+
+    // Pulsing label
+    this.tweens.add({
+      targets: tunnelLabel,
+      alpha: { from: 0.5, to: 1.0 },
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Click handler — enter dungeon zone with vertical descent
+    tunnel.on("pointerdown", () => {
+      window.dispatchEvent(new CustomEvent("bagsworld-zone-change", { detail: { zone: "dungeon" } }));
+      // Sync React store via custom event
+      window.dispatchEvent(new CustomEvent("bagsworld-phaser-zone-change", { detail: { zone: "dungeon" } }));
+    });
   }
 
   private createCityStreetElements(): void {
@@ -2378,6 +2519,7 @@ export class WorldScene extends Phaser.Scene {
     this.labsElements.forEach((el) => (el as any).setVisible(false));
     this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
@@ -2607,6 +2749,7 @@ export class WorldScene extends Phaser.Scene {
     this.labsElements.forEach((el) => (el as any).setVisible(false));
     this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
 
     // Restore normal sky (persistent layer)
@@ -3585,6 +3728,7 @@ export class WorldScene extends Phaser.Scene {
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
@@ -3885,6 +4029,7 @@ export class WorldScene extends Phaser.Scene {
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
     this.disconnectArenaWebSocket();
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
@@ -5183,6 +5328,12 @@ Use: bags.fm/[yourname]`,
       this.academyMoon.setVisible(false);
     }
     this.academyStars.forEach((star) => star.setVisible(false));
+
+    // Hide the dungeon cave sky
+    if (this.dungeonCaveSky) {
+      this.dungeonCaveSky.setVisible(false);
+    }
+    this.dungeonSkyElements.forEach((el) => (el as any).setVisible(false));
 
     // Show the main sky gradient
     if (this.skyGradient) {
@@ -8041,11 +8192,11 @@ Use: bags.fm/[yourname]`,
     });
 
     // Filter buildings by current zone
-    // Buildings with no zone appear in most zones, but NOT in arena (arena is just for fights)
+    // Buildings with no zone appear in most zones, but NOT in arena/dungeon (special zones)
     const zoneBuildings = buildings.filter((b) => {
-      // Arena zone has no token buildings - it's just for fights
-      if (this.currentZone === "arena") return false;
-      if (!b.zone) return true; // No zone = appears in all non-arena zones
+      // Arena and Dungeon zones have no token buildings
+      if (this.currentZone === "arena" || this.currentZone === "dungeon") return false;
+      if (!b.zone) return true; // No zone = appears in all non-special zones
       return b.zone === this.currentZone;
     });
 
@@ -10734,6 +10885,7 @@ Use: bags.fm/[yourname]`,
     this.ballersElements.forEach((el) => (el as any).setVisible(false));
     this.foundersElements.forEach((el) => (el as any).setVisible(false));
     this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;
@@ -13019,5 +13171,418 @@ Use: bags.fm/[yourname]`,
       },
       loop: true,
     });
+  }
+
+  // ============================================================
+  // BAGSDUNGEON ZONE — Dark cave dungeon with MMORPG entrance
+  // ============================================================
+
+  private setupDungeonZone(): void {
+    // Hide park decorations and animals
+    this.decorations.forEach((d) => d.setVisible(false));
+    this.animals.forEach((a) => a.sprite.setVisible(false));
+
+    if (this.fountainWater) {
+      this.fountainWater.setVisible(false);
+    }
+
+    // Hide all other zone elements
+    this.trendingElements.forEach((el) => (el as any).setVisible(false));
+    this.skylineSprites.forEach((s) => s.setVisible(false));
+    this.billboardTexts.forEach((t) => t.setVisible(false));
+    if (this.tickerText) this.tickerText.setVisible(false);
+    this.academyElements.forEach((el) => (el as any).setVisible(false));
+    this.academyBuildings.forEach((s) => s.setVisible(false));
+    this.ballersElements.forEach((el) => (el as any).setVisible(false));
+    this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
+    this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.disconnectArenaWebSocket();
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
+    }
+
+    // Create dungeon sky (very dark, eerie)
+    this.createDungeonSky();
+
+    // Swap ground texture
+    this.ground.setVisible(true);
+    this.ground.setTexture("dungeon_ground");
+
+    // Check if elements were destroyed during transitions
+    const elementsValid =
+      this.dungeonElements.length > 0 &&
+      this.dungeonElements.every((el) => (el as any).active !== false);
+
+    if (!elementsValid && this.dungeonZoneCreated) {
+      this.dungeonElements = [];
+      this.dungeonZoneCreated = false;
+    }
+
+    // Only create elements once, then just show them
+    if (!this.dungeonZoneCreated) {
+      this.createDungeonDecorations();
+      this.dungeonZoneCreated = true;
+    } else {
+      this.dungeonElements.forEach((el) => (el as any).setVisible(true));
+    }
+  }
+
+  private createDungeonSky(): void {
+    this.restoreNormalSky();
+
+    // Hide the normal sky — we're underground
+    if (this.skyGradient) {
+      this.skyGradient.setVisible(false);
+    }
+
+    const s = SCALE;
+    const skyH = Math.round(430 * s);
+
+    // === Cave ceiling gradient — deep dark stone ===
+    if (!this.dungeonCaveSky) {
+      this.dungeonCaveSky = this.add.graphics();
+      this.dungeonCaveSky.setDepth(-2);
+    }
+    this.dungeonCaveSky.clear();
+    // Very dark cave ceiling — near-black at top, dark slate at bottom
+    this.dungeonCaveSky.fillGradientStyle(0x060608, 0x080810, 0x12121e, 0x141422, 1);
+    this.dungeonCaveSky.fillRect(0, 0, GAME_WIDTH, skyH);
+    this.dungeonCaveSky.setVisible(true);
+
+    // Show sky elements if already created
+    if (this.dungeonSkyElements.length > 0) {
+      this.dungeonSkyElements.forEach((el) => (el as any).setVisible(true));
+      return;
+    }
+
+    const r = (n: number) => Math.round(n * s);
+
+    // === Stalactites — single Graphics for all static formations ===
+    const stalactiteGfx = this.add.graphics();
+    stalactiteGfx.setDepth(-1);
+
+    const stalactites = [
+      { x: 60, h: 45, w: 12 }, { x: 130, h: 65, w: 16 }, { x: 210, h: 35, w: 10 },
+      { x: 290, h: 55, w: 14 }, { x: 380, h: 40, w: 11 }, { x: 430, h: 70, w: 18 },
+      { x: 510, h: 50, w: 13 }, { x: 580, h: 38, w: 10 }, { x: 650, h: 60, w: 15 },
+      { x: 720, h: 45, w: 12 }, { x: 770, h: 55, w: 14 },
+    ];
+
+    stalactites.forEach((st) => {
+      const sx = r(st.x), sw = r(st.w), sh = r(st.h);
+      const midW = Math.round(sw * 0.6), tipW = Math.round(sw * 0.25);
+      stalactiteGfx.fillStyle(0x1e1e28);
+      stalactiteGfx.fillRect(sx - sw / 2, 0, sw, Math.round(sh * 0.6));
+      stalactiteGfx.fillStyle(0x1a1a24);
+      stalactiteGfx.fillRect(sx - midW / 2, Math.round(sh * 0.5), midW, Math.round(sh * 0.3));
+      stalactiteGfx.fillStyle(0x16161f);
+      stalactiteGfx.fillRect(sx - tipW / 2, Math.round(sh * 0.75), tipW, Math.round(sh * 0.25));
+      stalactiteGfx.fillStyle(0x2a2a36, 0.5);
+      stalactiteGfx.fillRect(sx - sw / 2, 0, r(2), Math.round(sh * 0.6));
+    });
+    this.dungeonSkyElements.push(stalactiteGfx);
+
+    // === Cave wall strips — single Graphics for both sides ===
+    const wallGfx = this.add.graphics();
+    wallGfx.setDepth(-1);
+    wallGfx.fillStyle(0x151520, 0.8);
+    wallGfx.fillRect(0, 0, r(25), skyH);
+    wallGfx.fillStyle(0x1a1a28, 0.6);
+    wallGfx.fillRect(r(25), 0, r(15), skyH);
+    wallGfx.fillStyle(0x111118, 0.8);
+    wallGfx.fillRect(GAME_WIDTH - r(25), 0, r(25), skyH);
+    wallGfx.fillStyle(0x161622, 0.6);
+    wallGfx.fillRect(GAME_WIDTH - r(40), 0, r(15), skyH);
+    this.dungeonSkyElements.push(wallGfx);
+
+    // === Glowing crystals — static shapes in single Graphics + animated glow circles ===
+    const crystalGfx = this.add.graphics();
+    crystalGfx.setDepth(-1);
+
+    const crystals = [
+      { x: 95, y: 60, color: 0x8b5cf6, sz: 6 }, { x: 340, y: 40, color: 0x06b6d4, sz: 8 },
+      { x: 480, y: 55, color: 0x8b5cf6, sz: 5 }, { x: 620, y: 35, color: 0x22d3ee, sz: 7 },
+      { x: 750, y: 50, color: 0xa855f7, sz: 6 }, { x: 170, y: 80, color: 0x06b6d4, sz: 4 },
+      { x: 555, y: 75, color: 0xa855f7, sz: 5 },
+    ];
+
+    crystals.forEach((cr, i) => {
+      const cx = r(cr.x), cy = r(cr.y), cs = r(cr.sz);
+      crystalGfx.fillStyle(cr.color, 0.8);
+      crystalGfx.fillRect(cx - cs / 2, cy - cs, cs, cs * 2);
+      crystalGfx.fillStyle(cr.color, 0.5);
+      crystalGfx.fillRect(cx - cs, cy - cs / 2, cs * 2, cs);
+
+      const glow = this.add.circle(cx, cy, r(15), cr.color, 0.04);
+      glow.setDepth(-1);
+      this.dungeonSkyElements.push(glow);
+      this.tweens.add({
+        targets: glow, alpha: { from: 0.02, to: 0.07 },
+        duration: 2500 + i * 400, yoyo: true, repeat: -1,
+      });
+    });
+    this.dungeonSkyElements.push(crystalGfx);
+
+    // === Distant wall torch lights — warm glow spots ===
+    [
+      { x: 40, y: 200 }, { x: 200, y: 180 }, { x: 400, y: 160 },
+      { x: 600, y: 175 }, { x: 760, y: 190 },
+    ].forEach((wl, i) => {
+      const light = this.add.circle(r(wl.x), r(wl.y), r(30), 0xff8c00, 0.03);
+      light.setDepth(-1);
+      this.dungeonSkyElements.push(light);
+      this.tweens.add({
+        targets: light, alpha: { from: 0.02, to: 0.05 },
+        duration: 1800 + i * 300, yoyo: true, repeat: -1,
+      });
+    });
+
+    // === Water drip particles ===
+    for (let i = 0; i < 5; i++) {
+      const startY = r(30 + Math.random() * 60);
+      const drip = this.add.circle(r(100 + Math.random() * 600), startY, r(1.5), 0x4488cc, 0.4);
+      drip.setDepth(-1);
+      this.dungeonSkyElements.push(drip);
+      this.tweens.add({
+        targets: drip, y: startY + r(80), alpha: 0,
+        duration: 2000 + Math.random() * 2000, repeat: -1, delay: i * 800,
+        onRepeat: () => {
+          drip.setPosition(r(100 + Math.random() * 600), startY);
+          drip.setAlpha(0.4);
+        },
+      });
+    }
+  }
+
+  private createDungeonDecorations(): void {
+    const s = SCALE;
+    const r = (n: number) => Math.round(n * s);
+    const grassTop = r(455);
+    const pathLevel = r(555);
+    const centerX = GAME_WIDTH / 2;
+
+    // === CAVE WALL FORMATIONS — single Graphics for all stalagmites ===
+    const stalagGfx = this.add.graphics();
+    stalagGfx.setDepth(2);
+    const baseY = grassTop + r(30);
+
+    [
+      { x: 30, h: 50, w: 18 }, { x: 75, h: 35, w: 12 }, { x: 120, h: 42, w: 14 },
+      { x: 690, h: 48, w: 16 }, { x: 740, h: 30, w: 11 }, { x: 785, h: 55, w: 19 },
+    ].forEach((st) => {
+      const sx = r(st.x), sw = r(st.w), sh = r(st.h);
+      const midW = Math.round(sw * 0.6), tipW = Math.round(sw * 0.3);
+      stalagGfx.fillStyle(0x222230);
+      stalagGfx.fillRect(sx - sw / 2, baseY - Math.round(sh * 0.6), sw, Math.round(sh * 0.6));
+      stalagGfx.fillStyle(0x1e1e2a);
+      stalagGfx.fillRect(sx - midW / 2, baseY - sh, midW, Math.round(sh * 0.5));
+      stalagGfx.fillStyle(0x1a1a26);
+      stalagGfx.fillRect(sx - tipW / 2, baseY - sh - r(8), tipW, r(12));
+      stalagGfx.fillStyle(0x2e2e3c, 0.5);
+      stalagGfx.fillRect(sx - sw / 2, baseY - Math.round(sh * 0.6), r(2), Math.round(sh * 0.5));
+    });
+    this.dungeonElements.push(stalagGfx);
+
+    // === STONE PILLARS (depth 3) ===
+    [
+      { x: 195, cracked: false }, { x: 280, cracked: true },
+      { x: 520, cracked: true }, { x: 610, cracked: false },
+    ].forEach((pos) => {
+      const pillar = this.add.sprite(r(pos.x), pathLevel - r(5), "dungeon_pillar");
+      pillar.setOrigin(0.5, 1).setDepth(3);
+      if (pos.cracked) pillar.setAlpha(0.7);
+      this.dungeonElements.push(pillar);
+    });
+
+    // === WALL TORCHES (depth 4) — flicker only, no bounce ===
+    [
+      { x: 200, y: 480 }, { x: 285, y: 485 }, { x: 370, y: 475 },
+      { x: 440, y: 478 }, { x: 520, y: 485 }, { x: 605, y: 480 },
+    ].forEach((pos, i) => {
+      const torch = this.add.sprite(r(pos.x), r(pos.y), "dungeon_torch");
+      torch.setOrigin(0.5, 1).setDepth(4);
+      this.dungeonElements.push(torch);
+
+      this.tweens.add({
+        targets: torch, alpha: { from: 0.75, to: 1.0 },
+        duration: 300 + Math.random() * 400, yoyo: true, repeat: -1, delay: i * 100,
+      });
+
+      const glow = this.add.circle(r(pos.x), r(pos.y + 20), r(28), 0xff8c00, 0.05);
+      glow.setDepth(1);
+      this.dungeonElements.push(glow);
+
+      this.tweens.add({
+        targets: glow, alpha: { from: 0.03, to: 0.07 },
+        duration: 400 + Math.random() * 300, yoyo: true, repeat: -1, delay: i * 120,
+      });
+    });
+
+    // === GLOWING FLOOR CRYSTALS — single Graphics + animated glow circles ===
+    const crystalGfx = this.add.graphics();
+    crystalGfx.setDepth(2);
+
+    [
+      { x: 155, y: 545, color: 0x8b5cf6, sz: 5 }, { x: 330, y: 552, color: 0x06b6d4, sz: 4 },
+      { x: 475, y: 548, color: 0xa855f7, sz: 6 }, { x: 640, y: 550, color: 0x22d3ee, sz: 4 },
+      { x: 250, y: 555, color: 0x7c3aed, sz: 3 }, { x: 560, y: 553, color: 0x0891b2, sz: 5 },
+    ].forEach((cr, i) => {
+      const cx = r(cr.x), cy = r(cr.y), cs = r(cr.sz);
+      crystalGfx.fillStyle(cr.color, 0.8);
+      crystalGfx.fillRect(cx - Math.round(cs * 0.3), cy - cs * 2, Math.round(cs * 0.6), cs * 2);
+      crystalGfx.fillStyle(cr.color, 0.5);
+      crystalGfx.fillRect(cx - Math.round(cs * 0.15), cy - cs * 2.5, Math.round(cs * 0.3), Math.round(cs * 0.7));
+
+      const glow = this.add.circle(cx, cy - cs, r(12), cr.color, 0.04);
+      glow.setDepth(1);
+      this.dungeonElements.push(glow);
+      this.tweens.add({
+        targets: glow, alpha: { from: 0.02, to: 0.06 },
+        duration: 2000 + i * 300, yoyo: true, repeat: -1,
+      });
+    });
+    this.dungeonElements.push(crystalGfx);
+
+    // === SKULL PROPS (depth 2) ===
+    [
+      { x: 230, y: 555 }, { x: 390, y: 558 }, { x: 500, y: 550 },
+      { x: 170, y: 548 }, { x: 650, y: 553 },
+    ].forEach((pos) => {
+      const skull = this.add.sprite(r(pos.x), r(pos.y), "dungeon_skull");
+      skull.setOrigin(0.5, 1).setDepth(2).setAlpha(0.6);
+      this.dungeonElements.push(skull);
+    });
+
+    // === HANGING BANNERS (depth 3) ===
+    [{ x: 260, y: 455 }, { x: 545, y: 458 }].forEach((pos, i) => {
+      const banner = this.add.sprite(r(pos.x), r(pos.y), "dungeon_banner");
+      banner.setOrigin(0.5, 0).setDepth(3);
+      this.dungeonElements.push(banner);
+      this.tweens.add({
+        targets: banner, angle: { from: -1.5, to: 1.5 },
+        duration: 3000 + i * 500, yoyo: true, repeat: -1,
+      });
+    });
+
+    // === DUNGEON ENTRANCE (depth 5) — center portal ===
+    const entrance = this.add.sprite(centerX, pathLevel - r(5), "dungeon_entrance");
+    entrance.setOrigin(0.5, 1).setDepth(5);
+    this.dungeonElements.push(entrance);
+
+    const entranceGlow = this.add.sprite(centerX, pathLevel - r(25), "dungeon_glow");
+    entranceGlow.setOrigin(0.5, 1).setDepth(6).setAlpha(0.5);
+    this.dungeonElements.push(entranceGlow);
+    this.tweens.add({
+      targets: entranceGlow, alpha: { from: 0.3, to: 0.7 },
+      duration: 2000, yoyo: true, repeat: -1,
+    });
+
+    const gate = this.add.sprite(centerX, pathLevel - r(145), "dungeon_gate");
+    gate.setOrigin(0.5, 0).setDepth(6).setAlpha(0.6);
+    this.dungeonElements.push(gate);
+
+    // "ENTER DUNGEON" text
+    const enterText = this.add.text(centerX, pathLevel + r(15), "[ ENTER DUNGEON ]", {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: `${r(10)}px`,
+      color: "#a855f7",
+      stroke: "#1a1a2e",
+      strokeThickness: r(3),
+      align: "center",
+    });
+    enterText.setOrigin(0.5, 0).setDepth(11);
+    this.dungeonElements.push(enterText);
+    this.tweens.add({
+      targets: enterText, alpha: { from: 0.6, to: 1.0 },
+      duration: 1200, yoyo: true, repeat: -1,
+    });
+
+    // Interactive — single handler for both entrance and text
+    const openDungeon = () => window.dispatchEvent(new CustomEvent("bagsworld-open-dungeon"));
+    entrance.setInteractive({ useHandCursor: true }).on("pointerdown", openDungeon);
+    enterText.setInteractive({ useHandCursor: true }).on("pointerdown", openDungeon);
+
+    // === DUST MOTES (depth 8) ===
+    for (let i = 0; i < 15; i++) {
+      const isEmber = i % 5 === 0;
+      const alpha = isEmber ? 0.4 : 0.15;
+      const px = r(100 + Math.random() * 600);
+      const py = r(420 + Math.random() * 130);
+      const mote = this.add.circle(
+        px, py, r(0.8 + Math.random() * 0.8),
+        isEmber ? 0xff6600 : 0x888899, alpha
+      );
+      mote.setDepth(8);
+      this.dungeonElements.push(mote);
+      this.tweens.add({
+        targets: mote,
+        y: py - r(20 + Math.random() * 40),
+        x: px + r(-15 + Math.random() * 30),
+        alpha: 0, duration: 5000 + Math.random() * 5000,
+        repeat: -1, delay: i * 500,
+        onRepeat: () => {
+          mote.setPosition(r(100 + Math.random() * 600), r(420 + Math.random() * 130));
+          mote.setAlpha(alpha);
+        },
+      });
+    }
+
+    // === GROUND FOG (depth 1) ===
+    for (let i = 0; i < 8; i++) {
+      const fogX = r(60 + i * 95);
+      const fog = this.add.rectangle(
+        fogX, pathLevel + r(3), r(60 + Math.random() * 50), r(6), 0x2a2a3a, 0.12
+      );
+      fog.setDepth(1);
+      this.dungeonElements.push(fog);
+      this.tweens.add({
+        targets: fog, x: fogX + r(25), alpha: { from: 0.06, to: 0.15 },
+        duration: 5000 + Math.random() * 3000, yoyo: true, repeat: -1, delay: i * 400,
+      });
+    }
+
+    // === MOSS + ROCKS — single Graphics for static ground details ===
+    const groundGfx = this.add.graphics();
+    groundGfx.setDepth(1);
+    // Moss patches
+    for (const m of [
+      { x: 160, y: 555, w: 20, h: 4 }, { x: 350, y: 558, w: 15, h: 3 },
+      { x: 550, y: 556, w: 18, h: 4 }, { x: 700, y: 554, w: 12, h: 3 },
+    ]) {
+      groundGfx.fillStyle(0x1a3a1a, 0.4);
+      groundGfx.fillRect(r(m.x) - r(m.w) / 2, r(m.y) - r(m.h), r(m.w), r(m.h));
+    }
+    this.dungeonElements.push(groundGfx);
+
+    // Rocks with highlight — single Graphics at depth 2
+    const rockGfx = this.add.graphics();
+    rockGfx.setDepth(2);
+    for (const p of [
+      { x: 140, y: 555, w: 14, h: 7 }, { x: 310, y: 558, w: 10, h: 5 },
+      { x: 460, y: 554, w: 12, h: 6 }, { x: 590, y: 557, w: 11, h: 6 },
+      { x: 680, y: 553, w: 13, h: 7 },
+    ]) {
+      rockGfx.fillStyle(0x28283a);
+      rockGfx.fillRect(r(p.x) - r(p.w) / 2, r(p.y) - r(p.h), r(p.w), r(p.h));
+      rockGfx.fillStyle(0x38384a, 0.4);
+      rockGfx.fillRect(r(p.x) - r(p.w) / 2, r(p.y) - r(p.h), r(2), Math.round(r(p.h) * 0.5));
+    }
+    this.dungeonElements.push(rockGfx);
+
+    // === COBWEBS — single Graphics for both corners ===
+    const webGfx = this.add.graphics();
+    webGfx.setDepth(3).setAlpha(0.15);
+    webGfx.lineStyle(r(1), 0x888888);
+    for (const wb of [{ x: 50, y: 430 }, { x: 760, y: 435 }]) {
+      const wx = r(wb.x), wy = r(wb.y), ws = r(35);
+      for (let a = 0; a < 5; a++) {
+        const angle = (a / 5) * Math.PI * 0.5;
+        webGfx.lineBetween(wx, wy, wx + Math.cos(angle) * ws, wy + Math.sin(angle) * ws);
+      }
+    }
+    this.dungeonElements.push(webGfx);
   }
 }
