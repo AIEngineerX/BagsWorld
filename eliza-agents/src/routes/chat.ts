@@ -75,7 +75,7 @@ router.get('/agents/:agentId', (req: Request, res: Response) => {
 // POST /api/agents/:agentId/chat - Chat with agent
 router.post('/agents/:agentId/chat', async (req: Request, res: Response) => {
   const agentId = req.params.agentId as string;
-  const { message, sessionId: providedSessionId, worldState: clientWorldState, chatHistory: clientChatHistory } = req.body;
+  const { message, sessionId: providedSessionId, worldState: clientWorldState } = req.body;
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     res.status(400).json({ error: 'message is required and must be a non-empty string' });
