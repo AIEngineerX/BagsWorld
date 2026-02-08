@@ -8770,6 +8770,22 @@ export class BootScene extends Phaser.Scene {
     sparkle.fillRect(3, 3, 2, 2);
     sparkle.generateTexture("sparkle", 8, 8);
     sparkle.destroy();
+
+    // White smoke cloud particle for incinerator chimney
+    const smokeG = this.make.graphics({ x: 0, y: 0 });
+    // Soft outer haze
+    smokeG.fillStyle(0xcccccc, 0.15);
+    smokeG.fillCircle(16, 16, 16);
+    // Cloud body
+    smokeG.fillStyle(0xdddddd, 0.3);
+    smokeG.fillCircle(16, 16, 11);
+    smokeG.fillCircle(12, 15, 8);
+    smokeG.fillCircle(20, 15, 8);
+    // Bright core
+    smokeG.fillStyle(0xffffff, 0.35);
+    smokeG.fillCircle(15, 14, 6);
+    smokeG.generateTexture("green_smoke", 32, 32);
+    smokeG.destroy();
   }
 
   private generateLaunchPadAssets(): void {
@@ -14066,9 +14082,19 @@ export class BootScene extends Phaser.Scene {
 
     // Roof machinery blocks
     g.fillStyle(medGreen);
-    g.fillRect(roofX2 + Math.round(4 * s), baseY - Math.round(20 * s), Math.round(14 * s), Math.round(6 * s));
+    g.fillRect(
+      roofX2 + Math.round(4 * s),
+      baseY - Math.round(20 * s),
+      Math.round(14 * s),
+      Math.round(6 * s)
+    );
     g.fillStyle(darkGreen);
-    g.fillRect(roofX2 + roofW2 - Math.round(18 * s), baseY - Math.round(18 * s), Math.round(12 * s), Math.round(4 * s));
+    g.fillRect(
+      roofX2 + roofW2 - Math.round(18 * s),
+      baseY - Math.round(18 * s),
+      Math.round(12 * s),
+      Math.round(4 * s)
+    );
 
     // === SINGLE LARGE CENTERED SMOKESTACK ===
     const stackW = Math.round(18 * s);
@@ -14093,19 +14119,9 @@ export class BootScene extends Phaser.Scene {
     // Wide flared cap
     const capW = stackW + Math.round(10 * s);
     g.fillStyle(darkGreen);
-    g.fillRect(
-      stackX - Math.round(5 * s),
-      stackY - Math.round(6 * s),
-      capW,
-      Math.round(7 * s)
-    );
+    g.fillRect(stackX - Math.round(5 * s), stackY - Math.round(6 * s), capW, Math.round(7 * s));
     g.fillStyle(brightGreen);
-    g.fillRect(
-      stackX - Math.round(5 * s),
-      stackY - Math.round(6 * s),
-      capW,
-      Math.round(2 * s)
-    );
+    g.fillRect(stackX - Math.round(5 * s), stackY - Math.round(6 * s), capW, Math.round(2 * s));
 
     // === GREEN SMOKE PUFFS from stack ===
     // Puff layer 1 (closest to stack)
@@ -14237,7 +14253,12 @@ export class BootScene extends Phaser.Scene {
     );
     // Pipe extending up to roof
     g.fillStyle(medGreen);
-    g.fillRect(pipeX + Math.round(1 * s), baseY - Math.round(8 * s), Math.round(4 * s), Math.round(28 * s));
+    g.fillRect(
+      pipeX + Math.round(1 * s),
+      baseY - Math.round(8 * s),
+      Math.round(4 * s),
+      Math.round(28 * s)
+    );
 
     // === LADDER on right side ===
     const ladderX = baseX + bWidth - Math.round(2 * s);
@@ -14316,16 +14337,56 @@ export class BootScene extends Phaser.Scene {
 
     // === DEBRIS / RUBBLE at base ===
     g.fillStyle(medGreen);
-    g.fillRect(baseX - Math.round(6 * s), canvasH - Math.round(6 * s), Math.round(4 * s), Math.round(3 * s));
-    g.fillRect(baseX - Math.round(2 * s), canvasH - Math.round(4 * s), Math.round(3 * s), Math.round(2 * s));
-    g.fillRect(baseX + bWidth + Math.round(4 * s), canvasH - Math.round(5 * s), Math.round(5 * s), Math.round(3 * s));
-    g.fillRect(baseX + bWidth + Math.round(10 * s), canvasH - Math.round(4 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(
+      baseX - Math.round(6 * s),
+      canvasH - Math.round(6 * s),
+      Math.round(4 * s),
+      Math.round(3 * s)
+    );
+    g.fillRect(
+      baseX - Math.round(2 * s),
+      canvasH - Math.round(4 * s),
+      Math.round(3 * s),
+      Math.round(2 * s)
+    );
+    g.fillRect(
+      baseX + bWidth + Math.round(4 * s),
+      canvasH - Math.round(5 * s),
+      Math.round(5 * s),
+      Math.round(3 * s)
+    );
+    g.fillRect(
+      baseX + bWidth + Math.round(10 * s),
+      canvasH - Math.round(4 * s),
+      Math.round(3 * s),
+      Math.round(2 * s)
+    );
     g.fillStyle(darkGreen);
-    g.fillRect(baseX + Math.round(2 * s), canvasH - Math.round(3 * s), Math.round(3 * s), Math.round(2 * s));
-    g.fillRect(baseX + bWidth - Math.round(4 * s), canvasH - Math.round(3 * s), Math.round(4 * s), Math.round(2 * s));
+    g.fillRect(
+      baseX + Math.round(2 * s),
+      canvasH - Math.round(3 * s),
+      Math.round(3 * s),
+      Math.round(2 * s)
+    );
+    g.fillRect(
+      baseX + bWidth - Math.round(4 * s),
+      canvasH - Math.round(3 * s),
+      Math.round(4 * s),
+      Math.round(2 * s)
+    );
     g.fillStyle(neonGreen);
-    g.fillRect(baseX - Math.round(8 * s), canvasH - Math.round(3 * s), Math.round(2 * s), Math.round(2 * s));
-    g.fillRect(baseX + bWidth + Math.round(14 * s), canvasH - Math.round(3 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(
+      baseX - Math.round(8 * s),
+      canvasH - Math.round(3 * s),
+      Math.round(2 * s),
+      Math.round(2 * s)
+    );
+    g.fillRect(
+      baseX + bWidth + Math.round(14 * s),
+      canvasH - Math.round(3 * s),
+      Math.round(2 * s),
+      Math.round(2 * s)
+    );
 
     g.generateTexture("founders_3", canvasW, canvasH);
     g.destroy();
