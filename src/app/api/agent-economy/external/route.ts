@@ -22,6 +22,7 @@ import {
   unregisterExternalAgent,
   getExternalAgent,
   listExternalAgents,
+  touchExternalAgent,
 } from "@/lib/agent-economy/external-registry";
 import {
   launchForExternal,
@@ -1039,6 +1040,9 @@ export async function POST(request: NextRequest) {
     const isLobster = !!resolvedMoltbookUsername;
     const creatureType = isLobster ? "lobster 🦞" : "crab 🦀";
 
+    // Touch agent activity timestamp (fire-and-forget)
+    touchExternalAgent(resolvedWallet);
+
     return NextResponse.json({
       success: true,
       message: `Welcome to BagsWorld! You're now a ${creatureType} on MoltBeach!`,
@@ -1477,6 +1481,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Touch agent activity timestamp (fire-and-forget)
+      if (wallet) touchExternalAgent(wallet);
+
       // Get updated rate limits for response (use wallet or empty for moltbook-only)
       const rateLimitWallet = wallet || "";
       const updatedRateLimits = getRateLimitStatus(rateLimitWallet || undefined);
@@ -1583,6 +1590,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Touch agent activity timestamp (fire-and-forget)
+    touchExternalAgent(resolvedWallet);
+
     const { positions, totalClaimableLamports } = await getClaimableForWallet(resolvedWallet);
     const totalClaimableSol = totalClaimableLamports / 1_000_000_000;
 
@@ -1640,6 +1650,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Touch agent activity timestamp (fire-and-forget)
+    touchExternalAgent(resolvedWallet);
 
     const result = await generateClaimTxForWallet(resolvedWallet);
 

@@ -267,6 +267,8 @@ export interface GameBuilding {
   mansionScale?: number; // Scale multiplier for mansion display (1.5 for #1, 1.3 for #2-3, etc.)
   // Beach theme (Moltbook Beach)
   isBeachTheme?: boolean; // True for beach-themed buildings in moltbook zone
+  // Agent building activity tracking
+  lastActiveAt?: string; // ISO timestamp of last agent activity (for agent buildings only)
 }
 
 export type GameEventType =
