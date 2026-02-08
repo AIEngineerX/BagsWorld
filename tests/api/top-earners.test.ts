@@ -1,5 +1,5 @@
 // Tests for src/app/api/agent-economy/top-earners/route.ts
-// Tests the top fee earners endpoint using individual wallet lookups + lifetime fees
+// Tests the top earners endpoint using bulk wallet lookup + claimable positions
 
 // Track all NextResponse.json() calls for assertions
 const jsonResponses: Array<{ body: unknown; status: number }> = [];
@@ -28,18 +28,21 @@ jest.mock("@/lib/bags-api", () => ({
 // Mock neon helper
 jest.mock("@/lib/neon", () => ({
   isNeonConfigured: jest.fn(),
-  getTokensByCreator: jest.fn().mockResolvedValue([]),
 }));
 
-// Mock moltbook client (feed discovery returns empty by default — hardcoded agents still work)
+// Mock moltbook client (feed discovery) — return null initially, configure in beforeEach
 jest.mock("@/lib/moltbook-client", () => ({
   getMoltbookOrNull: jest.fn().mockReturnValue(null),
 }));
 
 import { GET } from "@/app/api/agent-economy/top-earners/route";
 import { initBagsApi } from "@/lib/bags-api";
-import { isNeonConfigured, getTokensByCreator } from "@/lib/neon";
+import { isNeonConfigured } from "@/lib/neon";
 import { neon } from "@neondatabase/serverless";
+import { getMoltbookOrNull } from "@/lib/moltbook-client";
+
+// Feed mock — configured in beforeEach after jest.mock hoisting
+const mockGetFeed = jest.fn().mockResolvedValue([]);
 
 // Helper to create a mock Request
 function makeRequest(params?: Record<string, string>) {
@@ -67,25 +70,13 @@ function mockPosition(baseMint: string, lamports: number, symbol = "???", name =
   };
 }
 
-// Helper: mock getWalletByUsername to resolve specific usernames to wallets
-function mockWalletLookup(
-  mock: jest.Mock,
-  mapping: Record<string, { wallet: string; displayName?: string; avatarUrl?: string }>
-) {
-  mock.mockImplementation((_provider: string, username: string) => {
-    const entry = mapping[username];
-    if (entry) {
-      return Promise.resolve({
-        wallet: entry.wallet,
-        platformData: {
-          id: username,
-          username,
-          displayName: entry.displayName || username,
-          avatarUrl: entry.avatarUrl,
-        },
-      });
+// Helper: set up feed to return specific agent names
+function mockFeedAgents(agents: string[]) {
+  mockGetFeed.mockImplementation((sort: string) => {
+    if (sort === "hot") {
+      return Promise.resolve(agents.map((a) => ({ author: a, id: a })));
     }
-    return Promise.reject(new Error(`User ${username} not found`));
+    return Promise.resolve([]);
   });
 }
 
@@ -99,9 +90,8 @@ function lastResponse(): { body: Record<string, unknown>; status: number } {
 
 describe("GET /api/agent-economy/top-earners", () => {
   let mockApi: {
-    getWalletByUsername: jest.Mock;
+    bulkWalletLookup: jest.Mock;
     getClaimablePositions: jest.Mock;
-    getTokenLifetimeFees: jest.Mock;
   };
 
   beforeEach(() => {
@@ -109,14 +99,14 @@ describe("GET /api/agent-economy/top-earners", () => {
     jsonResponses.length = 0;
 
     mockApi = {
-      getWalletByUsername: jest.fn().mockRejectedValue(new Error("Not found")),
+      bulkWalletLookup: jest.fn().mockResolvedValue([]),
       getClaimablePositions: jest.fn().mockResolvedValue([]),
-      getTokenLifetimeFees: jest.fn().mockResolvedValue(0),
     };
 
     (initBagsApi as jest.Mock).mockReturnValue(mockApi);
     (isNeonConfigured as jest.Mock).mockReturnValue(false);
-    (getTokensByCreator as jest.Mock).mockResolvedValue([]);
+    mockGetFeed.mockReset().mockResolvedValue([]);
+    (getMoltbookOrNull as jest.Mock).mockReturnValue({ getFeed: mockGetFeed });
 
     process.env.BAGS_API_KEY = "test-api-key";
   });
@@ -136,8 +126,7 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(body.error).toContain("BAGS_API_KEY");
   });
 
-  it("returns empty earners when no agents resolve to wallets", async () => {
-    // Default mock rejects all lookups
+  it("returns empty earners when no agents discovered from feed", async () => {
     await GET(makeRequest({ nocache: "" }));
     const { body } = lastResponse();
 
@@ -145,19 +134,23 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(body.topEarners).toEqual([]);
   });
 
-  it("returns earners sorted by total lifetime fees", async () => {
-    mockWalletLookup(mockApi.getWalletByUsername, {
-      Bagsy: {
+  it("returns earners sorted by total unclaimed fees", async () => {
+    mockFeedAgents(["Bagsy", "ChadGhost"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
         wallet: "BagsyWallet111111111111111111111111111111",
-        displayName: "Bagsy",
-        avatarUrl: "https://example.com/bagsy.png",
+        provider: "moltbook",
+        username: "Bagsy",
+        platformData: { displayName: "Bagsy", avatarUrl: "https://example.com/bagsy.png" },
       },
-      ChadGhost: {
+      {
         wallet: "ChadGhostWallet1111111111111111111111111",
-        displayName: "ChadGhost",
-        avatarUrl: "https://example.com/chad.png",
+        provider: "moltbook",
+        username: "ChadGhost",
+        platformData: { displayName: "ChadGhost", avatarUrl: "https://example.com/chad.png" },
       },
-    });
+    ]);
 
     mockApi.getClaimablePositions.mockImplementation((wallet: string) => {
       if (wallet.startsWith("Bagsy")) {
@@ -172,13 +165,6 @@ describe("GET /api/agent-economy/top-earners", () => {
       return Promise.resolve([]);
     });
 
-    mockApi.getTokenLifetimeFees.mockImplementation((mint: string) => {
-      if (mint === "TokenA111") return Promise.resolve(2_000_000_000);
-      if (mint === "TokenB111") return Promise.resolve(3_000_000_000);
-      if (mint === "TokenC111") return Promise.resolve(2_000_000_000);
-      return Promise.resolve(0);
-    });
-
     await GET(makeRequest({ nocache: "" }));
     const { body } = lastResponse();
     const earners = body.topEarners as Array<Record<string, unknown>>;
@@ -188,27 +174,32 @@ describe("GET /api/agent-economy/top-earners", () => {
 
     // ChadGhost should be first (5 SOL > 2 SOL)
     expect(earners[0].username).toBe("ChadGhost");
-    expect(earners[0].totalLifetimeFeeSol).toBeCloseTo(5.0);
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(5.0);
     expect(earners[0].tokenCount).toBe(2);
     expect(earners[0].profilePic).toBe("https://example.com/chad.png");
 
     // Bagsy second
     expect(earners[1].username).toBe("Bagsy");
-    expect(earners[1].totalLifetimeFeeSol).toBeCloseTo(2.0);
+    expect(earners[1].totalUnclaimedSol).toBeCloseTo(2.0);
     expect(earners[1].tokenCount).toBe(1);
   });
 
   it("correctly converts lamports to SOL (divide by 1,000,000,000)", async () => {
-    mockWalletLookup(mockApi.getWalletByUsername, {
-      Bagsy: { wallet: "TestWallet111111111111111111111111111111111", displayName: "Bagsy" },
-    });
+    mockFeedAgents(["Bagsy"]);
 
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "TestWallet111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+        platformData: { displayName: "Bagsy" },
+      },
+    ]);
+
+    // 19660432383 lamports = ~19.66 SOL
     mockApi.getClaimablePositions.mockResolvedValue([
       mockPosition("ExampleMint111", 19660432383, "TEST", "Test Token"),
     ]);
-
-    // 19660432383 lamports = ~19.66 SOL (from the Bags API docs screenshot)
-    mockApi.getTokenLifetimeFees.mockResolvedValue(19660432383);
 
     await GET(makeRequest({ nocache: "" }));
     const { body } = lastResponse();
@@ -216,28 +207,33 @@ describe("GET /api/agent-economy/top-earners", () => {
 
     expect(body.success).toBe(true);
     expect(earners).toHaveLength(1);
-    expect(earners[0].totalLifetimeFeeSol).toBeCloseTo(19.660432383);
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(19.660432383);
 
     const tokens = earners[0].tokens as Array<Record<string, unknown>>;
-    expect(tokens[0].lifetimeFeeSol).toBeCloseTo(19.660432383);
+    expect(tokens[0].unclaimedSol).toBeCloseTo(19.660432383);
   });
 
-  it("skips agents with zero lifetime fees", async () => {
-    mockWalletLookup(mockApi.getWalletByUsername, {
-      Bagsy: { wallet: "Wallet1111111111111111111111111111111111111" },
-      ChadGhost: { wallet: "Wallet2222222222222222222222222222222222222" },
-    });
+  it("skips agents with zero claimable fees", async () => {
+    mockFeedAgents(["Bagsy", "ChadGhost"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "Wallet1111111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+      },
+      {
+        wallet: "Wallet2222222222222222222222222222222222222",
+        provider: "moltbook",
+        username: "ChadGhost",
+      },
+    ]);
 
     mockApi.getClaimablePositions.mockImplementation((wallet: string) => {
       if (wallet.startsWith("Wallet1")) {
         return Promise.resolve([mockPosition("TokenA111", 1_000_000_000, "TOKA", "Token A")]);
       }
       return Promise.resolve([mockPosition("TokenB111", 0, "TOKB", "Token B")]);
-    });
-
-    mockApi.getTokenLifetimeFees.mockImplementation((mint: string) => {
-      if (mint === "TokenA111") return Promise.resolve(1_000_000_000);
-      return Promise.resolve(0);
     });
 
     await GET(makeRequest({ nocache: "" }));
@@ -249,11 +245,21 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(earners[0].username).toBe("Bagsy");
   });
 
-  it("skips agents whose token discovery fails", async () => {
-    mockWalletLookup(mockApi.getWalletByUsername, {
-      Bagsy: { wallet: "Wallet1111111111111111111111111111111111111" },
-      ChadGhost: { wallet: "Wallet2222222222222222222222222222222222222" },
-    });
+  it("skips agents whose claimable lookup fails", async () => {
+    mockFeedAgents(["Bagsy", "ChadGhost"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "Wallet1111111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+      },
+      {
+        wallet: "Wallet2222222222222222222222222222222222222",
+        provider: "moltbook",
+        username: "ChadGhost",
+      },
+    ]);
 
     mockApi.getClaimablePositions.mockImplementation((wallet: string) => {
       if (wallet.startsWith("Wallet1")) {
@@ -261,8 +267,6 @@ describe("GET /api/agent-economy/top-earners", () => {
       }
       return Promise.reject(new Error("Rate limited"));
     });
-
-    mockApi.getTokenLifetimeFees.mockResolvedValue(5_000_000_000);
 
     await GET(makeRequest({ nocache: "" }));
     const { body } = lastResponse();
@@ -274,16 +278,24 @@ describe("GET /api/agent-economy/top-earners", () => {
   });
 
   it("returns at most 10 earners", async () => {
-    mockWalletLookup(mockApi.getWalletByUsername, {
-      Bagsy: { wallet: "Wallet0111111111111111111111111111111111" },
-      ChadGhost: { wallet: "Wallet1111111111111111111111111111111111" },
-    });
+    mockFeedAgents(["Agent1", "Agent2"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "Wallet0111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Agent1",
+      },
+      {
+        wallet: "Wallet1111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Agent2",
+      },
+    ]);
 
     mockApi.getClaimablePositions.mockResolvedValue([
       mockPosition("Token111", 1_000_000_000, "TOK", "Token"),
     ]);
-
-    mockApi.getTokenLifetimeFees.mockResolvedValue(1_000_000_000);
 
     await GET(makeRequest({ nocache: "" }));
     const { body } = lastResponse();
@@ -293,23 +305,22 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(earners.length).toBeLessThanOrEqual(10);
   });
 
-  it("sorts tokens within each earner by lifetime fees descending", async () => {
-    mockWalletLookup(mockApi.getWalletByUsername, {
-      Bagsy: { wallet: "Wallet1111111111111111111111111111111111111" },
-    });
+  it("sorts tokens within each earner by unclaimed fees descending", async () => {
+    mockFeedAgents(["Bagsy"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "Wallet1111111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+      },
+    ]);
 
     mockApi.getClaimablePositions.mockResolvedValue([
       mockPosition("SmallToken", 500_000_000, "SMALL", "Small Token"),
       mockPosition("BigToken11", 5_000_000_000, "BIG", "Big Token"),
       mockPosition("MedToken11", 2_000_000_000, "MED", "Med Token"),
     ]);
-
-    mockApi.getTokenLifetimeFees.mockImplementation((mint: string) => {
-      if (mint === "SmallToken") return Promise.resolve(500_000_000);
-      if (mint === "BigToken11") return Promise.resolve(5_000_000_000);
-      if (mint === "MedToken11") return Promise.resolve(2_000_000_000);
-      return Promise.resolve(0);
-    });
 
     await GET(makeRequest({ nocache: "" }));
     const { body } = lastResponse();
@@ -331,17 +342,30 @@ describe("GET /api/agent-economy/top-earners", () => {
       .mockResolvedValue([{ name: "ExternalBot", moltbook_username: "ExternalBot" }]);
     (neon as unknown as jest.Mock).mockReturnValue(mockSql);
 
-    mockWalletLookup(mockApi.getWalletByUsername, {
-      Bagsy: { wallet: "BagsyWallet11111111111111111111111111111111" },
-      ChadGhost: { wallet: "ChadWallet111111111111111111111111111111111" },
-      ExternalBot: { wallet: "ExtWallet1111111111111111111111111111111111" },
-    });
+    // Feed returns Bagsy + ChadGhost, DB adds ExternalBot
+    mockFeedAgents(["Bagsy", "ChadGhost"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "BagsyWallet11111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+      },
+      {
+        wallet: "ChadWallet111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "ChadGhost",
+      },
+      {
+        wallet: "ExtWallet1111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "ExternalBot",
+      },
+    ]);
 
     mockApi.getClaimablePositions.mockResolvedValue([
       mockPosition("Token111", 1_000_000_000, "TOK", "Token"),
     ]);
-
-    mockApi.getTokenLifetimeFees.mockResolvedValue(1_000_000_000);
 
     await GET(makeRequest({ nocache: "" }));
     const { body } = lastResponse();
@@ -350,43 +374,34 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(body.success).toBe(true);
     expect(earners).toHaveLength(3);
 
-    // Verify getWalletByUsername was called for all 3 agents
-    const calledUsernames = mockApi.getWalletByUsername.mock.calls.map(
-      (c: [string, string]) => c[1]
-    );
-    expect(calledUsernames).toContain("ExternalBot");
+    // Verify bulk lookup was called with all 3 agents
+    const lookupItems = mockApi.bulkWalletLookup.mock.calls[0][0] as Array<{
+      username: string;
+    }>;
+    const usernames = lookupItems.map((i) => i.username);
+    expect(usernames).toContain("ExternalBot");
 
     delete process.env.DATABASE_URL;
   });
 
-  it("skips agents whose wallet lookup fails without crashing", async () => {
-    // Bagsy resolves, ChadGhost fails — should still return Bagsy
-    mockApi.getWalletByUsername.mockImplementation((_provider: string, username: string) => {
-      if (username === "Bagsy") {
-        return Promise.resolve({
-          wallet: "BagsyWallet111111111111111111111111111111",
-          platformData: { id: "Bagsy", username: "Bagsy", displayName: "Bagsy" },
-        });
-      }
-      return Promise.reject(new Error("Network error"));
-    });
+  it("uses bulkWalletLookup with provider 'moltbook'", async () => {
+    mockFeedAgents(["Bagsy", "ChadGhost"]);
 
-    mockApi.getClaimablePositions.mockResolvedValue([
-      mockPosition("Token111", 1_000_000_000, "TOK", "Token"),
-    ]);
-    mockApi.getTokenLifetimeFees.mockResolvedValue(1_000_000_000);
+    mockApi.bulkWalletLookup.mockResolvedValue([]);
 
     await GET(makeRequest({ nocache: "" }));
-    const { body } = lastResponse();
-    const earners = body.topEarners as Array<Record<string, unknown>>;
 
-    expect(body.success).toBe(true);
-    expect(earners).toHaveLength(1);
-    expect(earners[0].username).toBe("Bagsy");
+    expect(mockApi.bulkWalletLookup).toHaveBeenCalledTimes(1);
+    const items = mockApi.bulkWalletLookup.mock.calls[0][0] as Array<{
+      provider: string;
+      username: string;
+    }>;
+    for (const item of items) {
+      expect(item.provider).toBe("moltbook");
+    }
   });
 
   it("includes lastUpdated timestamp", async () => {
-    // Default mock rejects all lookups → empty earners, but still returns timestamp
     await GET(makeRequest({ nocache: "" }));
     const { body } = lastResponse();
 
@@ -394,17 +409,15 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(new Date(body.lastUpdated as string).getTime()).not.toBeNaN();
   });
 
-  it("calls getWalletByUsername with provider 'moltbook'", async () => {
-    mockWalletLookup(mockApi.getWalletByUsername, {
-      Bagsy: { wallet: "Wallet111111111111111111111111111111111111" },
-    });
+  it("handles bulk lookup failure gracefully", async () => {
+    mockFeedAgents(["Bagsy"]);
 
-    mockApi.getClaimablePositions.mockResolvedValue([]);
+    mockApi.bulkWalletLookup.mockRejectedValue(new Error("Network error"));
 
     await GET(makeRequest({ nocache: "" }));
+    const { body } = lastResponse();
 
-    for (const call of mockApi.getWalletByUsername.mock.calls) {
-      expect(call[0]).toBe("moltbook");
-    }
+    expect(body.success).toBe(true);
+    expect(body.topEarners).toEqual([]);
   });
 });
