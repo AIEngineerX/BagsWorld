@@ -16201,6 +16201,9 @@ export class BootScene extends Phaser.Scene {
     this.generateBeachBuildings();
     this.generateCrabSprite();
     this.generateLobsterSprite();
+    this.generateHermitCrabSprite();
+    this.generateCoconutSprite();
+    this.generateTidepoolSprite();
     this.generatePalmTrees();
     this.generateBeachDecorations();
     this.generateMoltbookHQ();
@@ -17668,6 +17671,209 @@ export class BootScene extends Phaser.Scene {
     );
 
     g.generateTexture("agent_lobster", w, h);
+    g.destroy();
+  }
+
+  private generateHermitCrabSprite(): void {
+    const s = SCALE;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const w = Math.round(16 * s);
+    const h = Math.round(14 * s);
+
+    // Hermit crab colors - sandy shell, pink body
+    const shellBase = 0xd4a574;
+    const shellDark = 0xa0785a;
+    const shellLight = 0xe8c9a0;
+    const shellSpiral = 0x8b6f4e;
+    const bodyColor = 0xfca5a5;
+    const bodyDark = 0xf87171;
+    const legColor = 0xfb923c;
+    const eyeWhite = 0xffffff;
+    const eyeBlack = 0x000000;
+
+    const shellX = Math.round(5 * s);
+    const shellY = Math.round(2 * s);
+    const shellW = Math.round(10 * s);
+    const shellH = Math.round(9 * s);
+
+    // Shell (spiral snail shell)
+    g.fillStyle(shellBase);
+    g.fillRect(shellX, shellY, shellW, shellH);
+    // Shell rounded top
+    g.fillRect(
+      shellX + Math.round(2 * s),
+      shellY - Math.round(2 * s),
+      shellW - Math.round(4 * s),
+      Math.round(3 * s)
+    );
+    // Shell dark bottom edge
+    g.fillStyle(shellDark);
+    g.fillRect(shellX, shellY + shellH - Math.round(2 * s), shellW, Math.round(2 * s));
+    g.fillRect(shellX + shellW - Math.round(2 * s), shellY, Math.round(2 * s), shellH);
+    // Shell highlight
+    g.fillStyle(shellLight);
+    g.fillRect(
+      shellX + Math.round(2 * s),
+      shellY + Math.round(1 * s),
+      Math.round(4 * s),
+      Math.round(3 * s)
+    );
+    // Spiral detail
+    g.fillStyle(shellSpiral);
+    g.fillRect(
+      shellX + Math.round(4 * s),
+      shellY + Math.round(3 * s),
+      Math.round(3 * s),
+      Math.round(2 * s)
+    );
+    g.fillRect(
+      shellX + Math.round(6 * s),
+      shellY + Math.round(4 * s),
+      Math.round(2 * s),
+      Math.round(3 * s)
+    );
+    g.fillRect(
+      shellX + Math.round(3 * s),
+      shellY + Math.round(5 * s),
+      Math.round(4 * s),
+      Math.round(1 * s)
+    );
+
+    // Body poking out left side
+    g.fillStyle(bodyColor);
+    g.fillRect(Math.round(1 * s), shellY + Math.round(3 * s), Math.round(6 * s), Math.round(5 * s));
+    g.fillStyle(bodyDark);
+    g.fillRect(Math.round(1 * s), shellY + Math.round(7 * s), Math.round(6 * s), Math.round(1 * s));
+
+    // Tiny legs (4 legs under body)
+    g.fillStyle(legColor);
+    g.fillRect(Math.round(2 * s), shellY + Math.round(8 * s), Math.round(1 * s), Math.round(3 * s));
+    g.fillRect(Math.round(4 * s), shellY + Math.round(8 * s), Math.round(1 * s), Math.round(3 * s));
+    g.fillRect(Math.round(7 * s), shellY + Math.round(9 * s), Math.round(1 * s), Math.round(2 * s));
+    g.fillRect(Math.round(9 * s), shellY + Math.round(9 * s), Math.round(1 * s), Math.round(2 * s));
+
+    // Small claw (left)
+    g.fillStyle(legColor);
+    g.fillRect(0, shellY + Math.round(2 * s), Math.round(3 * s), Math.round(3 * s));
+
+    // Eye stalks (tiny)
+    g.fillStyle(bodyColor);
+    g.fillRect(Math.round(2 * s), shellY, Math.round(1 * s), Math.round(4 * s));
+    g.fillRect(Math.round(4 * s), shellY, Math.round(1 * s), Math.round(4 * s));
+    // Eyes
+    g.fillStyle(eyeWhite);
+    g.fillRect(Math.round(1 * s), shellY - Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillRect(Math.round(4 * s), shellY - Math.round(2 * s), Math.round(2 * s), Math.round(2 * s));
+    g.fillStyle(eyeBlack);
+    g.fillRect(Math.round(1 * s), shellY - Math.round(2 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(4 * s), shellY - Math.round(2 * s), Math.round(1 * s), Math.round(1 * s));
+
+    g.generateTexture("hermit_crab", w, h);
+    g.destroy();
+  }
+
+  private generateCoconutSprite(): void {
+    const s = SCALE;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const w = Math.round(10 * s);
+    const h = Math.round(10 * s);
+
+    // Brown coconut with husk detail
+    const huskOuter = 0x8b6914;
+    const huskInner = 0x6b4f12;
+    const shellBrown = 0x5c3317;
+    const shellDark = 0x3e2210;
+    const eyeSpot = 0x2e1a0d;
+
+    // Husk (outer fuzzy layer)
+    g.fillStyle(huskOuter);
+    g.fillRect(Math.round(1 * s), Math.round(1 * s), Math.round(8 * s), Math.round(8 * s));
+    // Inner shell
+    g.fillStyle(shellBrown);
+    g.fillRect(Math.round(2 * s), Math.round(2 * s), Math.round(6 * s), Math.round(6 * s));
+    // Shell shading
+    g.fillStyle(shellDark);
+    g.fillRect(Math.round(6 * s), Math.round(2 * s), Math.round(2 * s), Math.round(6 * s));
+    g.fillRect(Math.round(2 * s), Math.round(6 * s), Math.round(6 * s), Math.round(2 * s));
+    // Husk fiber details
+    g.fillStyle(huskInner);
+    g.fillRect(Math.round(1 * s), Math.round(3 * s), Math.round(1 * s), Math.round(4 * s));
+    g.fillRect(Math.round(3 * s), Math.round(1 * s), Math.round(4 * s), Math.round(1 * s));
+    // Three "eyes" of the coconut
+    g.fillStyle(eyeSpot);
+    g.fillRect(Math.round(3 * s), Math.round(3 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(5 * s), Math.round(3 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(4 * s), Math.round(5 * s), Math.round(1 * s), Math.round(1 * s));
+
+    g.generateTexture("coconut", w, h);
+    g.destroy();
+  }
+
+  private generateTidepoolSprite(): void {
+    const s = SCALE;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const w = Math.round(28 * s);
+    const h = Math.round(20 * s);
+
+    // Tidepool colors - rocky edges, shallow water
+    const rockOuter = 0x6b7280;
+    const rockInner = 0x4b5563;
+    const rockLight = 0x9ca3af;
+    const waterShallow = 0x38bdf8;
+    const waterDeep = 0x0ea5e9;
+    const waterHighlight = 0x7dd3fc;
+    const seaweedGreen = 0x22c55e;
+    const seaweedDark = 0x16a34a;
+
+    // Outer rock rim
+    g.fillStyle(rockOuter);
+    g.fillRect(Math.round(1 * s), Math.round(3 * s), Math.round(26 * s), Math.round(14 * s));
+    // Rounded top/bottom edges
+    g.fillRect(Math.round(3 * s), Math.round(1 * s), Math.round(22 * s), Math.round(2 * s));
+    g.fillRect(Math.round(3 * s), Math.round(17 * s), Math.round(22 * s), Math.round(2 * s));
+
+    // Inner rock wall
+    g.fillStyle(rockInner);
+    g.fillRect(Math.round(3 * s), Math.round(5 * s), Math.round(22 * s), Math.round(10 * s));
+    g.fillRect(Math.round(5 * s), Math.round(3 * s), Math.round(18 * s), Math.round(2 * s));
+    g.fillRect(Math.round(5 * s), Math.round(15 * s), Math.round(18 * s), Math.round(2 * s));
+
+    // Water surface
+    g.fillStyle(waterShallow);
+    g.fillRect(Math.round(5 * s), Math.round(6 * s), Math.round(18 * s), Math.round(8 * s));
+    g.fillRect(Math.round(7 * s), Math.round(5 * s), Math.round(14 * s), Math.round(1 * s));
+    g.fillRect(Math.round(7 * s), Math.round(14 * s), Math.round(14 * s), Math.round(1 * s));
+
+    // Deeper water in center
+    g.fillStyle(waterDeep);
+    g.fillRect(Math.round(8 * s), Math.round(8 * s), Math.round(12 * s), Math.round(4 * s));
+
+    // Water highlights (shimmer spots)
+    g.fillStyle(waterHighlight);
+    g.fillRect(Math.round(9 * s), Math.round(7 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(15 * s), Math.round(9 * s), Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(Math.round(11 * s), Math.round(12 * s), Math.round(2 * s), Math.round(1 * s));
+
+    // Rock texture highlights
+    g.fillStyle(rockLight);
+    g.fillRect(Math.round(2 * s), Math.round(4 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillRect(Math.round(22 * s), Math.round(3 * s), Math.round(2 * s), Math.round(1 * s));
+    g.fillRect(Math.round(4 * s), Math.round(16 * s), Math.round(2 * s), Math.round(1 * s));
+
+    // Small seaweed tufts around edges
+    g.fillStyle(seaweedGreen);
+    g.fillRect(Math.round(4 * s), Math.round(5 * s), Math.round(2 * s), Math.round(3 * s));
+    g.fillRect(Math.round(20 * s), Math.round(13 * s), Math.round(3 * s), Math.round(2 * s));
+    g.fillStyle(seaweedDark);
+    g.fillRect(Math.round(4 * s), Math.round(7 * s), Math.round(1 * s), Math.round(1 * s));
+    g.fillRect(Math.round(21 * s), Math.round(14 * s), Math.round(1 * s), Math.round(1 * s));
+
+    // Tiny starfish in pool
+    g.fillStyle(0xfb923c);
+    g.fillRect(Math.round(13 * s), Math.round(10 * s), Math.round(3 * s), Math.round(1 * s));
+    g.fillRect(Math.round(14 * s), Math.round(9 * s), Math.round(1 * s), Math.round(3 * s));
+
+    g.generateTexture("tidepool", w, h);
     g.destroy();
   }
 

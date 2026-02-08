@@ -62,6 +62,7 @@ export class WorldScene extends Phaser.Scene {
   private animals: Animal[] = [];
   private pokemon: Pokemon[] = []; // Pokemon in Founders zone
   private beachCrabs: BeachCrab[] = []; // External agents wandering MoltBeach
+  private ambientCreatures: BeachCrab[] = []; // Ambient crabs/lobsters/hermit crabs (always present)
   private fountainWater: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ground!: Phaser.GameObjects.TileSprite;
   private timeOfDay = 0;
@@ -4493,11 +4494,59 @@ export class WorldScene extends Phaser.Scene {
     barLabel.setDepth(6);
     this.moltbookElements.push(barLabel);
 
+    // === COCONUTS (depth 2) - near palm tree bases ===
+    const coconutPositions = [
+      { x: 50, offsetY: 48 },
+      { x: 325, offsetY: 50 },
+      { x: 625, offsetY: 47 },
+    ];
+    coconutPositions.forEach((pos) => {
+      const coconut = this.add.sprite(
+        Math.round(pos.x * s),
+        grassTop + Math.round(pos.offsetY * s),
+        "coconut"
+      );
+      coconut.setOrigin(0.5, 1);
+      coconut.setDepth(2);
+      coconut.setScale(0.8 + Math.random() * 0.3);
+      this.moltbookElements.push(coconut);
+    });
+
+    // === TIDEPOOLS (depth 2) - near waterline with shimmer ===
+    const tidepoolPositions = [
+      { x: 170, offsetY: 55 },
+      { x: 530, offsetY: 58 },
+    ];
+    tidepoolPositions.forEach((pos) => {
+      const pool = this.add.sprite(
+        Math.round(pos.x * s),
+        grassTop + Math.round(pos.offsetY * s),
+        "tidepool"
+      );
+      pool.setOrigin(0.5, 1);
+      pool.setDepth(2);
+      pool.setScale(0.75 + Math.random() * 0.2);
+      this.moltbookElements.push(pool);
+
+      // Shimmer animation - gentle alpha pulse to simulate water reflection
+      this.tweens.add({
+        targets: pool,
+        alpha: { from: 0.85, to: 1.0 },
+        duration: 2000 + Math.random() * 800,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    });
+
     // === WAVE ANIMATION (depth 1) - at bottom of screen ===
     this.createWaveAnimation(s);
 
     // === SEAGULLS (depth 15) - flying overhead ===
     this.createSeagulls(s);
+
+    // === AMBIENT BEACH CREATURES - always present regardless of agents ===
+    this.createAmbientBeachCreatures(s);
   }
 
   /**
@@ -4621,6 +4670,77 @@ export class WorldScene extends Phaser.Scene {
         ease: "Sine.easeInOut",
       });
     }
+  }
+
+  /**
+   * Create ambient beach creatures that are always present on MoltBook Beach.
+   * These exist independently of external agent registration - the beach is alive by default.
+   * Includes crabs (orange), lobsters (red), and hermit crabs (sandy, near waterline).
+   */
+  private createAmbientBeachCreatures(s: number): void {
+    const pathLevel = Math.round(555 * s);
+
+    // Ambient creature configs - spread across the beach at various Y depths
+    const creatureConfigs: Array<{
+      texture: string;
+      x: number;
+      yOffset: number;
+      scale: number;
+      speed: number;
+      isLobster: boolean;
+    }> = [
+      // 5 ambient crabs - mid-beach sand area
+      { texture: "agent_crab", x: 80, yOffset: 8, scale: 0.65, speed: 0.18, isLobster: false },
+      { texture: "agent_crab", x: 220, yOffset: 12, scale: 0.7, speed: 0.22, isLobster: false },
+      { texture: "agent_crab", x: 380, yOffset: 6, scale: 0.6, speed: 0.15, isLobster: false },
+      { texture: "agent_crab", x: 540, yOffset: 10, scale: 0.75, speed: 0.2, isLobster: false },
+      { texture: "agent_crab", x: 690, yOffset: 14, scale: 0.68, speed: 0.17, isLobster: false },
+      // 3 ambient lobsters - slightly larger, prominent
+      { texture: "agent_lobster", x: 150, yOffset: 5, scale: 0.72, speed: 0.22, isLobster: true },
+      { texture: "agent_lobster", x: 440, yOffset: 9, scale: 0.8, speed: 0.25, isLobster: true },
+      { texture: "agent_lobster", x: 650, yOffset: 3, scale: 0.75, speed: 0.2, isLobster: true },
+      // 3 hermit crabs - tiny, near waterline (higher yOffset = closer to water)
+      { texture: "hermit_crab", x: 120, yOffset: 22, scale: 0.5, speed: 0.1, isLobster: false },
+      { texture: "hermit_crab", x: 360, yOffset: 25, scale: 0.45, speed: 0.12, isLobster: false },
+      { texture: "hermit_crab", x: 580, yOffset: 20, scale: 0.48, speed: 0.11, isLobster: false },
+    ];
+
+    creatureConfigs.forEach((cfg, i) => {
+      const spriteX = Math.round(cfg.x * s);
+      const spriteY = pathLevel + Math.round(cfg.yOffset * s);
+
+      const sprite = this.add.sprite(spriteX, spriteY, cfg.texture);
+      sprite.setOrigin(0.5, 1);
+      sprite.setDepth(4);
+      sprite.setScale(cfg.scale);
+      // Random initial facing direction
+      if (Math.random() > 0.5) sprite.setFlipX(true);
+      this.moltbookElements.push(sprite);
+
+      // Walking wobble animation - subtle Y-axis oscillation to simulate crab sideways scuttle
+      this.tweens.add({
+        targets: sprite,
+        y: spriteY - Math.round(1.5 * s),
+        duration: 280 + Math.random() * 80,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+
+      // Register in ambient creatures array for movement updates
+      const creature: BeachCrab = {
+        characterId: `ambient-${i}`,
+        sprite,
+        targetX: spriteX + (Math.random() - 0.5) * Math.round(200 * s),
+        speed: cfg.speed * s,
+        direction: Math.random() > 0.5 ? "left" : "right",
+        idleTimer: Math.floor(Math.random() * 200),
+        isIdle: Math.random() > 0.4, // Most start idle
+        baseY: spriteY,
+        isLobster: cfg.isLobster,
+      };
+      this.ambientCreatures.push(creature);
+    });
   }
 
   /**
@@ -5258,8 +5378,9 @@ Your creator page = website!
       this.agentSocket = null;
     }
 
-    // Clean up beach crabs
+    // Clean up beach crabs and ambient creatures
     this.beachCrabs = [];
+    this.ambientCreatures = [];
   }
 
   private createGround(): void {
@@ -7263,11 +7384,25 @@ Your creator page = website!
       const crabMaxX = Math.round(740 * SCALE);
       const crabRoamRange = Math.round(600 * SCALE);
 
-      this.beachCrabs.forEach((crab) => {
+      // Helper to update a single crab/lobster/hermit creature movement
+      const updateCreatureMovement = (crab: BeachCrab) => {
         if (!crab.sprite || !crab.sprite.active) return;
 
         if (crab.isIdle) {
           crab.idleTimer += 1;
+
+          // Idle claw snap: random chance for a quick scale pulse (visual "snap")
+          if (crab.idleTimer % 60 === 0 && Math.random() < 0.08) {
+            this.tweens.add({
+              targets: crab.sprite,
+              scaleX: crab.sprite.scaleX * 1.15,
+              scaleY: crab.sprite.scaleY * 1.12,
+              duration: 100,
+              yoyo: true,
+              ease: "Quad.easeOut",
+            });
+          }
+
           // Crabs idle longer than regular animals - they're chill beach vibes
           if (crab.idleTimer > 150 + Math.random() * 250) {
             crab.isIdle = false;
@@ -7283,7 +7418,6 @@ Your creator page = website!
             crab.isIdle = true;
             crab.idleTimer = 0;
           } else {
-            // Crabs move with a slight side-to-side wobble
             crab.sprite.x += crab.speed * (dx > 0 ? 1 : -1);
             crab.sprite.setFlipX(dx < 0);
           }
@@ -7300,7 +7434,13 @@ Your creator page = website!
             crab.isIdle = true;
           }
         }
-      });
+      };
+
+      // Update external agent crabs/lobsters
+      this.beachCrabs.forEach(updateCreatureMovement);
+
+      // Update ambient creatures (always-present beach life)
+      this.ambientCreatures.forEach(updateCreatureMovement);
     }
   }
 
