@@ -27,6 +27,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [burnConfirmed, setBurnConfirmed] = useState(false);
 
   // Preview state
   const [burnPreview, setBurnPreview] = useState<BurnPreviewResponse | null>(null);
@@ -41,6 +42,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
     setSuccess(null);
     setBurnPreview(null);
     setCloseAllPreview(null);
+    setBurnConfirmed(false);
   };
 
   const apiRequest = async (action: string, data?: Record<string, unknown>) => {
@@ -132,7 +134,12 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
       setError("Enter a token mint or account address");
       return;
     }
+    if (!burnConfirmed) {
+      setError("You must confirm that you understand this action is irreversible");
+      return;
+    }
     resetState();
+    setBurnConfirmed(false);
     setIsLoading(true);
     try {
       const result: BurnResponse = await apiRequest("burn", {
@@ -226,8 +233,8 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
 
   const tabs: { id: Tab; label: string; color: string }[] = [
     { id: "close-all", label: "CLOSE ALL", color: "#4ade80" },
-    { id: "burn", label: "BURN", color: "#f97316" },
-    { id: "close", label: "CLOSE", color: "#38bdf8" },
+    { id: "burn", label: "BURN", color: "#ef4444" },
+    { id: "close", label: "CLOSE", color: "#22c55e" },
   ];
 
   return (
@@ -235,23 +242,30 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
       className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 safe-area-bottom"
       onClick={handleBackdropClick}
     >
-      <div className="bg-[#0a0a0f] border border-orange-500/30 rounded-t-xl sm:rounded-xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <div className="bg-[#0a1a0a] border border-green-500/30 rounded-t-xl sm:rounded-xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-orange-500/20">
+        <div className="flex items-center justify-between p-4 border-b border-green-500/20">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">🔥</span>
+            <span className="text-2xl">&#9760;</span>
             <div>
-              <h2 className="text-orange-400 font-bold text-lg font-pixel">SOL INCINERATOR</h2>
-              <p className="text-gray-500 text-xs">Burn tokens & reclaim SOL from empty accounts</p>
+              <h2 className="text-green-400 font-bold text-lg font-pixel">SOL INCINERATOR</h2>
+              <p className="text-green-700 text-xs">Burn tokens & reclaim SOL from empty accounts</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white text-xl px-2">
+          <button onClick={onClose} className="text-green-700 hover:text-green-400 text-xl px-2">
             x
           </button>
         </div>
 
+        {/* Supported Assets Info */}
+        <div className="px-4 pt-3 pb-1">
+          <p className="text-green-800 text-[10px] font-pixel">
+            SUPPORTS: SPL Tokens &bull; Token-2022 &bull; Metaplex NFTs &bull; pNFTs
+          </p>
+        </div>
+
         {/* Tabs */}
-        <div className="flex border-b border-gray-800">
+        <div className="flex border-b border-green-900/50">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -260,7 +274,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                 resetState();
               }}
               className={`flex-1 py-3 text-xs font-pixel font-bold transition-colors ${
-                activeTab === tab.id ? "border-b-2 text-white" : "text-gray-500 hover:text-gray-300"
+                activeTab === tab.id ? "border-b-2 text-white" : "text-green-800 hover:text-green-500"
               }`}
               style={{
                 borderColor: activeTab === tab.id ? tab.color : "transparent",
@@ -276,12 +290,12 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         <div className="p-4 space-y-4">
           {!connected ? (
             <div className="text-center py-8">
-              <p className="text-gray-400 mb-4 text-sm">
+              <p className="text-green-600 mb-4 text-sm">
                 Connect your wallet to use the Incinerator
               </p>
               <button
                 onClick={() => setWalletModalVisible(true)}
-                className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2 rounded font-pixel text-sm"
+                className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded font-pixel text-sm"
               >
                 CONNECT WALLET
               </button>
@@ -293,7 +307,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                 <div className="space-y-4">
                   <div className="bg-green-900/20 border border-green-500/20 rounded p-3">
                     <p className="text-green-400 text-xs font-bold mb-1">SAFE OPERATION</p>
-                    <p className="text-gray-400 text-xs">
+                    <p className="text-green-600 text-xs">
                       Closes all empty token accounts in your wallet and returns the rent SOL back
                       to you. ~0.002 SOL per account. No tokens are destroyed.
                     </p>
@@ -303,47 +317,47 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                     <button
                       onClick={handleCloseAllPreview}
                       disabled={isLoading}
-                      className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-700 text-white py-3 rounded font-pixel text-sm"
+                      className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-3 rounded font-pixel text-sm"
                     >
                       {isLoading ? "SCANNING..." : "SCAN EMPTY ACCOUNTS"}
                     </button>
                   ) : (
                     <div className="space-y-3">
-                      <div className="bg-gray-900 rounded p-3 space-y-2">
+                      <div className="bg-[#0d2b0d] rounded p-3 space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Empty accounts:</span>
-                          <span className="text-white font-bold">
+                          <span className="text-green-600">Empty accounts:</span>
+                          <span className="text-green-300 font-bold">
                             {closeAllPreview.accountsToClose}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">SOL to reclaim:</span>
+                          <span className="text-green-600">SOL to reclaim:</span>
                           <span className="text-green-400 font-bold">
                             {closeAllPreview.totalSolanaReclaimed.toFixed(4)} SOL
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Transactions needed:</span>
-                          <span className="text-white">
+                          <span className="text-green-600">Transactions needed:</span>
+                          <span className="text-green-300">
                             {closeAllPreview.estimatedTransactions}
                           </span>
                         </div>
                         {closeAllPreview.summary && (
-                          <div className="border-t border-gray-700 pt-2 mt-2">
-                            <p className="text-gray-500 text-xs mb-1">Breakdown:</p>
+                          <div className="border-t border-green-900/50 pt-2 mt-2">
+                            <p className="text-green-700 text-xs mb-1">Breakdown:</p>
                             <div className="text-xs space-y-1">
                               {closeAllPreview.summary.standardTokenAccounts > 0 && (
                                 <div className="flex justify-between">
-                                  <span className="text-gray-400">Standard token accounts:</span>
-                                  <span className="text-white">
+                                  <span className="text-green-600">Standard token accounts:</span>
+                                  <span className="text-green-300">
                                     {closeAllPreview.summary.standardTokenAccounts}
                                   </span>
                                 </div>
                               )}
                               {closeAllPreview.summary.token2022Accounts > 0 && (
                                 <div className="flex justify-between">
-                                  <span className="text-gray-400">Token-2022 accounts:</span>
-                                  <span className="text-white">
+                                  <span className="text-green-600">Token-2022 accounts:</span>
+                                  <span className="text-green-300">
                                     {closeAllPreview.summary.token2022Accounts}
                                   </span>
                                 </div>
@@ -357,14 +371,14 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                         <button
                           onClick={handleCloseAll}
                           disabled={isLoading}
-                          className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-700 text-white py-3 rounded font-pixel text-sm"
+                          className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-3 rounded font-pixel text-sm"
                         >
                           {isLoading
                             ? "SIGNING TRANSACTIONS..."
                             : `CLOSE ALL & RECLAIM ${closeAllPreview.totalSolanaReclaimed.toFixed(4)} SOL`}
                         </button>
                       ) : (
-                        <p className="text-gray-500 text-center text-sm">
+                        <p className="text-green-700 text-center text-sm">
                           No empty accounts found.
                         </p>
                       )}
@@ -380,14 +394,14 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                     <p className="text-red-400 text-xs font-bold mb-1">
                       DESTRUCTIVE - IRREVERSIBLE
                     </p>
-                    <p className="text-gray-400 text-xs">
-                      Permanently destroys a token or NFT and reclaims the account rent. This cannot
-                      be undone.
+                    <p className="text-red-300/70 text-xs">
+                      Permanently destroys a token or NFT and reclaims the account rent. This action
+                      CANNOT be undone. Your asset will be gone forever.
                     </p>
                   </div>
 
                   <div>
-                    <label className="text-gray-400 text-xs mb-1 block">
+                    <label className="text-green-600 text-xs mb-1 block">
                       Token Mint or Account Address
                     </label>
                     <input
@@ -395,24 +409,24 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                       value={assetId}
                       onChange={(e) => setAssetId(e.target.value)}
                       placeholder="Enter mint address or token account..."
-                      className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm font-mono focus:border-orange-500 focus:outline-none"
+                      className="w-full bg-[#0d2b0d] border border-green-900 rounded px-3 py-2 text-green-300 text-sm font-mono focus:border-green-500 focus:outline-none placeholder:text-green-900"
                     />
                   </div>
 
                   {burnPreview && (
-                    <div className="bg-gray-900 rounded p-3 space-y-2">
+                    <div className="bg-[#0d2b0d] rounded p-3 space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Type:</span>
-                        <span className="text-white">{burnPreview.transactionType}</span>
+                        <span className="text-green-600">Type:</span>
+                        <span className="text-green-300">{burnPreview.transactionType}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">SOL to reclaim:</span>
+                        <span className="text-green-600">SOL to reclaim:</span>
                         <span className="text-green-400 font-bold">
                           {burnPreview.solanaReclaimed.toFixed(4)} SOL
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Destructive:</span>
+                        <span className="text-green-600">Destructive:</span>
                         <span
                           className={
                             burnPreview.isDestructiveAction ? "text-red-400" : "text-green-400"
@@ -424,18 +438,31 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                     </div>
                   )}
 
+                  {/* Burn confirmation checkbox */}
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={burnConfirmed}
+                      onChange={(e) => setBurnConfirmed(e.target.checked)}
+                      className="mt-0.5 accent-red-500"
+                    />
+                    <span className="text-red-400/80 text-xs">
+                      I understand this is irreversible and my asset will be permanently destroyed
+                    </span>
+                  </label>
+
                   <div className="flex gap-2">
                     <button
                       onClick={handleBurnPreview}
                       disabled={isLoading || !assetId.trim()}
-                      className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-white py-2 rounded font-pixel text-xs"
+                      className="flex-1 bg-green-900 hover:bg-green-800 disabled:bg-green-950 text-green-300 py-2 rounded font-pixel text-xs"
                     >
                       {isLoading ? "..." : "PREVIEW"}
                     </button>
                     <button
                       onClick={handleBurn}
-                      disabled={isLoading || !assetId.trim()}
-                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-gray-700 text-white py-2 rounded font-pixel text-xs"
+                      disabled={isLoading || !assetId.trim() || !burnConfirmed}
+                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-red-900/50 disabled:text-red-400/50 text-white py-2 rounded font-pixel text-xs"
                     >
                       {isLoading ? "BURNING..." : "BURN"}
                     </button>
@@ -446,16 +473,16 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
               {/* Close Tab */}
               {activeTab === "close" && (
                 <div className="space-y-4">
-                  <div className="bg-blue-900/20 border border-blue-500/20 rounded p-3">
-                    <p className="text-blue-400 text-xs font-bold mb-1">SAFE OPERATION</p>
-                    <p className="text-gray-400 text-xs">
+                  <div className="bg-green-900/20 border border-green-500/20 rounded p-3">
+                    <p className="text-green-400 text-xs font-bold mb-1">SAFE OPERATION</p>
+                    <p className="text-green-600 text-xs">
                       Close a single empty token account and reclaim ~0.002 SOL rent. Account must
                       have zero balance.
                     </p>
                   </div>
 
                   <div>
-                    <label className="text-gray-400 text-xs mb-1 block">
+                    <label className="text-green-600 text-xs mb-1 block">
                       Token Account Address
                     </label>
                     <input
@@ -463,14 +490,14 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                       value={assetId}
                       onChange={(e) => setAssetId(e.target.value)}
                       placeholder="Enter token account address..."
-                      className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm font-mono focus:border-blue-500 focus:outline-none"
+                      className="w-full bg-[#0d2b0d] border border-green-900 rounded px-3 py-2 text-green-300 text-sm font-mono focus:border-green-500 focus:outline-none placeholder:text-green-900"
                     />
                   </div>
 
                   <button
                     onClick={handleClose}
                     disabled={isLoading || !assetId.trim()}
-                    className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 text-white py-3 rounded font-pixel text-sm"
+                    className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-3 rounded font-pixel text-sm"
                   >
                     {isLoading ? "CLOSING..." : "CLOSE ACCOUNT"}
                   </button>
@@ -493,9 +520,14 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-800 p-3">
-          <p className="text-gray-600 text-center text-[10px]">
-            Powered by Sol Incinerator API &bull; Transactions signed by your wallet
+        <div className="border-t border-green-900/50 p-3 space-y-1">
+          <p className="text-green-700 text-center text-[10px]">
+            Powered by{" "}
+            <span className="text-green-500 font-pixel">Sol Incinerator</span>
+            {" "}&bull; Transactions signed by your wallet
+          </p>
+          <p className="text-green-900 text-center text-[9px]">
+            Accounts ~0.002 SOL each &bull; NFT rent varies by metadata size
           </p>
         </div>
       </div>

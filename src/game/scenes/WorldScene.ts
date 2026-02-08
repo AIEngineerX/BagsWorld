@@ -2981,7 +2981,7 @@ export class WorldScene extends Phaser.Scene {
       0.7
     );
     incLabelBg.setDepth(6);
-    incLabelBg.setStrokeStyle(1, 0xf97316);
+    incLabelBg.setStrokeStyle(1, 0x22c55e);
     this.foundersElements.push(incLabelBg);
 
     const incLabel = this.add.text(
@@ -2991,7 +2991,7 @@ export class WorldScene extends Phaser.Scene {
       {
         fontFamily: "monospace",
         fontSize: `${Math.round(8 * s)}px`,
-        color: "#f97316",
+        color: "#4ade80",
         align: "center",
       }
     );
