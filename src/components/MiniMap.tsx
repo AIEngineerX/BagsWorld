@@ -211,12 +211,13 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
 
   const handlePointerUp = useCallback(() => {
     const wasDrag = didDragRef.current;
+    const hadPointerDown = pointerStartRef.current !== null;
     pointerStartRef.current = null;
     didDragRef.current = false;
     setIsDragging(false);
 
-    // If it was a tap (no drag) on the collapsed button, open the map
-    if (!wasDrag && !isOpen) {
+    // Only open if the pointerdown originated on the map FAB (not a random page click)
+    if (!wasDrag && !isOpen && hadPointerDown) {
       setIsOpen(true);
     }
   }, [isOpen]);
