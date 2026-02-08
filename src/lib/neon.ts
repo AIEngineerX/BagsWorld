@@ -2060,6 +2060,28 @@ export async function getActiveOracleRound(): Promise<OracleRoundDB | null> {
   }
 }
 
+// Get a specific Oracle round by ID
+export async function getOracleRoundById(roundId: number): Promise<OracleRoundDB | null> {
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const result = await sql`
+      SELECT r.*,
+        (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as entry_count
+      FROM oracle_rounds r
+      WHERE r.id = ${roundId}
+    `;
+
+    if ((result as unknown[]).length === 0) return null;
+
+    return parseOracleRoundRow((result as Array<Record<string, unknown>>)[0]);
+  } catch (error) {
+    console.error("[Oracle] Error getting round by ID:", error);
+    return null;
+  }
+}
+
 // Get all active Oracle markets (supports multiple concurrent markets)
 export async function getActiveOracleMarkets(marketType?: string): Promise<OracleRoundDB[]> {
   const sql = await getSql();

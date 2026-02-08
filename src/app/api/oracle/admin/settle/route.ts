@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getActiveOracleRound,
+  getOracleRoundById,
   settleOracleRound,
   settleOracleRoundWithOutcome,
   cancelOracleRound,
@@ -22,18 +23,21 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { adminWallet, action } = body;
+  const { adminWallet, action, roundId, winningOutcomeId } = body;
 
   // Verify admin using config-based admin check
   if (!adminWallet || !isAdmin(adminWallet)) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
   }
 
-  // Get active round
-  const round = await getActiveOracleRound();
+  // Get round - by ID if provided, otherwise active round
+  const round = roundId ? await getOracleRoundById(roundId) : await getActiveOracleRound();
   if (!round) {
     return NextResponse.json(
-      { success: false, error: "No active prediction round" },
+      {
+        success: false,
+        error: roundId ? `Round #${roundId} not found` : "No active prediction round",
+      },
       { status: 400 }
     );
   }
@@ -52,29 +56,47 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // For non-price-prediction markets, use the generalized resolver
+  // For non-price-prediction markets, use the generalized resolver or admin-provided outcome
   const marketType = round.marketType || "price_prediction";
   if (marketType !== "price_prediction") {
-    const resolution = await resolveMarket(round);
-    if (!resolution.success) {
+    let resolvedOutcomeId: string | undefined;
+    let resolutionData: Record<string, unknown> = {};
+
+    if (marketType === "custom" && winningOutcomeId) {
+      // Admin manually resolves custom market by picking the winning outcome
+      resolvedOutcomeId = winningOutcomeId;
+      resolutionData = {
+        resolvedBy: adminWallet,
+        resolvedAt: new Date().toISOString(),
+        method: "admin_manual",
+        winningOutcomeId,
+      };
+    } else if (marketType === "custom" && !winningOutcomeId) {
       return NextResponse.json(
-        { success: false, error: resolution.error || "Resolution failed" },
-        { status: 500 }
+        { success: false, error: "Custom markets require a winningOutcomeId" },
+        { status: 400 }
       );
+    } else {
+      // Non-custom, non-price_prediction markets use the generalized resolver
+      const resolution = await resolveMarket(round);
+      if (!resolution.success) {
+        return NextResponse.json(
+          { success: false, error: resolution.error || "Resolution failed" },
+          { status: 500 }
+        );
+      }
+      resolvedOutcomeId = resolution.winningOutcomeId;
+      resolutionData = resolution.resolutionData;
     }
 
-    if (resolution.winningOutcomeId) {
-      await settleOracleRoundWithOutcome(
-        round.id,
-        resolution.winningOutcomeId,
-        resolution.resolutionData
-      );
+    if (resolvedOutcomeId) {
+      await settleOracleRoundWithOutcome(round.id, resolvedOutcomeId, resolutionData);
     }
 
     // Distribute OP payouts
     const predictions = await getOracleRoundPredictions(round.id);
     if (predictions.length > 0) {
-      const winningId = resolution.winningOutcomeId || "";
+      const winningId = resolvedOutcomeId || "";
       const payouts = calculateOPPayouts(predictions, winningId, true);
       const totalPreds = predictions.length;
       const winnerCount = payouts.filter((p) => p.isWinner).length;
@@ -96,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `[Oracle Admin] Round #${round.id} (${marketType}) settled by ${adminWallet}: winner=${resolution.winningOutcomeId}`
+      `[Oracle Admin] Round #${round.id} (${marketType}) settled by ${adminWallet}: winner=${resolvedOutcomeId}`
     );
 
     return NextResponse.json({
@@ -104,8 +126,8 @@ export async function POST(request: NextRequest) {
       message: "Market settled successfully",
       roundId: round.id,
       marketType,
-      winningOutcome: resolution.winningOutcomeId,
-      resolutionData: resolution.resolutionData,
+      winningOutcome: resolvedOutcomeId,
+      resolutionData,
     });
   }
 

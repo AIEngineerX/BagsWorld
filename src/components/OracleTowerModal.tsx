@@ -134,6 +134,34 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   const [isSettling, setIsSettling] = useState(false);
   const [prizePoolInput, setPrizePoolInput] = useState("0.5");
 
+  // Create market state
+  const [createMode, setCreateMode] = useState<"price" | "custom">("price");
+  const [durationHours, setDurationHours] = useState(24);
+  const [customQuestion, setCustomQuestion] = useState("");
+  const [customOutcomes, setCustomOutcomes] = useState([
+    { id: "opt_1", label: "" },
+    { id: "opt_2", label: "" },
+  ]);
+  const [entryCostOp, setEntryCostOp] = useState(100);
+
+  // Claims state
+  const [pendingClaims, setPendingClaims] = useState<
+    Array<{
+      id: number;
+      wallet: string;
+      walletShort: string;
+      amountSol: number;
+      status: string;
+      createdAt: string;
+    }>
+  >([]);
+  const [claimsTotalSol, setClaimsTotalSol] = useState(0);
+  const [processingClaimId, setProcessingClaimId] = useState<number | null>(null);
+  const [txSignatureInput, setTxSignatureInput] = useState("");
+
+  // Resolve custom state
+  const [selectedOutcome, setSelectedOutcome] = useState<Record<number, string>>({});
+
   // SOL balance and claiming state (legacy)
   const [balance, setBalance] = useState<OracleBalance | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
@@ -308,6 +336,23 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
     }
   }, []);
 
+  const fetchClaims = useCallback(async () => {
+    if (!publicKey) return;
+    try {
+      const res = await fetch(
+        `/api/oracle/admin/process-claims?adminWallet=${publicKey.toString()}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success) {
+        setPendingClaims(data.claims || []);
+        setClaimsTotalSol(data.totalSol || 0);
+      }
+    } catch (error) {
+      console.error("[Oracle] Error fetching claims:", error);
+    }
+  }, [publicKey]);
+
   // ─── Initial Load & Tab-Based Fetching ─────────────────────────
 
   useEffect(() => {
@@ -327,8 +372,19 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
     if (view === "my_bets") fetchMyBets();
     if (view === "leaders") fetchLeaderboard();
     if (view === "profile" && publicKey) fetchProfile();
-    if (view === "admin") fetchAdminRoundInfo();
-  }, [view, fetchMyBets, fetchLeaderboard, fetchProfile, fetchAdminRoundInfo, publicKey]);
+    if (view === "admin") {
+      fetchAdminRoundInfo();
+      fetchClaims();
+    }
+  }, [
+    view,
+    fetchMyBets,
+    fetchLeaderboard,
+    fetchProfile,
+    fetchAdminRoundInfo,
+    fetchClaims,
+    publicKey,
+  ]);
 
   // Auto-refresh markets every 30s
   useEffect(() => {
@@ -419,7 +475,7 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         adminWallet: publicKey.toString(),
-        durationHours: 24,
+        durationHours,
         prizePoolSol,
       }),
     });
@@ -451,6 +507,167 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
       await fetchAdminRoundInfo();
     }
     setIsSettling(false);
+  };
+
+  const handleCreateCustomMarket = async () => {
+    if (!publicKey || isCreatingRound) return;
+    if (!customQuestion.trim()) {
+      setMessage("Question is required");
+      return;
+    }
+    const validOutcomes = customOutcomes.filter((o) => o.label.trim());
+    if (validOutcomes.length < 2) {
+      setMessage("At least 2 outcomes required");
+      return;
+    }
+    setIsCreatingRound(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/oracle/admin/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminWallet: publicKey.toString(),
+          marketType: "custom",
+          marketConfig: {
+            outcome_type: "multiple_choice",
+            outcomes: validOutcomes.map((o) => ({ id: o.id, label: o.label.trim() })),
+            resolution_logic: "admin",
+            question: customQuestion.trim(),
+          },
+          durationHours,
+          prizePoolSol: parseFloat(prizePoolInput) || 0,
+          entryCostOp,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(`Custom market created! Round #${data.roundId}`);
+        setCustomQuestion("");
+        setCustomOutcomes([
+          { id: "opt_1", label: "" },
+          { id: "opt_2", label: "" },
+        ]);
+        await fetchMarkets();
+        await fetchAdminRoundInfo();
+      } else {
+        setMessage(data.error || "Failed to create market");
+      }
+    } catch {
+      setMessage("Network error");
+    }
+    setIsCreatingRound(false);
+  };
+
+  const handleSettleMarket = async (roundId: number) => {
+    if (!publicKey || isSettling) return;
+    setIsSettling(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/oracle/admin/settle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminWallet: publicKey.toString(), roundId }),
+      });
+      const data = await res.json();
+      const prizeInfo = data.prizePool?.sol > 0 ? ` (${data.prizePool.sol} SOL)` : "";
+      setMessage(
+        data.success
+          ? `Settled! Winner: ${data.winner?.symbol || data.winningOutcome}${prizeInfo}`
+          : data.error || "Failed"
+      );
+      if (data.success) {
+        await fetchMarkets();
+        await fetchAdminRoundInfo();
+      }
+    } catch {
+      setMessage("Network error");
+    }
+    setIsSettling(false);
+  };
+
+  const handleResolveCustom = async (roundId: number, outcomeId: string) => {
+    if (!publicKey || isSettling || !outcomeId) return;
+    setIsSettling(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/oracle/admin/settle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminWallet: publicKey.toString(),
+          roundId,
+          winningOutcomeId: outcomeId,
+        }),
+      });
+      const data = await res.json();
+      setMessage(
+        data.success ? `Resolved! Winner: ${data.winningOutcome}` : data.error || "Failed"
+      );
+      if (data.success) {
+        await fetchMarkets();
+        await fetchAdminRoundInfo();
+      }
+    } catch {
+      setMessage("Network error");
+    }
+    setIsSettling(false);
+  };
+
+  const handleCancelMarket = async (roundId: number) => {
+    if (!publicKey || isSettling) return;
+    setIsSettling(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/oracle/admin/settle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminWallet: publicKey.toString(),
+          roundId,
+          action: "cancel",
+        }),
+      });
+      const data = await res.json();
+      setMessage(data.success ? `Round #${roundId} cancelled` : data.error || "Failed");
+      if (data.success) {
+        await fetchMarkets();
+        await fetchAdminRoundInfo();
+      }
+    } catch {
+      setMessage("Network error");
+    }
+    setIsSettling(false);
+  };
+
+  const handleProcessClaim = async (
+    claimId: number,
+    action: "processing" | "complete" | "fail",
+    txSignature?: string
+  ) => {
+    if (!publicKey) return;
+    setProcessingClaimId(claimId);
+    try {
+      const res = await fetch("/api/oracle/admin/process-claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminWallet: publicKey.toString(),
+          claimId,
+          action,
+          txSignature,
+        }),
+      });
+      const data = await res.json();
+      setMessage(data.success ? data.message : data.error || "Failed");
+      if (data.success) {
+        setTxSignatureInput("");
+        await fetchClaims();
+      }
+    } catch {
+      setMessage("Network error");
+    }
+    setProcessingClaimId(null);
   };
 
   const handleClaimSOL = async () => {
@@ -888,82 +1105,156 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
             />
           ) : view === "admin" ? (
             <div className="space-y-3">
+              {/* Section 1: Create Market */}
               <div className="rpg-border-inner bg-[#166534]/10 p-4">
-                <p className="font-pixel text-[#22c55e] text-xs mb-3 glow-green">ADMIN CONTROLS</p>
+                <p className="font-pixel text-[#22c55e] text-xs mb-3 glow-green">CREATE MARKET</p>
 
-                {adminRoundInfo ? (
-                  <div className="space-y-3">
-                    <div className="rpg-border-inner bg-[#1a1a1a] p-3">
-                      <div className="grid grid-cols-2 gap-2 font-pixel text-[10px]">
-                        <div>
-                          <span className="text-[#666]">Round</span>
-                          <span className="text-white ml-2">#{adminRoundInfo.id}</span>
-                        </div>
-                        <div>
-                          <span className="text-[#666]">Entries</span>
-                          <span className="text-white ml-2">{adminRoundInfo.entryCount}</span>
-                        </div>
-                        <div>
-                          <span className="text-[#666]">Time Left</span>
-                          <span className="text-[#22c55e] ml-2 glow-green">
-                            {formatTimeRemaining(adminRoundInfo.countdown)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[#666]">Tokens</span>
-                          <span className="text-white ml-2">{adminRoundInfo.tokenCount}</span>
-                        </div>
-                      </div>
-                    </div>
+                {/* Mode toggle */}
+                <div className="flex gap-1 mb-3">
+                  <button
+                    onClick={() => setCreateMode("price")}
+                    className={`flex-1 font-pixel text-[9px] py-1.5 rpg-button ${createMode === "price" ? "active" : ""}`}
+                  >
+                    PRICE PREDICTION
+                  </button>
+                  <button
+                    onClick={() => setCreateMode("custom")}
+                    className={`flex-1 font-pixel text-[9px] py-1.5 rpg-button ${createMode === "custom" ? "active" : ""}`}
+                  >
+                    CUSTOM MARKET
+                  </button>
+                </div>
 
-                    <button
-                      onClick={handleSettleRound}
-                      disabled={isSettling}
-                      className="w-full font-pixel text-xs py-3 rpg-button !bg-gradient-to-b !from-[#854d0e] !to-[#713f12]"
-                    >
-                      {isSettling ? "SETTLING..." : "SETTLE NOW"}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="rpg-border-inner bg-[#0d0d0d] p-3">
-                      <label className="font-pixel text-[#fbbf24] text-[10px] block mb-2">
-                        PRIZE POOL (SOL)
+                {createMode === "custom" && (
+                  <div className="space-y-2 mb-3">
+                    <div className="rpg-border-inner bg-[#0d0d0d] p-2">
+                      <label className="font-pixel text-[#a855f7] text-[9px] block mb-1">
+                        QUESTION
                       </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0.1"
-                          max="1.0"
-                          step="0.1"
-                          value={prizePoolInput}
-                          onChange={(e) => setPrizePoolInput(e.target.value)}
-                          className="flex-1 bg-[#1a1a1a] border-2 border-[#333] font-pixel text-white text-xs px-2 py-2 rounded focus:border-[#fbbf24] focus:outline-none"
-                          placeholder="0.5"
-                        />
-                        <span className="font-pixel text-[#888] text-[10px]">Max: 1.0 SOL</span>
-                      </div>
-                      <p className="font-pixel text-[#666] text-[8px] mt-1">
-                        Winners split this amount based on prediction order
-                      </p>
+                      <input
+                        type="text"
+                        value={customQuestion}
+                        onChange={(e) => setCustomQuestion(e.target.value)}
+                        className="w-full bg-[#1a1a1a] border-2 border-[#333] font-pixel text-white text-[10px] px-2 py-1.5 rounded focus:border-[#a855f7] focus:outline-none"
+                        placeholder="Will SOL hit $200 this week?"
+                      />
                     </div>
 
-                    <button
-                      onClick={handleCreateRound}
-                      disabled={isCreatingRound}
-                      className="w-full font-pixel text-xs py-3 rpg-button !bg-gradient-to-b !from-[#166534] !to-[#14532d]"
-                    >
-                      {isCreatingRound ? "CREATING..." : "CREATE 24H ROUND"}
-                    </button>
+                    <div className="rpg-border-inner bg-[#0d0d0d] p-2">
+                      <label className="font-pixel text-[#a855f7] text-[9px] block mb-1">
+                        OUTCOMES ({customOutcomes.length}/6)
+                      </label>
+                      <div className="space-y-1">
+                        {customOutcomes.map((outcome, idx) => (
+                          <div key={outcome.id} className="flex items-center gap-1">
+                            <span className="font-pixel text-[#666] text-[8px] w-5 shrink-0">
+                              {idx + 1}.
+                            </span>
+                            <input
+                              type="text"
+                              value={outcome.label}
+                              onChange={(e) => {
+                                const updated = [...customOutcomes];
+                                updated[idx] = { ...updated[idx], label: e.target.value };
+                                setCustomOutcomes(updated);
+                              }}
+                              className="flex-1 bg-[#1a1a1a] border border-[#333] font-pixel text-white text-[10px] px-2 py-1 rounded focus:border-[#a855f7] focus:outline-none"
+                              placeholder={`Option ${idx + 1}`}
+                            />
+                            {customOutcomes.length > 2 && (
+                              <button
+                                onClick={() =>
+                                  setCustomOutcomes(customOutcomes.filter((_, i) => i !== idx))
+                                }
+                                className="font-pixel text-[#ef4444] text-[9px] px-1 hover:text-[#f87171]"
+                              >
+                                X
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {customOutcomes.length < 6 && (
+                        <button
+                          onClick={() =>
+                            setCustomOutcomes([
+                              ...customOutcomes,
+                              { id: `opt_${customOutcomes.length + 1}`, label: "" },
+                            ])
+                          }
+                          className="font-pixel text-[#22c55e] text-[9px] mt-1 hover:text-[#4ade80]"
+                        >
+                          + ADD OUTCOME
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="rpg-border-inner bg-[#0d0d0d] p-2">
+                      <label className="font-pixel text-[#a855f7] text-[9px] block mb-1">
+                        ENTRY COST (OP)
+                      </label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="1000"
+                        step="10"
+                        value={entryCostOp}
+                        onChange={(e) => setEntryCostOp(parseInt(e.target.value) || 100)}
+                        className="w-full bg-[#1a1a1a] border-2 border-[#333] font-pixel text-white text-[10px] px-2 py-1.5 rounded focus:border-[#a855f7] focus:outline-none"
+                      />
+                    </div>
                   </div>
                 )}
 
-                {message && (
-                  <p className="font-pixel text-[#fbbf24] text-xs text-center mt-2">{message}</p>
-                )}
+                {/* Shared fields: Duration + Prize Pool */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="rpg-border-inner bg-[#0d0d0d] p-2">
+                    <label className="font-pixel text-[#fbbf24] text-[9px] block mb-1">
+                      DURATION
+                    </label>
+                    <select
+                      value={durationHours}
+                      onChange={(e) => setDurationHours(parseInt(e.target.value))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] font-pixel text-white text-[10px] px-1 py-1 rounded focus:border-[#fbbf24] focus:outline-none"
+                    >
+                      <option value={6}>6 hours</option>
+                      <option value={12}>12 hours</option>
+                      <option value={24}>24 hours</option>
+                      <option value={48}>48 hours</option>
+                      {createMode === "custom" && <option value={72}>72 hours</option>}
+                    </select>
+                  </div>
+                  <div className="rpg-border-inner bg-[#0d0d0d] p-2">
+                    <label className="font-pixel text-[#fbbf24] text-[9px] block mb-1">
+                      PRIZE (SOL)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1.0"
+                      step="0.1"
+                      value={prizePoolInput}
+                      onChange={(e) => setPrizePoolInput(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#333] font-pixel text-white text-[10px] px-2 py-1 rounded focus:border-[#fbbf24] focus:outline-none"
+                      placeholder="0.5"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={createMode === "custom" ? handleCreateCustomMarket : handleCreateRound}
+                  disabled={isCreatingRound}
+                  className="w-full font-pixel text-[10px] py-2.5 rpg-button !bg-gradient-to-b !from-[#166534] !to-[#14532d]"
+                >
+                  {isCreatingRound
+                    ? "CREATING..."
+                    : createMode === "custom"
+                      ? "CREATE CUSTOM MARKET"
+                      : `CREATE ${durationHours}H ROUND`}
+                </button>
               </div>
 
-              {/* Active Markets Overview */}
+              {/* Section 2: Active Markets */}
               <div className="rpg-border-inner bg-[#1a1a1a] p-3">
                 <p className="font-pixel text-[#a855f7] text-[10px] mb-2 glow-text">
                   ACTIVE MARKETS ({markets.length})
@@ -971,31 +1262,217 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                 {markets.length === 0 ? (
                   <p className="font-pixel text-[#666] text-[9px]">No active markets</p>
                 ) : (
-                  <div className="space-y-1">
-                    {markets.map((m: MarketData) => (
-                      <div
-                        key={m.id}
-                        className="flex items-center justify-between font-pixel text-[9px] p-1 rpg-border-inner bg-[#0d0d0d]"
-                      >
-                        <span className="text-white">
-                          #{m.id} {m.marketType}
-                        </span>
-                        <span className="text-[#666]">{m.entryCount} entries</span>
-                      </div>
-                    ))}
+                  <div className="space-y-2">
+                    {markets.map((m: MarketData) => {
+                      const isCustom = m.marketType === "custom";
+                      const outcomes = isCustom ? m.outcomes || m.marketConfig?.outcomes || [] : [];
+                      const remaining = m.endTime
+                        ? Math.max(0, new Date(m.endTime).getTime() - Date.now())
+                        : 0;
+
+                      return (
+                        <div key={m.id} className="rpg-border-inner bg-[#0d0d0d] p-2 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-pixel text-white text-[10px]">#{m.id}</span>
+                              <span
+                                className={`font-pixel text-[8px] px-1.5 py-0.5 rpg-border-inner ${
+                                  isCustom
+                                    ? "bg-[#6b21a8]/30 text-[#c084fc]"
+                                    : "bg-[#166534]/30 text-[#22c55e]"
+                                }`}
+                              >
+                                {m.marketType?.toUpperCase() || "PRICE"}
+                              </span>
+                            </div>
+                            <span className="font-pixel text-[#666] text-[8px]">
+                              {m.entryCount || 0} entries
+                            </span>
+                          </div>
+
+                          {isCustom && m.question && (
+                            <p className="font-pixel text-[#ccc] text-[9px]">{m.question}</p>
+                          )}
+
+                          <div className="flex items-center justify-between">
+                            <span className="font-pixel text-[#22c55e] text-[8px] glow-green">
+                              {formatTimeRemaining(remaining)}
+                            </span>
+                          </div>
+
+                          {/* Action buttons */}
+                          <div className="flex gap-1 flex-wrap">
+                            {isCustom ? (
+                              <>
+                                <select
+                                  value={selectedOutcome[m.id] || ""}
+                                  onChange={(e) =>
+                                    setSelectedOutcome((prev) => ({
+                                      ...prev,
+                                      [m.id]: e.target.value,
+                                    }))
+                                  }
+                                  className="flex-1 bg-[#1a1a1a] border border-[#333] font-pixel text-white text-[8px] px-1 py-1 rounded focus:border-[#a855f7] focus:outline-none"
+                                >
+                                  <option value="">Pick winner...</option>
+                                  {outcomes.map((o: { id: string; label: string }) => (
+                                    <option key={o.id} value={o.id}>
+                                      {o.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  onClick={() =>
+                                    handleResolveCustom(m.id, selectedOutcome[m.id] || "")
+                                  }
+                                  disabled={isSettling || !selectedOutcome[m.id]}
+                                  className="font-pixel text-[8px] px-2 py-1 rpg-button !bg-gradient-to-b !from-[#854d0e] !to-[#713f12]"
+                                >
+                                  RESOLVE
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => handleSettleMarket(m.id)}
+                                disabled={isSettling}
+                                className="font-pixel text-[8px] px-2 py-1 rpg-button !bg-gradient-to-b !from-[#854d0e] !to-[#713f12]"
+                              >
+                                SETTLE
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleCancelMarket(m.id)}
+                              disabled={isSettling}
+                              className="font-pixel text-[8px] px-2 py-1 rpg-button !bg-gradient-to-b !from-[#7f1d1d] !to-[#450a0a]"
+                            >
+                              CANCEL
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
+              {/* Section 3: SOL Claims */}
               <div className="rpg-border-inner bg-[#1a1a1a] p-3">
-                <p className="font-pixel text-[#a855f7] text-[10px] mb-2 glow-text">ROUND FLOW</p>
-                <div className="space-y-1 font-pixel text-[10px] text-[#888]">
-                  <p>1. Create round - auto-fetches top tokens</p>
-                  <p>2. Users predict for 22 hours</p>
-                  <p>3. Entries close 2h before end</p>
-                  <p>4. Settle - determine winner by % gain</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-pixel text-[#fbbf24] text-[10px] glow-text">
+                    SOL CLAIMS ({pendingClaims.length})
+                  </p>
+                  {claimsTotalSol > 0 && (
+                    <span className="font-pixel text-[#fbbf24] text-[9px]">
+                      {claimsTotalSol.toFixed(4)} SOL
+                    </span>
+                  )}
                 </div>
+
+                {pendingClaims.length === 0 ? (
+                  <p className="font-pixel text-[#666] text-[9px]">No pending claims</p>
+                ) : (
+                  <div className="space-y-2">
+                    {pendingClaims.map((claim) => (
+                      <div key={claim.id} className="rpg-border-inner bg-[#0d0d0d] p-2 space-y-1">
+                        <div className="flex items-center justify-between font-pixel text-[9px]">
+                          <span className="text-white">{claim.walletShort}</span>
+                          <span className="text-[#fbbf24]">{claim.amountSol.toFixed(4)} SOL</span>
+                        </div>
+                        <div className="flex items-center justify-between font-pixel text-[8px]">
+                          <span
+                            className={`px-1 py-0.5 rpg-border-inner ${
+                              claim.status === "pending"
+                                ? "text-[#fbbf24] bg-[#854d0e]/20"
+                                : claim.status === "processing"
+                                  ? "text-[#3b82f6] bg-[#1e3a8a]/20"
+                                  : "text-[#666]"
+                            }`}
+                          >
+                            {claim.status.toUpperCase()}
+                          </span>
+                          <span className="text-[#666]">
+                            {new Date(claim.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        {processingClaimId === claim.id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              value={txSignatureInput}
+                              onChange={(e) => setTxSignatureInput(e.target.value)}
+                              className="flex-1 bg-[#1a1a1a] border border-[#333] font-pixel text-white text-[8px] px-1 py-1 rounded focus:border-[#fbbf24] focus:outline-none"
+                              placeholder="Tx signature..."
+                            />
+                            <button
+                              onClick={() =>
+                                handleProcessClaim(claim.id, "complete", txSignatureInput)
+                              }
+                              disabled={!txSignatureInput.trim()}
+                              className="font-pixel text-[8px] px-1.5 py-1 rpg-button !bg-gradient-to-b !from-[#166534] !to-[#14532d]"
+                            >
+                              OK
+                            </button>
+                            <button
+                              onClick={() => setProcessingClaimId(null)}
+                              className="font-pixel text-[#666] text-[8px] px-1"
+                            >
+                              X
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-1">
+                            {claim.status === "pending" && (
+                              <button
+                                onClick={() => handleProcessClaim(claim.id, "processing")}
+                                className="font-pixel text-[8px] px-2 py-1 rpg-button"
+                              >
+                                PROCESS
+                              </button>
+                            )}
+                            {(claim.status === "pending" || claim.status === "processing") && (
+                              <button
+                                onClick={() => setProcessingClaimId(claim.id)}
+                                className="font-pixel text-[8px] px-2 py-1 rpg-button !bg-gradient-to-b !from-[#166534] !to-[#14532d]"
+                              >
+                                COMPLETE
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleProcessClaim(claim.id, "fail")}
+                              className="font-pixel text-[8px] px-2 py-1 rpg-button !bg-gradient-to-b !from-[#7f1d1d] !to-[#450a0a]"
+                            >
+                              FAIL
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={fetchClaims}
+                  className="w-full font-pixel text-[9px] py-1.5 rpg-button mt-2"
+                >
+                  REFRESH CLAIMS
+                </button>
               </div>
+
+              {/* Status message */}
+              {message && (
+                <p
+                  className={`font-pixel text-xs text-center ${
+                    message.includes("error") ||
+                    message.includes("Failed") ||
+                    message.includes("required")
+                      ? "text-[#ef4444]"
+                      : "text-[#fbbf24]"
+                  }`}
+                >
+                  {message}
+                </p>
+              )}
             </div>
           ) : null}
         </div>
