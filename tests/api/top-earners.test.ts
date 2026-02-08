@@ -56,14 +56,22 @@ function makeRequest(params?: Record<string, string>) {
 }
 
 // Helper to create mock claimable positions
-function mockPosition(baseMint: string, lamports: number, symbol = "???", name = "Unknown") {
+function mockPosition(
+  baseMint: string,
+  lamports: number,
+  symbol = "???",
+  name = "Unknown",
+  dammLamports = 0
+) {
   return {
     baseMint,
     quoteMint: "So11111111111111111111111111111111111111112",
     virtualPool: "VPool111111111111111111111111111111111111",
-    isMigrated: false,
+    isMigrated: dammLamports > 0,
     totalClaimableLamportsUserShare: lamports,
-    claimableDisplayAmount: lamports / 1_000_000_000,
+    virtualPoolClaimableAmount: String(lamports),
+    dammPoolClaimableAmount: String(dammLamports),
+    claimableDisplayAmount: (lamports + dammLamports) / 1_000_000_000,
     userBps: 10000,
     tokenName: name,
     tokenSymbol: symbol,
@@ -213,7 +221,7 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(tokens[0].unclaimedSol).toBeCloseTo(19.660432383);
   });
 
-  it("skips agents with zero claimable fees", async () => {
+  it("shows agents with zero claimable fees (sorted last)", async () => {
     mockFeedAgents(["Bagsy", "ChadGhost"]);
 
     mockApi.bulkWalletLookup.mockResolvedValue([
@@ -241,11 +249,15 @@ describe("GET /api/agent-economy/top-earners", () => {
     const earners = body.topEarners as Array<Record<string, unknown>>;
 
     expect(body.success).toBe(true);
-    expect(earners).toHaveLength(1);
+    expect(earners).toHaveLength(2);
+    // Bagsy first (has fees), ChadGhost second (0 fees)
     expect(earners[0].username).toBe("Bagsy");
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(1.0);
+    expect(earners[1].username).toBe("ChadGhost");
+    expect(earners[1].totalUnclaimedSol).toBe(0);
   });
 
-  it("skips agents whose claimable lookup fails", async () => {
+  it("still shows agents whose claimable lookup fails (with 0 SOL)", async () => {
     mockFeedAgents(["Bagsy", "ChadGhost"]);
 
     mockApi.bulkWalletLookup.mockResolvedValue([
@@ -273,8 +285,12 @@ describe("GET /api/agent-economy/top-earners", () => {
     const earners = body.topEarners as Array<Record<string, unknown>>;
 
     expect(body.success).toBe(true);
-    expect(earners).toHaveLength(1);
+    expect(earners).toHaveLength(2);
     expect(earners[0].username).toBe("Bagsy");
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(5.0);
+    // ChadGhost still shows but with 0 (lookup failed)
+    expect(earners[1].username).toBe("ChadGhost");
+    expect(earners[1].totalUnclaimedSol).toBe(0);
   });
 
   it("returns at most 10 earners", async () => {
@@ -331,6 +347,52 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(tokens[0].symbol).toBe("BIG");
     expect(tokens[1].symbol).toBe("MED");
     expect(tokens[2].symbol).toBe("SMALL");
+  });
+
+  it("includes DAMM pool fees in total for migrated tokens", async () => {
+    mockFeedAgents(["Bagsy", "ChadGhost"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "Wallet1111111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+      },
+      {
+        wallet: "Wallet2222222222222222222222222222222222222",
+        provider: "moltbook",
+        username: "ChadGhost",
+      },
+    ]);
+
+    mockApi.getClaimablePositions.mockImplementation((wallet: string) => {
+      if (wallet.startsWith("Wallet1")) {
+        // Bagsy: 2 SOL virtual only
+        return Promise.resolve([mockPosition("TokenA111", 2_000_000_000, "TOKA", "Token A")]);
+      }
+      // ChadGhost: 1 SOL virtual + 3 SOL DAMM = 4 SOL total (migrated token)
+      return Promise.resolve([
+        mockPosition("TokenB111", 1_000_000_000, "TOKB", "Token B", 3_000_000_000),
+      ]);
+    });
+
+    await GET(makeRequest({ nocache: "" }));
+    const { body } = lastResponse();
+    const earners = body.topEarners as Array<Record<string, unknown>>;
+
+    expect(body.success).toBe(true);
+    expect(earners).toHaveLength(2);
+
+    // ChadGhost first (4 SOL total: 1 virtual + 3 DAMM) > Bagsy (2 SOL)
+    expect(earners[0].username).toBe("ChadGhost");
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(4.0);
+
+    expect(earners[1].username).toBe("Bagsy");
+    expect(earners[1].totalUnclaimedSol).toBeCloseTo(2.0);
+
+    // Verify per-token amount includes DAMM
+    const chadTokens = earners[0].tokens as Array<Record<string, unknown>>;
+    expect(chadTokens[0].unclaimedSol).toBeCloseTo(4.0);
   });
 
   it("includes external agents from DB when Neon is configured", async () => {
