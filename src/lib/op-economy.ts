@@ -31,6 +31,8 @@ function rowToUser(row: Record<string, unknown>): OracleUser {
     lastDailyClaim: row.last_daily_claim ? String(row.last_daily_claim) : undefined,
     currentStreak: Number(row.current_streak ?? 0),
     bestStreak: Number(row.best_streak ?? 0),
+    dailyClaimStreak: Number(row.daily_claim_streak ?? 0),
+    bestDailyStreak: Number(row.best_daily_streak ?? 0),
     reputationScore: Number(row.reputation_score ?? 1000),
     reputationTier: String(row.reputation_tier ?? "novice") as OracleReputationTier,
     totalMarketsEntered: Number(row.total_markets_entered ?? 0),
@@ -191,22 +193,22 @@ export async function claimDailyBonus(wallet: string): Promise<{
       }
     }
 
-    // Calculate streak
-    let newStreak = 1;
+    // Calculate daily claim streak (separate from prediction win streak)
+    let newDailyStreak = 1;
     if (user.lastDailyClaim) {
       const lastClaim = new Date(user.lastDailyClaim).getTime();
       const timeSinceLast = now - lastClaim;
       if (timeSinceLast <= THIRTY_SIX_HOURS) {
-        // Within the streak window (yesterday +/- 36h)
-        newStreak = user.currentStreak + 1;
+        // Within the streak window (claimed yesterday)
+        newDailyStreak = user.dailyClaimStreak + 1;
       }
     }
 
-    const newBestStreak = Math.max(newStreak, user.bestStreak);
+    const newBestDailyStreak = Math.max(newDailyStreak, user.bestDailyStreak);
 
     // Base award: 50 OP, with 10% streak bonus at 3+ days
     let amount = 50;
-    if (newStreak >= 3) {
+    if (newDailyStreak >= 3) {
       amount += 5; // 10% bonus
     }
 
@@ -215,8 +217,8 @@ export async function claimDailyBonus(wallet: string): Promise<{
       SET op_balance = op_balance + ${amount},
           total_op_earned = total_op_earned + ${amount},
           last_daily_claim = NOW(),
-          current_streak = ${newStreak},
-          best_streak = ${newBestStreak}
+          daily_claim_streak = ${newDailyStreak},
+          best_daily_streak = ${newBestDailyStreak}
       WHERE wallet = ${wallet}
       RETURNING op_balance, achievements
     `;
@@ -229,9 +231,9 @@ export async function claimDailyBonus(wallet: string): Promise<{
       VALUES (${wallet}, ${amount}, ${newBalance}, 'daily_claim')
     `;
 
-    // Check Daily Devotion achievement (7-day streak)
-    if (newStreak >= 7) {
-      await checkAndAwardAchievement(wallet, "daily_devotion", 200, achievements);
+    // Check Daily Devotion achievement (7-day daily claim streak)
+    if (newDailyStreak >= 7) {
+      await checkAndAwardAchievement(wallet, "daily_devotion", 150, achievements);
     }
 
     return { success: true, amount, newBalance };

@@ -61,6 +61,8 @@ export async function GET(request: NextRequest) {
       tierBonus: `+${Math.round(tierBonus * 100)}%`,
       currentStreak: user.currentStreak,
       bestStreak: user.bestStreak,
+      dailyClaimStreak: user.dailyClaimStreak,
+      bestDailyStreak: user.bestDailyStreak,
       totalMarketsEntered: user.totalMarketsEntered,
       totalMarketsWon: user.totalMarketsWon,
       winRate,

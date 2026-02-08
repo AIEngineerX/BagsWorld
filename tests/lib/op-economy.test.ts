@@ -60,6 +60,8 @@ function makeUserRow(overrides: Record<string, unknown> = {}) {
     last_daily_claim: null,
     current_streak: 0,
     best_streak: 0,
+    daily_claim_streak: 0,
+    best_daily_streak: 0,
     reputation_score: 1000,
     reputation_tier: "seer",
     total_markets_entered: 0,
@@ -369,7 +371,7 @@ describe("claimDailyBonus", () => {
   });
 
   it("awards 50 OP for first-time claim (no prior claims)", async () => {
-    const userRow = makeUserRow({ last_daily_claim: null, current_streak: 0 });
+    const userRow = makeUserRow({ last_daily_claim: null, daily_claim_streak: 0 });
     const sql = createSqlMock([
       [userRow], // getOrCreateUser SELECT
       [{ op_balance: 1050, achievements: {} }], // UPDATE RETURNING
@@ -416,8 +418,8 @@ describe("claimDailyBonus", () => {
     const lastClaim = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(); // 25h ago
     const userRow = makeUserRow({
       last_daily_claim: lastClaim,
-      current_streak: 3,
-      best_streak: 5,
+      daily_claim_streak: 3,
+      best_daily_streak: 5,
     });
     const sql = createSqlMock([[userRow], [{ op_balance: 1055, achievements: {} }], []]);
     mockedGetSql.mockResolvedValue(sql as any);
@@ -433,8 +435,8 @@ describe("claimDailyBonus", () => {
     const lastClaim = new Date(Date.now() - 40 * 60 * 60 * 1000).toISOString(); // 40h ago
     const userRow = makeUserRow({
       last_daily_claim: lastClaim,
-      current_streak: 10,
-      best_streak: 10,
+      daily_claim_streak: 10,
+      best_daily_streak: 10,
     });
     const sql = createSqlMock([[userRow], [{ op_balance: 1050, achievements: {} }], []]);
     mockedGetSql.mockResolvedValue(sql as any);
@@ -450,8 +452,8 @@ describe("claimDailyBonus", () => {
     const lastClaim = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     const userRow = makeUserRow({
       last_daily_claim: lastClaim,
-      current_streak: 2, // will become 3
-      best_streak: 2,
+      daily_claim_streak: 2, // will become 3
+      best_daily_streak: 2,
     });
     const sql = createSqlMock([[userRow], [{ op_balance: 1055, achievements: {} }], []]);
     mockedGetSql.mockResolvedValue(sql as any);
@@ -466,8 +468,8 @@ describe("claimDailyBonus", () => {
     const lastClaim = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     const userRow = makeUserRow({
       last_daily_claim: lastClaim,
-      current_streak: 1, // will become 2
-      best_streak: 1,
+      daily_claim_streak: 1, // will become 2
+      best_daily_streak: 1,
     });
     const sql = createSqlMock([[userRow], [{ op_balance: 1050, achievements: {} }], []]);
     mockedGetSql.mockResolvedValue(sql as any);
@@ -482,8 +484,8 @@ describe("claimDailyBonus", () => {
     const lastClaim = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     const userRow = makeUserRow({
       last_daily_claim: lastClaim,
-      current_streak: 6, // will become 7
-      best_streak: 6,
+      daily_claim_streak: 6, // will become 7
+      best_daily_streak: 6,
     });
     const sql = createSqlMock([
       [userRow], // getOrCreateUser

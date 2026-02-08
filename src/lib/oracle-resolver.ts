@@ -295,12 +295,16 @@ async function resolveFeeVolume(round: OracleRoundDB): Promise<ResolveResult> {
     };
   }
 
-  // Calculate 24h claim volume from events
-  let claimVolume24h = 0;
-  const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
+  // Use the real claimVolume24h from world-state API's healthMetrics
+  // This is calculated from actual Bags SDK claim data, not estimated
+  const healthMetrics = worldState.healthMetrics as { claimVolume24h?: number } | undefined;
+  let claimVolume24h = healthMetrics?.claimVolume24h ?? 0;
+  let dataSource = "healthMetrics";
 
-  if (Array.isArray(worldState.events)) {
+  // Fallback: try summing fee_claim events if healthMetrics unavailable
+  if (claimVolume24h === 0 && Array.isArray(worldState.events)) {
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
     for (const event of worldState.events) {
       if (event.type === "fee_claim" && typeof event.amount === "number") {
         const eventTime = event.timestamp ? new Date(event.timestamp).getTime() : 0;
@@ -309,19 +313,14 @@ async function resolveFeeVolume(round: OracleRoundDB): Promise<ResolveResult> {
         }
       }
     }
+    if (claimVolume24h > 0) {
+      dataSource = "events";
+    }
   }
 
-  // If no events data available, use health as a proxy estimate
-  // Health thresholds from CLAUDE.md: 70+ means claims > 5 SOL typically
-  let usedHealthProxy = false;
-  if (claimVolume24h === 0 && worldState.health > 0) {
-    usedHealthProxy = true;
-    const health = worldState.health;
-    if (health >= 90) claimVolume24h = 50;
-    else if (health >= 70) claimVolume24h = 20;
-    else if (health >= 50) claimVolume24h = 10;
-    else if (health >= 25) claimVolume24h = 2;
-    else claimVolume24h = 0.5;
+  // If still no real data, report as zero rather than guessing
+  if (claimVolume24h === 0) {
+    dataSource = "no_data";
   }
 
   const winningOutcomeId = claimVolume24h >= threshold ? "over" : "under";
@@ -332,7 +331,7 @@ async function resolveFeeVolume(round: OracleRoundDB): Promise<ResolveResult> {
     resolutionData: {
       claimVolume24h: Math.round(claimVolume24h * 1000) / 1000,
       threshold,
-      healthProxy: usedHealthProxy || undefined,
+      dataSource,
       resolvedAt: new Date().toISOString(),
     },
   };

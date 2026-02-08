@@ -14039,7 +14039,12 @@ export class BootScene extends Phaser.Scene {
         rx < bWidth - Math.round(10 * s);
         rx += Math.round(12 * s)
       ) {
-        g.fillRect(baseX + rx, baseY + py - Math.round(1 * s), Math.round(3 * s), Math.round(3 * s));
+        g.fillRect(
+          baseX + rx,
+          baseY + py - Math.round(1 * s),
+          Math.round(3 * s),
+          Math.round(3 * s)
+        );
       }
       g.fillStyle(metalDark);
     }
@@ -14332,14 +14337,24 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(cogX, cogY, Math.round(12 * s), Math.round(12 * s));
     // Gear teeth (small rects extending from sides)
     g.fillStyle(PALETTE.gray);
-    g.fillRect(cogX - Math.round(2 * s), cogY + Math.round(3 * s), Math.round(2 * s), Math.round(6 * s));
+    g.fillRect(
+      cogX - Math.round(2 * s),
+      cogY + Math.round(3 * s),
+      Math.round(2 * s),
+      Math.round(6 * s)
+    );
     g.fillRect(
       cogX + Math.round(12 * s),
       cogY + Math.round(3 * s),
       Math.round(2 * s),
       Math.round(6 * s)
     );
-    g.fillRect(cogX + Math.round(3 * s), cogY - Math.round(2 * s), Math.round(6 * s), Math.round(2 * s));
+    g.fillRect(
+      cogX + Math.round(3 * s),
+      cogY - Math.round(2 * s),
+      Math.round(6 * s),
+      Math.round(2 * s)
+    );
     g.fillRect(
       cogX + Math.round(3 * s),
       cogY + Math.round(12 * s),

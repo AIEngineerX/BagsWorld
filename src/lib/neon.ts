@@ -1984,6 +1984,8 @@ export async function initializeOracleTables(): Promise<boolean> {
         last_daily_claim TIMESTAMP WITH TIME ZONE,
         current_streak INTEGER DEFAULT 0,
         best_streak INTEGER DEFAULT 0,
+        daily_claim_streak INTEGER DEFAULT 0,
+        best_daily_streak INTEGER DEFAULT 0,
         reputation_score INTEGER DEFAULT 1000,
         reputation_tier TEXT DEFAULT 'novice',
         total_markets_entered INTEGER DEFAULT 0,
@@ -1991,6 +1993,18 @@ export async function initializeOracleTables(): Promise<boolean> {
         achievements JSONB DEFAULT '{}',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
+    `;
+
+    // Migrate: add daily_claim_streak columns for existing tables
+    await sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_users' AND column_name = 'daily_claim_streak') THEN
+          ALTER TABLE oracle_users ADD COLUMN daily_claim_streak INTEGER DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_users' AND column_name = 'best_daily_streak') THEN
+          ALTER TABLE oracle_users ADD COLUMN best_daily_streak INTEGER DEFAULT 0;
+        END IF;
+      END $$
     `;
 
     // Create oracle_op_ledger table - Audit trail for all OP changes
@@ -2478,7 +2492,12 @@ export async function settleOracleRound(
 
       // Credit winner's balance if prize > 0
       if (prizeLamports > BigInt(0)) {
-        await creditOracleBalance(winner.wallet, prizeLamports, roundId);
+        const creditResult = await creditOracleBalance(winner.wallet, prizeLamports, roundId);
+        if (!creditResult.success) {
+          console.error(
+            `[Oracle] Failed to credit ${prizeLamports} lamports to ${winner.wallet} for round #${roundId}: ${creditResult.error}`
+          );
+        }
       }
 
       distributions.push({
@@ -2643,16 +2662,20 @@ export async function getOraclePredictionCounts(roundId: number): Promise<Record
   if (!sql) return {};
 
   try {
+    // Use COALESCE to group by outcome_id for outcome-based markets,
+    // or token_mint for price prediction markets
     const result = await sql`
-      SELECT token_mint, COUNT(*) as count
+      SELECT
+        COALESCE(NULLIF(outcome_id, ''), NULLIF(token_mint, ''), 'unknown') as choice_key,
+        COUNT(*) as count
       FROM oracle_predictions
       WHERE round_id = ${roundId}
-      GROUP BY token_mint
+      GROUP BY choice_key
     `;
 
     const counts: Record<string, number> = {};
-    for (const row of result as Array<{ token_mint: string; count: string }>) {
-      counts[row.token_mint] = safeParseInt(row.count, 0);
+    for (const row of result as Array<{ choice_key: string; count: string }>) {
+      counts[row.choice_key] = safeParseInt(row.count, 0);
     }
 
     return counts;
@@ -3319,11 +3342,114 @@ export async function settleOracleRoundWithOutcome(
   if (!sql) return { success: false, error: "Database not configured" };
 
   try {
+    // Fetch the round to validate the outcome ID
+    const roundRows = await sql`
+      SELECT market_config FROM oracle_rounds WHERE id = ${roundId} AND status = 'active'
+    `;
+
+    if (roundRows.length === 0) {
+      return { success: false, error: `Round ${roundId} not found or not active` };
+    }
+
+    // Validate that the outcome ID exists in the market's configured outcomes
+    const roundRow = roundRows[0] as Record<string, unknown>;
+    const marketConfig = roundRow.market_config as Record<string, unknown> | null;
+    if (marketConfig) {
+      const outcomes = (marketConfig.outcomes ?? []) as Array<{ id: string }>;
+      if (outcomes.length > 0 && !outcomes.some((o) => o.id === winningOutcomeId)) {
+        return {
+          success: false,
+          error: `Outcome "${winningOutcomeId}" not in configured outcomes: [${outcomes.map((o) => o.id).join(", ")}]`,
+        };
+      }
+    }
+
+    // Get prize pool and winning predictions for SOL prize distribution
+    const roundInfo = await sql`
+      SELECT prize_pool_lamports FROM oracle_rounds WHERE id = ${roundId}
+    `;
+    const prizePoolLamports = BigInt(
+      ((roundInfo[0] as Record<string, unknown>)?.prize_pool_lamports as string) || "0"
+    );
+
+    // Get winning predictions (those that picked this outcome)
+    const winningPredictions = await sql`
+      SELECT id, wallet, created_at
+      FROM oracle_predictions
+      WHERE round_id = ${roundId} AND outcome_id = ${winningOutcomeId}
+      ORDER BY created_at ASC
+    `;
+
+    const winners = winningPredictions as Array<{
+      id: number;
+      wallet: string;
+      created_at: string;
+    }>;
+    const winnersCount = winners.length;
+
+    // Distribute SOL prizes if pool exists
+    const distributions: PrizeDistribution[] = [];
+    if (prizePoolLamports > BigInt(0) && winnersCount > 0) {
+      const prizeAmounts = calculatePrizeDistribution(winnersCount, prizePoolLamports);
+
+      for (let i = 0; i < winnersCount; i++) {
+        const winner = winners[i];
+        const rank = i + 1;
+        const prizeLamports = prizeAmounts[i] || BigInt(0);
+
+        await sql`
+          UPDATE oracle_predictions
+          SET is_winner = TRUE, prediction_rank = ${rank}, prize_lamports = ${prizeLamports.toString()}
+          WHERE id = ${winner.id}
+        `;
+
+        if (prizeLamports > BigInt(0)) {
+          const creditResult = await creditOracleBalance(winner.wallet, prizeLamports, roundId);
+          if (!creditResult.success) {
+            console.error(
+              `[Oracle] Failed to credit ${prizeLamports} lamports to ${winner.wallet} for round #${roundId}: ${creditResult.error}`
+            );
+          }
+        }
+
+        distributions.push({
+          wallet: winner.wallet,
+          rank,
+          prizeLamports,
+          prizeSol: Number(prizeLamports) / 1_000_000_000,
+        });
+      }
+    } else if (winnersCount > 0) {
+      // No SOL prize pool, but still mark winners
+      for (let i = 0; i < winnersCount; i++) {
+        const winner = winners[i];
+        await sql`
+          UPDATE oracle_predictions
+          SET is_winner = TRUE, prediction_rank = ${i + 1}
+          WHERE id = ${winner.id}
+        `;
+      }
+    }
+
+    const extendedSettlementData = {
+      ...settlementData,
+      prizeDistributed: prizePoolLamports > BigInt(0),
+      prizePoolLamports: prizePoolLamports.toString(),
+      winnersCount,
+      distributions: distributions.map((d) => ({
+        wallet: d.wallet,
+        rank: d.rank,
+        prizeLamports: d.prizeLamports.toString(),
+        prizeSol: d.prizeSol,
+      })),
+    };
+
     await sql`
       UPDATE oracle_rounds SET
         status = 'settled',
         winning_outcome_id = ${winningOutcomeId},
-        settlement_data = ${JSON.stringify(settlementData)}
+        settlement_data = ${JSON.stringify(extendedSettlementData)},
+        prize_distributed = ${prizePoolLamports > BigInt(0)}
       WHERE id = ${roundId} AND status = 'active'
     `;
 
@@ -3372,20 +3498,29 @@ export async function updatePredictionOPPayout(
   opPayout: number,
   isWinner: boolean,
   rank?: number
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
   const sql = await getSql();
-  if (!sql) return;
+  if (!sql) return { success: false, error: "Database not configured" };
 
   try {
-    await sql`
+    // Use RETURNING to confirm the row was actually updated
+    const result = await sql`
       UPDATE oracle_predictions SET
         op_payout = ${opPayout},
         is_winner = ${isWinner},
         prediction_rank = ${rank || null}
       WHERE id = ${predictionId}
+      RETURNING id
     `;
+
+    if (result.length === 0) {
+      return { success: false, error: `Prediction ${predictionId} not found` };
+    }
+
+    return { success: true };
   } catch (error) {
     console.error("[Oracle] Error updating prediction OP payout:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Database error" };
   }
 }
 

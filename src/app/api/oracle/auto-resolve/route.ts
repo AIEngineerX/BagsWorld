@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     marketType: string;
     success: boolean;
     winningOutcome?: string;
+    payoutFailures?: number;
     error?: string;
   }> = [];
 
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Distribute OP payouts
+      let payoutFailures = 0;
       const predictions = await getOracleRoundPredictions(round.id);
       if (predictions.length > 0) {
         const winningId = resolution.winningOutcomeId || resolution.winningTokenMint || "";
@@ -89,16 +91,35 @@ export async function POST(request: NextRequest) {
 
         for (const payout of payouts) {
           // Update prediction record
-          await updatePredictionOPPayout(
+          const payoutResult = await updatePredictionOPPayout(
             payout.predictionId,
             payout.opPayout,
             payout.isWinner,
             payout.rank
           );
 
+          if (!payoutResult.success) {
+            console.error(
+              `[Oracle Auto-Resolve] Failed to record payout for prediction #${payout.predictionId}: ${payoutResult.error}`
+            );
+            payoutFailures++;
+            continue; // Skip crediting OP if we can't record the payout
+          }
+
           // Credit OP winnings
           if (payout.opPayout > 0) {
-            await addOP(payout.wallet, payout.opPayout, "prediction_win", round.id);
+            const opResult = await addOP(
+              payout.wallet,
+              payout.opPayout,
+              "prediction_win",
+              round.id
+            );
+            if (!opResult.success) {
+              console.error(
+                `[Oracle Auto-Resolve] Failed to credit ${payout.opPayout} OP to ${payout.wallet}: ${opResult.error}`
+              );
+              payoutFailures++;
+            }
           }
 
           // Update streaks and reputation
@@ -112,10 +133,11 @@ export async function POST(request: NextRequest) {
         marketType: round.marketType || "price_prediction",
         success: true,
         winningOutcome: resolution.winningOutcomeId || resolution.winningTokenMint,
+        ...(payoutFailures > 0 ? { payoutFailures } : {}),
       });
 
       console.log(
-        `[Oracle Auto-Resolve] Round #${round.id} (${round.marketType}) resolved: winner=${resolution.winningOutcomeId || resolution.winningTokenMint}`
+        `[Oracle Auto-Resolve] Round #${round.id} (${round.marketType}) resolved: winner=${resolution.winningOutcomeId || resolution.winningTokenMint}${payoutFailures > 0 ? ` (${payoutFailures} payout failures)` : ""}`
       );
     } catch (error) {
       console.error(`[Oracle Auto-Resolve] Error resolving round #${round.id}:`, error);
