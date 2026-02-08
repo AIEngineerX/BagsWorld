@@ -100,6 +100,7 @@ describe("GET /api/agent-economy/top-earners", () => {
   let mockApi: {
     bulkWalletLookup: jest.Mock;
     getClaimablePositions: jest.Mock;
+    getClaimStats: jest.Mock;
   };
 
   beforeEach(() => {
@@ -109,6 +110,7 @@ describe("GET /api/agent-economy/top-earners", () => {
     mockApi = {
       bulkWalletLookup: jest.fn().mockResolvedValue([]),
       getClaimablePositions: jest.fn().mockResolvedValue([]),
+      getClaimStats: jest.fn().mockResolvedValue([]),
     };
 
     (initBagsApi as jest.Mock).mockReturnValue(mockApi);
@@ -142,7 +144,7 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(body.topEarners).toEqual([]);
   });
 
-  it("returns earners sorted by total unclaimed fees", async () => {
+  it("returns earners sorted by total lifetime fees", async () => {
     mockFeedAgents(["Bagsy", "ChadGhost"]);
 
     mockApi.bulkWalletLookup.mockResolvedValue([
@@ -180,15 +182,17 @@ describe("GET /api/agent-economy/top-earners", () => {
     expect(body.success).toBe(true);
     expect(earners).toHaveLength(2);
 
-    // ChadGhost should be first (5 SOL > 2 SOL)
+    // ChadGhost should be first (5 SOL unclaimed + 0 claimed > 2 SOL)
     expect(earners[0].username).toBe("ChadGhost");
     expect(earners[0].totalUnclaimedSol).toBeCloseTo(5.0);
+    expect(earners[0].totalLifetimeFeesSol).toBeCloseTo(5.0);
     expect(earners[0].tokenCount).toBe(2);
     expect(earners[0].profilePic).toBe("https://example.com/chad.png");
 
     // Bagsy second
     expect(earners[1].username).toBe("Bagsy");
     expect(earners[1].totalUnclaimedSol).toBeCloseTo(2.0);
+    expect(earners[1].totalLifetimeFeesSol).toBeCloseTo(2.0);
     expect(earners[1].tokenCount).toBe(1);
   });
 
@@ -481,5 +485,110 @@ describe("GET /api/agent-economy/top-earners", () => {
 
     expect(body.success).toBe(true);
     expect(body.topEarners).toEqual([]);
+  });
+
+  it("calculates lifetime fees as claimed + unclaimed", async () => {
+    mockFeedAgents(["Bagsy"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "BagsyWallet111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+        platformData: { displayName: "Bagsy" },
+      },
+    ]);
+
+    // 2 SOL unclaimed
+    mockApi.getClaimablePositions.mockResolvedValue([
+      mockPosition("TokenA111", 2_000_000_000, "TOKA", "Token A"),
+    ]);
+
+    // 3 SOL claimed
+    mockApi.getClaimStats.mockResolvedValue([
+      {
+        user: "BagsyWallet111111111111111111111111111111",
+        totalClaimed: 3_000_000_000,
+        claimCount: 2,
+        lastClaimTime: Date.now(),
+      },
+    ]);
+
+    await GET(makeRequest({ nocache: "" }));
+    const { body } = lastResponse();
+    const earners = body.topEarners as Array<Record<string, unknown>>;
+
+    expect(earners).toHaveLength(1);
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(2.0);
+    expect(earners[0].totalLifetimeFeesSol).toBeCloseTo(5.0); // 2 + 3
+
+    const tokens = earners[0].tokens as Array<Record<string, unknown>>;
+    expect(tokens[0].unclaimedSol).toBeCloseTo(2.0);
+    expect(tokens[0].claimedSol).toBeCloseTo(3.0);
+    expect(tokens[0].lifetimeFeesSol).toBeCloseTo(5.0);
+  });
+
+  it("deduplicates getClaimStats calls for shared mints", async () => {
+    mockFeedAgents(["Bagsy", "ChadGhost"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "Wallet1111111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+      },
+      {
+        wallet: "Wallet2222222222222222222222222222222222222",
+        provider: "moltbook",
+        username: "ChadGhost",
+      },
+    ]);
+
+    // Both agents have the same token mint
+    mockApi.getClaimablePositions.mockResolvedValue([
+      mockPosition("SharedMint", 1_000_000_000, "SHAR", "Shared Token"),
+    ]);
+
+    mockApi.getClaimStats.mockResolvedValue([]);
+
+    await GET(makeRequest({ nocache: "" }));
+
+    // Should only call getClaimStats once for the shared mint
+    expect(mockApi.getClaimStats).toHaveBeenCalledTimes(1);
+    expect(mockApi.getClaimStats).toHaveBeenCalledWith("SharedMint");
+  });
+
+  it("handles getClaimStats failure gracefully (defaults claimed to 0)", async () => {
+    mockFeedAgents(["Bagsy"]);
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "Wallet1111111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+      },
+    ]);
+
+    // 4 SOL unclaimed
+    mockApi.getClaimablePositions.mockResolvedValue([
+      mockPosition("TokenA111", 4_000_000_000, "TOKA", "Token A"),
+    ]);
+
+    // ClaimStats fails
+    mockApi.getClaimStats.mockRejectedValue(new Error("API error"));
+
+    await GET(makeRequest({ nocache: "" }));
+    const { body } = lastResponse();
+    const earners = body.topEarners as Array<Record<string, unknown>>;
+
+    expect(body.success).toBe(true);
+    expect(earners).toHaveLength(1);
+    // claimed defaults to 0, so lifetime = unclaimed only
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(4.0);
+    expect(earners[0].totalLifetimeFeesSol).toBeCloseTo(4.0);
+
+    const tokens = earners[0].tokens as Array<Record<string, unknown>>;
+    expect(tokens[0].claimedSol).toBe(0);
+    expect(tokens[0].lifetimeFeesSol).toBeCloseTo(4.0);
   });
 });
