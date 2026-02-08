@@ -1,10 +1,10 @@
-// Oracle Auto-Generator - Creates prediction markets from real data
-// Generates price_prediction, world_health, weather_forecast, and fee_volume markets
+// Oracle Auto-Generator - Creates price prediction markets from real data
 
-import type { OracleMarketType, OracleMarketConfig } from "./types";
+import type { OracleMarketConfig } from "./types";
 import { createOracleRound, getActiveOracleMarkets, type OracleTokenOptionDB } from "./neon";
 import { getAllWorldTokensAsync, type LaunchedToken } from "./token-registry";
-import { getTokenPrice, fetchWorldState } from "./oracle-resolver";
+import { getTokenPrice } from "./oracle-resolver";
+import { ECOSYSTEM_CONFIG } from "./config";
 
 // ============================================
 // Types
@@ -17,23 +17,15 @@ export interface GenerationResult {
 }
 
 // ============================================
-// Market Frequency Configuration
+// Default prize pool from config
 // ============================================
 
-export function getMarketFrequencyHours(type: OracleMarketType): number {
-  switch (type) {
-    case "price_prediction":
-      return 24;
-    case "world_health":
-      return 12;
-    case "weather_forecast":
-      return 6;
-    case "fee_volume":
-      return 24;
-    default:
-      return 24;
-  }
-}
+const defaultPrizeLamports = BigInt(
+  Math.floor(
+    ((ECOSYSTEM_CONFIG.oracle?.prizePool as { defaultSol?: number })?.defaultSol ?? 0.1) *
+      1_000_000_000
+  )
+);
 
 // ============================================
 // Price Prediction Market Generator
@@ -112,7 +104,7 @@ export async function generatePricePredictionMarket(): Promise<{
     // Duration: 24 hours
     const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    const result = await createOracleRound(dbTokenOptions, endTime, BigInt(0), {
+    const result = await createOracleRound(dbTokenOptions, endTime, defaultPrizeLamports, {
       marketType: "price_prediction",
       marketConfig: marketConfig as unknown as Record<string, unknown>,
       autoResolve: true,
@@ -138,193 +130,8 @@ export async function generatePricePredictionMarket(): Promise<{
 }
 
 // ============================================
-// World Health Market Generator
-// ============================================
-
-export async function generateWorldHealthMarket(): Promise<{
-  success: boolean;
-  roundId?: number;
-  error?: string;
-}> {
-  try {
-    console.log("[OracleGen] Generating world health market...");
-
-    const worldState = await fetchWorldState();
-    const currentHealth = worldState?.health || 50;
-
-    // Set threshold slightly above or below current health
-    const offset = Math.random() > 0.5 ? 5 : -5;
-    const threshold = Math.max(10, Math.min(90, currentHealth + offset));
-
-    // Create binary market
-    const marketConfig: OracleMarketConfig & { threshold: number } = {
-      outcome_type: "binary",
-      outcomes: [
-        { id: "yes", label: "YES" },
-        { id: "no", label: "NO" },
-      ],
-      resolution_logic: "world_health",
-      question: `Will world health be above ${threshold}% at resolution?`,
-      threshold,
-    };
-
-    // Duration: 12 hours
-    const endTime = new Date(Date.now() + 12 * 60 * 60 * 1000);
-
-    const result = await createOracleRound([], endTime, BigInt(0), {
-      marketType: "world_health",
-      marketConfig: marketConfig as unknown as Record<string, unknown>,
-      autoResolve: true,
-      resolutionSource: "world_state",
-      createdBy: "auto_generator",
-      entryCostOp: 100,
-    });
-
-    if (result.success) {
-      console.log(
-        `[OracleGen] World health market created: round #${result.roundId}, threshold=${threshold}%`
-      );
-    }
-
-    return result;
-  } catch (error) {
-    console.error("[OracleGen] Error generating world health market:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
-
-// ============================================
-// Weather Forecast Market Generator
-// ============================================
-
-export async function generateWeatherForecastMarket(): Promise<{
-  success: boolean;
-  roundId?: number;
-  error?: string;
-}> {
-  try {
-    console.log("[OracleGen] Generating weather forecast market...");
-
-    // Create multiple choice market
-    const marketConfig: OracleMarketConfig = {
-      outcome_type: "multiple_choice",
-      outcomes: [
-        { id: "sunny", label: "Sunny" },
-        { id: "cloudy", label: "Cloudy" },
-        { id: "rain", label: "Rain" },
-        { id: "storm", label: "Storm" },
-      ],
-      resolution_logic: "weather_forecast",
-      question: "What will the weather be in 6 hours?",
-    };
-
-    // Duration: 6 hours
-    const endTime = new Date(Date.now() + 6 * 60 * 60 * 1000);
-
-    const result = await createOracleRound([], endTime, BigInt(0), {
-      marketType: "weather_forecast",
-      marketConfig: marketConfig as unknown as Record<string, unknown>,
-      autoResolve: true,
-      resolutionSource: "world_state",
-      createdBy: "auto_generator",
-      entryCostOp: 50,
-    });
-
-    if (result.success) {
-      console.log(`[OracleGen] Weather forecast market created: round #${result.roundId}`);
-    }
-
-    return result;
-  } catch (error) {
-    console.error("[OracleGen] Error generating weather forecast market:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
-
-// ============================================
-// Fee Volume Market Generator
-// ============================================
-
-export async function generateFeeVolumeMarket(): Promise<{
-  success: boolean;
-  roundId?: number;
-  error?: string;
-}> {
-  try {
-    console.log("[OracleGen] Generating fee volume market...");
-
-    const worldState = await fetchWorldState();
-    const health = worldState?.health || 50;
-
-    // Use health to estimate a reasonable volume threshold
-    const threshold = health > 70 ? 10 : health > 50 ? 5 : 2;
-
-    // Create binary market
-    const marketConfig: OracleMarketConfig & { threshold: number } = {
-      outcome_type: "binary",
-      outcomes: [
-        { id: "over", label: "OVER" },
-        { id: "under", label: "UNDER" },
-      ],
-      resolution_logic: "fee_volume",
-      question: `Will total fees claimed exceed ${threshold} SOL today?`,
-      threshold,
-    };
-
-    // Duration: 24 hours
-    const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-    const result = await createOracleRound([], endTime, BigInt(0), {
-      marketType: "fee_volume",
-      marketConfig: marketConfig as unknown as Record<string, unknown>,
-      autoResolve: true,
-      resolutionSource: "bags_sdk",
-      createdBy: "auto_generator",
-      entryCostOp: 100,
-    });
-
-    if (result.success) {
-      console.log(
-        `[OracleGen] Fee volume market created: round #${result.roundId}, threshold=${threshold} SOL`
-      );
-    }
-
-    return result;
-  } catch (error) {
-    console.error("[OracleGen] Error generating fee volume market:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
-
-// ============================================
 // Main Generator Function
 // ============================================
-
-const MARKET_TYPES: OracleMarketType[] = [
-  "price_prediction",
-  "world_health",
-  "weather_forecast",
-  "fee_volume",
-];
-
-const GENERATORS: Record<
-  OracleMarketType,
-  () => Promise<{ success: boolean; roundId?: number; error?: string }>
-> = {
-  price_prediction: generatePricePredictionMarket,
-  world_health: generateWorldHealthMarket,
-  weather_forecast: generateWeatherForecastMarket,
-  fee_volume: generateFeeVolumeMarket,
-};
 
 export async function generateMarkets(): Promise<GenerationResult> {
   const result: GenerationResult = {
@@ -337,90 +144,34 @@ export async function generateMarkets(): Promise<GenerationResult> {
     // Get all active markets
     const activeMarkets = await getActiveOracleMarkets();
 
-    // Count active markets per type
-    const activeCountByType: Record<string, number> = {};
-    const mostRecentByType: Record<string, Date> = {};
+    // Count active price_prediction markets
+    const activePriceMarkets = activeMarkets.filter(
+      (m) => (m.marketType || "price_prediction") === "price_prediction"
+    ).length;
 
-    for (const market of activeMarkets) {
-      const mType = market.marketType || "price_prediction";
-      activeCountByType[mType] = (activeCountByType[mType] || 0) + 1;
-
-      // Track most recent start time per type
-      const startTime = new Date(market.startTime);
-      if (!mostRecentByType[mType] || startTime > mostRecentByType[mType]) {
-        mostRecentByType[mType] = startTime;
-      }
-    }
-
-    const totalActive = activeMarkets.length;
-
-    for (const marketType of MARKET_TYPES) {
-      const activeCount = activeCountByType[marketType] || 0;
-      const frequencyHours = getMarketFrequencyHours(marketType);
-
-      // Check: active count < 2 for this type
-      if (activeCount >= 2) {
-        result.skipped.push({
-          marketType,
-          reason: `Already has ${activeCount} active markets (max 2)`,
-        });
-        continue;
-      }
-
-      // Check: enough time since last generation
-      const lastGenerated = mostRecentByType[marketType];
-      if (lastGenerated) {
-        const hoursSinceLast = (Date.now() - lastGenerated.getTime()) / (1000 * 60 * 60);
-        if (hoursSinceLast < frequencyHours) {
-          result.skipped.push({
-            marketType,
-            reason: `Only ${hoursSinceLast.toFixed(1)}h since last (need ${frequencyHours}h)`,
-          });
-          continue;
-        }
-      }
-
-      // Generate this market
+    if (activePriceMarkets >= 2) {
+      result.skipped.push({
+        marketType: "price_prediction",
+        reason: `Already has ${activePriceMarkets} active markets (max 2)`,
+      });
+    } else {
+      // Generate a price prediction market
       try {
-        const genResult = await GENERATORS[marketType]();
+        const genResult = await generatePricePredictionMarket();
         if (genResult.success && genResult.roundId) {
           result.generated.push({
-            marketType,
+            marketType: "price_prediction",
             roundId: genResult.roundId,
           });
         } else {
           result.errors.push({
-            marketType,
+            marketType: "price_prediction",
             error: genResult.error || "Unknown generation error",
           });
         }
       } catch (err) {
         result.errors.push({
-          marketType,
-          error: err instanceof Error ? err.message : "Unknown error",
-        });
-      }
-    }
-
-    // Smart rule: if zero active markets total and none generated, force a price_prediction
-    if (totalActive === 0 && result.generated.length === 0) {
-      console.log("[OracleGen] No active markets at all, force-generating price prediction");
-      try {
-        const forceResult = await generatePricePredictionMarket();
-        if (forceResult.success && forceResult.roundId) {
-          result.generated.push({
-            marketType: "price_prediction",
-            roundId: forceResult.roundId,
-          });
-        } else {
-          result.errors.push({
-            marketType: "price_prediction (forced)",
-            error: forceResult.error || "Force generation failed",
-          });
-        }
-      } catch (err) {
-        result.errors.push({
-          marketType: "price_prediction (forced)",
+          marketType: "price_prediction",
           error: err instanceof Error ? err.message : "Unknown error",
         });
       }

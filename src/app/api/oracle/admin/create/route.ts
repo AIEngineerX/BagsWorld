@@ -85,14 +85,15 @@ export async function POST(request: NextRequest) {
     tokens,
     tokenMints,
     useRegistry = true,
-    prizePoolSol = 0,
+    prizePoolSol = (ECOSYSTEM_CONFIG.oracle?.prizePool as { defaultSol?: number })?.defaultSol ??
+      0.1,
     // New virtual market fields
     marketType = "price_prediction",
     marketConfig,
-    autoResolve = false,
     resolutionSource,
     entryCostOp = 100,
   } = body;
+  const autoResolve = body.autoResolve ?? marketType !== "custom";
 
   // Verify admin using config-based admin check
   if (!adminWallet || !isAdmin(adminWallet)) {
@@ -188,7 +189,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (tokenOptions.length < 2) {
+  // Custom markets don't need tokens (they use outcomes instead)
+  if (marketType !== "custom" && tokenOptions.length < 2) {
     return NextResponse.json(
       { success: false, error: "Need at least 2 tokens with valid prices to create a round" },
       { status: 400 }

@@ -82,10 +82,10 @@ export const enterPredictionAction: Action = {
 
     // Submit
     try {
-      const res = await fetch(`${BAGSWORLD_API_URL}/api/oracle/enter`, {
+      const res = await fetch(`${BAGSWORLD_API_URL}/api/oracle/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet, tokenMint: target.mint }),
+        body: JSON.stringify({ wallet, roundId: round.id, tokenMint: target.mint }),
       });
       const result = await res.json();
 

@@ -5,8 +5,9 @@ import {
   getOraclePredictionCounts,
   getUserOraclePrediction,
   isNeonConfigured,
-  initializeOracleTables,
 } from "@/lib/neon";
+import { lazyResolveExpiredMarkets } from "@/lib/oracle-resolver";
+import { generatePricePredictionMarket } from "@/lib/oracle-generator";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +16,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
 
-  await initializeOracleTables();
+  // Lazy resolve any expired markets before fetching
+  await lazyResolveExpiredMarkets();
 
   const { searchParams } = new URL(request.url);
   const wallet = searchParams.get("wallet");
   const marketType = searchParams.get("type");
 
-  const activeMarkets = await getActiveOracleMarkets(marketType || undefined);
+  let activeMarkets = await getActiveOracleMarkets(marketType || undefined);
+
+  // Lazy generation: if no active markets exist, auto-generate a price prediction
+  if (activeMarkets.length === 0) {
+    await generatePricePredictionMarket();
+    activeMarkets = await getActiveOracleMarkets(marketType || undefined);
+  }
 
   const marketResults = await Promise.allSettled(
     activeMarkets.map(async (round) => {

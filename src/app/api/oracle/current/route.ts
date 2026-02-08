@@ -6,6 +6,8 @@ import {
   getOraclePredictionCounts,
   isNeonConfigured,
 } from "@/lib/neon";
+import { lazyResolveExpiredMarkets } from "@/lib/oracle-resolver";
+import { generatePricePredictionMarket } from "@/lib/oracle-generator";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +21,16 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const round = await getActiveOracleRound();
+  // Lazy resolve any expired markets before fetching
+  await lazyResolveExpiredMarkets();
+
+  let round = await getActiveOracleRound();
+
+  // Lazy generation: if no active round, auto-generate a price prediction
+  if (!round) {
+    await generatePricePredictionMarket();
+    round = await getActiveOracleRound();
+  }
 
   if (!round) {
     return NextResponse.json({
