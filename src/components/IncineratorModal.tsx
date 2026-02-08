@@ -249,7 +249,9 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
             <span className="text-2xl">&#9760;</span>
             <div>
               <h2 className="text-green-400 font-bold text-lg font-pixel">SOL INCINERATOR</h2>
-              <p className="text-green-700 text-xs">Burn tokens & reclaim SOL from empty accounts</p>
+              <p className="text-green-700 text-xs">
+                Burn tokens & reclaim SOL from empty accounts
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="text-green-700 hover:text-green-400 text-xl px-2">
@@ -274,7 +276,9 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                 resetState();
               }}
               className={`flex-1 py-3 text-xs font-pixel font-bold transition-colors ${
-                activeTab === tab.id ? "border-b-2 text-white" : "text-green-800 hover:text-green-500"
+                activeTab === tab.id
+                  ? "border-b-2 text-white"
+                  : "text-green-800 hover:text-green-500"
               }`}
               style={{
                 borderColor: activeTab === tab.id ? tab.color : "transparent",
@@ -522,9 +526,8 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         {/* Footer */}
         <div className="border-t border-green-900/50 p-3 space-y-1">
           <p className="text-green-700 text-center text-[10px]">
-            Powered by{" "}
-            <span className="text-green-500 font-pixel">Sol Incinerator</span>
-            {" "}&bull; Transactions signed by your wallet
+            Powered by <span className="text-green-500 font-pixel">Sol Incinerator</span> &bull;
+            Transactions signed by your wallet
           </p>
           <p className="text-green-900 text-center text-[9px]">
             Accounts ~0.002 SOL each &bull; NFT rent varies by metadata size
