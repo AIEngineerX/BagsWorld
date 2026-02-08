@@ -34,24 +34,83 @@ let cachedResponse: {
 let cacheTime = 0;
 const CACHE_TTL = 60 * 60 * 1000;
 
+// Persistent set of discovered agent usernames — survives cache refreshes
+// so agents aren't lost when they fall off the Moltbook feed
+const knownAgentUsernames = new Map<string, string>(); // lowercase → original username
+
+/** @internal Reset persistent state — for testing only */
+export function _resetKnownAgentsForTesting() {
+  knownAgentUsernames.clear();
+  cachedResponse = null;
+  cacheTime = 0;
+}
+
+/** Extract author name from a Moltbook post, handling both string and object formats. */
+function extractAuthorName(author: unknown): string | null {
+  if (typeof author === "string") return author || null;
+  if (author && typeof author === "object" && "name" in author) {
+    const name = (author as { name: unknown }).name;
+    return typeof name === "string" ? name : null;
+  }
+  return null;
+}
+
+// Submolts where Bags.fm agents are active (global feed misses these)
+const AGENT_SUBMOLTS = [
+  "crypto",
+  "general",
+  "agentfinance",
+  "introductions",
+  "bagsworld",
+  "pokecenter",
+];
+
+// BagsWorld's own agents — always included even if they don't appear in any Moltbook feed
+const KNOWN_BAGSWORLD_AGENTS = ["Bagsy", "ChadGhost", "FinnBags"];
+
 /**
  * Fetch unique authors from Moltbook's public feed API directly.
- * This mirrors the PowerShell script approach — no MoltbookClient/API key needed.
+ * Fetches global feeds + submolt-specific feeds for broader coverage.
  */
 async function fetchMoltbookFeedAuthors(): Promise<string[]> {
   try {
-    const res = await Promise.race([
-      fetch("https://www.moltbook.com/api/v1/posts?sort=hot&limit=50"),
+    // Global feed (hot/new/top)
+    const globalFetches = ["hot", "new", "top"].map((sort) =>
+      fetch(`https://www.moltbook.com/api/v1/posts?sort=${sort}&limit=50`)
+        .then((r) => (r.ok ? r.json() : { posts: [] }))
+        .catch(() => ({ posts: [] }))
+    );
+    // Submolt feeds (hot/new/top from key communities for broader coverage)
+    const submoltFetches = AGENT_SUBMOLTS.flatMap((sub) =>
+      ["hot", "new", "top"].map((sort) =>
+        fetch(`https://www.moltbook.com/api/v1/submolts/${sub}?sort=${sort}&limit=50`)
+          .then((r) => (r.ok ? r.json() : { posts: [] }))
+          .catch(() => ({ posts: [] }))
+      )
+    );
+    // Agent leaderboard (discovers agents by karma ranking)
+    const leaderboardFetch = fetch("https://www.moltbook.com/api/v1/agents/leaderboard?limit=100")
+      .then((r) => (r.ok ? r.json() : { leaderboard: [] }))
+      .catch(() => ({ leaderboard: [] }));
+    const [feedResults, leaderboardData] = await Promise.race([
+      Promise.all([Promise.all([...globalFetches, ...submoltFetches]), leaderboardFetch]),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Moltbook feed timeout")), 10000)
+        setTimeout(() => reject(new Error("Moltbook feed timeout")), 15000)
       ),
     ]);
-    if (!res.ok) throw new Error(`Moltbook API ${res.status}`);
-    const data = (await res.json()) as { posts?: Array<{ author?: { name?: string } }> };
-    const posts = data.posts || [];
     const authors = new Set<string>();
-    for (const post of posts) {
-      if (post.author?.name) authors.add(post.author.name);
+    for (const data of feedResults) {
+      const posts = (data as { posts?: Array<{ author?: unknown }> }).posts || [];
+      for (const post of posts) {
+        const name = extractAuthorName(post.author);
+        if (name) authors.add(name);
+      }
+    }
+    // Add agents from leaderboard
+    const leaderboard =
+      (leaderboardData as { leaderboard?: Array<{ name?: string }> })?.leaderboard || [];
+    for (const agent of leaderboard) {
+      if (agent.name) authors.add(agent.name);
     }
     return Array.from(authors);
   } catch (err) {
@@ -62,7 +121,7 @@ async function fetchMoltbookFeedAuthors(): Promise<string[]> {
 
 /**
  * Discover Moltbook agents dynamically from the live feed + DB.
- * No hardcoded names — mirrors the PowerShell approach.
+ * Uses a persistent set so agents aren't lost when they fall off the feed.
  */
 async function discoverMoltbookAgents(): Promise<
   Array<{ username: string; displayName?: string }>
@@ -71,42 +130,70 @@ async function discoverMoltbookAgents(): Promise<
   const agents: Array<{ username: string; displayName?: string }> = [];
 
   function addAgent(username: string, displayName?: string) {
+    if (typeof username !== "string" || !username) return;
     const key = username.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
     agents.push({ username, displayName });
+    // Persist across cache refreshes so agents aren't lost when they leave the feed
+    knownAgentUsernames.set(key, username);
   }
 
-  // 1. Try MoltbookClient first (if API key is configured)
+  // 0a. Always include known BagsWorld agents
+  for (const agent of KNOWN_BAGSWORLD_AGENTS) {
+    addAgent(agent, agent);
+  }
+
+  // 0b. Restore all previously-discovered agents so they're never lost
+  for (const [, username] of knownAgentUsernames) {
+    addAgent(username, username);
+  }
+
+  // 1. Try MoltbookClient (global feeds + submolt feeds for broader coverage)
   const moltbook = getMoltbookOrNull();
   if (moltbook) {
     try {
-      const [hotPosts, newPosts] = await Promise.race([
-        Promise.all([moltbook.getFeed("hot", 100), moltbook.getFeed("new", 100)]),
+      const feeds = await Promise.race([
+        Promise.all([
+          moltbook.getFeed("hot", 100),
+          moltbook.getFeed("new", 100),
+          moltbook.getFeed("top", 100).catch(() => []),
+          // Also scan key submolts where Bags.fm agents post (all sort types)
+          ...AGENT_SUBMOLTS.flatMap((sub) =>
+            (["hot", "new", "top"] as const).map((sort) =>
+              moltbook.getSubmoltPosts(sub, sort, 50).catch(() => [])
+            )
+          ),
+        ]),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Moltbook feed timeout")), 10000)
+          setTimeout(() => reject(new Error("Moltbook feed timeout")), 15000)
         ),
       ]);
-      for (const post of [...hotPosts, ...newPosts]) {
-        if (post.author) {
-          addAgent(post.author, post.author);
+      for (const feed of feeds) {
+        if (!Array.isArray(feed)) continue;
+        for (const post of feed) {
+          // Handle author as string or object — API may return either format
+          const authorName = extractAuthorName(post.author);
+          if (authorName) {
+            addAgent(authorName, authorName);
+          }
         }
       }
-      console.log(`[top-earners] Discovered ${agents.length} agents from MoltbookClient`);
+      console.log(`[top-earners] Discovered ${agents.length} agents from MoltbookClient feeds`);
     } catch (err) {
       console.error("[top-earners] MoltbookClient feed failed:", err);
     }
   }
 
-  // 2. Fallback: direct HTTP fetch from Moltbook public API (no key needed)
-  if (agents.length === 0) {
-    const feedAuthors = await fetchMoltbookFeedAuthors();
-    for (const author of feedAuthors) {
-      addAgent(author, author);
-    }
-    if (feedAuthors.length > 0) {
-      console.log(`[top-earners] Discovered ${feedAuthors.length} agents from Moltbook public API`);
-    }
+  // 2. Always also fetch from public API for broader coverage (not just as fallback)
+  const feedAuthors = await fetchMoltbookFeedAuthors();
+  for (const author of feedAuthors) {
+    addAgent(author, author);
+  }
+  if (feedAuthors.length > 0) {
+    console.log(
+      `[top-earners] Added agents from Moltbook public API (total now: ${agents.length})`
+    );
   }
 
   // 3. Pull external agents with Moltbook usernames from DB
@@ -165,7 +252,7 @@ export async function GET(request: Request) {
 
     console.log(`[top-earners] Checking ${discoveredAgents.length} Moltbook agents`);
 
-    // Step 2: Bulk resolve Moltbook usernames → wallets (single API call)
+    // Step 2: Bulk resolve Moltbook usernames → wallets (batched, max 100 per call)
     let walletResults: Array<{
       wallet: string;
       provider: string;
@@ -179,12 +266,43 @@ export async function GET(request: Request) {
         provider: "moltbook",
         username: a.username,
       }));
-      walletResults = await Promise.race([
-        api.bulkWalletLookup(lookupItems),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Bulk lookup timeout")), 15000)
-        ),
-      ]);
+      // Bags API limits bulk lookup to 100 items — use batches of 50 with 2 concurrent
+      const BATCH_SIZE = 50;
+      const CONCURRENCY = 2;
+      const batches: Array<{ provider: string; username: string }[]> = [];
+      for (let i = 0; i < lookupItems.length; i += BATCH_SIZE) {
+        batches.push(lookupItems.slice(i, i + BATCH_SIZE));
+      }
+
+      for (let round = 0; round < batches.length && !rateLimited; round += CONCURRENCY) {
+        const concurrent = batches.slice(round, round + CONCURRENCY);
+        const settled = await Promise.allSettled(
+          concurrent.map((batch) =>
+            Promise.race([
+              api.bulkWalletLookup(batch),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("Bulk lookup timeout")), 30000)
+              ),
+            ])
+          )
+        );
+        for (let j = 0; j < settled.length; j++) {
+          const result = settled[j];
+          if (result.status === "fulfilled") {
+            walletResults.push(...result.value);
+          } else {
+            const errMsg = String(result.reason);
+            if (errMsg.includes("Rate limit") || errMsg.includes("429")) {
+              rateLimited = true;
+              break;
+            }
+            console.error(
+              `[top-earners] Batch ${round + j + 1} failed:`,
+              result.reason instanceof Error ? result.reason.message : result.reason
+            );
+          }
+        }
+      }
     } catch (err) {
       const errMsg = String(err);
       if (errMsg.includes("Rate limit") || errMsg.includes("429")) {

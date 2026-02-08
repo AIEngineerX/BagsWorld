@@ -160,7 +160,16 @@ class BagsApiClient {
 
   async getClaimStats(tokenMint: string): Promise<ClaimStats[]> {
     const params = new URLSearchParams({ tokenMint });
-    return this.fetch(`/token-launch/claim-stats?${params}`);
+    // API returns { wallet, tokenMint, totalClaimed (string) } — normalize to ClaimStats
+    const raw = await this.fetch<
+      Array<{ wallet: string; tokenMint: string; totalClaimed: string }>
+    >(`/token-launch/claim-stats?${params}`);
+    return (raw ?? []).map((r) => ({
+      user: r.wallet,
+      totalClaimed: parseInt(r.totalClaimed, 10) || 0,
+      claimCount: 0,
+      lastClaimTime: 0,
+    }));
   }
 
   async getTokenClaimEvents(tokenMint: string, limit?: number): Promise<ClaimEvent[]> {
