@@ -17,7 +17,7 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Install all dependencies (including tsx for runtime TypeScript execution)
-RUN npm install && npm cache clean --force
+RUN npm config set update-notifier false && npm install && npm cache clean --force
 
 # Copy source code
 COPY src ./src
