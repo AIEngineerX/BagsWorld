@@ -430,6 +430,8 @@ export interface OracleUser {
   lastDailyClaim?: string;
   currentStreak: number;
   bestStreak: number;
+  dailyClaimStreak: number;
+  bestDailyStreak: number;
   reputationScore: number;
   reputationTier: OracleReputationTier;
   totalMarketsEntered: number;

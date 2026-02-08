@@ -12,8 +12,13 @@ export async function POST(request: NextRequest) {
 
   await initializeOracleTables();
 
-  const body = await request.json();
-  const { wallet } = body;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
+  }
+  const { wallet } = body as { wallet?: string };
 
   if (!wallet) {
     return NextResponse.json({ success: false, error: "Missing wallet" }, { status: 400 });

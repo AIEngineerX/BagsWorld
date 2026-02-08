@@ -681,7 +681,7 @@ describe("POST /api/oracle/auto-resolve", () => {
       { predictionId: 1, wallet: "w1", isWinner: true, opWagered: 100, opPayout: 200, rank: 1 },
       { predictionId: 2, wallet: "w2", isWinner: false, opWagered: 100, opPayout: 0 },
     ]);
-    mockUpdatePredictionOPPayout.mockResolvedValue(undefined);
+    mockUpdatePredictionOPPayout.mockResolvedValue({ success: true });
     mockAddOP.mockResolvedValue({ success: true });
     mockUpdateStreak.mockResolvedValue(undefined);
     mockUpdateReputation.mockResolvedValue(undefined);

@@ -623,7 +623,30 @@ describe("resolveMarket", () => {
       expect(result.winningOutcomeId).toBe("under");
     });
 
-    it("uses health proxy when no events available and sets healthProxy flag", async () => {
+    it("uses healthMetrics.claimVolume24h from world-state API", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          health: 75,
+          weather: "sunny",
+          events: [],
+          healthMetrics: { claimVolume24h: 20 },
+        }),
+      });
+
+      const round = makeRound({
+        marketType: "fee_volume",
+        marketConfig: { threshold: 5 },
+      });
+
+      const result = await resolveMarket(round);
+      expect(result.success).toBe(true);
+      // healthMetrics.claimVolume24h = 20 → over 5 threshold
+      expect(result.winningOutcomeId).toBe("over");
+      expect(result.resolutionData.dataSource).toBe("healthMetrics");
+    });
+
+    it("reports under when no real claim data is available", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ health: 75, weather: "sunny", events: [] }),
@@ -636,9 +659,9 @@ describe("resolveMarket", () => {
 
       const result = await resolveMarket(round);
       expect(result.success).toBe(true);
-      // health 75 → proxy gives 20 SOL → over 5 threshold
-      expect(result.winningOutcomeId).toBe("over");
-      expect(result.resolutionData.healthProxy).toBe(true);
+      // No healthMetrics, no events → claimVolume24h = 0 → under
+      expect(result.winningOutcomeId).toBe("under");
+      expect(result.resolutionData.dataSource).toBe("no_data");
     });
 
     it("ignores old events (>24h) in volume calculation", async () => {

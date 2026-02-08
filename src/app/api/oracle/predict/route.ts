@@ -19,8 +19,18 @@ export async function POST(request: NextRequest) {
 
   await initializeOracleTables();
 
-  const body = await request.json();
-  const { wallet, roundId, tokenMint, outcomeId } = body;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
+  }
+  const { wallet, roundId, tokenMint, outcomeId } = body as {
+    wallet?: string;
+    roundId?: number;
+    tokenMint?: string;
+    outcomeId?: string;
+  };
 
   if (!wallet) {
     return NextResponse.json({ success: false, error: "Missing wallet" }, { status: 400 });
@@ -97,7 +107,13 @@ export async function POST(request: NextRequest) {
   await claimFirstPredictionBonus(wallet);
 
   // Award participation OP (+10)
-  await addOP(wallet, 10, "participation", roundId);
+  const participationResult = await addOP(wallet, 10, "participation", roundId);
+  const actualParticipation = participationResult.success ? 10 : 0;
+
+  // Report the actual balance from the last successful operation
+  const finalBalance = participationResult.success
+    ? participationResult.newBalance || (deductResult.newBalance || 0) + 10
+    : deductResult.newBalance || 0;
 
   return NextResponse.json({
     success: true,
@@ -106,8 +122,8 @@ export async function POST(request: NextRequest) {
     tokenMint: tokenMint || undefined,
     outcomeId: outcomeId || undefined,
     opDeducted: entryCostOp,
-    opParticipation: 10,
-    newOpBalance: (deductResult.newBalance || 0) + 10,
+    opParticipation: actualParticipation,
+    newOpBalance: finalBalance,
     marketType: round.marketType || "price_prediction",
   });
 }

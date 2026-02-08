@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   const activeMarkets = await getActiveOracleMarkets(marketType || undefined);
 
-  const markets = await Promise.all(
+  const marketResults = await Promise.allSettled(
     activeMarkets.map(async (round) => {
       const predictionCounts = await getOraclePredictionCounts(round.id);
       const endTime = round.endTime;
@@ -74,6 +74,10 @@ export async function GET(request: NextRequest) {
       };
     })
   );
+
+  const markets = marketResults
+    .filter((r): r is PromiseFulfilledResult<ReturnType<typeof Object>> => r.status === "fulfilled")
+    .map((r) => r.value);
 
   return NextResponse.json({
     success: true,
