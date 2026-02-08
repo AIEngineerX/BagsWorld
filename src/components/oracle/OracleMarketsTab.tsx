@@ -52,16 +52,12 @@ function formatTimeRemaining(ms: number): string {
 const MARKET_TYPE_LABELS: Record<string, string> = {
   all: "ALL",
   price_prediction: "PRICE",
-  world_health: "HEALTH",
-  weather_forecast: "WEATHER",
-  fee_volume: "FEES",
+  custom: "CUSTOM",
 };
 
 const MARKET_TYPE_ICONS: Record<string, string> = {
   price_prediction: "◆",
-  world_health: "♥",
-  weather_forecast: "☁",
-  fee_volume: "◈",
+  custom: "★",
 };
 
 export function OracleMarketsTab({

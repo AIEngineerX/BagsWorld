@@ -1737,8 +1737,6 @@ export interface OracleRoundDB {
   resolutionSource?: string;
   createdBy?: string;
   entryCostOp?: number;
-  isTournamentMarket?: boolean;
-  tournamentId?: number;
   winningOutcomeId?: string;
 }
 
@@ -1785,33 +1783,6 @@ export interface OracleOPLedgerDB {
   txType: string;
   referenceId?: number;
   createdAt: Date;
-}
-
-// Oracle Tournament
-export interface OracleTournamentDB {
-  id: number;
-  name: string;
-  description?: string;
-  startTime: Date;
-  endTime: Date;
-  status: string;
-  prizePoolLamports: bigint;
-  prizeDistribution: Array<{ rank: number; pct: number }>;
-  scoringType: string;
-  maxParticipants?: number;
-  createdBy: string;
-  createdAt: Date;
-}
-
-// Oracle Tournament Entry
-export interface OracleTournamentEntryDB {
-  tournamentId: number;
-  wallet: string;
-  score: number;
-  marketsEntered: number;
-  marketsWon: number;
-  finalRank?: number;
-  prizeLamports?: bigint;
 }
 
 export interface OracleBalanceDB {
@@ -1951,12 +1922,6 @@ export async function initializeOracleTables(): Promise<boolean> {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'entry_cost_op') THEN
           ALTER TABLE oracle_rounds ADD COLUMN entry_cost_op BIGINT DEFAULT 100;
         END IF;
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'is_tournament_market') THEN
-          ALTER TABLE oracle_rounds ADD COLUMN is_tournament_market BOOLEAN DEFAULT FALSE;
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'tournament_id') THEN
-          ALTER TABLE oracle_rounds ADD COLUMN tournament_id INTEGER;
-        END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'oracle_rounds' AND column_name = 'winning_outcome_id') THEN
           ALTER TABLE oracle_rounds ADD COLUMN winning_outcome_id TEXT;
         END IF;
@@ -2020,44 +1985,10 @@ export async function initializeOracleTables(): Promise<boolean> {
       )
     `;
 
-    // Create oracle_tournaments table
-    await sql`
-      CREATE TABLE IF NOT EXISTS oracle_tournaments (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-        end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-        status TEXT DEFAULT 'upcoming',
-        prize_pool_lamports BIGINT DEFAULT 0,
-        prize_distribution JSONB,
-        scoring_type TEXT DEFAULT 'op_earned',
-        max_participants INTEGER,
-        created_by TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      )
-    `;
-
-    // Create oracle_tournament_entries table
-    await sql`
-      CREATE TABLE IF NOT EXISTS oracle_tournament_entries (
-        tournament_id INTEGER REFERENCES oracle_tournaments(id) ON DELETE CASCADE,
-        wallet TEXT NOT NULL,
-        score BIGINT DEFAULT 0,
-        markets_entered INTEGER DEFAULT 0,
-        markets_won INTEGER DEFAULT 0,
-        final_rank INTEGER,
-        prize_lamports BIGINT DEFAULT 0,
-        PRIMARY KEY (tournament_id, wallet)
-      )
-    `;
-
     // Additional indexes for new tables
     await sql`CREATE INDEX IF NOT EXISTS idx_oracle_op_ledger_wallet ON oracle_op_ledger(wallet)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_oracle_op_ledger_type ON oracle_op_ledger(tx_type)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_oracle_rounds_market_type ON oracle_rounds(market_type)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_tournaments_status ON oracle_tournaments(status)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_oracle_tournament_entries_wallet ON oracle_tournament_entries(wallet)`;
 
     return true;
   } catch (error) {
@@ -2089,8 +2020,6 @@ function parseOracleRoundRow(row: Record<string, unknown>): OracleRoundDB {
     resolutionSource: row.resolution_source as string | undefined,
     createdBy: (row.created_by as string) || "admin",
     entryCostOp: safeParseInt(row.entry_cost_op as string, 100),
-    isTournamentMarket: (row.is_tournament_market as boolean) || false,
-    tournamentId: row.tournament_id as number | undefined,
     winningOutcomeId: row.winning_outcome_id as string | undefined,
   };
 }
@@ -2210,8 +2139,6 @@ export async function createOracleRound(
     resolutionSource?: string;
     createdBy?: string;
     entryCostOp?: number;
-    isTournamentMarket?: boolean;
-    tournamentId?: number;
   }
 ): Promise<{ success: boolean; roundId?: number; error?: string }> {
   const sql = await getSql();
@@ -2250,7 +2177,7 @@ export async function createOracleRound(
       INSERT INTO oracle_rounds (
         token_options, end_time, status, prize_pool_lamports, prize_distributed,
         market_type, market_config, auto_resolve, resolution_source, created_by,
-        entry_cost_op, is_tournament_market, tournament_id
+        entry_cost_op
       )
       VALUES (
         ${JSON.stringify(tokenOptions)}, ${endTime.toISOString()}, 'active',
@@ -2260,9 +2187,7 @@ export async function createOracleRound(
         ${options?.autoResolve || false},
         ${options?.resolutionSource || null},
         ${options?.createdBy || "admin"},
-        ${options?.entryCostOp || 100},
-        ${options?.isTournamentMarket || false},
-        ${options?.tournamentId || null}
+        ${options?.entryCostOp || 100}
       )
       RETURNING id
     `;
@@ -3121,217 +3046,6 @@ export async function getUserRoundPrize(
   }
 }
 
-// ============================================================================
-// ORACLE TOURNAMENT MANAGEMENT
-// ============================================================================
-
-// Create a tournament
-export async function createOracleTournament(
-  name: string,
-  description: string | undefined,
-  startTime: Date,
-  endTime: Date,
-  prizePoolLamports: bigint,
-  prizeDistribution: Array<{ rank: number; pct: number }>,
-  scoringType: string,
-  maxParticipants: number | undefined,
-  createdBy: string
-): Promise<{ success: boolean; tournamentId?: number; error?: string }> {
-  const sql = await getSql();
-  if (!sql) return { success: false, error: "Database not configured" };
-
-  try {
-    await initializeOracleTables();
-
-    const result = await sql`
-      INSERT INTO oracle_tournaments (
-        name, description, start_time, end_time, status,
-        prize_pool_lamports, prize_distribution, scoring_type,
-        max_participants, created_by
-      )
-      VALUES (
-        ${name}, ${description || null}, ${startTime.toISOString()}, ${endTime.toISOString()},
-        ${startTime <= new Date() ? "active" : "upcoming"},
-        ${prizePoolLamports.toString()}, ${JSON.stringify(prizeDistribution)},
-        ${scoringType}, ${maxParticipants || null}, ${createdBy}
-      )
-      RETURNING id
-    `;
-
-    const tournamentId = (result as Array<{ id: number }>)[0]?.id;
-    return { success: true, tournamentId };
-  } catch (error) {
-    console.error("[Oracle] Error creating tournament:", error);
-    return { success: false, error: "Failed to create tournament" };
-  }
-}
-
-// Get tournaments by status
-export async function getOracleTournaments(status?: string): Promise<OracleTournamentDB[]> {
-  const sql = await getSql();
-  if (!sql) return [];
-
-  try {
-    const tableCheck = await sql`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_name = 'oracle_tournaments'
-      )
-    `;
-    if (!(tableCheck as Array<{ exists: boolean }>)[0]?.exists) return [];
-
-    let result;
-    if (status) {
-      result = await sql`
-        SELECT t.*,
-          (SELECT COUNT(*) FROM oracle_tournament_entries WHERE tournament_id = t.id) as participant_count
-        FROM oracle_tournaments t
-        WHERE t.status = ${status}
-        ORDER BY t.start_time ASC
-      `;
-    } else {
-      result = await sql`
-        SELECT t.*,
-          (SELECT COUNT(*) FROM oracle_tournament_entries WHERE tournament_id = t.id) as participant_count
-        FROM oracle_tournaments t
-        WHERE t.status IN ('upcoming', 'active')
-        ORDER BY t.start_time ASC
-      `;
-    }
-
-    return (result as Array<Record<string, unknown>>).map((row) => ({
-      id: row.id as number,
-      name: row.name as string,
-      description: row.description as string | undefined,
-      startTime: new Date(row.start_time as string),
-      endTime: new Date(row.end_time as string),
-      status: row.status as string,
-      prizePoolLamports: BigInt((row.prize_pool_lamports as string) || "0"),
-      prizeDistribution: (row.prize_distribution || []) as Array<{ rank: number; pct: number }>,
-      scoringType: (row.scoring_type as string) || "op_earned",
-      maxParticipants: row.max_participants as number | undefined,
-      createdBy: row.created_by as string,
-      createdAt: new Date(row.created_at as string),
-    }));
-  } catch (error) {
-    console.error("[Oracle] Error getting tournaments:", error);
-    return [];
-  }
-}
-
-// Join a tournament
-export async function joinOracleTournament(
-  tournamentId: number,
-  wallet: string
-): Promise<{ success: boolean; error?: string }> {
-  const sql = await getSql();
-  if (!sql) return { success: false, error: "Database not configured" };
-
-  try {
-    // Check tournament exists and is active/upcoming
-    const tournament = await sql`
-      SELECT id, status, max_participants FROM oracle_tournaments
-      WHERE id = ${tournamentId}
-    `;
-
-    if ((tournament as unknown[]).length === 0) {
-      return { success: false, error: "Tournament not found" };
-    }
-
-    const t = (tournament as Array<Record<string, unknown>>)[0];
-    if (t.status !== "active" && t.status !== "upcoming") {
-      return { success: false, error: "Tournament is not accepting entries" };
-    }
-
-    // Check max participants
-    if (t.max_participants) {
-      const countResult = await sql`
-        SELECT COUNT(*) as count FROM oracle_tournament_entries
-        WHERE tournament_id = ${tournamentId}
-      `;
-      const count = safeParseInt((countResult as Array<{ count: string }>)[0]?.count, 0);
-      if (count >= (t.max_participants as number)) {
-        return { success: false, error: "Tournament is full" };
-      }
-    }
-
-    // Check if already joined
-    const existing = await sql`
-      SELECT tournament_id FROM oracle_tournament_entries
-      WHERE tournament_id = ${tournamentId} AND wallet = ${wallet}
-    `;
-
-    if ((existing as unknown[]).length > 0) {
-      return { success: false, error: "Already joined this tournament" };
-    }
-
-    // Join
-    await sql`
-      INSERT INTO oracle_tournament_entries (tournament_id, wallet)
-      VALUES (${tournamentId}, ${wallet})
-    `;
-
-    return { success: true };
-  } catch (error) {
-    console.error("[Oracle] Error joining tournament:", error);
-    return { success: false, error: "Failed to join tournament" };
-  }
-}
-
-// Get tournament leaderboard
-export async function getOracleTournamentLeaderboard(
-  tournamentId: number,
-  limit: number = 20
-): Promise<OracleTournamentEntryDB[]> {
-  const sql = await getSql();
-  if (!sql) return [];
-
-  try {
-    const result = await sql`
-      SELECT * FROM oracle_tournament_entries
-      WHERE tournament_id = ${tournamentId}
-      ORDER BY score DESC, markets_won DESC
-      LIMIT ${limit}
-    `;
-
-    return (result as Array<Record<string, unknown>>).map((row) => ({
-      tournamentId: row.tournament_id as number,
-      wallet: row.wallet as string,
-      score: safeParseInt(row.score as string, 0),
-      marketsEntered: safeParseInt(row.markets_entered as string, 0),
-      marketsWon: safeParseInt(row.markets_won as string, 0),
-      finalRank: row.final_rank as number | undefined,
-      prizeLamports: row.prize_lamports ? BigInt((row.prize_lamports as string) || "0") : undefined,
-    }));
-  } catch (error) {
-    console.error("[Oracle] Error getting tournament leaderboard:", error);
-    return [];
-  }
-}
-
-// Update tournament entry score (called when a user wins/enters a market during a tournament)
-export async function updateTournamentScore(
-  tournamentId: number,
-  wallet: string,
-  opEarned: number,
-  won: boolean
-): Promise<void> {
-  const sql = await getSql();
-  if (!sql) return;
-
-  try {
-    await sql`
-      UPDATE oracle_tournament_entries SET
-        score = score + ${opEarned},
-        markets_entered = markets_entered + 1,
-        markets_won = markets_won + ${won ? 1 : 0}
-      WHERE tournament_id = ${tournamentId} AND wallet = ${wallet}
-    `;
-  } catch (error) {
-    console.error("[Oracle] Error updating tournament score:", error);
-  }
-}
-
 // Settle a round with winning outcome (generalized for all market types)
 export async function settleOracleRoundWithOutcome(
   roundId: number,
@@ -3539,8 +3253,7 @@ export async function getUserActivePredictions(
              r.prize_distributed, r.created_at as round_created_at,
              r.winning_token_mint, r.winning_price_change,
              r.settlement_data, r.auto_resolve, r.resolution_source,
-             r.created_by, r.entry_cost_op, r.is_tournament_market,
-             r.tournament_id, r.winning_outcome_id,
+             r.created_by, r.entry_cost_op, r.winning_outcome_id,
              (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as round_entry_count
       FROM oracle_predictions p
       JOIN oracle_rounds r ON p.round_id = r.id
@@ -3585,8 +3298,6 @@ export async function getUserActivePredictions(
         resolutionSource: row.resolution_source as string | undefined,
         createdBy: (row.created_by as string) || "admin",
         entryCostOp: safeParseInt(row.entry_cost_op as string, 100),
-        isTournamentMarket: (row.is_tournament_market as boolean) || false,
-        tournamentId: row.tournament_id as number | undefined,
         winningOutcomeId: row.winning_outcome_id as string | undefined,
       },
     }));
@@ -3612,8 +3323,7 @@ export async function getUserRecentResults(
              r.prize_distributed, r.created_at as round_created_at,
              r.winning_token_mint, r.winning_price_change,
              r.settlement_data, r.auto_resolve, r.resolution_source,
-             r.created_by, r.entry_cost_op, r.is_tournament_market,
-             r.tournament_id, r.winning_outcome_id,
+             r.created_by, r.entry_cost_op, r.winning_outcome_id,
              (SELECT COUNT(*) FROM oracle_predictions WHERE round_id = r.id) as round_entry_count
       FROM oracle_predictions p
       JOIN oracle_rounds r ON p.round_id = r.id
@@ -3659,8 +3369,6 @@ export async function getUserRecentResults(
         resolutionSource: row.resolution_source as string | undefined,
         createdBy: (row.created_by as string) || "admin",
         entryCostOp: safeParseInt(row.entry_cost_op as string, 100),
-        isTournamentMarket: (row.is_tournament_market as boolean) || false,
-        tournamentId: row.tournament_id as number | undefined,
         winningOutcomeId: row.winning_outcome_id as string | undefined,
       },
     }));

@@ -1,6 +1,6 @@
 // Oracle Daily Claim API - Claim daily OP bonus
 import { NextRequest, NextResponse } from "next/server";
-import { isNeonConfigured, initializeOracleTables } from "@/lib/neon";
+import { isNeonConfigured } from "@/lib/neon";
 import { claimDailyBonus } from "@/lib/op-economy";
 
 export const dynamic = "force-dynamic";
@@ -9,8 +9,6 @@ export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
     return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
-
-  await initializeOracleTables();
 
   let body: Record<string, unknown>;
   try {

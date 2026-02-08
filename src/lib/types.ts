@@ -341,11 +341,7 @@ export const METEORA_DBC_PROGRAM = "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
 
 // Oracle Prediction Market Types
 
-export type OracleMarketType =
-  | "price_prediction"
-  | "world_health"
-  | "weather_forecast"
-  | "fee_volume";
+export type OracleMarketType = "price_prediction" | "custom";
 
 export type OracleOutcomeType = "multiple_choice" | "binary";
 
@@ -371,7 +367,6 @@ export type OracleOPTxType =
   | "prediction_win"
   | "participation"
   | "streak_bonus"
-  | "tournament_prize"
   | "achievement";
 
 export interface OracleTokenOption {
@@ -398,8 +393,6 @@ export interface OracleRound {
   resolutionSource?: string;
   createdBy?: string;
   entryCostOp?: number;
-  isTournamentMarket?: boolean;
-  tournamentId?: number;
   winningOutcomeId?: string;
 }
 
@@ -448,34 +441,6 @@ export interface OracleOPLedgerEntry {
   txType: OracleOPTxType;
   referenceId?: number;
   createdAt: string;
-}
-
-export type OracleTournamentStatus = "upcoming" | "active" | "ended" | "settled";
-
-export interface OracleTournament {
-  id: number;
-  name: string;
-  description?: string;
-  startTime: string;
-  endTime: string;
-  status: OracleTournamentStatus;
-  prizePoolLamports: number;
-  prizeDistribution: Array<{ rank: number; pct: number }>;
-  scoringType: "op_earned" | "win_count" | "accuracy";
-  maxParticipants?: number;
-  participantCount?: number;
-  createdBy: string;
-  createdAt: string;
-}
-
-export interface OracleTournamentEntry {
-  tournamentId: number;
-  wallet: string;
-  score: number;
-  marketsEntered: number;
-  marketsWon: number;
-  finalRank?: number;
-  prizeLamports?: number;
 }
 
 // Market Feed Types

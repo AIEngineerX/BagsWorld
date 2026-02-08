@@ -7,7 +7,6 @@ import { useAdminCheck } from "@/hooks/useAdminCheck";
 import bs58 from "bs58";
 import { OracleMarketsTab } from "./oracle/OracleMarketsTab";
 import { OracleMyBetsTab } from "./oracle/OracleMyBetsTab";
-import { OracleTournamentsTab } from "./oracle/OracleTournamentsTab";
 import { OracleProfileTab } from "./oracle/OracleProfileTab";
 
 interface OracleTowerModalProps {
@@ -43,7 +42,7 @@ interface TokenGateError {
   message: string;
 }
 
-type OracleView = "markets" | "my_bets" | "tournaments" | "leaders" | "profile" | "admin";
+type OracleView = "markets" | "my_bets" | "leaders" | "profile" | "admin";
 
 /* eslint-disable */
 type MarketData = any;
@@ -51,8 +50,6 @@ type ProfileData = any;
 type LedgerEntry = any;
 type ActiveBet = any;
 type RecentResult = any;
-type TournamentData = any;
-type TournamentLeaderboardEntry = any;
 /* eslint-enable */
 
 function formatTimeRemaining(ms: number): string {
@@ -148,15 +145,6 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   // My Bets tab state
   const [activeBets, setActiveBets] = useState<ActiveBet[]>([]);
   const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
-
-  // Tournaments tab state
-  const [tournaments, setTournaments] = useState<TournamentData[]>([]);
-  const [activeTournament, setActiveTournament] = useState<TournamentData | null>(null);
-  const [tournamentLeaderboard, setTournamentLeaderboard] = useState<TournamentLeaderboardEntry[]>(
-    []
-  );
-  const [isJoiningTournament, setIsJoiningTournament] = useState(false);
-  const [hasJoinedTournament, setHasJoinedTournament] = useState(false);
 
   // Leaderboard tab state
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -271,43 +259,6 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
     }
   }, [publicKey, markets]);
 
-  const fetchTournaments = useCallback(async () => {
-    try {
-      const res = await fetch("/api/oracle/tournaments");
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.success) {
-        const allTournaments = data.tournaments || [];
-        setTournaments(allTournaments);
-
-        // Find active tournament and fetch its leaderboard
-        const active = allTournaments.find((t: TournamentData) => t.status === "active");
-        if (active) {
-          setActiveTournament(active);
-          const lbRes = await fetch(`/api/oracle/tournaments?id=${active.id}`);
-          if (lbRes.ok) {
-            const lbData = await lbRes.json();
-            if (lbData.success) {
-              setTournamentLeaderboard(lbData.leaderboard || []);
-              // Check if user has joined
-              if (publicKey) {
-                const userEntry = (lbData.leaderboard || []).find(
-                  (e: TournamentLeaderboardEntry) => e.wallet === publicKey.toString()
-                );
-                setHasJoinedTournament(!!userEntry);
-              }
-            }
-          }
-        } else {
-          setActiveTournament(null);
-          setTournamentLeaderboard([]);
-        }
-      }
-    } catch (error) {
-      console.error("[Oracle] Error fetching tournaments:", error);
-    }
-  }, [publicKey]);
-
   const fetchLeaderboard = useCallback(async () => {
     try {
       const walletParam = publicKey ? `?wallet=${publicKey.toString()}&limit=10` : "?limit=10";
@@ -374,19 +325,10 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
 
   useEffect(() => {
     if (view === "my_bets") fetchMyBets();
-    if (view === "tournaments") fetchTournaments();
     if (view === "leaders") fetchLeaderboard();
     if (view === "profile" && publicKey) fetchProfile();
     if (view === "admin") fetchAdminRoundInfo();
-  }, [
-    view,
-    fetchMyBets,
-    fetchTournaments,
-    fetchLeaderboard,
-    fetchProfile,
-    fetchAdminRoundInfo,
-    publicKey,
-  ]);
+  }, [view, fetchMyBets, fetchLeaderboard, fetchProfile, fetchAdminRoundInfo, publicKey]);
 
   // Auto-refresh markets every 30s
   useEffect(() => {
@@ -463,28 +405,6 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
       console.error("[Oracle] Error claiming daily:", error);
     }
     setIsClaimingDaily(false);
-  };
-
-  const handleJoinTournament = async (tournamentId: number) => {
-    if (!publicKey || isJoiningTournament) return;
-    setIsJoiningTournament(true);
-    try {
-      const res = await fetch("/api/oracle/tournaments/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: publicKey.toString(), tournamentId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setHasJoinedTournament(true);
-        await fetchTournaments();
-      } else {
-        setMessage(data.error || "Failed to join tournament");
-      }
-    } catch {
-      setMessage("Network error");
-    }
-    setIsJoiningTournament(false);
   };
 
   const handleConnectWallet = () => setWalletModalVisible(true);
@@ -577,7 +497,6 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   const tabConfig: Array<{ key: OracleView; label: string; show: boolean }> = [
     { key: "markets", label: "MARKETS", show: true },
     { key: "my_bets", label: "BETS", show: true },
-    { key: "tournaments", label: "TOURNEYS", show: true },
     { key: "leaders", label: "LEADERS", show: true },
     { key: "profile", label: "PROFILE", show: true },
     { key: "admin", label: "ADMIN", show: isAdmin },
@@ -887,16 +806,6 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                 </button>
               </div>
             )
-          ) : view === "tournaments" ? (
-            <OracleTournamentsTab
-              tournaments={tournaments}
-              activeTournament={activeTournament || undefined}
-              leaderboard={tournamentLeaderboard}
-              wallet={publicKey?.toString()}
-              onJoin={handleJoinTournament}
-              isJoining={isJoiningTournament}
-              hasJoined={hasJoinedTournament}
-            />
           ) : view === "leaders" ? (
             <div className="space-y-3">
               {userStats && (

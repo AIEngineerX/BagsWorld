@@ -1,6 +1,6 @@
 // Oracle Profile API - Get user's OP balance, stats, and achievements
 import { NextRequest, NextResponse } from "next/server";
-import { isNeonConfigured, initializeOracleTables } from "@/lib/neon";
+import { isNeonConfigured } from "@/lib/neon";
 import { getOrCreateUser, getOPLedger, getReputationTierBonus } from "@/lib/op-economy";
 import type { OracleReputationTier } from "@/lib/types";
 
@@ -10,8 +10,6 @@ export async function GET(request: NextRequest) {
   if (!isNeonConfigured()) {
     return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
-
-  await initializeOracleTables();
 
   const { searchParams } = new URL(request.url);
   const wallet = searchParams.get("wallet");

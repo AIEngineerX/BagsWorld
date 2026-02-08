@@ -57,7 +57,6 @@ const TX_TYPE_LABELS: Record<string, string> = {
   prediction_win: "Prediction Win",
   participation: "Participation",
   streak_bonus: "Streak Bonus",
-  tournament_prize: "Tournament Prize",
   achievement: "Achievement",
 };
 
@@ -68,7 +67,6 @@ const ACHIEVEMENT_LABELS: Record<string, { name: string; desc: string }> = {
   underdog: { name: "Underdog", desc: "Win with <15% odds" },
   daily_devotion: { name: "Daily Devotion", desc: "7-day claim streak" },
   market_maker: { name: "Market Maker", desc: "Enter 50 markets" },
-  tournament_victor: { name: "Tournament Victor", desc: "Win a tournament" },
 };
 
 function formatTimeUntil(dateStr: string): string {

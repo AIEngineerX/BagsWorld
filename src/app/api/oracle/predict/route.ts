@@ -5,7 +5,6 @@ import {
   getActiveOracleMarkets,
   enterOraclePrediction,
   isNeonConfigured,
-  initializeOracleTables,
   type OracleRoundDB,
 } from "@/lib/neon";
 import { getOrCreateUser, deductOP, addOP, claimFirstPredictionBonus } from "@/lib/op-economy";
@@ -16,8 +15,6 @@ export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
     return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
-
-  await initializeOracleTables();
 
   let body: Record<string, unknown>;
   try {

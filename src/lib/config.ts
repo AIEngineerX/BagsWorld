@@ -131,6 +131,7 @@ export const ECOSYSTEM_CONFIG = {
     },
     // Prize pool configuration
     prizePool: {
+      defaultSol: 0.1, // Default prize pool for auto-generated rounds
       minSol: 0.1, // Minimum prize pool per round
       maxSol: 1.0, // Maximum prize pool per round
       minClaimSol: 0.001, // Minimum claimable amount

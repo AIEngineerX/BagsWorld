@@ -2,7 +2,7 @@
  * Oracle Market Resolution Engine
  *
  * Resolves Oracle prediction markets by fetching real data and determining winners.
- * Supports price prediction, world health, weather forecast, and fee volume markets.
+ * Supports price prediction and custom (admin-resolved) markets.
  */
 
 import type { OracleMarketType, WeatherType } from "./types";
@@ -108,12 +108,12 @@ export async function resolveMarket(round: OracleRoundDB): Promise<ResolveResult
   switch (marketType) {
     case "price_prediction":
       return resolvePricePrediction(round);
-    case "world_health":
-      return resolveWorldHealth(round);
-    case "weather_forecast":
-      return resolveWeatherForecast(round);
-    case "fee_volume":
-      return resolveFeeVolume(round);
+    case "custom":
+      return {
+        success: false,
+        resolutionData: {},
+        error: "Custom markets must be manually resolved by admin",
+      };
     default:
       return {
         success: false,
@@ -188,150 +188,6 @@ async function resolvePricePrediction(round: OracleRoundDB): Promise<ResolveResu
     resolutionData: {
       endPrices,
       priceChanges,
-      resolvedAt: new Date().toISOString(),
-    },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// World Health Resolver
-// ---------------------------------------------------------------------------
-
-async function resolveWorldHealth(round: OracleRoundDB): Promise<ResolveResult> {
-  const config = round.marketConfig as Record<string, unknown> | undefined;
-  const threshold = typeof config?.threshold === "number" ? config.threshold : 50;
-
-  const worldState = await fetchWorldState();
-  if (!worldState) {
-    return {
-      success: false,
-      resolutionData: { threshold },
-      error: "Failed to fetch world state for health resolution",
-    };
-  }
-
-  const currentHealth = worldState.health;
-  const winningOutcomeId = currentHealth >= threshold ? "yes" : "no";
-
-  return {
-    success: true,
-    winningOutcomeId,
-    resolutionData: {
-      currentHealth,
-      threshold,
-      resolvedAt: new Date().toISOString(),
-    },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Weather Forecast Resolver
-// ---------------------------------------------------------------------------
-
-async function resolveWeatherForecast(round: OracleRoundDB): Promise<ResolveResult> {
-  const worldState = await fetchWorldState();
-  if (!worldState) {
-    return {
-      success: false,
-      resolutionData: {},
-      error: "Failed to fetch world state for weather resolution",
-    };
-  }
-
-  const currentWeather = worldState.weather;
-
-  // Validate that the current weather matches one of the configured outcomes
-  const config = round.marketConfig as Record<string, unknown> | undefined;
-  const outcomes = (config?.outcomes ?? []) as Array<{ id: string; label?: string }>;
-
-  const matchedOutcome = outcomes.find((o) => o.id === currentWeather);
-  if (!matchedOutcome) {
-    // Weather doesn't match any defined outcome — pick the closest
-    // Fallback: map apocalypse to storm since it's the closest severity
-    const weatherFallback: Record<string, string> = {
-      apocalypse: "storm",
-    };
-    const fallbackId = weatherFallback[currentWeather] || currentWeather;
-    const fallbackOutcome = outcomes.find((o) => o.id === fallbackId);
-
-    return {
-      success: !!fallbackOutcome,
-      winningOutcomeId: fallbackOutcome?.id,
-      resolutionData: {
-        currentWeather,
-        usedFallback: !!fallbackOutcome,
-        resolvedAt: new Date().toISOString(),
-      },
-      error: fallbackOutcome
-        ? undefined
-        : `Weather "${currentWeather}" does not match any configured outcome`,
-    };
-  }
-
-  return {
-    success: true,
-    winningOutcomeId: currentWeather,
-    resolutionData: {
-      currentWeather,
-      resolvedAt: new Date().toISOString(),
-    },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Fee Volume Resolver
-// ---------------------------------------------------------------------------
-
-async function resolveFeeVolume(round: OracleRoundDB): Promise<ResolveResult> {
-  const config = round.marketConfig as Record<string, unknown> | undefined;
-  const threshold = typeof config?.threshold === "number" ? config.threshold : 5;
-
-  const worldState = await fetchWorldState();
-  if (!worldState) {
-    return {
-      success: false,
-      resolutionData: { threshold },
-      error: "Failed to fetch world state for fee volume resolution",
-    };
-  }
-
-  // Use the real claimVolume24h from world-state API's healthMetrics
-  // This is calculated from actual Bags SDK claim data, not estimated
-  const healthMetrics = worldState.healthMetrics as { claimVolume24h?: number } | undefined;
-  let claimVolume24h = healthMetrics?.claimVolume24h ?? 0;
-  let dataSource = "healthMetrics";
-
-  // Fallback: try summing fee_claim events if healthMetrics unavailable
-  if (claimVolume24h === 0 && Array.isArray(worldState.events)) {
-    const now = Date.now();
-    const dayMs = 24 * 60 * 60 * 1000;
-    for (const event of worldState.events) {
-      if (event.type === "fee_claim" && typeof event.amount === "number") {
-        const eventTime = event.timestamp ? new Date(event.timestamp).getTime() : 0;
-        if (now - eventTime < dayMs) {
-          claimVolume24h += event.amount;
-        }
-      }
-    }
-    if (claimVolume24h > 0) {
-      dataSource = "events";
-    }
-  }
-
-  // If still no real data, report as zero rather than guessing
-  if (claimVolume24h === 0) {
-    dataSource = "no_data";
-  }
-
-  const winningOutcomeId = claimVolume24h >= threshold ? "over" : "under";
-
-  return {
-    success: true,
-    winningOutcomeId,
-    resolutionData: {
-      claimVolume24h: Math.round(claimVolume24h * 1000) / 1000,
-      threshold,
-      dataSource,
       resolvedAt: new Date().toISOString(),
     },
   };
@@ -433,3 +289,124 @@ export function calculateOPPayouts(
 
 // Participation reward constant (awarded to all participants outside of the pool)
 export const OP_PARTICIPATION_REWARD = 10;
+
+// ---------------------------------------------------------------------------
+// Lazy Resolution - Resolve expired markets on any Oracle endpoint hit
+// ---------------------------------------------------------------------------
+
+export async function lazyResolveExpiredMarkets(): Promise<{
+  resolvedCount: number;
+  errors: Array<{ roundId: number; error: string }>;
+}> {
+  // Dynamic imports to avoid circular dependencies
+  const {
+    getMarketsToResolve,
+    settleOracleRound,
+    settleOracleRoundWithOutcome,
+    getOracleRoundPredictions,
+    updatePredictionOPPayout,
+  } = await import("./neon");
+  const { addOP, updateStreak, updateReputation } = await import("./op-economy");
+
+  const errors: Array<{ roundId: number; error: string }> = [];
+  let resolvedCount = 0;
+
+  try {
+    const marketsToResolve = await getMarketsToResolve();
+
+    if (marketsToResolve.length === 0) {
+      return { resolvedCount: 0, errors: [] };
+    }
+
+    for (const round of marketsToResolve) {
+      try {
+        const resolution = await resolveMarket(round);
+
+        if (!resolution.success) {
+          errors.push({
+            roundId: round.id,
+            error: resolution.error || "Resolution failed",
+          });
+          continue;
+        }
+
+        // Settle the round in the database
+        if (resolution.winningTokenMint) {
+          await settleOracleRound(
+            round.id,
+            resolution.winningTokenMint,
+            resolution.winningPriceChange || 0,
+            resolution.resolutionData
+          );
+        } else if (resolution.winningOutcomeId) {
+          await settleOracleRoundWithOutcome(
+            round.id,
+            resolution.winningOutcomeId,
+            resolution.resolutionData
+          );
+        }
+
+        // Distribute OP payouts
+        const predictions = await getOracleRoundPredictions(round.id);
+        if (predictions.length > 0) {
+          const winningId = resolution.winningOutcomeId || resolution.winningTokenMint || "";
+          const isOutcomeBased = !!resolution.winningOutcomeId;
+          const payouts = calculateOPPayouts(predictions, winningId, isOutcomeBased);
+
+          const totalPredictions = predictions.length;
+          const winnerCount = payouts.filter((p) => p.isWinner).length;
+          const marketDifficulty =
+            totalPredictions > 0 ? totalPredictions / Math.max(1, winnerCount) : 1;
+
+          for (const payout of payouts) {
+            const payoutResult = await updatePredictionOPPayout(
+              payout.predictionId,
+              payout.opPayout,
+              payout.isWinner,
+              payout.rank
+            );
+
+            if (!payoutResult.success) {
+              console.error(
+                `[LazyResolve] Failed to record payout for prediction #${payout.predictionId}: ${payoutResult.error}`
+              );
+              continue;
+            }
+
+            if (payout.opPayout > 0) {
+              const opResult = await addOP(
+                payout.wallet,
+                payout.opPayout,
+                "prediction_win",
+                round.id
+              );
+              if (!opResult.success) {
+                console.error(
+                  `[LazyResolve] Failed to credit ${payout.opPayout} OP to ${payout.wallet}: ${opResult.error}`
+                );
+              }
+            }
+
+            await updateStreak(payout.wallet, payout.isWinner);
+            await updateReputation(payout.wallet, payout.isWinner, marketDifficulty);
+          }
+        }
+
+        resolvedCount++;
+        console.log(
+          `[LazyResolve] Round #${round.id} (${round.marketType}) resolved: winner=${resolution.winningOutcomeId || resolution.winningTokenMint}`
+        );
+      } catch (error) {
+        console.error(`[LazyResolve] Error resolving round #${round.id}:`, error);
+        errors.push({
+          roundId: round.id,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  } catch (error) {
+    console.error("[LazyResolve] Fatal error:", error);
+  }
+
+  return { resolvedCount, errors };
+}

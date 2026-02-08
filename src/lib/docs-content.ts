@@ -366,7 +366,7 @@ export const docsContent: DocSection[] = [
             [
               "Oracle Tower",
               "Live",
-              "Virtual prediction markets with free OP credits and tournaments",
+              "Virtual prediction markets with free OP credits and SOL prizes",
             ],
             ["Pokemon Music", "Live", "3 original pixel art soundtrack tracks"],
           ],
@@ -498,7 +498,7 @@ POST /token-launch/create-launch-transaction`,
         title: "Oracle Tower - What Is It?",
         content: [
           "The Oracle Tower is BagsWorld's virtual prediction market. It lives in BagsCity and lets you predict real outcomes - which token will pump hardest, what the world health will be, even the weather - using Oracle Points (OP), a free virtual currency.",
-          "Think of it like a fantasy sports league for crypto. You start with 1,000 free OP, earn more every day, and compete against other players. No real money is wagered - OP is earned through free participation only. Real SOL prizes are only available through free-entry tournaments funded by the admin.",
+          "Think of it like a fantasy sports league for crypto. You start with 1,000 free OP, earn more every day, and compete against other players. No real money is wagered - OP is earned through free participation only. SOL prizes are added to auto-generated markets from the ecosystem prize pool.",
         ],
         infoBox: {
           title: "Quick Start",
@@ -634,58 +634,17 @@ POST /token-launch/create-launch-transaction`,
         },
       },
       {
-        id: "oracle-tournaments",
-        title: "Tournaments",
-        content: [
-          "Tournaments are special competitive events with real SOL prize pools funded entirely by the admin. Entry is always FREE - no OP cost. During a tournament window, all your market predictions count toward your tournament score.",
-          "Your tournament score is based on cumulative OP earned from markets during the tournament period. Top finishers receive SOL prizes distributed to their wallet.",
-        ],
-        steps: [
-          {
-            number: 1,
-            title: "Join for Free",
-            description:
-              "Check the Tournaments tab for active and upcoming tournaments. Click JOIN - entry costs nothing.",
-          },
-          {
-            number: 2,
-            title: "Predict During the Window",
-            description:
-              "Every market prediction you make during the tournament period earns tournament score based on OP gained.",
-          },
-          {
-            number: 3,
-            title: "Check the Leaderboard",
-            description:
-              "Live leaderboard shows current standings. Scoring can be OP earned, win count, or accuracy depending on the tournament.",
-          },
-          {
-            number: 4,
-            title: "Claim SOL Prize",
-            description:
-              "When the tournament ends, top finishers receive real SOL prizes. Claim via your Oracle Tower balance.",
-          },
-        ],
-        tips: [
-          "Tournaments use the sweepstakes model - free entry, real prizes",
-          "SOL prizes are funded by the admin, not by player entry fees",
-          "Play more markets during the tournament to increase your score",
-          "Tournament prizes are distributed via the existing Oracle balance + claim flow",
-        ],
-      },
-      {
         id: "oracle-tabs",
         title: "Oracle Tower Tabs",
-        content: ["The Oracle Tower interface has six tabs for navigating all features."],
+        content: ["The Oracle Tower interface has five tabs for navigating all features."],
         table: {
           headers: ["Tab", "What It Shows"],
           rows: [
             ["Markets", "All active markets - browse, filter by type, enter predictions"],
             ["My Bets", "Your active predictions, recent results, OP won or lost"],
-            ["Tournaments", "Active and upcoming tournaments, join, live leaderboard"],
             ["Leaderboard", "All-time rankings with reputation tiers"],
             ["Profile", "Your OP balance, daily claim button, streak, stats, achievements"],
-            ["Admin", "Create markets (all types), create tournaments, manual resolve"],
+            ["Admin", "Create markets, manual resolve"],
           ],
         },
       },
