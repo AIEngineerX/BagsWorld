@@ -32,6 +32,32 @@ let cacheTime = 0;
 const CACHE_TTL = 60 * 60 * 1000;
 
 /**
+ * Fetch unique authors from Moltbook's public feed API directly.
+ * This mirrors the PowerShell script approach — no MoltbookClient/API key needed.
+ */
+async function fetchMoltbookFeedAuthors(): Promise<string[]> {
+  try {
+    const res = await Promise.race([
+      fetch("https://www.moltbook.com/api/v1/posts?sort=hot&limit=50"),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Moltbook feed timeout")), 10000)
+      ),
+    ]);
+    if (!res.ok) throw new Error(`Moltbook API ${res.status}`);
+    const data = (await res.json()) as { posts?: Array<{ author?: { name?: string } }> };
+    const posts = data.posts || [];
+    const authors = new Set<string>();
+    for (const post of posts) {
+      if (post.author?.name) authors.add(post.author.name);
+    }
+    return Array.from(authors);
+  } catch (err) {
+    console.error("[top-earners] Direct Moltbook feed fetch failed:", err);
+    return [];
+  }
+}
+
+/**
  * Discover Moltbook agents dynamically from the live feed + DB.
  * No hardcoded names — mirrors the PowerShell approach.
  */
@@ -48,7 +74,7 @@ async function discoverMoltbookAgents(): Promise<
     agents.push({ username, displayName });
   }
 
-  // 1. Discover agents dynamically from Moltbook feed (10s timeout)
+  // 1. Try MoltbookClient first (if API key is configured)
   const moltbook = getMoltbookOrNull();
   if (moltbook) {
     try {
@@ -63,13 +89,24 @@ async function discoverMoltbookAgents(): Promise<
           addAgent(post.author, post.author);
         }
       }
-      console.log(`[top-earners] Discovered ${agents.length} agents from Moltbook feed`);
+      console.log(`[top-earners] Discovered ${agents.length} agents from MoltbookClient`);
     } catch (err) {
-      console.error("[top-earners] Moltbook feed fetch failed:", err);
+      console.error("[top-earners] MoltbookClient feed failed:", err);
     }
   }
 
-  // 2. Pull external agents with Moltbook usernames from DB
+  // 2. Fallback: direct HTTP fetch from Moltbook public API (no key needed)
+  if (agents.length === 0) {
+    const feedAuthors = await fetchMoltbookFeedAuthors();
+    for (const author of feedAuthors) {
+      addAgent(author, author);
+    }
+    if (feedAuthors.length > 0) {
+      console.log(`[top-earners] Discovered ${feedAuthors.length} agents from Moltbook public API`);
+    }
+  }
+
+  // 3. Pull external agents with Moltbook usernames from DB
   if (isNeonConfigured()) {
     try {
       const sql = neon(process.env.DATABASE_URL!);
@@ -181,21 +218,24 @@ export async function GET(request: Request) {
     const earners: TopEarner[] = [];
 
     for (const wr of walletResults) {
+      let totalUnclaimedLamports = 0;
+      const tokens: TopEarnerToken[] = [];
+
       try {
         const positions = await Promise.race([
           api.getClaimablePositions(wr.wallet),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
         ]);
 
-        if (!positions || positions.length === 0) continue;
-
-        let totalUnclaimedLamports = 0;
-        const tokens: TopEarnerToken[] = [];
-
-        for (const pos of positions) {
-          const lamports = pos.totalClaimableLamportsUserShare || 0;
-          if (lamports <= 0) continue;
-
+        for (const pos of positions || []) {
+          // Sum both virtual pool + DAMM pool fees (migrated tokens have DAMM amounts)
+          // Matches getClaimableForWallet() logic in launcher.ts
+          const raw = pos as unknown as Record<string, unknown>;
+          const virtual = Number(
+            raw.virtualPoolClaimableAmount ?? pos.totalClaimableLamportsUserShare ?? 0
+          );
+          const damm = Number(raw.dammPoolClaimableAmount ?? 0);
+          const lamports = virtual + damm;
           totalUnclaimedLamports += lamports;
           tokens.push({
             mint: pos.baseMint,
@@ -204,37 +244,33 @@ export async function GET(request: Request) {
             unclaimedSol: lamports / 1_000_000_000,
           });
         }
-
-        if (totalUnclaimedLamports <= 0) continue;
-
-        // Sort tokens by unclaimed fees descending
-        tokens.sort((a, b) => b.unclaimedSol - a.unclaimedSol);
-
-        const discoveredAgent = discoveredAgents.find(
-          (a) => a.username.toLowerCase() === wr.username.toLowerCase()
-        );
-
-        earners.push({
-          name: wr.platformData?.displayName || discoveredAgent?.displayName || wr.username,
-          provider: "moltbook",
-          username: wr.username,
-          profilePic: wr.platformData?.avatarUrl,
-          wallet: wr.wallet,
-          totalUnclaimedSol: totalUnclaimedLamports / 1_000_000_000,
-          tokenCount: tokens.length,
-          tokens,
-        });
       } catch {
-        // Claimable lookup failed for this wallet, skip
+        // Claimable lookup failed for this wallet — still show the agent with 0
       }
+
+      // Sort tokens by unclaimed fees descending
+      tokens.sort((a, b) => b.unclaimedSol - a.unclaimedSol);
+
+      const discoveredAgent = discoveredAgents.find(
+        (a) => a.username.toLowerCase() === wr.username.toLowerCase()
+      );
+
+      earners.push({
+        name: wr.platformData?.displayName || discoveredAgent?.displayName || wr.username,
+        provider: "moltbook",
+        username: wr.username,
+        profilePic: wr.platformData?.avatarUrl,
+        wallet: wr.wallet,
+        totalUnclaimedSol: totalUnclaimedLamports / 1_000_000_000,
+        tokenCount: tokens.length,
+        tokens,
+      });
     }
 
     // Sort by total unclaimed fees descending
     earners.sort((a, b) => b.totalUnclaimedSol - a.totalUnclaimedSol);
 
-    console.log(
-      `[top-earners] ${walletResults.length} wallets → ${earners.length} with unclaimed fees`
-    );
+    console.log(`[top-earners] ${walletResults.length} wallets → ${earners.length} agents listed`);
 
     const response = {
       success: true,
