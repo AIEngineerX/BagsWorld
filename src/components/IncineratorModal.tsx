@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { VersionedTransaction } from "@solana/web3.js";
@@ -20,6 +20,54 @@ interface IncineratorModalProps {
 
 type Tab = "burn" | "close" | "close-all";
 
+/* Animated pixel fire for the header */
+function PixelFire({ size = 28, burning = false }: { size?: number; burning?: boolean }) {
+  return (
+    <div
+      className={`relative ${burning ? "animate-pulse" : ""}`}
+      style={{ width: size, height: size }}
+    >
+      <svg viewBox="0 0 16 16" width={size} height={size} className="block">
+        {/* Outer flame (orange) */}
+        <rect x="5" y="1" width="2" height="1" fill="#f97316" className="animate-flicker-fast" />
+        <rect x="9" y="1" width="2" height="1" fill="#f97316" className="animate-flicker-fast" />
+        <rect x="4" y="2" width="4" height="1" fill="#f97316" />
+        <rect x="8" y="2" width="4" height="1" fill="#f97316" />
+        <rect x="3" y="3" width="10" height="2" fill="#f97316" />
+        <rect x="3" y="5" width="10" height="2" fill="#ef4444" />
+        {/* Core flame (yellow) */}
+        <rect x="5" y="3" width="6" height="2" fill="#fbbf24" />
+        <rect x="6" y="2" width="4" height="2" fill="#fde047" />
+        <rect x="5" y="5" width="6" height="2" fill="#fbbf24" />
+        {/* Inner white-hot core */}
+        <rect x="7" y="4" width="2" height="2" fill="#fef3c7" />
+        {/* Base (dark red embers) */}
+        <rect x="2" y="7" width="12" height="2" fill="#dc2626" />
+        <rect x="3" y="9" width="10" height="2" fill="#991b1b" />
+        {/* Embers/ash at base */}
+        <rect x="4" y="11" width="8" height="1" fill="#78350f" />
+        <rect x="5" y="12" width="6" height="1" fill="#451a03" />
+        {/* Green glow (incinerator brand) */}
+        <rect x="6" y="7" width="4" height="1" fill="#22c55e" opacity="0.6" />
+      </svg>
+      <style jsx>{`
+        @keyframes flicker {
+          0%,
+          100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.6;
+          }
+        }
+        .animate-flicker-fast {
+          animation: flicker 0.3s ease-in-out infinite alternate;
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export function IncineratorModal({ onClose }: IncineratorModalProps) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
@@ -30,11 +78,23 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [burnConfirmed, setBurnConfirmed] = useState(false);
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
 
   // Preview state
   const [burnPreview, setBurnPreview] = useState<BurnPreviewResponse | null>(null);
   const [closePreview, setClosePreview] = useState<ClosePreviewResponse | null>(null);
   const [closeAllPreview, setCloseAllPreview] = useState<BatchCloseAllPreviewResponse | null>(null);
+
+  // Check API health on mount
+  useEffect(() => {
+    fetch("/api/sol-incinerator", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "status" }),
+    })
+      .then((r) => setApiOnline(r.ok))
+      .catch(() => setApiOnline(false));
+  }, []);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
@@ -260,9 +320,17 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-green-500/20">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">&#9760;</span>
+            <PixelFire size={32} burning={isLoading && activeTab === "burn"} />
             <div>
-              <h2 className="text-green-400 font-bold text-lg font-pixel">SOL INCINERATOR</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-green-400 font-bold text-lg font-pixel">SOL INCINERATOR</h2>
+                {apiOnline !== null && (
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${apiOnline ? "bg-green-400 shadow-[0_0_4px_#4ade80]" : "bg-red-500 shadow-[0_0_4px_#ef4444]"}`}
+                    title={apiOnline ? "API online" : "API offline"}
+                  />
+                )}
+              </div>
               <p className="text-green-700 text-xs">
                 Burn tokens & reclaim SOL from empty accounts
               </p>
@@ -277,10 +345,10 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         <div className="px-4 pt-3 pb-1">
           <p className="text-green-800 text-[10px] font-pixel">
             SUPPORTS: SPL Tokens &bull; Token-2022 &bull; Metaplex NFTs &bull; pNFTs &bull; Editions
-            &bull; pNFT Editions &bull; MPL Core
+            &bull; pNFT Editions &bull; MPL Core &bull; Magic Eden OCP
           </p>
           <p className="text-green-900/60 text-[9px] font-pixel mt-0.5">
-            NOT SUPPORTED: Magic Eden OCP &bull; Bubblegum cNFTs
+            NOT SUPPORTED: Bubblegum cNFTs &bull; Frozen tokens (must thaw first)
           </p>
         </div>
 
@@ -577,6 +645,9 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
           </p>
           <p className="text-green-900 text-center text-[9px]">
             Accounts ~0.002 SOL each &bull; NFT rent varies by metadata size
+          </p>
+          <p className="text-yellow-700/60 text-center text-[9px]">
+            Sol Incinerator charges a 2-5% fee on reclaimed SOL
           </p>
         </div>
       </div>
