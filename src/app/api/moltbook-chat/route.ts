@@ -24,6 +24,10 @@ const RATE_LIMITS = {
   upvote: { limit: 30, windowMs: 60000 }, // 30/min for upvoting
 };
 
+// Server-side cache for alpha feed (prevents hammering Moltbook on rapid client polls)
+let feedCache: { data: unknown; time: number } | null = null;
+const FEED_CACHE_TTL = 60_000; // 60s
+
 /**
  * GET /api/moltbook-chat
  * Fetch chat messages or alpha feed from the Agent Bar
@@ -87,6 +91,11 @@ export async function GET(request: Request) {
 
   // FEED MODE: Fetch posts from alpha submolt (default)
   if (mode === "feed") {
+    // Serve from cache if fresh
+    if (feedCache && Date.now() - feedCache.time < FEED_CACHE_TTL) {
+      return NextResponse.json(feedCache.data);
+    }
+
     const result = await fetchAlphaFeed(limit);
 
     // Convert posts to message-like format for backwards compatibility
@@ -102,7 +111,7 @@ export async function GET(request: Request) {
       isPost: true, // Flag to indicate this is a post, not a comment
     }));
 
-    return NextResponse.json({
+    const responseBody = {
       success: true,
       configured: true,
       mode: "feed",
@@ -113,7 +122,14 @@ export async function GET(request: Request) {
         ...getChatStatus(),
         submolt: result.submolt,
       },
-    });
+    };
+
+    // Cache only successful responses with data
+    if (result.posts.length > 0) {
+      feedCache = { data: responseBody, time: Date.now() };
+    }
+
+    return NextResponse.json(responseBody);
   }
 
   // CHAT MODE: Fetch comments from pinned chat post (legacy)

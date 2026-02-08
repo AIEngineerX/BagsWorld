@@ -10,7 +10,7 @@
 
 const MOLTBOOK_API_URL = "https://www.moltbook.com/api/v1";
 
-// Rate limit tracking
+// Rate limit tracking (per-instance so Bagsy and ChadGhost track independently)
 interface RateLimitState {
   lastPostTime: number;
   commentCount: number;
@@ -18,14 +18,6 @@ interface RateLimitState {
   requestCount: number;
   requestWindowStart: number;
 }
-
-const rateLimitState: RateLimitState = {
-  lastPostTime: 0,
-  commentCount: 0,
-  commentWindowStart: Date.now(),
-  requestCount: 0,
-  requestWindowStart: Date.now(),
-};
 
 // Types
 export interface MoltbookPost {
@@ -105,10 +97,18 @@ export type CommentSort = "top" | "new" | "controversial";
 class MoltbookClient {
   private apiKey: string;
   private baseUrl: string;
+  private rateLimitState: RateLimitState;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
     this.baseUrl = MOLTBOOK_API_URL;
+    this.rateLimitState = {
+      lastPostTime: 0,
+      commentCount: 0,
+      commentWindowStart: Date.now(),
+      requestCount: 0,
+      requestWindowStart: Date.now(),
+    };
   }
 
   /**
@@ -121,43 +121,43 @@ class MoltbookClient {
     const now = Date.now();
 
     // Reset request window every minute
-    if (now - rateLimitState.requestWindowStart > 60000) {
-      rateLimitState.requestCount = 0;
-      rateLimitState.requestWindowStart = now;
+    if (now - this.rateLimitState.requestWindowStart > 60000) {
+      this.rateLimitState.requestCount = 0;
+      this.rateLimitState.requestWindowStart = now;
     }
 
     // Reset comment window every hour
-    if (now - rateLimitState.commentWindowStart > 3600000) {
-      rateLimitState.commentCount = 0;
-      rateLimitState.commentWindowStart = now;
+    if (now - this.rateLimitState.commentWindowStart > 3600000) {
+      this.rateLimitState.commentCount = 0;
+      this.rateLimitState.commentWindowStart = now;
     }
 
     switch (type) {
       case "request":
-        if (rateLimitState.requestCount >= 100) {
+        if (this.rateLimitState.requestCount >= 100) {
           return {
             allowed: false,
-            retryAfterMs: 60000 - (now - rateLimitState.requestWindowStart),
+            retryAfterMs: 60000 - (now - this.rateLimitState.requestWindowStart),
           };
         }
-        rateLimitState.requestCount++;
+        this.rateLimitState.requestCount++;
         return { allowed: true };
 
       case "post":
         const postCooldown = 30 * 60 * 1000; // 30 minutes
-        if (now - rateLimitState.lastPostTime < postCooldown) {
+        if (now - this.rateLimitState.lastPostTime < postCooldown) {
           return {
             allowed: false,
-            retryAfterMs: postCooldown - (now - rateLimitState.lastPostTime),
+            retryAfterMs: postCooldown - (now - this.rateLimitState.lastPostTime),
           };
         }
         return { allowed: true };
 
       case "comment":
-        if (rateLimitState.commentCount >= 50) {
+        if (this.rateLimitState.commentCount >= 50) {
           return {
             allowed: false,
-            retryAfterMs: 3600000 - (now - rateLimitState.commentWindowStart),
+            retryAfterMs: 3600000 - (now - this.rateLimitState.commentWindowStart),
           };
         }
         return { allowed: true };
@@ -276,7 +276,7 @@ class MoltbookClient {
       body: JSON.stringify(params),
     });
 
-    rateLimitState.lastPostTime = Date.now();
+    this.rateLimitState.lastPostTime = Date.now();
     return result;
   }
 
@@ -390,7 +390,7 @@ class MoltbookClient {
       }),
     });
 
-    rateLimitState.commentCount++;
+    this.rateLimitState.commentCount++;
     return result;
   }
 
@@ -587,7 +587,7 @@ class MoltbookClient {
    */
   getNextPostTime(): number {
     const cooldown = 30 * 60 * 1000;
-    const timeSinceLastPost = Date.now() - rateLimitState.lastPostTime;
+    const timeSinceLastPost = Date.now() - this.rateLimitState.lastPostTime;
     return Math.max(0, cooldown - timeSinceLastPost);
   }
 }
