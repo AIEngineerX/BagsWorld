@@ -3016,7 +3016,7 @@ export class WorldScene extends Phaser.Scene {
     this.foundersElements.push(incLabel);
 
     // === INCINERATOR GARBAGE TRUCK (parked to the right of factory) ===
-    const truckX = Math.round(690 * s);
+    const truckX = Math.round(760 * s);
     const truckSprite = this.add.sprite(truckX, pathLevel + Math.round(3 * s), "incinerator_truck");
     truckSprite.setOrigin(0.5, 1);
     truckSprite.setDepth(4.5);
@@ -3111,7 +3111,7 @@ export class WorldScene extends Phaser.Scene {
     chalkboard.setDepth(2);
     this.foundersElements.push(chalkboard);
 
-    // === POKEMON (depth 4, ground level) - Interactive and roaming ===
+    // === POKEMON (depth 8, above buildings) - Interactive and roaming ===
     // Clear any existing pokemon from previous zone visits
     this.pokemon = [];
 
@@ -3142,7 +3142,7 @@ export class WorldScene extends Phaser.Scene {
       {
         texture: "pokemon_bulbasaur",
         type: "bulbasaur",
-        x: 650,
+        x: 500,
         yOffset: 8,
         scale: 1.3,
         speed: 0.15,
@@ -3154,7 +3154,7 @@ export class WorldScene extends Phaser.Scene {
       const sprite = this.add.sprite(Math.round(config.x * s), baseY, config.texture);
       sprite.setOrigin(0.5, 1);
       sprite.setScale(config.scale);
-      sprite.setDepth(4);
+      sprite.setDepth(8);
       this.foundersElements.push(sprite);
 
       // Make Pokemon interactive
@@ -3195,7 +3195,7 @@ export class WorldScene extends Phaser.Scene {
             if (Math.random() > 0.4) {
               // Start roaming
               pokemonObj.isIdle = false;
-              pokemonObj.targetX = Math.round(100 * s) + Math.random() * Math.round(600 * s);
+              pokemonObj.targetX = Math.round(100 * s) + Math.random() * Math.round(450 * s);
               pokemonObj.direction = pokemonObj.targetX > sprite.x ? "right" : "left";
             } else {
               // Just hop in place
