@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface AgentToken {
   mint: string;
@@ -39,6 +39,31 @@ type TabType = "top-earners" | "find-agent";
 
 const RANK_COLORS = ["text-yellow-400", "text-gray-300", "text-amber-600"];
 
+function SkeletonCard({ rank }: { rank: number }) {
+  return (
+    <div className="bg-amber-800/30 rounded-lg p-4 border border-amber-700/30 animate-pulse">
+      <div className="flex items-center gap-3 mb-3">
+        <span className={`text-2xl font-bold ${RANK_COLORS[rank] || "text-amber-400"}`}>
+          #{rank + 1}
+        </span>
+        <div className="w-8 h-8 rounded-full bg-amber-700/40" />
+        <div className="flex-1">
+          <div className="h-4 bg-amber-700/40 rounded w-24 mb-1" />
+          <div className="h-3 bg-amber-700/30 rounded w-16" />
+        </div>
+      </div>
+      <div className="bg-amber-950/50 rounded px-3 py-2 mb-3">
+        <div className="h-3 bg-amber-700/30 rounded w-16 mb-1" />
+        <div className="h-6 bg-amber-700/40 rounded w-32" />
+      </div>
+      <div className="space-y-1">
+        <div className="h-3 bg-amber-700/20 rounded w-full" />
+        <div className="h-3 bg-amber-700/20 rounded w-3/4" />
+      </div>
+    </div>
+  );
+}
+
 export function AgentHutModal({ onClose }: AgentHutModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>("top-earners");
 
@@ -57,49 +82,64 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
   const [earnersLoading, setEarnersLoading] = useState(true);
   const [earnersError, setEarnersError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState<string | null>(null);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
   };
 
-  // Fetch top earners on mount
-  useEffect(() => {
-    let mounted = true;
-    let hasData = false;
+  const fetchTopEarners = useCallback(
+    async (forceRefresh = false) => {
+      // Don't clear existing data while refreshing
+      if (topEarners.length === 0) setEarnersLoading(true);
+      else setIsRefreshing(true);
 
-    const fetchTopEarners = async () => {
       try {
-        const res = await fetch("/api/agent-economy/top-earners");
+        const url = forceRefresh
+          ? "/api/agent-economy/top-earners?nocache"
+          : "/api/agent-economy/top-earners";
+        const res = await fetch(url);
         const data = await res.json();
-        if (!mounted) return;
 
         if (data.success) {
           setTopEarners(data.topEarners);
           setLastUpdated(data.lastUpdated);
+          setCacheStatus(data.cacheStatus || null);
           setEarnersError(null);
-          hasData = data.topEarners.length > 0;
         } else {
           // Only show error if we have no existing data to display
-          if (!hasData) {
+          if (topEarners.length === 0) {
             setEarnersError(data.error || "Failed to load");
           }
         }
       } catch {
-        if (mounted && !hasData) setEarnersError("Failed to fetch top earners");
+        if (topEarners.length === 0) setEarnersError("Failed to fetch top earners");
       } finally {
-        if (mounted) setEarnersLoading(false);
+        setEarnersLoading(false);
+        setIsRefreshing(false);
       }
-    };
+    },
+    [topEarners.length]
+  );
 
+  // Fetch top earners on mount
+  useEffect(() => {
     fetchTopEarners();
 
-    // Poll every 30 minutes (matches server cache TTL)
-    const interval = setInterval(fetchTopEarners, 30 * 60 * 1000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+    const interval = setInterval(() => fetchTopEarners(), 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchTopEarners]);
+
+  const formatTimeAgo = (dateStr: string): string => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
 
   const lookupAgent = async () => {
     if (!moltbookUsername.trim()) {
@@ -230,13 +270,22 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
           {activeTab === "top-earners" ? (
             /* Top Earners Tab */
             <div className="space-y-3">
-              {earnersLoading ? (
+              {earnersLoading && topEarners.length === 0 ? (
+                /* Skeleton loading — show 3 placeholder cards */
+                <>
+                  <SkeletonCard rank={0} />
+                  <SkeletonCard rank={1} />
+                  <SkeletonCard rank={2} />
+                </>
+              ) : earnersError && topEarners.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="text-amber-400 animate-pulse text-lg">Loading top earners...</div>
-                </div>
-              ) : earnersError ? (
-                <div className="text-center py-8">
-                  <p className="text-red-400 text-sm">{earnersError}</p>
+                  <p className="text-red-400 text-sm mb-3">{earnersError}</p>
+                  <button
+                    onClick={() => fetchTopEarners(true)}
+                    className="px-4 py-1.5 bg-amber-700 hover:bg-amber-600 text-amber-100 rounded text-sm transition-colors"
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : topEarners.length === 0 ? (
                 <div className="text-center py-8">
@@ -246,74 +295,97 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                   </p>
                 </div>
               ) : (
-                topEarners.map((earner, idx) => (
-                  <div
-                    key={earner.wallet || earner.username}
-                    className="bg-amber-800/30 rounded-lg p-4 border border-amber-700/30"
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <span
-                        className={`text-2xl font-bold ${RANK_COLORS[idx] || "text-amber-400"}`}
-                      >
-                        #{idx + 1}
-                      </span>
-                      {earner.profilePic && !earner.profilePic.includes("default_pfp") && (
-                        <img
-                          src={earner.profilePic}
-                          alt=""
-                          className="w-8 h-8 rounded-full border border-amber-700/50"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-amber-100 font-medium truncate">{earner.name}</div>
-                        <span className="text-amber-500 text-xs">
-                          {earner.provider === "twitter"
-                            ? `𝕏 @${earner.username}`
-                            : earner.username}
-                        </span>
-                      </div>
+                <>
+                  {/* Refreshing indicator */}
+                  {isRefreshing && (
+                    <div className="text-center text-amber-500 text-xs animate-pulse py-1">
+                      Updating...
                     </div>
+                  )}
 
-                    <div className="bg-amber-950/50 rounded px-3 py-2 mb-3">
-                      <div className="text-amber-500 text-xs">Lifetime Fees</div>
-                      <div className="text-green-400 font-bold text-lg">
-                        {earner.totalLifetimeFeesSol.toFixed(4)} SOL
+                  {topEarners.map((earner, idx) => (
+                    <div
+                      key={earner.wallet || earner.username}
+                      className="bg-amber-800/30 rounded-lg p-4 border border-amber-700/30"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <span
+                          className={`text-2xl font-bold ${RANK_COLORS[idx] || "text-amber-400"}`}
+                        >
+                          #{idx + 1}
+                        </span>
+                        {earner.profilePic && !earner.profilePic.includes("default_pfp") && (
+                          <img
+                            src={earner.profilePic}
+                            alt=""
+                            className="w-8 h-8 rounded-full border border-amber-700/50"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-amber-100 font-medium truncate">{earner.name}</div>
+                          <span className="text-amber-500 text-xs">
+                            {earner.provider === "twitter"
+                              ? `𝕏 @${earner.username}`
+                              : earner.username}
+                          </span>
+                        </div>
                       </div>
-                      {earner.totalUnclaimedSol > 0 && (
-                        <div className="text-amber-400 text-xs mt-0.5">
-                          {earner.totalUnclaimedSol.toFixed(4)} SOL unclaimed
+
+                      <div className="bg-amber-950/50 rounded px-3 py-2 mb-3">
+                        <div className="text-amber-500 text-xs">Lifetime Fees</div>
+                        <div className="text-green-400 font-bold text-lg">
+                          {earner.totalLifetimeFeesSol.toFixed(4)} SOL
+                        </div>
+                        {earner.totalUnclaimedSol > 0 && (
+                          <div className="text-amber-400 text-xs mt-0.5">
+                            {earner.totalUnclaimedSol.toFixed(4)} SOL unclaimed
+                          </div>
+                        )}
+                      </div>
+
+                      {earner.tokens.length > 0 && (
+                        <div className="space-y-1">
+                          {earner.tokens.map((token) => (
+                            <div
+                              key={token.mint}
+                              className="flex items-center justify-between text-xs"
+                            >
+                              <span className="text-amber-300">${token.symbol}</span>
+                              <span className="text-amber-500">
+                                {token.lifetimeFeesSol.toFixed(4)} SOL
+                                {token.unclaimedSol > 0 && (
+                                  <span className="text-amber-600 ml-1">
+                                    ({token.unclaimedSol.toFixed(4)} unclaimed)
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
-
-                    {earner.tokens.length > 0 && (
-                      <div className="space-y-1">
-                        {earner.tokens.map((token) => (
-                          <div
-                            key={token.mint}
-                            className="flex items-center justify-between text-xs"
-                          >
-                            <span className="text-amber-300">${token.symbol}</span>
-                            <span className="text-amber-500">
-                              {token.lifetimeFeesSol.toFixed(4)} SOL
-                              {token.unclaimedSol > 0 && (
-                                <span className="text-amber-600 ml-1">
-                                  ({token.unclaimedSol.toFixed(4)} unclaimed)
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))
+                  ))}
+                </>
               )}
 
-              {lastUpdated && (
-                <p className="text-amber-600 text-xs text-center">
-                  Updated {new Date(lastUpdated).toLocaleTimeString()}
-                </p>
+              {/* Footer: timestamp + refresh */}
+              {(lastUpdated || topEarners.length > 0) && (
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  {lastUpdated && (
+                    <p className="text-amber-600 text-xs">
+                      Updated {formatTimeAgo(lastUpdated)}
+                      {cacheStatus === "stale" && " (refreshing...)"}
+                    </p>
+                  )}
+                  {!isRefreshing && !earnersLoading && (
+                    <button
+                      onClick={() => fetchTopEarners(true)}
+                      className="text-amber-600 hover:text-amber-400 text-xs underline transition-colors"
+                    >
+                      Refresh
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ) : !agentData ? (

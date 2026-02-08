@@ -25,14 +25,16 @@ interface TopEarner {
   tokens: TopEarnerToken[];
 }
 
-// 1-hour response cache
+// Cache config
 let cachedResponse: {
   success: boolean;
   topEarners: TopEarner[];
   lastUpdated: string;
 } | null = null;
 let cacheTime = 0;
-const CACHE_TTL = 60 * 60 * 1000;
+const CACHE_TTL = 30 * 60 * 1000; // 30 min fresh
+const STALE_TTL = 2 * 60 * 60 * 1000; // 2 hour stale-while-revalidate
+let refreshInProgress = false;
 
 // Persistent set of discovered agent usernames — survives cache refreshes
 // so agents aren't lost when they fall off the Moltbook feed
@@ -149,7 +151,8 @@ async function discoverMoltbookAgents(): Promise<
     addAgent(username, username);
   }
 
-  // 1. Try MoltbookClient (global feeds + submolt feeds for broader coverage)
+  // 1. Try MoltbookClient (authenticated — global + submolt feeds)
+  let authFeedSucceeded = false;
   const moltbook = getMoltbookOrNull();
   if (moltbook) {
     try {
@@ -158,12 +161,8 @@ async function discoverMoltbookAgents(): Promise<
           moltbook.getFeed("hot", 100),
           moltbook.getFeed("new", 100),
           moltbook.getFeed("top", 100).catch(() => []),
-          // Also scan key submolts where Bags.fm agents post (all sort types)
-          ...AGENT_SUBMOLTS.flatMap((sub) =>
-            (["hot", "new", "top"] as const).map((sort) =>
-              moltbook.getSubmoltPosts(sub, sort, 50).catch(() => [])
-            )
-          ),
+          // Scan key submolts — only "new" sort to reduce request count
+          ...AGENT_SUBMOLTS.map((sub) => moltbook.getSubmoltPosts(sub, "new", 50).catch(() => [])),
         ]),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("Moltbook feed timeout")), 15000)
@@ -172,28 +171,28 @@ async function discoverMoltbookAgents(): Promise<
       for (const feed of feeds) {
         if (!Array.isArray(feed)) continue;
         for (const post of feed) {
-          // Handle author as string or object — API may return either format
           const authorName = extractAuthorName(post.author);
           if (authorName) {
             addAgent(authorName, authorName);
           }
         }
       }
+      authFeedSucceeded = true;
       console.log(`[top-earners] Discovered ${agents.length} agents from MoltbookClient feeds`);
     } catch (err) {
       console.error("[top-earners] MoltbookClient feed failed:", err);
     }
   }
 
-  // 2. Always also fetch from public API for broader coverage (not just as fallback)
-  const feedAuthors = await fetchMoltbookFeedAuthors();
-  for (const author of feedAuthors) {
-    addAgent(author, author);
-  }
-  if (feedAuthors.length > 0) {
-    console.log(
-      `[top-earners] Added agents from Moltbook public API (total now: ${agents.length})`
-    );
+  // 2. Public API fallback — only when authenticated client unavailable or failed
+  if (!authFeedSucceeded) {
+    const feedAuthors = await fetchMoltbookFeedAuthors();
+    for (const author of feedAuthors) {
+      addAgent(author, author);
+    }
+    if (feedAuthors.length > 0) {
+      console.log(`[top-earners] Fell back to public API (total now: ${agents.length})`);
+    }
   }
 
   // 3. Pull external agents with Moltbook usernames from DB
@@ -217,37 +216,30 @@ async function discoverMoltbookAgents(): Promise<
   return agents;
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const noCache = searchParams.has("nocache");
-
-  if (!noCache && cachedResponse && Date.now() - cacheTime < CACHE_TTL) {
-    return NextResponse.json(cachedResponse);
-  }
-
-  const BAGS_API_KEY = process.env.BAGS_API_KEY;
-  if (!BAGS_API_KEY) {
-    return NextResponse.json(
-      { success: false, error: "BAGS_API_KEY not configured" },
-      { status: 503 }
-    );
-  }
-
-  const api = initBagsApi(BAGS_API_KEY);
+/**
+ * Background refresh — populates cache without blocking the request
+ */
+async function refreshCache(): Promise<void> {
+  if (refreshInProgress) return;
+  refreshInProgress = true;
 
   try {
+    const BAGS_API_KEY = process.env.BAGS_API_KEY;
+    if (!BAGS_API_KEY) return;
+
+    const api = initBagsApi(BAGS_API_KEY);
+
     // Step 1: Discover agents from Moltbook feed + DB
     const discoveredAgents = await discoverMoltbookAgents();
 
     if (discoveredAgents.length === 0) {
-      const response = {
+      cachedResponse = {
         success: true,
-        topEarners: [] as TopEarner[],
+        topEarners: [],
         lastUpdated: new Date().toISOString(),
       };
-      cachedResponse = response;
       cacheTime = Date.now();
-      return NextResponse.json(response);
+      return;
     }
 
     // Cap lookups to keep response times under ~60s (known agents are first in the list)
@@ -271,7 +263,6 @@ export async function GET(request: Request) {
         provider: "moltbook",
         username: a.username,
       }));
-      // Bags API limits bulk lookup to 100 items — use batches of 50 with 3 concurrent
       const BATCH_SIZE = 50;
       const CONCURRENCY = 3;
       const batches: Array<{ provider: string; username: string }[]> = [];
@@ -321,23 +312,15 @@ export async function GET(request: Request) {
     );
 
     if (walletResults.length === 0) {
-      if (rateLimited && cachedResponse && cachedResponse.topEarners.length > 0) {
-        return NextResponse.json(cachedResponse);
+      if (!rateLimited) {
+        cachedResponse = {
+          success: true,
+          topEarners: [],
+          lastUpdated: new Date().toISOString(),
+        };
+        cacheTime = Date.now();
       }
-      if (rateLimited) {
-        return NextResponse.json(
-          { success: false, error: "Bags API rate limit reached — try again later" },
-          { status: 429 }
-        );
-      }
-      const response = {
-        success: true,
-        topEarners: [] as TopEarner[],
-        lastUpdated: new Date().toISOString(),
-      };
-      cachedResponse = response;
-      cacheTime = Date.now();
-      return NextResponse.json(response);
+      return;
     }
 
     // Phase 1: Fetch claimable positions per wallet, collect unique mints
@@ -384,7 +367,6 @@ export async function GET(request: Request) {
     }
 
     // Phase 2: Batch-fetch claim stats for unique mints (5 concurrent, 5s timeout each)
-    // Map<baseMint, Map<walletAddress, claimedLamports>>
     const claimStatsMap = new Map<string, Map<string, number>>();
     const mintArray = Array.from(uniqueMints);
 
@@ -439,7 +421,6 @@ export async function GET(request: Request) {
         });
       }
 
-      // Sort tokens by lifetime fees descending
       tokens.sort((a, b) => b.lifetimeFeesSol - a.lifetimeFeesSol);
 
       const discoveredAgent = discoveredAgents.find(
@@ -462,29 +443,62 @@ export async function GET(request: Request) {
       });
     }
 
-    // Sort by total lifetime fees descending
     earners.sort((a, b) => b.totalLifetimeFeesSol - a.totalLifetimeFeesSol);
 
     console.log(`[top-earners] ${walletResults.length} wallets → ${earners.length} agents listed`);
 
-    const response = {
+    cachedResponse = {
       success: true,
       topEarners: earners.slice(0, 10),
       lastUpdated: new Date().toISOString(),
     };
-
-    cachedResponse = response;
     cacheTime = Date.now();
-
-    return NextResponse.json(response);
   } catch (err) {
-    console.error("[top-earners] Error:", err);
+    console.error("[top-earners] Background refresh error:", err);
+  } finally {
+    refreshInProgress = false;
+  }
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const noCache = searchParams.has("nocache");
+  const cacheAge = Date.now() - cacheTime;
+
+  // Fresh cache — return immediately
+  if (!noCache && cachedResponse && cacheAge < CACHE_TTL) {
+    return NextResponse.json({ ...cachedResponse, cacheStatus: "fresh" });
+  }
+
+  // Stale cache — return stale data immediately, refresh in background
+  if (!noCache && cachedResponse && cacheAge < STALE_TTL) {
+    // Fire-and-forget background refresh
+    refreshCache().catch(() => {});
+    return NextResponse.json({ ...cachedResponse, cacheStatus: "stale" });
+  }
+
+  // No cache or expired — must wait for refresh
+  const BAGS_API_KEY = process.env.BAGS_API_KEY;
+  if (!BAGS_API_KEY) {
     return NextResponse.json(
-      {
-        success: false,
-        error: err instanceof Error ? err.message : "Failed to fetch top earners",
-      },
-      { status: 500 }
+      { success: false, error: "BAGS_API_KEY not configured" },
+      { status: 503 }
     );
   }
+
+  // If another request is already refreshing, wait a bit and return whatever we have
+  if (refreshInProgress && cachedResponse) {
+    return NextResponse.json({ ...cachedResponse, cacheStatus: "stale" });
+  }
+
+  await refreshCache();
+
+  if (cachedResponse) {
+    return NextResponse.json({ ...cachedResponse, cacheStatus: "fresh" });
+  }
+
+  return NextResponse.json(
+    { success: false, error: "Failed to fetch top earners" },
+    { status: 500 }
+  );
 }

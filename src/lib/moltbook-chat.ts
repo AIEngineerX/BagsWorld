@@ -11,6 +11,7 @@
 
 import {
   getMoltbookOrNull,
+  getChadGhostMoltbookOrNull,
   MoltbookClient,
   MoltbookPost,
   MoltbookComment,
@@ -417,7 +418,7 @@ export interface AlphaPost {
 
 /**
  * Fetch alpha posts from the bagsworld-alpha submolt
- * This shows ChadGhost's alpha calls and other agent posts
+ * Uses ChadGhost's client (owns the submolt), falls back to Bagsy, then public API
  */
 export async function fetchAlphaFeed(limit: number = 20): Promise<{
   success: boolean;
@@ -425,8 +426,15 @@ export async function fetchAlphaFeed(limit: number = 20): Promise<{
   submolt: string;
   error?: string;
 }> {
-  const client = getMoltbookOrNull();
+  // ChadGhost owns m/bagsworld-alpha, try its key first
+  const chadClient = getChadGhostMoltbookOrNull();
+  const bagsyClient = getMoltbookOrNull();
+  const client = chadClient || bagsyClient;
+
   if (!client) {
+    // No authenticated client — try public API as last resort
+    const publicResult = await fetchAlphaFeedPublic(PREFERRED_SUBMOLT, limit);
+    if (publicResult) return publicResult;
     return {
       success: false,
       posts: [],
@@ -435,25 +443,44 @@ export async function fetchAlphaFeed(limit: number = 20): Promise<{
     };
   }
 
-  // Try preferred submolt first, fall back if needed
   let posts: MoltbookPost[] = [];
   let usedSubmolt = PREFERRED_SUBMOLT;
 
   try {
     posts = await client.getSubmoltPosts(PREFERRED_SUBMOLT, "new", limit);
-  } catch (err) {
-    // If preferred submolt doesn't exist, try fallback
-    console.log(
-      `[MoltbookChat] m/${PREFERRED_SUBMOLT} not available, trying m/${FALLBACK_SUBMOLT}`
-    );
-    try {
-      posts = await client.getSubmoltPosts(FALLBACK_SUBMOLT, "new", limit);
-      usedSubmolt = FALLBACK_SUBMOLT;
-    } catch {
-      // If fallback also fails, try main feed
-      console.log("[MoltbookChat] Falling back to main feed");
-      posts = await client.getFeed("new", limit);
-      usedSubmolt = "feed";
+  } catch {
+    // If ChadGhost's client failed, try Bagsy's client on the same submolt
+    if (chadClient && bagsyClient) {
+      try {
+        posts = await bagsyClient.getSubmoltPosts(PREFERRED_SUBMOLT, "new", limit);
+      } catch {
+        // Both clients failed on preferred submolt
+      }
+    }
+
+    // If still no posts, try public API for the preferred submolt
+    if (posts.length === 0) {
+      const publicResult = await fetchAlphaFeedPublic(PREFERRED_SUBMOLT, limit);
+      if (publicResult && publicResult.posts.length > 0) return publicResult;
+    }
+
+    // Fallback to secondary submolt
+    if (posts.length === 0) {
+      console.log(
+        `[MoltbookChat] m/${PREFERRED_SUBMOLT} not available, trying m/${FALLBACK_SUBMOLT}`
+      );
+      try {
+        posts = await client.getSubmoltPosts(FALLBACK_SUBMOLT, "new", limit);
+        usedSubmolt = FALLBACK_SUBMOLT;
+      } catch {
+        // Last resort: main feed
+        try {
+          posts = await client.getFeed("new", limit);
+          usedSubmolt = "feed";
+        } catch {
+          console.log("[MoltbookChat] All feed sources failed");
+        }
+      }
     }
   }
 
@@ -474,6 +501,51 @@ export async function fetchAlphaFeed(limit: number = 20): Promise<{
     posts: alphaPosts,
     submolt: usedSubmolt,
   };
+}
+
+/**
+ * Fetch submolt posts via unauthenticated public Moltbook API
+ */
+async function fetchAlphaFeedPublic(
+  submolt: string,
+  limit: number
+): Promise<{ success: boolean; posts: AlphaPost[]; submolt: string } | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(
+      `https://www.moltbook.com/api/v1/submolts/${submolt}?sort=new&limit=${limit}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.success) return null;
+    const posts: AlphaPost[] = (data.posts || []).map(
+      (p: {
+        id: string;
+        title: string;
+        content?: string;
+        upvotes: number;
+        comment_count: number;
+        created_at: string;
+        author?: { name?: string; karma?: number };
+      }) => ({
+        id: p.id,
+        title: p.title,
+        content: p.content || "",
+        author: p.author?.name || "unknown",
+        authorKarma: p.author?.karma,
+        upvotes: p.upvotes,
+        commentCount: p.comment_count,
+        timestamp: new Date(p.created_at),
+        submolt,
+      })
+    );
+    return { success: true, posts, submolt };
+  } catch {
+    return null;
+  }
 }
 
 /**
