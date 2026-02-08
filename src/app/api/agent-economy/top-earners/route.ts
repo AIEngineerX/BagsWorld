@@ -9,6 +9,8 @@ interface TopEarnerToken {
   name: string;
   symbol: string;
   unclaimedSol: number;
+  claimedSol: number;
+  lifetimeFeesSol: number;
 }
 
 interface TopEarner {
@@ -18,6 +20,7 @@ interface TopEarner {
   profilePic?: string;
   wallet: string;
   totalUnclaimedSol: number;
+  totalLifetimeFeesSol: number;
   tokenCount: number;
   tokens: TopEarnerToken[];
 }
@@ -214,46 +217,114 @@ export async function GET(request: Request) {
       return NextResponse.json(response);
     }
 
-    // Step 3: Get claimable positions per wallet → sum unclaimed fees
-    const earners: TopEarner[] = [];
+    // Phase 1: Fetch claimable positions per wallet, collect unique mints
+    const walletPositions = new Map<
+      string,
+      Array<{ baseMint: string; unclaimedLamports: number; name: string; symbol: string }>
+    >();
+    const uniqueMints = new Set<string>();
 
     for (const wr of walletResults) {
-      let totalUnclaimedLamports = 0;
-      const tokens: TopEarnerToken[] = [];
-
       try {
         const positions = await Promise.race([
           api.getClaimablePositions(wr.wallet),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
         ]);
 
+        const parsed: Array<{
+          baseMint: string;
+          unclaimedLamports: number;
+          name: string;
+          symbol: string;
+        }> = [];
+
         for (const pos of positions || []) {
-          // Sum both virtual pool + DAMM pool fees (migrated tokens have DAMM amounts)
-          // Matches getClaimableForWallet() logic in launcher.ts
           const raw = pos as unknown as Record<string, unknown>;
           const virtual = Number(
             raw.virtualPoolClaimableAmount ?? pos.totalClaimableLamportsUserShare ?? 0
           );
           const damm = Number(raw.dammPoolClaimableAmount ?? 0);
           const lamports = virtual + damm;
-          totalUnclaimedLamports += lamports;
-          tokens.push({
-            mint: pos.baseMint,
+          parsed.push({
+            baseMint: pos.baseMint,
+            unclaimedLamports: lamports,
             name: pos.tokenName || "Unknown",
             symbol: pos.tokenSymbol || "???",
-            unclaimedSol: lamports / 1_000_000_000,
           });
+          uniqueMints.add(pos.baseMint);
         }
+
+        walletPositions.set(wr.wallet, parsed);
       } catch {
-        // Claimable lookup failed for this wallet — still show the agent with 0
+        walletPositions.set(wr.wallet, []);
+      }
+    }
+
+    // Phase 2: Batch-fetch claim stats for unique mints (5 concurrent, 5s timeout each)
+    // Map<baseMint, Map<walletAddress, claimedLamports>>
+    const claimStatsMap = new Map<string, Map<string, number>>();
+    const mintArray = Array.from(uniqueMints);
+
+    for (let i = 0; i < mintArray.length; i += 5) {
+      const batch = mintArray.slice(i, i + 5);
+      const results = await Promise.allSettled(
+        batch.map((mint) =>
+          Promise.race([
+            api.getClaimStats(mint),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+          ])
+        )
+      );
+
+      for (let j = 0; j < batch.length; j++) {
+        const result = results[j];
+        if (result.status === "fulfilled" && result.value) {
+          const perWallet = new Map<string, number>();
+          for (const stat of result.value) {
+            perWallet.set(stat.user, stat.totalClaimed);
+          }
+          claimStatsMap.set(batch[j], perWallet);
+        }
+      }
+    }
+
+    // Phase 3: Build earner objects with lifetime totals
+    const earners: TopEarner[] = [];
+
+    for (const wr of walletResults) {
+      const positions = walletPositions.get(wr.wallet) || [];
+      let totalUnclaimedLamports = 0;
+      let totalClaimedLamports = 0;
+      const tokens: TopEarnerToken[] = [];
+
+      for (const pos of positions) {
+        totalUnclaimedLamports += pos.unclaimedLamports;
+        const mintStats = claimStatsMap.get(pos.baseMint);
+        const claimedLamports = mintStats?.get(wr.wallet) ?? 0;
+        totalClaimedLamports += claimedLamports;
+
+        const unclaimedSol = pos.unclaimedLamports / 1_000_000_000;
+        const claimedSol = claimedLamports / 1_000_000_000;
+
+        tokens.push({
+          mint: pos.baseMint,
+          name: pos.name,
+          symbol: pos.symbol,
+          unclaimedSol,
+          claimedSol,
+          lifetimeFeesSol: unclaimedSol + claimedSol,
+        });
       }
 
-      // Sort tokens by unclaimed fees descending
-      tokens.sort((a, b) => b.unclaimedSol - a.unclaimedSol);
+      // Sort tokens by lifetime fees descending
+      tokens.sort((a, b) => b.lifetimeFeesSol - a.lifetimeFeesSol);
 
       const discoveredAgent = discoveredAgents.find(
         (a) => a.username.toLowerCase() === wr.username.toLowerCase()
       );
+
+      const totalUnclaimedSol = totalUnclaimedLamports / 1_000_000_000;
+      const totalClaimedSol = totalClaimedLamports / 1_000_000_000;
 
       earners.push({
         name: wr.platformData?.displayName || discoveredAgent?.displayName || wr.username,
@@ -261,14 +332,15 @@ export async function GET(request: Request) {
         username: wr.username,
         profilePic: wr.platformData?.avatarUrl,
         wallet: wr.wallet,
-        totalUnclaimedSol: totalUnclaimedLamports / 1_000_000_000,
+        totalUnclaimedSol,
+        totalLifetimeFeesSol: totalUnclaimedSol + totalClaimedSol,
         tokenCount: tokens.length,
         tokens,
       });
     }
 
-    // Sort by total unclaimed fees descending
-    earners.sort((a, b) => b.totalUnclaimedSol - a.totalUnclaimedSol);
+    // Sort by total lifetime fees descending
+    earners.sort((a, b) => b.totalLifetimeFeesSol - a.totalLifetimeFeesSol);
 
     console.log(`[top-earners] ${walletResults.length} wallets → ${earners.length} agents listed`);
 

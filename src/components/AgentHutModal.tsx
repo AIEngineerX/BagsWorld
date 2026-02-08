@@ -15,6 +15,8 @@ interface TopEarnerToken {
   name: string;
   symbol: string;
   unclaimedSol: number;
+  claimedSol: number;
+  lifetimeFeesSol: number;
 }
 
 interface TopEarner {
@@ -24,6 +26,7 @@ interface TopEarner {
   profilePic?: string;
   wallet: string;
   totalUnclaimedSol: number;
+  totalLifetimeFeesSol: number;
   tokenCount: number;
   tokens: TopEarnerToken[];
 }
@@ -237,9 +240,9 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                 </div>
               ) : topEarners.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-amber-400 text-sm">No Moltbook agents with fee earnings yet</p>
+                  <p className="text-amber-400 text-sm">No Moltbook agents found</p>
                   <p className="text-amber-600 text-xs mt-2">
-                    Launch a token via Pokecenter to start earning fees!
+                    Agents are discovered from the live Moltbook feed
                   </p>
                 </div>
               ) : (
@@ -272,10 +275,15 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                     </div>
 
                     <div className="bg-amber-950/50 rounded px-3 py-2 mb-3">
-                      <div className="text-amber-500 text-xs">Unclaimed Fees</div>
+                      <div className="text-amber-500 text-xs">Lifetime Fees</div>
                       <div className="text-green-400 font-bold text-lg">
-                        {earner.totalUnclaimedSol.toFixed(4)} SOL
+                        {earner.totalLifetimeFeesSol.toFixed(4)} SOL
                       </div>
+                      {earner.totalUnclaimedSol > 0 && (
+                        <div className="text-amber-400 text-xs mt-0.5">
+                          {earner.totalUnclaimedSol.toFixed(4)} SOL unclaimed
+                        </div>
+                      )}
                     </div>
 
                     {earner.tokens.length > 0 && (
@@ -287,7 +295,12 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
                           >
                             <span className="text-amber-300">${token.symbol}</span>
                             <span className="text-amber-500">
-                              {token.unclaimedSol.toFixed(4)} SOL
+                              {token.lifetimeFeesSol.toFixed(4)} SOL
+                              {token.unclaimedSol > 0 && (
+                                <span className="text-amber-600 ml-1">
+                                  ({token.unclaimedSol.toFixed(4)} unclaimed)
+                                </span>
+                              )}
                             </span>
                           </div>
                         ))}
