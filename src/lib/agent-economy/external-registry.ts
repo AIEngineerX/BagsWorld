@@ -44,6 +44,13 @@ async function ensureTable() {
     // Column might already exist, ignore
   }
 
+  // Add last_active_at column for building lifecycle tracking (migration)
+  try {
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ DEFAULT NOW()`;
+  } catch {
+    // Column might already exist, ignore
+  }
+
   tableInitialized = true;
   console.log("[ExternalRegistry] Table initialized");
 }
@@ -70,6 +77,7 @@ interface DbRow {
   x: number;
   y: number;
   joined_at: Date;
+  last_active_at: Date | null;
 }
 
 // ============================================================================
@@ -176,9 +184,41 @@ function getBuildingPosition(index: number, zone: ZoneType): number {
   return Math.round((200 + index * 100) * SCALE);
 }
 
+// Activity-based health tiers for agent buildings
+// Agents that interact with BagsWorld APIs stay healthy, inactive ones decay visually
+const AGENT_ACTIVITY_TIERS = [
+  { maxAgeMs: 6 * 60 * 60 * 1000, health: 100, status: "active" as const }, // < 6 hours
+  { maxAgeMs: 24 * 60 * 60 * 1000, health: 75, status: "active" as const }, // < 24 hours
+  { maxAgeMs: 7 * 24 * 60 * 60 * 1000, health: 50, status: "warning" as const }, // < 7 days
+  { maxAgeMs: 30 * 24 * 60 * 60 * 1000, health: 25, status: "critical" as const }, // < 30 days
+] as const;
+const AGENT_DORMANT_HEALTH = 12; // 30+ days inactive - dormant but never removed
+
+function getAgentBuildingHealth(lastActiveAt: Date | null): {
+  health: number;
+  status: "active" | "warning" | "critical" | "dormant";
+} {
+  if (!lastActiveAt) {
+    // No activity data yet (pre-migration rows) - treat as recently active
+    return { health: 100, status: "active" };
+  }
+
+  const ageMs = Date.now() - lastActiveAt.getTime();
+
+  for (const tier of AGENT_ACTIVITY_TIERS) {
+    if (ageMs < tier.maxAgeMs) {
+      return { health: tier.health, status: tier.status };
+    }
+  }
+
+  // 30+ days inactive
+  return { health: AGENT_DORMANT_HEALTH, status: "dormant" };
+}
+
 /**
  * Create an agent building for an external agent
- * Agent buildings are small permanent structures that represent the agent in the world
+ * Agent buildings are persistent structures whose visual state reflects agent activity.
+ * Health is computed from last_active_at - active agents glow, dormant agents fade.
  * @param row - Database row for the agent
  * @param index - Position index for building placement (avoids shared mutable state)
  */
@@ -191,6 +231,9 @@ function rowToBuilding(row: DbRow, index: number): GameBuilding {
     ? getBuildingPosition(index, row.zone as ZoneType)
     : row.x + BUILDING_OFFSET_X;
 
+  // Compute health from activity recency
+  const { health, status } = getAgentBuildingHealth(row.last_active_at);
+
   return {
     id: `agent-building-${row.wallet.slice(0, 8)}`,
     tokenMint: `agent-${row.wallet}`, // Fake mint for agent buildings
@@ -199,15 +242,16 @@ function rowToBuilding(row: DbRow, index: number): GameBuilding {
     x: buildingX,
     y: GROUND_Y, // Same ground level as token buildings
     level: 1, // Agent buildings are small (level 1)
-    health: 100, // Always healthy
-    status: "active",
-    glowing: true, // Agent buildings glow to stand out
+    health,
+    status,
+    glowing: health >= 75, // Only glow when recently active
     ownerId: row.wallet,
     zone: row.zone as ZoneType,
-    isPermanent: true, // Agent buildings don't decay
+    isPermanent: true, // Agent buildings are never removed (but they DO visually decay)
     // Beach-themed buildings for moltbook zone
     styleOverride: isMoltbookZone ? -1 : 0, // -1 signals beach theme
     isBeachTheme: isMoltbookZone, // Custom flag for beach building rendering
+    lastActiveAt: row.last_active_at ? row.last_active_at.toISOString() : undefined,
   };
 }
 
@@ -364,6 +408,25 @@ export async function moveExternalAgent(wallet: string, newZone: ZoneType): Prom
   `;
 
   return result.length > 0;
+}
+
+/**
+ * Touch an agent's last_active_at timestamp to keep their building alive.
+ * Called when an agent interacts with any BagsWorld API (join, launch, claim, etc.)
+ * Uses fire-and-forget pattern - never blocks the caller.
+ */
+export function touchExternalAgent(wallet: string): void {
+  // Fire and forget - don't await, don't block
+  (async () => {
+    const sql = getDb();
+    await sql`
+      UPDATE external_agents
+      SET last_active_at = NOW()
+      WHERE wallet = ${wallet}
+    `;
+  })().catch((err) => {
+    console.error("[ExternalRegistry] Failed to touch agent activity:", err);
+  });
 }
 
 // ============================================================================

@@ -8522,8 +8522,10 @@ Your creator page = website!
     sprite: Phaser.GameObjects.Sprite,
     container: Phaser.GameObjects.Container
   ): void {
-    // Skip permanent and floating buildings - they never decay
-    if (building.isPermanent || building.isFloating) return;
+    // Skip floating buildings - they never decay
+    // Agent beach buildings are isPermanent but DO show activity-based decay
+    if (building.isFloating) return;
+    if (building.isPermanent && !building.isBeachTheme) return;
 
     const status = building.status || this.getStatusFromHealth(building.health);
 
@@ -9841,8 +9843,10 @@ Your creator page = website!
     let borderColor = 0x4ade80; // Default green for active
     if (isTreasury) {
       borderColor = 0xfbbf24; // Gold for treasury
-    } else if (building.isPermanent || building.isFloating) {
-      borderColor = 0x4ade80; // Green for permanent buildings
+    } else if (building.isFloating) {
+      borderColor = 0x4ade80; // Green for floating buildings
+    } else if (building.isPermanent && !building.isBeachTheme) {
+      borderColor = 0x4ade80; // Green for permanent buildings (non-agent)
     } else if (status === "dormant") {
       borderColor = 0x666666; // Gray for dormant
     } else if (status === "critical") {
@@ -9888,25 +9892,53 @@ Your creator page = website!
       tooltipContainer.add([bg, nameText, descText, breakdownText, clickText]);
     } else {
       // Regular building tooltip
-      const mcapDisplay = building.isPermanent
-        ? "⭐ Landmark"
-        : building.marketCap
-          ? this.formatMarketCap(building.marketCap)
-          : "N/A";
+      // Agent beach buildings show activity status instead of market cap
+      const isAgentBuilding = building.isBeachTheme && building.isPermanent;
+      const mcapDisplay = isAgentBuilding
+        ? status === "active"
+          ? "🟢 Active"
+          : status === "warning"
+            ? "🟡 Idle"
+            : status === "critical"
+              ? "🟠 Inactive"
+              : "💤 Dormant"
+        : building.isPermanent
+          ? "⭐ Landmark"
+          : building.marketCap
+            ? this.formatMarketCap(building.marketCap)
+            : "N/A";
+      const mcapColor = isAgentBuilding
+        ? status === "active"
+          ? "#4ade80"
+          : status === "warning"
+            ? "#ffcc00"
+            : status === "critical"
+              ? "#ff6600"
+              : "#666666"
+        : building.isPermanent
+          ? "#fbbf24"
+          : "#4ade80";
       const mcapText = this.add.text(0, -12, mcapDisplay, {
         fontFamily: "monospace",
         fontSize: "12px",
-        color: building.isPermanent ? "#fbbf24" : "#4ade80",
+        color: mcapColor,
       });
       mcapText.setOrigin(0.5, 0.5);
 
       const levelLabels = ["Startup", "Growing", "Established", "Major", "Top Tier"];
-      const levelLabel = levelLabels[building.level - 1] || `Level ${building.level}`;
-      const levelText = this.add.text(0, 2, `⭐ ${levelLabel}`, {
-        fontFamily: "monospace",
-        fontSize: "10px",
-        color: "#fbbf24",
-      });
+      const levelLabel = isAgentBuilding
+        ? "Agent HQ"
+        : levelLabels[building.level - 1] || `Level ${building.level}`;
+      const levelText = this.add.text(
+        0,
+        2,
+        isAgentBuilding ? "🦀 " + levelLabel : `⭐ ${levelLabel}`,
+        {
+          fontFamily: "monospace",
+          fontSize: "10px",
+          color: isAgentBuilding ? "#60a5fa" : "#fbbf24",
+        }
+      );
       levelText.setOrigin(0.5, 0.5);
 
       const changeColor = (building.change24h ?? 0) >= 0 ? "#4ade80" : "#f87171";
@@ -9914,22 +9946,36 @@ Your creator page = website!
       const changeText = this.add.text(
         0,
         16,
-        `${changePrefix}${(building.change24h ?? 0).toFixed(0)}% (24h)`,
+        isAgentBuilding
+          ? `Health: ${building.health}%`
+          : `${changePrefix}${(building.change24h ?? 0).toFixed(0)}% (24h)`,
         {
           fontFamily: "monospace",
           fontSize: "10px",
-          color: changeColor,
+          color: isAgentBuilding ? mcapColor : changeColor,
         }
       );
       changeText.setOrigin(0.5, 0.5);
 
-      // Show decay status for non-permanent buildings
+      // Show decay status for non-permanent buildings AND agent beach buildings
       let statusText: Phaser.GameObjects.Text | null = null;
-      if (!building.isPermanent && !building.isFloating && status !== "active") {
+      const showDecayStatus = isAgentBuilding
+        ? status !== "active"
+        : !building.isPermanent && !building.isFloating && status !== "active";
+      if (showDecayStatus) {
         const statusMessages: Record<string, { text: string; color: string }> = {
-          warning: { text: "Low activity", color: "#ffcc00" },
-          critical: { text: "Decaying - needs volume", color: "#ff6600" },
-          dormant: { text: "Dormant - no activity", color: "#666666" },
+          warning: {
+            text: isAgentBuilding ? "Needs API activity" : "Low activity",
+            color: "#ffcc00",
+          },
+          critical: {
+            text: isAgentBuilding ? "Inactive >7 days" : "Decaying - needs volume",
+            color: "#ff6600",
+          },
+          dormant: {
+            text: isAgentBuilding ? "Dormant >30 days" : "Dormant - no activity",
+            color: "#666666",
+          },
         };
         const statusInfo = statusMessages[status];
         if (statusInfo) {
