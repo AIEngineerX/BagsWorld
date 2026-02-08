@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { initBagsApi } from "@/lib/bags-api";
-import { isNeonConfigured, getTokensByCreator } from "@/lib/neon";
+import { isNeonConfigured } from "@/lib/neon";
 import { neon } from "@neondatabase/serverless";
 import { getMoltbookOrNull } from "@/lib/moltbook-client";
 
@@ -8,7 +8,7 @@ interface TopEarnerToken {
   mint: string;
   name: string;
   symbol: string;
-  lifetimeFeeSol: number;
+  unclaimedSol: number;
 }
 
 interface TopEarner {
@@ -17,25 +17,25 @@ interface TopEarner {
   username: string;
   profilePic?: string;
   wallet: string;
-  totalLifetimeFeeSol: number;
+  totalUnclaimedSol: number;
   tokenCount: number;
   tokens: TopEarnerToken[];
 }
 
-// 30-minute response cache (each refresh makes many Bags API calls; 1000/day limit)
+// 1-hour response cache
 let cachedResponse: {
   success: boolean;
   topEarners: TopEarner[];
   lastUpdated: string;
 } | null = null;
 let cacheTime = 0;
-const CACHE_TTL = 30 * 60 * 1000;
+const CACHE_TTL = 60 * 60 * 1000;
 
 /**
- * Discover Moltbook agents from feed + DB + hardcoded fallbacks.
- * The feed provides dynamic discovery of any agent that has posted.
+ * Discover Moltbook agents dynamically from the live feed + DB.
+ * No hardcoded names — mirrors the PowerShell approach.
  */
-async function getKnownMoltbookAgents(): Promise<
+async function discoverMoltbookAgents(): Promise<
   Array<{ username: string; displayName?: string }>
 > {
   const seen = new Set<string>();
@@ -87,10 +87,6 @@ async function getKnownMoltbookAgents(): Promise<
     }
   }
 
-  // 3. Hardcoded fallbacks (always include these)
-  addAgent("Bagsy", "Bagsy");
-  addAgent("ChadGhost", "ChadGhost");
-
   return agents;
 }
 
@@ -113,10 +109,10 @@ export async function GET(request: Request) {
   const api = initBagsApi(BAGS_API_KEY);
 
   try {
-    // Step 1: Get all known Moltbook agents
-    const knownAgents = await getKnownMoltbookAgents();
+    // Step 1: Discover agents from Moltbook feed + DB
+    const discoveredAgents = await discoverMoltbookAgents();
 
-    if (knownAgents.length === 0) {
+    if (discoveredAgents.length === 0) {
       const response = {
         success: true,
         topEarners: [] as TopEarner[],
@@ -127,21 +123,10 @@ export async function GET(request: Request) {
       return NextResponse.json(response);
     }
 
-    console.log(`[top-earners] Checking ${knownAgents.length} Moltbook agents`);
+    console.log(`[top-earners] Checking ${discoveredAgents.length} Moltbook agents`);
 
-    // Step 2: Resolve Moltbook usernames → wallets individually
-    // Using individual lookups with allSettled so agents without Bags wallets are skipped.
-    // Each lookup has a 5s timeout to avoid retries stalling the whole endpoint.
-    const lookupResults = await Promise.allSettled(
-      knownAgents.map((a) => {
-        return Promise.race([
-          api.getWalletByUsername("moltbook", a.username),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
-        ]);
-      })
-    );
-
-    const walletResults: Array<{
+    // Step 2: Bulk resolve Moltbook usernames → wallets (single API call)
+    let walletResults: Array<{
       wallet: string;
       provider: string;
       username: string;
@@ -149,35 +134,36 @@ export async function GET(request: Request) {
     }> = [];
 
     let rateLimited = false;
-    for (let i = 0; i < knownAgents.length; i++) {
-      const result = lookupResults[i];
-      if (result.status === "fulfilled" && result.value?.wallet) {
-        walletResults.push({
-          wallet: result.value.wallet,
-          provider: "moltbook",
-          username: knownAgents[i].username,
-          platformData: result.value.platformData,
-        });
-      } else if (result.status === "rejected" && String(result.reason).includes("Rate limit")) {
+    try {
+      const lookupItems = discoveredAgents.map((a) => ({
+        provider: "moltbook",
+        username: a.username,
+      }));
+      walletResults = await Promise.race([
+        api.bulkWalletLookup(lookupItems),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Bulk lookup timeout")), 15000)
+        ),
+      ]);
+    } catch (err) {
+      const errMsg = String(err);
+      if (errMsg.includes("Rate limit") || errMsg.includes("429")) {
         rateLimited = true;
       }
+      console.error("[top-earners] Bulk wallet lookup failed:", err);
     }
 
     console.log(
-      `[top-earners] Resolved ${walletResults.length}/${knownAgents.length} agents to wallets${rateLimited ? " (rate limited)" : ""}`
+      `[top-earners] Resolved ${walletResults.length}/${discoveredAgents.length} agents to wallets${rateLimited ? " (rate limited)" : ""}`
     );
 
     if (walletResults.length === 0) {
-      // If rate limited, return a stale cache or an explicit error — don't cache empty
+      if (rateLimited && cachedResponse && cachedResponse.topEarners.length > 0) {
+        return NextResponse.json(cachedResponse);
+      }
       if (rateLimited) {
-        if (cachedResponse && cachedResponse.topEarners.length > 0) {
-          return NextResponse.json(cachedResponse);
-        }
         return NextResponse.json(
-          {
-            success: false,
-            error: "Bags API rate limit reached — try again later",
-          },
+          { success: false, error: "Bags API rate limit reached — try again later" },
           { status: 429 }
         );
       }
@@ -191,97 +177,63 @@ export async function GET(request: Request) {
       return NextResponse.json(response);
     }
 
-    // Step 3: Discover tokens per wallet (DB + claimable positions fallback)
+    // Step 3: Get claimable positions per wallet → sum unclaimed fees
     const earners: TopEarner[] = [];
 
     for (const wr of walletResults) {
-      // Discover tokens from DB
-      const tokenMap = new Map<string, { mint: string; name: string; symbol: string }>();
-
-      if (isNeonConfigured()) {
-        try {
-          const dbTokens = await getTokensByCreator(wr.wallet);
-          for (const t of dbTokens) {
-            tokenMap.set(t.mint, { mint: t.mint, name: t.name, symbol: t.symbol });
-          }
-        } catch {
-          // DB lookup failed, continue with claimable positions fallback
-        }
-      }
-
-      // Also check claimable positions for tokens not in DB (5s timeout)
       try {
         const positions = await Promise.race([
           api.getClaimablePositions(wr.wallet),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
         ]);
+
+        if (!positions || positions.length === 0) continue;
+
+        let totalUnclaimedLamports = 0;
+        const tokens: TopEarnerToken[] = [];
+
         for (const pos of positions) {
-          if (!tokenMap.has(pos.baseMint)) {
-            tokenMap.set(pos.baseMint, {
-              mint: pos.baseMint,
-              name: pos.tokenName || "Unknown",
-              symbol: pos.tokenSymbol || "???",
-            });
-          }
+          const lamports = pos.totalClaimableLamportsUserShare || 0;
+          if (lamports <= 0) continue;
+
+          totalUnclaimedLamports += lamports;
+          tokens.push({
+            mint: pos.baseMint,
+            name: pos.tokenName || "Unknown",
+            symbol: pos.tokenSymbol || "???",
+            unclaimedSol: lamports / 1_000_000_000,
+          });
         }
-      } catch {
-        // Claimable lookup failed, continue with DB tokens only
-      }
 
-      if (tokenMap.size === 0) continue;
+        if (totalUnclaimedLamports <= 0) continue;
 
-      // Step 4: Get lifetime fees for each token
-      const mints = Array.from(tokenMap.keys());
-      const feeResults = await Promise.allSettled(
-        mints.map((mint) => api.getTokenLifetimeFees(mint))
-      );
+        // Sort tokens by unclaimed fees descending
+        tokens.sort((a, b) => b.unclaimedSol - a.unclaimedSol);
 
-      const tokens: TopEarnerToken[] = [];
-      let totalLifetimeLamports = 0;
+        const discoveredAgent = discoveredAgents.find(
+          (a) => a.username.toLowerCase() === wr.username.toLowerCase()
+        );
 
-      for (let j = 0; j < mints.length; j++) {
-        const mint = mints[j];
-        const feeResult = feeResults[j];
-        const lamports = feeResult.status === "fulfilled" ? feeResult.value : 0;
-        if (lamports <= 0) continue;
-
-        totalLifetimeLamports += lamports;
-        const info = tokenMap.get(mint)!;
-        tokens.push({
-          mint,
-          name: info.name,
-          symbol: info.symbol,
-          lifetimeFeeSol: lamports / 1_000_000_000,
+        earners.push({
+          name: wr.platformData?.displayName || discoveredAgent?.displayName || wr.username,
+          provider: "moltbook",
+          username: wr.username,
+          profilePic: wr.platformData?.avatarUrl,
+          wallet: wr.wallet,
+          totalUnclaimedSol: totalUnclaimedLamports / 1_000_000_000,
+          tokenCount: tokens.length,
+          tokens,
         });
+      } catch {
+        // Claimable lookup failed for this wallet, skip
       }
-
-      if (totalLifetimeLamports <= 0) continue;
-
-      // Sort tokens by lifetime fees descending
-      tokens.sort((a, b) => b.lifetimeFeeSol - a.lifetimeFeeSol);
-
-      // Find display name from known agents list
-      const knownAgent = knownAgents.find(
-        (a) => a.username.toLowerCase() === wr.username.toLowerCase()
-      );
-
-      earners.push({
-        name: wr.platformData?.displayName || knownAgent?.displayName || wr.username,
-        provider: "moltbook",
-        username: wr.username,
-        profilePic: wr.platformData?.avatarUrl,
-        wallet: wr.wallet,
-        totalLifetimeFeeSol: totalLifetimeLamports / 1_000_000_000,
-        tokenCount: tokens.length,
-        tokens,
-      });
     }
 
-    // Sort by total lifetime fees descending
-    earners.sort((a, b) => b.totalLifetimeFeeSol - a.totalLifetimeFeeSol);
+    // Sort by total unclaimed fees descending
+    earners.sort((a, b) => b.totalUnclaimedSol - a.totalUnclaimedSol);
 
     console.log(
-      `[top-earners] ${walletResults.length} wallets resolved → ${earners.length} with lifetime fees`
+      `[top-earners] ${walletResults.length} wallets → ${earners.length} with unclaimed fees`
     );
 
     const response = {
