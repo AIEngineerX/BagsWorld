@@ -250,7 +250,12 @@ export async function GET(request: Request) {
       return NextResponse.json(response);
     }
 
-    console.log(`[top-earners] Checking ${discoveredAgents.length} Moltbook agents`);
+    // Cap lookups to keep response times under ~60s (known agents are first in the list)
+    const MAX_LOOKUPS = 200;
+    const agentsToLookup = discoveredAgents.slice(0, MAX_LOOKUPS);
+    console.log(
+      `[top-earners] Checking ${agentsToLookup.length}/${discoveredAgents.length} Moltbook agents`
+    );
 
     // Step 2: Bulk resolve Moltbook usernames → wallets (batched, max 100 per call)
     let walletResults: Array<{
@@ -262,13 +267,13 @@ export async function GET(request: Request) {
 
     let rateLimited = false;
     try {
-      const lookupItems = discoveredAgents.map((a) => ({
+      const lookupItems = agentsToLookup.map((a) => ({
         provider: "moltbook",
         username: a.username,
       }));
-      // Bags API limits bulk lookup to 100 items — use batches of 50 with 2 concurrent
+      // Bags API limits bulk lookup to 100 items — use batches of 50 with 3 concurrent
       const BATCH_SIZE = 50;
-      const CONCURRENCY = 2;
+      const CONCURRENCY = 3;
       const batches: Array<{ provider: string; username: string }[]> = [];
       for (let i = 0; i < lookupItems.length; i += BATCH_SIZE) {
         batches.push(lookupItems.slice(i, i + BATCH_SIZE));
@@ -281,7 +286,7 @@ export async function GET(request: Request) {
             Promise.race([
               api.bulkWalletLookup(batch),
               new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error("Bulk lookup timeout")), 30000)
+                setTimeout(() => reject(new Error("Bulk lookup timeout")), 20000)
               ),
             ])
           )
