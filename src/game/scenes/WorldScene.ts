@@ -3015,6 +3015,13 @@ export class WorldScene extends Phaser.Scene {
     incLabel.setDepth(7);
     this.foundersElements.push(incLabel);
 
+    // === INCINERATOR GARBAGE TRUCK (parked to the right of factory) ===
+    const truckX = Math.round(745 * s);
+    const truckSprite = this.add.sprite(truckX, pathLevel + Math.round(3 * s), "incinerator_truck");
+    truckSprite.setOrigin(0.5, 1);
+    truckSprite.setDepth(4.5);
+    this.foundersElements.push(truckSprite);
+
     // === LANTERNS (depth 3) ===
     const lanternPositions = [170, 350, 550, 730];
     lanternPositions.forEach((lx) => {
