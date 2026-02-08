@@ -2971,6 +2971,22 @@ export class WorldScene extends Phaser.Scene {
     });
     this.foundersElements.push(incineratorSprite);
 
+    // White smoke drifting up from incinerator chimney
+    const smokeY = pathLevel - Math.round(158 * s);
+    const incSmokeEmitter = this.add.particles(incineratorX, smokeY, "green_smoke", {
+      speedY: { min: -30, max: -60 },
+      speedX: { min: -5, max: 12 },
+      scale: { start: 0.3, end: 1.4 },
+      alpha: { start: 0.5, end: 0 },
+      lifespan: { min: 3000, max: 5000 },
+      frequency: 400,
+      quantity: 1,
+      x: { min: -Math.round(3 * s), max: Math.round(3 * s) },
+      rotate: { min: 0, max: 360 },
+    });
+    incSmokeEmitter.setDepth(15);
+    this.foundersElements.push(incSmokeEmitter);
+
     // Incinerator label
     const incLabelBg = this.add.rectangle(
       incineratorX,
