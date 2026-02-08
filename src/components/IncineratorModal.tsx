@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { VersionedTransaction } from "@solana/web3.js";
+import bs58 from "bs58";
 import type {
   BurnResponse,
   CloseResponse,
   BatchCloseAllResponse,
   BurnPreviewResponse,
+  ClosePreviewResponse,
   BatchCloseAllPreviewResponse,
 } from "@/lib/sol-incinerator";
 
@@ -31,6 +33,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
 
   // Preview state
   const [burnPreview, setBurnPreview] = useState<BurnPreviewResponse | null>(null);
+  const [closePreview, setClosePreview] = useState<ClosePreviewResponse | null>(null);
   const [closeAllPreview, setCloseAllPreview] = useState<BatchCloseAllPreviewResponse | null>(null);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -41,6 +44,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
     setError(null);
     setSuccess(null);
     setBurnPreview(null);
+    setClosePreview(null);
     setCloseAllPreview(null);
     setBurnConfirmed(false);
   };
@@ -63,31 +67,20 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
       throw new Error("Wallet does not support transaction signing");
     }
 
-    const txBytes = Uint8Array.from(
-      atob(serializedTransaction.replace(/-/g, "+").replace(/_/g, "/"))
-        .split("")
-        .map((c) => c.charCodeAt(0))
-    );
+    const txString = serializedTransaction.trim().replace(/\s/g, "");
+    const isLikelyBase64 =
+      txString.includes("+") || txString.includes("/") || txString.endsWith("=");
 
-    // Try base58 decode first (API returns base58)
-    let transaction: VersionedTransaction;
+    let buffer: Uint8Array;
     try {
-      // base58 decode
-      const bs58Chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-      let decoded = BigInt(0);
-      for (const char of serializedTransaction) {
-        const index = bs58Chars.indexOf(char);
-        if (index === -1) throw new Error("not base58");
-        decoded = decoded * BigInt(58) + BigInt(index);
-      }
-      const hex = decoded.toString(16).padStart(2, "0");
-      const bytes = new Uint8Array((hex.match(/.{1,2}/g) || []).map((byte) => parseInt(byte, 16)));
-      transaction = VersionedTransaction.deserialize(bytes);
+      buffer = isLikelyBase64 ? Buffer.from(txString, "base64") : bs58.decode(txString);
+      if (buffer.length < 50) throw new Error("Buffer too small");
     } catch {
-      // Fallback: try raw bytes
-      transaction = VersionedTransaction.deserialize(txBytes);
+      // Try the other encoding
+      buffer = isLikelyBase64 ? bs58.decode(txString) : Buffer.from(txString, "base64");
     }
 
+    const transaction = VersionedTransaction.deserialize(buffer);
     const signedTx = await signTransaction(transaction);
     const serialized = Buffer.from(signedTx.serialize()).toString("base64");
 
@@ -153,6 +146,27 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
       setAssetId("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Burn failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClosePreview = async () => {
+    if (!connected || !publicKey) return;
+    if (!assetId.trim()) {
+      setError("Enter a token account address");
+      return;
+    }
+    resetState();
+    setIsLoading(true);
+    try {
+      const preview: ClosePreviewResponse = await apiRequest("close-preview", {
+        userPublicKey: publicKey.toBase58(),
+        assetId: assetId.trim(),
+      });
+      setClosePreview(preview);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Preview failed");
     } finally {
       setIsLoading(false);
     }
@@ -262,7 +276,11 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
         {/* Supported Assets Info */}
         <div className="px-4 pt-3 pb-1">
           <p className="text-green-800 text-[10px] font-pixel">
-            SUPPORTS: SPL Tokens &bull; Token-2022 &bull; Metaplex NFTs &bull; pNFTs
+            SUPPORTS: SPL Tokens &bull; Token-2022 &bull; Metaplex NFTs &bull; pNFTs &bull; Editions
+            &bull; pNFT Editions &bull; MPL Core
+          </p>
+          <p className="text-green-900/60 text-[9px] font-pixel mt-0.5">
+            NOT SUPPORTED: Magic Eden OCP &bull; Bubblegum cNFTs
           </p>
         </div>
 
@@ -498,13 +516,41 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                     />
                   </div>
 
-                  <button
-                    onClick={handleClose}
-                    disabled={isLoading || !assetId.trim()}
-                    className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-3 rounded font-pixel text-sm"
-                  >
-                    {isLoading ? "CLOSING..." : "CLOSE ACCOUNT"}
-                  </button>
+                  {closePreview && (
+                    <div className="bg-[#0d2b0d] rounded p-3 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">Type:</span>
+                        <span className="text-green-300">{closePreview.transactionType}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">SOL to reclaim:</span>
+                        <span className="text-green-400 font-bold">
+                          {closePreview.solanaReclaimed.toFixed(4)} SOL
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">Destructive:</span>
+                        <span className="text-green-400">NO</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleClosePreview}
+                      disabled={isLoading || !assetId.trim()}
+                      className="flex-1 bg-green-900 hover:bg-green-800 disabled:bg-green-950 text-green-300 py-2 rounded font-pixel text-xs"
+                    >
+                      {isLoading ? "..." : "PREVIEW"}
+                    </button>
+                    <button
+                      onClick={handleClose}
+                      disabled={isLoading || !assetId.trim()}
+                      className="flex-1 bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-2 rounded font-pixel text-xs"
+                    >
+                      {isLoading ? "CLOSING..." : "CLOSE"}
+                    </button>
+                  </div>
                 </div>
               )}
 

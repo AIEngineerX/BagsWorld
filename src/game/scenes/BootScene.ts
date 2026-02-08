@@ -12877,6 +12877,9 @@ export class BootScene extends Phaser.Scene {
 
     // Building 3: Sol Incinerator Factory (burn tokens & close accounts)
     this.generateFoundersIncinerator(s);
+
+    // Incinerator garbage truck (parked outside factory)
+    this.generateIncineratorTruck(s);
   }
 
   /**
@@ -14389,6 +14392,264 @@ export class BootScene extends Phaser.Scene {
     );
 
     g.generateTexture("founders_3", canvasW, canvasH);
+    g.destroy();
+  }
+
+  /**
+   * Incinerator garbage truck - green monochrome pixel art
+   * Parked outside the Sol Incinerator factory
+   */
+  private generateIncineratorTruck(s: number): void {
+    const g = this.make.graphics({ x: 0, y: 0 });
+    const canvasW = Math.round(100 * s);
+    const canvasH = Math.round(52 * s);
+
+    // Green monochrome palette (matching incinerator factory)
+    const inkBlack = 0x0a1a0a;
+    const darkGreen = 0x1a4a1a;
+    const medGreen = 0x2d6b2d;
+    const brightGreen = 0x4ade80;
+    const neonGreen = 0x22c55e;
+
+    // === WHEELS ===
+    const wheelR = Math.round(7 * s);
+    const wheelY = canvasH - wheelR;
+    // Rear wheel
+    const rearWheelX = Math.round(22 * s);
+    g.fillStyle(inkBlack);
+    g.fillRect(rearWheelX - wheelR, wheelY - wheelR, wheelR * 2, wheelR * 2);
+    g.fillStyle(darkGreen);
+    g.fillRect(
+      rearWheelX - wheelR + Math.round(2 * s),
+      wheelY - wheelR + Math.round(2 * s),
+      wheelR * 2 - Math.round(4 * s),
+      wheelR * 2 - Math.round(4 * s)
+    );
+    g.fillStyle(medGreen);
+    g.fillRect(
+      rearWheelX - Math.round(2 * s),
+      wheelY - Math.round(2 * s),
+      Math.round(4 * s),
+      Math.round(4 * s)
+    );
+    // Front wheel
+    const frontWheelX = Math.round(78 * s);
+    g.fillStyle(inkBlack);
+    g.fillRect(frontWheelX - wheelR, wheelY - wheelR, wheelR * 2, wheelR * 2);
+    g.fillStyle(darkGreen);
+    g.fillRect(
+      frontWheelX - wheelR + Math.round(2 * s),
+      wheelY - wheelR + Math.round(2 * s),
+      wheelR * 2 - Math.round(4 * s),
+      wheelR * 2 - Math.round(4 * s)
+    );
+    g.fillStyle(medGreen);
+    g.fillRect(
+      frontWheelX - Math.round(2 * s),
+      wheelY - Math.round(2 * s),
+      Math.round(4 * s),
+      Math.round(4 * s)
+    );
+
+    // === CHASSIS (undercarriage) ===
+    const chassisY = canvasH - Math.round(16 * s);
+    g.fillStyle(darkGreen);
+    g.fillRect(Math.round(8 * s), chassisY, Math.round(82 * s), Math.round(4 * s));
+
+    // === CARGO BOX (left side - large box) ===
+    const cargoX = Math.round(4 * s);
+    const cargoW = Math.round(56 * s);
+    const cargoH = Math.round(28 * s);
+    const cargoY = chassisY - cargoH;
+
+    // Cargo body
+    g.fillStyle(medGreen);
+    g.fillRect(cargoX, cargoY, cargoW, cargoH);
+    // Left edge highlight
+    g.fillStyle(brightGreen);
+    g.fillRect(cargoX, cargoY, Math.round(3 * s), cargoH);
+    // Right edge shadow
+    g.fillStyle(darkGreen);
+    g.fillRect(cargoX + cargoW - Math.round(3 * s), cargoY, Math.round(3 * s), cargoH);
+    // Top edge highlight
+    g.fillStyle(neonGreen);
+    g.fillRect(cargoX, cargoY, cargoW, Math.round(2 * s));
+    // Bottom edge
+    g.fillStyle(inkBlack);
+    g.fillRect(cargoX, cargoY + cargoH - Math.round(1 * s), cargoW, Math.round(1 * s));
+
+    // Cargo panel seams
+    g.fillStyle(darkGreen);
+    g.fillRect(
+      cargoX + Math.round(18 * s),
+      cargoY + Math.round(3 * s),
+      Math.round(1 * s),
+      cargoH - Math.round(6 * s)
+    );
+    g.fillRect(
+      cargoX + Math.round(38 * s),
+      cargoY + Math.round(3 * s),
+      Math.round(1 * s),
+      cargoH - Math.round(6 * s)
+    );
+
+    // "RUGS SCAMS TRASH" text as pixel blocks on cargo side
+    // Row 1: "RUGS" - simple 3-wide pixel letters, spaced across top area
+    const textY1 = cargoY + Math.round(7 * s);
+    const textY2 = cargoY + Math.round(14 * s);
+    const textY3 = cargoY + Math.round(21 * s);
+    const px = Math.round(1 * s); // pixel unit
+
+    g.fillStyle(neonGreen);
+    // "RUGS" centered on cargo
+    const rugsX = cargoX + Math.round(8 * s);
+    // R
+    g.fillRect(rugsX, textY1, px * 2, px * 4);
+    g.fillRect(rugsX + px * 2, textY1, px, px);
+    g.fillRect(rugsX + px * 2, textY1 + px * 2, px, px);
+    g.fillRect(rugsX + px * 2, textY1 + px * 3, px, px);
+    // U
+    g.fillRect(rugsX + px * 4, textY1, px, px * 4);
+    g.fillRect(rugsX + px * 6, textY1, px, px * 4);
+    g.fillRect(rugsX + px * 5, textY1 + px * 3, px, px);
+    // G
+    g.fillRect(rugsX + px * 8, textY1, px, px * 4);
+    g.fillRect(rugsX + px * 9, textY1, px * 2, px);
+    g.fillRect(rugsX + px * 9, textY1 + px * 3, px * 2, px);
+    g.fillRect(rugsX + px * 10, textY1 + px * 2, px, px * 2);
+    // S
+    g.fillRect(rugsX + px * 12, textY1, px * 3, px);
+    g.fillRect(rugsX + px * 12, textY1 + px, px, px);
+    g.fillRect(rugsX + px * 12, textY1 + px * 2, px * 3, px);
+    g.fillRect(rugsX + px * 14, textY1 + px * 3, px, px);
+    g.fillRect(rugsX + px * 12, textY1 + px * 4, px * 3, px);
+
+    // "SCAMS" centered
+    const scamsX = cargoX + Math.round(6 * s);
+    // S
+    g.fillRect(scamsX, textY2, px * 3, px);
+    g.fillRect(scamsX, textY2 + px, px, px);
+    g.fillRect(scamsX, textY2 + px * 2, px * 3, px);
+    g.fillRect(scamsX + px * 2, textY2 + px * 3, px, px);
+    g.fillRect(scamsX, textY2 + px * 4, px * 3, px);
+    // C
+    g.fillRect(scamsX + px * 4, textY2, px * 3, px);
+    g.fillRect(scamsX + px * 4, textY2 + px, px, px * 3);
+    g.fillRect(scamsX + px * 4, textY2 + px * 4, px * 3, px);
+    // A
+    g.fillRect(scamsX + px * 8, textY2 + px, px, px * 4);
+    g.fillRect(scamsX + px * 9, textY2, px, px);
+    g.fillRect(scamsX + px * 10, textY2 + px, px, px * 4);
+    g.fillRect(scamsX + px * 8, textY2 + px * 2, px * 3, px);
+    // M
+    g.fillRect(scamsX + px * 12, textY2, px, px * 5);
+    g.fillRect(scamsX + px * 13, textY2 + px, px, px);
+    g.fillRect(scamsX + px * 14, textY2, px, px * 5);
+    // S
+    g.fillRect(scamsX + px * 16, textY2, px * 3, px);
+    g.fillRect(scamsX + px * 16, textY2 + px, px, px);
+    g.fillRect(scamsX + px * 16, textY2 + px * 2, px * 3, px);
+    g.fillRect(scamsX + px * 18, textY2 + px * 3, px, px);
+    g.fillRect(scamsX + px * 16, textY2 + px * 4, px * 3, px);
+
+    // "TRASH" centered
+    const trashX = cargoX + Math.round(6 * s);
+    // T
+    g.fillRect(trashX, textY3, px * 3, px);
+    g.fillRect(trashX + px, textY3 + px, px, px * 4);
+    // R
+    g.fillRect(trashX + px * 4, textY3, px, px * 5);
+    g.fillRect(trashX + px * 5, textY3, px, px);
+    g.fillRect(trashX + px * 5, textY3 + px * 2, px, px);
+    g.fillRect(trashX + px * 5, textY3 + px * 3, px, px * 2);
+    // A
+    g.fillRect(trashX + px * 7, textY3 + px, px, px * 4);
+    g.fillRect(trashX + px * 8, textY3, px, px);
+    g.fillRect(trashX + px * 9, textY3 + px, px, px * 4);
+    g.fillRect(trashX + px * 7, textY3 + px * 2, px * 3, px);
+    // S
+    g.fillRect(trashX + px * 11, textY3, px * 3, px);
+    g.fillRect(trashX + px * 11, textY3 + px, px, px);
+    g.fillRect(trashX + px * 11, textY3 + px * 2, px * 3, px);
+    g.fillRect(trashX + px * 13, textY3 + px * 3, px, px);
+    g.fillRect(trashX + px * 11, textY3 + px * 4, px * 3, px);
+    // H
+    g.fillRect(trashX + px * 15, textY3, px, px * 5);
+    g.fillRect(trashX + px * 17, textY3, px, px * 5);
+    g.fillRect(trashX + px * 15, textY3 + px * 2, px * 3, px);
+
+    // === CAB (right side) ===
+    const cabX = cargoX + cargoW;
+    const cabW = Math.round(30 * s);
+    const cabH = Math.round(22 * s);
+    const cabY = chassisY - cabH;
+
+    // Cab body
+    g.fillStyle(medGreen);
+    g.fillRect(cabX, cabY, cabW, cabH);
+    // Left edge (continuation from cargo)
+    g.fillStyle(darkGreen);
+    g.fillRect(cabX, cabY, Math.round(2 * s), cabH);
+    // Right edge
+    g.fillStyle(darkGreen);
+    g.fillRect(cabX + cabW - Math.round(3 * s), cabY, Math.round(3 * s), cabH);
+    // Top edge highlight
+    g.fillStyle(neonGreen);
+    g.fillRect(cabX, cabY, cabW, Math.round(2 * s));
+
+    // Windshield
+    const windX = cabX + Math.round(16 * s);
+    const windY = cabY + Math.round(4 * s);
+    const windW = Math.round(10 * s);
+    const windH = Math.round(10 * s);
+    g.fillStyle(inkBlack);
+    g.fillRect(
+      windX - Math.round(1 * s),
+      windY - Math.round(1 * s),
+      windW + Math.round(2 * s),
+      windH + Math.round(2 * s)
+    );
+    g.fillStyle(neonGreen);
+    g.fillRect(windX, windY, windW, windH);
+    g.fillStyle(brightGreen);
+    g.fillRect(windX + Math.round(1 * s), windY + Math.round(1 * s), Math.round(3 * s), px * 2);
+
+    // Side window on cab
+    const sideWinX = cabX + Math.round(4 * s);
+    const sideWinY = cabY + Math.round(5 * s);
+    g.fillStyle(inkBlack);
+    g.fillRect(
+      sideWinX - px,
+      sideWinY - px,
+      Math.round(8 * s) + px * 2,
+      Math.round(8 * s) + px * 2
+    );
+    g.fillStyle(neonGreen);
+    g.fillRect(sideWinX, sideWinY, Math.round(8 * s), Math.round(8 * s));
+    g.fillStyle(brightGreen);
+    g.fillRect(sideWinX + px, sideWinY + px, Math.round(2 * s), px);
+
+    // Front bumper
+    g.fillStyle(darkGreen);
+    g.fillRect(cabX + cabW - Math.round(4 * s), chassisY, Math.round(6 * s), Math.round(4 * s));
+    g.fillStyle(neonGreen);
+    g.fillRect(
+      cabX + cabW - Math.round(2 * s),
+      chassisY + Math.round(1 * s),
+      Math.round(3 * s),
+      Math.round(2 * s)
+    );
+
+    // Ground shadow
+    g.fillStyle(inkBlack);
+    g.fillRect(
+      Math.round(6 * s),
+      canvasH - Math.round(2 * s),
+      Math.round(86 * s),
+      Math.round(2 * s)
+    );
+
+    g.generateTexture("incinerator_truck", canvasW, canvasH);
     g.destroy();
   }
 
