@@ -35,14 +35,22 @@ jest.mock("@/lib/moltbook-client", () => ({
   getMoltbookOrNull: jest.fn().mockReturnValue(null),
 }));
 
-import { GET } from "@/app/api/agent-economy/top-earners/route";
+import { GET, _resetKnownAgentsForTesting } from "@/app/api/agent-economy/top-earners/route";
 import { initBagsApi } from "@/lib/bags-api";
 import { isNeonConfigured } from "@/lib/neon";
 import { neon } from "@neondatabase/serverless";
 import { getMoltbookOrNull } from "@/lib/moltbook-client";
 
-// Feed mock — configured in beforeEach after jest.mock hoisting
+// Feed mocks — configured in beforeEach after jest.mock hoisting
 const mockGetFeed = jest.fn().mockResolvedValue([]);
+const mockGetSubmoltPosts = jest.fn().mockResolvedValue([]);
+
+// Mock global.fetch for fetchMoltbookFeedAuthors (public API calls)
+const originalFetch = global.fetch;
+const mockGlobalFetch = jest.fn().mockResolvedValue({
+  ok: true,
+  json: () => Promise.resolve({ posts: [] }),
+});
 
 // Helper to create a mock Request
 function makeRequest(params?: Record<string, string>) {
@@ -107,6 +115,16 @@ describe("GET /api/agent-economy/top-earners", () => {
     jest.clearAllMocks();
     jsonResponses.length = 0;
 
+    // Reset persistent state between tests
+    _resetKnownAgentsForTesting();
+
+    // Mock global.fetch for public API calls (fetchMoltbookFeedAuthors)
+    global.fetch = mockGlobalFetch as unknown as typeof fetch;
+    mockGlobalFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ posts: [] }),
+    });
+
     mockApi = {
       bulkWalletLookup: jest.fn().mockResolvedValue([]),
       getClaimablePositions: jest.fn().mockResolvedValue([]),
@@ -116,13 +134,18 @@ describe("GET /api/agent-economy/top-earners", () => {
     (initBagsApi as jest.Mock).mockReturnValue(mockApi);
     (isNeonConfigured as jest.Mock).mockReturnValue(false);
     mockGetFeed.mockReset().mockResolvedValue([]);
-    (getMoltbookOrNull as jest.Mock).mockReturnValue({ getFeed: mockGetFeed });
+    mockGetSubmoltPosts.mockReset().mockResolvedValue([]);
+    (getMoltbookOrNull as jest.Mock).mockReturnValue({
+      getFeed: mockGetFeed,
+      getSubmoltPosts: mockGetSubmoltPosts,
+    });
 
     process.env.BAGS_API_KEY = "test-api-key";
   });
 
   afterEach(() => {
     delete process.env.BAGS_API_KEY;
+    global.fetch = originalFetch;
   });
 
   it("returns 503 when BAGS_API_KEY is not configured", async () => {
@@ -590,5 +613,149 @@ describe("GET /api/agent-economy/top-earners", () => {
     const tokens = earners[0].tokens as Array<Record<string, unknown>>;
     expect(tokens[0].claimedSol).toBe(0);
     expect(tokens[0].lifetimeFeesSol).toBeCloseTo(4.0);
+  });
+
+  it("handles author as object format from Moltbook API", async () => {
+    // Simulate Moltbook API returning author as { name: string } object
+    mockGetFeed.mockImplementation((sort: string) => {
+      if (sort === "hot") {
+        return Promise.resolve([
+          { author: { name: "Finnbags" } as unknown as string, id: "1" },
+          { author: "ChadGhost", id: "2" },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "FinnWallet11111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Finnbags",
+      },
+      {
+        wallet: "ChadWallet11111111111111111111111111111111",
+        provider: "moltbook",
+        username: "ChadGhost",
+      },
+    ]);
+
+    mockApi.getClaimablePositions.mockImplementation((wallet: string) => {
+      if (wallet.startsWith("Finn")) {
+        return Promise.resolve([mockPosition("TokenA111", 5_000_000_000, "FINN", "Finnbags")]);
+      }
+      return Promise.resolve([mockPosition("TokenB111", 2_000_000_000, "CHAD", "ChadGhost")]);
+    });
+
+    await GET(makeRequest({ nocache: "" }));
+    const { body } = lastResponse();
+    const earners = body.topEarners as Array<Record<string, unknown>>;
+
+    expect(body.success).toBe(true);
+    expect(earners).toHaveLength(2);
+    // Finnbags first (5 SOL > 2 SOL)
+    expect(earners[0].username).toBe("Finnbags");
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(5.0);
+    expect(earners[1].username).toBe("ChadGhost");
+  });
+
+  it("persists discovered agents across cache refreshes", async () => {
+    // First call: discover AgentX from feed
+    mockFeedAgents(["AgentX"]);
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "WalletX111111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "AgentX",
+      },
+    ]);
+    mockApi.getClaimablePositions.mockResolvedValue([
+      mockPosition("TokenX111", 3_000_000_000, "TOKX", "Token X"),
+    ]);
+
+    await GET(makeRequest({ nocache: "" }));
+    let { body } = lastResponse();
+    let earners = body.topEarners as Array<Record<string, unknown>>;
+    expect(earners).toHaveLength(1);
+    expect(earners[0].username).toBe("AgentX");
+
+    // Second call: AgentX falls off the feed, AgentY appears
+    // AgentX should still be included via persistent memory
+    mockGetFeed.mockReset();
+    mockFeedAgents(["AgentY"]);
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "WalletX111111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "AgentX",
+      },
+      {
+        wallet: "WalletY111111111111111111111111111111111111",
+        provider: "moltbook",
+        username: "AgentY",
+      },
+    ]);
+    mockApi.getClaimablePositions.mockImplementation((wallet: string) => {
+      if (wallet.startsWith("WalletX")) {
+        return Promise.resolve([mockPosition("TokenX111", 3_000_000_000, "TOKX", "Token X")]);
+      }
+      return Promise.resolve([mockPosition("TokenY111", 1_000_000_000, "TOKY", "Token Y")]);
+    });
+
+    await GET(makeRequest({ nocache: "" }));
+    ({ body } = lastResponse());
+    earners = body.topEarners as Array<Record<string, unknown>>;
+
+    expect(earners).toHaveLength(2);
+    // AgentX still included and ranked first (3 SOL > 1 SOL)
+    expect(earners[0].username).toBe("AgentX");
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(3.0);
+    expect(earners[1].username).toBe("AgentY");
+    expect(earners[1].totalUnclaimedSol).toBeCloseTo(1.0);
+  });
+
+  it("discovers agents from public API alongside MoltbookClient", async () => {
+    // MoltbookClient returns Bagsy
+    mockFeedAgents(["Bagsy"]);
+
+    // Public API returns ChadGhost (not in MoltbookClient feed)
+    mockGlobalFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          posts: [{ author: { name: "ChadGhost" } }],
+        }),
+    });
+
+    mockApi.bulkWalletLookup.mockResolvedValue([
+      {
+        wallet: "BagsyWallet1111111111111111111111111111111",
+        provider: "moltbook",
+        username: "Bagsy",
+      },
+      {
+        wallet: "ChadWallet11111111111111111111111111111111",
+        provider: "moltbook",
+        username: "ChadGhost",
+      },
+    ]);
+
+    mockApi.getClaimablePositions.mockImplementation((wallet: string) => {
+      if (wallet.startsWith("Bagsy")) {
+        return Promise.resolve([mockPosition("TokenA111", 1_000_000_000, "TOKA", "Token A")]);
+      }
+      return Promise.resolve([mockPosition("TokenB111", 5_000_000_000, "TOKB", "Token B")]);
+    });
+
+    await GET(makeRequest({ nocache: "" }));
+    const { body } = lastResponse();
+    const earners = body.topEarners as Array<Record<string, unknown>>;
+
+    expect(body.success).toBe(true);
+    expect(earners).toHaveLength(2);
+    // ChadGhost first (5 SOL > 1 SOL) — discovered via public API
+    expect(earners[0].username).toBe("ChadGhost");
+    expect(earners[0].totalUnclaimedSol).toBeCloseTo(5.0);
+    expect(earners[1].username).toBe("Bagsy");
   });
 });
