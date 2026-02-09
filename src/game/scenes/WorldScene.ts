@@ -5031,25 +5031,24 @@ Your creator page = website!
   }
 
   // Update mobile label position to follow sprite movement
+  // Uses direct property access (set during creation) instead of getData() for per-frame performance
   private updateMobileLabel(sprite: Phaser.GameObjects.Sprite): void {
-    const label = sprite.getData("mobileLabel") as Phaser.GameObjects.Text | undefined;
-    const bg = sprite.getData("mobileLabelBg") as Phaser.GameObjects.Rectangle | undefined;
-    const offset = (sprite.getData("mobileLabelOffset") as number) || 18;
-    if (label) label.setPosition(sprite.x, sprite.y + offset);
-    if (bg) bg.setPosition(sprite.x, sprite.y + offset);
+    const s = sprite as any;
+    if (s._mobileLabel)
+      s._mobileLabel.setPosition(sprite.x, sprite.y + (s._mobileLabelOffset || 18));
+    if (s._mobileLabelBg)
+      s._mobileLabelBg.setPosition(sprite.x, sprite.y + (s._mobileLabelOffset || 18));
   }
 
   // Update visitor sparkle indicator position
   private updateVisitorSparkle(sprite: Phaser.GameObjects.Sprite): void {
-    const sparkle = sprite.getData("visitorSparkle") as Phaser.GameObjects.Text | undefined;
+    const sparkle = (sprite as any)._visitorSparkle;
     if (sparkle) sparkle.setPosition(sprite.x, sprite.y - 22);
   }
 
   // Update quest marker position above character
   private updateQuestMarker(sprite: Phaser.GameObjects.Sprite): void {
-    const qm = sprite.getData("questMarker") as
-      | { marker: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Text }
-      | undefined;
+    const qm = (sprite as any)._questMarker;
     if (qm) {
       qm.marker.setPosition(sprite.x, sprite.y - 30);
       qm.glow.setPosition(sprite.x, sprite.y - 30);
@@ -5073,7 +5072,7 @@ Your creator page = website!
         this.questMarkers.delete(charId);
         // Also clear from sprite data
         const sprite = this.findCharacterSprite(charId);
-        if (sprite) sprite.setData("questMarker", undefined);
+        if (sprite) (sprite as any)._questMarker = undefined;
       }
     }
 
@@ -5114,7 +5113,7 @@ Your creator page = website!
 
       const qmData = { marker, glow };
       this.questMarkers.set(m.characterId, qmData);
-      sprite.setData("questMarker", qmData);
+      (sprite as any)._questMarker = qmData;
     }
   }
 
@@ -6588,10 +6587,19 @@ Your creator page = website!
     this.fireflies.setDepth(20);
   }
 
-  private destroyFireflies(): void {
+  private showFireflies(): void {
+    if (!this.fireflies) {
+      this.createFireflies();
+    } else {
+      this.fireflies.start();
+      this.fireflies.setVisible(true);
+    }
+  }
+
+  private hideFireflies(): void {
     if (this.fireflies) {
-      this.fireflies.destroy();
-      this.fireflies = null;
+      this.fireflies.stop();
+      this.fireflies.setVisible(false);
     }
   }
 
@@ -7578,10 +7586,11 @@ Your creator page = website!
       // Night (8 PM to 6 AM EST) - deep blue overlay
       alpha = 0.45;
       tint = 0x0a0a2e;
-      // Create fireflies at night
-      this.createFireflies();
+      // Show fireflies at night (created once, then toggled)
+      this.showFireflies();
       // Hide ambient particles at night
       if (this.ambientParticles) {
+        this.ambientParticles.stop();
         this.ambientParticles.setVisible(false);
       }
     } else if (timeInfo.isDusk) {
@@ -7589,21 +7598,23 @@ Your creator page = website!
       alpha = 0.25;
       tint = 0x4a2a3e;
       // Start showing some fireflies at dusk
-      this.createFireflies();
+      this.showFireflies();
     } else if (timeInfo.isDawn) {
       // Dawn (6 AM to 8 AM EST) - soft golden
       alpha = 0.2;
       tint = 0x3a2a1e;
-      // Remove fireflies at dawn
-      this.destroyFireflies();
+      // Hide fireflies at dawn
+      this.hideFireflies();
       if (this.ambientParticles) {
+        this.ambientParticles.start();
         this.ambientParticles.setVisible(true);
       }
     } else {
-      // Daytime - remove fireflies, show ambient particles
+      // Daytime - hide fireflies, show ambient particles
       if (wasNight || this.currentTimeInfo === null) {
-        this.destroyFireflies();
+        this.hideFireflies();
         if (this.ambientParticles) {
+          this.ambientParticles.start();
           this.ambientParticles.setVisible(true);
         }
       }
@@ -7969,12 +7980,9 @@ Your creator page = website!
       sprite.setVisible(shouldShow);
 
       // Toggle mobile labels with sprite
-      const mobileLabel = sprite.getData("mobileLabel") as Phaser.GameObjects.Text | undefined;
-      const mobileLabelBg = sprite.getData("mobileLabelBg") as
-        | Phaser.GameObjects.Rectangle
-        | undefined;
-      if (mobileLabel) mobileLabel.setVisible(shouldShow);
-      if (mobileLabelBg) mobileLabelBg.setVisible(shouldShow);
+      const s = sprite as any;
+      if (s._mobileLabel) s._mobileLabel.setVisible(shouldShow);
+      if (s._mobileLabelBg) s._mobileLabelBg.setVisible(shouldShow);
 
       // Handle associated glow sprites (including Shaw and Academy characters)
       const glowKeys = [
@@ -8037,19 +8045,13 @@ Your creator page = website!
           }
         });
         // Clean up mobile labels before destroying sprite
-        const mobileLabel = sprite.getData("mobileLabel") as Phaser.GameObjects.Text | undefined;
-        const mobileLabelBg = sprite.getData("mobileLabelBg") as
-          | Phaser.GameObjects.Rectangle
-          | undefined;
-        if (mobileLabel) mobileLabel.destroy();
-        if (mobileLabelBg) mobileLabelBg.destroy();
+        const sd = sprite as any;
+        if (sd._mobileLabel) sd._mobileLabel.destroy();
+        if (sd._mobileLabelBg) sd._mobileLabelBg.destroy();
         // Clean up visitor sparkle
-        const visitorSparkle = sprite.getData("visitorSparkle") as
-          | Phaser.GameObjects.Text
-          | undefined;
-        if (visitorSparkle) visitorSparkle.destroy();
+        if (sd._visitorSparkle) sd._visitorSparkle.destroy();
         // Clean up quest marker
-        const questMarker = sprite.getData("questMarker") as
+        const questMarker = sd._questMarker as
           | { marker: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Text }
           | undefined;
         if (questMarker) {
@@ -8304,7 +8306,7 @@ Your creator page = website!
       });
       sparkle.setOrigin(0.5, 0.5);
       sparkle.setDepth(12);
-      sprite.setData("visitorSparkle", sparkle);
+      (sprite as any)._visitorSparkle = sparkle;
     }
 
     // Persistent name label on mobile (always visible, no hover needed)
@@ -8334,9 +8336,9 @@ Your creator page = website!
       nameLabel.setOrigin(0.5, 0.5);
       nameLabel.setDepth(13);
       // Store references for cleanup - attach to sprite data
-      sprite.setData("mobileLabel", nameLabel);
-      sprite.setData("mobileLabelBg", labelBg);
-      sprite.setData("mobileLabelOffset", labelYOffset);
+      (sprite as any)._mobileLabel = nameLabel;
+      (sprite as any)._mobileLabelBg = labelBg;
+      (sprite as any)._mobileLabelOffset = labelYOffset;
     }
 
     // Hover effects
