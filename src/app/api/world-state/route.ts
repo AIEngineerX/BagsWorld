@@ -1164,7 +1164,7 @@ export async function POST(request: NextRequest) {
           }
         } else {
           const earner = buildFeeEarner(creator, token, rank++, walletEarnings24h);
-          // Flag platform token creators as visitors
+          // Flag platform token fee earners as visitors
           if (registeredToken.isPlatform) {
             earner.isVisitor = true;
             earner.visitorTokenName = token.name;
