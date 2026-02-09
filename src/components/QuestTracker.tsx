@@ -1,59 +1,157 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useGameStore } from "@/lib/store";
 
 const STORAGE_KEY = "bagsworld_quest";
 
+// ── Types ──────────────────────────────────────────────────────────
+
 interface QuestState {
-  dismissed: boolean;
+  version: 3;
+  skipped: boolean;
   completedAt: number | null;
-  steps: {
-    talk_to_ash: boolean;
-    visit_oak: boolean;
-    launch_token: boolean;
-    check_fees: boolean;
-  };
+  currentStep: number;
+  stepsCompleted: boolean[];
 }
 
-const QUEST_STEPS = [
+// ── Quest definition ───────────────────────────────────────────────
+
+interface QuestStep {
+  npc: string | null; // null = auto-complete step
+  npcIcon: string;
+  event: string;
+  zoneMatch?: string;
+  objective: string;
+  dialogue: string | null; // null = no dialogue (auto step)
+  markerId: string | null; // characterId for ! marker, null = no marker
+}
+
+const QUEST_STEPS: QuestStep[] = [
   {
-    key: "talk_to_ash" as const,
-    title: "Talk to Ash",
-    description: "Learn how the ecosystem works",
+    npc: "Ash",
+    npcIcon: "\uD83C\uDF92",
     event: "bagsworld-ash-click",
+    objective: "Talk to Ash",
+    dialogue: "Welcome! I'll show you around. Head to BagsCity \u2014 it's where the action is!",
+    markerId: "ash",
   },
   {
-    key: "visit_oak" as const,
-    title: "Visit Professor Oak",
-    description: "Get AI guidance on launching",
+    npc: null,
+    npcIcon: "\uD83D\uDDFA\uFE0F",
+    event: "bagsworld-zone-change",
+    zoneMatch: "trending",
+    objective: "Travel to BagsCity",
+    dialogue: null,
+    markerId: null,
+  },
+  {
+    npc: "Neo",
+    npcIcon: "\uD83D\uDD2D",
+    event: "bagsworld-scout-click",
+    objective: "Talk to Neo",
+    dialogue:
+      "Welcome to BagsCity! Head to Founder's Corner and talk to Professor Oak \u2014 he'll help you launch a token.",
+    markerId: "neo",
+  },
+  {
+    npc: "Professor Oak",
+    npcIcon: "\uD83E\uDDEA",
     event: "bagsworld-professoroak-click",
+    objective: "Visit Professor Oak",
+    dialogue: "I can help you create a token with AI! Let me show you my laboratory.",
+    markerId: "professorOak",
   },
   {
-    key: "launch_token" as const,
-    title: "Launch a Token",
-    description: "Open the token launcher",
+    npc: null,
+    npcIcon: "\uD83D\uDDFA\uFE0F",
+    event: "bagsworld-launch-prefill",
+    objective: "Create with AI wizard",
+    dialogue: null,
+    markerId: null,
+  },
+  {
+    npc: null,
+    npcIcon: "\uD83D\uDDFA\uFE0F",
     event: "bagsworld-launch-opened",
+    objective: "Launch your token",
+    dialogue: null,
+    markerId: null,
   },
   {
-    key: "check_fees" as const,
-    title: "Check Your Fees",
-    description: "See how creators earn from trades",
-    event: "bagsworld-claim-click",
+    npc: null,
+    npcIcon: "\uD83D\uDDFA\uFE0F",
+    event: "bagsworld-zone-change",
+    zoneMatch: "moltbook",
+    objective: "Travel to Moltbook Beach",
+    dialogue: null,
+    markerId: null,
+  },
+  {
+    npc: null,
+    npcIcon: "\uD83D\uDDFA\uFE0F",
+    event: "bagsworld-moltbar-click",
+    objective: "Find the Agent Bar",
+    dialogue: null,
+    markerId: null,
   },
 ];
 
+// ── State helpers ──────────────────────────────────────────────────
+
 function getDefaultState(): QuestState {
   return {
-    dismissed: false,
+    version: 3,
+    skipped: false,
     completedAt: null,
-    steps: {
-      talk_to_ash: false,
-      visit_oak: false,
-      launch_token: false,
-      check_fees: false,
-    },
+    currentStep: 0,
+    stepsCompleted: new Array(8).fill(false),
   };
+}
+
+function migrateV1(old: Record<string, unknown>): QuestState {
+  const steps = (old.steps ?? {}) as Record<string, boolean>;
+  const s = getDefaultState();
+  // Map v1 keys to linear step indices
+  if (steps.talk_to_ash) s.stepsCompleted[0] = true;
+  if (steps.visit_oak) s.stepsCompleted[3] = true;
+  if (steps.launch_token) s.stepsCompleted[5] = true;
+  if (steps.check_fees) s.stepsCompleted[7] = true;
+  if (old.dismissed || old.skipped) s.skipped = true;
+  if (old.completedAt) s.completedAt = old.completedAt as number;
+  // Set currentStep to first incomplete
+  s.currentStep = s.stepsCompleted.findIndex((v) => !v);
+  if (s.currentStep === -1) s.currentStep = 7;
+  return s;
+}
+
+function migrateV2(old: Record<string, unknown>): QuestState {
+  const chapters = old.chapters as Record<
+    string,
+    { completed: boolean; completedAt: number | null; steps: Record<string, boolean> }
+  >;
+  const s = getDefaultState();
+
+  // Map v2 chapter steps to linear indices (8 steps, no terminal)
+  // Chapter 1: meet_community(0), check_bagscity(1)
+  if (chapters?.chapter1?.steps?.meet_community) s.stepsCompleted[0] = true;
+  if (chapters?.chapter1?.steps?.check_bagscity) s.stepsCompleted[1] = true;
+  // check_market was terminal — dropped, no mapping
+  // Chapter 2: meet_oak(3), generate_assets(4), launch_token(5)
+  if (chapters?.chapter2?.steps?.meet_oak) s.stepsCompleted[3] = true;
+  if (chapters?.chapter2?.steps?.generate_assets) s.stepsCompleted[4] = true;
+  if (chapters?.chapter2?.steps?.launch_token) s.stepsCompleted[5] = true;
+  // Chapter 3: meet_agents(6), agent_bar(7), claim_fees→agent_bar(7)
+  if (chapters?.chapter3?.steps?.meet_agents) s.stepsCompleted[6] = true;
+  if (chapters?.chapter3?.steps?.agent_bar) s.stepsCompleted[7] = true;
+  if (chapters?.chapter3?.steps?.claim_fees) s.stepsCompleted[7] = true;
+
+  if (old.dismissed) s.skipped = true;
+  if (old.completedAt) s.completedAt = old.completedAt as number;
+
+  // Set currentStep to first incomplete
+  s.currentStep = s.stepsCompleted.findIndex((v) => !v);
+  if (s.currentStep === -1) s.currentStep = 7;
+  return s;
 }
 
 function loadState(): QuestState | null {
@@ -61,7 +159,17 @@ function loadState(): QuestState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as QuestState;
+    const parsed = JSON.parse(raw);
+    if (parsed.version === 3) return parsed as QuestState;
+    if (parsed.version === 2) {
+      const migrated = migrateV2(parsed);
+      saveState(migrated);
+      return migrated;
+    }
+    // v1 (no version field)
+    const migrated = migrateV1(parsed);
+    saveState(migrated);
+    return migrated;
   } catch {
     return null;
   }
@@ -75,159 +183,156 @@ function saveState(state: QuestState) {
   }
 }
 
-function initState(): { state: QuestState; isFirstVisit: boolean } {
+function initState(): QuestState {
   const saved = loadState();
-  if (saved) {
-    return { state: saved, isFirstVisit: false };
-  }
+  if (saved) return saved;
   const fresh = getDefaultState();
   saveState(fresh);
-  return { state: fresh, isFirstVisit: true };
+  return fresh;
 }
 
-export function QuestTracker() {
-  const [{ state: initialState, isFirstVisit }] = useState(initState);
-  const [state, setState] = useState<QuestState>(initialState);
-  const [expanded, setExpanded] = useState(isFirstVisit);
-  const [justCompleted, setJustCompleted] = useState<string | null>(null);
-  const [allDone, setAllDone] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const mobileCollapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const currentZone = useGameStore((s) => s.currentZone);
+function dispatchMarkers(step: number) {
+  if (step >= QUEST_STEPS.length) return;
+  const quest = QUEST_STEPS[step];
+  const markers: { characterId: string; type: string }[] = [];
+  if (quest.markerId) {
+    markers.push({ characterId: quest.markerId, type: "!" });
+  }
+  window.dispatchEvent(new CustomEvent("bagsworld-quest-markers", { detail: { markers } }));
+}
 
-  // Slide-in on mount
+// ── Component ──────────────────────────────────────────────────────
+
+export function QuestTracker() {
+  const [state, setState] = useState<QuestState>(initState);
+  const [dialogueNpc, setDialogueNpc] = useState<string | null>(null);
+  const [dialogueText, setDialogueText] = useState<string | null>(null);
+  const [showComplete, setShowComplete] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+  const [stepFlash, setStepFlash] = useState(false);
+  const dialogueTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Dispatch markers on mount and whenever currentStep changes
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 100);
-    return () => clearTimeout(t);
+    if (state.skipped || state.completedAt) return;
+    dispatchMarkers(state.currentStep);
+  }, [state.currentStep, state.skipped, state.completedAt]);
+
+  // Clear markers on unmount
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(new CustomEvent("bagsworld-quest-markers", { detail: { markers: [] } }));
+    };
   }, []);
 
-  // Auto-collapse on mobile after 5s
-  useEffect(() => {
-    if (!expanded) return;
+  const advanceStep = useCallback(
+    (stepIndex: number) => {
+      setState((prev) => {
+        if (prev.stepsCompleted[stepIndex]) return prev;
+        if (stepIndex !== prev.currentStep) return prev;
 
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
-    if (isMobile) {
-      mobileCollapseTimer.current = setTimeout(() => {
-        setExpanded(false);
-      }, 5000);
-      return () => {
-        if (mobileCollapseTimer.current) clearTimeout(mobileCollapseTimer.current);
-      };
-    }
-  }, [expanded]);
+        const next: QuestState = {
+          ...prev,
+          stepsCompleted: [...prev.stepsCompleted],
+          currentStep: prev.currentStep + 1,
+        };
+        next.stepsCompleted[stepIndex] = true;
 
-  // Listen for quest completion events
-  useEffect(() => {
-    if (state.dismissed || state.completedAt) return;
+        // Show dialogue if this is an NPC step
+        const quest = QUEST_STEPS[stepIndex];
+        if (quest.dialogue && quest.npc) {
+          setDialogueNpc(quest.npc);
+          setDialogueText(quest.dialogue);
+          if (dialogueTimer.current) clearTimeout(dialogueTimer.current);
+          dialogueTimer.current = setTimeout(() => {
+            setDialogueNpc(null);
+            setDialogueText(null);
+          }, 4000);
+        }
 
-    const handlers: Array<{ event: string; handler: () => void }> = QUEST_STEPS.map((step) => ({
-      event: step.event,
-      handler: () => {
-        setState((prev) => {
-          if (prev.steps[step.key]) return prev;
-          const next = {
-            ...prev,
-            steps: { ...prev.steps, [step.key]: true },
-          };
-          setJustCompleted(step.key);
-          setTimeout(() => setJustCompleted(null), 1200);
-          saveState(next);
+        // Brief green flash
+        setStepFlash(true);
+        setTimeout(() => setStepFlash(false), 400);
 
-          // Check if all done
-          const done = Object.values(next.steps).every(Boolean);
-          if (done) {
-            const completed = { ...next, completedAt: Date.now() };
-            saveState(completed);
-            setAllDone(true);
-            setTimeout(() => {
-              setState(completed);
-            }, 4000);
-          }
-          return next;
-        });
-      },
-    }));
+        // Check if all done
+        if (next.stepsCompleted.every(Boolean)) {
+          next.completedAt = Date.now();
+          next.currentStep = 8;
+          setShowComplete(true);
+          // Clear markers
+          window.dispatchEvent(
+            new CustomEvent("bagsworld-quest-markers", { detail: { markers: [] } })
+          );
+        }
 
-    handlers.forEach(({ event, handler }) => {
-      window.addEventListener(event, handler);
-    });
-
-    return () => {
-      handlers.forEach(({ event, handler }) => {
-        window.removeEventListener(event, handler);
+        saveState(next);
+        return next;
       });
-    };
-  }, [state]);
+    },
+    [dialogueTimer]
+  );
 
-  const handleDismiss = useCallback(() => {
+  // Listen for quest events
+  useEffect(() => {
+    if (state.skipped || state.completedAt) return;
+    if (state.currentStep >= QUEST_STEPS.length) return;
+
+    const currentQuest = QUEST_STEPS[state.currentStep];
+
+    const handler = ((e: Event) => {
+      if (currentQuest.zoneMatch) {
+        const detail = (e as CustomEvent).detail;
+        if (detail?.zone !== currentQuest.zoneMatch) return;
+      }
+      advanceStep(state.currentStep);
+    }) as EventListener;
+
+    window.addEventListener(currentQuest.event, handler);
+    return () => window.removeEventListener(currentQuest.event, handler);
+  }, [state.currentStep, state.skipped, state.completedAt, advanceStep]);
+
+  const handleSkip = useCallback(() => {
     setState((prev) => {
-      const next = { ...prev, dismissed: true };
+      const next = { ...prev, skipped: true };
       saveState(next);
       return next;
     });
+    // Clear markers
+    window.dispatchEvent(new CustomEvent("bagsworld-quest-markers", { detail: { markers: [] } }));
   }, []);
 
-  const handleMinimize = useCallback(() => {
-    setExpanded(false);
+  const dismissDialogue = useCallback(() => {
+    setDialogueNpc(null);
+    setDialogueText(null);
+    if (dialogueTimer.current) clearTimeout(dialogueTimer.current);
   }, []);
 
-  // Don't render if dismissed or completed
-  if (state.dismissed || state.completedAt) return null;
+  // Don't render if skipped or completed (and not showing celebration)
+  if (state.skipped) return null;
+  if (state.completedAt && !showComplete) return null;
 
-  const completedCount = Object.values(state.steps).filter(Boolean).length;
-  const progress = completedCount / QUEST_STEPS.length;
-  const nextStepIndex = QUEST_STEPS.findIndex((s) => !state.steps[s.key]);
-
-  // All done celebration
-  if (allDone) {
+  // ── Quest complete celebration ──────────────────────────────────
+  if (showComplete) {
     return (
-      <div className="fixed left-1/2 -translate-x-1/2 bottom-20 sm:bottom-16 z-[60]">
-        <div className="quest-complete-container bg-black/95 backdrop-blur-md border border-yellow-500/60 rounded-lg px-6 py-3 shadow-[0_0_30px_rgba(251,191,36,0.3)]">
-          <p className="font-pixel text-sm text-yellow-400 text-center quest-complete-text tracking-wider">
-            QUEST COMPLETE!
-          </p>
-          <div className="flex justify-center gap-1.5 mt-1.5">
-            {[...Array(5)].map((_, i) => (
-              <span
-                key={i}
-                className="inline-block text-yellow-400 font-pixel text-[10px] quest-sparkle"
-                style={{ animationDelay: `${i * 0.12}s` }}
-              >
-                *
-              </span>
-            ))}
-          </div>
+      <div
+        className="fixed bottom-10 left-4 z-[55]"
+        style={{ animation: "quest-ribbon-in 0.3s ease-out forwards" }}
+      >
+        <div className="flex items-center gap-2 bg-black/85 backdrop-blur-sm border border-yellow-500/50 rounded-full px-4 py-2 shadow-[0_0_16px_rgba(251,191,36,0.3)]">
+          <span className="text-sm">{"\u2728"}</span>
+          <span className="font-pixel text-[9px] text-yellow-400 tracking-wide">
+            Quest Complete! Welcome to BagsWorld
+          </span>
         </div>
         <style jsx>{`
-          .quest-complete-container {
-            animation: complete-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-          }
-          .quest-complete-text {
-            text-shadow:
-              0 0 8px rgba(251, 191, 36, 0.6),
-              0 0 16px rgba(251, 191, 36, 0.3);
-          }
-          .quest-sparkle {
-            animation: sparkle 0.6s ease-in-out infinite alternate;
-          }
-          @keyframes complete-pop {
-            0% {
-              transform: scale(0.8);
+          @keyframes quest-ribbon-in {
+            from {
               opacity: 0;
+              transform: translateX(-100%);
             }
-            100% {
-              transform: scale(1);
+            to {
               opacity: 1;
-            }
-          }
-          @keyframes sparkle {
-            0% {
-              opacity: 0.2;
-              transform: scale(0.6) translateY(2px);
-            }
-            100% {
-              opacity: 1;
-              transform: scale(1.2) translateY(-2px);
+              transform: translateX(0);
             }
           }
         `}</style>
@@ -235,53 +340,27 @@ export function QuestTracker() {
     );
   }
 
-  // Collapsed pill — centered at bottom, small and unobtrusive
-  if (!expanded) {
+  const currentQuest = QUEST_STEPS[state.currentStep];
+  const icon = currentQuest?.npcIcon ?? "\uD83D\uDDFA\uFE0F";
+
+  // ── Minimized state ────────────────────────────────────────────
+  if (minimized) {
     return (
       <button
-        onClick={() => setExpanded(true)}
-        className={`fixed left-1/2 -translate-x-1/2 bottom-12 sm:bottom-11 z-[60] bg-black/80 backdrop-blur-sm border border-bags-green/40 rounded-full px-4 py-1.5 hover:border-bags-green/70 hover:bg-black/90 transition-all duration-300 quest-pill ${mounted ? "quest-slide-up" : "opacity-0 translate-y-4"}`}
+        onClick={() => setMinimized(false)}
+        className="fixed bottom-10 left-4 z-[55] bg-black/85 backdrop-blur-sm border border-amber-500/40 rounded-full w-8 h-8 flex items-center justify-center hover:border-amber-500/70 transition-all"
+        style={{ animation: "quest-pulse 2s ease-in-out infinite" }}
+        aria-label="Expand quest"
       >
-        <div className="flex items-center gap-2">
-          <span className="font-pixel text-[9px] text-bags-green/70">Q</span>
-          <div className="flex gap-0.5">
-            {QUEST_STEPS.map((step) => (
-              <div
-                key={step.key}
-                className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                  state.steps[step.key] ? "bg-bags-green" : "bg-gray-700"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="font-pixel text-[8px] text-gray-500">
-            {completedCount}/{QUEST_STEPS.length}
-          </span>
-        </div>
+        <span className="font-pixel text-[10px] text-amber-400">!</span>
         <style jsx>{`
-          .quest-pill {
-            animation: pill-glow 3s ease-in-out infinite;
-          }
-          .quest-slide-up {
-            animation: slide-up 0.3s ease-out forwards;
-          }
-          @keyframes pill-glow {
+          @keyframes quest-pulse {
             0%,
             100% {
-              box-shadow: 0 0 8px rgba(74, 222, 128, 0.05);
+              box-shadow: 0 0 4px rgba(245, 158, 11, 0.2);
             }
             50% {
-              box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
-            }
-          }
-          @keyframes slide-up {
-            from {
-              opacity: 0;
-              transform: translateX(-50%) translateY(8px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(-50%) translateY(0);
+              box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
             }
           }
         `}</style>
@@ -289,208 +368,95 @@ export function QuestTracker() {
     );
   }
 
-  // Expanded panel — centered bottom, compact card
+  // ── Active quest ribbon ────────────────────────────────────────
   return (
-    <div
-      className={`fixed left-1/2 -translate-x-1/2 bottom-12 sm:bottom-11 z-[60] w-72 sm:w-80 max-w-[calc(100vw-2rem)] ${mounted ? "quest-panel-enter" : "opacity-0 translate-y-4"}`}
-    >
-      <div
-        className={`bg-black/95 backdrop-blur-md border rounded-lg overflow-hidden ${isFirstVisit ? "quest-glow border-bags-green/50" : "border-bags-green/25 shadow-[0_0_20px_rgba(0,0,0,0.5)]"}`}
-      >
-        {/* Header — slim */}
-        <div className="flex items-center justify-between px-3 py-1.5 bg-bags-green/5 border-b border-bags-green/15">
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded bg-bags-green/20 flex items-center justify-center">
-              <span className="font-pixel text-[8px] text-bags-green">Q</span>
-            </div>
-            <span className="font-pixel text-[9px] text-bags-green/80 tracking-wide">
-              WELCOME QUEST
-            </span>
-          </div>
-          <div className="flex items-center">
-            <button
-              onClick={handleMinimize}
-              className="font-pixel text-[9px] text-gray-600 hover:text-bags-green p-1 transition-colors"
-              aria-label="Minimize"
-            >
-              [-]
-            </button>
-            <button
-              onClick={handleDismiss}
-              className="font-pixel text-[9px] text-gray-600 hover:text-red-400 p-1 transition-colors"
-              aria-label="Close"
-            >
-              [X]
-            </button>
-          </div>
-        </div>
-
-        {/* Steps */}
-        <div className="px-3 py-2 space-y-0.5">
-          {QUEST_STEPS.map((step, i) => {
-            const completed = state.steps[step.key];
-            const isNext = i === nextStepIndex;
-            const wasJustCompleted = justCompleted === step.key;
-
-            return (
-              <div
-                key={step.key}
-                className={`flex items-center gap-2 py-1 px-1.5 rounded transition-all duration-500 ${
-                  wasJustCompleted
-                    ? "quest-step-complete bg-bags-green/10"
-                    : isNext
-                      ? "bg-white/[0.02]"
-                      : ""
-                }`}
-              >
-                {/* Step indicator */}
-                <div
-                  className={`w-4 h-4 rounded-sm flex items-center justify-center shrink-0 transition-all duration-500 ${
-                    completed
-                      ? "bg-bags-green/20 border border-bags-green/50"
-                      : isNext
-                        ? "border border-white/30"
-                        : "border border-gray-800"
-                  } ${wasJustCompleted ? "quest-check-pop" : ""}`}
-                >
-                  {completed ? (
-                    <span className="font-pixel text-[8px] text-bags-green">+</span>
-                  ) : isNext ? (
-                    <span className="font-pixel text-[7px] text-white/50 quest-caret">&gt;</span>
-                  ) : (
-                    <span className="font-pixel text-[7px] text-gray-700">&middot;</span>
-                  )}
-                </div>
-
-                {/* Step text */}
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={`font-pixel text-[9px] leading-tight transition-all duration-500 ${
-                      completed ? "text-bags-green/80" : isNext ? "text-white/90" : "text-gray-600"
-                    } ${wasJustCompleted ? "text-bags-green" : ""}`}
-                  >
-                    {step.title}
-                    {isNext && !completed && (
-                      <span className="text-gray-500 ml-1 text-[7px]">- {step.description}</span>
-                    )}
-                  </p>
-                </div>
-
-                {/* Completed flash */}
-                {wasJustCompleted && (
-                  <span className="font-pixel text-[7px] text-bags-green quest-done-badge">
-                    DONE
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Progress bar + skip — combined footer */}
-        <div className="px-3 pb-2 pt-0.5 flex items-center gap-2">
-          <div className="flex-1 h-1 bg-gray-800/80 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-bags-green/80 to-emerald-400 rounded-full transition-all duration-700 ease-out"
-              style={{ width: `${progress * 100}%` }}
-            />
-          </div>
-          <span className="font-pixel text-[7px] text-gray-500">
-            {completedCount}/{QUEST_STEPS.length}
-          </span>
+    <div className="fixed bottom-10 left-4 z-[55]" style={{ maxWidth: "18rem" }}>
+      {/* Dialogue bubble (above ribbon) */}
+      {dialogueNpc && dialogueText && (
+        <div
+          className="mb-2 bg-black/90 backdrop-blur-sm border border-amber-500/30 rounded-lg px-3 py-2 shadow-lg"
+          style={{ animation: "quest-dialogue-in 0.25s ease-out forwards" }}
+        >
+          <p className="font-pixel text-[8px] text-amber-400 mb-1">{dialogueNpc}:</p>
+          <p className="font-pixel text-[8px] text-white/80 leading-relaxed">
+            &ldquo;{dialogueText}&rdquo;
+          </p>
           <button
-            onClick={handleDismiss}
-            className="font-pixel text-[7px] text-gray-600 hover:text-gray-400 transition-colors"
+            onClick={dismissDialogue}
+            className="font-pixel text-[7px] text-gray-500 hover:text-white mt-1 float-right transition-colors"
           >
-            [SKIP]
+            [OK]
           </button>
+          <div className="clear-both" />
         </div>
+      )}
+
+      {/* Quest ribbon */}
+      <div
+        className={`flex items-center gap-2 bg-black/85 backdrop-blur-sm border rounded-full px-3 py-1.5 transition-all duration-300 ${
+          stepFlash
+            ? "border-green-400/60 shadow-[0_0_8px_rgba(74,222,128,0.3)]"
+            : "border-amber-500/30 shadow-[0_0_8px_rgba(0,0,0,0.3)]"
+        }`}
+        style={{ animation: "quest-ribbon-in 0.3s ease-out forwards" }}
+      >
+        {/* NPC icon */}
+        <span className="text-sm shrink-0">{icon}</span>
+
+        {/* Objective text */}
+        <span className="font-pixel text-[8px] text-white/85 truncate flex-1">
+          {currentQuest?.objective ?? "Quest complete!"}
+        </span>
+
+        {/* Quest marker indicator */}
+        {currentQuest?.markerId && (
+          <span className="font-pixel text-[9px] text-amber-400 shrink-0 animate-pulse">!</span>
+        )}
+
+        {/* Direction arrow for travel steps */}
+        {currentQuest && !currentQuest.markerId && (
+          <span className="font-pixel text-[8px] text-gray-500 shrink-0">{"\u25B8"}</span>
+        )}
+
+        {/* Minimize button */}
+        <button
+          onClick={() => setMinimized(true)}
+          className="font-pixel text-[7px] text-gray-600 hover:text-gray-400 shrink-0 transition-colors ml-1"
+          aria-label="Minimize quest"
+        >
+          {"\u2212"}
+        </button>
+      </div>
+
+      {/* Skip link */}
+      <div className="mt-1 pl-3">
+        <button
+          onClick={handleSkip}
+          className="font-pixel text-[6px] text-gray-600 hover:text-gray-400 transition-colors"
+        >
+          [SKIP]
+        </button>
       </div>
 
       <style jsx>{`
-        .quest-glow {
-          animation:
-            panel-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-            glow-pulse 1.8s ease-in-out 0.4s 3;
-        }
-        @keyframes glow-pulse {
-          0%,
-          100% {
-            box-shadow:
-              0 0 8px rgba(74, 222, 128, 0.15),
-              0 0 20px rgba(74, 222, 128, 0.05);
-          }
-          50% {
-            box-shadow:
-              0 0 15px rgba(74, 222, 128, 0.4),
-              0 0 35px rgba(74, 222, 128, 0.15),
-              0 0 50px rgba(74, 222, 128, 0.05);
-          }
-        }
-        .quest-panel-enter {
-          animation: panel-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        @keyframes panel-enter {
+        @keyframes quest-ribbon-in {
           from {
             opacity: 0;
-            transform: translateX(-50%) translateY(12px) scale(0.96);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0) scale(1);
-          }
-        }
-        .quest-step-complete {
-          animation: step-flash 1.2s ease-out forwards;
-        }
-        @keyframes step-flash {
-          0% {
-            background-color: rgba(74, 222, 128, 0.2);
-          }
-          60% {
-            background-color: rgba(74, 222, 128, 0.08);
-          }
-          100% {
-            background-color: transparent;
-          }
-        }
-        .quest-check-pop {
-          animation: check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        @keyframes check-pop {
-          0% {
-            transform: scale(0.5);
-          }
-          60% {
-            transform: scale(1.3);
-          }
-          100% {
-            transform: scale(1);
-          }
-        }
-        .quest-done-badge {
-          animation: badge-in 0.3s ease-out forwards;
-        }
-        @keyframes badge-in {
-          from {
-            opacity: 0;
-            transform: translateX(4px);
+            transform: translateX(-100%);
           }
           to {
             opacity: 1;
             transform: translateX(0);
           }
         }
-        .quest-caret {
-          animation: caret-blink 1.5s ease-in-out infinite;
-        }
-        @keyframes caret-blink {
-          0%,
-          100% {
-            opacity: 0.5;
+        @keyframes quest-dialogue-in {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
           }
-          50% {
+          to {
             opacity: 1;
+            transform: translateY(0);
           }
         }
       `}</style>
