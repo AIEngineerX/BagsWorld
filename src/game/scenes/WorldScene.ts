@@ -333,6 +333,9 @@ export class WorldScene extends Phaser.Scene {
 
     // Connect to agent server for bidirectional communication
     this.connectToAgentServer();
+
+    // Signal to React that the scene is ready for worldState updates
+    window.dispatchEvent(new Event("worldscene-ready"));
   }
 
   // === LOCAL PLAYER SETUP ===
@@ -5031,13 +5034,21 @@ Your creator page = website!
   }
 
   // Update mobile label position to follow sprite movement
-  // Uses direct property access (set during creation) instead of getData() for per-frame performance
+  // Throttled: only repositions when character has moved >= 8px from last update
   private updateMobileLabel(sprite: Phaser.GameObjects.Sprite): void {
     const s = sprite as any;
-    if (s._mobileLabel)
-      s._mobileLabel.setPosition(sprite.x, sprite.y + (s._mobileLabelOffset || 18));
-    if (s._mobileLabelBg)
-      s._mobileLabelBg.setPosition(sprite.x, sprite.y + (s._mobileLabelOffset || 18));
+    if (!s._mobileLabel) return;
+
+    // Skip update if sprite hasn't moved enough (8^2 = 64px² threshold)
+    const dx = sprite.x - (s._labelLastX ?? -999);
+    const dy = sprite.y - (s._labelLastY ?? -999);
+    if (dx * dx + dy * dy < 64) return;
+
+    s._labelLastX = sprite.x;
+    s._labelLastY = sprite.y;
+    const offset = s._mobileLabelOffset || 18;
+    s._mobileLabel.setPosition(sprite.x, sprite.y + offset);
+    if (s._mobileLabelBg) s._mobileLabelBg.setPosition(sprite.x, sprite.y + offset);
   }
 
   // Update visitor sparkle indicator position
@@ -8097,7 +8108,7 @@ Your creator page = website!
     });
 
     // Batch create new characters across frames to prevent frame drops
-    const BATCH_SIZE = 2; // Characters are heavier than buildings
+    const BATCH_SIZE = 4; // Batch character creation across frames
     const createBatch = (startIndex: number) => {
       const endIndex = Math.min(startIndex + BATCH_SIZE, newCharacters.length);
       for (let i = startIndex; i < endIndex; i++) {

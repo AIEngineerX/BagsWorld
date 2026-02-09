@@ -266,33 +266,41 @@ function GameCanvasInner({ worldState }: GameCanvasProps) {
     };
   }, []);
 
+  // Track whether WorldScene is ready to accept updates
+  const sceneReadyRef = useRef(false);
+  const pendingWorldStateRef = useRef<WorldState | null>(null);
+
+  // Listen for scene-ready event (fired once from WorldScene.create())
+  useEffect(() => {
+    const onReady = () => {
+      sceneReadyRef.current = true;
+      // Flush any buffered worldState
+      if (pendingWorldStateRef.current && gameRef.current) {
+        const worldScene = gameRef.current.scene.getScene("WorldScene") as WorldScene | undefined;
+        if (worldScene && worldScene.scene.isActive()) {
+          worldScene.updateWorldState(pendingWorldStateRef.current);
+          pendingWorldStateRef.current = null;
+        }
+      }
+    };
+    window.addEventListener("worldscene-ready", onReady);
+    return () => window.removeEventListener("worldscene-ready", onReady);
+  }, []);
+
   // Update world state in the game
   useEffect(() => {
     if (!gameRef.current || !worldState) return;
 
-    const tryUpdateWorldState = () => {
-      const worldScene = gameRef.current?.scene.getScene("WorldScene") as WorldScene | undefined;
-      if (worldScene && worldScene.scene.isActive()) {
-        worldScene.updateWorldState(worldState);
-        return true;
-      }
-      return false;
-    };
+    if (!sceneReadyRef.current) {
+      // Scene not ready yet — buffer for delivery when ready
+      pendingWorldStateRef.current = worldState;
+      return;
+    }
 
-    // Try immediately
-    if (tryUpdateWorldState()) return;
-
-    // If scene not ready, retry a few times with small delay
-    let retries = 0;
-    const maxRetries = 10;
-    const retryInterval = setInterval(() => {
-      retries++;
-      if (tryUpdateWorldState() || retries >= maxRetries) {
-        clearInterval(retryInterval);
-      }
-    }, 200);
-
-    return () => clearInterval(retryInterval);
+    const worldScene = gameRef.current.scene.getScene("WorldScene") as WorldScene | undefined;
+    if (worldScene && worldScene.scene.isActive()) {
+      worldScene.updateWorldState(worldState);
+    }
   }, [worldState]);
 
   // Listen for animal control events from Bags Bot
