@@ -7,7 +7,6 @@ import {
   failOracleClaim,
   isNeonConfigured,
 } from "@/lib/neon";
-import { isAdmin } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +16,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Oracle not initialized" }, { status: 503 });
   }
 
-  const adminWallet = request.nextUrl.searchParams.get("adminWallet");
-
-  if (!adminWallet || !isAdmin(adminWallet)) {
+  // Verify admin using Bearer token auth
+  const authHeader = request.headers.get("Authorization");
+  const expectedToken = process.env.ADMIN_API_SECRET;
+  if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
   }
 
@@ -50,7 +50,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { adminWallet, claimId, action, txSignature, reason } = body;
 
-  if (!adminWallet || !isAdmin(adminWallet)) {
+  // Verify admin using Bearer token auth
+  const authHeaderPost = request.headers.get("Authorization");
+  const expectedTokenPost = process.env.ADMIN_API_SECRET;
+  if (!expectedTokenPost || authHeaderPost !== `Bearer ${expectedTokenPost}`) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
   }
 

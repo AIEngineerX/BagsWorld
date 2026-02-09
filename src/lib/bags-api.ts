@@ -189,7 +189,7 @@ class BagsApiClient {
     return (data.events ?? []).map((e) => ({
       signature: e.signature,
       claimer: e.wallet,
-      amount: parseInt(e.amount, 10),
+      amount: Number(e.amount) || 0,
       timestamp: e.timestamp,
       tokenMint,
     }));
@@ -218,7 +218,7 @@ class BagsApiClient {
     return (data.events ?? []).map((e) => ({
       signature: e.signature,
       claimer: e.wallet,
-      amount: parseInt(e.amount, 10),
+      amount: Number(e.amount) || 0,
       timestamp: e.timestamp,
       tokenMint,
     }));

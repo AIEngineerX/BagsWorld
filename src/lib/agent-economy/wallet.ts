@@ -76,11 +76,12 @@ export async function signTransaction(agentId: string, unsignedTxBase64: string)
 
   // Export private key (temporary!)
   let privateKeyBase58: string | null = null;
+  let privateKeyBytes: Uint8Array | null = null;
   try {
     privateKeyBase58 = await exportPrivateKey(credentials.jwtToken, walletAddress);
 
     // Decode private key
-    const privateKeyBytes = bs58.decode(privateKeyBase58);
+    privateKeyBytes = bs58.decode(privateKeyBase58);
 
     // Deserialize transaction
     const txBuffer = Buffer.from(unsignedTxBase64, "base64");
@@ -100,7 +101,8 @@ export async function signTransaction(agentId: string, unsignedTxBase64: string)
 
     return signedTxBase64;
   } finally {
-    // Clear private key from memory
+    // Clear private key bytes from memory (effective for Uint8Array)
+    if (privateKeyBytes) privateKeyBytes.fill(0);
     privateKeyBase58 = null;
   }
 }

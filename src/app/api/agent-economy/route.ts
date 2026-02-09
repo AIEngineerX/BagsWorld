@@ -65,6 +65,10 @@ function isAuthorized(request: NextRequest): boolean {
  * GET - List agents, get agent status, or get agent actions
  */
 export async function GET(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   await ensureTablesExist();
 
   const { searchParams } = new URL(request.url);

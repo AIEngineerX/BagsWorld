@@ -5,13 +5,14 @@ interface ReportRequestBody {
   action: "preview" | "post";
 }
 
-// Verify authorization
+// Verify authorization - fail closed if AGENT_SECRET not configured
 function isAuthorized(request: Request): boolean {
   const authHeader = request.headers.get("Authorization");
   const agentSecret = process.env.AGENT_SECRET;
 
   if (!agentSecret) {
-    return true; // Allow in dev
+    console.error("[Report] AGENT_SECRET not configured - rejecting request");
+    return false;
   }
 
   if (authHeader?.startsWith("Bearer ")) {

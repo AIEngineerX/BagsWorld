@@ -215,9 +215,13 @@ export async function claimAllFees(
     success
   );
 
+  // Report actual claimed amount based on successful transactions, not the full claimable total
+  const claimedFraction = transactions.length > 0 ? signatures.length / transactions.length : 0;
+  const actualClaimedSol = totalClaimableSol * claimedFraction;
+
   return {
     claimed: success,
-    totalClaimedSol: success ? totalClaimableSol : 0,
+    totalClaimedSol: actualClaimedSol,
     signatures,
     errors,
   };

@@ -8,7 +8,7 @@ import {
   OracleTokenOptionDB,
 } from "@/lib/neon";
 import { getAllWorldTokensAsync, LaunchedToken } from "@/lib/token-registry";
-import { isAdmin, ECOSYSTEM_CONFIG } from "@/lib/config";
+import { ECOSYSTEM_CONFIG } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -100,8 +100,10 @@ export async function POST(request: NextRequest) {
   } = body;
   const autoResolve = body.autoResolve ?? marketType !== "custom";
 
-  // Verify admin using config-based admin check
-  if (!adminWallet || !isAdmin(adminWallet)) {
+  // Verify admin using Bearer token auth
+  const authHeader = request.headers.get("Authorization");
+  const expectedToken = process.env.ADMIN_API_SECRET;
+  if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
   }
 
