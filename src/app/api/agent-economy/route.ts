@@ -2,6 +2,7 @@
 // Endpoints for managing agents in the BagsWorld Agentic Economy
 
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   AgentEconomy,
   initAgentCredentialsTable,
@@ -67,6 +68,13 @@ function isAuthorized(request: NextRequest): boolean {
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit admin endpoints
+  const clientIP = getClientIP(request);
+  const rateLimit = await checkRateLimit(`agent-economy:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   await ensureTablesExist();
@@ -335,13 +343,7 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error("[AgentEconomy] GET error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -350,12 +352,19 @@ export async function GET(request: NextRequest) {
  * Requires authorization for sensitive actions
  */
 export async function POST(request: NextRequest) {
-  await ensureTablesExist();
-
   // Check authorization for sensitive actions
   if (!isAuthorized(request)) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
+
+  // Rate limit admin endpoints
+  const clientIP = getClientIP(request);
+  const rateLimit = await checkRateLimit(`agent-economy:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json({ success: false, error: "Too many requests" }, { status: 429 });
+  }
+
+  await ensureTablesExist();
 
   try {
     const body = await request.json();
@@ -588,12 +597,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("[AgentEconomy] POST error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }

@@ -60,26 +60,9 @@ export async function POST(request: Request) {
 
   try {
     // Validate RPC URL is configured
-    if (!SOLANA_RPC_URL) {
-      console.error("[send-transaction] SOLANA_RPC_URL env var is not set!");
-      return NextResponse.json(
-        {
-          error: "Server misconfiguration: RPC URL not set",
-          hint: "Add SOLANA_RPC_URL to Netlify env vars. Format: https://mainnet.helius-rpc.com/?api-key=YOUR_KEY",
-        },
-        { status: 500 }
-      );
-    }
-
-    // Validate URL format
-    if (!SOLANA_RPC_URL.startsWith("https://")) {
-      return NextResponse.json(
-        {
-          error: "Invalid RPC URL format",
-          hint: "SOLANA_RPC_URL must start with https://",
-        },
-        { status: 500 }
-      );
+    if (!SOLANA_RPC_URL || !SOLANA_RPC_URL.startsWith("https://")) {
+      console.error("[send-transaction] SOLANA_RPC_URL not configured or invalid");
+      return NextResponse.json({ error: "Transaction service unavailable" }, { status: 503 });
     }
 
     const { signedTransaction } = await request.json();
@@ -158,38 +141,35 @@ export async function POST(request: Request) {
 
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    // Check for common RPC errors
+    // Check for common RPC errors — log details server-side, return generic message to client
     if (
       errorMessage.includes("401") ||
       errorMessage.includes("Unauthorized") ||
       errorMessage.includes("-32401")
     ) {
+      console.error("[send-transaction] RPC auth failure — check API key");
       return NextResponse.json(
-        {
-          error: "RPC authentication failed (401 Unauthorized)",
-          hint: "Your Helius API key may be invalid. Generate a new key at dev.helius.xyz",
-          details: errorMessage,
-        },
-        { status: 500 }
+        { error: "Transaction service temporarily unavailable" },
+        { status: 503 }
       );
     }
 
     if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+      console.error("[send-transaction] RPC access denied");
       return NextResponse.json(
-        {
-          error: "RPC access denied (403 Forbidden)",
-          hint: "Your RPC provider may not allow transaction sending",
-          details: errorMessage,
-        },
-        { status: 500 }
+        { error: "Transaction service temporarily unavailable" },
+        { status: 503 }
       );
     }
 
-    return NextResponse.json(
-      {
-        error: errorMessage,
-      },
-      { status: 500 }
-    );
+    // For RPC-level transaction errors (e.g. insufficient funds), pass a sanitized message
+    if (errorMessage.startsWith("RPC error")) {
+      return NextResponse.json(
+        { error: "Transaction rejected by network. Please check your balance and try again." },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ error: "Failed to send transaction" }, { status: 500 });
   }
 }

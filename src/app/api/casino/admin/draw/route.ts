@@ -1,6 +1,7 @@
 // Casino Admin API - Draw raffle winner
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSignature } from "@/lib/verify-signature";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   drawRaffleWinner,
   getCasinoAdminWallets,
@@ -27,6 +28,13 @@ export async function POST(request: NextRequest) {
         { error: "Missing required fields: wallet, signature, timestamp" },
         { status: 400 }
       );
+    }
+
+    // Rate limit admin draw operations
+    const clientIP = getClientIP(request);
+    const rateLimit = await checkRateLimit(`casino-draw:${clientIP}`, RATE_LIMITS.strict);
+    if (!rateLimit.success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
     // Verify admin signature

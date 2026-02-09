@@ -1171,7 +1171,8 @@ export async function getCasinoPot(): Promise<number | null> {
 export async function recordWheelSpin(
   wallet: string,
   prize: number,
-  result: string
+  result: string,
+  cooldownMs?: number
 ): Promise<boolean> {
   const sql = await getSql();
   if (!sql) return false;
@@ -1188,10 +1189,24 @@ export async function recordWheelSpin(
       return false;
     }
 
-    await sql`
+    // Atomic insert-if-no-recent-spin to prevent race conditions.
+    // Only inserts if no spin exists for this wallet within the cooldown window.
+    const cooldownInterval = `${Math.ceil((cooldownMs || 600000) / 1000)} seconds`;
+    const inserted = await sql`
       INSERT INTO casino_wheel_spins (wallet, result, prize_sol, is_win)
-      VALUES (${wallet}, ${result}, ${prize}, ${prize > 0})
+      SELECT ${wallet}, ${result}, ${prize}, ${prize > 0}
+      WHERE NOT EXISTS (
+        SELECT 1 FROM casino_wheel_spins
+        WHERE wallet = ${wallet}
+          AND created_at > NOW() - ${cooldownInterval}::interval
+      )
+      RETURNING id
     `;
+
+    if ((inserted as unknown[]).length === 0) {
+      // A recent spin exists — cooldown not expired
+      return false;
+    }
 
     // Deduct from pot if won
     if (prize > 0) {

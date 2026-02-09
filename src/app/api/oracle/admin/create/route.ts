@@ -7,6 +7,7 @@ import {
   isNeonConfigured,
   OracleTokenOptionDB,
 } from "@/lib/neon";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { getAllWorldTokensAsync, LaunchedToken } from "@/lib/token-registry";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 
@@ -105,6 +106,13 @@ export async function POST(request: NextRequest) {
   const expectedToken = process.env.ADMIN_API_SECRET;
   if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
+  }
+
+  // Rate limit admin creation operations
+  const clientIP = getClientIP(request);
+  const rateLimit = await checkRateLimit(`oracle-create:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json({ success: false, error: "Too many requests" }, { status: 429 });
   }
 
   // Validate prize pool (0 = no prize pool)

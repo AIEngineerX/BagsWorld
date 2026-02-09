@@ -208,7 +208,8 @@ async function getSystemDiagnostics() {
       diagnostics.neonDb.tokenCount = tokens.length;
     } catch (error) {
       diagnostics.neonDb.status = "error";
-      diagnostics.neonDb.error = String(error);
+      // Log full error server-side, don't expose to client
+      console.error("[Admin] Neon DB diagnostic error:", error);
     }
   }
 
@@ -218,11 +219,10 @@ async function getSystemDiagnostics() {
     configured: !!process.env.BAGS_API_KEY,
   };
 
-  // Check RPC
+  // Check RPC — don't expose URL (may contain API keys)
   const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.SOLANA_RPC_URL;
   diagnostics.solanaRpc = {
     configured: !!rpcUrl,
-    url: rpcUrl ? rpcUrl.substring(0, 30) + "..." : "Not configured",
   };
 
   // Try RPC health check

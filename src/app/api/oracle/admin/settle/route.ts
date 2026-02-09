@@ -11,6 +11,7 @@ import {
   isNeonConfigured,
 } from "@/lib/neon";
 
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { emitEvent } from "@/lib/agent-coordinator";
 import { resolveMarket, calculateOPPayouts, getTokenPrice } from "@/lib/oracle-resolver";
 import { addOP, updateStreak, updateReputation } from "@/lib/op-economy";
@@ -30,6 +31,13 @@ export async function POST(request: NextRequest) {
   const expectedToken = process.env.ADMIN_API_SECRET;
   if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
+  }
+
+  // Rate limit admin settlement operations
+  const clientIP = getClientIP(request);
+  const rateLimit = await checkRateLimit(`oracle-settle:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json({ success: false, error: "Too many requests" }, { status: 429 });
   }
 
   // Get round - by ID if provided, otherwise active round
@@ -65,6 +73,21 @@ export async function POST(request: NextRequest) {
     let resolutionData: Record<string, unknown> = {};
 
     if (marketType === "custom" && winningOutcomeId) {
+      // Validate that winningOutcomeId exists in the round's configured outcomes
+      const configuredOutcomes = (round.marketConfig?.outcomes as Array<{ id?: string }>) || [];
+      const validOutcomeIds = configuredOutcomes
+        .map((o) => o.id)
+        .filter((id): id is string => !!id);
+      if (validOutcomeIds.length > 0 && !validOutcomeIds.includes(winningOutcomeId)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Invalid winningOutcomeId. Must be one of: ${validOutcomeIds.join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
+
       // Admin manually resolves custom market by picking the winning outcome
       resolvedOutcomeId = winningOutcomeId;
       resolutionData = {
