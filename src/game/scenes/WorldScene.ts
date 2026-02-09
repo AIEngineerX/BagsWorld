@@ -8048,6 +8048,10 @@ Your creator page = website!
       for (let i = startIndex; i < endIndex; i++) {
         this.createCharacterSprite(newCharacters[i].character, newCharacters[i].index);
       }
+      // Kick off any queued visitor sprite loads after each batch
+      if (!this.load.isLoading()) {
+        this.load.start();
+      }
       // Schedule next batch if there are more characters
       if (endIndex < newCharacters.length) {
         this.time.delayedCall(0, () => createBatch(endIndex));
@@ -8124,6 +8128,9 @@ Your creator page = website!
     const isAcademyChar = isRamo || isSincara || isStuu || isSam || isAlaa || isCarlo || isBNN;
     const isFoundersChar = isProfessorOak;
     const isMascot = isBagsy;
+    // Visitors with fal.ai sprites keep their custom texture
+    const isVisitor = character.isVisitor === true;
+    const hasVisitorTexture = isVisitor && sprite.texture?.key?.startsWith("visitor_");
     if (
       !isToly &&
       !isAsh &&
@@ -8135,7 +8142,8 @@ Your creator page = website!
       !isAcademyChar &&
       !isFoundersChar &&
       !isMascot &&
-      !isOpenClaw
+      !isOpenClaw &&
+      !hasVisitorTexture
     ) {
       const variant = this.characterVariants.get(character.id) ?? 0;
       const expectedTexture = this.getCharacterTexture(character.mood, variant);
@@ -8251,16 +8259,21 @@ Your creator page = website!
         const frame = tex.get();
         sprite.setScale((targetSize / frame.width) * 1.2);
       } else {
+        // Use per-file listener to avoid race conditions with multiple concurrent loads
         this.load.image(visitorTextureKey, character.spriteUrl);
-        this.load.once("complete", () => {
-          if (sprite && sprite.active) {
-            sprite.setTexture(visitorTextureKey);
-            const tex = this.textures.get(visitorTextureKey);
-            const frame = tex.get();
-            sprite.setScale((targetSize / frame.width) * 1.2);
-          }
-        });
-        this.load.start();
+        this.load.on(
+          `filecomplete-image-${visitorTextureKey}`,
+          () => {
+            if (sprite && sprite.active && this.textures.exists(visitorTextureKey)) {
+              sprite.setTexture(visitorTextureKey);
+              const tex = this.textures.get(visitorTextureKey);
+              const frame = tex.get();
+              sprite.setScale((targetSize / frame.width) * 1.2);
+            }
+          },
+          this
+        );
+        // load.start() is called by the batch handler in updateCharacters()
       }
     }
 
