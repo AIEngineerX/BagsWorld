@@ -938,10 +938,11 @@ export class WorldScene extends Phaser.Scene {
     // Simulate the exact same click behavior as pointerdown handlers
     // This matches the logic in createCharacterSprite
 
-    const isExternalAgent = character.id.startsWith("external-");
+    const isExternalAgent =
+      character.id.startsWith("external-") || character.id.startsWith("agent-");
 
     if (isExternalAgent) {
-      // External agents open their Moltbook profile
+      // External/spawned agents open their Moltbook profile
       if (character.profileUrl) {
         window.open(character.profileUrl, "_blank");
       }
@@ -5074,8 +5075,11 @@ Your creator page = website!
       spriteData.bagsyGlow.x = sprite.x;
       spriteData.bagsyGlow.y = sprite.y;
     }
-    // External agents (OpenClaws)
-    if (character.id.startsWith("external-") && spriteData.openClawGlow) {
+    // External agents (OpenClaws) and spawned agents (ElizaOS)
+    if (
+      (character.id.startsWith("external-") || character.id.startsWith("agent-")) &&
+      spriteData.openClawGlow
+    ) {
       spriteData.openClawGlow.x = sprite.x;
       spriteData.openClawGlow.y = sprite.y;
     }
@@ -8102,8 +8106,8 @@ Your creator page = website!
     // Sync mobile labels with current sprite position
     if (this.isMobile) this.updateMobileLabel(sprite);
 
-    // External agents (OpenClaws) - don't change their texture
-    const isOpenClaw = character.id.startsWith("external-");
+    // External agents (OpenClaws) and spawned agents (ElizaOS) - don't change their texture
+    const isOpenClaw = character.id.startsWith("external-") || character.id.startsWith("agent-");
 
     // Update texture based on mood (skip for special characters including Academy and OpenClaws)
     const isToly = character.isToly === true;
@@ -8154,10 +8158,12 @@ Your creator page = website!
   }
 
   private createCharacterSprite(character: GameCharacter, index: number): void {
-    // External agents (Moltbook Beach "Openclaws") use crab/lobster sprites
+    // External agents (DB-registered) and spawned agents (ElizaOS) use crab/lobster sprites
     const isExternalAgent = character.id.startsWith("external-");
-    const isMoltbookAgent = isExternalAgent && character.provider === "moltbook";
-    const isOpenClaw = isExternalAgent; // All external agents are "Openclaws"
+    const isSpawnedAgent = character.id.startsWith("agent-");
+    const isMoltbookAgent =
+      (isExternalAgent || isSpawnedAgent) && character.provider === "moltbook";
+    const isOpenClaw = isExternalAgent || isSpawnedAgent;
 
     // Special characters use unique textures, others get random variants
     const isToly = character.isToly === true;
@@ -9187,8 +9193,19 @@ Your creator page = website!
 
     const container = this.add.container(sprite.x, sprite.y - 65);
 
+    // Determine character type for proper labeling
+    const isXCreator = character.provider === "twitter";
+    const borderColor = isXCreator ? 0x4ade80 : 0x60a5fa;
+    const providerLabel = isXCreator
+      ? "𝕏 Creator"
+      : character.provider === "solana"
+        ? "Solana"
+        : character.provider === "pokemon"
+          ? "Trainer"
+          : "Bags.fm";
+
     const bg = this.add.rectangle(0, 0, 180, 78, 0x0a0a0f, 0.95);
-    bg.setStrokeStyle(2, 0x4ade80);
+    bg.setStrokeStyle(2, borderColor);
 
     const nameText = this.add.text(0, -18, `@${character.username}`, {
       fontFamily: "monospace",
@@ -9197,26 +9214,27 @@ Your creator page = website!
     });
     nameText.setOrigin(0.5, 0.5);
 
-    const providerText = this.add.text(
-      0,
-      -4,
-      `${character.provider === "twitter" ? "𝕏" : character.provider}`,
-      {
-        fontFamily: "monospace",
-        fontSize: "10px",
-        color: "#9ca3af",
-      }
-    );
+    const providerText = this.add.text(0, -4, providerLabel, {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#9ca3af",
+    });
     providerText.setOrigin(0.5, 0.5);
 
-    const earningsText = this.add.text(0, 10, `💰 $${character.earnings24h.toFixed(0)} (24h)`, {
-      fontFamily: "monospace",
-      fontSize: "9px",
-      color: "#4ade80",
-    });
+    const earningsText = this.add.text(
+      0,
+      10,
+      character.earnings24h > 0 ? `💰 ${character.earnings24h.toFixed(2)} SOL (24h)` : "Fee Earner",
+      {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#4ade80",
+      }
+    );
     earningsText.setOrigin(0.5, 0.5);
 
-    const clickText = this.add.text(0, 24, "Click to view profile", {
+    const clickLabel = character.profileUrl ? "Click to view 𝕏 profile" : "Bags.fm Citizen";
+    const clickText = this.add.text(0, 24, clickLabel, {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#6b7280",
