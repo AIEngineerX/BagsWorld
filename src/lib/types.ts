@@ -237,6 +237,10 @@ export interface GameCharacter {
   isProfessorOak?: boolean; // Special flag for Professor Oak (Token Launch Guide) - Founder's Corner
   // Mascots
   isBagsy?: boolean; // Special flag for Bagsy (BagsWorld Hype Bot) - Park
+  // Agent reputation data (external agents only)
+  moltbookKarma?: number;
+  reputationScore?: number;
+  tokensLaunched?: number;
 }
 
 export interface GameBuilding {
