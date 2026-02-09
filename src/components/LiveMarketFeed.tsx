@@ -3,7 +3,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useGameStore } from "@/lib/store";
 import type { MarketEvent, MarketSummary } from "@/lib/types";
-import { usePlatformActivity } from "@/hooks/usePlatformActivity";
 import { MarketSummaryBar } from "./MarketSummaryBar";
 import { TokenPriceTicker } from "./TokenPriceTicker";
 import { MarketEventItem } from "./MarketEventItem";
@@ -25,7 +24,6 @@ function formatUpdatedAgo(ts: number | undefined): string {
 
 export function LiveMarketFeed() {
   const worldState = useGameStore((s) => s.worldState);
-  const { platformEvents, platformSummary } = usePlatformActivity();
   const [filter, setFilter] = useState<MarketFilter>("all");
   const listRef = useRef<HTMLDivElement>(null);
   const [userScrolled, setUserScrolled] = useState(false);
@@ -34,14 +32,13 @@ export function LiveMarketFeed() {
   const events = useMemo(() => worldState?.events ?? [], [worldState?.events]);
   const lastUpdated = worldState?.lastUpdated;
 
-  // Compute market summary from buildings + platform Bags.fm data
+  // Compute market summary from buildings (platform data is already blended server-side)
   const summary = useMemo<MarketSummary>(() => {
-    let totalVolume24h = platformSummary.totalVolume24h;
-    let totalFeesClaimed = platformSummary.totalFeesClaimed;
+    let totalVolume24h = 0;
+    let totalFeesClaimed = 0;
     let topGainer: MarketSummary["topGainer"] = null;
     let topLoser: MarketSummary["topLoser"] = null;
 
-    // Add volume from user-registered buildings (deduplication: platform already excludes knownMints)
     for (const b of buildings) {
       if (!b.isPermanent) {
         totalVolume24h += b.volume24h ?? 0;
@@ -57,16 +54,13 @@ export function LiveMarketFeed() {
       }
     }
 
-    // Add fees from BagsWorld events (user-registered token claims)
     for (const e of events) {
-      if (e.type === "fee_claim" && e.data?.amount) {
+      if ((e.type === "fee_claim" || e.type === "platform_claim") && e.data?.amount) {
         totalFeesClaimed += e.data.amount;
       }
     }
 
-    // Token count: platform-discovered Bags.fm tokens + user-registered buildings
-    const registeredTokenCount = buildings.filter((b) => !b.isPermanent).length;
-    const activeTokenCount = platformSummary.activeTokenCount + registeredTokenCount;
+    const activeTokenCount = buildings.filter((b) => !b.isPermanent).length;
 
     return {
       totalVolume24h,
@@ -75,51 +69,27 @@ export function LiveMarketFeed() {
       topGainer,
       topLoser,
     };
-  }, [buildings, events, platformSummary]);
+  }, [buildings, events]);
 
-  // Transform GameEvent[] into MarketEvent[], merging BagsWorld + platform events
+  // Transform GameEvent[] into MarketEvent[] (single source — platform events included server-side)
   const marketEvents = useMemo<MarketEvent[]>(() => {
-    // BagsWorld events (tagged as bagsworld)
-    const bwEvents: MarketEvent[] = events.map((e) => ({
-      id: e.id,
-      type: e.type,
-      message: e.message,
-      timestamp: e.timestamp,
-      tokenSymbol: e.data?.symbol,
-      tokenName: e.data?.tokenName,
-      amount: e.data?.amount,
-      change: e.data?.change,
-      source: "bagsworld" as const,
-    }));
-
-    // Platform events (tagged as platform)
-    const pfEvents: MarketEvent[] = platformEvents.map((e) => ({
-      id: e.id,
-      type: e.type,
-      message: e.message,
-      timestamp: e.timestamp,
-      tokenSymbol: e.data?.symbol,
-      tokenName: e.data?.tokenName,
-      amount: e.data?.amount,
-      change: e.data?.change,
-      source: "platform" as const,
-    }));
-
-    // Merge, deduplicate by id, sort with BagsWorld priority at same timestamp
-    const seen = new Set<string>();
-    const merged: MarketEvent[] = [];
-
-    for (const e of [...bwEvents, ...pfEvents]) {
-      if (!seen.has(e.id)) {
-        seen.add(e.id);
-        merged.push(e);
-      }
-    }
-
     const cutoff = Date.now() - FEED_MAX_AGE_MS;
 
-    return merged
+    return events
       .filter((e) => e.timestamp > cutoff)
+      .map((e) => ({
+        id: e.id,
+        type: e.type,
+        message: e.message,
+        timestamp: e.timestamp,
+        tokenSymbol: e.data?.symbol,
+        tokenName: e.data?.tokenName,
+        amount: e.data?.amount,
+        change: e.data?.change,
+        source: (e.type.startsWith("platform_") ? "platform" : "bagsworld") as
+          | "bagsworld"
+          | "platform",
+      }))
       .sort((a, b) => {
         const timeDiff = b.timestamp - a.timestamp;
         if (timeDiff !== 0) return timeDiff;
@@ -129,7 +99,7 @@ export function LiveMarketFeed() {
         return 0;
       })
       .slice(0, MAX_EVENTS);
-  }, [events, platformEvents]);
+  }, [events]);
 
   // Apply filter
   const filteredEvents = useMemo(() => {
@@ -142,7 +112,9 @@ export function LiveMarketFeed() {
             e.type === "platform_launch"
         );
       case "claims":
-        return marketEvents.filter((e) => e.type === "fee_claim" || e.type === "milestone");
+        return marketEvents.filter(
+          (e) => e.type === "fee_claim" || e.type === "platform_claim" || e.type === "milestone"
+        );
       case "trades":
         // Show whale trades sorted by volume (largest first)
         return marketEvents

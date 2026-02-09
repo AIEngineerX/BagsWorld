@@ -81,6 +81,11 @@ export interface FeeEarner {
   change24h: number;
   tokenCount: number;
   topToken?: TokenInfo;
+  // Platform visitor flags
+  isVisitor?: boolean;
+  visitorTokenName?: string;
+  visitorTokenSymbol?: string;
+  visitorTokenMint?: string;
   isToly?: boolean; // Special flag for Toly (Solana co-founder) character
   isAsh?: boolean; // Special flag for Ash character
   isFinn?: boolean; // Special flag for Finn (Bags.fm CEO) character
@@ -116,6 +121,7 @@ export interface TokenInfo {
   creator: string;
   levelOverride?: number | null; // Admin override for building level (1-5)
   isPermanent?: boolean; // True for landmark buildings (Treasury, etc.) - not real on-chain tokens
+  isPlatform?: boolean; // Discovered from platform-wide activity, not user-registered
   positionOverride?: { x: number; y: number } | null; // Admin override for building position
   styleOverride?: number | null; // Admin override for building style (0-3)
   healthOverride?: number | null; // Admin override for building health (0-100)
@@ -241,6 +247,12 @@ export interface GameCharacter {
   moltbookKarma?: number;
   reputationScore?: number;
   tokensLaunched?: number;
+  // Platform visitors (discovered from Bags.fm ecosystem-wide activity)
+  isVisitor?: boolean;
+  visitorTokenName?: string;
+  visitorTokenSymbol?: string;
+  visitorTokenMint?: string;
+  spriteUrl?: string; // fal.ai generated sprite URL
 }
 
 export interface GameBuilding {
@@ -284,7 +296,8 @@ export type GameEventType =
   | "milestone"
   | "whale_alert"
   | "platform_launch"
-  | "platform_trending";
+  | "platform_trending"
+  | "platform_claim";
 
 export interface GameEvent {
   id: string;

@@ -16,7 +16,7 @@ const WORLD_WIDTH = 1280;
 const WORLD_HEIGHT = 960;
 const BUILDING_SPACING = Math.round(120 * SCALE); // Increased spacing to prevent overlap
 const MAX_BUILDINGS = 20;
-const MAX_CHARACTERS = 15;
+const MAX_CHARACTERS = 25; // 15 special NPCs + up to 8 visitors + regular earners
 
 // Bags.fm fee activity thresholds for world health (in SOL)
 interface HealthThresholds {
@@ -569,6 +569,18 @@ export function transformFeeEarnerToCharacter(
     return zones[Math.abs(hash) % zones.length];
   };
 
+  // Visitors go to Park or BagsCity (the most populated zones)
+  const getVisitorZone = (wallet: string): "main_city" | "trending" => {
+    let hash = 0;
+    for (let i = 0; i < wallet.length; i++) {
+      hash = (hash << 5) - hash + wallet.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return Math.abs(hash) % 2 === 0 ? "main_city" : "trending";
+  };
+
+  const isVisitor = earner.isVisitor || false;
+
   return {
     id: earner.wallet,
     username: earner.providerUsername || earner.username,
@@ -584,8 +596,17 @@ export function transformFeeEarnerToCharacter(
     isMoving: flags.isBagsy ? Math.random() > 0.3 : !isSpecial && Math.random() > 0.7,
     buildingId: earner.topToken?.mint,
     profileUrl,
-    zone: specialCfg?.zone ?? getZoneForFeeEarner(earner.wallet),
+    zone:
+      specialCfg?.zone ??
+      (isVisitor ? getVisitorZone(earner.wallet) : getZoneForFeeEarner(earner.wallet)),
     ...flags,
+    // Platform visitor flags
+    ...(isVisitor && {
+      isVisitor: true,
+      visitorTokenName: earner.visitorTokenName,
+      visitorTokenSymbol: earner.visitorTokenSymbol,
+      visitorTokenMint: earner.visitorTokenMint,
+    }),
   };
 }
 
@@ -721,6 +742,8 @@ export function generateGameEvent(type: GameEvent["type"], data: GameEvent["data
     whale_alert: (d) => `🐋 Whale activity on ${d?.tokenName}!`,
     platform_launch: (d) => `🚀 New on Bags.fm: ${d?.tokenName} launched`,
     platform_trending: (d) => `📊 ${d?.tokenName} trending on Bags.fm`,
+    platform_claim: (d) =>
+      `💰 ${d?.username || "Someone"} claimed ${d?.amount?.toFixed(2) || "?"} SOL from ${d?.tokenName || "Bags.fm"}`,
   };
 
   return {
@@ -817,7 +840,7 @@ export function buildWorldState(
     bagsMetrics?.totalLifetimeFees ?? tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
   const activeTokenCount =
     bagsMetrics?.activeTokenCount ?? tokens.filter((t) => (t.lifetimeFees || 0) > 0).length;
-  const buildingCount = tokens.length;
+  const buildingCount = tokens.filter((t) => !t.isPlatform).length;
 
   const health = calculateWorldHealth(
     claimVolume24h,
@@ -836,8 +859,9 @@ export function buildWorldState(
   // Transform tokens to buildings (keep positions from previous state)
   const previousBuildings = new Map(previousState?.buildings.map((b) => [b.id, b]));
 
-  // Transform all tokens to buildings first
-  const allBuildings = tokens.map((token, index) =>
+  // Only registered tokens become buildings (platform-discovered tokens contribute to health only)
+  const buildableTokens = tokens.filter((t) => !t.isPlatform);
+  const allBuildings = buildableTokens.map((token, index) =>
     transformTokenToBuilding(token, index, previousBuildings.get(token.mint))
   );
 
