@@ -5090,6 +5090,12 @@ Your creator page = website!
     if (bg) bg.setPosition(sprite.x, sprite.y + offset);
   }
 
+  // Update visitor sparkle indicator position
+  private updateVisitorSparkle(sprite: Phaser.GameObjects.Sprite): void {
+    const sparkle = sprite.getData("visitorSparkle") as Phaser.GameObjects.Text | undefined;
+    if (sparkle) sparkle.setPosition(sprite.x, sprite.y - 22);
+  }
+
   // Handle character speak events (from AI behavior)
   private handleCharacterSpeak(event: CustomEvent): void {
     const { characterId, message, emotion } = event.detail;
@@ -7300,8 +7306,9 @@ Your creator page = website!
           // Face direction of movement
           sprite.setFlipX(dx < 0);
 
-          // Update any glow sprites to follow
+          // Update any glow sprites and visitor sparkles to follow
           this.updateCharacterGlow(sprite, character);
+          this.updateVisitorSparkle(sprite);
           if (this.isMobile) this.updateMobileLabel(sprite);
         } else {
           // Reached target, clear it and reset speed for next movement
@@ -7331,8 +7338,9 @@ Your creator page = website!
             this.characterSpeeds.delete(id); // Reset speed on direction change
           }
         }
-        // Update glow on fallback movement too
+        // Update glow and visitor sparkles on fallback movement too
         this.updateCharacterGlow(sprite, character);
+        this.updateVisitorSparkle(sprite);
         if (this.isMobile) this.updateMobileLabel(sprite);
       }
     });
@@ -7998,6 +8006,11 @@ Your creator page = website!
           | undefined;
         if (mobileLabel) mobileLabel.destroy();
         if (mobileLabelBg) mobileLabelBg.destroy();
+        // Clean up visitor sparkle
+        const visitorSparkle = sprite.getData("visitorSparkle") as
+          | Phaser.GameObjects.Text
+          | undefined;
+        if (visitorSparkle) visitorSparkle.destroy();
         sprite.destroy();
         this.characterSprites.delete(id);
         this.characterVariants.delete(id);
@@ -8158,6 +8171,8 @@ Your creator page = website!
     const isProfessorOak = character.isProfessorOak === true;
     // Mascots
     const isBagsy = character.isBagsy === true;
+    // Platform visitors
+    const isVisitor = character.isVisitor === true;
     const isAcademyChar = isRamo || isSincara || isStuu || isSam || isAlaa || isCarlo || isBNN;
     const isFoundersChar = isProfessorOak;
     const isMascot = isBagsy;
@@ -8224,6 +8239,42 @@ Your creator page = website!
       sprite.setInteractive();
     }
     sprite.setScale(isSpecial ? 1.3 : 1.2); // Special characters slightly larger
+
+    // Dynamic sprite loading for visitors with fal.ai-generated sprites
+    // Sprites generated at 256x256, scaled down to match ~51px character size
+    if (isVisitor && character.spriteUrl) {
+      const visitorTextureKey = `visitor_${character.id}`;
+      const targetSize = 51; // 32 * SCALE(1.6)
+      if (this.textures.exists(visitorTextureKey)) {
+        sprite.setTexture(visitorTextureKey);
+        const tex = this.textures.get(visitorTextureKey);
+        const frame = tex.get();
+        sprite.setScale((targetSize / frame.width) * 1.2);
+      } else {
+        this.load.image(visitorTextureKey, character.spriteUrl);
+        this.load.once("complete", () => {
+          if (sprite && sprite.active) {
+            sprite.setTexture(visitorTextureKey);
+            const tex = this.textures.get(visitorTextureKey);
+            const frame = tex.get();
+            sprite.setScale((targetSize / frame.width) * 1.2);
+          }
+        });
+        this.load.start();
+      }
+    }
+
+    // Visitor sparkle indicator
+    if (isVisitor) {
+      const sparkle = this.add.text(character.x, character.y - 22, "✦", {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: "#fbbf24",
+      });
+      sparkle.setOrigin(0.5, 0.5);
+      sparkle.setDepth(12);
+      sprite.setData("visitorSparkle", sparkle);
+    }
 
     // Persistent name label on mobile (always visible, no hover needed)
     if (this.isMobile) {
@@ -8295,6 +8346,8 @@ Your creator page = website!
         this.showProfessorOakTooltip(sprite!);
       } else if (isBagsy) {
         this.showBagsyTooltip(sprite!);
+      } else if (isVisitor) {
+        this.showVisitorTooltip(character, sprite!);
       } else {
         this.showCharacterTooltip(character, sprite!);
       }
@@ -9158,6 +9211,47 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, providerText, earningsText, clickText]);
+    container.setDepth(200);
+    this.tooltip = container;
+  }
+
+  private showVisitorTooltip(character: GameCharacter, sprite: Phaser.GameObjects.Sprite): void {
+    this.hideTooltip();
+
+    const container = this.add.container(sprite.x, sprite.y - 70);
+
+    const bg = this.add.rectangle(0, 0, 195, 78, 0x0a0a0f, 0.95);
+    bg.setStrokeStyle(2, 0xfbbf24); // Gold border for visitors
+
+    const nameText = this.add.text(0, -22, `✦ @${character.username}`, {
+      fontFamily: "monospace",
+      fontSize: "11px",
+      color: "#fbbf24",
+    });
+    nameText.setOrigin(0.5, 0.5);
+
+    const tokenText = this.add.text(0, -6, `Creator of $${character.visitorTokenSymbol || "???"}`, {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+    });
+    tokenText.setOrigin(0.5, 0.5);
+
+    const sourceText = this.add.text(0, 10, "Bags.fm Visitor", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    sourceText.setOrigin(0.5, 0.5);
+
+    const clickText = this.add.text(0, 24, "Click to view profile", {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#6b7280",
+    });
+    clickText.setOrigin(0.5, 0.5);
+
+    container.add([bg, nameText, tokenText, sourceText, clickText]);
     container.setDepth(200);
     this.tooltip = container;
   }

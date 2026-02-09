@@ -1,6 +1,5 @@
-// World State API - Token Launch Centric
-// The world is built from user-launched tokens, not external discovery
-// Each launched token becomes a building in BagsWorld
+// World State API - Reactive to all Bags.fm activity
+// Registered tokens become buildings; platform-wide tokens contribute to health, weather, events, and visitors
 
 import { NextRequest, NextResponse } from "next/server";
 import type {
@@ -17,7 +16,7 @@ import {
   type BagsWorldHolder,
 } from "@/lib/world-calculator";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { getTokensByMints, type DexPair } from "@/lib/dexscreener-api";
+import { getTokensByMints, searchTokens, type DexPair } from "@/lib/dexscreener-api";
 import {
   emitEvent,
   startCoordinator,
@@ -156,6 +155,75 @@ interface SDKEnrichResult {
   timestamp: number;
 }
 const sdkEnrichCache = new Map<string, SDKEnrichResult>();
+
+// Platform-wide token discovery cache (DexScreener search, 5 min TTL)
+let platformDiscoveryCache: { tokens: RegisteredToken[]; timestamp: number } | null = null;
+const PLATFORM_DISCOVERY_TTL = 5 * 60_000; // 5 minutes
+
+// Visitor sprite URL cache (wallet -> spriteUrl, persisted across requests)
+const visitorSpriteCache = new Map<string, string>();
+
+// Fire-and-forget sprite generation for visitors without cached sprites
+function generateVisitorSprites(
+  visitors: Array<{ wallet: string; username: string; tokenSymbol?: string }>
+): void {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  for (const visitor of visitors) {
+    if (visitorSpriteCache.has(visitor.wallet)) continue;
+    fetch(`${siteUrl}/api/visitor-sprite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(visitor),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.imageUrl) {
+          visitorSpriteCache.set(visitor.wallet, data.imageUrl);
+        }
+      })
+      .catch(() => {
+        // Sprite generation is best-effort
+      });
+  }
+}
+
+async function discoverPlatformTokens(excludeMints: Set<string>): Promise<RegisteredToken[]> {
+  const now = Date.now();
+  if (platformDiscoveryCache && now - platformDiscoveryCache.timestamp < PLATFORM_DISCOVERY_TTL) {
+    // Return cached results, filtered against current excludeMints
+    return platformDiscoveryCache.tokens.filter((t) => !excludeMints.has(t.mint));
+  }
+
+  try {
+    // DexScreener search "BAGS" returns ~30 active Bags.fm pairs (1 API call)
+    const pairs = await searchTokens("BAGS");
+    // Filter to bags dex only (confirmed Bags.fm tokens) and sort by volume
+    const bagsPairs = pairs
+      .filter((p) => p.dexId === "bags")
+      .sort((a, b) => (b.volume?.h24 || 0) - (a.volume?.h24 || 0))
+      .slice(0, 10); // Top 10 by volume
+
+    const platformTokens: RegisteredToken[] = bagsPairs.map((pair) => ({
+      mint: pair.baseToken.address,
+      name: pair.baseToken.name,
+      symbol: pair.baseToken.symbol,
+      creator: "platform",
+      createdAt: Date.now() - 86400000, // Not known, assume recent
+      isPlatform: true,
+    }));
+
+    platformDiscoveryCache = { tokens: platformTokens, timestamp: now };
+    console.log(
+      `[WorldState] Discovered ${platformTokens.length} platform tokens:`,
+      platformTokens.map((t) => t.symbol).join(", ")
+    );
+
+    return platformTokens.filter((t) => !excludeMints.has(t.mint));
+  } catch (error) {
+    console.warn("[WorldState] Platform discovery failed, continuing without:", error);
+    return [];
+  }
+}
 
 let previousState: WorldState | null = null;
 
@@ -532,6 +600,8 @@ interface RegisteredToken {
   styleOverride?: number | null;
   healthOverride?: number | null;
   zoneOverride?: ZoneType | null;
+  // Platform discovery flag
+  isPlatform?: boolean;
 }
 
 // Build FeeEarner from SDK creator data
@@ -691,6 +761,7 @@ async function enrichTokenWithSDK(
     styleOverride: token.styleOverride,
     healthOverride: token.healthOverride,
     createdAt: token.createdAt,
+    isPlatform: token.isPlatform || false,
   };
 
   return { tokenInfo, creators, claimEvents, claimEvents24h };
@@ -988,9 +1059,14 @@ export async function POST(request: NextRequest) {
     }
 
     // ALWAYS include Treasury building and PokeCenter (permanent landmarks)
-    // Then add any user tokens
+    // Then add any user tokens + platform-discovered tokens
     const permanentBuildings = [TREASURY_BUILDING, BAGSWORLD_HQ, ...STARTER_BUILDINGS];
-    const tokensToProcess = [...permanentBuildings, ...registeredTokens];
+    const registeredMints = new Set([
+      ...permanentBuildings.map((t) => t.mint),
+      ...registeredTokens.map((t) => t.mint),
+    ]);
+    const platformTokens = await discoverPlatformTokens(registeredMints);
+    const tokensToProcess = [...permanentBuildings, ...registeredTokens, ...platformTokens];
 
     // Enrich all tokens with SDK data
     const enrichedResults = await Promise.all(
@@ -1087,7 +1163,15 @@ export async function POST(request: NextRequest) {
             existing.topToken = token;
           }
         } else {
-          earnerMap.set(creator.wallet, buildFeeEarner(creator, token, rank++, walletEarnings24h));
+          const earner = buildFeeEarner(creator, token, rank++, walletEarnings24h);
+          // Flag platform token creators as visitors
+          if (registeredToken.isPlatform) {
+            earner.isVisitor = true;
+            earner.visitorTokenName = token.name;
+            earner.visitorTokenSymbol = token.symbol;
+            earner.visitorTokenMint = token.mint;
+          }
+          earnerMap.set(creator.wallet, earner);
           seenUsernames.add(normalizedUsername);
         }
       });
@@ -1169,7 +1253,7 @@ export async function POST(request: NextRequest) {
 
     let earners = Array.from(earnerMap.values())
       .sort((a, b) => b.lifetimeEarnings - a.lifetimeEarnings)
-      .slice(0, 13) // Leave room for Satoshi and Ash
+      .slice(0, 10) // Top earners (specials + visitors added after)
       .map((e, i) => ({ ...e, rank: i + 1 }));
 
     // Debug: Log final earners
@@ -1376,17 +1460,62 @@ export async function POST(request: NextRequest) {
     const gameActivityBonus = arenaBonus + casinoBonus + oracleBonus;
     const gameActivitySolEquivalent = gameActivityBonus * 0.5;
 
-    const claimVolume24h = onChainClaimVolume + agentClaimVolume + gameActivitySolEquivalent;
-    // 2. Total lifetime fees across all tokens (already in SOL after enrichment)
-    const totalLifetimeFees = tokens.reduce((sum, t) => sum + (t.lifetimeFees || 0), 0);
-    // 3. Count tokens with any fee activity
-    const activeTokenCount = tokens.filter((t) => (t.lifetimeFees || 0) > 0).length;
+    const totalClaimVolume24h = onChainClaimVolume + agentClaimVolume + gameActivitySolEquivalent;
+
+    // Split metrics by registered vs platform tokens for 40/60 health blend
+    const registeredTokenInfos = tokens.filter((t) => !t.isPlatform);
+    const platformTokenInfos = tokens.filter((t) => t.isPlatform);
+
+    // Split 24h claim events by token type (enrichedResults maps 1:1 to tokensToProcess)
+    let registeredClaimVol = 0;
+    let platformClaimVol = 0;
+    enrichedResults.forEach((result, index) => {
+      const vol = lamportsToSol(result.claimEvents24h.reduce((s, e) => s + e.amount, 0));
+      if (tokensToProcess[index].isPlatform) {
+        platformClaimVol += vol;
+      } else {
+        registeredClaimVol += vol;
+      }
+    });
+    // Agent claims and game activity bonus go to registered side
+    registeredClaimVol += agentClaimVolume + gameActivitySolEquivalent;
+
+    const registeredLifetimeFees = registeredTokenInfos.reduce(
+      (sum, t) => sum + (t.lifetimeFees || 0),
+      0
+    );
+    const platformLifetimeFees = platformTokenInfos.reduce(
+      (sum, t) => sum + (t.lifetimeFees || 0),
+      0
+    );
+    const registeredActiveCount = registeredTokenInfos.filter(
+      (t) => (t.lifetimeFees || 0) > 0
+    ).length;
+    const platformActiveCount = platformTokenInfos.filter((t) => (t.lifetimeFees || 0) > 0).length;
+
+    // 40% platform + 60% registered health blend
+    const claimVolume24h =
+      platformTokenInfos.length > 0
+        ? platformClaimVol * 0.4 + registeredClaimVol * 0.6
+        : totalClaimVolume24h; // Fallback if no platform tokens discovered
+    const totalLifetimeFees =
+      platformTokenInfos.length > 0
+        ? platformLifetimeFees * 0.4 + registeredLifetimeFees * 0.6
+        : registeredLifetimeFees;
+    const activeTokenCount =
+      platformTokenInfos.length > 0
+        ? Math.round(platformActiveCount * 0.4 + registeredActiveCount * 0.6)
+        : registeredActiveCount;
 
     const bagsMetrics: BagsHealthMetrics = {
       claimVolume24h,
       totalLifetimeFees,
       activeTokenCount,
     };
+
+    console.log(
+      `[WorldState] Health blend: platform(${platformClaimVol.toFixed(2)} SOL, ${platformActiveCount} tokens) * 0.4 + registered(${registeredClaimVol.toFixed(2)} SOL, ${registeredActiveCount} tokens) * 0.6 = ${claimVolume24h.toFixed(2)} SOL`
+    );
 
     // Build world state with Bags.fm metrics and top holders for Ballers Valley
     const worldState = buildWorldState(
@@ -1410,14 +1539,17 @@ export async function POST(request: NextRequest) {
         // Check if this is a "new" token (less than 24 hours old based on createdAt)
         const registeredToken = tokensToProcess.find((t) => t.mint === token.mint);
         if (registeredToken && Date.now() - registeredToken.createdAt < 86400000) {
+          const isPlatform = token.isPlatform || false;
           worldState.events.unshift({
             id: launchEventId,
-            type: "token_launch",
-            message: `${token.symbol} building constructed in BagsWorld!`,
+            type: isPlatform ? "platform_launch" : "token_launch",
+            message: isPlatform
+              ? `${token.symbol} is active on Bags.fm!`
+              : `${token.symbol} building constructed in BagsWorld!`,
             timestamp: registeredToken.createdAt,
             data: {
               tokenName: token.name,
-              username: "Builder",
+              username: isPlatform ? "Bags.fm" : "Builder",
               symbol: token.symbol,
               platform: "bags",
               mint: token.mint,
@@ -1442,6 +1574,10 @@ export async function POST(request: NextRequest) {
       totalLifetimeFees,
       activeTokenCount,
       gameActivityBonus,
+      platformTokenCount: platformTokenInfos.length,
+      platformClaimVol,
+      registeredClaimVol,
+      blendRatio: platformTokenInfos.length > 0 ? "40/60" : "100% registered",
       source: "bags.fm",
     };
 
@@ -1494,6 +1630,30 @@ export async function POST(request: NextRequest) {
     }
 
     previousState = worldState;
+
+    // Inject cached sprite URLs into visitor characters and trigger generation for missing ones
+    const visitorsNeedingSprites: Array<{
+      wallet: string;
+      username: string;
+      tokenSymbol?: string;
+    }> = [];
+    for (const char of worldState.population) {
+      if (char.isVisitor) {
+        const cachedUrl = visitorSpriteCache.get(char.id);
+        if (cachedUrl) {
+          char.spriteUrl = cachedUrl;
+        } else {
+          visitorsNeedingSprites.push({
+            wallet: char.id,
+            username: char.username,
+            tokenSymbol: char.visitorTokenSymbol,
+          });
+        }
+      }
+    }
+    if (visitorsNeedingSprites.length > 0) {
+      generateVisitorSprites(visitorsNeedingSprites);
+    }
 
     // Inject agent characters into population
     // Inject hosted agents
