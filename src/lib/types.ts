@@ -345,6 +345,8 @@ export const METEORA_DBC_PROGRAM = "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
 
 export type OracleMarketType = "price_prediction" | "custom";
 
+export type OracleMarketCategory = "crypto" | "sports" | "world_event" | "bagsworld";
+
 export type OracleOutcomeType = "multiple_choice" | "binary";
 
 export interface OracleMarketOutcome {
@@ -358,6 +360,10 @@ export interface OracleMarketConfig {
   outcomes: OracleMarketOutcome[];
   resolution_logic: string;
   question: string;
+  category?: OracleMarketCategory;
+  description?: string;
+  imageUrl?: string;
+  isPrizeEvent?: boolean;
 }
 
 export type OracleReputationTier = "novice" | "seer" | "oracle" | "master";

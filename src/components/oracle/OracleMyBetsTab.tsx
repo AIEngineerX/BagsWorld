@@ -12,6 +12,8 @@ interface ActiveBet {
     endTime: string;
     marketType: string;
     question?: string;
+    category?: string;
+    isPrizeEvent?: boolean;
     tokenOptions: Array<{ mint: string; symbol: string }>;
     marketConfig?: { outcomes?: Array<{ id: string; label: string }> };
   };
@@ -31,6 +33,8 @@ interface RecentResult {
     endTime: string;
     marketType: string;
     question?: string;
+    category?: string;
+    isPrizeEvent?: boolean;
     tokenOptions: Array<{ mint: string; symbol: string }>;
     marketConfig?: { outcomes?: Array<{ id: string; label: string }> };
     winningTokenMint?: string;
@@ -112,7 +116,29 @@ export function OracleMyBetsTab({ activeBets, recentResults }: OracleMyBetsTabPr
                 <div key={bet.round.id} className="rpg-border-inner bg-[#1a1a1a] p-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-pixel text-white text-xs">{getChoiceLabel(bet)}</p>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <p className="font-pixel text-white text-xs">{getChoiceLabel(bet)}</p>
+                        {bet.round.category && bet.round.category !== "bagsworld" && (
+                          <span
+                            className={`font-pixel text-[7px] px-1 py-0.5 rpg-border-inner ${
+                              bet.round.category === "crypto"
+                                ? "bg-[#1e3a5f]/30 text-[#60a5fa]"
+                                : bet.round.category === "sports"
+                                  ? "bg-[#14532d]/30 text-[#4ade80]"
+                                  : "bg-[#78350f]/30 text-[#fbbf24]"
+                            }`}
+                          >
+                            {bet.round.category === "world_event"
+                              ? "WORLD"
+                              : bet.round.category.toUpperCase()}
+                          </span>
+                        )}
+                        {bet.round.isPrizeEvent && (
+                          <span className="font-pixel text-[7px] px-1 py-0.5 rpg-border-inner bg-[#854d0e]/30 text-[#fbbf24]">
+                            PRIZE
+                          </span>
+                        )}
+                      </div>
                       <p className="font-pixel text-[#666] text-[9px]">
                         #{bet.round.id} · {bet.prediction.opWagered} OP
                       </p>
@@ -160,7 +186,26 @@ export function OracleMyBetsTab({ activeBets, recentResults }: OracleMyBetsTabPr
                       {isWin ? "W" : "L"}
                     </span>
                     <div>
-                      <p className="font-pixel text-white text-[10px]">{getChoiceLabel(result)}</p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-pixel text-white text-[10px]">
+                          {getChoiceLabel(result)}
+                        </p>
+                        {result.round.category && result.round.category !== "bagsworld" && (
+                          <span
+                            className={`font-pixel text-[6px] px-1 py-0.5 rpg-border-inner ${
+                              result.round.category === "crypto"
+                                ? "bg-[#1e3a5f]/30 text-[#60a5fa]"
+                                : result.round.category === "sports"
+                                  ? "bg-[#14532d]/30 text-[#4ade80]"
+                                  : "bg-[#78350f]/30 text-[#fbbf24]"
+                            }`}
+                          >
+                            {result.round.category === "world_event"
+                              ? "WORLD"
+                              : result.round.category.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
                       <p className="font-pixel text-[#666] text-[8px]">
                         #{result.round.id}
                         {result.prediction.rank && ` · Rank #${result.prediction.rank}`}

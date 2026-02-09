@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
       ? round.tokenOptions.find((t) => t.mint === round.winningTokenMint)
       : null;
 
+    const marketConfig = round.marketConfig as Record<string, unknown> | undefined;
+
     return {
       id: round.id,
       status: round.status,
@@ -31,6 +33,10 @@ export async function GET(request: NextRequest) {
       endTime: round.endTime.toISOString(),
       tokenOptions: round.tokenOptions,
       entryCount: round.entryCount,
+      marketType: round.marketType || "price_prediction",
+      category: (marketConfig?.category as string) || "bagsworld",
+      isPrizeEvent: (marketConfig?.isPrizeEvent as boolean) ?? false,
+      winningOutcomeId: round.winningOutcomeId,
       winner:
         round.status === "settled" && winningToken
           ? {
@@ -45,7 +51,11 @@ export async function GET(request: NextRequest) {
       ...(userPrediction && {
         userPrediction: {
           tokenMint: userPrediction.tokenMint,
+          outcomeId: userPrediction.outcomeId,
+          opWagered: userPrediction.opWagered,
+          opPayout: userPrediction.opPayout,
           isWinner: userPrediction.isWinner,
+          rank: userPrediction.predictionRank,
           createdAt: userPrediction.createdAt.toISOString(),
         },
       }),

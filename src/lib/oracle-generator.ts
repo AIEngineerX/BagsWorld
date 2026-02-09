@@ -89,7 +89,8 @@ export async function generatePricePredictionMarket(): Promise<{
         data: { startPrice: t.startPrice },
       })),
       resolution_logic: "price_prediction",
-      question: "Which token gains the most in 24 hours?",
+      question: "Which BagsWorld token gains the most in 24 hours?",
+      category: "bagsworld",
     };
 
     // Create DB-compatible token options

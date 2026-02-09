@@ -135,8 +135,13 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   const [prizePoolInput, setPrizePoolInput] = useState("0.5");
 
   // Create market state
-  const [createMode, setCreateMode] = useState<"price" | "custom">("price");
+  const [createMode, setCreateMode] = useState<"crypto" | "sports" | "world_event" | "bagsworld">(
+    "bagsworld"
+  );
   const [durationHours, setDurationHours] = useState(24);
+  const [marketDescription, setMarketDescription] = useState("");
+  const [marketImageUrl, setMarketImageUrl] = useState("");
+  const [isPrizeEvent, setIsPrizeEvent] = useState(false);
   const [customQuestion, setCustomQuestion] = useState("");
   const [customOutcomes, setCustomOutcomes] = useState([
     { id: "opt_1", label: "" },
@@ -523,6 +528,7 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
     setIsCreatingRound(true);
     setMessage(null);
     try {
+      const prizePoolSol = parseFloat(prizePoolInput) || 0;
       const res = await fetch("/api/oracle/admin/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -536,8 +542,12 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
             question: customQuestion.trim(),
           },
           durationHours,
-          prizePoolSol: parseFloat(prizePoolInput) || 0,
+          prizePoolSol,
           entryCostOp,
+          category: createMode,
+          description: marketDescription.trim() || undefined,
+          imageUrl: marketImageUrl.trim() || undefined,
+          isPrizeEvent: isPrizeEvent || prizePoolSol > 0,
         }),
       });
       const data = await res.json();
@@ -548,6 +558,9 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
           { id: "opt_1", label: "" },
           { id: "opt_2", label: "" },
         ]);
+        setMarketDescription("");
+        setMarketImageUrl("");
+        setIsPrizeEvent(false);
         await fetchMarkets();
         await fetchAdminRoundInfo();
       } else {
@@ -1109,23 +1122,27 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
               <div className="rpg-border-inner bg-[#166534]/10 p-4">
                 <p className="font-pixel text-[#22c55e] text-xs mb-3 glow-green">CREATE MARKET</p>
 
-                {/* Mode toggle */}
-                <div className="flex gap-1 mb-3">
-                  <button
-                    onClick={() => setCreateMode("price")}
-                    className={`flex-1 font-pixel text-[9px] py-1.5 rpg-button ${createMode === "price" ? "active" : ""}`}
-                  >
-                    PRICE PREDICTION
-                  </button>
-                  <button
-                    onClick={() => setCreateMode("custom")}
-                    className={`flex-1 font-pixel text-[9px] py-1.5 rpg-button ${createMode === "custom" ? "active" : ""}`}
-                  >
-                    CUSTOM MARKET
-                  </button>
+                {/* Category selector */}
+                <div className="flex gap-1 mb-3 flex-wrap">
+                  {(
+                    [
+                      { key: "bagsworld", label: "BAGS", color: "text-[#a855f7]" },
+                      { key: "crypto", label: "CRYPTO", color: "text-[#3b82f6]" },
+                      { key: "sports", label: "SPORTS", color: "text-[#22c55e]" },
+                      { key: "world_event", label: "WORLD", color: "text-[#f59e0b]" },
+                    ] as const
+                  ).map((cat) => (
+                    <button
+                      key={cat.key}
+                      onClick={() => setCreateMode(cat.key)}
+                      className={`flex-1 font-pixel text-[9px] py-1.5 rpg-button ${createMode === cat.key ? "active" : ""} ${cat.color}`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
                 </div>
 
-                {createMode === "custom" && (
+                {createMode !== "bagsworld" ? (
                   <div className="space-y-2 mb-3">
                     <div className="rpg-border-inner bg-[#0d0d0d] p-2">
                       <label className="font-pixel text-[#a855f7] text-[9px] block mb-1">
@@ -1203,7 +1220,52 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                         className="w-full bg-[#1a1a1a] border-2 border-[#333] font-pixel text-white text-[10px] px-2 py-1.5 rounded focus:border-[#a855f7] focus:outline-none"
                       />
                     </div>
+
+                    {/* Description */}
+                    <div className="rpg-border-inner bg-[#0d0d0d] p-2">
+                      <label className="font-pixel text-[#a855f7] text-[9px] block mb-1">
+                        DESCRIPTION (optional)
+                      </label>
+                      <textarea
+                        value={marketDescription}
+                        onChange={(e) => setMarketDescription(e.target.value)}
+                        className="w-full bg-[#1a1a1a] border-2 border-[#333] font-pixel text-white text-[10px] px-2 py-1.5 rounded focus:border-[#a855f7] focus:outline-none resize-none"
+                        placeholder="Additional context for this market..."
+                        rows={2}
+                      />
+                    </div>
+
+                    {/* Image URL */}
+                    <div className="rpg-border-inner bg-[#0d0d0d] p-2">
+                      <label className="font-pixel text-[#a855f7] text-[9px] block mb-1">
+                        IMAGE URL (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={marketImageUrl}
+                        onChange={(e) => setMarketImageUrl(e.target.value)}
+                        className="w-full bg-[#1a1a1a] border-2 border-[#333] font-pixel text-white text-[10px] px-2 py-1.5 rounded focus:border-[#a855f7] focus:outline-none"
+                        placeholder="https://..."
+                      />
+                    </div>
+
+                    {/* Prize Event Toggle */}
+                    <div className="rpg-border-inner bg-[#0d0d0d] p-2">
+                      <label className="font-pixel text-[#fbbf24] text-[9px] flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isPrizeEvent}
+                          onChange={(e) => setIsPrizeEvent(e.target.checked)}
+                          className="accent-[#fbbf24]"
+                        />
+                        PRIZE EVENT (token gated, requires SOL pool)
+                      </label>
+                    </div>
                   </div>
+                ) : (
+                  <p className="font-pixel text-[#666] text-[9px] mb-3">
+                    Auto-selects BagsWorld tokens from registry for price prediction.
+                  </p>
                 )}
 
                 {/* Shared fields: Duration + Prize Pool */}
@@ -1221,7 +1283,7 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                       <option value={12}>12 hours</option>
                       <option value={24}>24 hours</option>
                       <option value={48}>48 hours</option>
-                      {createMode === "custom" && <option value={72}>72 hours</option>}
+                      {createMode !== "bagsworld" && <option value={72}>72 hours</option>}
                     </select>
                   </div>
                   <div className="rpg-border-inner bg-[#0d0d0d] p-2">
@@ -1242,14 +1304,16 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                 </div>
 
                 <button
-                  onClick={createMode === "custom" ? handleCreateCustomMarket : handleCreateRound}
+                  onClick={
+                    createMode !== "bagsworld" ? handleCreateCustomMarket : handleCreateRound
+                  }
                   disabled={isCreatingRound}
                   className="w-full font-pixel text-[10px] py-2.5 rpg-button !bg-gradient-to-b !from-[#166534] !to-[#14532d]"
                 >
                   {isCreatingRound
                     ? "CREATING..."
-                    : createMode === "custom"
-                      ? "CREATE CUSTOM MARKET"
+                    : createMode !== "bagsworld"
+                      ? `CREATE ${createMode.toUpperCase()} MARKET`
                       : `CREATE ${durationHours}H ROUND`}
                 </button>
               </div>
@@ -1269,6 +1333,19 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                       const remaining = m.endTime
                         ? Math.max(0, new Date(m.endTime).getTime() - Date.now())
                         : 0;
+                      const cat = m.category || "bagsworld";
+                      const catColors: Record<string, string> = {
+                        crypto: "bg-[#1e3a5f]/30 text-[#60a5fa]",
+                        sports: "bg-[#14532d]/30 text-[#4ade80]",
+                        world_event: "bg-[#78350f]/30 text-[#fbbf24]",
+                        bagsworld: "bg-[#3b0764]/30 text-[#c084fc]",
+                      };
+                      const catLabels: Record<string, string> = {
+                        crypto: "CRYPTO",
+                        sports: "SPORTS",
+                        world_event: "WORLD",
+                        bagsworld: "BAGS",
+                      };
 
                       return (
                         <div key={m.id} className="rpg-border-inner bg-[#0d0d0d] p-2 space-y-1.5">
@@ -1277,20 +1354,23 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
                               <span className="font-pixel text-white text-[10px]">#{m.id}</span>
                               <span
                                 className={`font-pixel text-[8px] px-1.5 py-0.5 rpg-border-inner ${
-                                  isCustom
-                                    ? "bg-[#6b21a8]/30 text-[#c084fc]"
-                                    : "bg-[#166534]/30 text-[#22c55e]"
+                                  catColors[cat] || catColors.bagsworld
                                 }`}
                               >
-                                {m.marketType?.toUpperCase() || "PRICE"}
+                                {catLabels[cat] || "BAGS"}
                               </span>
+                              {m.isPrizeEvent && (
+                                <span className="font-pixel text-[8px] px-1 py-0.5 rpg-border-inner bg-[#854d0e]/30 text-[#fbbf24]">
+                                  PRIZE
+                                </span>
+                              )}
                             </div>
                             <span className="font-pixel text-[#666] text-[8px]">
                               {m.entryCount || 0} entries
                             </span>
                           </div>
 
-                          {isCustom && m.question && (
+                          {m.question && (
                             <p className="font-pixel text-[#ccc] text-[9px]">{m.question}</p>
                           )}
 

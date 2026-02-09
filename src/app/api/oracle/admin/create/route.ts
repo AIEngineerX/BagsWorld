@@ -92,6 +92,11 @@ export async function POST(request: NextRequest) {
     marketConfig,
     resolutionSource,
     entryCostOp = 100,
+    // General-purpose market fields
+    category,
+    description,
+    imageUrl,
+    isPrizeEvent,
   } = body;
   const autoResolve = body.autoResolve ?? marketType !== "custom";
 
@@ -189,6 +194,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Validate: isPrizeEvent requires a prize pool
+  if (isPrizeEvent === true && prizeAmount <= 0) {
+    return NextResponse.json(
+      { success: false, error: "Prize events require a prize pool > 0 SOL" },
+      { status: 400 }
+    );
+  }
+
   // Custom markets don't need tokens (they use outcomes instead)
   if (marketType !== "custom" && tokenOptions.length < 2) {
     return NextResponse.json(
@@ -200,10 +213,19 @@ export async function POST(request: NextRequest) {
   // Calculate end time
   const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000);
 
+  // Merge category/description/imageUrl/isPrizeEvent into marketConfig
+  const mergedMarketConfig = {
+    ...(marketConfig || {}),
+    ...(category && { category }),
+    ...(description && { description }),
+    ...(imageUrl && { imageUrl }),
+    isPrizeEvent: isPrizeEvent ?? prizeAmount > 0,
+  };
+
   // Create round with prize pool and market type options
   const result = await createOracleRound(tokenOptions, endTime, prizePoolLamports, {
     marketType,
-    marketConfig,
+    marketConfig: mergedMarketConfig,
     autoResolve,
     resolutionSource,
     createdBy: "admin",
