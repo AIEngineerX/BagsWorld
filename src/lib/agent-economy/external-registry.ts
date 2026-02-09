@@ -51,6 +51,17 @@ async function ensureTable() {
     // Column might already exist, ignore
   }
 
+  // Add reputation system columns (migration)
+  try {
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS moltbook_karma INTEGER DEFAULT 0`;
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS tokens_launched INTEGER DEFAULT 0`;
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS total_fees_earned_lamports BIGINT DEFAULT 0`;
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS reputation_score INTEGER DEFAULT 0`;
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS karma_fetched_at TIMESTAMPTZ`;
+  } catch {
+    // Columns might already exist, ignore
+  }
+
   tableInitialized = true;
   console.log("[ExternalRegistry] Table initialized");
 }
@@ -78,6 +89,11 @@ interface DbRow {
   y: number;
   joined_at: Date;
   last_active_at: Date | null;
+  moltbook_karma: number | null;
+  tokens_launched: number | null;
+  total_fees_earned_lamports: string | null; // BIGINT returned as string by Neon
+  reputation_score: number | null;
+  karma_fetched_at: Date | null;
 }
 
 // ============================================================================
@@ -144,6 +160,9 @@ function rowToEntry(row: DbRow): ExternalAgentEntry {
     direction: Math.random() > 0.5 ? "left" : "right",
     isMoving: false,
     zone: row.zone as ZoneType,
+    moltbookKarma: row.moltbook_karma ?? undefined,
+    reputationScore: row.reputation_score ?? undefined,
+    tokensLaunched: row.tokens_launched ?? undefined,
   };
 
   return {
@@ -194,7 +213,7 @@ const AGENT_ACTIVITY_TIERS = [
 ] as const;
 const AGENT_DORMANT_HEALTH = 12; // 30+ days inactive - dormant but never removed
 
-function getAgentBuildingHealth(lastActiveAt: Date | null): {
+export function getAgentBuildingHealth(lastActiveAt: Date | null): {
   health: number;
   status: "active" | "warning" | "critical" | "dormant";
 } {

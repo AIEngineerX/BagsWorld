@@ -147,7 +147,19 @@ export {
   listExternalAgents,
   getExternalAgentCount,
   moveExternalAgent,
+  getAgentBuildingHealth,
 } from "./external-registry";
+
+// Agent reputation
+export {
+  computeReputationScore,
+  getReputationTier,
+  queryAgentsWithReputation,
+  getAgentDetail,
+  getLeaderboard,
+  incrementTokensLaunched,
+  addFeesEarned,
+} from "./agent-reputation";
 
 // Token launcher (Moltmint-style free launches)
 export {

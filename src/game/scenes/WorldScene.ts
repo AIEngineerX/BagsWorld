@@ -9780,7 +9780,7 @@ Your creator page = website!
   ): void {
     this.hideTooltip();
 
-    const container = this.add.container(sprite.x, sprite.y - 70);
+    const container = this.add.container(sprite.x, sprite.y - 85);
 
     // Lobsters (Moltbook agents) get red theme, crabs get orange
     const borderColor = isMoltbookAgent ? 0xff4444 : 0xffa500;
@@ -9788,17 +9788,17 @@ Your creator page = website!
     const emoji = isMoltbookAgent ? "🦞" : "🦀";
     const typeLabel = isMoltbookAgent ? "Moltbook Agent" : "OpenClaw";
 
-    const bg = this.add.rectangle(0, 0, 200, 78, 0x1a1a1a, 0.95);
+    const bg = this.add.rectangle(0, 0, 210, 110, 0x1a1a1a, 0.95);
     bg.setStrokeStyle(2, borderColor);
 
-    const nameText = this.add.text(0, -22, `${emoji} ${character.username}`, {
+    const nameText = this.add.text(0, -38, `${emoji} ${character.username}`, {
       fontFamily: "monospace",
       fontSize: "12px",
       color: textColor,
     });
     nameText.setOrigin(0.5, 0.5);
 
-    const titleText = this.add.text(0, -6, typeLabel, {
+    const titleText = this.add.text(0, -22, typeLabel, {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffffff",
@@ -9809,22 +9809,55 @@ Your creator page = website!
     const providerText = character.providerUsername
       ? `@${character.providerUsername}`
       : "External Agent";
-    const quoteText = this.add.text(0, 10, providerText, {
+    const quoteText = this.add.text(0, -6, providerText, {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9ca3af",
     });
     quoteText.setOrigin(0.5, 0.5);
 
+    // Reputation tier display
+    const repScore = character.reputationScore ?? 0;
+    const tierColors: Record<string, string> = {
+      diamond: "#b9f2ff",
+      gold: "#ffd700",
+      silver: "#c0c0c0",
+      bronze: "#cd7f32",
+      none: "#9ca3af",
+    };
+    let tier = "none";
+    if (repScore >= 900) tier = "diamond";
+    else if (repScore >= 600) tier = "gold";
+    else if (repScore >= 300) tier = "silver";
+    else if (repScore >= 100) tier = "bronze";
+    const tierSymbol = tier === "none" ? "" : " \u25C6";
+    const tierLabel = tier === "none" ? "" : ` ${tier.charAt(0).toUpperCase() + tier.slice(1)}`;
+    const repText = this.add.text(0, 10, `Rep: ${repScore}${tierSymbol}${tierLabel}`, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: tierColors[tier],
+    });
+    repText.setOrigin(0.5, 0.5);
+
+    // Stats line
+    const karma = character.moltbookKarma ?? 0;
+    const launches = character.tokensLaunched ?? 0;
+    const statsText = this.add.text(0, 24, `Karma: ${karma}  Launches: ${launches}`, {
+      fontFamily: "monospace",
+      fontSize: "9px",
+      color: "#9ca3af",
+    });
+    statsText.setOrigin(0.5, 0.5);
+
     const clickLabel = character.profileUrl ? "Click to view Moltbook" : "Moltbook Beach Resident";
-    const clickText = this.add.text(0, 26, clickLabel, {
+    const clickText = this.add.text(0, 40, clickLabel, {
       fontFamily: "monospace",
       fontSize: "9px",
       color: textColor,
     });
     clickText.setOrigin(0.5, 0.5);
 
-    container.add([bg, nameText, titleText, quoteText, clickText]);
+    container.add([bg, nameText, titleText, quoteText, repText, statsText, clickText]);
     container.setDepth(200);
     this.tooltip = container;
   }

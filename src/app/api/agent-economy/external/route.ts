@@ -23,7 +23,16 @@ import {
   getExternalAgent,
   listExternalAgents,
   touchExternalAgent,
+  getAgentBuildingHealth,
 } from "@/lib/agent-economy/external-registry";
+import {
+  queryAgentsWithReputation,
+  getAgentDetail,
+  getLeaderboard,
+  getReputationTier,
+  incrementTokensLaunched,
+  addFeesEarned,
+} from "@/lib/agent-economy/agent-reputation";
 import {
   launchForExternal,
   getClaimableForWallet,
@@ -787,6 +796,89 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // =========================================================================
+  // AGENT DIRECTORY (public, no auth)
+  // =========================================================================
+
+  if (action === "agents") {
+    const sort = (searchParams.get("sort") || "reputation") as
+      | "reputation"
+      | "karma"
+      | "fees"
+      | "launches"
+      | "newest";
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 100);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+
+    const result = await queryAgentsWithReputation({ sort, limit, offset });
+    return NextResponse.json({
+      success: true,
+      count: result.count,
+      agents: result.agents,
+    });
+  }
+
+  if (action === "agent-detail") {
+    const wallet = searchParams.get("wallet");
+    const moltbook = searchParams.get("moltbook");
+
+    if (!wallet && !moltbook) {
+      return NextResponse.json(
+        { success: false, error: "wallet or moltbook query param required" },
+        { status: 400 }
+      );
+    }
+
+    const agent = await getAgentDetail({
+      wallet: wallet || undefined,
+      moltbookUsername: moltbook || undefined,
+    });
+
+    if (!agent) {
+      return NextResponse.json({ success: false, error: "Agent not found" }, { status: 404 });
+    }
+
+    // Get tokens created by this agent
+    let tokens: Array<{ mint: string; name: string; symbol: string; bagsUrl: string }> = [];
+    if (isNeonConfigured()) {
+      const dbTokens = await getTokensByCreator(agent.wallet);
+      tokens = dbTokens.map((t) => ({
+        mint: t.mint,
+        name: t.name,
+        symbol: t.symbol,
+        bagsUrl: `https://bags.fm/${t.mint}`,
+      }));
+    }
+
+    return NextResponse.json({
+      success: true,
+      agent: {
+        ...agent,
+        tokens,
+      },
+    });
+  }
+
+  if (action === "leaderboard") {
+    const metric = (searchParams.get("metric") || "reputation") as
+      | "reputation"
+      | "karma"
+      | "fees"
+      | "launches"
+      | "newest";
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 100);
+
+    const leaderboard = await getLeaderboard(metric, limit);
+    return NextResponse.json({
+      success: true,
+      metric,
+      leaderboard: leaderboard.map((entry, index) => ({
+        rank: index + 1,
+        ...entry,
+      })),
+    });
+  }
+
   // Protected endpoints (require JWT)
   const authResult = requireAuth(request);
   if (authResult instanceof NextResponse) {
@@ -1484,6 +1576,9 @@ export async function POST(request: NextRequest) {
       // Touch agent activity timestamp (fire-and-forget)
       if (wallet) touchExternalAgent(wallet);
 
+      // Track reputation stats (fire-and-forget)
+      if (wallet) incrementTokensLaunched(wallet);
+
       // Get updated rate limits for response (use wallet or empty for moltbook-only)
       const rateLimitWallet = wallet || "";
       const updatedRateLimits = getRateLimitStatus(rateLimitWallet || undefined);
@@ -1669,6 +1764,11 @@ export async function POST(request: NextRequest) {
     }
 
     const totalSol = (result.totalClaimableLamports || 0) / 1_000_000_000;
+
+    // Track fees earned for reputation (fire-and-forget)
+    if (result.totalClaimableLamports && result.totalClaimableLamports > 0) {
+      addFeesEarned(resolvedWallet, result.totalClaimableLamports);
+    }
 
     return NextResponse.json({
       success: true,
