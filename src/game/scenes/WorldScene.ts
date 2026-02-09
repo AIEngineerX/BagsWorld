@@ -9295,14 +9295,14 @@ Your creator page = website!
     });
     nameText.setOrigin(0.5, 0.5);
 
-    const tokenText = this.add.text(0, -6, `Creator of $${character.visitorTokenSymbol || "???"}`, {
+    const tokenText = this.add.text(0, -6, `Earns from $${character.visitorTokenSymbol || "???"}`, {
       fontFamily: "monospace",
       fontSize: "10px",
       color: "#ffffff",
     });
     tokenText.setOrigin(0.5, 0.5);
 
-    const sourceText = this.add.text(0, 10, "Bags.fm Visitor", {
+    const sourceText = this.add.text(0, 10, "Bags.fm Fee Earner", {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9ca3af",
