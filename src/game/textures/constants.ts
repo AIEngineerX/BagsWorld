@@ -2,6 +2,61 @@
 export const SCALE = 1.6;
 
 // ========================================
+// DEPTH LAYERS — render order from back to front
+// ========================================
+export const DEPTH = {
+  // Sky & background
+  SKY: -2,
+  STARS: -1,
+
+  // Ground & base
+  GROUND: 0,
+  PATH: 1,
+  PROPS_LOW: 2, // Trees, bushes, flowers, rocks, coral, grass
+  PROPS_MID: 3, // Lamps, benches, traffic lights, chairs, torches
+  PROPS_HIGH: 4, // Gates, tunnels, building sprites
+  BUILDINGS: 5, // Main buildings, signs, HQ
+  SIGNS_BG: 6, // Sign backgrounds, labels, billboard backdrops
+  SIGNS_TEXT: 7, // Sign text, billboard titles
+
+  // Characters & interactives
+  CHARACTERS: 10, // NPCs, ticker
+  TICKER: 11, // Ticker text, sparkles
+  LOCAL_PLAYER: 12, // Local player, label backgrounds
+  NAME_LABELS: 13, // Name labels, quest markers
+  FLYING: 15, // Birds, butterflies, smoke
+
+  // Effects
+  WEATHER: 50, // Weather particles, transition overlay
+  LIGHTNING: 60,
+
+  // UI overlays (in-game)
+  UI_LOW: 100, // Popups, panels, confetti
+  UI_MID: 101, // Damage text, health bars
+  UI_HIGH: 102, // Info text, combo bubbles
+  UI_PROMPT: 150, // Interact prompts, UFO
+
+  // Floating panels
+  PANEL: 200, // Building containers, tooltips
+  PANEL_TEXT: 201, // Winner text, name text
+
+  // Top-level announcements
+  ANNOUNCE_BG: 300,
+  ANNOUNCE_TEXT: 301,
+} as const;
+
+// ========================================
+// Y POSITIONS — critical vertical layout anchors
+// All values are pre-multiplied by SCALE
+// ========================================
+export const Y = {
+  GRASS_TOP: 455 * SCALE, // Top of grass area, where trees go
+  GROUND: 540 * SCALE, // Ground layer
+  PATH_LEVEL: 555 * SCALE, // Character walking height
+  PATH_Y: 570 * SCALE, // Path visual layer
+} as const;
+
+// ========================================
 // BAGSWORLD PIXEL ART PALETTE (32 colors)
 // Cohesive retro palette for consistent visuals
 // ========================================

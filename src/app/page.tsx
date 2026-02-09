@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveMarketFeed } from "@/components/LiveMarketFeed";
@@ -150,6 +150,7 @@ const MansionModal = dynamic(
 );
 
 import { useGameStore } from "@/lib/store";
+import { useGameEvents } from "@/hooks/useGameEvents";
 import type { ZoneType } from "@/lib/types";
 import { initDialogueSystem, cleanupDialogueSystem } from "@/lib/autonomous-dialogue";
 import {
@@ -297,97 +298,44 @@ export default function Home() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"leaderboard" | "market">("market");
 
-  // Listen for building click events from Phaser
-  useEffect(() => {
-    const handleBuildingClick = (event: CustomEvent<BuildingClickData>) => {
-      setTradeToken(event.detail);
-    };
-
-    const handlePokeCenterClick = () => openModal("pokeCenter");
-    const handleTradingGymClick = () => openModal("tradingGym");
-    const handleTreasuryClick = () => openModal("communityFund");
-    const handleCasinoClick = () => openModal("casino");
-    const handleOracleClick = () => openModal("oracle");
-    const handleTradingTerminalClick = () => openModal("tradingTerminal");
-    const handleMansionClick = (
-      event: CustomEvent<{
-        name?: string;
-        holderRank?: number;
-        holderAddress?: string;
-        holderBalance?: number;
-      }>
-    ) => {
-      setMansionData(event.detail);
-      openModal("mansion");
-    };
-    const handleArenaClick = () => openModal("arena");
-    const handleAgentHutClick = () => openModal("agentHut");
-    const handleMoltBarClick = () => openModal("agentBar");
-    const handleIncineratorClick = () => openModal("incinerator");
-    const handleLaunchClick = () => openModal("launch");
-    const handleClaimClick = () => openModal("feeClaim");
-    const handleDungeonClick = () => openModal("dungeon");
-    const handlePhaserZoneChange = (e: CustomEvent<{ zone: string }>) => {
-      const zone = e.detail?.zone;
-      if (zone) setZone(zone as ZoneType);
-    };
-
-    window.addEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
-    window.addEventListener("bagsworld-pokecenter-click", handlePokeCenterClick as EventListener);
-    window.addEventListener("bagsworld-tradinggym-click", handleTradingGymClick as EventListener);
-    window.addEventListener("bagsworld-treasury-click", handleTreasuryClick as EventListener);
-    window.addEventListener("bagsworld-casino-click", handleCasinoClick as EventListener);
-    window.addEventListener("bagsworld-oracle-click", handleOracleClick as EventListener);
-    window.addEventListener(
-      "bagsworld-terminal-click",
-      handleTradingTerminalClick as EventListener
-    );
-    window.addEventListener("bagsworld-mansion-click", handleMansionClick as EventListener);
-    window.addEventListener("bagsworld-arena-click", handleArenaClick as EventListener);
-    window.addEventListener("bagsworld-agenthut-click", handleAgentHutClick as EventListener);
-    window.addEventListener("bagsworld-moltbar-click", handleMoltBarClick as EventListener);
-    window.addEventListener("bagsworld-incinerator-click", handleIncineratorClick as EventListener);
-    window.addEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
-    window.addEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
-    window.addEventListener("bagsworld-open-dungeon", handleDungeonClick as EventListener);
-    window.addEventListener(
-      "bagsworld-phaser-zone-change",
-      handlePhaserZoneChange as EventListener
-    );
-    return () => {
-      window.removeEventListener("bagsworld-building-click", handleBuildingClick as EventListener);
-      window.removeEventListener(
-        "bagsworld-pokecenter-click",
-        handlePokeCenterClick as EventListener
-      );
-      window.removeEventListener(
-        "bagsworld-tradinggym-click",
-        handleTradingGymClick as EventListener
-      );
-      window.removeEventListener("bagsworld-treasury-click", handleTreasuryClick as EventListener);
-      window.removeEventListener("bagsworld-casino-click", handleCasinoClick as EventListener);
-      window.removeEventListener("bagsworld-oracle-click", handleOracleClick as EventListener);
-      window.removeEventListener(
-        "bagsworld-terminal-click",
-        handleTradingTerminalClick as EventListener
-      );
-      window.removeEventListener("bagsworld-mansion-click", handleMansionClick as EventListener);
-      window.removeEventListener("bagsworld-arena-click", handleArenaClick as EventListener);
-      window.removeEventListener("bagsworld-agenthut-click", handleAgentHutClick as EventListener);
-      window.removeEventListener("bagsworld-moltbar-click", handleMoltBarClick as EventListener);
-      window.removeEventListener(
-        "bagsworld-incinerator-click",
-        handleIncineratorClick as EventListener
-      );
-      window.removeEventListener("bagsworld-launch-click", handleLaunchClick as EventListener);
-      window.removeEventListener("bagsworld-claim-click", handleClaimClick as EventListener);
-      window.removeEventListener("bagsworld-open-dungeon", handleDungeonClick as EventListener);
-      window.removeEventListener(
-        "bagsworld-phaser-zone-change",
-        handlePhaserZoneChange as EventListener
-      );
-    };
-  }, [openModal, setZone]);
+  // Listen for Phaser game events — single hook handles all 16 event listeners
+  const gameEventHandlers = useMemo(
+    () => ({
+      "bagsworld-building-click": ((e: CustomEvent<BuildingClickData>) => {
+        setTradeToken(e.detail);
+      }) as EventListener,
+      "bagsworld-pokecenter-click": (() => openModal("pokeCenter")) as EventListener,
+      "bagsworld-tradinggym-click": (() => openModal("tradingGym")) as EventListener,
+      "bagsworld-treasury-click": (() => openModal("communityFund")) as EventListener,
+      "bagsworld-casino-click": (() => openModal("casino")) as EventListener,
+      "bagsworld-oracle-click": (() => openModal("oracle")) as EventListener,
+      "bagsworld-terminal-click": (() => openModal("tradingTerminal")) as EventListener,
+      "bagsworld-mansion-click": ((
+        e: CustomEvent<{
+          name?: string;
+          holderRank?: number;
+          holderAddress?: string;
+          holderBalance?: number;
+        }>
+      ) => {
+        setMansionData(e.detail);
+        openModal("mansion");
+      }) as EventListener,
+      "bagsworld-arena-click": (() => openModal("arena")) as EventListener,
+      "bagsworld-agenthut-click": (() => openModal("agentHut")) as EventListener,
+      "bagsworld-moltbar-click": (() => openModal("agentBar")) as EventListener,
+      "bagsworld-incinerator-click": (() => openModal("incinerator")) as EventListener,
+      "bagsworld-launch-click": (() => openModal("launch")) as EventListener,
+      "bagsworld-claim-click": (() => openModal("feeClaim")) as EventListener,
+      "bagsworld-open-dungeon": (() => openModal("dungeon")) as EventListener,
+      "bagsworld-phaser-zone-change": ((e: CustomEvent<{ zone: string }>) => {
+        const zone = e.detail?.zone;
+        if (zone) setZone(zone as ZoneType);
+      }) as EventListener,
+    }),
+    [openModal, setZone]
+  );
+  useGameEvents(gameEventHandlers, [gameEventHandlers]);
 
   // Close mobile menu when clicking outside
   useEffect(() => {

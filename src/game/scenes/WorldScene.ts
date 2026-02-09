@@ -10,7 +10,7 @@ import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { SpeechBubbleManager } from "@/lib/speech-bubble-manager";
 import { getCurrentLine, getActiveConversation } from "@/lib/autonomous-dialogue";
 import { useGameStore } from "@/lib/store";
-import { SCALE } from "../textures/constants";
+import { SCALE, DEPTH, Y } from "../textures/constants";
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 960;
 
@@ -243,7 +243,7 @@ export class WorldScene extends Phaser.Scene {
       0x000000,
       0
     );
-    this.overlay.setDepth(100);
+    this.overlay.setDepth(DEPTH.UI_LOW);
 
     // Add decorations (trees, bushes, benches, lamps)
     this.createDecorations();
@@ -434,7 +434,7 @@ export class WorldScene extends Phaser.Scene {
     this.playerSpriteVariant = -1; // Custom sprite
     this.playerEnabled = true;
 
-    const pathLevel = Math.round(555 * SCALE);
+    const pathLevel = Y.PATH_LEVEL;
     const startX = GAME_WIDTH / 2;
 
     // If we have a walk sprite sheet, use it as a sprite with animation
@@ -499,7 +499,7 @@ export class WorldScene extends Phaser.Scene {
     this.playerEnabled = true;
 
     // Create player sprite with chosen variant
-    const pathLevel = Math.round(555 * SCALE);
+    const pathLevel = Y.PATH_LEVEL;
     const startX = GAME_WIDTH / 2;
 
     const textureKey = `character_${spriteVariant}`;
@@ -762,7 +762,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Clamp Y to path area (characters walk on the path)
-    const pathLevel = Math.round(555 * SCALE);
+    const pathLevel = Y.PATH_LEVEL;
     const pathMargin = Math.round(30 * SCALE);
     this.localPlayer.y = Phaser.Math.Clamp(
       this.localPlayer.y,
@@ -2851,8 +2851,8 @@ export class WorldScene extends Phaser.Scene {
    */
   private createFoundersDecorations(): void {
     const s = SCALE;
-    const grassTop = Math.round(455 * s);
-    const pathLevel = Math.round(555 * s);
+    const grassTop = Y.GRASS_TOP;
+    const pathLevel = Y.PATH_LEVEL;
     const groundY = Math.round(550 * s);
 
     // === BACKGROUND TREES (depth 2) ===
@@ -3270,7 +3270,7 @@ export class WorldScene extends Phaser.Scene {
     // Create container for popup
     const popup = this.add.container(0, 0);
     this.foundersPopup = popup;
-    popup.setDepth(100);
+    popup.setDepth(DEPTH.UI_LOW);
 
     // Dark overlay
     const overlay = this.add.rectangle(
@@ -3907,8 +3907,8 @@ export class WorldScene extends Phaser.Scene {
    */
   private createLabsDecorations(): void {
     const s = SCALE;
-    const grassTop = Math.round(455 * s);
-    const pathLevel = Math.round(555 * s);
+    const grassTop = Y.GRASS_TOP;
+    const pathLevel = Y.PATH_LEVEL;
 
     // === TECH TREES (depth 2) - Digital/circuit pattern trees ===
     const treePositions = [
@@ -4173,8 +4173,8 @@ export class WorldScene extends Phaser.Scene {
    */
   private createMoltbookDecorations(): void {
     const s = SCALE;
-    const grassTop = Math.round(455 * s);
-    const pathLevel = Math.round(555 * s);
+    const grassTop = Y.GRASS_TOP;
+    const pathLevel = Y.PATH_LEVEL;
 
     // === PALM TREES (depth 2) - Multiple variants ===
     const palmPositions = [
@@ -4668,7 +4668,7 @@ export class WorldScene extends Phaser.Scene {
    * Includes crabs (orange), lobsters (red), and hermit crabs (sandy, near waterline).
    */
   private createAmbientBeachCreatures(s: number): void {
-    const pathLevel = Math.round(555 * s);
+    const pathLevel = Y.PATH_LEVEL;
 
     // Ambient creature configs - spread across the beach at various Y depths
     const creatureConfigs: Array<{
@@ -6226,8 +6226,8 @@ Your creator page = website!
 
   private createDecorations(): void {
     // Ground reference for positioning (top of grass area)
-    const grassTop = Math.round(455 * SCALE);
-    const pathLevel = Math.round(555 * SCALE);
+    const grassTop = Y.GRASS_TOP;
+    const pathLevel = Y.PATH_LEVEL;
 
     // Add trees (positioned at grass top level)
     const treePositions = [
@@ -6332,8 +6332,8 @@ Your creator page = website!
     const animalTypes: Animal["type"][] = ["dog", "cat", "bird", "butterfly", "squirrel"];
 
     // Reference positions
-    const pathLevel = Math.round(555 * SCALE);
-    const grassTop = Math.round(455 * SCALE);
+    const pathLevel = Y.PATH_LEVEL;
+    const grassTop = Y.GRASS_TOP;
 
     // Create a variety of animals (positioned relative to ground)
     const animalConfigs = [
@@ -6448,8 +6448,8 @@ Your creator page = website!
 
   private createExtraDecorations(): void {
     // Reference positions
-    const grassTop = Math.round(455 * SCALE);
-    const pathLevel = Math.round(555 * SCALE);
+    const grassTop = Y.GRASS_TOP;
+    const pathLevel = Y.PATH_LEVEL;
 
     // Add flower patches (positioned on grass)
     const flowerPositions = [
@@ -9267,7 +9267,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, providerText, earningsText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9308,7 +9308,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, tokenText, sourceText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9349,7 +9349,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9390,7 +9390,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, descText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9431,7 +9431,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9472,7 +9472,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9513,7 +9513,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9554,7 +9554,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9595,7 +9595,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9637,7 +9637,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9678,7 +9678,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9719,7 +9719,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9760,7 +9760,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9801,7 +9801,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9842,7 +9842,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9883,7 +9883,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9924,7 +9924,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -9965,7 +9965,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -10054,7 +10054,7 @@ Your creator page = website!
     clickText.setOrigin(0.5, 0.5);
 
     container.add([bg, nameText, titleText, quoteText, repText, statsText, clickText]);
-    container.setDepth(200);
+    container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
 
@@ -10242,7 +10242,7 @@ Your creator page = website!
       tooltipContainer.add(tooltipElements);
     }
 
-    tooltipContainer.setDepth(200);
+    tooltipContainer.setDepth(DEPTH.PANEL);
     this.tooltip = tooltipContainer;
   }
 
@@ -10317,7 +10317,7 @@ Your creator page = website!
       rotate: { min: 0, max: 360 },
     });
 
-    particles.setDepth(100);
+    particles.setDepth(DEPTH.UI_LOW);
     particles.explode(100);
 
     this.time.delayedCall(3000, () => {
@@ -10737,7 +10737,7 @@ Your creator page = website!
       gravityY: Math.round(50 * SCALE),
     });
 
-    confetti.setDepth(100);
+    confetti.setDepth(DEPTH.UI_LOW);
 
     // Stop after 4 seconds
     this.time.delayedCall(4000, () => {
@@ -10868,7 +10868,7 @@ Your creator page = website!
       0.8
     );
     this.announcementBg.setStrokeStyle(Math.round(2 * SCALE), 0x4ade80);
-    this.announcementBg.setDepth(300);
+    this.announcementBg.setDepth(DEPTH.ANNOUNCE_BG);
     this.announcementBg.setAlpha(0);
 
     // Create text (scaled font)
@@ -10879,7 +10879,7 @@ Your creator page = website!
       align: "center",
     });
     this.announcementText.setOrigin(0.5, 0.5);
-    this.announcementText.setDepth(301);
+    this.announcementText.setDepth(DEPTH.ANNOUNCE_TEXT);
     this.announcementText.setAlpha(0);
 
     // Animate in (scaled)
@@ -11449,8 +11449,8 @@ Your creator page = website!
    */
   private createArenaDecorations(): void {
     const s = SCALE;
-    const grassTop = Math.round(455 * s);
-    const pathLevel = Math.round(555 * s);
+    const grassTop = Y.GRASS_TOP;
+    const pathLevel = Y.PATH_LEVEL;
     const centerX = GAME_WIDTH / 2;
 
     // === BACKGROUND TREES (depth 2) - Dark silhouettes ===
@@ -11839,7 +11839,7 @@ Your creator page = website!
       0xdc2626,
       1
     );
-    infoBtn.setDepth(101);
+    infoBtn.setDepth(DEPTH.UI_MID);
     infoBtn.setStrokeStyle(1, 0xfbbf24);
     infoBtn.setInteractive({ useHandCursor: true });
     infoBtn.on("pointerover", () => infoBtn.setFillStyle(0xef4444));
@@ -11856,7 +11856,7 @@ Your creator page = website!
       fontStyle: "bold",
     });
     infoText.setOrigin(0.5, 0.5);
-    infoText.setDepth(102);
+    infoText.setDepth(DEPTH.UI_HIGH);
     this.arenaElements.push(infoText);
 
     // === QUEUE STATUS (depth 100) ===
@@ -11868,7 +11868,7 @@ Your creator page = website!
       0x0a0a0f,
       0.8
     );
-    queueBg.setDepth(100);
+    queueBg.setDepth(DEPTH.UI_LOW);
     queueBg.setStrokeStyle(1, 0x4ade80);
     this.arenaElements.push(queueBg);
 
@@ -11878,7 +11878,7 @@ Your creator page = website!
       color: "#4ade80",
     });
     queueLabel.setOrigin(0.5, 0.5);
-    queueLabel.setDepth(101);
+    queueLabel.setDepth(DEPTH.UI_MID);
     this.arenaElements.push(queueLabel);
 
     const queueCount = this.add.text(Math.round(100 * s), Math.round(88 * s), "0 WAITING", {
@@ -11887,7 +11887,7 @@ Your creator page = website!
       color: "#ffffff",
     });
     queueCount.setOrigin(0.5, 0.5);
-    queueCount.setDepth(101);
+    queueCount.setDepth(DEPTH.UI_MID);
     queueCount.setName("arenaQueueCount");
     this.arenaElements.push(queueCount);
 
@@ -11900,7 +11900,7 @@ Your creator page = website!
       0x0a0a0f,
       0.8
     );
-    matchBg.setDepth(100);
+    matchBg.setDepth(DEPTH.UI_LOW);
     matchBg.setStrokeStyle(1, 0xef4444);
     this.arenaElements.push(matchBg);
 
@@ -11910,7 +11910,7 @@ Your creator page = website!
       color: "#ef4444",
     });
     matchLabel.setOrigin(0.5, 0.5);
-    matchLabel.setDepth(101);
+    matchLabel.setDepth(DEPTH.UI_MID);
     this.arenaElements.push(matchLabel);
 
     const matchStatus = this.add.text(Math.round(700 * s), Math.round(88 * s), "NO MATCH", {
@@ -11919,7 +11919,7 @@ Your creator page = website!
       color: "#ffffff",
     });
     matchStatus.setOrigin(0.5, 0.5);
-    matchStatus.setDepth(101);
+    matchStatus.setDepth(DEPTH.UI_MID);
     matchStatus.setName("arenaMatchStatus");
     this.arenaElements.push(matchStatus);
 
@@ -11933,7 +11933,7 @@ Your creator page = website!
     const lbHeight = Math.round(90 * s);
 
     const lbBg = this.add.rectangle(lbX, lbY, lbWidth, lbHeight, 0x0f172a, 0.92);
-    lbBg.setDepth(100);
+    lbBg.setDepth(DEPTH.UI_LOW);
     lbBg.setStrokeStyle(2, 0xfbbf24);
     this.arenaElements.push(lbBg);
 
@@ -11944,7 +11944,7 @@ Your creator page = website!
       fontStyle: "bold",
     });
     lbTitle.setOrigin(0.5, 0.5);
-    lbTitle.setDepth(101);
+    lbTitle.setDepth(DEPTH.UI_MID);
     this.arenaElements.push(lbTitle);
 
     // Leaderboard entries (will be updated by polling)
@@ -11956,7 +11956,7 @@ Your creator page = website!
       lineSpacing: 2,
     });
     lbEntries.setOrigin(0.5, 0.5);
-    lbEntries.setDepth(101);
+    lbEntries.setDepth(DEPTH.UI_MID);
     lbEntries.setName("arenaLeaderboard");
     this.arenaElements.push(lbEntries);
 
@@ -11969,7 +11969,7 @@ Your creator page = website!
       align: "center",
     });
     vsDisplay.setOrigin(0.5, 0.5);
-    vsDisplay.setDepth(101);
+    vsDisplay.setDepth(DEPTH.UI_MID);
     vsDisplay.setName("arenaVsDisplay");
     this.arenaElements.push(vsDisplay);
 
@@ -12221,7 +12221,7 @@ Your creator page = website!
 
     // Container for all panel elements
     const panel = this.add.container(cx, cy);
-    panel.setDepth(100);
+    panel.setDepth(DEPTH.UI_LOW);
     panel.setAlpha(0);
     panel.setScale(0.8);
     this.arenaElements.push(panel);
@@ -13017,7 +13017,7 @@ Your creator page = website!
       strokeThickness: 4,
     });
     comboText.setOrigin(0.5, 0.5);
-    comboText.setDepth(102);
+    comboText.setDepth(DEPTH.UI_HIGH);
 
     // Pulse and fade
     this.tweens.add({
@@ -13170,11 +13170,11 @@ Your creator page = website!
     const barHeight = Math.round(6 * s);
 
     const bg = this.add.rectangle(x, y, barWidth, barHeight, 0x000000);
-    bg.setDepth(100);
+    bg.setDepth(DEPTH.UI_LOW);
     bg.setStrokeStyle(1, 0xffffff);
 
     const fill = this.add.rectangle(x, y, barWidth - 2, barHeight - 2, 0x22c55e);
-    fill.setDepth(101);
+    fill.setDepth(DEPTH.UI_MID);
 
     this.arenaHealthBars.set(fighterId, { bg, fill });
   }
@@ -13288,7 +13288,7 @@ Your creator page = website!
         strokeThickness: 4,
       });
       dmgText.setOrigin(0.5, 0.5);
-      dmgText.setDepth(101);
+      dmgText.setDepth(DEPTH.UI_MID);
 
       // Bounce up then fade
       this.tweens.add({
@@ -13388,7 +13388,7 @@ Your creator page = website!
       0x0a0a0f,
       0.95
     );
-    announceBg.setDepth(200);
+    announceBg.setDepth(DEPTH.PANEL);
     announceBg.setStrokeStyle(3, 0xfbbf24);
 
     // Winner text
@@ -13399,7 +13399,7 @@ Your creator page = website!
       fontStyle: "bold",
     });
     winnerText.setOrigin(0.5, 0.5);
-    winnerText.setDepth(201);
+    winnerText.setDepth(DEPTH.PANEL_TEXT);
 
     const nameText = this.add.text(centerX, centerY + Math.round(15 * s), winner, {
       fontFamily: "monospace",
@@ -13407,7 +13407,7 @@ Your creator page = website!
       color: "#ffffff",
     });
     nameText.setOrigin(0.5, 0.5);
-    nameText.setDepth(201);
+    nameText.setDepth(DEPTH.PANEL_TEXT);
 
     // Animate in
     this.tweens.add({
@@ -13480,7 +13480,7 @@ Your creator page = website!
 
     // Create action bubble sprite
     const bubble = this.add.sprite(x, y, type);
-    bubble.setDepth(102);
+    bubble.setDepth(DEPTH.UI_HIGH);
     bubble.setScale(0);
     bubble.setAlpha(1);
 
@@ -13523,7 +13523,7 @@ Your creator page = website!
       strokeThickness: 4,
     });
     announcement.setOrigin(0.5, 0.5);
-    announcement.setDepth(200);
+    announcement.setDepth(DEPTH.PANEL);
     announcement.setScale(0);
 
     // Animate in
