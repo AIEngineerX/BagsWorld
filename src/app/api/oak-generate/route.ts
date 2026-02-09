@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // =============================================================================
 // TYPES
@@ -150,7 +151,13 @@ Each object: { "name": "TokenName", "ticker": "TICK", "description": "Short catc
     jsonString = jsonString.replace(/```json?\n?/g, "").replace(/```/g, "");
   }
 
-  const parsed = JSON.parse(jsonString);
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonString);
+  } catch {
+    console.error("[OakGenerate] Failed to parse AI response as JSON, using fallback");
+    return generateFallbackNames(concept);
+  }
 
   // Validate and clean the response
   if (!Array.isArray(parsed)) {
@@ -715,6 +722,19 @@ async function fullWizard(
 // =============================================================================
 
 export async function POST(request: NextRequest): Promise<NextResponse<GenerateResponse>> {
+  // Rate limit: 10 requests per minute per IP (expensive AI API calls)
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rateLimit = await checkRateLimit(`oak-generate:${ip}`, {
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { success: false, error: "Rate limit exceeded. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   const body: GenerateRequest = await request.json();
   const { action, concept, style = "pixel-art", imageData, targetWidth, targetHeight } = body;
 

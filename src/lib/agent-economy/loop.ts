@@ -76,6 +76,7 @@ export const DEFAULT_LOOP_CONFIG: EconomyLoopConfig = {
 
 interface LoopState {
   isRunning: boolean;
+  isIterating: boolean; // Guard against overlapping iterations
   lastRun: Date | null;
   totalRuns: number;
   totalClaimed: number;
@@ -87,6 +88,7 @@ interface LoopState {
 
 const loopState: LoopState = {
   isRunning: false,
+  isIterating: false,
   lastRun: null,
   totalRuns: 0,
   totalClaimed: 0,
@@ -344,12 +346,36 @@ async function processAgent(
         `[Loop] ${agent.username}: Executing SELL ${decision.tokenSymbol} for ~${decision.amountSol.toFixed(6)} SOL...`
       );
 
-      // For sells, amountSol is the target SOL value - we need to calculate token amount
-      // This is handled internally by the sell function which takes token amount
-      // For now, we'll estimate based on the decision
-      // The brain should provide the token amount, but we can estimate from value
+      // Convert SOL value to token amount using a reverse quote
+      // sellToken expects token amount in smallest unit, but decision.amountSol is SOL value
+      let tokenAmountToSell: number;
+      try {
+        const { getQuoteSolToToken } = await import("./trading");
+        const LAMPORTS_PER_SOL = 1_000_000_000;
+        const solLamports = Math.floor(decision.amountSol * LAMPORTS_PER_SOL);
+        // Get quote: how many tokens would `amountSol` worth of SOL buy?
+        // That tells us the equivalent token amount to sell for that SOL value
+        const quote = await getQuoteSolToToken(agent.agentId, decision.tokenMint, solLamports);
+        tokenAmountToSell = parseInt(quote.outAmount, 10);
+        console.log(
+          `[Loop] ${agent.username}: Converted ${decision.amountSol} SOL -> ${tokenAmountToSell} token units`
+        );
+      } catch (quoteErr) {
+        result.errors.push(
+          `Sell quote failed: ${quoteErr instanceof Error ? quoteErr.message : "Unknown"}`
+        );
+        console.error(`[Loop] ${agent.username}: Failed to get sell quote:`, quoteErr);
+        tokenAmountToSell = 0;
+      }
 
-      const sellResult = await economy.sell(decision.tokenMint, decision.amountSol);
+      if (tokenAmountToSell <= 0) {
+        result.errors.push("Could not determine token amount to sell");
+      }
+
+      const sellResult =
+        tokenAmountToSell > 0
+          ? await economy.sell(decision.tokenMint, tokenAmountToSell)
+          : { success: false, error: "Could not determine token amount" };
 
       result.tradeResult = {
         executed: sellResult.success,
@@ -510,18 +536,29 @@ export function startEconomyLoop(config: EconomyLoopConfig = DEFAULT_LOOP_CONFIG
 
   loopState.isRunning = true;
 
-  // Run immediately
-  runLoopIteration(config).catch((err) => {
-    console.error("[Loop] Iteration error:", err);
-    loopState.errors++;
-  });
-
-  // Then run on interval
-  loopState.intervalHandle = setInterval(() => {
-    runLoopIteration(config).catch((err) => {
+  // Guarded iteration runner — prevents overlapping iterations
+  const runGuarded = async () => {
+    if (loopState.isIterating) {
+      console.log("[Loop] Skipping iteration — previous still running");
+      return;
+    }
+    loopState.isIterating = true;
+    try {
+      await runLoopIteration(config);
+    } catch (err) {
       console.error("[Loop] Iteration error:", err);
       loopState.errors++;
-    });
+    } finally {
+      loopState.isIterating = false;
+    }
+  };
+
+  // Run immediately
+  runGuarded();
+
+  // Then run on interval (skips if previous iteration still running)
+  loopState.intervalHandle = setInterval(() => {
+    runGuarded();
   }, config.intervalMs);
 }
 

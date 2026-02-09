@@ -104,6 +104,13 @@ export async function GET(request: NextRequest) {
 // ============================================================================
 
 export async function POST(request: NextRequest) {
+  // Auth check - require ADMIN_API_SECRET for all control actions
+  const authHeader = request.headers.get("Authorization");
+  const expectedToken = process.env.ADMIN_API_SECRET;
+  if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await request.json();
   const { action } = body;
 

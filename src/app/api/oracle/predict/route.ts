@@ -128,8 +128,15 @@ export async function POST(request: NextRequest) {
   });
 
   if (!result.success) {
-    // Refund OP on failure
-    await addOP(wallet, entryCostOp, "prediction_entry", roundId);
+    // Refund OP on failure - wrap in try/catch to prevent silent loss
+    try {
+      await addOP(wallet, entryCostOp, "prediction_entry", roundId);
+    } catch (refundErr) {
+      console.error(
+        `[Oracle] CRITICAL: Failed to refund ${entryCostOp} OP to ${wallet}:`,
+        refundErr
+      );
+    }
     return NextResponse.json({ success: false, error: result.error }, { status: 400 });
   }
 

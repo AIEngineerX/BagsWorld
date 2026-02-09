@@ -119,6 +119,10 @@ export class WorldScene extends Phaser.Scene {
   private arenaElements: Phaser.GameObjects.GameObject[] = []; // Arena zone elements
   private arenaZoneCreated = false; // Cache arena zone elements
   private arenaWebSocket: WebSocket | null = null; // WebSocket connection for arena
+  private arenaPollingTimer: Phaser.Time.TimerEvent | null = null; // Polling fallback timer
+  private lightningTimer: Phaser.Time.TimerEvent | null = null; // Storm lightning timer
+  private apocalypseTimer: Phaser.Time.TimerEvent | null = null; // Apocalypse shake timer
+  private localPlayerTextureKeys: string[] = []; // Track meme textures for cleanup
   private arenaCrowdSprites: Phaser.GameObjects.Sprite[] = []; // Crowd sprites for cheer reactions
   private arenaSpotlightCones: Phaser.GameObjects.Sprite[] = []; // Spotlight cone sprites
   private arenaCrowdCheering = false; // Flag to track if crowd is cheering
@@ -377,9 +381,11 @@ export class WorldScene extends Phaser.Scene {
   ): void {
     if (this.playerEnabled && this.localPlayer) return;
 
-    // Generate unique texture keys for this meme
+    // Generate unique texture keys for this meme (tracked for cleanup on exit)
     const textureKey = `meme_player_${Date.now()}`;
     const walkTextureKey = walkSpriteSheetUrl ? `meme_walk_${Date.now()}` : null;
+    this.localPlayerTextureKeys = [textureKey];
+    if (walkTextureKey) this.localPlayerTextureKeys.push(walkTextureKey);
 
     // Load the main character image
     this.load.image(textureKey, imageUrl);
@@ -589,6 +595,13 @@ export class WorldScene extends Phaser.Scene {
         if (this.interactPrompt) {
           this.interactPrompt.setVisible(false);
         }
+        // Clean up meme player textures to prevent memory leak (~4MB each)
+        for (const key of this.localPlayerTextureKeys) {
+          if (this.textures.exists(key)) {
+            this.textures.remove(key);
+          }
+        }
+        this.localPlayerTextureKeys = [];
       },
     });
 
@@ -771,7 +784,15 @@ export class WorldScene extends Phaser.Scene {
     const leftEdge = 40;
     const rightEdge = GAME_WIDTH - 40;
 
-    // Zone order: labs (-2) -> moltbook (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3) -> arena (4)
+    // Dungeon is below the world (entered via click) — walking to either edge exits back to trending
+    if (this.currentZone === "dungeon") {
+      if (x <= leftEdge || x >= rightEdge) {
+        this.playerTriggerZoneChange("trending", "left");
+      }
+      return;
+    }
+
+    // Zone order: labs -> moltbook -> main_city -> trending -> ballers -> founders -> arena (left to right)
     const zoneOrder: ZoneType[] = [
       "labs",
       "moltbook",
@@ -782,6 +803,8 @@ export class WorldScene extends Phaser.Scene {
       "arena",
     ];
     const currentIndex = zoneOrder.indexOf(this.currentZone);
+
+    if (currentIndex === -1) return; // Safety: unknown zone
 
     if (x <= leftEdge && currentIndex > 0) {
       // Transition to previous zone
@@ -1230,6 +1253,11 @@ export class WorldScene extends Phaser.Scene {
       this.animals.forEach((a) => oldElements.push(a.sprite));
     }
 
+    // Snapshot building/character sprite IDs at transition start
+    // Only these will be destroyed after transition — sprites created mid-transition by worldState updates are preserved
+    const oldBuildingSpriteIds = new Set(this.buildingSprites.keys());
+    const oldCharacterSpriteIds = new Set(this.characterSprites.keys());
+
     // Include buildings and characters (they slide out and get recreated)
     this.buildingSprites.forEach((container) => oldElements.push(container));
     this.characterSprites.forEach((sprite) => oldElements.push(sprite));
@@ -1411,9 +1439,22 @@ export class WorldScene extends Phaser.Scene {
         }
       });
 
-      // Clear old building/character sprite maps
-      this.buildingSprites.clear();
-      this.characterSprites.clear();
+      // Only clear building/character sprites that existed at transition start
+      // Sprites created mid-transition by worldState updates are preserved
+      oldBuildingSpriteIds.forEach((id) => {
+        const sprite = this.buildingSprites.get(id);
+        if (sprite && (sprite as any).active !== false) {
+          (sprite as any).destroy();
+        }
+        this.buildingSprites.delete(id);
+      });
+      oldCharacterSpriteIds.forEach((id) => {
+        const sprite = this.characterSprites.get(id);
+        if (sprite && (sprite as any).active !== false) {
+          (sprite as any).destroy();
+        }
+        this.characterSprites.delete(id);
+      });
 
       // CRITICAL: Immediately recreate sprites from existing worldState
       // Without this, sprites stay destroyed until next React Query poll (up to 60s)
@@ -7647,15 +7688,8 @@ Your creator page = website!
   }
 
   private startDayNightCycle(): void {
-    // This now serves as a fallback for smooth transitions
-    // The actual day/night state comes from EST time via API
-    this.time.addEvent({
-      delay: 5000,
-      callback: () => {
-        // Smooth overlay transitions are handled by updateDayNightFromEST
-      },
-      loop: true,
-    });
+    // Day/night state is driven by EST time via API in updateDayNightFromEST.
+    // No fallback timer needed — removed to prevent leaked empty timer.
   }
 
   private updateWeather(weather: WorldState["weather"]): void {
@@ -7670,6 +7704,19 @@ Your creator page = website!
       this.sunSprite.destroy();
       this.sunSprite = null;
     }
+
+    // Clean up weather-specific timers to prevent accumulation
+    if (this.lightningTimer) {
+      this.lightningTimer.destroy();
+      this.lightningTimer = null;
+    }
+    if (this.apocalypseTimer) {
+      this.apocalypseTimer.destroy();
+      this.apocalypseTimer = null;
+    }
+
+    // Reset camera background color (apocalypse sets it to dark red)
+    this.cameras.main.setBackgroundColor(0x000000);
 
     // Update cloud appearance
     this.clouds.forEach((cloud) => {
@@ -7796,33 +7843,32 @@ Your creator page = website!
   }
 
   private createLightningEffect(): void {
-    this.time.addEvent({
-      delay: 3000 + Math.random() * 5000,
+    // Use a single looping timer instead of recursive chain to prevent accumulation
+    // Random delay between strikes is achieved via the base delay + random skip logic
+    this.lightningTimer = this.time.addEvent({
+      delay: 2000,
       callback: () => {
-        if (this.worldState?.weather === "storm") {
-          // Flash
-          this.cameras.main.flash(100, 255, 255, 255, true);
+        if (this.worldState?.weather !== "storm") return;
+        // Random chance each tick to create variation (avg ~4s between strikes)
+        if (Math.random() > 0.4) return;
 
-          // Lightning bolt (scaled)
-          const x = Math.round(100 * SCALE) + Math.random() * Math.round(600 * SCALE);
-          const lightning = this.add.sprite(x, Math.round(100 * SCALE), "lightning");
-          lightning.setScale(2 * SCALE);
-          lightning.setDepth(60);
+        // Flash
+        this.cameras.main.flash(100, 255, 255, 255, true);
 
-          this.tweens.add({
-            targets: lightning,
-            alpha: 0,
-            duration: 200,
-            onComplete: () => lightning.destroy(),
-          });
+        // Lightning bolt (scaled)
+        const x = Math.round(100 * SCALE) + Math.random() * Math.round(600 * SCALE);
+        const lightning = this.add.sprite(x, Math.round(100 * SCALE), "lightning");
+        lightning.setScale(2 * SCALE);
+        lightning.setDepth(60);
 
-          // Schedule next lightning
-          this.time.delayedCall(3000 + Math.random() * 5000, () => {
-            this.createLightningEffect();
-          });
-        }
+        this.tweens.add({
+          targets: lightning,
+          alpha: 0,
+          duration: 200,
+          onComplete: () => lightning.destroy(),
+        });
       },
-      loop: false,
+      loop: true,
     });
   }
 
@@ -7830,8 +7876,8 @@ Your creator page = website!
     this.cameras.main.setBackgroundColor(0x1a0505);
     this.overlay.setFillStyle(0xff0000, 0.15);
 
-    // Shake periodically
-    this.time.addEvent({
+    // Shake periodically — stored so updateWeather can clean it up
+    this.apocalypseTimer = this.time.addEvent({
       delay: 2000,
       callback: () => {
         if (this.worldState?.weather === "apocalypse") {
@@ -11889,6 +11935,11 @@ Your creator page = website!
       this.arenaWebSocket.close();
       this.arenaWebSocket = null;
     }
+    // Also clean up polling timer to prevent background network requests
+    if (this.arenaPollingTimer) {
+      this.arenaPollingTimer.destroy();
+      this.arenaPollingTimer = null;
+    }
   }
 
   /**
@@ -13437,11 +13488,17 @@ Your creator page = website!
    * Fallback polling for arena status (when WebSocket unavailable)
    */
   private startArenaPolling(): void {
+    // Clean up any existing polling timer first
+    if (this.arenaPollingTimer) {
+      this.arenaPollingTimer.destroy();
+      this.arenaPollingTimer = null;
+    }
+
     let pollCount = 0;
     let engineStarted = false;
 
     // Poll arena status every 500ms for smoother fight updates
-    this.time.addEvent({
+    this.arenaPollingTimer = this.time.addEvent({
       delay: 500,
       callback: async () => {
         if (this.currentZone !== "arena") return;

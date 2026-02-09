@@ -91,7 +91,7 @@ export function BuildingModal({
   const [slippage, setSlippage] = useState(0.5);
 
   // Chart state
-  const [interval, setInterval] = useState<IntervalType>("1h");
+  const [chartInterval, setChartInterval] = useState<IntervalType>("1h");
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -113,10 +113,10 @@ export function BuildingModal({
 
   // Fetch OHLCV
   const { data: ohlcvData } = useQuery({
-    queryKey: ["buildingOhlcv", tokenMint, interval],
+    queryKey: ["buildingOhlcv", tokenMint, chartInterval],
     queryFn: async () => {
       const res = await fetch(
-        `/api/trading-terminal?action=ohlcv&mint=${tokenMint}&interval=${interval}`
+        `/api/trading-terminal?action=ohlcv&mint=${tokenMint}&interval=${chartInterval}`
       );
       return res.json();
     },
@@ -237,7 +237,7 @@ export function BuildingModal({
         volumeSeriesRef.current = null;
       }
     };
-  }, [interval, ohlcvData]);
+  }, [chartInterval, ohlcvData]);
 
   // Update chart data on OHLCV changes
   useEffect(() => {
@@ -476,9 +476,9 @@ export function BuildingModal({
               {(["5m", "15m", "1h", "4h", "1d"] as IntervalType[]).map((iv) => (
                 <button
                   key={iv}
-                  onClick={() => setInterval(iv)}
+                  onClick={() => setChartInterval(iv)}
                   className={`flex-1 py-1 font-pixel text-[8px] transition-colors rounded ${
-                    interval === iv
+                    chartInterval === iv
                       ? "bg-bags-green/20 text-bags-green border border-bags-green"
                       : "text-gray-500 border border-gray-700 hover:border-bags-green/50"
                   }`}

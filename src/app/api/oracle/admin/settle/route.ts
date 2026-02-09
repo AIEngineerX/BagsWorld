@@ -10,7 +10,7 @@ import {
   updatePredictionOPPayout,
   isNeonConfigured,
 } from "@/lib/neon";
-import { isAdmin } from "@/lib/config";
+
 import { emitEvent } from "@/lib/agent-coordinator";
 import { resolveMarket, calculateOPPayouts, getTokenPrice } from "@/lib/oracle-resolver";
 import { addOP, updateStreak, updateReputation } from "@/lib/op-economy";
@@ -25,8 +25,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { adminWallet, action, roundId, winningOutcomeId } = body;
 
-  // Verify admin using config-based admin check
-  if (!adminWallet || !isAdmin(adminWallet)) {
+  // Verify admin using Bearer token auth
+  const authHeader = request.headers.get("Authorization");
+  const expectedToken = process.env.ADMIN_API_SECRET;
+  if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
   }
 
