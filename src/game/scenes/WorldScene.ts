@@ -209,6 +209,13 @@ export class WorldScene extends Phaser.Scene {
   private boundEnterWorld: ((e: Event) => void) | null = null;
   private boundExitWorld: ((e: Event) => void) | null = null;
 
+  // Quest marker system
+  private boundQuestMarkers: ((e: Event) => void) | null = null;
+  private questMarkers: Map<
+    string,
+    { marker: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Text }
+  > = new Map();
+
   private isMobile = false;
 
   constructor() {
@@ -310,6 +317,10 @@ export class WorldScene extends Phaser.Scene {
     // Listen for character speak events
     this.boundSpeakHandler = (e: Event) => this.handleCharacterSpeak(e as CustomEvent);
     window.addEventListener("bagsworld-character-speak", this.boundSpeakHandler);
+
+    // Listen for quest marker events from QuestTracker
+    this.boundQuestMarkers = (e: Event) => this.handleQuestMarkers(e as CustomEvent);
+    window.addEventListener("bagsworld-quest-markers", this.boundQuestMarkers);
 
     // Setup local player controls (WASD/arrow keys to walk around)
     this.setupLocalPlayer();
@@ -5098,6 +5109,79 @@ Your creator page = website!
     if (sparkle) sparkle.setPosition(sprite.x, sprite.y - 22);
   }
 
+  // Update quest marker position above character
+  private updateQuestMarker(sprite: Phaser.GameObjects.Sprite): void {
+    const qm = sprite.getData("questMarker") as
+      | { marker: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Text }
+      | undefined;
+    if (qm) {
+      qm.marker.setPosition(sprite.x, sprite.y - 30);
+      qm.glow.setPosition(sprite.x, sprite.y - 30);
+    }
+  }
+
+  // Handle quest marker events from QuestTracker component
+  private handleQuestMarkers(event: CustomEvent): void {
+    const markers = event.detail?.markers as { characterId: string; type: string }[] | undefined;
+    if (!markers) return;
+
+    // Determine which characterIds should have markers
+    const wantedIds = new Set(markers.map((m) => m.characterId));
+
+    // Remove markers that are no longer wanted
+    for (const [charId, qm] of this.questMarkers) {
+      if (!wantedIds.has(charId)) {
+        this.tweens.killTweensOf(qm.marker);
+        qm.marker.destroy();
+        qm.glow.destroy();
+        this.questMarkers.delete(charId);
+        // Also clear from sprite data
+        const sprite = this.findCharacterSprite(charId);
+        if (sprite) sprite.setData("questMarker", undefined);
+      }
+    }
+
+    // Add new markers
+    for (const m of markers) {
+      if (this.questMarkers.has(m.characterId)) continue;
+      const sprite = this.findCharacterSprite(m.characterId);
+      if (!sprite) continue;
+
+      // Glow behind marker
+      const glow = this.add.text(sprite.x, sprite.y - 30, "!", {
+        fontFamily: "monospace",
+        fontSize: "18px",
+        color: "#fbbf24",
+      });
+      glow.setOrigin(0.5, 0.5);
+      glow.setDepth(13);
+      glow.setAlpha(0.3);
+
+      // Main marker
+      const marker = this.add.text(sprite.x, sprite.y - 30, "!", {
+        fontFamily: "monospace",
+        fontSize: "14px",
+        color: "#fbbf24",
+      });
+      marker.setOrigin(0.5, 0.5);
+      marker.setDepth(13);
+
+      // Bouncing tween
+      this.tweens.add({
+        targets: [marker, glow],
+        y: "-=4",
+        yoyo: true,
+        repeat: -1,
+        duration: 600,
+        ease: "Sine.easeInOut",
+      });
+
+      const qmData = { marker, glow };
+      this.questMarkers.set(m.characterId, qmData);
+      sprite.setData("questMarker", qmData);
+    }
+  }
+
   // Handle character speak events (from AI behavior)
   private handleCharacterSpeak(event: CustomEvent): void {
     const { characterId, message, emotion } = event.detail;
@@ -5400,6 +5484,18 @@ Your creator page = website!
       this.speechBubbleManager.destroy();
       this.speechBubbleManager = null;
     }
+
+    // Clean up quest markers
+    if (this.boundQuestMarkers) {
+      window.removeEventListener("bagsworld-quest-markers", this.boundQuestMarkers);
+      this.boundQuestMarkers = null;
+    }
+    for (const [, qm] of this.questMarkers) {
+      this.tweens.killTweensOf(qm.marker);
+      qm.marker.destroy();
+      qm.glow.destroy();
+    }
+    this.questMarkers.clear();
 
     // Clean up behavior handlers
     if (this.boundBehaviorHandler) {
@@ -7308,9 +7404,10 @@ Your creator page = website!
           // Face direction of movement
           sprite.setFlipX(dx < 0);
 
-          // Update any glow sprites and visitor sparkles to follow
+          // Update any glow sprites, visitor sparkles, and quest markers to follow
           this.updateCharacterGlow(sprite, character);
           this.updateVisitorSparkle(sprite);
+          this.updateQuestMarker(sprite);
           if (this.isMobile) this.updateMobileLabel(sprite);
         } else {
           // Reached target, clear it and reset speed for next movement
@@ -7340,9 +7437,10 @@ Your creator page = website!
             this.characterSpeeds.delete(id); // Reset speed on direction change
           }
         }
-        // Update glow and visitor sparkles on fallback movement too
+        // Update glow, visitor sparkles, and quest markers on fallback movement too
         this.updateCharacterGlow(sprite, character);
         this.updateVisitorSparkle(sprite);
+        this.updateQuestMarker(sprite);
         if (this.isMobile) this.updateMobileLabel(sprite);
       }
     });
@@ -8013,6 +8111,22 @@ Your creator page = website!
           | Phaser.GameObjects.Text
           | undefined;
         if (visitorSparkle) visitorSparkle.destroy();
+        // Clean up quest marker
+        const questMarker = sprite.getData("questMarker") as
+          | { marker: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Text }
+          | undefined;
+        if (questMarker) {
+          this.tweens.killTweensOf(questMarker.marker);
+          questMarker.marker.destroy();
+          questMarker.glow.destroy();
+          // Find and remove from questMarkers map
+          for (const [charId, qm] of this.questMarkers) {
+            if (qm === questMarker) {
+              this.questMarkers.delete(charId);
+              break;
+            }
+          }
+        }
         sprite.destroy();
         this.characterSprites.delete(id);
         this.characterVariants.delete(id);
@@ -8156,10 +8270,7 @@ Your creator page = website!
       const targetSize = 51;
       if (this.textures.exists(visitorTextureKey)) {
         // Texture loaded but never applied — apply it now
-        sprite.setTexture(visitorTextureKey);
-        const tex = this.textures.get(visitorTextureKey);
-        const frame = tex.get();
-        sprite.setScale((targetSize / frame.width) * 1.2);
+        this.applyVisitorTexture(sprite, visitorTextureKey, targetSize);
       } else if (!this.load.isLoading()) {
         // Texture never loaded — queue and start
         this.load.image(visitorTextureKey, character.spriteUrl);
@@ -8167,10 +8278,7 @@ Your creator page = website!
           `filecomplete-image-${visitorTextureKey}`,
           () => {
             if (sprite && sprite.active && this.textures.exists(visitorTextureKey)) {
-              sprite.setTexture(visitorTextureKey);
-              const tex = this.textures.get(visitorTextureKey);
-              const frame = tex.get();
-              sprite.setScale((targetSize / frame.width) * 1.2);
+              this.applyVisitorTexture(sprite, visitorTextureKey, targetSize);
             }
           },
           this
@@ -8182,6 +8290,48 @@ Your creator page = website!
         });
       }
     }
+  }
+
+  /**
+   * Strip near-white background pixels from a visitor texture.
+   * Replaces the existing Phaser texture with a cleaned version where
+   * pixels above the brightness threshold become transparent.
+   */
+  private stripVisitorBg(textureKey: string): void {
+    if (!this.textures.exists(textureKey)) return;
+    const src = this.textures.get(textureKey).getSourceImage() as HTMLImageElement;
+    if (!src || !src.width) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = src.width;
+    canvas.height = src.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(src, 0, 0);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imgData.data;
+    const threshold = 240; // near-white
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] > threshold && d[i + 1] > threshold && d[i + 2] > threshold) {
+        d[i + 3] = 0; // make transparent
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+    // Replace existing texture with cleaned version
+    this.textures.remove(textureKey);
+    this.textures.addCanvas(textureKey, canvas);
+  }
+
+  /** Apply visitor texture to sprite with bg removal and scaling */
+  private applyVisitorTexture(
+    sprite: Phaser.GameObjects.Sprite,
+    textureKey: string,
+    targetSize: number
+  ): void {
+    this.stripVisitorBg(textureKey);
+    sprite.setTexture(textureKey);
+    const tex = this.textures.get(textureKey);
+    const frame = tex.get();
+    sprite.setScale((targetSize / frame.width) * 1.2);
   }
 
   private createCharacterSprite(character: GameCharacter, index: number): void {
@@ -8287,10 +8437,7 @@ Your creator page = website!
       const visitorTextureKey = `visitor_${character.id}`;
       const targetSize = 51; // 32 * SCALE(1.6)
       if (this.textures.exists(visitorTextureKey)) {
-        sprite.setTexture(visitorTextureKey);
-        const tex = this.textures.get(visitorTextureKey);
-        const frame = tex.get();
-        sprite.setScale((targetSize / frame.width) * 1.2);
+        this.applyVisitorTexture(sprite, visitorTextureKey, targetSize);
       } else {
         // Use per-file listener to avoid race conditions with multiple concurrent loads
         this.load.image(visitorTextureKey, character.spriteUrl);
@@ -8298,10 +8445,7 @@ Your creator page = website!
           `filecomplete-image-${visitorTextureKey}`,
           () => {
             if (sprite && sprite.active && this.textures.exists(visitorTextureKey)) {
-              sprite.setTexture(visitorTextureKey);
-              const tex = this.textures.get(visitorTextureKey);
-              const frame = tex.get();
-              sprite.setScale((targetSize / frame.width) * 1.2);
+              this.applyVisitorTexture(sprite, visitorTextureKey, targetSize);
             }
           },
           this
