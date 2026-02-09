@@ -9,30 +9,9 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { LiveMarketFeed } from "@/components/LiveMarketFeed";
 import { AgentChatterFeed } from "@/components/AgentChatterFeed";
 import { LaunchButton } from "@/components/LaunchButton";
-import { AIChat } from "@/components/AIChat";
-import { AshChat } from "@/components/AshChat";
-import { TolyChat } from "@/components/TolyChat";
-import { FinnbagsChat } from "@/components/FinnbagsChat";
-import { DevChat } from "@/components/DevChat";
-import { NeoChat } from "@/components/NeoChat";
-import { CJChat } from "@/components/CJChat";
-import { ShawChat } from "@/components/ShawChat";
-import { RamoChat } from "@/components/RamoChat";
-import { SincaraChat } from "@/components/SincaraChat";
-import { StuuChat } from "@/components/StuuChat";
-import { SamChat } from "@/components/SamChat";
-import { AlaaChat } from "@/components/AlaaChat";
-import { CarloChat } from "@/components/CarloChat";
-import { BNNChat } from "@/components/BNNChat";
-import { ProfessorOakChat } from "@/components/ProfessorOakChat";
-import { BagsyChat } from "@/components/BagsyChat";
-import { AgentDashboard } from "@/components/AgentDashboard";
-import { AdminConsole } from "@/components/AdminConsole";
 import { YourBuildings } from "@/components/YourBuildings";
 import { WalletButton } from "@/components/WalletButton";
 import { ClaimButton } from "@/components/ClaimButton";
-import { BuildingModal } from "@/components/BuildingModal";
-import { LaunchModal } from "@/components/LaunchModal";
 import { PartnerClaimButton } from "@/components/PartnerClaimButton";
 import { MusicButton } from "@/components/MusicButton";
 import { EnterWorldButton } from "@/components/EnterWorldButton";
@@ -40,26 +19,135 @@ import { WorldIcon } from "@/components/icons";
 import { useWorldState } from "@/hooks/useWorldState";
 import { DatabaseStatus } from "@/components/DatabaseStatus";
 import { EcosystemStats } from "@/components/EcosystemStats";
-import { PokeCenterModal } from "@/components/PokeCenterModal";
-import { FeeClaimModal } from "@/components/FeeClaimModal";
 import { ZoneNav } from "@/components/ZoneNav";
 import { MobileCharacterMenu } from "@/components/MobileCharacterMenu";
 import { ScoutAlerts } from "@/components/ScoutAlerts";
-import { TradingGymModal } from "@/components/TradingGymModal";
-import { CommunityFundModal } from "@/components/CommunityFundModal";
-import { CasinoModal } from "@/components/CasinoModal";
-import { ArenaModal } from "@/components/ArenaModal";
-import { DungeonModal } from "@/components/DungeonModal";
-import { AgentHutModal } from "@/components/AgentHutModal";
-import { AgentBarModal } from "@/components/AgentBarModal";
-import { IncineratorModal } from "@/components/IncineratorModal";
-import { CasinoAdmin } from "@/components/CasinoAdmin";
-import { OracleTowerModal } from "@/components/OracleTowerModal";
-import { LauncherHub } from "@/components/LauncherHub";
-import { TradingTerminalModal } from "@/components/TradingTerminalModal";
-import { MansionModal } from "@/components/MansionModal";
 import { MiniMap } from "@/components/MiniMap";
 import { QuestTracker } from "@/components/QuestTracker";
+
+// Lazy-loaded chat components — only downloaded when character is clicked
+const AIChat = dynamic(() => import("@/components/AIChat").then((m) => m.AIChat), { ssr: false });
+const AshChat = dynamic(() => import("@/components/AshChat").then((m) => m.AshChat), {
+  ssr: false,
+});
+const TolyChat = dynamic(() => import("@/components/TolyChat").then((m) => m.TolyChat), {
+  ssr: false,
+});
+const FinnbagsChat = dynamic(
+  () => import("@/components/FinnbagsChat").then((m) => m.FinnbagsChat),
+  { ssr: false }
+);
+const DevChat = dynamic(() => import("@/components/DevChat").then((m) => m.DevChat), {
+  ssr: false,
+});
+const NeoChat = dynamic(() => import("@/components/NeoChat").then((m) => m.NeoChat), {
+  ssr: false,
+});
+const CJChat = dynamic(() => import("@/components/CJChat").then((m) => m.CJChat), { ssr: false });
+const ShawChat = dynamic(() => import("@/components/ShawChat").then((m) => m.ShawChat), {
+  ssr: false,
+});
+const RamoChat = dynamic(() => import("@/components/RamoChat").then((m) => m.RamoChat), {
+  ssr: false,
+});
+const SincaraChat = dynamic(() => import("@/components/SincaraChat").then((m) => m.SincaraChat), {
+  ssr: false,
+});
+const StuuChat = dynamic(() => import("@/components/StuuChat").then((m) => m.StuuChat), {
+  ssr: false,
+});
+const SamChat = dynamic(() => import("@/components/SamChat").then((m) => m.SamChat), {
+  ssr: false,
+});
+const AlaaChat = dynamic(() => import("@/components/AlaaChat").then((m) => m.AlaaChat), {
+  ssr: false,
+});
+const CarloChat = dynamic(() => import("@/components/CarloChat").then((m) => m.CarloChat), {
+  ssr: false,
+});
+const BNNChat = dynamic(() => import("@/components/BNNChat").then((m) => m.BNNChat), {
+  ssr: false,
+});
+const ProfessorOakChat = dynamic(
+  () => import("@/components/ProfessorOakChat").then((m) => m.ProfessorOakChat),
+  { ssr: false }
+);
+const BagsyChat = dynamic(() => import("@/components/BagsyChat").then((m) => m.BagsyChat), {
+  ssr: false,
+});
+const AgentDashboard = dynamic(
+  () => import("@/components/AgentDashboard").then((m) => m.AgentDashboard),
+  { ssr: false }
+);
+const AdminConsole = dynamic(
+  () => import("@/components/AdminConsole").then((m) => m.AdminConsole),
+  { ssr: false }
+);
+
+// Lazy-loaded modal components — only downloaded when modal is opened
+const BuildingModal = dynamic(
+  () => import("@/components/BuildingModal").then((m) => m.BuildingModal),
+  { ssr: false }
+);
+const LaunchModal = dynamic(() => import("@/components/LaunchModal").then((m) => m.LaunchModal), {
+  ssr: false,
+});
+const PokeCenterModal = dynamic(
+  () => import("@/components/PokeCenterModal").then((m) => m.PokeCenterModal),
+  { ssr: false }
+);
+const FeeClaimModal = dynamic(
+  () => import("@/components/FeeClaimModal").then((m) => m.FeeClaimModal),
+  { ssr: false }
+);
+const TradingGymModal = dynamic(
+  () => import("@/components/TradingGymModal").then((m) => m.TradingGymModal),
+  { ssr: false }
+);
+const CommunityFundModal = dynamic(
+  () => import("@/components/CommunityFundModal").then((m) => m.CommunityFundModal),
+  { ssr: false }
+);
+const CasinoModal = dynamic(() => import("@/components/CasinoModal").then((m) => m.CasinoModal), {
+  ssr: false,
+});
+const ArenaModal = dynamic(() => import("@/components/ArenaModal").then((m) => m.ArenaModal), {
+  ssr: false,
+});
+const DungeonModal = dynamic(
+  () => import("@/components/DungeonModal").then((m) => m.DungeonModal),
+  { ssr: false }
+);
+const AgentHutModal = dynamic(
+  () => import("@/components/AgentHutModal").then((m) => m.AgentHutModal),
+  { ssr: false }
+);
+const AgentBarModal = dynamic(
+  () => import("@/components/AgentBarModal").then((m) => m.AgentBarModal),
+  { ssr: false }
+);
+const IncineratorModal = dynamic(
+  () => import("@/components/IncineratorModal").then((m) => m.IncineratorModal),
+  { ssr: false }
+);
+const CasinoAdmin = dynamic(() => import("@/components/CasinoAdmin").then((m) => m.CasinoAdmin), {
+  ssr: false,
+});
+const OracleTowerModal = dynamic(
+  () => import("@/components/OracleTowerModal").then((m) => m.OracleTowerModal),
+  { ssr: false }
+);
+const LauncherHub = dynamic(() => import("@/components/LauncherHub").then((m) => m.LauncherHub), {
+  ssr: false,
+});
+const TradingTerminalModal = dynamic(
+  () => import("@/components/TradingTerminalModal").then((m) => m.TradingTerminalModal),
+  { ssr: false }
+);
+const MansionModal = dynamic(
+  () => import("@/components/MansionModal").then((m) => m.MansionModal),
+  { ssr: false }
+);
 
 import { useGameStore } from "@/lib/store";
 import type { ZoneType } from "@/lib/types";
