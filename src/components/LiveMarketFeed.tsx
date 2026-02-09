@@ -2,92 +2,37 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useGameStore } from "@/lib/store";
-import type { GameBuilding, MarketEvent, MarketSummary } from "@/lib/types";
+import type { MarketEvent, MarketSummary } from "@/lib/types";
 import { usePlatformActivity } from "@/hooks/usePlatformActivity";
 import { MarketSummaryBar } from "./MarketSummaryBar";
+import { TokenPriceTicker } from "./TokenPriceTicker";
 import { MarketEventItem } from "./MarketEventItem";
-import { SignalIcon, ChartUpIcon, ChartDownIcon } from "./icons";
+import { SignalIcon } from "./icons";
 
-type ViewMode = "tokens" | "activity";
-type SortMode = "volume" | "mcap" | "change";
 type MarketFilter = "all" | "launches" | "claims" | "trades";
 
 const MAX_EVENTS = 50;
+const FEED_MAX_AGE_MS = 6 * 60 * 60 * 1000; // Only show events from last 6h in the feed
 
-function formatMcap(value: number): string {
-  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  if (value > 0) return `$${value.toFixed(0)}`;
-  return "-";
-}
-
-function formatVol(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
-  if (value > 0) return `$${value.toFixed(0)}`;
-  return "-";
-}
-
-function TokenRow({ token, rank }: { token: GameBuilding; rank: number }) {
-  const change = token.change24h ?? 0;
-  const isPositive = change >= 0;
-
-  return (
-    <div className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-bags-green/5 transition-colors">
-      <span className="font-pixel text-[7px] text-gray-600 w-3 text-right">{rank}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <span className="font-pixel text-[8px] text-gray-200 truncate">${token.symbol}</span>
-          <span
-            className={`font-pixel text-[8px] ${isPositive ? "text-bags-green" : "text-red-400"}`}
-          >
-            {isPositive ? "+" : ""}
-            {change.toFixed(1)}%
-          </span>
-        </div>
-        <div className="flex items-center justify-between mt-px">
-          <span className="font-pixel text-[6px] text-gray-500">
-            {formatMcap(token.marketCap ?? 0)}
-          </span>
-          <span className="font-pixel text-[6px] text-gray-500">
-            {formatVol(token.volume24h ?? 0)} vol
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+function formatUpdatedAgo(ts: number | undefined): string {
+  if (!ts) return "";
+  const diff = Date.now() - ts;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  if (minutes > 0) return `${minutes}m ago`;
+  return "just now";
 }
 
 export function LiveMarketFeed() {
   const worldState = useGameStore((s) => s.worldState);
   const { platformEvents, platformSummary } = usePlatformActivity();
-  const [viewMode, setViewMode] = useState<ViewMode>("tokens");
-  const [sortMode, setSortMode] = useState<SortMode>("volume");
-  const [activityFilter, setActivityFilter] = useState<MarketFilter>("all");
+  const [filter, setFilter] = useState<MarketFilter>("all");
   const listRef = useRef<HTMLDivElement>(null);
   const [userScrolled, setUserScrolled] = useState(false);
 
   const buildings = useMemo(() => worldState?.buildings ?? [], [worldState?.buildings]);
   const events = useMemo(() => worldState?.events ?? [], [worldState?.events]);
-
-  // Sorted token list (non-permanent buildings with market data)
-  const sortedTokens = useMemo(() => {
-    const tokens = buildings.filter(
-      (b) => !b.isPermanent && (b.marketCap || b.volume24h || b.change24h !== undefined)
-    );
-
-    switch (sortMode) {
-      case "volume":
-        return [...tokens].sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0));
-      case "mcap":
-        return [...tokens].sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0));
-      case "change":
-        return [...tokens].sort((a, b) => (b.change24h ?? 0) - (a.change24h ?? 0));
-      default:
-        return tokens;
-    }
-  }, [buildings, sortMode]);
+  const lastUpdated = worldState?.lastUpdated;
 
   // Compute market summary from buildings + platform Bags.fm data
   const summary = useMemo<MarketSummary>(() => {
@@ -96,6 +41,7 @@ export function LiveMarketFeed() {
     let topGainer: MarketSummary["topGainer"] = null;
     let topLoser: MarketSummary["topLoser"] = null;
 
+    // Add volume from user-registered buildings (deduplication: platform already excludes knownMints)
     for (const b of buildings) {
       if (!b.isPermanent) {
         totalVolume24h += b.volume24h ?? 0;
@@ -111,20 +57,29 @@ export function LiveMarketFeed() {
       }
     }
 
+    // Add fees from BagsWorld events (user-registered token claims)
     for (const e of events) {
       if (e.type === "fee_claim" && e.data?.amount) {
         totalFeesClaimed += e.data.amount;
       }
     }
 
+    // Token count: platform-discovered Bags.fm tokens + user-registered buildings
     const registeredTokenCount = buildings.filter((b) => !b.isPermanent).length;
     const activeTokenCount = platformSummary.activeTokenCount + registeredTokenCount;
 
-    return { totalVolume24h, totalFeesClaimed, activeTokenCount, topGainer, topLoser };
+    return {
+      totalVolume24h,
+      totalFeesClaimed,
+      activeTokenCount,
+      topGainer,
+      topLoser,
+    };
   }, [buildings, events, platformSummary]);
 
   // Transform GameEvent[] into MarketEvent[], merging BagsWorld + platform events
   const marketEvents = useMemo<MarketEvent[]>(() => {
+    // BagsWorld events (tagged as bagsworld)
     const bwEvents: MarketEvent[] = events.map((e) => ({
       id: e.id,
       type: e.type,
@@ -137,6 +92,7 @@ export function LiveMarketFeed() {
       source: "bagsworld" as const,
     }));
 
+    // Platform events (tagged as platform)
     const pfEvents: MarketEvent[] = platformEvents.map((e) => ({
       id: e.id,
       type: e.type,
@@ -149,6 +105,7 @@ export function LiveMarketFeed() {
       source: "platform" as const,
     }));
 
+    // Merge, deduplicate by id, sort with BagsWorld priority at same timestamp
     const seen = new Set<string>();
     const merged: MarketEvent[] = [];
 
@@ -159,10 +116,14 @@ export function LiveMarketFeed() {
       }
     }
 
+    const cutoff = Date.now() - FEED_MAX_AGE_MS;
+
     return merged
+      .filter((e) => e.timestamp > cutoff)
       .sort((a, b) => {
         const timeDiff = b.timestamp - a.timestamp;
         if (timeDiff !== 0) return timeDiff;
+        // BagsWorld events first at same timestamp
         if (a.source === "bagsworld" && b.source !== "bagsworld") return -1;
         if (b.source === "bagsworld" && a.source !== "bagsworld") return 1;
         return 0;
@@ -170,9 +131,9 @@ export function LiveMarketFeed() {
       .slice(0, MAX_EVENTS);
   }, [events, platformEvents]);
 
-  // Apply filter to activity events
+  // Apply filter
   const filteredEvents = useMemo(() => {
-    switch (activityFilter) {
+    switch (filter) {
       case "launches":
         return marketEvents.filter(
           (e) =>
@@ -183,6 +144,7 @@ export function LiveMarketFeed() {
       case "claims":
         return marketEvents.filter((e) => e.type === "fee_claim" || e.type === "milestone");
       case "trades":
+        // Show whale trades sorted by volume (largest first)
         return marketEvents
           .filter(
             (e) => e.type === "price_pump" || e.type === "price_dump" || e.type === "whale_alert"
@@ -191,7 +153,7 @@ export function LiveMarketFeed() {
       default:
         return marketEvents;
     }
-  }, [marketEvents, activityFilter]);
+  }, [marketEvents, filter]);
 
   // Auto-scroll to top when new events arrive (unless user scrolled)
   useEffect(() => {
@@ -200,15 +162,12 @@ export function LiveMarketFeed() {
     }
   }, [filteredEvents, userScrolled]);
 
+  // Detect user scroll
   const handleScroll = useCallback(() => {
     if (listRef.current) {
       setUserScrolled(listRef.current.scrollTop > 10);
     }
   }, []);
-
-  // Top gainer/loser mini-display
-  const topGainer = summary.topGainer;
-  const topLoser = summary.topLoser;
 
   return (
     <div className="h-full flex flex-col bg-bags-darker">
@@ -220,153 +179,61 @@ export function LiveMarketFeed() {
           </span>
           <span className="font-pixel text-[9px] text-bags-green">MARKET</span>
           <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+          {lastUpdated && (
+            <span className="font-pixel text-[5px] text-gray-600">
+              {formatUpdatedAgo(lastUpdated)}
+            </span>
+          )}
         </div>
-        {/* View toggle */}
+        {/* Filter Tabs */}
         <div className="flex gap-1">
-          <button
-            onClick={() => setViewMode("tokens")}
-            className={`font-pixel text-[7px] px-1.5 py-0.5 transition-colors ${
-              viewMode === "tokens"
-                ? "text-bags-gold bg-bags-gold/10"
-                : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            TOKENS
-          </button>
-          <button
-            onClick={() => setViewMode("activity")}
-            className={`font-pixel text-[7px] px-1.5 py-0.5 transition-colors ${
-              viewMode === "activity"
-                ? "text-bags-gold bg-bags-gold/10"
-                : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            ACTIVITY
-          </button>
+          {(["all", "launches", "claims", "trades"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`font-pixel text-[7px] px-1.5 py-0.5 transition-colors ${
+                filter === f
+                  ? "text-bags-gold bg-bags-gold/10"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              {f.toUpperCase()}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Summary Stats */}
       <MarketSummaryBar summary={summary} />
 
-      {/* Gainers/Losers Row */}
-      {(topGainer || topLoser) && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-black/20 border-b border-bags-green/20">
-          {topGainer && topGainer.change > 0 && (
-            <div className="flex items-center gap-1">
-              <ChartUpIcon size={10} />
-              <span className="font-pixel text-[7px] text-bags-green">
-                ${topGainer.symbol} +{topGainer.change.toFixed(1)}%
-              </span>
-            </div>
-          )}
-          {topLoser && topLoser.change < 0 && (
-            <div className="flex items-center gap-1">
-              <ChartDownIcon size={10} />
-              <span className="font-pixel text-[7px] text-red-400">
-                ${topLoser.symbol} {topLoser.change.toFixed(1)}%
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Price Ticker */}
+      <TokenPriceTicker buildings={buildings} />
 
-      {/* Main Content */}
-      {viewMode === "tokens" ? (
-        <>
-          {/* Sort options */}
-          <div className="flex items-center gap-1 px-2 py-1 border-b border-bags-green/10">
-            {(["volume", "mcap", "change"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setSortMode(s)}
-                className={`font-pixel text-[6px] px-1.5 py-0.5 transition-colors ${
-                  sortMode === s
-                    ? "text-bags-gold bg-bags-gold/10"
-                    : "text-gray-600 hover:text-gray-400"
-                }`}
-              >
-                {s === "volume" ? "VOL" : s === "mcap" ? "MCAP" : "24H%"}
-              </button>
-            ))}
-            <span className="flex-1" />
-            <span className="font-pixel text-[6px] text-gray-600">
-              {sortedTokens.length} tokens
-            </span>
+      {/* Event List */}
+      <div
+        ref={listRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto min-h-0"
+        role="feed"
+        aria-label="Market events feed"
+      >
+        {filteredEvents.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center py-4">
+              <p className="font-pixel text-[8px] text-gray-500">Waiting for market activity...</p>
+              <p className="font-pixel text-[7px] text-gray-600 mt-1">
+                Events appear as tokens are launched, traded, and claimed
+              </p>
+            </div>
           </div>
-
-          {/* Token List */}
-          <div
-            className="flex-1 overflow-y-auto min-h-0"
-            role="list"
-            aria-label="Token market data"
-          >
-            {sortedTokens.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center py-4">
-                  <p className="font-pixel text-[8px] text-gray-500">No tokens registered yet</p>
-                  <p className="font-pixel text-[7px] text-gray-600 mt-1">
-                    Launch a token to see market data
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="divide-y divide-bags-green/5">
-                {sortedTokens.map((token, idx) => (
-                  <TokenRow key={token.id} token={token} rank={idx + 1} />
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Activity Filter Tabs */}
-          <div className="flex items-center gap-1 px-2 py-1 border-b border-bags-green/10">
-            {(["all", "launches", "claims", "trades"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setActivityFilter(f)}
-                className={`font-pixel text-[6px] px-1.5 py-0.5 transition-colors ${
-                  activityFilter === f
-                    ? "text-bags-gold bg-bags-gold/10"
-                    : "text-gray-600 hover:text-gray-400"
-                }`}
-              >
-                {f.toUpperCase()}
-              </button>
+        ) : (
+          <div className="divide-y divide-bags-green/10">
+            {filteredEvents.map((event) => (
+              <MarketEventItem key={event.id} event={event} />
             ))}
           </div>
-
-          {/* Event List */}
-          <div
-            ref={listRef}
-            onScroll={handleScroll}
-            className="flex-1 overflow-y-auto min-h-0"
-            role="feed"
-            aria-label="Market events feed"
-          >
-            {filteredEvents.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center py-4">
-                  <p className="font-pixel text-[8px] text-gray-500">
-                    Waiting for market activity...
-                  </p>
-                  <p className="font-pixel text-[7px] text-gray-600 mt-1">
-                    Events appear as tokens are launched, traded, and claimed
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="divide-y divide-bags-green/10">
-                {filteredEvents.map((event) => (
-                  <MarketEventItem key={event.id} event={event} />
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }
