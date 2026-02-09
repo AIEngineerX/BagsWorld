@@ -1,7 +1,13 @@
 // Comprehensive tests for src/lib/rate-limit.ts
 // Tests the distributed rate limiter with in-memory fallback for API protection
 
-import { checkRateLimit, getClientIP, RATE_LIMITS, RateLimitConfig } from "@/lib/rate-limit";
+import {
+  checkRateLimit,
+  checkRateLimitSync,
+  getClientIP,
+  RATE_LIMITS,
+  RateLimitConfig,
+} from "@/lib/rate-limit";
 
 // Mock Request class for testing getClientIP
 class MockRequest {
@@ -428,6 +434,164 @@ describe("Rate Limiter", () => {
 
       // Should work again
       expect((await checkRateLimit(ip, config)).success).toBe(true);
+    });
+  });
+
+  // ==================== checkRateLimitSync ====================
+
+  describe("checkRateLimitSync", () => {
+    it("should allow first request", () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 5, windowMs: 60000 };
+
+      const result = checkRateLimitSync(id, config);
+
+      expect(result.success).toBe(true);
+      expect(result.remaining).toBe(4);
+    });
+
+    it("should block after limit reached", () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 3, windowMs: 60000 };
+
+      checkRateLimitSync(id, config); // 1
+      checkRateLimitSync(id, config); // 2
+      checkRateLimitSync(id, config); // 3
+
+      const blocked = checkRateLimitSync(id, config);
+      expect(blocked.success).toBe(false);
+      expect(blocked.remaining).toBe(0);
+    });
+
+    it("should return correct RateLimitResult shape", () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 5, windowMs: 60000 };
+
+      const result = checkRateLimitSync(id, config);
+
+      expect(result).toHaveProperty("success");
+      expect(result).toHaveProperty("remaining");
+      expect(result).toHaveProperty("resetIn");
+      expect(typeof result.success).toBe("boolean");
+      expect(typeof result.remaining).toBe("number");
+      expect(typeof result.resetIn).toBe("number");
+    });
+
+    it("should track identifiers separately", () => {
+      const id1 = getUniqueId();
+      const id2 = getUniqueId();
+      const config: RateLimitConfig = { limit: 2, windowMs: 60000 };
+
+      // Exhaust id1
+      checkRateLimitSync(id1, config);
+      checkRateLimitSync(id1, config);
+      const blockedResult = checkRateLimitSync(id1, config);
+
+      // id2 should still have full limit
+      const freshResult = checkRateLimitSync(id2, config);
+
+      expect(blockedResult.success).toBe(false);
+      expect(freshResult.success).toBe(true);
+      expect(freshResult.remaining).toBe(1);
+    });
+
+    it("should share in-memory store with async checkRateLimit", async () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 3, windowMs: 60000 };
+
+      // Use 1 request via sync
+      checkRateLimitSync(id, config);
+
+      // Use 1 request via async
+      await checkRateLimit(id, config);
+
+      // 3rd request via sync should still succeed (limit is 3)
+      const r3 = checkRateLimitSync(id, config);
+      expect(r3.success).toBe(true);
+      expect(r3.remaining).toBe(0);
+
+      // 4th request should be blocked
+      const r4 = checkRateLimitSync(id, config);
+      expect(r4.success).toBe(false);
+    });
+
+    it("should reset after window expires", async () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 2, windowMs: 100 };
+
+      // Exhaust the limit
+      checkRateLimitSync(id, config);
+      checkRateLimitSync(id, config);
+      const blocked = checkRateLimitSync(id, config);
+      expect(blocked.success).toBe(false);
+
+      // Wait for window to expire
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Should be allowed again
+      const result = checkRateLimitSync(id, config);
+      expect(result.success).toBe(true);
+      expect(result.remaining).toBe(1);
+    });
+  });
+
+  // ==================== Concurrent requests ====================
+
+  describe("Concurrent requests", () => {
+    it("should handle 10 parallel async requests correctly", async () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 10, windowMs: 60000 };
+
+      // Fire 10 requests in parallel
+      const promises = Array.from({ length: 10 }, () => checkRateLimit(id, config));
+      const results = await Promise.all(promises);
+
+      // All 10 should succeed
+      const successes = results.filter((r) => r.success).length;
+      expect(successes).toBe(10);
+    });
+
+    it("should correctly block when concurrent requests exceed limit", async () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 10, windowMs: 60000 };
+
+      // Fire 15 requests in parallel
+      const promises = Array.from({ length: 15 }, () => checkRateLimit(id, config));
+      const results = await Promise.all(promises);
+
+      // Exactly 10 should succeed, 5 should fail
+      const successes = results.filter((r) => r.success).length;
+      const failures = results.filter((r) => !r.success).length;
+      expect(successes).toBe(10);
+      expect(failures).toBe(5);
+    });
+  });
+
+  // ==================== Memory cleanup ====================
+
+  describe("Memory cleanup", () => {
+    it("should serve fresh entry after window expires, proving old entry is no longer effective", async () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 1, windowMs: 50 };
+
+      // Exhaust the limit
+      const first = checkRateLimitSync(id, config);
+      expect(first.success).toBe(true);
+
+      const blocked = checkRateLimitSync(id, config);
+      expect(blocked.success).toBe(false);
+
+      // Wait well past the window expiry (50ms window + buffer)
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // The old entry's window has expired; the next call should create a fresh entry
+      const afterExpiry = checkRateLimitSync(id, config);
+      expect(afterExpiry.success).toBe(true);
+      expect(afterExpiry.remaining).toBe(0); // limit=1, so after first request remaining is 0
+
+      // Confirm the fresh window works correctly by checking it blocks again
+      const blockedAgain = checkRateLimitSync(id, config);
+      expect(blockedAgain.success).toBe(false);
     });
   });
 });

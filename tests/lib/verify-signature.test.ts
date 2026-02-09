@@ -499,4 +499,118 @@ describe("Signature Verification Security", () => {
       expect(Math.abs(validDuration - invalidDuration)).toBeLessThan(50);
     });
   });
+
+  describe("verifyAdminSignature - array admin wallets", () => {
+    it("should accept wallet that is in the admin wallet array", () => {
+      const timestamp = Date.now();
+      const message = createAdminMessage("test", timestamp);
+      const signature = signMessage(message, adminKeypair);
+
+      // Pass array with admin wallet included
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, [
+        nonAdminWallet,
+        adminWallet,
+        "someOtherWallet",
+      ]);
+      expect(result.verified).toBe(true);
+    });
+
+    it("should reject wallet not in the admin wallet array", () => {
+      const timestamp = Date.now();
+      const message = createAdminMessage("test", timestamp);
+      const signature = signMessage(message, adminKeypair);
+
+      // Pass array WITHOUT admin wallet
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, [
+        nonAdminWallet,
+        "someOtherWallet",
+      ]);
+      expect(result.verified).toBe(false);
+      expect(result.error).toBe("Not admin wallet");
+    });
+
+    it("should work with single-element array", () => {
+      const timestamp = Date.now();
+      const message = createAdminMessage("test", timestamp);
+      const signature = signMessage(message, adminKeypair);
+
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, [
+        adminWallet,
+      ]);
+      expect(result.verified).toBe(true);
+    });
+
+    it("should reject with empty array", () => {
+      const timestamp = Date.now();
+      const message = createAdminMessage("test", timestamp);
+      const signature = signMessage(message, adminKeypair);
+
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, []);
+      expect(result.verified).toBe(false);
+      expect(result.error).toBe("Not admin wallet");
+    });
+  });
+
+  describe("verifyAdminSignature - exact 5-minute boundary", () => {
+    it("should accept signature at exactly 5 minutes ago", () => {
+      // Use jest.spyOn to mock Date.now for precise boundary testing
+      const now = 1700000000000; // Fixed reference point
+      const spy = jest.spyOn(Date, "now").mockReturnValue(now);
+
+      const timestamp = now - 5 * 60 * 1000; // Exactly 5 minutes ago
+      const message = createAdminMessage("test", timestamp);
+      const signature = signMessage(message, adminKeypair);
+
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, adminWallet);
+      // Math.abs(now - timestamp) = 300000 = SIGNATURE_MAX_AGE_MS, so NOT > 300000
+      expect(result.verified).toBe(true);
+
+      spy.mockRestore();
+    });
+
+    it("should reject signature at 5 minutes + 1ms ago", () => {
+      const now = 1700000000000;
+      const spy = jest.spyOn(Date, "now").mockReturnValue(now);
+
+      const timestamp = now - 5 * 60 * 1000 - 1; // 5 minutes + 1ms ago
+      const message = createAdminMessage("test", timestamp);
+      const signature = signMessage(message, adminKeypair);
+
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, adminWallet);
+      // Math.abs(now - timestamp) = 300001 > 300000
+      expect(result.verified).toBe(false);
+      expect(result.error).toBe("Signature expired");
+
+      spy.mockRestore();
+    });
+
+    it("should accept signature at exactly 5 minutes in future", () => {
+      const now = 1700000000000;
+      const spy = jest.spyOn(Date, "now").mockReturnValue(now);
+
+      const timestamp = now + 5 * 60 * 1000; // Exactly 5 minutes ahead
+      const message = createAdminMessage("test", timestamp);
+      const signature = signMessage(message, adminKeypair);
+
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, adminWallet);
+      expect(result.verified).toBe(true);
+
+      spy.mockRestore();
+    });
+
+    it("should reject signature at 5 minutes + 1ms in future", () => {
+      const now = 1700000000000;
+      const spy = jest.spyOn(Date, "now").mockReturnValue(now);
+
+      const timestamp = now + 5 * 60 * 1000 + 1;
+      const message = createAdminMessage("test", timestamp);
+      const signature = signMessage(message, adminKeypair);
+
+      const result = verifyAdminSignature(adminWallet, signature, "test", timestamp, adminWallet);
+      expect(result.verified).toBe(false);
+      expect(result.error).toBe("Signature expired");
+
+      spy.mockRestore();
+    });
+  });
 });
