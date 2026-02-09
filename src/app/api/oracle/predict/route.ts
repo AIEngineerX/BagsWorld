@@ -8,6 +8,8 @@ import {
   type OracleRoundDB,
 } from "@/lib/neon";
 import { getOrCreateUser, deductOP, addOP, claimFirstPredictionBonus } from "@/lib/op-economy";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { getOracleAccessInfo } from "@/lib/token-balance";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +64,37 @@ export async function POST(request: NextRequest) {
       { success: false, error: "Market not found or not active" },
       { status: 400 }
     );
+  }
+
+  // Token gate for prize events: require 2M $BagsWorld tokens
+  const marketConfig = round.marketConfig as Record<string, unknown> | undefined;
+  const isPrizeEvent =
+    (marketConfig?.isPrizeEvent as boolean) ?? round.prizePoolLamports > BigInt(0);
+
+  if (isPrizeEvent) {
+    try {
+      const rpcUrl = process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+      if (rpcUrl) {
+        const connection = new Connection(rpcUrl);
+        const walletPubkey = new PublicKey(wallet);
+        const accessInfo = await getOracleAccessInfo(connection, walletPubkey);
+
+        if (!accessInfo.hasAccess) {
+          return NextResponse.json({
+            success: false,
+            error: "Token gate: Prize events require 2M $BagsWorld tokens",
+            tokenGate: {
+              required: accessInfo.minRequired,
+              balance: accessInfo.balance,
+              hasAccess: false,
+            },
+          });
+        }
+      }
+    } catch (error) {
+      console.error("[Oracle] Token gate check error:", error);
+      // Allow through on gate check failure to not block users
+    }
   }
 
   const entryCostOp = round.entryCostOp || 100;

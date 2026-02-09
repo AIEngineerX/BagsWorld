@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { OracleMarketType } from "@/lib/types";
+import { useState, useMemo } from "react";
+import type { OracleMarketType, OracleMarketCategory } from "@/lib/types";
 
 interface MarketData {
   id: number;
@@ -30,6 +30,10 @@ interface MarketData {
     opWagered: number;
   };
   prizePool: { sol: number; hasPrize: boolean };
+  category?: OracleMarketCategory;
+  description?: string;
+  imageUrl?: string;
+  isPrizeEvent?: boolean;
 }
 
 interface OracleMarketsTabProps {
@@ -49,15 +53,19 @@ function formatTimeRemaining(ms: number): string {
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
-const MARKET_TYPE_LABELS: Record<string, string> = {
-  all: "ALL",
-  price_prediction: "PRICE",
-  custom: "CUSTOM",
+const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  all: { label: "ALL", color: "text-white", icon: "" },
+  crypto: { label: "CRYPTO", color: "text-[#3b82f6]", icon: "₿" },
+  sports: { label: "SPORTS", color: "text-[#22c55e]", icon: "⚽" },
+  world_event: { label: "WORLD", color: "text-[#f59e0b]", icon: "🌍" },
+  bagsworld: { label: "BAGS", color: "text-[#a855f7]", icon: "◆" },
 };
 
-const MARKET_TYPE_ICONS: Record<string, string> = {
-  price_prediction: "◆",
-  custom: "★",
+const CATEGORY_BADGE_STYLES: Record<string, string> = {
+  crypto: "bg-[#1e3a5f]/40 text-[#60a5fa] border-[#3b82f6]/30",
+  sports: "bg-[#14532d]/40 text-[#4ade80] border-[#22c55e]/30",
+  world_event: "bg-[#78350f]/40 text-[#fbbf24] border-[#f59e0b]/30",
+  bagsworld: "bg-[#3b0764]/40 text-[#c084fc] border-[#a855f7]/30",
 };
 
 export function OracleMarketsTab({
@@ -71,8 +79,26 @@ export function OracleMarketsTab({
   const [filter, setFilter] = useState<string>("all");
   const [selectedChoices, setSelectedChoices] = useState<Record<number, string>>({});
 
+  // Determine which categories have active markets
+  const activeCategories = useMemo(() => {
+    const cats = new Set<string>();
+    markets.forEach((m) => cats.add(m.category || "bagsworld"));
+    return cats;
+  }, [markets]);
+
+  // Build filter tabs: always show ALL, then only categories with markets
+  const filterTabs = useMemo(() => {
+    const tabs: Array<{ key: string; label: string }> = [{ key: "all", label: "ALL" }];
+    for (const [key, config] of Object.entries(CATEGORY_CONFIG)) {
+      if (key !== "all" && activeCategories.has(key)) {
+        tabs.push({ key, label: config.label });
+      }
+    }
+    return tabs;
+  }, [activeCategories]);
+
   const filteredMarkets =
-    filter === "all" ? markets : markets.filter((m) => m.marketType === filter);
+    filter === "all" ? markets : markets.filter((m) => (m.category || "bagsworld") === filter);
 
   const getTotalPredictions = (market: MarketData) => {
     return Object.values(market.predictionCounts).reduce((a, b) => a + b, 0);
@@ -129,9 +155,9 @@ export function OracleMarketsTab({
 
   return (
     <div className="space-y-3">
-      {/* Type Filter */}
+      {/* Category Filter */}
       <div className="flex gap-1 overflow-x-auto pb-1">
-        {Object.entries(MARKET_TYPE_LABELS).map(([key, label]) => (
+        {filterTabs.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
@@ -162,15 +188,32 @@ export function OracleMarketsTab({
         const selected = selectedChoices[market.id];
         const hasUserPrediction = !!market.userPrediction;
         const userChoice = market.userPrediction?.tokenMint || market.userPrediction?.outcomeId;
+        const category = market.category || "bagsworld";
+        const categoryConfig = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.bagsworld;
+        const badgeStyle = CATEGORY_BADGE_STYLES[category] || CATEGORY_BADGE_STYLES.bagsworld;
 
         return (
           <div key={market.id} className="rpg-border-inner bg-[#1a1a1a]">
+            {/* Banner image */}
+            {market.imageUrl && (
+              <div className="h-20 overflow-hidden border-b-2 border-[#2e1065]">
+                <img
+                  src={market.imageUrl}
+                  alt=""
+                  className="w-full h-full object-cover pixelated"
+                />
+              </div>
+            )}
+
             {/* Market Header */}
             <div className="p-3 border-b-2 border-[#2e1065] bg-gradient-to-r from-[#1a1a2e] to-transparent">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-pixel text-[#a855f7] text-[10px]">
-                    {MARKET_TYPE_ICONS[market.marketType] || "◆"}
+                  {/* Category badge */}
+                  <span
+                    className={`font-pixel text-[8px] px-1.5 py-0.5 rpg-border-inner border ${badgeStyle}`}
+                  >
+                    {categoryConfig.label}
                   </span>
                   <span className="font-pixel text-[#666] text-[9px]">#{market.id}</span>
                 </div>
@@ -178,7 +221,12 @@ export function OracleMarketsTab({
                   <span className="font-pixel text-[#22c55e] text-[10px] glow-green">
                     {formatTimeRemaining(market.remainingMs)}
                   </span>
-                  {market.prizePool.hasPrize && (
+                  {market.isPrizeEvent && (
+                    <span className="font-pixel text-[8px] px-1.5 py-0.5 rpg-border-inner bg-[#854d0e]/30 text-[#fbbf24] border border-[#fbbf24]/30">
+                      PRIZE {market.prizePool.sol} SOL
+                    </span>
+                  )}
+                  {!market.isPrizeEvent && market.prizePool.hasPrize && (
                     <span className="font-pixel text-[#fbbf24] text-[9px]">
                       {market.prizePool.sol} SOL
                     </span>
@@ -186,6 +234,9 @@ export function OracleMarketsTab({
                 </div>
               </div>
               <p className="font-pixel text-white text-xs mt-1">{market.question}</p>
+              {market.description && (
+                <p className="font-pixel text-[#999] text-[9px] mt-1">{market.description}</p>
+              )}
               <div className="flex items-center gap-3 mt-1">
                 <span className="font-pixel text-[#666] text-[9px]">
                   {market.entryCount} seer{market.entryCount !== 1 ? "s" : ""}
@@ -193,6 +244,9 @@ export function OracleMarketsTab({
                 <span className="font-pixel text-[#a855f7] text-[9px]">
                   {market.entryCostOp} OP
                 </span>
+                {market.isPrizeEvent && (
+                  <span className="font-pixel text-[#fbbf24] text-[8px]">TOKEN GATED</span>
+                )}
               </div>
             </div>
 

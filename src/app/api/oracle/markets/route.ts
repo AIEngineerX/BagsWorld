@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const wallet = searchParams.get("wallet");
   const marketType = searchParams.get("type");
+  const categoryFilter = searchParams.get("category");
 
   let activeMarkets = await getActiveOracleMarkets(marketType || undefined);
 
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
       }
 
       const marketConfig = round.marketConfig as Record<string, unknown> | undefined;
+      const hasPrize = round.prizePoolLamports > BigInt(0);
 
       return {
         id: round.id,
@@ -74,18 +76,41 @@ export async function GET(request: NextRequest) {
         autoResolve: round.autoResolve || false,
         createdBy: round.createdBy || "admin",
         userPrediction,
+        category: (marketConfig?.category as string) || "bagsworld",
+        description: (marketConfig?.description as string) || undefined,
+        imageUrl: (marketConfig?.imageUrl as string) || undefined,
+        isPrizeEvent: (marketConfig?.isPrizeEvent as boolean) ?? hasPrize,
         prizePool: {
           lamports: round.prizePoolLamports.toString(),
           sol: Number(round.prizePoolLamports) / 1_000_000_000,
-          hasPrize: round.prizePoolLamports > BigInt(0),
+          hasPrize,
         },
       };
     })
   );
 
-  const markets = marketResults
+  let markets = marketResults
     .filter((r): r is PromiseFulfilledResult<ReturnType<typeof Object>> => r.status === "fulfilled")
     .map((r) => r.value);
+
+  // Filter by category if requested
+  if (categoryFilter) {
+    markets = markets.filter(
+      (m: { category?: string }) => (m.category || "bagsworld") === categoryFilter
+    );
+  }
+
+  // Sort: prize events first, then by remaining time ascending
+  markets.sort(
+    (
+      a: { isPrizeEvent?: boolean; remainingMs: number },
+      b: { isPrizeEvent?: boolean; remainingMs: number }
+    ) => {
+      if (a.isPrizeEvent && !b.isPrizeEvent) return -1;
+      if (!a.isPrizeEvent && b.isPrizeEvent) return 1;
+      return a.remainingMs - b.remainingMs;
+    }
+  );
 
   return NextResponse.json({
     success: true,
