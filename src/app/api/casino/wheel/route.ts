@@ -133,39 +133,6 @@ export async function POST(request: NextRequest) {
 
     const dbConfigured = isNeonConfigured();
 
-    // Check cooldown and record spin atomically to prevent double-spin race condition
-    if (dbConfigured) {
-      const lastSpin = await getLastWheelSpin(wallet);
-      if (lastSpin && lastSpin + COOLDOWN_MS > Date.now()) {
-        const remaining = Math.ceil((lastSpin + COOLDOWN_MS - Date.now()) / 60000);
-        return NextResponse.json(
-          { error: `Please wait ${remaining} minutes before spinning again` },
-          { status: 429 }
-        );
-      }
-
-      // Record spin FIRST to claim the cooldown slot atomically
-      // This prevents concurrent requests from both passing the cooldown check
-      const spinRecorded = await recordWheelSpin(wallet, 0, "pending");
-      if (!spinRecorded) {
-        return NextResponse.json(
-          { error: "Spin already in progress, please wait" },
-          { status: 429 }
-        );
-      }
-    } else {
-      const cooldown = spinCooldownsFallback.get(wallet);
-      if (cooldown && cooldown > Date.now()) {
-        const remaining = Math.ceil((cooldown - Date.now()) / 60000);
-        return NextResponse.json(
-          { error: `Please wait ${remaining} minutes before spinning again` },
-          { status: 429 }
-        );
-      }
-      // Set cooldown immediately to prevent in-memory race
-      spinCooldownsFallback.set(wallet, Date.now() + COOLDOWN_MS);
-    }
-
     // Get current pot balance
     let balance = potBalanceFallback;
     if (dbConfigured) {
@@ -187,13 +154,27 @@ export async function POST(request: NextRequest) {
     // Cap prize at pot balance
     const actualPrize = Math.min(result.prize, balance);
 
-    // Update the spin record with actual result and deduct from pot
+    // Record spin atomically — the INSERT checks the cooldown in a single query
+    // to prevent race conditions where concurrent requests bypass the cooldown
     if (dbConfigured) {
-      await recordWheelSpin(wallet, actualPrize, result.label);
+      const spinRecorded = await recordWheelSpin(wallet, actualPrize, result.label, COOLDOWN_MS);
+      if (!spinRecorded) {
+        return NextResponse.json({ error: "Please wait before spinning again" }, { status: 429 });
+      }
       // Refresh balance from DB
       const newPot = await getCasinoPot();
       balance = newPot ?? balance - actualPrize;
     } else {
+      const cooldown = spinCooldownsFallback.get(wallet);
+      if (cooldown && cooldown > Date.now()) {
+        const remaining = Math.ceil((cooldown - Date.now()) / 60000);
+        return NextResponse.json(
+          { error: `Please wait ${remaining} minutes before spinning again` },
+          { status: 429 }
+        );
+      }
+      // Set cooldown immediately
+      spinCooldownsFallback.set(wallet, Date.now() + COOLDOWN_MS);
       // Fallback: deduct from memory
       if (actualPrize > 0) {
         potBalanceFallback = Math.max(0, potBalanceFallback - actualPrize);
