@@ -1529,8 +1529,21 @@ export async function POST(request: NextRequest) {
     worldState.weather = realWeather;
     (worldState as WorldState & { timeInfo: typeof timeInfo }).timeInfo = timeInfo;
 
+    // Preserve price_pump/price_dump events from world-calculator before overwriting
+    const priceEvents = worldState.events.filter(
+      (e) => e.type === "price_pump" || e.type === "price_dump"
+    );
+
     // Generate events (now async for database milestone tracking)
     worldState.events = await generateEvents(allClaimEvents, tokens, previousState?.events || []);
+
+    // Merge back price events from world-calculator (deduplicate by id)
+    const existingEventIds = new Set(worldState.events.map((e) => e.id));
+    for (const pe of priceEvents) {
+      if (!existingEventIds.has(pe.id)) {
+        worldState.events.push(pe);
+      }
+    }
 
     // Add token launch events for new tokens
     tokens.forEach((token) => {
@@ -1558,6 +1571,10 @@ export async function POST(request: NextRequest) {
         }
       }
     });
+
+    // Re-sort all events by timestamp and cap at 25
+    worldState.events.sort((a, b) => b.timestamp - a.timestamp);
+    worldState.events = worldState.events.slice(0, 25);
 
     // Emit events to Agent Coordinator for the Agent Feed
     // Fire-and-forget but with error logging to avoid silent failures
