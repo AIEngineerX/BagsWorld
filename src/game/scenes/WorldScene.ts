@@ -10,9 +10,7 @@ import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { SpeechBubbleManager } from "@/lib/speech-bubble-manager";
 import { getCurrentLine, getActiveConversation } from "@/lib/autonomous-dialogue";
 import { useGameStore } from "@/lib/store";
-
-// Scale factor for higher resolution (must match BootScene)
-const SCALE = 1.6;
+import { SCALE } from "../textures/constants";
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 960;
 
