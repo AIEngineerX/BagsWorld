@@ -8052,10 +8052,6 @@ Your creator page = website!
       for (let i = startIndex; i < endIndex; i++) {
         this.createCharacterSprite(newCharacters[i].character, newCharacters[i].index);
       }
-      // Kick off any queued visitor sprite loads after each batch
-      if (!this.load.isLoading()) {
-        this.load.start();
-      }
       // Schedule next batch if there are more characters
       if (endIndex < newCharacters.length) {
         this.time.delayedCall(0, () => createBatch(endIndex));
@@ -8153,6 +8149,39 @@ Your creator page = website!
       const expectedTexture = this.getCharacterTexture(character.mood, variant);
       if (sprite.texture?.key !== expectedTexture) {
         sprite.setTexture(expectedTexture);
+      }
+    }
+
+    // Retry visitor sprite load if it wasn't applied yet (e.g., first load failed or was skipped)
+    if (isVisitor && character.spriteUrl && !hasVisitorTexture) {
+      const visitorTextureKey = `visitor_${character.id}`;
+      const targetSize = 51;
+      if (this.textures.exists(visitorTextureKey)) {
+        // Texture loaded but never applied — apply it now
+        sprite.setTexture(visitorTextureKey);
+        const tex = this.textures.get(visitorTextureKey);
+        const frame = tex.get();
+        sprite.setScale((targetSize / frame.width) * 1.2);
+      } else if (!this.load.isLoading()) {
+        // Texture never loaded — queue and start
+        this.load.image(visitorTextureKey, character.spriteUrl);
+        this.load.on(
+          `filecomplete-image-${visitorTextureKey}`,
+          () => {
+            if (sprite && sprite.active && this.textures.exists(visitorTextureKey)) {
+              sprite.setTexture(visitorTextureKey);
+              const tex = this.textures.get(visitorTextureKey);
+              const frame = tex.get();
+              sprite.setScale((targetSize / frame.width) * 1.2);
+            }
+          },
+          this
+        );
+        this.time.delayedCall(100, () => {
+          if (!this.load.isLoading()) {
+            this.load.start();
+          }
+        });
       }
     }
   }
@@ -8279,7 +8308,12 @@ Your creator page = website!
           },
           this
         );
-        // load.start() is called by the batch handler in updateCharacters()
+        // Defer start() so multiple visitors in the same batch get queued first
+        this.time.delayedCall(100, () => {
+          if (!this.load.isLoading()) {
+            this.load.start();
+          }
+        });
       }
     }
 
