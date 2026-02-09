@@ -10,6 +10,17 @@ import {
   type LaunchedToken,
 } from "@/lib/token-registry";
 
+// Pause polling when the tab is in the background to save CPU/network
+function usePageVisible(): boolean {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const onChange = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  }, []);
+  return visible;
+}
+
 // Fetch world state by POSTing registered tokens
 async function fetchWorldState(tokens: LaunchedToken[]): Promise<WorldState> {
   // Convert LaunchedToken to the format expected by the API
@@ -42,6 +53,7 @@ async function fetchWorldState(tokens: LaunchedToken[]): Promise<WorldState> {
 
 export function useWorldState() {
   const { worldState, setWorldState, setLoading, setError, isLoading, error } = useGameStore();
+  const isPageVisible = usePageVisible();
 
   const [registeredTokens, setRegisteredTokens] = useState<LaunchedToken[]>([]);
   const registeredTokensRef = useRef<LaunchedToken[]>([]);
@@ -94,7 +106,7 @@ export function useWorldState() {
   const query = useQuery({
     queryKey: ["worldState", registeredTokens.map((t) => t.mint).join(",")],
     queryFn: () => fetchWorldState(registeredTokensRef.current),
-    refetchInterval: 60000, // Refresh every 60 seconds (reduced from 30s for smoother rendering)
+    refetchInterval: isPageVisible ? 60000 : false, // Pause polling when tab is hidden
     staleTime: 55000,
     retry: 3,
   });
