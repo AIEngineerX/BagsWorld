@@ -156,6 +156,9 @@ export class WorldScene extends Phaser.Scene {
   private tickerText: Phaser.GameObjects.Text | null = null;
   private tickerOffset = 0;
   private tickerTimer: Phaser.Time.TimerEvent | null = null;
+  private cachedTickerContent: string | null = null;
+  private tickerWorldStateVersion = -1;
+  private worldStateVersion = 0;
   private skylineSprites: Phaser.GameObjects.Sprite[] = [];
   private academyBuildings: Phaser.GameObjects.Sprite[] = []; // Academy building sprites
   private billboardTimer: Phaser.Time.TimerEvent | null = null;
@@ -1210,10 +1213,13 @@ export class WorldScene extends Phaser.Scene {
     this.billboardTexts.forEach((t) => this.tweens.killTweensOf(t));
     this.skylineSprites.forEach((s) => this.tweens.killTweensOf(s));
     if (this.tickerText) this.tweens.killTweensOf(this.tickerText);
+    this.ballersElements.forEach((el) => this.tweens.killTweensOf(el));
+    this.foundersElements.forEach((el) => this.tweens.killTweensOf(el));
     this.buildingSprites.forEach((container) => this.tweens.killTweensOf(container));
     this.characterSprites.forEach((sprite) => this.tweens.killTweensOf(sprite));
 
-    // Reset decoration/animal positions to originals before transition
+    // Reset all zone element positions to originals before transition
+    // (slide-out animations corrupt x positions; this ensures correct starting positions)
     this.decorations.forEach((d) => {
       const origX = this.originalPositions.get(d);
       if (origX !== undefined) (d as any).x = origX;
@@ -1222,6 +1228,11 @@ export class WorldScene extends Phaser.Scene {
       const origX = this.originalPositions.get(a.sprite);
       if (origX !== undefined) (a.sprite as any).x = origX;
     });
+    this.resetZoneElementPositions(this.trendingElements);
+    this.resetZoneElementPositions(this.skylineSprites);
+    this.resetZoneElementPositions(this.billboardTexts);
+    this.resetZoneElementPositions(this.ballersElements);
+    this.resetZoneElementPositions(this.foundersElements);
 
     // Determine slide direction: Labs -> Moltbook Beach -> Park -> BagsCity -> Ballers Valley -> Founder's Corner -> Arena (left to right)
     // Zone order: labs (-2) -> moltbook (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3) -> arena (4)
@@ -1479,6 +1490,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private setupZoneOffscreen(zone: ZoneType, offsetX: number): void {
+    // Hide all zone elements once, before setting up the new zone
+    this.hideAllZoneElements();
+
     // Setup zone with elements offset, then animate them into position
     const duration = 400; // Smooth slide-in matching the overall transition feel
 
@@ -1649,6 +1663,29 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Store original X positions for zone elements that participate in slide animations.
+   * Called after zone elements are first created so positions can be restored
+   * before the next slide-out/slide-in cycle.
+   */
+  private storeZoneElementPositions(elements: Phaser.GameObjects.GameObject[]): void {
+    elements.forEach((el) => {
+      if ((el as any).x !== undefined) {
+        this.originalPositions.set(el, (el as any).x);
+      }
+    });
+  }
+
+  /**
+   * Reset zone elements to their original X positions (counteracts slide-out corruption).
+   */
+  private resetZoneElementPositions(elements: Phaser.GameObjects.GameObject[]): void {
+    elements.forEach((el) => {
+      const origX = this.originalPositions.get(el);
+      if (origX !== undefined) (el as any).x = origX;
+    });
+  }
+
   private clearCurrentZone(): void {
     // Clear zone-specific elements based on current zone
     if (this.currentZone === "trending") {
@@ -1697,6 +1734,34 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Hide all zone-specific elements in a single pass.
+   * Called once before setting up a new zone, replacing the duplicated
+   * hide-everything blocks that were copied into each setup method.
+   */
+  private hideAllZoneElements(): void {
+    this.decorations.forEach((d) => d.setVisible(false));
+    this.animals.forEach((a) => a.sprite.setVisible(false));
+    if (this.fountainWater) this.fountainWater.setVisible(false);
+    this.trendingElements.forEach((el) => (el as any).setVisible(false));
+    this.skylineSprites.forEach((s) => s.setVisible(false));
+    this.billboardTexts.forEach((t) => t.setVisible(false));
+    if (this.tickerText) this.tickerText.setVisible(false);
+    this.academyElements.forEach((el) => (el as any).setVisible(false));
+    this.academyBuildings.forEach((s) => s.setVisible(false));
+    this.ballersElements.forEach((el) => (el as any).setVisible(false));
+    this.foundersElements.forEach((el) => (el as any).setVisible(false));
+    this.labsElements.forEach((el) => (el as any).setVisible(false));
+    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
+    this.arenaElements.forEach((el) => (el as any).setVisible(false));
+    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
+    this.disconnectArenaWebSocket();
+    if (this.foundersPopup) {
+      this.foundersPopup.destroy();
+      this.foundersPopup = null;
+    }
+  }
+
   private setupZone(zone: ZoneType): void {
     switch (zone) {
       case "labs":
@@ -1728,32 +1793,13 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private setupMainCityZone(): void {
-    // Show main city decorations
+    // Show main city decorations (hideAllZoneElements already hid everything)
     this.decorations.forEach((d) => d.setVisible(true));
     this.animals.forEach((a) => a.sprite.setVisible(true));
 
     // Show fountain water spray
     if (this.fountainWater) {
       this.fountainWater.setVisible(true);
-    }
-
-    // Hide other zone elements
-    this.trendingElements.forEach((el) => (el as any).setVisible(false));
-    this.skylineSprites.forEach((s) => s.setVisible(false));
-    this.billboardTexts.forEach((t) => t.setVisible(false));
-    if (this.tickerText) this.tickerText.setVisible(false);
-    this.academyElements.forEach((el) => (el as any).setVisible(false));
-    this.academyBuildings.forEach((s) => s.setVisible(false));
-    this.ballersElements.forEach((el) => (el as any).setVisible(false));
-    this.foundersElements.forEach((el) => (el as any).setVisible(false));
-    this.labsElements.forEach((el) => (el as any).setVisible(false));
-    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
-    this.arenaElements.forEach((el) => (el as any).setVisible(false));
-    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
-    this.disconnectArenaWebSocket();
-    if (this.foundersPopup) {
-      this.foundersPopup.destroy();
-      this.foundersPopup = null;
     }
 
     // Show and reset grass ground
@@ -1765,32 +1811,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private setupTrendingZone(): void {
-    // Hide park decorations and animals (they belong to main_city)
-    this.decorations.forEach((d) => d.setVisible(false));
-    this.animals.forEach((a) => a.sprite.setVisible(false));
-
-    // Hide fountain water spray
-    if (this.fountainWater) {
-      this.fountainWater.setVisible(false);
-    }
+    // hideAllZoneElements() already hid everything
 
     // Restore normal sky (in case coming from Ballers Valley)
     this.restoreNormalSky();
-
-    // Hide other zone elements
-    this.academyElements.forEach((el) => (el as any).setVisible(false));
-    this.academyBuildings.forEach((s) => s.setVisible(false));
-    this.ballersElements.forEach((el) => (el as any).setVisible(false));
-    this.foundersElements.forEach((el) => (el as any).setVisible(false));
-    this.labsElements.forEach((el) => (el as any).setVisible(false));
-    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
-    this.arenaElements.forEach((el) => (el as any).setVisible(false));
-    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
-    this.disconnectArenaWebSocket();
-    if (this.foundersPopup) {
-      this.foundersPopup.destroy();
-      this.foundersPopup = null;
-    }
 
     // Hide the grass ground completely - city has its own pavement
     this.ground.setVisible(false);
@@ -1803,20 +1827,15 @@ export class WorldScene extends Phaser.Scene {
       this.createTrendingDecorations();
       this.createTrendingBillboards();
       this.createTrendingTicker();
+      this.storeZoneElementPositions(this.trendingElements);
+      this.storeZoneElementPositions(this.skylineSprites);
+      this.storeZoneElementPositions(this.billboardTexts);
+      if (this.tickerText) this.originalPositions.set(this.tickerText, this.tickerText.x);
       this.trendingZoneCreated = true;
     } else {
-      // Subsequent times - recreate elements since they may have been moved offscreen
-      // Clear existing arrays
-      this.skylineSprites.forEach((s) => s.destroy());
-      this.skylineSprites = [];
-      // Remove skyline from trendingElements (they're also in there)
-      this.trendingElements = this.trendingElements.filter(
-        (el) => !(el as any).texture?.key?.includes("skyline")
-      );
-      // Recreate skyline fresh
-      this.createTrendingSkyline();
-      // Show all trending elements
+      // Subsequent times - just show existing elements (no destroy/recreate)
       this.trendingElements.forEach((el) => (el as any).setVisible(true));
+      this.skylineSprites.forEach((s) => s.setVisible(true));
       this.billboardTexts.forEach((t) => t.setVisible(true));
       if (this.tickerText) this.tickerText.setVisible(true);
     }
@@ -2488,6 +2507,14 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private getTickerContent(): string {
+    // Return cached content if worldState hasn't changed
+    if (
+      this.cachedTickerContent !== null &&
+      this.tickerWorldStateVersion === this.worldStateVersion
+    ) {
+      return this.cachedTickerContent;
+    }
+
     // Generate ticker content from world state
     const content: string[] = [">>> BAGSWORLD CITY <<<"];
 
@@ -2509,7 +2536,9 @@ export class WorldScene extends Phaser.Scene {
 
     content.push(">>> BAGS.FM <<<");
 
-    return content.join("   |   ");
+    this.cachedTickerContent = content.join("   |   ");
+    this.tickerWorldStateVersion = this.worldStateVersion;
+    return this.cachedTickerContent;
   }
 
   private updateTicker(): void {
@@ -2577,32 +2606,7 @@ export class WorldScene extends Phaser.Scene {
    * Sky layer remains persistent (not modified per-zone)
    */
   private setupBallersZone(): void {
-    // Hide park decorations and animals (they belong to main_city)
-    this.decorations.forEach((d) => d.setVisible(false));
-    this.animals.forEach((a) => a.sprite.setVisible(false));
-
-    // Hide fountain water spray
-    if (this.fountainWater) {
-      this.fountainWater.setVisible(false);
-    }
-
-    // IMPORTANT: Hide other zone elements (prevents visual overlap)
-    this.trendingElements.forEach((el) => (el as any).setVisible(false));
-    this.skylineSprites.forEach((s) => s.setVisible(false));
-    this.billboardTexts.forEach((t) => t.setVisible(false));
-    if (this.tickerText) this.tickerText.setVisible(false);
-    this.academyElements.forEach((el) => (el as any).setVisible(false));
-    this.academyBuildings.forEach((s) => s.setVisible(false));
-    this.foundersElements.forEach((el) => (el as any).setVisible(false));
-    this.labsElements.forEach((el) => (el as any).setVisible(false));
-    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
-    this.arenaElements.forEach((el) => (el as any).setVisible(false));
-    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
-    this.disconnectArenaWebSocket();
-    if (this.foundersPopup) {
-      this.foundersPopup.destroy();
-      this.foundersPopup = null;
-    }
+    // hideAllZoneElements() already hid everything
 
     // Restore normal sky (persistent layer - not modified per-zone)
     this.restoreNormalSky();
@@ -2623,6 +2627,7 @@ export class WorldScene extends Phaser.Scene {
     // Only create elements once, then just show them
     if (!this.ballersZoneCreated) {
       this.createBallersDecorations();
+      this.storeZoneElementPositions(this.ballersElements);
       this.ballersZoneCreated = true;
     } else {
       // Subsequent times - just show existing elements
@@ -2807,28 +2812,7 @@ export class WorldScene extends Phaser.Scene {
    * Features cozy workshop aesthetic with clickable buildings for info popups
    */
   private setupFoundersZone(): void {
-    // Hide park decorations and animals (they belong to main_city)
-    this.decorations.forEach((d) => d.setVisible(false));
-    this.animals.forEach((a) => a.sprite.setVisible(false));
-
-    // Hide fountain water spray
-    if (this.fountainWater) {
-      this.fountainWater.setVisible(false);
-    }
-
-    // IMPORTANT: Hide other zone elements (prevents visual overlap)
-    this.trendingElements.forEach((el) => (el as any).setVisible(false));
-    this.skylineSprites.forEach((s) => s.setVisible(false));
-    this.billboardTexts.forEach((t) => t.setVisible(false));
-    if (this.tickerText) this.tickerText.setVisible(false);
-    this.academyElements.forEach((el) => (el as any).setVisible(false));
-    this.academyBuildings.forEach((s) => s.setVisible(false));
-    this.ballersElements.forEach((el) => (el as any).setVisible(false));
-    this.labsElements.forEach((el) => (el as any).setVisible(false));
-    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
-    this.arenaElements.forEach((el) => (el as any).setVisible(false));
-    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
-    this.disconnectArenaWebSocket();
+    // hideAllZoneElements() already hid everything
 
     // Restore normal sky (persistent layer)
     this.restoreNormalSky();
@@ -2850,6 +2834,7 @@ export class WorldScene extends Phaser.Scene {
     // Only create elements once, then just show them
     if (!this.foundersZoneCreated) {
       this.createFoundersDecorations();
+      this.storeZoneElementPositions(this.foundersElements);
       this.foundersZoneCreated = true;
     } else {
       // Subsequent times - just show existing elements
@@ -3874,31 +3859,7 @@ export class WorldScene extends Phaser.Scene {
    * Features holographic displays, server rooms, and tech-themed environment
    */
   private setupLabsZone(): void {
-    // Hide park decorations and animals (they belong to main_city)
-    this.decorations.forEach((d) => d.setVisible(false));
-    this.animals.forEach((a) => a.sprite.setVisible(false));
-
-    // Hide fountain water spray
-    if (this.fountainWater) {
-      this.fountainWater.setVisible(false);
-    }
-
-    // IMPORTANT: Hide other zone elements (prevents visual overlap)
-    this.trendingElements.forEach((el) => (el as any).setVisible(false));
-    this.skylineSprites.forEach((s) => s.setVisible(false));
-    this.billboardTexts.forEach((t) => t.setVisible(false));
-    if (this.tickerText) this.tickerText.setVisible(false);
-    this.academyElements.forEach((el) => (el as any).setVisible(false));
-    this.academyBuildings.forEach((s) => s.setVisible(false));
-    this.ballersElements.forEach((el) => (el as any).setVisible(false));
-    this.foundersElements.forEach((el) => (el as any).setVisible(false));
-    this.arenaElements.forEach((el) => (el as any).setVisible(false));
-    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
-    this.disconnectArenaWebSocket();
-    if (this.foundersPopup) {
-      this.foundersPopup.destroy();
-      this.foundersPopup = null;
-    }
+    // hideAllZoneElements() already hid everything
 
     // Create tech-themed twilight sky
     this.createLabsSky();
@@ -4174,32 +4135,7 @@ export class WorldScene extends Phaser.Scene {
   // ========================================
 
   private setupMoltbookZone(): void {
-    // Hide park decorations and animals (they belong to main_city)
-    this.decorations.forEach((d) => d.setVisible(false));
-    this.animals.forEach((a) => a.sprite.setVisible(false));
-
-    // Hide fountain water spray
-    if (this.fountainWater) {
-      this.fountainWater.setVisible(false);
-    }
-
-    // Hide other zone elements (prevents visual overlap)
-    this.trendingElements.forEach((el) => (el as any).setVisible(false));
-    this.skylineSprites.forEach((s) => s.setVisible(false));
-    this.billboardTexts.forEach((t) => t.setVisible(false));
-    if (this.tickerText) this.tickerText.setVisible(false);
-    this.academyElements.forEach((el) => (el as any).setVisible(false));
-    this.academyBuildings.forEach((s) => s.setVisible(false));
-    this.ballersElements.forEach((el) => (el as any).setVisible(false));
-    this.foundersElements.forEach((el) => (el as any).setVisible(false));
-    this.labsElements.forEach((el) => (el as any).setVisible(false));
-    this.arenaElements.forEach((el) => (el as any).setVisible(false));
-    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
-    this.disconnectArenaWebSocket();
-    if (this.foundersPopup) {
-      this.foundersPopup.destroy();
-      this.foundersPopup = null;
-    }
+    // hideAllZoneElements() already hid everything
 
     // Restore normal sky (beach has sunny tropical sky)
     this.restoreNormalSky();
@@ -7596,6 +7532,7 @@ Your creator page = website!
   updateWorldState(state: WorldState): void {
     const previousState = this.worldState;
     this.worldState = state;
+    this.worldStateVersion++;
 
     // IMPORTANT: Update day/night FIRST so weather effects know the time
     // Always update time info to ensure correct celestial bodies
@@ -11452,30 +11389,7 @@ Your creator page = website!
    * Setup MoltBook Arena zone - spectator arena for AI battles
    */
   private setupArenaZone(): void {
-    // Hide park decorations and animals (they belong to main_city)
-    this.decorations.forEach((d) => d.setVisible(false));
-    this.animals.forEach((a) => a.sprite.setVisible(false));
-
-    // Hide fountain water spray
-    if (this.fountainWater) {
-      this.fountainWater.setVisible(false);
-    }
-
-    // IMPORTANT: Hide other zone elements (prevents visual overlap)
-    this.trendingElements.forEach((el) => (el as any).setVisible(false));
-    this.skylineSprites.forEach((s) => s.setVisible(false));
-    this.billboardTexts.forEach((t) => t.setVisible(false));
-    if (this.tickerText) this.tickerText.setVisible(false);
-    this.academyElements.forEach((el) => (el as any).setVisible(false));
-    this.academyBuildings.forEach((s) => s.setVisible(false));
-    this.ballersElements.forEach((el) => (el as any).setVisible(false));
-    this.foundersElements.forEach((el) => (el as any).setVisible(false));
-    this.labsElements.forEach((el) => (el as any).setVisible(false));
-    this.dungeonElements.forEach((el) => (el as any).setVisible(false));
-    if (this.foundersPopup) {
-      this.foundersPopup.destroy();
-      this.foundersPopup = null;
-    }
+    // hideAllZoneElements() already hid everything
 
     // Create arena sky (dark stadium atmosphere)
     this.createArenaSky();
@@ -13775,31 +13689,7 @@ Your creator page = website!
   // ============================================================
 
   private setupDungeonZone(): void {
-    // Hide park decorations and animals
-    this.decorations.forEach((d) => d.setVisible(false));
-    this.animals.forEach((a) => a.sprite.setVisible(false));
-
-    if (this.fountainWater) {
-      this.fountainWater.setVisible(false);
-    }
-
-    // Hide all other zone elements
-    this.trendingElements.forEach((el) => (el as any).setVisible(false));
-    this.skylineSprites.forEach((s) => s.setVisible(false));
-    this.billboardTexts.forEach((t) => t.setVisible(false));
-    if (this.tickerText) this.tickerText.setVisible(false);
-    this.academyElements.forEach((el) => (el as any).setVisible(false));
-    this.academyBuildings.forEach((s) => s.setVisible(false));
-    this.ballersElements.forEach((el) => (el as any).setVisible(false));
-    this.foundersElements.forEach((el) => (el as any).setVisible(false));
-    this.labsElements.forEach((el) => (el as any).setVisible(false));
-    this.moltbookElements.forEach((el) => (el as any).setVisible(false));
-    this.arenaElements.forEach((el) => (el as any).setVisible(false));
-    this.disconnectArenaWebSocket();
-    if (this.foundersPopup) {
-      this.foundersPopup.destroy();
-      this.foundersPopup = null;
-    }
+    // hideAllZoneElements() already hid everything
 
     // Create dungeon sky (very dark, eerie)
     this.createDungeonSky();
