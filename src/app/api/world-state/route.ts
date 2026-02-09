@@ -1631,29 +1631,7 @@ export async function POST(request: NextRequest) {
 
     previousState = worldState;
 
-    // Inject cached sprite URLs into visitor characters and trigger generation for missing ones
-    const visitorsNeedingSprites: Array<{
-      wallet: string;
-      username: string;
-      tokenSymbol?: string;
-    }> = [];
-    for (const char of worldState.population) {
-      if (char.isVisitor) {
-        const cachedUrl = visitorSpriteCache.get(char.id);
-        if (cachedUrl) {
-          char.spriteUrl = cachedUrl;
-        } else {
-          visitorsNeedingSprites.push({
-            wallet: char.id,
-            username: char.username,
-            tokenSymbol: char.visitorTokenSymbol,
-          });
-        }
-      }
-    }
-    if (visitorsNeedingSprites.length > 0) {
-      generateVisitorSprites(visitorsNeedingSprites);
-    }
+    // Visitors use normal character sprites (no AI-generated sprites)
 
     // Inject agent characters into population
     // Inject hosted agents

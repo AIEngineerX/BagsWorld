@@ -8240,9 +8240,6 @@ Your creator page = website!
     const isAcademyChar = isRamo || isSincara || isStuu || isSam || isAlaa || isCarlo || isBNN;
     const isFoundersChar = isProfessorOak;
     const isMascot = isBagsy;
-    // Visitors with fal.ai sprites keep their custom texture
-    const isVisitor = character.isVisitor === true;
-    const hasVisitorTexture = isVisitor && sprite.texture?.key?.startsWith("visitor_");
     if (
       !isToly &&
       !isAsh &&
@@ -8254,8 +8251,7 @@ Your creator page = website!
       !isAcademyChar &&
       !isFoundersChar &&
       !isMascot &&
-      !isOpenClaw &&
-      !hasVisitorTexture
+      !isOpenClaw
     ) {
       const variant = this.characterVariants.get(character.id) ?? 0;
       const expectedTexture = this.getCharacterTexture(character.mood, variant);
@@ -8263,75 +8259,6 @@ Your creator page = website!
         sprite.setTexture(expectedTexture);
       }
     }
-
-    // Retry visitor sprite load if it wasn't applied yet (e.g., first load failed or was skipped)
-    if (isVisitor && character.spriteUrl && !hasVisitorTexture) {
-      const visitorTextureKey = `visitor_${character.id}`;
-      const targetSize = 51;
-      if (this.textures.exists(visitorTextureKey)) {
-        // Texture loaded but never applied — apply it now
-        this.applyVisitorTexture(sprite, visitorTextureKey, targetSize);
-      } else if (!this.load.isLoading()) {
-        // Texture never loaded — queue and start
-        this.load.image(visitorTextureKey, character.spriteUrl);
-        this.load.on(
-          `filecomplete-image-${visitorTextureKey}`,
-          () => {
-            if (sprite && sprite.active && this.textures.exists(visitorTextureKey)) {
-              this.applyVisitorTexture(sprite, visitorTextureKey, targetSize);
-            }
-          },
-          this
-        );
-        this.time.delayedCall(100, () => {
-          if (!this.load.isLoading()) {
-            this.load.start();
-          }
-        });
-      }
-    }
-  }
-
-  /**
-   * Strip near-white background pixels from a visitor texture.
-   * Replaces the existing Phaser texture with a cleaned version where
-   * pixels above the brightness threshold become transparent.
-   */
-  private stripVisitorBg(textureKey: string): void {
-    if (!this.textures.exists(textureKey)) return;
-    const src = this.textures.get(textureKey).getSourceImage() as HTMLImageElement;
-    if (!src || !src.width) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = src.width;
-    canvas.height = src.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(src, 0, 0);
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const d = imgData.data;
-    const threshold = 240; // near-white
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i] > threshold && d[i + 1] > threshold && d[i + 2] > threshold) {
-        d[i + 3] = 0; // make transparent
-      }
-    }
-    ctx.putImageData(imgData, 0, 0);
-    // Replace existing texture with cleaned version
-    this.textures.remove(textureKey);
-    this.textures.addCanvas(textureKey, canvas);
-  }
-
-  /** Apply visitor texture to sprite with bg removal and scaling */
-  private applyVisitorTexture(
-    sprite: Phaser.GameObjects.Sprite,
-    textureKey: string,
-    targetSize: number
-  ): void {
-    this.stripVisitorBg(textureKey);
-    sprite.setTexture(textureKey);
-    const tex = this.textures.get(textureKey);
-    const frame = tex.get();
-    sprite.setScale((targetSize / frame.width) * 1.2);
   }
 
   private createCharacterSprite(character: GameCharacter, index: number): void {
@@ -8430,34 +8357,6 @@ Your creator page = website!
       sprite.setInteractive();
     }
     sprite.setScale(isSpecial ? 1.3 : 1.2); // Special characters slightly larger
-
-    // Dynamic sprite loading for visitors with fal.ai-generated sprites
-    // Sprites generated at 256x256, scaled down to match ~51px character size
-    if (isVisitor && character.spriteUrl) {
-      const visitorTextureKey = `visitor_${character.id}`;
-      const targetSize = 51; // 32 * SCALE(1.6)
-      if (this.textures.exists(visitorTextureKey)) {
-        this.applyVisitorTexture(sprite, visitorTextureKey, targetSize);
-      } else {
-        // Use per-file listener to avoid race conditions with multiple concurrent loads
-        this.load.image(visitorTextureKey, character.spriteUrl);
-        this.load.on(
-          `filecomplete-image-${visitorTextureKey}`,
-          () => {
-            if (sprite && sprite.active && this.textures.exists(visitorTextureKey)) {
-              this.applyVisitorTexture(sprite, visitorTextureKey, targetSize);
-            }
-          },
-          this
-        );
-        // Defer start() so multiple visitors in the same batch get queued first
-        this.time.delayedCall(100, () => {
-          if (!this.load.isLoading()) {
-            this.load.start();
-          }
-        });
-      }
-    }
 
     // Visitor sparkle indicator
     if (isVisitor) {
