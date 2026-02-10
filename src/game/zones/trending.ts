@@ -272,17 +272,19 @@ function createCrosswalk(scene: WorldScene, x: number, y: number): void {
 function createConstructionSigns(scene: WorldScene): void {
   // Use actual game width so signs stay on-screen on mobile (960px)
   const effectiveWidth = scene.isMobile ? (scene.sys.game.config.width as number) : GAME_WIDTH;
-  // Scale sign dimensions based on screen width for mobile
-  const signW = Math.round(Math.min(100, effectiveWidth * 0.1) * SCALE);
-  const signH = Math.round(Math.min(40, effectiveWidth * 0.04) * SCALE);
+  const isMobile = scene.isMobile;
+  // Scale sign dimensions based on screen width for mobile (30% smaller on mobile)
+  const signW = Math.round(Math.min(100, effectiveWidth * 0.1) * SCALE * (isMobile ? 0.7 : 1));
+  const signH = Math.round(Math.min(40, effectiveWidth * 0.04) * SCALE * (isMobile ? 0.75 : 1));
   const isSmall = effectiveWidth < 1000;
-  const fontSize1 = Math.round((isSmall ? 8 : 10) * SCALE);
-  const fontSize2 = Math.round((isSmall ? 7 : 8) * SCALE);
+  const fontSize1 = Math.round((isSmall ? 8 : 10) * SCALE * (isMobile ? 0.8 : 1));
+  const fontSize2 = Math.round((isSmall ? 7 : 8) * SCALE * (isMobile ? 0.8 : 1));
 
-  // Two construction sign positions - left and right sides of BagsCity
+  // Two construction sign positions - inward on mobile to avoid edge hugging
+  const edgeOffset = isMobile ? 0.2 : 0.15;
   const signPositions = [
-    { x: Math.round(effectiveWidth * 0.15), y: Math.round(380 * SCALE) },
-    { x: Math.round(effectiveWidth * 0.85), y: Math.round(380 * SCALE) },
+    { x: Math.round(effectiveWidth * edgeOffset), y: Math.round(380 * SCALE) },
+    { x: Math.round(effectiveWidth * (1 - edgeOffset)), y: Math.round(380 * SCALE) },
   ];
 
   signPositions.forEach((pos) => {
@@ -324,11 +326,12 @@ function createConstructionSigns(scene: WorldScene): void {
     signText2.setDepth(7);
     scene.trendingElements.push(signText2);
 
-    // Construction barriers (orange/white striped)
+    // Construction barriers (orange/white striped) - fewer on mobile
     const barrierSpacing = Math.round((isSmall ? 22 : 30) * SCALE);
     const barrierW = Math.round((isSmall ? 18 : 25) * SCALE);
     const barrierY = pos.y + Math.round(70 * SCALE);
-    for (let i = -1; i <= 1; i++) {
+    const barrierRange = isMobile ? [-1, 1] : [-1, 0, 1];
+    for (const i of barrierRange) {
       const barrier = scene.add.rectangle(
         pos.x + i * barrierSpacing,
         barrierY,
@@ -565,11 +568,12 @@ function createTrendingBillboards(scene: WorldScene): void {
   leftTitle.setDepth(7);
   scene.billboardTexts.push(leftTitle);
 
-  const leftText = scene.add.text(leftX, sideTextY, "LOADING...", {
+  const leftText = scene.add.text(leftX, sideTextY, "---", {
     fontFamily: "monospace",
     fontSize: `${Math.round(9 * SCALE)}px`,
     color: "#4ade80",
     align: "center",
+    wordWrap: { width: sideBillboardWidth - Math.round(10 * SCALE) },
   });
   leftText.setOrigin(0.5, 0.5);
   leftText.setDepth(6);
@@ -617,11 +621,12 @@ function createTrendingBillboards(scene: WorldScene): void {
   rightTitle.setDepth(7);
   scene.billboardTexts.push(rightTitle);
 
-  const rightText = scene.add.text(rightX, sideTextY, "LOADING...", {
+  const rightText = scene.add.text(rightX, sideTextY, "---", {
     fontFamily: "monospace",
     fontSize: `${Math.round(9 * SCALE)}px`,
     color: "#ec4899",
     align: "center",
+    wordWrap: { width: sideBillboardWidth - Math.round(10 * SCALE) },
   });
   rightText.setOrigin(0.5, 0.5);
   rightText.setDepth(6);
@@ -759,19 +764,21 @@ function updateBillboardData(scene: WorldScene): void {
     // Top gainer by price change
     const byGain = [...buildings].sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
     if (byGain.length > 0 && byGain[0].change24h) {
-      scene.billboardTexts[4].setText(`${byGain[0].symbol}\n+${byGain[0].change24h.toFixed(1)}%`);
+      const sym = byGain[0].symbol.length > 6 ? byGain[0].symbol.substring(0, 6) : byGain[0].symbol;
+      scene.billboardTexts[4].setText(`$${sym}\n+${byGain[0].change24h.toFixed(1)}%`);
     } else {
-      scene.billboardTexts[4].setText("NO DATA YET");
+      scene.billboardTexts[4].setText("---");
     }
 
     // Volume king - highest 24h volume
     const byVolume = [...buildings].sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
     if (byVolume.length > 0 && byVolume[0].volume24h) {
+      const volSym = byVolume[0].symbol.length > 6 ? byVolume[0].symbol.substring(0, 6) : byVolume[0].symbol;
       scene.billboardTexts[6].setText(
-        `${byVolume[0].symbol}\n$${formatNumber(byVolume[0].volume24h || 0)}`
+        `$${volSym}\n$${formatNumber(byVolume[0].volume24h || 0)}`
       );
     } else {
-      scene.billboardTexts[6].setText("NO DATA YET");
+      scene.billboardTexts[6].setText("---");
     }
   }
 }
