@@ -7,6 +7,7 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import type { TrendingToken, NewPair, TokenSafety, TradeQuote } from "@/lib/types";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
+import { useActionGuard } from "@/hooks/useActionGuard";
 
 // Helper to deserialize transaction - tries both formats
 function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
@@ -33,6 +34,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
   const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
+  const guardAction = useActionGuard();
 
   const [activeTab, setActiveTab] = useState<TerminalTab>("trending");
   const [trending, setTrending] = useState<TrendingToken[]>([]);
@@ -244,7 +246,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
           </div>
           <button
             onClick={onClose}
-            className="font-pixel text-[10px] text-white/70 hover:text-white px-2 py-0.5 bg-red-800 rounded"
+            className="font-pixel text-[10px] text-white/70 hover:text-white px-3 py-1.5 min-h-[44px] bg-red-800 rounded"
           >
             CLOSE
           </button>
@@ -254,7 +256,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
         <div className="flex border-b-2 border-gray-700 bg-gray-800">
           <button
             onClick={() => setActiveTab("trending")}
-            className={`flex-1 py-2 font-pixel text-[10px] flex items-center justify-center gap-1 transition-all ${
+            className={`flex-1 min-h-[44px] py-2 font-pixel text-[10px] flex items-center justify-center gap-1 transition-all ${
               activeTab === "trending"
                 ? "bg-red-600 text-white border-b-2 border-red-400"
                 : "text-gray-400 hover:text-white hover:bg-gray-700"
@@ -264,7 +266,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
           </button>
           <button
             onClick={() => setActiveTab("new-pairs")}
-            className={`flex-1 py-2 font-pixel text-[10px] flex items-center justify-center gap-1 transition-all ${
+            className={`flex-1 min-h-[44px] py-2 font-pixel text-[10px] flex items-center justify-center gap-1 transition-all ${
               activeTab === "new-pairs"
                 ? "bg-green-600 text-white border-b-2 border-green-400"
                 : "text-gray-400 hover:text-white hover:bg-gray-700"
@@ -274,7 +276,7 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
           </button>
           <button
             onClick={() => setActiveTab("quick-trade")}
-            className={`flex-1 py-2 font-pixel text-[10px] flex items-center justify-center gap-1 transition-all ${
+            className={`flex-1 min-h-[44px] py-2 font-pixel text-[10px] flex items-center justify-center gap-1 transition-all ${
               activeTab === "quick-trade"
                 ? "bg-blue-600 text-white border-b-2 border-blue-400"
                 : "text-gray-400 hover:text-white hover:bg-gray-700"
@@ -478,9 +480,9 @@ export function TradingTerminal({ isOpen, onClose }: TradingTerminalProps) {
 
                       {/* Execute button - Game Boy A button style */}
                       <button
-                        onClick={executeSwap}
+                        onClick={() => guardAction(executeSwap)}
                         disabled={isSwapping || isQuoting || !quote}
-                        className={`w-full py-3 font-pixel text-[12px] rounded-lg transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`w-full py-3 min-h-[44px] font-pixel text-[12px] rounded-lg transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
                           isSwapping
                             ? "bg-gray-600 text-gray-400"
                             : "bg-[#0f380f] text-[#9bbc0f] hover:bg-[#1a4a1a] shadow-lg"

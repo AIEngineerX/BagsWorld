@@ -694,7 +694,7 @@ export function ProfessorOakChat() {
         </div>
         <button
           onClick={() => setIsOpen(false)}
-          className="font-pixel text-xs text-gray-400 hover:text-white px-2"
+          className="font-pixel text-xs text-gray-400 hover:text-white px-2 touch-target"
         >
           [X]
         </button>
@@ -758,7 +758,7 @@ export function ProfessorOakChat() {
             <p className="font-pixel text-[8px] text-gray-400">Quick Guide:</p>
             <button
               onClick={startWizard}
-              className="px-2 py-1 bg-bags-green/20 border border-bags-green font-pixel text-[8px] text-bags-green hover:bg-bags-green/30 animate-pulse"
+              className="px-3 py-2.5 bg-bags-green/20 border border-bags-green font-pixel text-[10px] text-bags-green hover:bg-bags-green/30 animate-pulse touch-target"
             >
               🤖 AI GENERATE
             </button>
@@ -841,7 +841,7 @@ export function ProfessorOakChat() {
               <button
                 onClick={launchWithGenerated}
                 disabled={isRegenerating !== null}
-                className="px-3 py-1.5 bg-bags-green border-2 border-bags-green/50 font-pixel text-[9px] text-black hover:bg-bags-green/80 animate-pulse disabled:opacity-50 disabled:animate-none"
+                className="px-4 py-2.5 bg-bags-green border-2 border-bags-green/50 font-pixel text-[10px] text-black hover:bg-bags-green/80 animate-pulse disabled:opacity-50 disabled:animate-none touch-target"
               >
                 🚀 USE & LAUNCH
               </button>
@@ -1044,7 +1044,7 @@ export function ProfessorOakChat() {
           <button
             onClick={handleSendMessage}
             disabled={isLoading || !inputValue.trim()}
-            className="px-2 py-1 bg-amber-600 text-white font-pixel text-[8px] hover:bg-amber-500 disabled:opacity-50 transition-colors"
+            className="px-3 py-2 min-h-[36px] bg-amber-600 text-white font-pixel text-[9px] hover:bg-amber-500 disabled:opacity-50 transition-colors"
           >
             Send
           </button>

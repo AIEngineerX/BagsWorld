@@ -461,7 +461,7 @@ export default function Home() {
 
         {/* Mobile dropdown menu */}
         {mobileMenuOpen && (
-          <div className="absolute top-full left-0 right-0 bg-bags-dark border-b-4 border-bags-green p-3 sm:p-4 lg:hidden z-50 shadow-lg shadow-bags-green/10">
+          <div className="absolute top-full left-0 right-0 bg-bags-dark border-b-4 border-bags-green p-3 sm:p-4 lg:hidden z-[60] shadow-lg shadow-bags-green/10">
             <div className="flex flex-col gap-3">
               {/* Health bar on mobile */}
               <div className="sm:hidden pb-3 border-b border-bags-green/30">
@@ -514,7 +514,7 @@ export default function Home() {
             <ZoneNav />
           </div>
           {/* Game area */}
-          <div className="flex-1 relative" style={{ touchAction: "auto" }}>
+          <div className="flex-1 relative" style={{ touchAction: "pan-x pan-y" }}>
             <Suspense fallback={<div className="w-full h-full bg-bags-dark" />}>
               <GameCanvas worldState={worldState} />
             </Suspense>
@@ -579,7 +579,7 @@ export default function Home() {
           {/* Mobile sidebar close button */}
           <button
             onClick={() => setMobileSidebarOpen(false)}
-            className="lg:hidden absolute top-2 left-2 p-2 text-bags-green hover:bg-bags-green/20 rounded"
+            className="lg:hidden absolute top-2 left-2 w-11 h-11 flex items-center justify-center text-bags-green hover:bg-bags-green/20 rounded"
             aria-label="Close sidebar"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

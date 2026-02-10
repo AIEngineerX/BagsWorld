@@ -616,7 +616,7 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center bg-black/30 hover:bg-bags-green/20 text-gray-400 hover:text-bags-green font-pixel text-xs border border-gray-600 hover:border-bags-green/50 rounded-lg transition-all"
+              className="w-11 h-11 flex items-center justify-center bg-black/30 hover:bg-bags-green/20 text-gray-400 hover:text-bags-green font-pixel text-xs border border-gray-600 hover:border-bags-green/50 rounded-lg transition-all"
             >
               ✕
             </button>

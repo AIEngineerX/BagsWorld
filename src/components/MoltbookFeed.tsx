@@ -150,7 +150,7 @@ export function MoltbookFeed({
         <button
           onClick={() => fetchFeed(true)}
           disabled={refreshing}
-          className="text-gray-500 hover:text-purple-400 transition-colors p-1.5 rounded-lg hover:bg-white/5"
+          className="text-gray-500 hover:text-purple-400 transition-colors p-2.5 rounded-lg hover:bg-white/5"
           title="Refresh"
         >
           <RefreshIcon size={14} spinning={refreshing} />

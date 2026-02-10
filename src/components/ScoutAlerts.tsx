@@ -40,7 +40,7 @@ export function ScoutAlerts({ onTokenClick, maxVisible = 3 }: ScoutAlertsProps) 
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className="fixed top-4 right-4 z-[55] flex flex-col gap-2 max-w-sm">
       {toasts.map((launch) => (
         <div
           key={launch.mint}

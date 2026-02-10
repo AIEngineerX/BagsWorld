@@ -75,12 +75,14 @@ body {
   transition: all 0.1s;
 }
 
-.btn-retro:hover {
-  transform: translate(2px, 2px);
-  box-shadow:
-    2px 2px 0 #166534,
-    inset -2px -2px 0 rgba(0, 0, 0, 0.2),
-    inset 2px 2px 0 rgba(255, 255, 255, 0.2);
+@media (hover: hover) {
+  .btn-retro:hover {
+    transform: translate(2px, 2px);
+    box-shadow:
+      2px 2px 0 #166534,
+      inset -2px -2px 0 rgba(0, 0, 0, 0.2),
+      inset 2px 2px 0 rgba(255, 255, 255, 0.2);
+  }
 }
 
 .btn-retro:active {
@@ -208,14 +210,6 @@ body {
       inset 1px 1px 0 rgba(255, 255, 255, 0.2);
   }
 
-  .btn-retro:hover {
-    transform: none; /* Disable hover transform on touch */
-    box-shadow:
-      3px 3px 0 #166534,
-      inset -1px -1px 0 rgba(0, 0, 0, 0.2),
-      inset 1px 1px 0 rgba(255, 255, 255, 0.2);
-  }
-
   .btn-retro:active {
     transform: translate(2px, 2px);
     box-shadow: 1px 1px 0 #166534;
@@ -297,22 +291,37 @@ body {
     }
   }
 
+  @keyframes slideDown {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+  }
+
+  .modal-sheet-dismiss {
+    animation: slideDown 0.2s ease-in forwards;
+  }
+
   /* Prevent body scroll when modal is open */
   body.modal-open {
     overflow: hidden;
-    position: fixed;
-    width: 100%;
+    overscroll-behavior: none;
   }
 }
 
 /* Touch-friendly improvements */
 @media (pointer: coarse) {
   /* Larger touch targets on touch devices */
-  button,
-  a,
-  [role="button"] {
+  button:not(.inline-action),
+  a:not(.inline-action),
+  [role="button"]:not(.inline-action) {
     min-height: 44px;
     min-width: 44px;
+    box-sizing: border-box;
   }
 
   /* Disable hover effects on touch - use active instead */
@@ -711,12 +720,14 @@ body {
   transition: all 0.15s ease;
 }
 
-.btn-depth:hover {
-  box-shadow:
-    0 4px 8px rgba(74, 222, 128, 0.2),
-    0 2px 4px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+@media (hover: hover) {
+  .btn-depth:hover {
+    box-shadow:
+      0 4px 8px rgba(74, 222, 128, 0.2),
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
 }
 
 .btn-depth:active {
@@ -734,4 +745,14 @@ body {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Micro-feedback active states for touch */
+@media (pointer: coarse) {
+  .btn-retro:active,
+  .btn-depth:active,
+  .touch-target:active {
+    transform: scale(0.96);
+    transition: transform 50ms ease;
+  }
 }

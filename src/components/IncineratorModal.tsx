@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useActionGuard } from "@/hooks/useActionGuard";
 import { VersionedTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import type {
@@ -71,6 +72,7 @@ function PixelFire({ size = 28, burning = false }: { size?: number; burning?: bo
 export function IncineratorModal({ onClose }: IncineratorModalProps) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
+  const guardAction = useActionGuard();
 
   const [activeTab, setActiveTab] = useState<Tab>("close-all");
   const [assetId, setAssetId] = useState("");
@@ -336,7 +338,10 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-green-700 hover:text-green-400 text-xl px-2">
+          <button
+            onClick={onClose}
+            className="text-green-700 hover:text-green-400 text-xl px-2 w-11 h-11 flex items-center justify-center"
+          >
             x
           </button>
         </div>
@@ -361,7 +366,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                 setActiveTab(tab.id);
                 resetState();
               }}
-              className={`flex-1 py-3 text-xs font-pixel font-bold transition-colors ${
+              className={`flex-1 min-h-[44px] py-3 text-xs font-pixel font-bold transition-colors ${
                 activeTab === tab.id
                   ? "border-b-2 text-white"
                   : "text-green-800 hover:text-green-500"
@@ -459,7 +464,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
 
                       {closeAllPreview.accountsToClose > 0 ? (
                         <button
-                          onClick={handleCloseAll}
+                          onClick={() => guardAction(handleCloseAll)}
                           disabled={isLoading}
                           className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-3 rounded font-pixel text-sm"
                         >
@@ -550,7 +555,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                       {isLoading ? "..." : "PREVIEW"}
                     </button>
                     <button
-                      onClick={handleBurn}
+                      onClick={() => guardAction(handleBurn)}
                       disabled={isLoading || !assetId.trim() || !burnConfirmed}
                       className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-red-900/50 disabled:text-red-400/50 text-white py-2 rounded font-pixel text-xs"
                     >
@@ -612,7 +617,7 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
                       {isLoading ? "..." : "PREVIEW"}
                     </button>
                     <button
-                      onClick={handleClose}
+                      onClick={() => guardAction(handleClose)}
                       disabled={isLoading || !assetId.trim()}
                       className="flex-1 bg-green-600 hover:bg-green-500 disabled:bg-green-900 text-white py-2 rounded font-pixel text-xs"
                     >

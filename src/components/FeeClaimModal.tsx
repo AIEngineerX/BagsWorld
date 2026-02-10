@@ -7,6 +7,8 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { Transaction, VersionedTransaction } from "@solana/web3.js";
 import type { ClaimablePosition } from "@/lib/types";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
+import { useActionGuard } from "@/hooks/useActionGuard";
 
 // Helper to deserialize transaction - tries both formats
 function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
@@ -30,6 +32,8 @@ interface FeeClaimModalProps {
 export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
   const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
+  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
+  const guardAction = useActionGuard();
   const { connection } = useConnection();
   const {
     user: xUser,
@@ -277,9 +281,17 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-bags-dark border-4 border-bags-gold w-full sm:max-w-md max-h-[85vh] sm:max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-xl"
+        className={`bg-bags-dark border-4 border-bags-gold w-full sm:max-w-md max-h-[85vh] sm:max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-xl ${isDismissing ? "modal-sheet-dismiss" : ""}`}
         onClick={(e) => e.stopPropagation()}
+        {...swipeHandlers}
+        style={{
+          transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
+          transition: translateY === 0 && !isDismissing ? "transform 0.2s ease" : undefined,
+        }}
       >
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-600" />
+        </div>
         {/* Header */}
         <div className="flex items-center justify-between p-3 sm:p-4 border-b-4 border-bags-gold sticky top-0 bg-bags-dark z-10">
           <div className="flex items-center gap-2 sm:gap-3">
@@ -566,7 +578,7 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
               </button>
             ) : (
               <button
-                onClick={handleClaim}
+                onClick={() => guardAction(handleClaim)}
                 disabled={isClaiming || selectedPositions.size === 0}
                 className="w-full btn-retro disabled:opacity-50 disabled:cursor-not-allowed"
               >
