@@ -221,11 +221,13 @@ export function AIChat() {
           bottom: position.y >= 0 ? "auto" : 80,
           top: position.y >= 0 ? position.y : "auto",
         }}
-        className="fixed z-50 btn-retro flex items-center gap-2 chat-minimized-mobile"
+        className="fixed z-50 flex items-center justify-center chat-minimized-mobile w-10 h-10 sm:w-auto sm:h-auto sm:px-3 sm:py-2 rounded-full sm:rounded-none bg-bags-green/90 sm:bg-bags-green border border-bags-green shadow-lg shadow-bags-green/40 active:scale-95 transition-all"
+        aria-label="Open Bags Bot chat"
       >
-        <span className="font-pixel text-[8px]">Bot</span>
+        <span className="font-pixel text-[8px] text-bags-dark font-bold hidden sm:inline">Bot</span>
+        <span className="font-pixel text-[10px] text-bags-dark font-bold sm:hidden">B</span>
         {messages.length > 0 && (
-          <span className="w-2 h-2 bg-bags-gold rounded-full animate-pulse" />
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-bags-gold rounded-full animate-pulse border border-bags-dark" />
         )}
       </button>
     );
