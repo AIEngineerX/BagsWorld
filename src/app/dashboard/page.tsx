@@ -41,6 +41,17 @@ const ZONE_TEXT_COLORS: Record<ZoneType, string> = {
   dungeon: "text-purple-400",
 };
 
+const ZONE_GRADIENT_COLORS: Record<ZoneType, string> = {
+  labs: "#22c55e",
+  moltbook: "#ef4444",
+  main_city: "#4ade80",
+  trending: "#eab308",
+  ballers: "#eab308",
+  founders: "#f59e0b",
+  arena: "#ef4444",
+  dungeon: "#a855f7",
+};
+
 const ZONE_NAME_TO_ID: Record<string, ZoneType> = {
   Park: "main_city",
   BagsCity: "trending",
@@ -129,11 +140,31 @@ const FEATURES: FeatureItem[] = [
   { name: "BagsDungeon", icon: "[X]", description: "MMORPG adventure zone", zone: "dungeon" },
 ];
 
-const PAGE_LINKS = [
-  { name: "ENTER WORLD", href: "/", icon: "[W]", description: "Main pixel art game" },
-  { name: "AGENTS", href: "/agents", icon: "[A]", description: "Meet the AI agents" },
-  { name: "DOCS", href: "/docs", icon: "[D]", description: "Documentation & guides" },
-  { name: "BANNER", href: "/banner", icon: "[B]", description: "Generate pixel art banners" },
+const QUICK_LAUNCH = [
+  {
+    name: "ENTER WORLD",
+    href: "/",
+    icon: "\u25B6",
+    description: "Explore the pixel art ecosystem",
+  },
+  {
+    name: "TALK TO AGENT",
+    href: "/?chat=bagsy",
+    icon: "\uD83D\uDCAC",
+    description: "Chat with an AI character",
+  },
+  {
+    name: "LAUNCH TOKEN",
+    href: "/?zone=founders",
+    icon: "\uD83D\uDE80",
+    description: "Create and launch on Bags.fm",
+  },
+  {
+    name: "VIEW DOCS",
+    href: "/docs",
+    icon: "\uD83D\uDCD6",
+    description: "Documentation and guides",
+  },
 ];
 
 // ============================================================================
@@ -180,8 +211,19 @@ function getDefaultCapabilities(agentId: string): string[] {
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <h2 className="font-pixel text-xs text-bags-green whitespace-nowrap">{title}</h2>
-      <div className="flex-1 h-px bg-gradient-to-r from-bags-green/60 to-transparent" />
+      <h2
+        className="font-pixel text-xs text-bags-green whitespace-nowrap"
+        style={{ textShadow: "0 0 6px rgba(74,222,128,0.4)" }}
+      >
+        {title}
+      </h2>
+      <div
+        className="flex-1 h-px bg-gradient-to-r from-bags-green/60 to-transparent"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)",
+        }}
+      />
     </div>
   );
 }
@@ -192,7 +234,11 @@ function StatusDot({ status }: { status: "online" | "busy" | "offline" }) {
     busy: "bg-yellow-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]",
     offline: "bg-gray-600",
   };
-  return <span className={`inline-block w-2 h-2 rounded-full ${colors[status]}`} />;
+  return (
+    <span
+      className={`inline-block w-2 h-2 rounded-full ${colors[status]} ${status === "online" ? "animate-pulse" : ""}`}
+    />
+  );
 }
 
 // ============================================================================
@@ -259,6 +305,17 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6">
+      <style jsx>{`
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+      `}</style>
+
       {/* Search + Filter */}
       <div className="sticky top-14 z-40 bg-bags-darker/95 backdrop-blur-sm pb-3 pt-1 -mx-3 sm:-mx-6 px-3 sm:px-6 border-b border-bags-green/20">
         <div className="flex flex-col sm:flex-row gap-2">
@@ -274,9 +331,9 @@ export default function DashboardPage() {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`font-pixel text-[8px] sm:text-[10px] px-2 sm:px-3 py-1.5 min-h-[36px] border transition-all ${
+                className={`font-pixel text-[8px] sm:text-[10px] px-2 sm:px-3 py-1.5 min-h-[36px] border transition-all duration-150 ${
                   filter === f
-                    ? "bg-bags-green text-bags-dark border-bags-green"
+                    ? "bg-bags-green text-bags-dark border-bags-green scale-105"
                     : "bg-transparent text-gray-400 border-gray-600 hover:border-bags-green/50 hover:text-bags-green"
                 }`}
               >
@@ -292,12 +349,7 @@ export default function DashboardPage() {
         <section>
           <SectionHeader title="[ECOSYSTEM MAP]" />
           {showDemo ? (
-            <div>
-              <EcosystemCanvas />
-              <p className="font-pixel text-[8px] text-gray-500 text-center mt-2">
-                Click any building to explore that zone
-              </p>
-            </div>
+            <EcosystemCanvas />
           ) : (
             <button
               onClick={() => setShowDemo(true)}
@@ -319,13 +371,19 @@ export default function DashboardPage() {
         <section>
           <SectionHeader title="[WORLD STATUS]" />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Health */}
             <div className="bg-black/40 border-2 border-bags-green/30 p-3 sm:p-4">
               <p className="font-pixel text-[8px] text-gray-500 mb-1">WORLD HEALTH</p>
               <div className="flex items-end gap-2">
-                <span className="font-pixel text-lg text-bags-green">
+                <span
+                  className="font-pixel text-lg text-bags-green"
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
                   {worldState?.health ?? "--"}%
                 </span>
-                <span className="font-pixel text-[8px] text-gray-400 mb-1">
+                <span
+                  className={`font-pixel text-[8px] text-gray-400 mb-1 ${(worldState?.health ?? 0) >= 80 ? "animate-pulse" : ""}`}
+                >
                   {(worldState?.health ?? 0) >= 80
                     ? "THRIVING"
                     : (worldState?.health ?? 0) >= 60
@@ -337,24 +395,57 @@ export default function DashboardPage() {
                           : "DORMANT"}
                 </span>
               </div>
-              <div className="mt-2 h-2 bg-black/60 border border-bags-green/20">
+              <div className="mt-2 h-2 bg-black/60 border border-bags-green/20 overflow-hidden relative">
                 <div
-                  className="h-full bg-bags-green transition-all duration-500"
+                  className="h-full bg-bags-green transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(74,222,128,0.3)]"
                   style={{ width: `${worldState?.health ?? 0}%` }}
+                />
+                <div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                  style={{
+                    animation: "shimmer 2s infinite linear",
+                    backgroundSize: "200% 100%",
+                  }}
                 />
               </div>
             </div>
 
+            {/* Weather */}
             <div className="bg-black/40 border-2 border-bags-green/30 p-3 sm:p-4">
               <p className="font-pixel text-[8px] text-gray-500 mb-1">WEATHER</p>
-              <span className="font-pixel text-lg text-bags-gold">
-                {worldState?.weather?.toUpperCase() ?? "--"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-pixel text-lg text-bags-gold">
+                  {worldState?.weather?.toUpperCase() ?? "--"}
+                </span>
+                <span className="text-lg">
+                  {(() => {
+                    const w = worldState?.weather?.toLowerCase();
+                    if (w === "sunny") return <span className="text-yellow-400">{"\u2600"}</span>;
+                    if (w === "cloudy") return <span className="text-gray-400">{"\u2601"}</span>;
+                    if (w === "rain")
+                      return <span className="text-blue-400">{"\uD83C\uDF27"}</span>;
+                    if (w === "storm") return <span className="text-purple-400">{"\u26A1"}</span>;
+                    if (w === "apocalypse")
+                      return <span className="text-red-400">{"\uD83D\uDC80"}</span>;
+                    return <span className="text-gray-400">{"\uD83C\uDF24"}</span>;
+                  })()}
+                </span>
+              </div>
             </div>
 
+            {/* Agent Server */}
             <div className="bg-black/40 border-2 border-bags-green/30 p-3 sm:p-4">
               <p className="font-pixel text-[8px] text-gray-500 mb-1">AGENT SERVER</p>
-              <span className={`font-pixel text-lg ${serverColor}`}>{serverStatus}</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block w-2.5 h-2.5 rounded-full ${
+                    healthData?.status === "ok"
+                      ? "bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)] animate-pulse"
+                      : "bg-gray-600"
+                  }`}
+                />
+                <span className={`font-pixel text-lg ${serverColor}`}>{serverStatus}</span>
+              </div>
             </div>
           </div>
         </section>
@@ -371,9 +462,14 @@ export default function DashboardPage() {
                 <Link
                   key={zId}
                   href={`/?zone=${zId}`}
-                  className={`shrink-0 w-40 sm:w-auto bg-black/40 border-2 ${ZONE_COLORS[zId]} p-3 hover:bg-white/5 transition-all group`}
+                  className={`shrink-0 w-40 sm:w-auto bg-black/40 border-2 ${ZONE_COLORS[zId]} p-3 hover:bg-white/5 hover:scale-[1.02] hover:shadow-[0_0_12px_rgba(74,222,128,0.15)] transition-all group relative overflow-hidden`}
                 >
-                  <div className="flex items-center gap-2 mb-1">
+                  {/* Accent bar */}
+                  <div
+                    className="absolute top-0 left-0 right-0 h-1"
+                    style={{ backgroundColor: ZONE_GRADIENT_COLORS[zId] }}
+                  />
+                  <div className="flex items-center gap-2 mb-1 mt-1">
                     <span className={`font-pixel text-[10px] ${ZONE_TEXT_COLORS[zId]}`}>
                       {z.icon}
                     </span>
@@ -386,6 +482,18 @@ export default function DashboardPage() {
                   <p className="font-pixel text-[8px] text-gray-500 leading-relaxed">
                     {z.description}
                   </p>
+                  <div className="flex gap-2 mt-2">
+                    <span className="font-pixel text-[6px] px-1.5 py-0.5 bg-white/5 border border-white/10 text-gray-400">
+                      {
+                        AGENT_DATA.filter((a) => (ZONE_NAME_TO_ID[a.zone] ?? "main_city") === zId)
+                          .length
+                      }{" "}
+                      agents
+                    </span>
+                    <span className="font-pixel text-[6px] px-1.5 py-0.5 bg-white/5 border border-white/10 text-gray-400">
+                      {FEATURES.filter((f) => f.zone === zId).length} features
+                    </span>
+                  </div>
                 </Link>
               );
             })}
@@ -393,22 +501,24 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Quick Nav: Pages */}
+      {/* Quick Launch */}
       {filter === "ALL" && !q && (
         <section>
-          <SectionHeader title="[PAGES]" />
+          <SectionHeader title="[QUICK LAUNCH]" />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {PAGE_LINKS.map((p) => (
+            {QUICK_LAUNCH.map((item) => (
               <Link
-                key={p.href}
-                href={p.href}
-                className="bg-black/40 border-2 border-bags-green/30 p-3 hover:bg-white/5 hover:border-bags-green/50 transition-all"
+                key={item.href}
+                href={item.href}
+                className="bg-black/40 border-2 border-bags-green/30 p-4 sm:p-5 hover:bg-white/5 hover:border-bags-green/50 hover:shadow-[0_0_12px_rgba(74,222,128,0.2)] transition-all group"
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-pixel text-[10px] text-bags-green">{p.icon}</span>
-                  <span className="font-pixel text-[10px] text-bags-green">{p.name}</span>
+                <div className="text-2xl mb-2">{item.icon}</div>
+                <div className="font-pixel text-[10px] text-bags-green group-hover:brightness-125 mb-1">
+                  {item.name}
                 </div>
-                <p className="font-pixel text-[8px] text-gray-500">{p.description}</p>
+                <p className="font-pixel text-[7px] text-gray-500 leading-relaxed">
+                  {item.description}
+                </p>
               </Link>
             ))}
           </div>
@@ -456,6 +566,7 @@ export default function DashboardPage() {
                     <tr
                       key={agent.id}
                       className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors"
+                      style={{ borderLeft: `4px solid ${ZONE_GRADIENT_COLORS[zoneId]}` }}
                     >
                       {/* ID + Name */}
                       <td className="px-3 py-2">
@@ -523,9 +634,22 @@ export default function DashboardPage() {
                       </td>
                       {/* Current Task */}
                       <td className="px-3 py-2">
-                        <span className="font-mono text-[7px] text-gray-500">
-                          {liveAgent?.currentTask ?? "idle"}
-                        </span>
+                        {(() => {
+                          const task = liveAgent?.currentTask ?? "idle";
+                          if (!task || task === "idle") {
+                            return (
+                              <span className="font-mono text-[7px] text-gray-600 italic">
+                                idle
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="font-mono text-[7px] text-gray-400">
+                              {task}
+                              <span className="animate-pulse">...</span>
+                            </span>
+                          );
+                        })()}
                       </td>
                       {/* Socials */}
                       <td className="px-3 py-2">
@@ -549,7 +673,7 @@ export default function DashboardPage() {
                       <td className="px-3 py-2">
                         <Link
                           href={`/?chat=${agent.id}`}
-                          className="font-pixel text-[7px] px-2 py-1 bg-bags-green/10 border border-bags-green/40 text-bags-green hover:bg-bags-green/20 transition-all"
+                          className="font-pixel text-[7px] px-2 py-1 bg-bags-green/10 border border-bags-green/40 text-bags-green hover:bg-bags-green/20 hover:shadow-[0_0_8px_rgba(74,222,128,0.4)] transition-all"
                         >
                           TALK
                         </Link>
@@ -561,7 +685,7 @@ export default function DashboardPage() {
             </table>
           </div>
 
-          {/* Mobile cards — compact technical view */}
+          {/* Mobile cards -- compact technical view */}
           <div className="sm:hidden space-y-2">
             {filteredAgents.map((agent) => {
               const zoneId = ZONE_NAME_TO_ID[agent.zone] ?? "main_city";
@@ -572,6 +696,9 @@ export default function DashboardPage() {
                 <div
                   key={agent.id}
                   className={`bg-black/40 border-2 ${getAgentBorderClass(agent.color)} p-3`}
+                  style={{
+                    borderLeft: `4px solid ${ZONE_GRADIENT_COLORS[ZONE_NAME_TO_ID[agent.zone] ?? "main_city"]}`,
+                  }}
                 >
                   {/* Header row */}
                   <div className="flex items-center gap-2 mb-2">
@@ -602,9 +729,20 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <span className="font-pixel text-[6px] text-gray-600 block">TASK</span>
-                      <span className="font-mono text-[7px] text-gray-500">
-                        {liveAgent?.currentTask ?? "idle"}
-                      </span>
+                      {(() => {
+                        const task = liveAgent?.currentTask ?? "idle";
+                        if (!task || task === "idle") {
+                          return (
+                            <span className="font-mono text-[7px] text-gray-600 italic">idle</span>
+                          );
+                        }
+                        return (
+                          <span className="font-mono text-[7px] text-gray-400">
+                            {task}
+                            <span className="animate-pulse">...</span>
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div>
                       <span className="font-pixel text-[6px] text-gray-600 block">LAST SEEN</span>
@@ -632,7 +770,7 @@ export default function DashboardPage() {
                     )}
                     <Link
                       href={`/?chat=${agent.id}`}
-                      className="ml-auto font-pixel text-[7px] px-2 py-1 bg-bags-green/10 border border-bags-green/40 text-bags-green hover:bg-bags-green/20 transition-all"
+                      className="ml-auto font-pixel text-[7px] px-2 py-1 bg-bags-green/10 border border-bags-green/40 text-bags-green hover:bg-bags-green/20 hover:shadow-[0_0_8px_rgba(74,222,128,0.4)] transition-all"
                     >
                       TALK
                     </Link>

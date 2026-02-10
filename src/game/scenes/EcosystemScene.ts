@@ -3,9 +3,9 @@ import * as Phaser from "phaser";
 // ----- Layout Constants -----
 const CANVAS_W = 1200;
 const CANVAS_H = 500;
-const WORLD_W = 2400;
+const WORLD_W = 3600;
 
-// Ground anchors (consistent with BannerScene ratios)
+// Ground anchors
 const GROUND_Y = CANVAS_H * 0.78; // top of grass
 const PATH_Y = CANVAS_H * 0.82; // path strip
 const BUILDING_Y = CANVAS_H * 0.86; // building origin bottom
@@ -16,39 +16,127 @@ const SKY_TOP = 0x1a1a2e;
 const SKY_MID = 0x2d1b4e;
 const SKY_HORIZON = 0xf59e0b;
 
-// ----- Building definitions -----
+// ----- Zone Cluster Definitions -----
+interface ZoneCluster {
+  name: string;
+  x: number; // center X
+  scrollX: number; // camera scrollX to frame this cluster
+  color: number;
+  features: string[];
+}
+
+const ZONE_CLUSTERS: ZoneCluster[] = [
+  {
+    name: "HQ",
+    x: 250,
+    scrollX: 0,
+    color: 0x22c55e,
+    features: ["Agent Dashboard", "AI Agent HQ", "Team Operations"],
+  },
+  {
+    name: "Park",
+    x: 750,
+    scrollX: 350,
+    color: 0x4ade80,
+    features: ["Token Care Center", "Leaderboard", "Fee Claiming"],
+  },
+  {
+    name: "BagsCity",
+    x: 1300,
+    scrollX: 900,
+    color: 0xfbbf24,
+    features: ["Casino (1M gate)", "Trading Terminal", "Oracle Predictions"],
+  },
+  {
+    name: "Founders",
+    x: 1850,
+    scrollX: 1450,
+    color: 0xf59e0b,
+    features: ["Launch Pad", "Prof. Oak AI Gen", "Sol Incinerator"],
+  },
+  {
+    name: "Moltbook",
+    x: 2350,
+    scrollX: 1950,
+    color: 0xdc2626,
+    features: ["Social Feed", "Agent Hangout", "AI Network"],
+  },
+  {
+    name: "Ballers",
+    x: 2850,
+    scrollX: 2450,
+    color: 0xeab308,
+    features: ["Top Holder Mansions", "VIP Lounge"],
+  },
+  {
+    name: "Arena+Dungeon",
+    x: 3350,
+    scrollX: 2950,
+    color: 0xef4444,
+    features: ["AI Combat Arena", "MMORPG Dungeon"],
+  },
+];
+
+// ----- Building Definitions -----
 interface BuildingDef {
   texture: string;
   label: string;
   route: string;
-  x: number; // absolute px in world
+  x: number;
   scale: number;
   labelColor: number;
+  fallbackColor?: number;
+  fallbackW?: number;
+  fallbackH?: number;
 }
 
-// Even spacing: 8 buildings across 2400px world (300px apart, starting at 150)
 const BUILDINGS: BuildingDef[] = [
+  // HQ cluster
+  {
+    texture: "labs_hq",
+    label: "AGENT DASHBOARD",
+    route: "/?zone=labs",
+    x: 180,
+    scale: 1.2,
+    labelColor: 0x22c55e,
+    fallbackColor: 0x1a5c3a,
+    fallbackW: 70,
+    fallbackH: 90,
+  },
   {
     texture: "bagshq",
     label: "AI AGENTS",
     route: "/?zone=labs",
-    x: 150,
+    x: 320,
     scale: 1.5,
     labelColor: 0x22c55e,
   },
+  // Park cluster
   {
-    texture: "oracle_tower",
-    label: "PREDICTIONS",
-    route: "/?zone=trending",
-    x: 450,
+    texture: "pokecenter",
+    label: "TOKEN CARE",
+    route: "/?zone=main_city",
+    x: 680,
     scale: 1.0,
-    labelColor: 0xa855f7,
+    labelColor: 0xef4444,
   },
+  {
+    texture: "tradinggym",
+    label: "LEADERBOARD",
+    route: "/?zone=main_city",
+    x: 830,
+    scale: 1.0,
+    labelColor: 0x4ade80,
+    fallbackColor: 0x2d5a3d,
+    fallbackW: 60,
+    fallbackH: 80,
+  },
+  // BagsCity cluster
   {
     texture: "casino",
     label: "GAMING",
     route: "/?zone=trending",
-    x: 750,
+    x: 1200,
     scale: 1.0,
     labelColor: 0xfbbf24,
   },
@@ -56,63 +144,231 @@ const BUILDINGS: BuildingDef[] = [
     texture: "terminal",
     label: "TRADING",
     route: "/?zone=trending",
-    x: 1050,
+    x: 1320,
     scale: 1.0,
     labelColor: 0x06b6d4,
   },
   {
-    texture: "pokecenter",
-    label: "TOKEN CARE",
-    route: "/?zone=main_city",
-    x: 1350,
+    texture: "oracle_tower",
+    label: "PREDICTIONS",
+    route: "/?zone=trending",
+    x: 1440,
     scale: 1.0,
-    labelColor: 0xef4444,
+    labelColor: 0xa855f7,
   },
+  // Founders cluster
   {
     texture: "founders_0",
-    label: "LAUNCHES",
+    label: "LAUNCH PAD",
     route: "/?zone=founders",
-    x: 1650,
+    x: 1760,
     scale: 1.0,
     labelColor: 0xf59e0b,
   },
   {
+    texture: "founders_2",
+    label: "PROF. OAK",
+    route: "/?zone=founders",
+    x: 1880,
+    scale: 1.0,
+    labelColor: 0xf59e0b,
+    fallbackColor: 0x5a3d1b,
+    fallbackW: 55,
+    fallbackH: 75,
+  },
+  {
+    texture: "incinerator_truck",
+    label: "INCINERATOR",
+    route: "/?zone=founders",
+    x: 2000,
+    scale: 1.0,
+    labelColor: 0xf59e0b,
+    fallbackColor: 0x8b2500,
+    fallbackW: 65,
+    fallbackH: 50,
+  },
+  // Moltbook cluster
+  {
     texture: "moltbook_hq",
-    label: "SOCIAL",
+    label: "SOCIAL FEED",
     route: "/?zone=moltbook",
-    x: 1950,
+    x: 2280,
     scale: 1.0,
     labelColor: 0xdc2626,
   },
   {
+    texture: "beach_hut",
+    label: "AGENT HUT",
+    route: "/?zone=moltbook",
+    x: 2420,
+    scale: 1.0,
+    labelColor: 0xdc2626,
+    fallbackColor: 0xc4a35a,
+    fallbackW: 55,
+    fallbackH: 65,
+  },
+  // Ballers cluster
+  {
+    texture: "mansion_0",
+    label: "BALLERS",
+    route: "/?zone=ballers",
+    x: 2780,
+    scale: 1.0,
+    labelColor: 0xeab308,
+  },
+  {
+    texture: "mansion_1",
+    label: "VIP LOUNGE",
+    route: "/?zone=ballers",
+    x: 2930,
+    scale: 1.0,
+    labelColor: 0xeab308,
+  },
+  // Arena+Dungeon cluster
+  {
     texture: "arena_building",
     label: "COMBAT",
     route: "/?zone=arena",
-    x: 2250,
+    x: 3280,
     scale: 1.0,
     labelColor: 0xef4444,
   },
+  {
+    texture: "dungeon_entrance",
+    label: "DUNGEON",
+    route: "/?zone=dungeon",
+    x: 3430,
+    scale: 1.0,
+    labelColor: 0xa855f7,
+    fallbackColor: 0x2a1a3a,
+    fallbackW: 60,
+    fallbackH: 85,
+  },
 ];
 
-// ----- Agent definitions -----
+// Map building textures to their index for agent referencing
+function buildingIndex(texture: string): number {
+  return BUILDINGS.findIndex((b) => b.texture === texture);
+}
+
+// ----- Agent Definitions -----
 interface AgentDef {
   texture: string;
   name: string;
-  fromBuilding: number; // index into BUILDINGS
+  fromBuilding: number;
   toBuilding: number;
-  duration: number; // ms for one leg
+  duration: number;
 }
 
 const AGENTS: AgentDef[] = [
-  { texture: "toly", name: "Toly", fromBuilding: 0, toBuilding: 1, duration: 6000 },
-  { texture: "ash", name: "Ash", fromBuilding: 1, toBuilding: 2, duration: 5500 },
-  { texture: "finn", name: "Finn", fromBuilding: 2, toBuilding: 3, duration: 7000 },
-  { texture: "neo", name: "Neo", fromBuilding: 4, toBuilding: 5, duration: 5000 },
-  { texture: "bagsy", name: "Bagsy", fromBuilding: 5, toBuilding: 6, duration: 6500 },
-  { texture: "shaw", name: "Shaw", fromBuilding: 6, toBuilding: 7, duration: 5800 },
+  {
+    texture: "ramo",
+    name: "Ramo",
+    fromBuilding: buildingIndex("labs_hq"),
+    toBuilding: buildingIndex("bagshq"),
+    duration: 6000,
+  },
+  {
+    texture: "sincara",
+    name: "Sincara",
+    fromBuilding: buildingIndex("labs_hq"),
+    toBuilding: buildingIndex("bagshq"),
+    duration: 7000,
+  },
+  {
+    texture: "toly",
+    name: "Toly",
+    fromBuilding: buildingIndex("pokecenter"),
+    toBuilding: buildingIndex("tradinggym"),
+    duration: 5500,
+  },
+  {
+    texture: "ash",
+    name: "Ash",
+    fromBuilding: buildingIndex("pokecenter"),
+    toBuilding: buildingIndex("tradinggym"),
+    duration: 6500,
+  },
+  {
+    texture: "neo",
+    name: "Neo",
+    fromBuilding: buildingIndex("casino"),
+    toBuilding: buildingIndex("terminal"),
+    duration: 5000,
+  },
+  {
+    texture: "cj",
+    name: "CJ",
+    fromBuilding: buildingIndex("terminal"),
+    toBuilding: buildingIndex("oracle_tower"),
+    duration: 5800,
+  },
+  {
+    texture: "finn",
+    name: "Finn",
+    fromBuilding: buildingIndex("founders_0"),
+    toBuilding: buildingIndex("founders_2"),
+    duration: 6000,
+  },
+  {
+    texture: "professorOak",
+    name: "Prof. Oak",
+    fromBuilding: buildingIndex("founders_0"),
+    toBuilding: buildingIndex("incinerator_truck"),
+    duration: 7500,
+  },
+  {
+    texture: "bagsy",
+    name: "Bagsy",
+    fromBuilding: buildingIndex("moltbook_hq"),
+    toBuilding: buildingIndex("beach_hut"),
+    duration: 6000,
+  },
+  {
+    texture: "shaw",
+    name: "Shaw",
+    fromBuilding: buildingIndex("moltbook_hq"),
+    toBuilding: buildingIndex("beach_hut"),
+    duration: 5500,
+  },
+  {
+    texture: "dev",
+    name: "Dev",
+    fromBuilding: buildingIndex("mansion_0"),
+    toBuilding: buildingIndex("mansion_1"),
+    duration: 5800,
+  },
+  {
+    texture: "carlo",
+    name: "Carlo",
+    fromBuilding: buildingIndex("arena_building"),
+    toBuilding: buildingIndex("dungeon_entrance"),
+    duration: 6200,
+  },
+];
+
+// ----- Tour timeline -----
+interface TourStop {
+  scrollX: number;
+  holdTime: number; // ms to hold at this stop
+  panTime: number; // ms to pan TO this stop (0 for first)
+  clusterIndex: number;
+}
+
+const TOUR_STOPS: TourStop[] = [
+  { scrollX: 0, holdTime: 3000, panTime: 0, clusterIndex: 0 },
+  { scrollX: 350, holdTime: 3000, panTime: 2500, clusterIndex: 1 },
+  { scrollX: 900, holdTime: 3000, panTime: 2500, clusterIndex: 2 },
+  { scrollX: 1450, holdTime: 3000, panTime: 2500, clusterIndex: 3 },
+  { scrollX: 1950, holdTime: 3000, panTime: 2500, clusterIndex: 4 },
+  { scrollX: 2450, holdTime: 3000, panTime: 2500, clusterIndex: 5 },
+  { scrollX: 2950, holdTime: 3000, panTime: 2500, clusterIndex: 6 },
 ];
 
 export class EcosystemScene extends Phaser.Scene {
+  private infoCallout: Phaser.GameObjects.Container | null = null;
+  private hintText: Phaser.GameObjects.Text | null = null;
+
   constructor() {
     super({ key: "EcosystemScene" });
   }
@@ -125,12 +381,14 @@ export class EcosystemScene extends Phaser.Scene {
     this.drawSkyline();
     this.drawGround();
     this.drawPath();
+    this.ensureFallbackTextures();
     this.placeDecorations();
     this.placeBuildings();
     this.placeAgents();
     this.createDataPulses();
     this.createAmbientParticles();
-    this.startCameraTour();
+    this.createHintText();
+    this.startGuidedTour();
   }
 
   // ===== Sky =====
@@ -213,6 +471,51 @@ export class EcosystemScene extends Phaser.Scene {
     }
   }
 
+  // ===== Fallback Texture Generation =====
+
+  private ensureFallbackTextures(): void {
+    for (const def of BUILDINGS) {
+      if (!this.textures.exists(def.texture)) {
+        const baseColor = def.fallbackColor ?? 0x3a3a5a;
+        const w = def.fallbackW ?? 60;
+        const h = def.fallbackH ?? 80;
+        const g = this.make.graphics({ x: 0, y: 0 });
+
+        // Main body
+        g.fillStyle(baseColor);
+        g.fillRect(0, 0, w, h);
+
+        // Lighter inset
+        const lighter = this.lerpColor(baseColor, 0xffffff, 0.2);
+        g.fillStyle(lighter);
+        g.fillRect(3, 3, w - 6, h - 6);
+
+        // Dark right edge for depth
+        const darker = this.lerpColor(baseColor, 0x000000, 0.3);
+        g.fillStyle(darker);
+        g.fillRect(w - 4, 0, 4, h);
+
+        // Window row
+        g.fillStyle(0xfbbf24, 0.6);
+        const windowSize = 6;
+        const windowGap = 12;
+        const windowsPerRow = Math.floor((w - 16) / windowGap);
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < windowsPerRow; col++) {
+            g.fillRect(8 + col * windowGap, 10 + row * (windowSize + 8), windowSize, windowSize);
+          }
+        }
+
+        // Door
+        g.fillStyle(0x1a1a2e);
+        g.fillRect(Math.floor(w / 2) - 5, h - 16, 10, 16);
+
+        g.generateTexture(def.texture, w, h);
+        g.destroy();
+      }
+    }
+  }
+
   // ===== Decorations =====
 
   private placeDecorations(): void {
@@ -222,9 +525,9 @@ export class EcosystemScene extends Phaser.Scene {
       return (seed - 1) / 2147483646;
     };
 
-    // Trees between and around buildings
+    // Trees scattered across the world
     const treeTextures = ["tree_a", "tree_b"];
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) {
       const tex = treeTextures[i % treeTextures.length];
       if (!this.textures.exists(tex)) continue;
       const x = rand() * WORLD_W;
@@ -235,9 +538,9 @@ export class EcosystemScene extends Phaser.Scene {
       tree.setDepth(3);
     }
 
-    // Street lamps along the path
+    // Street lamps along the entire path
     if (this.textures.exists("streetlamp")) {
-      const lampCount = 12;
+      const lampCount = 18;
       const spacing = WORLD_W / lampCount;
       for (let i = 0; i < lampCount; i++) {
         const x = spacing * 0.5 + i * spacing;
@@ -261,12 +564,107 @@ export class EcosystemScene extends Phaser.Scene {
         });
       }
     }
+
+    // Zone-specific props
+    this.placeZoneProps(rand);
+  }
+
+  private placeZoneProps(rand: () => number): void {
+    // HQ: lab props
+    this.placePropIfExists("labs_prop_0", 210, GROUND_Y + 5, 1.0, 3);
+    this.placePropIfExists("labs_prop_1", 290, GROUND_Y + 3, 1.0, 3);
+    this.placePropIfExists("labs_prop_2", 350, GROUND_Y + 6, 0.9, 3);
+
+    // Park: benches and extra trees
+    this.placePropIfExists("bench", 720, GROUND_Y + 8, 1.0, 3);
+    this.placePropIfExists("bench", 800, GROUND_Y + 8, 1.0, 3);
+
+    // BagsCity: neon signs
+    this.placePropIfExists("neon_sign", 1250, GROUND_Y - 10, 0.8, 4);
+    this.placePropIfExists("neon_sign", 1380, GROUND_Y - 10, 0.8, 4);
+
+    // Founders: lanterns and crates
+    this.placePropIfExists("founders_lantern", 1800, GROUND_Y + 2, 0.9, 3);
+    this.placePropIfExists("founders_crate", 1940, GROUND_Y + 8, 0.8, 3);
+    this.placePropIfExists("founders_lantern", 2030, GROUND_Y + 2, 0.9, 3);
+
+    // Moltbook: palm trees and umbrellas
+    this.placePropIfExists("palm_tree_1", 2240, GROUND_Y - 5, 1.0, 3);
+    this.placePropIfExists("palm_tree_2", 2450, GROUND_Y - 5, 1.0, 3);
+    this.placePropIfExists("beach_umbrella", 2340, GROUND_Y + 6, 0.9, 3);
+
+    // Ballers: gold fountain and topiary
+    this.placePropIfExists("gold_fountain", 2850, GROUND_Y + 5, 1.0, 4);
+    this.placePropIfExists("topiary", 2750, GROUND_Y + 3, 0.9, 3);
+    this.placePropIfExists("topiary", 2950, GROUND_Y + 3, 0.9, 3);
+
+    // Arena+Dungeon: torches
+    this.placePropIfExists("dungeon_torch", 3310, GROUND_Y - 5, 0.9, 4);
+    this.placePropIfExists("dungeon_torch", 3460, GROUND_Y - 5, 0.9, 4);
+
+    // Generate simple inline props for zones that likely have no texture
+    this.generateSimpleProps(rand);
+  }
+
+  private placePropIfExists(
+    texture: string,
+    x: number,
+    y: number,
+    scale: number,
+    depth: number
+  ): void {
+    if (!this.textures.exists(texture)) return;
+    const sprite = this.add.sprite(x, y, texture);
+    sprite.setOrigin(0.5, 1);
+    sprite.setScale(scale);
+    sprite.setDepth(depth);
+  }
+
+  private generateSimpleProps(rand: () => number): void {
+    const g = this.add.graphics();
+    g.setDepth(3);
+
+    // Park benches (simple brown rectangles if no bench texture)
+    if (!this.textures.exists("bench")) {
+      g.fillStyle(0x8b6914, 0.7);
+      g.fillRect(715, GROUND_Y + 2, 20, 8);
+      g.fillRect(795, GROUND_Y + 2, 20, 8);
+    }
+
+    // Moltbook beach umbrellas (if no texture)
+    if (!this.textures.exists("beach_umbrella")) {
+      g.fillStyle(0xdc2626, 0.6);
+      g.fillTriangle(2340, GROUND_Y - 20, 2325, GROUND_Y, 2355, GROUND_Y);
+      g.fillStyle(0x8b6914, 0.8);
+      g.fillRect(2338, GROUND_Y - 20, 4, 25);
+    }
+
+    // Ballers gold fountain (if no texture)
+    if (!this.textures.exists("gold_fountain")) {
+      g.fillStyle(0xeab308, 0.5);
+      g.fillCircle(2850, GROUND_Y + 2, 12);
+      g.fillStyle(0xeab308, 0.8);
+      g.fillRect(2846, GROUND_Y - 12, 8, 14);
+    }
+
+    // Dungeon torches (if no texture)
+    if (!this.textures.exists("dungeon_torch")) {
+      for (const tx of [3310, 3460]) {
+        g.fillStyle(0x8b6914, 0.8);
+        g.fillRect(tx - 2, GROUND_Y - 18, 4, 20);
+        g.fillStyle(0xef4444, 0.7);
+        g.fillCircle(tx, GROUND_Y - 22, 5);
+        g.fillStyle(0xfbbf24, 0.5);
+        g.fillCircle(tx, GROUND_Y - 24, 3);
+      }
+    }
   }
 
   // ===== Buildings =====
 
   private placeBuildings(): void {
     for (const def of BUILDINGS) {
+      // Texture is guaranteed by ensureFallbackTextures
       if (!this.textures.exists(def.texture)) continue;
 
       // Glow behind building
@@ -283,7 +681,7 @@ export class EcosystemScene extends Phaser.Scene {
         ease: "Sine.easeInOut",
       });
 
-      // Building sprite — origin at bottom center, sitting on ground
+      // Building sprite
       const building = this.add.sprite(def.x, BUILDING_Y, def.texture);
       building.setOrigin(0.5, 1);
       building.setScale(def.scale);
@@ -350,6 +748,7 @@ export class EcosystemScene extends Phaser.Scene {
 
   private placeAgents(): void {
     for (const agent of AGENTS) {
+      if (agent.fromBuilding < 0 || agent.toBuilding < 0) continue;
       if (!this.textures.exists(agent.texture)) continue;
 
       const startX = BUILDINGS[agent.fromBuilding].x;
@@ -370,7 +769,7 @@ export class EcosystemScene extends Phaser.Scene {
       nameLabel.setDepth(11);
       nameLabel.setAlpha(0.7);
 
-      // Walk cycle: right → left → repeat
+      // Walk cycle: right -> left -> repeat
       const walkRight = () => {
         sprite.setFlipX(false);
         this.tweens.add({
@@ -393,7 +792,7 @@ export class EcosystemScene extends Phaser.Scene {
         });
       };
 
-      // Stagger start so they don't all move at once
+      // Stagger start
       this.time.delayedCall(Math.random() * 3000, () => walkRight());
     }
   }
@@ -403,7 +802,7 @@ export class EcosystemScene extends Phaser.Scene {
   private createDataPulses(): void {
     const pulseColors = [0x4ade80, 0x06b6d4, 0xfbbf24, 0xa855f7, 0xef4444];
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       const dot = this.add.graphics();
       dot.setDepth(8);
       const color = pulseColors[i % pulseColors.length];
@@ -437,7 +836,7 @@ export class EcosystemScene extends Phaser.Scene {
   // ===== Ambient Particles =====
 
   private createAmbientParticles(): void {
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 16; i++) {
       const particle = this.add.graphics();
       particle.setDepth(15);
       const brightness = 0.2 + Math.random() * 0.3;
@@ -461,17 +860,219 @@ export class EcosystemScene extends Phaser.Scene {
     }
   }
 
-  // ===== Camera Tour =====
+  // ===== Hint Text =====
 
-  private startCameraTour(): void {
+  private createHintText(): void {
+    this.hintText = this.add.text(CANVAS_W / 2, CANVAS_H - 20, "Click any building to explore", {
+      fontFamily: "'Press Start 2P', monospace",
+      fontSize: "8px",
+      color: "#ffffff",
+    });
+    this.hintText.setOrigin(0.5, 0.5);
+    this.hintText.setDepth(20);
+    this.hintText.setScrollFactor(0); // Fixed to camera viewport
+    this.hintText.setAlpha(0.4);
+
     this.tweens.add({
-      targets: this.cameras.main,
-      scrollX: WORLD_W - CANVAS_W,
-      duration: 15000,
-      ease: "Sine.easeInOut",
+      targets: this.hintText,
+      alpha: { from: 0.4, to: 0.7 },
+      duration: 1500,
       yoyo: true,
       repeat: -1,
-      hold: 2000,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  // ===== Info Callout =====
+
+  private showInfoCallout(cluster: ZoneCluster): void {
+    // Remove existing callout
+    this.hideInfoCallout();
+
+    const padX = 14;
+    const padY = 10;
+    const lineHeight = 14;
+    const titleSize = 12;
+    const featureSize = 8;
+
+    // Calculate dimensions
+    const maxTextW = Math.max(
+      cluster.name.length * (titleSize * 0.65),
+      ...cluster.features.map((f) => f.length * (featureSize * 0.65))
+    );
+    const boxW = Math.max(maxTextW + padX * 2, 160);
+    const boxH = padY + titleSize + 8 + cluster.features.length * lineHeight + padY;
+
+    // Position: top-right of viewport, fixed to camera
+    const calloutX = CANVAS_W - boxW - 16;
+    const calloutY = 16;
+
+    const container = this.add.container(calloutX, calloutY);
+    container.setDepth(25);
+    container.setScrollFactor(0); // Fixed to viewport
+    container.setAlpha(0);
+
+    // Background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0f172a, 0.92);
+    bg.fillRoundedRect(0, 0, boxW, boxH, 4);
+
+    // Colored top bar
+    bg.fillStyle(cluster.color, 1);
+    bg.fillRect(0, 0, boxW, 4);
+
+    // Corner brackets
+    const bracketLen = 8;
+    bg.lineStyle(1, cluster.color, 0.6);
+    // Top-left
+    bg.beginPath();
+    bg.moveTo(0, bracketLen);
+    bg.lineTo(0, 0);
+    bg.lineTo(bracketLen, 0);
+    bg.strokePath();
+    // Top-right
+    bg.beginPath();
+    bg.moveTo(boxW - bracketLen, 0);
+    bg.lineTo(boxW, 0);
+    bg.lineTo(boxW, bracketLen);
+    bg.strokePath();
+    // Bottom-left
+    bg.beginPath();
+    bg.moveTo(0, boxH - bracketLen);
+    bg.lineTo(0, boxH);
+    bg.lineTo(bracketLen, boxH);
+    bg.strokePath();
+    // Bottom-right
+    bg.beginPath();
+    bg.moveTo(boxW - bracketLen, boxH);
+    bg.lineTo(boxW, boxH);
+    bg.lineTo(boxW, boxH - bracketLen);
+    bg.strokePath();
+
+    container.add(bg);
+
+    // Zone name
+    const colorHex = "#" + cluster.color.toString(16).padStart(6, "0");
+    const title = this.add.text(padX, padY + 4, cluster.name.toUpperCase(), {
+      fontFamily: "'Press Start 2P', monospace",
+      fontSize: `${titleSize}px`,
+      color: colorHex,
+    });
+    container.add(title);
+
+    // Feature bullets
+    let yOffset = padY + titleSize + 12;
+    for (const feature of cluster.features) {
+      const bullet = this.add.text(padX + 4, yOffset, `> ${feature}`, {
+        fontFamily: "'Press Start 2P', monospace",
+        fontSize: `${featureSize}px`,
+        color: "#ffffff",
+      });
+      bullet.setAlpha(0.85);
+      container.add(bullet);
+      yOffset += lineHeight;
+    }
+
+    this.infoCallout = container;
+
+    // Fade in with Back.easeOut
+    this.tweens.add({
+      targets: container,
+      alpha: 1,
+      duration: 200,
+      ease: "Back.easeOut",
+    });
+  }
+
+  private hideInfoCallout(): void {
+    if (this.infoCallout) {
+      const callout = this.infoCallout;
+      this.infoCallout = null;
+      this.tweens.add({
+        targets: callout,
+        alpha: 0,
+        duration: 150,
+        ease: "Sine.easeIn",
+        onComplete: () => {
+          callout.destroy();
+        },
+      });
+    }
+  }
+
+  // ===== Guided Camera Tour =====
+
+  private startGuidedTour(): void {
+    this.runTourLoop();
+  }
+
+  private runTourLoop(): void {
+    let totalDelay = 0;
+
+    for (let i = 0; i < TOUR_STOPS.length; i++) {
+      const stop = TOUR_STOPS[i];
+      const cluster = ZONE_CLUSTERS[stop.clusterIndex];
+
+      if (i === 0) {
+        // First stop: just hold and show info
+        this.cameras.main.scrollX = stop.scrollX;
+        this.time.delayedCall(totalDelay, () => {
+          this.showInfoCallout(cluster);
+        });
+        totalDelay += stop.holdTime;
+      } else {
+        // Hide callout before panning
+        const hideTime = totalDelay;
+        this.time.delayedCall(hideTime, () => {
+          this.hideInfoCallout();
+        });
+
+        // Pan to next stop
+        const panStart = totalDelay;
+        this.time.delayedCall(panStart, () => {
+          this.tweens.add({
+            targets: this.cameras.main,
+            scrollX: stop.scrollX,
+            duration: stop.panTime,
+            ease: "Sine.easeInOut",
+          });
+        });
+        totalDelay += stop.panTime;
+
+        // Show info callout after arriving
+        const arriveTime = totalDelay;
+        this.time.delayedCall(arriveTime, () => {
+          this.showInfoCallout(cluster);
+        });
+        totalDelay += stop.holdTime;
+      }
+    }
+
+    // After last stop: hide callout, then fast pan back to start
+    const hideBeforeReturn = totalDelay;
+    this.time.delayedCall(hideBeforeReturn, () => {
+      this.hideInfoCallout();
+    });
+
+    // Hold for a moment at the end
+    totalDelay += 500;
+
+    // Fast pan back to HQ
+    const returnPanStart = totalDelay;
+    const returnPanDuration = 4000;
+    this.time.delayedCall(returnPanStart, () => {
+      this.tweens.add({
+        targets: this.cameras.main,
+        scrollX: 0,
+        duration: returnPanDuration,
+        ease: "Sine.easeInOut",
+      });
+    });
+    totalDelay += returnPanDuration;
+
+    // Loop the entire tour
+    this.time.delayedCall(totalDelay, () => {
+      this.runTourLoop();
     });
   }
 
