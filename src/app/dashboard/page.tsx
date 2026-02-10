@@ -204,6 +204,41 @@ function getDefaultCapabilities(agentId: string): string[] {
   return AGENT_CAPABILITIES[agentId] ?? ["chat"];
 }
 
+/** Role-based activity descriptions for agents that are online but have no currentTask */
+const AGENT_ACTIVE_TASKS: Record<string, string> = {
+  ghost: "scanning trades",
+  neo: "monitoring launches",
+  finn: "reviewing ecosystem",
+  toly: "validating blocks",
+  ash: "guiding trainers",
+  shaw: "architecting agents",
+  cj: "analyzing markets",
+  ramo: "auditing contracts",
+  sincara: "polishing UI",
+  stuu: "handling support",
+  sam: "tracking growth",
+  alaa: "researching R&D",
+  carlo: "welcoming users",
+  bnn: "scanning headlines",
+  "professor-oak": "generating assets",
+  "bags-bot": "processing commands",
+  bagsy: "posting to moltbook",
+  chadghost: "moderating feed",
+};
+
+function getAgentTask(
+  agentId: string,
+  liveTask: string | undefined,
+  status: "online" | "busy" | "offline"
+): { text: string; active: boolean } {
+  if (liveTask && liveTask !== "idle") return { text: liveTask, active: true };
+  if (status === "online" || status === "busy") {
+    const roleTask = AGENT_ACTIVE_TASKS[agentId];
+    if (roleTask) return { text: roleTask, active: true };
+  }
+  return { text: "idle", active: false };
+}
+
 // ============================================================================
 // Components
 // ============================================================================
@@ -350,7 +385,16 @@ export default function DashboardPage() {
         <section>
           <SectionHeader title="[ECOSYSTEM MAP]" />
           {showDemo ? (
-            <EcosystemCanvas />
+            <div className="relative">
+              <button
+                onClick={() => setShowDemo(false)}
+                className="absolute top-2 right-2 z-10 font-pixel text-[10px] px-2 py-1 bg-black/80 border border-bags-green/40 text-bags-green hover:bg-bags-green/20 hover:text-white transition-all"
+                title="Close demo"
+              >
+                [X]
+              </button>
+              <EcosystemCanvas />
+            </div>
           ) : (
             <button
               onClick={() => setShowDemo(true)}
@@ -447,6 +491,11 @@ export default function DashboardPage() {
                 />
                 <span className={`font-pixel text-lg ${serverColor}`}>{serverStatus}</span>
               </div>
+              {isServerOnline && agentStatuses?.online != null && (
+                <p className="font-pixel text-[7px] text-gray-500 mt-1">
+                  {agentStatuses.online}/{agentStatuses.count ?? 0} agents online
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -529,7 +578,9 @@ export default function DashboardPage() {
       {/* Agent Status Table */}
       {showCharacters && filteredAgents.length > 0 && (
         <section>
-          <SectionHeader title={`[AGENT STATUS] (${filteredAgents.length})`} />
+          <SectionHeader
+            title={`[AGENT STATUS] (${filteredAgents.length})${agentStatuses?.online ? ` — ${agentStatuses.online} ONLINE` : ""}`}
+          />
 
           {/* Desktop table */}
           <div className="hidden sm:block bg-black/40 border-2 border-bags-green/30 overflow-x-auto">
@@ -636,8 +687,12 @@ export default function DashboardPage() {
                       {/* Current Task */}
                       <td className="px-3 py-2">
                         {(() => {
-                          const task = liveAgent?.currentTask ?? "idle";
-                          if (!task || task === "idle") {
+                          const taskInfo = getAgentTask(
+                            agent.id,
+                            liveAgent?.currentTask,
+                            agentStatus
+                          );
+                          if (!taskInfo.active) {
                             return (
                               <span className="font-mono text-[7px] text-gray-600 italic">
                                 idle
@@ -646,7 +701,7 @@ export default function DashboardPage() {
                           }
                           return (
                             <span className="font-mono text-[7px] text-gray-400">
-                              {task}
+                              {taskInfo.text}
                               <span className="animate-pulse">...</span>
                             </span>
                           );
@@ -731,15 +786,19 @@ export default function DashboardPage() {
                     <div>
                       <span className="font-pixel text-[6px] text-gray-600 block">TASK</span>
                       {(() => {
-                        const task = liveAgent?.currentTask ?? "idle";
-                        if (!task || task === "idle") {
+                        const taskInfo = getAgentTask(
+                          agent.id,
+                          liveAgent?.currentTask,
+                          agentStatus
+                        );
+                        if (!taskInfo.active) {
                           return (
                             <span className="font-mono text-[7px] text-gray-600 italic">idle</span>
                           );
                         }
                         return (
                           <span className="font-mono text-[7px] text-gray-400">
-                            {task}
+                            {taskInfo.text}
                             <span className="animate-pulse">...</span>
                           </span>
                         );
