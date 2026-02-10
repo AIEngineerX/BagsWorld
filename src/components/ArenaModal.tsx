@@ -329,6 +329,15 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
   // Connect to arena WebSocket
   useEffect(() => {
     const ws = new WebSocket(WS_URL);

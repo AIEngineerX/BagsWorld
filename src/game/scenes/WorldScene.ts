@@ -5324,41 +5324,46 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Persistent name label on mobile (always visible, no hover needed)
-    // Limit to 4 labels on small screens to avoid clutter
-    if (this.isMobile && (this.scale.width >= 600 || index < 4)) {
+    // Max 3 labels on small screens; skip if it would overlap an existing label
+    const maxLabels = this.scale.width >= 600 ? 6 : 3;
+    if (this.isMobile && index < maxLabels) {
       const charName = character.username || character.id;
       const displayName = charName.length > 8 ? charName.substring(0, 8) : charName;
-      // Alternate above/below the sprite, stagger further apart
-      const isAbove = index % 2 === 0;
-      const staggerLevel = Math.floor(index / 2) % 3; // 3 height tiers
-      const labelYOffset = isAbove
-        ? -(20 + staggerLevel * 12) // above: -20, -32, -44
-        : 18 + staggerLevel * 12; // below: 18, 30, 42
-      const labelBg = this.add.rectangle(
-        character.x,
-        character.y + labelYOffset,
-        displayName.length * 5.5 + 6,
-        12,
-        0x000000,
-        0.75
-      );
-      labelBg.setDepth(12);
-      const nameLabel = this.add.text(
-        character.x,
-        character.y + labelYOffset,
-        displayName.toUpperCase(),
-        {
+      const labelW = displayName.length * 5.5 + 6;
+      const labelH = 12;
+      // Place label below sprite
+      const labelYOffset = 18;
+      const lx = character.x;
+      const ly = character.y + labelYOffset;
+
+      // Check collision with already-placed labels
+      let collides = false;
+      this.characterSprites.forEach((otherSprite) => {
+        const otherBg = (otherSprite as any)._mobileLabelBg as
+          | Phaser.GameObjects.Rectangle
+          | undefined;
+        if (!otherBg || !otherBg.active) return;
+        const dx = Math.abs(lx - otherBg.x);
+        const dy = Math.abs(ly - otherBg.y);
+        if (dx < labelW / 2 + otherBg.width / 2 + 4 && dy < labelH) {
+          collides = true;
+        }
+      });
+
+      if (!collides) {
+        const labelBg = this.add.rectangle(lx, ly, labelW, labelH, 0x000000, 0.75);
+        labelBg.setDepth(12);
+        const nameLabel = this.add.text(lx, ly, displayName.toUpperCase(), {
           fontFamily: "monospace",
           fontSize: "8px",
           color: "#ffffff",
-        }
-      );
-      nameLabel.setOrigin(0.5, 0.5);
-      nameLabel.setDepth(13);
-      // Store references for cleanup - attach to sprite data
-      (sprite as any)._mobileLabel = nameLabel;
-      (sprite as any)._mobileLabelBg = labelBg;
-      (sprite as any)._mobileLabelOffset = labelYOffset;
+        });
+        nameLabel.setOrigin(0.5, 0.5);
+        nameLabel.setDepth(13);
+        (sprite as any)._mobileLabel = nameLabel;
+        (sprite as any)._mobileLabelBg = labelBg;
+        (sprite as any)._mobileLabelOffset = labelYOffset;
+      }
     }
 
     // Hover effects

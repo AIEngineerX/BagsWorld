@@ -85,6 +85,15 @@ export function AgentHutModal({ onClose }: AgentHutModalProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
   };

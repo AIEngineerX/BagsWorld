@@ -153,6 +153,15 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
   // Fetch SOL balance
   const { data: solBalance, refetch: refetchBalance } = useQuery({
     queryKey: ["sol-balance", publicKey?.toBase58()],

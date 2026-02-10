@@ -24,6 +24,23 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
   const walletAddress = ECOSYSTEM_CONFIG.ecosystem.wallet;
   const solscanUrl = `https://solscan.io/account/${walletAddress}`;
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   // Fetch wallet balance
   useEffect(() => {
     const fetchBalance = async () => {

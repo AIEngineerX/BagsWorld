@@ -829,30 +829,37 @@ body {
    ZONE NAV HORIZONTAL SCROLLER
    ============================================ */
 
-/* Fade gradient masks on left/right edges to indicate scrollable content */
+/* Zone nav horizontal scroll with right-edge fade indicator */
 .zone-nav-scroll {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  mask-image: linear-gradient(
-    to right,
-    transparent 0%,
-    black 8%,
-    black 92%,
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0%,
-    black 8%,
-    black 92%,
-    transparent 100%
-  );
+  position: relative;
+  /* Extra padding so buttons aren't clipped by fade */
+  padding-right: 28px;
 }
 
-/* Remove fade on desktop where all buttons likely fit */
+/* Right-edge gradient overlay to hint at scrollable content */
+@media (max-width: 639px) {
+  .zone-nav-scroll::after {
+    content: "";
+    position: sticky;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    min-width: 28px;
+    min-height: 100%;
+    background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.9));
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+}
+
+/* Remove indicator on desktop where all buttons likely fit */
 @media (min-width: 640px) {
   .zone-nav-scroll {
-    mask-image: none;
-    -webkit-mask-image: none;
+    padding-right: 0;
+  }
+  .zone-nav-scroll::after {
+    display: none;
   }
 }
