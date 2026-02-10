@@ -65,7 +65,11 @@ export function CJChat() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { worldState } = useWorldState();
-  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsOpen(false));
+  const {
+    translateY,
+    isDismissing,
+    handlers: swipeHandlers,
+  } = useSwipeToDismiss(() => setIsOpen(false));
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -246,7 +250,10 @@ export function CJChat() {
   return (
     <div
       ref={chatRef}
-      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      style={{
+        ...chatStyle,
+        transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
+      }}
       className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-orange-500 shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
       {...swipeHandlers}
     >

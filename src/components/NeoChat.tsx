@@ -65,7 +65,11 @@ export function NeoChat() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { worldState } = useWorldState();
-  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsOpen(false));
+  const {
+    translateY,
+    isDismissing,
+    handlers: swipeHandlers,
+  } = useSwipeToDismiss(() => setIsOpen(false));
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -248,7 +252,10 @@ export function NeoChat() {
   return (
     <div
       ref={chatRef}
-      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      style={{
+        ...chatStyle,
+        transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
+      }}
       className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-green-500 shadow-lg shadow-green-500/20 chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
       {...swipeHandlers}
     >

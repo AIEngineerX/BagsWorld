@@ -129,7 +129,11 @@ export function ProfessorOakChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsOpen(false));
+  const {
+    translateY,
+    isDismissing,
+    handlers: swipeHandlers,
+  } = useSwipeToDismiss(() => setIsOpen(false));
 
   // ==========================================================================
   // EVENT LISTENERS
@@ -679,7 +683,10 @@ export function ProfessorOakChat() {
   return (
     <div
       ref={chatRef}
-      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      style={{
+        ...chatStyle,
+        transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
+      }}
       className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-[360px] max-w-[360px] bg-bags-dark border-4 border-amber-600 shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
       {...swipeHandlers}
     >

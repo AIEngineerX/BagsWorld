@@ -29,7 +29,11 @@ export function AIChat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const { worldState } = useGameStore();
-  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsMinimized(true));
+  const {
+    translateY,
+    isDismissing,
+    handlers: swipeHandlers,
+  } = useSwipeToDismiss(() => setIsMinimized(true));
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -230,7 +234,10 @@ export function AIChat() {
   return (
     <div
       ref={chatRef}
-      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      style={{
+        ...chatStyle,
+        transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
+      }}
       className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-bags-green shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
       {...swipeHandlers}
     >
