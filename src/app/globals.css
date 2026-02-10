@@ -824,3 +824,35 @@ body {
     /* No overrides - use original inline styles */
   }
 }
+
+/* ============================================
+   ZONE NAV HORIZONTAL SCROLLER
+   ============================================ */
+
+/* Fade gradient masks on left/right edges to indicate scrollable content */
+.zone-nav-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+}
+
+/* Remove fade on desktop where all buttons likely fit */
+@media (min-width: 640px) {
+  .zone-nav-scroll {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+}
