@@ -6,11 +6,7 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import type { TradeQuote } from "@/lib/types";
 import { getTokenDecimals } from "@/lib/token-balance";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
-import {
-  deserializeTransaction,
-  preSimulateTransaction,
-  sendSignedTransaction,
-} from "@/lib/transaction-utils";
+import { deserializeTransaction, preSimulateTransaction } from "@/lib/transaction-utils";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
@@ -24,7 +20,7 @@ interface TradeModalProps {
 type TradeDirection = "buy" | "sell";
 
 export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: TradeModalProps) {
-  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
+  const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
 
@@ -133,10 +129,9 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
       // Pre-simulate to catch errors before wallet popup
       await preSimulateTransaction(connection, transaction);
 
-      const signedTx = await signTransaction(transaction);
-
-      // Send transaction with preflight enabled
-      const signature = await sendSignedTransaction(connection, signedTx);
+      // Use signAndSendTransaction — Phantom's recommended method.
+      // Phantom handles signing + RPC submission atomically.
+      const signature = await mobileSignAndSend(transaction);
 
       // Wait for confirmation
       await connection.confirmTransaction(signature, "confirmed");

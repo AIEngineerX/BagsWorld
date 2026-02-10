@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useActionGuard } from "@/hooks/useActionGuard";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
+import { useMobileWallet } from "@/hooks/useMobileWallet";
 import { preSimulateTransaction } from "@/lib/transaction-utils";
 import type {
   BurnResponse,
@@ -72,7 +72,7 @@ function PixelFire({ size = 28, burning = false }: { size?: number; burning?: bo
 }
 
 export function IncineratorModal({ onClose }: IncineratorModalProps) {
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
   const guardAction = useActionGuard();
@@ -145,10 +145,6 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
   };
 
   const signAndSend = async (serializedTransaction: string) => {
-    if (!signTransaction) {
-      throw new Error("Wallet does not support transaction signing");
-    }
-
     const txString = serializedTransaction.trim().replace(/\s/g, "");
     const isLikelyBase64 =
       txString.includes("+") || txString.includes("/") || txString.endsWith("=");
@@ -167,21 +163,14 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
     // Pre-simulate to catch errors before wallet popup
     await preSimulateTransaction(connection, transaction);
 
-    const signedTx = await signTransaction(transaction);
-    const serialized = Buffer.from(signedTx.serialize()).toString("base64");
+    // Use signAndSendTransaction — Phantom's recommended method.
+    // Sol Incinerator txs are unsigned (single-signer), so this is safe.
+    const signature = await mobileSignAndSend(transaction, { maxRetries: 3 });
 
-    const result = await fetch("/api/send-transaction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ signedTransaction: serialized }),
-    });
+    // Wait for confirmation
+    await connection.confirmTransaction(signature, "confirmed");
 
-    if (!result.ok) {
-      const err = await result.json();
-      throw new Error(err.error || "Transaction failed");
-    }
-
-    return result.json();
+    return { txid: signature };
   };
 
   // --- Handlers ---

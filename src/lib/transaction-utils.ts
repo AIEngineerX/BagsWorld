@@ -1,9 +1,4 @@
-import {
-  Connection,
-  Transaction,
-  VersionedTransaction,
-  SendOptions,
-} from "@solana/web3.js";
+import { Connection, Transaction, VersionedTransaction, SendOptions } from "@solana/web3.js";
 import bs58 from "bs58";
 
 /**
@@ -70,13 +65,7 @@ export function deserializeTransaction(
   let txString: string | undefined;
 
   if (typeof encoded === "object" && encoded !== null) {
-    const possibleFields = [
-      "transaction",
-      "tx",
-      "data",
-      "rawTransaction",
-      "serializedTransaction",
-    ];
+    const possibleFields = ["transaction", "tx", "data", "rawTransaction", "serializedTransaction"];
     for (const field of possibleFields) {
       if (typeof encoded[field] === "string") {
         txString = encoded[field] as string;
@@ -84,9 +73,7 @@ export function deserializeTransaction(
       }
     }
     if (!txString) {
-      throw new Error(
-        `Invalid ${context}: no transaction string found in object`
-      );
+      throw new Error(`Invalid ${context}: no transaction string found in object`);
     }
   } else if (typeof encoded === "string") {
     txString = encoded;
@@ -99,20 +86,15 @@ export function deserializeTransaction(
   }
 
   txString = txString.trim().replace(/\s/g, "");
-  const isLikelyBase64 =
-    txString.includes("+") || txString.includes("/") || txString.endsWith("=");
+  const isLikelyBase64 = txString.includes("+") || txString.includes("/") || txString.endsWith("=");
 
   let buffer: Uint8Array;
   try {
-    buffer = isLikelyBase64
-      ? Buffer.from(txString, "base64")
-      : bs58.decode(txString);
+    buffer = isLikelyBase64 ? Buffer.from(txString, "base64") : bs58.decode(txString);
     if (buffer.length < 50) throw new Error("Buffer too small");
   } catch {
     try {
-      buffer = isLikelyBase64
-        ? bs58.decode(txString)
-        : Buffer.from(txString, "base64");
+      buffer = isLikelyBase64 ? bs58.decode(txString) : Buffer.from(txString, "base64");
     } catch {
       throw new Error(`${context}: decode failed`);
     }
@@ -133,13 +115,9 @@ export function deserializeTransaction(
  * Check whether a transaction already carries non-zero signatures
  * (i.e. the API pre-signed it).
  */
-export function hasExistingSignatures(
-  transaction: Transaction | VersionedTransaction
-): boolean {
+export function hasExistingSignatures(transaction: Transaction | VersionedTransaction): boolean {
   if (transaction instanceof VersionedTransaction) {
-    return transaction.signatures.some((sig) =>
-      sig.some((byte) => byte !== 0)
-    );
+    return transaction.signatures.some((sig) => sig.some((byte) => byte !== 0));
   }
   return transaction.signatures.some(
     (sig) => sig.signature && sig.signature.some((byte) => byte !== 0)

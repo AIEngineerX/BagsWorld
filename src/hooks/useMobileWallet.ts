@@ -97,22 +97,31 @@ export function useMobileWallet() {
   );
 
   /**
-   * Sign and send a transaction in one step.
-   * On web: signs via wallet adapter, then sends via connection.
-   * On iOS native: Phantom handles both signing and broadcasting.
+   * Sign and send a transaction in one step via the wallet provider.
+   *
+   * On web: uses wallet.sendTransaction() which calls Phantom's
+   * signAndSendTransaction internally. This is Phantom's recommended
+   * method and avoids the Blowfish "signTransaction not used" flag.
+   *
+   * On iOS native: Phantom deep-link handles both signing and broadcasting.
    */
   const mobileSignAndSend = useCallback(
-    async (transaction: Transaction | VersionedTransaction): Promise<string> => {
+    async (
+      transaction: Transaction | VersionedTransaction,
+      opts?: { skipPreflight?: boolean; maxRetries?: number }
+    ): Promise<string> => {
       if (isNative) {
         const result = await phantomSignAndSend(transaction);
         return result.signature;
       }
 
-      if (!wallet.signTransaction) {
-        throw new Error("Wallet does not support transaction signing");
-      }
-      const signedTx = await wallet.signTransaction(transaction);
-      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      // wallet.sendTransaction is the adapter's signAndSendTransaction —
+      // Phantom handles signing + RPC submission atomically.
+      const signature = await wallet.sendTransaction(transaction, connection, {
+        skipPreflight: opts?.skipPreflight ?? false,
+        preflightCommitment: "confirmed",
+        maxRetries: opts?.maxRetries ?? 3,
+      });
       return signature;
     },
     [isNative, wallet, connection]
