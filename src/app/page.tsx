@@ -398,7 +398,7 @@ export default function Home() {
         <DeepLinkHandler />
       </Suspense>
       {/* Header - responsive */}
-      <header className="h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0 overflow-hidden">
+      <header className="h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-1.5 md:px-4 relative z-50 safe-area-top shrink-0">
         {/* Left side - Logo and health */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
           <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
@@ -431,6 +431,12 @@ export default function Home() {
           >
             [AGENTS]
           </Link>
+          <Link
+            href="/dashboard"
+            className="font-pixel text-[10px] text-gray-400 hover:text-bags-green transition-colors"
+          >
+            [DASHBOARD]
+          </Link>
           <div className="font-pixel text-xs">
             <span className="text-gray-400">WEATHER: </span>
             <span className="text-bags-gold">
@@ -446,7 +452,13 @@ export default function Home() {
         </div>
 
         {/* Mobile buttons - essential actions always visible */}
-        <div className="flex lg:hidden items-center gap-0.5 sm:gap-2 shrink-0 overflow-hidden">
+        <div className="flex lg:hidden items-center gap-0.5 sm:gap-2 shrink-0">
+          <Link
+            href="/dashboard"
+            className="font-pixel text-[8px] sm:text-[9px] px-1.5 py-1.5 sm:px-2 sm:py-2 border border-bags-green/50 text-bags-green hover:bg-bags-green/10 transition-colors hidden sm:block"
+          >
+            [DASH]
+          </Link>
           <WalletButton />
           <LaunchButton />
           {/* Hamburger menu - pixel style */}
@@ -485,6 +497,9 @@ export default function Home() {
                 </Link>
                 <Link href="/agents" className="btn-retro font-pixel text-[10px] text-center">
                   [AGENTS]
+                </Link>
+                <Link href="/dashboard" className="btn-retro font-pixel text-[10px] text-center">
+                  [DASHBOARD]
                 </Link>
                 <MusicButton />
                 <PartnerClaimButton />
