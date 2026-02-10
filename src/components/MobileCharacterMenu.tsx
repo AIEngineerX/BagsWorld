@@ -135,8 +135,8 @@ export function MobileCharacterMenu() {
 
   return (
     <div
-      className="sm:hidden fixed left-4 z-[45] mobile-char-menu"
-      style={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
+      className="sm:hidden fixed left-3 z-[45] mobile-char-menu"
+      style={{ bottom: "calc(3rem + env(safe-area-inset-bottom, 0px))" }}
     >
       {/* Expanded menu */}
       {isOpen && (
@@ -187,13 +187,13 @@ export function MobileCharacterMenu() {
         </div>
       )}
 
-      {/* Toggle button - pixel style */}
+      {/* Toggle button - compact circle */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 bg-bags-dark border-2 border-bags-green flex items-center justify-center shadow-lg shadow-bags-green/30 hover:bg-bags-green/10 active:scale-95 transition-all"
+        className="w-11 h-11 rounded-full bg-bags-dark border-2 border-bags-green flex items-center justify-center shadow-lg shadow-bags-green/30 hover:bg-bags-green/10 active:scale-95 transition-all"
         aria-label="Open character menu"
       >
-        <span className="font-pixel text-bags-green text-xs">{isOpen ? "[X]" : "[?]"}</span>
+        <span className="font-pixel text-bags-green text-[10px]">{isOpen ? "X" : "?"}</span>
       </button>
     </div>
   );

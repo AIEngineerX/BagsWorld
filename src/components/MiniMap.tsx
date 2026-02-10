@@ -241,7 +241,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
   const containerStyle: React.CSSProperties =
     position.x >= 0 && position.y >= 0
       ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
-      : { right: 16, bottom: "calc(80px + env(safe-area-inset-bottom, 0px))" };
+      : { right: 12, bottom: "calc(3rem + env(safe-area-inset-bottom, 0px))" };
 
   const locations = LOCATIONS[expandedZone || currentZone] || [];
 
