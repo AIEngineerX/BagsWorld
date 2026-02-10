@@ -34,14 +34,26 @@ export async function preSimulateTransaction(
       );
     }
   } else {
-    // Legacy Transaction — simulateTransaction expects it to have a
-    // recent blockhash set and feePayer assigned.
-    const result = await connection.simulateTransaction(transaction, undefined, true);
+    // Legacy Transaction — use raw RPC call with sigVerify:false so
+    // unsigned / partially-signed transactions can be simulated.
+    const serialized = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
+    const encoded = serialized.toString("base64");
 
-    if (result.value.err) {
-      const logs = result.value.logs?.join("\n") ?? "";
+    // @ts-expect-error — _rpcRequest is internal but the only way to
+    // pass sigVerify:false for legacy transactions.
+    const result = await connection._rpcRequest("simulateTransaction", [
+      encoded,
+      { sigVerify: false, commitment: "confirmed", encoding: "base64" },
+    ]);
+
+    const simResult = result?.result?.value;
+    if (simResult?.err) {
+      const logs = simResult.logs?.join("\n") ?? "";
       throw new Error(
-        `Transaction simulation failed: ${JSON.stringify(result.value.err)}${logs ? `\nLogs:\n${logs}` : ""}`
+        `Transaction simulation failed: ${JSON.stringify(simResult.err)}${logs ? `\nLogs:\n${logs}` : ""}`
       );
     }
   }
