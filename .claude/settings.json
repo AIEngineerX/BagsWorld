@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hook": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'git commit'; then npx tsc --noEmit && npm run lint; fi"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hook": "for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do taskkill /F /PID %a 2>nul & echo Port 3000 cleared"
+      }
+    ]
+  }
+}
