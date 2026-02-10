@@ -272,6 +272,12 @@ function createCrosswalk(scene: WorldScene, x: number, y: number): void {
 function createConstructionSigns(scene: WorldScene): void {
   // Use actual game width so signs stay on-screen on mobile (960px)
   const effectiveWidth = scene.isMobile ? (scene.sys.game.config.width as number) : GAME_WIDTH;
+  // Scale sign dimensions based on screen width for mobile
+  const signW = Math.round(Math.min(100, effectiveWidth * 0.1) * SCALE);
+  const signH = Math.round(Math.min(40, effectiveWidth * 0.04) * SCALE);
+  const isSmall = effectiveWidth < 1000;
+  const fontSize1 = Math.round((isSmall ? 8 : 10) * SCALE);
+  const fontSize2 = Math.round((isSmall ? 7 : 8) * SCALE);
 
   // Two construction sign positions - left and right sides of BagsCity
   const signPositions = [
@@ -292,13 +298,7 @@ function createConstructionSigns(scene: WorldScene): void {
     scene.trendingElements.push(post);
 
     // Sign background (orange/yellow construction color)
-    const signBg = scene.add.rectangle(
-      pos.x,
-      pos.y,
-      Math.round(100 * SCALE),
-      Math.round(40 * SCALE),
-      0xf59e0b
-    );
+    const signBg = scene.add.rectangle(pos.x, pos.y, signW, signH, 0xf59e0b);
     signBg.setDepth(6);
     signBg.setStrokeStyle(Math.round(2 * SCALE), 0x000000);
     scene.trendingElements.push(signBg);
@@ -306,7 +306,7 @@ function createConstructionSigns(scene: WorldScene): void {
     // Sign text
     const signText = scene.add.text(pos.x, pos.y - Math.round(5 * SCALE), "UNDER", {
       fontFamily: "monospace",
-      fontSize: `${Math.round(10 * SCALE)}px`,
+      fontSize: `${fontSize1}px`,
       color: "#000000",
       fontStyle: "bold",
     });
@@ -316,7 +316,7 @@ function createConstructionSigns(scene: WorldScene): void {
 
     const signText2 = scene.add.text(pos.x, pos.y + Math.round(8 * SCALE), "CONSTRUCTION", {
       fontFamily: "monospace",
-      fontSize: `${Math.round(8 * SCALE)}px`,
+      fontSize: `${fontSize2}px`,
       color: "#000000",
       fontStyle: "bold",
     });
@@ -325,12 +325,14 @@ function createConstructionSigns(scene: WorldScene): void {
     scene.trendingElements.push(signText2);
 
     // Construction barriers (orange/white striped)
+    const barrierSpacing = Math.round((isSmall ? 22 : 30) * SCALE);
+    const barrierW = Math.round((isSmall ? 18 : 25) * SCALE);
     const barrierY = pos.y + Math.round(70 * SCALE);
     for (let i = -1; i <= 1; i++) {
       const barrier = scene.add.rectangle(
-        pos.x + i * Math.round(30 * SCALE),
+        pos.x + i * barrierSpacing,
         barrierY,
-        Math.round(25 * SCALE),
+        barrierW,
         Math.round(12 * SCALE),
         i % 2 === 0 ? 0xf97316 : 0xffffff
       );
@@ -563,7 +565,7 @@ function createTrendingBillboards(scene: WorldScene): void {
   leftTitle.setDepth(7);
   scene.billboardTexts.push(leftTitle);
 
-  const leftText = scene.add.text(leftX, sideTextY, "...", {
+  const leftText = scene.add.text(leftX, sideTextY, "LOADING...", {
     fontFamily: "monospace",
     fontSize: `${Math.round(9 * SCALE)}px`,
     color: "#4ade80",
@@ -615,7 +617,7 @@ function createTrendingBillboards(scene: WorldScene): void {
   rightTitle.setDepth(7);
   scene.billboardTexts.push(rightTitle);
 
-  const rightText = scene.add.text(rightX, sideTextY, "...", {
+  const rightText = scene.add.text(rightX, sideTextY, "LOADING...", {
     fontFamily: "monospace",
     fontSize: `${Math.round(9 * SCALE)}px`,
     color: "#ec4899",
@@ -758,14 +760,18 @@ function updateBillboardData(scene: WorldScene): void {
     const byGain = [...buildings].sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
     if (byGain.length > 0 && byGain[0].change24h) {
       scene.billboardTexts[4].setText(`${byGain[0].symbol}\n+${byGain[0].change24h.toFixed(1)}%`);
+    } else {
+      scene.billboardTexts[4].setText("NO DATA YET");
     }
 
     // Volume king - highest 24h volume
     const byVolume = [...buildings].sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
-    if (byVolume.length > 0) {
+    if (byVolume.length > 0 && byVolume[0].volume24h) {
       scene.billboardTexts[6].setText(
         `${byVolume[0].symbol}\n$${formatNumber(byVolume[0].volume24h || 0)}`
       );
+    } else {
+      scene.billboardTexts[6].setText("NO DATA YET");
     }
   }
 }
