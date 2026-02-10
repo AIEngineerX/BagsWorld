@@ -660,20 +660,6 @@ export default function Home() {
           <div className="hidden lg:block">
             <EcosystemStats />
           </div>
-          <button
-            onClick={() => openModal("tradingTerminal")}
-            className="text-[#22c55e] hover:text-[#16a34a] transition-colors min-h-[44px] sm:min-h-0 flex items-center"
-            aria-label="Open trading terminal"
-          >
-            [TERMINAL]
-          </button>
-          <button
-            onClick={() => openModal("launcherHub")}
-            className="text-gray-400 hover:text-bags-green transition-colors min-h-[44px] sm:min-h-0 flex items-center"
-            aria-label="Open launcher hub"
-          >
-            [LAUNCHERS]
-          </button>
           {publicKey?.toString() === CASINO_ADMIN_WALLET && (
             <button
               onClick={() => openModal("casinoAdmin")}
