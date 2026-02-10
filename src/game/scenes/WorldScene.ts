@@ -5319,18 +5319,23 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Persistent name label on mobile (always visible, no hover needed)
-    // Limit to 6 labels per zone on small screens to avoid clutter
-    if (this.isMobile && (this.scale.width >= 600 || index < 6)) {
+    // Limit to 4 labels on small screens to avoid clutter
+    if (this.isMobile && (this.scale.width >= 600 || index < 4)) {
       const charName = character.username || character.id;
-      const displayName = charName.length > 10 ? charName.substring(0, 10) : charName;
-      const labelYOffset = 18 + (index % 5) * 10; // Stagger: 18,28,38,48,58px — 5 levels
+      const displayName = charName.length > 8 ? charName.substring(0, 8) : charName;
+      // Alternate above/below the sprite, stagger further apart
+      const isAbove = index % 2 === 0;
+      const staggerLevel = Math.floor(index / 2) % 3; // 3 height tiers
+      const labelYOffset = isAbove
+        ? -(20 + staggerLevel * 12) // above: -20, -32, -44
+        : 18 + staggerLevel * 12; // below: 18, 30, 42
       const labelBg = this.add.rectangle(
         character.x,
         character.y + labelYOffset,
-        displayName.length * 6 + 6,
-        14,
+        displayName.length * 5.5 + 6,
+        12,
         0x000000,
-        0.7
+        0.75
       );
       labelBg.setDepth(12);
       const nameLabel = this.add.text(
@@ -5339,7 +5344,7 @@ export class WorldScene extends Phaser.Scene {
         displayName.toUpperCase(),
         {
           fontFamily: "monospace",
-          fontSize: "9px",
+          fontSize: "8px",
           color: "#ffffff",
         }
       );

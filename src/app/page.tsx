@@ -408,7 +408,7 @@ export default function Home() {
                 size={16}
               />
             </div>
-            <h1 className="font-pixel text-xs sm:text-sm md:text-lg text-bags-green hidden xs:block drop-shadow-[0_0_8px_rgba(74,222,128,0.4)]">
+            <h1 className="font-pixel text-xs sm:text-sm md:text-lg text-bags-green hidden sm:block drop-shadow-[0_0_8px_rgba(74,222,128,0.4)]">
               BAGSWORLD
             </h1>
           </div>
@@ -646,7 +646,7 @@ export default function Home() {
       </div>
 
       {/* Footer status bar - simplified on mobile */}
-      <footer className="h-10 sm:h-9 hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[10px] sm:text-[8px] md:text-[10px] safe-area-bottom shrink-0">
+      <footer className="min-h-[36px] sm:min-h-[36px] hud-panel hud-border-top flex items-center justify-between px-2 md:px-4 font-pixel text-[8px] sm:text-[8px] md:text-[10px] safe-area-bottom shrink-0 overflow-hidden">
         <div className="flex items-center gap-2 md:gap-4">
           <span className="text-gray-400">
             [POP:<span className="text-white ml-1">{worldState?.population?.length ?? 0}</span>]
