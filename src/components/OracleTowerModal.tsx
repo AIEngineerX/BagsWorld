@@ -201,6 +201,15 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { isAdmin } = useAdminCheck();
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
   // ─── Fetch Functions ────────────────────────────────────────────
 
   const fetchMarkets = useCallback(async () => {

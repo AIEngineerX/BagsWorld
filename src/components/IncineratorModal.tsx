@@ -87,6 +87,23 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
   const [closePreview, setClosePreview] = useState<ClosePreviewResponse | null>(null);
   const [closeAllPreview, setCloseAllPreview] = useState<BatchCloseAllPreviewResponse | null>(null);
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   // Check API health on mount
   useEffect(() => {
     fetch("/api/sol-incinerator", {

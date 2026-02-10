@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useQuery } from "@tanstack/react-query";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -378,6 +379,26 @@ export function BuildingModal({
     if (e.target === e.currentTarget) onClose();
   };
 
+  // Swipe-to-dismiss on mobile
+  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
+
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const change24h = tokenInfo?.change24h ?? 0;
 
   return (
@@ -386,9 +407,15 @@ export function BuildingModal({
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-bags-dark border-4 border-bags-green w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[95vh] overflow-y-auto rounded-t-xl sm:rounded-xl"
+        className={`bg-bags-dark border-4 border-bags-green w-full sm:max-w-2xl max-h-[75vh] sm:max-h-[95vh] overflow-y-auto rounded-t-xl sm:rounded-xl ${isDismissing ? "modal-sheet-dismiss" : ""}`}
         onClick={(e) => e.stopPropagation()}
+        style={{ transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+        {...swipeHandlers}
       >
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
+        </div>
         {/* Header */}
         <div className="flex items-center justify-between p-3 sm:p-4 border-b-4 border-bags-green">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -415,10 +442,10 @@ export function BuildingModal({
             )}
             <button
               onClick={onClose}
-              className="font-pixel text-xs p-2 text-gray-400 hover:text-white touch-target border border-gray-700 hover:border-bags-green rounded"
+              className="font-pixel text-sm w-11 h-11 flex items-center justify-center text-white bg-red-600/80 hover:bg-red-500 border border-red-400 rounded transition-colors"
               aria-label="Close"
             >
-              [X]
+              X
             </button>
           </div>
         </div>

@@ -25,6 +25,23 @@ export function LauncherHub({ onClose }: LauncherHubProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCreator, setSelectedCreator] = useState<string | null>(null);
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   useEffect(() => {
     loadCreators();
   }, []);

@@ -373,6 +373,15 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { isAdmin: isUserAdmin } = useAdminCheck();
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
   // Entry animation
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 50);

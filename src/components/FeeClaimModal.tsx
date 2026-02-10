@@ -44,6 +44,15 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
     clearError: clearXError,
   } = useXAuth();
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
   const [positions, setPositions] = useState<ClaimablePosition[]>([]);
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set());
   const [totalClaimable, setTotalClaimable] = useState(0);

@@ -208,7 +208,10 @@ export function QuestTracker() {
   const [dialogueNpc, setDialogueNpc] = useState<string | null>(null);
   const [dialogueText, setDialogueText] = useState<string | null>(null);
   const [showComplete, setShowComplete] = useState(false);
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= 640; // Start collapsed on mobile
+  });
   const [stepFlash, setStepFlash] = useState(false);
   const dialogueTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -315,7 +318,7 @@ export function QuestTracker() {
   if (showComplete) {
     return (
       <div
-        className="fixed bottom-10 left-4 z-[55]"
+        className="fixed bottom-12 sm:bottom-10 left-4 z-[55]"
         style={{ animation: "quest-ribbon-in 0.3s ease-out forwards" }}
       >
         <div className="flex items-center gap-2 bg-black/85 backdrop-blur-sm border border-yellow-500/50 rounded-full px-4 py-2 shadow-[0_0_16px_rgba(251,191,36,0.3)]">
@@ -348,7 +351,7 @@ export function QuestTracker() {
     return (
       <button
         onClick={() => setMinimized(false)}
-        className="fixed bottom-10 left-4 z-[55] bg-black/85 backdrop-blur-sm border border-amber-500/40 rounded-full w-8 h-8 flex items-center justify-center hover:border-amber-500/70 transition-all"
+        className="fixed bottom-12 sm:bottom-10 left-4 z-[55] bg-black/85 backdrop-blur-sm border border-amber-500/40 rounded-full w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center hover:border-amber-500/70 transition-all"
         style={{ animation: "quest-pulse 2s ease-in-out infinite" }}
         aria-label="Expand quest"
       >
@@ -370,7 +373,7 @@ export function QuestTracker() {
 
   // ── Active quest ribbon ────────────────────────────────────────
   return (
-    <div className="fixed bottom-10 left-4 z-[55]" style={{ maxWidth: "18rem" }}>
+    <div className="fixed bottom-12 sm:bottom-10 left-4 z-[55]" style={{ maxWidth: "18rem" }}>
       {/* Dialogue bubble (above ribbon) */}
       {dialogueNpc && dialogueText && (
         <div

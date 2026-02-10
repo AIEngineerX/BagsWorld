@@ -92,6 +92,15 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
   const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
   const guardAction = useActionGuard();
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
   const [formData, setFormData] = useState({
     name: "",
     symbol: "",

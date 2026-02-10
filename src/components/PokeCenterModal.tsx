@@ -21,6 +21,23 @@ export function PokeCenterModal({ onClose, onOpenFeeClaimModal }: PokeCenterModa
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"human" | "agent">("human");
 
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   useEffect(() => {
     if (connected && publicKey) {
       fetchPositions(publicKey.toBase58());

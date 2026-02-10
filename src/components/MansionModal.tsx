@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 interface MansionModalProps {
   onClose: () => void;
   name?: string;
@@ -15,6 +17,23 @@ export function MansionModal({
   holderAddress,
   holderBalance,
 }: MansionModalProps) {
+  // Escape key to close
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
