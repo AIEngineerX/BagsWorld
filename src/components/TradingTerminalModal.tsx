@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
+import { preSimulateTransaction, sendSignedTransaction } from "@/lib/transaction-utils";
 import {
   createChart,
   IChartApi,
@@ -264,14 +265,16 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
       // Deserialize and sign transaction
       const swapTransactionBuf = Buffer.from(swapTransaction, "base64");
       const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+
+      // Pre-simulate to catch errors before wallet popup
+      await preSimulateTransaction(connection, transaction);
+
       const signedTransaction = await signTransaction(transaction);
 
       setTxStatus("confirming");
 
-      // Send transaction
-      const rawTransaction = signedTransaction.serialize();
-      const signature = await connection.sendRawTransaction(rawTransaction, {
-        skipPreflight: true,
+      // Send transaction with preflight enabled
+      const signature = await sendSignedTransaction(connection, signedTransaction, {
         maxRetries: 3,
       });
 

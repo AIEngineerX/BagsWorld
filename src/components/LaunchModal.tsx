@@ -1,69 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Connection, VersionedTransaction, Transaction } from "@solana/web3.js";
-import bs58 from "bs58";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
 import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useActionGuard } from "@/hooks/useActionGuard";
-
-// Helper to deserialize transaction - handles both base58 and base64 encoding
-function deserializeTransaction(
-  encoded: string | Record<string, unknown>,
-  context: string = "transaction"
-): VersionedTransaction | Transaction {
-  // Extract transaction string from object or use string directly
-  let txString: string | undefined;
-  if (typeof encoded === "object" && encoded !== null) {
-    const possibleFields = ["transaction", "tx", "data", "rawTransaction", "serializedTransaction"];
-    for (const field of possibleFields) {
-      if (typeof encoded[field] === "string") {
-        txString = encoded[field] as string;
-        break;
-      }
-    }
-    if (!txString) {
-      throw new Error(`Invalid ${context}: no transaction string found in object`);
-    }
-  } else if (typeof encoded === "string") {
-    txString = encoded;
-  } else {
-    throw new Error(`Invalid ${context}: expected string or object`);
-  }
-
-  if (!txString || txString.length < 50) {
-    throw new Error(`Invalid ${context}: too short`);
-  }
-
-  txString = txString.trim().replace(/\s/g, "");
-  const isLikelyBase64 = txString.includes("+") || txString.includes("/") || txString.endsWith("=");
-
-  let buffer: Uint8Array;
-  try {
-    buffer = isLikelyBase64 ? Buffer.from(txString, "base64") : bs58.decode(txString);
-    if (buffer.length < 50) throw new Error("Buffer too small");
-  } catch {
-    // Try the other encoding
-    try {
-      buffer = isLikelyBase64 ? bs58.decode(txString) : Buffer.from(txString, "base64");
-    } catch {
-      throw new Error(`${context}: decode failed`);
-    }
-  }
-
-  // Try VersionedTransaction first, fall back to legacy
-  try {
-    return VersionedTransaction.deserialize(buffer);
-  } catch {
-    try {
-      return Transaction.from(buffer);
-    } catch {
-      throw new Error(`Failed to deserialize ${context}`);
-    }
-  }
-}
+import {
+  deserializeTransaction,
+  hasExistingSignatures as checkExistingSignatures,
+  preSimulateTransaction,
+  sendSignedTransaction,
+} from "@/lib/transaction-utils";
 import {
   saveLaunchedToken,
   saveTokenGlobally,
@@ -578,23 +526,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               `fee-config-tx-${i + 1}`
             );
 
-            // Check if transaction already has signatures
-            let hasExistingSignatures = false;
-            if (transaction instanceof VersionedTransaction) {
-              hasExistingSignatures = transaction.signatures.some((sig) =>
-                sig.some((byte) => byte !== 0)
-              );
-            } else {
-              hasExistingSignatures = transaction.signatures.some(
-                (sig) => sig.signature && sig.signature.some((byte) => byte !== 0)
-              );
-            }
+            const preSigned = checkExistingSignatures(transaction);
 
             // Only refresh blockhash if no existing signatures
             let blockhash: string;
             let lastValidBlockHeight: number;
 
-            if (!hasExistingSignatures) {
+            if (!preSigned) {
               const latestBlockhash = await connection.getLatestBlockhash("confirmed");
               blockhash = latestBlockhash.blockhash;
               lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
@@ -605,6 +543,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 transaction.recentBlockhash = blockhash;
               }
             } else {
+              // Preserve the API's blockhash — changing it would invalidate existing signatures
               if (transaction instanceof VersionedTransaction) {
                 blockhash = transaction.message.recentBlockhash;
               } else {
@@ -612,6 +551,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               }
               const latestBlockhash = await connection.getLatestBlockhash("confirmed");
               lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
+            }
+
+            // Pre-simulate with sigVerify:false to catch errors before wallet popup
+            try {
+              await preSimulateTransaction(connection, transaction);
+            } catch (simError) {
+              console.warn(`Fee config tx ${i + 1} simulation warning:`, simError);
+              // Non-fatal: partially-signed txs may fail simulation — continue to wallet
             }
 
             let signedTx;
@@ -636,11 +583,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               `Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`
             );
 
-            // Send transaction - skip preflight to avoid blockhash simulation issues
-            // The transaction will still be validated by validators when submitted
-            const txid = await connection.sendRawTransaction(signedTx.serialize(), {
-              skipPreflight: true,
-              preflightCommitment: "confirmed",
+            const txid = await sendSignedTransaction(connection, signedTx, {
               maxRetries: 5,
             });
 
@@ -721,8 +664,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           );
         }
 
-        setLaunchStatus("Please sign the transaction in your wallet...");
-
         // Decode transaction (handles both versioned and legacy formats)
         const transaction = deserializeTransaction(txBase64, "launch-transaction");
 
@@ -731,25 +672,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://rpc.ankr.com/solana"
         );
 
-        // Check if transaction already has signatures (from the API)
-        // If so, we should NOT modify the blockhash as it would invalidate existing signatures
-        let hasExistingSignatures = false;
-        if (transaction instanceof VersionedTransaction) {
-          hasExistingSignatures = transaction.signatures.some((sig) =>
-            sig.some((byte) => byte !== 0)
-          );
-        } else {
-          hasExistingSignatures = transaction.signatures.some(
-            (sig) => sig.signature && sig.signature.some((byte) => byte !== 0)
-          );
-        }
+        const preSigned = checkExistingSignatures(transaction);
 
         // Only refresh blockhash if there are no existing signatures
         // Otherwise we'd invalidate the API's signatures
         let blockhash: string;
         let lastValidBlockHeight: number;
 
-        if (!hasExistingSignatures) {
+        if (!preSigned) {
           const latestBlockhash = await connection.getLatestBlockhash("confirmed");
           blockhash = latestBlockhash.blockhash;
           lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
@@ -760,16 +690,26 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
             transaction.recentBlockhash = blockhash;
           }
         } else {
-          // Use the blockhash from the transaction
+          // Preserve the API's blockhash — changing it would invalidate existing signatures
           if (transaction instanceof VersionedTransaction) {
             blockhash = transaction.message.recentBlockhash;
           } else {
             blockhash = transaction.recentBlockhash!;
           }
-          // Get current block height for confirmation
           const latestBlockhash = await connection.getLatestBlockhash("confirmed");
           lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
         }
+
+        // Pre-simulate with sigVerify:false to catch errors before wallet popup
+        setLaunchStatus("Validating transaction...");
+        try {
+          await preSimulateTransaction(connection, transaction);
+        } catch (simError) {
+          console.warn("Launch tx simulation warning:", simError);
+          // Non-fatal for pre-signed txs — Phantom will run its own simulation
+        }
+
+        setLaunchStatus("Please sign the transaction in your wallet...");
 
         // Sign transaction - with better error handling for Phantom
         let signedTx;
@@ -779,31 +719,25 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
           const signErrorMsg = signError instanceof Error ? signError.message : String(signError);
           console.error("Transaction signing failed:", signErrorMsg);
 
-          // User rejected
           if (signErrorMsg.includes("User rejected") || signErrorMsg.includes("rejected")) {
             throw new Error(
               "Transaction cancelled. Please try again and approve the transaction in your wallet."
             );
           }
-          // Phantom popup closed
           if (signErrorMsg.includes("Popup closed") || signErrorMsg.includes("closed")) {
             throw new Error("Wallet popup was closed. Please try again and complete the approval.");
           }
-          // Transaction simulation failed
           if (signErrorMsg.includes("simulation") || signErrorMsg.includes("Simulation")) {
             throw new Error(
               `Transaction simulation failed: ${signErrorMsg}. This may be a temporary network issue - please try again.`
             );
           }
-          // Generic error
           throw new Error(`Wallet signing failed: ${signErrorMsg}`);
         }
 
         setLaunchStatus("Broadcasting to Solana...");
 
         // Send to blockchain with retry logic for blockhash issues
-        // If the transaction has pre-signed components (from API), we need to request
-        // a fresh transaction from the API rather than modifying the blockhash ourselves
         let txid: string | undefined;
         let sendAttempts = 0;
         const maxSendAttempts = 3;
@@ -812,9 +746,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
         while (sendAttempts < maxSendAttempts) {
           sendAttempts++;
           try {
-            txid = await connection.sendRawTransaction(currentSignedTx.serialize(), {
-              skipPreflight: true,
-              preflightCommitment: "confirmed",
+            txid = await sendSignedTransaction(connection, currentSignedTx, {
               maxRetries: 5,
             });
             break; // Success, exit loop
@@ -873,6 +805,13 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               blockhash = freshBlockhash.blockhash;
               lastValidBlockHeight = freshBlockhash.lastValidBlockHeight;
 
+              // Pre-simulate retry transaction
+              try {
+                await preSimulateTransaction(connection, retryTransaction);
+              } catch (simError) {
+                console.warn("Retry tx simulation warning:", simError);
+              }
+
               // Sign the fresh transaction
               setLaunchStatus("Please sign the transaction...");
               try {
@@ -890,8 +829,6 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 throw new Error(`Wallet signing failed: ${retrySignMsg}`);
               }
               setLaunchStatus("Broadcasting to Solana...");
-
-              // Continue loop to try sending
             } else {
               throw sendError;
             }

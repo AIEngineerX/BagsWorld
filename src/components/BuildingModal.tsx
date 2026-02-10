@@ -5,7 +5,6 @@ import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useQuery } from "@tanstack/react-query";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { VersionedTransaction, Transaction } from "@solana/web3.js";
 import {
   createChart,
   IChartApi,
@@ -19,19 +18,11 @@ import {
 import type { TradeQuote } from "@/lib/types";
 import { getTokenDecimals } from "@/lib/token-balance";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
-
-function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
-  const buffer = Buffer.from(base64, "base64");
-  try {
-    return VersionedTransaction.deserialize(buffer);
-  } catch {
-    try {
-      return Transaction.from(buffer);
-    } catch (e) {
-      throw new Error(`Failed to deserialize transaction: ${e}`);
-    }
-  }
-}
+import {
+  deserializeTransaction,
+  preSimulateTransaction,
+  sendSignedTransaction,
+} from "@/lib/transaction-utils";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
@@ -355,8 +346,12 @@ export function BuildingModal({
 
       const { transaction: txBase64 } = await response.json();
       const transaction = deserializeTransaction(txBase64);
+
+      // Pre-simulate to catch errors before wallet popup
+      await preSimulateTransaction(connection, transaction);
+
       const signedTx = await signTransaction(transaction);
-      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      const signature = await sendSignedTransaction(connection, signedTx);
       await connection.confirmTransaction(signature, "confirmed");
 
       setSuccess(`Swap successful! ${signature.slice(0, 8)}...`);

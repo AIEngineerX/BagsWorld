@@ -1,27 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { VersionedTransaction, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import type { TradeQuote } from "@/lib/types";
 import { getTokenDecimals } from "@/lib/token-balance";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
-
-// Helper to deserialize transaction - tries both formats
-function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
-  const buffer = Buffer.from(base64, "base64");
-  try {
-    return VersionedTransaction.deserialize(buffer);
-  } catch {
-    try {
-      return Transaction.from(buffer);
-    } catch (e) {
-      throw new Error(`Failed to deserialize transaction: ${e}`);
-    }
-  }
-}
+import {
+  deserializeTransaction,
+  preSimulateTransaction,
+  sendSignedTransaction,
+} from "@/lib/transaction-utils";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
@@ -138,12 +127,16 @@ export function TradeModal({ tokenMint, tokenSymbol, tokenName, onClose }: Trade
 
       const { transaction: txBase64 } = await response.json();
 
-      // Decode and sign transaction (handles both versioned and legacy formats)
+      // Decode transaction (handles both versioned and legacy formats)
       const transaction = deserializeTransaction(txBase64);
+
+      // Pre-simulate to catch errors before wallet popup
+      await preSimulateTransaction(connection, transaction);
+
       const signedTx = await signTransaction(transaction);
 
-      // Send transaction
-      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      // Send transaction with preflight enabled
+      const signature = await sendSignedTransaction(connection, signedTx);
 
       // Wait for confirmation
       await connection.confirmTransaction(signature, "confirmed");
