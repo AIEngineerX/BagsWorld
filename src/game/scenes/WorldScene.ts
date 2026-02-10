@@ -969,9 +969,11 @@ export class WorldScene extends Phaser.Scene {
       character.id.startsWith("external-") || character.id.startsWith("agent-");
 
     if (isExternalAgent) {
-      // External/spawned agents open their Moltbook profile
-      if (character.profileUrl) {
-        window.open(character.profileUrl, "_blank");
+      // Show tooltip popup instead of auto-navigating
+      const matchSprite = this.characterSprites.get(character.id);
+      if (matchSprite) {
+        const isMoltbook = character.id.startsWith("agent-") || character.providerUsername != null;
+        this.showOpenClawTooltip(character, matchSprite, isMoltbook);
       }
     } else if (character.isToly) {
       window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
@@ -1006,8 +1008,11 @@ export class WorldScene extends Phaser.Scene {
     } else if (character.isBagsy) {
       window.dispatchEvent(new CustomEvent("bagsworld-bagsy-click"));
     } else if (character.profileUrl) {
-      // Open profile page in new tab
-      window.open(character.profileUrl, "_blank");
+      // Show tooltip with visit button instead of auto-navigating
+      const matchSprite = this.characterSprites.get(character.id);
+      if (matchSprite) {
+        this.showOpenClawTooltip(character, matchSprite, false);
+      }
     }
   }
 
@@ -5408,10 +5413,8 @@ export class WorldScene extends Phaser.Scene {
     });
     sprite.on("pointerdown", () => {
       if (isOpenClaw) {
-        // External agents (Openclaws) open their Moltbook profile
-        if (character.profileUrl) {
-          window.open(character.profileUrl, "_blank");
-        }
+        // Show tooltip popup on tap instead of auto-navigating
+        this.showOpenClawTooltip(character, sprite!, isMoltbookAgent);
       } else if (isToly) {
         // Toly opens the Solana wisdom chat
         window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
@@ -5461,8 +5464,8 @@ export class WorldScene extends Phaser.Scene {
         // Bagsy opens the mascot chat
         window.dispatchEvent(new CustomEvent("bagsworld-bagsy-click"));
       } else if (character.profileUrl) {
-        // Open profile page in new tab
-        window.open(character.profileUrl, "_blank");
+        // Show tooltip with visit button instead of auto-navigating
+        this.showOpenClawTooltip(character, sprite!, false);
       }
     });
 
@@ -7049,15 +7052,32 @@ export class WorldScene extends Phaser.Scene {
     });
     statsText.setOrigin(0.5, 0.5);
 
-    const clickLabel = character.profileUrl ? "Click to view Moltbook" : "Moltbook Beach Resident";
-    const clickText = this.add.text(0, 40, clickLabel, {
-      fontFamily: "monospace",
-      fontSize: "9px",
-      color: textColor,
-    });
-    clickText.setOrigin(0.5, 0.5);
-
-    container.add([bg, nameText, titleText, quoteText, repText, statsText, clickText]);
+    if (character.profileUrl) {
+      // Tappable "Visit Profile" button
+      const btnBg = this.add.rectangle(0, 42, 140, 20, borderColor, 0.9);
+      btnBg.setStrokeStyle(1, borderColor);
+      const btnText = this.add.text(0, 42, "[ VISIT PROFILE ]", {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#ffffff",
+      });
+      btnText.setOrigin(0.5, 0.5);
+      btnBg.setInteractive({ useHandCursor: true });
+      btnBg.on("pointerover", () => btnBg.setFillStyle(borderColor, 1));
+      btnBg.on("pointerout", () => btnBg.setFillStyle(borderColor, 0.9));
+      btnBg.on("pointerdown", () => {
+        window.open(character.profileUrl, "_blank");
+      });
+      container.add([bg, nameText, titleText, quoteText, repText, statsText, btnBg, btnText]);
+    } else {
+      const residentText = this.add.text(0, 40, "Moltbook Beach Resident", {
+        fontFamily: "monospace",
+        fontSize: "9px",
+        color: "#9ca3af",
+      });
+      residentText.setOrigin(0.5, 0.5);
+      container.add([bg, nameText, titleText, quoteText, repText, statsText, residentText]);
+    }
     container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }
