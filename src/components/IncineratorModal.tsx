@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useActionGuard } from "@/hooks/useActionGuard";
+import { useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
+import { preSimulateTransaction } from "@/lib/transaction-utils";
 import type {
   BurnResponse,
   CloseResponse,
@@ -72,6 +74,7 @@ function PixelFire({ size = 28, burning = false }: { size?: number; burning?: bo
 export function IncineratorModal({ onClose }: IncineratorModalProps) {
   const { publicKey, connected, signTransaction } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
+  const { connection } = useConnection();
   const guardAction = useActionGuard();
 
   const [activeTab, setActiveTab] = useState<Tab>("close-all");
@@ -160,6 +163,10 @@ export function IncineratorModal({ onClose }: IncineratorModalProps) {
     }
 
     const transaction = VersionedTransaction.deserialize(buffer);
+
+    // Pre-simulate to catch errors before wallet popup
+    await preSimulateTransaction(connection, transaction);
+
     const signedTx = await signTransaction(transaction);
     const serialized = Buffer.from(signedTx.serialize()).toString("base64");
 

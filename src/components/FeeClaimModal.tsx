@@ -1,28 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { Transaction, VersionedTransaction } from "@solana/web3.js";
 import type { ClaimablePosition } from "@/lib/types";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
 import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useActionGuard } from "@/hooks/useActionGuard";
-
-// Helper to deserialize transaction - tries both formats
-function deserializeTransaction(base64: string): VersionedTransaction | Transaction {
-  const buffer = Buffer.from(base64, "base64");
-  try {
-    return VersionedTransaction.deserialize(buffer);
-  } catch {
-    try {
-      return Transaction.from(buffer);
-    } catch (e) {
-      throw new Error(`Failed to deserialize transaction: ${e}`);
-    }
-  }
-}
+import {
+  deserializeTransaction,
+  preSimulateTransaction,
+  sendSignedTransaction,
+} from "@/lib/transaction-utils";
 import { useXAuth } from "@/hooks/useXAuth";
 
 interface FeeClaimModalProps {
@@ -30,7 +19,9 @@ interface FeeClaimModalProps {
 }
 
 export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
-  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
+  const { publicKey, connected, mobileSignTransaction: signTransaction, wallet } =
+    useMobileWallet();
+  const { signAllTransactions } = wallet;
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
   const guardAction = useActionGuard();
@@ -227,25 +218,43 @@ export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
         throw new Error("No transactions returned");
       }
 
-      // Sign and send each transaction
-      let successCount = 0;
-      for (const txBase64 of transactions) {
+      // Deserialize all transactions
+      const txObjects = transactions.map((txBase64: string, i: number) =>
+        deserializeTransaction(txBase64, `claim-tx-${i + 1}`)
+      );
+
+      // Pre-simulate each to catch errors before wallet popups
+      for (let i = 0; i < txObjects.length; i++) {
         try {
-          // Deserialize transaction (handles both versioned and legacy formats)
-          const transaction = deserializeTransaction(txBase64);
+          await preSimulateTransaction(connection, txObjects[i]);
+        } catch (simError) {
+          console.warn(`Claim tx ${i + 1} simulation warning:`, simError);
+          // Non-fatal: continue to wallet signing
+        }
+      }
 
-          // Sign the transaction
-          const signedTx = await signTransaction(transaction);
+      // Batch-sign all transactions at once if wallet supports it (single popup)
+      let signedTxs;
+      if (signAllTransactions && txObjects.length > 1) {
+        signedTxs = await signAllTransactions(txObjects);
+      } else {
+        // Fallback: sign one at a time
+        signedTxs = [];
+        for (const tx of txObjects) {
+          signedTxs.push(await signTransaction(tx));
+        }
+      }
 
-          // Send the signed transaction
-          const signature = await connection.sendRawTransaction(signedTx.serialize());
-
-          // Wait for confirmation
+      // Send and confirm each signed transaction
+      let successCount = 0;
+      for (const signedTx of signedTxs) {
+        try {
+          const signature = await sendSignedTransaction(connection, signedTx);
           await connection.confirmTransaction(signature, "confirmed");
           successCount++;
         } catch (txError) {
           console.error("Transaction error:", txError);
-          // Continue with other transactions
+          // Continue with remaining transactions
         }
       }
 
