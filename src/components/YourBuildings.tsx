@@ -109,12 +109,23 @@ export function YourBuildings({ onRefresh }: YourBuildingsProps) {
 
   if (activeTokens.length === 0) {
     return (
-      <div className="px-3 py-4 text-center">
-        <div className="w-8 h-8 mx-auto mb-2 border border-dashed border-gray-600 flex items-center justify-center">
-          <span className="font-pixel text-gray-600 text-lg">+</span>
+      <div className="px-3 py-2">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="font-pixel text-[9px] text-bags-green">BUILDINGS</span>
+          <span className="font-pixel text-[8px] text-gray-600">(1)</span>
         </div>
-        <p className="font-pixel text-[9px] text-gray-500">No active buildings</p>
-        <p className="font-pixel text-[7px] text-gray-600 mt-1">Launch a token to add one</p>
+        <div className="py-1.5 border-t border-bags-green/10 flex items-center gap-2">
+          <div className="w-7 h-7 bg-black/40 border border-bags-green/20 flex items-center justify-center flex-shrink-0">
+            <span className="font-pixel text-[10px] text-bags-green">B</span>
+          </div>
+          <div className="min-w-0">
+            <span className="font-pixel text-[9px] text-bags-gold">$BAGSWORLD</span>
+            <p className="font-pixel text-[7px] text-gray-500">BagsWorld HQ</p>
+          </div>
+        </div>
+        <div className="mt-2 pt-2 border-t border-bags-green/10 text-center">
+          <p className="font-pixel text-[7px] text-gray-500">Launch a token to add your building</p>
+        </div>
       </div>
     );
   }

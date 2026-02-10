@@ -1230,6 +1230,10 @@ export class WorldScene extends Phaser.Scene {
     if (this.tickerText) this.tweens.killTweensOf(this.tickerText);
     this.ballersElements.forEach((el) => this.tweens.killTweensOf(el));
     this.foundersElements.forEach((el) => this.tweens.killTweensOf(el));
+    this.labsElements.forEach((el) => this.tweens.killTweensOf(el));
+    this.moltbookElements.forEach((el) => this.tweens.killTweensOf(el));
+    this.arenaElements.forEach((el) => this.tweens.killTweensOf(el));
+    this.dungeonElements.forEach((el) => this.tweens.killTweensOf(el));
     this.buildingSprites.forEach((container) => this.tweens.killTweensOf(container));
     this.characterSprites.forEach((sprite) => this.tweens.killTweensOf(sprite));
 
@@ -1248,6 +1252,10 @@ export class WorldScene extends Phaser.Scene {
     this.resetZoneElementPositions(this.billboardTexts);
     this.resetZoneElementPositions(this.ballersElements);
     this.resetZoneElementPositions(this.foundersElements);
+    this.resetZoneElementPositions(this.labsElements);
+    this.resetZoneElementPositions(this.moltbookElements);
+    this.resetZoneElementPositions(this.arenaElements);
+    this.resetZoneElementPositions(this.dungeonElements);
 
     // Determine slide direction: Labs -> Moltbook Beach -> Park -> BagsCity -> Ballers Valley -> Founder's Corner -> Arena (left to right)
     // Zone order: labs (-2) -> moltbook (-1) -> main_city (0) -> trending (1) -> ballers (2) -> founders (3) -> arena (4)
@@ -1283,8 +1291,16 @@ export class WorldScene extends Phaser.Scene {
       oldElements.push(...this.ballersElements);
     } else if (this.currentZone === "founders") {
       oldElements.push(...this.foundersElements);
+    } else if (this.currentZone === "labs") {
+      oldElements.push(...this.labsElements);
+    } else if (this.currentZone === "moltbook") {
+      oldElements.push(...this.moltbookElements);
+    } else if (this.currentZone === "arena") {
+      oldElements.push(...this.arenaElements);
+    } else if (this.currentZone === "dungeon") {
+      oldElements.push(...this.dungeonElements);
     } else {
-      // Main city decorations
+      // Main city (Park) decorations
       this.decorations.forEach((d) => oldElements.push(d));
       this.animals.forEach((a) => oldElements.push(a.sprite));
     }
@@ -1307,7 +1323,16 @@ export class WorldScene extends Phaser.Scene {
       Math.round(520 * SCALE),
       GAME_WIDTH,
       Math.round(200 * SCALE),
-      this.currentZone === "main_city" ? 0x374151 : 0x22c55e, // concrete or grass color
+      {
+        trending: 0x374151,
+        labs: 0x1a1a2e,
+        dungeon: 0x1a1a1a,
+        arena: 0x2d1b4e,
+        moltbook: 0xc2b280,
+        ballers: 0x22c55e,
+        founders: 0x8b6914,
+        main_city: 0x22c55e,
+      }[this.currentZone] || 0x22c55e, // Zone-appropriate ground color
       1
     );
     transitionOverlay.setDepth(0);
@@ -1507,6 +1532,9 @@ export class WorldScene extends Phaser.Scene {
   private setupZoneOffscreen(zone: ZoneType, offsetX: number): void {
     // Hide all zone elements once, before setting up the new zone
     this.hideAllZoneElements();
+
+    // Ensure ground is visible by default (zones that need it hidden will override)
+    this.ground.setVisible(true);
 
     // Setup zone with elements offset, then animate them into position
     const duration = 400; // Smooth slide-in matching the overall transition feel

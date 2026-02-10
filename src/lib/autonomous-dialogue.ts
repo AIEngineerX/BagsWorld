@@ -1335,8 +1335,8 @@ export function startScheduledConversations(intervalMs: number = 60000): void {
   if (scheduledInterval) return;
 
   scheduledInterval = setInterval(async () => {
-    // 40% chance of random conversation (reduced for API cost)
-    if (Math.random() > 0.4) return;
+    // 70% chance of random conversation per interval
+    if (Math.random() > 0.7) return;
 
     const topics = [
       "general",
@@ -1385,8 +1385,8 @@ export function initDialogueSystem(): void {
     });
   });
 
-  // Start scheduled conversations (every 90 seconds - reduced for API cost)
-  startScheduledConversations(90000);
+  // Start scheduled conversations (every 35 seconds for demo visibility)
+  startScheduledConversations(35000);
 
   // Trigger initial conversation quickly (3 seconds after load)
   setTimeout(() => {
