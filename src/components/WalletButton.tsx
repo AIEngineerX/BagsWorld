@@ -62,7 +62,10 @@ export function WalletButton() {
         } ${connecting ? "opacity-50 cursor-wait" : ""}`}
       >
         {connecting ? (
-          <span><span className="hidden xs:inline">CONNECTING...</span><span className="xs:hidden">...</span></span>
+          <span>
+            <span className="hidden xs:inline">CONNECTING...</span>
+            <span className="xs:hidden">...</span>
+          </span>
         ) : connected && publicKey ? (
           <span className="flex items-center gap-1 sm:gap-2">
             <span className="w-2 h-2 bg-bags-green rounded-full animate-pulse" />

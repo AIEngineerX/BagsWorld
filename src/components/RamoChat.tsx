@@ -62,7 +62,11 @@ export function RamoChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsOpen(false));
+  const {
+    translateY,
+    isDismissing,
+    handlers: swipeHandlers,
+  } = useSwipeToDismiss(() => setIsOpen(false));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -236,7 +240,10 @@ export function RamoChat() {
   return (
     <div
       ref={chatRef}
-      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      style={{
+        ...chatStyle,
+        transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
+      }}
       className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-blue-500 shadow-lg shadow-blue-500/20 chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
       {...swipeHandlers}
     >
