@@ -195,8 +195,16 @@ async function handleConfigureFees(
       );
     }
 
-    // Validate provider is a supported type
-    const validProviders = ["twitter", "github", "kick"];
+    // Validate provider is a supported type (per Bags.fm API SocialProvider enum)
+    const validProviders = [
+      "twitter",
+      "github",
+      "kick",
+      "moltbook",
+      "tiktok",
+      "instagram",
+      "solana",
+    ];
     if (!validProviders.includes(claimer.provider)) {
       return NextResponse.json(
         {

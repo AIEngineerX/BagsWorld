@@ -1276,7 +1276,10 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 <span className="text-bags-green">Total must equal exactly 100%.</span>
               </p>
               <p className="font-pixel text-[7px] text-gray-500 mt-1">
-                Supported providers: <span className="text-bags-green">Twitter, GitHub, Kick</span>
+                Supported providers:{" "}
+                <span className="text-bags-green">
+                  Twitter, Moltbook, GitHub, Kick, TikTok, Instagram
+                </span>
               </p>
               <p className="font-pixel text-[7px] text-gray-500 mt-1">
                 Fee claimers need a wallet linked at{" "}
@@ -1337,8 +1340,11 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                     className="bg-bags-darker border border-bags-green p-2 font-pixel text-[8px] text-white"
                   >
                     <option value="twitter">Twitter</option>
+                    <option value="moltbook">Moltbook</option>
                     <option value="github">GitHub</option>
                     <option value="kick">Kick</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="instagram">Instagram</option>
                   </select>
                   <input
                     type="text"
