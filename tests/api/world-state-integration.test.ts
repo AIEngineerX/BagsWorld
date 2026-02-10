@@ -302,8 +302,8 @@ describe("World State API Integration (Logic)", () => {
   });
 
   describe("Population and Building Limits", () => {
-    it("should limit population to MAX_CHARACTERS (15)", () => {
-      const manyEarners: FeeEarner[] = Array.from({ length: 20 }, (_, i) => ({
+    it("should limit population to MAX_CHARACTERS (25)", () => {
+      const manyEarners: FeeEarner[] = Array.from({ length: 30 }, (_, i) => ({
         wallet: `earner-${i}`,
         username: `user${i}`,
         provider: "twitter" as const,
@@ -314,7 +314,7 @@ describe("World State API Integration (Logic)", () => {
       }));
 
       const state = buildWorldState(manyEarners, []);
-      expect(state.population.length).toBeLessThanOrEqual(15);
+      expect(state.population.length).toBeLessThanOrEqual(25);
     });
 
     it("should limit buildings to MAX_BUILDINGS (20)", () => {

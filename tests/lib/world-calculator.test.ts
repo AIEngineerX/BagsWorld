@@ -1240,8 +1240,8 @@ describe("buildWorldState", () => {
     expect(launchEvent).toBeDefined();
   });
 
-  it("should limit population to MAX_CHARACTERS (15)", () => {
-    const manyEarners: FeeEarner[] = Array.from({ length: 20 }, (_, i) => ({
+  it("should limit population to MAX_CHARACTERS (25)", () => {
+    const manyEarners: FeeEarner[] = Array.from({ length: 30 }, (_, i) => ({
       wallet: `earner-${i}`,
       username: `user${i}`,
       provider: "twitter",
@@ -1252,7 +1252,7 @@ describe("buildWorldState", () => {
     }));
 
     const state = buildWorldState(manyEarners, mockTokens);
-    expect(state.population.length).toBeLessThanOrEqual(15);
+    expect(state.population.length).toBeLessThanOrEqual(25);
   });
 
   it("should limit buildings to MAX_BUILDINGS (20)", () => {

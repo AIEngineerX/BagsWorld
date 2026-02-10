@@ -360,7 +360,12 @@ export const METEORA_DBC_PROGRAM = "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
 
 // Oracle Prediction Market Types
 
-export type OracleMarketType = "price_prediction" | "custom";
+export type OracleMarketType =
+  | "price_prediction"
+  | "world_health"
+  | "weather_forecast"
+  | "fee_volume"
+  | "custom";
 
 export type OracleMarketCategory = "crypto" | "sports" | "world_event" | "bagsworld";
 
@@ -381,6 +386,7 @@ export interface OracleMarketConfig {
   description?: string;
   imageUrl?: string;
   isPrizeEvent?: boolean;
+  threshold?: number;
 }
 
 export type OracleReputationTier = "novice" | "seer" | "oracle" | "master";

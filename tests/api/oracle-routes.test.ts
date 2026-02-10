@@ -85,10 +85,12 @@ jest.mock("@/lib/op-economy", () => ({
 
 const mockResolveMarket = jest.fn();
 const mockCalculateOPPayouts = jest.fn();
+const mockLazyResolveExpiredMarkets = jest.fn();
 
 jest.mock("@/lib/oracle-resolver", () => ({
   resolveMarket: (...args: unknown[]) => mockResolveMarket(...args),
   calculateOPPayouts: (...args: unknown[]) => mockCalculateOPPayouts(...args),
+  lazyResolveExpiredMarkets: (...args: unknown[]) => mockLazyResolveExpiredMarkets(...args),
 }));
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -511,6 +513,7 @@ describe("GET /api/oracle/markets", () => {
     jest.clearAllMocks();
     mockIsNeonConfigured.mockReturnValue(true);
     mockInitializeOracleTables.mockResolvedValue(undefined);
+    mockLazyResolveExpiredMarkets.mockResolvedValue({ resolvedCount: 0, errors: [] });
   });
 
   it("returns 503 when Neon not configured", async () => {
@@ -609,6 +612,7 @@ describe("POST /api/oracle/auto-resolve", () => {
     process.env = { ...ORIGINAL_ENV, AGENT_SECRET: "test-secret" };
     mockIsNeonConfigured.mockReturnValue(true);
     mockInitializeOracleTables.mockResolvedValue(undefined);
+    mockLazyResolveExpiredMarkets.mockResolvedValue({ resolvedCount: 0, errors: [] });
   });
 
   afterAll(() => {
@@ -647,7 +651,7 @@ describe("POST /api/oracle/auto-resolve", () => {
   });
 
   it("returns resolved: 0 when no markets to resolve", async () => {
-    mockGetMarketsToResolve.mockResolvedValue([]);
+    mockLazyResolveExpiredMarkets.mockResolvedValue({ resolvedCount: 0, errors: [] });
 
     const req = new Request("http://localhost/api/oracle/auto-resolve", {
       method: "POST",
@@ -657,34 +661,13 @@ describe("POST /api/oracle/auto-resolve", () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
     const body = await getJsonBody(res);
+    expect(body.success).toBe(true);
     expect(body.resolved).toBe(0);
+    expect(body.total).toBe(0);
   });
 
-  it("resolves markets and distributes OP payouts", async () => {
-    const round = makeRound({
-      id: 42,
-      marketType: "world_health",
-      endTime: new Date(Date.now() - 1000), // Expired
-    });
-    mockGetMarketsToResolve.mockResolvedValue([round]);
-    mockResolveMarket.mockResolvedValue({
-      success: true,
-      winningOutcomeId: "yes",
-      resolutionData: { currentHealth: 75, threshold: 50 },
-    });
-    mockSettleOracleRoundWithOutcome.mockResolvedValue(undefined);
-    mockGetOracleRoundPredictions.mockResolvedValue([
-      { id: 1, wallet: "w1", opWagered: 100, createdAt: new Date() },
-      { id: 2, wallet: "w2", opWagered: 100, createdAt: new Date() },
-    ]);
-    mockCalculateOPPayouts.mockReturnValue([
-      { predictionId: 1, wallet: "w1", isWinner: true, opWagered: 100, opPayout: 200, rank: 1 },
-      { predictionId: 2, wallet: "w2", isWinner: false, opWagered: 100, opPayout: 0 },
-    ]);
-    mockUpdatePredictionOPPayout.mockResolvedValue({ success: true });
-    mockAddOP.mockResolvedValue({ success: true });
-    mockUpdateStreak.mockResolvedValue(undefined);
-    mockUpdateReputation.mockResolvedValue(undefined);
+  it("resolves markets and returns count", async () => {
+    mockLazyResolveExpiredMarkets.mockResolvedValue({ resolvedCount: 3, errors: [] });
 
     const req = new Request("http://localhost/api/oracle/auto-resolve", {
       method: "POST",
@@ -695,31 +678,16 @@ describe("POST /api/oracle/auto-resolve", () => {
     expect(res.status).toBe(200);
     const body = await getJsonBody(res);
 
-    expect(body.resolved).toBe(1);
-    expect(body.results[0].success).toBe(true);
-    expect(body.results[0].winningOutcome).toBe("yes");
-
-    // Verify winner got OP credited
-    expect(mockAddOP).toHaveBeenCalledWith("w1", 200, "prediction_win", 42);
-    // Loser should NOT get addOP call (0 payout)
-    expect(mockAddOP).not.toHaveBeenCalledWith(
-      "w2",
-      expect.anything(),
-      expect.anything(),
-      expect.anything()
-    );
-
-    // Both should have streak/reputation updated
-    expect(mockUpdateStreak).toHaveBeenCalledTimes(2);
-    expect(mockUpdateReputation).toHaveBeenCalledTimes(2);
+    expect(body.success).toBe(true);
+    expect(body.resolved).toBe(3);
+    expect(body.total).toBe(3);
+    expect(body.errors).toBeUndefined();
   });
 
-  it("reports error when resolution fails for a market", async () => {
-    mockGetMarketsToResolve.mockResolvedValue([makeRound({ id: 10 })]);
-    mockResolveMarket.mockResolvedValue({
-      success: false,
-      resolutionData: {},
-      error: "API down",
+  it("reports errors from failed resolutions", async () => {
+    mockLazyResolveExpiredMarkets.mockResolvedValue({
+      resolvedCount: 0,
+      errors: [{ roundId: 10, error: "API down" }],
     });
 
     const req = new Request("http://localhost/api/oracle/auto-resolve", {
@@ -730,21 +698,18 @@ describe("POST /api/oracle/auto-resolve", () => {
     const res = await POST(req);
     const body = await getJsonBody(res);
 
+    expect(body.success).toBe(true);
     expect(body.resolved).toBe(0);
-    expect(body.results[0].success).toBe(false);
-    expect(body.results[0].error).toBe("API down");
+    expect(body.total).toBe(1);
+    expect(body.errors).toHaveLength(1);
+    expect(body.errors[0].error).toBe("API down");
   });
 
-  it("continues resolving other markets when one throws", async () => {
-    mockGetMarketsToResolve.mockResolvedValue([makeRound({ id: 1 }), makeRound({ id: 2 })]);
-    // First market throws
-    mockResolveMarket.mockRejectedValueOnce(new Error("Crash")).mockResolvedValueOnce({
-      success: true,
-      winningOutcomeId: "yes",
-      resolutionData: {},
+  it("returns both resolved count and errors when mixed", async () => {
+    mockLazyResolveExpiredMarkets.mockResolvedValue({
+      resolvedCount: 1,
+      errors: [{ roundId: 1, error: "Crash" }],
     });
-    mockSettleOracleRoundWithOutcome.mockResolvedValue(undefined);
-    mockGetOracleRoundPredictions.mockResolvedValue([]);
 
     const req = new Request("http://localhost/api/oracle/auto-resolve", {
       method: "POST",
@@ -755,15 +720,14 @@ describe("POST /api/oracle/auto-resolve", () => {
     const body = await getJsonBody(res);
 
     expect(body.total).toBe(2);
-    expect(body.resolved).toBe(1); // Only second succeeded
-    expect(body.results[0].success).toBe(false);
-    expect(body.results[0].error).toBe("Crash");
-    expect(body.results[1].success).toBe(true);
+    expect(body.resolved).toBe(1);
+    expect(body.errors).toHaveLength(1);
+    expect(body.errors[0].roundId).toBe(1);
   });
 
   it("uses ORACLE_AUTO_RESOLVE_SECRET if available", async () => {
     process.env.ORACLE_AUTO_RESOLVE_SECRET = "oracle-specific-secret";
-    mockGetMarketsToResolve.mockResolvedValue([]);
+    mockLazyResolveExpiredMarkets.mockResolvedValue({ resolvedCount: 0, errors: [] });
 
     const req = new Request("http://localhost/api/oracle/auto-resolve", {
       method: "POST",
