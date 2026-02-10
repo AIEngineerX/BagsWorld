@@ -19,8 +19,12 @@ interface FeeClaimModalProps {
 }
 
 export function FeeClaimModal({ onClose }: FeeClaimModalProps) {
-  const { publicKey, connected, mobileSignTransaction: signTransaction, wallet } =
-    useMobileWallet();
+  const {
+    publicKey,
+    connected,
+    mobileSignTransaction: signTransaction,
+    wallet,
+  } = useMobileWallet();
   const { signAllTransactions } = wallet;
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(onClose);

@@ -35,7 +35,7 @@ interface LaunchModalProps {
 }
 
 export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
-  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
+  const { publicKey, connected, mobileSignTransaction, mobileSignAndSend } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
   const guardAction = useActionGuard();
@@ -561,9 +561,10 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
               // Non-fatal: partially-signed txs may fail simulation — continue to wallet
             }
 
-            let signedTx;
+            let txid: string;
             try {
-              signedTx = await signTransaction(transaction);
+              // Use signAndSendTransaction — Phantom's recommended method
+              txid = await mobileSignAndSend(transaction, { maxRetries: 5 });
             } catch (signError: unknown) {
               const signErrorMsg =
                 signError instanceof Error ? signError.message : String(signError);
@@ -576,16 +577,12 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                   "Transaction cancelled. Please try again and approve all transactions in your wallet."
                 );
               }
-              throw new Error(`Wallet signing failed: ${signErrorMsg}`);
+              throw new Error(`Transaction failed: ${signErrorMsg}`);
             }
 
             setLaunchStatus(
-              `Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`
+              `Confirming fee config transaction ${i + 1}/${feeResult.transactions.length}...`
             );
-
-            const txid = await sendSignedTransaction(connection, signedTx, {
-              maxRetries: 5,
-            });
 
             await connection.confirmTransaction(
               {
@@ -711,10 +708,14 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         setLaunchStatus("Please sign the transaction in your wallet...");
 
-        // Sign transaction - with better error handling for Phantom
+        // Launch transactions are pre-signed by the Bags API (multi-signer:
+        // API signs with token mint keypair, user signs second).
+        // Per Phantom docs, multi-signer txs MUST use signTransaction — not
+        // signAndSendTransaction — to avoid "Signature verification failed".
+        // Pre-simulation with sigVerify:false mitigates the Phantom warning.
         let signedTx;
         try {
-          signedTx = await signTransaction(transaction);
+          signedTx = await mobileSignTransaction(transaction);
         } catch (signError: unknown) {
           const signErrorMsg = signError instanceof Error ? signError.message : String(signError);
           console.error("Transaction signing failed:", signErrorMsg);
@@ -737,7 +738,7 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
         setLaunchStatus("Broadcasting to Solana...");
 
-        // Send to blockchain with retry logic for blockhash issues
+        // Send signed transaction with retry logic for blockhash issues
         let txid: string | undefined;
         let sendAttempts = 0;
         const maxSendAttempts = 3;
@@ -812,10 +813,10 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
                 console.warn("Retry tx simulation warning:", simError);
               }
 
-              // Sign the fresh transaction
+              // Sign the fresh transaction (multi-signer: must use signTransaction)
               setLaunchStatus("Please sign the transaction...");
               try {
-                currentSignedTx = await signTransaction(retryTransaction);
+                currentSignedTx = await mobileSignTransaction(retryTransaction);
               } catch (retrySignError: unknown) {
                 const retrySignMsg =
                   retrySignError instanceof Error ? retrySignError.message : String(retrySignError);

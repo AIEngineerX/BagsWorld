@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
-import { preSimulateTransaction, sendSignedTransaction } from "@/lib/transaction-utils";
+import { preSimulateTransaction } from "@/lib/transaction-utils";
 import {
   createChart,
   IChartApi,
@@ -125,7 +125,7 @@ const JUPITER_QUOTE_API = "https://quote-api.jup.ag/v6/quote";
 const JUPITER_SWAP_API = "https://quote-api.jup.ag/v6/swap";
 
 export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
-  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
+  const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
   const { connection } = useConnection();
   const queryClient = useQueryClient();
 
@@ -269,14 +269,10 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
       // Pre-simulate to catch errors before wallet popup
       await preSimulateTransaction(connection, transaction);
 
-      const signedTransaction = await signTransaction(transaction);
-
       setTxStatus("confirming");
 
-      // Send transaction with preflight enabled
-      const signature = await sendSignedTransaction(connection, signedTransaction, {
-        maxRetries: 3,
-      });
+      // Use signAndSendTransaction — Phantom's recommended method
+      const signature = await mobileSignAndSend(transaction, { maxRetries: 3 });
 
       // Confirm transaction
       const confirmation = await connection.confirmTransaction(signature, "confirmed");

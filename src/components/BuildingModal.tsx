@@ -18,11 +18,7 @@ import {
 import type { TradeQuote } from "@/lib/types";
 import { getTokenDecimals } from "@/lib/token-balance";
 import { useMobileWallet } from "@/hooks/useMobileWallet";
-import {
-  deserializeTransaction,
-  preSimulateTransaction,
-  sendSignedTransaction,
-} from "@/lib/transaction-utils";
+import { deserializeTransaction, preSimulateTransaction } from "@/lib/transaction-utils";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
@@ -68,7 +64,7 @@ export function BuildingModal({
   tokenUrl,
   onClose,
 }: BuildingModalProps) {
-  const { publicKey, connected, mobileSignTransaction: signTransaction } = useMobileWallet();
+  const { publicKey, connected, mobileSignAndSend } = useMobileWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
 
@@ -350,8 +346,8 @@ export function BuildingModal({
       // Pre-simulate to catch errors before wallet popup
       await preSimulateTransaction(connection, transaction);
 
-      const signedTx = await signTransaction(transaction);
-      const signature = await sendSignedTransaction(connection, signedTx);
+      // Use signAndSendTransaction — Phantom's recommended method
+      const signature = await mobileSignAndSend(transaction);
       await connection.confirmTransaction(signature, "confirmed");
 
       setSuccess(`Swap successful! ${signature.slice(0, 8)}...`);
