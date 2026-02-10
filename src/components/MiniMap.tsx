@@ -249,7 +249,7 @@ export function MiniMap({ onNavigate }: MiniMapProps) {
     <div
       ref={containerRef}
       style={containerStyle}
-      className={`fixed z-50 transition-all duration-200 ${isDragging ? "cursor-grabbing" : ""}`}
+      className={`fixed z-[45] transition-all duration-200 ${isDragging ? "cursor-grabbing" : ""}`}
     >
       {/* === Collapsed: Floating Map FAB === */}
       {!isOpen && (

@@ -47,9 +47,10 @@ export function ActionButtons({ actions, onAction }: ActionButtonsProps) {
           key={`${action.type}-${i}`}
           onClick={() => onAction(action)}
           className={`
-            px-2 py-1 border rounded
-            font-pixel text-[7px]
-            transition-colors
+            px-3 py-2 border rounded
+            font-pixel text-[9px] sm:text-[7px]
+            transition-colors active:scale-95
+            min-h-[36px] sm:min-h-0
             ${getButtonStyle(action.type)}
           `}
         >

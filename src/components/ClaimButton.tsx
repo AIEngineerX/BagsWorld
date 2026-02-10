@@ -10,7 +10,7 @@ export function ClaimButton() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="font-pixel text-[10px] px-3 py-2 border-2 border-bags-gold bg-bags-gold/10 text-bags-gold hover:bg-bags-gold/20 transition-colors flex items-center gap-2"
+        className="font-pixel text-[10px] px-3 py-2 border-2 border-bags-gold bg-bags-gold/10 text-bags-gold hover:bg-bags-gold/20 transition-colors flex items-center gap-2 touch-target active:scale-95"
       >
         <span className="text-sm">$</span>
         CLAIM FEES
