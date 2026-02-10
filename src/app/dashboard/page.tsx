@@ -300,8 +300,9 @@ export default function DashboardPage() {
   const showCharacters = filter === "ALL" || filter === "CHARACTERS";
   const showTools = filter === "ALL" || filter === "TOOLS";
 
-  const serverStatus = healthData?.status === "ok" ? "ONLINE" : "OFFLINE";
-  const serverColor = healthData?.status === "ok" ? "text-green-400" : "text-gray-500";
+  const isServerOnline = healthData?.status === "ok" || healthData?.status === "healthy";
+  const serverStatus = isServerOnline ? "ONLINE" : "OFFLINE";
+  const serverColor = isServerOnline ? "text-green-400" : "text-gray-500";
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6">
@@ -439,7 +440,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-block w-2.5 h-2.5 rounded-full ${
-                    healthData?.status === "ok"
+                    isServerOnline
                       ? "bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)] animate-pulse"
                       : "bg-gray-600"
                   }`}
