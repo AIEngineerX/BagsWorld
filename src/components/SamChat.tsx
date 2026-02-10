@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ActionButtons } from "@/components/ActionButtons";
 import type { AIAction } from "@/app/api/agent-chat/route";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 
 interface SamMessage {
   id: string;
@@ -61,6 +62,7 @@ export function SamChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsOpen(false));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -234,8 +236,9 @@ export function SamChat() {
   return (
     <div
       ref={chatRef}
-      style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-yellow-500 shadow-lg shadow-yellow-500/20 ${isDragging ? "cursor-grabbing" : ""}`}
+      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-yellow-500 shadow-lg shadow-yellow-500/20 chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
+      {...swipeHandlers}
     >
       <div
         onPointerDown={handlePointerDown}
@@ -271,7 +274,7 @@ export function SamChat() {
         </div>
       </div>
 
-      <div className="h-40 overflow-y-auto p-2 space-y-2">
+      <div className="h-40 overflow-y-auto p-2 space-y-2 chat-messages">
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-yellow-400 mb-1">📣 hype machine ready</p>

@@ -758,14 +758,14 @@ export function TradingTerminalModal({ onClose }: TradingTerminalModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-black/90 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
       style={{ pointerEvents: "auto" }}
       onClick={handleBackdropClick}
       onMouseDown={stopAllPropagation}
       onPointerDown={stopAllPropagation}
     >
       <div
-        className="bg-[#0a0a0f] border border-[#1e293b] rounded-lg max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col"
+        className="bg-[#0a0a0f] border border-[#1e293b] rounded-t-xl sm:rounded-lg max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col"
         style={{ pointerEvents: "auto" }}
         onClick={stopAllPropagation}
         onMouseDown={stopAllPropagation}

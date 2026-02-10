@@ -145,10 +145,10 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
       onClick={handleBackdrop}
     >
-      <div className="bg-gradient-to-b from-[#1a2e35] to-[#0f1a1d] w-full max-w-xl rounded-lg border border-cyan-900/50 flex flex-col max-h-[85vh] shadow-xl">
+      <div className="bg-gradient-to-b from-[#1a2e35] to-[#0f1a1d] w-full max-w-xl rounded-t-lg sm:rounded-lg border border-cyan-900/50 flex flex-col max-h-[85vh] shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-cyan-900/30 bg-gradient-to-r from-cyan-950/50 to-teal-950/30">
           <div className="flex items-center gap-3">

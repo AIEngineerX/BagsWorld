@@ -135,7 +135,7 @@ export function MobileCharacterMenu() {
 
   return (
     <div
-      className="sm:hidden fixed left-4 z-[45]"
+      className="sm:hidden fixed left-4 z-[45] mobile-char-menu"
       style={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
     >
       {/* Expanded menu */}

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useWorldState } from "@/hooks/useWorldState";
 import { ActionButtons } from "@/components/ActionButtons";
 import type { AIAction } from "@/app/api/agent-chat/route";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 
 interface CJMessage {
   id: string;
@@ -64,6 +65,7 @@ export function CJChat() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { worldState } = useWorldState();
+  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsOpen(false));
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -244,8 +246,9 @@ export function CJChat() {
   return (
     <div
       ref={chatRef}
-      style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-orange-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
+      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-orange-500 shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
+      {...swipeHandlers}
     >
       {/* Header */}
       <div
@@ -284,7 +287,7 @@ export function CJChat() {
       </div>
 
       {/* Messages */}
-      <div className="h-40 overflow-y-auto p-2 space-y-2">
+      <div className="h-40 overflow-y-auto p-2 space-y-2 chat-messages">
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-orange-400 mb-1">🔫 yo what&apos;s good!</p>

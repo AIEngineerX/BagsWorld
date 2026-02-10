@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useGameStore } from "@/lib/store";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 
 interface TolyMessage {
   id: string;
@@ -60,6 +61,7 @@ export function TolyChat() {
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { worldState } = useGameStore();
+  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsOpen(false));
 
   // Listen for Toly click events
   useEffect(() => {
@@ -202,8 +204,9 @@ export function TolyChat() {
   return (
     <div
       ref={chatRef}
-      style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-purple-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
+      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-purple-500 shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
+      {...swipeHandlers}
     >
       {/* Header - Draggable (touch + mouse) */}
       <div
@@ -242,7 +245,7 @@ export function TolyChat() {
       </div>
 
       {/* Messages */}
-      <div className="h-40 overflow-y-auto p-2 space-y-2">
+      <div className="h-40 overflow-y-auto p-2 space-y-2 chat-messages">
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-purple-400 mb-1">⚡ gm ser!</p>

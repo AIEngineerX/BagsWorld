@@ -398,7 +398,7 @@ export default function Home() {
         <DeepLinkHandler />
       </Suspense>
       {/* Header - responsive */}
-      <header className="h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-2 md:px-4 relative z-50 safe-area-top shrink-0">
+      <header className="h-14 md:h-16 bg-bags-dark hud-border-bottom hud-panel flex items-center justify-between px-2 md:px-4 relative z-50 safe-area-top shrink-0 overflow-hidden">
         {/* Left side - Logo and health */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
           <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
@@ -446,7 +446,7 @@ export default function Home() {
         </div>
 
         {/* Mobile buttons - essential actions always visible */}
-        <div className="flex lg:hidden items-center gap-1 sm:gap-2">
+        <div className="flex lg:hidden items-center gap-1 sm:gap-2 shrink-0">
           <WalletButton />
           <LaunchButton />
           {/* Hamburger menu - pixel style */}

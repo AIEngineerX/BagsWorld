@@ -9,11 +9,12 @@ export function LaunchButton() {
 
   return (
     <>
-      <button onClick={() => setIsOpen(true)} className="btn-retro group flex items-center gap-2">
+      <button onClick={() => setIsOpen(true)} className="btn-retro group flex items-center gap-1 sm:gap-2">
         <span className="group-hover:animate-bounce inline-block">
           <RocketIcon size={14} />
         </span>
-        LAUNCH TOKEN
+        <span className="hidden xs:inline sm:hidden">LAUNCH</span>
+        <span className="hidden sm:inline">LAUNCH TOKEN</span>
       </button>
 
       {isOpen && <LaunchModal onClose={() => setIsOpen(false)} />}

@@ -62,15 +62,15 @@ export function WalletButton() {
         } ${connecting ? "opacity-50 cursor-wait" : ""}`}
       >
         {connecting ? (
-          "CONNECTING..."
+          <span><span className="hidden xs:inline">CONNECTING...</span><span className="xs:hidden">...</span></span>
         ) : connected && publicKey ? (
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-1 sm:gap-2">
             <span className="w-2 h-2 bg-bags-green rounded-full animate-pulse" />
             {truncateAddress(publicKey.toBase58())}
             <span className="text-[8px] opacity-60">▼</span>
           </span>
         ) : (
-          "CONNECT WALLET"
+          <span>CONNECT</span>
         )}
       </button>
 

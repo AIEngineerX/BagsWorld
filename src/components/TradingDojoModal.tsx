@@ -183,10 +183,10 @@ export function TradingDojoModal({ onClose }: TradingDojoModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
       onClick={handleBackdropClick}
     >
-      <div className="bg-gradient-to-b from-stone-900 to-stone-950 border border-orange-500/30 rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col shadow-2xl shadow-orange-500/10">
+      <div className="bg-gradient-to-b from-stone-900 to-stone-950 border border-orange-500/30 rounded-t-xl sm:rounded-xl max-w-2xl w-full max-h-[95vh] overflow-hidden flex flex-col shadow-2xl shadow-orange-500/10">
         {/* ===== WELCOME VIEW ===== */}
         {view === "welcome" && (
           <>
