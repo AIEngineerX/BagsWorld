@@ -566,9 +566,9 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 safe-area-bottom">
       <div
-        className="relative w-full max-w-md bg-gradient-to-b from-bags-dark to-bags-darker border-2 border-bags-green/40 rounded-xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
+        className="relative w-full max-w-md bg-gradient-to-b from-bags-dark to-bags-darker border-2 border-bags-green/40 rounded-t-xl sm:rounded-xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
         style={{
           boxShadow: "0 0 40px rgba(74, 222, 128, 0.15), inset 0 0 30px rgba(0,0,0,0.3)",
         }}

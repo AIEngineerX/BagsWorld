@@ -422,11 +422,6 @@ body {
   .btn-retro {
     @apply px-2 py-1.5 text-[8px];
   }
-
-  /* Stack header items vertically on tiny screens */
-  header .flex {
-    flex-wrap: wrap;
-  }
 }
 
 /* Improve scrolling performance on mobile */
@@ -762,5 +757,70 @@ body {
   .touch-target:active {
     transform: scale(0.96);
     transition: transform 50ms ease;
+  }
+}
+
+/* ============================================
+   MOBILE CHAT WINDOW CONSTRAINTS
+   ============================================ */
+
+/* Constrain chat windows to bottom-sheet style on mobile */
+@media (max-width: 639px) {
+  .chat-window-mobile {
+    bottom: 0 !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 55vh;
+    border-radius: 12px 12px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.2s ease-out;
+    /* Allow swipe transform without breaking layout */
+    will-change: transform;
+  }
+
+  /* Swipe drag handle indicator */
+  .chat-window-mobile::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    margin: 6px auto 0;
+    flex-shrink: 0;
+  }
+
+  .chat-window-mobile .chat-messages {
+    flex: 1;
+    min-height: 0;
+    max-height: 35vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Minimized chat button on mobile */
+  .chat-minimized-mobile {
+    bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px)) !important;
+    top: auto !important;
+  }
+
+  /* #6: Reposition character menu above the chat bottom-sheet */
+  body:has(.chat-window-mobile) .mobile-char-menu {
+    bottom: calc(55vh + 0.5rem) !important;
+    transition: bottom 0.2s ease-out;
+  }
+}
+
+/* Desktop chat stays as-is */
+@media (min-width: 640px) {
+  .chat-window-mobile {
+    /* No overrides - use original inline styles */
   }
 }

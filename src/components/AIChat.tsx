@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useGameStore } from "@/lib/store";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 
 interface ChatMessage {
   id: string;
@@ -28,6 +29,7 @@ export function AIChat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const { worldState } = useGameStore();
+  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsMinimized(true));
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -215,7 +217,7 @@ export function AIChat() {
           bottom: position.y >= 0 ? "auto" : 80,
           top: position.y >= 0 ? position.y : "auto",
         }}
-        className="fixed z-50 btn-retro flex items-center gap-2"
+        className="fixed z-50 btn-retro flex items-center gap-2 chat-minimized-mobile"
       >
         <span className="font-pixel text-[8px]">Bot</span>
         {messages.length > 0 && (
@@ -228,8 +230,9 @@ export function AIChat() {
   return (
     <div
       ref={chatRef}
-      style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-bags-green shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
+      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-bags-green shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
+      {...swipeHandlers}
     >
       {/* Header - Draggable (touch + mouse) */}
       <div
@@ -260,7 +263,7 @@ export function AIChat() {
       </div>
 
       {/* Messages */}
-      <div className="h-64 sm:h-48 overflow-y-auto p-2 space-y-2">
+      <div className="h-48 overflow-y-auto p-2 space-y-2 chat-messages">
         {messages.length === 0 ? (
           <div className="text-center py-2">
             <p className="font-pixel text-[10px] text-bags-gold mb-2">BagsWorld Bot</p>

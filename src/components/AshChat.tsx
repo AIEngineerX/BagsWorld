@@ -5,6 +5,7 @@ import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { useGameStore } from "@/lib/store";
 import { ActionButtons } from "@/components/ActionButtons";
 import type { AIAction } from "@/app/api/agent-chat/route";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 
 interface EcoMessage {
   id: string;
@@ -72,6 +73,7 @@ export function AshChat() {
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { worldState } = useGameStore();
+  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsOpen(false));
 
   // Listen for Ash click events
   useEffect(() => {
@@ -254,8 +256,9 @@ export function AshChat() {
   return (
     <div
       ref={chatRef}
-      style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-red-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
+      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-red-500 shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
+      {...swipeHandlers}
     >
       {/* Header - Draggable */}
       <div
@@ -294,7 +297,7 @@ export function AshChat() {
       </div>
 
       {/* Messages */}
-      <div className="h-36 overflow-y-auto p-2 space-y-2">
+      <div className="h-36 overflow-y-auto p-2 space-y-2 chat-messages">
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-red-400 mb-1">⚡ Welcome, Trainer!</p>

@@ -812,14 +812,14 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   if (!ageVerified) {
     return (
       <div
-        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
         onClick={handleBackdropClick}
       >
         <style jsx global>
           {modalStyles}
         </style>
         <div
-          className={`casino-border bg-[#0a0505] max-w-md w-full overflow-hidden relative transition-all duration-300 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+          className={`casino-border bg-[#0a0505] max-w-md w-full overflow-hidden relative transition-all duration-300 rounded-t-xl sm:rounded-xl ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
           style={{ animation: isVisible ? "modal-enter 0.3s ease-out" : "none" }}
         >
           <div className="casino-scanlines" />
@@ -896,14 +896,14 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   if (!connected) {
     return (
       <div
-        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
         onClick={handleBackdropClick}
       >
         <style jsx global>
           {modalStyles}
         </style>
         <div
-          className={`casino-border bg-[#0a0505] max-w-md w-full overflow-hidden relative transition-all duration-300 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+          className={`casino-border bg-[#0a0505] max-w-md w-full overflow-hidden relative transition-all duration-300 rounded-t-xl sm:rounded-xl ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
           style={{ animation: isVisible ? "modal-enter 0.3s ease-out" : "none" }}
         >
           <div className="casino-scanlines" />
@@ -981,14 +981,14 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   if (!hasAccess) {
     return (
       <div
-        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
         onClick={handleBackdropClick}
       >
         <style jsx global>
           {modalStyles}
         </style>
         <div
-          className={`casino-border bg-[#0a0505] max-w-md w-full overflow-hidden relative transition-all duration-300 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+          className={`casino-border bg-[#0a0505] max-w-md w-full overflow-hidden relative transition-all duration-300 rounded-t-xl sm:rounded-xl ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
         >
           <div className="casino-scanlines" />
           <CasinoCorner position="tl" />
@@ -1065,7 +1065,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
   // Main casino modal
   return (
     <div
-      className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-black/95 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
       onClick={handleBackdropClick}
     >
       <style jsx global>
@@ -1073,7 +1073,7 @@ export function CasinoModal({ onClose }: CasinoModalProps) {
       </style>
 
       <div
-        className={`casino-border bg-[#0a0505] w-full max-w-lg max-h-[95vh] flex flex-col relative overflow-hidden transition-all duration-300 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+        className={`casino-border bg-[#0a0505] w-full max-w-lg max-h-[95vh] flex flex-col relative overflow-hidden transition-all duration-300 rounded-t-xl sm:rounded-xl ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
         style={{ animation: isVisible ? "modal-enter 0.3s ease-out" : "none" }}
       >
         <div className="casino-scanlines" />

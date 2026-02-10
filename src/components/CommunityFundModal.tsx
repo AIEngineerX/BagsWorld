@@ -62,10 +62,10 @@ export function CommunityFundModal({ onClose }: CommunityFundModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
       onClick={handleBackdropClick}
     >
-      <div className="bg-bags-dark border-2 border-bags-green rounded-lg max-w-lg w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+      <div className="bg-bags-dark border-2 border-bags-green rounded-t-xl sm:rounded-lg max-w-lg w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-green-600 to-emerald-500 p-3 sm:p-4 flex justify-between items-center">
           <div className="flex items-center gap-2 sm:gap-3">

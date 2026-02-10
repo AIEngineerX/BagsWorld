@@ -738,7 +738,7 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-black/90 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <style jsx global>{`
@@ -838,7 +838,7 @@ export function OracleTowerModal({ onClose }: OracleTowerModalProps) {
         }
       `}</style>
 
-      <div className="rpg-border bg-[#0d0d0d] w-full max-w-lg max-h-[95vh] flex flex-col relative crt-curve overflow-hidden">
+      <div className="rpg-border bg-[#0d0d0d] w-full max-w-lg max-h-[95vh] flex flex-col relative crt-curve overflow-hidden rounded-t-xl sm:rounded-xl">
         <div className="scanlines" />
 
         <PixelCorner position="tl" />

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ECOSYSTEM_CONFIG } from "@/lib/config";
 import { useGameStore } from "@/lib/store";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 
 interface BagsMessage {
   id: string;
@@ -63,6 +64,7 @@ export function FinnbagsChat() {
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { worldState } = useGameStore();
+  const { translateY, isDismissing, handlers: swipeHandlers } = useSwipeToDismiss(() => setIsOpen(false));
 
   // Listen for Finn click events
   useEffect(() => {
@@ -226,8 +228,9 @@ export function FinnbagsChat() {
   return (
     <div
       ref={chatRef}
-      style={chatStyle}
-      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-emerald-500 shadow-lg ${isDragging ? "cursor-grabbing" : ""}`}
+      style={{ ...chatStyle, transform: translateY > 0 ? `translateY(${translateY}px)` : undefined }}
+      className={`fixed z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-bags-dark border-4 border-emerald-500 shadow-lg chat-window-mobile ${isDragging ? "cursor-grabbing" : ""} ${isDismissing ? "modal-sheet-dismiss" : ""}`}
+      {...swipeHandlers}
     >
       {/* Header - Draggable */}
       <div
@@ -266,7 +269,7 @@ export function FinnbagsChat() {
       </div>
 
       {/* Messages */}
-      <div className="h-36 overflow-y-auto p-2 space-y-2">
+      <div className="h-36 overflow-y-auto p-2 space-y-2 chat-messages">
         {messages.length === 0 ? (
           <div className="text-center py-4">
             <p className="font-pixel text-[10px] text-emerald-400 mb-1">💼 Hey, I&apos;m Finn!</p>
