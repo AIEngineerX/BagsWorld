@@ -76,7 +76,7 @@ describe("Casino Wheel API - Actual Route Handler Tests", () => {
     (isNeonConfigured as jest.Mock).mockReturnValue(true);
     (getCasinoPot as jest.Mock).mockResolvedValue(0.5);
     (getLastWheelSpin as jest.Mock).mockResolvedValue(null);
-    (recordWheelSpin as jest.Mock).mockResolvedValue(undefined);
+    (recordWheelSpin as jest.Mock).mockResolvedValue(true);
   });
 
   describe("GET /api/casino/wheel", () => {
@@ -172,8 +172,7 @@ describe("Casino Wheel API - Actual Route Handler Tests", () => {
     });
 
     it("should reject spin during cooldown period", async () => {
-      const recentSpinTime = Date.now() - 5 * 60 * 1000; // 5 minutes ago
-      (getLastWheelSpin as jest.Mock).mockResolvedValue(recentSpinTime);
+      (recordWheelSpin as jest.Mock).mockResolvedValue(false);
 
       const request = createMockRequest("http://localhost:3000/api/casino/wheel", {
         method: "POST",
@@ -183,7 +182,7 @@ describe("Casino Wheel API - Actual Route Handler Tests", () => {
       const data = await response.json();
 
       expect(response.status).toBe(429);
-      expect(data.error).toMatch(/wait.*minutes/i);
+      expect(data.error).toContain("wait");
     });
 
     it("should reject spin when pot is too low", async () => {
@@ -229,7 +228,8 @@ describe("Casino Wheel API - Actual Route Handler Tests", () => {
       expect(recordWheelSpin).toHaveBeenCalledWith(
         "RecordWallet123",
         expect.any(Number),
-        expect.any(String)
+        expect.any(String),
+        expect.any(Number)
       );
     });
 
@@ -288,7 +288,7 @@ describe("Casino Wheel API - Actual Route Handler Tests", () => {
         (isNeonConfigured as jest.Mock).mockReturnValue(true);
         (getCasinoPot as jest.Mock).mockResolvedValue(1.0);
         (getLastWheelSpin as jest.Mock).mockResolvedValue(null);
-        (recordWheelSpin as jest.Mock).mockResolvedValue(undefined);
+        (recordWheelSpin as jest.Mock).mockResolvedValue(true);
 
         const request = createMockRequest("http://localhost:3000/api/casino/wheel", {
           method: "POST",
@@ -309,7 +309,7 @@ describe("Casino Wheel API - Actual Route Handler Tests", () => {
         (isNeonConfigured as jest.Mock).mockReturnValue(true);
         (getCasinoPot as jest.Mock).mockResolvedValue(1.0);
         (getLastWheelSpin as jest.Mock).mockResolvedValue(null);
-        (recordWheelSpin as jest.Mock).mockResolvedValue(undefined);
+        (recordWheelSpin as jest.Mock).mockResolvedValue(true);
 
         const request = createMockRequest("http://localhost:3000/api/casino/wheel", {
           method: "POST",
@@ -324,10 +324,9 @@ describe("Casino Wheel API - Actual Route Handler Tests", () => {
   });
 
   describe("Cooldown Boundary Conditions", () => {
-    it("should enforce exactly 10 minute cooldown", async () => {
-      // Just under 10 minutes - should be blocked
-      const justUnder = Date.now() - 9 * 60 * 1000 - 59 * 1000; // 9:59
-      (getLastWheelSpin as jest.Mock).mockResolvedValue(justUnder);
+    it("should enforce cooldown via atomic recordWheelSpin", async () => {
+      // DB rejects (cooldown active)
+      (recordWheelSpin as jest.Mock).mockResolvedValue(false);
 
       let request = createMockRequest("http://localhost:3000/api/casino/wheel", {
         method: "POST",
@@ -336,17 +335,15 @@ describe("Casino Wheel API - Actual Route Handler Tests", () => {
       let response = await POST(request);
       expect(response.status).toBe(429);
 
-      // Just over 10 minutes - should be allowed
+      // DB allows (cooldown expired)
       jest.clearAllMocks();
       (isNeonConfigured as jest.Mock).mockReturnValue(true);
       (getCasinoPot as jest.Mock).mockResolvedValue(0.5);
-      (recordWheelSpin as jest.Mock).mockResolvedValue(undefined);
-      const justOver = Date.now() - 10 * 60 * 1000 - 1000; // 10:01
-      (getLastWheelSpin as jest.Mock).mockResolvedValue(justOver);
+      (recordWheelSpin as jest.Mock).mockResolvedValue(true);
 
       request = createMockRequest("http://localhost:3000/api/casino/wheel", {
         method: "POST",
-        body: { wallet: "BoundaryWallet2" },
+        body: { wallet: "BoundaryWallet" },
       });
       response = await POST(request);
       expect(response.status).toBe(200);

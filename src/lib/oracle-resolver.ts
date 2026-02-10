@@ -108,6 +108,12 @@ export async function resolveMarket(round: OracleRoundDB): Promise<ResolveResult
   switch (marketType) {
     case "price_prediction":
       return resolvePricePrediction(round);
+    case "world_health":
+      return resolveWorldHealth(round);
+    case "weather_forecast":
+      return resolveWeatherForecast(round);
+    case "fee_volume":
+      return resolveFeeVolume(round);
     case "custom":
       return {
         success: false,
@@ -190,6 +196,138 @@ async function resolvePricePrediction(round: OracleRoundDB): Promise<ResolveResu
       priceChanges,
       resolvedAt: new Date().toISOString(),
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// World Health Resolver
+// ---------------------------------------------------------------------------
+
+const WEATHER_FALLBACKS: Record<string, string> = {
+  apocalypse: "storm",
+  storm: "rain",
+  rain: "cloudy",
+  cloudy: "sunny",
+};
+
+async function resolveWorldHealth(round: OracleRoundDB): Promise<ResolveResult> {
+  const state = await fetchWorldState();
+  if (!state) {
+    return {
+      success: false,
+      resolutionData: {},
+      error: "Failed to fetch world state",
+    };
+  }
+
+  const config = (round as unknown as Record<string, unknown>).marketConfig as
+    | Record<string, unknown>
+    | undefined;
+  const threshold = (config?.threshold as number) ?? 50;
+  const health = state.health;
+
+  return {
+    success: true,
+    winningOutcomeId: health >= threshold ? "yes" : "no",
+    resolutionData: { currentHealth: health, threshold },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Weather Forecast Resolver
+// ---------------------------------------------------------------------------
+
+async function resolveWeatherForecast(round: OracleRoundDB): Promise<ResolveResult> {
+  const state = await fetchWorldState();
+  if (!state) {
+    return {
+      success: false,
+      resolutionData: {},
+      error: "Failed to fetch world state",
+    };
+  }
+
+  const config = (round as unknown as Record<string, unknown>).marketConfig as
+    | Record<string, unknown>
+    | undefined;
+  const outcomes = (config?.outcomes as Array<{ id: string; label: string }>) || [];
+  const weather = state.weather;
+  const outcomeIds = new Set(outcomes.map((o) => o.id));
+
+  if (outcomeIds.has(weather)) {
+    return {
+      success: true,
+      winningOutcomeId: weather,
+      resolutionData: { weather },
+    };
+  }
+
+  // Try fallback chain
+  let fallback: string | undefined = WEATHER_FALLBACKS[weather];
+  while (fallback) {
+    if (outcomeIds.has(fallback)) {
+      return {
+        success: true,
+        winningOutcomeId: fallback,
+        resolutionData: { weather, usedFallback: true, originalWeather: weather },
+      };
+    }
+    fallback = WEATHER_FALLBACKS[fallback];
+  }
+
+  return {
+    success: false,
+    resolutionData: { weather },
+    error: `Weather "${weather}" does not match any configured outcome`,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Fee Volume Resolver
+// ---------------------------------------------------------------------------
+
+async function resolveFeeVolume(round: OracleRoundDB): Promise<ResolveResult> {
+  const state = await fetchWorldState();
+  if (!state) {
+    return {
+      success: false,
+      resolutionData: {},
+      error: "Failed to fetch world state",
+    };
+  }
+
+  const config = (round as unknown as Record<string, unknown>).marketConfig as
+    | Record<string, unknown>
+    | undefined;
+  const threshold = (config?.threshold as number) ?? 10;
+
+  // Prefer healthMetrics.claimVolume24h if available
+  const healthMetrics = (state as Record<string, unknown>).healthMetrics as
+    | Record<string, number>
+    | undefined;
+  let claimVolume24h: number;
+  let dataSource: string;
+
+  if (healthMetrics?.claimVolume24h != null) {
+    claimVolume24h = healthMetrics.claimVolume24h;
+    dataSource = "healthMetrics";
+  } else if (state.events && state.events.length > 0) {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    claimVolume24h = state.events
+      .filter(
+        (e) => e.type === "fee_claim" && e.timestamp && new Date(e.timestamp).getTime() > cutoff
+      )
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+    dataSource = "events";
+  } else {
+    claimVolume24h = 0;
+    dataSource = "no_data";
+  }
+
+  return {
+    success: true,
+    winningOutcomeId: claimVolume24h >= threshold ? "over" : "under",
+    resolutionData: { claimVolume24h, threshold, dataSource },
   };
 }
 
