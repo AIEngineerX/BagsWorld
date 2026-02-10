@@ -1,7 +1,11 @@
 // Eliza Agents API Client
 // Provides typed access to the eliza-agents backend at :3001
+// Client-side calls are proxied through /api/eliza-proxy to avoid CORS issues
 
 const ELIZA_API_BASE = process.env.NEXT_PUBLIC_ELIZA_API_URL || "http://localhost:3001";
+
+// Proxy base: use Next.js API route so client-side fetches don't hit cross-origin directly
+const ELIZA_PROXY_BASE = "/api/eliza-proxy";
 
 // ============================================================================
 // Types
@@ -179,12 +183,27 @@ export class ElizaApiClient {
     return response.json();
   }
 
+  /** Fetch via server-side proxy to avoid CORS on client-side calls */
+  private async fetchProxy<T>(endpoint: string): Promise<T> {
+    const url = `${ELIZA_PROXY_BASE}?endpoint=${encodeURIComponent(endpoint)}`;
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Proxy error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   // -------------------------------------------------------------------------
   // Health
   // -------------------------------------------------------------------------
 
   async getHealth(): Promise<ServerHealth> {
-    return this.fetch<ServerHealth>("/health");
+    return this.fetchProxy<ServerHealth>("/health");
   }
 
   // -------------------------------------------------------------------------
@@ -197,7 +216,7 @@ export class ElizaApiClient {
     count: number;
     online: number;
   }> {
-    return this.fetch("/api/coordination/statuses");
+    return this.fetchProxy("/api/coordination/statuses");
   }
 
   async getSharedContext(): Promise<{
@@ -205,7 +224,7 @@ export class ElizaApiClient {
     context: SharedContext;
     keys: string[];
   }> {
-    return this.fetch("/api/coordination/shared-context");
+    return this.fetchProxy("/api/coordination/shared-context");
   }
 
   async getAgentMessages(
