@@ -55,7 +55,7 @@ export function WalletButton() {
       <button
         onClick={handleClick}
         disabled={connecting}
-        className={`font-pixel text-[10px] px-3 py-2 border-2 transition-colors ${
+        className={`font-pixel text-[9px] sm:text-[10px] px-2 py-1.5 sm:px-3 sm:py-2 border-2 transition-colors max-w-[130px] sm:max-w-none ${
           connected
             ? "border-bags-green bg-bags-green/10 text-bags-green hover:bg-bags-green/20"
             : "border-bags-gold bg-bags-gold/10 text-bags-gold hover:bg-bags-gold/20"
@@ -67,10 +67,10 @@ export function WalletButton() {
             <span className="xs:hidden">...</span>
           </span>
         ) : connected && publicKey ? (
-          <span className="flex items-center gap-1 sm:gap-2">
-            <span className="w-2 h-2 bg-bags-green rounded-full animate-pulse" />
-            {truncateAddress(publicKey.toBase58())}
-            <span className="text-[8px] opacity-60">▼</span>
+          <span className="flex items-center gap-1 sm:gap-2 truncate">
+            <span className="w-2 h-2 bg-bags-green rounded-full animate-pulse shrink-0" />
+            <span className="truncate">{truncateAddress(publicKey.toBase58())}</span>
+            <span className="text-[8px] opacity-60 shrink-0">▼</span>
           </span>
         ) : (
           <span>CONNECT</span>

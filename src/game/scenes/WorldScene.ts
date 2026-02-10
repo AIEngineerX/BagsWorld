@@ -2038,6 +2038,7 @@ export class WorldScene extends Phaser.Scene {
 
   // Update mobile label position to follow sprite movement
   // Throttled: only repositions when character has moved >= 8px from last update
+  // Also hides label dynamically if it overlaps another visible label
   private updateMobileLabel(sprite: Phaser.GameObjects.Sprite): void {
     const s = sprite as any;
     if (!s._mobileLabel) return;
@@ -2050,8 +2051,31 @@ export class WorldScene extends Phaser.Scene {
     s._labelLastX = sprite.x;
     s._labelLastY = sprite.y;
     const offset = s._mobileLabelOffset || 18;
-    s._mobileLabel.setPosition(sprite.x, sprite.y + offset);
-    if (s._mobileLabelBg) s._mobileLabelBg.setPosition(sprite.x, sprite.y + offset);
+    const newX = sprite.x;
+    const newY = sprite.y + offset;
+    s._mobileLabel.setPosition(newX, newY);
+    if (s._mobileLabelBg) s._mobileLabelBg.setPosition(newX, newY);
+
+    // Dynamic collision check: hide label if it now overlaps another visible label
+    let overlaps = false;
+    const myBg = s._mobileLabelBg as Phaser.GameObjects.Rectangle | undefined;
+    if (myBg) {
+      for (const otherSprite of this.characterSprites.values()) {
+        if (otherSprite === sprite) continue;
+        const otherBg = (otherSprite as any)._mobileLabelBg as
+          | Phaser.GameObjects.Rectangle
+          | undefined;
+        if (!otherBg || !otherBg.active || !otherBg.visible) continue;
+        const odx = Math.abs(newX - otherBg.x);
+        const ody = Math.abs(newY - otherBg.y);
+        if (odx < myBg.width / 2 + otherBg.width / 2 + 4 && ody < 12) {
+          overlaps = true;
+          break;
+        }
+      }
+    }
+    s._mobileLabel.setVisible(!overlaps);
+    if (s._mobileLabelBg) s._mobileLabelBg.setVisible(!overlaps);
   }
 
   // Update visitor sparkle indicator position
@@ -5329,10 +5353,13 @@ export class WorldScene extends Phaser.Scene {
     if (this.isMobile && index < maxLabels) {
       const charName = character.username || character.id;
       const displayName = charName.length > 8 ? charName.substring(0, 8) : charName;
-      const labelW = displayName.length * 5.5 + 6;
+      const smallScreen = this.scale.width < 430;
+      const labelFontSize = smallScreen ? "7px" : "8px";
+      const charWidth = smallScreen ? 5 : 5.5;
+      const labelW = displayName.length * charWidth + 6;
       const labelH = 12;
-      // Place label below sprite
-      const labelYOffset = 18;
+      // Stagger labels: even indices below, odd indices above to reduce overlap
+      const labelYOffset = index % 2 === 0 ? 18 : -20;
       const lx = character.x;
       const ly = character.y + labelYOffset;
 
@@ -5355,7 +5382,7 @@ export class WorldScene extends Phaser.Scene {
         labelBg.setDepth(12);
         const nameLabel = this.add.text(lx, ly, displayName.toUpperCase(), {
           fontFamily: "monospace",
-          fontSize: "8px",
+          fontSize: labelFontSize,
           color: "#ffffff",
         });
         nameLabel.setOrigin(0.5, 0.5);

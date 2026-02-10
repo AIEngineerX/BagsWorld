@@ -16,7 +16,6 @@ export function LaunchButton() {
         <span className="group-hover:animate-bounce inline-block">
           <RocketIcon size={14} />
         </span>
-        <span className="hidden xs:inline sm:hidden">LAUNCH</span>
         <span className="hidden sm:inline">LAUNCH TOKEN</span>
       </button>
 

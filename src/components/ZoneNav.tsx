@@ -21,8 +21,8 @@ const ZONE_SHORT_LABELS: Record<ZoneType, string> = {
   moltbook: "BEACH",
   main_city: "PARK",
   trending: "CITY",
-  ballers: "BALLERS",
-  founders: "LAUNCH",
+  ballers: "BAL",
+  founders: "LCH",
   arena: "ARENA",
   dungeon: "DNGN",
 };
@@ -39,7 +39,7 @@ const ZONE_COLORS: Partial<Record<ZoneType, string>> = {
 };
 
 const BTN_BASE =
-  "font-pixel text-[9px] sm:text-[10px] px-2 sm:px-3 py-1.5 sm:py-1.5 min-h-[36px] sm:min-h-0 whitespace-nowrap transition-all duration-200 shrink-0 flex items-center gap-1 border";
+  "font-pixel text-[8px] sm:text-[10px] px-1.5 sm:px-3 py-1.5 sm:py-1.5 min-h-[36px] sm:min-h-0 whitespace-nowrap transition-all duration-200 shrink-0 flex items-center gap-0.5 sm:gap-1 border";
 const BTN_ACTIVE =
   "bg-bags-green text-bags-dark border-bags-green shadow-[0_0_12px_rgba(74,222,128,0.6),inset_0_1px_0_rgba(255,255,255,0.2)]";
 const BTN_INACTIVE =
@@ -67,7 +67,7 @@ export function ZoneNav() {
   return (
     <nav
       ref={navRef}
-      className="flex items-center flex-nowrap overflow-x-auto scrollbar-hide zone-nav-scroll gap-0.5 sm:gap-1 bg-black/90 backdrop-blur-sm px-1.5 sm:px-2 py-1 sm:py-1.5 border border-bags-green/50 shadow-[0_4px_20px_rgba(0,0,0,0.5),0_0_15px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]"
+      className="flex items-center flex-nowrap overflow-x-auto scrollbar-hide zone-nav-scroll gap-px sm:gap-1 bg-black/90 backdrop-blur-sm px-1 sm:px-2 py-1 sm:py-1.5 border border-bags-green/50 shadow-[0_4px_20px_rgba(0,0,0,0.5),0_0_15px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]"
     >
       {ZONE_ORDER.map((zoneId) => {
         const zone = ZONES[zoneId];
