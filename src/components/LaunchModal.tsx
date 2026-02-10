@@ -563,8 +563,20 @@ export function LaunchModal({ onClose, onLaunchSuccess }: LaunchModalProps) {
 
             let txid: string;
             try {
-              // Use signAndSendTransaction — Phantom's recommended method
-              txid = await mobileSignAndSend(transaction, { maxRetries: 5 });
+              if (preSigned) {
+                // Multi-signer (API pre-signed): must use signTransaction per
+                // Phantom docs to avoid "Signature verification failed" error.
+                const signedTx = await mobileSignTransaction(transaction);
+                setLaunchStatus(
+                  `Broadcasting fee config transaction ${i + 1}/${feeResult.transactions.length}...`
+                );
+                txid = await sendSignedTransaction(connection, signedTx, {
+                  maxRetries: 5,
+                });
+              } else {
+                // Single-signer: use signAndSendTransaction (Phantom recommended)
+                txid = await mobileSignAndSend(transaction, { maxRetries: 5 });
+              }
             } catch (signError: unknown) {
               const signErrorMsg =
                 signError instanceof Error ? signError.message : String(signError);
