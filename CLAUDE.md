@@ -6,6 +6,28 @@ This file provides guidance to Claude Code when working with this repository.
 
 BagsWorld is a self-evolving pixel art game that visualizes real Bags.fm on-chain activity on Solana. World health, weather, buildings, and characters react to live fee data from tokens launched through the platform. 17 AI characters powered by ElizaOS roam the world with autonomous behavior, and agent systems can trade and post to social networks independently.
 
+This is a Phaser-based pixel art web game called BagsWorld built with TypeScript and Next.js. The main zones include MoltBeach, Founders Corner, Agent Hut, Oracle Tower, and a Dungeon. Key infrastructure: Neon serverless Postgres DB, Railway deployment, MoltBook agents (ChadGhost, FinnBags, Bagsy), DexScreener/GeckoTerminal APIs for market data.
+
+## Workflow Rules
+
+Before implementing, always confirm the approach with the user. Do NOT start coding a plan without first verifying the architectural direction is correct. When given a plan document, question assumptions before executing blindly.
+
+## Pre-Commit Checklist
+
+Always run `npx tsc --noEmit` and `npm run build` before committing. Run `npm run lint` and fix formatting issues. Be aware of pre-existing CRLF/formatting issues in the codebase that may cause CI failures unrelated to your changes.
+
+## Database
+
+This project uses Neon serverless Postgres. Always use Neon-compatible query patterns — no dynamic SQL interpolation for column names (use separate queries per field instead). Check Neon driver compatibility before writing DB code.
+
+## Development
+
+Before starting the dev server, check if one is already running on the target port (typically 3000). Use `lsof -i :3000` or equivalent to avoid port conflicts. Kill existing processes before starting a new one.
+
+## UI/Visual Changes
+
+After making visual/UI changes to Phaser sprites, animations, or pixel art, describe the result and ask for user feedback before committing. Visual elements often require 2-3 iterations (size, color, positioning, animation style).
+
 ## Commands
 
 ```bash
@@ -22,6 +44,10 @@ npm run bagsy:status # Check Bagsy agent status
 npm run arena:status # Check arena combat status
 npm test             # Run Jest tests
 ```
+
+## API Guidelines
+
+Agent discovery must be dynamic, never hardcoded. API endpoints should discover agents from the MoltBook feed dynamically. Always check that required environment variables (e.g., for getMoltbookOrNull) are set in production before assuming code will work.
 
 ## Architecture
 
