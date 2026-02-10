@@ -5319,15 +5319,16 @@ export class WorldScene extends Phaser.Scene {
     }
 
     // Persistent name label on mobile (always visible, no hover needed)
-    if (this.isMobile) {
+    // Limit to 6 labels per zone on small screens to avoid clutter
+    if (this.isMobile && (this.scale.width >= 600 || index < 6)) {
       const charName = character.username || character.id;
       const displayName = charName.length > 10 ? charName.substring(0, 10) : charName;
-      const labelYOffset = 18 + (index % 3) * 12; // Stagger: 18, 30, or 42px to avoid overlap
+      const labelYOffset = 18 + (index % 5) * 10; // Stagger: 18,28,38,48,58px — 5 levels
       const labelBg = this.add.rectangle(
         character.x,
         character.y + labelYOffset,
-        displayName.length * 7 + 8,
-        16,
+        displayName.length * 6 + 6,
+        14,
         0x000000,
         0.7
       );
@@ -5338,7 +5339,7 @@ export class WorldScene extends Phaser.Scene {
         displayName.toUpperCase(),
         {
           fontFamily: "monospace",
-          fontSize: "10px",
+          fontSize: "9px",
           color: "#ffffff",
         }
       );

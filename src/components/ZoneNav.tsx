@@ -37,7 +37,7 @@ const ZONE_COLORS: Partial<Record<ZoneType, string>> = {
 };
 
 const BTN_BASE =
-  "font-pixel text-[11px] sm:text-[10px] px-4 sm:px-3 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 whitespace-nowrap transition-all duration-200 shrink-0 flex items-center gap-1 border";
+  "font-pixel text-[10px] sm:text-[10px] px-3 sm:px-3 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 whitespace-nowrap transition-all duration-200 shrink-0 flex items-center gap-1 border";
 const BTN_ACTIVE =
   "bg-bags-green text-bags-dark border-bags-green shadow-[0_0_12px_rgba(74,222,128,0.6),inset_0_1px_0_rgba(255,255,255,0.2)]";
 const BTN_INACTIVE =
@@ -57,7 +57,7 @@ export function ZoneNav() {
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <nav className="flex items-center flex-nowrap overflow-x-auto scrollbar-hide gap-1.5 sm:gap-1 bg-black/90 backdrop-blur-sm px-2 py-1.5 border border-bags-green/50 shadow-[0_4px_20px_rgba(0,0,0,0.5),0_0_15px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
+      <nav className="flex items-center flex-nowrap overflow-x-auto scrollbar-hide scroll-fade-right gap-1 sm:gap-1 bg-black/90 backdrop-blur-sm px-2 py-1.5 border border-bags-green/50 shadow-[0_4px_20px_rgba(0,0,0,0.5),0_0_15px_rgba(74,222,128,0.15),inset_0_1px_0_rgba(74,222,128,0.1)]">
         {MAIN_ZONES.map((zoneId) => {
           const zone = ZONES[zoneId];
           const isActive = currentZone === zoneId;

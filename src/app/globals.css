@@ -737,6 +737,14 @@ body {
   transform: translateY(1px);
 }
 
+/* Scroll fade indicator for horizontal overflow (mobile only) */
+@media (max-width: 639px) {
+  .scroll-fade-right {
+    mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  }
+}
+
 /* Scrollbar hide utility for horizontal scroll areas */
 .scrollbar-hide {
   -ms-overflow-style: none;
