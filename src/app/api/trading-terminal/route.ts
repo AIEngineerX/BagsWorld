@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllWorldTokensAsync, type LaunchedToken } from "@/lib/token-registry";
 import { initBagsApi } from "@/lib/bags-api";
+import { isValidSolanaAddress } from "@/lib/env-utils";
 
 interface TokenWithMetrics {
   mint: string;
@@ -118,6 +119,16 @@ export async function GET(request: NextRequest) {
   const mint = searchParams.get("mint");
   const interval = searchParams.get("interval") || "1h";
   const query = searchParams.get("query");
+
+  // Validate mint parameter when provided (prevents parameter injection into DexScreener/RPC calls)
+  if (mint && !isValidSolanaAddress(mint)) {
+    return NextResponse.json({ error: "Invalid mint address" }, { status: 400 });
+  }
+
+  // Validate wallet parameter when provided
+  if (wallet && !isValidSolanaAddress(wallet)) {
+    return NextResponse.json({ error: "Invalid wallet address" }, { status: 400 });
+  }
 
   switch (action) {
     case "tokens":

@@ -44,19 +44,14 @@ async function ensureTablesExist() {
   }
 }
 
-// Admin auth check
+// Admin auth check - always requires ADMIN_API_SECRET, fail closed
 function isAuthorized(request: NextRequest): boolean {
   const authHeader = request.headers.get("Authorization");
   const expectedToken = process.env.ADMIN_API_SECRET;
 
-  // SECURITY: Require explicit secret in production, fail closed
   if (!expectedToken) {
-    if (process.env.NODE_ENV === "production") {
-      console.error("[AgentEconomy] ADMIN_API_SECRET not configured - rejecting request");
-      return false;
-    }
-    // Development only: allow with dev token
-    return authHeader === "Bearer dev-local-testing";
+    console.error("[AgentEconomy] ADMIN_API_SECRET not configured - rejecting request");
+    return false;
   }
 
   return authHeader === `Bearer ${expectedToken}`;

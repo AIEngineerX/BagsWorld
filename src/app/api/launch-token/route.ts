@@ -106,12 +106,36 @@ async function handleCreateTokenInfo(
     let imageBlob: Blob | undefined;
     let imageName = "token-image.png";
 
+    // Reject images larger than 5MB (base64 is ~37% larger than binary)
+    const MAX_IMAGE_BASE64_LENGTH = 7 * 1024 * 1024; // ~5MB decoded
+    if (data.image && data.image.length > MAX_IMAGE_BASE64_LENGTH) {
+      return NextResponse.json({ error: "Image too large. Maximum size is 5MB." }, { status: 400 });
+    }
+
+    // Only allow known image MIME types
+    const ALLOWED_IMAGE_TYPES = [
+      "image/png",
+      "image/jpeg",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
+    ];
+
     if (data.image && data.image.startsWith("data:")) {
       // It's a data URL, convert to Blob
       try {
         const [header, base64Data] = data.image.split(",");
         const mimeMatch = header.match(/data:([^;]+)/);
         const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+
+        if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
+          return NextResponse.json(
+            {
+              error: `Invalid image type: ${mimeType}. Allowed: ${ALLOWED_IMAGE_TYPES.join(", ")}`,
+            },
+            { status: 400 }
+          );
+        }
         const extension = mimeType.split("/")[1] || "png";
         imageName = `token-image.${extension}`;
 

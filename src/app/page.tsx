@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WorldHealthBar } from "@/components/WorldHealthBar";
 import { Leaderboard } from "@/components/Leaderboard";
 import { LiveMarketFeed } from "@/components/LiveMarketFeed";
@@ -554,29 +555,31 @@ export default function Home() {
 
             {/* Chat windows - always rendered but can show/hide based on click events */}
             {/* On mobile, users use MobileCharacterMenu to trigger these */}
-            <AIChat />
-            <TolyChat />
-            <AshChat />
-            <FinnbagsChat />
-            <DevChat />
-            <NeoChat />
-            <CJChat />
-            <ShawChat />
-            {/* Academy Characters */}
-            <RamoChat />
-            <SincaraChat />
-            <StuuChat />
-            <SamChat />
-            <AlaaChat />
-            <CarloChat />
-            <BNNChat />
-            {/* Founder's Corner Characters */}
-            <ProfessorOakChat />
-            {/* Mascots */}
-            <BagsyChat />
-            <AgentDashboard />
-            <AdminConsole />
-            <TradingDiagnostics />
+            <ErrorBoundary resetLabel="Close Chat">
+              <AIChat />
+              <TolyChat />
+              <AshChat />
+              <FinnbagsChat />
+              <DevChat />
+              <NeoChat />
+              <CJChat />
+              <ShawChat />
+              {/* Academy Characters */}
+              <RamoChat />
+              <SincaraChat />
+              <StuuChat />
+              <SamChat />
+              <AlaaChat />
+              <CarloChat />
+              <BNNChat />
+              {/* Founder's Corner Characters */}
+              <ProfessorOakChat />
+              {/* Mascots */}
+              <BagsyChat />
+              <AgentDashboard />
+              <AdminConsole />
+              <TradingDiagnostics />
+            </ErrorBoundary>
 
             {/* Mobile character menu - floating button */}
             <MobileCharacterMenu />
@@ -740,46 +743,48 @@ export default function Home() {
         />
       )}
 
-      {/* Modals - consolidated state via activeModal */}
-      {activeModal === "pokeCenter" && (
-        <PokeCenterModal onClose={closeModal} onOpenFeeClaimModal={() => openModal("feeClaim")} />
-      )}
-      {activeModal === "tradingGym" && <TradingGymModal onClose={closeModal} />}
-      {activeModal === "communityFund" && <CommunityFundModal onClose={closeModal} />}
-      {activeModal === "casino" && <CasinoModal onClose={closeModal} />}
-      {activeModal === "oracle" && <OracleTowerModal onClose={closeModal} />}
-      {activeModal === "tradingTerminal" && <TradingTerminalModal onClose={closeModal} />}
-      {activeModal === "mansion" && mansionData && (
-        <MansionModal
-          onClose={() => {
-            closeModal();
-            setMansionData(null);
-          }}
-          name={mansionData.name}
-          holderRank={mansionData.holderRank}
-          holderAddress={mansionData.holderAddress}
-          holderBalance={mansionData.holderBalance}
-        />
-      )}
-      {activeModal === "feeClaim" && <FeeClaimModal onClose={closeModal} />}
-      {activeModal === "launch" && (
-        <LaunchModal
-          onClose={closeModal}
-          onLaunchSuccess={() => {
-            closeModal();
-            refreshAfterLaunch();
-          }}
-        />
-      )}
-      {activeModal === "launcherHub" && <LauncherHub onClose={closeModal} />}
-      {activeModal === "casinoAdmin" && <CasinoAdmin onClose={closeModal} />}
-      {activeModal === "arena" && <ArenaModal onClose={closeModal} />}
-      {activeModal === "agentHut" && <AgentHutModal onClose={closeModal} />}
-      {activeModal === "agentBar" && <AgentBarModal onClose={closeModal} />}
-      {activeModal === "dungeon" && <DungeonModal onClose={closeModal} />}
+      {/* Modals - consolidated state via activeModal, wrapped in error boundary */}
+      <ErrorBoundary resetLabel="Close" onError={() => setActiveModal(null)}>
+        {activeModal === "pokeCenter" && (
+          <PokeCenterModal onClose={closeModal} onOpenFeeClaimModal={() => openModal("feeClaim")} />
+        )}
+        {activeModal === "tradingGym" && <TradingGymModal onClose={closeModal} />}
+        {activeModal === "communityFund" && <CommunityFundModal onClose={closeModal} />}
+        {activeModal === "casino" && <CasinoModal onClose={closeModal} />}
+        {activeModal === "oracle" && <OracleTowerModal onClose={closeModal} />}
+        {activeModal === "tradingTerminal" && <TradingTerminalModal onClose={closeModal} />}
+        {activeModal === "mansion" && mansionData && (
+          <MansionModal
+            onClose={() => {
+              closeModal();
+              setMansionData(null);
+            }}
+            name={mansionData.name}
+            holderRank={mansionData.holderRank}
+            holderAddress={mansionData.holderAddress}
+            holderBalance={mansionData.holderBalance}
+          />
+        )}
+        {activeModal === "feeClaim" && <FeeClaimModal onClose={closeModal} />}
+        {activeModal === "launch" && (
+          <LaunchModal
+            onClose={closeModal}
+            onLaunchSuccess={() => {
+              closeModal();
+              refreshAfterLaunch();
+            }}
+          />
+        )}
+        {activeModal === "launcherHub" && <LauncherHub onClose={closeModal} />}
+        {activeModal === "casinoAdmin" && <CasinoAdmin onClose={closeModal} />}
+        {activeModal === "arena" && <ArenaModal onClose={closeModal} />}
+        {activeModal === "agentHut" && <AgentHutModal onClose={closeModal} />}
+        {activeModal === "agentBar" && <AgentBarModal onClose={closeModal} />}
+        {activeModal === "dungeon" && <DungeonModal onClose={closeModal} />}
 
-      {/* Sol Incinerator Modal - Burn tokens & close empty accounts */}
-      {activeModal === "incinerator" && <IncineratorModal onClose={closeModal} />}
+        {/* Sol Incinerator Modal - Burn tokens & close empty accounts */}
+        {activeModal === "incinerator" && <IncineratorModal onClose={closeModal} />}
+      </ErrorBoundary>
 
       {/* Scout Alerts - shows new token launch notifications */}
       <ScoutAlerts />
