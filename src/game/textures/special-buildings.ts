@@ -2149,6 +2149,211 @@ function generateBagsWorldHQ(scene: Phaser.Scene): void {
   g.destroy();
 }
 
+function generateTreasury(scene: Phaser.Scene): void {
+  // Treasury - DC Monument / Lincoln Memorial style marble building
+  const s = SCALE;
+  const g = scene.make.graphics({ x: 0, y: 0 });
+  const canvasHeight = Math.round(180 * s);
+  const canvasWidth = Math.round(100 * s);
+  const bWidth = Math.round(90 * s);
+  const baseX = Math.round(5 * s);
+
+  // 1. Ground shadow
+  g.fillStyle(PALETTE.void, 0.5);
+  g.fillRect(
+    baseX + Math.round(6 * s),
+    canvasHeight - Math.round(4 * s),
+    bWidth - Math.round(4 * s),
+    Math.round(4 * s)
+  );
+
+  // 2. Stepped base tiers (4 tiers, widest at bottom)
+  const tierH = Math.round(5 * s);
+  const tierIndent = Math.round(4 * s);
+  for (let i = 0; i < 4; i++) {
+    const tX = baseX - (3 - i) * tierIndent;
+    const tW = bWidth + (3 - i) * tierIndent * 2;
+    const tY = canvasHeight - (i + 1) * tierH;
+    g.fillStyle(PALETTE.silver);
+    g.fillRect(tX, tY, tW, tierH);
+    // Highlight top edge
+    g.fillStyle(lighten(PALETTE.silver, 0.3));
+    g.fillRect(tX, tY, tW, Math.round(1 * s));
+    // Shadow bottom edge
+    g.fillStyle(darken(PALETTE.silver, 0.15));
+    g.fillRect(tX, tY + tierH - Math.round(1 * s), tW, Math.round(1 * s));
+  }
+
+  const stepsTop = canvasHeight - 4 * tierH;
+  const wallH = Math.round(70 * s);
+  const wallTop = stepsTop - wallH;
+
+  // 3. Main wall body (white marble)
+  g.fillStyle(PALETTE.white);
+  g.fillRect(baseX, wallTop, bWidth, wallH);
+  // Cream highlight left side
+  g.fillStyle(lighten(PALETTE.cream, 0.3));
+  g.fillRect(baseX, wallTop, Math.round(6 * s), wallH);
+  // Gray shadow right side
+  g.fillStyle(darken(PALETTE.white, 0.1));
+  g.fillRect(baseX + bWidth - Math.round(6 * s), wallTop, Math.round(6 * s), wallH);
+
+  // 4. Stone brick dithering (offset row pattern)
+  g.fillStyle(darken(PALETTE.white, 0.08));
+  for (let row = 0; row < wallH; row += Math.round(8 * s)) {
+    const offset = (row / Math.round(8 * s)) % 2 === 0 ? 0 : Math.round(6 * s);
+    for (let col = offset; col < bWidth; col += Math.round(12 * s)) {
+      g.fillRect(baseX + col, wallTop + row, Math.round(10 * s), Math.round(6 * s));
+    }
+  }
+
+  // 5. Columns (6 across the face with 3D shading)
+  const colCount = 6;
+  const colW = Math.round(6 * s);
+  const colH = wallH - Math.round(10 * s);
+  const colTop = wallTop + Math.round(6 * s);
+  const colSpacing = (bWidth - colW) / (colCount - 1);
+
+  for (let i = 0; i < colCount; i++) {
+    const cX = baseX + Math.round(i * colSpacing);
+    // Column body
+    g.fillStyle(PALETTE.cream);
+    g.fillRect(cX, colTop, colW, colH);
+    // Left highlight
+    g.fillStyle(lighten(PALETTE.cream, 0.2));
+    g.fillRect(cX, colTop, Math.round(2 * s), colH);
+    // Right shadow
+    g.fillStyle(darken(PALETTE.cream, 0.15));
+    g.fillRect(cX + colW - Math.round(2 * s), colTop, Math.round(2 * s), colH);
+
+    // 6. Gold column capitals
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(
+      cX - Math.round(1 * s),
+      colTop - Math.round(4 * s),
+      colW + Math.round(2 * s),
+      Math.round(4 * s)
+    );
+    g.fillStyle(PALETTE.yellow);
+    g.fillRect(
+      cX - Math.round(1 * s),
+      colTop - Math.round(4 * s),
+      colW + Math.round(2 * s),
+      Math.round(1 * s)
+    );
+  }
+
+  // 7. Entablature band (silver bar above columns)
+  const entY = wallTop - Math.round(6 * s);
+  const entH = Math.round(6 * s);
+  g.fillStyle(PALETTE.silver);
+  g.fillRect(baseX - Math.round(2 * s), entY, bWidth + Math.round(4 * s), entH);
+  g.fillStyle(lighten(PALETTE.silver, 0.3));
+  g.fillRect(baseX - Math.round(2 * s), entY, bWidth + Math.round(4 * s), Math.round(1 * s));
+
+  // 8. Green Bags banner on entablature
+  const bannerW = Math.round(30 * s);
+  const bannerX = baseX + (bWidth - bannerW) / 2;
+  g.fillStyle(PALETTE.bagsGreen);
+  g.fillRect(bannerX, entY + Math.round(1 * s), bannerW, Math.round(4 * s));
+  g.fillStyle(PALETTE.mint);
+  g.fillRect(bannerX, entY + Math.round(1 * s), bannerW, Math.round(1 * s));
+
+  // 9. Stepped pediment (4 layers, each narrower, with gold trim)
+  const pedBaseW = bWidth + Math.round(4 * s);
+  const pedBaseX = baseX - Math.round(2 * s);
+  const pedLayerH = Math.round(6 * s);
+  const pedIndent = Math.round(8 * s);
+  for (let i = 0; i < 4; i++) {
+    const lX = pedBaseX + i * pedIndent;
+    const lW = pedBaseW - i * pedIndent * 2;
+    const lY = entY - (i + 1) * pedLayerH;
+    if (lW <= 0) break;
+    g.fillStyle(PALETTE.white);
+    g.fillRect(lX, lY, lW, pedLayerH);
+    // Highlight top
+    g.fillStyle(lighten(PALETTE.white, 0.1));
+    g.fillRect(lX, lY, lW, Math.round(1 * s));
+    // Gold trim bottom edge
+    g.fillStyle(PALETTE.gold);
+    g.fillRect(lX, lY + pedLayerH - Math.round(1 * s), lW, Math.round(1 * s));
+  }
+
+  // 10. Central door with gold frame and amber glow interior
+  const doorW = Math.round(16 * s);
+  const doorH = Math.round(24 * s);
+  const doorX = baseX + (bWidth - doorW) / 2;
+  const doorY = stepsTop - doorH;
+  // Gold frame
+  g.fillStyle(PALETTE.gold);
+  g.fillRect(
+    doorX - Math.round(2 * s),
+    doorY - Math.round(3 * s),
+    doorW + Math.round(4 * s),
+    doorH + Math.round(3 * s)
+  );
+  g.fillStyle(PALETTE.yellow);
+  g.fillRect(
+    doorX - Math.round(2 * s),
+    doorY - Math.round(3 * s),
+    doorW + Math.round(4 * s),
+    Math.round(2 * s)
+  );
+  // Interior amber glow
+  g.fillStyle(PALETTE.amber);
+  g.fillRect(doorX, doorY, doorW, doorH);
+  g.fillStyle(PALETTE.gold);
+  g.fillRect(
+    doorX + Math.round(3 * s),
+    doorY + Math.round(3 * s),
+    doorW - Math.round(6 * s),
+    doorH - Math.round(6 * s)
+  );
+  g.fillStyle(PALETTE.yellow);
+  g.fillRect(
+    doorX + Math.round(5 * s),
+    doorY + Math.round(5 * s),
+    doorW - Math.round(10 * s),
+    doorH - Math.round(10 * s)
+  );
+
+  // 11. Pixel art "$" symbol above door
+  const px = Math.round(2 * s);
+  const dX = baseX + Math.round(bWidth / 2) - Math.round(3 * px);
+  const dY = doorY - Math.round(16 * s);
+  g.fillStyle(PALETTE.gold);
+  // Top curve of S
+  g.fillRect(dX + px, dY, 4 * px, px);
+  g.fillRect(dX, dY + px, px, px);
+  // Middle bar
+  g.fillRect(dX + px, dY + 2 * px, 4 * px, px);
+  // Bottom curve of S
+  g.fillRect(dX + 5 * px, dY + 3 * px, px, px);
+  g.fillRect(dX + px, dY + 4 * px, 4 * px, px);
+  // Vertical line through center
+  g.fillStyle(PALETTE.yellow);
+  g.fillRect(dX + 2 * px + Math.round(1 * s), dY - px, px, 7 * px);
+
+  // 12. Gold base trim
+  g.fillStyle(PALETTE.gold);
+  g.fillRect(
+    baseX - Math.round(1 * s),
+    stepsTop - Math.round(2 * s),
+    bWidth + Math.round(2 * s),
+    Math.round(2 * s)
+  );
+  g.fillStyle(PALETTE.yellow);
+  g.fillRect(
+    baseX - Math.round(1 * s),
+    stepsTop - Math.round(2 * s),
+    bWidth + Math.round(2 * s),
+    Math.round(1 * s)
+  );
+
+  g.generateTexture("treasury", canvasWidth, canvasHeight);
+  g.destroy();
+}
+
 export function generateSpecialBuildings(scene: Phaser.Scene): void {
   generatePokeCenter(scene);
   generateTradingGym(scene);
@@ -2156,4 +2361,5 @@ export function generateSpecialBuildings(scene: Phaser.Scene): void {
   generateTradingTerminal(scene);
   generateOracleTower(scene);
   generateBagsWorldHQ(scene);
+  generateTreasury(scene);
 }
