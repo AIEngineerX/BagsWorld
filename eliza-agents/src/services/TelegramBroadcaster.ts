@@ -47,6 +47,7 @@ export interface ExitSignal {
   pnlSol: number;
   exitReason: string;
   holdTimeMinutes: number;
+  partialPercent?: number;  // e.g. 33 for a 33% partial exit
 }
 
 interface MessageRecord {
@@ -357,13 +358,25 @@ export class TelegramBroadcaster {
       trailing_stop: "Trailing Stop",
       dead_position: "Dead Position",
       manual: "Manual",
+      partial_take_profit_tier1: "Partial Exit (Tier 1)",
+      partial_take_profit_tier2: "Partial Exit (Tier 2)",
     };
     const reason = reasonMap[signal.exitReason] || signal.exitReason;
 
-    let message = isProfitable ? `💰 *GHOST EXIT — WIN*\n\n` : `🔻 *GHOST EXIT — LOSS*\n\n`;
+    const isPartial = signal.partialPercent && signal.partialPercent > 0;
+    const headerText = isPartial
+      ? `📤 *GHOST PARTIAL EXIT (${signal.partialPercent}%)*`
+      : isProfitable
+        ? `💰 *GHOST EXIT — WIN*`
+        : `🔻 *GHOST EXIT — LOSS*`;
+
+    let message = `${headerText}\n\n`;
     message += `*$${this.escapeMarkdown(signal.tokenSymbol)}* — ${this.escapeMarkdown(signal.tokenName)}\n\n`;
-    message += `${isProfitable ? "🟢" : "🔴"} *${reason}*\n\n`;
-    message += `📊 *Result*\n`;
+    message += `${isProfitable ? "🟢" : "🔴"} *${reason}*\n`;
+    if (isPartial) {
+      message += `_Remaining position stays open for more upside_\n`;
+    }
+    message += `\n📊 *Result*\n`;
     message += `PnL: ${pnlSign}${signal.pnlSol.toFixed(4)} SOL (${pnlSign}${pnlPercent}%)\n`;
     message += `Size: ${signal.amountSol.toFixed(2)} SOL | Held: ${holdTime}\n\n`;
 

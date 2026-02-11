@@ -72,6 +72,9 @@ const DEFAULT_CONFIG = {
   // Volume/MCap ratio - used in SCORING, not as hard filter
   // GAS token had 200% vol/mcap at peak, healthy tokens have 30-80%
   minVolumeMcapRatio: 0.0, // DISABLED as hard filter - incorporated into scoring instead
+  // Bundle/concentration detection
+  maxTop5ConcentrationPct: 80, // Hard reject: top 5 wallets hold > 80%
+  maxSingleHolderPct: 50, // Hard reject: single wallet holds > 50%
 };
 
 // Top trader wallets to study (from Kolscan & GMGN leaderboards)
@@ -164,6 +167,7 @@ export interface GhostPosition {
   sellAttempts: number;
   noPriceCount: number;
   peakMultiplier: number;
+  tiersSold: number;      // How many take-profit tiers already sold (0, 1, 2)
 }
 
 export interface TradeEvaluation {
@@ -184,6 +188,8 @@ export interface TradeEvaluation {
     volumeMcapRatio?: number; // BagBot key metric
     lifetimeFeesSol?: number; // Bags-specific
     hasFeeClaims?: boolean; // Bags-specific
+    top5HolderPct?: number; // Bundle detection
+    largestHolderPct?: number; // Bundle detection
   };
 }
 
@@ -220,6 +226,9 @@ export interface GhostTraderConfig {
   // Bags-specific signals
   requireTokenClaimed: boolean; // Token must have fee claims (optional)
   minLifetimeFeesSol: number; // Minimum fees generated
+  // Bundle/concentration detection
+  maxTop5ConcentrationPct: number; // Hard reject: top 5 wallets hold > X%
+  maxSingleHolderPct: number; // Hard reject: single wallet holds > X%
 }
 
 export interface GhostTraderStats {
@@ -395,6 +404,10 @@ export class GhostTrader {
       ALTER TABLE ghost_positions
       ADD COLUMN IF NOT EXISTS peak_multiplier DECIMAL(18, 9) DEFAULT 1.0
     `;
+    await this.db`
+      ALTER TABLE ghost_positions
+      ADD COLUMN IF NOT EXISTS tiers_sold INTEGER DEFAULT 0
+    `;
 
     // Config table for persisting enabled state
     await this.db`
@@ -474,6 +487,7 @@ export class GhostTrader {
       sell_attempts: number | null;
       no_price_count: number | null;
       peak_multiplier: string | null;
+      tiers_sold: number | null;
     }>;
 
     let openCount = 0;
@@ -499,6 +513,7 @@ export class GhostTrader {
         sellAttempts: row.sell_attempts || 0,
         noPriceCount: row.no_price_count || 0,
         peakMultiplier: row.peak_multiplier ? parseFloat(row.peak_multiplier) : 1.0,
+        tiersSold: row.tiers_sold || 0,
       };
       this.positions.set(position.id, position);
       this.tradedMints.add(position.tokenMint);
@@ -989,32 +1004,37 @@ export class GhostTrader {
         }
       }
 
-      // === TAKE-PROFIT ===
-      // Take profit at the FIRST tier hit (e.g., 1.5x) - don't wait and risk giving back gains
-      // Memecoins can dump fast, so we take profits aggressively
-      const firstTakeProfitTier = Math.min(...this.config.takeProfitTiers);
-      if (currentMultiplier >= firstTakeProfitTier) {
-        console.log(
-          `[GhostTrader] Take profit triggered for ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x (target was ${firstTakeProfitTier}x)`
-        );
+      // === TAKE-PROFIT (Partial Exit Ladder) ===
+      // Sell 33% at each tier: 1.5x, 2.0x, then trailing stop manages the rest
+      const sortedTiers = [...this.config.takeProfitTiers].sort((a, b) => a - b);
+      const nextTierIndex = position.tiersSold || 0;
 
-        // Chatter about the win
-        const winMessages = [
-          `locked in ${currentMultiplier.toFixed(1)}x on $${position.tokenSymbol} 💰`,
-          `took profit on $${position.tokenSymbol} at ${currentMultiplier.toFixed(1)}x`,
-          `$${position.tokenSymbol} +${((currentMultiplier - 1) * 100).toFixed(0)}% secured`,
-          `gg $${position.tokenSymbol} ${currentMultiplier.toFixed(1)}x`,
-        ];
-        this.maybeChatter(winMessages[Math.floor(Math.random() * winMessages.length)], "happy");
+      if (nextTierIndex < sortedTiers.length - 1) {
+        // Partial exit tiers (e.g., 1.5x, 2.0x)
+        const nextTier = sortedTiers[nextTierIndex];
+        if (currentMultiplier >= nextTier) {
+          console.log(
+            `[GhostTrader] Partial take-profit tier ${nextTierIndex + 1} triggered for ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x (target was ${nextTier}x)`
+          );
 
-        await this.executeClose(position, "take_profit", currentPriceSol);
-        continue;
+          // Chatter about the partial win
+          const winMessages = [
+            `taking 33% off $${position.tokenSymbol} at ${currentMultiplier.toFixed(1)}x, letting the rest ride`,
+            `partial exit on $${position.tokenSymbol} at ${currentMultiplier.toFixed(1)}x 💰`,
+            `$${position.tokenSymbol} +${((currentMultiplier - 1) * 100).toFixed(0)}% — securing some, riding more`,
+          ];
+          this.maybeChatter(winMessages[Math.floor(Math.random() * winMessages.length)], "happy");
+
+          await this.executePartialClose(position, nextTierIndex, currentPriceSol);
+          continue;
+        }
       }
+      // else: final tier — trailing stop (above) manages the remaining position
 
       // Log position status for monitoring (not yet at take-profit)
       if (currentMultiplier >= 1.2) {
         console.log(
-          `[GhostTrader] ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x - approaching take-profit (${firstTakeProfitTier}x)`
+          `[GhostTrader] ${position.tokenSymbol} at ${currentMultiplier.toFixed(2)}x - approaching take-profit (tier ${nextTierIndex + 1}: ${sortedTiers[nextTierIndex] || sortedTiers[sortedTiers.length - 1]}x)`
         );
       } else if (holdTimeMinutes > 60) {
         // Log stale positions that haven't moved
@@ -1093,7 +1113,7 @@ export class GhostTrader {
     // Volume/MCap ratio - key BagBot metric
     const volumeMcapRatio = marketCapUsd > 0 ? volume24hUsd / marketCapUsd : 0;
 
-    const metrics = {
+    const metrics: TradeEvaluation["metrics"] = {
       marketCapUsd,
       liquidityUsd,
       volume24hUsd,
@@ -1181,6 +1201,49 @@ export class GhostTrader {
     if (estimatedImpact > this.config.maxPriceImpactPercent) {
       return reject(`high price impact (est ${estimatedImpact.toFixed(1)}% > ${this.config.maxPriceImpactPercent}%)`);
     }
+
+    // === BUNDLE / CONCENTRATION CHECK ===
+    // Detect tokens where deployer self-buys from multiple wallets
+    const concentration = this.solanaService
+      ? await this.solanaService.getTopHolderConcentration(launch.mint)
+      : null;
+    if (concentration) {
+      metrics.top5HolderPct = Math.round(concentration.top5Pct * 10) / 10;
+      metrics.largestHolderPct = Math.round(concentration.largestPct * 10) / 10;
+
+      console.log(
+        `[GhostTrader] ${launch.symbol} concentration: top5=${concentration.top5Pct.toFixed(1)}%, largest=${concentration.largestPct.toFixed(1)}%`
+      );
+
+      // Hard reject: single wallet holds majority
+      if (concentration.largestPct > this.config.maxSingleHolderPct) {
+        return reject(
+          `bundled (single wallet holds ${concentration.largestPct.toFixed(1)}%)`
+        );
+      }
+
+      // Hard reject: top 5 wallets hold extreme concentration
+      if (concentration.top5Pct > this.config.maxTop5ConcentrationPct) {
+        return reject(
+          `bundled (top 5 hold ${concentration.top5Pct.toFixed(1)}%)`
+        );
+      }
+
+      // Score penalty for concentration (no redFlag — micro-cap Bags tokens
+      // commonly have top-5 > 60% early on; the score penalty is sufficient)
+      if (concentration.top5Pct > 50) {
+        score -= 10;
+      } else if (concentration.top5Pct > 40) {
+        score -= 5;
+      }
+
+      // Bonus for well-distributed tokens
+      if (concentration.top5Pct < 25) {
+        score += 5;
+        reasons.push("well distributed supply");
+      }
+    }
+    // If concentration is null (RPC error/timeout), continue without penalty
 
     // === SCORING SYSTEM (BagBot-aligned weights) ===
     // Weights: Vol/MCap 25%, Buy/Sell 25%, Momentum 20%, Liquidity 15%, Age 15%
@@ -1504,6 +1567,7 @@ export class GhostTrader {
       sellAttempts: 0,
       noPriceCount: 0,
       peakMultiplier: 1.0,
+      tiersSold: 0,
     };
 
     // Save to memory and database
@@ -1664,6 +1728,176 @@ export class GhostTrader {
 
     console.log(
       `[GhostTrader] Position closed: ${position.tokenSymbol}, PnL: ${pnlSol.toFixed(4)} SOL`
+    );
+  }
+
+  /**
+   * Execute a partial close (sell 33% of remaining tokens at a take-profit tier)
+   * Keeps the position open for further upside
+   */
+  private async executePartialClose(
+    position: GhostPosition,
+    tierIndex: number,
+    currentPriceSol: number
+  ): Promise<void> {
+    if (!this.ghostWalletPublicKey) return;
+
+    // Guard against concurrent close attempts
+    if (position.status !== "open") {
+      console.log(`[GhostTrader] Position ${position.tokenSymbol} already ${position.status}, skipping partial close`);
+      return;
+    }
+
+    // Calculate sell amount: 33% of remaining tokens
+    const sellFraction = 0.33;
+    let sellAmountTokens = Math.floor(position.amountTokens * sellFraction);
+
+    // Check actual token balance before attempting sell
+    try {
+      if (!this.solanaService) throw new Error("SolanaService not initialized");
+      const actualBalance = await this.solanaService.getTokenBalance(position.tokenMint);
+
+      if (actualBalance === 0) {
+        console.log(
+          `[GhostTrader] No token balance for ${position.tokenSymbol} — marking as failed`
+        );
+        position.status = "failed";
+        position.exitReason = "partial_close_no_balance";
+        position.pnlSol = -position.amountSol;
+        position.closedAt = new Date();
+        await this.updatePositionInDatabase(position);
+        return;
+      }
+
+      if (actualBalance < position.amountTokens) {
+        console.log(
+          `[GhostTrader] Balance mismatch for ${position.tokenSymbol}: recorded ${position.amountTokens}, actual ${actualBalance} — using actual`
+        );
+        position.amountTokens = actualBalance;
+        sellAmountTokens = Math.floor(actualBalance * sellFraction);
+      }
+    } catch (error) {
+      console.warn(
+        `[GhostTrader] Failed to check token balance for partial close of ${position.tokenSymbol}, proceeding:`,
+        error instanceof Error ? error.message : error
+      );
+    }
+
+    if (sellAmountTokens <= 0) {
+      console.warn(`[GhostTrader] Sell amount too small for partial close of ${position.tokenSymbol}`);
+      return;
+    }
+
+    // Escalate slippage on retries (use same pattern as executeClose)
+    position.sellAttempts = (position.sellAttempts || 0) + 1;
+    const MAX_SELL_ATTEMPTS = 5;
+
+    if (position.sellAttempts > MAX_SELL_ATTEMPTS) {
+      console.log(
+        `[GhostTrader] Partial close failed after ${MAX_SELL_ATTEMPTS} attempts for ${position.tokenSymbol}, skipping tier`
+      );
+      position.sellAttempts = 0;
+      await this.updatePositionInDatabase(position);
+      return;
+    }
+
+    const slippageEscalation = [300, 500, 800, 1200, 1500];
+    const sellSlippageBps = slippageEscalation[Math.min(position.sellAttempts - 1, slippageEscalation.length - 1)];
+
+    const sortedTiers = [...this.config.takeProfitTiers].sort((a, b) => a - b);
+    const tierMultiplier = sortedTiers[tierIndex];
+
+    console.log(
+      `[GhostTrader] Partial close: ${position.tokenSymbol} tier ${tierIndex + 1} (${tierMultiplier}x), selling 33% (${sellAmountTokens} tokens), attempt ${position.sellAttempts}/${MAX_SELL_ATTEMPTS}`
+    );
+
+    // Get trade quote for selling partial tokens back to SOL
+    let quote: TradeQuote;
+    try {
+      quote = await this.bagsApi.getTradeQuote(
+        position.tokenMint,
+        SOL_MINT,
+        sellAmountTokens,
+        sellSlippageBps
+      );
+    } catch (error) {
+      console.error(`[GhostTrader] Failed to get partial sell quote for ${position.tokenSymbol}:`, error);
+      await this.updatePositionInDatabase(position);
+      return;
+    }
+
+    // Build swap transaction
+    let swapResult;
+    try {
+      swapResult = await this.bagsApi.createSwapTransaction(quote, this.ghostWalletPublicKey);
+    } catch (error) {
+      console.error(`[GhostTrader] Failed to create partial sell tx for ${position.tokenSymbol}:`, error);
+      await this.updatePositionInDatabase(position);
+      return;
+    }
+
+    // Sign and submit
+    const txSignature = await this.signAndSubmitTransaction(swapResult.swapTransaction);
+
+    if (!txSignature) {
+      console.error(`[GhostTrader] Failed to submit partial sell for ${position.tokenSymbol}`);
+      await this.updatePositionInDatabase(position);
+      return;
+    }
+
+    // Success — update position tracking
+    position.sellAttempts = 0;
+    const solReceived = parseFloat(quote.outAmount) / LAMPORTS_PER_SOL;
+    const tokensSold = sellAmountTokens;
+
+    // Calculate partial P&L (proportional to SOL invested)
+    const solProportionSold = sellFraction;
+    const solCostBasis = position.amountSol * solProportionSold;
+    const partialPnl = solReceived - solCostBasis;
+
+    // Update position: reduce tokens and SOL basis, increment tier
+    position.amountTokens -= tokensSold;
+    position.amountSol -= solCostBasis;
+    position.tiersSold = tierIndex + 1;
+
+    // Accumulate P&L from partial exits
+    position.pnlSol = (position.pnlSol || 0) + partialPnl;
+
+    // Position stays open
+    await this.updatePositionInDatabase(position);
+
+    // Persist partial exit as memory
+    this.persistTradeMemory("sell", position, {
+      pnlSol: partialPnl,
+      exitReason: `partial_take_profit_tier${tierIndex + 1}`,
+    });
+
+    // Broadcast partial exit to Telegram
+    const holdTimeMinutes = (Date.now() - position.createdAt.getTime()) / 60000;
+    const exitSignal: ExitSignal = {
+      type: "exit",
+      tokenSymbol: position.tokenSymbol,
+      tokenName: position.tokenName,
+      tokenMint: position.tokenMint,
+      amountSol: solCostBasis,
+      pnlSol: partialPnl,
+      exitReason: `partial_take_profit_tier${tierIndex + 1}`,
+      holdTimeMinutes,
+      partialPercent: 33,
+    };
+    this.telegramBroadcaster.broadcastExit(exitSignal);
+
+    // Visual feedback in game world
+    if (this.worldSync) {
+      this.worldSync.sendSpeak(
+        "ghost",
+        `took 33% off $${position.tokenSymbol} at ${(currentPriceSol / position.entryPriceSol * (1 / (1 - solProportionSold))).toFixed(1)}x, letting rest ride`,
+        "happy"
+      );
+    }
+
+    console.log(
+      `[GhostTrader] Partial close complete: ${position.tokenSymbol} tier ${tierIndex + 1}, sold ${tokensSold} tokens for ${solReceived.toFixed(4)} SOL (PnL: ${partialPnl >= 0 ? "+" : ""}${partialPnl.toFixed(4)} SOL)`
     );
   }
 
@@ -1840,7 +2074,10 @@ export class GhostTrader {
         closed_at = ${position.closedAt?.toISOString() || null},
         sell_attempts = ${position.sellAttempts || 0},
         no_price_count = ${position.noPriceCount || 0},
-        peak_multiplier = ${position.peakMultiplier || 1.0}
+        peak_multiplier = ${position.peakMultiplier || 1.0},
+        tiers_sold = ${position.tiersSold || 0},
+        amount_sol = ${position.amountSol},
+        amount_tokens = ${position.amountTokens}
       WHERE id = ${position.id}
     `;
   }
@@ -2114,6 +2351,7 @@ export class GhostTrader {
       sellAttempts: 0,
       noPriceCount: 0,
       peakMultiplier: 1.0,
+      tiersSold: 0,
     };
 
     this.positions.set(position.id, position);
