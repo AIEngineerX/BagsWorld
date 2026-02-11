@@ -334,6 +334,14 @@ export function TradingDiagnostics() {
                 </h2>
                 <p className="font-pixel text-[8px] text-yellow-600/80 mt-0.5">
                   AUTONOMOUS TRADING TERMINAL
+                  <a
+                    href="https://t.me/AgentDaddyGhost"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 text-blue-400/80 hover:text-blue-300 transition-colors"
+                  >
+                    [TG]
+                  </a>
                 </p>
               </div>
               <button
@@ -1116,7 +1124,14 @@ export function TradingDiagnostics() {
               >
                 {isLoading ? "REFRESHING..." : "[~] REFRESH"}
               </button>
-              <p className="font-pixel text-[7px] text-yellow-900">AUTO-REFRESH 30S</p>
+              <a
+                href="https://t.me/AgentDaddyGhost"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-pixel text-[8px] text-blue-400/70 hover:text-blue-300 transition-colors"
+              >
+                JOIN TELEGRAM
+              </a>
             </div>
 
             {/* Bottom gold bar */}
