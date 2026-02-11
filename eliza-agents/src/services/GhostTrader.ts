@@ -865,7 +865,11 @@ export class GhostTrader {
       this.lastEvaluation = best;
 
       // Execute trade
-      await this.executeBuy(best);
+      const success = await this.executeBuy(best);
+      if (!success) {
+        this.chatter(`failed to execute buy on $${best.launch.symbol}`, "concerned");
+        console.error(`[GhostTrader] Buy execution failed for ${best.launch.symbol} — evaluation passed but trade did not go through`);
+      }
     } else {
       console.log("[GhostTrader] No suitable launches found (Bags runner standards)");
 
@@ -1494,8 +1498,8 @@ export class GhostTrader {
   /**
    * Execute a buy trade
    */
-  private async executeBuy(evaluation: TradeEvaluation): Promise<void> {
-    if (!this.ghostWalletPublicKey) return;
+  private async executeBuy(evaluation: TradeEvaluation): Promise<boolean> {
+    if (!this.ghostWalletPublicKey) return false;
 
     const { launch, suggestedAmount, reasons } = evaluation;
     const amountLamports = Math.floor(suggestedAmount * LAMPORTS_PER_SOL);
@@ -1521,11 +1525,11 @@ export class GhostTrader {
           `[GhostTrader] Skipping ${launch.symbol}: price impact ${priceImpact.toFixed(2)}% > ${this.config.maxPriceImpactPercent}%`
         );
         this.chatter(`skipping $${launch.symbol}... impact too high`, "concerned");
-        return;
+        return false;
       }
     } catch (error) {
       console.error(`[GhostTrader] Failed to get quote for ${launch.symbol}:`, error);
-      return;
+      return false;
     }
 
     // Build swap transaction
@@ -1534,17 +1538,15 @@ export class GhostTrader {
       swapResult = await this.bagsApi.createSwapTransaction(quote, this.ghostWalletPublicKey);
     } catch (error) {
       console.error(`[GhostTrader] Failed to create swap tx for ${launch.symbol}:`, error);
-      return;
+      return false;
     }
 
     // Sign and submit transaction
-    // NOTE: In production, this would use the actual wallet to sign
-    // For now, we simulate the trade for testing
     const txSignature = await this.signAndSubmitTransaction(swapResult.swapTransaction);
 
     if (!txSignature) {
       console.error(`[GhostTrader] Failed to submit transaction for ${launch.symbol}`);
-      return;
+      return false;
     }
 
     // Calculate entry price
@@ -1582,6 +1584,7 @@ export class GhostTrader {
     await this.announceTrade("buy", position);
 
     console.log(`[GhostTrader] Buy executed: ${position.amountSol} SOL of ${position.tokenSymbol}`);
+    return true;
   }
 
   /**
