@@ -1351,7 +1351,7 @@ export class GhostTrader {
       if (adjustment > 0) {
         reasons.push(`learned bonus (+${adjustment})`);
       } else {
-        redFlags.push(`learned penalty (${adjustment})`);
+        reasons.push(`learned penalty (${adjustment})`);
       }
       console.log(
         `[GhostTrader] Applied learning adjustment: ${adjustment} for ${launch.symbol} (${appliedSignals.join(", ")})`

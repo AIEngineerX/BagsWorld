@@ -68,9 +68,9 @@ export async function GET() {
       ghostError =
         err instanceof Error
           ? err.message.includes("abort")
-            ? `ElizaOS unreachable at ${AGENTS_API_URL}`
-            : err.message
-          : "Failed to reach ElizaOS";
+            ? "Ghost Trader service is currently offline"
+            : "Ghost Trader service unavailable"
+          : "Failed to reach Ghost Trader";
     }
 
     // ========================================================================

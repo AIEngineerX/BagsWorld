@@ -773,10 +773,9 @@ function updateBillboardData(scene: WorldScene): void {
     // Volume king - highest 24h volume
     const byVolume = [...buildings].sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
     if (byVolume.length > 0 && byVolume[0].volume24h) {
-      const volSym = byVolume[0].symbol.length > 6 ? byVolume[0].symbol.substring(0, 6) : byVolume[0].symbol;
-      scene.billboardTexts[6].setText(
-        `$${volSym}\n$${formatNumber(byVolume[0].volume24h || 0)}`
-      );
+      const volSym =
+        byVolume[0].symbol.length > 6 ? byVolume[0].symbol.substring(0, 6) : byVolume[0].symbol;
+      scene.billboardTexts[6].setText(`$${volSym}\n$${formatNumber(byVolume[0].volume24h || 0)}`);
     } else {
       scene.billboardTexts[6].setText("---");
     }
