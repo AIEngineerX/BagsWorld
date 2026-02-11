@@ -68,6 +68,7 @@ function isAllowedImageUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;
+    // Exact match or proper subdomain match (must have "." before the domain)
     return TRUSTED_IMAGE_DOMAINS.some(
       (domain) => parsed.hostname === domain || parsed.hostname.endsWith("." + domain)
     );
@@ -301,13 +302,23 @@ async function generateImageWithFal(
     throw new Error("Image URL from untrusted domain");
   }
 
+  const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB limit for generated images
   const imageResponse = await fetch(imageUrl);
 
   if (!imageResponse.ok) {
     throw new Error(`Failed to fetch generated image: ${imageResponse.status}`);
   }
 
+  const contentLength = imageResponse.headers.get("content-length");
+  if (contentLength && parseInt(contentLength, 10) > MAX_IMAGE_BYTES) {
+    throw new Error("Generated image exceeds 10MB size limit");
+  }
+
   const imageBuffer = await imageResponse.arrayBuffer();
+  if (imageBuffer.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error("Generated image exceeds 10MB size limit");
+  }
+
   const base64 = Buffer.from(imageBuffer).toString("base64");
   const contentType = imageResponse.headers.get("content-type") || "image/png";
 
@@ -363,8 +374,23 @@ async function generateImageWithFalPro(
   }
 
   // Fetch and convert to base64
+  const MAX_BANNER_BYTES = 10 * 1024 * 1024;
   const imageResponse = await fetch(imageUrl);
+
+  if (!imageResponse.ok) {
+    throw new Error(`Failed to fetch generated banner: ${imageResponse.status}`);
+  }
+
+  const contentLength = imageResponse.headers.get("content-length");
+  if (contentLength && parseInt(contentLength, 10) > MAX_BANNER_BYTES) {
+    throw new Error("Generated banner exceeds 10MB size limit");
+  }
+
   const imageBuffer = await imageResponse.arrayBuffer();
+  if (imageBuffer.byteLength > MAX_BANNER_BYTES) {
+    throw new Error("Generated banner exceeds 10MB size limit");
+  }
+
   const base64 = Buffer.from(imageBuffer).toString("base64");
   const contentType = imageResponse.headers.get("content-type") || "image/png";
 
@@ -441,8 +467,23 @@ async function generateImageWithReplicate(
       }
 
       // Fetch the image and convert to base64
+      const MAX_REPLICATE_BYTES = 10 * 1024 * 1024;
       const imageResponse = await fetch(imageUrl);
+
+      if (!imageResponse.ok) {
+        return generateProceduralImage(prompt, width, height, style);
+      }
+
+      const contentLength = imageResponse.headers.get("content-length");
+      if (contentLength && parseInt(contentLength, 10) > MAX_REPLICATE_BYTES) {
+        return generateProceduralImage(prompt, width, height, style);
+      }
+
       const imageBuffer = await imageResponse.arrayBuffer();
+      if (imageBuffer.byteLength > MAX_REPLICATE_BYTES) {
+        return generateProceduralImage(prompt, width, height, style);
+      }
+
       const base64 = Buffer.from(imageBuffer).toString("base64");
       const mimeType = imageResponse.headers.get("content-type") || "image/png";
       return `data:${mimeType};base64,${base64}`;

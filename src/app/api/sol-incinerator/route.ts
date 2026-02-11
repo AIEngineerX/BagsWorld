@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSolIncinerator } from "@/lib/sol-incinerator";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { isValidSolanaAddress } from "@/lib/env-utils";
 
 type Action =
   | "burn"
@@ -11,6 +13,22 @@ type Action =
   | "status";
 
 export async function POST(request: Request) {
+  // Rate limit: destructive endpoint - use strict limits
+  const clientIP = getClientIP(request);
+  const rateLimit = await checkRateLimit(`incinerator:${clientIP}`, RATE_LIMITS.strict);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      {
+        error: "Too many requests. Please wait before trying again.",
+        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(rateLimit.resetIn / 1000)) },
+      }
+    );
+  }
+
   try {
     const body = await request.json();
     const { action, data } = body as { action: Action; data?: Record<string, unknown> };
@@ -23,6 +41,10 @@ export async function POST(request: Request) {
 
     if (!data?.userPublicKey) {
       return NextResponse.json({ error: "userPublicKey is required" }, { status: 400 });
+    }
+
+    if (!isValidSolanaAddress(data.userPublicKey)) {
+      return NextResponse.json({ error: "Invalid userPublicKey address" }, { status: 400 });
     }
 
     const client = getSolIncinerator();

@@ -411,33 +411,42 @@ async function fetchBagsWorldHolders(): Promise<BagsWorldHolder[]> {
       totalSupply = parseFloat(supplyData.result?.value?.amount || "0") / DECIMAL_DIVISOR;
     }
 
-    // Resolve owners for top accounts
+    // Resolve owners for top accounts — fire all RPC calls in parallel
     const topAccounts = accounts.slice(0, 10);
+
+    const ownerResults = await Promise.all(
+      topAccounts.map(async (account: { address: string; amount: string }) => {
+        try {
+          const ownerResponse = await fetch(rpcUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "getAccountInfo",
+              params: [account.address, { encoding: "jsonParsed" }],
+            }),
+          });
+
+          let ownerAddress = account.address;
+          if (ownerResponse.ok) {
+            const ownerData = await ownerResponse.json();
+            ownerAddress = ownerData.result?.value?.data?.parsed?.info?.owner || account.address;
+          }
+          return { account, ownerAddress };
+        } catch {
+          return { account, ownerAddress: account.address };
+        }
+      })
+    );
+
+    // Filter and rank sequentially (preserves original order from largest to smallest)
     const holders: BagsWorldHolder[] = [];
     let rank = 1;
 
-    for (const account of topAccounts) {
+    for (const { account, ownerAddress } of ownerResults) {
       if (holders.length >= 5) break;
 
-      // Resolve token account to owner wallet
-      const ownerResponse = await fetch(rpcUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getAccountInfo",
-          params: [account.address, { encoding: "jsonParsed" }],
-        }),
-      });
-
-      let ownerAddress = account.address;
-      if (ownerResponse.ok) {
-        const ownerData = await ownerResponse.json();
-        ownerAddress = ownerData.result?.value?.data?.parsed?.info?.owner || account.address;
-      }
-
-      // Skip excluded addresses (liquidity pools, etc.)
       if (EXCLUDED_HOLDER_ADDRESSES.has(ownerAddress)) {
         console.log(`[WorldState] Skipping excluded: ${ownerAddress.substring(0, 8)}...`);
         continue;
