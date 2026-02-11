@@ -293,7 +293,13 @@ export function TradingDiagnostics() {
       {/* MODAL                                                           */}
       {/* ================================================================ */}
       {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -411,7 +417,7 @@ export function TradingDiagnostics() {
                 <div className="bg-red-500/5 border border-red-500/30 p-4 text-center">
                   <p className="font-pixel text-[10px] text-red-400">{data.error}</p>
                   <p className="font-pixel text-[8px] text-gray-500 mt-2">
-                    Check AGENTS_API_URL and Railway deployment
+                    Ghost is resting. Check back soon.
                   </p>
                 </div>
               ) : (
