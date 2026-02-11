@@ -39,6 +39,7 @@ import {
   getExternalAgentBuildingsSync,
 } from "@/lib/agent-economy/external-registry";
 import { LAMPORTS_PER_SOL, lamportsToSol, formatSol } from "@/lib/solana-utils";
+import { pruneCache } from "@/lib/cache-utils";
 // ChadGhost runs externally via OpenClaw cron jobs — removed auto-start import
 
 // Bags SDK types
@@ -1018,7 +1019,21 @@ async function emitEventsToCoordinator(events: GameEvent[]): Promise<void> {
 }
 
 // POST - Get world state for specific tokens (token launch-centric)
+const MAX_SDK_CACHE = 200;
+const MAX_SPRITE_CACHE = 500;
+
 export async function POST(request: NextRequest) {
+  // Prune caches to prevent unbounded memory growth
+  pruneCache(sdkEnrichCache, MAX_SDK_CACHE, SDK_ENRICH_CACHE_TTL);
+  if (visitorSpriteCache.size > MAX_SPRITE_CACHE) {
+    const excess = visitorSpriteCache.size - MAX_SPRITE_CACHE;
+    const keys = visitorSpriteCache.keys();
+    for (let i = 0; i < excess; i++) {
+      const key = keys.next().value;
+      if (key !== undefined) visitorSpriteCache.delete(key);
+    }
+  }
+
   try {
     const body = await request.json();
     let registeredTokens: RegisteredToken[] = body.tokens || [];
@@ -1085,7 +1100,7 @@ export async function POST(request: NextRequest) {
     // Build arrays
     const tokens: TokenInfo[] = enrichedResults.map((r) => r.tokenInfo);
     const allClaimEvents: ClaimEvent[] = enrichedResults
-      .flatMap((r) => r.claimEvents)
+      .flatMap((r) => r.claimEvents.slice(0, 10)) // Cap per-token to avoid processing 10k+ events
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 20);
 
@@ -1115,7 +1130,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Aggregate all 24h claim events and calculate earnings per wallet
-    const allClaimEvents24h: ClaimEvent[] = enrichedResults.flatMap((r) => r.claimEvents24h);
+    const allClaimEvents24h: ClaimEvent[] = enrichedResults.flatMap((r) => r.claimEvents24h.slice(0, 50));
     const earnings24hPerWallet = calculate24hEarningsPerWallet(allClaimEvents24h);
 
     // Build fee earners from SDK creators AND registered fee shares

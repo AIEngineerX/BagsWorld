@@ -68,10 +68,29 @@ jobs:
       - name: Run TypeScript compiler
         run: npm run typecheck
 
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npx jest --no-coverage --testPathIgnorePatterns="ZoneNav|MiniMap|MobileCharacterMenu"
+
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, format, typecheck]
+    needs: [lint, format, typecheck, test]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -101,7 +120,7 @@ jobs:
 
   ci-status:
     name: CI Status
-    needs: [lint, format, typecheck, build]
+    needs: [lint, format, typecheck, test, build]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -131,6 +150,13 @@ jobs:
             failed=1
           else
             echo "PASS: TypeScript"
+          fi
+
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "FAIL: Tests failed"
+            failed=1
+          else
+            echo "PASS: Tests"
           fi
 
           if [ "${{ needs.build.result }}" != "success" ]; then

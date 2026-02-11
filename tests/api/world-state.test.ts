@@ -101,17 +101,17 @@ describe("World State API - Actual Route Handler Tests", () => {
       const response = await GET();
       const data = await response.json();
 
-      // GET may fail on first call due to missing SDK/cache, but should not throw
+      // Route must return a valid HTTP status
+      expect([200, 500]).toContain(response.status);
+
       if (response.status === 200) {
-        expect(data.health).toBeDefined();
         expect(data.health).toBeGreaterThanOrEqual(0);
         expect(data.health).toBeLessThanOrEqual(100);
         expect(data.weather).toBeDefined();
-        expect(Array.isArray(data.population)).toBe(true);
-        expect(Array.isArray(data.buildings)).toBe(true);
+        expect(data.population).toBeInstanceOf(Array);
+        expect(data.buildings).toBeInstanceOf(Array);
       } else {
-        // Error response should have error field
-        expect(data.error).toBeDefined();
+        expect(typeof data.error).toBe("string");
       }
     });
   });

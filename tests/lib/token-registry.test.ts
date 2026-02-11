@@ -343,9 +343,10 @@ describe("Token Registry", () => {
       expect(tokens[0].isGlobal).toBe(true);
     });
 
-    it("should use cache within duration", async () => {
-      // Note: The cache is module-level, so we can't easily test caching
-      // without more complex setup. Instead, verify the function works.
+    it("should return tokens (possibly cached from prior test)", async () => {
+      // Module-level cache means previous test's data may persist.
+      // This test verifies the function returns a real array of LaunchedToken objects,
+      // not just that Array.isArray is true.
       mockFetch.mockReset();
       mockFetch.mockResolvedValue({
         ok: true,
@@ -356,28 +357,19 @@ describe("Token Registry", () => {
           }),
       });
 
-      // Call fetchGlobalTokens - it should return tokens
       const tokens = await fetchGlobalTokens();
-      expect(Array.isArray(tokens)).toBe(true);
+      expect(tokens).toBeInstanceOf(Array);
+      // Verify every element has the required LaunchedToken shape
+      for (const t of tokens) {
+        expect(t).toHaveProperty("mint");
+        expect(typeof t.mint).toBe("string");
+        expect(t.mint.length).toBeGreaterThan(0);
+      }
     });
 
-    it("should handle API errors gracefully when cache is empty", async () => {
-      // Start fresh
-      mockFetch.mockReset();
-
-      // First call succeeds to populate cache
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            configured: true,
-            tokens: [],
-          }),
-      });
-
-      await fetchGlobalTokens();
-
-      // Clear mock and make subsequent call fail - should return cached or empty
+    it("should handle API errors gracefully - returns array and does not throw", async () => {
+      // Due to module-level caching, this may return cached data from earlier tests.
+      // The key assertion: the function NEVER throws, always returns LaunchedToken[].
       mockFetch.mockReset();
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -388,26 +380,32 @@ describe("Token Registry", () => {
       const consoleSpy = jest.spyOn(console, "error").mockImplementation();
       const tokens = await fetchGlobalTokens();
 
-      // Should return array (possibly from cache or empty)
-      expect(Array.isArray(tokens)).toBe(true);
+      // Must return array (cached or empty), not throw
+      expect(tokens).toBeInstanceOf(Array);
+      // Every returned element must have a mint (valid LaunchedToken shape)
+      for (const t of tokens) {
+        expect(t).toHaveProperty("mint");
+      }
       consoleSpy.mockRestore();
     });
 
-    it("should handle network errors gracefully", async () => {
+    it("should handle network errors gracefully - returns array and does not throw", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
       const consoleSpy = jest.spyOn(console, "error").mockImplementation();
       const tokens = await fetchGlobalTokens();
 
-      // Should return array (may return cached data or empty array)
-      // The function gracefully handles errors without throwing
-      expect(Array.isArray(tokens)).toBe(true);
+      // Must return array, not throw
+      expect(tokens).toBeInstanceOf(Array);
+      for (const t of tokens) {
+        expect(t).toHaveProperty("mint");
+      }
       consoleSpy.mockRestore();
     });
 
-    it("should handle unconfigured database", async () => {
-      // Note: Due to caching, we test the configured=false path
-      // by checking the function doesn't throw and returns array
+    it("should handle unconfigured database - returns array", async () => {
+      // Due to caching, may return cached data. The point:
+      // configured=false doesn't crash the function.
       mockFetch.mockReset();
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -417,15 +415,16 @@ describe("Token Registry", () => {
       const consoleSpy = jest.spyOn(console, "log").mockImplementation();
       const tokens = await fetchGlobalTokens();
 
-      // Should return array (may have cached data)
-      expect(Array.isArray(tokens)).toBe(true);
+      expect(tokens).toBeInstanceOf(Array);
+      for (const t of tokens) {
+        expect(t).toHaveProperty("mint");
+      }
       consoleSpy.mockRestore();
     });
 
-    it("should parse fee_shares when available", async () => {
-      // Note: Due to module-level caching, comprehensive fee_shares
-      // parsing tests would require resetting the module cache.
-      // Here we verify the basic structure is maintained.
+    it("should parse fee_shares when available - returns tokens with feeShares", async () => {
+      // Due to module-level caching, we may get previously cached data.
+      // The key test: the function doesn't crash with fee_shares present.
       mockFetch.mockReset();
       mockFetch.mockResolvedValue({
         ok: true,
@@ -445,11 +444,14 @@ describe("Token Registry", () => {
       });
 
       const tokens = await fetchGlobalTokens();
-      expect(Array.isArray(tokens)).toBe(true);
+      expect(tokens).toBeInstanceOf(Array);
+      expect(tokens.length).toBeGreaterThan(0);
+      // Verify returned tokens have proper shape (mint is required)
+      expect(tokens[0]).toHaveProperty("mint");
+      expect(typeof tokens[0].mint).toBe("string");
     });
 
-    it("should handle malformed fee_shares gracefully", async () => {
-      // Test that malformed data doesn't crash the function
+    it("should handle malformed fee_shares gracefully - does not crash", async () => {
       mockFetch.mockReset();
       mockFetch.mockResolvedValue({
         ok: true,
@@ -471,8 +473,10 @@ describe("Token Registry", () => {
       const consoleSpy = jest.spyOn(console, "error").mockImplementation();
       const tokens = await fetchGlobalTokens();
 
-      // Should return array and not crash
-      expect(Array.isArray(tokens)).toBe(true);
+      // Must return array, not crash. Every element has a mint.
+      expect(tokens).toBeInstanceOf(Array);
+      expect(tokens.length).toBeGreaterThan(0);
+      expect(tokens[0]).toHaveProperty("mint");
       consoleSpy.mockRestore();
     });
   });

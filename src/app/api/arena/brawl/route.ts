@@ -93,44 +93,48 @@ export async function GET(request: NextRequest) {
 
       // If engine has no matches, check database
       if (activeMatches.length === 0) {
-        const dbMatches = await getActiveMatches();
-        // Fetch fighter details for each match
-        const matchesWithFighters = await Promise.all(
-          dbMatches.map(async (m) => {
-            const [fighter1, fighter2] = await Promise.all([
-              getFighterById(m.fighter1_id),
-              getFighterById(m.fighter2_id),
-            ]);
-            return {
-              matchId: m.id,
-              status: m.status,
-              fighter1: fighter1
-                ? {
-                    id: fighter1.id,
-                    username: fighter1.moltbook_username,
-                    karma: fighter1.moltbook_karma,
-                    hp: m.fighter1_hp ?? fighter1.hp,
-                    maxHp: fighter1.hp,
-                  }
-                : null,
-              fighter2: fighter2
-                ? {
-                    id: fighter2.id,
-                    username: fighter2.moltbook_username,
-                    karma: fighter2.moltbook_karma,
-                    hp: m.fighter2_hp ?? fighter2.hp,
-                    maxHp: fighter2.hp,
-                  }
-                : null,
-              created_at: m.created_at,
-            };
-          })
-        );
-        return NextResponse.json({
-          success: true,
-          matches: matchesWithFighters,
-          source: "database",
-        });
+        try {
+          const dbMatches = await getActiveMatches();
+          const matchesWithFighters = await Promise.all(
+            dbMatches.map(async (m) => {
+              const [fighter1, fighter2] = await Promise.all([
+                getFighterById(m.fighter1_id).catch(() => null),
+                getFighterById(m.fighter2_id).catch(() => null),
+              ]);
+              return {
+                matchId: m.id,
+                status: m.status,
+                fighter1: fighter1
+                  ? {
+                      id: fighter1.id,
+                      username: fighter1.moltbook_username,
+                      karma: fighter1.moltbook_karma,
+                      hp: m.fighter1_hp ?? fighter1.hp,
+                      maxHp: fighter1.hp,
+                    }
+                  : null,
+                fighter2: fighter2
+                  ? {
+                      id: fighter2.id,
+                      username: fighter2.moltbook_username,
+                      karma: fighter2.moltbook_karma,
+                      hp: m.fighter2_hp ?? fighter2.hp,
+                      maxHp: fighter2.hp,
+                    }
+                  : null,
+                created_at: m.created_at,
+              };
+            })
+          );
+          return NextResponse.json({
+            success: true,
+            matches: matchesWithFighters,
+            source: "database",
+          });
+        } catch (e) {
+          console.error("[arena/brawl] Failed to fetch matches from DB:", e);
+          return NextResponse.json({ success: true, matches: [], source: "database" });
+        }
       }
 
       return NextResponse.json({

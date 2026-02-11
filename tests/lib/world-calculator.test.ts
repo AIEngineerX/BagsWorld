@@ -73,22 +73,31 @@ describe("calculateWorldHealth", () => {
       expect(health5).toBeGreaterThanOrEqual(health3);
     });
 
-    it("should score 50-70 for claim volume 5-20 SOL (normal)", () => {
+    it("should score in 30-55 range for claim volume 5-20 SOL (normal)", () => {
       const health5 = calculateWorldHealth(5, 0, 0, 0);
       const health10 = calculateWorldHealth(10, 0, 0, 0);
       const health20 = calculateWorldHealth(20, 0, 0, 0);
 
+      // Ordering
       expect(health10).toBeGreaterThan(health5);
       expect(health20).toBeGreaterThan(health10);
+      // Actual range: claim score 50-70 * 0.6 weight = 30-42, baseline max 25
+      // So health should be in the 30-55 range
+      expect(health5).toBeGreaterThanOrEqual(30);
+      expect(health20).toBeLessThanOrEqual(55);
     });
 
-    it("should score 70-90 for claim volume 20-50 SOL (healthy)", () => {
+    it("should score in 42-60 range for claim volume 20-50 SOL (healthy)", () => {
       const health20 = calculateWorldHealth(20, 0, 0, 0);
       const health35 = calculateWorldHealth(35, 0, 0, 0);
       const health50 = calculateWorldHealth(50, 0, 0, 0);
 
+      // Ordering
       expect(health35).toBeGreaterThan(health20);
       expect(health50).toBeGreaterThan(health35);
+      // Actual range: claim score 70-90 * 0.6 weight = 42-54
+      expect(health20).toBeGreaterThanOrEqual(42);
+      expect(health50).toBeLessThanOrEqual(60);
     });
 
     it("should score 90-100 for claim volume >= 50 SOL (thriving)", () => {
@@ -141,8 +150,27 @@ describe("calculateWorldHealth", () => {
     it("should cap diversity bonus at 10 tokens", () => {
       const health10 = calculateWorldHealth(50, 500, 10, 0);
       const health20 = calculateWorldHealth(50, 500, 20, 0);
-      // Both should give 100% diversity score (capped), so same result
+      // Both should give 100% diversity score (capped at 10*10=100), so same result
       expect(health20).toBe(health10);
+    });
+
+    it("should contribute ~10% weight per token (diversity formula verification)", () => {
+      // With high claims and fees to ensure activity health dominates baseline,
+      // adding tokens should increase health by roughly 1 point per token
+      // (10% weight * 10 points per token = 1 point per token added)
+      const health0 = calculateWorldHealth(50, 500, 0, 0);
+      const health1 = calculateWorldHealth(50, 500, 1, 0);
+      const health5 = calculateWorldHealth(50, 500, 5, 0);
+
+      // 1 token adds ~1 point (10% * 10)
+      const delta1 = health1 - health0;
+      expect(delta1).toBeGreaterThanOrEqual(0);
+      expect(delta1).toBeLessThanOrEqual(2); // ~1 point with rounding
+
+      // 5 tokens should add ~5 points total from 0
+      const delta5 = health5 - health0;
+      expect(delta5).toBeGreaterThanOrEqual(3);
+      expect(delta5).toBeLessThanOrEqual(7); // ~5 points with rounding
     });
   });
 
@@ -1174,10 +1202,10 @@ describe("buildWorldState", () => {
     };
 
     const state = buildWorldState(mockEarners, mockTokens, undefined, highHealthMetrics);
-    // High health = sunny
-    if (state.health >= 80) {
-      expect(state.weather).toBe("sunny");
-    }
+    // With 100 SOL claims + 2000 lifetime fees + 15 tokens, health should be very high
+    expect(state.health).toBeGreaterThanOrEqual(80);
+    // High health must produce sunny weather (unconditional assertion)
+    expect(state.weather).toBe("sunny");
   });
 
   it("should preserve character positions from previous state", () => {
