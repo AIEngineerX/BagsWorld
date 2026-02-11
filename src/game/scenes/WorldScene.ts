@@ -5857,6 +5857,7 @@ export class WorldScene extends Phaser.Scene {
     const isTradingTerminal =
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
     const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
+    const isTreasury = building.id.startsWith("Treasury");
     const isBagsWorldHQ = building.isFloating || building.symbol === "BAGSWORLD";
     const isMansion = building.isMansion;
 
@@ -5894,7 +5895,9 @@ export class WorldScene extends Phaser.Scene {
                 ? "terminal"
                 : isOracle
                   ? "oracle_tower"
-                  : isBeachBuilding
+                  : isTreasury
+                    ? "treasury"
+                    : isBeachBuilding
                     ? `beach_building_${beachBuildingLevel}`
                     : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
@@ -5918,7 +5921,9 @@ export class WorldScene extends Phaser.Scene {
                   ? 1.0
                   : isOracle
                     ? 1.0
-                    : buildingScale
+                    : isTreasury
+                      ? 1.0
+                      : buildingScale
     );
     container.add(sprite);
 
