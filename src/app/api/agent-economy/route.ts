@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
         if (agent instanceof NextResponse) return agent;
 
         const [isAuth, balance, claimable] = await Promise.all([
-          agent.isAuthenticated(),
+          agent.isAuthenticated().catch(() => false),
           agent.getBalance().catch(() => ({ sol: 0, wallets: [] })),
           agent.getClaimableFees().catch(() => ({ positions: [], totalSol: 0 })),
         ]);

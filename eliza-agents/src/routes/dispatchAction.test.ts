@@ -159,9 +159,7 @@ describe("dispatchAction", () => {
       );
       // Oracle actions return null because fetchOracle returns { error: 'mocked' }
       // This is expected — the evaluator fires but the action handler fails gracefully
-      // The function may return null or the action's error text
-      // Either outcome is acceptable — the key is it doesn't throw
-      expect(true).toBe(true);
+      expect(result === null || typeof result === "string").toBe(true);
     });
   });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAllWorldTokensAsync } from "@/lib/token-registry";
 import { initBagsApi } from "@/lib/bags-api";
 import { isValidSolanaAddress } from "@/lib/env-utils";
+import { pruneCache } from "@/lib/cache-utils";
 
 interface TokenWithMetrics {
   mint: string;
@@ -89,8 +90,18 @@ const DEX_CACHE_TTL = 20000; // 20 seconds for price data
 const TOKEN_DETAIL_CACHE_TTL = 10000; // 10 seconds for detailed info
 const TRADES_CACHE_TTL = 5000; // 5 seconds for recent trades
 const HOLDERS_CACHE_TTL = 60000; // 60 seconds for holders
+const MAX_CACHE_ENTRIES = 500; // Cap per-map to prevent unbounded growth
 
 export async function GET(request: NextRequest) {
+  // Prune caches to prevent unbounded memory growth
+  pruneCache(poolCache, MAX_CACHE_ENTRIES, POOL_CACHE_TTL);
+  pruneCache(ohlcvCache, MAX_CACHE_ENTRIES, OHLCV_CACHE_TTL);
+  pruneCache(dexScreenerCache, MAX_CACHE_ENTRIES, DEX_CACHE_TTL);
+  pruneCache(tokenDetailCache, MAX_CACHE_ENTRIES, TOKEN_DETAIL_CACHE_TTL);
+  pruneCache(tradesCache, MAX_CACHE_ENTRIES, TRADES_CACHE_TTL);
+  pruneCache(holdersCache, MAX_CACHE_ENTRIES, HOLDERS_CACHE_TTL);
+  pruneCache(feesCache, MAX_CACHE_ENTRIES, FEES_CACHE_TTL);
+
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action");
   const sortBy = searchParams.get("sortBy") || "volume";
@@ -140,15 +151,16 @@ export async function GET(request: NextRequest) {
       }
       return handlePoolDiscovery(mint);
     case "history":
-      return NextResponse.json({ trades: [], total: 0 });
+      return NextResponse.json({ error: "Trade history not yet implemented" }, { status: 501 });
     case "leaderboard":
-      return NextResponse.json({ traders: [] });
+      return NextResponse.json({ error: "Leaderboard not yet implemented" }, { status: 501 });
     case "fees":
       if (!mint) {
         return NextResponse.json({ error: "mint parameter required" }, { status: 400 });
       }
       return handleFees(mint);
     case "portfolio":
+      // Frontend calls this — return empty data rather than 501 to avoid console errors
       return NextResponse.json({ holdings: [], totalValue: 0 });
     default:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });

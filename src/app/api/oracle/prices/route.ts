@@ -45,66 +45,74 @@ export async function GET() {
     });
   }
 
-  const round = await getActiveOracleRound();
+  try {
+    const round = await getActiveOracleRound();
 
-  if (!round || round.status !== "active") {
-    return NextResponse.json({
-      status: "none",
-      message: "No active prediction round",
-    });
-  }
-
-  // Fetch current prices for all tokens
-  const pricePromises = round.tokenOptions.map(async (token) => {
-    const currentPrice = await getCurrentPrice(token.mint);
-    const startPrice = token.startPrice;
-
-    let priceChange = 0;
-    let priceChangePercent = 0;
-
-    if (currentPrice !== null && startPrice > 0) {
-      priceChange = currentPrice - startPrice;
-      priceChangePercent = ((currentPrice - startPrice) / startPrice) * 100;
+    if (!round || round.status !== "active") {
+      return NextResponse.json({
+        status: "none",
+        message: "No active prediction round",
+      });
     }
 
-    return {
-      mint: token.mint,
-      symbol: token.symbol,
-      name: token.name,
-      startPrice,
-      currentPrice,
-      priceChange,
-      priceChangePercent: Math.round(priceChangePercent * 100) / 100,
-      imageUrl: token.imageUrl,
-    };
-  });
+    // Fetch current prices for all tokens
+    const pricePromises = round.tokenOptions.map(async (token) => {
+      const currentPrice = await getCurrentPrice(token.mint);
+      const startPrice = token.startPrice;
 
-  const tokenPrices = await Promise.all(pricePromises);
+      let priceChange = 0;
+      let priceChangePercent = 0;
 
-  // Sort by price change (leader first)
-  const sortedPrices = tokenPrices.sort((a, b) => b.priceChangePercent - a.priceChangePercent);
+      if (currentPrice !== null && startPrice > 0) {
+        priceChange = currentPrice - startPrice;
+        priceChangePercent = ((currentPrice - startPrice) / startPrice) * 100;
+      }
 
-  // Identify current leader
-  const leader = sortedPrices[0];
+      return {
+        mint: token.mint,
+        symbol: token.symbol,
+        name: token.name,
+        startPrice,
+        currentPrice,
+        priceChange,
+        priceChangePercent: Math.round(priceChangePercent * 100) / 100,
+        imageUrl: token.imageUrl,
+      };
+    });
 
-  // Calculate time remaining
-  const endTime = new Date(round.endTime);
-  const now = new Date();
-  const remainingMs = Math.max(0, endTime.getTime() - now.getTime());
+    const tokenPrices = await Promise.all(pricePromises);
 
-  return NextResponse.json({
-    roundId: round.id,
-    status: round.status,
-    remainingMs,
-    entryCount: round.entryCount,
-    leader: leader
-      ? {
-          mint: leader.mint,
-          symbol: leader.symbol,
-          priceChangePercent: leader.priceChangePercent,
-        }
-      : null,
-    tokens: sortedPrices,
-    lastUpdated: new Date().toISOString(),
-  });
+    // Sort by price change (leader first)
+    const sortedPrices = tokenPrices.sort((a, b) => b.priceChangePercent - a.priceChangePercent);
+
+    // Identify current leader
+    const leader = sortedPrices[0];
+
+    // Calculate time remaining
+    const endTime = new Date(round.endTime);
+    const now = new Date();
+    const remainingMs = Math.max(0, endTime.getTime() - now.getTime());
+
+    return NextResponse.json({
+      roundId: round.id,
+      status: round.status,
+      remainingMs,
+      entryCount: round.entryCount,
+      leader: leader
+        ? {
+            mint: leader.mint,
+            symbol: leader.symbol,
+            priceChangePercent: leader.priceChangePercent,
+          }
+        : null,
+      tokens: sortedPrices,
+      lastUpdated: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("[oracle/prices] Failed to fetch prices:", error);
+    return NextResponse.json(
+      { status: "error", message: "Failed to fetch oracle prices" },
+      { status: 500 }
+    );
+  }
 }
