@@ -389,6 +389,80 @@ export class SolanaService extends Service {
   }
 
   /**
+   * Get top holder concentration for a token mint.
+   * Uses getTokenLargestAccounts + getTokenSupply to detect bundled tokens.
+   * Returns null on any error (graceful degradation - never blocks trading).
+   */
+  async getTopHolderConcentration(
+    mint: string
+  ): Promise<{ top5Pct: number; top10Pct: number; largestPct: number } | null> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const [largestRes, supplyRes] = await Promise.all([
+        fetch(this.rpcUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getTokenLargestAccounts",
+            params: [mint],
+          }),
+        }),
+        fetch(this.rpcUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "getTokenSupply",
+            params: [mint],
+          }),
+        }),
+      ]);
+
+      clearTimeout(timeout);
+
+      const largestData = await largestRes.json();
+      const supplyData = await supplyRes.json();
+
+      if (largestData.error || supplyData.error) {
+        console.warn("[SolanaService] Concentration RPC error:", largestData.error || supplyData.error);
+        return null;
+      }
+
+      const accounts = largestData.result?.value;
+      const totalSupply = parseFloat(supplyData.result?.value?.amount || "0");
+
+      if (!accounts || accounts.length === 0 || totalSupply === 0) {
+        return null;
+      }
+
+      // Sort by amount descending (should already be sorted, but be safe)
+      const sorted = accounts
+        .map((a: { amount: string }) => parseFloat(a.amount || "0"))
+        .sort((a: number, b: number) => b - a);
+
+      const top5Sum = sorted.slice(0, 5).reduce((s: number, v: number) => s + v, 0);
+      const top10Sum = sorted.slice(0, 10).reduce((s: number, v: number) => s + v, 0);
+      const largest = sorted[0] || 0;
+
+      return {
+        top5Pct: (top5Sum / totalSupply) * 100,
+        top10Pct: (top10Sum / totalSupply) * 100,
+        largestPct: (largest / totalSupply) * 100,
+      };
+    } catch (error) {
+      console.warn("[SolanaService] Concentration check failed (continuing):", error instanceof Error ? error.message : "unknown");
+      return null;
+    }
+  }
+
+  /**
    * Get recent blockhash
    */
   async getRecentBlockhash(): Promise<{ blockhash: string; lastValidBlockHeight: number }> {
