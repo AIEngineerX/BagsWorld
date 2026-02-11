@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 
 // =============================================================================
 // TYPES
@@ -75,6 +75,33 @@ function isAllowedImageUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB limit for generated images
+
+/** Fetch an image URL from a trusted domain, validate size, return as base64 data URL. */
+async function fetchImageAsBase64(url: string): Promise<string> {
+  if (!isAllowedImageUrl(url)) {
+    throw new Error("Image URL from untrusted domain");
+  }
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch generated image: ${response.status}`);
+  }
+
+  const contentLength = response.headers.get("content-length");
+  if (contentLength && parseInt(contentLength, 10) > MAX_IMAGE_BYTES) {
+    throw new Error("Generated image exceeds 10MB size limit");
+  }
+
+  const buffer = await response.arrayBuffer();
+  if (buffer.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error("Generated image exceeds 10MB size limit");
+  }
+
+  const contentType = response.headers.get("content-type") || "image/png";
+  return `data:${contentType};base64,${Buffer.from(buffer).toString("base64")}`;
 }
 
 // Style-specific prompt modifiers for image generation
@@ -294,107 +321,7 @@ async function generateImageWithFal(
     throw new Error("No image returned from fal.ai");
   }
 
-  // fal.ai returns a URL - fetch and convert to base64
-  // SSRF Protection: Validate URL is from trusted CDN
-  const imageUrl = result.images[0].url;
-  if (!isAllowedImageUrl(imageUrl)) {
-    console.error("[oak-generate] Untrusted image URL from fal.ai:", imageUrl);
-    throw new Error("Image URL from untrusted domain");
-  }
-
-  const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB limit for generated images
-  const imageResponse = await fetch(imageUrl);
-
-  if (!imageResponse.ok) {
-    throw new Error(`Failed to fetch generated image: ${imageResponse.status}`);
-  }
-
-  const contentLength = imageResponse.headers.get("content-length");
-  if (contentLength && parseInt(contentLength, 10) > MAX_IMAGE_BYTES) {
-    throw new Error("Generated image exceeds 10MB size limit");
-  }
-
-  const imageBuffer = await imageResponse.arrayBuffer();
-  if (imageBuffer.byteLength > MAX_IMAGE_BYTES) {
-    throw new Error("Generated image exceeds 10MB size limit");
-  }
-
-  const base64 = Buffer.from(imageBuffer).toString("base64");
-  const contentType = imageResponse.headers.get("content-type") || "image/png";
-
-  return `data:${contentType};base64,${base64}`;
-}
-
-// =============================================================================
-// FAL.AI FLUX PRO (Higher Quality Option)
-// =============================================================================
-
-async function generateImageWithFalPro(
-  prompt: string,
-  width: number,
-  height: number,
-  style: string
-): Promise<string> {
-  const styleModifier = STYLE_PROMPTS[style] || STYLE_PROMPTS["pixel-art"];
-
-  const fullPrompt = `${prompt}, ${styleModifier}, high quality, professional, centered composition, solid background`;
-
-  // Use flux/dev for higher quality (slower but better)
-  const model = "fal-ai/flux/dev";
-
-  const response = await fetch(`https://fal.run/${model}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Key ${FAL_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      prompt: fullPrompt,
-      image_size: { width, height },
-      num_images: 1,
-      num_inference_steps: 28, // dev uses more steps for quality
-      guidance_scale: 3.5,
-      enable_safety_checker: true,
-      output_format: "png",
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`fal.ai error: ${response.status} - ${errorText}`);
-  }
-
-  const result = await response.json();
-  const imageUrl = result.images[0].url;
-
-  // SSRF Protection: Validate URL is from trusted CDN
-  if (!isAllowedImageUrl(imageUrl)) {
-    console.error("[oak-generate] Untrusted image URL from fal.ai:", imageUrl);
-    throw new Error("Image URL from untrusted domain");
-  }
-
-  // Fetch and convert to base64
-  const MAX_BANNER_BYTES = 10 * 1024 * 1024;
-  const imageResponse = await fetch(imageUrl);
-
-  if (!imageResponse.ok) {
-    throw new Error(`Failed to fetch generated banner: ${imageResponse.status}`);
-  }
-
-  const contentLength = imageResponse.headers.get("content-length");
-  if (contentLength && parseInt(contentLength, 10) > MAX_BANNER_BYTES) {
-    throw new Error("Generated banner exceeds 10MB size limit");
-  }
-
-  const imageBuffer = await imageResponse.arrayBuffer();
-  if (imageBuffer.byteLength > MAX_BANNER_BYTES) {
-    throw new Error("Generated banner exceeds 10MB size limit");
-  }
-
-  const base64 = Buffer.from(imageBuffer).toString("base64");
-  const contentType = imageResponse.headers.get("content-type") || "image/png";
-
-  return `data:${contentType};base64,${base64}`;
+  return fetchImageAsBase64(result.images[0].url);
 }
 
 async function generateImageWithReplicate(
@@ -459,34 +386,11 @@ async function generateImageWithReplicate(
     const status = await statusResponse.json();
 
     if (status.status === "succeeded" && status.output?.[0]) {
-      // SSRF Protection: Validate URL is from trusted CDN
-      const imageUrl = status.output[0];
-      if (!isAllowedImageUrl(imageUrl)) {
-        console.error("[oak-generate] Untrusted image URL from Replicate:", imageUrl);
+      try {
+        return await fetchImageAsBase64(status.output[0]);
+      } catch {
         return generateProceduralImage(prompt, width, height, style);
       }
-
-      // Fetch the image and convert to base64
-      const MAX_REPLICATE_BYTES = 10 * 1024 * 1024;
-      const imageResponse = await fetch(imageUrl);
-
-      if (!imageResponse.ok) {
-        return generateProceduralImage(prompt, width, height, style);
-      }
-
-      const contentLength = imageResponse.headers.get("content-length");
-      if (contentLength && parseInt(contentLength, 10) > MAX_REPLICATE_BYTES) {
-        return generateProceduralImage(prompt, width, height, style);
-      }
-
-      const imageBuffer = await imageResponse.arrayBuffer();
-      if (imageBuffer.byteLength > MAX_REPLICATE_BYTES) {
-        return generateProceduralImage(prompt, width, height, style);
-      }
-
-      const base64 = Buffer.from(imageBuffer).toString("base64");
-      const mimeType = imageResponse.headers.get("content-type") || "image/png";
-      return `data:${mimeType};base64,${base64}`;
     }
 
     if (status.status === "failed") {
@@ -764,8 +668,7 @@ async function fullWizard(
 
 export async function POST(request: NextRequest): Promise<NextResponse<GenerateResponse>> {
   // Rate limit: 10 requests per minute per IP (expensive AI API calls)
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rateLimit = await checkRateLimit(`oak-generate:${ip}`, {
+  const rateLimit = await checkRateLimit(`oak-generate:${getClientIP(request)}`, {
     limit: 10,
     windowMs: 60_000,
   });

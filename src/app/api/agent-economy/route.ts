@@ -44,6 +44,20 @@ async function ensureTablesExist() {
   }
 }
 
+/** Resolve agentId param to an AgentEconomy instance, or return an error response. */
+async function resolveAgent(
+  agentId: string | null
+): Promise<NextResponse | NonNullable<Awaited<ReturnType<typeof AgentEconomy.get>>>> {
+  if (!agentId) {
+    return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
+  }
+  const agent = await AgentEconomy.get(agentId);
+  if (!agent) {
+    return NextResponse.json({ success: false, error: "Agent not found" }, { status: 404 });
+  }
+  return agent;
+}
+
 // Admin auth check - always requires ADMIN_API_SECRET, fail closed
 function isAuthorized(request: NextRequest): boolean {
   const authHeader = request.headers.get("Authorization");
@@ -93,15 +107,8 @@ export async function GET(request: NextRequest) {
       }
 
       case "status": {
-        // Get specific agent status
-        if (!agentId) {
-          return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
-        }
-
-        const agent = await AgentEconomy.get(agentId);
-        if (!agent) {
-          return NextResponse.json({ success: false, error: "Agent not found" }, { status: 404 });
-        }
+        const agent = await resolveAgent(agentId);
+        if (agent instanceof NextResponse) return agent;
 
         const [isAuth, balance, claimable] = await Promise.all([
           agent.isAuthenticated(),
@@ -125,15 +132,8 @@ export async function GET(request: NextRequest) {
       }
 
       case "actions": {
-        // Get agent action history
-        if (!agentId) {
-          return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
-        }
-
-        const agent = await AgentEconomy.get(agentId);
-        if (!agent) {
-          return NextResponse.json({ success: false, error: "Agent not found" }, { status: 404 });
-        }
+        const agent = await resolveAgent(agentId);
+        if (agent instanceof NextResponse) return agent;
 
         const limit = parseInt(searchParams.get("limit") || "50", 10);
         const actions = await agent.getActions(limit);
@@ -148,15 +148,8 @@ export async function GET(request: NextRequest) {
       }
 
       case "balance": {
-        // Get agent balance details
-        if (!agentId) {
-          return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
-        }
-
-        const agent = await AgentEconomy.get(agentId);
-        if (!agent) {
-          return NextResponse.json({ success: false, error: "Agent not found" }, { status: 404 });
-        }
+        const agent = await resolveAgent(agentId);
+        if (agent instanceof NextResponse) return agent;
 
         const balance = await agent.getBalance();
 
@@ -174,15 +167,8 @@ export async function GET(request: NextRequest) {
       }
 
       case "claimable": {
-        // Get claimable fees
-        if (!agentId) {
-          return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
-        }
-
-        const agent = await AgentEconomy.get(agentId);
-        if (!agent) {
-          return NextResponse.json({ success: false, error: "Agent not found" }, { status: 404 });
-        }
+        const agent = await resolveAgent(agentId);
+        if (agent instanceof NextResponse) return agent;
 
         const claimable = await agent.getClaimableFees();
 
@@ -282,11 +268,9 @@ export async function GET(request: NextRequest) {
       }
 
       case "portfolio": {
-        // Get agent portfolio state
         if (!agentId) {
           return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
         }
-
         const portfolio = await getPortfolioState(agentId);
         return NextResponse.json({
           success: true,
@@ -306,11 +290,9 @@ export async function GET(request: NextRequest) {
       }
 
       case "brain-preview": {
-        // Preview what the brain would decide (no execution)
         if (!agentId) {
           return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
         }
-
         const strategy = (searchParams.get("strategy") || "conservative") as
           | "conservative"
           | "diversify"
@@ -457,122 +439,78 @@ export async function POST(request: NextRequest) {
     }
 
     // ===== AGENT-SPECIFIC ACTIONS (require agentId) =====
+    {
+      const agent = await resolveAgent(agentId);
+      if (agent instanceof NextResponse) return agent;
 
-    if (!agentId) {
-      return NextResponse.json({ success: false, error: "agentId required" }, { status: 400 });
-    }
-
-    const agent = await AgentEconomy.get(agentId);
-    if (!agent) {
-      return NextResponse.json({ success: false, error: "Agent not found" }, { status: 404 });
-    }
-
-    switch (action) {
-      case "claim": {
-        // Claim all available fees
-        const result = await agent.claimFees();
-        return NextResponse.json({
-          success: true,
-          result: {
-            claimed: result.claimed,
-            amountSol: result.amount,
-            signatures: result.signatures,
-          },
-        });
-      }
-
-      case "buy": {
-        // Buy a token
-        const { tokenMint, solAmount } = params;
-        if (!tokenMint || !solAmount) {
-          return NextResponse.json(
-            { success: false, error: "tokenMint and solAmount required" },
-            { status: 400 }
-          );
-        }
-
-        const result = await agent.buy(tokenMint, solAmount);
-        return NextResponse.json({ success: true, result });
-      }
-
-      case "sell": {
-        // Sell a token
-        const { tokenMint, tokenAmount } = params;
-        if (!tokenMint || !tokenAmount) {
-          return NextResponse.json(
-            { success: false, error: "tokenMint and tokenAmount required" },
-            { status: 400 }
-          );
-        }
-
-        const result = await agent.sell(tokenMint, tokenAmount);
-        return NextResponse.json({ success: true, result });
-      }
-
-      case "preview": {
-        // Preview a buy
-        const { tokenMint, solAmount } = params;
-        if (!tokenMint || !solAmount) {
-          return NextResponse.json(
-            { success: false, error: "tokenMint and solAmount required" },
-            { status: 400 }
-          );
-        }
-
-        const result = await agent.previewBuy(tokenMint, solAmount);
-        return NextResponse.json({ success: true, result });
-      }
-
-      case "launch": {
-        // Launch a token
-        const { name, symbol, description, imageUrl, initialBuySol, feeClaimers } = params;
-        if (!name || !symbol || !description || !imageUrl) {
-          return NextResponse.json(
-            { success: false, error: "name, symbol, description, imageUrl required" },
-            { status: 400 }
-          );
-        }
-
-        const wallet = await agent.getWallet();
-        const config = {
-          name,
-          symbol,
-          description,
-          imageUrl,
-          initialBuyLamports: initialBuySol
-            ? Math.floor(initialBuySol * 1_000_000_000)
-            : 10_000_000,
-          feeClaimers: feeClaimers || [{ user: wallet, userBps: 10000 }],
-        };
-
-        const result = await agent.launch(config);
-        return NextResponse.json({ success: true, result });
-      }
-
-      case "launchFor": {
-        // Launch for another agent
-        const {
-          targetUsername,
-          name,
-          symbol,
-          description,
-          imageUrl,
-          initialBuySol,
-          mySharePercent,
-        } = params;
-        if (!targetUsername || !name || !symbol || !description || !imageUrl) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "targetUsername, name, symbol, description, imageUrl required",
+      switch (action) {
+        case "claim": {
+          // Claim all available fees
+          const result = await agent.claimFees();
+          return NextResponse.json({
+            success: true,
+            result: {
+              claimed: result.claimed,
+              amountSol: result.amount,
+              signatures: result.signatures,
             },
-            { status: 400 }
-          );
+          });
         }
 
-        const result = await agent.launchFor(
-          targetUsername,
-          {
+        case "buy": {
+          // Buy a token
+          const { tokenMint, solAmount } = params;
+          if (!tokenMint || !solAmount) {
+            return NextResponse.json(
+              { success: false, error: "tokenMint and solAmount required" },
+              { status: 400 }
+            );
+          }
+
+          const result = await agent.buy(tokenMint, solAmount);
+          return NextResponse.json({ success: true, result });
+        }
+
+        case "sell": {
+          // Sell a token
+          const { tokenMint, tokenAmount } = params;
+          if (!tokenMint || !tokenAmount) {
+            return NextResponse.json(
+              { success: false, error: "tokenMint and tokenAmount required" },
+              { status: 400 }
+            );
+          }
+
+          const result = await agent.sell(tokenMint, tokenAmount);
+          return NextResponse.json({ success: true, result });
+        }
+
+        case "preview": {
+          // Preview a buy
+          const { tokenMint, solAmount } = params;
+          if (!tokenMint || !solAmount) {
+            return NextResponse.json(
+              { success: false, error: "tokenMint and solAmount required" },
+              { status: 400 }
+            );
+          }
+
+          const result = await agent.previewBuy(tokenMint, solAmount);
+          return NextResponse.json({ success: true, result });
+        }
+
+        case "launch": {
+          // Launch a token
+          const { name, symbol, description, imageUrl, initialBuySol, feeClaimers } = params;
+          if (!name || !symbol || !description || !imageUrl) {
+            return NextResponse.json(
+              { success: false, error: "name, symbol, description, imageUrl required" },
+              { status: 400 }
+            );
+          }
+
+          const wallet = await agent.getWallet();
+          const config = {
             name,
             symbol,
             description,
@@ -580,15 +518,54 @@ export async function POST(request: NextRequest) {
             initialBuyLamports: initialBuySol
               ? Math.floor(initialBuySol * 1_000_000_000)
               : 10_000_000,
-          },
-          mySharePercent || 50
-        );
+            feeClaimers: feeClaimers || [{ user: wallet, userBps: 10000 }],
+          };
 
-        return NextResponse.json({ success: true, result });
+          const result = await agent.launch(config);
+          return NextResponse.json({ success: true, result });
+        }
+
+        case "launchFor": {
+          // Launch for another agent
+          const {
+            targetUsername,
+            name,
+            symbol,
+            description,
+            imageUrl,
+            initialBuySol,
+            mySharePercent,
+          } = params;
+          if (!targetUsername || !name || !symbol || !description || !imageUrl) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: "targetUsername, name, symbol, description, imageUrl required",
+              },
+              { status: 400 }
+            );
+          }
+
+          const result = await agent.launchFor(
+            targetUsername,
+            {
+              name,
+              symbol,
+              description,
+              imageUrl,
+              initialBuyLamports: initialBuySol
+                ? Math.floor(initialBuySol * 1_000_000_000)
+                : 10_000_000,
+            },
+            mySharePercent || 50
+          );
+
+          return NextResponse.json({ success: true, result });
+        }
+
+        default:
+          return NextResponse.json({ success: false, error: "Unknown action" }, { status: 400 });
       }
-
-      default:
-        return NextResponse.json({ success: false, error: "Unknown action" }, { status: 400 });
     }
   } catch (error) {
     console.error("[AgentEconomy] POST error:", error);

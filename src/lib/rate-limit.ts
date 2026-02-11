@@ -5,12 +5,7 @@
  * Falls back to in-memory rate limiting for local development or when DB is unavailable.
  */
 
-import {
-  isNeonConfigured,
-  checkDistributedRateLimit,
-  cleanupExpiredRateLimits,
-  type DistributedRateLimitResult,
-} from "./neon";
+import { isNeonConfigured, checkDistributedRateLimit, cleanupExpiredRateLimits } from "./neon";
 
 interface RateLimitEntry {
   count: number;
@@ -81,13 +76,7 @@ export async function checkRateLimit(
       });
     }
 
-    const result: DistributedRateLimitResult = await checkDistributedRateLimit(
-      identifier,
-      config.limit,
-      config.windowMs
-    );
-
-    return result;
+    return await checkDistributedRateLimit(identifier, config.limit, config.windowMs);
   }
 
   // Fall back to in-memory for local development
