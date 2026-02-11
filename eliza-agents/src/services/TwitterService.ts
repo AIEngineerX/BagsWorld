@@ -208,7 +208,9 @@ export class TwitterService extends Service {
 
     this.config = {
       username: process.env.TWITTER_USERNAME,
-      dryRun: process.env.TWITTER_DRY_RUN === "true",
+      dryRun: ["true", "1", "yes"].includes(
+        (process.env.TWITTER_DRY_RUN || "").toLowerCase()
+      ),
       postCooldownMs: parseInt(process.env.TWITTER_POST_COOLDOWN || "900000"), // 15 min
       replyCooldownMs: parseInt(process.env.TWITTER_REPLY_COOLDOWN || "120000"), // 2 min
     };

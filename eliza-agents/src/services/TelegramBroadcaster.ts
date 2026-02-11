@@ -87,7 +87,9 @@ export class TelegramBroadcaster {
     if (botToken && channelId) {
       this.config.botToken = botToken;
       this.config.channelId = channelId;
-      this.config.enabled = process.env.TELEGRAM_BROADCAST_ENABLED === "true";
+      this.config.enabled = ["true", "1", "yes"].includes(
+        (process.env.TELEGRAM_BROADCAST_ENABLED || "").toLowerCase()
+      );
       console.log(
         `[TelegramBroadcaster] Configured for channel ${channelId}, enabled: ${this.config.enabled}`
       );

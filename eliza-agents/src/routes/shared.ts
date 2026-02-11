@@ -1,6 +1,17 @@
 // Shared utilities for route handlers
 // Database helpers, mock creators, and context builders
 
+/**
+ * Safely parse a boolean environment variable.
+ * Accepts: "true", "True", "TRUE", "1", "yes", "YES" → true
+ * Everything else (including undefined) → false
+ */
+export function envBool(key: string): boolean {
+  const val = process.env[key];
+  if (!val) return false;
+  return ["true", "1", "yes"].includes(val.toLowerCase());
+}
+
 import { v4 as uuidv4 } from "uuid";
 import { NeonQueryFunction } from "@neondatabase/serverless";
 import type { Character, Memory, State, IAgentRuntime } from "../types/elizaos.js";

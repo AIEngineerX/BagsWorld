@@ -83,6 +83,14 @@ const AdminConsole = dynamic(
   () => import("@/components/AdminConsole").then((m) => m.AdminConsole),
   { ssr: false }
 );
+const TradingDiagnostics = dynamic(
+  () => import("@/components/TradingDiagnostics").then((m) => m.TradingDiagnostics),
+  { ssr: false }
+);
+const GhostTraderButton = dynamic(
+  () => import("@/components/TradingDiagnostics").then((m) => m.GhostTraderButton),
+  { ssr: false }
+);
 
 // Lazy-loaded modal components — only downloaded when modal is opened
 const BuildingModal = dynamic(
@@ -568,6 +576,7 @@ export default function Home() {
             <BagsyChat />
             <AgentDashboard />
             <AdminConsole />
+            <TradingDiagnostics />
 
             {/* Mobile character menu - floating button */}
             <MobileCharacterMenu />
@@ -675,6 +684,7 @@ export default function Home() {
           <div className="hidden lg:block">
             <EcosystemStats />
           </div>
+          <GhostTraderButton />
           {publicKey?.toString() === CASINO_ADMIN_WALLET && (
             <button
               onClick={() => openModal("casinoAdmin")}
