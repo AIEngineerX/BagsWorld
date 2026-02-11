@@ -45,7 +45,14 @@ export type { Tweet, PostResult, TwitterConfig } from './TwitterService.js';
 
 // Helius Service - Real-time Solana transaction tracking
 export { HeliusService, getHeliusService } from './HeliusService.js';
-export type { ParsedTransaction, WalletTradeHistory, TradeAlert } from './HeliusService.js';
+export type { ParsedTransaction, WalletTradeHistory, TradeAlert, EarlyBuyer } from './HeliusService.js';
+
+// Smart Money Service - Smart money wallet tracking
+export { SmartMoneyService, getSmartMoneyService } from './SmartMoneyService.js';
+export type { SmartMoneyWallet, SmartMoneyAlert, TokenSmartMoneyActivity } from './SmartMoneyService.js';
+
+// Wallet Discovery Service - Organic wallet discovery via Helius + DexScreener
+export { WalletDiscoveryService, getWalletDiscoveryService } from './WalletDiscoveryService.js';
 
 // Goal System - Priority-based goal queue for agent autonomy
 export { GoalSystem, getGoalSystem, resetGoalSystem } from './GoalSystem.js';

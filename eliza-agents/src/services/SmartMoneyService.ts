@@ -168,62 +168,28 @@ export class SmartMoneyService extends Service {
   }
 
   /**
-   * Fetch fresh smart money wallet list from GMGN
+   * Refresh smart money list using WalletDiscoveryService (Helius + DexScreener).
+   * Replaces the old GMGN-based approach which is Cloudflare-blocked.
    */
   async refreshSmartMoneyList(): Promise<void> {
     try {
-      // GMGN smart money endpoint (may need auth or rate limiting)
-      const response = await fetch(
-        `${this.GMGN_API}/smartmoney/sol/walletNew?limit=50&orderby=pnl_7d&direction=desc`,
-        {
-          headers: {
-            "User-Agent": "Mozilla/5.0",
-            Accept: "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.warn(`[SmartMoneyService] GMGN API returned ${response.status}`);
-        return;
-      }
-
-      const data = await response.json();
-      const wallets = data.data?.rank || [];
-
-      let added = 0;
-      for (const w of wallets) {
-        if (!w.address) continue;
-
-        // Only add wallets with >60% win rate and positive PnL
-        const winRate = w.winrate || 0;
-        const pnl7d = w.pnl_7d || 0;
-
-        if (winRate >= 0.6 && pnl7d > 0) {
-          const existing = this.wallets.get(w.address);
-          if (!existing || existing.source === "gmgn") {
-            this.wallets.set(w.address, {
-              address: w.address,
-              label: w.name || `GMGN #${added + 1}`,
-              winRate,
-              totalPnlSol: pnl7d,
-              avgHoldTime: 10, // Estimate
-              preferredMcapRange: "micro",
-              recentTrades: w.buy_7d || 0,
-              lastActive: Date.now(),
-              source: "gmgn",
-            });
-            added++;
-          }
-        }
-      }
-
+      // Dynamic import to avoid circular dependency at module load time
+      const { getWalletDiscoveryService } = await import("./WalletDiscoveryService.js");
+      const discovery = getWalletDiscoveryService();
+      const added = await discovery.discoverWallets();
       if (added > 0) {
-        console.log(`[SmartMoneyService] Added ${added} wallets from GMGN`);
+        console.log(`[SmartMoneyService] Discovered ${added} new wallets via Helius+DexScreener`);
       }
     } catch (error) {
-      console.warn("[SmartMoneyService] Failed to fetch from GMGN:", error);
+      console.warn("[SmartMoneyService] Wallet discovery failed:", error);
     }
+  }
+
+  /**
+   * Remove a wallet from tracking (used for pruning stale learned wallets)
+   */
+  removeWallet(address: string): boolean {
+    return this.wallets.delete(address);
   }
 
   /**

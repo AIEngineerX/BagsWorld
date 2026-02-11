@@ -39,6 +39,13 @@ export interface TradeAlert {
 
 let heliusServiceInstance: HeliusService | null = null;
 
+export interface EarlyBuyer {
+  wallet: string;
+  solAmount: number;
+  timestamp: number;
+  signature: string;
+}
+
 export class HeliusService {
   private apiKey: string | null;
   private isConfigured: boolean;
@@ -47,6 +54,14 @@ export class HeliusService {
 
   // Wallets to track for alerts
   private trackedWallets: Map<string, string> = new Map(); // address -> label
+
+  // Dedup: track processed transaction signatures to avoid double-counting across polls
+  private processedSignatures: Set<string> = new Set();
+  private static readonly MAX_PROCESSED_SIGNATURES = 500;
+
+  // Rate limiting for Helius API calls (free tier: ~120 req/min)
+  private lastRequestTime = 0;
+  private readonly MIN_REQUEST_INTERVAL_MS = 500;
 
   constructor() {
     this.apiKey = process.env.HELIUS_API_KEY || null;
@@ -299,6 +314,100 @@ export class HeliusService {
     };
   }
 
+  /**
+   * Rate-limited fetch wrapper for Helius API
+   */
+  private async rateLimitedFetch(url: string): Promise<Response> {
+    const elapsed = Date.now() - this.lastRequestTime;
+    if (elapsed < this.MIN_REQUEST_INTERVAL_MS) {
+      await new Promise((r) => setTimeout(r, this.MIN_REQUEST_INTERVAL_MS - elapsed));
+    }
+    this.lastRequestTime = Date.now();
+    return fetch(url);
+  }
+
+  /**
+   * Find wallets that bought a token early (within maxAgeSec of its first trade).
+   * Reverse lookup: token mint -> wallets that swapped SOL for that token.
+   */
+  async getTokenEarlyBuyers(
+    tokenMint: string,
+    maxAgeSec: number = 3600
+  ): Promise<EarlyBuyer[]> {
+    if (!this.isConfigured) return [];
+
+    try {
+      const response = await this.rateLimitedFetch(
+        `${HELIUS_API_URL}/addresses/${tokenMint}/transactions?api-key=${this.apiKey}&limit=50`
+      );
+
+      if (!response.ok) {
+        console.warn(`[HeliusService] getTokenEarlyBuyers: API returned ${response.status}`);
+        return [];
+      }
+
+      const transactions = await response.json() as Array<{
+        signature: string;
+        timestamp: number;
+        type: string;
+        feePayer?: string;
+        events?: {
+          swap?: {
+            nativeInput?: { amount: number };
+            nativeOutput?: { amount: number };
+            tokenInputs?: Array<{ mint: string; rawTokenAmount: { tokenAmount: string } }>;
+            tokenOutputs?: Array<{ mint: string; rawTokenAmount: { tokenAmount: string } }>;
+          };
+        };
+      }>;
+
+      if (transactions.length === 0) return [];
+
+      // Find the earliest transaction timestamp to determine the "first trade" time
+      const timestamps = transactions
+        .map((tx) => tx.timestamp)
+        .filter((t) => t > 0);
+      if (timestamps.length === 0) return [];
+
+      const earliestTimestamp = Math.min(...timestamps);
+      const cutoff = earliestTimestamp + maxAgeSec;
+
+      const earlyBuyers: EarlyBuyer[] = [];
+      const seenWallets = new Set<string>();
+
+      for (const tx of transactions) {
+        // Only include transactions within the early window
+        if (tx.timestamp > cutoff) continue;
+
+        // Must be a swap where SOL was spent (nativeInput > 0)
+        const swap = tx.events?.swap;
+        if (!swap || !swap.nativeInput || swap.nativeInput.amount <= 0) continue;
+
+        // Verify the token was received (tokenOutputs contains the target mint)
+        const receivedTarget = swap.tokenOutputs?.some(
+          (out) => out.mint === tokenMint
+        );
+        if (!receivedTarget) continue;
+
+        const wallet = tx.feePayer || "";
+        if (!wallet || seenWallets.has(wallet)) continue;
+        seenWallets.add(wallet);
+
+        earlyBuyers.push({
+          wallet,
+          solAmount: swap.nativeInput.amount / 1_000_000_000,
+          timestamp: tx.timestamp * 1000,
+          signature: tx.signature,
+        });
+      }
+
+      return earlyBuyers;
+    } catch (error) {
+      console.error("[HeliusService] getTokenEarlyBuyers failed:", error);
+      return [];
+    }
+  }
+
   // Get recent trade alerts
   getRecentAlerts(limit: number = 20): TradeAlert[] {
     return this.tradeAlerts.slice(0, limit);
@@ -397,7 +506,12 @@ export class HeliusService {
         const history = await this.getWalletTrades(address, 10);
 
         for (const trade of history.trades) {
+          // Skip already-processed signatures (dedup across overlapping polls)
+          if (this.processedSignatures.has(trade.signature)) continue;
+
           if (trade.timestamp > lastCheckTime && trade.type !== "UNKNOWN") {
+            this.processedSignatures.add(trade.signature);
+
             const alert: TradeAlert = {
               wallet: address,
               walletLabel: label,
@@ -411,6 +525,15 @@ export class HeliusService {
         }
       } catch (error) {
         console.error(`[HeliusService] Failed to poll wallet ${label}:`, error);
+      }
+    }
+
+    // Periodic cleanup: keep last MAX_PROCESSED_SIGNATURES to bound memory
+    if (this.processedSignatures.size > HeliusService.MAX_PROCESSED_SIGNATURES) {
+      const sigs = Array.from(this.processedSignatures);
+      const toRemove = sigs.slice(0, sigs.length - HeliusService.MAX_PROCESSED_SIGNATURES);
+      for (const sig of toRemove) {
+        this.processedSignatures.delete(sig);
       }
     }
 
