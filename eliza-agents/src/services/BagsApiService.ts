@@ -257,7 +257,9 @@ export class BagsApiService extends Service {
       this.baseUrl = process.env.BAGS_API_URL || "https://public-api-v2.bags.fm/api/v1";
       this.apiKey = process.env.BAGS_API_KEY || "";
       this.bagsWorldUrl = process.env.BAGSWORLD_API_URL || "http://localhost:3000";
-      this.throwOnError = process.env.BAGS_API_THROW_ON_ERROR === "true";
+      this.throwOnError = ["true", "1", "yes"].includes(
+        (process.env.BAGS_API_THROW_ON_ERROR || "").toLowerCase()
+      );
     }
   }
 

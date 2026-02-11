@@ -671,6 +671,23 @@ body {
   animation: border-pulse 3s ease-in-out infinite;
 }
 
+/* Ghost Trader terminal animations */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
 /* Subtle inner bevel effect */
 .hud-bevel {
   box-shadow:

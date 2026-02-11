@@ -17,7 +17,7 @@ import { AgentCoordinator, getAgentCoordinator } from "./AgentCoordinator.js";
 import { SolanaService, getSolanaService } from "./SolanaService.js";
 import { SmartMoneyService, getSmartMoneyService } from "./SmartMoneyService.js";
 import { WorldSyncService, getWorldSyncService } from "./WorldSyncService.js";
-import { getDatabase } from "../routes/shared.js";
+import { getDatabase, envBool } from "../routes/shared.js";
 import {
   TelegramBroadcaster,
   getTelegramBroadcaster,
@@ -286,7 +286,7 @@ export class GhostTrader {
     this.ghostWalletPublicKey = process.env.GHOST_WALLET_PUBLIC_KEY || null;
 
     // Load config from environment
-    if (process.env.GHOST_TRADING_ENABLED === "true") {
+    if (envBool("GHOST_TRADING_ENABLED")) {
       this.config.enabled = true;
     }
     if (process.env.GHOST_MAX_POSITION_SOL) {
