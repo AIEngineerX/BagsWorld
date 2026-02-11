@@ -5,6 +5,8 @@ import { Service, type IAgentRuntime } from "../types/elizaos.js";
 import { BagsApiService, getBagsApiService, type ClaimablePosition } from "./BagsApiService.js";
 import { AgentCoordinator, getAgentCoordinator } from "./AgentCoordinator.js";
 import { GhostTrader, getGhostTrader } from "./GhostTrader.js";
+import { getHeliusService } from "./HeliusService.js";
+import { getSmartMoneyService } from "./SmartMoneyService.js";
 import { TwitterService, getTwitterService } from "./TwitterService.js";
 import { LLMService, getLLMService } from "./LLMService.js";
 import {
@@ -321,6 +323,26 @@ export class AutonomousService extends Service {
       interval: 2 * 60 * 1000,
       handler: async () => {
         await this.checkGhostPositions();
+      },
+    });
+
+    // Ghost: Poll smart money wallets on-chain every 3 minutes
+    this.registerTask({
+      name: "ghost_smart_money_poll",
+      agentId: "ghost",
+      interval: 3 * 60 * 1000,
+      handler: async () => {
+        await this.pollSmartMoney();
+      },
+    });
+
+    // Ghost: Discover new smart money wallets every 6 hours
+    this.registerTask({
+      name: "ghost_wallet_discovery",
+      agentId: "ghost",
+      interval: 6 * 60 * 60 * 1000,
+      handler: async () => {
+        await this.discoverSmartWallets();
       },
     });
 
@@ -1012,6 +1034,80 @@ export class AutonomousService extends Service {
       }
     } catch (error) {
       console.error("[AutonomousService] Ghost position check failed:", error);
+    }
+  }
+
+  /**
+   * Ghost's smart money on-chain monitor — polls tracked wallets via Helius
+   * and feeds detected trades into SmartMoneyService for scoring
+   */
+  private async pollSmartMoney(): Promise<void> {
+    try {
+      const helius = getHeliusService();
+      if (!helius.isReady()) return;
+
+      const smartMoney = getSmartMoneyService();
+
+      // One-time sync: load smart money wallet list into HeliusService for tracking
+      const tracked = helius.getTrackedWallets();
+      if (tracked.length === 0) {
+        const smWallets = smartMoney.getAllWallets();
+        for (const w of smWallets) {
+          helius.trackWallet(w.address, w.label);
+        }
+        console.log(`[AutonomousService] Smart money: loaded ${smWallets.length} wallets into HeliusService`);
+      }
+
+      // Poll for new trades
+      const alerts = await helius.pollTrackedWallets();
+
+      // Feed into SmartMoneyService for scoring
+      for (const alert of alerts) {
+        smartMoney.recordActivity(
+          alert.trade.tokenMint,
+          alert.wallet,
+          alert.trade.type === "BUY" ? "buy" : "sell",
+          alert.trade.solAmount
+        );
+      }
+
+      if (alerts.length > 0) {
+        console.log(`[AutonomousService] Smart money: ${alerts.length} new trades detected`);
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Smart money poll failed:", error);
+    }
+  }
+
+  /**
+   * Ghost's wallet discovery — finds new profitable wallets by analyzing
+   * who traded trending tokens early and profitably (Helius + DexScreener)
+   */
+  private async discoverSmartWallets(): Promise<void> {
+    try {
+      const { getWalletDiscoveryService } = await import("./WalletDiscoveryService.js");
+      const discovery = getWalletDiscoveryService();
+      const added = await discovery.discoverWallets();
+
+      if (added > 0) {
+        // Sync newly discovered wallets into HeliusService for tracking
+        const helius = getHeliusService();
+        const smartMoney = getSmartMoneyService();
+        const allWallets = smartMoney.getAllWallets();
+        const tracked = new Set(helius.getTrackedWallets().map((w) => w.address));
+
+        for (const w of allWallets) {
+          if (!tracked.has(w.address)) {
+            helius.trackWallet(w.address, w.label);
+          }
+        }
+
+        console.log(
+          `[AutonomousService] Wallet discovery: added ${added} wallets, synced to HeliusService`
+        );
+      }
+    } catch (error) {
+      console.error("[AutonomousService] Wallet discovery failed:", error);
     }
   }
 
