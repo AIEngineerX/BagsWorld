@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllWorldTokensAsync, type LaunchedToken } from "@/lib/token-registry";
+import { getAllWorldTokensAsync } from "@/lib/token-registry";
 import { initBagsApi } from "@/lib/bags-api";
 import { isValidSolanaAddress } from "@/lib/env-utils";
 
@@ -67,27 +67,8 @@ interface OHLCVCandle {
   volume: number;
 }
 
-interface ClaimEvent {
-  signature: string;
-  claimer: string;
-  claimerUsername?: string;
-  amount: number;
-  timestamp: number;
-  tokenMint: string;
-  tokenSymbol?: string;
-}
-
-interface TraderStats {
-  wallet: string;
-  username?: string;
-  totalVolume: number;
-  tradeCount: number;
-}
-
 // Cache for expensive operations
 let tokensCache: { data: TokenWithMetrics[]; timestamp: number } | null = null;
-let historyCache: { data: ClaimEvent[]; timestamp: number } | null = null;
-let leaderboardCache: { data: TraderStats[]; timestamp: number } | null = null;
 const poolCache = new Map<string, { pool: string | null; timestamp: number }>();
 const ohlcvCache = new Map<string, { candles: OHLCVCandle[]; timestamp: number }>();
 const dexScreenerCache = new Map<
@@ -102,8 +83,6 @@ const tradesCache = new Map<string, { data: RecentTrade[]; timestamp: number }>(
 const holdersCache = new Map<string, { data: TokenHolder[]; timestamp: number }>();
 
 const TOKENS_CACHE_TTL = 30000; // 30 seconds
-const HISTORY_CACHE_TTL = 15000; // 15 seconds
-const LEADERBOARD_CACHE_TTL = 60000; // 60 seconds
 const POOL_CACHE_TTL = 300000; // 5 minutes (pools don't change)
 const OHLCV_CACHE_TTL = 15000; // 15 seconds for faster chart updates
 const DEX_CACHE_TTL = 20000; // 20 seconds for price data
@@ -161,19 +140,16 @@ export async function GET(request: NextRequest) {
       }
       return handlePoolDiscovery(mint);
     case "history":
-      return handleHistory();
+      return NextResponse.json({ trades: [], total: 0 });
     case "leaderboard":
-      return handleLeaderboard();
+      return NextResponse.json({ traders: [] });
     case "fees":
       if (!mint) {
         return NextResponse.json({ error: "mint parameter required" }, { status: 400 });
       }
       return handleFees(mint);
     case "portfolio":
-      if (!wallet) {
-        return NextResponse.json({ error: "wallet parameter required" }, { status: 400 });
-      }
-      return handlePortfolio(wallet);
+      return NextResponse.json({ holdings: [], totalValue: 0 });
     default:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
@@ -421,43 +397,30 @@ async function handleTokenHolders(mint: string): Promise<NextResponse> {
     }
   }
 
-  // If no holders found, try to get holder count from DexScreener pair info
-  if (holders.length === 0) {
-    const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
-    if (dexResponse.ok) {
-      const dexData = await dexResponse.json();
-      // DexScreener doesn't provide holder list, just return empty with message
-    }
-  }
-
   holdersCache.set(mint, { data: holders, timestamp: Date.now() });
   return NextResponse.json({ holders, holderCount: holders.length });
 }
 
-async function handlePoolDiscovery(mint: string): Promise<NextResponse> {
-  // Check cache first
+/** Resolve the best pool address for a mint (cached, shared between handlers). */
+async function discoverPool(mint: string): Promise<string | null> {
   const cached = poolCache.get(mint);
   if (cached && Date.now() - cached.timestamp < POOL_CACHE_TTL) {
-    return NextResponse.json({ pool: cached.pool, cached: true });
+    return cached.pool;
   }
 
-  // Search for pool on GeckoTerminal
   const response = await fetch(
     `https://api.geckoterminal.com/api/v2/search/pools?query=${mint}&network=solana&page=1`,
-    {
-      headers: { Accept: "application/json" },
-    }
+    { headers: { Accept: "application/json" } }
   );
 
   if (!response.ok) {
     poolCache.set(mint, { pool: null, timestamp: Date.now() });
-    return NextResponse.json({ pool: null, error: "Pool search failed" });
+    return null;
   }
 
   const data = await response.json();
   const pools = data.data || [];
 
-  // Find the best pool (highest liquidity/volume)
   let bestPool: string | null = null;
   let bestVolume = 0;
 
@@ -471,7 +434,12 @@ async function handlePoolDiscovery(mint: string): Promise<NextResponse> {
   }
 
   poolCache.set(mint, { pool: bestPool, timestamp: Date.now() });
-  return NextResponse.json({ pool: bestPool });
+  return bestPool;
+}
+
+async function handlePoolDiscovery(mint: string): Promise<NextResponse> {
+  const pool = await discoverPool(mint);
+  return NextResponse.json({ pool, cached: poolCache.has(mint) });
 }
 
 async function handleOHLCV(mint: string, interval: string): Promise<NextResponse> {
@@ -483,38 +451,7 @@ async function handleOHLCV(mint: string, interval: string): Promise<NextResponse
     return NextResponse.json({ candles: cached.candles, interval, cached: true });
   }
 
-  // First, get the pool address
-  let poolAddress: string | null = null;
-
-  const poolCached = poolCache.get(mint);
-  if (poolCached && Date.now() - poolCached.timestamp < POOL_CACHE_TTL) {
-    poolAddress = poolCached.pool;
-  } else {
-    // Discover pool
-    const poolResponse = await fetch(
-      `https://api.geckoterminal.com/api/v2/search/pools?query=${mint}&network=solana&page=1`,
-      {
-        headers: { Accept: "application/json" },
-      }
-    );
-
-    if (poolResponse.ok) {
-      const poolData = await poolResponse.json();
-      const pools = poolData.data || [];
-
-      let bestVolume = 0;
-      for (const pool of pools) {
-        const attrs = pool.attributes || {};
-        const volume = parseFloat(attrs.volume_usd?.h24) || 0;
-        if (volume > bestVolume) {
-          bestVolume = volume;
-          poolAddress = attrs.address || pool.id?.split("_")[1];
-        }
-      }
-
-      poolCache.set(mint, { pool: poolAddress, timestamp: Date.now() });
-    }
-  }
+  const poolAddress = await discoverPool(mint);
 
   if (!poolAddress) {
     return NextResponse.json({ candles: [], error: "No pool found for token" });
@@ -567,48 +504,6 @@ async function handleOHLCV(mint: string, interval: string): Promise<NextResponse
   return NextResponse.json({ candles, interval, pool: poolAddress });
 }
 
-async function handleHistory(): Promise<NextResponse> {
-  // Check cache
-  if (historyCache && Date.now() - historyCache.timestamp < HISTORY_CACHE_TTL) {
-    return NextResponse.json({
-      trades: historyCache.data,
-      total: historyCache.data.length,
-      cached: true,
-    });
-  }
-
-  // For now, return empty - this would integrate with Bags.fm claim events
-  // In production, this would fetch from the Bags API
-  const trades: ClaimEvent[] = [];
-
-  historyCache = { data: trades, timestamp: Date.now() };
-  return NextResponse.json({ trades, total: trades.length });
-}
-
-async function handleLeaderboard(): Promise<NextResponse> {
-  // Check cache
-  if (leaderboardCache && Date.now() - leaderboardCache.timestamp < LEADERBOARD_CACHE_TTL) {
-    return NextResponse.json({
-      traders: leaderboardCache.data.map((t, i) => ({ ...t, rank: i + 1 })),
-      cached: true,
-    });
-  }
-
-  // For now, return empty - this would integrate with Bags.fm leaderboard data
-  const traders: TraderStats[] = [];
-
-  leaderboardCache = { data: traders, timestamp: Date.now() };
-  return NextResponse.json({
-    traders: traders.map((t, i) => ({ ...t, rank: i + 1 })),
-  });
-}
-
-async function handlePortfolio(walletAddress: string): Promise<NextResponse> {
-  // This would fetch token balances from Solana RPC
-  // For now, return empty structure
-  return NextResponse.json({ holdings: [], totalValue: 0 });
-}
-
 function sortTokens(tokens: TokenWithMetrics[], sortBy: string): TokenWithMetrics[] {
   const sorted = [...tokens];
 
@@ -622,7 +517,7 @@ function sortTokens(tokens: TokenWithMetrics[], sortBy: string): TokenWithMetric
     case "newest":
       return sorted.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     default:
-      return sorted.sort((a, b) => b.volume24h - a.volume24h);
+      return sorted;
   }
 }
 

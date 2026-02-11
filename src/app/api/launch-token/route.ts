@@ -112,7 +112,6 @@ async function handleCreateTokenInfo(
       return NextResponse.json({ error: "Image too large. Maximum size is 5MB." }, { status: 400 });
     }
 
-    // Only allow known image MIME types
     const ALLOWED_IMAGE_TYPES = [
       "image/png",
       "image/jpeg",
@@ -121,23 +120,28 @@ async function handleCreateTokenInfo(
       "image/svg+xml",
     ];
 
-    if (data.image && data.image.startsWith("data:")) {
-      // It's a data URL, convert to Blob
+    if (data.image) {
       try {
-        const [header, base64Data] = data.image.split(",");
-        const mimeMatch = header.match(/data:([^;]+)/);
-        const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+        let mimeType = "image/png";
+        let base64Data = data.image;
 
-        if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
-          return NextResponse.json(
-            {
-              error: `Invalid image type: ${mimeType}. Allowed: ${ALLOWED_IMAGE_TYPES.join(", ")}`,
-            },
-            { status: 400 }
-          );
+        if (data.image.startsWith("data:")) {
+          const [header, payload] = data.image.split(",");
+          base64Data = payload;
+          const mimeMatch = header.match(/data:([^;]+)/);
+          mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+
+          if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
+            return NextResponse.json(
+              {
+                error: `Invalid image type: ${mimeType}. Allowed: ${ALLOWED_IMAGE_TYPES.join(", ")}`,
+              },
+              { status: 400 }
+            );
+          }
+          const extension = mimeType.split("/")[1] || "png";
+          imageName = `token-image.${extension}`;
         }
-        const extension = mimeType.split("/")[1] || "png";
-        imageName = `token-image.${extension}`;
 
         const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
@@ -145,18 +149,6 @@ async function handleCreateTokenInfo(
           bytes[i] = binaryString.charCodeAt(i);
         }
         imageBlob = new Blob([bytes], { type: mimeType });
-      } catch {
-        return NextResponse.json({ error: "Invalid base64 image data" }, { status: 400 });
-      }
-    } else if (data.image) {
-      // It's just base64, assume PNG
-      try {
-        const binaryString = atob(data.image);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        imageBlob = new Blob([bytes], { type: "image/png" });
       } catch {
         return NextResponse.json({ error: "Invalid base64 image data" }, { status: 400 });
       }
