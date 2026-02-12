@@ -84,6 +84,12 @@ function getEventStyle(type: MarketEvent["type"]): {
         icon: <ChartUpIcon size={12} />,
         label: "TRENDING",
       };
+    case "platform_claim":
+      return {
+        color: "text-cyan-300",
+        icon: <DiamondIcon size={12} />,
+        label: "CLAIM",
+      };
     default:
       return {
         color: "text-gray-400",

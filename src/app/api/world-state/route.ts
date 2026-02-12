@@ -78,6 +78,12 @@ function safeParseClaimAmount(amount: string | number | undefined): number {
   return isNaN(parsed) ? 0 : parsed;
 }
 
+function formatCompactUSD(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return value.toFixed(0);
+}
+
 // Lazy-loaded SDK instance with proper mutex to prevent race conditions
 let sdkInstance: BagsSDKInstance | null = null;
 let sdkInitPromise: Promise<BagsSDKInstance | null> | null = null;
@@ -1130,7 +1136,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Aggregate all 24h claim events and calculate earnings per wallet
-    const allClaimEvents24h: ClaimEvent[] = enrichedResults.flatMap((r) => r.claimEvents24h.slice(0, 50));
+    const allClaimEvents24h: ClaimEvent[] = enrichedResults.flatMap((r) =>
+      r.claimEvents24h.slice(0, 50)
+    );
     const earnings24hPerWallet = calculate24hEarningsPerWallet(allClaimEvents24h);
 
     // Build fee earners from SDK creators AND registered fee shares
@@ -1596,9 +1604,109 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Re-sort all events by timestamp and cap at 25
+    // Generate price movement events from DexScreener market data
+    // Uses hourly dedup so the same token doesn't flood the feed
+    const priceEventHour = Math.floor(Date.now() / (60 * 60 * 1000));
+    const knownEventIds = new Set(worldState.events.map((e) => e.id));
+
+    for (const token of tokens) {
+      // Skip permanent/placeholder tokens
+      if (token.mint.startsWith("Treasury") || token.mint.startsWith("Starter")) continue;
+      if (!token.change24h || token.volume24h <= 0) continue;
+
+      // Price pump (> 5% gain in 24h)
+      if (token.change24h > 5) {
+        const eventId = `pump-${token.mint}-${priceEventHour}`;
+        if (!knownEventIds.has(eventId)) {
+          worldState.events.push({
+            id: eventId,
+            type: "price_pump",
+            message: `${token.symbol} pumping +${token.change24h.toFixed(1)}%${token.volume24h > 1000 ? ` ($${formatCompactUSD(token.volume24h)} vol)` : ""}`,
+            timestamp: Date.now() - Math.floor(Math.random() * 120000),
+            data: {
+              tokenName: token.name,
+              symbol: token.symbol,
+              change: token.change24h,
+              amount: token.volume24h,
+              mint: token.mint,
+            },
+          });
+          knownEventIds.add(eventId);
+        }
+      }
+
+      // Price dump (> 5% loss in 24h)
+      if (token.change24h < -5) {
+        const eventId = `dump-${token.mint}-${priceEventHour}`;
+        if (!knownEventIds.has(eventId)) {
+          worldState.events.push({
+            id: eventId,
+            type: "price_dump",
+            message: `${token.symbol} dropping ${token.change24h.toFixed(1)}%${token.volume24h > 1000 ? ` ($${formatCompactUSD(token.volume24h)} vol)` : ""}`,
+            timestamp: Date.now() - Math.floor(Math.random() * 120000),
+            data: {
+              tokenName: token.name,
+              symbol: token.symbol,
+              change: token.change24h,
+              amount: token.volume24h,
+              mint: token.mint,
+            },
+          });
+          knownEventIds.add(eventId);
+        }
+      }
+
+      // Whale alert for high-volume tokens ($25K+ or volume > 50% of market cap)
+      const volumeToMcapRatio = token.marketCap > 0 ? token.volume24h / token.marketCap : 0;
+      if (token.volume24h > 25000 || volumeToMcapRatio > 0.5) {
+        const eventId = `whale-${token.mint}-${priceEventHour}`;
+        if (!knownEventIds.has(eventId)) {
+          worldState.events.push({
+            id: eventId,
+            type: "whale_alert",
+            message: `Heavy trading on ${token.symbol}: $${formatCompactUSD(token.volume24h)} volume in 24h`,
+            timestamp: Date.now() - Math.floor(Math.random() * 180000),
+            data: {
+              tokenName: token.name,
+              symbol: token.symbol,
+              amount: token.volume24h,
+              mint: token.mint,
+            },
+          });
+          knownEventIds.add(eventId);
+        }
+      }
+    }
+
+    // Platform trending — top 3 platform tokens by volume
+    const topPlatformTokens = tokens
+      .filter((t) => t.isPlatform && t.volume24h > 0)
+      .sort((a, b) => b.volume24h - a.volume24h)
+      .slice(0, 3);
+
+    for (const platToken of topPlatformTokens) {
+      const eventId = `trending-${platToken.mint}-${priceEventHour}`;
+      if (!knownEventIds.has(eventId)) {
+        worldState.events.push({
+          id: eventId,
+          type: "platform_trending",
+          message: `${platToken.symbol} trending on Bags.fm — $${formatCompactUSD(platToken.volume24h)} vol${platToken.change24h ? ` (${platToken.change24h > 0 ? "+" : ""}${platToken.change24h.toFixed(1)}%)` : ""}`,
+          timestamp: Date.now() - Math.floor(Math.random() * 60000),
+          data: {
+            tokenName: platToken.name,
+            symbol: platToken.symbol,
+            amount: platToken.volume24h,
+            change: platToken.change24h,
+            mint: platToken.mint,
+          },
+        });
+        knownEventIds.add(eventId);
+      }
+    }
+
+    // Re-sort all events by timestamp and cap at 50
     worldState.events.sort((a, b) => b.timestamp - a.timestamp);
-    worldState.events = worldState.events.slice(0, 25);
+    worldState.events = worldState.events.slice(0, 50);
 
     // Emit events to Agent Coordinator for the Agent Feed
     // Fire-and-forget but with error logging to avoid silent failures

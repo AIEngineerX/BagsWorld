@@ -5898,8 +5898,8 @@ export class WorldScene extends Phaser.Scene {
                   : isTreasury
                     ? "treasury"
                     : isBeachBuilding
-                    ? `beach_building_${beachBuildingLevel}`
-                    : `building_${building.level}_${styleIndex}`;
+                      ? `beach_building_${beachBuildingLevel}`
+                      : `building_${building.level}_${styleIndex}`;
     const sprite = this.add.sprite(0, 0, buildingTexture);
     sprite.setOrigin(0.5, 1);
     // HQ is larger and floating, mansions use rank-based scaling from building data

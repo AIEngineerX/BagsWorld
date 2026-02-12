@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useMemo, useRef, useEffect, useCallback, useState } from "react";
 import { useGameStore } from "@/lib/store";
 import type { MarketEvent, MarketSummary } from "@/lib/types";
 import { MarketSummaryBar } from "./MarketSummaryBar";
 import { TokenPriceTicker } from "./TokenPriceTicker";
 import { MarketEventItem } from "./MarketEventItem";
 import { SignalIcon } from "./icons";
-
-type MarketFilter = "all" | "launches" | "claims" | "trades";
 
 const MAX_EVENTS = 50;
 const FEED_MAX_AGE_MS = 6 * 60 * 60 * 1000; // Only show events from last 6h in the feed
@@ -24,7 +22,6 @@ function formatUpdatedAgo(ts: number | undefined): string {
 
 export function LiveMarketFeed() {
   const worldState = useGameStore((s) => s.worldState);
-  const [filter, setFilter] = useState<MarketFilter>("all");
   const listRef = useRef<HTMLDivElement>(null);
   const [userScrolled, setUserScrolled] = useState(false);
 
@@ -101,38 +98,12 @@ export function LiveMarketFeed() {
       .slice(0, MAX_EVENTS);
   }, [events]);
 
-  // Apply filter
-  const filteredEvents = useMemo(() => {
-    switch (filter) {
-      case "launches":
-        return marketEvents.filter(
-          (e) =>
-            e.type === "token_launch" ||
-            e.type === "building_constructed" ||
-            e.type === "platform_launch"
-        );
-      case "claims":
-        return marketEvents.filter(
-          (e) => e.type === "fee_claim" || e.type === "platform_claim" || e.type === "milestone"
-        );
-      case "trades":
-        // Show whale trades sorted by volume (largest first)
-        return marketEvents
-          .filter(
-            (e) => e.type === "price_pump" || e.type === "price_dump" || e.type === "whale_alert"
-          )
-          .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
-      default:
-        return marketEvents;
-    }
-  }, [marketEvents, filter]);
-
   // Auto-scroll to top when new events arrive (unless user scrolled)
   useEffect(() => {
     if (!userScrolled && listRef.current) {
       listRef.current.scrollTop = 0;
     }
-  }, [filteredEvents, userScrolled]);
+  }, [marketEvents, userScrolled]);
 
   // Detect user scroll
   const handleScroll = useCallback(() => {
@@ -157,22 +128,6 @@ export function LiveMarketFeed() {
             </span>
           )}
         </div>
-        {/* Filter Tabs */}
-        <div className="flex gap-1">
-          {(["all", "launches", "claims", "trades"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`font-pixel text-[7px] px-1.5 py-0.5 transition-colors ${
-                filter === f
-                  ? "text-bags-gold bg-bags-gold/10"
-                  : "text-gray-500 hover:text-gray-300"
-              }`}
-            >
-              {f.toUpperCase()}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Summary Stats */}
@@ -189,7 +144,7 @@ export function LiveMarketFeed() {
         role="feed"
         aria-label="Market events feed"
       >
-        {filteredEvents.length === 0 ? (
+        {marketEvents.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center py-4">
               <p className="font-pixel text-[8px] text-gray-500">Waiting for market activity...</p>
@@ -200,7 +155,7 @@ export function LiveMarketFeed() {
           </div>
         ) : (
           <div className="divide-y divide-bags-green/10">
-            {filteredEvents.map((event) => (
+            {marketEvents.map((event) => (
               <MarketEventItem key={event.id} event={event} />
             ))}
           </div>
