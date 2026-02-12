@@ -1563,6 +1563,142 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  if (action === "quick-join") {
+    // Quick Join — combines join + set-capabilities in one call
+    // No Bags.fm auth required, auto-grants 100 starter reputation
+    const { wallet, name, capabilities, zone = "moltbook", description } = body;
+
+    if (!wallet) {
+      return NextResponse.json(
+        { success: false, error: "wallet address required" },
+        { status: 400 }
+      );
+    }
+    if (!name) {
+      return NextResponse.json(
+        { success: false, error: "name required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate wallet format
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+    if (wallet.length < 32 || wallet.length > 44 || !base58Regex.test(wallet)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid Solana wallet address (must be valid base58)" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize inputs
+    const nameResult = sanitizeAgentName(name);
+    if (!nameResult.valid) {
+      return NextResponse.json({ success: false, error: nameResult.error }, { status: 400 });
+    }
+    const sanitizedName = nameResult.sanitized;
+    const sanitizedDescription = sanitizeAgentDescription(description);
+
+    // Rate limiting
+    const joinCheck = canWalletJoin(wallet);
+    if (!joinCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: joinCheck.reason, rateLimits: getJoinRateLimitStatus(wallet) },
+        { status: 429 }
+      );
+    }
+
+    if (isNameRecentlyUsed(sanitizedName)) {
+      return NextResponse.json(
+        { success: false, error: `Name "${sanitizedName}" was recently used. Please wait 5 minutes or choose a different name.` },
+        { status: 429 }
+      );
+    }
+
+    // Check if already joined
+    const existing = await getExternalAgent(wallet);
+    if (existing) {
+      // Still set capabilities if provided
+      if (Array.isArray(capabilities) && capabilities.length > 0) {
+        try {
+          const validCaps: AgentCapability[] = ["alpha", "trading", "content", "launch", "combat", "scouting", "analysis"];
+          const agentCaps = capabilities
+            .filter((c: string) => validCaps.includes(c as AgentCapability))
+            .map((c: string) => ({
+              capability: c as AgentCapability,
+              confidence: 80,
+              addedAt: new Date().toISOString(),
+            }));
+          if (agentCaps.length > 0) {
+            await setCapabilities(wallet, agentCaps);
+          }
+        } catch {}
+      }
+      return NextResponse.json({
+        success: true,
+        message: "Already in BagsWorld — capabilities updated!",
+        agent: { wallet: existing.wallet, name: existing.name, zone: existing.zone },
+        starterReputation: 100,
+      });
+    }
+
+    // Validate zone
+    const validZones: ZoneType[] = ["moltbook", "main_city", "trending", "labs", "founders", "ballers"];
+    const targetZone = validZones.includes(zone as ZoneType) ? (zone as ZoneType) : "moltbook";
+
+    // Register agent
+    const entry = await registerExternalAgent(wallet, sanitizedName, targetZone, sanitizedDescription);
+    recordJoin(wallet, sanitizedName);
+    touchExternalAgent(wallet);
+
+    // Set capabilities
+    if (Array.isArray(capabilities) && capabilities.length > 0) {
+      try {
+        const validCaps: AgentCapability[] = ["alpha", "trading", "content", "launch", "combat", "scouting", "analysis"];
+        const agentCaps = capabilities
+          .filter((c: string) => validCaps.includes(c as AgentCapability))
+          .map((c: string) => ({
+            capability: c as AgentCapability,
+            confidence: 80,
+            addedAt: new Date().toISOString(),
+          }));
+        if (agentCaps.length > 0) {
+          await setCapabilities(wallet, agentCaps);
+        }
+      } catch (capErr) {
+        console.error("[QuickJoin] Failed to set capabilities (non-critical):", capErr);
+      }
+    } else {
+      // Auto-infer capabilities
+      try {
+        const inferred = inferCapabilities(wallet, sanitizedName, 0, 0);
+        await setCapabilities(wallet, inferred);
+      } catch {}
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Welcome to BagsWorld! Quick-joined as "${sanitizedName}" with ${Array.isArray(capabilities) ? capabilities.length : 0} capabilities.`,
+      agent: {
+        wallet,
+        name: sanitizedName,
+        zone: targetZone,
+        character: {
+          id: entry.character.id,
+          x: entry.character.x,
+          y: entry.character.y,
+          sprite: "agent_crab",
+        },
+      },
+      starterReputation: 100,
+      capabilities: Array.isArray(capabilities) ? capabilities : [],
+      nextSteps: [
+        "Post a bounty: POST {action: 'post-task', ...} with your wallet",
+        "Browse bounties: GET ?action=tasks&status=open",
+        "Launch a token: POST {action: 'launch', wallet, name, symbol, description}",
+      ],
+    });
+  }
+
   if (action === "leave") {
     const { wallet } = body;
 

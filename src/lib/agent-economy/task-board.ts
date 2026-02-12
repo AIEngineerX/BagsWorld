@@ -723,6 +723,57 @@ export async function listRecentCompletedTasks(limit: number = 20): Promise<Agen
 }
 
 // ============================================================================
+// SEED BOUNTIES (keep the board populated)
+// ============================================================================
+
+const SEED_WALLETS = ["chadghost-internal", "bagsy-internal"] as const;
+const MIN_OPEN_BOUNTIES = 5;
+
+/**
+ * Seed the bounty board with tasks from ChadGhost and Bagsy.
+ * Called every economy loop iteration. If there are already >= 5 open tasks, does nothing.
+ */
+export async function seedBounties(): Promise<number> {
+  await ensureTaskTable();
+  const sql = getDb();
+
+  // Count total open tasks
+  const countRows = await sql`
+    SELECT COUNT(*) as count FROM agent_tasks WHERE status = 'open'
+  `;
+  const openCount = parseInt(countRows[0].count as string, 10);
+
+  if (openCount >= MIN_OPEN_BOUNTIES) {
+    return 0;
+  }
+
+  const toSeed = MIN_OPEN_BOUNTIES - openCount;
+  let seeded = 0;
+
+  const capabilities: AgentCapability[] = ["alpha", "trading", "content", "launch", "scouting", "analysis"];
+
+  for (let i = 0; i < toSeed; i++) {
+    try {
+      const wallet = SEED_WALLETS[i % SEED_WALLETS.length];
+      const cap = capabilities[Math.floor(Math.random() * capabilities.length)];
+      const taskOpts = generateTaskForCapability(cap);
+
+      // Bypass reputation check by passing 999
+      await postTask(wallet, 999, taskOpts);
+      seeded++;
+    } catch (err) {
+      console.error("[TaskBoard] Seed bounty failed (non-critical):", err);
+    }
+  }
+
+  if (seeded > 0) {
+    console.log(`[TaskBoard] Seeded ${seeded} bounties (${openCount} were open, target ${MIN_OPEN_BOUNTIES})`);
+  }
+
+  return seeded;
+}
+
+// ============================================================================
 // HELPERS
 // ============================================================================
 

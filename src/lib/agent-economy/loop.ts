@@ -39,6 +39,7 @@ import {
   confirmTask,
   generateTaskForCapability,
   generateResultForCapability,
+  seedBounties,
 } from "./task-board";
 import { getCapabilities } from "./service-registry";
 import {
@@ -926,6 +927,15 @@ export async function runLoopIteration(config: EconomyLoopConfig = DEFAULT_LOOP_
     }
   } catch (expireErr) {
     console.error("[Loop] Task expiration failed (non-critical):", expireErr);
+  }
+
+  try {
+    const seeded = await seedBounties();
+    if (seeded > 0) {
+      console.log(`[Loop] Seeded ${seeded} bounties to keep the board populated`);
+    }
+  } catch (seedErr) {
+    console.error("[Loop] Bounty seeding failed (non-critical):", seedErr);
   }
 
   try {
