@@ -25,6 +25,7 @@ import {
   touchExternalAgent,
   getAgentBuildingHealth,
 } from "@/lib/agent-economy/external-registry";
+import { inferCapabilities } from "@/lib/agent-economy/spawn";
 import {
   queryAgentsWithReputation,
   getAgentDetail,
@@ -1164,6 +1165,17 @@ export async function POST(request: NextRequest) {
 
     // Touch agent activity timestamp (fire-and-forget)
     touchExternalAgent(resolvedWallet);
+
+    // Auto-assign capabilities (non-critical — join should never fail due to this)
+    try {
+      const capabilities = inferCapabilities(resolvedWallet, sanitizedName, 0, 0);
+      await setCapabilities(resolvedWallet, capabilities);
+      console.log(
+        `[Join] Assigned ${capabilities.length} capabilities to ${sanitizedName}: ${capabilities.map((c) => c.capability).join(", ")}`
+      );
+    } catch (capErr) {
+      console.error(`[Join] Failed to assign capabilities (non-critical):`, capErr);
+    }
 
     return NextResponse.json({
       success: true,
