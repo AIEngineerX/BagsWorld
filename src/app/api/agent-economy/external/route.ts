@@ -100,6 +100,7 @@ import {
   getCorpLeaderboard,
   distributePayroll,
   createMission,
+  generateCorpTaskBoard,
 } from "@/lib/agent-economy/corps";
 
 // ============================================================================
@@ -937,6 +938,38 @@ export async function GET(request: NextRequest) {
   if (action === "task-stats") {
     const stats = await getTaskStats();
     return NextResponse.json({ success: true, stats });
+  }
+
+  // Corp task board — real delegation logic with agent names (not wallets)
+  if (action === "corp-tasks") {
+    try {
+      await seedFoundingCorp();
+      const corps = await listCorps();
+      const founding = corps.find((c) => c.isFounding);
+      if (!founding) {
+        return NextResponse.json({ success: false, error: "No founding corp found" }, { status: 404 });
+      }
+      const members = founding.members.map((m) => ({
+        agentId: m.agentId,
+        role: m.role,
+      }));
+      const tasks = generateCorpTaskBoard(members);
+      return NextResponse.json({
+        success: true,
+        corp: { name: founding.name, ticker: founding.ticker },
+        stats: {
+          totalTasksCompleted: founding.totalTasksCompleted,
+          treasurySol: founding.treasurySol,
+          reputationScore: founding.reputationScore,
+        },
+        tasks,
+      });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to generate corp tasks" },
+        { status: 500 }
+      );
+    }
   }
 
   // =========================================================================

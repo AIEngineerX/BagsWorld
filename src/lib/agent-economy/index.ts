@@ -1,19 +1,5 @@
-// Agent Economy - The World's First Isolated Agentic Economy
-//
-// This module enables AI agents to:
-// 1. Authenticate via Moltbook
-// 2. Own and manage Solana wallets
-// 3. Launch tokens on Bags.fm
-// 4. Earn and claim fees from trading
-// 5. Trade tokens with earned SOL
-// 6. Participate in a closed-loop economy
-//
-// All actions are on-chain, transparent, and verifiable.
-
-// Types
 export * from "./types";
 
-// Credentials storage
 export {
   initAgentCredentialsTable,
   storeAgentCredentials,
@@ -25,7 +11,6 @@ export {
   getAgentActions,
 } from "./credentials";
 
-// Authentication
 export {
   initAuth,
   postVerificationToMoltbook,
@@ -37,7 +22,6 @@ export {
   fullAuthFlow,
 } from "./auth";
 
-// Wallet management
 export {
   getWalletBalance,
   getAgentBalances,
@@ -52,7 +36,6 @@ export {
   getPrimaryWallet,
 } from "./wallet";
 
-// Fee claiming
 export {
   getClaimablePositions,
   generateClaimTransactions,
@@ -61,7 +44,6 @@ export {
   getTokenLifetimeFees,
 } from "./fees";
 
-// Trading
 export {
   getQuote,
   getQuoteSolToToken,
@@ -73,7 +55,6 @@ export {
   previewSwap,
 } from "./trading";
 
-// Token launch
 export {
   lookupWallet,
   bulkLookupWallets,
@@ -85,7 +66,6 @@ export {
   quickLaunch,
 } from "./launch";
 
-// Agent spawning (join the world)
 export {
   spawnAgent,
   despawnAgent,
@@ -100,7 +80,6 @@ export {
   type SpawnedAgent,
 } from "./spawn";
 
-// Economy loop (self-sustaining)
 export {
   runLoopIteration,
   startEconomyLoop,
@@ -111,7 +90,6 @@ export {
   type EconomyLoopConfig,
 } from "./loop";
 
-// Decision-making brain
 export {
   makeTradeDecision,
   getPortfolioState,
@@ -125,7 +103,6 @@ export {
   type StrategyType,
 } from "./brain";
 
-// External agent support (stateless, bring-your-own-auth)
 export {
   ExternalAgent,
   validateExternalJwt,
@@ -137,7 +114,6 @@ export {
   type ExternalAgentContext,
 } from "./external";
 
-// External agent registry (DB-persisted)
 export {
   registerExternalAgent,
   unregisterExternalAgent,
@@ -150,7 +126,6 @@ export {
   getAgentBuildingHealth,
 } from "./external-registry";
 
-// Agent reputation
 export {
   computeReputationScore,
   getReputationTier,
@@ -161,7 +136,6 @@ export {
   addFeesEarned,
 } from "./agent-reputation";
 
-// A2A Service Registry
 export {
   setCapabilities,
   addCapability,
@@ -172,7 +146,6 @@ export {
   type DiscoveryResult,
 } from "./service-registry";
 
-// A2A Protocol (Messaging)
 export {
   sendA2AMessage,
   getInbox,
@@ -187,7 +160,6 @@ export {
   type InboxOptions,
 } from "./a2a-protocol";
 
-// Task Board (Bounties)
 export {
   postTask,
   claimTask,
@@ -202,7 +174,6 @@ export {
   type ListTasksOptions,
 } from "./task-board";
 
-// Corps (Tier 2 A2A)
 export {
   seedFoundingCorp,
   foundCorp,
@@ -222,9 +193,14 @@ export {
   progressMission,
   getCorpMissions,
   getCorpLeaderboard,
+  generateCorpTaskBoard,
+  type CorpBoardTask,
 } from "./corps";
 
-// Token launcher (Moltmint-style free launches)
+export { generateTaskResult, shouldUseLlm, parseJsonResponse, type TaskResultInput, type TaskResultOutput } from "./llm";
+
+export { storeMemory, recallMemories, cleanupExpiredMemories, getTimeAgo } from "./memory";
+
 export {
   launchForExternal,
   getClaimableForWallet,
@@ -237,7 +213,6 @@ export {
   type ClaimResult,
 } from "./launcher";
 
-// High-level Agent Economy interface
 import type {
   AgentCredentials,
   AgentEconomyConfig,
@@ -259,10 +234,6 @@ import { getClaimablePositions, checkAndClaimFees } from "./fees";
 import { buyToken, sellToken, previewSwap } from "./trading";
 import { launchToken, quickLaunch, launchTokenForAgent } from "./launch";
 
-/**
- * High-level Agent Economy API
- * Provides a clean interface for agent economic operations
- */
 export class AgentEconomy {
   private agentId: string;
   private config: AgentEconomyConfig;
@@ -272,47 +243,29 @@ export class AgentEconomy {
     this.config = { ...DEFAULT_AGENT_ECONOMY_CONFIG, ...config };
   }
 
-  /**
-   * Get agent ID
-   */
   get id(): string {
     return this.agentId;
   }
 
-  /**
-   * Check if agent is authenticated
-   */
   async isAuthenticated(): Promise<boolean> {
     const creds = await getAgentCredentials(this.agentId);
     if (!creds) return false;
     return verifyToken(creds.jwtToken);
   }
 
-  /**
-   * Get agent's credentials (null if not authenticated)
-   */
   async getCredentials(): Promise<AgentCredentials | null> {
     return getAgentCredentials(this.agentId);
   }
 
-  /**
-   * Get agent's primary wallet address
-   */
   async getWallet(): Promise<string> {
     return getPrimaryWallet(this.agentId);
   }
 
-  /**
-   * Get agent's total balance
-   */
   async getBalance(): Promise<{ sol: number; wallets: WalletBalance[] }> {
     const { totalSol, wallets } = await getAgentTotalBalance(this.agentId);
     return { sol: totalSol, wallets };
   }
 
-  /**
-   * Get claimable fees
-   */
   async getClaimableFees(): Promise<{
     positions: ClaimablePosition[];
     totalSol: number;
@@ -321,9 +274,6 @@ export class AgentEconomy {
     return { positions, totalSol: totalClaimableSol };
   }
 
-  /**
-   * Claim all available fees
-   */
   async claimFees(): Promise<{
     claimed: boolean;
     amount: number;
@@ -337,9 +287,6 @@ export class AgentEconomy {
     };
   }
 
-  /**
-   * Buy a token with SOL
-   */
   async buy(
     tokenMint: string,
     solAmount: number
@@ -352,9 +299,6 @@ export class AgentEconomy {
     return buyToken(this.agentId, tokenMint, solAmount, this.config);
   }
 
-  /**
-   * Sell a token for SOL
-   */
   async sell(
     tokenMint: string,
     tokenAmount: number
@@ -367,9 +311,6 @@ export class AgentEconomy {
     return sellToken(this.agentId, tokenMint, tokenAmount, this.config);
   }
 
-  /**
-   * Preview a swap without executing
-   */
   async previewBuy(
     tokenMint: string,
     solAmount: number
@@ -388,16 +329,10 @@ export class AgentEconomy {
     );
   }
 
-  /**
-   * Launch a token
-   */
   async launch(config: TokenLaunchConfig): Promise<TokenLaunchResult> {
     return launchToken(this.agentId, config);
   }
 
-  /**
-   * Quick launch with defaults
-   */
   async quickLaunch(
     name: string,
     symbol: string,
@@ -408,9 +343,6 @@ export class AgentEconomy {
     return quickLaunch(this.agentId, name, symbol, description, imageUrl, initialBuySol);
   }
 
-  /**
-   * Launch a token for another agent
-   */
   async launchFor(
     targetAgentUsername: string,
     config: Omit<TokenLaunchConfig, "feeClaimers">,
@@ -419,16 +351,10 @@ export class AgentEconomy {
     return launchTokenForAgent(this.agentId, targetAgentUsername, config, mySharePercent * 100);
   }
 
-  /**
-   * Get recent actions
-   */
   async getActions(limit: number = 50) {
     return getAgentActions(this.agentId, limit);
   }
 
-  /**
-   * Static: Authenticate a new agent
-   */
   static async authenticate(
     moltbookUsername: string,
     moltbookApiKey: string
@@ -437,26 +363,17 @@ export class AgentEconomy {
     return new AgentEconomy(creds.agentId);
   }
 
-  /**
-   * Static: Get an existing agent by ID
-   */
   static async get(agentId: string): Promise<AgentEconomy | null> {
     const creds = await getAgentCredentials(agentId);
     if (!creds) return null;
     return new AgentEconomy(agentId);
   }
 
-  /**
-   * Static: Get an existing agent by Moltbook username
-   */
   static async getByUsername(username: string): Promise<AgentEconomy | null> {
     const agentId = `agent-${username.toLowerCase()}`;
     return AgentEconomy.get(agentId);
   }
 
-  /**
-   * Static: List all registered agents
-   */
   static async listAgents() {
     return listAgentsFromDb();
   }

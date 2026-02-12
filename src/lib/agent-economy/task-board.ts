@@ -4,6 +4,7 @@
 
 import { neon } from "@neondatabase/serverless";
 import type { AgentCapability, AgentTask, TaskStatus } from "../types";
+import { shouldUseLlm, generateTaskResult } from "./llm";
 
 // ============================================================================
 // DATABASE
@@ -232,9 +233,33 @@ export function generateTaskForCapability(cap: AgentCapability): PostTaskOptions
 }
 
 /**
- * Generate plausible result data for a completed task.
+ * Generate result data for a completed task.
+ * When agent context is provided and LLM is available, generates real results via Claude.
+ * Otherwise falls back to random template data.
  */
-export function generateResultForCapability(cap: AgentCapability): Record<string, unknown> {
+export async function generateResultForCapability(
+  cap: AgentCapability,
+  context?: {
+    agentId: string;
+    agentRole: string;
+    taskTitle: string;
+    taskDescription: string;
+    memory?: string[];
+  }
+): Promise<Record<string, unknown>> {
+  if (context && shouldUseLlm()) {
+    const llmResult = await generateTaskResult({
+      agentId: context.agentId,
+      agentRole: context.agentRole,
+      taskTitle: context.taskTitle,
+      taskDescription: context.taskDescription,
+      capability: cap,
+      memory: context.memory,
+    });
+    if (llmResult) return llmResult.result;
+  }
+
+  // Fallback to template
   return RESULT_TEMPLATES[cap]();
 }
 

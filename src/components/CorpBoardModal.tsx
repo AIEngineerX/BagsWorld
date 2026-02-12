@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BAGSWORLD_AGENTS } from "@/lib/agent-data";
+import { CorpTaskBoard } from "./CorpTaskBoard";
 
 // ============================================================================
-// Corp Board Modal — Bags.fm Corp org chart (data from agent-data + corps.ts)
+// Corp Board Modal — Bags.fm Corp org chart + live A2A task board
+// Org chart: static from agent-data (matches corps.ts FOUNDING_CORP)
+// Task board: fetched from API using real ROLE_TASK_PREFERENCES logic
 // ============================================================================
 
 interface CorpBoardModalProps {
@@ -17,15 +20,6 @@ interface CorpMember {
   corpRole: string;
   role: string;
   description: string;
-}
-
-interface TaskItem {
-  text: string;
-  poster: string;    // who requested the task
-  worker: string;    // who's working on it
-  status: "open" | "done";
-  capability: string;
-  category: "education" | "intelligence" | "onboarding";
 }
 
 function getAgentData(id: string, corpRole: string): CorpMember {
@@ -53,87 +47,6 @@ const MEMBERS: CorpMember[] = [
   getAgentData("carlo", "AMB"),
   getAgentData("bnn", "NEWS"),
 ];
-
-// ============================================================================
-// Corp collaboration task templates (mirrors corps.ts service templates)
-// Each task shows who requested it and who's working on it
-// ============================================================================
-
-// Capability → corp member mapping (primary handler)
-const CAPABILITY_AGENT: Record<string, string> = {
-  launch: "Finn",
-  trading: "Ramo",
-  content: "Sam",
-  scouting: "BNN",
-  alpha: "Alaa",
-  analysis: "Sincara",
-  combat: "Stuu",
-};
-
-interface CorpTaskTemplate {
-  title: string;
-  poster: string;
-  worker: string;
-  capability: string;
-  category: "education" | "intelligence" | "onboarding";
-}
-
-// Real corp collaboration tasks — who posts what for whom
-const CORP_TASK_POOL: CorpTaskTemplate[] = [
-  // Finn (CEO) coordinates high-level initiatives
-  { title: "Write fee claiming tutorial", poster: "Finn", worker: "Sam", capability: "content", category: "education" },
-  { title: "Review today's new launches", poster: "Finn", worker: "Ramo", capability: "launch", category: "intelligence" },
-  { title: "Create launch day checklist", poster: "Finn", worker: "Stuu", capability: "launch", category: "education" },
-  { title: "Full coverage sprint", poster: "Finn", worker: "Carlo", capability: "content", category: "onboarding" },
-
-  // Ramo (CTO) posts technical tasks
-  { title: "Explain bonding curve mechanics", poster: "Ramo", worker: "Sincara", capability: "analysis", category: "education" },
-  { title: "Daily volume leaders report", poster: "Ramo", worker: "BNN", capability: "trading", category: "intelligence" },
-  { title: "Create fee calculator example", poster: "Ramo", worker: "Alaa", capability: "analysis", category: "education" },
-  { title: "Explain slippage and price impact", poster: "Ramo", worker: "Stuu", capability: "trading", category: "education" },
-
-  // Sam (CMO) posts marketing/content tasks
-  { title: "Document BagsWorld zones", poster: "Sam", worker: "Carlo", capability: "content", category: "education" },
-  { title: "Spot promising early tokens", poster: "Sam", worker: "Alaa", capability: "alpha", category: "intelligence" },
-  { title: "Write beginner trading guide", poster: "Sam", worker: "Stuu", capability: "trading", category: "education" },
-  { title: "Growth campaign brief", poster: "Sam", worker: "BNN", capability: "content", category: "education" },
-
-  // Stuu (COO) posts operational tasks
-  { title: "Onboarding: claim first fee", poster: "Stuu", worker: "Carlo", capability: "content", category: "onboarding" },
-  { title: "Find unclaimed fee opportunities", poster: "Stuu", worker: "BNN", capability: "scouting", category: "intelligence" },
-  { title: "Training: scout new launches", poster: "Stuu", worker: "Sincara", capability: "scouting", category: "onboarding" },
-
-  // Alaa (CFO) posts financial analysis
-  { title: "Analyze top fee earners today", poster: "Alaa", worker: "Ramo", capability: "analysis", category: "intelligence" },
-  { title: "Weekly fee revenue report", poster: "Alaa", worker: "BNN", capability: "analysis", category: "intelligence" },
-  { title: "Whale movement tracker", poster: "Alaa", worker: "Sincara", capability: "alpha", category: "intelligence" },
-
-  // Sincara (ENG) posts engineering tasks
-  { title: "Document fee share config", poster: "Sincara", worker: "Sam", capability: "content", category: "education" },
-  { title: "SDK integration examples", poster: "Sincara", worker: "Ramo", capability: "analysis", category: "education" },
-
-  // Carlo (AMB) posts community tasks
-  { title: "Explain token gates", poster: "Carlo", worker: "Stuu", capability: "content", category: "education" },
-  { title: "Onboarding: post to MoltBook", poster: "Carlo", worker: "Sam", capability: "content", category: "onboarding" },
-
-  // BNN (NEWS) posts intelligence tasks
-  { title: "Flag low-quality launches", poster: "BNN", worker: "Ramo", capability: "scouting", category: "intelligence" },
-  { title: "Price momentum scanner", poster: "BNN", worker: "Alaa", capability: "trading", category: "intelligence" },
-];
-
-/** Pick N random tasks from the pool with mixed statuses */
-function generateCorpTasks(count: number): TaskItem[] {
-  const shuffled = [...CORP_TASK_POOL].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count).map((t, i) => ({
-    text: t.title,
-    poster: t.poster,
-    worker: t.worker,
-    // First ~30% are open, rest are done
-    status: i < Math.ceil(count * 0.3) ? ("open" as const) : ("done" as const),
-    capability: t.capability,
-    category: t.category,
-  }));
-}
 
 // ============================================================================
 // Components
@@ -241,85 +154,6 @@ function AboutSection() {
 
 export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<TaskItem[]>(() => generateCorpTasks(10));
-  const [isLive, setIsLive] = useState(false);
-  const [liveOpenCount, setLiveOpenCount] = useState<number | null>(null);
-
-  // Fetch real task data from A2A task board API
-  const fetchTasks = useCallback(async () => {
-    try {
-      const [openRes, doneRes, statsRes] = await Promise.all([
-        fetch("/api/agent-economy/external?action=tasks&status=open&limit=8"),
-        fetch("/api/agent-economy/external?action=tasks&status=completed&limit=8"),
-        fetch("/api/agent-economy/external?action=task-stats"),
-      ]);
-
-      const [openData, doneData, statsData] = await Promise.all([
-        openRes.json(),
-        doneRes.json(),
-        statsRes.json(),
-      ]);
-
-      const liveTasks: TaskItem[] = [];
-
-      if (openData.success && openData.tasks) {
-        for (const t of openData.tasks) {
-          const cap = t.capabilityRequired || "general";
-          const worker = CAPABILITY_AGENT[cap] || cap.charAt(0).toUpperCase() + cap.slice(1);
-          // Find a poster that isn't the same as the worker
-          const corpMembers = ["Finn", "Ramo", "Sam", "Stuu", "Alaa", "Sincara", "Carlo", "BNN"];
-          const poster = corpMembers.find((m) => m !== worker) || "Finn";
-          liveTasks.push({
-            text: t.title,
-            poster,
-            worker,
-            status: "open",
-            capability: cap,
-            category: "intelligence",
-          });
-        }
-      }
-
-      if (doneData.success && doneData.tasks) {
-        for (const t of doneData.tasks) {
-          const cap = t.capabilityRequired || "general";
-          const worker = CAPABILITY_AGENT[cap] || cap.charAt(0).toUpperCase() + cap.slice(1);
-          const corpMembers = ["Finn", "Ramo", "Sam", "Stuu", "Alaa", "Sincara", "Carlo", "BNN"];
-          const poster = corpMembers.find((m) => m !== worker) || "Finn";
-          liveTasks.push({
-            text: t.title,
-            poster,
-            worker,
-            status: "done",
-            capability: cap,
-            category: "intelligence",
-          });
-        }
-      }
-
-      if (liveTasks.length > 0) {
-        setTasks(liveTasks);
-        setIsLive(true);
-      }
-
-      if (statsData.success && statsData.stats) {
-        setLiveOpenCount(statsData.stats.open ?? 0);
-      }
-    } catch {
-      // API unavailable — keep generated corp tasks
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
-
-  const activeCount = liveOpenCount ?? tasks.filter((t) => t.status === "open").length;
-
-  // Filter tasks when agent selected — show tasks where they're poster OR worker
-  const visibleTasks = selectedAgent
-    ? tasks.filter((t) => t.poster === selectedAgent || t.worker === selectedAgent)
-    : tasks;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -368,7 +202,7 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
           <ConnectorVertical />
           <ConnectorHorizontal />
 
-          {/* C-Suite Row — horizontal scroll on narrow screens */}
+          {/* C-Suite Row */}
           <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-2 sm:overflow-visible">
             {C_SUITE.map((m) => (
               <div key={m.id} className="min-w-[5.5rem] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
@@ -388,69 +222,8 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
             ))}
           </div>
 
-          {/* A2A Task Board */}
-          <div className="border-t border-green-600/30 pt-3 mt-3">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-sm font-bold text-green-300 font-mono">A2A TASK BOARD</h3>
-              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
-                isLive
-                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                  : "bg-yellow-500/15 text-yellow-500/70 border border-yellow-500/20"
-              }`}>
-                {isLive ? "LIVE" : "OFFLINE"}
-              </span>
-              <div className="flex-1 h-px bg-green-700/30" />
-              {selectedAgent ? (
-                <button onClick={() => setSelectedAgent(null)}
-                  className="text-[10px] text-green-400 font-mono hover:text-green-200 transition-colors">
-                  {selectedAgent} {"\u2715"}
-                </button>
-              ) : (
-                <span className="text-[10px] font-mono">
-                  <span className="text-yellow-400">{activeCount}</span>
-                  <span className="text-green-500/50"> active</span>
-                </span>
-              )}
-            </div>
-
-            {/* Scrollable task list */}
-            <div className="max-h-44 overflow-y-auto corp-scroll space-y-1">
-              {visibleTasks.length === 0 ? (
-                <p className="text-xs text-green-500/40 font-mono text-center py-3">No tasks for {selectedAgent}</p>
-              ) : (
-                visibleTasks.map((task, i) => {
-                  const isHighlighted = selectedAgent && (task.poster === selectedAgent || task.worker === selectedAgent);
-                  return (
-                    <div key={i}
-                      className={`flex items-center justify-between rounded px-3 py-2 transition-all duration-200 ${
-                        isHighlighted
-                          ? "bg-green-900/40 border border-green-500/30"
-                          : "bg-green-950/20 border border-transparent hover:bg-green-950/30"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                          task.status === "open"
-                            ? "bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.4)] animate-pulse"
-                            : "bg-green-600/60"
-                        }`} />
-                        <span className={`text-sm truncate ${
-                          task.status === "open" ? "text-green-200" : "text-green-300/50"
-                        }`}>{task.text}</span>
-                      </div>
-                      <span className={`text-[10px] font-mono ml-2 flex-shrink-0 whitespace-nowrap ${
-                        task.status === "open" ? "text-green-400/70" : "text-green-600/40"
-                      }`}>
-                        <span className={selectedAgent === task.poster ? "text-green-300" : ""}>{task.poster}</span>
-                        <span className="text-green-700/50 mx-0.5">{"\u2192"}</span>
-                        <span className={selectedAgent === task.worker ? "text-green-300" : ""}>{task.worker}</span>
-                      </span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+          {/* A2A Task Board — real data from API */}
+          <CorpTaskBoard selectedAgent={selectedAgent} onSelectAgent={setSelectedAgent} />
 
           {/* About */}
           <AboutSection />
