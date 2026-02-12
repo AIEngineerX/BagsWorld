@@ -66,3 +66,6 @@ ios/capacitor-cordova-ios-plugins/
 
 # Exported banner PNGs
 bagsworld-banner-*.png
+
+# Private alpha wallet data (never commit)
+data/alpha-wallets.json
