@@ -4,7 +4,10 @@
 import {
   type Fighter,
   type MatchState,
+  type FightReplay,
+  type ReplayKeyframe,
   ARENA_CONFIG,
+  REPLAY_KEYFRAME_INTERVAL,
   karmaToStats,
   calculateDamage,
   usernameToSpriteVariant,
@@ -510,6 +513,112 @@ export class ArenaEngine {
   // Set update callback (for serverless mode where start() isn't called)
   setUpdateCallback(callback: MatchUpdateCallback): void {
     this.onUpdate = callback;
+  }
+
+  // Run a match to completion and capture a replay
+  // Returns null if match not found or already completed
+  runMatchWithReplay(matchId: number, maxTicks: number = 5000): FightReplay | null {
+    const activeMatch = this.matches.get(matchId);
+    if (!activeMatch) {
+      console.error(`[ArenaEngine] runMatchWithReplay: match ${matchId} not found`);
+      return null;
+    }
+
+    const { state } = activeMatch;
+    if (state.status !== "active") {
+      console.warn(`[ArenaEngine] runMatchWithReplay: match ${matchId} not active`);
+      return null;
+    }
+
+    const keyframes: ReplayKeyframe[] = [];
+    const allEventsSinceLastKeyframe: import("./arena-types").CombatEvent[] = [];
+
+    // Capture initial keyframe
+    keyframes.push(this.captureKeyframe(state, []));
+
+    let ticksRun = 0;
+
+    while (ticksRun < maxTicks && state.status === "active") {
+      // Run one tick
+      this.tick();
+      ticksRun++;
+
+      // Collect events from this tick
+      if (state.events.length > 0) {
+        allEventsSinceLastKeyframe.push(...state.events);
+      }
+
+      // Capture keyframe at interval or when events occurred
+      const hasEvents = allEventsSinceLastKeyframe.length > 0;
+      const atInterval = state.tick % REPLAY_KEYFRAME_INTERVAL === 0;
+
+      if (atInterval || hasEvents || state.status !== "active") {
+        keyframes.push(
+          this.captureKeyframe(
+            state,
+            allEventsSinceLastKeyframe.length > 0
+              ? [...allEventsSinceLastKeyframe]
+              : undefined
+          )
+        );
+        allEventsSinceLastKeyframe.length = 0;
+      }
+    }
+
+    // Build replay object
+    const replay: FightReplay = {
+      matchId,
+      fighter1: {
+        id: state.fighter1.id,
+        username: state.fighter1.username,
+        maxHp: state.fighter1.stats.maxHp,
+        spriteVariant: state.fighter1.spriteVariant,
+      },
+      fighter2: {
+        id: state.fighter2.id,
+        username: state.fighter2.username,
+        maxHp: state.fighter2.stats.maxHp,
+        spriteVariant: state.fighter2.spriteVariant,
+      },
+      keyframes,
+      winner: state.winner || "",
+      totalTicks: state.tick,
+      recordedAt: Date.now(),
+    };
+
+    console.log(
+      `[ArenaEngine] Replay captured for match ${matchId}: ${keyframes.length} keyframes, ${state.tick} ticks, winner: ${state.winner}`
+    );
+
+    return replay;
+  }
+
+  // Capture a compact keyframe from current match state
+  private captureKeyframe(
+    state: MatchState,
+    events?: import("./arena-types").CombatEvent[]
+  ): ReplayKeyframe {
+    const kf: ReplayKeyframe = {
+      t: state.tick,
+      f1: {
+        hp: state.fighter1.stats.hp,
+        x: state.fighter1.x,
+        y: state.fighter1.y,
+        s: state.fighter1.state,
+        d: state.fighter1.direction,
+      },
+      f2: {
+        hp: state.fighter2.stats.hp,
+        x: state.fighter2.x,
+        y: state.fighter2.y,
+        s: state.fighter2.state,
+        d: state.fighter2.direction,
+      },
+    };
+    if (events && events.length > 0) {
+      kf.ev = events;
+    }
+    return kf;
   }
 }
 

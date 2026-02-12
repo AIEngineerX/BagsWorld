@@ -32,7 +32,7 @@ export function setupArenaZone(scene: WorldScene): void {
     scene.arenaElements.forEach((el) => (el as any).setVisible(true));
   }
 
-  connectArenaWebSocket(scene);
+  initArenaConnection(scene);
 }
 
 function createArenaSky(scene: WorldScene): void {
@@ -604,184 +604,297 @@ async function fetchArenaLeaderboard(scene: WorldScene): Promise<void> {
   }
 }
 
-export function connectArenaWebSocket(scene: WorldScene): void {
-  if (scene.arenaWebSocket && scene.arenaWebSocket.readyState === WebSocket.OPEN) {
-    return; // Already connected
-  }
+// ============================================================================
+// REPLAY-BASED ARENA CONNECTION (replaces WebSocket)
+// ============================================================================
 
-  // Connect to arena server (Railway in production, localhost in dev)
-  const wsUrl = process.env.NEXT_PUBLIC_ARENA_WS_URL || "ws://localhost:8080";
-
-  try {
-    scene.arenaWebSocket = new WebSocket(wsUrl);
-
-    scene.arenaWebSocket.onopen = () => {
-      console.log("[Arena] WebSocket connected to arena server");
-      // Arena server sends queue_status automatically on connect
-    };
-
-    scene.arenaWebSocket.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        handleArenaMessage(scene, msg);
-      } catch (err) {
-        console.error("[Arena] Failed to parse message:", err);
-      }
-    };
-
-    scene.arenaWebSocket.onerror = (error) => {
-      console.error("[Arena] WebSocket error:", error);
-    };
-
-    scene.arenaWebSocket.onclose = () => {
-      console.log("[Arena] WebSocket disconnected");
-      scene.arenaWebSocket = null;
-    };
-  } catch (err) {
-    console.error("[Arena] Failed to connect WebSocket:", err);
-    // Fall back to polling
-    startArenaPolling(scene);
-  }
+// Replay playback state
+interface ReplayState {
+  replay: import("@/lib/arena-types").FightReplay;
+  keyframeIndex: number;
+  timer: Phaser.Time.TimerEvent | null;
+  lastPlayedMatchId: number;
 }
 
-export function disconnectArenaWebSocket(scene: WorldScene): void {
-  if (scene.arenaWebSocket) {
-    scene.arenaWebSocket.close();
-    scene.arenaWebSocket = null;
+let replayState: ReplayState | null = null;
+let replayEventListener: ((e: Event) => void) | null = null;
+
+/**
+ * Initialize arena connection - listens for replay events, starts status polling
+ */
+export function initArenaConnection(scene: WorldScene): void {
+  // Listen for replay events dispatched from ArenaModal
+  if (!replayEventListener) {
+    replayEventListener = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { matchId: number };
+      if (detail?.matchId) {
+        fetchAndPlayReplay(scene, detail.matchId);
+      }
+    };
+    window.addEventListener("bagsworld-arena-replay", replayEventListener);
   }
-  // Also clean up polling timer to prevent background network requests
+
+  // Start lightweight status polling
+  startArenaStatusPolling(scene);
+
+  // Auto-fetch latest replay on zone entry
+  fetchLatestReplay(scene);
+}
+
+/**
+ * Disconnect arena - stop replay, destroy polling, remove event listener
+ */
+export function disconnectArena(scene: WorldScene): void {
+  stopReplay(scene);
+
+  // Clean up polling timer
   if (scene.arenaPollingTimer) {
     scene.arenaPollingTimer.destroy();
     scene.arenaPollingTimer = null;
   }
+
+  // Clean up the replay cleanup function stored on scene
+  if (scene.arenaReplayCleanup) {
+    scene.arenaReplayCleanup();
+    scene.arenaReplayCleanup = null;
+  }
+
+  // Remove event listener
+  if (replayEventListener) {
+    window.removeEventListener("bagsworld-arena-replay", replayEventListener);
+    replayEventListener = null;
+  }
 }
 
-function handleArenaMessage(
+/**
+ * Play a fight replay through the existing animation pipeline
+ */
+function playReplay(
   scene: WorldScene,
-  msg: { type: string; data?: unknown; error?: string }
+  replay: import("@/lib/arena-types").FightReplay
 ): void {
-  switch (msg.type) {
-    case "connected":
-      console.log("[Arena] Connected to arena server:", msg.data);
-      break;
+  // Stop any current replay
+  stopReplay(scene);
 
-    case "queue_status": {
-      // Arena server format: { position, size, queue: [{username, karma}] }
-      const status = msg.data as {
-        position: number;
-        size: number;
-        queue?: Array<{ username: string }>;
-      };
-      updateArenaQueue(scene, status.queue?.map((_, i) => ({ fighter_id: i })) || []);
-      break;
-    }
-
-    case "queue_update":
-      updateArenaQueue(scene, msg.data as Array<{ fighter_id: number }>);
-      break;
-
-    case "active_matches":
-      updateActiveMatches(scene, msg.data as Array<{ matchId: number; status: string }>);
-      break;
-
-    case "match_start":
-    case "match_update":
-    case "match_end": {
-      // Arena server sends full fighter objects with stats
-      const matchData = msg.data as {
-        matchId: number;
-        status: string;
-        tick: number;
-        fighter1: {
-          id: number;
-          username: string;
-          stats: { hp: number; maxHp: number };
-          x: number;
-          y: number;
-          state: string;
-          direction: string;
-          spriteVariant: number;
-        };
-        fighter2: {
-          id: number;
-          username: string;
-          stats: { hp: number; maxHp: number };
-          x: number;
-          y: number;
-          state: string;
-          direction: string;
-          spriteVariant: number;
-        };
-        winner?: string;
-      };
-
-      // Transform to expected format for updateArenaMatch
-      updateArenaMatch(scene, {
-        matchId: matchData.matchId,
-        status: matchData.status,
-        tick: matchData.tick,
-        fighter1: {
-          id: matchData.fighter1.id,
-          hp: matchData.fighter1.stats.hp,
-          maxHp: matchData.fighter1.stats.maxHp,
-          x: matchData.fighter1.x,
-          y: matchData.fighter1.y,
-          state: matchData.fighter1.state,
-          direction: matchData.fighter1.direction,
-        },
-        fighter2: {
-          id: matchData.fighter2.id,
-          hp: matchData.fighter2.stats.hp,
-          maxHp: matchData.fighter2.stats.maxHp,
-          x: matchData.fighter2.x,
-          y: matchData.fighter2.y,
-          state: matchData.fighter2.state,
-          direction: matchData.fighter2.direction,
-        },
-        winner: matchData.winner,
-      });
-
-      // Trigger crowd cheer on match start
-      if (msg.type === "match_start") {
-        triggerCrowdCheer(scene);
-      }
-      break;
-    }
-
-    case "match_state":
-      updateArenaMatch(
-        scene,
-        msg.data as {
-          matchId: number;
-          status: string;
-          tick: number;
-          fighter1: {
-            id: number;
-            hp: number;
-            maxHp: number;
-            x: number;
-            y: number;
-            state: string;
-            direction: string;
-          };
-          fighter2: {
-            id: number;
-            hp: number;
-            maxHp: number;
-            x: number;
-            y: number;
-            state: string;
-            direction: string;
-          };
-          winner?: string;
-        }
-      );
-      break;
-
-    case "error":
-      console.error("[Arena] Error:", msg.error);
-      break;
+  if (!replay.keyframes || replay.keyframes.length === 0) {
+    console.warn("[Arena] Replay has no keyframes");
+    return;
   }
+
+  console.log(
+    `[Arena] Playing replay: match ${replay.matchId}, ${replay.keyframes.length} keyframes`
+  );
+
+  // Store match state info for animation system (used by showHitEffect for attacker detection)
+  const firstKf = replay.keyframes[0];
+  scene.arenaMatchState = {
+    matchId: replay.matchId,
+    status: "active",
+    fighter1: {
+      id: replay.fighter1.id,
+      hp: firstKf.f1.hp,
+      maxHp: replay.fighter1.maxHp,
+      x: firstKf.f1.x,
+      y: firstKf.f1.y,
+      state: firstKf.f1.s,
+    },
+    fighter2: {
+      id: replay.fighter2.id,
+      hp: firstKf.f2.hp,
+      maxHp: replay.fighter2.maxHp,
+      x: firstKf.f2.x,
+      y: firstKf.f2.y,
+      state: firstKf.f2.s,
+    },
+  };
+
+  // Trigger crowd cheer at start
+  triggerCrowdCheer(scene);
+
+  // Show VS announcement
+  showArenaAnnouncement(
+    scene,
+    `${replay.fighter1.username}  VS  ${replay.fighter2.username}`,
+    "#22c55e"
+  );
+
+  replayState = {
+    replay,
+    keyframeIndex: 0,
+    timer: null,
+    lastPlayedMatchId: replay.matchId,
+  };
+
+  // Start playback timer
+  replayState.timer = scene.time.addEvent({
+    delay: 100, // REPLAY_PLAYBACK_MS
+    callback: () => advanceReplay(scene),
+    loop: true,
+  });
+}
+
+/**
+ * Advance replay by one keyframe - transforms compact format to full state for animations
+ */
+function advanceReplay(scene: WorldScene): void {
+  if (!replayState || scene.currentZone !== "arena") {
+    stopReplay(scene);
+    return;
+  }
+
+  const { replay, keyframeIndex } = replayState;
+  if (keyframeIndex >= replay.keyframes.length) {
+    stopReplay(scene);
+    return;
+  }
+
+  const kf = replay.keyframes[keyframeIndex];
+
+  // Determine if this is the last keyframe (match end)
+  const isLastKeyframe = keyframeIndex === replay.keyframes.length - 1;
+  const isCompleted = isLastKeyframe && replay.winner;
+
+  // Transform compact keyframe into the format updateArenaMatch expects
+  const state = {
+    matchId: replay.matchId,
+    status: isCompleted ? "completed" : "active",
+    tick: kf.t,
+    fighter1: {
+      id: replay.fighter1.id,
+      username: replay.fighter1.username,
+      hp: kf.f1.hp,
+      maxHp: replay.fighter1.maxHp,
+      x: kf.f1.x,
+      y: kf.f1.y,
+      state: kf.f1.s,
+      direction: kf.f1.d,
+    },
+    fighter2: {
+      id: replay.fighter2.id,
+      username: replay.fighter2.username,
+      hp: kf.f2.hp,
+      maxHp: replay.fighter2.maxHp,
+      x: kf.f2.x,
+      y: kf.f2.y,
+      state: kf.f2.s,
+      direction: kf.f2.d,
+    },
+    winner: isCompleted ? replay.winner : undefined,
+  };
+
+  // Feed into existing animation pipeline - state transitions trigger all VFX
+  updateArenaMatch(scene, state);
+
+  replayState.keyframeIndex++;
+}
+
+/**
+ * Stop current replay playback
+ */
+function stopReplay(scene: WorldScene): void {
+  if (replayState?.timer) {
+    replayState.timer.destroy();
+    replayState.timer = null;
+  }
+  // Don't clear replayState.lastPlayedMatchId so we can avoid replaying same match
+}
+
+/**
+ * Fetch and play a replay for a specific match
+ */
+async function fetchAndPlayReplay(scene: WorldScene, matchId: number): Promise<void> {
+  if (scene.currentZone !== "arena") return;
+
+  try {
+    const res = await fetch(`/api/arena/brawl?action=replay&matchId=${matchId}`);
+    const data = await res.json();
+
+    if (data.success && data.replay) {
+      playReplay(scene, data.replay);
+    } else {
+      console.warn(`[Arena] No replay found for match ${matchId}`);
+    }
+  } catch (err) {
+    console.error("[Arena] Failed to fetch replay:", err);
+  }
+}
+
+/**
+ * Fetch and auto-play the latest available replay
+ */
+async function fetchLatestReplay(scene: WorldScene): Promise<void> {
+  if (scene.currentZone !== "arena") return;
+
+  try {
+    const res = await fetch("/api/arena/brawl?action=latest_replay");
+    const data = await res.json();
+
+    if (data.success && data.replay) {
+      // Don't replay the same match we just played
+      if (replayState?.lastPlayedMatchId === data.replay.matchId) return;
+      playReplay(scene, data.replay);
+    }
+  } catch (err) {
+    console.warn("[Arena] Failed to fetch latest replay:", err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * Lightweight status polling - queue count, leaderboard, auto-fetch new replays
+ */
+function startArenaStatusPolling(scene: WorldScene): void {
+  // Clean up any existing polling timer
+  if (scene.arenaPollingTimer) {
+    scene.arenaPollingTimer.destroy();
+    scene.arenaPollingTimer = null;
+  }
+
+  let pollCount = 0;
+
+  scene.arenaPollingTimer = scene.time.addEvent({
+    delay: 3000, // Poll every 3 seconds
+    callback: async () => {
+      if (scene.currentZone !== "arena") return;
+
+      try {
+        // Queue status every 3s
+        const queueRes = await fetch("/api/arena/brawl?action=queue");
+        const queueData = await queueRes.json();
+        if (queueData.success) {
+          updateArenaQueue(scene, queueData.queue?.fighters || []);
+        }
+
+        pollCount++;
+
+        // Leaderboard every 30s (10 polls)
+        if (pollCount % 10 === 0) {
+          fetchArenaLeaderboard(scene);
+        }
+
+        // Auto-fetch new replays every 15s (5 polls) when not currently playing
+        if (pollCount % 5 === 0 && !replayState?.timer) {
+          fetchLatestReplay(scene);
+        }
+
+        // Check MoltBook for new !fight posts every 30s (10 polls)
+        if (pollCount % 10 === 0) {
+          fetch("/api/arena/brawl", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "poll" }),
+          }).catch((err) =>
+            console.warn(
+              "[Arena] MoltBook poll failed:",
+              err instanceof Error ? err.message : err
+            )
+          );
+        }
+      } catch (err) {
+        console.error("[Arena] Polling error:", err);
+      }
+    },
+    loop: true,
+  });
 }
 
 function updateArenaQueue(scene: WorldScene, queue: Array<{ fighter_id: number }>): void {
@@ -2205,93 +2318,3 @@ function playArenaConfetti(scene: WorldScene): void {
   }
 }
 
-/**
- * Fallback polling for arena status (when WebSocket unavailable)
- */
-function startArenaPolling(scene: WorldScene): void {
-  // Clean up any existing polling timer first
-  if (scene.arenaPollingTimer) {
-    scene.arenaPollingTimer.destroy();
-    scene.arenaPollingTimer = null;
-  }
-
-  let pollCount = 0;
-  let engineStarted = false;
-
-  // Poll arena status every 500ms for smoother fight updates
-  scene.arenaPollingTimer = scene.time.addEvent({
-    delay: 500,
-    callback: async () => {
-      if (scene.currentZone !== "arena") return;
-
-      try {
-        // Auto-start engine on first poll (lazy initialization)
-        if (!engineStarted) {
-          engineStarted = true;
-          console.log("[Arena] Auto-starting engine...");
-          await fetch("/api/arena/brawl", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "start_engine" }),
-          });
-        }
-
-        // Get active matches from engine
-        const matchResponse = await fetch("/api/arena/brawl?action=matches");
-        const matchData = await matchResponse.json();
-
-        if (matchData.success && matchData.matches) {
-          updateActiveMatches(scene, matchData.matches);
-
-          // If matches from engine, render them
-          if (matchData.source === "engine" && matchData.matches.length > 0) {
-            for (const match of matchData.matches) {
-              if (match.status === "active" || match.status === "completed") {
-                updateArenaMatch(scene, match);
-              }
-            }
-
-            // Run a few ticks to advance the fight
-            await fetch("/api/arena/brawl", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "tick", ticks: 5 }),
-            });
-          }
-        }
-
-        // Update queue and leaderboard less frequently (every 4 polls = 2 seconds)
-        pollCount++;
-        if (pollCount % 4 === 0) {
-          const queueResponse = await fetch("/api/arena/brawl?action=queue");
-          const queueData = await queueResponse.json();
-          if (queueData.success) {
-            updateArenaQueue(scene, queueData.queue?.fighters || []);
-          }
-
-          // Refresh leaderboard every 10 seconds
-          if (pollCount % 20 === 0) {
-            fetchArenaLeaderboard(scene);
-          }
-
-          // Check MoltBook for new !fight posts every 30 seconds (60 polls)
-          if (pollCount % 60 === 0) {
-            fetch("/api/arena/brawl", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "poll" }),
-            }).catch((err) =>
-              console.warn(
-                "[Arena] MoltBook poll failed:",
-                err instanceof Error ? err.message : err
-              )
-            );
-          }
-        }
-      } catch (err) {
-        console.error("[Arena] Polling error:", err);
-      }
-    },
-    loop: true,
-  });
-}

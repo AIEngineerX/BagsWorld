@@ -15,8 +15,10 @@ import {
   createMatch,
   getMatch,
   getFighterById,
+  getMatchReplay,
+  getLatestReplay,
 } from "@/lib/arena-db";
-import { getQueueStatus, attemptMatchmaking } from "@/lib/arena-matchmaking";
+import { getQueueStatus, attemptMatchmaking, getLastReplay } from "@/lib/arena-matchmaking";
 import { getArenaEngine, startArenaEngine, stopArenaEngine } from "@/lib/arena-engine";
 import {
   isArenaMonitorConfigured,
@@ -235,6 +237,53 @@ export async function GET(request: NextRequest) {
           message: "User not found on MoltBook. Using default stats.",
         });
       }
+    }
+
+    // Get a specific match replay
+    case "replay": {
+      const matchId = searchParams.get("matchId");
+      if (!matchId) {
+        return NextResponse.json({ error: "matchId required" }, { status: 400 });
+      }
+
+      const replay = await getMatchReplay(parseInt(matchId, 10));
+      if (!replay) {
+        return NextResponse.json(
+          { error: "Replay not found for this match" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ success: true, replay });
+    }
+
+    // Get the latest available replay
+    case "latest_replay": {
+      // Try in-memory cache first (from most recent matchmaking)
+      const cachedReplay = getLastReplay();
+      if (cachedReplay) {
+        return NextResponse.json({
+          success: true,
+          replay: cachedReplay,
+          source: "cache",
+        });
+      }
+
+      // Fall back to database
+      const dbReplay = await getLatestReplay();
+      if (dbReplay) {
+        return NextResponse.json({
+          success: true,
+          replay: dbReplay,
+          source: "database",
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        replay: null,
+        message: "No replays available",
+      });
     }
 
     default:

@@ -2,9 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 
-// WebSocket URL for arena server
-const WS_URL = process.env.NEXT_PUBLIC_ARENA_WS_URL || "ws://localhost:8080";
-
 interface ArenaModalProps {
   onClose: () => void;
 }
@@ -321,11 +318,7 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
   } | null>(null);
   const lookupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // WebSocket connection
-  const wsRef = useRef<WebSocket | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
-
-  // Ref to access onClose in WebSocket handler without stale closure
+  // Ref to access onClose in join handler without stale closure
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -338,114 +331,61 @@ export function ArenaModal({ onClose }: ArenaModalProps) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  // Connect to arena WebSocket
-  useEffect(() => {
-    const ws = new WebSocket(WS_URL);
-
-    ws.onopen = () => {
-      console.log("[ArenaModal] Connected to arena server");
-      setWsConnected(true);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "queue_status") {
-          setQueueSize(msg.data.size || 0);
-          if (msg.data.queue) {
-            setQueueFighters(
-              msg.data.queue
-                .slice(0, 4)
-                .map((f: { username: string }) => ({ username: f.username }))
-            );
-          }
-          // Show position if in queue
-          if (msg.data.position > 0) {
-            setJoinResult({
-              success: true,
-              message: `Waiting for opponent... (Position: ${msg.data.position})`,
-            });
-          }
-        } else if (msg.type === "match_start") {
-          setActiveMatch({
-            fighter1: msg.data.fighter1.username,
-            fighter2: msg.data.fighter2.username,
-            status: "active",
-          });
-          setIsLiveBattle(true);
-          setJoinResult({
-            success: true,
-            message: "Match started! Closing to watch...",
-          });
-          // Auto-close modal after short delay so user can watch the fight
-          setTimeout(() => {
-            onCloseRef.current();
-          }, 1500);
-        } else if (msg.type === "match_end") {
-          setIsLiveBattle(false);
-          setJoinResult({
-            success: true,
-            message: `${msg.data.winner} wins!`,
-          });
-        } else if (msg.type === "error") {
-          setJoinResult({
-            success: false,
-            message: msg.error || "Server error",
-          });
-        }
-      } catch (err) {
-        console.error("[ArenaModal] Parse error:", err);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log("[ArenaModal] Disconnected");
-      setWsConnected(false);
-    };
-
-    wsRef.current = ws;
-
-    return () => {
-      ws.close();
-    };
-  }, []);
-
-  // Handle join arena via WebSocket
-  const handleJoinArena = () => {
+  // Handle join arena via REST API
+  const handleJoinArena = async () => {
     if (!username.trim() || isJoining) return;
-
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      setJoinResult({
-        success: false,
-        message: "Not connected to arena server",
-      });
-      return;
-    }
 
     setIsJoining(true);
     setJoinResult(null);
 
-    // Send join_queue message to arena server
-    // Use verified karma from lookup, or default to 100
-    const karma = profileLookup?.verified ? profileLookup.karma : 100;
+    try {
+      const res = await fetch("/api/arena/brawl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "join",
+          username: username.trim(),
+        }),
+      });
 
-    wsRef.current.send(
-      JSON.stringify({
-        type: "join_queue",
-        username: username.trim(),
-        karma,
-      })
-    );
+      const data = await res.json();
 
-    setUsername("");
-    setProfileLookup(null); // Reset lookup
-    setIsJoining(false);
-    setJoinResult({
-      success: true,
-      message: profileLookup?.verified
-        ? `Joining queue with ${karma} karma (verified)...`
-        : "Joining queue...",
-    });
+      if (!res.ok || !data.success) {
+        setJoinResult({
+          success: false,
+          message: data.error || "Failed to join arena",
+        });
+        setIsJoining(false);
+        return;
+      }
+
+      setJoinResult({
+        success: true,
+        message: data.message || "Joined arena!",
+      });
+
+      setUsername("");
+      setProfileLookup(null);
+
+      // If a match was created, dispatch replay event and auto-close
+      if (data.matchId) {
+        window.dispatchEvent(
+          new CustomEvent("bagsworld-arena-replay", {
+            detail: { matchId: data.matchId },
+          })
+        );
+        setTimeout(() => {
+          onCloseRef.current();
+        }, 1500);
+      }
+    } catch (err) {
+      setJoinResult({
+        success: false,
+        message: "Network error - please try again",
+      });
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   // Lookup MoltBook profile when username changes (debounced)

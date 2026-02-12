@@ -8,9 +8,11 @@ import {
   getFighterById,
   cleanupStaleQueue,
   getQueueSize,
+  storeMatchReplay,
   type ArenaQueueEntry,
 } from "./arena-db";
 import { getArenaEngine } from "./arena-engine";
+import type { FightReplay } from "./arena-types";
 
 // Configuration
 const MIN_QUEUE_SIZE = 2;
@@ -29,6 +31,9 @@ let lastMatchResult: {
   totalTicks: number;
 } | null = null;
 
+// Store the last replay for immediate retrieval
+let lastReplay: FightReplay | null = null;
+
 /**
  * Get the last match result (for immediate retrieval after matchmaking)
  */
@@ -36,6 +41,13 @@ export function getLastMatchResult() {
   const result = lastMatchResult;
   lastMatchResult = null; // Clear after retrieval
   return result;
+}
+
+/**
+ * Get the last fight replay (for immediate retrieval after matchmaking)
+ */
+export function getLastReplay(): FightReplay | null {
+  return lastReplay;
 }
 
 /**
@@ -107,28 +119,24 @@ export async function attemptMatchmaking(): Promise<number | null> {
     );
 
     if (added) {
-      // Run the fight to completion (max 5000 ticks to prevent infinite loops)
-      let ticksRun = 0;
-      const maxTicks = 5000;
-      while (ticksRun < maxTicks) {
-        const states = engine.runTicks(50);
-        ticksRun += 50;
-        // Check if match is complete
-        const matchState = states.find((s) => s.matchId === matchId);
-        if (!matchState || matchState.status !== "active") {
-          console.log(`[Matchmaking] Match ${matchId} completed after ${ticksRun} ticks`);
-          // Store the result for the caller
-          if (matchState?.winner) {
-            lastMatchResult = {
-              matchId,
-              winner: matchState.winner,
-              fighter1: fighter1.moltbook_username,
-              fighter2: fighter2.moltbook_username,
-              totalTicks: ticksRun,
-            };
-          }
-          break;
-        }
+      // Run the fight to completion with replay capture
+      const replay = engine.runMatchWithReplay(matchId);
+      if (replay) {
+        lastReplay = replay;
+        lastMatchResult = {
+          matchId,
+          winner: replay.winner,
+          fighter1: fighter1.moltbook_username,
+          fighter2: fighter2.moltbook_username,
+          totalTicks: replay.totalTicks,
+        };
+        // Store replay in DB (fire and forget)
+        storeMatchReplay(matchId, replay).catch((err) =>
+          console.error(`[Matchmaking] Failed to store replay for match ${matchId}:`, err)
+        );
+        console.log(
+          `[Matchmaking] Match ${matchId} completed: ${replay.winner} wins (${replay.keyframes.length} keyframes, ${replay.totalTicks} ticks)`
+        );
       }
     } else {
       console.error(`[Matchmaking] Failed to add match ${matchId} to arena engine`);
