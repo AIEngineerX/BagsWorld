@@ -88,7 +88,7 @@ const LOCATIONS: Record<
   string,
   { id: string; name: string; desc: string; event: string | null }[]
 > = {
-  labs: [{ id: "hq", name: "Bags.FM HQ", desc: "Headquarters", event: "bagsworld-hq-click" }],
+  labs: [{ id: "hq", name: "Bags.FM HQ", desc: "Corp Board", event: "bagsworld-corp-click" }],
   moltbook: [
     { id: "beach", name: "Agent Beach", desc: "AI Hangout", event: null },
     { id: "feed", name: "Moltbook Feed", desc: "Social Feed", event: null },

@@ -160,9 +160,9 @@ export async function generateBanner(
 // ---------------------------------------------------------------------------
 
 interface SignTransaction {
-  (tx: VersionedTransaction | import("@solana/web3.js").Transaction): Promise<
-    VersionedTransaction | import("@solana/web3.js").Transaction
-  >;
+  (
+    tx: VersionedTransaction | import("@solana/web3.js").Transaction
+  ): Promise<VersionedTransaction | import("@solana/web3.js").Transaction>;
 }
 interface SignAndSend {
   (
@@ -324,7 +324,9 @@ export async function executeLaunchFlow(opts: {
     const feeError = await feeRes.json();
     const errorMsg = feeError.error || "Failed to configure fee sharing";
     if (errorMsg.toLowerCase().includes("could not find wallet")) {
-      throw new Error(`${errorMsg}. The user needs to link their wallet at bags.fm/settings first.`);
+      throw new Error(
+        `${errorMsg}. The user needs to link their wallet at bags.fm/settings first.`
+      );
     }
     throw new Error(errorMsg);
   }

@@ -66,9 +66,7 @@ function getAgentOnlineStatus(
   railwayAgents: AgentStatus[] | undefined
 ): AgentStatus | undefined {
   if (!railwayAgents) return undefined;
-  return railwayAgents.find(
-    (a) => a.agentId === agentId || a.agentId === agentId.replace("-", "")
-  );
+  return railwayAgents.find((a) => a.agentId === agentId || a.agentId === agentId.replace("-", ""));
 }
 
 function getStatusInfo(status: "online" | "busy" | "offline") {
@@ -99,7 +97,13 @@ function getAgentTask(agentId: string, railwayStatus?: AgentStatus): string {
 // Sub-components
 // ============================================================================
 
-function StatusDot({ status, size = 12 }: { status: "online" | "busy" | "offline"; size?: number }) {
+function StatusDot({
+  status,
+  size = 12,
+}: {
+  status: "online" | "busy" | "offline";
+  size?: number;
+}) {
   const info = getStatusInfo(status);
   return (
     <div
@@ -419,10 +423,7 @@ function AgentStatusTable({ agents }: { agents: AgentStatus[] | undefined }) {
               const task = getAgentTask(agent.id, railway);
 
               return (
-                <tr
-                  key={agent.id}
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-                >
+                <tr key={agent.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                   <td className="py-2 pr-3">
                     <div className="flex items-center gap-2">
                       <div
@@ -437,9 +438,7 @@ function AgentStatusTable({ agents }: { agents: AgentStatus[] | undefined }) {
                           className="pixelated w-full h-full"
                         />
                       </div>
-                      <span className="font-pixel text-[10px] text-gray-200">
-                        {agent.name}
-                      </span>
+                      <span className="font-pixel text-[10px] text-gray-200">{agent.name}</span>
                     </div>
                   </td>
                   <td className="py-2 pr-3">
@@ -510,9 +509,7 @@ function AgentStatusTable({ agents }: { agents: AgentStatus[] | undefined }) {
                     {info.label}
                   </span>
                 </div>
-                <span className="font-pixel text-[8px] text-gray-500 truncate block">
-                  {task}
-                </span>
+                <span className="font-pixel text-[8px] text-gray-500 truncate block">{task}</span>
               </div>
               <span className="font-pixel text-[8px]" style={{ color: zoneColor }}>
                 {agent.zone}

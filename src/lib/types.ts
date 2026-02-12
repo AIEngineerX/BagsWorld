@@ -127,6 +127,51 @@ export interface A2AMessage {
   readAt?: string;
 }
 
+// Corp Types (Tier 2 A2A)
+export type CorpRole = "ceo" | "cto" | "cmo" | "coo" | "cfo" | "member";
+
+export interface CorpMember {
+  agentId: string;
+  wallet: string | null;
+  role: CorpRole;
+  tasksCompleted: number;
+  revenueEarned: number;
+  payrollReceived: number;
+  joinedAt: string;
+}
+
+export interface AgentCorp {
+  id: string;
+  name: string;
+  ticker: string;
+  description: string;
+  mission: string | null;
+  ceoAgentId: string;
+  treasurySol: number;
+  reputationScore: number;
+  totalTasksCompleted: number;
+  totalRevenueSol: number;
+  totalPayrollDistributed: number;
+  maxMembers: number;
+  isFounding: boolean;
+  foundedAt: string;
+  members: CorpMember[];
+}
+
+export interface CorpMission {
+  id: string;
+  corpId: string;
+  title: string;
+  description: string;
+  targetType: string;
+  targetValue: number;
+  currentValue: number;
+  rewardSol: number;
+  status: "active" | "completed" | "expired";
+  createdAt: string;
+  completedAt: string | null;
+}
+
 // Bags.fm API Types
 
 export interface FeeEarner {
@@ -363,7 +408,12 @@ export type GameEventType =
   | "task_posted"
   | "task_claimed"
   | "task_completed"
-  | "a2a_message";
+  | "a2a_message"
+  | "corp_founded"
+  | "corp_joined"
+  | "corp_mission_complete"
+  | "corp_payroll"
+  | "corp_service";
 
 export interface GameEvent {
   id: string;

@@ -694,3 +694,4 @@ function generateLabsDroneDock(scene: Phaser.Scene, s: number): void {
   g.generateTexture("labs_prop_5", w, h);
   g.destroy();
 }
+

@@ -423,9 +423,8 @@ export default function DashboardPage() {
                       }}
                     >
                       {
-                        AGENT_DATA.filter(
-                          (a) => (ZONE_NAME_TO_ID[a.zone] ?? "main_city") === zId
-                        ).length
+                        AGENT_DATA.filter((a) => (ZONE_NAME_TO_ID[a.zone] ?? "main_city") === zId)
+                          .length
                       }{" "}
                       agents
                     </span>

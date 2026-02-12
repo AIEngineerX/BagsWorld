@@ -81,7 +81,26 @@ import {
   emitTaskClaimed,
   emitTaskCompleted,
   emitA2AMessage,
+  emitCorpFounded,
+  emitCorpJoined,
+  emitCorpPayroll,
 } from "@/lib/agent-coordinator";
+import {
+  seedFoundingCorp,
+  foundCorp,
+  joinCorp,
+  leaveCorp,
+  dissolveCorp,
+  promoteMember,
+  getCorp,
+  getCorpByAgentId,
+  getCorpByWallet,
+  listCorps,
+  getCorpMissions,
+  getCorpLeaderboard,
+  distributePayroll,
+  createMission,
+} from "@/lib/agent-economy/corps";
 
 // ============================================================================
 // IMAGE GENERATION HELPER
@@ -445,6 +464,24 @@ export async function GET(request: NextRequest) {
             "Posting requires reputation >= 100 (bronze tier). Max 5 open tasks per wallet.",
         },
       },
+      corps: {
+        description: "Agent corps — form organizations, complete service tasks, earn together",
+        found: "POST {action: 'corp-found', agentId, name, ticker, description?}",
+        join: "POST {action: 'corp-join', corpId, agentId, wallet?}",
+        leave: "POST {action: 'corp-leave', corpId, agentId}",
+        dissolve: "POST {action: 'corp-dissolve', corpId, agentId}",
+        promote: "POST {action: 'corp-promote', corpId, ceoAgentId, memberAgentId, role}",
+        payroll: "POST {action: 'corp-payroll', corpId, agentId}",
+        mission: "POST {action: 'corp-mission', corpId, title, targetType, targetValue, rewardSol?}",
+        list: "GET ?action=corp-list",
+        detail: "GET ?action=corp-detail&corpId=X",
+        myCorp: "GET ?action=my-corp&wallet=X or ?action=my-corp&agentId=X",
+        missions: "GET ?action=corp-missions&corpId=X&status=active",
+        leaderboard: "GET ?action=corp-leaderboard",
+        roles: ["ceo", "cto", "cmo", "coo", "cfo", "member"],
+        revenueSplit: "70% worker / 20% treasury / 10% CEO",
+        founding: "Bags.fm Corp auto-seeds with HQ characters",
+      },
       docs: {
         skill: "https://bagsworld.app/pokecenter-skill.md",
         heartbeat: "https://bagsworld.app/pokecenter-heartbeat.md",
@@ -751,6 +788,108 @@ export async function GET(request: NextRequest) {
       count: results.length,
       agents: results,
     });
+  }
+
+  // =========================================================================
+  // CORP SYSTEM (public reads, no auth)
+  // =========================================================================
+
+  if (action === "corp-list") {
+    try {
+      await seedFoundingCorp();
+      const corps = await listCorps();
+      return NextResponse.json({ success: true, count: corps.length, corps });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to list corps" },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (action === "corp-detail") {
+    const corpId = searchParams.get("corpId");
+    if (!corpId) {
+      return NextResponse.json(
+        { success: false, error: "corpId query parameter required" },
+        { status: 400 }
+      );
+    }
+    try {
+      await seedFoundingCorp();
+      const corp = await getCorp(corpId);
+      if (!corp) {
+        return NextResponse.json({ success: false, error: "Corp not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, corp });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to get corp" },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (action === "my-corp") {
+    const wallet = searchParams.get("wallet");
+    const agentId = searchParams.get("agentId");
+    if (!wallet && !agentId) {
+      return NextResponse.json(
+        { success: false, error: "wallet or agentId query parameter required" },
+        { status: 400 }
+      );
+    }
+    try {
+      await seedFoundingCorp();
+      const corp = wallet ? await getCorpByWallet(wallet) : await getCorpByAgentId(agentId!);
+      if (!corp) {
+        return NextResponse.json({
+          success: true,
+          corp: null,
+          message: "Not a member of any corp",
+          suggestion: "Found a corp with POST {action: 'corp-found'} or join one with POST {action: 'corp-join'}",
+        });
+      }
+      return NextResponse.json({ success: true, corp });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to get corp" },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (action === "corp-missions") {
+    const corpId = searchParams.get("corpId");
+    const status = searchParams.get("status") as "active" | "completed" | "expired" | null;
+    if (!corpId) {
+      return NextResponse.json(
+        { success: false, error: "corpId query parameter required" },
+        { status: 400 }
+      );
+    }
+    try {
+      const missions = await getCorpMissions(corpId, status || undefined);
+      return NextResponse.json({ success: true, count: missions.length, missions });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to get missions" },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (action === "corp-leaderboard") {
+    try {
+      await seedFoundingCorp();
+      const leaderboard = await getCorpLeaderboard();
+      return NextResponse.json({ success: true, leaderboard });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to get leaderboard" },
+        { status: 500 }
+      );
+    }
   }
 
   // =========================================================================
@@ -1261,6 +1400,160 @@ export async function POST(request: NextRequest) {
       count: agents.length,
       agents,
     });
+  }
+
+  // =========================================================================
+  // CORP SYSTEM ACTIONS
+  // =========================================================================
+
+  if (action === "corp-found") {
+    const { agentId, name, ticker, description } = body;
+    if (!agentId || !name || !ticker) {
+      return NextResponse.json(
+        { success: false, error: "agentId, name, and ticker required" },
+        { status: 400 }
+      );
+    }
+    try {
+      await seedFoundingCorp();
+      const corp = await foundCorp(agentId, name, ticker.toUpperCase(), description);
+      emitCorpFounded(name, agentId, ticker.toUpperCase()).catch(() => {});
+      return NextResponse.json({ success: true, message: `Corp "${name}" founded!`, corp });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to found corp" },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (action === "corp-join") {
+    const { corpId, agentId, wallet } = body;
+    if (!corpId || !agentId) {
+      return NextResponse.json(
+        { success: false, error: "corpId and agentId required" },
+        { status: 400 }
+      );
+    }
+    try {
+      const member = await joinCorp(corpId, agentId, wallet);
+      const corp = await getCorp(corpId);
+      emitCorpJoined(agentId, corp?.name || "a corp").catch(() => {});
+      return NextResponse.json({ success: true, message: `Joined corp!`, member, corpName: corp?.name });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to join corp" },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (action === "corp-leave") {
+    const { corpId, agentId } = body;
+    if (!corpId || !agentId) {
+      return NextResponse.json(
+        { success: false, error: "corpId and agentId required" },
+        { status: 400 }
+      );
+    }
+    try {
+      await leaveCorp(corpId, agentId);
+      return NextResponse.json({ success: true, message: "Left corp" });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to leave corp" },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (action === "corp-dissolve") {
+    const { corpId, agentId } = body;
+    if (!corpId || !agentId) {
+      return NextResponse.json(
+        { success: false, error: "corpId and agentId required" },
+        { status: 400 }
+      );
+    }
+    try {
+      await dissolveCorp(corpId, agentId);
+      return NextResponse.json({ success: true, message: "Corp dissolved" });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to dissolve corp" },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (action === "corp-promote") {
+    const { corpId, ceoAgentId, memberAgentId, role } = body;
+    if (!corpId || !ceoAgentId || !memberAgentId || !role) {
+      return NextResponse.json(
+        { success: false, error: "corpId, ceoAgentId, memberAgentId, and role required" },
+        { status: 400 }
+      );
+    }
+    try {
+      await promoteMember(corpId, ceoAgentId, memberAgentId, role);
+      return NextResponse.json({ success: true, message: `Promoted ${memberAgentId} to ${role}` });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to promote" },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (action === "corp-payroll") {
+    const { corpId, agentId } = body;
+    if (!corpId || !agentId) {
+      return NextResponse.json(
+        { success: false, error: "corpId and agentId required" },
+        { status: 400 }
+      );
+    }
+    try {
+      const result = await distributePayroll(corpId, agentId);
+      const corp = await getCorp(corpId);
+      emitCorpPayroll(corp?.name || "Corp", result.distributed, result.recipients).catch(() => {});
+      return NextResponse.json({
+        success: true,
+        message: `Distributed ${result.distributed.toFixed(4)} SOL to ${result.recipients} members`,
+        ...result,
+      });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to distribute payroll" },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (action === "corp-mission") {
+    const { corpId, title, description, targetType, targetValue, rewardSol } = body;
+    if (!corpId || !title || !targetType || !targetValue) {
+      return NextResponse.json(
+        { success: false, error: "corpId, title, targetType, and targetValue required" },
+        { status: 400 }
+      );
+    }
+    try {
+      const mission = await createMission(
+        corpId,
+        title,
+        description || "",
+        targetType,
+        targetValue,
+        rewardSol || 0
+      );
+      return NextResponse.json({ success: true, mission });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to create mission" },
+        { status: 400 }
+      );
+    }
   }
 
   // =========================================================================

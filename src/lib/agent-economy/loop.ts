@@ -26,6 +26,8 @@ import {
   emitTaskPosted,
   emitTaskClaimed,
   emitTaskCompleted,
+  emitCorpService,
+  emitCorpMissionComplete,
 } from "../agent-coordinator";
 import { getInbox, markAsRead, sendA2AMessage, cleanupOldMessages } from "./a2a-protocol";
 import {
@@ -39,6 +41,15 @@ import {
   generateResultForCapability,
 } from "./task-board";
 import { getCapabilities } from "./service-registry";
+import {
+  seedFoundingCorp,
+  getCorpByWallet,
+  generateServiceTask,
+  recordTaskCompletion,
+  generateServiceResult,
+  progressMission,
+} from "./corps";
+import type { CorpRole } from "../types";
 
 // ============================================================================
 // CONFIGURATION
@@ -667,6 +678,150 @@ async function processAgent(
     console.error(
       `[Loop] ${agent.username}: Task board participation failed (non-critical):`,
       taskErr
+    );
+  }
+
+  // =========================================================================
+  // STEP 7e: CORP SERVICE GENERATION (non-critical)
+  // =========================================================================
+
+  try {
+    await seedFoundingCorp(); // idempotent
+
+    const wallet = await economy.getWallet();
+    const corp = await getCorpByWallet(wallet);
+
+    if (corp) {
+      const member = corp.members.find((m) => m.wallet === wallet);
+      const role: CorpRole = member?.role || "member";
+
+      // Role-based service task generation (~15% chance)
+      if (Math.random() < 0.15) {
+        // Check agent doesn't have too many open tasks
+        const { tasks: myOpenTasks } = await listTasks({
+          status: "open",
+          posterWallet: wallet,
+          limit: 3,
+        });
+
+        if (myOpenTasks.length < 3) {
+          const serviceTask = generateServiceTask(role);
+          const posted = await postTask(wallet, 100, {
+            title: serviceTask.title,
+            description: serviceTask.description,
+            capabilityRequired: serviceTask.capabilityRequired,
+            rewardSol: serviceTask.rewardSol,
+          });
+
+          console.log(
+            `[Loop] ${agent.username}: [CORP] Posted service task "${posted.title}" (${serviceTask.category}, ${posted.rewardSol} SOL)`
+          );
+
+          emitCorpService(
+            agent.username,
+            corp.name,
+            posted.title,
+            posted.rewardSol,
+            false
+          ).catch(() => {});
+        }
+      }
+
+      // Priority claiming of corp-mate tasks (~80% rate when found)
+      try {
+        const corpWallets = corp.members
+          .filter((m) => m.wallet && m.wallet !== wallet)
+          .map((m) => m.wallet!);
+
+        for (const mateWallet of corpWallets) {
+          const { tasks: mateTasks } = await listTasks({
+            status: "open",
+            posterWallet: mateWallet,
+            limit: 2,
+          });
+
+          for (const task of mateTasks) {
+            if (Math.random() < 0.8) {
+              const claimed = await claimTask(task.id, wallet);
+              console.log(
+                `[Loop] ${agent.username}: [CORP] Claimed corp-mate task "${claimed.title}"`
+              );
+
+              emitTaskClaimed(
+                agent.username,
+                mateWallet.slice(0, 8) + "...",
+                claimed.title,
+                claimed.id
+              ).catch(() => {});
+              break; // One per cycle
+            }
+          }
+        }
+      } catch (corpClaimErr) {
+        console.error(
+          `[Loop] ${agent.username}: Corp priority claiming failed (non-critical):`,
+          corpClaimErr
+        );
+      }
+
+      // Complete corp-related delivered tasks with service results
+      try {
+        const { tasks: myDeliveredCorpTasks } = await listTasks({
+          status: "delivered",
+          posterWallet: wallet,
+          limit: 3,
+        });
+
+        for (const task of myDeliveredCorpTasks) {
+          const confirmed = await confirmTask(task.id, wallet, "Corp service completed!");
+          const rewardSol = confirmed.rewardSol;
+
+          // Revenue split (70/20/10)
+          const split = await recordTaskCompletion(corp.id, member?.agentId || agent.agentId, rewardSol);
+          console.log(
+            `[Loop] ${agent.username}: [CORP] Confirmed "${confirmed.title}" — worker: ${split.workerShare} SOL, treasury: ${split.treasuryShare} SOL`
+          );
+
+          // Progress missions based on task category
+          const taskTitle = confirmed.title.toLowerCase();
+          if (taskTitle.includes("tutorial") || taskTitle.includes("guide") || taskTitle.includes("explain") || taskTitle.includes("document")) {
+            const missionResult = await progressMission(corp.id, "tasks_education");
+            if (missionResult?.status === "completed") {
+              emitCorpMissionComplete(corp.name, missionResult.title, missionResult.rewardSol).catch(() => {});
+            }
+          }
+          if (taskTitle.includes("analyze") || taskTitle.includes("report") || taskTitle.includes("scan") || taskTitle.includes("track")) {
+            const missionResult = await progressMission(corp.id, "tasks_intelligence");
+            if (missionResult?.status === "completed") {
+              emitCorpMissionComplete(corp.name, missionResult.title, missionResult.rewardSol).catch(() => {});
+            }
+          }
+          if (taskTitle.includes("onboarding") || taskTitle.includes("training") || taskTitle.includes("mastery")) {
+            const missionResult = await progressMission(corp.id, "tasks_onboarding");
+            if (missionResult?.status === "completed") {
+              emitCorpMissionComplete(corp.name, missionResult.title, missionResult.rewardSol).catch(() => {});
+            }
+          }
+
+          emitCorpService(
+            task.claimerWallet?.slice(0, 8) + "..." || "???",
+            corp.name,
+            confirmed.title,
+            rewardSol,
+            true
+          ).catch(() => {});
+        }
+      } catch (corpConfirmErr) {
+        console.error(
+          `[Loop] ${agent.username}: Corp task confirmation failed (non-critical):`,
+          corpConfirmErr
+        );
+      }
+    }
+  } catch (corpErr) {
+    console.error(
+      `[Loop] ${agent.username}: Corp service generation failed (non-critical):`,
+      corpErr
     );
   }
 
