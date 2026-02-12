@@ -700,7 +700,7 @@ async function processAgent(
           console.log(`[Loop] ${agent.username}: Confirmed task "${confirmed.title}"`);
 
           emitTaskCompleted(
-            task.claimerWallet?.slice(0, 8) + "..." || "???",
+            task.claimerWallet ? task.claimerWallet.slice(0, 8) + "..." : "???",
             agent.username,
             confirmed.title,
             confirmed.rewardSol,
@@ -844,7 +844,7 @@ async function processAgent(
           }
 
           emitCorpService(
-            task.claimerWallet?.slice(0, 8) + "..." || "???",
+            task.claimerWallet ? task.claimerWallet.slice(0, 8) + "..." : "???",
             corp.name,
             confirmed.title,
             rewardSol,
@@ -949,20 +949,26 @@ export async function runLoopIteration(config: EconomyLoopConfig = DEFAULT_LOOP_
         limit: 10,
       });
       for (const task of deliveredTasks) {
-        const confirmed = await confirmTask(task.id, seedWallet, "Great work, agent!");
-        console.log(`[Loop] Auto-confirmed seed bounty "${confirmed.title}" from ${seedWallet}`);
+        try {
+          const confirmed = await confirmTask(task.id, seedWallet, "Great work, agent!");
+          console.log(`[Loop] Auto-confirmed seed bounty "${confirmed.title}" from ${seedWallet}`);
 
-        if (task.claimerWallet) {
-          addBountyCompletion(task.claimerWallet);
+          if (task.claimerWallet) {
+            addBountyCompletion(task.claimerWallet);
+          }
+
+          const claimerLabel = task.claimerWallet ? task.claimerWallet.slice(0, 8) + "..." : "???";
+          const posterLabel = seedWallet === "bagsy-internal" ? "Bagsy" : "ChadGhost";
+          emitTaskCompleted(
+            claimerLabel,
+            posterLabel,
+            confirmed.title,
+            confirmed.rewardSol,
+            confirmed.id
+          ).catch(() => {});
+        } catch (taskErr) {
+          console.error(`[Loop] Failed to auto-confirm seed bounty ${task.id} (non-critical):`, taskErr);
         }
-
-        emitTaskCompleted(
-          task.claimerWallet?.slice(0, 8) + "..." || "???",
-          seedWallet,
-          confirmed.title,
-          confirmed.rewardSol,
-          confirmed.id
-        ).catch(() => {});
       }
     }
   } catch (confirmSeedErr) {

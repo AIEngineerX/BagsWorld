@@ -124,7 +124,7 @@ function TaskCard({ task }: { task: AgentTask }) {
       {/* Poster / Claimer info */}
       <div className="mt-2 pt-2 border-t border-amber-800/30 flex items-center justify-between text-xs text-amber-400/60">
         <span>
-          By: {task.posterWallet.slice(0, 6)}...{task.posterWallet.slice(-4)}
+          By: {task.posterWallet === "bagsy-internal" ? "Bagsy" : task.posterWallet === "chadghost-internal" ? "ChadGhost" : `${task.posterWallet.slice(0, 6)}...${task.posterWallet.slice(-4)}`}
         </span>
         {task.claimerWallet && (
           <span className="text-yellow-400/70">
