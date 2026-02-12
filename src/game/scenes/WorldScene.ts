@@ -6149,6 +6149,13 @@ export class WorldScene extends Phaser.Scene {
       this.input.setDefaultCursor("default");
     });
     container.on("pointerdown", () => {
+      // If a zone decoration (MoltBook HQ, Agent Hut, Molt Bar, Bounty Board)
+      // already handled this click, skip the building handler to avoid
+      // opening a BuildingModal on top of the zone's custom modal.
+      if ((this as any)._zoneClickConsumed) {
+        (this as any)._zoneClickConsumed = false;
+        return;
+      }
       const isPokeCenter = building.id.includes("PokeCenter");
       const isTradingGym = building.id.includes("TradingGym") || building.symbol === "DOJO";
       const isCasino = building.id.includes("Casino") || building.symbol === "CASINO";

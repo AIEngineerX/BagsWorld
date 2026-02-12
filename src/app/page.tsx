@@ -147,6 +147,10 @@ const CorpBoardModal = dynamic(
   () => import("@/components/CorpBoardModal").then((m) => m.CorpBoardModal),
   { ssr: false }
 );
+const MoltbookHQModal = dynamic(
+  () => import("@/components/MoltbookHQModal").then((m) => m.MoltbookHQModal),
+  { ssr: false }
+);
 const CasinoAdmin = dynamic(() => import("@/components/CasinoAdmin").then((m) => m.CasinoAdmin), {
   ssr: false,
 });
@@ -302,6 +306,7 @@ export default function Home() {
     | "incinerator"
     | "bountyBoard"
     | "corpBoard"
+    | "moltbookHQ"
     | null;
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const openModal = useCallback((modal: ModalType) => setActiveModal(modal), []);
@@ -346,6 +351,7 @@ export default function Home() {
       "bagsworld-incinerator-click": (() => openModal("incinerator")) as EventListener,
       "bagsworld-bountyboard-click": (() => openModal("bountyBoard")) as EventListener,
       "bagsworld-corp-click": (() => openModal("corpBoard")) as EventListener,
+      "bagsworld-moltbookhq-click": (() => openModal("moltbookHQ")) as EventListener,
       "bagsworld-launch-click": (() => openModal("launch")) as EventListener,
       "bagsworld-claim-click": (() => openModal("feeClaim")) as EventListener,
       "bagsworld-open-dungeon": (() => openModal("dungeon")) as EventListener,
@@ -802,6 +808,9 @@ export default function Home() {
 
         {/* Corp Board Modal - Bags.fm Corp org chart */}
         {activeModal === "corpBoard" && <CorpBoardModal onClose={closeModal} />}
+
+        {/* MoltBook HQ Modal - Agent dashboard */}
+        {activeModal === "moltbookHQ" && <MoltbookHQModal onClose={closeModal} />}
       </ErrorBoundary>
 
       {/* Scout Alerts - shows new token launch notifications */}
