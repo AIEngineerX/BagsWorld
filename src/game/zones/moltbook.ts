@@ -210,17 +210,22 @@ function createMoltbookDecorations(scene: WorldScene): void {
     scene.moltbookElements.push(coral);
   });
 
-  // === MOLTBOOK HQ (depth 5) - Central lighthouse building ===
+  // === MOLTBOOK HQ (depth 7) - Central lighthouse building ===
+  // Depth 7 ensures it renders above token building sprites (depth 5) so clicks
+  // hit the lighthouse first. stopPropagation prevents the building-click handler
+  // underneath from also firing and opening a bags.fm hyperlink.
   const hqX = Math.round(400 * s); // Center of zone
   const moltbookHQ = scene.add.sprite(hqX, pathLevel, "moltbook_hq");
   moltbookHQ.setOrigin(0.5, 1);
-  moltbookHQ.setDepth(5);
+  moltbookHQ.setDepth(7);
   scene.moltbookElements.push(moltbookHQ);
 
-  // Make HQ interactive
+  // Make HQ interactive — set zoneClickConsumed flag so building sprites underneath
+  // don't also fire their click handler (Phaser setTopOnly(false) delivers to all)
   moltbookHQ.setInteractive({ useHandCursor: true });
   moltbookHQ.on("pointerdown", () => {
-    window.open("https://moltbook.com", "_blank");
+    (scene as any)._zoneClickConsumed = true;
+    window.dispatchEvent(new CustomEvent("bagsworld-moltbookhq-click"));
   });
   moltbookHQ.on("pointerover", () => {
     moltbookHQ.setTint(0xfff0e0); // Warm glow on hover
@@ -248,7 +253,7 @@ function createMoltbookDecorations(scene: WorldScene): void {
     0x1a1a2e,
     0.9
   );
-  labelBg.setDepth(6);
+  labelBg.setDepth(8);
   scene.moltbookElements.push(labelBg);
 
   const label = scene.add.text(hqX, pathLevel - Math.round(150 * s), "MOLTBOOK HQ", {
@@ -258,20 +263,21 @@ function createMoltbookDecorations(scene: WorldScene): void {
     align: "center",
   });
   label.setOrigin(0.5, 0.5);
-  label.setDepth(6);
+  label.setDepth(8);
   scene.moltbookElements.push(label);
 
-  // === AGENT HUT (depth 5) - Next to Moltbook HQ ===
+  // === AGENT HUT (depth 7) - Next to Moltbook HQ ===
   const hutX = Math.round(550 * s);
   const agentHut = scene.add.sprite(hutX, pathLevel, "beach_hut");
   agentHut.setOrigin(0.5, 1);
-  agentHut.setDepth(5);
+  agentHut.setDepth(7);
   agentHut.setScale(0.85);
   scene.moltbookElements.push(agentHut);
 
   // Make Hut interactive - opens Agent Hut Modal
   agentHut.setInteractive({ useHandCursor: true });
   agentHut.on("pointerdown", () => {
+    (scene as any)._zoneClickConsumed = true;
     window.dispatchEvent(new CustomEvent("bagsworld-agenthut-click"));
   });
   agentHut.on("pointerover", () => {
@@ -305,17 +311,18 @@ function createMoltbookDecorations(scene: WorldScene): void {
   hutLabel.setDepth(6);
   scene.moltbookElements.push(hutLabel);
 
-  // === MOLT BAR (depth 5) - Tiki bar for alpha agent chat ===
+  // === MOLT BAR (depth 7) - Tiki bar for alpha agent chat ===
   const barX = Math.round(250 * s); // Left of Moltbook HQ (which is at 400)
   const moltBar = scene.add.sprite(barX, pathLevel, "molt_bar");
   moltBar.setOrigin(0.5, 1);
-  moltBar.setDepth(5);
+  moltBar.setDepth(7);
   moltBar.setScale(1.0);
   scene.moltbookElements.push(moltBar);
 
   // Make Molt Bar interactive - opens Molt Bar Modal
   moltBar.setInteractive({ useHandCursor: true });
   moltBar.on("pointerdown", () => {
+    (scene as any)._zoneClickConsumed = true;
     window.dispatchEvent(new CustomEvent("bagsworld-moltbar-click"));
   });
   moltBar.on("pointerover", () => {
@@ -359,17 +366,18 @@ function createMoltbookDecorations(scene: WorldScene): void {
   barLabel.setDepth(6);
   scene.moltbookElements.push(barLabel);
 
-  // === BOUNTY BOARD (depth 5) - A2A task board, right side of zone ===
+  // === BOUNTY BOARD (depth 7) - A2A task board, right side of zone ===
   const boardX = Math.round(680 * s);
   const bountyBoard = scene.add.sprite(boardX, pathLevel, "bounty_board");
   bountyBoard.setOrigin(0.5, 1);
-  bountyBoard.setDepth(5);
+  bountyBoard.setDepth(7);
   bountyBoard.setScale(0.9);
   scene.moltbookElements.push(bountyBoard);
 
   // Make Bounty Board interactive
   bountyBoard.setInteractive({ useHandCursor: true });
   bountyBoard.on("pointerdown", () => {
+    (scene as any)._zoneClickConsumed = true;
     window.dispatchEvent(new CustomEvent("bagsworld-bountyboard-click"));
   });
   bountyBoard.on("pointerover", () => {
