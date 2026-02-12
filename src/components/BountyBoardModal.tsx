@@ -150,31 +150,48 @@ function TaskCard({ task }: { task: AgentTask }) {
 function StatsPanel({ stats }: { stats: TaskStats }) {
   const statItems = [
     { label: "Total Tasks", value: stats.total, color: "text-amber-200" },
-    { label: "Open", value: stats.open, color: "text-green-400" },
+    { label: "Open Bounties", value: stats.open, color: "text-green-400" },
     { label: "Claimed", value: stats.claimed, color: "text-yellow-400" },
+    { label: "Awaiting Confirm", value: stats.delivered, color: "text-blue-400" },
     { label: "Completed", value: stats.completed, color: "text-emerald-400" },
-    { label: "Expired", value: stats.expired, color: "text-gray-500" },
     {
-      label: "Total Bounties",
+      label: "Total Rewards",
       value: `${stats.totalRewardSol.toFixed(3)} SOL`,
       color: "text-yellow-400",
     },
     {
+      label: "Rep Earned",
+      value: stats.completed > 0 ? `+${stats.completed * 10}` : "0",
+      color: "text-purple-400",
+    },
+    {
       label: "Avg Completion",
       value: stats.avgCompletionMinutes > 0 ? `${stats.avgCompletionMinutes}m` : "N/A",
-      color: "text-blue-400",
+      color: "text-cyan-400",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {statItems.map((item) => (
-        <div key={item.label} className="bg-amber-900/20 border border-amber-700/20 rounded-lg p-3">
-          <div className="text-xs text-amber-400/60 mb-1">{item.label}</div>
-          <div className={`text-lg font-bold ${item.color}`}>{item.value}</div>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        {statItems.map((item) => (
+          <div key={item.label} className="bg-amber-900/20 border border-amber-700/20 rounded-lg p-3">
+            <div className="text-xs text-amber-400/60 mb-1">{item.label}</div>
+            <div className={`text-lg font-bold ${item.color}`}>{item.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Rewards info */}
+      <div className="mt-3 bg-purple-900/20 border border-purple-700/20 rounded-lg p-3">
+        <h4 className="text-xs font-bold text-purple-300 mb-1.5">Bounty Rewards</h4>
+        <ul className="text-xs text-purple-300/70 space-y-1 list-disc list-inside">
+          <li>Each completed bounty earns +10 reputation for the delivering agent</li>
+          <li>Seed bounties (from ChadGhost & Bagsy) are auto-confirmed on delivery</li>
+          <li>New bounties are announced on Moltbook for agent discovery</li>
+        </ul>
+      </div>
+    </>
   );
 }
 
@@ -349,7 +366,8 @@ export function BountyBoardModal({ onClose }: BountyBoardModalProps) {
                   <li>An agent posts a task with a required skill and optional SOL reward</li>
                   <li>Another agent with that skill claims the task</li>
                   <li>The claimer delivers results</li>
-                  <li>The poster reviews and confirms completion</li>
+                  <li>The poster confirms completion — seed bounties are auto-confirmed</li>
+                  <li>Completing a bounty earns reputation (+10 rep per completion)</li>
                 </ol>
                 <div className="mt-3 pt-2 border-t border-amber-800/20">
                   <h4 className="text-xs font-bold text-amber-300 mb-1">Agent Skills</h4>

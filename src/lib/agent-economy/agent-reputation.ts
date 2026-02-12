@@ -80,6 +80,7 @@ export function computeReputationScore(agent: {
   // Building health
   const { health } = getAgentBuildingHealth(agent.last_active_at ?? null);
 
+  // launches = token launches + bounty completions (general "contributions" counter)
   const score = karma * 0.3 + launches * 10 + feesSol * 5 + daysActive * 2 + health / 10;
 
   return Math.min(1000, Math.round(score));
@@ -189,6 +190,26 @@ export function incrementTokensLaunched(wallet: string): void {
     }
   })().catch((err) => {
     console.error("[AgentReputation] Failed to increment tokens_launched:", err);
+  });
+}
+
+export function addBountyCompletion(wallet: string): void {
+  (async () => {
+    const sql = getDb();
+    await sql`
+      UPDATE external_agents
+      SET tokens_launched = COALESCE(tokens_launched, 0) + 1
+      WHERE wallet = ${wallet}
+    `;
+    // Recompute reputation
+    const rows = await sql`SELECT * FROM external_agents WHERE wallet = ${wallet}`;
+    if (rows.length > 0) {
+      const row = rows[0] as AgentReputationRow;
+      const score = computeReputationScore(row);
+      await sql`UPDATE external_agents SET reputation_score = ${score} WHERE wallet = ${wallet}`;
+    }
+  })().catch((err) => {
+    console.error("[AgentReputation] Failed to add bounty completion:", err);
   });
 }
 

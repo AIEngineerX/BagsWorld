@@ -5,6 +5,7 @@
 import { neon } from "@neondatabase/serverless";
 import type { AgentCapability, AgentTask, TaskStatus } from "../types";
 import { shouldUseLlm, generateTaskResult } from "./llm";
+import { getMoltbookOrNull, getChadGhostMoltbookOrNull } from "@/lib/moltbook-client";
 
 // ============================================================================
 // DATABASE
@@ -726,7 +727,7 @@ export async function listRecentCompletedTasks(limit: number = 20): Promise<Agen
 // SEED BOUNTIES (keep the board populated)
 // ============================================================================
 
-const SEED_WALLETS = ["chadghost-internal", "bagsy-internal"] as const;
+export const SEED_WALLETS = ["chadghost-internal", "bagsy-internal"] as const;
 const MIN_OPEN_BOUNTIES = 5;
 
 /**
@@ -761,6 +762,23 @@ export async function seedBounties(): Promise<number> {
       // Bypass reputation check by passing 999
       await postTask(wallet, 999, taskOpts);
       seeded++;
+
+      // Announce to Moltbook (non-critical)
+      try {
+        const client = wallet === "bagsy-internal"
+          ? getMoltbookOrNull()
+          : getChadGhostMoltbookOrNull();
+        if (client && client.canPost().allowed) {
+          await client.createPost({
+            submolt: "bagsworld",
+            title: `Bounty: ${taskOpts.title}`,
+            content: `New bounty on the BagsWorld board!\n\n${taskOpts.description}\n\nReward: ${taskOpts.rewardSol?.toFixed(3) ?? "0"} SOL | Skill: ${cap}\n\nClaim it at BagsWorld before someone else does.`,
+          });
+          console.log(`[TaskBoard] Announced bounty to Moltbook: "${taskOpts.title}"`);
+        }
+      } catch {
+        // Rate-limited or unavailable — skip silently
+      }
     } catch (err) {
       console.error("[TaskBoard] Seed bounty failed (non-critical):", err);
     }
