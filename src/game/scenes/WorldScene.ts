@@ -5794,9 +5794,20 @@ export class WorldScene extends Phaser.Scene {
       building.id.includes("TradingTerminal") || building.symbol === "TERMINAL";
     const isOracle = building.id.includes("Oracle") || building.symbol === "ORACLE";
     const isBagsHQ = building.isFloating || building.symbol === "BAGSWORLD";
+    const isTreasury = building.id.startsWith("Treasury");
+    const isMansion = building.isMansion;
 
     // Skip texture updates for special buildings (they don't change)
-    if (isPokeCenter || isTradingGym || isCasino || isTradingTerminal || isOracle || isBagsHQ) {
+    if (
+      isPokeCenter ||
+      isTradingGym ||
+      isCasino ||
+      isTradingTerminal ||
+      isOracle ||
+      isBagsHQ ||
+      isTreasury ||
+      isMansion
+    ) {
       return;
     }
 

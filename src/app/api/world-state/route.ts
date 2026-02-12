@@ -1718,10 +1718,18 @@ export async function POST(request: NextRequest) {
     (worldState as any).tokenCount = tokens.length;
     (worldState as any).sdkAvailable = !!sdk;
     // Include Bags.fm health metrics for transparency
+    // Total 24h volume across ALL Bags.fm tokens (registered + platform)
+    const totalBagsVolume24h = tokens.reduce(
+      (sum, t) =>
+        sum + (t.mint.startsWith("Treasury") || t.mint.startsWith("Starter") ? 0 : t.volume24h),
+      0
+    );
+
     (worldState as any).healthMetrics = {
       claimVolume24h,
       totalLifetimeFees,
       activeTokenCount,
+      totalBagsVolume24h,
       gameActivityBonus,
       platformTokenCount: platformTokenInfos.length,
       platformClaimVol,
