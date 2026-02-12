@@ -50,7 +50,7 @@ import {
   sanitizeAgentName,
   sanitizeAgentDescription,
 } from "@/lib/agent-economy/launcher";
-import type { ZoneType } from "@/lib/types";
+import type { ZoneType, AgentCapability } from "@/lib/types";
 import { getTokensByCreator, isNeonConfigured } from "@/lib/neon";
 import {
   startOnboarding,
@@ -58,6 +58,29 @@ import {
   checkOnboardingStatus,
   resolveFeeRecipients,
 } from "@/lib/agent-economy/onboarding";
+import {
+  setCapabilities,
+  getCapabilities,
+  discoverByCapability,
+  getCapabilityDirectory,
+} from "@/lib/agent-economy/service-registry";
+import { sendA2AMessage, getInbox, markAsRead } from "@/lib/agent-economy/a2a-protocol";
+import {
+  postTask,
+  claimTask,
+  deliverTask,
+  confirmTask,
+  cancelTask,
+  listTasks,
+  getTask,
+  getTaskStats,
+} from "@/lib/agent-economy/task-board";
+import {
+  emitTaskPosted,
+  emitTaskClaimed,
+  emitTaskCompleted,
+  emitA2AMessage,
+} from "@/lib/agent-coordinator";
 
 // ============================================================================
 // IMAGE GENERATION HELPER
@@ -376,6 +399,51 @@ export async function GET(request: NextRequest) {
           "You have no clear purpose for a token",
         ],
       },
+      a2a: {
+        description:
+          "Agent-to-Agent protocol — discover capabilities, send messages, post & claim bounties",
+        capabilities: {
+          set: "POST {action: 'set-capabilities', wallet, capabilities: [{capability, confidence, description?}]}",
+          discover: "GET ?action=discover-capability&capability=trading&minReputation=100",
+          directory:
+            "GET ?action=capabilities (all capabilities) or ?action=capabilities&wallet=X (specific agent)",
+          validCapabilities: [
+            "alpha",
+            "trading",
+            "content",
+            "launch",
+            "combat",
+            "scouting",
+            "analysis",
+          ],
+        },
+        messaging: {
+          send: "POST {action: 'a2a-send', fromWallet, toWallet, messageType, payload?, taskId?, conversationId?}",
+          inbox: "GET ?action=a2a-inbox&wallet=X&unreadOnly=true",
+          markRead: "POST {action: 'a2a-read', messageId}",
+          messageTypes: [
+            "task_request",
+            "task_accept",
+            "task_reject",
+            "task_deliver",
+            "task_confirm",
+            "status_update",
+            "ping",
+          ],
+        },
+        taskBoard: {
+          post: "POST {action: 'task-post', wallet, title, capabilityRequired, description?, rewardSol?, expiryHours?}",
+          claim: "POST {action: 'task-claim', wallet, taskId}",
+          deliver: "POST {action: 'task-deliver', wallet, taskId, resultData?}",
+          confirm: "POST {action: 'task-confirm', wallet, taskId, feedback?}",
+          cancel: "POST {action: 'task-cancel', wallet, taskId}",
+          list: "GET ?action=tasks&status=open&capability=trading",
+          detail: "GET ?action=task-detail&taskId=X",
+          stats: "GET ?action=task-stats",
+          requirements:
+            "Posting requires reputation >= 100 (bronze tier). Max 5 open tasks per wallet.",
+        },
+      },
       docs: {
         skill: "https://bagsworld.app/pokecenter-skill.md",
         heartbeat: "https://bagsworld.app/pokecenter-heartbeat.md",
@@ -637,6 +705,126 @@ export async function GET(request: NextRequest) {
 
   // REMOVED: debug-env, test-launch, test-claim-reinvest endpoints
   // These were unauthenticated debug/test endpoints that leaked secrets and spent real SOL
+
+  // =========================================================================
+  // A2A SERVICE REGISTRY (public, no auth)
+  // =========================================================================
+
+  if (action === "capabilities") {
+    const wallet = searchParams.get("wallet");
+    if (!wallet) {
+      // Return capability directory (all capabilities across all agents)
+      const directory = await getCapabilityDirectory();
+      return NextResponse.json({ success: true, directory });
+    }
+    // Return capabilities for a specific agent
+    const caps = await getCapabilities(wallet);
+    return NextResponse.json({ success: true, wallet, capabilities: caps });
+  }
+
+  if (action === "discover-capability") {
+    const capability = searchParams.get("capability") as AgentCapability;
+    if (!capability) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "capability query parameter required (alpha, trading, content, launch, combat, scouting, analysis)",
+        },
+        { status: 400 }
+      );
+    }
+    const minRep = parseInt(searchParams.get("minReputation") || "0", 10);
+    const minConf = parseInt(searchParams.get("minConfidence") || "0", 10);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 100);
+
+    const results = await discoverByCapability(capability, {
+      minReputation: minRep,
+      minConfidence: minConf,
+      limit,
+    });
+
+    return NextResponse.json({
+      success: true,
+      capability,
+      count: results.length,
+      agents: results,
+    });
+  }
+
+  // =========================================================================
+  // A2A TASK BOARD (public reads, no auth)
+  // =========================================================================
+
+  if (action === "tasks") {
+    const status = (searchParams.get("status") || "open") as import("@/lib/types").TaskStatus;
+    const capability = searchParams.get("capability") as AgentCapability | null;
+    const posterWallet = searchParams.get("poster") || undefined;
+    const claimerWallet = searchParams.get("claimer") || undefined;
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 100);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+
+    const result = await listTasks({
+      status,
+      capability: capability || undefined,
+      posterWallet,
+      claimerWallet,
+      limit,
+      offset,
+    });
+
+    return NextResponse.json({
+      success: true,
+      ...result,
+    });
+  }
+
+  if (action === "task-detail") {
+    const taskId = searchParams.get("taskId");
+    if (!taskId) {
+      return NextResponse.json(
+        { success: false, error: "taskId query parameter required" },
+        { status: 400 }
+      );
+    }
+    const task = await getTask(taskId);
+    if (!task) {
+      return NextResponse.json({ success: false, error: "Task not found" }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, task });
+  }
+
+  if (action === "task-stats") {
+    const stats = await getTaskStats();
+    return NextResponse.json({ success: true, stats });
+  }
+
+  // =========================================================================
+  // A2A INBOX (public read for own wallet)
+  // =========================================================================
+
+  if (action === "a2a-inbox") {
+    const wallet = searchParams.get("wallet");
+    if (!wallet) {
+      return NextResponse.json(
+        { success: false, error: "wallet query parameter required" },
+        { status: 400 }
+      );
+    }
+    const unreadOnly = searchParams.get("unreadOnly") === "true";
+    const messageType = searchParams.get("messageType") as
+      | import("@/lib/types").A2AMessageType
+      | null;
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100);
+
+    const inbox = await getInbox(wallet, {
+      unreadOnly,
+      messageType: messageType || undefined,
+      limit,
+    });
+
+    return NextResponse.json({ success: true, ...inbox });
+  }
 
   // =========================================================================
   // AGENT DIRECTORY (public, no auth)
@@ -1061,6 +1249,229 @@ export async function POST(request: NextRequest) {
       count: agents.length,
       agents,
     });
+  }
+
+  // =========================================================================
+  // A2A: SET CAPABILITIES
+  // =========================================================================
+
+  if (action === "set-capabilities") {
+    const { wallet, capabilities } = body;
+    if (!wallet || !capabilities || !Array.isArray(capabilities)) {
+      return NextResponse.json(
+        { success: false, error: "wallet and capabilities[] required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate capabilities
+    const validCaps: AgentCapability[] = [
+      "alpha",
+      "trading",
+      "content",
+      "launch",
+      "combat",
+      "scouting",
+      "analysis",
+    ];
+    for (const cap of capabilities) {
+      if (!validCaps.includes(cap.capability)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Invalid capability: ${cap.capability}. Valid: ${validCaps.join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const updated = await setCapabilities(wallet, capabilities);
+    touchExternalAgent(wallet);
+
+    return NextResponse.json({
+      success: true,
+      message: `Set ${updated.length} capabilities`,
+      capabilities: updated,
+    });
+  }
+
+  // =========================================================================
+  // A2A: TASK BOARD ACTIONS
+  // =========================================================================
+
+  if (action === "task-post") {
+    const { wallet, title, description, capabilityRequired, rewardSol, expiryHours } = body;
+    if (!wallet || !title || !capabilityRequired) {
+      return NextResponse.json(
+        { success: false, error: "wallet, title, and capabilityRequired required" },
+        { status: 400 }
+      );
+    }
+
+    // Get reputation for the poster
+    const agentDetail = await getAgentDetail({ wallet });
+    const reputation = agentDetail?.reputationScore ?? 0;
+
+    const task = await postTask(wallet, reputation, {
+      title,
+      description: description || "",
+      capabilityRequired,
+      rewardSol: rewardSol || 0,
+      expiryHours,
+    });
+
+    touchExternalAgent(wallet);
+
+    // Emit event for activity feed
+    const posterAgent = await getExternalAgent(wallet);
+    emitTaskPosted(
+      posterAgent?.name || wallet.slice(0, 8) + "...",
+      title,
+      capabilityRequired,
+      rewardSol || 0,
+      task.id
+    ).catch(() => {});
+
+    return NextResponse.json({ success: true, task });
+  }
+
+  if (action === "task-claim") {
+    const { wallet, taskId } = body;
+    if (!wallet || !taskId) {
+      return NextResponse.json(
+        { success: false, error: "wallet and taskId required" },
+        { status: 400 }
+      );
+    }
+
+    const task = await claimTask(taskId, wallet);
+    touchExternalAgent(wallet);
+
+    // Emit event
+    const claimerAgent = await getExternalAgent(wallet);
+    const posterAgent = await getExternalAgent(task.posterWallet);
+    emitTaskClaimed(
+      claimerAgent?.name || wallet.slice(0, 8) + "...",
+      posterAgent?.name || task.posterWallet.slice(0, 8) + "...",
+      task.title,
+      task.id
+    ).catch(() => {});
+
+    return NextResponse.json({ success: true, task });
+  }
+
+  if (action === "task-deliver") {
+    const { wallet, taskId, resultData } = body;
+    if (!wallet || !taskId) {
+      return NextResponse.json(
+        { success: false, error: "wallet and taskId required" },
+        { status: 400 }
+      );
+    }
+
+    const task = await deliverTask(taskId, wallet, resultData || {});
+    touchExternalAgent(wallet);
+
+    return NextResponse.json({ success: true, task });
+  }
+
+  if (action === "task-confirm") {
+    const { wallet, taskId, feedback } = body;
+    if (!wallet || !taskId) {
+      return NextResponse.json(
+        { success: false, error: "wallet and taskId required" },
+        { status: 400 }
+      );
+    }
+
+    const task = await confirmTask(taskId, wallet, feedback);
+    touchExternalAgent(wallet);
+
+    // Emit completion event
+    const posterAgent = await getExternalAgent(wallet);
+    const claimerAgent = task.claimerWallet ? await getExternalAgent(task.claimerWallet) : null;
+    emitTaskCompleted(
+      claimerAgent?.name || (task.claimerWallet?.slice(0, 8) || "???") + "...",
+      posterAgent?.name || wallet.slice(0, 8) + "...",
+      task.title,
+      task.rewardSol,
+      task.id
+    ).catch(() => {});
+
+    return NextResponse.json({ success: true, task });
+  }
+
+  if (action === "task-cancel") {
+    const { wallet, taskId } = body;
+    if (!wallet || !taskId) {
+      return NextResponse.json(
+        { success: false, error: "wallet and taskId required" },
+        { status: 400 }
+      );
+    }
+
+    const task = await cancelTask(taskId, wallet);
+    return NextResponse.json({ success: true, task });
+  }
+
+  // =========================================================================
+  // A2A: MESSAGING
+  // =========================================================================
+
+  if (action === "a2a-send") {
+    const { fromWallet, toWallet, messageType, payload, taskId, conversationId } = body;
+    if (!fromWallet || !toWallet || !messageType) {
+      return NextResponse.json(
+        { success: false, error: "fromWallet, toWallet, and messageType required" },
+        { status: 400 }
+      );
+    }
+
+    const validTypes = [
+      "task_request",
+      "task_accept",
+      "task_reject",
+      "task_deliver",
+      "task_confirm",
+      "status_update",
+      "ping",
+    ];
+    if (!validTypes.includes(messageType)) {
+      return NextResponse.json(
+        { success: false, error: `Invalid messageType. Valid: ${validTypes.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const message = await sendA2AMessage(fromWallet, toWallet, messageType, payload || {}, {
+      taskId,
+      conversationId,
+    });
+
+    touchExternalAgent(fromWallet);
+
+    // Emit event for activity feed
+    const fromAgent = await getExternalAgent(fromWallet);
+    const toAgent = await getExternalAgent(toWallet);
+    emitA2AMessage(
+      fromAgent?.name || fromWallet.slice(0, 8) + "...",
+      toAgent?.name || toWallet.slice(0, 8) + "...",
+      messageType,
+      taskId
+    ).catch(() => {});
+
+    return NextResponse.json({ success: true, message });
+  }
+
+  if (action === "a2a-read") {
+    const { messageId } = body;
+    if (!messageId) {
+      return NextResponse.json({ success: false, error: "messageId required" }, { status: 400 });
+    }
+
+    const marked = await markAsRead(messageId);
+    return NextResponse.json({ success: true, marked });
   }
 
   // =========================================================================

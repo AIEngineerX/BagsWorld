@@ -65,6 +65,14 @@ const getActivityStyle = (
         return { color: "text-bags-gold", icon: <CoinIcon size={12} />, label: "CASINO" };
       case "oracle_settle":
         return { color: "text-bags-purple", icon: <TargetIcon size={12} />, label: "ORACLE" };
+      case "task_posted":
+        return { color: "text-amber-400", icon: <TargetIcon size={12} />, label: "BOUNTY" };
+      case "task_claimed":
+        return { color: "text-yellow-400", icon: <HammerIcon size={12} />, label: "CLAIM" };
+      case "task_completed":
+        return { color: "text-emerald-400", icon: <TrophyIcon size={12} />, label: "DONE" };
+      case "a2a_message":
+        return { color: "text-cyan-400", icon: <SignalIcon size={12} />, label: "A2A" };
       default:
         return { color: "text-gray-400", icon: <SignalIcon size={12} />, label: "EVENT" };
     }
@@ -90,6 +98,14 @@ const getActivityStyle = (
       return { color: "text-bags-gold", icon: <CoinIcon size={12} />, label: "CASINO" };
     case "oracle_settle":
       return { color: "text-bags-purple", icon: <TargetIcon size={12} />, label: "ORACLE" };
+    case "task_posted":
+      return { color: "text-amber-400", icon: <TargetIcon size={12} />, label: "BOUNTY" };
+    case "task_claimed":
+      return { color: "text-yellow-400", icon: <HammerIcon size={12} />, label: "CLAIM" };
+    case "task_completed":
+      return { color: "text-emerald-400", icon: <TrophyIcon size={12} />, label: "DONE" };
+    case "a2a_message":
+      return { color: "text-cyan-400", icon: <SignalIcon size={12} />, label: "A2A" };
     default:
       return { color: "text-gray-400", icon: <SignalIcon size={12} />, label: "INFO" };
   }
