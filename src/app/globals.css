@@ -684,8 +684,12 @@ body {
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }
 
 /* Subtle inner bevel effect */
@@ -845,6 +849,48 @@ body {
 /* ============================================
    ZONE NAV HORIZONTAL SCROLLER
    ============================================ */
+
+/* Pixel Build Loader Animation */
+@keyframes pixel-build {
+  0%,
+  100% {
+    height: 25%;
+  }
+  25% {
+    height: 50%;
+  }
+  50% {
+    height: 75%;
+  }
+  75% {
+    height: 100%;
+  }
+}
+
+.pixel-build-loader {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 1rem;
+}
+
+.pixel-build-loader span {
+  width: 4px;
+  background-color: #4ade80;
+  animation: pixel-build 0.8s ease-in-out infinite;
+}
+
+.pixel-build-loader span:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.pixel-build-loader span:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.pixel-build-loader span:nth-child(4) {
+  animation-delay: 0.3s;
+}
 
 /* Zone nav horizontal scroll with right-edge fade indicator */
 .zone-nav-scroll {

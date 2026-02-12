@@ -25,6 +25,13 @@ import {
 // ---------------------------------------------------------------------------
 
 type ArtStyle = "pixel-art" | "cartoon" | "cute" | "minimalist" | "abstract";
+type AiStep = "concept" | "style" | "pick-name";
+
+const AI_STEPS: { key: AiStep; label: string; number: number }[] = [
+  { key: "concept", label: "CONCEPT", number: 1 },
+  { key: "style", label: "STYLE", number: 2 },
+  { key: "pick-name", label: "PICK NAME", number: 3 },
+];
 
 const ART_STYLES: { id: ArtStyle; name: string; emoji: string }[] = [
   { id: "pixel-art", name: "Pixel Art", emoji: "[P]" },
@@ -35,6 +42,17 @@ const ART_STYLES: { id: ArtStyle; name: string; emoji: string }[] = [
 ];
 
 const ecosystemFee = getEcosystemFeeShare();
+
+function PixelBuildLoader() {
+  return (
+    <span className="pixel-build-loader">
+      <span />
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -66,13 +84,28 @@ export function QuickLaunchPanel() {
   const [showFeeSplit, setShowFeeSplit] = useState(false);
 
   // AI assist state
-  const [aiOpen, setAiOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(true);
   const [aiConcept, setAiConcept] = useState("");
   const [aiStyle, setAiStyle] = useState<ArtStyle>("pixel-art");
   const [aiNames, setAiNames] = useState<NameSuggestion[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiGeneratingImages, setAiGeneratingImages] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // Step progression (#3)
+  const [aiStep, setAiStep] = useState<AiStep>("concept");
+  const [completedSteps, setCompletedSteps] = useState<Set<AiStep>>(new Set());
+
+  // Regeneration (#4, #5)
+  const [aiSelectedName, setAiSelectedName] = useState<NameSuggestion | null>(null);
+  const [isRegeneratingLogo, setIsRegeneratingLogo] = useState(false);
+  const [isRegeneratingBanner, setIsRegeneratingBanner] = useState(false);
+
+  // Hover preview (#6)
+  const [hoverName, setHoverName] = useState<string | null>(null);
+  const [hoverSymbol, setHoverSymbol] = useState<string | null>(null);
+
+  // Description tracking (#8)
+  const [descriptionIsAiFilled, setDescriptionIsAiFilled] = useState(false);
 
   // Launch state
   const [isLaunching, setIsLaunching] = useState(false);
@@ -163,11 +196,27 @@ export function QuickLaunchPanel() {
   // AI Assist handlers
   // ---------------------------------------------------------------------------
 
+  const handleAiConceptChange = (value: string) => {
+    setAiConcept(value);
+    // Reset steps 2+3 when concept changes
+    if (completedSteps.has("style") || completedSteps.has("pick-name")) {
+      setCompletedSteps(new Set(value.trim() ? ["concept"] : []));
+      setAiStep(value.trim() ? "style" : "concept");
+    } else if (value.trim() && !completedSteps.has("concept")) {
+      setCompletedSteps(new Set(["concept"]));
+      setAiStep("style");
+    }
+  };
+
   const handleAiGenerate = async () => {
     if (!aiConcept.trim()) return;
     setAiLoading(true);
     setAiError(null);
     setAiNames([]);
+
+    // Mark concept + style as completed
+    setCompletedSteps(new Set(["concept", "style"]));
+    setAiStep("pick-name");
 
     const result = await generateNameSuggestions(aiConcept, aiStyle);
     setAiLoading(false);
@@ -176,6 +225,9 @@ export function QuickLaunchPanel() {
       setAiNames(result.names);
     } else {
       setAiError(result.error || "Failed to generate names. Try again.");
+      // Revert style completion on failure
+      setCompletedSteps(new Set(["concept"]));
+      setAiStep("style");
     }
   };
 
@@ -186,30 +238,77 @@ export function QuickLaunchPanel() {
       symbol: name.ticker,
       description: name.description,
     }));
-    setAiNames([]);
+    setAiSelectedName(name);
+    setDescriptionIsAiFilled(true);
 
-    // Generate images in background
-    setAiGeneratingImages(true);
+    // Mark all steps completed — keep aiNames visible for comparison
+    setCompletedSteps(new Set(["concept", "style", "pick-name"]));
+
+    // Generate images independently
     const concept = `${name.name} - ${aiConcept}`;
 
-    Promise.allSettled([generateLogo(concept, aiStyle), generateBanner(concept, aiStyle)]).then(
-      (results) => {
-        setAiGeneratingImages(false);
-        const [logoResult, bannerResult] = results;
-        if (logoResult.status === "fulfilled" && logoResult.value.success && logoResult.value.imageUrl) {
-          setImagePreview(logoResult.value.imageUrl);
-          setImageDataUrl(logoResult.value.imageUrl);
-        }
-        if (
-          bannerResult.status === "fulfilled" &&
-          bannerResult.value.success &&
-          bannerResult.value.imageUrl
-        ) {
-          setBannerPreview(bannerResult.value.imageUrl);
-          setBannerDataUrl(bannerResult.value.imageUrl);
-        }
+    setIsRegeneratingLogo(true);
+    generateLogo(concept, aiStyle).then((logoResult) => {
+      setIsRegeneratingLogo(false);
+      if (logoResult.success && logoResult.imageUrl) {
+        setImagePreview(logoResult.imageUrl);
+        setImageDataUrl(logoResult.imageUrl);
       }
-    );
+    });
+
+    setIsRegeneratingBanner(true);
+    generateBanner(concept, aiStyle).then((bannerResult) => {
+      setIsRegeneratingBanner(false);
+      if (bannerResult.success && bannerResult.imageUrl) {
+        setBannerPreview(bannerResult.imageUrl);
+        setBannerDataUrl(bannerResult.imageUrl);
+      }
+    });
+  };
+
+  const handleRegenerateNames = async () => {
+    if (!aiConcept.trim() || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+
+    const result = await generateNameSuggestions(aiConcept, aiStyle);
+    setAiLoading(false);
+
+    if (result.success && result.names && result.names.length > 0) {
+      setAiNames(result.names);
+    } else {
+      setAiError(result.error || "Failed to regenerate names. Try again.");
+    }
+  };
+
+  const handleRegenerateLogo = async () => {
+    if (isRegeneratingLogo || !aiConcept.trim()) return;
+    setIsRegeneratingLogo(true);
+
+    const name = aiSelectedName?.name ?? formData.name;
+    const concept = `${name} - ${aiConcept} variation ${Date.now()}`;
+    const result = await generateLogo(concept, aiStyle);
+
+    setIsRegeneratingLogo(false);
+    if (result.success && result.imageUrl) {
+      setImagePreview(result.imageUrl);
+      setImageDataUrl(result.imageUrl);
+    }
+  };
+
+  const handleRegenerateBanner = async () => {
+    if (isRegeneratingBanner || !aiConcept.trim()) return;
+    setIsRegeneratingBanner(true);
+
+    const name = aiSelectedName?.name ?? formData.name;
+    const concept = `${name} - ${aiConcept} variation ${Date.now()}`;
+    const result = await generateBanner(concept, aiStyle);
+
+    setIsRegeneratingBanner(false);
+    if (result.success && result.imageUrl) {
+      setBannerPreview(result.imageUrl);
+      setBannerDataUrl(result.imageUrl);
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -267,18 +366,22 @@ export function QuickLaunchPanel() {
           `Token $${formData.symbol} launched on Bags.fm! Your building is now visible to ALL BagsWorld players!`
         );
       } else {
-        setSuccess(
-          `Token $${formData.symbol} launched on Bags.fm! Building visible locally.`
-        );
+        setSuccess(`Token $${formData.symbol} launched on Bags.fm! Building visible locally.`);
       }
     } catch (err) {
       setLaunchStatus("");
       const msg = err instanceof Error ? err.message : "Failed to launch token";
       if (msg.toLowerCase().includes("internal server error")) {
         setError("Bags.fm API is temporarily unavailable. Please try again in a few minutes.");
-      } else if (msg.toLowerCase().includes("user rejected") || msg.toLowerCase().includes("cancelled")) {
+      } else if (
+        msg.toLowerCase().includes("user rejected") ||
+        msg.toLowerCase().includes("cancelled")
+      ) {
         setError("Transaction was cancelled. Click Launch to try again.");
-      } else if (msg.toLowerCase().includes("insufficient") || msg.toLowerCase().includes("balance")) {
+      } else if (
+        msg.toLowerCase().includes("insufficient") ||
+        msg.toLowerCase().includes("balance")
+      ) {
         setError("Insufficient SOL balance. Please add more SOL and try again.");
       } else {
         setError(msg);
@@ -309,22 +412,66 @@ export function QuickLaunchPanel() {
               <span className="font-pixel text-[10px] text-bags-green">
                 [AI] AI ASSIST — Generate name, logo & banner
               </span>
-              <span className="font-pixel text-[10px] text-gray-500">
-                {aiOpen ? "[-]" : "[+]"}
-              </span>
+              <span className="font-pixel text-[10px] text-gray-500">{aiOpen ? "[-]" : "[+]"}</span>
             </button>
 
             {aiOpen && (
               <div className="px-3 pb-3 space-y-3 border-t border-bags-green/20">
+                {/* Step Progress Bar (#3) */}
+                <div className="flex items-center justify-between mt-3 px-1">
+                  {AI_STEPS.map((step, i) => {
+                    const isCompleted = completedSteps.has(step.key);
+                    const isActive = aiStep === step.key;
+                    return (
+                      <div key={step.key} className="flex items-center">
+                        <div className="flex items-center gap-1.5">
+                          <div
+                            className={`w-5 h-5 flex items-center justify-center border font-pixel text-[7px] ${
+                              isCompleted
+                                ? "bg-bags-green text-bags-dark border-bags-green"
+                                : isActive
+                                  ? "border-bags-green text-bags-green animate-pulse"
+                                  : "border-gray-600 text-gray-600"
+                            }`}
+                          >
+                            {isCompleted ? "+" : step.number}
+                          </div>
+                          <span
+                            className={`font-pixel text-[7px] ${
+                              isCompleted
+                                ? "text-bags-green"
+                                : isActive
+                                  ? "text-bags-green"
+                                  : "text-gray-600"
+                            }`}
+                          >
+                            {step.label}
+                          </span>
+                        </div>
+                        {i < AI_STEPS.length - 1 && (
+                          <div
+                            className={`w-6 sm:w-10 h-px mx-1.5 ${
+                              completedSteps.has(AI_STEPS[i + 1].key) ||
+                              aiStep === AI_STEPS[i + 1].key
+                                ? "bg-bags-green/50"
+                                : "bg-gray-700"
+                            }`}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
                 {/* Concept input */}
-                <div className="mt-3">
+                <div>
                   <label className="block font-pixel text-[8px] text-gray-400 mb-1">
                     TOKEN CONCEPT
                   </label>
                   <input
                     type="text"
                     value={aiConcept}
-                    onChange={(e) => setAiConcept(e.target.value)}
+                    onChange={(e) => handleAiConceptChange(e.target.value)}
                     placeholder="e.g. a space cat exploring galaxies"
                     className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-xs text-white focus:outline-none focus:border-bags-gold min-h-[44px]"
                   />
@@ -350,13 +497,19 @@ export function QuickLaunchPanel() {
                   ))}
                 </div>
 
-                {/* Generate button */}
+                {/* Generate button with pixel-build loader (#7) */}
                 <button
                   onClick={handleAiGenerate}
                   disabled={aiLoading || !aiConcept.trim()}
-                  className="w-full py-2 bg-bags-green/20 border-2 border-bags-green font-pixel text-[10px] text-bags-green hover:bg-bags-green/30 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                  className="w-full py-2 bg-bags-green/20 border-2 border-bags-green font-pixel text-[10px] text-bags-green hover:bg-bags-green/30 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center gap-2"
                 >
-                  {aiLoading ? "GENERATING..." : "GENERATE 5 NAMES"}
+                  {aiLoading ? (
+                    <>
+                      <PixelBuildLoader /> GENERATING...
+                    </>
+                  ) : (
+                    "GENERATE 5 NAMES"
+                  )}
                 </button>
 
                 {/* Error */}
@@ -366,34 +519,58 @@ export function QuickLaunchPanel() {
                   </div>
                 )}
 
-                {/* Name suggestions */}
+                {/* Name suggestions with hover (#6) */}
                 {aiNames.length > 0 && (
                   <div className="space-y-1">
                     <p className="font-pixel text-[8px] text-gray-400">Click to select:</p>
-                    {aiNames.map((n, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleSelectName(n)}
-                        className="w-full p-2 bg-bags-green/10 border border-bags-green/30 hover:bg-bags-green/20 hover:border-bags-green transition-all text-left"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-pixel text-[10px] text-white">{n.name}</span>
-                          <span className="font-pixel text-[9px] text-bags-green">${n.ticker}</span>
-                        </div>
-                        <p className="font-pixel text-[7px] text-gray-400 mt-1 line-clamp-2">
-                          {n.description}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                    {aiNames.map((n, i) => {
+                      const isSelected =
+                        aiSelectedName?.ticker === n.ticker && aiSelectedName?.name === n.name;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => handleSelectName(n)}
+                          onMouseEnter={() => {
+                            setHoverName(n.name);
+                            setHoverSymbol(n.ticker);
+                          }}
+                          onMouseLeave={() => {
+                            setHoverName(null);
+                            setHoverSymbol(null);
+                          }}
+                          className={`w-full p-2 border transition-all text-left ${
+                            isSelected
+                              ? "bg-bags-green/20 border-bags-green"
+                              : "bg-bags-green/10 border-bags-green/30 hover:bg-bags-green/20 hover:border-bags-green"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-pixel text-[10px] text-white">{n.name}</span>
+                            <span className="font-pixel text-[9px] text-bags-green">
+                              ${n.ticker}
+                            </span>
+                          </div>
+                          <p className="font-pixel text-[7px] text-gray-400 mt-1 line-clamp-2">
+                            {n.description}
+                          </p>
+                        </button>
+                      );
+                    })}
 
-                {/* Image generation indicator */}
-                {aiGeneratingImages && (
-                  <div className="bg-purple-500/20 border-2 border-purple-500 p-2">
-                    <p className="font-pixel text-[8px] text-purple-400 animate-pulse">
-                      Generating logo & banner in background...
-                    </p>
+                    {/* Regenerate names button (#4) */}
+                    <button
+                      onClick={handleRegenerateNames}
+                      disabled={aiLoading}
+                      className="w-full py-1.5 border border-dashed border-bags-green/50 font-pixel text-[8px] text-bags-green/70 hover:text-bags-green hover:border-bags-green disabled:opacity-50 disabled:cursor-not-allowed min-h-[36px] flex items-center justify-center gap-2 mt-2"
+                    >
+                      {aiLoading ? (
+                        <>
+                          <PixelBuildLoader /> REGENERATING...
+                        </>
+                      ) : (
+                        "REGENERATE 5 NAMES"
+                      )}
+                    </button>
                   </div>
                 )}
               </div>
@@ -408,8 +585,21 @@ export function QuickLaunchPanel() {
               <div className="space-y-1">
                 <p className="font-pixel text-[8px] text-gray-400 text-center">LOGO (512x512) *</p>
                 <label className="cursor-pointer block">
-                  <div className="aspect-square bg-bags-darker border-2 border-dashed border-bags-green hover:border-bags-gold flex items-center justify-center overflow-hidden transition-colors">
-                    {imagePreview ? (
+                  <div
+                    className={`aspect-square bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
+                      isRegeneratingLogo
+                        ? "border-bags-green animate-pulse"
+                        : "border-bags-green hover:border-bags-gold"
+                    }`}
+                  >
+                    {isRegeneratingLogo ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <PixelBuildLoader />
+                        <span className="font-pixel text-[7px] text-bags-green animate-pulse">
+                          GENERATING LOGO...
+                        </span>
+                      </div>
+                    ) : imagePreview ? (
                       <img src={imagePreview} alt="Logo" className="w-full h-full object-cover" />
                     ) : (
                       <span className="font-pixel text-[8px] text-gray-500 text-center px-1">
@@ -427,15 +617,41 @@ export function QuickLaunchPanel() {
                     className="hidden"
                   />
                 </label>
+                {/* Regenerate logo button (#5) */}
+                {imagePreview && aiConcept.trim() && !isRegeneratingLogo && (
+                  <button
+                    onClick={handleRegenerateLogo}
+                    className="w-full py-1 font-pixel text-[7px] text-bags-green/60 hover:text-bags-green border border-transparent hover:border-bags-green/30 transition-colors inline-action"
+                  >
+                    [R] NEW LOGO
+                  </button>
+                )}
               </div>
 
               {/* Banner */}
               <div className="space-y-1">
                 <p className="font-pixel text-[8px] text-gray-400 text-center">BANNER (600x200)</p>
                 <label className="cursor-pointer block">
-                  <div className="aspect-[3/1] bg-bags-darker border-2 border-dashed border-gray-600 hover:border-bags-gold flex items-center justify-center overflow-hidden transition-colors">
-                    {bannerPreview ? (
-                      <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
+                  <div
+                    className={`aspect-[3/1] bg-bags-darker border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors ${
+                      isRegeneratingBanner
+                        ? "border-bags-green animate-pulse"
+                        : "border-gray-600 hover:border-bags-gold"
+                    }`}
+                  >
+                    {isRegeneratingBanner ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <PixelBuildLoader />
+                        <span className="font-pixel text-[6px] text-bags-green animate-pulse">
+                          GENERATING BANNER...
+                        </span>
+                      </div>
+                    ) : bannerPreview ? (
+                      <img
+                        src={bannerPreview}
+                        alt="Banner"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <span className="font-pixel text-[7px] text-gray-500 text-center px-1">
                         OPTIONAL
@@ -455,6 +671,15 @@ export function QuickLaunchPanel() {
                 <p className="font-pixel text-[6px] text-gray-500 text-center">
                   3:1 ratio for DexScreener
                 </p>
+                {/* Regenerate banner button (#5) */}
+                {bannerPreview && aiConcept.trim() && !isRegeneratingBanner && (
+                  <button
+                    onClick={handleRegenerateBanner}
+                    className="w-full py-1 font-pixel text-[7px] text-bags-green/60 hover:text-bags-green border border-transparent hover:border-bags-green/30 transition-colors inline-action"
+                  >
+                    [R] NEW BANNER
+                  </button>
+                )}
               </div>
             </div>
 
@@ -478,9 +703,7 @@ export function QuickLaunchPanel() {
                 Appears on your building sign in BagsWorld
               </p>
               {dupWarnings.name && (
-                <p className="font-pixel text-[8px] text-yellow-400 mt-1">
-                  {dupWarnings.name}
-                </p>
+                <p className="font-pixel text-[8px] text-yellow-400 mt-1">{dupWarnings.name}</p>
               )}
             </div>
 
@@ -505,9 +728,7 @@ export function QuickLaunchPanel() {
                 Short ticker like $DOGE — max 10 characters
               </p>
               {dupWarnings.symbol && (
-                <p className="font-pixel text-[8px] text-yellow-400 mt-1">
-                  {dupWarnings.symbol}
-                </p>
+                <p className="font-pixel text-[8px] text-yellow-400 mt-1">{dupWarnings.symbol}</p>
               )}
             </div>
 
@@ -516,9 +737,17 @@ export function QuickLaunchPanel() {
               <label className="block font-pixel text-[10px] text-gray-400 mb-1">
                 DESCRIPTION *
               </label>
+              {descriptionIsAiFilled && (
+                <div className="font-pixel text-[7px] text-bags-green/60 mb-1">
+                  [AI GENERATED - EDIT BELOW]
+                </div>
+              )}
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, description: e.target.value });
+                  if (descriptionIsAiFilled) setDescriptionIsAiFilled(false);
+                }}
                 placeholder="Describe your token..."
                 className="w-full bg-bags-darker border-2 border-bags-green p-2 font-pixel text-xs text-white focus:outline-none focus:border-bags-gold h-20 resize-none"
               />
@@ -752,10 +981,10 @@ export function QuickLaunchPanel() {
         {/* RIGHT COLUMN — Preview + Info (hidden on very small mobile) */}
         {/* ============================================================== */}
         <div className="w-full sm:w-64 shrink-0 space-y-4">
-          {/* Building Preview */}
+          {/* Building Preview (#6 — hover preview) */}
           <QuickLaunchBuildingPreview
-            name={formData.name}
-            symbol={formData.symbol}
+            name={hoverName || formData.name}
+            symbol={hoverSymbol || formData.symbol}
             logoUrl={imagePreview}
             level={1}
           />
