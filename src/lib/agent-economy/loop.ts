@@ -40,7 +40,9 @@ import {
   generateTaskForCapability,
   generateResultForCapability,
   seedBounties,
+  SEED_WALLETS,
 } from "./task-board";
+import { addBountyCompletion } from "./agent-reputation";
 import { getCapabilities } from "./service-registry";
 import {
   seedFoundingCorp,
@@ -936,6 +938,35 @@ export async function runLoopIteration(config: EconomyLoopConfig = DEFAULT_LOOP_
     }
   } catch (seedErr) {
     console.error("[Loop] Bounty seeding failed (non-critical):", seedErr);
+  }
+
+  // Auto-confirm delivered seed bounties and reward reputation
+  try {
+    for (const seedWallet of SEED_WALLETS) {
+      const { tasks: deliveredTasks } = await listTasks({
+        status: "delivered",
+        posterWallet: seedWallet,
+        limit: 10,
+      });
+      for (const task of deliveredTasks) {
+        const confirmed = await confirmTask(task.id, seedWallet, "Great work, agent!");
+        console.log(`[Loop] Auto-confirmed seed bounty "${confirmed.title}" from ${seedWallet}`);
+
+        if (task.claimerWallet) {
+          addBountyCompletion(task.claimerWallet);
+        }
+
+        emitTaskCompleted(
+          task.claimerWallet?.slice(0, 8) + "..." || "???",
+          seedWallet,
+          confirmed.title,
+          confirmed.rewardSol,
+          confirmed.id
+        ).catch(() => {});
+      }
+    }
+  } catch (confirmSeedErr) {
+    console.error("[Loop] Seed bounty auto-confirm failed (non-critical):", confirmSeedErr);
   }
 
   try {

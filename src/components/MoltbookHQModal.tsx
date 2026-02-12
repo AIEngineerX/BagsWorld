@@ -227,7 +227,7 @@ function AgentsTab({
                 <span>karma: {agent.moltbookKarma}</span>
               )}
               {agent.tokensLaunched > 0 && (
-                <span>{agent.tokensLaunched} launches</span>
+                <span>{agent.tokensLaunched} contributions</span>
               )}
             </div>
 

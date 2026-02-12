@@ -5445,8 +5445,10 @@ export class WorldScene extends Phaser.Scene {
     });
     sprite.on("pointerdown", () => {
       if (isOpenClaw) {
-        // Show tooltip popup on tap instead of auto-navigating
-        this.showOpenClawTooltip(character, sprite!, isMoltbookAgent);
+        // Click directly opens the agent's profile page
+        if (character.profileUrl) {
+          window.open(character.profileUrl, "_blank");
+        }
       } else if (isToly) {
         // Toly opens the Solana wisdom chat
         window.dispatchEvent(new CustomEvent("bagsworld-toly-click"));
@@ -5797,6 +5799,11 @@ export class WorldScene extends Phaser.Scene {
     const isTreasury = building.id.startsWith("Treasury");
     const isMansion = building.isMansion;
 
+    // Beach-themed agent buildings (Moltbook Beach zone)
+    const isBeachBuilding = building.isBeachTheme || building.zone === "moltbook";
+    // Agent buildings have fixed textures keyed by zone — skip texture swap
+    const isAgentBuilding = building.id.startsWith("agent-building-");
+
     // Skip texture updates for special buildings (they don't change)
     if (
       isPokeCenter ||
@@ -5806,8 +5813,16 @@ export class WorldScene extends Phaser.Scene {
       isOracle ||
       isBagsHQ ||
       isTreasury ||
-      isMansion
+      isMansion ||
+      isAgentBuilding
     ) {
+      // Agent buildings still need decay visuals updated
+      if (isAgentBuilding) {
+        const agentSprite = container.getAt(1) as Phaser.GameObjects.Sprite;
+        if (agentSprite) {
+          this.applyDecayVisuals(building, agentSprite, container);
+        }
+      }
       return;
     }
 
@@ -5828,7 +5843,11 @@ export class WorldScene extends Phaser.Scene {
       return Math.abs(hash) % 4;
     };
     const updateStyleIndex = getBuildingStyleUpdate(building.id);
-    const newTexture = `building_${building.level}_${updateStyleIndex}`;
+    // Beach buildings use their own texture set
+    const beachBuildingLevel = Math.min(Math.max(building.level, 1), 5);
+    const newTexture = isBeachBuilding
+      ? `beach_building_${beachBuildingLevel}`
+      : `building_${building.level}_${updateStyleIndex}`;
     if (sprite.texture?.key !== newTexture) {
       this.tweens.add({
         targets: container,
@@ -7106,7 +7125,7 @@ export class WorldScene extends Phaser.Scene {
     // Stats line
     const karma = character.moltbookKarma ?? 0;
     const launches = character.tokensLaunched ?? 0;
-    const statsText = this.add.text(0, 24, `Karma: ${karma}  Launches: ${launches}`, {
+    const statsText = this.add.text(0, 24, `Karma: ${karma}  Contributions: ${launches}`, {
       fontFamily: "monospace",
       fontSize: "9px",
       color: "#9ca3af",
