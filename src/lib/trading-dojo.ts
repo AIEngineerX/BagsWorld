@@ -5,6 +5,71 @@
 const ELIZAOS_SERVER =
   process.env.NEXT_PUBLIC_ELIZAOS_SERVER_URL || "https://bagsworld-production.up.railway.app";
 
+// Ghost's on-chain intelligence is always active in the dojo.
+// The actual wallet data lives server-side (alpha-finder uses it for real on-chain checks).
+// In the dojo, Ghost's on-chain signals are derived from price/volume pattern analysis
+// informed by the smart money patterns he's learned from tracking 500+ alpha wallets.
+const ghostAlphaLoaded = true;
+const ghostAlphaCount = 518;
+
+/**
+ * Ghost's on-chain signal: simulates smart money detection from alpha wallets.
+ * Detects accumulation patterns (volume rising while price dips = smart money buying)
+ * and distribution patterns (volume rising while price pumps = smart money selling).
+ * Returns -1 to 1: positive = smart money accumulating, negative = distributing.
+ */
+function computeGhostOnChainSignal(
+  candles: PriceCandle[],
+  idx: number,
+  volatility: number
+): number {
+  if (!ghostAlphaLoaded || idx < 8) return 0;
+
+  // Look at longer window (Ghost is patient, tracks accumulation over time)
+  const lookback = Math.min(idx, 15);
+  const window = candles.slice(idx - lookback, idx + 1);
+
+  // Detect volume-price divergence (smart money signature)
+  // Rising volume + falling price = accumulation (bullish for Ghost)
+  // Rising volume + rising price = distribution risk (bearish signal)
+  let volTrend = 0;
+  let priceTrend = 0;
+  const midpoint = Math.floor(window.length / 2);
+  const firstHalf = window.slice(0, midpoint);
+  const secondHalf = window.slice(midpoint);
+
+  const avgVolFirst = firstHalf.reduce((s, c) => s + c.volume, 0) / firstHalf.length;
+  const avgVolSecond = secondHalf.reduce((s, c) => s + c.volume, 0) / secondHalf.length;
+  volTrend = avgVolFirst > 0 ? (avgVolSecond - avgVolFirst) / avgVolFirst : 0;
+
+  const avgPriceFirst = firstHalf.reduce((s, c) => s + c.close, 0) / firstHalf.length;
+  const avgPriceSecond = secondHalf.reduce((s, c) => s + c.close, 0) / secondHalf.length;
+  priceTrend = avgPriceFirst > 0 ? (avgPriceSecond - avgPriceFirst) / avgPriceFirst : 0;
+
+  // Accumulation: volume up + price down/flat = smart money buying quietly
+  // Distribution: volume up + price up sharply = smart money selling into strength
+  let signal = 0;
+  if (volTrend > 0.1 && priceTrend < 0.02) {
+    // Volume rising, price flat or down — accumulation detected
+    signal = Math.min(0.8, volTrend * 0.5);
+  } else if (volTrend > 0.2 && priceTrend > 0.1) {
+    // Volume and price both surging — potential distribution
+    signal = -Math.min(0.4, volTrend * 0.2);
+  } else if (volTrend < -0.1 && priceTrend > 0) {
+    // Volume drying up on price rise — weak rally, cautious
+    signal = -0.1;
+  } else if (priceTrend < -0.05 && volTrend < 0) {
+    // Price and volume both dropping — no interest, neutral to bearish
+    signal = -0.15;
+  }
+
+  // Scale signal by how many alpha wallets Ghost is tracking (more intel = higher conviction)
+  const convictionMultiplier = Math.min(1.5, 0.5 + ghostAlphaCount / 500);
+  signal *= convictionMultiplier;
+
+  return Math.max(-1, Math.min(1, signal));
+}
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -652,6 +717,16 @@ function makeOpponentDecision(
       session.opponentPosition.avgEntryPrice
     : 0;
 
+  // === GHOST ON-CHAIN INTELLIGENCE ===
+  // Ghost uses alpha wallet data to simulate on-chain analysis.
+  // When his intel is loaded, he gets smarter entries by detecting accumulation
+  // patterns (volume rising on dips = smart money buying) and avoids selling
+  // into strength when alpha wallets would be accumulating.
+  let onChainSignal = 0;
+  if (opponent.id === "ghost") {
+    onChainSignal = computeGhostOnChainSignal(candles, idx, volatility);
+  }
+
   // Random factor based on aggression
   const actionRoll = Math.random();
   const shouldAct = actionRoll < traits.aggression;
@@ -666,6 +741,11 @@ function makeOpponentDecision(
   } else {
     // Less technical: more random/gut feeling
     technicalSignal = (Math.random() - 0.5) * 0.4 + trendStrength * 0.2;
+  }
+
+  // Ghost blends on-chain intel with technicals (60% on-chain, 40% TA)
+  if (opponent.id === "ghost" && ghostAlphaLoaded) {
+    technicalSignal = onChainSignal * 0.6 + technicalSignal * 0.4;
   }
 
   // Buy logic
@@ -687,6 +767,16 @@ function makeOpponentDecision(
     // Take profit
     const takeProfitThreshold = 0.1 + (1 - traits.patience) * 0.2;
     if (positionPnl > takeProfitThreshold) {
+      // Ghost holds longer if on-chain signal is still bullish
+      if (opponent.id === "ghost" && ghostAlphaLoaded && onChainSignal > 0.2) {
+        // Smart money still accumulating — let it ride, only trim
+        const trimRatio = 0.15;
+        return {
+          action: "sell",
+          amount: session.opponentPosition.tokenAmount * trimRatio,
+          confidence: 0.5,
+        };
+      }
       const sellRatio = 0.3 + (1 - traits.patience) * 0.5;
       return {
         action: "sell",
@@ -695,12 +785,18 @@ function makeOpponentDecision(
       };
     }
 
-    // Stop loss
-    const stopLossThreshold = -0.1 - traits.riskTolerance * 0.1;
+    // Stop loss - patient traders tolerate wider drawdowns before cutting
+    const stopLossThreshold = -0.1 - traits.riskTolerance * 0.1 - traits.patience * 0.15;
     if (positionPnl < stopLossThreshold) {
+      // Ghost ignores stop loss if on-chain signal shows accumulation on the dip
+      if (opponent.id === "ghost" && ghostAlphaLoaded && onChainSignal > 0.15) {
+        return null; // Smart money buying the dip — hold through
+      }
+      // Patient traders scale out smaller; impatient ones dump harder
+      const stopSellRatio = 0.5 * (1 - traits.patience * 0.5);
       return {
         action: "sell",
-        amount: session.opponentPosition.tokenAmount * 0.5,
+        amount: session.opponentPosition.tokenAmount * stopSellRatio,
         confidence: 0.8,
       };
     }
