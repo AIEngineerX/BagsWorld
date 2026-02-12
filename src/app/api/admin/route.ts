@@ -6,6 +6,13 @@ import { getGlobalTokens, saveGlobalToken, isNeonConfigured, type GlobalToken } 
 import { verifySessionToken } from "@/lib/wallet-auth";
 import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
 import { sanitizeString, validateUrlSafe } from "@/lib/env-utils";
+import {
+  unregisterExternalAgent,
+  moveExternalAgent,
+  updateExternalAgentOverrides,
+  listExternalAgentsRaw,
+  invalidateExternalCache,
+} from "@/lib/agent-economy/external-registry";
 
 /**
  * Validate that a string is a valid Solana public key
@@ -118,9 +125,18 @@ export async function GET(request: NextRequest) {
     const diagnostics = await getSystemDiagnostics();
     const globalTokens = isNeonConfigured() ? await getGlobalTokens() : [];
 
+    // Fetch external agents for admin UI
+    let externalAgents: Awaited<ReturnType<typeof listExternalAgentsRaw>> = [];
+    try {
+      externalAgents = await listExternalAgentsRaw();
+    } catch (err) {
+      console.error("[Admin] Failed to fetch external agents:", err);
+    }
+
     return NextResponse.json({
       diagnostics,
       globalTokens,
+      externalAgents,
       timestamp: Date.now(),
     });
   } catch (error) {
@@ -178,6 +194,14 @@ export async function POST(request: NextRequest) {
         return await handleClearCache();
       case "migrate_agents_to_moltbook":
         return await handleMigrateAgentsToMoltbook();
+      case "delete_agent":
+        return await handleDeleteAgent(data);
+      case "move_agent":
+        return await handleMoveAgent(data);
+      case "set_agent_level":
+        return await handleSetAgentLevel(data);
+      case "set_agent_health":
+        return await handleSetAgentHealth(data);
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
@@ -708,6 +732,98 @@ async function handleAddToken(data: { mint: string; name?: string; symbol?: stri
   } catch (error) {
     console.error("Add token error:", error);
     return NextResponse.json({ error: "Failed to add token" }, { status: 500 });
+  }
+}
+
+// ============================================================================
+// AGENT BUILDING HANDLERS
+// ============================================================================
+
+function validateAgentWallet(wallet: string): NextResponse | null {
+  if (!wallet || !isValidSolanaAddress(wallet)) {
+    return NextResponse.json({ error: "Invalid agent wallet address" }, { status: 400 });
+  }
+  return null;
+}
+
+// Handle deleting an external agent building
+async function handleDeleteAgent(data: { wallet: string }) {
+  const validationError = validateAgentWallet(data.wallet);
+  if (validationError) return validationError;
+
+  try {
+    const deleted = await unregisterExternalAgent(data.wallet);
+    if (!deleted) {
+      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+    }
+    invalidateExternalCache();
+    return NextResponse.json({ success: true, message: "Agent building deleted" });
+  } catch (error) {
+    console.error("Delete agent error:", error);
+    return NextResponse.json({ error: "Failed to delete agent" }, { status: 500 });
+  }
+}
+
+// Handle moving an external agent to a different zone
+async function handleMoveAgent(data: { wallet: string; zone: string }) {
+  const validationError = validateAgentWallet(data.wallet);
+  if (validationError) return validationError;
+
+  if (!VALID_ZONES.includes(data.zone as (typeof VALID_ZONES)[number])) {
+    return NextResponse.json(
+      { error: `Invalid zone. Must be one of: ${VALID_ZONES.join(", ")}` },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const moved = await moveExternalAgent(data.wallet, data.zone as any);
+    if (!moved) {
+      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+    }
+    invalidateExternalCache();
+    return NextResponse.json({ success: true, message: `Agent moved to ${data.zone}` });
+  } catch (error) {
+    console.error("Move agent error:", error);
+    return NextResponse.json({ error: "Failed to move agent" }, { status: 500 });
+  }
+}
+
+// Handle setting level override for an agent building
+async function handleSetAgentLevel(data: { wallet: string; level: number | null }) {
+  const validationError =
+    validateAgentWallet(data.wallet) || validateNullableRange(data.level, 1, 5, "Level");
+  if (validationError) return validationError;
+
+  try {
+    await updateExternalAgentOverrides(data.wallet, { level: data.level });
+    invalidateExternalCache();
+    return NextResponse.json({
+      success: true,
+      message: `Agent level set to ${data.level ?? "auto"}`,
+    });
+  } catch (error) {
+    console.error("Set agent level error:", error);
+    return NextResponse.json({ error: "Failed to set agent level" }, { status: 500 });
+  }
+}
+
+// Handle setting health override for an agent building
+async function handleSetAgentHealth(data: { wallet: string; health: number | null }) {
+  const validationError =
+    validateAgentWallet(data.wallet) || validateNullableRange(data.health, 0, 100, "Health");
+  if (validationError) return validationError;
+
+  try {
+    await updateExternalAgentOverrides(data.wallet, { health: data.health });
+    invalidateExternalCache();
+    return NextResponse.json({
+      success: true,
+      message: `Agent health set to ${data.health ?? "auto"}`,
+    });
+  } catch (error) {
+    console.error("Set agent health error:", error);
+    return NextResponse.json({ error: "Failed to set agent health" }, { status: 500 });
   }
 }
 
