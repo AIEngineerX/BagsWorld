@@ -166,8 +166,10 @@ function rowToEntry(row: DbRow): ExternalAgentEntry {
     username: row.name,
     provider: moltbookUser ? "moltbook" : "external",
     providerUsername: providerUsername,
-    // Link to Moltbook profile if username is set
-    profileUrl: moltbookUser ? `https://moltbook.com/u/${moltbookUser}` : undefined,
+    // Link to Moltbook profile if available, otherwise Solscan
+    profileUrl: moltbookUser
+      ? `https://moltbook.com/u/${moltbookUser}`
+      : `https://solscan.io/account/${row.wallet}`,
     x: row.x,
     y: row.y,
     mood: "neutral",
