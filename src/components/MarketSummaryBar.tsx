@@ -26,7 +26,7 @@ export function MarketSummaryBar({ summary }: MarketSummaryBarProps) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <div>
-            <span className="font-pixel text-[6px] text-gray-500 block">24H VOL</span>
+            <span className="font-pixel text-[6px] text-gray-500 block">BAGS 24H</span>
             <span className="font-pixel text-[8px] text-bags-gold">
               {formatVolume(summary.totalVolume24h)}
             </span>

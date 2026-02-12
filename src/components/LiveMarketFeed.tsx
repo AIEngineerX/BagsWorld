@@ -29,18 +29,18 @@ export function LiveMarketFeed() {
   const events = useMemo(() => worldState?.events ?? [], [worldState?.events]);
   const lastUpdated = worldState?.lastUpdated;
 
-  // Compute market summary from buildings (platform data is already blended server-side)
+  // Use server-computed total Bags.fm volume (all tokens, not just registered)
+  const healthMetrics = (worldState as any)?.healthMetrics;
+
+  // Compute market summary from buildings + server metrics
   const summary = useMemo<MarketSummary>(() => {
-    let totalVolume24h = 0;
+    // Total 24h volume across ALL Bags.fm tokens (from server healthMetrics)
+    const totalVolume24h = healthMetrics?.totalBagsVolume24h ?? 0;
     let totalFeesClaimed = 0;
     let topGainer: MarketSummary["topGainer"] = null;
     let topLoser: MarketSummary["topLoser"] = null;
 
     for (const b of buildings) {
-      if (!b.isPermanent) {
-        totalVolume24h += b.volume24h ?? 0;
-      }
-
       if (b.change24h != null) {
         if (!topGainer || b.change24h > topGainer.change) {
           topGainer = { symbol: b.symbol, change: b.change24h };
@@ -57,7 +57,8 @@ export function LiveMarketFeed() {
       }
     }
 
-    const activeTokenCount = buildings.filter((b) => !b.isPermanent).length;
+    const activeTokenCount =
+      healthMetrics?.activeTokenCount ?? buildings.filter((b) => !b.isPermanent).length;
 
     return {
       totalVolume24h,
@@ -66,7 +67,7 @@ export function LiveMarketFeed() {
       topGainer,
       topLoser,
     };
-  }, [buildings, events]);
+  }, [buildings, events, healthMetrics]);
 
   // Transform GameEvent[] into MarketEvent[] (single source — platform events included server-side)
   const marketEvents = useMemo<MarketEvent[]>(() => {
