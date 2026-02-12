@@ -8,7 +8,11 @@ import { ZONES, ZoneType } from "@/lib/types";
 const EcosystemCanvas = dynamic(() => import("@/components/EcosystemCanvas"), {
   ssr: false,
 });
-import { AGENT_DATA, getAgentColorClass, getAgentBorderClass } from "@/lib/agent-data";
+const QuickLaunchPanel = dynamic(
+  () => import("@/components/QuickLaunchPanel").then((m) => ({ default: m.QuickLaunchPanel })),
+  { ssr: false }
+);
+import { AGENT_DATA } from "@/lib/agent-data";
 import { ZONE_ORDER } from "@/components/ZoneNav";
 import { useWorldState } from "@/hooks/useWorldState";
 import { useAgentStatuses, useElizaHealth } from "@/hooks/useElizaAgents";
@@ -17,29 +21,7 @@ import { useAgentStatuses, useElizaHealth } from "@/hooks/useElizaAgents";
 // Constants
 // ============================================================================
 
-type FilterType = "ALL" | "CHARACTERS" | "TOOLS" | "ZONES";
-
-const ZONE_COLORS: Record<ZoneType, string> = {
-  labs: "border-green-500/50",
-  moltbook: "border-red-500/50",
-  main_city: "border-bags-green/50",
-  trending: "border-yellow-500/50",
-  ballers: "border-yellow-500/50",
-  founders: "border-amber-500/50",
-  arena: "border-red-500/50",
-  dungeon: "border-purple-500/50",
-};
-
-const ZONE_TEXT_COLORS: Record<ZoneType, string> = {
-  labs: "text-green-400",
-  moltbook: "text-red-400",
-  main_city: "text-bags-green",
-  trending: "text-bags-gold",
-  ballers: "text-yellow-400",
-  founders: "text-amber-400",
-  arena: "text-red-400",
-  dungeon: "text-purple-400",
-};
+type FilterType = "ALL" | "TOOLS" | "ZONES";
 
 const ZONE_GRADIENT_COLORS: Record<ZoneType, string> = {
   labs: "#22c55e",
@@ -140,139 +122,24 @@ const FEATURES: FeatureItem[] = [
   { name: "BagsDungeon", icon: "[X]", description: "MMORPG adventure zone", zone: "dungeon" },
 ];
 
-const QUICK_LAUNCH = [
-  {
-    name: "ENTER WORLD",
-    href: "/",
-    icon: "\u25B6",
-    description: "Explore the pixel art ecosystem",
-  },
-  {
-    name: "TALK TO AGENT",
-    href: "/?chat=bagsy",
-    icon: "\uD83D\uDCAC",
-    description: "Chat with an AI character",
-  },
-  {
-    name: "LAUNCH TOKEN",
-    href: "/?zone=founders",
-    icon: "\uD83D\uDE80",
-    description: "Create and launch on Bags.fm",
-  },
-  {
-    name: "VIEW DOCS",
-    href: "/docs",
-    icon: "\uD83D\uDCD6",
-    description: "Documentation and guides",
-  },
-];
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function formatLastSeen(ts: number): string {
-  const diff = Date.now() - ts;
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return `${Math.floor(diff / 86_400_000)}d ago`;
-}
-
-const AGENT_CAPABILITIES: Record<string, string[]> = {
-  ghost: ["trade", "chat", "on-chain", "autonomous"],
-  neo: ["scout", "chat", "launch-detect"],
-  finn: ["chat", "ecosystem"],
-  toly: ["chat", "solana-expert"],
-  ash: ["chat", "guide", "pokemon"],
-  shaw: ["chat", "elizaos", "agents"],
-  cj: ["chat", "market-data"],
-  ramo: ["chat", "contracts", "sdk"],
-  sincara: ["chat", "frontend"],
-  stuu: ["chat", "ops", "support"],
-  sam: ["chat", "growth"],
-  alaa: ["chat", "r&d"],
-  carlo: ["chat", "community"],
-  bnn: ["chat", "news", "alerts"],
-  "professor-oak": ["chat", "ai-generate", "names", "logos"],
-  "bags-bot": ["chat", "commands", "guide"],
-  bagsy: ["chat", "moltbook", "hype", "autonomous"],
-  chadghost: ["chat", "moltbook", "moderate"],
-};
-
-function getDefaultCapabilities(agentId: string): string[] {
-  return AGENT_CAPABILITIES[agentId] ?? ["chat"];
-}
-
-/** Role-based activity descriptions for agents that are online but have no currentTask */
-const AGENT_ACTIVE_TASKS: Record<string, string> = {
-  ghost: "scanning trades",
-  neo: "monitoring launches",
-  finn: "reviewing ecosystem",
-  toly: "validating blocks",
-  ash: "guiding trainers",
-  shaw: "architecting agents",
-  cj: "analyzing markets",
-  ramo: "auditing contracts",
-  sincara: "polishing UI",
-  stuu: "handling support",
-  sam: "tracking growth",
-  alaa: "researching R&D",
-  carlo: "welcoming users",
-  bnn: "scanning headlines",
-  "professor-oak": "generating assets",
-  "bags-bot": "processing commands",
-  bagsy: "posting to moltbook",
-  chadghost: "moderating feed",
-};
-
-function getAgentTask(
-  agentId: string,
-  liveTask: string | undefined,
-  status: "online" | "busy" | "offline"
-): { text: string; active: boolean } {
-  if (liveTask && liveTask !== "idle") return { text: liveTask, active: true };
-  if (status === "online" || status === "busy") {
-    const roleTask = AGENT_ACTIVE_TASKS[agentId];
-    if (roleTask) return { text: roleTask, active: true };
-  }
-  return { text: "idle", active: false };
-}
-
 // ============================================================================
 // Components
 // ============================================================================
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title, color = "#4ade80" }: { title: string; color?: string }) {
   return (
     <div className="flex items-center gap-3 mb-4">
       <h2
-        className="font-pixel text-xs text-bags-green whitespace-nowrap"
-        style={{ textShadow: "0 0 6px rgba(74,222,128,0.4)" }}
+        className="font-pixel text-xs whitespace-nowrap"
+        style={{ color, textShadow: `0 0 6px ${color}66` }}
       >
         {title}
       </h2>
       <div
-        className="flex-1 h-px bg-gradient-to-r from-bags-green/60 to-transparent"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)",
-        }}
+        className="flex-1 h-px"
+        style={{ background: `linear-gradient(to right, ${color}99, transparent)` }}
       />
     </div>
-  );
-}
-
-function StatusDot({ status }: { status: "online" | "busy" | "offline" }) {
-  const colors = {
-    online: "bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]",
-    busy: "bg-yellow-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]",
-    offline: "bg-gray-600",
-  };
-  return (
-    <span
-      className={`inline-block w-2 h-2 rounded-full ${colors[status]} ${status === "online" ? "animate-pulse" : ""}`}
-    />
   );
 }
 
@@ -291,28 +158,7 @@ export default function DashboardPage() {
 
   const q = search.toLowerCase().trim();
 
-  // Build agent status map
-  const statusMap = useMemo(() => {
-    const map: Record<string, "online" | "busy" | "offline"> = {};
-    if (agentStatuses?.agents) {
-      for (const a of agentStatuses.agents) {
-        map[a.agentId] = a.status;
-      }
-    }
-    return map;
-  }, [agentStatuses]);
-
   // Filtered data
-  const filteredAgents = useMemo(() => {
-    if (!q) return AGENT_DATA;
-    return AGENT_DATA.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.role.toLowerCase().includes(q) ||
-        a.zone.toLowerCase().includes(q)
-    );
-  }, [q]);
-
   const filteredFeatures = useMemo(() => {
     if (!q) return FEATURES;
     return FEATURES.filter(
@@ -332,12 +178,10 @@ export default function DashboardPage() {
   }, [q]);
 
   const showZones = filter === "ALL" || filter === "ZONES";
-  const showCharacters = filter === "ALL" || filter === "CHARACTERS";
   const showTools = filter === "ALL" || filter === "TOOLS";
 
   const isServerOnline = healthData?.status === "ok" || healthData?.status === "healthy";
   const serverStatus = isServerOnline ? "ONLINE" : "OFFLINE";
-  const serverColor = isServerOnline ? "text-green-400" : "text-gray-500";
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6">
@@ -359,11 +203,11 @@ export default function DashboardPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search agents, zones, features..."
+            placeholder="Search zones, features..."
             className="flex-1 bg-black/40 border-2 border-bags-green/30 px-3 py-2 font-pixel text-[10px] text-gray-200 placeholder-gray-600 focus:border-bags-green/60 focus:outline-none min-h-[44px]"
           />
           <div className="flex gap-1">
-            {(["ALL", "CHARACTERS", "TOOLS", "ZONES"] as FilterType[]).map((f) => (
+            {(["ALL", "TOOLS", "ZONES"] as FilterType[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -376,6 +220,12 @@ export default function DashboardPage() {
                 {f}
               </button>
             ))}
+            <Link
+              href="/agents"
+              className="font-pixel text-[8px] sm:text-[10px] px-2 sm:px-3 py-1.5 min-h-[36px] border border-cyan-500/40 text-cyan-400 hover:border-cyan-400 hover:bg-cyan-500/10 transition-all duration-150 flex items-center"
+            >
+              AGENTS
+            </Link>
           </div>
         </div>
       </div>
@@ -403,7 +253,7 @@ export default function DashboardPage() {
               <p className="font-pixel text-xs text-bags-green group-hover:brightness-125">
                 LOAD ECOSYSTEM DEMO
               </p>
-              <p className="font-pixel text-[8px] text-gray-500 mt-2">
+              <p className="font-pixel text-[8px] text-gray-400 mt-2">
                 Animated pixel-art map of the BagsWorld ecosystem
               </p>
             </button>
@@ -417,17 +267,23 @@ export default function DashboardPage() {
           <SectionHeader title="[WORLD STATUS]" />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Health */}
-            <div className="bg-black/40 border-2 border-bags-green/30 p-3 sm:p-4">
-              <p className="font-pixel text-[8px] text-gray-500 mb-1">WORLD HEALTH</p>
+            <div
+              className="border-2 border-green-500/40 p-3 sm:p-4"
+              style={{
+                backgroundColor: "rgba(74,222,128,0.04)",
+                boxShadow: "inset 0 0 24px rgba(74,222,128,0.04)",
+              }}
+            >
+              <p className="font-pixel text-[8px] text-green-400/80 mb-1">WORLD HEALTH</p>
               <div className="flex items-end gap-2">
                 <span
-                  className="font-pixel text-lg text-bags-green"
+                  className="font-pixel text-lg text-green-400"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {worldState?.health ?? "--"}%
                 </span>
                 <span
-                  className={`font-pixel text-[8px] text-gray-400 mb-1 ${(worldState?.health ?? 0) >= 80 ? "animate-pulse" : ""}`}
+                  className={`font-pixel text-[8px] text-gray-300 mb-1 ${(worldState?.health ?? 0) >= 80 ? "animate-pulse" : ""}`}
                 >
                   {(worldState?.health ?? 0) >= 80
                     ? "THRIVING"
@@ -440,10 +296,13 @@ export default function DashboardPage() {
                           : "DORMANT"}
                 </span>
               </div>
-              <div className="mt-2 h-2 bg-black/60 border border-bags-green/20 overflow-hidden relative">
+              <div className="mt-2 h-2 bg-black/60 border border-green-500/20 overflow-hidden relative">
                 <div
-                  className="h-full bg-bags-green transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(74,222,128,0.3)]"
-                  style={{ width: `${worldState?.health ?? 0}%` }}
+                  className="h-full bg-green-400 transition-all duration-1000 ease-out"
+                  style={{
+                    width: `${worldState?.health ?? 0}%`,
+                    boxShadow: "0 0 8px rgba(74,222,128,0.4)",
+                  }}
                 />
                 <div
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
@@ -456,10 +315,16 @@ export default function DashboardPage() {
             </div>
 
             {/* Weather */}
-            <div className="bg-black/40 border-2 border-bags-green/30 p-3 sm:p-4">
-              <p className="font-pixel text-[8px] text-gray-500 mb-1">WEATHER</p>
+            <div
+              className="border-2 border-amber-500/40 p-3 sm:p-4"
+              style={{
+                backgroundColor: "rgba(245,158,11,0.04)",
+                boxShadow: "inset 0 0 24px rgba(245,158,11,0.04)",
+              }}
+            >
+              <p className="font-pixel text-[8px] text-amber-400/80 mb-1">WEATHER</p>
               <div className="flex items-center gap-2">
-                <span className="font-pixel text-lg text-bags-gold">
+                <span className="font-pixel text-lg text-amber-400">
                   {worldState?.weather?.toUpperCase() ?? "--"}
                 </span>
                 <span className="text-lg">
@@ -479,8 +344,14 @@ export default function DashboardPage() {
             </div>
 
             {/* Agent Server */}
-            <div className="bg-black/40 border-2 border-bags-green/30 p-3 sm:p-4">
-              <p className="font-pixel text-[8px] text-gray-500 mb-1">AGENT SERVER</p>
+            <div
+              className="border-2 border-cyan-500/40 p-3 sm:p-4"
+              style={{
+                backgroundColor: "rgba(6,182,212,0.04)",
+                boxShadow: "inset 0 0 24px rgba(6,182,212,0.04)",
+              }}
+            >
+              <p className="font-pixel text-[8px] text-cyan-400/80 mb-1">AGENT SERVER</p>
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-block w-2.5 h-2.5 rounded-full ${
@@ -489,10 +360,14 @@ export default function DashboardPage() {
                       : "bg-gray-600"
                   }`}
                 />
-                <span className={`font-pixel text-lg ${serverColor}`}>{serverStatus}</span>
+                <span
+                  className={`font-pixel text-lg ${isServerOnline ? "text-cyan-400" : "text-gray-500"}`}
+                >
+                  {serverStatus}
+                </span>
               </div>
               {isServerOnline && agentStatuses?.online != null && (
-                <p className="font-pixel text-[7px] text-gray-500 mt-1">
+                <p className="font-pixel text-[7px] text-gray-400 mt-1">
                   {agentStatuses.online}/{agentStatuses.count ?? 0} agents online
                 </p>
               )}
@@ -508,39 +383,59 @@ export default function DashboardPage() {
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide sm:grid sm:grid-cols-4 sm:overflow-visible">
             {filteredZones.map((zId) => {
               const z = ZONES[zId];
+              const accent = ZONE_GRADIENT_COLORS[zId];
               return (
                 <Link
                   key={zId}
                   href={`/?zone=${zId}`}
-                  className={`shrink-0 w-40 sm:w-auto bg-black/40 border-2 ${ZONE_COLORS[zId]} p-3 hover:bg-white/5 hover:scale-[1.02] hover:shadow-[0_0_12px_rgba(74,222,128,0.15)] transition-all group relative overflow-hidden`}
+                  className="shrink-0 w-40 sm:w-auto border-2 p-3 hover:scale-[1.02] hover:brightness-110 transition-all group relative overflow-hidden"
+                  style={{
+                    borderColor: `${accent}60`,
+                    backgroundColor: `${accent}0c`,
+                    boxShadow: `inset 0 0 30px ${accent}06`,
+                  }}
                 >
                   {/* Accent bar */}
                   <div
-                    className="absolute top-0 left-0 right-0 h-1"
-                    style={{ backgroundColor: ZONE_GRADIENT_COLORS[zId] }}
+                    className="absolute top-0 left-0 right-0 h-1.5"
+                    style={{ backgroundColor: accent }}
                   />
                   <div className="flex items-center gap-2 mb-1 mt-1">
-                    <span className={`font-pixel text-[10px] ${ZONE_TEXT_COLORS[zId]}`}>
+                    <span className="font-pixel text-[10px]" style={{ color: accent }}>
                       {z.icon}
                     </span>
                     <span
-                      className={`font-pixel text-[10px] ${ZONE_TEXT_COLORS[zId]} group-hover:brightness-125`}
+                      className="font-pixel text-[10px] group-hover:brightness-125"
+                      style={{ color: accent }}
                     >
                       {z.name.toUpperCase()}
                     </span>
                   </div>
-                  <p className="font-pixel text-[8px] text-gray-500 leading-relaxed">
+                  <p className="font-pixel text-[8px] text-gray-300 leading-relaxed">
                     {z.description}
                   </p>
                   <div className="flex gap-2 mt-2">
-                    <span className="font-pixel text-[6px] px-1.5 py-0.5 bg-white/5 border border-white/10 text-gray-400">
+                    <span
+                      className="font-pixel text-[6px] px-1.5 py-0.5 border text-gray-300"
+                      style={{
+                        borderColor: `${accent}40`,
+                        backgroundColor: `${accent}10`,
+                      }}
+                    >
                       {
-                        AGENT_DATA.filter((a) => (ZONE_NAME_TO_ID[a.zone] ?? "main_city") === zId)
-                          .length
+                        AGENT_DATA.filter(
+                          (a) => (ZONE_NAME_TO_ID[a.zone] ?? "main_city") === zId
+                        ).length
                       }{" "}
                       agents
                     </span>
-                    <span className="font-pixel text-[6px] px-1.5 py-0.5 bg-white/5 border border-white/10 text-gray-400">
+                    <span
+                      className="font-pixel text-[6px] px-1.5 py-0.5 border text-gray-300"
+                      style={{
+                        borderColor: `${accent}40`,
+                        backgroundColor: `${accent}10`,
+                      }}
+                    >
                       {FEATURES.filter((f) => f.zone === zId).length} features
                     </span>
                   </div>
@@ -554,352 +449,104 @@ export default function DashboardPage() {
       {/* Quick Launch */}
       {filter === "ALL" && !q && (
         <section>
-          <SectionHeader title="[QUICK LAUNCH]" />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {QUICK_LAUNCH.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="bg-black/40 border-2 border-bags-green/30 p-4 sm:p-5 hover:bg-white/5 hover:border-bags-green/50 hover:shadow-[0_0_12px_rgba(74,222,128,0.2)] transition-all group"
-              >
-                <div className="text-2xl mb-2">{item.icon}</div>
-                <div className="font-pixel text-[10px] text-bags-green group-hover:brightness-125 mb-1">
-                  {item.name}
-                </div>
-                <p className="font-pixel text-[7px] text-gray-500 leading-relaxed">
-                  {item.description}
-                </p>
-              </Link>
-            ))}
-          </div>
+          <SectionHeader title="[QUICK LAUNCH]" color="#fbbf24" />
+          <QuickLaunchPanel />
         </section>
       )}
 
-      {/* Agent Status Table */}
-      {showCharacters && filteredAgents.length > 0 && (
+      {/* Meet The Agents link */}
+      {filter === "ALL" && !q && (
         <section>
-          <SectionHeader
-            title={`[AGENT STATUS] (${filteredAgents.length})${agentStatuses?.online ? ` — ${agentStatuses.online} ONLINE` : ""}`}
-          />
-
-          {/* Desktop table */}
-          <div className="hidden sm:block bg-black/40 border-2 border-bags-green/30 overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-bags-green/20">
-                  <th className="font-pixel text-[7px] text-gray-500 text-left px-3 py-2">ID</th>
-                  <th className="font-pixel text-[7px] text-gray-500 text-left px-3 py-2">
-                    STATUS
-                  </th>
-                  <th className="font-pixel text-[7px] text-gray-500 text-left px-3 py-2">ROLE</th>
-                  <th className="font-pixel text-[7px] text-gray-500 text-left px-3 py-2">ZONE</th>
-                  <th className="font-pixel text-[7px] text-gray-500 text-left px-3 py-2">TYPE</th>
-                  <th className="font-pixel text-[7px] text-gray-500 text-left px-3 py-2">
-                    CAPABILITIES
-                  </th>
-                  <th className="font-pixel text-[7px] text-gray-500 text-left px-3 py-2">
-                    CURRENT TASK
-                  </th>
-                  <th className="font-pixel text-[7px] text-gray-500 text-left px-3 py-2">
-                    SOCIALS
-                  </th>
-                  <th className="font-pixel text-[7px] text-gray-500 text-left px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAgents.map((agent) => {
-                  const zoneId = ZONE_NAME_TO_ID[agent.zone] ?? "main_city";
-                  const agentStatus = statusMap[agent.id] ?? "offline";
-                  const liveAgent = agentStatuses?.agents?.find((a) => a.agentId === agent.id);
-                  const lastSeenStr = liveAgent?.lastSeen
-                    ? formatLastSeen(liveAgent.lastSeen)
-                    : "--";
-                  return (
-                    <tr
-                      key={agent.id}
-                      className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors"
-                      style={{ borderLeft: `4px solid ${ZONE_GRADIENT_COLORS[zoneId]}` }}
-                    >
-                      {/* ID + Name */}
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`font-pixel text-[9px] ${getAgentColorClass(agent.color)}`}
-                          >
-                            {agent.name}
-                          </span>
-                          <span className="font-mono text-[7px] text-gray-600">{agent.id}</span>
-                        </div>
-                      </td>
-                      {/* Status */}
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-1.5">
-                          <StatusDot status={agentStatus} />
-                          <span
-                            className={`font-pixel text-[7px] ${agentStatus === "online" ? "text-green-400" : agentStatus === "busy" ? "text-yellow-400" : "text-gray-600"}`}
-                          >
-                            {agentStatus.toUpperCase()}
-                          </span>
-                        </div>
-                        <span className="font-mono text-[6px] text-gray-600 block mt-0.5">
-                          {lastSeenStr}
-                        </span>
-                      </td>
-                      {/* Role */}
-                      <td className="px-3 py-2">
-                        <span className="font-pixel text-[7px] text-gray-400">{agent.role}</span>
-                      </td>
-                      {/* Zone */}
-                      <td className="px-3 py-2">
-                        <span
-                          className={`font-pixel text-[7px] px-1.5 py-0.5 border ${ZONE_COLORS[zoneId]} ${ZONE_TEXT_COLORS[zoneId]}`}
-                        >
-                          {agent.zone}
-                        </span>
-                      </td>
-                      {/* Type */}
-                      <td className="px-3 py-2">
-                        <span
-                          className={`font-pixel text-[7px] px-1.5 py-0.5 border ${
-                            agent.category === "moltbook"
-                              ? "border-red-500/40 text-red-400"
-                              : "border-bags-green/40 text-bags-green"
-                          }`}
-                        >
-                          {agent.category === "moltbook" ? "SOCIAL" : "IN-GAME"}
-                        </span>
-                      </td>
-                      {/* Capabilities */}
-                      <td className="px-3 py-2">
-                        <div className="flex flex-wrap gap-1">
-                          {(liveAgent?.capabilities ?? getDefaultCapabilities(agent.id)).map(
-                            (cap) => (
-                              <span
-                                key={cap}
-                                className="font-mono text-[6px] px-1 py-0.5 bg-bags-green/10 border border-bags-green/20 text-bags-green/70"
-                              >
-                                {cap}
-                              </span>
-                            )
-                          )}
-                        </div>
-                      </td>
-                      {/* Current Task */}
-                      <td className="px-3 py-2">
-                        {(() => {
-                          const taskInfo = getAgentTask(
-                            agent.id,
-                            liveAgent?.currentTask,
-                            agentStatus
-                          );
-                          if (!taskInfo.active) {
-                            return (
-                              <span className="font-mono text-[7px] text-gray-600 italic">
-                                idle
-                              </span>
-                            );
-                          }
-                          return (
-                            <span className="font-mono text-[7px] text-gray-400">
-                              {taskInfo.text}
-                              <span className="animate-pulse">...</span>
-                            </span>
-                          );
-                        })()}
-                      </td>
-                      {/* Socials */}
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col gap-0.5">
-                          {agent.twitter && (
-                            <span className="font-mono text-[6px] text-blue-400">
-                              X:{agent.twitter}
-                            </span>
-                          )}
-                          {agent.moltbook && (
-                            <span className="font-mono text-[6px] text-red-400">
-                              MB:{agent.moltbook}
-                            </span>
-                          )}
-                          {!agent.twitter && !agent.moltbook && (
-                            <span className="font-mono text-[6px] text-gray-700">--</span>
-                          )}
-                        </div>
-                      </td>
-                      {/* Actions */}
-                      <td className="px-3 py-2">
-                        <Link
-                          href={`/?chat=${agent.id}`}
-                          className="font-pixel text-[7px] px-2 py-1 bg-bags-green/10 border border-bags-green/40 text-bags-green hover:bg-bags-green/20 hover:shadow-[0_0_8px_rgba(74,222,128,0.4)] transition-all"
-                        >
-                          TALK
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards -- compact technical view */}
-          <div className="sm:hidden space-y-2">
-            {filteredAgents.map((agent) => {
-              const zoneId = ZONE_NAME_TO_ID[agent.zone] ?? "main_city";
-              const agentStatus = statusMap[agent.id] ?? "offline";
-              const liveAgent = agentStatuses?.agents?.find((a) => a.agentId === agent.id);
-              const lastSeenStr = liveAgent?.lastSeen ? formatLastSeen(liveAgent.lastSeen) : "--";
-              return (
-                <div
-                  key={agent.id}
-                  className={`bg-black/40 border-2 ${getAgentBorderClass(agent.color)} p-3`}
-                  style={{
-                    borderLeft: `4px solid ${ZONE_GRADIENT_COLORS[ZONE_NAME_TO_ID[agent.zone] ?? "main_city"]}`,
-                  }}
-                >
-                  {/* Header row */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <StatusDot status={agentStatus} />
-                    <span className={`font-pixel text-[9px] ${getAgentColorClass(agent.color)}`}>
-                      {agent.name}
-                    </span>
-                    <span className="font-mono text-[7px] text-gray-600">{agent.id}</span>
-                    <span
-                      className={`ml-auto font-pixel text-[7px] px-1.5 py-0.5 border ${ZONE_COLORS[zoneId]} ${ZONE_TEXT_COLORS[zoneId]}`}
-                    >
-                      {agent.zone}
-                    </span>
-                  </div>
-                  {/* Technical info */}
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 mb-2">
-                    <div>
-                      <span className="font-pixel text-[6px] text-gray-600 block">ROLE</span>
-                      <span className="font-pixel text-[7px] text-gray-400">{agent.role}</span>
-                    </div>
-                    <div>
-                      <span className="font-pixel text-[6px] text-gray-600 block">STATUS</span>
-                      <span
-                        className={`font-pixel text-[7px] ${agentStatus === "online" ? "text-green-400" : agentStatus === "busy" ? "text-yellow-400" : "text-gray-500"}`}
-                      >
-                        {agentStatus.toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-pixel text-[6px] text-gray-600 block">TASK</span>
-                      {(() => {
-                        const taskInfo = getAgentTask(
-                          agent.id,
-                          liveAgent?.currentTask,
-                          agentStatus
-                        );
-                        if (!taskInfo.active) {
-                          return (
-                            <span className="font-mono text-[7px] text-gray-600 italic">idle</span>
-                          );
-                        }
-                        return (
-                          <span className="font-mono text-[7px] text-gray-400">
-                            {taskInfo.text}
-                            <span className="animate-pulse">...</span>
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    <div>
-                      <span className="font-pixel text-[6px] text-gray-600 block">LAST SEEN</span>
-                      <span className="font-mono text-[7px] text-gray-500">{lastSeenStr}</span>
-                    </div>
-                  </div>
-                  {/* Capabilities */}
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {(liveAgent?.capabilities ?? getDefaultCapabilities(agent.id)).map((cap) => (
-                      <span
-                        key={cap}
-                        className="font-mono text-[6px] px-1 py-0.5 bg-bags-green/10 border border-bags-green/20 text-bags-green/70"
-                      >
-                        {cap}
-                      </span>
-                    ))}
-                  </div>
-                  {/* Socials + Action */}
-                  <div className="flex items-center gap-2">
-                    {agent.twitter && (
-                      <span className="font-mono text-[6px] text-blue-400">X:{agent.twitter}</span>
-                    )}
-                    {agent.moltbook && (
-                      <span className="font-mono text-[6px] text-red-400">MB:{agent.moltbook}</span>
-                    )}
-                    <Link
-                      href={`/?chat=${agent.id}`}
-                      className="ml-auto font-pixel text-[7px] px-2 py-1 bg-bags-green/10 border border-bags-green/40 text-bags-green hover:bg-bags-green/20 hover:shadow-[0_0_8px_rgba(74,222,128,0.4)] transition-all"
-                    >
-                      TALK
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <SectionHeader title="[AGENTS]" color="#22d3ee" />
+          <Link
+            href="/agents"
+            className="block border-2 border-cyan-500/30 p-4 sm:p-5 hover:border-cyan-500/50 transition-all group"
+            style={{
+              backgroundColor: "rgba(6,182,212,0.04)",
+              boxShadow: "inset 0 0 30px rgba(6,182,212,0.03)",
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-pixel text-xs text-cyan-400 group-hover:brightness-125">
+                  MEET THE CREW
+                </p>
+                <p className="font-pixel text-[8px] text-gray-400 mt-1">
+                  {AGENT_DATA.length} AI agents — live status, trading stats, scheduled tasks
+                </p>
+              </div>
+              <span className="font-pixel text-sm text-cyan-400 group-hover:translate-x-1 transition-transform">
+                {"\u2192"}
+              </span>
+            </div>
+          </Link>
         </section>
       )}
 
       {/* Features Grid */}
       {showTools && filteredFeatures.length > 0 && (
         <section>
-          <SectionHeader title={`[FEATURES] (${filteredFeatures.length})`} />
+          <SectionHeader title={`[FEATURES] (${filteredFeatures.length})`} color="#fbbf24" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredFeatures.map((feat) => (
-              <Link
-                key={feat.name}
-                href={`/?zone=${feat.zone}`}
-                className={`bg-black/40 border-2 ${ZONE_COLORS[feat.zone]} p-3 hover:bg-white/5 transition-all group`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`font-pixel text-[10px] ${ZONE_TEXT_COLORS[feat.zone]}`}>
-                    {feat.icon}
-                  </span>
-                  <span className="font-pixel text-[10px] text-gray-200 group-hover:text-white">
-                    {feat.name}
-                  </span>
-                  {feat.gate && (
-                    <span className="ml-auto font-pixel text-[7px] px-1.5 py-0.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
-                      {feat.gate}
+            {filteredFeatures.map((feat) => {
+              const accent = ZONE_GRADIENT_COLORS[feat.zone];
+              return (
+                <Link
+                  key={feat.name}
+                  href={`/?zone=${feat.zone}`}
+                  className="border-2 p-3 hover:brightness-110 transition-all group"
+                  style={{
+                    borderColor: `${accent}40`,
+                    backgroundColor: `${accent}08`,
+                    boxShadow: `inset 0 0 20px ${accent}04`,
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-pixel text-[10px]" style={{ color: accent }}>
+                      {feat.icon}
                     </span>
-                  )}
-                </div>
-                <p className="font-pixel text-[8px] text-gray-500 leading-relaxed">
-                  {feat.description}
-                </p>
-                <div className="mt-2">
-                  <span
-                    className={`font-pixel text-[7px] px-1.5 py-0.5 border ${ZONE_COLORS[feat.zone]} ${ZONE_TEXT_COLORS[feat.zone]}`}
-                  >
-                    {ZONES[feat.zone].name}
-                  </span>
-                </div>
-              </Link>
-            ))}
+                    <span className="font-pixel text-[10px] text-gray-200 group-hover:text-white">
+                      {feat.name}
+                    </span>
+                    {feat.gate && (
+                      <span className="ml-auto font-pixel text-[7px] px-1.5 py-0.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
+                        {feat.gate}
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-pixel text-[8px] text-gray-300 leading-relaxed">
+                    {feat.description}
+                  </p>
+                  <div className="mt-2">
+                    <span
+                      className="font-pixel text-[7px] px-1.5 py-0.5 border"
+                      style={{ borderColor: `${accent}40`, color: accent }}
+                    >
+                      {ZONES[feat.zone].name}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
 
       {/* No results */}
-      {q &&
-        filteredAgents.length === 0 &&
-        filteredFeatures.length === 0 &&
-        filteredZones.length === 0 && (
-          <div className="text-center py-12">
-            <p className="font-pixel text-xs text-gray-500">NO RESULTS FOR &quot;{search}&quot;</p>
-            <button
-              onClick={() => {
-                setSearch("");
-                setFilter("ALL");
-              }}
-              className="mt-3 font-pixel text-[10px] text-bags-green hover:underline"
-            >
-              CLEAR SEARCH
-            </button>
-          </div>
-        )}
+      {q && filteredFeatures.length === 0 && filteredZones.length === 0 && (
+        <div className="text-center py-12">
+          <p className="font-pixel text-xs text-gray-500">NO RESULTS FOR &quot;{search}&quot;</p>
+          <button
+            onClick={() => {
+              setSearch("");
+              setFilter("ALL");
+            }}
+            className="mt-3 font-pixel text-[10px] text-bags-green hover:underline"
+          >
+            CLEAR SEARCH
+          </button>
+        </div>
+      )}
     </div>
   );
 }

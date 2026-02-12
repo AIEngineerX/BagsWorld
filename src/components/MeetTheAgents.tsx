@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { BAGSWORLD_AGENTS, MOLTBOOK_AGENTS, type AgentInfo } from "@/lib/agent-data";
+import Link from "next/link";
+import { BAGSWORLD_AGENTS, MOLTBOOK_AGENTS, AGENT_DATA, type AgentInfo } from "@/lib/agent-data";
 import {
   useElizaHealth,
   useAgentStatuses,
@@ -11,29 +11,12 @@ import {
   useAutonomousTasks,
   type AgentStatus,
 } from "@/hooks/useElizaAgents";
-import { type ZoneType } from "@/lib/types";
 
-// Zone ID mapping for navigation
-const ZONE_MAP: Record<string, ZoneType> = {
-  Park: "main_city",
-  BagsCity: "trending",
-  HQ: "labs",
-  "Founder's Corner": "founders",
-  All: "main_city",
-};
+// ============================================================================
+// Constants
+// ============================================================================
 
-// Get status for an agent from Railway data
-function getAgentOnlineStatus(
-  agentId: string,
-  railwayAgents: AgentStatus[] | undefined
-): "online" | "busy" | "offline" {
-  if (!railwayAgents) return "offline";
-  const agent = railwayAgents.find(
-    (a) => a.agentId === agentId || a.agentId === agentId.replace("-", "")
-  );
-  return agent?.status || "offline";
-}
-
+// Hex colors per zone for inline styles (avoids Tailwind purge issues)
 const ZONE_COLORS: Record<string, string> = {
   Park: "#4ade80",
   BagsCity: "#fbbf24",
@@ -44,35 +27,123 @@ const ZONE_COLORS: Record<string, string> = {
   "m/bagsworld": "#4ade80",
 };
 
-// GameBoy-style agent entry
+// Agent capability descriptions
+const AGENT_CAPABILITIES: Record<string, string[]> = {
+  ghost: ["Trading", "Fee Claiming", "On-chain Ops"],
+  neo: ["Launch Detection", "Rug Scanning"],
+  finn: ["Ecosystem Info", "Roadmap"],
+  toly: ["Solana Education", "Tech Explainers"],
+  ash: ["Tutorial Guide", "Pokemon Analogies"],
+  shaw: ["ElizaOS Support", "Agent Architecture"],
+  cj: ["Market Commentary", "Street Alpha"],
+  ramo: ["Smart Contracts", "SDK Support"],
+  sincara: ["UI/UX", "Frontend"],
+  stuu: ["Support", "Operations"],
+  sam: ["Growth Strategy", "Marketing"],
+  alaa: ["R&D", "Skunk Works"],
+  carlo: ["Community", "Onboarding"],
+  bnn: ["News", "Announcements"],
+  "professor-oak": ["Name Generation", "Logo Gen", "Banner Gen"],
+  "bags-bot": ["World Guide", "Commands"],
+  bagsy: ["Hype Posts", "Fee Reminders"],
+  chadghost: ["Moltbook Moderation", "Engagement"],
+};
+
+const AGENT_ACTIVE_TASKS: Record<string, string> = {
+  ghost: "Scanning launches for entry signals",
+  neo: "Monitoring new token deployments",
+  bagsy: "Composing hype post for m/bagsworld",
+  chadghost: "Moderating m/pokecenter feed",
+  bnn: "Scanning for breaking news",
+};
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function getAgentOnlineStatus(
+  agentId: string,
+  railwayAgents: AgentStatus[] | undefined
+): AgentStatus | undefined {
+  if (!railwayAgents) return undefined;
+  return railwayAgents.find(
+    (a) => a.agentId === agentId || a.agentId === agentId.replace("-", "")
+  );
+}
+
+function getStatusInfo(status: "online" | "busy" | "offline") {
+  if (status === "online") return { color: "#4ade80", label: "ONLINE", glow: true };
+  if (status === "busy") return { color: "#fbbf24", label: "BUSY", glow: true };
+  return { color: "#4b5563", label: "OFFLINE", glow: false };
+}
+
+function formatLastSeen(ts: number): string {
+  if (!ts) return "Unknown";
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return "Just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
+function getDefaultCapabilities(agentId: string): string[] {
+  return AGENT_CAPABILITIES[agentId] ?? ["Chat"];
+}
+
+function getAgentTask(agentId: string, railwayStatus?: AgentStatus): string {
+  if (railwayStatus?.currentTask) return railwayStatus.currentTask;
+  return AGENT_ACTIVE_TASKS[agentId] ?? "Idle";
+}
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+function StatusDot({ status, size = 12 }: { status: "online" | "busy" | "offline"; size?: number }) {
+  const info = getStatusInfo(status);
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: info.color,
+        boxShadow: info.glow ? `0 0 8px ${info.color}` : "none",
+      }}
+    />
+  );
+}
+
+// GameBoy-style agent entry (buttons removed, inline status added)
 function AgentEntry({
   agent,
   index,
-  status,
+  railwayStatus,
   isSelected,
   onSelect,
-  onVisit,
-  onTalk,
 }: {
   agent: AgentInfo;
   index: number;
-  status: "online" | "busy" | "offline";
+  railwayStatus?: AgentStatus;
   isSelected: boolean;
   onSelect: () => void;
-  onVisit: () => void;
-  onTalk: () => void;
 }) {
   const accentColor = ZONE_COLORS[agent.zone] || "#4ade80";
+  const status = railwayStatus?.status ?? "offline";
+  const statusInfo = getStatusInfo(status);
+  const task = getAgentTask(agent.id, railwayStatus);
+  const caps = railwayStatus?.capabilities?.length
+    ? railwayStatus.capabilities
+    : getDefaultCapabilities(agent.id);
 
   return (
     <div
       onClick={onSelect}
       className="cursor-pointer transition-all duration-100"
       style={{
-        background: isSelected ? "rgba(74, 222, 128, 0.08)" : "rgba(0, 0, 0, 0.4)",
-        border: isSelected ? "3px solid #4ade80" : "3px solid #1e293b",
+        background: isSelected ? `${accentColor}12` : "rgba(0, 0, 0, 0.4)",
+        border: isSelected ? `3px solid ${accentColor}` : "3px solid #1e293b",
         boxShadow: isSelected
-          ? "0 0 16px rgba(74, 222, 128, 0.2), inset 0 0 24px rgba(74, 222, 128, 0.03)"
+          ? `0 0 16px ${accentColor}33, inset 0 0 24px ${accentColor}08`
           : "inset 0 0 12px rgba(0, 0, 0, 0.4)",
       }}
     >
@@ -104,10 +175,9 @@ function AgentEntry({
             <div
               className="absolute -bottom-1 -right-1 w-4 h-4"
               style={{
-                background:
-                  status === "online" ? "#4ade80" : status === "busy" ? "#fbbf24" : "#4b5563",
+                background: statusInfo.color,
                 border: "2px solid #000",
-                boxShadow: status === "online" ? "0 0 8px #4ade80" : "none",
+                boxShadow: statusInfo.glow ? `0 0 8px ${statusInfo.color}` : "none",
               }}
             />
           </div>
@@ -140,8 +210,8 @@ function AgentEntry({
           </div>
         </div>
 
-        {/* Zone tag */}
-        <div className="mb-3">
+        {/* Zone + status tags */}
+        <div className="flex flex-wrap gap-2 mb-3">
           <span
             className="inline-block font-pixel text-[10px] px-2 py-1"
             style={{
@@ -152,45 +222,50 @@ function AgentEntry({
           >
             {agent.zone.toUpperCase()}
           </span>
+          <span
+            className="inline-block font-pixel text-[10px] px-2 py-1"
+            style={{
+              background: `${statusInfo.color}15`,
+              border: `2px solid ${statusInfo.color}80`,
+              color: statusInfo.color,
+            }}
+          >
+            {statusInfo.label}
+          </span>
         </div>
 
-        {/* Full bio - no clipping */}
-        <p className="font-pixel text-xs sm:text-[13px] text-gray-300 leading-relaxed mb-4">
+        {/* Full bio */}
+        <p className="font-pixel text-xs sm:text-[13px] text-gray-300 leading-relaxed mb-3">
           {agent.description}
         </p>
 
-        {/* Action buttons - GameBoy style */}
-        <div className="flex gap-3">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onVisit();
-            }}
-            className="flex-1 font-pixel text-xs sm:text-sm py-2 transition-all hover:brightness-125 active:translate-y-[1px]"
-            style={{
-              background: "linear-gradient(180deg, #166534 0%, #14532d 100%)",
-              border: "3px solid #4ade80",
-              color: "#4ade80",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), 0 3px 0 #0a3622",
-            }}
-          >
-            <span className="opacity-50 mr-1">A</span> FIND
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onTalk();
-            }}
-            className="flex-1 font-pixel text-xs sm:text-sm py-2 transition-all hover:brightness-125 active:translate-y-[1px]"
-            style={{
-              background: "linear-gradient(180deg, #1e3a5f 0%, #172554 100%)",
-              border: "3px solid #60a5fa",
-              color: "#93c5fd",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), 0 3px 0 #0c1a3d",
-            }}
-          >
-            <span className="opacity-50 mr-1">B</span> TALK
-          </button>
+        {/* Live status: current task + capabilities */}
+        <div
+          className="p-2"
+          style={{
+            background: "rgba(0,0,0,0.3)",
+            border: "2px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <div className="flex items-center gap-2 mb-1.5">
+            <StatusDot status={status} size={8} />
+            <span className="font-pixel text-[9px] text-gray-300 truncate">{task}</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {caps.slice(0, 4).map((cap) => (
+              <span
+                key={cap}
+                className="font-pixel text-[7px] px-1.5 py-0.5"
+                style={{
+                  background: `${accentColor}10`,
+                  border: `1px solid ${accentColor}30`,
+                  color: `${accentColor}cc`,
+                }}
+              >
+                {cap}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -303,9 +378,176 @@ function TasksPanel() {
   );
 }
 
-// Main component
+// Agent Status Table (moved from dashboard)
+function AgentStatusTable({ agents }: { agents: AgentStatus[] | undefined }) {
+  const allAgents = AGENT_DATA;
+
+  return (
+    <div
+      className="p-4 overflow-x-auto"
+      style={{
+        background: "rgba(34, 211, 238, 0.05)",
+        border: "3px solid #0e7490",
+        boxShadow: "inset 0 0 20px rgba(6, 182, 212, 0.06)",
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-pixel text-sm text-cyan-400">AGENT STATUS</span>
+        <span className="font-pixel text-[10px] text-gray-500">
+          {agents?.filter((a) => a.status === "online").length ?? 0}/{allAgents.length} ONLINE
+        </span>
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block">
+        <table className="w-full">
+          <thead>
+            <tr style={{ borderBottom: "2px solid rgba(34, 211, 238, 0.2)" }}>
+              <th className="text-left font-pixel text-[9px] text-gray-500 pb-2 pr-3">AGENT</th>
+              <th className="text-left font-pixel text-[9px] text-gray-500 pb-2 pr-3">STATUS</th>
+              <th className="text-left font-pixel text-[9px] text-gray-500 pb-2 pr-3">ZONE</th>
+              <th className="text-left font-pixel text-[9px] text-gray-500 pb-2 pr-3">TASK</th>
+              <th className="text-left font-pixel text-[9px] text-gray-500 pb-2">LAST SEEN</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allAgents.map((agent) => {
+              const railway = getAgentOnlineStatus(agent.id, agents);
+              const status = railway?.status ?? "offline";
+              const info = getStatusInfo(status);
+              const zoneColor = ZONE_COLORS[agent.zone] || "#6b7280";
+              const task = getAgentTask(agent.id, railway);
+
+              return (
+                <tr
+                  key={agent.id}
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                >
+                  <td className="py-2 pr-3">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-6 h-6 flex-shrink-0 flex items-center justify-center overflow-hidden"
+                        style={{ border: `1px solid ${zoneColor}60` }}
+                      >
+                        <Image
+                          src={agent.avatar}
+                          alt=""
+                          width={24}
+                          height={24}
+                          className="pixelated w-full h-full"
+                        />
+                      </div>
+                      <span className="font-pixel text-[10px] text-gray-200">
+                        {agent.name}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <div className="flex items-center gap-1.5">
+                      <StatusDot status={status} size={8} />
+                      <span className="font-pixel text-[9px]" style={{ color: info.color }}>
+                        {info.label}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <span className="font-pixel text-[9px]" style={{ color: zoneColor }}>
+                      {agent.zone}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <span className="font-pixel text-[9px] text-gray-400 truncate max-w-[200px] inline-block">
+                      {task}
+                    </span>
+                  </td>
+                  <td className="py-2">
+                    <span className="font-pixel text-[9px] text-gray-500">
+                      {railway ? formatLastSeen(railway.lastSeen) : "--"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="sm:hidden space-y-2">
+        {allAgents.map((agent) => {
+          const railway = getAgentOnlineStatus(agent.id, agents);
+          const status = railway?.status ?? "offline";
+          const info = getStatusInfo(status);
+          const zoneColor = ZONE_COLORS[agent.zone] || "#6b7280";
+          const task = getAgentTask(agent.id, railway);
+
+          return (
+            <div
+              key={agent.id}
+              className="flex items-center gap-3 p-2"
+              style={{
+                background: "rgba(0,0,0,0.2)",
+                border: "1px solid rgba(255,255,255,0.04)",
+              }}
+            >
+              <div
+                className="w-8 h-8 flex-shrink-0 flex items-center justify-center overflow-hidden"
+                style={{ border: `2px solid ${zoneColor}60` }}
+              >
+                <Image
+                  src={agent.avatar}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="pixelated w-full h-full"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-pixel text-[10px] text-gray-200">{agent.name}</span>
+                  <StatusDot status={status} size={6} />
+                  <span className="font-pixel text-[8px]" style={{ color: info.color }}>
+                    {info.label}
+                  </span>
+                </div>
+                <span className="font-pixel text-[8px] text-gray-500 truncate block">
+                  {task}
+                </span>
+              </div>
+              <span className="font-pixel text-[8px]" style={{ color: zoneColor }}>
+                {agent.zone}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Section header helper
+function SectionHeader({ title, color = "#4ade80" }: { title: string; color?: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-1">
+      <h2
+        className="font-pixel text-base sm:text-lg whitespace-nowrap"
+        style={{ color, textShadow: `0 0 12px ${color}66` }}
+      >
+        {title}
+      </h2>
+      <div
+        className="h-[3px] flex-1"
+        style={{ background: `linear-gradient(90deg, ${color} 0%, transparent 100%)` }}
+      />
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
 export function MeetTheAgents() {
-  const router = useRouter();
   const { data: healthData } = useElizaHealth();
   const { data: agentStatusData } = useAgentStatuses();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -313,15 +555,6 @@ export function MeetTheAgents() {
   const isConnected = healthData?.status === "healthy" || healthData?.status === "ok";
   const onlineCount = agentStatusData?.online || 0;
   const totalCount = agentStatusData?.count || BAGSWORLD_AGENTS.length;
-
-  const handleVisit = (agent: AgentInfo) => {
-    const zoneId = ZONE_MAP[agent.zone];
-    router.push(zoneId ? `/?zone=${zoneId}` : "/");
-  };
-
-  const handleTalk = (agent: AgentInfo) => {
-    router.push(`/?chat=${agent.id}`);
-  };
 
   return (
     <div className="min-h-screen" style={{ background: "#050510" }}>
@@ -346,7 +579,6 @@ export function MeetTheAgents() {
         <div className="max-w-5xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
           {/* Left: Logo + Title */}
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Bagsy mascot icon */}
             <div
               className="w-11 h-11 sm:w-14 sm:h-14 flex-shrink-0 flex items-center justify-center"
               style={{
@@ -404,7 +636,7 @@ export function MeetTheAgents() {
             </div>
 
             {/* Back to world */}
-            <a
+            <Link
               href="/"
               className="font-pixel text-xs sm:text-sm px-3 sm:px-4 py-1.5 transition-all hover:brightness-125 active:translate-y-[1px]"
               style={{
@@ -416,7 +648,7 @@ export function MeetTheAgents() {
             >
               <span className="hidden sm:inline">ENTER WORLD</span>
               <span className="sm:hidden">WORLD</span>
-            </a>
+            </Link>
           </div>
         </div>
       </header>
@@ -424,58 +656,44 @@ export function MeetTheAgents() {
       {/* === MAIN CONTENT === */}
       <main className="max-w-5xl mx-auto px-3 sm:px-4 py-5 sm:py-8 relative z-10">
         {/* Status panels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <GhostStatusPanel />
           <TasksPanel />
         </div>
 
+        {/* Agent Status Table */}
+        <div className="mb-8">
+          <AgentStatusTable agents={agentStatusData?.agents} />
+        </div>
+
         {/* === BAGSWORLD CREW === */}
         <div className="mb-5">
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="font-pixel text-base sm:text-lg text-bags-green whitespace-nowrap">
-              BAGSWORLD CREW
-            </h2>
-            <div
-              className="h-[3px] flex-1"
-              style={{
-                background: "linear-gradient(90deg, #4ade80 0%, transparent 100%)",
-              }}
-            />
-          </div>
+          <SectionHeader title="BAGSWORLD CREW" color="#4ade80" />
           <p className="font-pixel text-xs text-gray-500 mb-4">
             {BAGSWORLD_AGENTS.length} IN-GAME AI CHARACTERS
           </p>
         </div>
 
-        {/* Agent grid - 2 columns, readable */}
+        {/* Agent grid - 2 columns */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-10">
-          {BAGSWORLD_AGENTS.map((agent, i) => (
-            <AgentEntry
-              key={agent.id}
-              agent={agent}
-              index={i}
-              status={getAgentOnlineStatus(agent.id, agentStatusData?.agents)}
-              isSelected={selectedId === agent.id}
-              onSelect={() => setSelectedId(selectedId === agent.id ? null : agent.id)}
-              onVisit={() => handleVisit(agent)}
-              onTalk={() => handleTalk(agent)}
-            />
-          ))}
+          {BAGSWORLD_AGENTS.map((agent, i) => {
+            const railway = getAgentOnlineStatus(agent.id, agentStatusData?.agents);
+            return (
+              <AgentEntry
+                key={agent.id}
+                agent={agent}
+                index={i}
+                railwayStatus={railway}
+                isSelected={selectedId === agent.id}
+                onSelect={() => setSelectedId(selectedId === agent.id ? null : agent.id)}
+              />
+            );
+          })}
         </div>
 
         {/* === MOLTBOOK AGENTS === */}
         <div className="mb-5">
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="font-pixel text-base sm:text-lg text-red-400 whitespace-nowrap">
-              MOLTBOOK AGENTS
-            </h2>
-            <div
-              className="h-[3px] flex-1"
-              style={{
-                background: "linear-gradient(90deg, #ef4444 0%, transparent 100%)",
-              }}
-            />
-          </div>
+          <SectionHeader title="MOLTBOOK AGENTS" color="#ef4444" />
           <p className="font-pixel text-xs text-gray-500 mb-4">EXTERNAL SOCIAL AI AGENTS</p>
         </div>
 
@@ -554,7 +772,7 @@ export function MeetTheAgents() {
                   {agent.description}
                 </p>
 
-                {/* Action buttons */}
+                {/* External links */}
                 <div className="flex gap-3">
                   <a
                     href={`https://moltbook.com/u/${agent.moltbook || agent.name}`}
