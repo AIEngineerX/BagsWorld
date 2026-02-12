@@ -19,7 +19,7 @@ import {
   setupLabsZone,
   setupMoltbookZone,
   setupArenaZone,
-  disconnectArenaWebSocket,
+  disconnectArena,
   setupDungeonZone,
   setupMainCityZone,
 } from "../zones";
@@ -128,8 +128,8 @@ export class WorldScene extends Phaser.Scene {
   public moltbookZoneCreated = false; // Cache moltbook zone elements
   public arenaElements: Phaser.GameObjects.GameObject[] = []; // Arena zone elements
   public arenaZoneCreated = false; // Cache arena zone elements
-  public arenaWebSocket: WebSocket | null = null; // WebSocket connection for arena
-  public arenaPollingTimer: Phaser.Time.TimerEvent | null = null; // Polling fallback timer
+  public arenaPollingTimer: Phaser.Time.TimerEvent | null = null; // Polling/replay timer
+  public arenaReplayCleanup: (() => void) | null = null; // Replay event listener cleanup
   private lightningTimer: Phaser.Time.TimerEvent | null = null; // Storm lightning timer
   private apocalypseTimer: Phaser.Time.TimerEvent | null = null; // Apocalypse shake timer
   private localPlayerTextureKeys: string[] = []; // Track meme textures for cleanup
@@ -1452,7 +1452,7 @@ export class WorldScene extends Phaser.Scene {
         this.moltbookElements.forEach((el) => (el as any).setVisible(false));
       } else if (this.currentZone === "arena") {
         this.arenaElements.forEach((el) => (el as any).setVisible(false));
-        disconnectArenaWebSocket(this);
+        disconnectArena(this);
       } else if (this.currentZone === "dungeon") {
         this.dungeonElements.forEach((el) => (el as any).setVisible(false));
       }
@@ -1760,7 +1760,7 @@ export class WorldScene extends Phaser.Scene {
     } else if (this.currentZone === "arena") {
       // Hide arena elements and disconnect WebSocket
       this.arenaElements.forEach((el) => (el as any).setVisible(false));
-      disconnectArenaWebSocket(this);
+      disconnectArena(this);
     } else if (this.currentZone === "dungeon") {
       // Hide dungeon elements
       this.dungeonElements.forEach((el) => (el as any).setVisible(false));
@@ -1803,7 +1803,7 @@ export class WorldScene extends Phaser.Scene {
     this.moltbookElements.forEach((el) => (el as any).setVisible(false));
     this.arenaElements.forEach((el) => (el as any).setVisible(false));
     this.dungeonElements.forEach((el) => (el as any).setVisible(false));
-    disconnectArenaWebSocket(this);
+    disconnectArena(this);
     if (this.foundersPopup) {
       this.foundersPopup.destroy();
       this.foundersPopup = null;

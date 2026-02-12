@@ -145,6 +145,52 @@ export interface ArenaWSMessage {
   error?: string;
 }
 
+// Replay keyframe - compact snapshot of fight state at a point in time
+export interface ReplayKeyframe {
+  t: number; // tick
+  f1: {
+    hp: number;
+    x: number;
+    y: number;
+    s: FighterState;
+    d: FighterDirection;
+  };
+  f2: {
+    hp: number;
+    x: number;
+    y: number;
+    s: FighterState;
+    d: FighterDirection;
+  };
+  ev?: CombatEvent[]; // events since last keyframe (omitted when empty)
+}
+
+// Full fight replay data
+export interface FightReplay {
+  matchId: number;
+  fighter1: {
+    id: number;
+    username: string;
+    maxHp: number;
+    spriteVariant: number;
+  };
+  fighter2: {
+    id: number;
+    username: string;
+    maxHp: number;
+    spriteVariant: number;
+  };
+  keyframes: ReplayKeyframe[];
+  winner: string;
+  totalTicks: number;
+  recordedAt: number;
+}
+
+// Capture a keyframe every N ticks (or on events)
+export const REPLAY_KEYFRAME_INTERVAL = 5;
+// Playback speed: ms between keyframe renders on client
+export const REPLAY_PLAYBACK_MS = 100;
+
 // Arena engine configuration
 export interface ArenaConfig {
   tickMs: number; // Game loop interval (100ms)

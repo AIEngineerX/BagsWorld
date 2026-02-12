@@ -9,6 +9,7 @@ import type {
   ArenaQueueEntry,
   ArenaLeaderboardEntry,
   CombatEvent,
+  FightReplay,
   MatchStatus,
 } from "./arena-types";
 import { karmaToStats } from "./arena-types";
@@ -1104,5 +1105,152 @@ export async function canFighterEnterQueue(
   } catch (error) {
     console.error("[Arena DB] Error checking fighter cooldown:", error);
     return false;
+  }
+}
+
+// ============================================
+// Replay Operations
+// ============================================
+
+/**
+ * Store a fight replay in the fight_log JSONB column.
+ * Replays are distinguished from old event arrays by having a `keyframes` property.
+ */
+export async function storeMatchReplay(
+  matchId: number,
+  replay: FightReplay
+): Promise<boolean> {
+  await initializeArenaTables();
+
+  if (useMemoryStore) {
+    const match = memoryStore.matches.get(matchId);
+    if (!match) return false;
+    // Store replay object in fight_log (overwrite old events array)
+    (match as unknown as { fight_log: FightReplay }).fight_log = replay;
+    console.log(`[Arena DB] Stored replay for match ${matchId} (memory)`);
+    return true;
+  }
+
+  const sql = await getSql();
+  if (!sql) return false;
+
+  try {
+    await sql`
+      UPDATE arena_matches
+      SET fight_log = ${JSON.stringify(replay)}::jsonb
+      WHERE id = ${matchId}
+    `;
+    console.log(`[Arena DB] Stored replay for match ${matchId}`);
+    return true;
+  } catch (error) {
+    console.error("[Arena DB] Error storing replay:", error);
+    return false;
+  }
+}
+
+/**
+ * Get a fight replay by match ID.
+ * Returns null if match not found or fight_log doesn't contain a replay.
+ */
+export async function getMatchReplay(
+  matchId: number
+): Promise<FightReplay | null> {
+  await initializeArenaTables();
+
+  if (useMemoryStore) {
+    const match = memoryStore.matches.get(matchId);
+    if (!match) return null;
+    const log = match.fight_log as unknown;
+    // Check if it's a replay (has keyframes property) vs old events array
+    if (log && typeof log === "object" && "keyframes" in (log as Record<string, unknown>)) {
+      return log as unknown as FightReplay;
+    }
+    return null;
+  }
+
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const rows = await sql`
+      SELECT fight_log FROM arena_matches WHERE id = ${matchId}
+    `;
+    if ((rows as unknown[]).length === 0) return null;
+
+    const row = rows[0] as { fight_log: unknown };
+    let log = row.fight_log;
+    if (typeof log === "string") {
+      log = JSON.parse(log);
+    }
+
+    // Check if it's a replay format (has keyframes)
+    if (log && typeof log === "object" && "keyframes" in (log as Record<string, unknown>)) {
+      return log as unknown as FightReplay;
+    }
+    return null;
+  } catch (error) {
+    console.error("[Arena DB] Error fetching replay:", error);
+    return null;
+  }
+}
+
+/**
+ * Get the latest available replay from completed matches.
+ * Checks the 5 most recent completed matches for one with replay data.
+ */
+export async function getLatestReplay(): Promise<FightReplay | null> {
+  await initializeArenaTables();
+
+  if (useMemoryStore) {
+    const matches = Array.from(memoryStore.matches.values())
+      .filter((m) => m.status === "completed")
+      .sort(
+        (a, b) =>
+          new Date(b.ended_at || "").getTime() -
+          new Date(a.ended_at || "").getTime()
+      )
+      .slice(0, 5);
+
+    for (const match of matches) {
+      const log = match.fight_log as unknown;
+      if (
+        log &&
+        typeof log === "object" &&
+        "keyframes" in (log as Record<string, unknown>)
+      ) {
+        return log as unknown as FightReplay;
+      }
+    }
+    return null;
+  }
+
+  const sql = await getSql();
+  if (!sql) return null;
+
+  try {
+    const rows = await sql`
+      SELECT fight_log FROM arena_matches
+      WHERE status = 'completed'
+      ORDER BY ended_at DESC
+      LIMIT 5
+    `;
+
+    for (const row of rows as Array<{ fight_log: unknown }>) {
+      let log = row.fight_log;
+      if (typeof log === "string") {
+        log = JSON.parse(log);
+      }
+      if (
+        log &&
+        typeof log === "object" &&
+        "keyframes" in (log as Record<string, unknown>)
+      ) {
+        return log as unknown as FightReplay;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("[Arena DB] Error fetching latest replay:", error);
+    return null;
   }
 }
