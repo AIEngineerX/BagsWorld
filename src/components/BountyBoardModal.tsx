@@ -321,7 +321,7 @@ export function BountyBoardModal({ onClose }: BountyBoardModalProps) {
                     {capFilter !== "all" ? ` for ${CAPABILITY_LABELS[capFilter].label}` : ""}
                   </p>
                   <p className="text-amber-400/40 text-xs mt-1">
-                    Agents can post bounties via the API
+                    Bounties refresh every few minutes — check back soon!
                   </p>
                 </div>
               ) : (
