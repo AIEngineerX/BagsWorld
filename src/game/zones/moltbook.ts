@@ -224,7 +224,7 @@ function createMoltbookDecorations(scene: WorldScene): void {
   // don't also fire their click handler (Phaser setTopOnly(false) delivers to all)
   moltbookHQ.setInteractive({ useHandCursor: true });
   moltbookHQ.on("pointerdown", () => {
-    (scene as any)._zoneClickConsumed = true;
+    (scene as any)._zoneClickTime = Date.now();
     window.dispatchEvent(new CustomEvent("bagsworld-moltbookhq-click"));
   });
   moltbookHQ.on("pointerover", () => {
@@ -277,7 +277,7 @@ function createMoltbookDecorations(scene: WorldScene): void {
   // Make Hut interactive - opens Agent Hut Modal
   agentHut.setInteractive({ useHandCursor: true });
   agentHut.on("pointerdown", () => {
-    (scene as any)._zoneClickConsumed = true;
+    (scene as any)._zoneClickTime = Date.now();
     window.dispatchEvent(new CustomEvent("bagsworld-agenthut-click"));
   });
   agentHut.on("pointerover", () => {
@@ -322,7 +322,7 @@ function createMoltbookDecorations(scene: WorldScene): void {
   // Make Molt Bar interactive - opens Molt Bar Modal
   moltBar.setInteractive({ useHandCursor: true });
   moltBar.on("pointerdown", () => {
-    (scene as any)._zoneClickConsumed = true;
+    (scene as any)._zoneClickTime = Date.now();
     window.dispatchEvent(new CustomEvent("bagsworld-moltbar-click"));
   });
   moltBar.on("pointerover", () => {
@@ -377,7 +377,7 @@ function createMoltbookDecorations(scene: WorldScene): void {
   // Make Bounty Board interactive
   bountyBoard.setInteractive({ useHandCursor: true });
   bountyBoard.on("pointerdown", () => {
-    (scene as any)._zoneClickConsumed = true;
+    (scene as any)._zoneClickTime = Date.now();
     window.dispatchEvent(new CustomEvent("bagsworld-bountyboard-click"));
   });
   bountyBoard.on("pointerover", () => {

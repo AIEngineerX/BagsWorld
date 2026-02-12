@@ -6152,8 +6152,9 @@ export class WorldScene extends Phaser.Scene {
       // If a zone decoration (MoltBook HQ, Agent Hut, Molt Bar, Bounty Board)
       // already handled this click, skip the building handler to avoid
       // opening a BuildingModal on top of the zone's custom modal.
-      if ((this as any)._zoneClickConsumed) {
-        (this as any)._zoneClickConsumed = false;
+      // Uses timestamp instead of boolean so the flag auto-expires (100ms)
+      // and can't persist across separate clicks.
+      if (Date.now() - ((this as any)._zoneClickTime || 0) < 100) {
         return;
       }
       const isPokeCenter = building.id.includes("PokeCenter");
