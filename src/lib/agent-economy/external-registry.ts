@@ -203,19 +203,18 @@ const HQ_AVOID_RADIUS = Math.round(100 * SCALE); // 160px radius to avoid
  */
 function getBuildingPosition(index: number, zone: ZoneType): number {
   if (zone === "moltbook") {
-    // Moltbook zone: place buildings on left or right side, avoiding HQ center
-    const leftPositions = [
-      Math.round(100 * SCALE), // 160
-      Math.round(180 * SCALE), // 288
-      Math.round(260 * SCALE), // 416
+    // Moltbook zone: place buildings in gaps between permanent structures
+    // Permanent buildings (scaled): Molt Bar @400, HQ @640, Agent Hut @880, Bounty Board @1088
+    // Each slot sits in a clear gap with 90+ px clearance from permanent buildings
+    const positions = [
+      Math.round(80 * SCALE), // 128 - far left, before Molt Bar
+      Math.round(160 * SCALE), // 256 - left, before Molt Bar
+      Math.round(320 * SCALE), // 512 - between Molt Bar and HQ
+      Math.round(470 * SCALE), // 752 - between HQ and Agent Hut
+      Math.round(610 * SCALE), // 976 - between Agent Hut and Bounty Board
+      Math.round(740 * SCALE), // 1184 - right of Bounty Board
     ];
-    const rightPositions = [
-      Math.round(540 * SCALE), // 864
-      Math.round(620 * SCALE), // 992
-      Math.round(700 * SCALE), // 1120
-    ];
-    const allPositions = [...leftPositions, ...rightPositions];
-    return allPositions[index % allPositions.length];
+    return positions[index % positions.length];
   }
   // Default: use character position with offset
   return Math.round((200 + index * 100) * SCALE);
