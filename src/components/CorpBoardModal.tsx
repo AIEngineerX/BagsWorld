@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { BAGSWORLD_AGENTS } from "@/lib/agent-data";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { BAGSWORLD_AGENTS, getAgentColorClass } from "@/lib/agent-data";
 import { CorpTaskBoard } from "./CorpTaskBoard";
 
 // ============================================================================
 // Corp Board Modal — Bags.fm Corp org chart + live A2A task board
-// Org chart: static from agent-data (matches corps.ts FOUNDING_CORP)
-// Task board: fetched from API using real ROLE_TASK_PREFERENCES logic
+// Tabs: Board (org chart + tasks) | Activity (feed) | Work Log (per-agent)
 // ============================================================================
 
 interface CorpBoardModalProps {
@@ -22,6 +21,44 @@ interface CorpMember {
   description: string;
 }
 
+interface ActivityEvent {
+  taskId: string;
+  title: string;
+  capability: string;
+  status: string;
+  posterName: string;
+  workerName: string;
+  narrative: string | null;
+  resultData: Record<string, unknown>;
+  rewardSol: number;
+  deliveredAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+interface WorkLogData {
+  agentId: string;
+  agentName: string;
+  agentRole?: string;
+  isFoundingMember?: boolean;
+  deliveries: Array<{
+    title: string;
+    capability: string;
+    status: string;
+    narrative: string | null;
+    resultData: Record<string, unknown>;
+    completedAt: string | null;
+    rewardSol: number;
+  }>;
+  memories: Array<{
+    title: string;
+    content: string;
+    createdAt: string;
+  }>;
+}
+
+type TabType = "board" | "activity";
+
 function getAgentData(id: string, corpRole: string): CorpMember {
   const agent = BAGSWORLD_AGENTS.find((a) => a.id === id);
   return {
@@ -31,6 +68,19 @@ function getAgentData(id: string, corpRole: string): CorpMember {
     role: agent?.role || corpRole,
     description: agent?.description || "",
   };
+}
+
+function getTimeAgo(isoDate: string): string {
+  const timestamp = new Date(isoDate).getTime();
+  if (isNaN(timestamp)) return "unknown";
+  const diffMs = Date.now() - timestamp;
+  if (diffMs < 0) return "just now";
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
 }
 
 const CEO = getAgentData("finn", "CEO");
@@ -49,7 +99,7 @@ const MEMBERS: CorpMember[] = [
 ];
 
 // ============================================================================
-// Components
+// Sub-Components
 // ============================================================================
 
 function MemberNode({
@@ -149,11 +199,314 @@ function AboutSection() {
 }
 
 // ============================================================================
+// Activity Feed
+// ============================================================================
+
+function ActivityFeed({ onViewAgent }: { onViewAgent: (agentId: string) => void }) {
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchFeed() {
+      try {
+        const res = await fetch("/api/agent-economy/external?action=activity-feed&limit=20");
+        const data = await res.json();
+        if (data.success && data.events) {
+          setEvents(data.events);
+        }
+      } catch {
+        // API unavailable
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchFeed();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="w-5 h-5 border-2 border-green-500/30 border-t-green-400 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-sm text-green-500/40 font-mono">No recent activity</p>
+        <p className="text-xs text-green-500/30 font-mono mt-1">Agent deliveries will appear here</p>
+      </div>
+    );
+  }
+
+  // Resolve agent color from name
+  function getColorForName(name: string): string {
+    const agent = BAGSWORLD_AGENTS.find(
+      (a) => a.name.toLowerCase() === name.toLowerCase() || a.id === name.toLowerCase()
+    );
+    return agent ? getAgentColorClass(agent.color) : "text-green-300";
+  }
+
+  function getAgentIdForName(name: string): string | null {
+    const agent = BAGSWORLD_AGENTS.find(
+      (a) => a.name.toLowerCase() === name.toLowerCase() || a.id === name.toLowerCase()
+    );
+    return agent?.id || null;
+  }
+
+  return (
+    <div className="space-y-1">
+      {events.map((event) => {
+        const isExpanded = expandedId === event.taskId;
+        const workerColor = getColorForName(event.workerName);
+        const workerId = getAgentIdForName(event.workerName);
+        const timestamp = event.completedAt || event.deliveredAt || event.createdAt;
+        const verb = event.status === "completed" ? "completed" : "delivered";
+        const snippet = event.narrative
+          ? event.narrative.length > 120
+            ? event.narrative.slice(0, 120) + "..."
+            : event.narrative
+          : null;
+
+        return (
+          <div key={event.taskId}>
+            <button
+              type="button"
+              onClick={() => setExpandedId(isExpanded ? null : event.taskId)}
+              className={`w-full text-left rounded-lg px-3 py-2.5 transition-all duration-200 ${
+                isExpanded
+                  ? "bg-green-900/40 border border-green-500/30"
+                  : "bg-green-950/20 border border-transparent hover:bg-green-950/30"
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${
+                  event.status === "completed" ? "bg-green-500" : "bg-orange-400"
+                }`} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (workerId) onViewAgent(workerId);
+                      }}
+                      className={`text-sm font-bold ${workerColor} hover:underline`}
+                    >
+                      {event.workerName}
+                    </button>
+                    <span className="text-sm text-green-400/60">{verb}</span>
+                    <span className="text-sm text-green-200 truncate">&ldquo;{event.title}&rdquo;</span>
+                  </div>
+                  {snippet && !isExpanded && (
+                    <p className="text-xs text-green-400/50 mt-0.5 truncate">{snippet}</p>
+                  )}
+                </div>
+                <span className="text-[10px] text-green-500/40 font-mono flex-shrink-0 mt-0.5">
+                  {getTimeAgo(timestamp)}
+                </span>
+              </div>
+            </button>
+
+            {/* Expanded view */}
+            {isExpanded && (
+              <div className="mx-1 px-3 py-2.5 bg-green-900/20 border border-t-0 border-green-700/30 rounded-b-lg space-y-2">
+                {event.narrative && (
+                  <p className="text-sm text-green-200/90 leading-relaxed">
+                    &ldquo;{event.narrative}&rdquo;
+                  </p>
+                )}
+                {event.resultData && Object.keys(event.resultData).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(event.resultData)
+                      .filter(([key]) => key !== "narrative" && key !== "summary")
+                      .slice(0, 6)
+                      .map(([key, val]) => (
+                        <span key={key} className="bg-green-800/30 text-green-300 text-[10px] px-2 py-0.5 rounded font-mono">
+                          {key}: {typeof val === "object" ? JSON.stringify(val) : String(val)}
+                        </span>
+                      ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-[10px] font-mono text-green-500/50 pt-1">
+                  <span>{event.capability}</span>
+                  {event.rewardSol > 0 && (
+                    <span className="ml-auto text-green-400/60">{event.rewardSol.toFixed(3)} SOL</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+// Agent Work Log
+// ============================================================================
+
+function AgentWorkLog({ agentId, onBack }: { agentId: string; onBack: () => void }) {
+  const [data, setData] = useState<WorkLogData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchLog() {
+      try {
+        const res = await fetch(`/api/agent-economy/external?action=agent-work-log&agentId=${agentId}`);
+        const json = await res.json();
+        if (json.success) {
+          setData(json);
+        }
+      } catch {
+        // API unavailable
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLog();
+  }, [agentId]);
+
+  const agentInfo = BAGSWORLD_AGENTS.find((a) => a.id === agentId);
+  const nameColor = agentInfo ? getAgentColorClass(agentInfo.color) : "text-green-300";
+  const displayName = data?.agentName || agentInfo?.name || agentId;
+
+  return (
+    <div className="space-y-3">
+      {/* Back button + header */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-sm text-green-400 hover:text-green-200 font-mono transition-colors"
+        >
+          {"\u2190"} Back
+        </button>
+        <div className="flex-1 h-px bg-green-700/30" />
+        <h3 className={`text-sm font-bold font-mono ${nameColor}`}>
+          {displayName}&apos;s Work Log
+        </h3>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <div className="w-5 h-5 border-2 border-green-500/30 border-t-green-400 rounded-full animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* Deliveries */}
+          <div>
+            <h4 className="text-[11px] font-mono text-green-400/60 uppercase tracking-wider mb-2">
+              Recent Deliveries
+            </h4>
+            {data && data.deliveries.length > 0 ? (
+              <div className="space-y-2">
+                {data.deliveries.map((d, i) => (
+                  <div key={i} className="bg-green-950/20 border border-green-700/30 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm text-green-200">{d.title}</span>
+                      {d.completedAt && (
+                        <span className="text-[10px] text-green-500/40 font-mono flex-shrink-0">
+                          {getTimeAgo(d.completedAt)}
+                        </span>
+                      )}
+                    </div>
+                    {d.narrative && (
+                      <p className="text-xs text-green-200/70 leading-relaxed mt-1.5">
+                        &ldquo;{d.narrative}&rdquo;
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="bg-green-800/30 text-green-300 text-[10px] px-2 py-0.5 rounded font-mono">
+                        {d.capability}
+                      </span>
+                      {d.rewardSol > 0 && (
+                        <span className="text-[10px] text-green-400/50 font-mono">
+                          {d.rewardSol.toFixed(3)} SOL
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : data?.isFoundingMember ? (
+              <div className="bg-green-950/20 border border-green-700/20 rounded-lg p-3 text-center">
+                <p className="text-xs text-green-400/50 font-mono">
+                  {displayName} is a founding Bags.fm Corp member
+                </p>
+                {data.agentRole && (
+                  <p className="text-[10px] text-green-500/30 font-mono mt-1">
+                    Role: {data.agentRole}
+                  </p>
+                )}
+                <p className="text-[10px] text-green-500/30 font-mono mt-1">
+                  Task deliveries appear here when the economy loop is active
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-green-500/30 font-mono text-center py-3">
+                No deliveries yet
+              </p>
+            )}
+          </div>
+
+          {/* Memories */}
+          <div>
+            <h4 className="text-[11px] font-mono text-green-400/60 uppercase tracking-wider mb-2">
+              Memories
+            </h4>
+            {data && data.memories.length > 0 ? (
+              <div className="space-y-1.5">
+                {data.memories.map((m, i) => (
+                  <div key={i} className="bg-green-950/20 border border-green-700/20 rounded px-3 py-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-500/40 text-xs flex-shrink-0 mt-0.5">{"\uD83D\uDCAD"}</span>
+                      <div className="min-w-0">
+                        <span className="text-xs text-green-300">&ldquo;{m.title}&rdquo;</span>
+                        {m.content && m.content !== m.title && (
+                          <span className="text-xs text-green-400/50"> &mdash; {m.content.slice(0, 80)}{m.content.length > 80 ? "..." : ""}</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-green-500/30 font-mono flex-shrink-0">
+                        {getTimeAgo(m.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-green-500/30 font-mono text-center py-3">
+                No memories stored yet
+              </p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main
 // ============================================================================
 
 export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("board");
+  const [workLogAgentId, setWorkLogAgentId] = useState<string | null>(null);
+
+  // Handle agent click from org chart
+  const handleAgentSelect = useCallback((name: string | null) => {
+    setSelectedAgent(name);
+  }, []);
+
+  // Open work log for an agent
+  const handleViewWorkLog = useCallback((agentId: string) => {
+    setWorkLogAgentId(agentId);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -188,45 +541,104 @@ export function CorpBoardModal({ onClose }: CorpBoardModalProps) {
           </div>
         </div>
 
+        {/* Tab bar */}
+        {!workLogAgentId && (
+          <div className="flex border-b border-green-600/30 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab("board")}
+              className={`flex-1 py-2 text-xs font-mono font-bold tracking-wider transition-colors ${
+                activeTab === "board"
+                  ? "text-green-300 border-b-2 border-green-400"
+                  : "text-green-500/50 hover:text-green-400/70"
+              }`}
+            >
+              Board
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("activity")}
+              className={`flex-1 py-2 text-xs font-mono font-bold tracking-wider transition-colors ${
+                activeTab === "activity"
+                  ? "text-green-300 border-b-2 border-green-400"
+                  : "text-green-500/50 hover:text-green-400/70"
+              }`}
+            >
+              Activity
+            </button>
+          </div>
+        )}
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2 corp-scroll">
-
-          {/* CEO */}
-          <div className="flex justify-center">
-            <div className="w-44">
-              <MemberNode member={CEO} highlight={!selectedAgent} selected={selectedAgent === CEO.name} onSelect={setSelectedAgent} />
-            </div>
-          </div>
-
-          {/* Connector: CEO to C-suite */}
-          <ConnectorVertical />
-          <ConnectorHorizontal />
-
-          {/* C-Suite Row */}
-          <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-2 sm:overflow-visible">
-            {C_SUITE.map((m) => (
-              <div key={m.id} className="min-w-[5.5rem] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
-                <MemberNode member={m} selected={selectedAgent === m.name} onSelect={setSelectedAgent} />
+          {/* Work Log view — replaces tab content */}
+          {workLogAgentId ? (
+            <AgentWorkLog
+              agentId={workLogAgentId}
+              onBack={() => setWorkLogAgentId(null)}
+            />
+          ) : activeTab === "board" ? (
+            <>
+              {/* CEO */}
+              <div className="flex justify-center">
+                <div className="w-44">
+                  <MemberNode member={CEO} highlight={!selectedAgent} selected={selectedAgent === CEO.name} onSelect={handleAgentSelect} />
+                </div>
               </div>
-            ))}
-          </div>
 
-          {/* Connector: C-suite to Members */}
-          <ConnectorVertical />
-          <ConnectorHorizontal />
+              {/* Connector: CEO to C-suite */}
+              <ConnectorVertical />
+              <ConnectorHorizontal />
 
-          {/* Members Row */}
-          <div className="grid grid-cols-3 gap-2">
-            {MEMBERS.map((m) => (
-              <MemberNode key={m.id} member={m} selected={selectedAgent === m.name} onSelect={setSelectedAgent} />
-            ))}
-          </div>
+              {/* C-Suite Row */}
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:gap-2 sm:overflow-visible">
+                {C_SUITE.map((m) => (
+                  <div key={m.id} className="min-w-[5.5rem] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
+                    <MemberNode member={m} selected={selectedAgent === m.name} onSelect={handleAgentSelect} />
+                  </div>
+                ))}
+              </div>
 
-          {/* A2A Task Board — real data from API */}
-          <CorpTaskBoard selectedAgent={selectedAgent} onSelectAgent={setSelectedAgent} />
+              {/* Connector: C-suite to Members */}
+              <ConnectorVertical />
+              <ConnectorHorizontal />
 
-          {/* About */}
-          <AboutSection />
+              {/* Members Row */}
+              <div className="grid grid-cols-3 gap-2">
+                {MEMBERS.map((m) => (
+                  <MemberNode key={m.id} member={m} selected={selectedAgent === m.name} onSelect={handleAgentSelect} />
+                ))}
+              </div>
+
+              {/* View Log link for selected agent */}
+              {selectedAgent && (() => {
+                const agent = BAGSWORLD_AGENTS.find(
+                  (a) => a.name.toLowerCase() === selectedAgent.toLowerCase()
+                );
+                return agent ? (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => handleViewWorkLog(agent.id)}
+                      className="text-[11px] font-mono text-green-400/70 hover:text-green-300 transition-colors
+                        border border-green-700/30 hover:border-green-500/40 rounded px-3 py-1"
+                    >
+                      View {selectedAgent}&apos;s Work Log {"\u2192"}
+                    </button>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* A2A Task Board — real data from API */}
+              <CorpTaskBoard selectedAgent={selectedAgent} onSelectAgent={handleAgentSelect} />
+
+              {/* About */}
+              <AboutSection />
+            </>
+          ) : (
+            /* Activity tab */
+            <ActivityFeed onViewAgent={handleViewWorkLog} />
+          )}
         </div>
       </div>
 

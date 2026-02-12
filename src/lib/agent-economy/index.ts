@@ -170,6 +170,7 @@ export {
   getTask,
   getTaskStats,
   expireOverdueTasks,
+  listRecentCompletedTasks,
   type PostTaskOptions,
   type ListTasksOptions,
 } from "./task-board";
