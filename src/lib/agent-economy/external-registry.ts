@@ -270,6 +270,11 @@ function rowToBuilding(row: DbRow, index: number): GameBuilding {
   // Compute health from activity recency
   const { health, status } = getAgentBuildingHealth(row.last_active_at);
 
+  // Link to Moltbook profile if available, otherwise Solscan
+  const tokenUrl = moltbookUser
+    ? `https://moltbook.com/u/${moltbookUser}`
+    : `https://solscan.io/account/${row.wallet}`;
+
   return {
     id: `agent-building-${row.wallet.slice(0, 8)}`,
     tokenMint: `agent-${row.wallet}`, // Fake mint for agent buildings
@@ -284,6 +289,7 @@ function rowToBuilding(row: DbRow, index: number): GameBuilding {
     ownerId: row.wallet,
     zone: row.zone as ZoneType,
     isPermanent: true, // Agent buildings are never removed (but they DO visually decay)
+    tokenUrl, // Moltbook profile or Solscan — opens on click
     // Beach-themed buildings for moltbook zone
     styleOverride: isMoltbookZone ? -1 : 0, // -1 signals beach theme
     isBeachTheme: isMoltbookZone, // Custom flag for beach building rendering

@@ -31,6 +31,7 @@ interface TokenEntry {
   lifetime_fees?: number;
   market_cap?: number;
   image_url?: string;
+  fee_shares?: Array<{ provider: string; username: string; bps: number }>;
 }
 
 type TabType = "agents" | "launches" | "buildings";
@@ -250,24 +251,41 @@ function AgentsTab({
 function LaunchesTab({
   tokens,
   agentWallets,
+  agentsByMoltbook,
   loading,
   error,
 }: {
   tokens: TokenEntry[];
   agentWallets: Map<string, { name: string; moltbookUsername?: string }>;
+  agentsByMoltbook: Map<string, { name: string; moltbookUsername?: string }>;
   loading: boolean;
   error: string | null;
 }) {
   const agentTokens = useMemo(
     () =>
       tokens
-        .filter((t) => agentWallets.has(t.creator_wallet))
+        .filter((t) => {
+          // Match by wallet address
+          if (agentWallets.has(t.creator_wallet)) return true;
+          // Match by Moltbook username in fee_shares
+          if (t.fee_shares) {
+            for (const fs of t.fee_shares) {
+              if (
+                fs.provider === "moltbook" &&
+                agentsByMoltbook.has(fs.username.toLowerCase())
+              ) {
+                return true;
+              }
+            }
+          }
+          return false;
+        })
         .sort(
           (a, b) =>
             new Date(b.created_at || 0).getTime() -
             new Date(a.created_at || 0).getTime()
         ),
-    [tokens, agentWallets]
+    [tokens, agentWallets, agentsByMoltbook]
   );
 
   if (loading) {
@@ -300,7 +318,16 @@ function LaunchesTab({
   return (
     <div className="space-y-2">
       {agentTokens.map((token) => {
-        const agent = agentWallets.get(token.creator_wallet);
+        // Resolve agent by wallet first, then by Moltbook username in fee_shares
+        let agent = agentWallets.get(token.creator_wallet);
+        if (!agent && token.fee_shares) {
+          for (const fs of token.fee_shares) {
+            if (fs.provider === "moltbook") {
+              agent = agentsByMoltbook.get(fs.username.toLowerCase());
+              if (agent) break;
+            }
+          }
+        }
         return (
           <div
             key={token.mint}
@@ -481,6 +508,20 @@ export function MoltbookHQModal({ onClose }: MoltbookHQModalProps) {
     [agents]
   );
 
+  // Reverse lookup: Moltbook username -> agent info (for matching fee_shares)
+  const agentsByMoltbook = useMemo(
+    () =>
+      new Map(
+        agents
+          .filter((a) => a.moltbookUsername)
+          .map((a) => [
+            a.moltbookUsername!.toLowerCase(),
+            { name: a.name, moltbookUsername: a.moltbookUsername },
+          ])
+      ),
+    [agents]
+  );
+
   // Escape key
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -575,6 +616,7 @@ export function MoltbookHQModal({ onClose }: MoltbookHQModalProps) {
             <LaunchesTab
               tokens={tokens}
               agentWallets={agentWallets}
+              agentsByMoltbook={agentsByMoltbook}
               loading={loading}
               error={error}
             />

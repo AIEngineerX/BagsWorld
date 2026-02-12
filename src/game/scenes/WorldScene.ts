@@ -6226,6 +6226,11 @@ export class WorldScene extends Phaser.Scene {
             },
           })
         );
+      } else if (building.id.startsWith("agent-building-")) {
+        // External agent buildings - open their Moltbook profile or Solscan
+        if (building.tokenUrl) {
+          window.open(building.tokenUrl, "_blank");
+        }
       } else if (isStarterBuilding) {
         // Starter buildings do nothing when clicked - they're placeholders
       } else if (isTreasuryBuilding) {
