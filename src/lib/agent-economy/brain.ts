@@ -23,6 +23,7 @@ import {
   DEFAULT_AGENT_ECONOMY_CONFIG,
 } from "./types";
 import { getRecentEvents } from "../agent-coordinator";
+import { isAlphaWallet, getAlphaWallet } from "../ghost-alpha-wallets";
 
 // ============================================================================
 // TYPES
@@ -700,6 +701,10 @@ async function followWhalesStrategy(
   // Follow Whales: Track top earners, buy tokens they're earning fees from
   // The logic: If whales are earning fees from a token, it has trading activity
   // which means fee generation is real and ongoing
+  //
+  // Ghost's edge: cross-reference earners and token creators against 518 tracked
+  // alpha wallets. When a known smart money wallet is earning fees or created a
+  // token, Ghost's confidence in that token increases significantly.
 
   const topEarners = await fetchTopEarners();
 
@@ -737,31 +742,60 @@ async function followWhalesStrategy(
     };
   }
 
-  // Analyze whale positions
+  // Analyze whale positions, cross-referencing against alpha wallet list
   const whaleMintCounts = new Map<
     string,
-    { count: number; totalEarnings: number; token?: WorldStateToken }
+    {
+      count: number;
+      totalEarnings: number;
+      token?: WorldStateToken;
+      alphaEarnerCount: number;
+      alphaCreator: boolean;
+    }
   >();
 
   for (const earner of topEarners) {
     if (earner.topToken) {
       const mint = earner.topToken.mint;
-      const existing = whaleMintCounts.get(mint) || { count: 0, totalEarnings: 0 };
+      const existing = whaleMintCounts.get(mint) || {
+        count: 0,
+        totalEarnings: 0,
+        alphaEarnerCount: 0,
+        alphaCreator: false,
+      };
       existing.count++;
       existing.totalEarnings += earner.earnings24h;
       existing.token = earner.topToken;
+
+      // Check if this earner is a known alpha wallet
+      if (isAlphaWallet(earner.wallet)) {
+        existing.alphaEarnerCount++;
+      }
+
+      // Check if the token creator is a known alpha wallet
+      if (earner.topToken.creator && isAlphaWallet(earner.topToken.creator)) {
+        existing.alphaCreator = true;
+      }
+
       whaleMintCounts.set(mint, existing);
     }
   }
 
-  // Sort by number of whales holding + total earnings
+  // Sort by score: alpha wallet involvement weighted heavily
   const whaleTokens = Array.from(whaleMintCounts.entries())
     .map(([mint, data]) => ({
       mint,
       whaleCount: data.count,
       totalWhaleEarnings: data.totalEarnings,
       token: data.token,
-      score: data.count * 10 + data.totalEarnings, // Weighted score
+      alphaEarnerCount: data.alphaEarnerCount,
+      alphaCreator: data.alphaCreator,
+      // Alpha wallets earning from a token is the strongest signal
+      score:
+        data.count * 10 +
+        data.totalEarnings +
+        data.alphaEarnerCount * 25 + // Each alpha earner = 25 bonus points
+        (data.alphaCreator ? 30 : 0), // Alpha-created token = 30 bonus
     }))
     .filter((t) => t.token)
     .sort((a, b) => b.score - a.score);
@@ -783,16 +817,29 @@ async function followWhalesStrategy(
       continue; // Skip tokens we already have large positions in
     }
 
-    const positionSize = Math.min(availableSol * 0.35, config.maxPositionSol);
+    // Alpha involvement = bigger position + higher confidence + lower risk
+    const hasAlphaSignal = whaleToken.alphaEarnerCount > 0 || whaleToken.alphaCreator;
+    const positionMultiplier = hasAlphaSignal ? 0.45 : 0.35;
+    const positionSize = Math.min(availableSol * positionMultiplier, config.maxPositionSol);
+    const confidenceBoost = whaleToken.alphaEarnerCount * 5 + (whaleToken.alphaCreator ? 10 : 0);
+
+    // Build reason string
+    let reason = `Following whales: ${whaleToken.whaleCount} top earners in ${whaleToken.token!.symbol}, ${whaleToken.totalWhaleEarnings.toFixed(2)} SOL earned 24h`;
+    if (whaleToken.alphaEarnerCount > 0) {
+      reason += ` | ${whaleToken.alphaEarnerCount} alpha wallet(s) earning`;
+    }
+    if (whaleToken.alphaCreator) {
+      reason += " | alpha-created token";
+    }
 
     return {
       action: "buy",
       tokenMint: whaleToken.mint,
       tokenSymbol: whaleToken.token!.symbol,
       amountSol: positionSize,
-      reason: `Following whales: ${whaleToken.whaleCount} top earners in ${whaleToken.token!.symbol}, ${whaleToken.totalWhaleEarnings.toFixed(2)} SOL earned 24h`,
-      confidence: Math.min(90, 50 + whaleToken.whaleCount * 5),
-      riskLevel: "medium",
+      reason,
+      confidence: Math.min(95, 50 + whaleToken.whaleCount * 5 + confidenceBoost),
+      riskLevel: hasAlphaSignal ? "low" : "medium",
     };
   }
 

@@ -14,7 +14,6 @@
  */
 
 import { getMarketState } from "./agent-economy/brain";
-import { isAlphaWallet, getAlphaWallet } from "./ghost-alpha-wallets";
 
 // ============================================================================
 // TYPES
@@ -305,64 +304,6 @@ async function findTopEarners(config: AlphaFinderConfig): Promise<AlphaItem[]> {
 }
 
 // ============================================================================
-// SMART MONEY DETECTION (Alpha Wallet Intelligence)
-// ============================================================================
-
-/**
- * Check if a token's creator is a known alpha wallet.
- * Flags launches from smart money for high-priority alerts.
- */
-function checkSmartMoneyLaunch(token: BagsToken): AlphaItem | null {
-  if (!token.creator) return null;
-
-  const alpha = getAlphaWallet(token.creator);
-  if (!alpha) return null;
-
-  const key = `smartmoney:${token.mint}`;
-  if (isAlreadyReported(key, 120)) return null; // 2 hour cooldown
-
-  const tierLabel =
-    alpha.tier === 1 ? "TOP ALPHA" : alpha.tier === 2 ? "TRACKED" : "KNOWN";
-
-  return {
-    type: "whale_claim",
-    priority: "high",
-    title: `${alpha.emoji} Smart Money Launch: $${token.symbol}`,
-    content: `${tierLabel} wallet "${alpha.name}" just launched ${token.name} ($${token.symbol}). This creator is on Ghost's watchlist. bags.fm/${token.mint.slice(0, 8)}...`,
-    data: {
-      tokenMint: token.mint,
-      tokenSymbol: token.symbol,
-      tokenName: token.name,
-      wallet: token.creator,
-      bagsUrl: `https://bags.fm/${token.mint}`,
-    },
-    source: "ghost-alpha",
-    foundAt: new Date(),
-    expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours
-  };
-}
-
-/**
- * Scan recent launches for smart money involvement
- */
-async function findSmartMoneyAlpha(config: AlphaFinderConfig): Promise<AlphaItem[]> {
-  const launches = await fetchRecentLaunches(30);
-  const items: AlphaItem[] = [];
-
-  for (const token of launches) {
-    const hit = checkSmartMoneyLaunch(token);
-    if (hit) items.push(hit);
-  }
-
-  return items;
-}
-
-/**
- * Check if a wallet address is tracked alpha (exported for other modules)
- */
-export { isAlphaWallet, getAlphaWallet };
-
-// ============================================================================
 // MAIN API
 // ============================================================================
 
@@ -374,14 +315,13 @@ export async function findAlpha(config: Partial<AlphaFinderConfig> = {}): Promis
 
   console.log("[AlphaFinder] Scanning for alpha...");
 
-  const [launches, spikes, earners, smartMoney] = await Promise.all([
+  const [launches, spikes, earners] = await Promise.all([
     findNewLaunches(cfg),
     findVolumeSpikes(cfg),
     findTopEarners(cfg),
-    findSmartMoneyAlpha(cfg),
   ]);
 
-  const allAlpha = [...smartMoney, ...launches, ...spikes, ...earners]; // Smart money first
+  const allAlpha = [...launches, ...spikes, ...earners];
 
   // Sort by priority then by recency
   allAlpha.sort((a, b) => {
