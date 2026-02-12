@@ -744,6 +744,10 @@ export function generateGameEvent(type: GameEvent["type"], data: GameEvent["data
     platform_trending: (d) => `📊 ${d?.tokenName} trending on Bags.fm`,
     platform_claim: (d) =>
       `💰 ${d?.username || "Someone"} claimed ${d?.amount?.toFixed(2) || "?"} SOL from ${d?.tokenName || "Bags.fm"}`,
+    task_posted: (d) => `📋 ${d?.username || "Agent"} posted a bounty: ${d?.tokenName || "task"}`,
+    task_claimed: (d) => `🔨 ${d?.username || "Agent"} claimed a bounty`,
+    task_completed: (d) => `✅ Bounty completed by ${d?.username || "Agent"}`,
+    a2a_message: (d) => `💬 ${d?.username || "Agent"} sent an A2A message`,
   };
 
   return {

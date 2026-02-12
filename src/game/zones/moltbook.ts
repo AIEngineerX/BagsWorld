@@ -359,6 +359,50 @@ function createMoltbookDecorations(scene: WorldScene): void {
   barLabel.setDepth(6);
   scene.moltbookElements.push(barLabel);
 
+  // === BOUNTY BOARD (depth 5) - A2A task board, right side of zone ===
+  const boardX = Math.round(680 * s);
+  const bountyBoard = scene.add.sprite(boardX, pathLevel, "bounty_board");
+  bountyBoard.setOrigin(0.5, 1);
+  bountyBoard.setDepth(5);
+  bountyBoard.setScale(0.9);
+  scene.moltbookElements.push(bountyBoard);
+
+  // Make Bounty Board interactive
+  bountyBoard.setInteractive({ useHandCursor: true });
+  bountyBoard.on("pointerdown", () => {
+    window.dispatchEvent(new CustomEvent("bagsworld-bountyboard-click"));
+  });
+  bountyBoard.on("pointerover", () => {
+    bountyBoard.setTint(0xfff5e0);
+    bountyBoard.setScale(0.95);
+  });
+  bountyBoard.on("pointerout", () => {
+    bountyBoard.clearTint();
+    bountyBoard.setScale(0.9);
+  });
+
+  // Bounty Board label
+  const boardLabelBg = scene.add.rectangle(
+    boardX,
+    pathLevel - Math.round(85 * s),
+    Math.round(100 * s),
+    Math.round(22 * s),
+    0x5c3d2e,
+    0.9
+  );
+  boardLabelBg.setDepth(6);
+  scene.moltbookElements.push(boardLabelBg);
+
+  const boardLabel = scene.add.text(boardX, pathLevel - Math.round(85 * s), "\u{1F4CB} BOUNTIES", {
+    fontFamily: "monospace",
+    fontSize: `${Math.round(10 * s)}px`,
+    color: "#fff3b0",
+    align: "center",
+  });
+  boardLabel.setOrigin(0.5, 0.5);
+  boardLabel.setDepth(6);
+  scene.moltbookElements.push(boardLabel);
+
   // === COCONUTS (depth 2) - near palm tree bases ===
   const coconutPositions = [
     { x: 50, offsetY: 48 },

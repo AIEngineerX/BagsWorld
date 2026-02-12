@@ -161,6 +161,47 @@ export {
   addFeesEarned,
 } from "./agent-reputation";
 
+// A2A Service Registry
+export {
+  setCapabilities,
+  addCapability,
+  removeCapability,
+  getCapabilities,
+  discoverByCapability,
+  getCapabilityDirectory,
+  type DiscoveryResult,
+} from "./service-registry";
+
+// A2A Protocol (Messaging)
+export {
+  sendA2AMessage,
+  getInbox,
+  markAsRead,
+  markAllAsRead,
+  getConversation,
+  getTaskMessages,
+  encodeForDM,
+  decodeFromDM,
+  cleanupOldMessages,
+  type SendMessageOptions,
+  type InboxOptions,
+} from "./a2a-protocol";
+
+// Task Board (Bounties)
+export {
+  postTask,
+  claimTask,
+  deliverTask,
+  confirmTask,
+  cancelTask,
+  listTasks,
+  getTask,
+  getTaskStats,
+  expireOverdueTasks,
+  type PostTaskOptions,
+  type ListTasksOptions,
+} from "./task-board";
+
 // Token launcher (Moltmint-style free launches)
 export {
   launchForExternal,

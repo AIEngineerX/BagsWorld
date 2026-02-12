@@ -7100,11 +7100,47 @@ export class WorldScene extends Phaser.Scene {
     });
     statsText.setOrigin(0.5, 0.5);
 
+    // Capability badges (A2A skills)
+    const capIcons: Record<string, string> = {
+      alpha: "\u{1F4A1}",
+      trading: "\u{1F4B0}",
+      content: "\u{270D}",
+      launch: "\u{1F680}",
+      combat: "\u{2694}",
+      scouting: "\u{1F50D}",
+      analysis: "\u{1F4CA}",
+    };
+    const caps = character.capabilities || [];
+    const capStr = caps.length > 0 ? caps.map((c: string) => capIcons[c] || c).join(" ") : "";
+
+    const tooltipElements: Phaser.GameObjects.GameObject[] = [
+      bg,
+      nameText,
+      titleText,
+      quoteText,
+      repText,
+      statsText,
+    ];
+    let nextY = 38;
+
+    if (capStr) {
+      const capText = this.add.text(0, nextY, capStr, {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#fbbf24",
+      });
+      capText.setOrigin(0.5, 0.5);
+      tooltipElements.push(capText);
+      nextY += 16;
+      // Expand background to fit
+      bg.height = Math.max(bg.height, nextY + 20);
+    }
+
     if (character.profileUrl) {
       // Tappable "Visit Profile" button
-      const btnBg = this.add.rectangle(0, 42, 140, 20, borderColor, 0.9);
+      const btnBg = this.add.rectangle(0, nextY + 4, 140, 20, borderColor, 0.9);
       btnBg.setStrokeStyle(1, borderColor);
-      const btnText = this.add.text(0, 42, "[ VISIT PROFILE ]", {
+      const btnText = this.add.text(0, nextY + 4, "[ VISIT PROFILE ]", {
         fontFamily: "monospace",
         fontSize: "9px",
         color: "#ffffff",
@@ -7116,16 +7152,18 @@ export class WorldScene extends Phaser.Scene {
       btnBg.on("pointerdown", () => {
         window.open(character.profileUrl, "_blank");
       });
-      container.add([bg, nameText, titleText, quoteText, repText, statsText, btnBg, btnText]);
+      tooltipElements.push(btnBg, btnText);
+      bg.height = Math.max(bg.height, nextY + 28);
     } else {
-      const residentText = this.add.text(0, 40, "Moltbook Beach Resident", {
+      const residentText = this.add.text(0, nextY + 2, "Moltbook Beach Resident", {
         fontFamily: "monospace",
         fontSize: "9px",
         color: "#9ca3af",
       });
       residentText.setOrigin(0.5, 0.5);
-      container.add([bg, nameText, titleText, quoteText, repText, statsText, residentText]);
+      tooltipElements.push(residentText);
     }
+    container.add(tooltipElements);
     container.setDepth(DEPTH.PANEL);
     this.tooltip = container;
   }

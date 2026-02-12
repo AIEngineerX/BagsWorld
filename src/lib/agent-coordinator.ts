@@ -31,6 +31,10 @@ export type AgentEventType =
   | "arena_victory" // Arena combat result
   | "casino_win" // Casino raffle/slot win
   | "oracle_settle" // Oracle round settled
+  | "task_posted" // A2A: agent posted a bounty
+  | "task_claimed" // A2A: agent claimed a bounty
+  | "task_completed" // A2A: bounty confirmed complete
+  | "a2a_message" // A2A: agent-to-agent message
   | "system"; // System messages
 
 export type AgentSource =
@@ -42,6 +46,8 @@ export type AgentSource =
   | "casino"
   | "oracle"
   | "arena"
+  | "a2a"
+  | "task-board"
   | "manual";
 
 export type EventPriority = "low" | "medium" | "high" | "urgent";
@@ -466,6 +472,47 @@ function generateAnnouncement(event: AgentEvent): string {
       return `ORACLE: $${symbol} wins (+${change.toFixed(1)}%)! ${count} predictors share ${formatSol(prize)}`;
     }
 
+    case "task_posted": {
+      const data = event.data as {
+        posterName?: string;
+        title?: string;
+        capability?: string;
+        rewardSol?: number;
+      };
+      const poster = data.posterName || "An agent";
+      const title = data.title || "a task";
+      const reward = data.rewardSol ? ` (${formatSol(data.rewardSol)} bounty)` : "";
+      return `BOUNTY: ${poster} posted "${title}"${reward}`;
+    }
+
+    case "task_claimed": {
+      const data = event.data as { claimerName?: string; title?: string; posterName?: string };
+      const claimer = data.claimerName || "An agent";
+      const title = data.title || "a task";
+      return `${claimer} claimed bounty "${title}"`;
+    }
+
+    case "task_completed": {
+      const data = event.data as {
+        claimerName?: string;
+        posterName?: string;
+        title?: string;
+        rewardSol?: number;
+      };
+      const claimer = data.claimerName || "An agent";
+      const title = data.title || "a task";
+      const reward = data.rewardSol ? ` — earned ${formatSol(data.rewardSol)}` : "";
+      return `COMPLETED: ${claimer} finished "${title}"${reward}`;
+    }
+
+    case "a2a_message": {
+      const data = event.data as { fromName?: string; toName?: string; messageType?: string };
+      const from = data.fromName || "Agent";
+      const to = data.toName || "Agent";
+      const type = data.messageType || "message";
+      return `${from} sent ${type} to ${to}`;
+    }
+
     case "system":
     default:
       return (event.data?.message as string) || "System event";
@@ -587,6 +634,71 @@ export async function emitWhaleAlert(
     { action, amount, tokenSymbol, mint, wallet },
     "high"
   );
+}
+
+/**
+ * Emit a task posted event (from Task Board)
+ */
+export async function emitTaskPosted(
+  posterName: string,
+  title: string,
+  capability: string,
+  rewardSol: number,
+  taskId: string
+): Promise<AgentEvent | null> {
+  return emitEvent(
+    "task_posted",
+    "task-board",
+    { posterName, title, capability, rewardSol, taskId },
+    "medium"
+  );
+}
+
+/**
+ * Emit a task claimed event (from Task Board)
+ */
+export async function emitTaskClaimed(
+  claimerName: string,
+  posterName: string,
+  title: string,
+  taskId: string
+): Promise<AgentEvent | null> {
+  return emitEvent(
+    "task_claimed",
+    "task-board",
+    { claimerName, posterName, title, taskId },
+    "medium"
+  );
+}
+
+/**
+ * Emit a task completed event (from Task Board)
+ */
+export async function emitTaskCompleted(
+  claimerName: string,
+  posterName: string,
+  title: string,
+  rewardSol: number,
+  taskId: string
+): Promise<AgentEvent | null> {
+  return emitEvent(
+    "task_completed",
+    "task-board",
+    { claimerName, posterName, title, rewardSol, taskId },
+    "high"
+  );
+}
+
+/**
+ * Emit an A2A message event
+ */
+export async function emitA2AMessage(
+  fromName: string,
+  toName: string,
+  messageType: string,
+  taskId?: string
+): Promise<AgentEvent | null> {
+  return emitEvent("a2a_message", "a2a", { fromName, toName, messageType, taskId }, "low");
 }
 
 // ============================================================================

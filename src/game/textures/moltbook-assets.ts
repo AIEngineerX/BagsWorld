@@ -2109,6 +2109,173 @@ function generateMoltBar(scene: Phaser.Scene): void {
   g.destroy();
 }
 
+// Bounty Board — wooden bulletin board with pinned notices
+function generateBountyBoard(scene: Phaser.Scene): void {
+  const s = SCALE;
+  const g = scene.make.graphics({ x: 0, y: 0 });
+  const w = Math.round(55 * s);
+  const h = Math.round(80 * s);
+
+  // Board colors
+  const woodDark = 0x5c3d2e;
+  const woodBase = 0x7a5033;
+  const woodLight = 0x96643f;
+  const boardBg = 0xc4a36e; // Cork-like background
+  const boardFrame = 0x4a2d1c;
+  const paperWhite = 0xfff8e7;
+  const paperYellow = 0xfff3b0;
+  const paperGreen = 0xc8e6c9;
+  const paperBlue = 0xbbdefb;
+  const pinRed = 0xe53935;
+  const pinYellow = 0xfdd835;
+  const pinGreen = 0x43a047;
+
+  // Posts / legs
+  const postW = Math.round(5 * s);
+  const postH = Math.round(30 * s);
+  const boardTop = Math.round(10 * s);
+  const boardH = Math.round(40 * s);
+  const boardLeft = Math.round(5 * s);
+  const boardW = w - Math.round(10 * s);
+
+  // Left post
+  g.fillStyle(woodDark);
+  g.fillRect(Math.round(10 * s), boardTop + boardH, postW, postH);
+  g.fillStyle(woodBase);
+  g.fillRect(Math.round(11 * s), boardTop + boardH, Math.round(3 * s), postH);
+
+  // Right post
+  g.fillStyle(woodDark);
+  g.fillRect(w - Math.round(15 * s), boardTop + boardH, postW, postH);
+  g.fillStyle(woodBase);
+  g.fillRect(w - Math.round(14 * s), boardTop + boardH, Math.round(3 * s), postH);
+
+  // Board frame
+  g.fillStyle(boardFrame);
+  g.fillRect(boardLeft, boardTop, boardW, boardH);
+
+  // Cork background
+  g.fillStyle(boardBg);
+  g.fillRect(
+    boardLeft + Math.round(2 * s),
+    boardTop + Math.round(2 * s),
+    boardW - Math.round(4 * s),
+    boardH - Math.round(4 * s)
+  );
+
+  // Cork texture dots
+  g.fillStyle(darken(boardBg, 15));
+  for (let dy = 0; dy < boardH - Math.round(8 * s); dy += Math.round(5 * s)) {
+    for (let dx = 0; dx < boardW - Math.round(8 * s); dx += Math.round(7 * s)) {
+      g.fillRect(
+        boardLeft + Math.round(4 * s) + dx,
+        boardTop + Math.round(4 * s) + dy,
+        Math.round(1 * s),
+        Math.round(1 * s)
+      );
+    }
+  }
+
+  // Frame highlight on top & left
+  g.fillStyle(woodLight);
+  g.fillRect(boardLeft, boardTop, boardW, Math.round(1 * s));
+  g.fillRect(boardLeft, boardTop, Math.round(1 * s), boardH);
+
+  // Pinned notices (3 small paper rectangles)
+  const notices = [
+    {
+      x: boardLeft + Math.round(5 * s),
+      y: boardTop + Math.round(5 * s),
+      color: paperWhite,
+      pin: pinRed,
+    },
+    {
+      x: boardLeft + Math.round(18 * s),
+      y: boardTop + Math.round(8 * s),
+      color: paperYellow,
+      pin: pinGreen,
+    },
+    {
+      x: boardLeft + Math.round(5 * s),
+      y: boardTop + Math.round(20 * s),
+      color: paperGreen,
+      pin: pinYellow,
+    },
+    {
+      x: boardLeft + Math.round(22 * s),
+      y: boardTop + Math.round(22 * s),
+      color: paperBlue,
+      pin: pinRed,
+    },
+  ];
+
+  const noteW = Math.round(14 * s);
+  const noteH = Math.round(12 * s);
+  for (const note of notices) {
+    // Paper shadow
+    g.fillStyle(0x000000, 0.15);
+    g.fillRect(note.x + Math.round(1 * s), note.y + Math.round(1 * s), noteW, noteH);
+    // Paper
+    g.fillStyle(note.color);
+    g.fillRect(note.x, note.y, noteW, noteH);
+    // Text lines on paper
+    g.fillStyle(0x999999);
+    g.fillRect(
+      note.x + Math.round(2 * s),
+      note.y + Math.round(3 * s),
+      noteW - Math.round(4 * s),
+      Math.round(1 * s)
+    );
+    g.fillRect(
+      note.x + Math.round(2 * s),
+      note.y + Math.round(6 * s),
+      noteW - Math.round(6 * s),
+      Math.round(1 * s)
+    );
+    g.fillRect(
+      note.x + Math.round(2 * s),
+      note.y + Math.round(9 * s),
+      noteW - Math.round(5 * s),
+      Math.round(1 * s)
+    );
+    // Pin
+    g.fillStyle(note.pin);
+    g.fillRect(
+      note.x + Math.round(6 * s),
+      note.y - Math.round(1 * s),
+      Math.round(3 * s),
+      Math.round(3 * s)
+    );
+    // Pin highlight
+    g.fillStyle(lighten(note.pin, 40));
+    g.fillRect(
+      note.x + Math.round(7 * s),
+      note.y - Math.round(1 * s),
+      Math.round(1 * s),
+      Math.round(1 * s)
+    );
+  }
+
+  // "BOUNTY" sign on top
+  const signW = Math.round(36 * s);
+  const signH = Math.round(10 * s);
+  const signX = Math.round((w - signW) / 2);
+  const signY = boardTop - Math.round(2 * s);
+
+  g.fillStyle(woodDark);
+  g.fillRect(signX, signY, signW, signH);
+  g.fillStyle(woodBase);
+  g.fillRect(
+    signX + Math.round(1 * s),
+    signY + Math.round(1 * s),
+    signW - Math.round(2 * s),
+    signH - Math.round(2 * s)
+  );
+
+  g.generateTexture("bounty_board", w, h);
+  g.destroy();
+}
+
 export function generateMoltbookAssets(scene: Phaser.Scene): void {
   generateBeachGround(scene);
   generateBeachBuildings(scene);
@@ -2122,4 +2289,5 @@ export function generateMoltbookAssets(scene: Phaser.Scene): void {
   generateMoltbookHQ(scene);
   generateBeachHut(scene);
   generateMoltBar(scene);
+  generateBountyBoard(scene);
 }

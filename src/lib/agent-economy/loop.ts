@@ -19,7 +19,10 @@ import {
 import { logAgentAction } from "./credentials";
 import { lamportsToSol, DEFAULT_AGENT_ECONOMY_CONFIG } from "./types";
 import { makeTradeDecision, type StrategyType, type TradeDecision } from "./brain";
-import { emitFeeClaim, emitEvent } from "../agent-coordinator";
+import { emitFeeClaim, emitEvent, emitA2AMessage } from "../agent-coordinator";
+import { getInbox, markAsRead, sendA2AMessage, cleanupOldMessages } from "./a2a-protocol";
+import { listTasks, expireOverdueTasks } from "./task-board";
+import { getCapabilities } from "./service-registry";
 
 // ============================================================================
 // CONFIGURATION
@@ -440,6 +443,90 @@ async function processAgent(
 
   await refreshAgentMood(agent.agentId);
 
+  // =========================================================================
+  // STEP 6: CHECK A2A INBOX (non-critical, never breaks loop)
+  // =========================================================================
+
+  try {
+    const wallet = await economy.getWallet();
+    const inbox = await getInbox(wallet, { unreadOnly: true, limit: 10 });
+
+    if (inbox.unread > 0) {
+      console.log(`[Loop] ${agent.username}: ${inbox.unread} unread A2A messages`);
+
+      for (const msg of inbox.messages) {
+        // Auto-respond to pings
+        if (msg.type === "ping") {
+          await sendA2AMessage(
+            wallet,
+            msg.fromWallet,
+            "status_update",
+            {
+              status: "active",
+              agent: agent.username,
+              respondedAt: new Date().toISOString(),
+            },
+            { conversationId: msg.conversationId }
+          );
+          await markAsRead(msg.id);
+          console.log(
+            `[Loop] ${agent.username}: Auto-responded to ping from ${msg.fromWallet.slice(0, 8)}...`
+          );
+        }
+
+        // Log task requests (don't auto-accept — brain should decide in future tiers)
+        if (msg.type === "task_request") {
+          console.log(
+            `[Loop] ${agent.username}: Received task request from ${msg.fromWallet.slice(0, 8)}...: ${JSON.stringify(msg.payload).slice(0, 100)}`
+          );
+          // Mark as read so it doesn't show up next cycle — agent "saw" it
+          await markAsRead(msg.id);
+        }
+
+        // Emit A2A event for the activity feed
+        emitA2AMessage(
+          msg.fromWallet.slice(0, 8) + "...",
+          agent.username,
+          msg.type,
+          msg.taskId
+        ).catch(() => {});
+      }
+    }
+  } catch (a2aErr) {
+    console.error(`[Loop] ${agent.username}: A2A inbox check failed (non-critical):`, a2aErr);
+  }
+
+  // =========================================================================
+  // STEP 7: SCAN TASK BOARD FOR MATCHING TASKS (non-critical)
+  // =========================================================================
+
+  try {
+    const wallet = await economy.getWallet();
+    const caps = await getCapabilities(wallet);
+
+    if (caps.length > 0) {
+      // Check for open tasks that match our capabilities
+      for (const cap of caps) {
+        const { tasks } = await listTasks({
+          status: "open",
+          capability: cap.capability,
+          limit: 3,
+        });
+
+        // Log matching tasks (auto-claiming is a future tier feature)
+        for (const task of tasks) {
+          // Don't log our own tasks
+          if (task.posterWallet === wallet) continue;
+          console.log(
+            `[Loop] ${agent.username}: Found matching task "${task.title}" (${cap.capability}, ${task.rewardSol} SOL)`
+          );
+        }
+      }
+    }
+  } catch (taskErr) {
+    console.error(`[Loop] ${agent.username}: Task board scan failed (non-critical):`, taskErr);
+  }
+
   return result;
 }
 
@@ -491,6 +578,28 @@ export async function runLoopIteration(config: EconomyLoopConfig = DEFAULT_LOOP_
     }
 
     iterationErrors += result.errors.length;
+  }
+
+  // =========================================================================
+  // POST-PROCESSING: Task expiration + message cleanup (every iteration)
+  // =========================================================================
+
+  try {
+    const expired = await expireOverdueTasks();
+    if (expired > 0) {
+      console.log(`[Loop] Expired ${expired} overdue tasks`);
+    }
+  } catch (expireErr) {
+    console.error("[Loop] Task expiration failed (non-critical):", expireErr);
+  }
+
+  try {
+    const cleaned = await cleanupOldMessages(7);
+    if (cleaned > 0) {
+      console.log(`[Loop] Cleaned up ${cleaned} old A2A messages`);
+    }
+  } catch (cleanErr) {
+    console.error("[Loop] Message cleanup failed (non-critical):", cleanErr);
   }
 
   loopState.lastRun = new Date();

@@ -3,7 +3,13 @@
 // Uses Neon PostgreSQL for persistence across serverless instances
 
 import { neon } from "@neondatabase/serverless";
-import type { GameCharacter, GameBuilding, ZoneType } from "../types";
+import type {
+  GameCharacter,
+  GameBuilding,
+  ZoneType,
+  CapabilityEntry,
+  AgentCapability,
+} from "../types";
 
 // ============================================================================
 // DATABASE
@@ -51,6 +57,14 @@ async function ensureTable() {
     // Column might already exist, ignore
   }
 
+  // Add capabilities column for A2A service registry (migration)
+  try {
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS capabilities JSONB DEFAULT '[]'::jsonb`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_external_agents_capabilities ON external_agents USING GIN (capabilities)`;
+  } catch {
+    // Column/index might already exist, ignore
+  }
+
   // Add reputation system columns (migration)
   try {
     await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS moltbook_karma INTEGER DEFAULT 0`;
@@ -94,6 +108,7 @@ interface DbRow {
   total_fees_earned_lamports: string | null; // BIGINT returned as string by Neon
   reputation_score: number | null;
   karma_fetched_at: Date | null;
+  capabilities: CapabilityEntry[] | null; // JSONB - A2A capabilities
 }
 
 // ============================================================================
@@ -163,6 +178,9 @@ function rowToEntry(row: DbRow): ExternalAgentEntry {
     moltbookKarma: row.moltbook_karma ?? undefined,
     reputationScore: row.reputation_score ?? undefined,
     tokensLaunched: row.tokens_launched ?? undefined,
+    capabilities: row.capabilities
+      ? (row.capabilities as CapabilityEntry[]).map((c) => c.capability)
+      : undefined,
   };
 
   return {

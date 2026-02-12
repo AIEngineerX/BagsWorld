@@ -67,6 +67,66 @@ export const ZONES: Record<ZoneType, ZoneInfo> = {
   },
 };
 
+// A2A Agent Capability Types
+export type AgentCapability =
+  | "alpha"
+  | "trading"
+  | "content"
+  | "launch"
+  | "combat"
+  | "scouting"
+  | "analysis";
+
+export interface CapabilityEntry {
+  capability: AgentCapability;
+  description?: string;
+  confidence: number; // 0-100
+  addedAt: string;
+}
+
+// A2A Task Board Types
+export type TaskStatus = "open" | "claimed" | "delivered" | "completed" | "expired" | "cancelled";
+
+export interface AgentTask {
+  id: string;
+  posterWallet: string;
+  claimerWallet?: string;
+  title: string;
+  description: string;
+  capabilityRequired: AgentCapability;
+  rewardSol: number;
+  status: TaskStatus;
+  createdAt: string;
+  claimedAt?: string;
+  deliveredAt?: string;
+  completedAt?: string;
+  expiresAt: string;
+  resultData?: Record<string, unknown>;
+  posterFeedback?: string;
+}
+
+// A2A Messaging Types
+export type A2AMessageType =
+  | "task_request"
+  | "task_accept"
+  | "task_reject"
+  | "task_deliver"
+  | "task_confirm"
+  | "status_update"
+  | "ping";
+
+export interface A2AMessage {
+  id: string;
+  type: A2AMessageType;
+  fromWallet: string;
+  toWallet: string;
+  payload: Record<string, unknown>;
+  taskId?: string;
+  conversationId?: string;
+  createdAt: string;
+  readAt?: string;
+}
+
 // Bags.fm API Types
 
 export interface FeeEarner {
@@ -247,6 +307,8 @@ export interface GameCharacter {
   moltbookKarma?: number;
   reputationScore?: number;
   tokensLaunched?: number;
+  // A2A capabilities (external agents only)
+  capabilities?: AgentCapability[];
   // Platform visitors (discovered from Bags.fm ecosystem-wide activity)
   isVisitor?: boolean;
   visitorTokenName?: string;
@@ -297,7 +359,11 @@ export type GameEventType =
   | "whale_alert"
   | "platform_launch"
   | "platform_trending"
-  | "platform_claim";
+  | "platform_claim"
+  | "task_posted"
+  | "task_claimed"
+  | "task_completed"
+  | "a2a_message";
 
 export interface GameEvent {
   id: string;

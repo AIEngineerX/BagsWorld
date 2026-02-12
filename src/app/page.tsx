@@ -139,6 +139,10 @@ const IncineratorModal = dynamic(
   () => import("@/components/IncineratorModal").then((m) => m.IncineratorModal),
   { ssr: false }
 );
+const BountyBoardModal = dynamic(
+  () => import("@/components/BountyBoardModal").then((m) => m.BountyBoardModal),
+  { ssr: false }
+);
 const CasinoAdmin = dynamic(() => import("@/components/CasinoAdmin").then((m) => m.CasinoAdmin), {
   ssr: false,
 });
@@ -292,6 +296,7 @@ export default function Home() {
     | "launch"
     | "dungeon"
     | "incinerator"
+    | "bountyBoard"
     | null;
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const openModal = useCallback((modal: ModalType) => setActiveModal(modal), []);
@@ -334,6 +339,7 @@ export default function Home() {
       "bagsworld-agenthut-click": (() => openModal("agentHut")) as EventListener,
       "bagsworld-moltbar-click": (() => openModal("agentBar")) as EventListener,
       "bagsworld-incinerator-click": (() => openModal("incinerator")) as EventListener,
+      "bagsworld-bountyboard-click": (() => openModal("bountyBoard")) as EventListener,
       "bagsworld-launch-click": (() => openModal("launch")) as EventListener,
       "bagsworld-claim-click": (() => openModal("feeClaim")) as EventListener,
       "bagsworld-open-dungeon": (() => openModal("dungeon")) as EventListener,
@@ -784,6 +790,9 @@ export default function Home() {
 
         {/* Sol Incinerator Modal - Burn tokens & close empty accounts */}
         {activeModal === "incinerator" && <IncineratorModal onClose={closeModal} />}
+
+        {/* Bounty Board Modal - A2A task marketplace */}
+        {activeModal === "bountyBoard" && <BountyBoardModal onClose={closeModal} />}
       </ErrorBoundary>
 
       {/* Scout Alerts - shows new token launch notifications */}
