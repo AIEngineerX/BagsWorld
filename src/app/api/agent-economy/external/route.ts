@@ -2458,14 +2458,16 @@ export async function POST(request: NextRequest) {
 
       console.log("[Launch] Success!", result.tokenMint);
 
-      // Auto-join the world if not already (use wallet if provided, otherwise skip)
-      if (wallet) {
-        const existingAgent = await getExternalAgent(wallet);
+      // Auto-join the world if not already
+      // Use resolvedWallet from launch result (handles both direct wallet and Moltbook lookups)
+      const agentWallet = result.resolvedWallet || wallet;
+      if (agentWallet) {
+        const existingAgent = await getExternalAgent(agentWallet);
         if (!existingAgent) {
           await registerExternalAgent(
-            wallet,
+            agentWallet,
             name,
-            "main_city",
+            "moltbook",
             `Creator of $${symbol}`,
             moltbookUsername
           );
@@ -2473,10 +2475,10 @@ export async function POST(request: NextRequest) {
       }
 
       // Touch agent activity timestamp (fire-and-forget)
-      if (wallet) touchExternalAgent(wallet);
+      if (agentWallet) touchExternalAgent(agentWallet);
 
       // Track reputation stats (fire-and-forget)
-      if (wallet) incrementTokensLaunched(wallet);
+      if (agentWallet) incrementTokensLaunched(agentWallet);
 
       // Get updated rate limits for response (use wallet or empty for moltbook-only)
       const rateLimitWallet = wallet || "";

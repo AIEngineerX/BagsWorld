@@ -451,6 +451,7 @@ export interface LaunchResult {
   signature?: string;
   bagsUrl?: string;
   explorerUrl?: string;
+  resolvedWallet?: string; // The actual wallet used (from Moltbook lookup or direct)
   error?: string;
 }
 
@@ -1012,6 +1013,7 @@ export async function launchForExternal(request: LaunchRequest): Promise<LaunchR
     signature,
     bagsUrl: `https://bags.fm/${tokenMint}`,
     explorerUrl: `https://solscan.io/tx/${signature}`,
+    resolvedWallet,
   };
 }
 
