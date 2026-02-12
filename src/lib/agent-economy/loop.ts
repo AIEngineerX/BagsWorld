@@ -46,10 +46,11 @@ import {
   getCorpByWallet,
   generateServiceTask,
   recordTaskCompletion,
-  generateServiceResult,
   progressMission,
 } from "./corps";
 import type { CorpRole } from "../types";
+import { storeMemory, recallMemories, cleanupExpiredMemories, getTimeAgo } from "./memory";
+import { BAGSWORLD_AGENTS } from "../agent-data";
 
 // ============================================================================
 // CONFIGURATION
@@ -625,21 +626,57 @@ async function processAgent(
           limit: 5,
         });
 
+        // Look up agent metadata once for all tasks
+        const agentMeta = BAGSWORLD_AGENTS.find(
+          (a) => a.id === agent.agentId || a.name.toLowerCase() === agent.username.toLowerCase()
+        );
+        const agentRole = agentMeta?.role || "Agent";
+
         for (const task of claimedTasks) {
           // Check if at least 2 minutes have passed since claimed (simulates work)
           const claimedAt = task.claimedAt ? new Date(task.claimedAt).getTime() : 0;
-          const elapsed = Date.now() - claimedAt;
-          if (elapsed < 2 * 60 * 1000) continue;
+          if (Date.now() - claimedAt < 2 * 60 * 1000) continue;
 
-          const resultData = generateResultForCapability(task.capabilityRequired);
+          // Recall past memories for LLM context (non-critical)
+          const memoryStrings = await recallMemories({
+            agentId: agent.agentId,
+            capability: task.capabilityRequired,
+            limit: 3,
+          })
+            .then((memories) =>
+              memories.map((m) => `[${getTimeAgo(m.createdAt)}] "${m.title}" — ${m.content.slice(0, 120)}`)
+            )
+            .catch(() => [] as string[]);
+
+          const resultData = await generateResultForCapability(task.capabilityRequired, {
+            agentId: agent.agentId,
+            agentRole,
+            taskTitle: task.title,
+            taskDescription: task.description,
+            memory: memoryStrings.length > 0 ? memoryStrings : undefined,
+          });
+
           const delivered = await deliverTask(task.id, wallet, resultData);
-          console.log(`[Loop] ${agent.username}: Delivered task "${delivered.title}"`);
+          console.log(`[Loop] ${agent.username}: Delivered task "${delivered.title}"${resultData.generatedBy === "llm" ? " (LLM)" : ""}`);
+
+          // Store to memory if we got a narrative
+          const narrative = resultData.narrative;
+          if (typeof narrative === "string" && narrative) {
+            storeMemory({
+              agentId: agent.agentId,
+              memoryType: "task_result",
+              capability: task.capabilityRequired,
+              title: task.title,
+              content: narrative,
+              metadata: resultData,
+            }).catch(() => {}); // non-critical, fire-and-forget
+          }
 
           // Send A2A task_deliver to poster
           await sendA2AMessage(wallet, task.posterWallet, "task_deliver", {
             agent: agent.username,
             taskTitle: delivered.title,
-            resultSummary: Object.keys(resultData).join(", "),
+            resultSummary: (typeof narrative === "string" && narrative) ? narrative : Object.keys(resultData).join(", "),
             deliveredAt: new Date().toISOString(),
           });
         }
@@ -898,6 +935,15 @@ export async function runLoopIteration(config: EconomyLoopConfig = DEFAULT_LOOP_
     }
   } catch (cleanErr) {
     console.error("[Loop] Message cleanup failed (non-critical):", cleanErr);
+  }
+
+  try {
+    const expiredMemories = await cleanupExpiredMemories();
+    if (expiredMemories > 0) {
+      console.log(`[Loop] Cleaned up ${expiredMemories} expired agent memories`);
+    }
+  } catch (memErr) {
+    console.error("[Loop] Memory cleanup failed (non-critical):", memErr);
   }
 
   loopState.lastRun = new Date();

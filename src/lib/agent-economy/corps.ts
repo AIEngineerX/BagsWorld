@@ -8,6 +8,7 @@
 
 import { neon } from "@neondatabase/serverless";
 import type { AgentCorp, CorpMember, CorpMission, CorpRole, AgentCapability } from "../types";
+import { shouldUseLlm, generateTaskResult } from "./llm";
 
 // ============================================================================
 // DATABASE
@@ -605,7 +606,24 @@ const EDUCATION_RESULTS: Record<string, ResultGenerator> = {
   }),
 };
 
-export function generateServiceResult(outputType: string): Record<string, unknown> {
+export async function generateServiceResult(
+  outputType: string,
+  context?: { agentId: string; agentRole: string; taskTitle: string; taskDescription: string; category?: string; memory?: string[] }
+): Promise<Record<string, unknown>> {
+  if (context && shouldUseLlm()) {
+    const llmResult = await generateTaskResult({
+      agentId: context.agentId,
+      agentRole: context.agentRole,
+      taskTitle: context.taskTitle,
+      taskDescription: context.taskDescription,
+      capability: outputType,
+      category: context.category,
+      memory: context.memory,
+    });
+    if (llmResult) return llmResult.result;
+  }
+
+  // Fallback to template
   const generator = EDUCATION_RESULTS[outputType] || EDUCATION_RESULTS.report;
   return generator();
 }
@@ -850,4 +868,103 @@ export async function getCorpLeaderboard(): Promise<
     totalTasksCompleted: r.total_tasks_completed as number,
     memberCount: Number(r.member_count),
   }));
+}
+
+// ============================================================================
+// CORP TASK BOARD (real delegation logic for UI consumption)
+// ============================================================================
+
+export interface CorpBoardTask {
+  title: string;
+  description: string;
+  posterAgentId: string;
+  posterRole: CorpRole;
+  workerAgentId: string;
+  workerRole: CorpRole;
+  capability: AgentCapability;
+  category: string;
+  rewardSol: number;
+  status: "open" | "claimed" | "delivered" | "completed";
+}
+
+/**
+ * Generate a realistic corp task board using the same delegation logic
+ * the economy loop uses. Each member's role determines what they post,
+ * and the worker is resolved via capability matching against other members.
+ */
+export function generateCorpTaskBoard(
+  members: Array<{ agentId: string; role: CorpRole }>
+): CorpBoardTask[] {
+  const result: CorpBoardTask[] = [];
+  const usedTitles = new Set<string>();
+
+  for (const member of members) {
+    // Use the real generateServiceTask to pick a task for this role
+    // Try up to 5 times to avoid duplicate titles
+    let task: ReturnType<typeof generateServiceTask> | null = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = generateServiceTask(member.role);
+      if (!usedTitles.has(candidate.title)) {
+        task = candidate;
+        break;
+      }
+    }
+    if (!task) continue;
+    usedTitles.add(task.title);
+
+    // Find the best worker: another member whose role capabilities
+    // include this task's required capability (real ROLE_TASK_PREFERENCES logic)
+    const candidates = members.filter((m) => {
+      if (m.agentId === member.agentId) return false;
+      const prefs = ROLE_TASK_PREFERENCES[m.role];
+      return prefs.capabilities.includes(task!.capabilityRequired);
+    });
+
+    // If no capability match, fall back to any non-self member
+    const workerPool = candidates.length > 0
+      ? candidates
+      : members.filter((m) => m.agentId !== member.agentId);
+    if (workerPool.length === 0) continue;
+
+    const worker = workerPool[Math.floor(Math.random() * workerPool.length)];
+
+    result.push({
+      title: task.title,
+      description: task.description,
+      posterAgentId: member.agentId,
+      posterRole: member.role,
+      workerAgentId: worker.agentId,
+      workerRole: worker.role,
+      capability: task.capabilityRequired,
+      category: task.category,
+      rewardSol: task.rewardSol,
+      // Realistic status distribution: CEO tasks more likely open (delegating),
+      // member tasks more likely completed (executing)
+      status: assignRealisticStatus(member.role),
+    });
+  }
+
+  return result;
+}
+
+function assignRealisticStatus(posterRole: CorpRole): CorpBoardTask["status"] {
+  const r = Math.random();
+  if (posterRole === "ceo") {
+    // CEO delegates → tasks tend to be in-progress or recently completed
+    if (r < 0.3) return "open";
+    if (r < 0.5) return "claimed";
+    if (r < 0.7) return "delivered";
+    return "completed";
+  }
+  if (posterRole === "member") {
+    // Members execute → their posted tasks tend to complete faster
+    if (r < 0.15) return "open";
+    if (r < 0.3) return "claimed";
+    return "completed";
+  }
+  // C-suite: balanced
+  if (r < 0.2) return "open";
+  if (r < 0.4) return "claimed";
+  if (r < 0.6) return "delivered";
+  return "completed";
 }
