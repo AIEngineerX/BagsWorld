@@ -89,6 +89,18 @@ interface GlobalToken {
   zone_override?: string | null;
 }
 
+interface ExternalAgent {
+  wallet: string;
+  name: string;
+  zone: string;
+  level_override: number | null;
+  health_override: number | null;
+  last_active_at: string | null;
+  moltbook_username: string | null;
+  health: number;
+  status: string;
+}
+
 type TabType =
   | "overview"
   | "buildings"
@@ -107,6 +119,7 @@ export function AdminConsole() {
   const [stats, setStats] = useState<EcosystemStats | null>(null);
   const [diagnostics, setDiagnostics] = useState<SystemDiagnostics | null>(null);
   const [globalTokens, setGlobalTokens] = useState<GlobalToken[]>([]);
+  const [externalAgents, setExternalAgents] = useState<ExternalAgent[]>([]);
   const [localBuildings, setLocalBuildings] = useState<LaunchedToken[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -321,6 +334,7 @@ export function AdminConsole() {
         const data = await response.json();
         setDiagnostics(data.diagnostics);
         setGlobalTokens(data.globalTokens || []);
+        setExternalAgents(data.externalAgents || []);
         addLog("Admin data fetched", "success");
       } else {
         const err = await response.json();
@@ -505,6 +519,61 @@ export function AdminConsole() {
       { health_override: health },
       `Set health ${health ?? "auto"} for $${token.symbol}`
     );
+
+  // Agent building handlers
+  const handleDeleteAgent = async (wallet: string, name: string) => {
+    if (confirm(`Delete agent building "${name}"? This removes the agent from the world.`)) {
+      const success = await adminAction("delete_agent", { wallet });
+      if (success) {
+        setExternalAgents((prev) => prev.filter((a) => a.wallet !== wallet));
+      }
+    }
+  };
+
+  const handleMoveAgent = async (wallet: string, zone: string) => {
+    const success = await adminAction("move_agent", { wallet, zone });
+    if (success) {
+      setExternalAgents((prev) =>
+        prev.map((a) => (a.wallet === wallet ? { ...a, zone } : a))
+      );
+    }
+  };
+
+  const handleSetAgentLevel = async (wallet: string, level: number | null) => {
+    const success = await adminAction("set_agent_level", { wallet, level });
+    if (success) {
+      setExternalAgents((prev) =>
+        prev.map((a) => (a.wallet === wallet ? { ...a, level_override: level } : a))
+      );
+    }
+  };
+
+  const handleSetAgentHealth = async (wallet: string, health: number | null) => {
+    const success = await adminAction("set_agent_health", { wallet, health });
+    if (success) {
+      setExternalAgents((prev) =>
+        prev.map((a) =>
+          a.wallet === wallet
+            ? {
+                ...a,
+                health_override: health,
+                health: health ?? a.health,
+                status:
+                  health != null
+                    ? health <= 10
+                      ? "dormant"
+                      : health <= 25
+                        ? "critical"
+                        : health <= 50
+                          ? "warning"
+                          : "active"
+                    : a.status,
+              }
+            : a
+        )
+      );
+    }
+  };
 
   const getHealthStatus = (health: number | null | undefined): string => {
     if (health == null) return "auto";
@@ -1395,6 +1464,166 @@ export function AdminConsole() {
                               </div>
                             </div>
                           )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Agent Buildings Section */}
+                <div className="space-y-2 mt-6">
+                  <div className="flex justify-between items-center">
+                    <p className="font-pixel text-[10px] text-purple-400">
+                      AGENT BUILDINGS ({externalAgents.length})
+                    </p>
+                    <button
+                      onClick={fetchAdminData}
+                      disabled={isLoading}
+                      className="font-pixel text-[7px] text-purple-400 hover:text-purple-300 px-2 py-0.5 border border-purple-500/30"
+                    >
+                      {isLoading ? "[...]" : "[REFRESH]"}
+                    </button>
+                  </div>
+
+                  {externalAgents.length === 0 ? (
+                    <p className="font-pixel text-[10px] text-gray-500 text-center py-4">
+                      No external agent buildings
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                      {externalAgents.map((agent) => (
+                        <div
+                          key={agent.wallet}
+                          className="bg-bags-darker border border-purple-500/20 p-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-pixel text-[11px] text-purple-300">
+                                  {agent.name}
+                                </p>
+                                <span className="font-pixel text-[7px] text-cyan-400 bg-cyan-500/20 px-1">
+                                  {agent.zone}
+                                </span>
+                                {agent.moltbook_username && (
+                                  <span className="font-pixel text-[7px] text-blue-400 bg-blue-500/20 px-1">
+                                    @{agent.moltbook_username}
+                                  </span>
+                                )}
+                                {agent.level_override != null && (
+                                  <span className="font-pixel text-[7px] text-yellow-400 bg-yellow-500/20 px-1">
+                                    LVL {agent.level_override}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-pixel text-[7px] text-gray-600 font-mono">
+                                {truncateWallet(agent.wallet)}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    agent.status === "active"
+                                      ? "bg-green-400"
+                                      : agent.status === "warning"
+                                        ? "bg-yellow-400"
+                                        : agent.status === "critical"
+                                          ? "bg-orange-400"
+                                          : "bg-red-400"
+                                  }`}
+                                />
+                                <span
+                                  className={`font-pixel text-[7px] ${getHealthStatusColor(agent.status)}`}
+                                >
+                                  {agent.status.toUpperCase()} ({agent.health}%)
+                                </span>
+                                {agent.health_override != null && (
+                                  <span className="font-pixel text-[6px] text-gray-600">
+                                    (override)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1 flex-shrink-0">
+                              {/* Level Override */}
+                              <select
+                                value={agent.level_override ?? "auto"}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  handleSetAgentLevel(
+                                    agent.wallet,
+                                    val === "auto" ? null : parseInt(val)
+                                  );
+                                }}
+                                className="bg-black/50 border border-gray-700 px-1 py-0.5 font-pixel text-[8px] text-white"
+                              >
+                                <option value="auto">Auto</option>
+                                <option value="1">Lvl 1</option>
+                                <option value="2">Lvl 2</option>
+                                <option value="3">Lvl 3</option>
+                                <option value="4">Lvl 4</option>
+                                <option value="5">Lvl 5</option>
+                              </select>
+
+                              {/* Zone Override */}
+                              <select
+                                value={agent.zone}
+                                onChange={(e) =>
+                                  handleMoveAgent(agent.wallet, e.target.value)
+                                }
+                                className="bg-black/50 border border-gray-700 px-1 py-0.5 font-pixel text-[8px] text-white"
+                              >
+                                <option value="moltbook">Moltbook</option>
+                                <option value="main_city">Park</option>
+                                <option value="trending">BagsCity</option>
+                                <option value="labs">HQ</option>
+                                <option value="founders">Founders</option>
+                                <option value="ballers">Ballers</option>
+                                <option value="arena">Arena</option>
+                              </select>
+
+                              {/* Health Override */}
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={agent.health_override ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    handleSetAgentHealth(
+                                      agent.wallet,
+                                      val === "" ? null : parseInt(val)
+                                    );
+                                  }}
+                                  placeholder="auto"
+                                  className="w-12 bg-black/50 border border-gray-700 px-1 py-0.5 font-mono text-[7px] text-white"
+                                />
+                                <span className="font-pixel text-[6px] text-gray-600">HP</span>
+                              </div>
+
+                              <div className="flex gap-1">
+                                {agent.moltbook_username && (
+                                  <a
+                                    href={`https://moltbook.com/u/${agent.moltbook_username}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-pixel text-[7px] text-blue-400 hover:text-blue-300 px-1"
+                                  >
+                                    [VIEW]
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() =>
+                                    handleDeleteAgent(agent.wallet, agent.name)
+                                  }
+                                  className="font-pixel text-[7px] text-red-400 hover:text-red-300 px-1"
+                                >
+                                  [DEL]
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>

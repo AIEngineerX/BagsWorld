@@ -76,6 +76,14 @@ async function ensureTable() {
     // Columns might already exist, ignore
   }
 
+  // Add admin override columns (migration)
+  try {
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS level_override INTEGER`;
+    await sql`ALTER TABLE external_agents ADD COLUMN IF NOT EXISTS health_override INTEGER`;
+  } catch {
+    // Columns might already exist, ignore
+  }
+
   tableInitialized = true;
   console.log("[ExternalRegistry] Table initialized");
 }
@@ -109,6 +117,8 @@ interface DbRow {
   reputation_score: number | null;
   karma_fetched_at: Date | null;
   capabilities: CapabilityEntry[] | null; // JSONB - A2A capabilities
+  level_override: number | null; // Admin override for building level (1-5)
+  health_override: number | null; // Admin override for building health (0-100)
 }
 
 // ============================================================================
@@ -269,8 +279,19 @@ function rowToBuilding(row: DbRow, index: number): GameBuilding {
     ? getBuildingPosition(index, row.zone as ZoneType)
     : row.x + BUILDING_OFFSET_X;
 
-  // Compute health from activity recency
-  const { health, status } = getAgentBuildingHealth(row.last_active_at);
+  // Compute health: admin override takes priority, then activity-based
+  const activityHealth = getAgentBuildingHealth(row.last_active_at);
+  const health = row.health_override != null ? row.health_override : activityHealth.health;
+  const status =
+    row.health_override != null
+      ? (health <= 10
+          ? "dormant"
+          : health <= 25
+            ? "critical"
+            : health <= 50
+              ? "warning"
+              : "active")
+      : activityHealth.status;
 
   // Link to Moltbook profile if available, otherwise Solscan
   const tokenUrl = moltbookUser
@@ -284,7 +305,7 @@ function rowToBuilding(row: DbRow, index: number): GameBuilding {
     symbol: moltbookUser ? `@${moltbookUser}` : row.name.slice(0, 4).toUpperCase(),
     x: buildingX,
     y: GROUND_Y, // Same ground level as token buildings
-    level: 1, // Agent buildings are small (level 1)
+    level: row.level_override ?? 1, // Admin override or default level 1
     health,
     status,
     glowing: health >= 75, // Only glow when recently active
@@ -471,6 +492,92 @@ export function touchExternalAgent(wallet: string): void {
   })().catch((err) => {
     console.error("[ExternalRegistry] Failed to touch agent activity:", err);
   });
+}
+
+/**
+ * Update admin override columns for an external agent
+ */
+export async function updateExternalAgentOverrides(
+  wallet: string,
+  overrides: { level?: number | null; health?: number | null }
+): Promise<boolean> {
+  await ensureTable();
+  const sql = getDb();
+
+  // Use separate queries per field (Neon-compatible, no dynamic SQL)
+  if (overrides.level !== undefined) {
+    await sql`
+      UPDATE external_agents SET level_override = ${overrides.level}
+      WHERE wallet = ${wallet}
+    `;
+  }
+  if (overrides.health !== undefined) {
+    await sql`
+      UPDATE external_agents SET health_override = ${overrides.health}
+      WHERE wallet = ${wallet}
+    `;
+  }
+
+  return true;
+}
+
+/**
+ * Return raw DB rows for admin UI consumption
+ */
+export async function listExternalAgentsRaw(): Promise<
+  Array<{
+    wallet: string;
+    name: string;
+    zone: string;
+    level_override: number | null;
+    health_override: number | null;
+    last_active_at: string | null;
+    moltbook_username: string | null;
+    health: number;
+    status: string;
+  }>
+> {
+  await ensureTable();
+  const sql = getDb();
+
+  const rows = await sql`
+    SELECT wallet, name, zone, level_override, health_override, last_active_at, moltbook_username
+    FROM external_agents ORDER BY joined_at DESC
+  `;
+
+  return rows.map((row) => {
+    const r = row as DbRow;
+    const activityHealth = getAgentBuildingHealth(r.last_active_at);
+    const health = r.health_override != null ? r.health_override : activityHealth.health;
+    const status =
+      r.health_override != null
+        ? health <= 10
+          ? "dormant"
+          : health <= 25
+            ? "critical"
+            : health <= 50
+              ? "warning"
+              : "active"
+        : activityHealth.status;
+    return {
+      wallet: r.wallet,
+      name: r.name,
+      zone: r.zone,
+      level_override: r.level_override,
+      health_override: r.health_override,
+      last_active_at: r.last_active_at ? r.last_active_at.toISOString() : null,
+      moltbook_username: r.moltbook_username,
+      health,
+      status,
+    };
+  });
+}
+
+/**
+ * Invalidate the in-memory cache so the next world-state poll picks up admin changes
+ */
+export function invalidateExternalCache(): void {
+  lastCacheTime = 0;
 }
 
 // ============================================================================

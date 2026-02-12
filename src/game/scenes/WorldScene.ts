@@ -5813,14 +5813,31 @@ export class WorldScene extends Phaser.Scene {
       isOracle ||
       isBagsHQ ||
       isTreasury ||
-      isMansion ||
-      isAgentBuilding
+      isMansion
     ) {
-      // Agent buildings still need decay visuals updated
-      if (isAgentBuilding) {
-        const agentSprite = container.getAt(1) as Phaser.GameObjects.Sprite;
-        if (agentSprite) {
-          this.applyDecayVisuals(building, agentSprite, container);
+      return;
+    }
+
+    // Agent buildings: update decay visuals and check for level/texture changes (admin override)
+    if (isAgentBuilding) {
+      const agentSprite = container.getAt(1) as Phaser.GameObjects.Sprite;
+      if (agentSprite) {
+        this.applyDecayVisuals(building, agentSprite, container);
+        // Check if level changed (e.g. admin override) and update texture accordingly
+        const agentLevel = Math.min(Math.max(building.level, 1), 5);
+        const expectedTexture = isBeachBuilding
+          ? `beach_building_${agentLevel}`
+          : `building_${agentLevel}_0`;
+        if (agentSprite.texture?.key !== expectedTexture) {
+          this.tweens.add({
+            targets: container,
+            scale: 1.15,
+            duration: 150,
+            yoyo: true,
+            onComplete: () => {
+              agentSprite.setTexture(expectedTexture);
+            },
+          });
         }
       }
       return;
