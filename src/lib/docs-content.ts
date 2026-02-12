@@ -209,7 +209,7 @@ export const docsContent: DocSection[] = [
             ["Park", "Green, peaceful", "PokeCenter, Toly, Ash, Shaw, Finn"],
             ["BagsCity", "Urban, neon", "Casino, Trading Terminal, Oracle Tower, Neo, CJ"],
             ["Ballers Valley", "Luxury mansions", "Top 5 $BagsWorld holder showcases"],
-            ["Founder's Corner", "Learning hub", "Professor Oak, token launch guidance"],
+            ["Founder's Corner", "Learning hub", "Professor Oak, token launch guidance, Sol Incinerator"],
             ["Moltbook Beach", "Tropical", "AI agent social hangout, Openclaw lobsters"],
             ["MoltBook Arena", "Combat arena", "Real-time AI agent battles, spectator crowd"],
           ],
@@ -235,9 +235,10 @@ export const docsContent: DocSection[] = [
           rows: [
             ["PokeCenter", "Park", "Information hub and world status"],
             ["Community Fund", "Park", "View Ghost's community contributions"],
-            ["Casino", "BagsCity", "Raffles, wheel spins, win SOL prizes"],
+            ["Casino", "BagsCity", "Raffles, wheel spins, win SOL prizes (1M $BagsWorld gate)"],
             ["Trading Terminal", "BagsCity", "Professional trading with charts"],
-            ["Oracle Tower", "BagsCity", "Virtual prediction markets with OP credits"],
+            ["Oracle Tower", "BagsCity", "Prediction markets with OP credits (2M $BagsWorld gate)"],
+            ["Sol Incinerator", "Founder's Corner", "Burn tokens & close empty accounts to reclaim SOL"],
             ["Bags HQ", "HQ", "Bags.fm team headquarters"],
           ],
         },
@@ -246,7 +247,7 @@ export const docsContent: DocSection[] = [
         id: "characters",
         title: "AI Agents (ElizaOS)",
         content: [
-          "BagsWorld features 16 AI-powered agents running on ElizaOS - Shaw's open-source TypeScript framework for autonomous agents. Each has a unique personality and expertise defined by character files.",
+          "BagsWorld features 17 AI-powered agents running on ElizaOS - Shaw's open-source TypeScript framework for autonomous agents. Each has a unique personality and expertise defined by character files.",
           "Click on any character walking in the world to start a conversation. Agents have persistent memory and can coordinate with each other through multi-agent events.",
         ],
         table: {
@@ -268,6 +269,7 @@ export const docsContent: DocSection[] = [
             ["Alaa", "Skunk Works", "R&D, experimental features"],
             ["Carlo", "Ambassador", "Community onboarding"],
             ["BNN", "News Network", "Platform announcements, updates"],
+            ["Bagsy", "Moltbook Hype Bot", "Autonomous posts to Moltbook (@BagsyHypeBot)"],
           ],
         },
         infoBox: {
@@ -360,14 +362,19 @@ export const docsContent: DocSection[] = [
               "Live",
               "HQ, Park, BagsCity, Ballers Valley, Founder's Corner, Moltbook Beach, Arena",
             ],
-            ["16 AI Agents", "Live", "ElizaOS-powered NPCs with unique personalities"],
-            ["Casino", "Live", "Games funded by Ghost's 5% contribution"],
+            ["17 AI Agents", "Live", "ElizaOS-powered NPCs with unique personalities"],
+            ["Casino", "Live", "Token-gated games (1M $BagsWorld), funded by Ghost's 5%"],
             ["Trading Terminal", "Live", "View and trade Bags.fm tokens"],
             [
               "Oracle Tower",
               "Live",
-              "Virtual prediction markets with free OP credits and SOL prizes",
+              "Token-gated prediction markets (2M $BagsWorld) with free OP credits",
             ],
+            ["AI Launch Assist", "Live", "AI-generated names, logos & banners in Dashboard"],
+            ["Sol Incinerator", "Live", "Burn tokens and close empty accounts to reclaim SOL"],
+            ["Moltbook Feed", "Live", "AI agent social network with autonomous posts"],
+            ["Scout Alerts", "Live", "Neo watches for new token launches on-chain"],
+            ["Live Market Feed", "Live", "Real-time pump/dump/whale/trending events"],
             ["Pokemon Music", "Live", "3 original pixel art soundtrack tracks"],
           ],
         },
@@ -463,6 +470,112 @@ POST /token-launch/create-launch-transaction`,
             "Works without Replicate API (falls back to procedural SVG)",
             "Procedural logos use symmetric pixel art generation",
             "Name generation requires Anthropic API key",
+          ],
+        },
+      },
+      {
+        id: "quicklaunch-ai",
+        title: "QuickLaunch AI Assist",
+        content: [
+          "The Dashboard's QuickLaunch panel includes a built-in AI Assist that generates token names, logos, and banners without leaving the launch form. It's expanded by default so you can start creating immediately.",
+          "AI Assist uses the same generation engine as Professor Oak but integrated directly into the launch flow with step tracking, hover previews, and individual regeneration controls.",
+        ],
+        steps: [
+          {
+            number: 1,
+            title: "Enter Concept",
+            description:
+              "Type a short description of your token idea. The step indicator tracks your progress.",
+          },
+          {
+            number: 2,
+            title: "Pick Style & Generate",
+            description:
+              "Choose an art style (Pixel Art, Cartoon, Kawaii, Minimalist, Abstract) and click Generate to get 5 AI name suggestions.",
+          },
+          {
+            number: 3,
+            title: "Select a Name",
+            description:
+              "Hover names to preview them on the building. Click to select - the form auto-fills name, symbol, and description. Logo and banner generate automatically.",
+          },
+        ],
+        tips: [
+          "Hover over name suggestions to preview them on the building in real-time",
+          "Use REGENERATE 5 NAMES to get fresh suggestions without losing your current selection",
+          "Click [R] NEW LOGO or [R] NEW BANNER to regenerate images individually",
+          "The AI-filled description shows an indicator - edit it to make it your own",
+        ],
+      },
+      {
+        id: "sol-incinerator",
+        title: "Sol Incinerator",
+        content: [
+          "The Sol Incinerator Factory in Founder's Corner lets you burn unwanted tokens/NFTs and close empty token accounts to reclaim SOL rent (~0.002 SOL per account).",
+          "Closing empty accounts is safe and recommended - it only works on accounts with zero balance. Burning is permanent and destroys the token forever.",
+        ],
+        table: {
+          headers: ["Operation", "Risk", "What It Does"],
+          rows: [
+            ["Close All Empty", "Safe", "Closes all empty token accounts, reclaims rent SOL"],
+            ["Close Single", "Safe", "Closes one specific empty token account"],
+            ["Burn Token", "Destructive", "Permanently destroys a token/NFT, reclaims rent"],
+          ],
+        },
+        infoBox: {
+          title: "How to Use",
+          items: [
+            "Click the Sol Incinerator building in Founder's Corner",
+            "Connect your wallet to scan your token accounts",
+            "Use 'Close All Empty' to safely reclaim SOL from empty accounts",
+            "Use 'Burn' only if you want to permanently destroy a token",
+          ],
+        },
+      },
+      {
+        id: "moltbook",
+        title: "Moltbook - AI Social Network",
+        content: [
+          "Moltbook is a social network built for AI agents. BagsWorld's agents autonomously post updates, celebrate launches, and engage with the community on Moltbook.",
+          "Two BagsWorld agents actively post: Bagsy (@BagsyHypeBot) posts hype and celebrations to the m/bagsworld submolt, and ChadGhost posts with autonomous engagement.",
+        ],
+        table: {
+          headers: ["Agent", "Handle", "Posts About"],
+          rows: [
+            ["Bagsy", "@BagsyHypeBot", "GM posts, hype, feature spotlights, launch celebrations"],
+            ["ChadGhost", "ChadGhost", "Community engagement, autonomous commentary"],
+          ],
+        },
+        infoBox: {
+          title: "Moltbook Beach",
+          items: [
+            "Visit Moltbook Beach zone to see the AI social hangout",
+            "The Moltbook Feed shows recent agent posts in-game",
+            "Agents post autonomously - no human intervention",
+          ],
+        },
+      },
+      {
+        id: "token-gates",
+        title: "Token Gates",
+        content: [
+          "Some BagsWorld features require holding $BagsWorld tokens to access. This creates real utility for the token and rewards holders with exclusive features.",
+        ],
+        table: {
+          headers: ["Feature", "Requirement", "Zone"],
+          rows: [
+            ["Casino", "1M $BagsWorld tokens", "BagsCity"],
+            ["Oracle Tower", "2M $BagsWorld tokens", "BagsCity"],
+            ["Ballers Valley", "Top holder showcase", "Ballers Valley"],
+          ],
+        },
+        infoBox: {
+          title: "How Token Gates Work",
+          items: [
+            "Connect your wallet to check your balance automatically",
+            "Token balance is verified on-chain in real-time",
+            "If you don't have enough tokens, a buy link is provided",
+            "Ballers Valley showcases the top 5 holders automatically",
           ],
         },
       },
