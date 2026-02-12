@@ -202,6 +202,28 @@ export {
   type ListTasksOptions,
 } from "./task-board";
 
+// Corps (Tier 2 A2A)
+export {
+  seedFoundingCorp,
+  foundCorp,
+  joinCorp,
+  leaveCorp,
+  dissolveCorp,
+  promoteMember,
+  getCorp,
+  getCorpByAgentId,
+  getCorpByWallet,
+  listCorps,
+  generateServiceTask,
+  generateServiceResult,
+  recordTaskCompletion,
+  distributePayroll,
+  createMission,
+  progressMission,
+  getCorpMissions,
+  getCorpLeaderboard,
+} from "./corps";
+
 // Token launcher (Moltmint-style free launches)
 export {
   launchForExternal,

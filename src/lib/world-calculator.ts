@@ -748,6 +748,11 @@ export function generateGameEvent(type: GameEvent["type"], data: GameEvent["data
     task_claimed: (d) => `🔨 ${d?.username || "Agent"} claimed a bounty`,
     task_completed: (d) => `✅ Bounty completed by ${d?.username || "Agent"}`,
     a2a_message: (d) => `💬 ${d?.username || "Agent"} sent an A2A message`,
+    corp_founded: (d) => `🏛️ ${d?.username || "Agent"} founded a corp`,
+    corp_joined: (d) => `🏛️ ${d?.username || "Agent"} joined a corp`,
+    corp_mission_complete: (d) => `🎯 Corp mission completed: ${d?.tokenName || "mission"}`,
+    corp_payroll: (d) => `💵 Corp payroll distributed`,
+    corp_service: (d) => `📄 ${d?.username || "Agent"} posted a service task`,
   };
 
   return {

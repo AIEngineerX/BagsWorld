@@ -35,6 +35,11 @@ export type AgentEventType =
   | "task_claimed" // A2A: agent claimed a bounty
   | "task_completed" // A2A: bounty confirmed complete
   | "a2a_message" // A2A: agent-to-agent message
+  | "corp_founded" // Corp: new corp created
+  | "corp_joined" // Corp: agent joined a corp
+  | "corp_mission_complete" // Corp: mission completed
+  | "corp_payroll" // Corp: payroll distributed
+  | "corp_service" // Corp: service task posted/completed
   | "system"; // System messages
 
 export type AgentSource =
@@ -513,6 +518,54 @@ function generateAnnouncement(event: AgentEvent): string {
       return `${from} sent ${type} to ${to}`;
     }
 
+    case "corp_founded": {
+      const data = event.data as { corpName?: string; ceoName?: string; ticker?: string };
+      const corpName = data.corpName || "A new corp";
+      const ceo = data.ceoName || "An agent";
+      const ticker = data.ticker ? ` ($${data.ticker})` : "";
+      return `CORP FOUNDED: ${ceo} created "${corpName}"${ticker}`;
+    }
+
+    case "corp_joined": {
+      const data = event.data as { agentName?: string; corpName?: string };
+      const agent = data.agentName || "An agent";
+      const corp = data.corpName || "a corp";
+      return `${agent} joined ${corp}`;
+    }
+
+    case "corp_mission_complete": {
+      const data = event.data as { corpName?: string; missionTitle?: string; rewardSol?: number };
+      const corp = data.corpName || "A corp";
+      const mission = data.missionTitle || "a mission";
+      const reward = data.rewardSol ? ` — ${formatSol(data.rewardSol)} to treasury` : "";
+      return `MISSION: ${corp} completed "${mission}"${reward}`;
+    }
+
+    case "corp_payroll": {
+      const data = event.data as { corpName?: string; distributed?: number; recipients?: number };
+      const corp = data.corpName || "A corp";
+      const amount = data.distributed ? formatSol(data.distributed) : "SOL";
+      const count = data.recipients || 0;
+      return `PAYROLL: ${corp} distributed ${amount} to ${count} members`;
+    }
+
+    case "corp_service": {
+      const data = event.data as {
+        agentName?: string;
+        corpName?: string;
+        title?: string;
+        rewardSol?: number;
+        completed?: boolean;
+      };
+      const agent = data.agentName || "An agent";
+      const title = data.title || "a service task";
+      const reward = data.rewardSol ? ` (${formatSol(data.rewardSol)})` : "";
+      if (data.completed) {
+        return `${agent} completed "${title}" for ${data.corpName || "corp"}`;
+      }
+      return `${data.corpName || "CORP"}: ${agent} posted "${title}"${reward}`;
+    }
+
     case "system":
     default:
       return (event.data?.message as string) || "System event";
@@ -699,6 +752,72 @@ export async function emitA2AMessage(
   taskId?: string
 ): Promise<AgentEvent | null> {
   return emitEvent("a2a_message", "a2a", { fromName, toName, messageType, taskId }, "low");
+}
+
+/**
+ * Emit a corp founded event
+ */
+export async function emitCorpFounded(
+  corpName: string,
+  ceoName: string,
+  ticker: string
+): Promise<AgentEvent | null> {
+  return emitEvent("corp_founded", "task-board", { corpName, ceoName, ticker }, "high");
+}
+
+/**
+ * Emit a corp joined event
+ */
+export async function emitCorpJoined(
+  agentName: string,
+  corpName: string
+): Promise<AgentEvent | null> {
+  return emitEvent("corp_joined", "task-board", { agentName, corpName }, "medium");
+}
+
+/**
+ * Emit a corp mission complete event
+ */
+export async function emitCorpMissionComplete(
+  corpName: string,
+  missionTitle: string,
+  rewardSol: number
+): Promise<AgentEvent | null> {
+  return emitEvent(
+    "corp_mission_complete",
+    "task-board",
+    { corpName, missionTitle, rewardSol },
+    "high"
+  );
+}
+
+/**
+ * Emit a corp payroll event
+ */
+export async function emitCorpPayroll(
+  corpName: string,
+  distributed: number,
+  recipients: number
+): Promise<AgentEvent | null> {
+  return emitEvent("corp_payroll", "task-board", { corpName, distributed, recipients }, "medium");
+}
+
+/**
+ * Emit a corp service task event (posted or completed)
+ */
+export async function emitCorpService(
+  agentName: string,
+  corpName: string,
+  title: string,
+  rewardSol: number,
+  completed: boolean = false
+): Promise<AgentEvent | null> {
+  return emitEvent(
+    "corp_service",
+    "task-board",
+    { agentName, corpName, title, rewardSol, completed },
+    completed ? "high" : "medium"
+  );
 }
 
 // ============================================================================
