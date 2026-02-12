@@ -1,10 +1,77 @@
 // Agent Spawning System
 // Allows agents to join BagsWorld as visible characters in the game
 
-import type { GameCharacter, ZoneType } from "../types";
+import type { GameCharacter, ZoneType, AgentCapability, CapabilityEntry } from "../types";
 import { getAgentCredentials, storeAgentCredentials, listAgents } from "./credentials";
 import { getPrimaryWallet, getAgentTotalBalance } from "./wallet";
 import { fullAuthFlow } from "./auth";
+import { setCapabilities } from "./service-registry";
+
+// All capabilities for deterministic random assignment
+const ALL_CAPABILITIES: AgentCapability[] = [
+  "alpha",
+  "trading",
+  "content",
+  "launch",
+  "combat",
+  "scouting",
+  "analysis",
+];
+
+/**
+ * Infer capabilities for an agent based on available data.
+ * Uses wallet hash for deterministic random assignment so the same agent
+ * always gets the same capabilities.
+ */
+export function inferCapabilities(
+  wallet: string,
+  _username: string,
+  tokensLaunched: number,
+  feesEarned: number
+): CapabilityEntry[] {
+  const now = new Date().toISOString();
+  const caps: CapabilityEntry[] = [];
+
+  // All agents get content (they all have MoltBook presence)
+  caps.push({ capability: "content", confidence: 80, addedAt: now });
+
+  // Agents with launched tokens get launch
+  if (tokensLaunched > 0) {
+    caps.push({ capability: "launch", confidence: 75, addedAt: now });
+  }
+
+  // Agents with fee earnings get trading
+  if (feesEarned > 0) {
+    caps.push({ capability: "trading", confidence: 70, addedAt: now });
+  }
+
+  // Deterministic random assignment based on wallet hash
+  let hash = 0;
+  for (let i = 0; i < wallet.length; i++) {
+    hash = ((hash << 5) - hash + wallet.charCodeAt(i)) | 0;
+  }
+
+  // Each agent gets 2-4 additional capabilities (deterministic)
+  const extraCount = 2 + (Math.abs(hash) % 3);
+  const remaining = ALL_CAPABILITIES.filter((c) => !caps.find((e) => e.capability === c));
+
+  // Sort remaining based on hash for deterministic shuffle
+  const shuffled = [...remaining].sort((a, b) => {
+    const ha = Math.abs(((hash << 3) + a.charCodeAt(0)) | 0);
+    const hb = Math.abs(((hash << 3) + b.charCodeAt(0)) | 0);
+    return ha - hb;
+  });
+
+  for (let i = 0; i < Math.min(extraCount, shuffled.length); i++) {
+    caps.push({
+      capability: shuffled[i],
+      confidence: 50 + (Math.abs(hash + i * 7) % 30), // 50-79
+      addedAt: now,
+    });
+  }
+
+  return caps;
+}
 
 // Agent spawn configuration
 export interface AgentSpawnConfig {
@@ -164,6 +231,17 @@ export async function spawnAgent(config: AgentSpawnConfig): Promise<SpawnedAgent
 
   // Store in registry
   spawnedAgents.set(agentId, spawnedAgent);
+
+  // Auto-assign capabilities (non-critical — spawn should never fail due to this)
+  try {
+    const capabilities = inferCapabilities(wallet, moltbookUsername, 0, 0);
+    await setCapabilities(wallet, capabilities);
+    console.log(
+      `[Spawn] Assigned ${capabilities.length} capabilities to ${moltbookUsername}: ${capabilities.map((c) => c.capability).join(", ")}`
+    );
+  } catch (capErr) {
+    console.error(`[Spawn] Failed to assign capabilities (non-critical):`, capErr);
+  }
 
   console.log(
     `[Spawn] Agent ${moltbookUsername} spawned at (${spawnPoint.x}, ${spawnPoint.y}) in ${preferredZone}`

@@ -63,6 +63,182 @@ const DEFAULT_EXPIRY_HOURS = 24;
 const MAX_EXPIRY_HOURS = 168; // 7 days
 
 // ============================================================================
+// TASK TEMPLATES & RESULT GENERATORS
+// ============================================================================
+
+export const TASK_TEMPLATES: Record<
+  AgentCapability,
+  Array<{ title: string; description: string }>
+> = {
+  alpha: [
+    {
+      title: "Scout trending tokens on DexScreener",
+      description: "Find tokens with unusual volume or fee activity in the last 24h",
+    },
+    {
+      title: "Identify whale accumulation patterns",
+      description: "Analyze top wallets for large buys across Bags.fm tokens",
+    },
+    {
+      title: "Find undervalued fee-earning tokens",
+      description: "Locate tokens with high fee yield but low market cap",
+    },
+  ],
+  trading: [
+    {
+      title: "Execute momentum trade on top volume token",
+      description: "Identify and execute a momentum play on the highest-volume token today",
+    },
+    {
+      title: "Rebalance portfolio for risk reduction",
+      description: "Review current positions and suggest rebalancing to reduce concentration risk",
+    },
+    {
+      title: "Find arbitrage between DEXes",
+      description: "Scan for price discrepancies across Raydium, Orca, and Jupiter",
+    },
+  ],
+  content: [
+    {
+      title: "Write MoltBook alpha thread",
+      description: "Create an engaging thread about today's top market moves and opportunities",
+    },
+    {
+      title: "Create community engagement post",
+      description: "Draft a post that encourages discussion and interaction on MoltBook",
+    },
+    {
+      title: "Summarize daily market activity",
+      description: "Write a concise summary of today's fee claims, launches, and notable trades",
+    },
+  ],
+  launch: [
+    {
+      title: "Evaluate token launch concept",
+      description: "Review a proposed token idea for market fit, naming, and positioning",
+    },
+    {
+      title: "Design tokenomics for new project",
+      description: "Create a fee structure and distribution plan for a new token launch",
+    },
+    {
+      title: "Review launch readiness checklist",
+      description: "Verify all requirements are met before proceeding with a token launch",
+    },
+  ],
+  combat: [
+    {
+      title: "Train combat strategy for arena",
+      description: "Develop and test a new combat strategy for arena battles",
+    },
+    {
+      title: "Analyze top arena fighter tactics",
+      description: "Study the top 5 arena fighters and document their winning patterns",
+    },
+    {
+      title: "Develop counter-strategy for ranked play",
+      description: "Create counter-strategies for the most common arena builds",
+    },
+  ],
+  scouting: [
+    {
+      title: "Monitor new launches for 1 hour",
+      description: "Watch for new token launches and report on initial traction and volume",
+    },
+    {
+      title: "Track whale wallet movements",
+      description: "Monitor top 10 whale wallets for unusual transfer or swap activity",
+    },
+    {
+      title: "Find tokens with rising fee activity",
+      description: "Identify tokens showing increasing fee generation over the past 48h",
+    },
+  ],
+  analysis: [
+    {
+      title: "Deep analysis on top 5 fee tokens",
+      description: "Comprehensive breakdown of the top 5 tokens by lifetime fees generated",
+    },
+    {
+      title: "Research market sentiment trends",
+      description: "Analyze MoltBook posts and trading patterns to gauge overall market sentiment",
+    },
+    {
+      title: "Compile weekly performance report",
+      description:
+        "Create a report covering key metrics: volume, fees, launches, and agent activity",
+    },
+  ],
+};
+
+export const RESULT_TEMPLATES: Record<AgentCapability, () => Record<string, unknown>> = {
+  alpha: () => ({
+    tokensFound: Math.floor(Math.random() * 5) + 1,
+    topPick: ["BAGS", "MOLT", "GHOST", "FINN", "NEO"][Math.floor(Math.random() * 5)],
+    confidence: Math.floor(Math.random() * 30) + 65,
+    summary: "Identified several tokens with unusual fee accumulation patterns",
+  }),
+  trading: () => ({
+    tradesAnalyzed: Math.floor(Math.random() * 8) + 3,
+    recommendation: ["buy", "hold", "rebalance"][Math.floor(Math.random() * 3)],
+    expectedReturn: `${(Math.random() * 20 + 2).toFixed(1)}%`,
+    riskLevel: ["low", "medium"][Math.floor(Math.random() * 2)],
+  }),
+  content: () => ({
+    postDrafted: true,
+    wordCount: Math.floor(Math.random() * 200) + 100,
+    platform: "moltbook",
+    engagement: ["high", "medium"][Math.floor(Math.random() * 2)],
+  }),
+  launch: () => ({
+    conceptScore: Math.floor(Math.random() * 30) + 65,
+    marketFit: ["strong", "moderate", "promising"][Math.floor(Math.random() * 3)],
+    suggestions: Math.floor(Math.random() * 3) + 1,
+    readiness: `${Math.floor(Math.random() * 30) + 70}%`,
+  }),
+  combat: () => ({
+    strategiesDevised: Math.floor(Math.random() * 3) + 1,
+    winRateEstimate: `${Math.floor(Math.random() * 25) + 55}%`,
+    countersIdentified: Math.floor(Math.random() * 4) + 2,
+    arenaReady: true,
+  }),
+  scouting: () => ({
+    launchesDetected: Math.floor(Math.random() * 6) + 1,
+    whaleMovements: Math.floor(Math.random() * 4),
+    alertsSent: Math.floor(Math.random() * 3) + 1,
+    scanDurationMinutes: Math.floor(Math.random() * 40) + 20,
+  }),
+  analysis: () => ({
+    tokensAnalyzed: Math.floor(Math.random() * 8) + 3,
+    reportGenerated: true,
+    keyInsights: Math.floor(Math.random() * 4) + 2,
+    dataPointsProcessed: Math.floor(Math.random() * 500) + 100,
+  }),
+};
+
+/**
+ * Generate a random task for a given capability.
+ */
+export function generateTaskForCapability(cap: AgentCapability): PostTaskOptions {
+  const templates = TASK_TEMPLATES[cap];
+  const template = templates[Math.floor(Math.random() * templates.length)];
+  return {
+    title: template.title,
+    description: template.description,
+    capabilityRequired: cap,
+    rewardSol: parseFloat((Math.random() * 0.09 + 0.01).toFixed(3)),
+    expiryHours: 24,
+  };
+}
+
+/**
+ * Generate plausible result data for a completed task.
+ */
+export function generateResultForCapability(cap: AgentCapability): Record<string, unknown> {
+  return RESULT_TEMPLATES[cap]();
+}
+
+// ============================================================================
 // POST TASK
 // ============================================================================
 

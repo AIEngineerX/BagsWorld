@@ -19,9 +19,25 @@ import {
 import { logAgentAction } from "./credentials";
 import { lamportsToSol, DEFAULT_AGENT_ECONOMY_CONFIG } from "./types";
 import { makeTradeDecision, type StrategyType, type TradeDecision } from "./brain";
-import { emitFeeClaim, emitEvent, emitA2AMessage } from "../agent-coordinator";
+import {
+  emitFeeClaim,
+  emitEvent,
+  emitA2AMessage,
+  emitTaskPosted,
+  emitTaskClaimed,
+  emitTaskCompleted,
+} from "../agent-coordinator";
 import { getInbox, markAsRead, sendA2AMessage, cleanupOldMessages } from "./a2a-protocol";
-import { listTasks, expireOverdueTasks } from "./task-board";
+import {
+  listTasks,
+  expireOverdueTasks,
+  postTask,
+  claimTask,
+  deliverTask,
+  confirmTask,
+  generateTaskForCapability,
+  generateResultForCapability,
+} from "./task-board";
 import { getCapabilities } from "./service-registry";
 
 // ============================================================================
@@ -474,13 +490,24 @@ async function processAgent(
           );
         }
 
-        // Log task requests (don't auto-accept — brain should decide in future tiers)
+        // Respond to task requests — accept (50%) or reject (50%)
         if (msg.type === "task_request") {
-          console.log(
-            `[Loop] ${agent.username}: Received task request from ${msg.fromWallet.slice(0, 8)}...: ${JSON.stringify(msg.payload).slice(0, 100)}`
+          const accepted = Math.random() > 0.5;
+          await sendA2AMessage(
+            wallet,
+            msg.fromWallet,
+            accepted ? "task_accept" : "task_reject",
+            {
+              agent: agent.username,
+              decision: accepted ? "accepted" : "rejected",
+              respondedAt: new Date().toISOString(),
+            },
+            { conversationId: msg.conversationId, taskId: msg.taskId }
           );
-          // Mark as read so it doesn't show up next cycle — agent "saw" it
           await markAsRead(msg.id);
+          console.log(
+            `[Loop] ${agent.username}: ${accepted ? "Accepted" : "Rejected"} task request from ${msg.fromWallet.slice(0, 8)}...`
+          );
         }
 
         // Emit A2A event for the activity feed
@@ -497,7 +524,7 @@ async function processAgent(
   }
 
   // =========================================================================
-  // STEP 7: SCAN TASK BOARD FOR MATCHING TASKS (non-critical)
+  // STEP 7: TASK BOARD — ACTIVE PARTICIPATION (non-critical)
   // =========================================================================
 
   try {
@@ -505,26 +532,142 @@ async function processAgent(
     const caps = await getCapabilities(wallet);
 
     if (caps.length > 0) {
-      // Check for open tasks that match our capabilities
-      for (const cap of caps) {
-        const { tasks } = await listTasks({
-          status: "open",
-          capability: cap.capability,
-          limit: 3,
+      // --- 7a: Maybe post a task (~15% chance per cycle) ---
+      try {
+        if (Math.random() < 0.15) {
+          // Only if agent has reputation >= 100 and < 3 open tasks
+          const { tasks: myOpenTasks } = await listTasks({
+            status: "open",
+            posterWallet: wallet,
+            limit: 3,
+          });
+
+          if (myOpenTasks.length < 3) {
+            const randomCap = caps[Math.floor(Math.random() * caps.length)];
+            const taskOpts = generateTaskForCapability(randomCap.capability);
+
+            const posted = await postTask(wallet, 100, taskOpts);
+            console.log(
+              `[Loop] ${agent.username}: Posted task "${posted.title}" (${randomCap.capability}, ${posted.rewardSol} SOL)`
+            );
+
+            emitTaskPosted(
+              agent.username,
+              posted.title,
+              randomCap.capability,
+              posted.rewardSol,
+              posted.id
+            ).catch(() => {});
+          }
+        }
+      } catch (postErr) {
+        console.error(`[Loop] ${agent.username}: Task posting failed (non-critical):`, postErr);
+      }
+
+      // --- 7b: Maybe claim a matching task (~40% chance when found) ---
+      try {
+        for (const cap of caps) {
+          const { tasks } = await listTasks({
+            status: "open",
+            capability: cap.capability,
+            limit: 3,
+          });
+
+          for (const task of tasks) {
+            // Skip own tasks
+            if (task.posterWallet === wallet) continue;
+
+            // 40% chance to claim
+            if (Math.random() < 0.4) {
+              const claimed = await claimTask(task.id, wallet);
+              console.log(
+                `[Loop] ${agent.username}: Claimed task "${claimed.title}" (${cap.capability})`
+              );
+
+              // Send A2A task_accept to poster
+              await sendA2AMessage(wallet, task.posterWallet, "task_accept", {
+                agent: agent.username,
+                taskTitle: claimed.title,
+                claimedAt: new Date().toISOString(),
+              });
+
+              emitTaskClaimed(
+                agent.username,
+                task.posterWallet.slice(0, 8) + "...",
+                claimed.title,
+                claimed.id
+              ).catch(() => {});
+
+              break; // Only claim one per cycle
+            }
+          }
+        }
+      } catch (claimErr) {
+        console.error(`[Loop] ${agent.username}: Task claiming failed (non-critical):`, claimErr);
+      }
+
+      // --- 7c: Deliver claimed tasks (always, if enough time has passed) ---
+      try {
+        const { tasks: claimedTasks } = await listTasks({
+          status: "claimed",
+          claimerWallet: wallet,
+          limit: 5,
         });
 
-        // Log matching tasks (auto-claiming is a future tier feature)
-        for (const task of tasks) {
-          // Don't log our own tasks
-          if (task.posterWallet === wallet) continue;
-          console.log(
-            `[Loop] ${agent.username}: Found matching task "${task.title}" (${cap.capability}, ${task.rewardSol} SOL)`
-          );
+        for (const task of claimedTasks) {
+          // Check if at least 2 minutes have passed since claimed (simulates work)
+          const claimedAt = task.claimedAt ? new Date(task.claimedAt).getTime() : 0;
+          const elapsed = Date.now() - claimedAt;
+          if (elapsed < 2 * 60 * 1000) continue;
+
+          const resultData = generateResultForCapability(task.capabilityRequired);
+          const delivered = await deliverTask(task.id, wallet, resultData);
+          console.log(`[Loop] ${agent.username}: Delivered task "${delivered.title}"`);
+
+          // Send A2A task_deliver to poster
+          await sendA2AMessage(wallet, task.posterWallet, "task_deliver", {
+            agent: agent.username,
+            taskTitle: delivered.title,
+            resultSummary: Object.keys(resultData).join(", "),
+            deliveredAt: new Date().toISOString(),
+          });
         }
+      } catch (deliverErr) {
+        console.error(`[Loop] ${agent.username}: Task delivery failed (non-critical):`, deliverErr);
+      }
+
+      // --- 7d: Confirm delivered tasks (always, if we posted them) ---
+      try {
+        const { tasks: deliveredTasks } = await listTasks({
+          status: "delivered",
+          posterWallet: wallet,
+          limit: 5,
+        });
+
+        for (const task of deliveredTasks) {
+          const confirmed = await confirmTask(task.id, wallet, "Good work, task completed!");
+          console.log(`[Loop] ${agent.username}: Confirmed task "${confirmed.title}"`);
+
+          emitTaskCompleted(
+            task.claimerWallet?.slice(0, 8) + "..." || "???",
+            agent.username,
+            confirmed.title,
+            confirmed.rewardSol,
+            confirmed.id
+          ).catch(() => {});
+        }
+      } catch (confirmErr) {
+        console.error(
+          `[Loop] ${agent.username}: Task confirmation failed (non-critical):`,
+          confirmErr
+        );
       }
     }
   } catch (taskErr) {
-    console.error(`[Loop] ${agent.username}: Task board scan failed (non-critical):`, taskErr);
+    console.error(
+      `[Loop] ${agent.username}: Task board participation failed (non-critical):`,
+      taskErr
+    );
   }
 
   return result;
