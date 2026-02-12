@@ -1997,9 +1997,12 @@ export async function POST(request: NextRequest) {
     // Emit event
     const claimerAgent = await getExternalAgent(wallet);
     const posterAgent = await getExternalAgent(task.posterWallet);
+    const posterName = task.posterWallet === "bagsy-internal" ? "Bagsy"
+      : task.posterWallet === "chadghost-internal" ? "ChadGhost"
+      : posterAgent?.name || task.posterWallet.slice(0, 8) + "...";
     emitTaskClaimed(
       claimerAgent?.name || wallet.slice(0, 8) + "...",
-      posterAgent?.name || task.posterWallet.slice(0, 8) + "...",
+      posterName,
       task.title,
       task.id
     ).catch(() => {});
@@ -2037,8 +2040,9 @@ export async function POST(request: NextRequest) {
     // Emit completion event
     const posterAgent = await getExternalAgent(wallet);
     const claimerAgent = task.claimerWallet ? await getExternalAgent(task.claimerWallet) : null;
+    const claimerName = claimerAgent?.name || (task.claimerWallet ? task.claimerWallet.slice(0, 8) + "..." : "???");
     emitTaskCompleted(
-      claimerAgent?.name || (task.claimerWallet?.slice(0, 8) || "???") + "...",
+      claimerName,
       posterAgent?.name || wallet.slice(0, 8) + "...",
       task.title,
       task.rewardSol,
