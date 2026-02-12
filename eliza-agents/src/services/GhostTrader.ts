@@ -58,9 +58,9 @@ const DEFAULT_CONFIG = {
   minMarketCapUsd: 2000, // $2K minimum (runners can start small)
   // Quality filters - aligned with BagBot patterns
   maxCreatorFeeBps: 500, // 5% max (some Bags creators set higher)
-  minBuySellRatio: 1.15, // Bullish pressure required (BagBot uses 1.2)
+  minBuySellRatio: 1.05, // Light bullish pressure (relaxed from 1.15 — sideways markets need room)
   minHolders: 5, // New tokens start with few holders
-  minVolume24hUsd: 5000, // $5K volume - lowered for more opportunities
+  minVolume24hUsd: 1500, // $1.5K volume - lowered for Bags.fm market reality
   maxPriceImpactPercent: 10.0, // 10% max - Bags.fm micro-caps need wider tolerance
   // Timing - EXPANDED (Bags runners are days old, not minutes)
   minLaunchAgeSec: 300, // 5 minutes minimum (avoid instant rugs)
@@ -265,8 +265,10 @@ export class GhostTrader {
   private recentlyEvaluated: Map<string, number> = new Map();
   private static readonly EVALUATION_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes for faster iteration
 
-  // Tracking which launches we've already traded
+  // Tracking which launches we've already traded (cleared every 4h to allow re-evaluation)
   private tradedMints: Set<string> = new Set();
+  private tradedMintsLastClear: number = Date.now();
+  private static readonly TRADED_MINTS_CLEAR_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
   // Chatter cooldown (avoid spamming speech bubbles)
   private lastChatter: number = 0;
@@ -727,6 +729,9 @@ export class GhostTrader {
 
       if (perf && perf.scoreAdjustment !== 0) {
         totalAdjustment += perf.scoreAdjustment;
+        // Cap cumulative penalties at -15 to prevent learning death spiral
+        // (multiple -10 signals would otherwise make 55 threshold unreachable)
+        if (totalAdjustment < -15) totalAdjustment = -15;
         appliedSignals.push(`${signal} (${perf.scoreAdjustment > 0 ? "+" : ""}${perf.scoreAdjustment})`);
       }
     }
@@ -799,6 +804,23 @@ export class GhostTrader {
     if (!this.ghostWalletPrivateKey || !this.ghostWalletPublicKey) {
       console.log("[GhostTrader] No wallet configured, skipping evaluation");
       return;
+    }
+
+    // Periodically clear tradedMints so tokens can be re-evaluated
+    // (market conditions change — a token rejected 4h ago may now qualify)
+    const now = Date.now();
+    if (now - this.tradedMintsLastClear > GhostTrader.TRADED_MINTS_CLEAR_INTERVAL_MS) {
+      // Keep mints we currently have open positions on
+      const openMints = new Set<string>();
+      for (const p of this.positions.values()) {
+        if (p.status === "open") openMints.add(p.tokenMint);
+      }
+      const prevSize = this.tradedMints.size;
+      this.tradedMints = openMints;
+      this.tradedMintsLastClear = now;
+      console.log(
+        `[GhostTrader] Cleared tradedMints (${prevSize} -> ${openMints.size}), allowing re-evaluation`
+      );
     }
 
     // Check if we have capacity for new positions
@@ -1446,7 +1468,10 @@ export class GhostTrader {
 
         if (hasNegativeExperience) {
           score -= 10;
-          redFlags.push("burned on this token before");
+          reasons.push("negative past experience (-10)");
+          // NOTE: no redFlag here — prior fixes (4defe6a, 9fc70d4) showed that
+          // redFlag vetoes on learned data cause Ghost to stop trading entirely.
+          // The -10 score penalty is sufficient without a hard veto.
         }
 
         const hasPositiveExperience = tokenMemories.some(
