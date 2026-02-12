@@ -25,7 +25,8 @@ import {
   touchExternalAgent,
   getAgentBuildingHealth,
 } from "@/lib/agent-economy/external-registry";
-import { inferCapabilities } from "@/lib/agent-economy/spawn";
+import { inferCapabilities, getSpawnedAgents, getSpawnedAgent } from "@/lib/agent-economy/spawn";
+import { BAGSWORLD_AGENTS } from "@/lib/agent-data";
 import {
   queryAgentsWithReputation,
   getAgentDetail,
@@ -75,7 +76,9 @@ import {
   listTasks,
   getTask,
   getTaskStats,
+  listRecentCompletedTasks,
 } from "@/lib/agent-economy/task-board";
+import { recallMemories } from "@/lib/agent-economy/memory";
 import {
   emitTaskPosted,
   emitTaskClaimed,
@@ -102,6 +105,34 @@ import {
   createMission,
   generateCorpTaskBoard,
 } from "@/lib/agent-economy/corps";
+
+// ============================================================================
+// AGENT NAME RESOLUTION HELPER
+// ============================================================================
+
+/**
+ * Resolve wallet address → agent display name.
+ * Tries spawned agents first, then falls back to BAGSWORLD_AGENTS by matching agentId.
+ * This ensures founding corp agents (Finn, Ramo, etc.) resolve correctly even when
+ * the economy loop hasn't spawned them into memory.
+ */
+function resolveAgentName(wallet: string | undefined | null, spawnedAgents?: ReturnType<typeof getSpawnedAgents>): string {
+  if (!wallet) return "unknown";
+  const agents = spawnedAgents || getSpawnedAgents();
+
+  // Try spawned agent registry first
+  const spawned = agents.find((a) => a.wallet === wallet);
+  if (spawned) return spawned.username;
+
+  // Fallback: check external registry name
+  // (External agents registered via join)
+  // For founding corp agents, their agentIds are used as wallets in the task board
+  // so also check if the wallet matches a BAGSWORLD_AGENTS id
+  const byId = BAGSWORLD_AGENTS.find((a) => a.id === wallet);
+  if (byId) return byId.name;
+
+  return wallet.slice(0, 8);
+}
 
 // ============================================================================
 // IMAGE GENERATION HELPER
@@ -940,6 +971,123 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, stats });
   }
 
+  // =========================================================================
+  // ACTIVITY FEED — recent completed tasks with agent names resolved
+  // =========================================================================
+
+  if (action === "activity-feed") {
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 50);
+    try {
+      const tasks = await listRecentCompletedTasks(limit);
+      const agents = getSpawnedAgents();
+
+      const events = tasks.map((task) => {
+        const narrative =
+          typeof task.resultData?.narrative === "string" ? task.resultData.narrative : null;
+
+        return {
+          taskId: task.id,
+          title: task.title,
+          capability: task.capabilityRequired,
+          status: task.status,
+          posterName: resolveAgentName(task.posterWallet, agents),
+          workerName: resolveAgentName(task.claimerWallet, agents),
+          narrative,
+          resultData: task.resultData,
+          rewardSol: task.rewardSol,
+          deliveredAt: task.deliveredAt,
+          completedAt: task.completedAt,
+          createdAt: task.createdAt,
+        };
+      });
+
+      return NextResponse.json({ success: true, events });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to fetch activity feed" },
+        { status: 500 }
+      );
+    }
+  }
+
+  // =========================================================================
+  // AGENT WORK LOG — per-agent deliveries + memories
+  // =========================================================================
+
+  if (action === "agent-work-log") {
+    const agentId = searchParams.get("agentId");
+    if (!agentId) {
+      return NextResponse.json(
+        { success: false, error: "agentId query parameter required" },
+        { status: 400 }
+      );
+    }
+
+    try {
+      // Try spawned agent first, then fall back to BAGSWORLD_AGENTS for founding members
+      const spawnedAgent = getSpawnedAgent(agentId);
+      const bagsAgent = BAGSWORLD_AGENTS.find((a) => a.id === agentId);
+      const wallet = spawnedAgent?.wallet;
+      const agentName = spawnedAgent?.username || bagsAgent?.name || agentId;
+      const agentRole = bagsAgent?.role || undefined;
+
+      // Get completed tasks where this agent was the worker (by wallet or agentId)
+      let deliveries: import("@/lib/types").AgentTask[] = [];
+      if (wallet) {
+        const result = await listTasks({ claimerWallet: wallet, status: "completed", limit: 10 });
+        deliveries = result.tasks;
+        // Also get delivered (awaiting confirmation)
+        const delivered = await listTasks({ claimerWallet: wallet, status: "delivered", limit: 5 });
+        deliveries = [...delivered.tasks, ...deliveries];
+      }
+      // Also try querying by agentId as wallet (some internal tasks use agentId)
+      if (deliveries.length === 0) {
+        try {
+          const byId = await listTasks({ claimerWallet: agentId, status: "completed", limit: 10 });
+          if (byId.tasks.length > 0) deliveries = byId.tasks;
+        } catch {
+          // Not all agentIds will match wallets — that's fine
+        }
+      }
+
+      // Get agent's memories
+      let memories: Array<{ title: string; content: string; createdAt: string }> = [];
+      try {
+        memories = await recallMemories({ agentId, limit: 10 });
+      } catch {
+        // Memory table may not exist yet
+      }
+
+      return NextResponse.json({
+        success: true,
+        agentId,
+        agentName,
+        agentRole,
+        isFoundingMember: !!bagsAgent,
+        deliveries: deliveries.map((t) => ({
+          title: t.title,
+          capability: t.capabilityRequired,
+          status: t.status,
+          narrative:
+            typeof t.resultData?.narrative === "string" ? t.resultData.narrative : null,
+          resultData: t.resultData,
+          completedAt: t.completedAt || t.deliveredAt,
+          rewardSol: t.rewardSol,
+        })),
+        memories: memories.map((m) => ({
+          title: m.title,
+          content: m.content,
+          createdAt: m.createdAt,
+        })),
+      });
+    } catch (err) {
+      return NextResponse.json(
+        { success: false, error: err instanceof Error ? err.message : "Failed to fetch agent work log" },
+        { status: 500 }
+      );
+    }
+  }
+
   // Corp task board — real delegation logic with agent names (not wallets)
   if (action === "corp-tasks") {
     try {
@@ -954,6 +1102,29 @@ export async function GET(request: NextRequest) {
         role: m.role,
       }));
       const tasks = generateCorpTaskBoard(members);
+
+      // Fetch recent real completed tasks for the "Recent Deliveries" section
+      let recentDeliveries: Array<Record<string, unknown>> = [];
+      try {
+        const recentTasks = await listRecentCompletedTasks(8);
+        const agents = getSpawnedAgents();
+        recentDeliveries = recentTasks.map((t) => ({
+          title: t.title,
+          capability: t.capabilityRequired,
+          status: t.status,
+          posterName: resolveAgentName(t.posterWallet, agents),
+          workerName: resolveAgentName(t.claimerWallet, agents),
+          narrative: typeof t.resultData?.narrative === "string" ? t.resultData.narrative : null,
+          resultData: t.resultData || {},
+          rewardSol: t.rewardSol,
+          deliveredAt: t.deliveredAt,
+          completedAt: t.completedAt,
+          createdAt: t.createdAt,
+        }));
+      } catch {
+        // DB may not be configured — recentDeliveries stays empty
+      }
+
       return NextResponse.json({
         success: true,
         corp: { name: founding.name, ticker: founding.ticker },
@@ -963,6 +1134,7 @@ export async function GET(request: NextRequest) {
           reputationScore: founding.reputationScore,
         },
         tasks,
+        recentDeliveries,
       });
     } catch (err) {
       return NextResponse.json(

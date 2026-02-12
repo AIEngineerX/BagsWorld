@@ -514,7 +514,7 @@ const ROLE_TASK_PREFERENCES: Record<CorpRole, { categories: string[]; capabiliti
   cmo: { categories: ["education", "intelligence"], capabilities: ["content", "alpha", "launch"] },
   coo: { categories: ["intelligence", "onboarding"], capabilities: ["scouting", "content", "analysis"] },
   cfo: { categories: ["intelligence", "education"], capabilities: ["analysis", "trading", "alpha"] },
-  member: { categories: ["onboarding", "education"], capabilities: ["content", "scouting", "analysis"] },
+  member: { categories: ["education", "intelligence"], capabilities: ["content", "scouting", "analysis"] },
 };
 
 // ============================================================================

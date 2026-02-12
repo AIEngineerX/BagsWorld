@@ -701,6 +701,28 @@ export async function expireOverdueTasks(): Promise<number> {
 }
 
 // ============================================================================
+// RECENT COMPLETED TASKS (for activity feed / work log)
+// ============================================================================
+
+/**
+ * Get recent delivered/completed tasks with full result data.
+ * Used by the activity feed and agent work log UI.
+ */
+export async function listRecentCompletedTasks(limit: number = 20): Promise<AgentTask[]> {
+  await ensureTaskTable();
+  const sql = getDb();
+
+  const rows = await sql`
+    SELECT * FROM agent_tasks
+    WHERE status IN ('delivered', 'completed')
+    ORDER BY COALESCE(delivered_at, completed_at, created_at) DESC
+    LIMIT ${limit}
+  `;
+
+  return rows.map(rowToTask);
+}
+
+// ============================================================================
 // HELPERS
 // ============================================================================
 
