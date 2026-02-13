@@ -275,7 +275,7 @@ async function handleTokenInfo(mint: string): Promise<NextResponse> {
   const pair = data.pairs?.[0];
 
   const dexPrice = pair ? parseFloat(pair.priceUsd) || 0 : 0;
-  const dexMcap = pair?.marketCap || 0;
+  const dexMcap = pair?.marketCap || pair?.fdv || 0;
   const dexHasData = pair && (dexPrice > 0 || dexMcap > 0);
 
   // If DexScreener has no pair or returned all zeros, try GeckoTerminal
@@ -298,7 +298,7 @@ async function handleTokenInfo(mint: string): Promise<NextResponse> {
     symbol: pair.baseToken?.symbol || "???",
     imageUrl: pair.info?.imageUrl,
     price: parseFloat(pair.priceUsd) || 0,
-    marketCap: pair.marketCap || 0,
+    marketCap: pair.marketCap || pair.fdv || 0,
     fdv: pair.fdv || pair.marketCap || 0,
     volume24h: pair.volume?.h24 || 0,
     volume6h: pair.volume?.h6 || 0,
@@ -616,7 +616,7 @@ async function fetchDexScreenerData(mint: string): Promise<{
 
   const result = {
     priceUsd: parseFloat(pair.priceUsd) || 0,
-    marketCap: pair.marketCap || 0,
+    marketCap: pair.marketCap || pair.fdv || 0,
     volume24h: pair.volume?.h24 || 0,
     priceChange24h: pair.priceChange?.h24 || 0,
   };

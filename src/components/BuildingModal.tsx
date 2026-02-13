@@ -147,45 +147,94 @@ export function BuildingModal({
           horzLines: { color: "#1e293b" },
         },
         crosshair: {
-          mode: 1,
-          vertLine: { width: 1, color: "#06b6d4", style: 2, labelBackgroundColor: "#06b6d4" },
-          horzLine: { width: 1, color: "#06b6d4", style: 2, labelBackgroundColor: "#06b6d4" },
+          mode: 0,
+          vertLine: { width: 1, color: "#00ff8844", style: 2, labelBackgroundColor: "#0a3a1f" },
+          horzLine: { width: 1, color: "#00ff8844", style: 2, labelBackgroundColor: "#0a3a1f" },
         },
         rightPriceScale: {
           borderColor: "#1e293b",
-          scaleMargins: { top: 0.1, bottom: 0.2 },
+          scaleMargins: { top: 0.05, bottom: 0.05 },
         },
         timeScale: {
           borderColor: "#1e293b",
           timeVisible: true,
           secondsVisible: false,
+          fixLeftEdge: true,
+          fixRightEdge: true,
+          tickMarkFormatter: (time: number) => {
+            const d = new Date(time * 1000);
+            const hh = d.getUTCHours().toString().padStart(2, "0");
+            const mm = d.getUTCMinutes().toString().padStart(2, "0");
+            const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
+            const day = d.getUTCDate();
+            if (chartInterval === "5m" || chartInterval === "15m") {
+              return `${hh}:${mm}`;
+            }
+            if (chartInterval === "1h" || chartInterval === "4h") {
+              return `${mon} ${day} ${hh}:${mm}`;
+            }
+            return `${mon} ${day}`;
+          },
         },
       });
 
+      // Calculate price precision from OHLCV data — memecoin prices can be
+      // as small as $0.000000001, so the default precision:2 rounds them to $0.00
+      // making candles invisible (zero height).
+      const candles = ohlcvData?.candles as OHLCVCandle[] | undefined;
+      let pricePrecision = 2;
+      let priceMinMove = 0.01;
+      if (candles && candles.length > 0) {
+        const minPrice = Math.min(...candles.map((c) => Math.min(c.open, c.low, c.close)));
+        if (minPrice > 0) {
+          pricePrecision = Math.max(2, Math.ceil(-Math.log10(minPrice)) + 2);
+          priceMinMove = Math.pow(10, -pricePrecision);
+        }
+      }
+
+      // Compute tight Y-axis range from data — 5% padding above and below
+      // prevents the chart from auto-scaling down to 0 and wasting space
+      let dataMinPrice = 0;
+      let dataMaxPrice = 0;
+      if (candles && candles.length > 0) {
+        dataMinPrice = Math.min(...candles.map((c) => c.low));
+        dataMaxPrice = Math.max(...candles.map((c) => c.high));
+      }
+
       const candlestickSeries = chart.addSeries(CandlestickSeries, {
-        upColor: "#22c55e",
-        downColor: "#ef4444",
-        borderDownColor: "#ef4444",
-        borderUpColor: "#22c55e",
-        wickDownColor: "#ef4444",
-        wickUpColor: "#22c55e",
+        upColor: "#00ff88",
+        downColor: "#ff4444",
+        borderDownColor: "#ff4444",
+        borderUpColor: "#00ff88",
+        wickDownColor: "#ff4444",
+        wickUpColor: "#00ff88",
+        priceFormat: {
+          type: "price",
+          precision: pricePrecision,
+          minMove: priceMinMove,
+        },
+        autoscaleInfoProvider: () => ({
+          priceRange: {
+            minValue: dataMinPrice * 0.95,
+            maxValue: dataMaxPrice * 1.05,
+          },
+        }),
       });
 
       const volumeSeries = chart.addSeries(HistogramSeries, {
-        color: "#22c55e",
+        color: "#00ff88",
         priceFormat: { type: "volume" },
         priceScaleId: "",
       });
 
       volumeSeries.priceScale().applyOptions({
-        scaleMargins: { top: 0.8, bottom: 0 },
+        scaleMargins: { top: 0.85, bottom: 0 },
       });
 
       chartRef.current = chart;
       candlestickSeriesRef.current = candlestickSeries;
       volumeSeriesRef.current = volumeSeries;
 
-      const candles = ohlcvData?.candles as OHLCVCandle[] | undefined;
       if (candles && candles.length > 0) {
         candlestickSeries.setData(
           candles.map((c) => ({
@@ -200,7 +249,7 @@ export function BuildingModal({
           candles.map((c) => ({
             time: c.time as Time,
             value: c.volume,
-            color: c.close >= c.open ? "#22c55e40" : "#ef444440",
+            color: c.close >= c.open ? "#00ff8840" : "#ff444440",
           }))
         );
         chart.timeScale().fitContent();
@@ -226,37 +275,6 @@ export function BuildingModal({
       }
     };
   }, [chartInterval, ohlcvData]);
-
-  // Update chart data on OHLCV changes
-  useEffect(() => {
-    if (!chartRef.current || !candlestickSeriesRef.current || !volumeSeriesRef.current) return;
-    if (!ohlcvData?.candles) return;
-
-    const candles = ohlcvData.candles as OHLCVCandle[];
-    if (candles.length === 0) {
-      candlestickSeriesRef.current.setData([]);
-      volumeSeriesRef.current.setData([]);
-      return;
-    }
-
-    candlestickSeriesRef.current.setData(
-      candles.map((c) => ({
-        time: c.time as Time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-      }))
-    );
-    volumeSeriesRef.current.setData(
-      candles.map((c) => ({
-        time: c.time as Time,
-        value: c.volume,
-        color: c.close >= c.open ? "#22c55e40" : "#ef444440",
-      }))
-    );
-    chartRef.current.timeScale().fitContent();
-  }, [ohlcvData]);
 
   // Quote fetching
   const fetchQuote = useCallback(async () => {
@@ -454,10 +472,17 @@ export function BuildingModal({
                 </div>
               </div>
               <div className="bg-bags-dark p-2 sm:p-3">
-                <div className="font-pixel text-[7px] text-gray-500">MCAP</div>
+                <div className="font-pixel text-[7px] text-gray-500">
+                  {tokenInfo && tokenInfo.fdv && tokenInfo.fdv !== tokenInfo.marketCap ? "MCAP / FDV" : "MCAP"}
+                </div>
                 <div className="font-pixel text-[10px] sm:text-xs text-white">
                   {tokenInfo ? formatMarketCap(tokenInfo.marketCap) : "..."}
                 </div>
+                {tokenInfo && tokenInfo.fdv > 0 && tokenInfo.fdv !== tokenInfo.marketCap && (
+                  <div className="font-pixel text-[7px] text-gray-500">
+                    FDV {formatMarketCap(tokenInfo.fdv)}
+                  </div>
+                )}
               </div>
               <div className="bg-bags-dark p-2 sm:p-3">
                 <div className="font-pixel text-[7px] text-gray-500">24H VOL</div>
