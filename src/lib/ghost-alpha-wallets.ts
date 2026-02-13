@@ -62,9 +62,7 @@ function loadWallets(): AlphaWallet[] {
 
   try {
     // Dynamic require to avoid bundling fs/path in client builds
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require("fs");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const nodePath = require("path");
 
     const filePath =

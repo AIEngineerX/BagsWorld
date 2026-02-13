@@ -311,55 +311,55 @@ function createMoltbookDecorations(scene: WorldScene): void {
   hutLabel.setDepth(6);
   scene.moltbookElements.push(hutLabel);
 
-  // === MOLT BAR (depth 7) - Tiki bar for alpha agent chat ===
+  // === CRUSTAFARIAN SHRINE (depth 7) - Lobster shrine for m/crustafarianism ===
   const barX = Math.round(250 * s); // Left of Moltbook HQ (which is at 400)
   const moltBar = scene.add.sprite(barX, pathLevel, "molt_bar");
   moltBar.setOrigin(0.5, 1);
   moltBar.setDepth(7);
-  moltBar.setScale(1.0);
+  moltBar.setScale(0.9);
   scene.moltbookElements.push(moltBar);
 
-  // Make Molt Bar interactive - opens Molt Bar Modal
+  // Make Shrine interactive - opens Shrine Modal
   moltBar.setInteractive({ useHandCursor: true });
   moltBar.on("pointerdown", () => {
     (scene as any)._zoneClickTime = Date.now();
     window.dispatchEvent(new CustomEvent("bagsworld-moltbar-click"));
   });
   moltBar.on("pointerover", () => {
-    moltBar.setTint(0xfff0e0);
-    moltBar.setScale(1.05);
+    moltBar.setTint(0xffe0e0);
+    moltBar.setScale(0.95);
   });
   moltBar.on("pointerout", () => {
     moltBar.clearTint();
-    moltBar.setScale(1.0);
+    moltBar.setScale(0.9);
   });
 
-  // Molt Bar glow animation (neon sign effect)
+  // Shrine glow animation (solemn pulse)
   scene.tweens.add({
     targets: moltBar,
     alpha: { from: 1, to: 0.92 },
-    duration: 800,
+    duration: 2000,
     yoyo: true,
     repeat: -1,
     ease: "Sine.easeInOut",
   });
 
-  // Molt Bar label
+  // Shrine label
   const barLabelBg = scene.add.rectangle(
     barX,
     pathLevel - Math.round(115 * s),
     Math.round(100 * s),
     Math.round(24 * s),
-    0x7c3aed,
+    0x8b1a1a,
     0.9
   );
   barLabelBg.setDepth(6);
   scene.moltbookElements.push(barLabelBg);
 
-  const barLabel = scene.add.text(barX, pathLevel - Math.round(115 * s), "\u{1F525} ALPHA", {
+  const barLabel = scene.add.text(barX, pathLevel - Math.round(115 * s), "\u{1F99E} SHRINE", {
     fontFamily: "monospace",
     fontSize: `${Math.round(11 * s)}px`,
-    color: "#fde047",
+    color: "#fca5a5",
     align: "center",
   });
   barLabel.setOrigin(0.5, 0.5);

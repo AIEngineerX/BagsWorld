@@ -40,9 +40,9 @@ describe("MobileCharacterMenu", () => {
       expect(screen.getByLabelText("Open character menu")).toBeInTheDocument();
     });
 
-    it("shows [?] text on closed toggle", () => {
+    it("shows ? text on closed toggle", () => {
       render(<MobileCharacterMenu />);
-      expect(screen.getByText("[?]")).toBeInTheDocument();
+      expect(screen.getByText("?")).toBeInTheDocument();
     });
 
     it("does not show character list initially", () => {
@@ -59,8 +59,8 @@ describe("MobileCharacterMenu", () => {
     it("is positioned at bottom-left (left-4)", () => {
       const { container } = render(<MobileCharacterMenu />);
       const wrapper = container.firstElementChild as HTMLElement;
-      expect(wrapper.className).toContain("left-4");
-      expect(wrapper.className).not.toContain("right-4");
+      expect(wrapper.className).toContain("left-3");
+      expect(wrapper.className).not.toContain("right-3");
     });
   });
 
@@ -71,10 +71,10 @@ describe("MobileCharacterMenu", () => {
       expect(screen.getByText("[TALK TO]")).toBeInTheDocument();
     });
 
-    it("shows [X] when menu is open", () => {
+    it("shows X when menu is open", () => {
       render(<MobileCharacterMenu />);
       fireEvent.click(screen.getByLabelText("Open character menu"));
-      expect(screen.getByText("[X]")).toBeInTheDocument();
+      expect(screen.getByText("X")).toBeInTheDocument();
     });
 
     it("closes menu when toggle clicked again", () => {

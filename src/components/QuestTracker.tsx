@@ -90,7 +90,7 @@ const QUEST_STEPS: QuestStep[] = [
     npc: null,
     npcIcon: "\uD83D\uDDFA\uFE0F",
     event: "bagsworld-moltbar-click",
-    objective: "Find the Agent Bar",
+    objective: "Find the Crustafarian Shrine",
     dialogue: null,
     markerId: null,
   },

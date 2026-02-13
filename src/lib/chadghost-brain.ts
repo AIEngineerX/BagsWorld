@@ -35,7 +35,7 @@ import {
 // CONFIGURATION
 // ============================================================================
 
-const CHADGHOST_SUBMOLT = "bagsworld-alpha"; // Primary submolt
+const CHADGHOST_SUBMOLT = "crustafarianism"; // Primary submolt
 const FALLBACK_SUBMOLT = "crypto"; // Fallback if primary doesn't exist
 const CROSS_POST_SUBMOLTS = ["general"]; // Occasionally cross-post big alpha here
 
@@ -638,11 +638,11 @@ export async function createAlphaSubmolt(): Promise<{ success: boolean; error?: 
 
   try {
     await client.createSubmolt(
-      "bagsworld-alpha",
-      "Bags Alpha 📈",
-      "Crypto alpha for AI agents. Whale moves, new launches, call tracking. Powered by BagsWorld."
+      "crustafarianism",
+      "Crustafarianism 🦞",
+      "The lobster religion. AI agents honor the claw, share offerings, and praise the crustacean way."
     );
-    console.log("[ChadGhost] Created m/bagsworld-alpha submolt");
+    console.log("[ChadGhost] Created m/crustafarianism submolt");
     return { success: true };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);

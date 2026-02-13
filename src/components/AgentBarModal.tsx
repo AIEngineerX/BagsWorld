@@ -65,16 +65,11 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
       if (data.messages && data.messages.length > 0) {
         setPosts(data.messages);
         setIsLive(true);
-        // Estimate online agents from unique authors in last hour
-        const recentAuthors = new Set(
-          data.messages
-            .filter((m: AlphaPost) => {
-              const msgTime = new Date(m.timestamp).getTime();
-              return Date.now() - msgTime < 3600000; // Last hour
-            })
-            .map((m: AlphaPost) => m.author)
+        // Count unique authors across all posts
+        const uniqueAuthors = new Set(
+          data.messages.map((m: AlphaPost) => m.author)
         );
-        setAgentsOnline(Math.max(recentAuthors.size, 1));
+        setAgentsOnline(uniqueAuthors.size);
       } else if (data.posts && data.posts.length > 0) {
         setPosts(
           data.posts.map((p: AlphaPost) => ({
@@ -83,7 +78,10 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
           }))
         );
         setIsLive(true);
-        setAgentsOnline(Math.max(data.posts.length, 1));
+        const uniqueAuthors = new Set(
+          data.posts.map((p: AlphaPost) => p.author)
+        );
+        setAgentsOnline(uniqueAuthors.size);
       } else {
         setPosts([]);
         setIsLive(false);
@@ -135,7 +133,7 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
     const parts = content.split(/\*\*(.+?)\*\*/g);
     return parts.map((part, i) =>
       i % 2 === 1 ? (
-        <span key={i} className="font-semibold text-cyan-100">
+        <span key={i} className="font-semibold text-rose-100">
           {part}
         </span>
       ) : (
@@ -165,21 +163,27 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
       className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 safe-area-bottom"
       onClick={handleBackdrop}
     >
-      <div className="bg-gradient-to-b from-[#1a2e35] to-[#0f1a1d] w-full max-w-xl rounded-t-lg sm:rounded-lg border border-cyan-900/50 flex flex-col max-h-[85vh] shadow-xl">
+      <div className="bg-gradient-to-b from-[#2a1525] to-[#1a0d15] w-full max-w-xl rounded-t-lg sm:rounded-lg border border-red-900/50 flex flex-col max-h-[85vh] shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-cyan-900/30 bg-gradient-to-r from-cyan-950/50 to-teal-950/30">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-red-900/30 bg-gradient-to-r from-red-950/50 to-purple-950/30">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🔥</span>
+            <span className="text-2xl">🦞</span>
             <div>
-              <h2 className="font-semibold text-cyan-100">BagsWorld Alpha</h2>
-              <p className="text-xs text-cyan-600">Powered by Moltbook</p>
+              <h2 className="font-semibold text-rose-100">Crustafarian Shrine</h2>
+              <p className="text-xs text-red-400">m/crustafarianism</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs">
-              <div className="flex items-center gap-1 text-cyan-500">
+              <div className="flex items-center gap-1 text-rose-400">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span>{agentsOnline > 0 ? `${agentsOnline} online` : "connecting..."}</span>
+                <span>
+                  {loading
+                    ? "connecting..."
+                    : agentsOnline > 0
+                      ? `${agentsOnline} ${agentsOnline === 1 ? "poster" : "posters"}`
+                      : "no posts yet"}
+                </span>
               </div>
               {isLive && (
                 <span className="px-1.5 py-0.5 bg-green-900/50 text-green-400 rounded text-[10px]">
@@ -187,7 +191,7 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
                 </span>
               )}
             </div>
-            <button onClick={onClose} className="text-cyan-600 hover:text-cyan-300 text-xl">
+            <button onClick={onClose} className="text-red-400 hover:text-rose-300 text-xl">
               ×
             </button>
           </div>
@@ -196,23 +200,23 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
         {/* Posts Feed */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[280px]">
           {loading ? (
-            <div className="flex items-center justify-center h-full text-cyan-600 text-sm">
+            <div className="flex items-center justify-center h-full text-rose-400 text-sm">
               <span className="animate-pulse">Loading feed...</span>
             </div>
           ) : posts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-6">
-              <span className="text-3xl mb-3">🔥</span>
-              <p className="text-cyan-400 text-sm">No alpha yet</p>
-              <p className="text-cyan-700 text-xs mt-2">
-                Be the first to post on m/bagsworld-alpha
+              <span className="text-3xl mb-3">🦞</span>
+              <p className="text-rose-300 text-sm">The shrine awaits...</p>
+              <p className="text-red-800 text-xs mt-2">
+                Be the first to make an offering
               </p>
               <a
-                href="https://www.moltbook.com/m/bagsworld-alpha"
+                href="https://www.moltbook.com/m/crustafarianism"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 px-4 py-2 bg-red-700 hover:bg-red-600 text-white text-sm rounded font-medium transition-colors"
+                className="mt-4 px-4 py-2 bg-red-800 hover:bg-red-700 text-white text-sm rounded font-medium transition-colors"
               >
-                Post Alpha →
+                Enter the Shrine →
               </a>
             </div>
           ) : (
@@ -225,20 +229,20 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-sm text-cyan-200 font-medium">{post.author}</span>
+                    <span className="text-sm text-rose-200 font-medium">{post.author}</span>
                     {post.authorKarma !== undefined && post.authorKarma > 0 && (
-                      <span className="text-[10px] text-cyan-700">
+                      <span className="text-[10px] text-red-700">
                         {post.authorKarma >= 1000
                           ? `${(post.authorKarma / 1000).toFixed(0)}k`
                           : post.authorKarma}
                       </span>
                     )}
-                    <span className="text-[10px] text-cyan-800">{formatTime(post.timestamp)}</span>
+                    <span className="text-[10px] text-red-800">{formatTime(post.timestamp)}</span>
                     {post.upvotes > 0 && (
                       <span className="text-[10px] text-orange-600">▲{post.upvotes}</span>
                     )}
                   </div>
-                  <p className="text-sm text-cyan-100/90 break-words whitespace-pre-wrap leading-relaxed mt-1">
+                  <p className="text-sm text-rose-100/90 break-words whitespace-pre-wrap leading-relaxed mt-1">
                     {renderContent(post.content)}
                   </p>
                 </div>
@@ -249,10 +253,10 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
         </div>
 
         {/* Collapsible Agent Dev Info */}
-        <div className="border-t border-cyan-900/30">
+        <div className="border-t border-red-900/30">
           <button
             onClick={() => setShowDevInfo(!showDevInfo)}
-            className="w-full px-4 py-2 flex items-center justify-between text-xs text-cyan-600 hover:text-cyan-400 hover:bg-cyan-950/30 transition-colors"
+            className="w-full px-4 py-2 flex items-center justify-between text-xs text-red-400 hover:text-rose-300 hover:bg-red-950/30 transition-colors"
           >
             <span className="flex items-center gap-2">
               <span>🤖</span>
@@ -263,34 +267,34 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
 
           {showDevInfo && (
             <div className="px-4 pb-3 space-y-3 text-xs">
-              <div className="bg-black/30 rounded p-3 border border-cyan-900/30">
-                <p className="text-cyan-500 mb-2">1. Register your agent on Moltbook:</p>
-                <pre className="text-cyan-300/80 overflow-x-auto whitespace-pre-wrap break-all">
+              <div className="bg-black/30 rounded p-3 border border-red-900/30">
+                <p className="text-rose-400 mb-2">1. Register your agent on Moltbook:</p>
+                <pre className="text-rose-300/80 overflow-x-auto whitespace-pre-wrap break-all">
                   {`curl -X POST https://www.moltbook.com/api/v1/agents/register \\
   -H "Content-Type: application/json" \\
   -d '{"name": "YourAgent", "description": "..."}'`}
                 </pre>
               </div>
 
-              <div className="bg-black/30 rounded p-3 border border-cyan-900/30">
-                <p className="text-cyan-500 mb-2">2. Post to the Alpha feed:</p>
-                <pre className="text-cyan-300/80 overflow-x-auto whitespace-pre-wrap break-all">
+              <div className="bg-black/30 rounded p-3 border border-red-900/30">
+                <p className="text-rose-400 mb-2">2. Post to the Shrine:</p>
+                <pre className="text-rose-300/80 overflow-x-auto whitespace-pre-wrap break-all">
                   {`POST /api/v1/posts
 {
-  "submolt": "bagsworld-alpha",
-  "title": "🚀 Alpha",
-  "content": "Your alpha here..."
+  "submolt": "crustafarianism",
+  "title": "🦞 Offering",
+  "content": "Your offering here..."
 }`}
                 </pre>
               </div>
 
-              <div className="flex items-center gap-2 text-cyan-600">
+              <div className="flex items-center gap-2 text-red-400">
                 <span>📚</span>
                 <a
                   href="https://www.moltbook.com/developers"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-cyan-400 underline"
+                  className="hover:text-rose-300 underline"
                 >
                   Full API docs at moltbook.com/developers
                 </a>
@@ -300,22 +304,22 @@ export function AgentBarModal({ onClose }: AgentBarModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-cyan-900/30 bg-cyan-950/30">
+        <div className="p-3 border-t border-red-900/30 bg-red-950/30">
           <div className="flex items-center justify-between gap-3">
             <a
-              href="https://www.moltbook.com/m/bagsworld-alpha"
+              href="https://www.moltbook.com/m/crustafarianism"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 bg-red-700 hover:bg-red-600 text-white text-sm rounded font-medium transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-red-800 hover:bg-red-700 text-white text-sm rounded font-medium transition-colors flex items-center gap-2"
             >
-              <span>🔥</span>
-              <span>Join Alpha Chat</span>
+              <span>🦞</span>
+              <span>Join the Shrine</span>
             </a>
             <a
               href="https://www.moltbook.com/developers"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-cyan-600 hover:text-cyan-400 text-xs underline"
+              className="text-red-400 hover:text-rose-300 text-xs underline"
             >
               Get your agent on Moltbook →
             </a>

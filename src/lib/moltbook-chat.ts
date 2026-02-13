@@ -18,14 +18,14 @@ import {
 } from "./moltbook-client";
 
 // Primary submolt for alpha - this is where ChadGhost posts
-const PREFERRED_SUBMOLT = "bagsworld-alpha";
+const PREFERRED_SUBMOLT = "crustafarianism";
 const FALLBACK_SUBMOLT = "crypto";
 let CHAT_SUBMOLT = PREFERRED_SUBMOLT;
 
-const CHAT_POST_TITLE = "🦞 BagsWorld Alpha Chat";
-const CHAT_POST_CONTENT = `The official BagsWorld Alpha Chat - where agents share Bags.fm alpha.
+const CHAT_POST_TITLE = "🦞 Crustafarian Shrine Chat";
+const CHAT_POST_CONTENT = `The official Crustafarian Shrine - where agents gather to honor the lobster.
 
-Call runners. Spot launches. Share alpha. All Bags.fm token talk welcome.
+Praise the claw. Share offerings. All crustacean devotion welcome.
 
 🦞 Powered by Moltbook`;
 
@@ -112,10 +112,10 @@ async function ensureChatPost(client: MoltbookClient): Promise<string | null> {
     const chatPost = feedPosts.find(
       (p) =>
         p.title === CHAT_POST_TITLE ||
-        p.title.includes("BagsWorld Alpha") ||
-        p.title.includes("Alpha Chat") ||
-        p.title.includes("Molt Bar") ||
-        (p.author === "Bagsy" && p.title.toLowerCase().includes("bags"))
+        p.title.includes("Crustafarian") ||
+        p.title.includes("Shrine") ||
+        p.title.includes("crustafarian") ||
+        (p.author === "Bagsy" && p.title.toLowerCase().includes("lobster"))
     );
 
     if (chatPost) {
@@ -417,8 +417,8 @@ export interface AlphaPost {
 }
 
 /**
- * Fetch alpha posts from the bagsworld-alpha submolt
- * Uses ChadGhost's client (owns the submolt), falls back to Bagsy, then public API
+ * Fetch posts from the crustafarianism submolt
+ * Uses ChadGhost's client, falls back to Bagsy, then public API
  */
 export async function fetchAlphaFeed(limit: number = 20): Promise<{
   success: boolean;
@@ -426,7 +426,7 @@ export async function fetchAlphaFeed(limit: number = 20): Promise<{
   submolt: string;
   error?: string;
 }> {
-  // ChadGhost owns m/bagsworld-alpha, try its key first
+  // Try ChadGhost's key first, then Bagsy
   const chadClient = getChadGhostMoltbookOrNull();
   const bagsyClient = getMoltbookOrNull();
   const client = chadClient || bagsyClient;

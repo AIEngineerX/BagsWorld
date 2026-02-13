@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useCallback, Component, ReactNode } from "react";
+import { useEffect, useRef, Component, ReactNode } from "react";
 import * as Phaser from "phaser";
 import { BootScene } from "@/game/scenes/BootScene";
 import { WorldScene } from "@/game/scenes/WorldScene";
 import { UIScene } from "@/game/scenes/UIScene";
-import type { WorldState, ZoneType } from "@/lib/types";
-import { ZONE_ORDER } from "@/components/ZoneNav";
-import { useGameStore } from "@/lib/store";
+import type { WorldState } from "@/lib/types";
 import {
   initAgentBridge,
   disconnectAgentBridge,
@@ -88,64 +86,6 @@ interface GameCanvasProps {
 function GameCanvasInner({ worldState }: GameCanvasProps) {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { currentZone, setZone } = useGameStore();
-
-  // Swipe gesture for zone navigation (touch only)
-  const swipeStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-
-  const handleSwipeZone = useCallback(
-    (direction: "left" | "right") => {
-      const currentIndex = ZONE_ORDER.indexOf(currentZone as ZoneType);
-      if (currentIndex === -1) return;
-
-      const nextIndex =
-        direction === "left"
-          ? Math.min(currentIndex + 1, ZONE_ORDER.length - 1)
-          : Math.max(currentIndex - 1, 0);
-
-      if (nextIndex === currentIndex) return;
-
-      const nextZone = ZONE_ORDER[nextIndex];
-      window.dispatchEvent(
-        new CustomEvent("bagsworld-zone-change", { detail: { zone: nextZone } })
-      );
-      setZone(nextZone);
-    },
-    [currentZone, setZone]
-  );
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handlePointerDown = (e: PointerEvent) => {
-      // Only handle touch, not mouse
-      if (e.pointerType !== "touch") return;
-      swipeStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
-    };
-
-    const handlePointerUp = (e: PointerEvent) => {
-      if (e.pointerType !== "touch" || !swipeStartRef.current) return;
-
-      const deltaX = e.clientX - swipeStartRef.current.x;
-      const deltaY = e.clientY - swipeStartRef.current.y;
-      const elapsed = Date.now() - swipeStartRef.current.time;
-      swipeStartRef.current = null;
-
-      // Must be a fast horizontal swipe: >80px horizontal, <40px vertical, <500ms
-      if (Math.abs(deltaX) > 80 && Math.abs(deltaY) < 40 && elapsed < 500) {
-        handleSwipeZone(deltaX < 0 ? "left" : "right");
-      }
-    };
-
-    container.addEventListener("pointerdown", handlePointerDown);
-    container.addEventListener("pointerup", handlePointerUp);
-
-    return () => {
-      container.removeEventListener("pointerdown", handlePointerDown);
-      container.removeEventListener("pointerup", handlePointerUp);
-    };
-  }, [handleSwipeZone]);
 
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return;

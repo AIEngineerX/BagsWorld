@@ -846,16 +846,6 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
   },
   {
-    mint: "StarterTradingTerminal111111111111111111111",
-    name: "Trading Terminal",
-    symbol: "TERMINAL",
-    description:
-      "Professional trading terminal with real-time charts. Track prices, analyze trends, and trade any Solana token.",
-    imageUrl: "/assets/buildings/terminal.png",
-    creator: "BagsWorld",
-    createdAt: Date.now() - 86400000 * 7, // 7 days ago
-  },
-  {
     mint: "StarterOracleTower11111111111111111111111111",
     name: "Oracle's Tower",
     symbol: "ORACLE",
@@ -864,6 +854,16 @@ const STARTER_BUILDINGS: RegisteredToken[] = [
     imageUrl: "/assets/buildings/oracle.png",
     creator: "BagsWorld",
     createdAt: Date.now() - 86400000 * 7, // 7 days ago
+  },
+  {
+    mint: "StarterArcade111111111111111111111111111111",
+    name: "Arcade",
+    symbol: "ARCADE",
+    description:
+      "Play Metal Bags — a free side-scrolling shooter featuring Ghost, Neo, and CJ!",
+    imageUrl: "/assets/buildings/arcade.png",
+    creator: "BagsWorld",
+    createdAt: Date.now() - 86400000 * 7,
   },
 ];
 

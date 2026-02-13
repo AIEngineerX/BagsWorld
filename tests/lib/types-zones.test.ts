@@ -3,7 +3,7 @@ import { ZONES, ZoneInfo } from "@/lib/types";
 describe("ZONES constant", () => {
   describe("completeness", () => {
     it("contains all expected zones and nothing else", () => {
-      const expected = ["labs", "moltbook", "main_city", "trending", "ballers", "founders", "arena", "dungeon"];
+      const expected = ["labs", "moltbook", "main_city", "trending", "ballers", "founders", "arena", "dungeon", "ascension"];
       expect(Object.keys(ZONES).sort()).toEqual([...expected].sort());
     });
   });
@@ -41,6 +41,7 @@ describe("ZONES constant", () => {
       arena: "MoltBook Arena",
       moltbook: "Moltbook Beach",
       dungeon: "BagsDungeon",
+      ascension: "Ascension Spire",
     };
 
     Object.entries(expectedNames).forEach(([id, name]) => {

@@ -22,7 +22,7 @@ import {
 // ============================================================================
 
 const CHADGHOST_USERNAME = "ChadGhost";
-const TARGET_SUBMOLTS = ["bagsworld-alpha", "crypto", "general"];
+const TARGET_SUBMOLTS = ["crustafarianism", "crypto", "general"];
 
 interface EngagementConfig {
   maxCommentsPerHour: number;

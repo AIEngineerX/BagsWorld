@@ -78,7 +78,7 @@ describe("MiniMap", () => {
     it("default position is right-aligned", () => {
       const { container } = render(<MiniMap />);
       const wrapper = container.firstElementChild as HTMLElement;
-      expect(wrapper.style.right).toBe("16px");
+      expect(wrapper.style.right).toBe("12px");
     });
   });
 
@@ -167,7 +167,6 @@ describe("MiniMap", () => {
 
       expect(screen.getByText("Casino")).toBeInTheDocument();
       expect(screen.getByText("Oracle")).toBeInTheDocument();
-      expect(screen.getByText("Terminal")).toBeInTheDocument();
     });
 
     it("shows HQ locations when HQ tile is expanded", () => {

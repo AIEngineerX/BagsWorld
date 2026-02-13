@@ -333,6 +333,58 @@ describe("Rate Limiter", () => {
 
       expect(getClientIP(request as unknown as Request)).toBe("[2001:db8::1]:8080");
     });
+
+    it("should handle empty x-forwarded-for header", () => {
+      const request = new MockRequest("http://localhost", {
+        headers: { "x-forwarded-for": "" },
+      });
+
+      // Empty string is falsy, should fall through to x-real-ip or "unknown"
+      expect(getClientIP(request as unknown as Request)).toBe("unknown");
+    });
+
+    it("should handle x-forwarded-for with only whitespace", () => {
+      const request = new MockRequest("http://localhost", {
+        headers: { "x-forwarded-for": "   " },
+      });
+
+      // "   " is truthy, split(",")[0].trim() = ""
+      expect(getClientIP(request as unknown as Request)).toBe("");
+    });
+
+    it("should handle x-forwarded-for with single comma", () => {
+      const request = new MockRequest("http://localhost", {
+        headers: { "x-forwarded-for": "," },
+      });
+
+      // split(",")[0] = "", trim() = ""
+      expect(getClientIP(request as unknown as Request)).toBe("");
+    });
+
+    it("should handle x-real-ip with whitespace", () => {
+      const request = new MockRequest("http://localhost", {
+        headers: { "x-real-ip": "  10.0.0.1  " },
+      });
+
+      // x-real-ip is returned as-is (no trim in the code)
+      expect(getClientIP(request as unknown as Request)).toBe("  10.0.0.1  ");
+    });
+
+    it("should handle localhost IP", () => {
+      const request = new MockRequest("http://localhost", {
+        headers: { "x-forwarded-for": "127.0.0.1" },
+      });
+
+      expect(getClientIP(request as unknown as Request)).toBe("127.0.0.1");
+    });
+
+    it("should handle loopback IPv6", () => {
+      const request = new MockRequest("http://localhost", {
+        headers: { "x-forwarded-for": "::1" },
+      });
+
+      expect(getClientIP(request as unknown as Request)).toBe("::1");
+    });
   });
 
   // ==================== RATE_LIMITS presets ====================
@@ -532,6 +584,44 @@ describe("Rate Limiter", () => {
       const result = checkRateLimitSync(id, config);
       expect(result.success).toBe(true);
       expect(result.remaining).toBe(1);
+    });
+  });
+
+  // ==================== checkRateLimitSync edge cases ====================
+
+  describe("checkRateLimitSync edge cases", () => {
+    it("should handle limit of 0 (first request allowed, second blocked)", () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 0, windowMs: 60000 };
+
+      // First request always creates a new entry (succeeds)
+      const r1 = checkRateLimitSync(id, config);
+      expect(r1.success).toBe(true);
+      expect(r1.remaining).toBe(-1); // 0 - 1
+
+      // Second request is blocked (count=1, limit=0, 1 < 0 is false)
+      const r2 = checkRateLimitSync(id, config);
+      expect(r2.success).toBe(false);
+    });
+
+    it("should handle very large windowMs", () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 5, windowMs: 86400000 }; // 24 hours
+
+      const result = checkRateLimitSync(id, config);
+      expect(result.success).toBe(true);
+      expect(result.resetIn).toBe(86400000);
+    });
+
+    it("should track remaining count correctly down to 0", () => {
+      const id = getUniqueId();
+      const config: RateLimitConfig = { limit: 3, windowMs: 60000 };
+
+      expect(checkRateLimitSync(id, config).remaining).toBe(2);
+      expect(checkRateLimitSync(id, config).remaining).toBe(1);
+      expect(checkRateLimitSync(id, config).remaining).toBe(0);
+      // Further requests stay at 0
+      expect(checkRateLimitSync(id, config).remaining).toBe(0);
     });
   });
 

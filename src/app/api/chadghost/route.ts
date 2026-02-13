@@ -155,12 +155,12 @@ export async function POST(request: NextRequest) {
     }
 
     case "create-submolt": {
-      // Create the bagsworld-alpha submolt
+      // Create the crustafarianism submolt
       const result = await createAlphaSubmolt();
       return NextResponse.json({
         success: result.success,
         error: result.error,
-        message: result.success ? "Created m/bagsworld-alpha submolt" : `Failed: ${result.error}`,
+        message: result.success ? "Created m/crustafarianism submolt" : `Failed: ${result.error}`,
       });
     }
 

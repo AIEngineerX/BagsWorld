@@ -32,6 +32,7 @@ const ZONE_GRADIENT_COLORS: Record<ZoneType, string> = {
   founders: "#f59e0b",
   arena: "#ef4444",
   dungeon: "#a855f7",
+  ascension: "#06b6d4",
 };
 
 const ZONE_NAME_TO_ID: Record<string, ZoneType> = {

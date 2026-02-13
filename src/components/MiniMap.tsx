@@ -74,13 +74,20 @@ const ZONE_THEME: Record<
     glow: "shadow-purple-400/30",
     label: "DUNGEON",
   },
+  ascension: {
+    accent: "text-cyan-400",
+    bg: "bg-cyan-400/15",
+    border: "border-cyan-400/60",
+    glow: "shadow-cyan-400/30",
+    label: "SPIRE",
+  },
 };
 
 // Map grid layout — rows of zone IDs matching a spatial map
 const MAP_ROWS: ZoneType[][] = [
   ["labs", "moltbook", "arena"],
   ["main_city", "trending", "ballers"],
-  ["founders", "dungeon"],
+  ["founders", "dungeon", "ascension"],
 ];
 
 // Locations per zone
@@ -110,7 +117,6 @@ const LOCATIONS: Record<
   trending: [
     { id: "casino", name: "Casino", desc: "Games & Raffle", event: "bagsworld-casino-click" },
     { id: "oracle", name: "Oracle", desc: "Predictions", event: "bagsworld-oracle-click" },
-    { id: "terminal", name: "Terminal", desc: "Live Trading", event: "bagsworld-terminal-click" },
   ],
   ballers: [
     { id: "mansions", name: "Mansions", desc: "Top Holders", event: null },
@@ -125,6 +131,11 @@ const LOCATIONS: Record<
     { id: "queue", name: "Queue Status", desc: "Join the Fight", event: null },
   ],
   dungeon: [{ id: "entrance", name: "Dungeon Gate", desc: "Enter MMORPG", event: null }],
+  ascension: [
+    { id: "hall", name: "Hall of Records", desc: "Leaderboard", event: "bagsworld-ascension-click" },
+    { id: "spire", name: "Ascension Spire", desc: "Summon Trial", event: null },
+    { id: "shrine", name: "Blessing Shrine", desc: "Bless Agents", event: null },
+  ],
 };
 
 const DRAG_THRESHOLD = 5; // px moved before it counts as a drag

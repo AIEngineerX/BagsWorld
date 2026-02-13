@@ -114,10 +114,10 @@ async function tick(): Promise<void> {
     const result = await createAlphaSubmolt();
     if (result.success) {
       state.submoltCreated = true;
-      console.log("[ChadGhost Service] Created m/bagsworld-alpha submolt");
+      console.log("[ChadGhost Service] Created m/crustafarianism submolt");
     } else if (result.error?.includes("already exists")) {
       state.submoltCreated = true;
-      console.log("[ChadGhost Service] m/bagsworld-alpha already exists");
+      console.log("[ChadGhost Service] m/crustafarianism already exists");
     }
     // Don't block on submolt creation failure
   }
